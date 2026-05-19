@@ -1,22 +1,57 @@
 # RelayLM
 
-RelayLM is a Lineage Manager for local LLMs.
+RelayLM is an OpenAI-compatible memory and context proxy for local LLM applications, agents, AI companions, and local inference runtimes.
 
-It controls and traces the flow from memory to context, token spans,
-runtime cache / KV cache, and budget decisions.
+It is not a language model. RelayLM sits in front of an LLM backend and repacks memory, RAG, recent turns, and spilled context into a budget-aware effective context.
 
-RelayLM is not a language model. It is a memory-context-token-runtime-cache
-lineage manager for local LLM applications, agents, and local inference runtimes.
+Initial product target:
+
+- Open-LLM-VTuber memory proxy
+- URL-swap integration through an OpenAI-compatible `/v1/chat/completions` endpoint
+- persona-stable and KV-reuse-aware context packing
+
+## Core idea
+
+RelayLM compiles memory, RAG, and chat history into a prefix-stable context layout so that engines such as vLLM and SGLang can reuse prefix/KV cache across turns and character threads.
+
+The first practical value is simple:
+
+> Make an AI VTuber or AI companion feel like it remembers unusually well, without requiring the frontend to manage long context directly.
 
 ## Architecture
 
-RelayLM uses the RelayStack architecture:
+RelayLM uses the RelayStack architecture as a product/control-plane layer:
 
-- RelayMEM
-- RelayCTX
-- RelayKV
-- RelayPLC
-- RelayTRC
-- Relay Adapter
+- RelayMEM: memory candidates and long-term memory sources
+- RelayCTX: effective context construction and compression
+- RelayKV: runtime/cache research boundary, developed in `rinsakamo/relay-kv`
+- RelayPLC: policy, fallback, routing, and budget control
+- RelayTRC: trace and lineage, deferred for the MVP
+- Relay Adapter: OpenAI-compatible proxy and backend adapters
 
-The current implementation research continues in `rinsakamo/relay-kv`.
+## Initial docs
+
+- [VTuber memory proxy design](docs/vtuber_memory_proxy_design.md)
+- [Context packing design](docs/context_packing_design.md)
+- [Open-LLM-VTuber integration](docs/open_llm_vtuber_integration.md)
+
+## MVP direction
+
+The first implementation should be a thin OpenAI-compatible proxy:
+
+```text
+Open-LLM-VTuber
+  -> RelayLM /v1/chat/completions
+  -> vLLM / SGLang / other OpenAI-compatible backend
+```
+
+The default integration should be easy for existing Open-LLM-VTuber users:
+
+1. Start an LLM backend.
+2. Start RelayLM.
+3. Change the OpenAI-compatible API URL in Open-LLM-VTuber to RelayLM.
+4. Keep using the existing character configuration.
+
+## Relationship to relay-kv
+
+`relay-kv` remains the runtime/KV-cache research repository. RelayLM starts one layer above runtime APIs as a memory and context proxy. RelayLM should benefit from RelayKV's design lessons, especially working-set selection, anchor/recent/retrieved separation, and cache-aware layout, without mutating engine KV cache in the initial product.
