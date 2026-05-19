@@ -34,6 +34,9 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [VTuber memory proxy design](docs/vtuber_memory_proxy_design.md)
 - [Context packing design](docs/context_packing_design.md)
 - [Open-LLM-VTuber integration](docs/open_llm_vtuber_integration.md)
+- [Runtime architecture](docs/runtime_architecture.md)
+- [Config schema](docs/config_schema.md)
+- [Context compiler contract](docs/context_compiler_contract.md)
 
 ## MVP direction
 
