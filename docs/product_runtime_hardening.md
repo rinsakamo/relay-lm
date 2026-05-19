@@ -20,6 +20,158 @@ This means every feature should be judged by:
 - Does it avoid making the character sound like a generic assistant?
 - Does it avoid requiring Open-LLM-VTuber code changes?
 
+## Product milestone plan
+
+RelayLM should move from connection reliability to persona stability before adding heavier memory or RAG.
+
+```text
+MVP-0: OpenAI-compatible pass-through proxy
+MVP-1: model routing, config, and runtime diagnostics
+MVP-2: persona-stable context compiler
+MVP-3: memory_light with local memory
+MVP-4: safe memory write lifecycle
+MVP-5: memory_full with RAG and compression
+```
+
+### MVP-0: OpenAI-compatible pass-through proxy
+
+Goal:
+
+- Open-LLM-VTuber can change its OpenAI-compatible `base_url` to RelayLM without breaking chat.
+
+Scope:
+
+- FastAPI server
+- `/v1/models`
+- `/v1/chat/completions`
+- streaming SSE forwarding
+- non-streaming JSON forwarding
+- backend adapter seam
+- minimal config loading
+
+Out of scope:
+
+- memory
+- RAG
+- SOUL / OUTPUT_POLICY loading
+- context compilation
+- embeddings
+- database storage
+
+### MVP-1: model routing, config, and runtime diagnostics
+
+Goal:
+
+- incoming model names resolve to stable RelayLM routes.
+
+Scope:
+
+- `model_routes`
+- backend model mapping
+- `character_id`
+- `cache_namespace`
+- `memory_namespace`
+- mode resolution
+- request diagnostics
+- fallback reason field
+
+Out of scope:
+
+- prompt mutation
+- memory retrieval
+- memory writes
+
+### MVP-2: persona-stable context compiler
+
+Goal:
+
+- RelayLM can compile stable character context without making dynamic memory override persona.
+
+Scope:
+
+- `SOUL.md`
+- `OUTPUT_POLICY.md`
+- `common_runtime_policy`
+- `room_anchor`
+- incoming system prompt fallback
+- bounded recent turns
+- compiled system message
+- stable prefix / slow prefix / dynamic suffix diagnostics
+
+Out of scope:
+
+- heavy memory retrieval
+- vector search
+- summarization
+- automatic memory writes
+
+### MVP-3: memory_light with local memory
+
+Goal:
+
+- make the character feel like it remembers useful facts while preserving realtime speech latency.
+
+Scope:
+
+- local JSONL memory
+- viewer memory
+- character memory
+- simple keyword or recent-N memory selection
+- memory block insertion
+- missing memory fallback
+- memory candidate logging
+
+Out of scope:
+
+- embeddings
+- vector database
+- rerankers
+- LLM-based summarization in the synchronous path
+
+### MVP-4: safe memory write lifecycle
+
+Goal:
+
+- allow memory updates without letting wrong or low-confidence memories immediately affect character behavior.
+
+Scope:
+
+- memory candidate state
+- accepted / summarized / active / archived states
+- confidence field
+- source turn reference
+- conservative activation
+- post-response async memory extraction path
+- memory write diagnostics
+
+Out of scope:
+
+- mandatory autonomous memory activation
+- long-term summarization quality optimization
+- multi-user memory governance beyond the namespace model
+
+### MVP-5: memory_full with RAG and compression
+
+Goal:
+
+- support longer-term memory, RAG, spilled context, and budget-aware packing after realtime and persona foundations are stable.
+
+Scope:
+
+- embeddings
+- vector search
+- retrieved memory and RAG chunks
+- token budget control
+- compression hooks
+- fallback to `memory_light`
+- retrieval diagnostics
+
+Out of scope:
+
+- direct backend KV-cache mutation
+- engine scheduler changes
+- replacing RelayKV runtime/cache research
+
 ## Authority order
 
 RelayLM needs an explicit authority order so memory and RAG do not override character identity.
