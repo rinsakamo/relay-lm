@@ -39,6 +39,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [Context compiler contract](docs/context_compiler_contract.md)
 - [Product runtime hardening](docs/product_runtime_hardening.md)
 - [MVP-0 pass-through proxy](docs/mvp0_pass_through_proxy.md)
+- [MVP-1 config and routing smoke](docs/mvp1_config_routing_smoke.md)
 
 ## MVP direction
 
