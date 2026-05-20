@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import uuid
 from typing import Any
 
@@ -136,6 +137,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run RelayLM")
     parser.add_argument("--config", default=None, help="Path to config.yaml")
     args = parser.parse_args()
+
+    if args.config:
+        os.environ["RELAYLM_CONFIG"] = args.config
 
     config: RelayLMConfig = load_config(args.config)
     uvicorn.run(
