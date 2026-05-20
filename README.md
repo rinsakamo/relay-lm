@@ -65,16 +65,28 @@ Install locally:
 pip install -e .
 ```
 
+If the environment blocks package index access during editable install, use the current environment's build tools instead:
+
+```bash
+pip install -e . --no-build-isolation
+```
+
 Create a config:
 
 ```bash
 cp config.example.yaml config.yaml
 ```
 
-Run RelayLM:
+Run RelayLM through the installed console script:
 
 ```bash
 relaylm --config config.yaml
+```
+
+If editable install failed before installing the console script, run the module directly from the repository root:
+
+```bash
+python -m relaylm.app --config config.yaml
 ```
 
 Or run with uvicorn:
