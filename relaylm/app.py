@@ -20,7 +20,7 @@ from relaylm.adapter import (
 )
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.diagnostics import RequestDiagnostics
-from relaylm.profile_plan import build_profile_compile_plan
+from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.routing import (
     RouteConfigurationError,
     RouteNotFoundError,
@@ -132,15 +132,10 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 headers=diagnostics.to_headers(),
             )
 
-        incoming_messages = payload.get("messages")
-        if not isinstance(incoming_messages, list):
-            incoming_messages = []
-        profile_compile_plan = build_profile_compile_plan(
+        compiled_request = compile_chat_payload_if_enabled(
             config=config,
             route=route,
-            incoming_messages=[
-                message for message in incoming_messages if isinstance(message, dict)
-            ],
+            payload=payload,
         )
 
         diagnostics = RequestDiagnostics(
@@ -152,15 +147,16 @@ def create_app(config_path: str | None = None) -> FastAPI:
             mode_requested=route.mode_requested,
             mode_applied=route.mode_applied,
             stream_enabled=stream_enabled,
-            compiler_used=False,
-            profile_compile_dry_run_enabled=profile_compile_plan.enabled,
-            profile_compile_fallback_reason=profile_compile_plan.fallback_reason,
+            compiler_used=compiled_request.compiler_used,
+            profile_compile_dry_run_enabled=compiled_request.plan.enabled,
+            profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
         )
+        forwarded_payload = compiled_request.payload
 
         if stream_enabled:
             try:
                 status_code, content_type, body_iter = await open_chat_completion_stream(
-                    payload, route
+                    forwarded_payload, route
                 )
             except BackendRequestError as exc:
                 return openai_error(
@@ -178,7 +174,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
 
         try:
             status_code, body, response_headers = await forward_chat_completion_json(
-                payload, route
+                forwarded_payload, route
             )
         except BackendRequestError as exc:
             return openai_error(
