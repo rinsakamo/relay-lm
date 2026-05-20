@@ -26,6 +26,13 @@ class BackendConfig(BaseModel):
     timeout_seconds: float = 60.0
 
 
+class CharacterConfig(BaseModel):
+    common_runtime_policy: str | None = None
+    soul: str
+    output_policy: str
+    room_anchor: str
+
+
 class ModelRoute(BaseModel):
     backend: str
     backend_model: str | None = None
@@ -38,8 +45,10 @@ class ModelRoute(BaseModel):
 class RelayLMConfig(BaseModel):
     mode: Mode = "pass_through"
     listen: ListenConfig = Field(default_factory=ListenConfig)
+    common_runtime_policy: str | None = None
     backends: dict[str, BackendConfig]
     model_routes: dict[str, ModelRoute]
+    characters: dict[str, CharacterConfig] = Field(default_factory=dict)
 
 
 def default_config_path() -> Path:
