@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 
 class StabilityClass(str, Enum):
@@ -74,6 +75,30 @@ def validate_block_order(blocks: list[ContextBlock]) -> None:
                 f"block {block.block_id!r} with {block.stability_class.value!r} was out of order."
             )
         previous_rank = current_rank
+
+
+def compile_profile_system_message(blocks: list[ContextBlock]) -> dict[str, str]:
+    """Compile context blocks into one OpenAI-compatible system message."""
+
+    validate_block_order(blocks)
+    return {"role": "system", "content": render_context_blocks(blocks)}
+
+
+def compile_profile_messages(
+    blocks: list[ContextBlock],
+    recent_messages: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Return OpenAI-compatible messages with compiled context first.
+
+    MVP-2 only builds the message layout; runtime pass-through integration comes
+    later. Recent messages are appended unchanged after the compiled system
+    message so the latest user input stays near the end.
+    """
+
+    messages: list[dict[str, Any]] = [compile_profile_system_message(blocks)]
+    if recent_messages:
+        messages.extend(recent_messages)
+    return messages
 
 
 def build_placeholder_persona_blocks(
