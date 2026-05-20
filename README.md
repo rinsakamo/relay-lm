@@ -49,6 +49,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [MVP-2 compiled system message](docs/mvp2_compiled_system_message.md)
 - [MVP-2 incoming system fallback](docs/mvp2_incoming_system_fallback.md)
 - [MVP-2 profile compile dry-run](docs/mvp2_profile_compile_dry_run.md)
+- [MVP-2 dry-run diagnostics headers](docs/mvp2_dry_run_diagnostics_headers.md)
 
 ## MVP direction
 

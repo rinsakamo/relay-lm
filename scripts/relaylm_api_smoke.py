@@ -37,6 +37,7 @@ def main() -> int:
     parser.add_argument("--base-url", default="http://127.0.0.1:8090")
     parser.add_argument("--model", default="relaylm-default")
     parser.add_argument("--expected-mode", default="pass_through")
+    parser.add_argument("--expected-profile-compile-dry-run", default="true")
     args = parser.parse_args()
     base_url = args.base_url.rstrip("/")
 
@@ -60,9 +61,14 @@ def main() -> int:
     header_map = normalized_headers(headers)
     require("x-relaylm-request-id" in header_map, f"missing request id header: {headers}")
     require(header_map.get("x-relaylm-mode") == args.expected_mode, f"bad mode header: {headers}")
+    require(
+        header_map.get("x-relaylm-profile-compile-dry-run") == args.expected_profile_compile_dry_run,
+        f"bad profile compile dry-run header: {headers}",
+    )
     require(status in {200, 400, 401, 404, 422, 500, 502, 503}, f"unexpected chat status: {status} {body}")
     print(f"ok chat status={status}")
     print("ok chat diagnostics headers")
+    print("ok profile compile dry-run header")
     return 0
 
 
