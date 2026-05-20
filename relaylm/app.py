@@ -13,7 +13,11 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from relaylm.adapter import forward_chat_completion_json, open_chat_completion_stream
+from relaylm.adapter import (
+    BackendRequestError,
+    forward_chat_completion_json,
+    open_chat_completion_stream,
+)
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.diagnostics import RequestDiagnostics
 from relaylm.routing import RouteNotFoundError, list_model_ids, resolve_route
@@ -123,9 +127,17 @@ def create_app(config_path: str | None = None) -> FastAPI:
         )
 
         if stream_enabled:
-            status_code, content_type, body_iter = await open_chat_completion_stream(
-                payload, route
-            )
+            try:
+                status_code, content_type, body_iter = await open_chat_completion_stream(
+                    payload, route
+                )
+            except BackendRequestError as exc:
+                return openai_error(
+                    status_code=502,
+                    message=f"RelayLM could not reach backend: {exc}",
+                    error_type="backend_connection_error",
+                    headers=diagnostics.to_headers(),
+                )
             return StreamingResponse(
                 body_iter,
                 status_code=status_code,
@@ -133,7 +145,17 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 headers=diagnostics.to_headers(),
             )
 
-        status_code, body, response_headers = await forward_chat_completion_json(payload, route)
+        try:
+            status_code, body, response_headers = await forward_chat_completion_json(
+                payload, route
+            )
+        except BackendRequestError as exc:
+            return openai_error(
+                status_code=502,
+                message=f"RelayLM could not reach backend: {exc}",
+                error_type="backend_connection_error",
+                headers=diagnostics.to_headers(),
+            )
         headers = diagnostics.to_headers()
         if isinstance(body, dict) or isinstance(body, list):
             headers.update(response_headers)
