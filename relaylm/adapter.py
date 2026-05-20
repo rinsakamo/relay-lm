@@ -50,19 +50,35 @@ async def forward_chat_completion_json(
     return response.status_code, body, {"content-type": content_type}
 
 
-async def stream_chat_completion(
+async def open_chat_completion_stream(
     payload: Mapping[str, Any],
     route: ResolvedRoute,
-) -> AsyncIterator[bytes]:
+) -> tuple[int, str, AsyncIterator[bytes]]:
+    """Open a backend streaming response and return status before proxying bytes.
+
+    This intentionally does not call ``raise_for_status``. Backend 4xx/5xx
+    responses should keep their status code and body instead of surfacing as a
+    RelayLM generator exception.
+    """
+
     timeout = httpx.Timeout(route.backend.timeout_seconds)
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        async with client.stream(
-            "POST",
-            _backend_url(route, OPENAI_CHAT_COMPLETIONS_PATH),
-            headers=_headers(route),
-            json=build_backend_payload(payload, route),
-        ) as response:
-            response.raise_for_status()
+    client = httpx.AsyncClient(timeout=timeout)
+    stream_context = client.stream(
+        "POST",
+        _backend_url(route, OPENAI_CHAT_COMPLETIONS_PATH),
+        headers=_headers(route),
+        json=build_backend_payload(payload, route),
+    )
+    response = await stream_context.__aenter__()
+    content_type = response.headers.get("content-type", "text/event-stream")
+
+    async def iter_bytes() -> AsyncIterator[bytes]:
+        try:
             async for chunk in response.aiter_bytes():
                 if chunk:
                     yield chunk
+        finally:
+            await stream_context.__aexit__(None, None, None)
+            await client.aclose()
+
+    return response.status_code, content_type, iter_bytes()
