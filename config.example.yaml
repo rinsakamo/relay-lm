@@ -4,6 +4,8 @@ listen:
   host: 127.0.0.1
   port: 8090
 
+common_runtime_policy: examples/profiles/default/common_runtime_policy.md
+
 backends:
   local_backend:
     type: openai_compatible
@@ -19,3 +21,9 @@ model_routes:
     mode: pass_through
     cache_namespace: character/default
     memory_namespace: character/default
+
+characters:
+  default:
+    soul: examples/profiles/default/SOUL.md
+    output_policy: examples/profiles/default/style.md
+    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
