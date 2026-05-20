@@ -47,7 +47,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             ],
         }
 
-    @app.post("/v1/chat/completions")
+    @app.post("/v1/chat/completions", response_model=None)
     async def chat_completions(request: Request) -> JSONResponse | StreamingResponse:
         request_id = str(uuid.uuid4())
         try:
