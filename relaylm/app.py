@@ -6,13 +6,14 @@ import argparse
 import json
 import os
 import uuid
+from collections.abc import Mapping
 from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from relaylm.adapter import forward_chat_completion_json, stream_chat_completion
+from relaylm.adapter import forward_chat_completion_json, open_chat_completion_stream
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.diagnostics import RequestDiagnostics
 from relaylm.routing import RouteNotFoundError, list_model_ids, resolve_route
@@ -50,6 +51,18 @@ def create_app(config_path: str | None = None) -> FastAPI:
             return openai_error(
                 status_code=400,
                 message="Request body must be valid JSON.",
+                error_type="invalid_request_error",
+                headers=diagnostics.to_headers(),
+            )
+
+        if not isinstance(payload, Mapping):
+            diagnostics = RequestDiagnostics(
+                request_id=request_id,
+                fallback_reason="invalid_json_type",
+            )
+            return openai_error(
+                status_code=400,
+                message="Request body must be a JSON object.",
                 error_type="invalid_request_error",
                 headers=diagnostics.to_headers(),
             )
@@ -96,9 +109,13 @@ def create_app(config_path: str | None = None) -> FastAPI:
         )
 
         if stream_enabled:
+            status_code, content_type, body_iter = await open_chat_completion_stream(
+                payload, route
+            )
             return StreamingResponse(
-                stream_chat_completion(payload, route),
-                media_type="text/event-stream",
+                body_iter,
+                status_code=status_code,
+                media_type=content_type,
                 headers=diagnostics.to_headers(),
             )
 
