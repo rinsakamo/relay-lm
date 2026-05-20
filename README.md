@@ -44,6 +44,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [MVP-1 API diagnostics smoke](docs/mvp1_api_diagnostics_smoke.md)
 - [MVP-1 summary](docs/mvp1_summary.md)
 - [MVP-2 context compiler contract](docs/mvp2_context_compiler_contract.md)
+- [MVP-2 profile file loading](docs/mvp2_profile_file_loading.md)
 
 ## MVP direction
 
