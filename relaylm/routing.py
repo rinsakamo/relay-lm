@@ -24,6 +24,10 @@ class RouteNotFoundError(ValueError):
     """Raised when an incoming model name does not match a RelayLM route."""
 
 
+class RouteConfigurationError(ValueError):
+    """Raised when a matched route references invalid server-side config."""
+
+
 def resolve_route(config: RelayLMConfig, model: str) -> ResolvedRoute:
     route: ModelRoute | None = config.model_routes.get(model)
     if route is None:
@@ -31,7 +35,7 @@ def resolve_route(config: RelayLMConfig, model: str) -> ResolvedRoute:
 
     backend = config.backends.get(route.backend)
     if backend is None:
-        raise RouteNotFoundError(
+        raise RouteConfigurationError(
             f"RelayLM route {model} references missing backend: {route.backend}"
         )
 
@@ -49,6 +53,7 @@ def resolve_route(config: RelayLMConfig, model: str) -> ResolvedRoute:
         cache_namespace=route.cache_namespace,
         memory_namespace=route.memory_namespace,
     )
+
 
 def list_model_ids(config: RelayLMConfig) -> list[str]:
     return sorted(config.model_routes.keys())
