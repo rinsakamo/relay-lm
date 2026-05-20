@@ -38,10 +38,11 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [Config schema](docs/config_schema.md)
 - [Context compiler contract](docs/context_compiler_contract.md)
 - [Product runtime hardening](docs/product_runtime_hardening.md)
+- [MVP-0 pass-through proxy](docs/mvp0_pass_through_proxy.md)
 
 ## MVP direction
 
-The first implementation should be a thin OpenAI-compatible proxy:
+The first implementation is a thin OpenAI-compatible proxy:
 
 ```text
 Open-LLM-VTuber
@@ -55,6 +56,38 @@ The default integration should be easy for existing Open-LLM-VTuber users:
 2. Start RelayLM.
 3. Change the OpenAI-compatible API URL in Open-LLM-VTuber to RelayLM.
 4. Keep using the existing character configuration.
+
+## MVP-0 quick start
+
+Install locally:
+
+```bash
+pip install -e .
+```
+
+Create a config:
+
+```bash
+cp config.example.yaml config.yaml
+```
+
+Run RelayLM:
+
+```bash
+relaylm --config config.yaml
+```
+
+Or run with uvicorn:
+
+```bash
+RELAYLM_CONFIG=config.yaml uvicorn relaylm.app:create_app --factory --host 127.0.0.1 --port 8090
+```
+
+Then point Open-LLM-VTuber's OpenAI-compatible base URL at:
+
+```text
+http://localhost:8090/v1
+```
 
 ## Relationship to relay-kv
 
