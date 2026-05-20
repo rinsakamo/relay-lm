@@ -20,7 +20,12 @@ from relaylm.adapter import (
 )
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.diagnostics import RequestDiagnostics
-from relaylm.routing import RouteNotFoundError, list_model_ids, resolve_route
+from relaylm.routing import (
+    RouteConfigurationError,
+    RouteNotFoundError,
+    list_model_ids,
+    resolve_route,
+)
 
 
 def create_app(config_path: str | None = None) -> FastAPI:
@@ -111,6 +116,18 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 status_code=400,
                 message=str(exc),
                 error_type="invalid_request_error",
+                headers=diagnostics.to_headers(),
+            )
+        except RouteConfigurationError as exc:
+            diagnostics = RequestDiagnostics(
+                request_id=request_id,
+                route_model=model,
+                fallback_reason="route_configuration_error",
+            )
+            return openai_error(
+                status_code=500,
+                message=str(exc),
+                error_type="server_error",
                 headers=diagnostics.to_headers(),
             )
 
