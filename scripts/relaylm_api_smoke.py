@@ -28,10 +28,15 @@ def require(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def normalized_headers(headers: dict[str, str]) -> dict[str, str]:
+    return {key.lower(): value for key, value in headers.items()}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:8090")
     parser.add_argument("--model", default="relaylm-default")
+    parser.add_argument("--expected-mode", default="pass_through")
     args = parser.parse_args()
     base_url = args.base_url.rstrip("/")
 
@@ -52,10 +57,12 @@ def main() -> int:
         "stream": False,
     }
     status, body, headers = call(f"{base_url}/v1/chat/completions", payload)
-    header_keys = {key.lower() for key in headers}
-    require("x-relaylm-request-id" in header_keys, f"missing request id header: {headers}")
+    header_map = normalized_headers(headers)
+    require("x-relaylm-request-id" in header_map, f"missing request id header: {headers}")
+    require(header_map.get("x-relaylm-mode") == args.expected_mode, f"bad mode header: {headers}")
     require(status in {200, 400, 401, 404, 422, 500, 502, 503}, f"unexpected chat status: {status} {body}")
     print(f"ok chat status={status}")
+    print("ok chat diagnostics headers")
     return 0
 
 
