@@ -23,6 +23,7 @@ class BlockType(str, Enum):
     ROOM_STATE = "room_state"
     RETRIEVED_MEMORY = "retrieved_memory"
     RECENT_TURNS = "recent_turns"
+    INCOMING_SYSTEM_PROMPT = "incoming_system_prompt"
     LATEST_INPUT = "latest_input"
     RESPONSE_INSTRUCTION = "response_instruction"
 
@@ -84,6 +85,59 @@ def compile_profile_system_message(blocks: list[ContextBlock]) -> dict[str, str]
     return {"role": "system", "content": render_context_blocks(blocks)}
 
 
+def split_incoming_system_messages(
+    messages: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split incoming system messages from non-system messages."""
+
+    system_messages: list[dict[str, Any]] = []
+    recent_messages: list[dict[str, Any]] = []
+    for message in messages:
+        if message.get("role") == "system":
+            system_messages.append(message)
+        else:
+            recent_messages.append(message)
+    return system_messages, recent_messages
+
+
+def build_incoming_system_prompt_block(
+    system_messages: list[dict[str, Any]],
+) -> ContextBlock | None:
+    """Build a dynamic fallback block from incoming system messages.
+
+    The incoming system prompt is treated as dynamic evidence, not as authority
+    above RelayLM's configured persona stable prefix.
+    """
+
+    contents: list[str] = []
+    for message in system_messages:
+        content = message.get("content")
+        if isinstance(content, str) and content.strip():
+            contents.append(content.strip())
+    if not contents:
+        return None
+
+    return ContextBlock(
+        block_id=BlockType.INCOMING_SYSTEM_PROMPT.value,
+        block_type=BlockType.INCOMING_SYSTEM_PROMPT,
+        stability_class=StabilityClass.DYNAMIC_SUFFIX,
+        source="incoming/messages/system",
+        content="\n\n".join(contents),
+        token_budget_hint=600,
+        include_in_prefix_cache_target=False,
+    )
+
+
+def append_incoming_system_prompt_block(
+    blocks: list[ContextBlock],
+    system_messages: list[dict[str, Any]],
+) -> list[ContextBlock]:
+    block = build_incoming_system_prompt_block(system_messages)
+    if block is None:
+        return list(blocks)
+    return [*blocks, block]
+
+
 def compile_profile_messages(
     blocks: list[ContextBlock],
     recent_messages: list[dict[str, Any]] | None = None,
@@ -99,6 +153,15 @@ def compile_profile_messages(
     if recent_messages:
         messages.extend(recent_messages)
     return messages
+
+
+def compile_profile_messages_with_system_fallback(
+    blocks: list[ContextBlock],
+    incoming_messages: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    system_messages, recent_messages = split_incoming_system_messages(incoming_messages)
+    compiled_blocks = append_incoming_system_prompt_block(blocks, system_messages)
+    return compile_profile_messages(compiled_blocks, recent_messages=recent_messages)
 
 
 def build_placeholder_persona_blocks(
