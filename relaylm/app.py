@@ -43,7 +43,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
         request_id = str(uuid.uuid4())
         try:
             payload = await request.json()
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
             diagnostics = RequestDiagnostics(
                 request_id=request_id,
                 fallback_reason="invalid_json",
@@ -80,6 +80,21 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 headers=diagnostics.to_headers(),
             )
 
+        stream_value = payload.get("stream", False)
+        if not isinstance(stream_value, bool):
+            diagnostics = RequestDiagnostics(
+                request_id=request_id,
+                route_model=model,
+                fallback_reason="invalid_stream_type",
+            )
+            return openai_error(
+                status_code=400,
+                message="Request field 'stream' must be a boolean when provided.",
+                error_type="invalid_request_error",
+                headers=diagnostics.to_headers(),
+            )
+        stream_enabled = stream_value
+
         try:
             route = resolve_route(config, model)
         except RouteNotFoundError as exc:
@@ -95,7 +110,6 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 headers=diagnostics.to_headers(),
             )
 
-        stream_enabled = bool(payload.get("stream", False))
         diagnostics = RequestDiagnostics(
             request_id=request_id,
             route_model=route.route_model,
@@ -121,8 +135,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
 
         status_code, body, response_headers = await forward_chat_completion_json(payload, route)
         headers = diagnostics.to_headers()
-        headers.update(response_headers)
         if isinstance(body, dict) or isinstance(body, list):
+            headers.update(response_headers)
             return JSONResponse(status_code=status_code, content=body, headers=headers)
         return JSONResponse(status_code=status_code, content={"raw": body}, headers=headers)
 
