@@ -18,6 +18,14 @@ MVP-0 does not implement memory, RAG, SOUL loading, OUTPUT_POLICY loading, or co
 pip install -e .
 ```
 
+If editable install fails because the environment blocks package index access during build dependency resolution, retry without build isolation:
+
+```bash
+pip install -e . --no-build-isolation
+```
+
+This uses the current environment's installed build tooling instead of downloading build requirements such as setuptools.
+
 ## Configure
 
 Copy the example config and edit the backend URL/model.
@@ -54,11 +62,19 @@ model_routes:
 
 ## Run
 
+Run through the installed console script:
+
 ```bash
 relaylm --config config.yaml
 ```
 
-or:
+If editable install failed before installing the `relaylm` console script, run the module directly from the repository root:
+
+```bash
+python -m relaylm.app --config config.yaml
+```
+
+or run with uvicorn:
 
 ```bash
 RELAYLM_CONFIG=config.yaml uvicorn relaylm.app:create_app --factory --host 127.0.0.1 --port 8090
