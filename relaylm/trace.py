@@ -57,9 +57,9 @@ def build_trace_record(
 def append_trace_record(path: str | Path, record: TraceRecord) -> None:
     trace_path = Path(path)
     trace_path.parent.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(record.to_json_dict(), ensure_ascii=False, sort_keys=True) + "\n"
     with trace_path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(record.to_json_dict(), ensure_ascii=False, sort_keys=True))
-        f.write("\n")
+        f.write(line)
 
 
 def read_trace_records(path: str | Path) -> list[TraceRecord]:
