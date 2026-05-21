@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any, Mapping
 
 from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply
 from relaylm.compiler import compile_profile_messages_with_system_fallback
 from relaylm.config import RelayLMConfig
+from relaylm.memory_context import insert_memory_block, resolve_seed_memory_block
 from relaylm.profile import build_profile_blocks, resolve_profile_files
 from relaylm.profile_plan import ProfileCompilePlan, build_profile_compile_plan
 from relaylm.routing import ResolvedRoute
@@ -19,10 +20,12 @@ class CompiledRequest:
     plan: ProfileCompilePlan
     decision: CompileApplyDecision
     compiler_used: bool
+    memory_block_used: bool = False
 
     def to_log_dict(self) -> dict[str, Any]:
         return {
             "compiler_used": self.compiler_used,
+            "memory_block_used": self.memory_block_used,
             "plan": self.plan.to_log_dict(),
             "decision": self.decision.to_log_dict(),
         }
@@ -51,10 +54,16 @@ def compile_chat_payload_if_enabled(
             plan=plan,
             decision=decision,
             compiler_used=False,
+            memory_block_used=False,
         )
 
     profile_files = resolve_profile_files(config, route)
-    blocks = build_profile_blocks(profile_files)
+    profile_blocks = build_profile_blocks(profile_files)
+    memory_block = resolve_seed_memory_block(config, route)
+    blocks = insert_memory_block(
+        profile_blocks=profile_blocks,
+        memory_block=memory_block,
+    )
     payload_dict["messages"] = compile_profile_messages_with_system_fallback(
         blocks,
         incoming_messages,
@@ -64,6 +73,7 @@ def compile_chat_payload_if_enabled(
         plan=plan,
         decision=decision,
         compiler_used=True,
+        memory_block_used=memory_block is not None,
     )
 
 
