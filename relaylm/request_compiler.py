@@ -11,11 +11,8 @@ import yaml
 from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply
 from relaylm.compiler import compile_profile_messages_with_system_fallback
 from relaylm.config import RelayLMConfig
-from relaylm.memory_context import (
-    MemoryConfigurationError,
-    insert_memory_block,
-    resolve_seed_memory_block,
-)
+from relaylm.memory_context import MemoryConfigurationError, insert_memory_block
+from relaylm.memory_selection import build_configured_candidate_memory_block
 from relaylm.profile import build_profile_blocks, resolve_profile_files
 from relaylm.profile_plan import ProfileCompilePlan, build_profile_compile_plan
 from relaylm.routing import ResolvedRoute
@@ -103,7 +100,7 @@ def _resolve_memory_block_best_effort(
     route: ResolvedRoute,
 ) -> tuple[Any | None, str | None]:
     try:
-        return resolve_seed_memory_block(config, route), None
+        return build_configured_candidate_memory_block(config=config, route=route), None
     except MemoryConfigurationError:
         raise
     except (FileNotFoundError, OSError, ValueError, TypeError, yaml.YAMLError, json.JSONDecodeError) as exc:
