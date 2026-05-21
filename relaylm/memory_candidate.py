@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal
 
 from relaylm.compiler import BlockType, ContextBlock, StabilityClass
+from relaylm.memory_seed import MemorySeed, load_memory_seed_file
 
 
 MemoryCandidateState = Literal["active", "promoted", "demoted", "disabled"]
@@ -30,6 +32,24 @@ class MemoryCandidate:
             "disabled": -100000,
         }[self.state]
         return state_bonus + (self.importance * 100) + self.recency
+
+
+def candidate_from_memory_seed(seed: MemorySeed) -> MemoryCandidate:
+    return MemoryCandidate(
+        memory_id=seed.memory_id,
+        content=seed.content,
+        character_id=seed.character_id,
+        importance=seed.importance,
+        recency=0,
+        state="active",
+        tags=seed.tags,
+        source=seed.source,
+    )
+
+
+def load_seed_memory_candidates(path: str | Path) -> list[MemoryCandidate]:
+    seed_file = load_memory_seed_file(path)
+    return [candidate_from_memory_seed(seed) for seed in seed_file.memories]
 
 
 def filter_candidates_for_character(
