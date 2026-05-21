@@ -26,6 +26,11 @@ class BackendConfig(BaseModel):
     timeout_seconds: float = 60.0
 
 
+class TraceConfig(BaseModel):
+    enabled: bool = False
+    path: str | None = None
+
+
 class CharacterConfig(BaseModel):
     common_runtime_policy: str | None = None
     soul: str
@@ -47,6 +52,7 @@ class RelayLMConfig(BaseModel):
     mode: Mode = "pass_through"
     listen: ListenConfig = Field(default_factory=ListenConfig)
     common_runtime_policy: str | None = None
+    trace: TraceConfig = Field(default_factory=TraceConfig)
     backends: dict[str, BackendConfig]
     model_routes: dict[str, ModelRoute]
     characters: dict[str, CharacterConfig] = Field(default_factory=dict)
