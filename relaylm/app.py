@@ -27,7 +27,7 @@ from relaylm.routing import (
     list_model_ids,
     resolve_route,
 )
-from relaylm.trace_runtime import trace_runtime_event
+from relaylm.trace_runtime import extract_response_text, trace_runtime_event
 
 
 def create_app(config_path: str | None = None) -> FastAPI:
@@ -206,6 +206,13 @@ def create_app(config_path: str | None = None) -> FastAPI:
             )
         headers = diagnostics.to_headers()
         if isinstance(body, dict) or isinstance(body, list):
+            trace_runtime_event(
+                config=config,
+                diagnostics=diagnostics,
+                messages=_extract_trace_messages(forwarded_payload),
+                response_text=extract_response_text(body),
+                metadata={"event": "backend_response", "status_code": status_code},
+            )
             headers.update(response_headers)
             return JSONResponse(status_code=status_code, content=body, headers=headers)
         return JSONResponse(status_code=status_code, content={"raw": body}, headers=headers)
