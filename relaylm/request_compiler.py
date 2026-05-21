@@ -104,4 +104,4 @@ def _resolve_memory_block_best_effort(
     except MemoryConfigurationError:
         raise
     except (FileNotFoundError, OSError, ValueError, TypeError, yaml.YAMLError, json.JSONDecodeError) as exc:
-        return None, f"memory_candidate_load_error:{exc.__class__.__name__}"
+        return None, f"memory_seed_load_error:{exc.__class__.__name__}"
