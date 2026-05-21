@@ -39,6 +39,7 @@ def main() -> int:
     parser.add_argument("--expected-mode", default="pass_through")
     parser.add_argument("--expected-profile-compile-dry-run", default="true")
     parser.add_argument("--expected-compiler-used", default="false")
+    parser.add_argument("--expected-memory-block-used", default="false")
     args = parser.parse_args()
     base_url = args.base_url.rstrip("/")
 
@@ -70,11 +71,16 @@ def main() -> int:
         header_map.get("x-relaylm-compiler-used") == args.expected_compiler_used,
         f"bad compiler used header: {headers}",
     )
+    require(
+        header_map.get("x-relaylm-memory-block-used") == args.expected_memory_block_used,
+        f"bad memory block used header: {headers}",
+    )
     require(status in {200, 400, 401, 404, 422, 500, 502, 503}, f"unexpected chat status: {status} {body}")
     print(f"ok chat status={status}")
     print("ok chat diagnostics headers")
     print("ok profile compile dry-run header")
     print("ok compiler used header")
+    print("ok memory block used header")
     return 0
 
 
