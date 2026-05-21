@@ -35,6 +35,7 @@ def main() -> int:
         payload=base_payload,
     )
     require(pass_through_compiled.compiler_used is False, pass_through_compiled)
+    require(pass_through_compiled.memory_block_used is False, pass_through_compiled)
     require(pass_through_compiled.decision.should_apply is False, pass_through_compiled.decision)
     require(pass_through_compiled.payload["messages"] == base_payload["messages"], pass_through_compiled.payload)
     print("ok pass-through payload unchanged")
@@ -48,17 +49,24 @@ def main() -> int:
         payload=base_payload,
     )
     require(memory_light_compiled.compiler_used is True, memory_light_compiled)
+    require(memory_light_compiled.memory_block_used is True, memory_light_compiled)
     require(memory_light_compiled.decision.should_apply is True, memory_light_compiled.decision)
     compiled_messages = memory_light_compiled.payload["messages"]
     require(compiled_messages[0]["role"] == "system", compiled_messages)
-    require("<relaylm_context" in compiled_messages[0]["content"], compiled_messages[0])
-    require("<character_soul_anchor>" in compiled_messages[0]["content"], compiled_messages[0])
-    require("<incoming_system_prompt>" in compiled_messages[0]["content"], compiled_messages[0])
+    compiled_context = compiled_messages[0]["content"]
+    require("<relaylm_context" in compiled_context, compiled_context)
+    require("<character_soul_anchor>" in compiled_context, compiled_context)
+    require("<retrieved_memory>" in compiled_context, compiled_context)
+    require("default-relaylm-project" in compiled_context, compiled_context)
+    require("<incoming_system_prompt>" in compiled_context, compiled_context)
+    require(compiled_context.index("<retrieved_memory>") < compiled_context.index("<incoming_system_prompt>"), compiled_context)
     require(compiled_messages[1:] == [{"role": "user", "content": "hello"}], compiled_messages)
     print("ok memory-light payload compiled")
+    print("ok memory seed block applied")
 
     log_payload = memory_light_compiled.to_log_dict()
     require(log_payload["compiler_used"] is True, log_payload)
+    require(log_payload["memory_block_used"] is True, log_payload)
     require(log_payload["decision"]["reason"] == "memory_light_compile_enabled", log_payload)
     print("ok compiled request log payload")
 
