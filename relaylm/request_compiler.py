@@ -25,12 +25,14 @@ class CompiledRequest:
     decision: CompileApplyDecision
     compiler_used: bool
     memory_block_used: bool = False
+    memory_source: str | None = None
     memory_fallback_reason: str | None = None
 
     def to_log_dict(self) -> dict[str, Any]:
         return {
             "compiler_used": self.compiler_used,
             "memory_block_used": self.memory_block_used,
+            "memory_source": self.memory_source,
             "memory_fallback_reason": self.memory_fallback_reason,
             "plan": self.plan.to_log_dict(),
             "decision": self.decision.to_log_dict(),
@@ -83,6 +85,7 @@ def compile_chat_payload_if_enabled(
         decision=decision,
         compiler_used=True,
         memory_block_used=memory_block is not None,
+        memory_source=memory_block.source if memory_block is not None else None,
         memory_fallback_reason=memory_fallback_reason,
     )
 
