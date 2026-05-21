@@ -11,6 +11,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from relaylm.config import load_config
 from relaylm.diagnostics import RequestDiagnostics
+from relaylm.memory_context import MemoryConfigurationError
 from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.routing import resolve_route
 from relaylm.trace import append_trace_record, build_trace_record, read_trace_records
@@ -80,6 +81,25 @@ def main() -> int:
     require(compiled.payload["messages"][0]["role"] == "system", compiled.payload)
     require("<retrieved_memory>" not in compiled.payload["messages"][0]["content"], compiled.payload)
     print("ok memory seed failure fallback")
+
+    bad_config = load_config(REPO_ROOT / "config.example.yaml").model_copy(deep=True)
+    bad_config.model_routes["relaylm-default"].mode = "memory_light"
+    bad_config.model_routes["relaylm-default"].character_id = "missing-character"
+    bad_route = resolve_route(bad_config, "relaylm-default")
+    try:
+        compile_chat_payload_if_enabled(
+            config=bad_config,
+            route=bad_route,
+            payload={
+                "model": "relaylm-default",
+                "messages": [{"role": "user", "content": "hello"}],
+                "stream": False,
+            },
+        )
+    except MemoryConfigurationError:
+        print("ok memory configuration error preserved")
+    else:
+        raise AssertionError("expected MemoryConfigurationError")
 
     return 0
 
