@@ -27,6 +27,7 @@ from relaylm.routing import (
     list_model_ids,
     resolve_route,
 )
+from relaylm.trace_runtime import trace_runtime_event
 
 
 def create_app(config_path: str | None = None) -> FastAPI:
@@ -167,6 +168,12 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     forwarded_payload, route
                 )
             except BackendRequestError as exc:
+                trace_runtime_event(
+                    config=config,
+                    diagnostics=diagnostics,
+                    messages=_extract_trace_messages(forwarded_payload),
+                    metadata={"event": "backend_error", "error_type": exc.__class__.__name__},
+                )
                 return openai_error(
                     status_code=502,
                     message=f"RelayLM could not reach backend: {exc}",
@@ -185,6 +192,12 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 forwarded_payload, route
             )
         except BackendRequestError as exc:
+            trace_runtime_event(
+                config=config,
+                diagnostics=diagnostics,
+                messages=_extract_trace_messages(forwarded_payload),
+                metadata={"event": "backend_error", "error_type": exc.__class__.__name__},
+            )
             return openai_error(
                 status_code=502,
                 message=f"RelayLM could not reach backend: {exc}",
@@ -219,6 +232,13 @@ def openai_error(
         },
         headers=headers,
     )
+
+
+def _extract_trace_messages(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
+    raw_messages = payload.get("messages")
+    if not isinstance(raw_messages, list):
+        return []
+    return [message for message in raw_messages if isinstance(message, dict)]
 
 
 def main() -> None:
