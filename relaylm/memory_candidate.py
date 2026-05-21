@@ -41,7 +41,7 @@ def candidate_from_memory_seed(seed: MemorySeed) -> MemoryCandidate:
         character_id=seed.character_id,
         importance=seed.importance,
         recency=0,
-        state="active",
+        state=seed.state,
         tags=seed.tags,
         source=seed.source,
     )
