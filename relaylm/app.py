@@ -148,6 +148,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             mode_applied=route.mode_applied,
             stream_enabled=stream_enabled,
             compiler_used=compiled_request.compiler_used,
+            memory_block_used=compiled_request.memory_block_used,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
         )
