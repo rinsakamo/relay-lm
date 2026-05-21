@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 
 from relaylm.compiler import BlockType, ContextBlock, StabilityClass
+
+
+MemorySeedState = Literal["active", "promoted", "demoted", "disabled"]
+VALID_MEMORY_SEED_STATES: set[str] = {"active", "promoted", "demoted", "disabled"}
 
 
 @dataclass(frozen=True)
@@ -19,6 +23,7 @@ class MemorySeed:
     importance: int = 1
     source: str = "manual_seed"
     tags: tuple[str, ...] = ()
+    state: MemorySeedState = "active"
 
 
 @dataclass(frozen=True)
@@ -49,6 +54,12 @@ def load_memory_seed_file(path: str | Path) -> MemorySeedFile:
             tags = []
         if not isinstance(tags, list) or not all(isinstance(tag, str) for tag in tags):
             raise ValueError(f"memory seed entry {memory_id!r} tags must be a list of strings")
+        state = item.get("state", "active")
+        if not isinstance(state, str) or state not in VALID_MEMORY_SEED_STATES:
+            raise ValueError(
+                f"memory seed entry {memory_id!r} state must be one of "
+                f"{sorted(VALID_MEMORY_SEED_STATES)}"
+            )
         memories.append(
             MemorySeed(
                 memory_id=memory_id,
@@ -57,6 +68,7 @@ def load_memory_seed_file(path: str | Path) -> MemorySeedFile:
                 importance=int(item.get("importance", 1)),
                 source=str(item.get("source", "manual_seed")),
                 tags=tuple(tags),
+                state=state,
             )
         )
     return MemorySeedFile(memories=memories)
