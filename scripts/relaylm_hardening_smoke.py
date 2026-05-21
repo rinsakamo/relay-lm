@@ -82,6 +82,26 @@ def main() -> int:
     require("<retrieved_memory>" not in compiled.payload["messages"][0]["content"], compiled.payload)
     print("ok memory seed failure fallback")
 
+    with tempfile.TemporaryDirectory() as tmpdir:
+        malformed_seed = Path(tmpdir) / "bad_seed.yaml"
+        malformed_seed.write_text("- not-a-mapping\n", encoding="utf-8")
+        malformed_config = load_config(REPO_ROOT / "config.example.yaml").model_copy(deep=True)
+        malformed_config.model_routes["relaylm-default"].mode = "memory_light"
+        malformed_config.characters["default"].memory_seed_path = str(malformed_seed)
+        malformed_route = resolve_route(malformed_config, "relaylm-default")
+        malformed_compiled = compile_chat_payload_if_enabled(
+            config=malformed_config,
+            route=malformed_route,
+            payload={
+                "model": "relaylm-default",
+                "messages": [{"role": "user", "content": "hello"}],
+                "stream": False,
+            },
+        )
+        require(malformed_compiled.memory_block_used is False, malformed_compiled)
+        require(malformed_compiled.memory_fallback_reason == "memory_seed_load_error:ValueError", malformed_compiled)
+        print("ok malformed memory seed fallback")
+
     bad_config = load_config(REPO_ROOT / "config.example.yaml").model_copy(deep=True)
     bad_config.model_routes["relaylm-default"].character_id = "missing-character"
     bad_route = resolve_route(bad_config, "relaylm-default")
