@@ -6,6 +6,10 @@ listen:
 
 common_runtime_policy: examples/profiles/default/common_runtime_policy.md
 
+trace:
+  enabled: false
+  path: traces/relaylm_trace.jsonl
+
 backends:
   local_backend:
     type: openai_compatible

@@ -56,6 +56,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
         except (json.JSONDecodeError, UnicodeDecodeError):
             diagnostics = RequestDiagnostics(
                 request_id=request_id,
+                trace_enabled=config.trace.enabled,
                 fallback_reason="invalid_json",
             )
             return openai_error(
@@ -68,6 +69,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
         if not isinstance(payload, Mapping):
             diagnostics = RequestDiagnostics(
                 request_id=request_id,
+                trace_enabled=config.trace.enabled,
                 fallback_reason="invalid_json_type",
             )
             return openai_error(
@@ -81,6 +83,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
         if not isinstance(model, str) or not model:
             diagnostics = RequestDiagnostics(
                 request_id=request_id,
+                trace_enabled=config.trace.enabled,
                 fallback_reason="missing_model",
             )
             return openai_error(
@@ -95,6 +98,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             diagnostics = RequestDiagnostics(
                 request_id=request_id,
                 route_model=model,
+                trace_enabled=config.trace.enabled,
                 fallback_reason="invalid_stream_type",
             )
             return openai_error(
@@ -111,6 +115,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             diagnostics = RequestDiagnostics(
                 request_id=request_id,
                 route_model=model,
+                trace_enabled=config.trace.enabled,
                 fallback_reason="route_not_found",
             )
             return openai_error(
@@ -123,6 +128,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             diagnostics = RequestDiagnostics(
                 request_id=request_id,
                 route_model=model,
+                trace_enabled=config.trace.enabled,
                 fallback_reason="route_configuration_error",
             )
             return openai_error(
@@ -149,6 +155,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             stream_enabled=stream_enabled,
             compiler_used=compiled_request.compiler_used,
             memory_block_used=compiled_request.memory_block_used,
+            trace_enabled=config.trace.enabled,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
         )

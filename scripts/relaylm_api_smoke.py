@@ -40,6 +40,7 @@ def main() -> int:
     parser.add_argument("--expected-profile-compile-dry-run", default="true")
     parser.add_argument("--expected-compiler-used", default="false")
     parser.add_argument("--expected-memory-block-used", default="false")
+    parser.add_argument("--expected-trace-enabled", default="false")
     args = parser.parse_args()
     base_url = args.base_url.rstrip("/")
 
@@ -75,12 +76,17 @@ def main() -> int:
         header_map.get("x-relaylm-memory-block-used") == args.expected_memory_block_used,
         f"bad memory block used header: {headers}",
     )
+    require(
+        header_map.get("x-relaylm-trace-enabled") == args.expected_trace_enabled,
+        f"bad trace enabled header: {headers}",
+    )
     require(status in {200, 400, 401, 404, 422, 500, 502, 503}, f"unexpected chat status: {status} {body}")
     print(f"ok chat status={status}")
     print("ok chat diagnostics headers")
     print("ok profile compile dry-run header")
     print("ok compiler used header")
     print("ok memory block used header")
+    print("ok trace enabled header")
     return 0
 
 
