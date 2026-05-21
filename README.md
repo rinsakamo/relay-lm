@@ -55,6 +55,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [MVP-2 runtime memory-light apply](docs/mvp2_runtime_memory_light_apply.md)
 - [MVP-2 memory-light API smoke](docs/mvp2_memory_light_api_smoke.md)
 - [MVP-2 summary](docs/mvp2_summary.md)
+- [MVP-3 summary](docs/mvp3_summary.md)
 
 ## MVP direction
 
