@@ -31,6 +31,11 @@ class TraceConfig(BaseModel):
     path: str | None = None
 
 
+class MemorySelectionConfig(BaseModel):
+    candidate_limit: int = 3
+    token_budget_hint: int = 800
+
+
 class CharacterConfig(BaseModel):
     common_runtime_policy: str | None = None
     soul: str
@@ -53,6 +58,7 @@ class RelayLMConfig(BaseModel):
     listen: ListenConfig = Field(default_factory=ListenConfig)
     common_runtime_policy: str | None = None
     trace: TraceConfig = Field(default_factory=TraceConfig)
+    memory: MemorySelectionConfig = Field(default_factory=MemorySelectionConfig)
     backends: dict[str, BackendConfig]
     model_routes: dict[str, ModelRoute]
     characters: dict[str, CharacterConfig] = Field(default_factory=dict)
