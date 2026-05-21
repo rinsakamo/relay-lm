@@ -38,3 +38,25 @@ def trace_runtime_event(
     )
     append_trace_record(config.trace.path, record)
     return True
+
+
+def extract_response_text(body: Any) -> str | None:
+    """Extract a compact text field from common OpenAI-compatible responses."""
+
+    if not isinstance(body, dict):
+        return None
+    choices = body.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return None
+    first = choices[0]
+    if not isinstance(first, dict):
+        return None
+    message = first.get("message")
+    if isinstance(message, dict):
+        content = message.get("content")
+        if isinstance(content, str):
+            return content
+    text = first.get("text")
+    if isinstance(text, str):
+        return text
+    return None
