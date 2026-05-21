@@ -40,6 +40,7 @@ def main() -> int:
     parser.add_argument("--expected-profile-compile-dry-run", default="true")
     parser.add_argument("--expected-compiler-used", default="false")
     parser.add_argument("--expected-memory-block-used", default="false")
+    parser.add_argument("--expected-memory-source", default=None)
     parser.add_argument("--expected-trace-enabled", default="false")
     args = parser.parse_args()
     base_url = args.base_url.rstrip("/")
@@ -76,6 +77,16 @@ def main() -> int:
         header_map.get("x-relaylm-memory-block-used") == args.expected_memory_block_used,
         f"bad memory block used header: {headers}",
     )
+    if args.expected_memory_source is None:
+        require(
+            "x-relaylm-memory-source" not in header_map,
+            f"unexpected memory source header: {headers}",
+        )
+    else:
+        require(
+            header_map.get("x-relaylm-memory-source") == args.expected_memory_source,
+            f"bad memory source header: {headers}",
+        )
     require(
         header_map.get("x-relaylm-trace-enabled") == args.expected_trace_enabled,
         f"bad trace enabled header: {headers}",
@@ -86,6 +97,7 @@ def main() -> int:
     print("ok profile compile dry-run header")
     print("ok compiler used header")
     print("ok memory block used header")
+    print("ok memory source header")
     print("ok trace enabled header")
     return 0
 
