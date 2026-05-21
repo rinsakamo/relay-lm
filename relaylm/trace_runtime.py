@@ -27,6 +27,9 @@ def trace_runtime_event(
         return False
 
     try:
+        trace_metadata = dict(metadata or {})
+        if diagnostics.memory_source is not None:
+            trace_metadata["memory_source"] = diagnostics.memory_source
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,
@@ -35,7 +38,7 @@ def trace_runtime_event(
             compiler_used=diagnostics.compiler_used,
             messages=messages,
             response_text=response_text,
-            metadata=metadata,
+            metadata=trace_metadata,
         )
         append_trace_record(config.trace.path, record)
     except Exception:

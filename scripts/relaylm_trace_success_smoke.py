@@ -38,8 +38,10 @@ def main() -> int:
             request_id="trace-success-001",
             route_model="relaylm-default",
             character_id="default",
-            mode_applied="pass_through",
-            compiler_used=False,
+            mode_applied="memory_light",
+            compiler_used=True,
+            memory_block_used=True,
+            memory_source="memory_candidate_selection",
             trace_enabled=True,
         )
         written = trace_runtime_event(
@@ -56,8 +58,10 @@ def main() -> int:
         require(records[0].response_text == "hello from backend", records[0])
         require(records[0].metadata["event"] == "backend_response", records[0].metadata)
         require(records[0].metadata["status_code"] == 200, records[0].metadata)
+        require(records[0].metadata["memory_source"] == "memory_candidate_selection", records[0].metadata)
         print("ok trace backend response event")
         print("ok trace response text captured")
+        print("ok trace memory source captured")
 
     return 0
 
