@@ -31,6 +31,7 @@ class CharacterConfig(BaseModel):
     soul: str
     output_policy: str
     room_anchor: str
+    memory_seed_path: str | None = None
 
 
 class ModelRoute(BaseModel):
