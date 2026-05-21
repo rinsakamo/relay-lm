@@ -27,3 +27,4 @@ characters:
     soul: examples/profiles/default/SOUL.md
     output_policy: examples/profiles/default/style.md
     room_anchor: examples/profiles/default/ROOM_ANCHOR.md
+    memory_seed_path: examples/memory/default_memories.yaml
