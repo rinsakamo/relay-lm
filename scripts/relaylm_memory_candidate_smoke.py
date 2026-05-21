@@ -7,7 +7,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.memory_candidate import MemoryCandidate, filter_candidates_for_character, select_memory_candidates
+from relaylm.compiler import BlockType, StabilityClass
+from relaylm.memory_candidate import (
+    MemoryCandidate,
+    build_candidate_memory_block,
+    filter_candidates_for_character,
+    select_memory_candidates,
+)
 
 
 def require(condition: bool, message: str) -> None:
@@ -19,7 +25,7 @@ def main() -> int:
     candidates = [
         MemoryCandidate(memory_id="shared-style", character_id=None, content="Use short replies.", importance=2, recency=10),
         MemoryCandidate(memory_id="default-project", character_id="default", content="RelayLM project.", importance=5, recency=1),
-        MemoryCandidate(memory_id="default-promoted", character_id="default", content="Pinned memory.", importance=1, recency=0, state="promoted"),
+        MemoryCandidate(memory_id="default-promoted", character_id="default", content="Pinned memory.", importance=1, recency=0, state="promoted", tags=("pin",)),
         MemoryCandidate(memory_id="default-demoted", character_id="default", content="Low priority.", importance=9, recency=99, state="demoted"),
         MemoryCandidate(memory_id="default-disabled", character_id="default", content="Disabled.", importance=10, recency=100, state="disabled"),
         MemoryCandidate(memory_id="other-only", character_id="other", content="Other character.", importance=10, recency=100),
@@ -56,6 +62,22 @@ def main() -> int:
         "shared-style",
     ], other_selected)
     print("ok character specific selection")
+
+    block = build_candidate_memory_block(selected, token_budget_hint=512)
+    require(block is not None, "expected candidate memory block")
+    require(block.block_type is BlockType.RETRIEVED_MEMORY, block)
+    require(block.stability_class is StabilityClass.SLOW_PREFIX, block)
+    require(block.source == "memory_candidate_selection", block)
+    require(block.token_budget_hint == 512, block)
+    require(block.include_in_prefix_cache_target is False, block)
+    require("default-promoted" in block.content, block.content)
+    require("tags=pin" in block.content, block.content)
+    require(block.content.index("default-promoted") < block.content.index("default-project"), block.content)
+    print("ok build candidate memory block")
+
+    empty_block = build_candidate_memory_block([])
+    require(empty_block is None, empty_block)
+    print("ok empty candidate memory block")
 
     return 0
 
