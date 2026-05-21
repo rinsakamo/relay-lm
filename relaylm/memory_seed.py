@@ -29,7 +29,10 @@ class MemorySeedFile:
 def load_memory_seed_file(path: str | Path) -> MemorySeedFile:
     seed_path = Path(path)
     with seed_path.open("r", encoding="utf-8") as f:
-        raw: dict[str, Any] = yaml.safe_load(f) or {}
+        raw: Any = yaml.safe_load(f) or {}
+
+    if not isinstance(raw, dict):
+        raise ValueError("memory seed file must be a mapping")
 
     memories: list[MemorySeed] = []
     for index, item in enumerate(raw.get("memories", [])):

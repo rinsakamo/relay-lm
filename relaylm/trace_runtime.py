@@ -19,24 +19,27 @@ def trace_runtime_event(
 ) -> bool:
     """Append one runtime trace record when tracing is enabled.
 
-    Returns whether a record was written. Trace writing is intentionally kept
-    best-effort by callers so it does not change request handling behavior.
+    Returns whether a record was written. Trace writing is best-effort and must
+    never change request handling behavior.
     """
 
     if not config.trace.enabled or not config.trace.path:
         return False
 
-    record = build_trace_record(
-        trace_id=diagnostics.request_id,
-        character_id=diagnostics.character_id,
-        route_model=diagnostics.route_model,
-        mode_applied=diagnostics.mode_applied,
-        compiler_used=diagnostics.compiler_used,
-        messages=messages,
-        response_text=response_text,
-        metadata=metadata,
-    )
-    append_trace_record(config.trace.path, record)
+    try:
+        record = build_trace_record(
+            trace_id=diagnostics.request_id,
+            character_id=diagnostics.character_id,
+            route_model=diagnostics.route_model,
+            mode_applied=diagnostics.mode_applied,
+            compiler_used=diagnostics.compiler_used,
+            messages=messages,
+            response_text=response_text,
+            metadata=metadata,
+        )
+        append_trace_record(config.trace.path, record)
+    except Exception:
+        return False
     return True
 
 
