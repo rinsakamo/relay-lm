@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from relaylm.compiler import BlockType, ContextBlock, StabilityClass
+
 
 MemoryCandidateState = Literal["active", "promoted", "demoted", "disabled"]
 
@@ -56,3 +58,31 @@ def select_memory_candidates(
         eligible,
         key=lambda candidate: (-candidate.score(), candidate.memory_id),
     )[:limit]
+
+
+def build_candidate_memory_block(
+    candidates: list[MemoryCandidate],
+    *,
+    block_id: str = "selected_memory_candidates",
+    token_budget_hint: int = 800,
+) -> ContextBlock | None:
+    if not candidates:
+        return None
+
+    lines: list[str] = []
+    for candidate in candidates:
+        tag_text = f" tags={','.join(candidate.tags)}" if candidate.tags else ""
+        lines.append(
+            f"- [{candidate.memory_id} score={candidate.score()} state={candidate.state}{tag_text}] "
+            f"{candidate.content.strip()}"
+        )
+
+    return ContextBlock(
+        block_id=block_id,
+        block_type=BlockType.RETRIEVED_MEMORY,
+        stability_class=StabilityClass.SLOW_PREFIX,
+        source="memory_candidate_selection",
+        content="\n".join(lines),
+        token_budget_hint=token_budget_hint,
+        include_in_prefix_cache_target=False,
+    )
