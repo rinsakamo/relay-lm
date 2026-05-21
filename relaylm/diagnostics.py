@@ -17,6 +17,7 @@ class RequestDiagnostics:
     stream_enabled: bool | None = None
     compiler_used: bool = False
     memory_block_used: bool = False
+    trace_enabled: bool = False
     profile_compile_dry_run_enabled: bool | None = None
     profile_compile_fallback_reason: str | None = None
     fallback_reason: str | None = None
@@ -27,6 +28,7 @@ class RequestDiagnostics:
             headers["x-relaylm-mode"] = self.mode_applied
         headers["x-relaylm-compiler-used"] = "true" if self.compiler_used else "false"
         headers["x-relaylm-memory-block-used"] = "true" if self.memory_block_used else "false"
+        headers["x-relaylm-trace-enabled"] = "true" if self.trace_enabled else "false"
         if self.profile_compile_dry_run_enabled is not None:
             headers["x-relaylm-profile-compile-dry-run"] = (
                 "true" if self.profile_compile_dry_run_enabled else "false"
