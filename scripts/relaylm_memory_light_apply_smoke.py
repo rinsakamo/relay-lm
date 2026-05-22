@@ -61,7 +61,10 @@ def main() -> int:
     require("<retrieved_memory>" in compiled_context, compiled_context)
     require("default-relaylm-project" in compiled_context, compiled_context)
     require("score=" in compiled_context, compiled_context)
+    require("state=promoted" in compiled_context, compiled_context)
     require("state=active" in compiled_context, compiled_context)
+    require("default-old-format-note" not in compiled_context, compiled_context)
+    require("default-disabled-example" not in compiled_context, compiled_context)
     require("<incoming_system_prompt>" in compiled_context, compiled_context)
     require(compiled_context.index("<retrieved_memory>") < compiled_context.index("<incoming_system_prompt>"), compiled_context)
     require(compiled_messages[1:] == [{"role": "user", "content": "hello"}], compiled_messages)
@@ -80,11 +83,12 @@ def main() -> int:
         "default-like-tea",
         "shared-short-replies",
     ], summary)
+    require(summary["excluded_disabled_ids"] == ["default-disabled-example"], summary)
     require(summary["state_counts"] == {
-        "active": 3,
-        "promoted": 0,
-        "demoted": 0,
-        "disabled": 0,
+        "active": 2,
+        "promoted": 1,
+        "demoted": 1,
+        "disabled": 1,
     }, summary)
     print("ok compiled request log payload")
     print("ok compiled memory selection summary payload")
