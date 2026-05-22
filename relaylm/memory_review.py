@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -13,6 +13,7 @@ from relaylm.trace import TraceRecord
 
 MemoryReviewStatus = Literal["pending", "approved", "rejected"]
 MemoryReviewSuggestedState = Literal["active", "promoted", "demoted", "disabled"]
+VALID_MEMORY_REVIEW_STATUSES: set[str] = {"pending", "approved", "rejected"}
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,18 @@ def append_memory_review_candidate(path: str | Path, candidate: MemoryReviewCand
         f.write(line)
 
 
+def write_memory_review_candidates(
+    path: str | Path,
+    candidates: list[MemoryReviewCandidate],
+) -> None:
+    queue_path = Path(path)
+    queue_path.parent.mkdir(parents=True, exist_ok=True)
+    with queue_path.open("w", encoding="utf-8") as f:
+        for candidate in candidates:
+            line = json.dumps(candidate.to_log_dict(), ensure_ascii=False, sort_keys=True)
+            f.write(line + "\n")
+
+
 def read_memory_review_candidates(path: str | Path) -> list[MemoryReviewCandidate]:
     queue_path = Path(path)
     if not queue_path.exists():
@@ -65,6 +78,37 @@ def read_memory_review_candidates(path: str | Path) -> list[MemoryReviewCandidat
             payload = json.loads(stripped)
             candidates.append(memory_review_candidate_from_dict(payload))
     return candidates
+
+
+def update_memory_review_candidate_status(
+    candidate: MemoryReviewCandidate,
+    *,
+    status: MemoryReviewStatus,
+) -> MemoryReviewCandidate:
+    if status not in VALID_MEMORY_REVIEW_STATUSES:
+        raise ValueError(f"memory review status must be one of {sorted(VALID_MEMORY_REVIEW_STATUSES)}")
+    return replace(candidate, status=status)
+
+
+def update_memory_review_queue_status(
+    path: str | Path,
+    *,
+    review_id: str,
+    status: MemoryReviewStatus,
+) -> MemoryReviewCandidate:
+    candidates = read_memory_review_candidates(path)
+    updated: list[MemoryReviewCandidate] = []
+    matched: MemoryReviewCandidate | None = None
+    for candidate in candidates:
+        if candidate.review_id == review_id:
+            matched = update_memory_review_candidate_status(candidate, status=status)
+            updated.append(matched)
+        else:
+            updated.append(candidate)
+    if matched is None:
+        raise ValueError(f"memory review candidate not found: {review_id}")
+    write_memory_review_candidates(path, updated)
+    return matched
 
 
 def build_memory_review_candidate_from_trace(
