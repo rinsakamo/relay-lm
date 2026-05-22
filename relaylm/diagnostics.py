@@ -20,6 +20,7 @@ class RequestDiagnostics:
     memory_block_used: bool = False
     memory_source: str | None = None
     memory_selection_summary: dict[str, Any] | None = None
+    memory_block_assembly: dict[str, Any] | None = None
     trace_enabled: bool = False
     profile_compile_dry_run_enabled: bool | None = None
     profile_compile_fallback_reason: str | None = None
