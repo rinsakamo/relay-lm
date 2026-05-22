@@ -64,6 +64,7 @@ def main() -> int:
         )
         require(result.applied_review_ids == [approved.review_id], result)
         require(result.applied_memory_ids == ["memory-approved"], result)
+        require(result.rejected_review_ids == [], result)
         require(result.skipped_review_ids == [
             pending.review_id,
             rejected.review_id,
@@ -95,10 +96,41 @@ def main() -> int:
         )
         require(second_result.applied_review_ids == [], second_result)
         require(second_result.applied_memory_ids == [], second_result)
+        require(second_result.rejected_review_ids == [], second_result)
         require(len(second_result.skipped_review_ids) == 4, second_result)
         loaded_again = load_memory_seed_file(seed_path)
         require(len(loaded_again.memories) == 1, loaded_again)
         print("ok reapply approved memory reviews is idempotent")
+
+    duplicate_first = make_candidate("trace-dup-001", "memory-duplicate", "approved")
+    duplicate_second = make_candidate("trace-dup-002", "memory-duplicate", "approved")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        queue_path = Path(tmpdir) / "review_queue.jsonl"
+        seed_path = Path(tmpdir) / "memories.yaml"
+        append_memory_review_candidate(queue_path, duplicate_first)
+        append_memory_review_candidate(queue_path, duplicate_second)
+
+        result = apply_approved_memory_reviews_to_seed_file(
+            review_queue_path=queue_path,
+            seed_path=seed_path,
+        )
+        require(result.applied_review_ids == [duplicate_first.review_id], result)
+        require(result.rejected_review_ids == [duplicate_second.review_id], result)
+        require(result.applied_memory_ids == ["memory-duplicate"], result)
+        queued = read_memory_review_candidates(queue_path)
+        require([candidate.status for candidate in queued] == ["applied", "rejected"], queued)
+        loaded = load_memory_seed_file(seed_path)
+        require(len(loaded.memories) == 1, loaded)
+        print("ok duplicate approved memory review does not block queue")
+
+        second_result = apply_approved_memory_reviews_to_seed_file(
+            review_queue_path=queue_path,
+            seed_path=seed_path,
+        )
+        require(second_result.applied_review_ids == [], second_result)
+        require(second_result.rejected_review_ids == [], second_result)
+        require(len(second_result.skipped_review_ids) == 2, second_result)
+        print("ok duplicate approved memory review reapply is stable")
 
     return 0
 
