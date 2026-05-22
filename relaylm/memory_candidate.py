@@ -50,6 +50,18 @@ class MemorySelectionSummary:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class MemoryBlockAssembly:
+    block: ContextBlock | None
+    included_memory_ids: list[str]
+    dropped_memory_ids: list[str]
+    character_budget: int | None
+    rendered_characters: int
+
+    def to_log_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
 def candidate_from_memory_seed(seed: MemorySeed) -> MemoryCandidate:
     return MemoryCandidate(
         memory_id=seed.memory_id,
@@ -112,7 +124,6 @@ def summarize_memory_selection(
         )
 
     eligible = filter_candidates_for_character(candidates, character_id=character_id)
-    selected_ids = {candidate.memory_id for candidate in selected_candidates}
     state_counts = {"active": 0, "promoted": 0, "demoted": 0, "disabled": 0}
     excluded_disabled_ids: list[str] = []
     excluded_character_ids: list[str] = []
@@ -137,29 +148,80 @@ def summarize_memory_selection(
     )
 
 
+def _render_candidate_line(candidate: MemoryCandidate) -> str:
+    tag_text = f" tags={','.join(candidate.tags)}" if candidate.tags else ""
+    return (
+        f"- [{candidate.memory_id} score={candidate.score()} state={candidate.state}{tag_text}] "
+        f"{candidate.content.strip()}"
+    )
+
+
+def assemble_candidate_memory_block(
+    candidates: list[MemoryCandidate],
+    *,
+    block_id: str = "selected_memory_candidates",
+    token_budget_hint: int = 800,
+    character_budget: int | None = None,
+) -> MemoryBlockAssembly:
+    if not candidates:
+        return MemoryBlockAssembly(
+            block=None,
+            included_memory_ids=[],
+            dropped_memory_ids=[],
+            character_budget=character_budget,
+            rendered_characters=0,
+        )
+
+    lines: list[str] = []
+    included_memory_ids: list[str] = []
+    dropped_memory_ids: list[str] = []
+
+    for candidate in candidates:
+        line = _render_candidate_line(candidate)
+        next_content = "\n".join([*lines, line]) if lines else line
+        if character_budget is not None and len(next_content) > character_budget:
+            dropped_memory_ids.append(candidate.memory_id)
+            continue
+        lines.append(line)
+        included_memory_ids.append(candidate.memory_id)
+
+    if not lines:
+        return MemoryBlockAssembly(
+            block=None,
+            included_memory_ids=[],
+            dropped_memory_ids=dropped_memory_ids,
+            character_budget=character_budget,
+            rendered_characters=0,
+        )
+
+    content = "\n".join(lines)
+    return MemoryBlockAssembly(
+        block=ContextBlock(
+            block_id=block_id,
+            block_type=BlockType.RETRIEVED_MEMORY,
+            stability_class=StabilityClass.SLOW_PREFIX,
+            source="memory_candidate_selection",
+            content=content,
+            token_budget_hint=token_budget_hint,
+            include_in_prefix_cache_target=False,
+        ),
+        included_memory_ids=included_memory_ids,
+        dropped_memory_ids=dropped_memory_ids,
+        character_budget=character_budget,
+        rendered_characters=len(content),
+    )
+
+
 def build_candidate_memory_block(
     candidates: list[MemoryCandidate],
     *,
     block_id: str = "selected_memory_candidates",
     token_budget_hint: int = 800,
+    character_budget: int | None = None,
 ) -> ContextBlock | None:
-    if not candidates:
-        return None
-
-    lines: list[str] = []
-    for candidate in candidates:
-        tag_text = f" tags={','.join(candidate.tags)}" if candidate.tags else ""
-        lines.append(
-            f"- [{candidate.memory_id} score={candidate.score()} state={candidate.state}{tag_text}] "
-            f"{candidate.content.strip()}"
-        )
-
-    return ContextBlock(
+    return assemble_candidate_memory_block(
+        candidates,
         block_id=block_id,
-        block_type=BlockType.RETRIEVED_MEMORY,
-        stability_class=StabilityClass.SLOW_PREFIX,
-        source="memory_candidate_selection",
-        content="\n".join(lines),
         token_budget_hint=token_budget_hint,
-        include_in_prefix_cache_target=False,
-    )
+        character_budget=character_budget,
+    ).block
