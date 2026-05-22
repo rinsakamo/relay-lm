@@ -7,8 +7,9 @@ from dataclasses import dataclass
 from relaylm.compiler import ContextBlock
 from relaylm.config import RelayLMConfig
 from relaylm.memory_candidate import (
+    MemoryBlockAssembly,
     MemorySelectionSummary,
-    build_candidate_memory_block,
+    assemble_candidate_memory_block,
     load_seed_memory_candidates,
     select_memory_candidates,
     summarize_memory_selection,
@@ -21,6 +22,7 @@ from relaylm.routing import ResolvedRoute
 class ConfiguredMemorySelection:
     block: ContextBlock | None
     summary: MemorySelectionSummary | None
+    assembly: MemoryBlockAssembly | None = None
 
 
 def build_configured_candidate_memory_selection(
@@ -50,11 +52,12 @@ def build_configured_candidate_memory_selection(
         limit=config.memory.candidate_limit,
         selected=selected,
     )
-    block = build_candidate_memory_block(
+    assembly = assemble_candidate_memory_block(
         selected,
         token_budget_hint=config.memory.token_budget_hint,
+        character_budget=config.memory.character_budget,
     )
-    return ConfiguredMemorySelection(block=block, summary=summary)
+    return ConfiguredMemorySelection(block=assembly.block, summary=summary, assembly=assembly)
 
 
 def build_configured_candidate_memory_block(
