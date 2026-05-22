@@ -22,13 +22,17 @@ def require(condition: bool, message: str) -> None:
 
 def main() -> int:
     seed_file = load_memory_seed_file(REPO_ROOT / "examples" / "memory" / "default_memories.yaml")
-    require(len(seed_file.memories) == 3, seed_file.memories)
+    require(len(seed_file.memories) == 5, seed_file.memories)
     require(seed_file.memories[0].memory_id == "default-like-tea", seed_file.memories[0])
     require(seed_file.memories[0].tags == ("preference",), seed_file.memories[0])
+    require(seed_file.memories[0].state == "active", seed_file.memories[0])
+    require(seed_file.memories[1].state == "promoted", seed_file.memories[1])
+    require(seed_file.memories[3].state == "demoted", seed_file.memories[3])
     print("ok load memory seed file")
+    print("ok load memory seed states")
 
     default_memories = filter_memory_seeds(seed_file, character_id="default")
-    require(len(default_memories) == 3, default_memories)
+    require(len(default_memories) == 5, default_memories)
     other_memories = filter_memory_seeds(seed_file, character_id="other")
     require([memory.memory_id for memory in other_memories] == ["shared-short-replies"], other_memories)
     print("ok filter memory seeds")
