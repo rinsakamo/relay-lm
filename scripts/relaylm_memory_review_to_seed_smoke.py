@@ -13,7 +13,7 @@ from relaylm.memory_review import (
     approved_memory_review_candidate_to_seed,
     build_memory_review_candidate_from_trace,
 )
-from relaylm.memory_seed import append_memory_seed, load_memory_seed_file
+from relaylm.memory_seed import MemorySeed, append_memory_seed, load_memory_seed_file
 from relaylm.trace import build_trace_record
 
 
@@ -108,6 +108,37 @@ def main() -> int:
             print("ok duplicate memory seed append rejected")
         else:
             raise AssertionError("expected duplicate memory seed append failure")
+
+        try:
+            append_memory_seed(
+                seed_path,
+                MemorySeed(
+                    memory_id="blank-content",
+                    character_id="default",
+                    content="   ",
+                ),
+            )
+        except ValueError as exc:
+            require("content" in str(exc), str(exc))
+            print("ok invalid memory seed content append rejected")
+        else:
+            raise AssertionError("expected invalid content append failure")
+
+        try:
+            append_memory_seed(
+                seed_path,
+                MemorySeed(
+                    memory_id="bad-state",
+                    character_id="default",
+                    content="Bad state.",
+                    state="pinned",  # type: ignore[arg-type]
+                ),
+            )
+        except ValueError as exc:
+            require("state" in str(exc), str(exc))
+            print("ok invalid memory seed state append rejected")
+        else:
+            raise AssertionError("expected invalid state append failure")
 
     return 0
 
