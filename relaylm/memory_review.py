@@ -30,6 +30,15 @@ class MemoryReviewCandidate:
         return asdict(self)
 
 
+def build_memory_review_id(*, trace_id: str, proposed_memory_id: str) -> str:
+    """Build an opaque review ID without ambiguous string concatenation."""
+
+    return (
+        f"review-t{len(trace_id)}:{trace_id}"
+        f"-m{len(proposed_memory_id)}:{proposed_memory_id}"
+    )
+
+
 def memory_review_candidate_from_dict(payload: dict[str, Any]) -> MemoryReviewCandidate:
     return MemoryReviewCandidate(**payload)
 
@@ -70,7 +79,10 @@ def build_memory_review_candidate_from_trace(
     if not proposed_memory_id.strip():
         raise ValueError("proposed_memory_id must not be empty")
     return MemoryReviewCandidate(
-        review_id=f"review-{trace.trace_id}-{proposed_memory_id}",
+        review_id=build_memory_review_id(
+            trace_id=trace.trace_id,
+            proposed_memory_id=proposed_memory_id,
+        ),
         source_trace_id=trace.trace_id,
         proposed_memory_id=proposed_memory_id,
         content=content.strip(),
