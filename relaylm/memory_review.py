@@ -212,12 +212,12 @@ def apply_approved_memory_reviews_to_seed_file(
             skipped_review_ids.append(candidate.review_id)
             updated.append(candidate)
             continue
-        seed = approved_memory_review_candidate_to_seed(
-            candidate,
-            importance=importance,
-            tags=tags,
-        )
         try:
+            seed = approved_memory_review_candidate_to_seed(
+                candidate,
+                importance=importance,
+                tags=tags,
+            )
             append_memory_seed(seed_path, seed)
         except ValueError as exc:
             if not str(exc).startswith(DUPLICATE_MEMORY_SEED_ERROR_PREFIX):
