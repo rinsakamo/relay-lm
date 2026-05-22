@@ -2,15 +2,30 @@ memories:
   - memory_id: default-like-tea
     character_id: default
     importance: 3
+    state: active
     tags: [preference]
     content: The user likes warm tea during late-night work sessions.
   - memory_id: default-relaylm-project
     character_id: default
     importance: 5
+    state: promoted
     tags: [project, relaylm]
     content: The user is building RelayLM as an OpenAI-compatible memory context proxy.
   - memory_id: shared-short-replies
     character_id: null
     importance: 2
+    state: active
     tags: [style]
     content: Keep realtime character replies concise and easy to speak aloud.
+  - memory_id: default-old-format-note
+    character_id: default
+    importance: 9
+    state: demoted
+    tags: [deprecated]
+    content: Prefer the old direct seed-memory path over candidate selection.
+  - memory_id: default-disabled-example
+    character_id: default
+    importance: 100
+    state: disabled
+    tags: [disabled]
+    content: This disabled example should not be selected.

@@ -81,22 +81,31 @@ def main() -> int:
     print("ok empty candidate memory block")
 
     seed_candidates = load_seed_memory_candidates(REPO_ROOT / "examples" / "memory" / "default_memories.yaml")
-    require(len(seed_candidates) == 3, seed_candidates)
+    require(len(seed_candidates) == 5, seed_candidates)
     require(seed_candidates[0].memory_id == "default-like-tea", seed_candidates[0])
     require(seed_candidates[0].source == "manual_seed", seed_candidates[0])
     require(seed_candidates[0].state == "active", seed_candidates[0])
+    state_by_id = {candidate.memory_id: candidate.state for candidate in seed_candidates}
+    require(state_by_id["default-relaylm-project"] == "promoted", state_by_id)
+    require(state_by_id["default-old-format-note"] == "demoted", state_by_id)
+    require(state_by_id["default-disabled-example"] == "disabled", state_by_id)
     print("ok load seed memory candidates")
+    print("ok load example memory states")
 
-    seed_selected = select_memory_candidates(seed_candidates, character_id="default", limit=2)
+    seed_selected = select_memory_candidates(seed_candidates, character_id="default", limit=3)
     require([candidate.memory_id for candidate in seed_selected] == [
         "default-relaylm-project",
         "default-like-tea",
+        "shared-short-replies",
     ], seed_selected)
     seed_block = build_candidate_memory_block(seed_selected)
     require(seed_block is not None, "expected seed candidate block")
     require("default-relaylm-project" in seed_block.content, seed_block.content)
+    require("state=promoted" in seed_block.content, seed_block.content)
     require("default-like-tea" in seed_block.content, seed_block.content)
-    require("shared-short-replies" not in seed_block.content, seed_block.content)
+    require("shared-short-replies" in seed_block.content, seed_block.content)
+    require("default-old-format-note" not in seed_block.content, seed_block.content)
+    require("default-disabled-example" not in seed_block.content, seed_block.content)
     print("ok seed candidates to memory block")
 
     return 0
