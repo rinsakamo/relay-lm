@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -32,6 +32,22 @@ class MemoryCandidate:
             "disabled": -100000,
         }[self.state]
         return state_bonus + (self.importance * 100) + self.recency
+
+
+@dataclass(frozen=True)
+class MemorySelectionSummary:
+    total_candidates: int
+    eligible_count: int
+    selected_count: int
+    limit: int
+    character_id: str | None
+    selected_memory_ids: list[str]
+    excluded_disabled_ids: list[str]
+    excluded_character_ids: list[str]
+    state_counts: dict[str, int]
+
+    def to_log_dict(self) -> dict[str, object]:
+        return asdict(self)
 
 
 def candidate_from_memory_seed(seed: MemorySeed) -> MemoryCandidate:
@@ -78,6 +94,47 @@ def select_memory_candidates(
         eligible,
         key=lambda candidate: (-candidate.score(), candidate.memory_id),
     )[:limit]
+
+
+def summarize_memory_selection(
+    candidates: list[MemoryCandidate],
+    *,
+    character_id: str | None,
+    limit: int,
+    selected: list[MemoryCandidate] | None = None,
+) -> MemorySelectionSummary:
+    selected_candidates = selected
+    if selected_candidates is None:
+        selected_candidates = select_memory_candidates(
+            candidates,
+            character_id=character_id,
+            limit=limit,
+        )
+
+    eligible = filter_candidates_for_character(candidates, character_id=character_id)
+    selected_ids = {candidate.memory_id for candidate in selected_candidates}
+    state_counts = {"active": 0, "promoted": 0, "demoted": 0, "disabled": 0}
+    excluded_disabled_ids: list[str] = []
+    excluded_character_ids: list[str] = []
+
+    for candidate in candidates:
+        state_counts[candidate.state] += 1
+        if candidate.state == "disabled":
+            excluded_disabled_ids.append(candidate.memory_id)
+        elif candidate.character_id is not None and candidate.character_id != character_id:
+            excluded_character_ids.append(candidate.memory_id)
+
+    return MemorySelectionSummary(
+        total_candidates=len(candidates),
+        eligible_count=len(eligible),
+        selected_count=len(selected_candidates),
+        limit=limit,
+        character_id=character_id,
+        selected_memory_ids=[candidate.memory_id for candidate in selected_candidates],
+        excluded_disabled_ids=sorted(excluded_disabled_ids),
+        excluded_character_ids=sorted(excluded_character_ids),
+        state_counts=state_counts,
+    )
 
 
 def build_candidate_memory_block(
