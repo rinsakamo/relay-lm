@@ -31,7 +31,22 @@ class MemorySeedFile:
     memories: list[MemorySeed]
 
 
+def validate_memory_seed(memory: MemorySeed) -> None:
+    if not isinstance(memory.memory_id, str) or not memory.memory_id:
+        raise ValueError("memory seed entry is missing memory_id")
+    if not isinstance(memory.content, str) or not memory.content.strip():
+        raise ValueError(f"memory seed entry {memory.memory_id!r} is missing content")
+    if not isinstance(memory.tags, tuple) or not all(isinstance(tag, str) for tag in memory.tags):
+        raise ValueError(f"memory seed entry {memory.memory_id!r} tags must be a tuple of strings")
+    if not isinstance(memory.state, str) or memory.state not in VALID_MEMORY_SEED_STATES:
+        raise ValueError(
+            f"memory seed entry {memory.memory_id!r} state must be one of "
+            f"{sorted(VALID_MEMORY_SEED_STATES)}"
+        )
+
+
 def memory_seed_to_yaml_item(memory: MemorySeed) -> dict[str, Any]:
+    validate_memory_seed(memory)
     return {
         "memory_id": memory.memory_id,
         "character_id": memory.character_id,
@@ -39,11 +54,12 @@ def memory_seed_to_yaml_item(memory: MemorySeed) -> dict[str, Any]:
         "state": memory.state,
         "source": memory.source,
         "tags": list(memory.tags),
-        "content": memory.content,
+        "content": memory.content.strip(),
     }
 
 
 def append_memory_seed(path: str | Path, memory: MemorySeed) -> None:
+    validate_memory_seed(memory)
     seed_path = Path(path)
     if seed_path.exists():
         with seed_path.open("r", encoding="utf-8") as f:
@@ -100,17 +116,17 @@ def load_memory_seed_file(path: str | Path) -> MemorySeedFile:
                 f"memory seed entry {memory_id!r} state must be one of "
                 f"{sorted(VALID_MEMORY_SEED_STATES)}"
             )
-        memories.append(
-            MemorySeed(
-                memory_id=memory_id,
-                character_id=item.get("character_id") if isinstance(item.get("character_id"), str) else None,
-                content=content.strip(),
-                importance=int(item.get("importance", 1)),
-                source=str(item.get("source", "manual_seed")),
-                tags=tuple(tags),
-                state=state,
-            )
+        memory = MemorySeed(
+            memory_id=memory_id,
+            character_id=item.get("character_id") if isinstance(item.get("character_id"), str) else None,
+            content=content.strip(),
+            importance=int(item.get("importance", 1)),
+            source=str(item.get("source", "manual_seed")),
+            tags=tuple(tags),
+            state=state,
         )
+        validate_memory_seed(memory)
+        memories.append(memory)
     return MemorySeedFile(memories=memories)
 
 
