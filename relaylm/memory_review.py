@@ -7,13 +7,14 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
 
-from relaylm.memory_seed import MemorySeed
+from relaylm.memory_seed import MemorySeed, append_memory_seed
 from relaylm.trace import TraceRecord
 
 
-MemoryReviewStatus = Literal["pending", "approved", "rejected"]
+MemoryReviewStatus = Literal["pending", "approved", "rejected", "applied"]
 MemoryReviewSuggestedState = Literal["active", "promoted", "demoted", "disabled"]
-VALID_MEMORY_REVIEW_STATUSES: set[str] = {"pending", "approved", "rejected"}
+VALID_MEMORY_REVIEW_STATUSES: set[str] = {"pending", "approved", "rejected", "applied"}
+DUPLICATE_MEMORY_SEED_ERROR_PREFIX = "memory seed entry already exists:"
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,17 @@ class MemoryReviewCandidate:
     reason: str = "manual_review_required"
     status: MemoryReviewStatus = "pending"
     source: str = "trace_review"
+
+    def to_log_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class MemoryReviewApplyResult:
+    applied_review_ids: list[str]
+    skipped_review_ids: list[str]
+    rejected_review_ids: list[str]
+    applied_memory_ids: list[str]
 
     def to_log_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -178,4 +190,53 @@ def approved_memory_review_candidate_to_seed(
         source="review_queue",
         tags=tags,
         state=candidate.suggested_state,
+    )
+
+
+def apply_approved_memory_reviews_to_seed_file(
+    *,
+    review_queue_path: str | Path,
+    seed_path: str | Path,
+    importance: int = 1,
+    tags: tuple[str, ...] = ("reviewed",),
+) -> MemoryReviewApplyResult:
+    candidates = read_memory_review_candidates(review_queue_path)
+    updated: list[MemoryReviewCandidate] = []
+    applied_review_ids: list[str] = []
+    skipped_review_ids: list[str] = []
+    rejected_review_ids: list[str] = []
+    applied_memory_ids: list[str] = []
+
+    for index, candidate in enumerate(candidates):
+        if candidate.status != "approved":
+            skipped_review_ids.append(candidate.review_id)
+            updated.append(candidate)
+            continue
+        try:
+            seed = approved_memory_review_candidate_to_seed(
+                candidate,
+                importance=importance,
+                tags=tags,
+            )
+            append_memory_seed(seed_path, seed)
+        except ValueError as exc:
+            if not str(exc).startswith(DUPLICATE_MEMORY_SEED_ERROR_PREFIX):
+                write_memory_review_candidates(
+                    review_queue_path,
+                    [*updated, *candidates[index:]],
+                )
+                raise
+            rejected_review_ids.append(candidate.review_id)
+            updated.append(update_memory_review_candidate_status(candidate, status="rejected"))
+            continue
+        applied_review_ids.append(candidate.review_id)
+        applied_memory_ids.append(seed.memory_id)
+        updated.append(update_memory_review_candidate_status(candidate, status="applied"))
+
+    write_memory_review_candidates(review_queue_path, updated)
+    return MemoryReviewApplyResult(
+        applied_review_ids=applied_review_ids,
+        skipped_review_ids=skipped_review_ids,
+        rejected_review_ids=rejected_review_ids,
+        applied_memory_ids=applied_memory_ids,
     )
