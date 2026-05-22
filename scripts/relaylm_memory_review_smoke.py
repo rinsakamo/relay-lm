@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -9,8 +10,10 @@ if str(REPO_ROOT) not in sys.path:
 
 from relaylm.memory_review import (
     MemoryReviewCandidate,
+    append_memory_review_candidate,
     build_memory_review_candidate_from_trace,
     draft_memory_review_candidate_from_trace_response,
+    read_memory_review_candidates,
 )
 from relaylm.trace import build_trace_record
 
@@ -64,6 +67,17 @@ def main() -> int:
     require(draft.content == "Remember that the user likes warm", draft)
     require(draft.reason == "trace_response_review", draft)
     print("ok draft memory review candidate from trace response")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        queue_path = Path(tmpdir) / "memory_review_queue.jsonl"
+        require(read_memory_review_candidates(queue_path) == [], "missing queue should read empty")
+        append_memory_review_candidate(queue_path, candidate)
+        append_memory_review_candidate(queue_path, draft)
+        queued = read_memory_review_candidates(queue_path)
+        require([item.review_id for item in queued] == [candidate.review_id, draft.review_id], queued)
+        require(queued[0].suggested_state == "promoted", queued[0])
+        require(queued[1].status == "pending", queued[1])
+        print("ok memory review queue append read")
 
     empty_trace = build_trace_record(
         trace_id="trace-empty",
