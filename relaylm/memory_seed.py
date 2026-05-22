@@ -31,6 +31,46 @@ class MemorySeedFile:
     memories: list[MemorySeed]
 
 
+def memory_seed_to_yaml_item(memory: MemorySeed) -> dict[str, Any]:
+    return {
+        "memory_id": memory.memory_id,
+        "character_id": memory.character_id,
+        "importance": memory.importance,
+        "state": memory.state,
+        "source": memory.source,
+        "tags": list(memory.tags),
+        "content": memory.content,
+    }
+
+
+def append_memory_seed(path: str | Path, memory: MemorySeed) -> None:
+    seed_path = Path(path)
+    if seed_path.exists():
+        with seed_path.open("r", encoding="utf-8") as f:
+            raw: Any = yaml.safe_load(f) or {}
+    else:
+        raw = {}
+    if not isinstance(raw, dict):
+        raise ValueError("memory seed file must be a mapping")
+    memories = raw.get("memories", [])
+    if memories is None:
+        memories = []
+    if not isinstance(memories, list):
+        raise ValueError("memory seed file memories must be a list")
+    existing_ids = {
+        item.get("memory_id")
+        for item in memories
+        if isinstance(item, dict) and isinstance(item.get("memory_id"), str)
+    }
+    if memory.memory_id in existing_ids:
+        raise ValueError(f"memory seed entry already exists: {memory.memory_id}")
+    memories.append(memory_seed_to_yaml_item(memory))
+    raw["memories"] = memories
+    seed_path.parent.mkdir(parents=True, exist_ok=True)
+    with seed_path.open("w", encoding="utf-8") as f:
+        yaml.safe_dump(raw, f, allow_unicode=True, sort_keys=False)
+
+
 def load_memory_seed_file(path: str | Path) -> MemorySeedFile:
     seed_path = Path(path)
     with seed_path.open("r", encoding="utf-8") as f:
