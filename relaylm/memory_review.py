@@ -207,7 +207,7 @@ def apply_approved_memory_reviews_to_seed_file(
     rejected_review_ids: list[str] = []
     applied_memory_ids: list[str] = []
 
-    for candidate in candidates:
+    for index, candidate in enumerate(candidates):
         if candidate.status != "approved":
             skipped_review_ids.append(candidate.review_id)
             updated.append(candidate)
@@ -221,6 +221,10 @@ def apply_approved_memory_reviews_to_seed_file(
             append_memory_seed(seed_path, seed)
         except ValueError as exc:
             if not str(exc).startswith(DUPLICATE_MEMORY_SEED_ERROR_PREFIX):
+                write_memory_review_candidates(
+                    review_queue_path,
+                    [*updated, *candidates[index:]],
+                )
                 raise
             rejected_review_ids.append(candidate.review_id)
             updated.append(update_memory_review_candidate_status(candidate, status="rejected"))
