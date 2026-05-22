@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from relaylm.memory_seed import MemorySeed
 from relaylm.trace import TraceRecord
 
 
@@ -112,4 +113,25 @@ def draft_memory_review_candidate_from_trace_response(
         content=content,
         suggested_state="active",
         reason="trace_response_review",
+    )
+
+
+def approved_memory_review_candidate_to_seed(
+    candidate: MemoryReviewCandidate,
+    *,
+    importance: int = 1,
+    tags: tuple[str, ...] = ("reviewed",),
+) -> MemorySeed:
+    if candidate.status != "approved":
+        raise ValueError("only approved memory review candidates can become memory seeds")
+    if not candidate.content.strip():
+        raise ValueError("approved memory review candidate content must not be empty")
+    return MemorySeed(
+        memory_id=candidate.proposed_memory_id,
+        character_id=candidate.character_id,
+        content=candidate.content.strip(),
+        importance=importance,
+        source="review_queue",
+        tags=tags,
+        state=candidate.suggested_state,
     )
