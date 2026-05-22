@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Any, Literal
 
 from relaylm.trace import TraceRecord
@@ -26,6 +28,33 @@ class MemoryReviewCandidate:
 
     def to_log_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def memory_review_candidate_from_dict(payload: dict[str, Any]) -> MemoryReviewCandidate:
+    return MemoryReviewCandidate(**payload)
+
+
+def append_memory_review_candidate(path: str | Path, candidate: MemoryReviewCandidate) -> None:
+    queue_path = Path(path)
+    queue_path.parent.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(candidate.to_log_dict(), ensure_ascii=False, sort_keys=True) + "\n"
+    with queue_path.open("a", encoding="utf-8") as f:
+        f.write(line)
+
+
+def read_memory_review_candidates(path: str | Path) -> list[MemoryReviewCandidate]:
+    queue_path = Path(path)
+    if not queue_path.exists():
+        return []
+    candidates: list[MemoryReviewCandidate] = []
+    with queue_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            payload = json.loads(stripped)
+            candidates.append(memory_review_candidate_from_dict(payload))
+    return candidates
 
 
 def build_memory_review_candidate_from_trace(
