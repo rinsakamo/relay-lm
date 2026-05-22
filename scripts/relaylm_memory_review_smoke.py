@@ -12,6 +12,7 @@ from relaylm.memory_review import (
     MemoryReviewCandidate,
     append_memory_review_candidate,
     build_memory_review_candidate_from_trace,
+    build_memory_review_id,
     draft_memory_review_candidate_from_trace_response,
     read_memory_review_candidates,
 )
@@ -44,7 +45,10 @@ def main() -> int:
         reason="user_preference_detected",
     )
     require(isinstance(candidate, MemoryReviewCandidate), candidate)
-    require(candidate.review_id == "review-trace-001-default-warm-tea", candidate)
+    require(
+        candidate.review_id == "review-t9:trace-001-m16:default-warm-tea",
+        candidate,
+    )
     require(candidate.source_trace_id == "trace-001", candidate)
     require(candidate.proposed_memory_id == "default-warm-tea", candidate)
     require(candidate.character_id == "default", candidate)
@@ -53,10 +57,17 @@ def main() -> int:
     print("ok build memory review candidate")
 
     log_payload = candidate.to_log_dict()
-    require(log_payload["review_id"] == "review-trace-001-default-warm-tea", log_payload)
+    require(log_payload["review_id"] == "review-t9:trace-001-m16:default-warm-tea", log_payload)
     require(log_payload["status"] == "pending", log_payload)
     require(log_payload["source"] == "trace_review", log_payload)
     print("ok memory review candidate log payload")
+
+    colliding_a = build_memory_review_id(trace_id="a-b", proposed_memory_id="c")
+    colliding_b = build_memory_review_id(trace_id="a", proposed_memory_id="b-c")
+    require(colliding_a != colliding_b, (colliding_a, colliding_b))
+    require(colliding_a == "review-t3:a-b-m1:c", colliding_a)
+    require(colliding_b == "review-t1:a-m3:b-c", colliding_b)
+    print("ok memory review id unambiguous")
 
     draft = draft_memory_review_candidate_from_trace_response(
         trace,
