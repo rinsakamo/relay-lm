@@ -14,6 +14,7 @@ from relaylm.trace import TraceRecord
 MemoryReviewStatus = Literal["pending", "approved", "rejected", "applied"]
 MemoryReviewSuggestedState = Literal["active", "promoted", "demoted", "disabled"]
 VALID_MEMORY_REVIEW_STATUSES: set[str] = {"pending", "approved", "rejected", "applied"}
+DUPLICATE_MEMORY_SEED_ERROR_PREFIX = "memory seed entry already exists:"
 
 
 @dataclass(frozen=True)
@@ -218,7 +219,9 @@ def apply_approved_memory_reviews_to_seed_file(
         )
         try:
             append_memory_seed(seed_path, seed)
-        except ValueError:
+        except ValueError as exc:
+            if not str(exc).startswith(DUPLICATE_MEMORY_SEED_ERROR_PREFIX):
+                raise
             rejected_review_ids.append(candidate.review_id)
             updated.append(update_memory_review_candidate_status(candidate, status="rejected"))
             continue
