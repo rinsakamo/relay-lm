@@ -132,25 +132,27 @@ def main() -> int:
         require(len(second_result.skipped_review_ids) == 2, second_result)
         print("ok duplicate approved memory review reapply is stable")
 
-    malformed_candidate = make_candidate("trace-malformed-001", "memory-malformed", "approved")
+    good_first = make_candidate("trace-malformed-001", "memory-malformed-first", "approved")
+    malformed_second = make_candidate("trace-malformed-002", "memory-malformed-second", "approved")
     with tempfile.TemporaryDirectory() as tmpdir:
         queue_path = Path(tmpdir) / "review_queue.jsonl"
         seed_path = Path(tmpdir) / "memories.yaml"
-        append_memory_review_candidate(queue_path, malformed_candidate)
-        seed_path.write_text("memories: not-a-list\n", encoding="utf-8")
+        append_memory_review_candidate(queue_path, good_first)
+        append_memory_review_candidate(queue_path, malformed_second)
         try:
             apply_approved_memory_reviews_to_seed_file(
                 review_queue_path=queue_path,
                 seed_path=seed_path,
+                tags=["bad-tags"],  # type: ignore[arg-type]
             )
         except ValueError as exc:
-            require("memories must be a list" in str(exc), str(exc))
-            print("ok malformed seed file fails fast")
+            require("tags must be a tuple of strings" in str(exc), str(exc))
+            print("ok non-duplicate apply error fails fast")
         else:
-            raise AssertionError("expected malformed seed file failure")
+            raise AssertionError("expected non-duplicate apply failure")
         queued = read_memory_review_candidates(queue_path)
-        require([candidate.status for candidate in queued] == ["approved"], queued)
-        print("ok malformed seed file leaves queue unchanged")
+        require([candidate.status for candidate in queued] == ["approved", "approved"], queued)
+        print("ok non-duplicate apply error leaves queue unchanged")
 
     return 0
 
