@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -18,6 +19,7 @@ class RequestDiagnostics:
     compiler_used: bool = False
     memory_block_used: bool = False
     memory_source: str | None = None
+    memory_selection_summary: dict[str, Any] | None = None
     trace_enabled: bool = False
     profile_compile_dry_run_enabled: bool | None = None
     profile_compile_fallback_reason: str | None = None

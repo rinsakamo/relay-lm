@@ -30,6 +30,8 @@ def trace_runtime_event(
         trace_metadata = dict(metadata or {})
         if diagnostics.memory_source is not None:
             trace_metadata["memory_source"] = diagnostics.memory_source
+        if diagnostics.memory_selection_summary is not None:
+            trace_metadata["memory_selection_summary"] = diagnostics.memory_selection_summary
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,

@@ -36,6 +36,7 @@ def main() -> int:
     )
     require(pass_through_compiled.compiler_used is False, pass_through_compiled)
     require(pass_through_compiled.memory_block_used is False, pass_through_compiled)
+    require(pass_through_compiled.memory_selection_summary is None, pass_through_compiled)
     require(pass_through_compiled.decision.should_apply is False, pass_through_compiled.decision)
     require(pass_through_compiled.payload["messages"] == base_payload["messages"], pass_through_compiled.payload)
     print("ok pass-through payload unchanged")
@@ -50,6 +51,7 @@ def main() -> int:
     )
     require(memory_light_compiled.compiler_used is True, memory_light_compiled)
     require(memory_light_compiled.memory_block_used is True, memory_light_compiled)
+    require(memory_light_compiled.memory_selection_summary is not None, memory_light_compiled)
     require(memory_light_compiled.decision.should_apply is True, memory_light_compiled.decision)
     compiled_messages = memory_light_compiled.payload["messages"]
     require(compiled_messages[0]["role"] == "system", compiled_messages)
@@ -70,7 +72,22 @@ def main() -> int:
     require(log_payload["compiler_used"] is True, log_payload)
     require(log_payload["memory_block_used"] is True, log_payload)
     require(log_payload["decision"]["reason"] == "memory_light_compile_enabled", log_payload)
+    summary = log_payload["memory_selection_summary"]
+    require(isinstance(summary, dict), log_payload)
+    require(summary["selected_count"] == 3, summary)
+    require(summary["selected_memory_ids"] == [
+        "default-relaylm-project",
+        "default-like-tea",
+        "shared-short-replies",
+    ], summary)
+    require(summary["state_counts"] == {
+        "active": 3,
+        "promoted": 0,
+        "demoted": 0,
+        "disabled": 0,
+    }, summary)
     print("ok compiled request log payload")
+    print("ok compiled memory selection summary payload")
 
     return 0
 

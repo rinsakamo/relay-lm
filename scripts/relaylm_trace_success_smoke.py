@@ -34,6 +34,20 @@ def main() -> int:
         config = load_config(REPO_ROOT / "config.example.yaml").model_copy(deep=True)
         config.trace.enabled = True
         config.trace.path = str(trace_path)
+        selection_summary = {
+            "selected_count": 3,
+            "selected_memory_ids": [
+                "default-relaylm-project",
+                "default-like-tea",
+                "shared-short-replies",
+            ],
+            "state_counts": {
+                "active": 3,
+                "promoted": 0,
+                "demoted": 0,
+                "disabled": 0,
+            },
+        }
         diagnostics = RequestDiagnostics(
             request_id="trace-success-001",
             route_model="relaylm-default",
@@ -42,6 +56,7 @@ def main() -> int:
             compiler_used=True,
             memory_block_used=True,
             memory_source="memory_candidate_selection",
+            memory_selection_summary=selection_summary,
             trace_enabled=True,
         )
         written = trace_runtime_event(
@@ -59,9 +74,11 @@ def main() -> int:
         require(records[0].metadata["event"] == "backend_response", records[0].metadata)
         require(records[0].metadata["status_code"] == 200, records[0].metadata)
         require(records[0].metadata["memory_source"] == "memory_candidate_selection", records[0].metadata)
+        require(records[0].metadata["memory_selection_summary"] == selection_summary, records[0].metadata)
         print("ok trace backend response event")
         print("ok trace response text captured")
         print("ok trace memory source captured")
+        print("ok trace memory selection summary captured")
 
     return 0
 

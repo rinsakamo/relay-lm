@@ -11,8 +11,9 @@ import yaml
 from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply
 from relaylm.compiler import compile_profile_messages_with_system_fallback
 from relaylm.config import RelayLMConfig
+from relaylm.memory_candidate import MemorySelectionSummary
 from relaylm.memory_context import MemoryConfigurationError, insert_memory_block
-from relaylm.memory_selection import build_configured_candidate_memory_block
+from relaylm.memory_selection import ConfiguredMemorySelection, build_configured_candidate_memory_selection
 from relaylm.profile import build_profile_blocks, resolve_profile_files
 from relaylm.profile_plan import ProfileCompilePlan, build_profile_compile_plan
 from relaylm.routing import ResolvedRoute
@@ -26,6 +27,7 @@ class CompiledRequest:
     compiler_used: bool
     memory_block_used: bool = False
     memory_source: str | None = None
+    memory_selection_summary: MemorySelectionSummary | None = None
     memory_fallback_reason: str | None = None
 
     def to_log_dict(self) -> dict[str, Any]:
@@ -33,6 +35,11 @@ class CompiledRequest:
             "compiler_used": self.compiler_used,
             "memory_block_used": self.memory_block_used,
             "memory_source": self.memory_source,
+            "memory_selection_summary": (
+                self.memory_selection_summary.to_log_dict()
+                if self.memory_selection_summary is not None
+                else None
+            ),
             "memory_fallback_reason": self.memory_fallback_reason,
             "plan": self.plan.to_log_dict(),
             "decision": self.decision.to_log_dict(),
@@ -67,10 +74,11 @@ def compile_chat_payload_if_enabled(
 
     profile_files = resolve_profile_files(config, route)
     profile_blocks = build_profile_blocks(profile_files)
-    memory_block, memory_fallback_reason = _resolve_memory_block_best_effort(
+    memory_selection, memory_fallback_reason = _resolve_memory_selection_best_effort(
         config=config,
         route=route,
     )
+    memory_block = memory_selection.block
     blocks = insert_memory_block(
         profile_blocks=profile_blocks,
         memory_block=memory_block,
@@ -86,6 +94,7 @@ def compile_chat_payload_if_enabled(
         compiler_used=True,
         memory_block_used=memory_block is not None,
         memory_source=memory_block.source if memory_block is not None else None,
+        memory_selection_summary=memory_selection.summary,
         memory_fallback_reason=memory_fallback_reason,
     )
 
@@ -97,14 +106,14 @@ def _extract_messages(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     return [message for message in raw_messages if isinstance(message, dict)]
 
 
-def _resolve_memory_block_best_effort(
+def _resolve_memory_selection_best_effort(
     *,
     config: RelayLMConfig,
     route: ResolvedRoute,
-) -> tuple[Any | None, str | None]:
+) -> tuple[ConfiguredMemorySelection, str | None]:
     try:
-        return build_configured_candidate_memory_block(config=config, route=route), None
+        return build_configured_candidate_memory_selection(config=config, route=route), None
     except MemoryConfigurationError:
         raise
     except (FileNotFoundError, OSError, ValueError, TypeError, yaml.YAMLError, json.JSONDecodeError) as exc:
-        return None, f"memory_seed_load_error:{exc.__class__.__name__}"
+        return ConfiguredMemorySelection(block=None, summary=None), f"memory_seed_load_error:{exc.__class__.__name__}"
