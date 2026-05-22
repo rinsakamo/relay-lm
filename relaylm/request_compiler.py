@@ -11,7 +11,7 @@ import yaml
 from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply
 from relaylm.compiler import compile_profile_messages_with_system_fallback
 from relaylm.config import RelayLMConfig
-from relaylm.memory_candidate import MemorySelectionSummary
+from relaylm.memory_candidate import MemoryBlockAssembly, MemorySelectionSummary
 from relaylm.memory_context import MemoryConfigurationError, insert_memory_block
 from relaylm.memory_selection import ConfiguredMemorySelection, build_configured_candidate_memory_selection
 from relaylm.profile import build_profile_blocks, resolve_profile_files
@@ -28,6 +28,7 @@ class CompiledRequest:
     memory_block_used: bool = False
     memory_source: str | None = None
     memory_selection_summary: MemorySelectionSummary | None = None
+    memory_block_assembly: MemoryBlockAssembly | None = None
     memory_fallback_reason: str | None = None
 
     def to_log_dict(self) -> dict[str, Any]:
@@ -38,6 +39,11 @@ class CompiledRequest:
             "memory_selection_summary": (
                 self.memory_selection_summary.to_log_dict()
                 if self.memory_selection_summary is not None
+                else None
+            ),
+            "memory_block_assembly": (
+                self.memory_block_assembly.to_log_dict()
+                if self.memory_block_assembly is not None
                 else None
             ),
             "memory_fallback_reason": self.memory_fallback_reason,
@@ -95,6 +101,7 @@ def compile_chat_payload_if_enabled(
         memory_block_used=memory_block is not None,
         memory_source=memory_block.source if memory_block is not None else None,
         memory_selection_summary=memory_selection.summary,
+        memory_block_assembly=memory_selection.assembly,
         memory_fallback_reason=memory_fallback_reason,
     )
 

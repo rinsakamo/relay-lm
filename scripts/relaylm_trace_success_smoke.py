@@ -48,6 +48,16 @@ def main() -> int:
                 "disabled": 0,
             },
         }
+        block_assembly = {
+            "included_memory_ids": [
+                "default-relaylm-project",
+                "default-like-tea",
+                "shared-short-replies",
+            ],
+            "dropped_memory_ids": [],
+            "character_budget": 1200,
+            "rendered_characters": 300,
+        }
         diagnostics = RequestDiagnostics(
             request_id="trace-success-001",
             route_model="relaylm-default",
@@ -57,6 +67,7 @@ def main() -> int:
             memory_block_used=True,
             memory_source="memory_candidate_selection",
             memory_selection_summary=selection_summary,
+            memory_block_assembly=block_assembly,
             trace_enabled=True,
         )
         written = trace_runtime_event(
@@ -75,10 +86,12 @@ def main() -> int:
         require(records[0].metadata["status_code"] == 200, records[0].metadata)
         require(records[0].metadata["memory_source"] == "memory_candidate_selection", records[0].metadata)
         require(records[0].metadata["memory_selection_summary"] == selection_summary, records[0].metadata)
+        require(records[0].metadata["memory_block_assembly"] == block_assembly, records[0].metadata)
         print("ok trace backend response event")
         print("ok trace response text captured")
         print("ok trace memory source captured")
         print("ok trace memory selection summary captured")
+        print("ok trace memory block assembly captured")
 
     return 0
 

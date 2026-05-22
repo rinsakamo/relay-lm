@@ -162,6 +162,11 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 if compiled_request.memory_selection_summary is not None
                 else None
             ),
+            memory_block_assembly=(
+                compiled_request.memory_block_assembly.to_log_dict()
+                if compiled_request.memory_block_assembly is not None
+                else None
+            ),
             trace_enabled=config.trace.enabled,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,

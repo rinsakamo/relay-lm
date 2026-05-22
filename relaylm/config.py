@@ -34,6 +34,7 @@ class TraceConfig(BaseModel):
 class MemorySelectionConfig(BaseModel):
     candidate_limit: int = 3
     token_budget_hint: int = 800
+    character_budget: int | None = None
 
 
 class CharacterConfig(BaseModel):
