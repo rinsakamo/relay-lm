@@ -10,6 +10,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.memory_review import (
+    MemoryReviewCandidate,
     append_memory_review_candidate,
     apply_approved_memory_reviews_to_seed_file,
     build_memory_review_candidate_from_trace,
@@ -153,6 +154,36 @@ def main() -> int:
         queued = read_memory_review_candidates(queue_path)
         require([candidate.status for candidate in queued] == ["approved", "approved"], queued)
         print("ok non-duplicate apply error leaves queue unchanged")
+
+    good_first = make_candidate("trace-bad-content-001", "memory-before-bad-content", "approved")
+    bad_content = MemoryReviewCandidate(
+        review_id="review-bad-content",
+        source_trace_id="trace-bad-content-002",
+        proposed_memory_id="memory-bad-content",
+        content="   ",
+        character_id="default",
+        status="approved",
+    )
+    with tempfile.TemporaryDirectory() as tmpdir:
+        queue_path = Path(tmpdir) / "review_queue.jsonl"
+        seed_path = Path(tmpdir) / "memories.yaml"
+        append_memory_review_candidate(queue_path, good_first)
+        append_memory_review_candidate(queue_path, bad_content)
+        try:
+            apply_approved_memory_reviews_to_seed_file(
+                review_queue_path=queue_path,
+                seed_path=seed_path,
+            )
+        except ValueError as exc:
+            require("content" in str(exc), str(exc))
+            print("ok invalid approved review content fails fast")
+        else:
+            raise AssertionError("expected invalid approved review content failure")
+        queued = read_memory_review_candidates(queue_path)
+        require([candidate.status for candidate in queued] == ["applied", "approved"], queued)
+        loaded = load_memory_seed_file(seed_path)
+        require([memory.memory_id for memory in loaded.memories] == ["memory-before-bad-content"], loaded)
+        print("ok invalid approved review content preserves prior progress")
 
     return 0
 
