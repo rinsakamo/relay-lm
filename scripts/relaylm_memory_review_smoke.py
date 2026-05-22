@@ -64,7 +64,8 @@ def main() -> int:
         max_content_chars=32,
     )
     require(draft is not None, draft)
-    require(draft.content == "Remember that the user likes warm", draft)
+    require(draft.content == "Remember that the user likes war", draft)
+    require(len(draft.content) == 32, draft)
     require(draft.reason == "trace_response_review", draft)
     print("ok draft memory review candidate from trace response")
 
