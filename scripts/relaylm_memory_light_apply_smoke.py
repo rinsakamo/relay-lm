@@ -37,6 +37,7 @@ def main() -> int:
     require(pass_through_compiled.compiler_used is False, pass_through_compiled)
     require(pass_through_compiled.memory_block_used is False, pass_through_compiled)
     require(pass_through_compiled.memory_selection_summary is None, pass_through_compiled)
+    require(pass_through_compiled.memory_block_assembly is None, pass_through_compiled)
     require(pass_through_compiled.decision.should_apply is False, pass_through_compiled.decision)
     require(pass_through_compiled.payload["messages"] == base_payload["messages"], pass_through_compiled.payload)
     print("ok pass-through payload unchanged")
@@ -52,6 +53,7 @@ def main() -> int:
     require(memory_light_compiled.compiler_used is True, memory_light_compiled)
     require(memory_light_compiled.memory_block_used is True, memory_light_compiled)
     require(memory_light_compiled.memory_selection_summary is not None, memory_light_compiled)
+    require(memory_light_compiled.memory_block_assembly is not None, memory_light_compiled)
     require(memory_light_compiled.decision.should_apply is True, memory_light_compiled.decision)
     compiled_messages = memory_light_compiled.payload["messages"]
     require(compiled_messages[0]["role"] == "system", compiled_messages)
@@ -90,8 +92,34 @@ def main() -> int:
         "demoted": 1,
         "disabled": 1,
     }, summary)
+    assembly = log_payload["memory_block_assembly"]
+    require(isinstance(assembly, dict), log_payload)
+    require(assembly["included_memory_ids"] == [
+        "default-relaylm-project",
+        "default-like-tea",
+        "shared-short-replies",
+    ], assembly)
+    require(assembly["dropped_memory_ids"] == [], assembly)
+    require(assembly["character_budget"] == 1200, assembly)
+    require(assembly["rendered_characters"] > 0, assembly)
     print("ok compiled request log payload")
     print("ok compiled memory selection summary payload")
+    print("ok compiled memory block assembly payload")
+
+    tight_budget_config = memory_light_config.model_copy(deep=True)
+    tight_budget_config.memory.character_budget = 120
+    tight_budget_compiled = compile_chat_payload_if_enabled(
+        config=tight_budget_config,
+        route=memory_light_route,
+        payload=base_payload,
+    )
+    tight_log_payload = tight_budget_compiled.to_log_dict()
+    tight_assembly = tight_log_payload["memory_block_assembly"]
+    require(isinstance(tight_assembly, dict), tight_log_payload)
+    require(tight_assembly["character_budget"] == 120, tight_assembly)
+    require(tight_assembly["dropped_memory_ids"] != [], tight_assembly)
+    require(tight_assembly["rendered_characters"] <= 120, tight_assembly)
+    print("ok configured memory budget trimming")
 
     return 0
 
