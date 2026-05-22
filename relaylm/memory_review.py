@@ -36,6 +36,7 @@ class MemoryReviewCandidate:
 class MemoryReviewApplyResult:
     applied_review_ids: list[str]
     skipped_review_ids: list[str]
+    rejected_review_ids: list[str]
     applied_memory_ids: list[str]
 
     def to_log_dict(self) -> dict[str, Any]:
@@ -202,6 +203,7 @@ def apply_approved_memory_reviews_to_seed_file(
     updated: list[MemoryReviewCandidate] = []
     applied_review_ids: list[str] = []
     skipped_review_ids: list[str] = []
+    rejected_review_ids: list[str] = []
     applied_memory_ids: list[str] = []
 
     for candidate in candidates:
@@ -214,7 +216,12 @@ def apply_approved_memory_reviews_to_seed_file(
             importance=importance,
             tags=tags,
         )
-        append_memory_seed(seed_path, seed)
+        try:
+            append_memory_seed(seed_path, seed)
+        except ValueError:
+            rejected_review_ids.append(candidate.review_id)
+            updated.append(update_memory_review_candidate_status(candidate, status="rejected"))
+            continue
         applied_review_ids.append(candidate.review_id)
         applied_memory_ids.append(seed.memory_id)
         updated.append(update_memory_review_candidate_status(candidate, status="applied"))
@@ -223,5 +230,6 @@ def apply_approved_memory_reviews_to_seed_file(
     return MemoryReviewApplyResult(
         applied_review_ids=applied_review_ids,
         skipped_review_ids=skipped_review_ids,
+        rejected_review_ids=rejected_review_ids,
         applied_memory_ids=applied_memory_ids,
     )
