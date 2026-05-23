@@ -38,6 +38,7 @@ class MemorySelectionConfig(BaseModel):
     token_budget: int | None = Field(default=None, gt=0)
     chars_per_token: int = Field(default=4, gt=0)
     token_policy_shadow_enabled: bool = False
+    token_budget_truncation_enabled: bool = False
 
 
 class CharacterConfig(BaseModel):

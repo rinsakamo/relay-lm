@@ -28,6 +28,7 @@ from relaylm.routing import (
     list_model_ids,
     resolve_route,
 )
+from relaylm.token_budget_truncation import apply_token_budget_message_truncation
 from relaylm.token_policy_signal import (
     build_token_policy_decision_artifact,
     build_token_policy_readiness_check,
@@ -158,6 +159,10 @@ def create_app(config_path: str | None = None) -> FastAPI:
             shadow_source=shadow_source,
         )
         token_policy_readiness = build_token_policy_readiness_check(token_policy_decision)
+        token_budget_truncation = _build_token_budget_truncation_dry_run(
+            config=config,
+            forwarded_messages=_extract_trace_messages(compiled_request.payload),
+        )
 
         diagnostics = RequestDiagnostics(
             request_id=request_id,
@@ -185,6 +190,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             token_policy_signal=token_policy_signal.to_log_dict(),
             token_policy_decision=token_policy_decision.to_log_dict(),
             token_policy_readiness=token_policy_readiness.to_log_dict(),
+            token_budget_truncation=token_budget_truncation,
             trace_enabled=config.trace.enabled,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
@@ -289,6 +295,26 @@ def _resolve_token_policy_shadow_setting(
     if character.token_policy_shadow_enabled is None:
         return config.memory.token_policy_shadow_enabled, "global"
     return character.token_policy_shadow_enabled, "character"
+
+
+def _build_token_budget_truncation_dry_run(
+    *,
+    config: RelayLMConfig,
+    forwarded_messages: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if config.memory.token_budget is None:
+        return None
+    result = apply_token_budget_message_truncation(
+        messages=forwarded_messages,
+        token_budget=config.memory.token_budget,
+        chars_per_token=config.memory.chars_per_token,
+        keep_system=True,
+        keep_latest_user=True,
+    ).to_log_dict()
+    result["enforcement_enabled"] = config.memory.token_budget_truncation_enabled
+    result["applied"] = False
+    result["apply_mode"] = "dry_run"
+    return result
 
 
 def main() -> None:
