@@ -23,6 +23,7 @@ class RequestDiagnostics:
     memory_block_assembly: dict[str, Any] | None = None
     token_memory_dry_run: dict[str, Any] | None = None
     token_policy_signal: dict[str, Any] | None = None
+    token_policy_decision: dict[str, Any] | None = None
     trace_enabled: bool = False
     profile_compile_dry_run_enabled: bool | None = None
     profile_compile_fallback_reason: str | None = None

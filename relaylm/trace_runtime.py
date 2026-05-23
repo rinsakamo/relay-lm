@@ -38,6 +38,8 @@ def trace_runtime_event(
             trace_metadata["token_memory_dry_run"] = diagnostics.token_memory_dry_run
         if diagnostics.token_policy_signal is not None:
             trace_metadata["token_policy_signal"] = diagnostics.token_policy_signal
+        if diagnostics.token_policy_decision is not None:
+            trace_metadata["token_policy_decision"] = diagnostics.token_policy_decision
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,

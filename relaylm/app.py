@@ -27,7 +27,10 @@ from relaylm.routing import (
     list_model_ids,
     resolve_route,
 )
-from relaylm.token_policy_signal import build_token_policy_signal
+from relaylm.token_policy_signal import (
+    build_token_policy_decision_artifact,
+    build_token_policy_signal,
+)
 from relaylm.trace_runtime import extract_response_text, trace_runtime_event
 
 
@@ -145,6 +148,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
             route=route,
             payload=payload,
         )
+        token_policy_signal = build_token_policy_signal(compiled_request.token_memory_dry_run)
+        token_policy_decision = build_token_policy_decision_artifact(token_policy_signal)
 
         diagnostics = RequestDiagnostics(
             request_id=request_id,
@@ -169,7 +174,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 else None
             ),
             token_memory_dry_run=compiled_request.token_memory_dry_run,
-            token_policy_signal=build_token_policy_signal(compiled_request.token_memory_dry_run).to_log_dict(),
+            token_policy_signal=token_policy_signal.to_log_dict(),
+            token_policy_decision=token_policy_decision.to_log_dict(),
             trace_enabled=config.trace.enabled,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,

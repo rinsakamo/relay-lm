@@ -1,16 +1,23 @@
 from __future__ import annotations
 
+import json
 import sys
+import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.config import load_config
+from relaylm.config import RelayLMConfig, load_config
+from relaylm.diagnostics import RequestDiagnostics
 from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.routing import resolve_route
-from relaylm.token_policy_signal import build_token_policy_signal
+from relaylm.token_policy_signal import (
+    build_token_policy_decision_artifact,
+    build_token_policy_signal,
+)
+from relaylm.trace_runtime import trace_runtime_event
 
 
 def require(condition: bool, message: object) -> None:
@@ -19,33 +26,25 @@ def require(condition: bool, message: object) -> None:
 
 
 def main() -> int:
-    within = build_token_policy_signal(
-        {
-            "assembly": {
-                "token_budget": 100,
-                "estimated_tokens": 80,
-            }
-        }
-    )
-    require(within.status == "within_budget", within)
-    require(within.over_budget_by == 0, within)
-    print("ok token policy signal within budget")
+    within_signal = build_token_policy_signal({"assembly": {"token_budget": 100, "estimated_tokens": 80}})
+    within_decision = build_token_policy_decision_artifact(within_signal)
+    require(within_decision.status == "ready_within_budget", within_decision)
+    require(within_decision.action == "shadow_only", within_decision)
+    print("ok token policy decision within budget")
 
-    exceeded = build_token_policy_signal(
-        {
-            "assembly": {
-                "token_budget": 100,
-                "estimated_tokens": 130,
-            }
-        }
-    )
-    require(exceeded.status == "budget_exceeded", exceeded)
-    require(exceeded.over_budget_by == 30, exceeded)
-    print("ok token policy signal budget exceeded")
+    exceeded_signal = build_token_policy_signal({"assembly": {"token_budget": 100, "estimated_tokens": 130}})
+    exceeded_decision = build_token_policy_decision_artifact(exceeded_signal)
+    require(exceeded_decision.status == "would_exceed_budget", exceeded_decision)
+    require(exceeded_decision.action == "would_fallback", exceeded_decision)
+    print("ok token policy decision would exceed budget")
 
-    missing = build_token_policy_signal(None)
-    require(missing.status == "missing_dry_run", missing)
-    print("ok token policy signal missing dry run")
+    missing_decision = build_token_policy_decision_artifact(None)
+    require(missing_decision.status == "missing_signal", missing_decision)
+    print("ok token policy decision missing signal")
+
+    invalid_decision = build_token_policy_decision_artifact({"status": 123})
+    require(invalid_decision.status == "invalid_signal", invalid_decision)
+    print("ok token policy decision invalid signal")
 
     config = load_config(REPO_ROOT / "config.example.yaml")
     route = resolve_route(config, "relaylm-default")
@@ -57,7 +56,31 @@ def main() -> int:
     compiled = compile_chat_payload_if_enabled(config=config, route=route, payload=payload)
     require(compiled.payload.get("model") == payload["model"], compiled.payload)
     require(compiled.payload.get("stream") is False, compiled.payload)
-    print("ok token policy signal compile path unchanged")
+    print("ok token policy decision compile path unchanged")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        trace_path = Path(tmpdir) / "trace.jsonl"
+        base = load_config(REPO_ROOT / "config.example.yaml")
+        config_dict = base.model_dump()
+        config_dict["trace"] = {"enabled": True, "path": str(trace_path)}
+        trace_config = RelayLMConfig.model_validate(config_dict)
+
+        diagnostics = RequestDiagnostics(
+            request_id="req-token-policy-decision",
+            token_policy_signal=exceeded_signal.to_log_dict(),
+            token_policy_decision=exceeded_decision.to_log_dict(),
+        )
+        written = trace_runtime_event(
+            config=trace_config,
+            diagnostics=diagnostics,
+            messages=[{"role": "user", "content": "hello"}],
+        )
+        require(written, "trace record not written")
+        record = json.loads(trace_path.read_text(encoding="utf-8").strip().splitlines()[0])
+        metadata = record.get("metadata")
+        require(isinstance(metadata, dict), metadata)
+        require(metadata.get("token_policy_decision") == exceeded_decision.to_log_dict(), metadata)
+        print("ok token policy decision trace metadata")
 
     return 0
 
