@@ -42,6 +42,8 @@ def trace_runtime_event(
             trace_metadata["token_policy_decision"] = diagnostics.token_policy_decision
         if diagnostics.token_policy_readiness is not None:
             trace_metadata["token_policy_readiness"] = diagnostics.token_policy_readiness
+        if diagnostics.token_budget_truncation is not None:
+            trace_metadata["token_budget_truncation"] = diagnostics.token_budget_truncation
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,
