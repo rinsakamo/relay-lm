@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import sys
 import tempfile
@@ -42,6 +43,7 @@ def main() -> int:
         "stream": False,
     }
     compiled = compile_chat_payload_if_enabled(config=config, route=route, payload=payload)
+    baseline_messages = copy.deepcopy(compiled.payload.get("messages"))
     original_messages = compiled.payload.get("messages")
     require(isinstance(original_messages, list), compiled.payload)
     dry_run = _build_token_budget_truncation_dry_run(
@@ -53,7 +55,7 @@ def main() -> int:
     require(dry_run.get("apply_mode") == "dry_run", dry_run)
     require(dry_run.get("enforcement_enabled") is False, dry_run)
     require(dry_run.get("dropped_message_count", 0) >= 0, dry_run)
-    require(compiled.payload.get("messages") == original_messages, compiled.payload)
+    require(compiled.payload.get("messages") == baseline_messages, compiled.payload)
     print("ok truncation dry run default disabled keeps forwarding payload unchanged")
 
     cfg2 = base.model_dump()
@@ -64,6 +66,7 @@ def main() -> int:
     config_enabled = RelayLMConfig.model_validate(cfg2)
     route_enabled = resolve_route(config_enabled, "relaylm-default")
     compiled_enabled = compile_chat_payload_if_enabled(config=config_enabled, route=route_enabled, payload=payload)
+    baseline_messages_enabled = copy.deepcopy(compiled_enabled.payload.get("messages"))
     msgs_enabled = compiled_enabled.payload.get("messages")
     require(isinstance(msgs_enabled, list), compiled_enabled.payload)
     dry_run_enabled = _build_token_budget_truncation_dry_run(
@@ -76,7 +79,7 @@ def main() -> int:
     require(dry_run_enabled.get("dropped_message_count", 0) > 0, dry_run_enabled)
     require(dry_run_enabled.get("preserved_system") is True, dry_run_enabled)
     require(dry_run_enabled.get("preserved_latest_user") is True, dry_run_enabled)
-    require(compiled_enabled.payload.get("messages") == msgs_enabled, compiled_enabled.payload)
+    require(compiled_enabled.payload.get("messages") == baseline_messages_enabled, compiled_enabled.payload)
     print("ok truncation dry run enabled still keeps forwarding payload unchanged")
 
     with tempfile.TemporaryDirectory() as tmpdir:
