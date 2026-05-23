@@ -260,6 +260,8 @@ def build_token_policy_readiness_check(
         return TokenPolicyReadinessCheck(False, False, status, not enforcement_enabled)
     if not shadow_enabled:
         return TokenPolicyReadinessCheck(False, False, "shadow_disabled", not enforcement_enabled)
+    if status not in {"ready_within_budget", "would_exceed_budget"}:
+        return TokenPolicyReadinessCheck(False, False, f"unknown_status:{status}", not enforcement_enabled)
 
     return TokenPolicyReadinessCheck(
         ready_for_shadow_evaluation=True,

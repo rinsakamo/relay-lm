@@ -112,6 +112,25 @@ def main() -> int:
     require(invalid_readiness["blocked_reason"] == "invalid_signal", invalid_readiness)
     print("ok invalid signal runtime gate artifact")
 
+    # unknown status
+    unknown_decision = build_token_policy_decision_artifact(
+        {"status": "experimental_status"},
+        shadow_enabled=True,
+    ).to_log_dict()
+    require(unknown_decision["status"] == "invalid_signal", unknown_decision)
+    unknown_readiness = build_token_policy_readiness_check(
+        {
+            "status": "experimental_status",
+            "shadow_enabled": True,
+            "enforcement_enabled": False,
+        }
+    ).to_log_dict()
+    require(unknown_readiness["ready_for_shadow_evaluation"] is False, unknown_readiness)
+    require(unknown_readiness["ready_for_future_enforcement"] is False, unknown_readiness)
+    require(unknown_readiness["non_enforcing"] is True, unknown_readiness)
+    require(unknown_readiness["blocked_reason"] == "unknown_status:experimental_status", unknown_readiness)
+    print("ok unknown status runtime gate artifact")
+
     with tempfile.TemporaryDirectory() as tmpdir:
         trace_path = Path(tmpdir) / "trace.jsonl"
         trace_dict = cfg_shadow.model_dump()
