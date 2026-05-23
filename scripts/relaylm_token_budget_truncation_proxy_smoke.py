@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import json
-import socket
 import sys
 import tempfile
 import threading
@@ -68,12 +67,6 @@ def require(condition: bool, message: object) -> None:
         raise AssertionError(message)
 
 
-def _free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        s.listen(1)
-        return int(s.getsockname()[1])
-
 
 def _write_config(base_url: str, trunc_enabled: bool, token_budget: int, trace_path: Path) -> Path:
     base = load_config(REPO_ROOT / "config.example.yaml").model_dump()
@@ -127,8 +120,8 @@ def _assert_trace_applied(trace_path: Path, expected: bool) -> None:
 def main() -> int:
     capture = _Capture()
     _BackendHandler.capture = capture
-    port = _free_port()
-    server = ThreadingHTTPServer(("127.0.0.1", port), _BackendHandler)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _BackendHandler)
+    port = int(server.server_address[1])
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
