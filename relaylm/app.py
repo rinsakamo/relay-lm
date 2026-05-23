@@ -159,9 +159,9 @@ def create_app(config_path: str | None = None) -> FastAPI:
             shadow_source=shadow_source,
         )
         token_policy_readiness = build_token_policy_readiness_check(token_policy_decision)
-        token_budget_truncation = _build_token_budget_truncation_dry_run(
+        forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
             config=config,
-            forwarded_messages=_extract_trace_messages(compiled_request.payload),
+            payload=compiled_request.payload,
         )
 
         diagnostics = RequestDiagnostics(
@@ -195,7 +195,6 @@ def create_app(config_path: str | None = None) -> FastAPI:
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
         )
-        forwarded_payload = compiled_request.payload
 
         if stream_enabled:
             try:
@@ -295,6 +294,48 @@ def _resolve_token_policy_shadow_setting(
     if character.token_policy_shadow_enabled is None:
         return config.memory.token_policy_shadow_enabled, "global"
     return character.token_policy_shadow_enabled, "character"
+
+
+def _maybe_apply_token_budget_truncation(
+    *,
+    config: RelayLMConfig,
+    payload: Mapping[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    forwarded_payload = dict(payload)
+    forwarded_messages = _extract_trace_messages(payload)
+    result = _build_token_budget_truncation_dry_run(
+        config=config,
+        forwarded_messages=forwarded_messages,
+    )
+    if result is None:
+        return forwarded_payload, None
+
+    if not config.memory.token_budget_truncation_enabled:
+        return forwarded_payload, result
+
+    blocked_reason = result.get("blocked_reason")
+    over_after = result.get("over_budget_after") is True
+    dropped_message_count = result.get("dropped_message_count")
+    truncated_messages = result.get("truncated_messages")
+    if (
+        blocked_reason
+        or over_after
+        or not isinstance(truncated_messages, list)
+        or not isinstance(dropped_message_count, int)
+        or dropped_message_count <= 0
+    ):
+        result["applied"] = False
+        result["apply_mode"] = "runtime_apply"
+        return forwarded_payload, result
+
+    original_messages = payload.get("messages")
+    if not isinstance(original_messages, list):
+        return forwarded_payload, result
+
+    forwarded_payload["messages"] = [m for m in truncated_messages if isinstance(m, dict)]
+    result["applied"] = True
+    result["apply_mode"] = "runtime_apply"
+    return forwarded_payload, result
 
 
 def _build_token_budget_truncation_dry_run(
