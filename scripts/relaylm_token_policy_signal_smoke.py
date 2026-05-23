@@ -32,6 +32,7 @@ def main() -> int:
     require(within_decision.action == "none", within_decision)
     require(within_decision.policy_mode == "disabled", within_decision)
     require(within_decision.shadow_enabled is False, within_decision)
+    require(within_decision.shadow_source == "global", within_decision)
     require(within_decision.enforcement_enabled is False, within_decision)
     print("ok token policy decision within budget")
 
@@ -54,8 +55,24 @@ def main() -> int:
     require(shadow_enabled_decision.action == "would_fallback", shadow_enabled_decision)
     require(shadow_enabled_decision.policy_mode == "shadow", shadow_enabled_decision)
     require(shadow_enabled_decision.shadow_enabled is True, shadow_enabled_decision)
+    require(shadow_enabled_decision.shadow_source == "global", shadow_enabled_decision)
     require(shadow_enabled_decision.enforcement_enabled is False, shadow_enabled_decision)
     print("ok token policy decision shadow gate enabled")
+
+    global_true_decision = build_token_policy_decision_artifact(within_signal, shadow_enabled=True)
+    require(global_true_decision.status == "ready_within_budget", global_true_decision)
+    require(global_true_decision.action == "shadow_only", global_true_decision)
+    print("ok token policy decision global true")
+
+    character_override_false = build_token_policy_decision_artifact(
+        exceeded_signal,
+        shadow_enabled=False,
+        shadow_source="character",
+    )
+    require(character_override_false.status == "would_exceed_budget", character_override_false)
+    require(character_override_false.action == "none", character_override_false)
+    require(character_override_false.shadow_source == "character", character_override_false)
+    print("ok token policy decision character override false")
 
     config = load_config(REPO_ROOT / "config.example.yaml")
     route = resolve_route(config, "relaylm-default")
