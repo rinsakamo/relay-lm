@@ -26,6 +26,9 @@ class TokenPolicySignal:
 class TokenPolicyDecisionArtifact:
     status: str
     action: str
+    policy_mode: str
+    shadow_enabled: bool
+    enforcement_enabled: bool
     signal_status: str | None
     token_budget: int | None
     estimated_tokens: int | None
@@ -35,6 +38,9 @@ class TokenPolicyDecisionArtifact:
         return {
             "status": self.status,
             "action": self.action,
+            "policy_mode": self.policy_mode,
+            "shadow_enabled": self.shadow_enabled,
+            "enforcement_enabled": self.enforcement_enabled,
             "signal_status": self.signal_status,
             "token_budget": self.token_budget,
             "estimated_tokens": self.estimated_tokens,
@@ -88,11 +94,17 @@ def build_token_policy_signal(token_memory_dry_run: dict[str, Any] | None) -> To
 
 def build_token_policy_decision_artifact(
     token_policy_signal: dict[str, Any] | TokenPolicySignal | None,
+    *,
+    shadow_enabled: bool = False,
 ) -> TokenPolicyDecisionArtifact:
+    policy_mode = "shadow" if shadow_enabled else "disabled"
     if token_policy_signal is None:
         return TokenPolicyDecisionArtifact(
             status="missing_signal",
             action="none",
+            policy_mode=policy_mode,
+            shadow_enabled=shadow_enabled,
+            enforcement_enabled=False,
             signal_status=None,
             token_budget=None,
             estimated_tokens=None,
@@ -107,6 +119,9 @@ def build_token_policy_decision_artifact(
         return TokenPolicyDecisionArtifact(
             status="invalid_signal",
             action="none",
+            policy_mode=policy_mode,
+            shadow_enabled=shadow_enabled,
+            enforcement_enabled=False,
             signal_status=None,
             token_budget=None,
             estimated_tokens=None,
@@ -122,6 +137,9 @@ def build_token_policy_decision_artifact(
         return TokenPolicyDecisionArtifact(
             status="invalid_signal",
             action="none",
+            policy_mode=policy_mode,
+            shadow_enabled=shadow_enabled,
+            enforcement_enabled=False,
             signal_status=None,
             token_budget=None,
             estimated_tokens=None,
@@ -131,7 +149,10 @@ def build_token_policy_decision_artifact(
     if signal_status == "within_budget":
         return TokenPolicyDecisionArtifact(
             status="ready_within_budget",
-            action="shadow_only",
+            action="shadow_only" if shadow_enabled else "none",
+            policy_mode=policy_mode,
+            shadow_enabled=shadow_enabled,
+            enforcement_enabled=False,
             signal_status=signal_status,
             token_budget=token_budget if isinstance(token_budget, int) else None,
             estimated_tokens=estimated_tokens if isinstance(estimated_tokens, int) else None,
@@ -141,7 +162,10 @@ def build_token_policy_decision_artifact(
     if signal_status == "budget_exceeded":
         return TokenPolicyDecisionArtifact(
             status="would_exceed_budget",
-            action="would_fallback",
+            action="would_fallback" if shadow_enabled else "none",
+            policy_mode=policy_mode,
+            shadow_enabled=shadow_enabled,
+            enforcement_enabled=False,
             signal_status=signal_status,
             token_budget=token_budget if isinstance(token_budget, int) else None,
             estimated_tokens=estimated_tokens if isinstance(estimated_tokens, int) else None,
@@ -152,6 +176,9 @@ def build_token_policy_decision_artifact(
         return TokenPolicyDecisionArtifact(
             status="missing_signal",
             action="none",
+            policy_mode=policy_mode,
+            shadow_enabled=shadow_enabled,
+            enforcement_enabled=False,
             signal_status=signal_status,
             token_budget=token_budget if isinstance(token_budget, int) else None,
             estimated_tokens=estimated_tokens if isinstance(estimated_tokens, int) else None,
@@ -161,6 +188,9 @@ def build_token_policy_decision_artifact(
     return TokenPolicyDecisionArtifact(
         status="invalid_signal",
         action="none",
+        policy_mode=policy_mode,
+        shadow_enabled=shadow_enabled,
+        enforcement_enabled=False,
         signal_status=signal_status,
         token_budget=token_budget if isinstance(token_budget, int) else None,
         estimated_tokens=estimated_tokens if isinstance(estimated_tokens, int) else None,

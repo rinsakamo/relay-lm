@@ -149,7 +149,10 @@ def create_app(config_path: str | None = None) -> FastAPI:
             payload=payload,
         )
         token_policy_signal = build_token_policy_signal(compiled_request.token_memory_dry_run)
-        token_policy_decision = build_token_policy_decision_artifact(token_policy_signal)
+        token_policy_decision = build_token_policy_decision_artifact(
+            token_policy_signal,
+            shadow_enabled=config.memory.token_policy_shadow_enabled,
+        )
 
         diagnostics = RequestDiagnostics(
             request_id=request_id,

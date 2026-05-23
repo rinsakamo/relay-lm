@@ -29,13 +29,16 @@ def main() -> int:
     within_signal = build_token_policy_signal({"assembly": {"token_budget": 100, "estimated_tokens": 80}})
     within_decision = build_token_policy_decision_artifact(within_signal)
     require(within_decision.status == "ready_within_budget", within_decision)
-    require(within_decision.action == "shadow_only", within_decision)
+    require(within_decision.action == "none", within_decision)
+    require(within_decision.policy_mode == "disabled", within_decision)
+    require(within_decision.shadow_enabled is False, within_decision)
+    require(within_decision.enforcement_enabled is False, within_decision)
     print("ok token policy decision within budget")
 
     exceeded_signal = build_token_policy_signal({"assembly": {"token_budget": 100, "estimated_tokens": 130}})
     exceeded_decision = build_token_policy_decision_artifact(exceeded_signal)
     require(exceeded_decision.status == "would_exceed_budget", exceeded_decision)
-    require(exceeded_decision.action == "would_fallback", exceeded_decision)
+    require(exceeded_decision.action == "none", exceeded_decision)
     print("ok token policy decision would exceed budget")
 
     missing_decision = build_token_policy_decision_artifact(None)
@@ -45,6 +48,14 @@ def main() -> int:
     invalid_decision = build_token_policy_decision_artifact({"status": 123})
     require(invalid_decision.status == "invalid_signal", invalid_decision)
     print("ok token policy decision invalid signal")
+
+    shadow_enabled_decision = build_token_policy_decision_artifact(exceeded_signal, shadow_enabled=True)
+    require(shadow_enabled_decision.status == "would_exceed_budget", shadow_enabled_decision)
+    require(shadow_enabled_decision.action == "would_fallback", shadow_enabled_decision)
+    require(shadow_enabled_decision.policy_mode == "shadow", shadow_enabled_decision)
+    require(shadow_enabled_decision.shadow_enabled is True, shadow_enabled_decision)
+    require(shadow_enabled_decision.enforcement_enabled is False, shadow_enabled_decision)
+    print("ok token policy decision shadow gate enabled")
 
     config = load_config(REPO_ROOT / "config.example.yaml")
     route = resolve_route(config, "relaylm-default")
@@ -63,12 +74,13 @@ def main() -> int:
         base = load_config(REPO_ROOT / "config.example.yaml")
         config_dict = base.model_dump()
         config_dict["trace"] = {"enabled": True, "path": str(trace_path)}
+        config_dict["memory"]["token_policy_shadow_enabled"] = True
         trace_config = RelayLMConfig.model_validate(config_dict)
 
         diagnostics = RequestDiagnostics(
             request_id="req-token-policy-decision",
             token_policy_signal=exceeded_signal.to_log_dict(),
-            token_policy_decision=exceeded_decision.to_log_dict(),
+            token_policy_decision=shadow_enabled_decision.to_log_dict(),
         )
         written = trace_runtime_event(
             config=trace_config,
@@ -79,7 +91,7 @@ def main() -> int:
         record = json.loads(trace_path.read_text(encoding="utf-8").strip().splitlines()[0])
         metadata = record.get("metadata")
         require(isinstance(metadata, dict), metadata)
-        require(metadata.get("token_policy_decision") == exceeded_decision.to_log_dict(), metadata)
+        require(metadata.get("token_policy_decision") == shadow_enabled_decision.to_log_dict(), metadata)
         print("ok token policy decision trace metadata")
 
     return 0
