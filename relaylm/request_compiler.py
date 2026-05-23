@@ -14,7 +14,7 @@ from relaylm.config import RelayLMConfig
 from relaylm.memory_candidate import MemoryBlockAssembly, MemorySelectionSummary
 from relaylm.memory_context import MemoryConfigurationError, insert_memory_block
 from relaylm.memory_selection import ConfiguredMemorySelection, build_configured_candidate_memory_selection
-from relaylm.memory_token_dry_run import ConfiguredTokenMemoryDryRun, build_configured_token_memory_dry_run
+from relaylm.memory_token_dry_run import ConfiguredTokenMemoryDryRun, build_token_memory_dry_run_from_selected
 from relaylm.profile import build_profile_blocks, resolve_profile_files
 from relaylm.profile_plan import ProfileCompilePlan, build_profile_compile_plan
 from relaylm.routing import ResolvedRoute
@@ -88,7 +88,10 @@ def compile_chat_payload_if_enabled(
         config=config,
         route=route,
     )
-    token_dry_run = _resolve_token_memory_dry_run_best_effort(config=config, route=route)
+    token_dry_run = _resolve_token_memory_dry_run_best_effort(
+        config=config,
+        memory_selection=memory_selection,
+    )
     memory_block = memory_selection.block
     blocks = insert_memory_block(
         profile_blocks=profile_blocks,
@@ -132,9 +135,17 @@ def _resolve_memory_selection_best_effort(
         return ConfiguredMemorySelection(block=None, summary=None), f"memory_seed_load_error:{exc.__class__.__name__}"
 
 
-def _resolve_token_memory_dry_run_best_effort(*, config: RelayLMConfig, route: ResolvedRoute) -> ConfiguredTokenMemoryDryRun:
+def _resolve_token_memory_dry_run_best_effort(
+    *,
+    config: RelayLMConfig,
+    memory_selection: ConfiguredMemorySelection,
+) -> ConfiguredTokenMemoryDryRun:
     try:
-        return build_configured_token_memory_dry_run(config=config, route=route)
+        return build_token_memory_dry_run_from_selected(
+            config=config,
+            selected=memory_selection.selected,
+            summary=memory_selection.summary,
+        )
     except MemoryConfigurationError:
         raise
     except (FileNotFoundError, OSError, ValueError, TypeError, yaml.YAMLError, json.JSONDecodeError):
