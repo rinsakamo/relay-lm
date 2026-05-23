@@ -81,6 +81,33 @@ def main() -> int:
     require(payload == baseline_over, payload)
     print("ok truncation apply enabled over budget shortens forwarding messages")
 
+
+    malformed_payload = {
+        "model": "relaylm-default",
+        "messages": [
+            {"role": "system", "content": "system"},
+            "not-a-dict-message",
+            {"role": "user", "content": "latest user"},
+        ],
+        "stream": False,
+    }
+    malformed_baseline = copy.deepcopy(malformed_payload)
+    cfg_malformed = base.model_dump()
+    cfg_malformed["memory"]["token_budget"] = 5000
+    cfg_malformed["memory"]["chars_per_token"] = 4
+    cfg_malformed["memory"]["token_budget_truncation_enabled"] = True
+    config_malformed = RelayLMConfig.model_validate(cfg_malformed)
+    forwarded_malformed, result_malformed = _maybe_apply_token_budget_truncation(
+        config=config_malformed,
+        payload=malformed_payload,
+    )
+    require(result_malformed is not None and result_malformed.get("applied") is False, result_malformed)
+    require(result_malformed.get("dropped_message_count") == 0, result_malformed)
+    require(forwarded_malformed.get("messages") == malformed_baseline["messages"], forwarded_malformed)
+    require(forwarded_malformed.get("messages")[1] == "not-a-dict-message", forwarded_malformed)
+    require(malformed_payload == malformed_baseline, malformed_payload)
+    print("ok truncation apply malformed non-dict within budget keeps forwarding payload unchanged")
+
     blocked_payload = {
         "model": "relaylm-default",
         "messages": [

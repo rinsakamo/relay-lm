@@ -315,19 +315,21 @@ def _maybe_apply_token_budget_truncation(
 
     blocked_reason = result.get("blocked_reason")
     over_after = result.get("over_budget_after") is True
+    dropped_message_count = result.get("dropped_message_count")
     truncated_messages = result.get("truncated_messages")
-    if blocked_reason or over_after or not isinstance(truncated_messages, list):
+    if (
+        blocked_reason
+        or over_after
+        or not isinstance(truncated_messages, list)
+        or not isinstance(dropped_message_count, int)
+        or dropped_message_count <= 0
+    ):
         result["applied"] = False
         result["apply_mode"] = "runtime_apply"
         return forwarded_payload, result
 
     original_messages = payload.get("messages")
     if not isinstance(original_messages, list):
-        return forwarded_payload, result
-
-    if truncated_messages == original_messages:
-        result["applied"] = False
-        result["apply_mode"] = "runtime_apply"
         return forwarded_payload, result
 
     forwarded_payload["messages"] = [m for m in truncated_messages if isinstance(m, dict)]
