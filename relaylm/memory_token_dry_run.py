@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from relaylm.config import RelayLMConfig
 from relaylm.memory_candidate import (
+    MemoryCandidate,
     MemorySelectionSummary,
     load_seed_memory_candidates,
     select_memory_candidates,
@@ -27,6 +28,24 @@ class ConfiguredTokenMemoryDryRun:
             "assembly": self.assembly.to_log_dict() if self.assembly is not None else None,
         }
 
+
+
+
+def build_token_memory_dry_run_from_selected(
+    *,
+    config: RelayLMConfig,
+    selected: list[MemoryCandidate] | None,
+    summary: MemorySelectionSummary | None,
+) -> ConfiguredTokenMemoryDryRun:
+    if selected is None or summary is None:
+        return ConfiguredTokenMemoryDryRun(summary=None, assembly=None)
+    assembly = assemble_token_budget_memory_block(
+        selected,
+        token_budget_hint=config.memory.token_budget_hint,
+        token_budget=config.memory.token_budget,
+        chars_per_token=config.memory.chars_per_token,
+    )
+    return ConfiguredTokenMemoryDryRun(summary=summary, assembly=assembly)
 
 def build_configured_token_memory_dry_run(
     *,
@@ -55,10 +74,8 @@ def build_configured_token_memory_dry_run(
         limit=config.memory.candidate_limit,
         selected=selected,
     )
-    assembly = assemble_token_budget_memory_block(
-        selected,
-        token_budget_hint=config.memory.token_budget_hint,
-        token_budget=config.memory.token_budget,
-        chars_per_token=config.memory.chars_per_token,
+    return build_token_memory_dry_run_from_selected(
+        config=config,
+        selected=selected,
+        summary=summary,
     )
-    return ConfiguredTokenMemoryDryRun(summary=summary, assembly=assembly)
