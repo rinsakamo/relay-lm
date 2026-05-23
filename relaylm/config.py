@@ -35,7 +35,7 @@ class MemorySelectionConfig(BaseModel):
     candidate_limit: int = 3
     token_budget_hint: int = 800
     character_budget: int | None = None
-    token_budget: int | None = None
+    token_budget: int | None = Field(default=None, gt=0)
     chars_per_token: int = Field(default=4, gt=0)
 
 

@@ -90,6 +90,19 @@ def main() -> int:
         require(no_seed.assembly is None, no_seed)
         print("ok configured token memory dry run no seed")
 
+
+    invalid_budget = config.model_dump()
+    invalid_budget.setdefault("memory", {})["token_budget"] = 0
+    try:
+        RelayLMConfig.model_validate(invalid_budget)
+    except Exception as exc:
+        text = str(exc)
+        require("token_budget" in text, text)
+        require("greater than" in text or "gt" in text, text)
+        print("ok invalid token_budget config rejected")
+    else:
+        raise AssertionError("expected token_budget validation error")
+
     invalid = config.model_dump()
     invalid.setdefault("memory", {})["chars_per_token"] = 0
     try:
