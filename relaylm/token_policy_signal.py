@@ -50,6 +50,22 @@ class TokenPolicyDecisionArtifact:
         }
 
 
+@dataclass(frozen=True)
+class TokenPolicyReadinessCheck:
+    ready_for_shadow_evaluation: bool
+    ready_for_future_enforcement: bool
+    blocked_reason: str | None
+    non_enforcing: bool
+
+    def to_log_dict(self) -> dict[str, Any]:
+        return {
+            "ready_for_shadow_evaluation": self.ready_for_shadow_evaluation,
+            "ready_for_future_enforcement": self.ready_for_future_enforcement,
+            "blocked_reason": self.blocked_reason,
+            "non_enforcing": self.non_enforcing,
+        }
+
+
 def build_token_policy_signal(token_memory_dry_run: dict[str, Any] | None) -> TokenPolicySignal:
     if token_memory_dry_run is None:
         return TokenPolicySignal(
@@ -205,4 +221,49 @@ def build_token_policy_decision_artifact(
         token_budget=token_budget if isinstance(token_budget, int) else None,
         estimated_tokens=estimated_tokens if isinstance(estimated_tokens, int) else None,
         over_budget_by=over_budget_by if isinstance(over_budget_by, int) else None,
+    )
+
+
+def build_token_policy_readiness_check(
+    token_policy_decision: dict[str, Any] | TokenPolicyDecisionArtifact | None,
+) -> TokenPolicyReadinessCheck:
+    if token_policy_decision is None:
+        return TokenPolicyReadinessCheck(
+            ready_for_shadow_evaluation=False,
+            ready_for_future_enforcement=False,
+            blocked_reason="missing_decision",
+            non_enforcing=True,
+        )
+    if isinstance(token_policy_decision, TokenPolicyDecisionArtifact):
+        decision_dict = token_policy_decision.to_log_dict()
+    elif isinstance(token_policy_decision, dict):
+        decision_dict = token_policy_decision
+    else:
+        return TokenPolicyReadinessCheck(
+            ready_for_shadow_evaluation=False,
+            ready_for_future_enforcement=False,
+            blocked_reason="invalid_decision",
+            non_enforcing=True,
+        )
+
+    status = decision_dict.get("status")
+    shadow_enabled = decision_dict.get("shadow_enabled")
+    enforcement_enabled = decision_dict.get("enforcement_enabled")
+    if not isinstance(status, str):
+        return TokenPolicyReadinessCheck(False, False, "invalid_status", True)
+    if not isinstance(shadow_enabled, bool):
+        return TokenPolicyReadinessCheck(False, False, "invalid_shadow_enabled", True)
+    if not isinstance(enforcement_enabled, bool):
+        return TokenPolicyReadinessCheck(False, False, "invalid_enforcement_enabled", True)
+
+    if status in {"missing_signal", "invalid_signal"}:
+        return TokenPolicyReadinessCheck(False, False, status, not enforcement_enabled)
+    if not shadow_enabled:
+        return TokenPolicyReadinessCheck(False, False, "shadow_disabled", not enforcement_enabled)
+
+    return TokenPolicyReadinessCheck(
+        ready_for_shadow_evaluation=True,
+        ready_for_future_enforcement=False,
+        blocked_reason=None,
+        non_enforcing=not enforcement_enabled,
     )

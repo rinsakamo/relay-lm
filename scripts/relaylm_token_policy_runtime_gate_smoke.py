@@ -16,6 +16,7 @@ from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.routing import resolve_route
 from relaylm.token_policy_signal import (
     build_token_policy_decision_artifact,
+    build_token_policy_readiness_check,
     build_token_policy_signal,
 )
 from relaylm.trace_runtime import trace_runtime_event
@@ -54,6 +55,8 @@ def main() -> int:
     require(disabled_decision["policy_mode"] == "disabled", disabled_decision)
     require(disabled_decision["action"] == "none", disabled_decision)
     require(disabled_decision["enforcement_enabled"] is False, disabled_decision)
+    disabled_readiness = build_token_policy_readiness_check(disabled_decision).to_log_dict()
+    require(disabled_readiness["ready_for_shadow_evaluation"] is False, disabled_readiness)
     print("ok shadow disabled within budget runtime gate artifact")
 
     # shadow enabled + within budget
@@ -72,6 +75,8 @@ def main() -> int:
     require(within_shadow_decision["shadow_enabled"] is True, within_shadow_decision)
     require(within_shadow_decision["shadow_source"] == "global", within_shadow_decision)
     require(within_shadow_decision["enforcement_enabled"] is False, within_shadow_decision)
+    within_shadow_readiness = build_token_policy_readiness_check(within_shadow_decision).to_log_dict()
+    require(within_shadow_readiness["ready_for_shadow_evaluation"] is True, within_shadow_readiness)
     print("ok shadow enabled within budget runtime gate artifact")
 
     # shadow enabled + budget exceeded
@@ -84,6 +89,8 @@ def main() -> int:
     require(exceeded_decision["status"] == "would_exceed_budget", exceeded_decision)
     require(exceeded_decision["action"] == "would_fallback", exceeded_decision)
     require(exceeded_decision["enforcement_enabled"] is False, exceeded_decision)
+    exceeded_readiness = build_token_policy_readiness_check(exceeded_decision).to_log_dict()
+    require(exceeded_readiness["ready_for_shadow_evaluation"] is True, exceeded_readiness)
     print("ok shadow enabled budget exceeded runtime gate artifact")
 
     # missing signal
@@ -91,12 +98,18 @@ def main() -> int:
     require(missing_decision["status"] == "missing_signal", missing_decision)
     require(missing_decision["action"] == "none", missing_decision)
     require(missing_decision["enforcement_enabled"] is False, missing_decision)
+    missing_readiness = build_token_policy_readiness_check(missing_decision).to_log_dict()
+    require(missing_readiness["ready_for_shadow_evaluation"] is False, missing_readiness)
+    require(missing_readiness["blocked_reason"] == "missing_signal", missing_readiness)
     print("ok missing signal runtime gate artifact")
 
     # invalid signal
     invalid_decision = build_token_policy_decision_artifact({"status": 999}, shadow_enabled=True).to_log_dict()
     require(invalid_decision["status"] == "invalid_signal", invalid_decision)
     require(invalid_decision["enforcement_enabled"] is False, invalid_decision)
+    invalid_readiness = build_token_policy_readiness_check(invalid_decision).to_log_dict()
+    require(invalid_readiness["ready_for_shadow_evaluation"] is False, invalid_readiness)
+    require(invalid_readiness["blocked_reason"] == "invalid_signal", invalid_readiness)
     print("ok invalid signal runtime gate artifact")
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -110,8 +123,13 @@ def main() -> int:
             route_model="relaylm-default",
             token_policy_signal=signal_dict,
             token_policy_decision=decision_dict,
+            token_policy_readiness=build_token_policy_readiness_check(decision_dict).to_log_dict(),
         )
         require(diagnostics.to_log_dict()["token_policy_decision"] == decision_dict, diagnostics)
+        require(
+            isinstance(diagnostics.to_log_dict().get("token_policy_readiness"), dict),
+            diagnostics.to_log_dict(),
+        )
         written = trace_runtime_event(
             config=trace_cfg,
             diagnostics=diagnostics,
@@ -122,6 +140,7 @@ def main() -> int:
         metadata = record.get("metadata")
         require(isinstance(metadata, dict), metadata)
         require(metadata.get("token_policy_decision") == decision_dict, metadata)
+        require(isinstance(metadata.get("token_policy_readiness"), dict), metadata)
         print("ok runtime gate diagnostics and trace decision artifact")
 
     print("ok runtime gate would_fallback remains non-enforcing")
