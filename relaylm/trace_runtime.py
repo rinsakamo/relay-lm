@@ -34,6 +34,8 @@ def trace_runtime_event(
             trace_metadata["memory_selection_summary"] = diagnostics.memory_selection_summary
         if diagnostics.memory_block_assembly is not None:
             trace_metadata["memory_block_assembly"] = diagnostics.memory_block_assembly
+        if diagnostics.token_memory_dry_run is not None:
+            trace_metadata["token_memory_dry_run"] = diagnostics.token_memory_dry_run
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,
