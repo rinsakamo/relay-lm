@@ -14,6 +14,10 @@ memory:
   candidate_limit: 3
   token_budget_hint: 800
   character_budget: 1200
+  # Global shadow policy switch for token-policy diagnostics.
+  # false keeps policy_mode=disabled unless a character override enables shadow mode.
+  token_policy_shadow_enabled: false
+  # Hard enforcement is not implemented yet. Token policy remains diagnostics/trace only.
 
 backends:
   local_backend:
@@ -37,3 +41,19 @@ characters:
     output_policy: examples/profiles/default/style.md
     room_anchor: examples/profiles/default/ROOM_ANCHOR.md
     memory_seed_path: examples/memory/default_memories.yaml
+    # unset -> falls back to memory.token_policy_shadow_enabled
+    # token_policy_shadow_enabled:
+  # Example override: enable shadow policy for one character even when global=false.
+  # vtuber_a:
+  #   soul: examples/profiles/default/SOUL.md
+  #   output_policy: examples/profiles/default/style.md
+  #   room_anchor: examples/profiles/default/ROOM_ANCHOR.md
+  #   memory_seed_path: examples/memory/default_memories.yaml
+  #   token_policy_shadow_enabled: true
+  # Example override: disable shadow policy for one character even when global=true.
+  # vtuber_b:
+  #   soul: examples/profiles/default/SOUL.md
+  #   output_policy: examples/profiles/default/style.md
+  #   room_anchor: examples/profiles/default/ROOM_ANCHOR.md
+  #   memory_seed_path: examples/memory/default_memories.yaml
+  #   token_policy_shadow_enabled: false
