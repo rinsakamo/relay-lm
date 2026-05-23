@@ -36,6 +36,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [Open-LLM-VTuber integration](docs/open_llm_vtuber_integration.md)
 - [Runtime architecture](docs/runtime_architecture.md)
 - [Config schema](docs/config_schema.md)
+- [Token policy profile settings](docs/token_policy_profiles.md)
 - [Context compiler contract](docs/context_compiler_contract.md)
 - [Product runtime hardening](docs/product_runtime_hardening.md)
 - [MVP-0 pass-through proxy](docs/mvp0_pass_through_proxy.md)
