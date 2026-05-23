@@ -28,6 +28,7 @@ class TokenPolicyDecisionArtifact:
     action: str
     policy_mode: str
     shadow_enabled: bool
+    shadow_source: str
     enforcement_enabled: bool
     signal_status: str | None
     token_budget: int | None
@@ -40,6 +41,7 @@ class TokenPolicyDecisionArtifact:
             "action": self.action,
             "policy_mode": self.policy_mode,
             "shadow_enabled": self.shadow_enabled,
+            "shadow_source": self.shadow_source,
             "enforcement_enabled": self.enforcement_enabled,
             "signal_status": self.signal_status,
             "token_budget": self.token_budget,
@@ -96,6 +98,7 @@ def build_token_policy_decision_artifact(
     token_policy_signal: dict[str, Any] | TokenPolicySignal | None,
     *,
     shadow_enabled: bool = False,
+    shadow_source: str = "global",
 ) -> TokenPolicyDecisionArtifact:
     policy_mode = "shadow" if shadow_enabled else "disabled"
     if token_policy_signal is None:
@@ -104,6 +107,7 @@ def build_token_policy_decision_artifact(
             action="none",
             policy_mode=policy_mode,
             shadow_enabled=shadow_enabled,
+            shadow_source=shadow_source,
             enforcement_enabled=False,
             signal_status=None,
             token_budget=None,
@@ -121,6 +125,7 @@ def build_token_policy_decision_artifact(
             action="none",
             policy_mode=policy_mode,
             shadow_enabled=shadow_enabled,
+            shadow_source=shadow_source,
             enforcement_enabled=False,
             signal_status=None,
             token_budget=None,
@@ -139,6 +144,7 @@ def build_token_policy_decision_artifact(
             action="none",
             policy_mode=policy_mode,
             shadow_enabled=shadow_enabled,
+            shadow_source=shadow_source,
             enforcement_enabled=False,
             signal_status=None,
             token_budget=None,
@@ -152,6 +158,7 @@ def build_token_policy_decision_artifact(
             action="shadow_only" if shadow_enabled else "none",
             policy_mode=policy_mode,
             shadow_enabled=shadow_enabled,
+            shadow_source=shadow_source,
             enforcement_enabled=False,
             signal_status=signal_status,
             token_budget=token_budget if isinstance(token_budget, int) else None,
@@ -165,6 +172,7 @@ def build_token_policy_decision_artifact(
             action="would_fallback" if shadow_enabled else "none",
             policy_mode=policy_mode,
             shadow_enabled=shadow_enabled,
+            shadow_source=shadow_source,
             enforcement_enabled=False,
             signal_status=signal_status,
             token_budget=token_budget if isinstance(token_budget, int) else None,
@@ -178,6 +186,7 @@ def build_token_policy_decision_artifact(
             action="none",
             policy_mode=policy_mode,
             shadow_enabled=shadow_enabled,
+            shadow_source=shadow_source,
             enforcement_enabled=False,
             signal_status=signal_status,
             token_budget=token_budget if isinstance(token_budget, int) else None,
@@ -190,6 +199,7 @@ def build_token_policy_decision_artifact(
         action="none",
         policy_mode=policy_mode,
         shadow_enabled=shadow_enabled,
+        shadow_source=shadow_source,
         enforcement_enabled=False,
         signal_status=signal_status,
         token_budget=token_budget if isinstance(token_budget, int) else None,

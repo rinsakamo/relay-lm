@@ -46,6 +46,7 @@ class CharacterConfig(BaseModel):
     output_policy: str
     room_anchor: str
     memory_seed_path: str | None = None
+    token_policy_shadow_enabled: bool | None = None
 
 
 class ModelRoute(BaseModel):

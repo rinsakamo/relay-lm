@@ -22,6 +22,7 @@ from relaylm.config import RelayLMConfig, load_config
 from relaylm.diagnostics import RequestDiagnostics
 from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.routing import (
+    ResolvedRoute,
     RouteConfigurationError,
     RouteNotFoundError,
     list_model_ids,
@@ -148,10 +149,12 @@ def create_app(config_path: str | None = None) -> FastAPI:
             route=route,
             payload=payload,
         )
+        effective_shadow_enabled, shadow_source = _resolve_token_policy_shadow_setting(config, route)
         token_policy_signal = build_token_policy_signal(compiled_request.token_memory_dry_run)
         token_policy_decision = build_token_policy_decision_artifact(
             token_policy_signal,
-            shadow_enabled=config.memory.token_policy_shadow_enabled,
+            shadow_enabled=effective_shadow_enabled,
+            shadow_source=shadow_source,
         )
 
         diagnostics = RequestDiagnostics(
@@ -269,6 +272,20 @@ def _extract_trace_messages(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(raw_messages, list):
         return []
     return [message for message in raw_messages if isinstance(message, dict)]
+
+
+def _resolve_token_policy_shadow_setting(
+    config: RelayLMConfig,
+    route: ResolvedRoute,
+) -> tuple[bool, str]:
+    if route.character_id is None:
+        return config.memory.token_policy_shadow_enabled, "global"
+    character = config.characters.get(route.character_id)
+    if character is None:
+        return config.memory.token_policy_shadow_enabled, "global"
+    if character.token_policy_shadow_enabled is None:
+        return config.memory.token_policy_shadow_enabled, "global"
+    return character.token_policy_shadow_enabled, "character"
 
 
 def main() -> None:
