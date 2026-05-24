@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import hashlib
+import json
 from enum import Enum
 from typing import Any
 
@@ -88,13 +89,23 @@ def build_stable_prefix_hash_diagnostics(
     if not prefix_blocks:
         return None, None
 
-    parts: list[str] = []
-    block_ids: list[str] = []
-    for block in prefix_blocks:
-        block_ids.append(block.block_id)
-        parts.append(f"{block.block_type.value}\n{block.content}")
-
-    digest = hashlib.sha256("\n\n".join(parts).encode("utf-8")).hexdigest()
+    block_ids = [block.block_id for block in prefix_blocks]
+    payload = [
+        {
+            "block_id": block.block_id,
+            "block_type": block.block_type.value,
+            "stability_class": block.stability_class.value,
+            "content": block.content,
+        }
+        for block in prefix_blocks
+    ]
+    encoded = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
     return digest, block_ids
 
 def compile_profile_system_message(blocks: list[ContextBlock]) -> dict[str, str]:

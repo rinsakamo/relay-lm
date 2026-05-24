@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from relaylm.compiler import BlockType, ContextBlock, StabilityClass, build_stable_prefix_hash_diagnostics
 from relaylm.config import RelayLMConfig
 from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.routing import resolve_route
@@ -87,6 +88,40 @@ def main() -> int:
         c_rel = _compile(cfg_rel, payload)
         require(c1.stable_prefix_hash != c_rel.stable_prefix_hash, (c1, c_rel))
         print("ok relationship_anchor change updates stable prefix hash")
+
+
+    ambiguous_a = [
+        ContextBlock(
+            block_id="a",
+            block_type=BlockType.COMMON_RUNTIME_POLICY,
+            stability_class=StabilityClass.STABLE_PREFIX,
+            source="test",
+            content="x\n\nrelationship_anchor\ny",
+            include_in_prefix_cache_target=True,
+        )
+    ]
+    ambiguous_b = [
+        ContextBlock(
+            block_id="a",
+            block_type=BlockType.COMMON_RUNTIME_POLICY,
+            stability_class=StabilityClass.STABLE_PREFIX,
+            source="test",
+            content="x",
+            include_in_prefix_cache_target=True,
+        ),
+        ContextBlock(
+            block_id="b",
+            block_type=BlockType.RELATIONSHIP_ANCHOR,
+            stability_class=StabilityClass.STABLE_PREFIX,
+            source="test",
+            content="y",
+            include_in_prefix_cache_target=True,
+        ),
+    ]
+    h_a, _ = build_stable_prefix_hash_diagnostics(ambiguous_a)
+    h_b, _ = build_stable_prefix_hash_diagnostics(ambiguous_b)
+    require(h_a != h_b, (h_a, h_b))
+    print("ok canonical encoding avoids ambiguous delimiter collisions")
 
     pass_cfg = copy.deepcopy(base_cfg)
     pass_cfg["model_routes"]["relaylm-default"]["mode"] = "pass_through"
