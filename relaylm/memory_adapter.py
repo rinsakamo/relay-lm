@@ -46,6 +46,11 @@ def build_local_seed_memory_adapter_dry_run_from_selection(
         "character_id": route.character_id,
         "memory_namespace": route.memory_namespace,
         "cache_namespace": route.cache_namespace,
+        "user_id": route.user_id,
+        "user_type": route.user_type,
+        "room_id": route.room_id,
+        "scene_id": route.scene_id,
+        "session_id": route.session_id,
     }
 
     if memory_fallback_reason:
