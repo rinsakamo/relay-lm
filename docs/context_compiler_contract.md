@@ -108,7 +108,6 @@ Slow prefix blocks may change, but not every turn.
 
 Examples:
 
-- relationship anchor
 - durable user facts
 - durable character facts
 - stable memory summary

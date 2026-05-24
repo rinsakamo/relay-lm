@@ -16,6 +16,9 @@ class ProfileFiles:
     soul: Path
     output_policy: Path
     room_anchor: Path
+    relationship_anchor: Path | None = None
+    stable_memory_summary: Path | None = None
+    room_state: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -24,6 +27,9 @@ class ProfileTexts:
     soul: str
     output_policy: str
     room_anchor: str
+    relationship_anchor: str | None = None
+    stable_memory_summary: str | None = None
+    room_state: str | None = None
 
 
 class ProfileConfigurationError(ValueError):
@@ -35,12 +41,21 @@ def read_text_file(path: str | Path) -> str:
     return file_path.read_text(encoding="utf-8").strip()
 
 
+def _read_optional_text_file(path: Path | None) -> str | None:
+    if path is None:
+        return None
+    return read_text_file(path)
+
+
 def load_profile_texts(files: ProfileFiles) -> ProfileTexts:
     return ProfileTexts(
         common_runtime_policy=read_text_file(files.common_runtime_policy),
         soul=read_text_file(files.soul),
         output_policy=read_text_file(files.output_policy),
         room_anchor=read_text_file(files.room_anchor),
+        relationship_anchor=_read_optional_text_file(files.relationship_anchor),
+        stable_memory_summary=_read_optional_text_file(files.stable_memory_summary),
+        room_state=_read_optional_text_file(files.room_state),
     )
 
 
@@ -68,6 +83,9 @@ def resolve_profile_files(config: RelayLMConfig, route: ResolvedRoute) -> Profil
         soul=Path(character.soul),
         output_policy=Path(character.output_policy),
         room_anchor=Path(character.room_anchor),
+        relationship_anchor=(Path(character.relationship_anchor) if character.relationship_anchor else None),
+        stable_memory_summary=(Path(character.stable_memory_summary) if character.stable_memory_summary else None),
+        room_state=(Path(character.room_state) if character.room_state else None),
     )
 
 
@@ -78,4 +96,7 @@ def build_profile_blocks(files: ProfileFiles) -> list[ContextBlock]:
         soul=texts.soul,
         output_policy=texts.output_policy,
         room_anchor=texts.room_anchor,
+        relationship_anchor=texts.relationship_anchor,
+        stable_memory_summary=texts.stable_memory_summary,
+        room_state=texts.room_state,
     )
