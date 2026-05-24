@@ -18,6 +18,11 @@ class ResolvedRoute:
     mode_applied: str
     cache_namespace: str | None
     memory_namespace: str | None
+    user_id: str | None
+    user_type: str | None
+    room_id: str | None
+    scene_id: str | None
+    session_id: str | None
 
 
 class RouteNotFoundError(ValueError):
@@ -52,6 +57,11 @@ def resolve_route(config: RelayLMConfig, model: str) -> ResolvedRoute:
         mode_applied=mode,
         cache_namespace=route.cache_namespace,
         memory_namespace=route.memory_namespace,
+        user_id=route.user_id,
+        user_type=route.user_type,
+        room_id=route.room_id,
+        scene_id=route.scene_id,
+        session_id=route.session_id,
     )
 
 

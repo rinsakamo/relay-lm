@@ -60,6 +60,11 @@ class ModelRoute(BaseModel):
     mode: Mode | None = None
     cache_namespace: str | None = None
     memory_namespace: str | None = None
+    user_id: str | None = None
+    user_type: str | None = None
+    room_id: str | None = None
+    scene_id: str | None = None
+    session_id: str | None = None
 
 
 class RelayLMConfig(BaseModel):
