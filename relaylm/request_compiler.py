@@ -11,6 +11,7 @@ import yaml
 from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply
 from relaylm.compiler import build_stable_prefix_hash_diagnostics, compile_profile_messages_with_system_fallback
 from relaylm.config import RelayLMConfig
+from relaylm.memory_adapter import build_local_seed_memory_adapter_dry_run_from_selection
 from relaylm.memory_candidate import MemoryBlockAssembly, MemorySelectionSummary
 from relaylm.memory_context import MemoryConfigurationError, insert_memory_block
 from relaylm.memory_selection import ConfiguredMemorySelection, build_configured_candidate_memory_selection
@@ -34,6 +35,7 @@ class CompiledRequest:
     token_memory_dry_run: dict[str, Any] | None = None
     stable_prefix_hash: str | None = None
     stable_prefix_block_ids: list[str] | None = None
+    memory_adapter_dry_run: dict[str, Any] | None = None
 
     def to_log_dict(self) -> dict[str, Any]:
         return {
@@ -54,6 +56,7 @@ class CompiledRequest:
             "token_memory_dry_run": self.token_memory_dry_run,
             "stable_prefix_hash": self.stable_prefix_hash,
             "stable_prefix_block_ids": self.stable_prefix_block_ids,
+            "memory_adapter_dry_run": self.memory_adapter_dry_run,
             "plan": self.plan.to_log_dict(),
             "decision": self.decision.to_log_dict(),
         }
@@ -92,6 +95,11 @@ def compile_chat_payload_if_enabled(
         config=config,
         route=route,
     )
+    memory_adapter_dry_run = build_local_seed_memory_adapter_dry_run_from_selection(
+        route=route,
+        memory_selection=memory_selection,
+        memory_fallback_reason=memory_fallback_reason,
+    ).to_log_dict()
     token_dry_run = _resolve_token_memory_dry_run_best_effort(
         config=config,
         memory_selection=memory_selection,
@@ -119,6 +127,7 @@ def compile_chat_payload_if_enabled(
         token_memory_dry_run=token_dry_run.to_log_dict(),
         stable_prefix_hash=stable_prefix_hash,
         stable_prefix_block_ids=stable_prefix_block_ids,
+        memory_adapter_dry_run=memory_adapter_dry_run,
     )
 
 
@@ -140,6 +149,8 @@ def _resolve_memory_selection_best_effort(
         raise
     except (FileNotFoundError, OSError, ValueError, TypeError, yaml.YAMLError, json.JSONDecodeError) as exc:
         return ConfiguredMemorySelection(block=None, summary=None), f"memory_seed_load_error:{exc.__class__.__name__}"
+
+
 
 
 def _resolve_token_memory_dry_run_best_effort(
