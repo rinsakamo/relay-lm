@@ -18,11 +18,11 @@ class ResolvedRoute:
     mode_applied: str
     cache_namespace: str | None
     memory_namespace: str | None
-    user_id: str | None
-    user_type: str | None
-    room_id: str | None
-    scene_id: str | None
-    session_id: str | None
+    user_id: str | None = None
+    user_type: str | None = None
+    room_id: str | None = None
+    scene_id: str | None = None
+    session_id: str | None = None
 
 
 class RouteNotFoundError(ValueError):
