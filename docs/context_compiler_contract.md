@@ -2,7 +2,7 @@
 
 RelayLM should treat prompt construction as context compilation, not simple prompt concatenation.
 
-The context compiler turns route, character, memory, room, and request information into an OpenAI-compatible message list.
+The context compiler turns route, character, memory, room/scene, and request information into an OpenAI-compatible message list.
 
 ## Goals
 
@@ -13,6 +13,7 @@ The compiler should preserve:
 - low latency
 - TTS/Live2D-friendly output
 - backend prefix/KV cache reuse
+- final-response naturalness for persona-oriented conversations
 
 ## Inputs
 
@@ -23,10 +24,11 @@ The compiler receives:
 - character profile
 - common runtime policy
 - room anchor
-- room state
+- room/scene state
 - incoming OpenAI-compatible messages
 - lightweight memory candidates
 - optional retrieved memory, RAG, or spill chunks
+- optional agent result summary for final-response shaping
 - token budget hints
 
 ## Output
@@ -61,23 +63,28 @@ stable_prefix
   common_runtime_policy
   character_soul_anchor
   character_output_policy
+  relationship_anchor
   room_anchor
 
 slow_prefix
-  relationship_anchor
   stable_memory_summary
+  durable_user_memory
+  durable_character_memory
 
 dynamic_suffix
-  room_state
+  room_state / scene_state
   retrieved_memory
+  retrieved_rag
+  agent_result_summary
+  tool_observations
   recent_turns
   latest_input
   response_instruction
 ```
 
-### stable_prefix
+### Stable Persona Prefix
 
-Stable prefix blocks should remain byte-for-byte stable when possible.
+Stable persona prefix blocks should remain byte-for-byte stable when possible.
 
 Rules:
 
@@ -93,33 +100,42 @@ Purpose:
 - preserve character identity
 - improve per-character prefix/KV cache reuse
 - avoid dynamic memory changing the character's personality
+- provide the source prefix for future Persona Anchor KV
 
-### slow_prefix
+### Slow Memory Prefix
 
 Slow prefix blocks may change, but not every turn.
 
 Examples:
 
 - relationship anchor
-- durable viewer facts
+- durable user facts
+- durable character facts
 - stable memory summary
 
-Update cadence should be slow, such as after a stream or when a durable fact changes.
+Update cadence should be slow, such as after a stream, after a session, or when a durable fact changes.
 
-### dynamic_suffix
+### Dynamic Conversation Context
 
 Dynamic suffix blocks may change every turn.
 
 Examples:
 
 - current topic
+- scene state
 - room mood
 - retrieved memories
 - RAG evidence
+- agent result summaries
+- tool observations for final natural-language response synthesis
 - recent turns
 - latest user input
 
-Dynamic content should appear after SOUL and OUTPUT_POLICY so memory/RAG does not override persona.
+Dynamic content should appear after SOUL and OUTPUT_POLICY so memory/RAG/tool observations do not override persona.
+
+## Persona Anchor KV
+
+Persona Anchor KV is the backend-specific runtime representation of the stable persona prefix. The source of truth remains the persona files and rendered prompt text. RelayLM should optimize layout and diagnostics for a stable persona prefix without mutating backend KV cache in the MVP.
 
 ## ContextBlock
 
@@ -146,11 +162,14 @@ Examples:
 - `common_runtime_policy`
 - `character_soul_anchor`
 - `character_output_policy`
-- `room_anchor`
 - `relationship_anchor`
+- `room_anchor`
 - `stable_memory_summary`
 - `room_state`
 - `retrieved_memory`
+- `retrieved_rag`
+- `agent_result_summary`
+- `tool_observations`
 - `recent_turns`
 - `latest_input`
 - `response_instruction`
@@ -179,6 +198,8 @@ Examples:
 - incoming system prompt
 - local memory store
 - RAG source
+- external memory adapter
+- agent framework result
 - OpenAI request messages
 
 ### content
@@ -208,11 +229,13 @@ RelayLM should start with simple XML-like tags.
   <common_runtime_policy>...</common_runtime_policy>
   <character_soul_anchor>...</character_soul_anchor>
   <character_output_policy>...</character_output_policy>
-  <room_anchor>...</room_anchor>
   <relationship_anchor>...</relationship_anchor>
+  <room_anchor>...</room_anchor>
   <stable_memory_summary>...</stable_memory_summary>
   <room_state>...</room_state>
   <retrieved_memory>...</retrieved_memory>
+  <retrieved_rag>...</retrieved_rag>
+  <agent_result_summary>...</agent_result_summary>
   <recent_turns>...</recent_turns>
   <latest_input>...</latest_input>
   <response_instruction>...</response_instruction>
@@ -220,6 +243,8 @@ RelayLM should start with simple XML-like tags.
 ```
 
 Tags should be limited and stable. Do not use tokenizer-specific special tokens in the MVP.
+
+Machine-facing contracts such as memory adapter output, fusion plans, diagnostics, traces, and agent/tool protocol payloads should remain JSON/dataclass-shaped. JSON is for machine contracts; tags are for persona/context conditioning.
 
 ## OpenAI message packing
 
@@ -238,7 +263,9 @@ For `memory_light`, compile stable character blocks and lightweight memory.
 
 For `memory_full`, compile full memory/RAG/spill/compression results with budget control.
 
-## Room anchor and room state
+For future agent integrations, internal planning/tool/structured-output requests should default to pass-through. Final natural-language responses may use persona/context repacking.
+
+## Room anchor, room state, and scene state
 
 `room_anchor` is fixed room protocol and constraints only.
 
@@ -259,7 +286,22 @@ Examples:
 - recently discussed points
 - active viewer or group state
 
-Do not place room state into stable prefix.
+`scene_id` and scene state identify the conversational situation or scenario. `room_id` identifies the channel, room, stream, or frontend conversation space. `room_id` is where the conversation is hosted; `scene_id` is what situation the conversation is in.
+
+Do not place room state or scene state into stable prefix.
+
+## Identity and scope boundaries
+
+RelayLM should use simple operator-facing identity names:
+
+- `character_id`: which persona is speaking.
+- `user_id`: the conversation counterpart identity. This may represent a registered user, guest, viewer, operator, anonymous visitor, or agent caller.
+- `user_type`: the identity class, such as `user`, `guest`, `viewer`, `operator`, `anonymous`, or `agent`.
+- `room_id`: the channel, room, stream, or frontend conversation space.
+- `scene_id`: the conversational situation or scenario.
+- `session_id`: the current conversation/session run.
+
+These fields should be available to memory adapters and diagnostics so memory does not leak across users, scenes, rooms, characters, or agent callers.
 
 ## Character and cache boundaries
 
@@ -271,6 +313,7 @@ The main target is per-character prefix stability:
 - stable cache namespace
 - stable model route
 - stable backend model mapping
+- stable persona prefix hash
 
 Per-character RelayLM instances may be used for speed-sensitive deployments. Single-proxy routing remains the onboarding default.
 
@@ -280,6 +323,8 @@ The compiler should eventually log:
 
 - selected route
 - character ID
+- user ID and user type when available
+- room ID, scene ID, and session ID when available
 - runtime mode
 - block IDs
 - stability classes
@@ -287,5 +332,6 @@ The compiler should eventually log:
 - whether pass-through or compilation was used
 - fallback SOUL source
 - omitted blocks and reasons
+- stable prefix hash and prefix stability changes
 
 Diagnostics should not be inserted into stable prompt prefixes.

@@ -1,8 +1,8 @@
 # RelayLM
 
-RelayLM is an OpenAI-compatible memory and context proxy for local LLM applications, agents, AI companions, and local inference runtimes.
+RelayLM is a persona-specialized OpenAI-compatible conversation proxy for local LLM applications, AI companions, VTubers, agents, and local inference runtimes.
 
-It is not a language model. RelayLM sits in front of an LLM backend and repacks memory, RAG, recent turns, and spilled context into a budget-aware effective context.
+It is not a language model or a memory database. RelayLM sits in front of an LLM backend and repacks persona, memory, RAG, recent turns, room/scene state, and spilled context into a token-budgeted, persona-stable, KV-reuse-aware effective context.
 
 Initial product target:
 
@@ -17,6 +17,8 @@ RelayLM compiles memory, RAG, and chat history into a prefix-stable context layo
 The first practical value is simple:
 
 > Make an AI VTuber or AI companion feel like it remembers unusually well, without requiring the frontend to manage long context directly.
+
+RelayLM's longer-term product axis is conversation quality: preserve persona consistency, relationship continuity, memory warmth, and token-budget stability so the user wants to keep talking.
 
 ## Architecture
 
@@ -33,6 +35,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 
 - [VTuber memory proxy design](docs/vtuber_memory_proxy_design.md)
 - [Context packing design](docs/context_packing_design.md)
+- [Persona-specialized proxy design](docs/persona_specialized_proxy_design.md)
 - [Open-LLM-VTuber integration](docs/open_llm_vtuber_integration.md)
 - [Runtime architecture](docs/runtime_architecture.md)
 - [Config schema](docs/config_schema.md)
@@ -130,4 +133,4 @@ http://localhost:8090/v1
 
 ## Relationship to relay-kv
 
-`relay-kv` remains the runtime/KV-cache research repository. RelayLM starts one layer above runtime APIs as a memory and context proxy. RelayLM should benefit from RelayKV's design lessons, especially working-set selection, anchor/recent/retrieved separation, and cache-aware layout, without mutating engine KV cache in the initial product.
+`relay-kv` remains the runtime/KV-cache research repository. RelayLM starts one layer above runtime APIs as a memory and context proxy. RelayLM should benefit from RelayKV's design lessons, especially working-set selection, anchor/recent/retrieved separation, Persona Anchor KV, and cache-aware layout, without mutating engine KV cache in the initial product.
