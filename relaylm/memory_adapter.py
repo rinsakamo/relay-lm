@@ -22,6 +22,9 @@ class MemoryAdapterResult:
     candidate_count: int
     candidate_ids: list[str]
     selected_candidate_ids: list[str]
+    scope_isolation_status: str
+    missing_scope_fields: list[str]
+    scope_warning_count: int
     fallback_reason: str | None = None
 
     def to_log_dict(self) -> dict[str, object]:
@@ -34,6 +37,22 @@ class MemoryAdapterDryRun:
 
     def to_log_dict(self) -> dict[str, object]:
         return self.result.to_log_dict()
+
+
+def evaluate_memory_adapter_scope_isolation(
+    scope: dict[str, str | None],
+) -> tuple[str, list[str], int]:
+    required_scope_fields = [
+        "character_id",
+        "memory_namespace",
+        "user_id",
+        "room_id",
+        "scene_id",
+        "session_id",
+    ]
+    missing_scope_fields = [field for field in required_scope_fields if not scope.get(field)]
+    status = "ok" if not missing_scope_fields else "partial_scope"
+    return status, missing_scope_fields, len(missing_scope_fields)
 
 
 def build_local_seed_memory_adapter_dry_run_from_selection(
@@ -52,6 +71,9 @@ def build_local_seed_memory_adapter_dry_run_from_selection(
         "scene_id": route.scene_id,
         "session_id": route.session_id,
     }
+    scope_isolation_status, missing_scope_fields, scope_warning_count = (
+        evaluate_memory_adapter_scope_isolation(scope)
+    )
 
     if memory_fallback_reason:
         return MemoryAdapterDryRun(
@@ -63,6 +85,9 @@ def build_local_seed_memory_adapter_dry_run_from_selection(
                 candidate_count=0,
                 candidate_ids=[],
                 selected_candidate_ids=[],
+                scope_isolation_status=scope_isolation_status,
+                missing_scope_fields=missing_scope_fields,
+                scope_warning_count=scope_warning_count,
                 fallback_reason=memory_fallback_reason,
             )
         )
@@ -78,6 +103,9 @@ def build_local_seed_memory_adapter_dry_run_from_selection(
                 candidate_count=0,
                 candidate_ids=[],
                 selected_candidate_ids=[],
+                scope_isolation_status=scope_isolation_status,
+                missing_scope_fields=missing_scope_fields,
+                scope_warning_count=scope_warning_count,
             )
         )
 
@@ -92,5 +120,8 @@ def build_local_seed_memory_adapter_dry_run_from_selection(
             candidate_count=summary.total_candidates,
             candidate_ids=candidate_ids,
             selected_candidate_ids=selected_ids,
+            scope_isolation_status=scope_isolation_status,
+            missing_scope_fields=missing_scope_fields,
+            scope_warning_count=scope_warning_count,
         )
     )
