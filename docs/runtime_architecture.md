@@ -1,6 +1,6 @@
 # RelayLM Runtime Architecture
 
-RelayLM is an OpenAI-compatible Memory Context Proxy for Open-LLM-VTuber and other local LLM frontends.
+RelayLM is a persona-specialized OpenAI-compatible Memory Context Proxy for Open-LLM-VTuber and other local LLM frontends.
 
 The first runtime goal is URL-swap compatibility:
 
@@ -10,7 +10,9 @@ Open-LLM-VTuber
   -> OpenAI-compatible backend
 ```
 
-RelayLM should make an AI character feel memoryful and persona-stable while keeping the frontend unchanged.
+RelayLM should make an AI character feel memoryful, persona-stable, and conversationally continuous while keeping the frontend unchanged.
+
+RelayLM is not an agent framework or a memory database. It controls what the backend model sees before generation so persona, relationship, memory, and recent context can be shaped without taking over tool workflows or memory-product responsibilities.
 
 ## Runtime layers
 
@@ -87,17 +89,21 @@ Responsibilities:
 
 The first memory implementation should be simple and local. Embeddings, rerankers, and summarizers should be follow-ups behind the same interface.
 
+External memory systems may specialize in user facts, episodic recall, temporal relationship memory, procedural persona updates, or external knowledge. RelayLM should normalize, arbitrate, and repack those outputs rather than expose all memory output directly to the backend model.
+
 ### Context compiler layer
 
 Responsibilities:
 
-- convert character profile, memory, room state, recent turns, and latest input into a stable context layout
+- convert character profile, memory, room/scene state, recent turns, and latest input into a stable context layout
 - preserve persona stability
 - keep stable blocks byte-for-byte stable when possible
 - put dynamic content later in the prompt
 - emit an OpenAI-compatible message list for the backend adapter
 
 RelayLM should treat prompt construction as context compilation rather than concatenation.
+
+The compiled prompt should use tags for persona and conversation context. Machine contracts such as adapter results, diagnostics, traces, and tool protocols should remain JSON/dataclass-shaped. In short: JSON is for machine contracts; tags are for persona/context conditioning.
 
 ### Backend adapter layer
 
@@ -153,10 +159,19 @@ Purpose:
 
 Behavior:
 
-- compile SOUL, OUTPUT_POLICY, relationship anchors, room state, retrieved memory, recent turns, and latest input
+- compile SOUL, OUTPUT_POLICY, relationship anchors, room/scene state, retrieved memory, recent turns, and latest input
 - enforce token budgets
 - support retrieval and compression behind explicit interfaces
 - keep stable prefix blocks before dynamic retrieved content
+
+### future persona_finalizer
+
+Purpose:
+
+- shape only final natural-language responses from an external agent framework
+- preserve the agent result while applying persona, relationship, memory, and output policy
+
+Default agent integration should pass through planning, tool calls, tool observations, and structured output. Persona/context repacking should apply to final natural-language answers or normal chat turns.
 
 ## Routing modes
 
@@ -184,6 +199,7 @@ The first runtime implementation should not include:
 - ASR or TTS
 - heavy RAG in the default synchronous path
 - full tracing or lineage storage
-- tool-aware packing beyond transparent pass-through
+- agent tool-workflow orchestration beyond transparent pass-through
+- post-generation rewriting of streamed responses
 
-These can be added after URL-swap streaming compatibility is stable.
+These can be added after URL-swap streaming compatibility is stable. RelayLM should prefer context transformation before generation over response rewriting after generation.
