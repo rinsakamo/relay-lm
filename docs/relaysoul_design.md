@@ -98,6 +98,8 @@ The patch-generation prompt should include:
 - rejected examples
 - feedback labels and freeform notes
 - current mode
+- target persona source budgets
+- relevant RelayLM diagnostics when available
 
 The model should be instructed to:
 
@@ -108,6 +110,7 @@ The model should be instructed to:
 - propose no change when the current files already explain the preference
 - explain why each patch belongs to the chosen file
 - avoid full rewrites unless explicitly requested
+- prefer replacement, consolidation, or compression over unbounded appending
 
 Example model output:
 
@@ -209,6 +212,83 @@ RelaySOUL should classify feedback before patching.
 
 `SOUL.md` should not become a dumping ground for style changes. `OUTPUT_POLICY.md` should not become a hidden persona core. `RELATIONSHIP_ANCHOR.md` should not accumulate general values that belong in `SOUL.md`.
 
+## Persona source budget
+
+Persona source files should not grow without bound.
+
+RelaySOUL should treat each persona source file as a budgeted artifact because RelayLM must later compile those files into a token-budgeted prompt. Budget pressure is not only a runtime constraint. It is a design pressure that keeps persona sources legible, stable, and cache-friendly.
+
+Suggested budget shape:
+
+```yaml
+persona_source_budget:
+  soul_max_tokens: 800
+  output_policy_max_tokens: 600
+  relationship_anchor_max_tokens: 500
+  stable_memory_summary_max_tokens: 1000
+  scene_state_max_tokens: 300
+```
+
+Rules:
+
+- prefer replacing or consolidating existing lines over appending new rules
+- if a patch exceeds the target file budget, propose a compression patch instead
+- do not allow persona files to crowd out latest input, recent turns, or necessary memory
+- keep `SOUL.md` focused on durable persona core and invariants
+- keep `OUTPUT_POLICY.md` focused on expression rules and response shape
+- keep `RELATIONSHIP_ANCHOR.md` focused on the specific relationship, not general values
+- keep `SCENE_STATE.md` short-lived and scoped to the current situation
+
+Patch prompts should include budget instructions such as:
+
+```text
+The persona source files have a budget.
+Prefer replacing or consolidating existing lines over appending new rules.
+If the patch would exceed the target file budget, propose a compression patch instead.
+Do not grow SOUL.md unless the preference cannot be represented in OUTPUT_POLICY.md,
+RELATIONSHIP_ANCHOR.md, SCENE_STATE.md, or runtime overlay.
+```
+
+## RelayLM runtime feedback loop
+
+RelaySOUL should use RelayLM runtime information to avoid overfitting, overgrowing, or mispatching persona source files.
+
+Important RelayLM signals:
+
+1. Persona Source Budget
+   - prevents over-specified persona files from consuming prompt budget
+   - turns runtime token pressure into an editing constraint
+
+2. `stable_prefix_hash`
+   - shows when a persona patch changes the stable prefix
+   - helps decide whether a small style preference is worth invalidating prefix/KV reuse
+
+3. compile dry-run and token diagnostics
+   - test a patch candidate before runtime apply
+   - check block ordering, omitted blocks, token pressure, and fallback reasons
+
+4. runtime trace
+   - links persona revision, backend model, stable prefix hash, memory candidates, generated output, and user feedback
+   - makes it possible to compare revisions and rollback rates
+
+5. memory adapter conflict diagnostics
+   - blocks or warns on patch generation when memory candidates are duplicated, selected candidates are invalid, or scope isolation is partial
+   - prevents memory confusion from becoming an incorrect persona patch
+
+Suggested flow:
+
+```text
+patch candidate
+  -> temporary persona revision
+  -> RelayLM compile dry-run
+  -> budget / stable_prefix_hash / omitted-block diagnostics
+  -> optional local renderer sample
+  -> user review
+  -> approved persona revision
+```
+
+RelaySOUL should not treat user preference examples alone as sufficient evidence. It should also consider whether RelayLM can compile and run the updated persona without damaging latest-input preservation, memory selection, stable prefix reuse, or scope isolation.
+
 ## Persona revision and rollback
 
 Persona source files should be versioned as profile-level revisions, not just individual file edits.
@@ -225,6 +305,9 @@ Suggested metadata:
   "feedback_ids": ["calib_004"],
   "patch_prompt_id": "patch_prompt_0017",
   "model_response_id": "patch_model_response_0017",
+  "stable_prefix_hash_before": "abc123",
+  "stable_prefix_hash_after": "def456",
+  "compile_dry_run_status": "ok",
   "applied_at": "2026-05-25T00:00:00+09:00",
   "applied_by": "user",
   "rollback_available": true
@@ -251,6 +334,31 @@ SOUL.md / OUTPUT_POLICY.md / RELATIONSHIP_ANCHOR.md
 
 A future Persona Renderer Matrix may record which backend models are better at particular persona styles, languages, memory disclosure behavior, and verbosity control.
 
+## Persona source distillation
+
+Persona source distillation is an optional fallback when local calibration does not converge well enough.
+
+A larger or more instruction-following teacher model may help compress long persona notes, reconcile calibration examples, or propose cleaner persona source files for a smaller target local model. This is a supporting tool, not the default path.
+
+Suggested use cases:
+
+- local model output remains unstable after ordinary calibration
+- persona files exceed budget and need compression
+- preferred and rejected examples conflict and need reconciliation
+- a smaller target local model needs more concrete, less poetic instructions
+
+Distillation should still be tested through the target local persona renderer before approval:
+
+```text
+teacher model proposes distilled persona source
+  -> RelayLM compiles for target local model
+  -> target local model generates samples
+  -> user evaluates perceived persona
+  -> approved revision or rollback
+```
+
+The final evidence is the target renderer output, not the teacher model's patch quality in isolation.
+
 ## Safety and responsibility boundary
 
 RelaySOUL should not present unsafe or adult-oriented persona generation as an official product direction.
@@ -274,9 +382,11 @@ Suggested MVP:
 1. document the persona source calibration loop
 2. add example calibration prompts and outputs
 3. define revision metadata schema
-4. build a dry-run script that reads persona files and feedback examples
-5. emit patch candidates without applying them
-6. add explicit apply/rollback only after the dry-run path is stable
+4. define persona source budget diagnostics
+5. build a dry-run script that reads persona files and feedback examples
+6. emit patch candidates without applying them
+7. run RelayLM compile dry-run against temporary persona revisions
+8. add explicit apply/rollback only after the dry-run path is stable
 
 No runtime RelayLM behavior is required for the initial design document.
 
@@ -289,5 +399,9 @@ No runtime RelayLM behavior is required for the initial design document.
 - revision diff viewer
 - safe sharing format for persona source packages
 - custom memory-system reconciliation events
+- Persona Source Budget enforcement
+- compile dry-run integration for patch candidates
+- memory adapter conflict gates before patch generation
+- optional teacher-model persona source distillation
 - import from character cards into RelaySOUL source files
 - export to RelayLM-compatible persona packages
