@@ -47,6 +47,9 @@ class CharacterConfig(BaseModel):
     output_policy: str
     room_anchor: str
     memory_seed_path: str | None = None
+    relationship_anchor: str | None = None
+    stable_memory_summary: str | None = None
+    room_state: str | None = None
     token_policy_shadow_enabled: bool | None = None
 
 

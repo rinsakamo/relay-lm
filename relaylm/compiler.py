@@ -170,10 +170,13 @@ def build_placeholder_persona_blocks(
     soul: str,
     output_policy: str,
     room_anchor: str,
+    relationship_anchor: str | None = None,
+    stable_memory_summary: str | None = None,
+    room_state: str | None = None,
 ) -> list[ContextBlock]:
     """Build the first stable prefix block set for MVP-2 smoke tests."""
 
-    return [
+    blocks: list[ContextBlock] = [
         ContextBlock(
             block_id=BlockType.COMMON_RUNTIME_POLICY.value,
             block_type=BlockType.COMMON_RUNTIME_POLICY,
@@ -211,3 +214,44 @@ def build_placeholder_persona_blocks(
             include_in_prefix_cache_target=True,
         ),
     ]
+
+    if relationship_anchor:
+        blocks.append(
+            ContextBlock(
+                block_id=BlockType.RELATIONSHIP_ANCHOR.value,
+                block_type=BlockType.RELATIONSHIP_ANCHOR,
+                stability_class=StabilityClass.STABLE_PREFIX,
+                source="placeholder/RELATIONSHIP_ANCHOR.md",
+                content=relationship_anchor,
+                token_budget_hint=300,
+                include_in_prefix_cache_target=True,
+            )
+        )
+
+    if stable_memory_summary:
+        blocks.append(
+            ContextBlock(
+                block_id=BlockType.STABLE_MEMORY_SUMMARY.value,
+                block_type=BlockType.STABLE_MEMORY_SUMMARY,
+                stability_class=StabilityClass.SLOW_PREFIX,
+                source="placeholder/STABLE_MEMORY_SUMMARY.md",
+                content=stable_memory_summary,
+                token_budget_hint=400,
+                include_in_prefix_cache_target=False,
+            )
+        )
+
+    if room_state:
+        blocks.append(
+            ContextBlock(
+                block_id=BlockType.ROOM_STATE.value,
+                block_type=BlockType.ROOM_STATE,
+                stability_class=StabilityClass.DYNAMIC_SUFFIX,
+                source="placeholder/ROOM_STATE.md",
+                content=room_state,
+                token_budget_hint=300,
+                include_in_prefix_cache_target=False,
+            )
+        )
+
+    return blocks
