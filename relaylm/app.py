@@ -193,6 +193,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             token_budget_truncation=token_budget_truncation,
             stable_prefix_hash=compiled_request.stable_prefix_hash,
             stable_prefix_block_ids=compiled_request.stable_prefix_block_ids,
+            memory_adapter_dry_run=compiled_request.memory_adapter_dry_run,
             trace_enabled=config.trace.enabled,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
