@@ -59,6 +59,12 @@ def main() -> int:
     require(scope.get("room_id") is None, scope)
     require(scope.get("scene_id") is None, scope)
     require(scope.get("session_id") is None, scope)
+    require(dry.get("scope_isolation_status") == "partial_scope", dry)
+    missing_default = dry.get("missing_scope_fields")
+    require(isinstance(missing_default, list), missing_default)
+    for field in ("user_id", "room_id", "scene_id", "session_id"):
+        require(field in missing_default, missing_default)
+    require(dry.get("scope_warning_count") == len(missing_default), dry)
     expected_ids = [*summary.selected_memory_ids, *summary.excluded_disabled_ids, *summary.excluded_character_ids]
     require(dry.get("candidate_ids") == expected_ids, (dry, summary))
     print("ok memory adapter dry-run emits local seed contract")
@@ -87,6 +93,9 @@ def main() -> int:
     require(scope_with_identity.get("room_id") == "room-abc", scope_with_identity)
     require(scope_with_identity.get("scene_id") == "scene-x", scope_with_identity)
     require(scope_with_identity.get("session_id") == "sess-42", scope_with_identity)
+    require(dry_scope.get("scope_isolation_status") == "ok", dry_scope)
+    require(dry_scope.get("missing_scope_fields") == [], dry_scope)
+    require(dry_scope.get("scope_warning_count") == 0, dry_scope)
     require(compiled_scope.memory_selection_summary == compiled.memory_selection_summary, (compiled_scope, compiled))
     require(compiled_scope.stable_prefix_hash == compiled.stable_prefix_hash, (compiled_scope, compiled))
     print("ok memory adapter dry-run includes optional scope identity without changing memory selection")
@@ -101,6 +110,9 @@ def main() -> int:
         require(isinstance(dry_err.get("fallback_reason"), str), dry_err)
         require(dry_err.get("fallback_reason") == compiled_err.memory_fallback_reason, (dry_err, compiled_err))
         require(compiled_err.memory_fallback_reason is not None, compiled_err)
+        require(dry_err.get("scope_isolation_status") == "partial_scope", dry_err)
+        require(isinstance(dry_err.get("missing_scope_fields"), list), dry_err)
+        require(dry_err.get("scope_warning_count") == len(dry_err.get("missing_scope_fields")), dry_err)
         print("ok memory adapter dry-run load_error preserves compile fallback behavior")
 
     # Stable prefix hash should not depend on adapter dry-run state.
