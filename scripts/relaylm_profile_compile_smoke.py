@@ -67,6 +67,21 @@ def main() -> int:
         require(context2.index("<stable_memory_summary>") < context2.index("<room_state>"), context2)
         print("ok optional persona blocks compiled with stable/slow/dynamic order")
 
+        cfg3 = copy.deepcopy(cfg)
+        char3 = cfg3["characters"]["default"]
+        char3["memory_seed_path"] = "examples/memory/default_memories.yaml"
+        char3["room_state"] = str(p / "room_state.md")
+        config3 = RelayLMConfig.model_validate(cfg3)
+        route3 = resolve_route(config3, "relaylm-default")
+        before3 = copy.deepcopy(payload)
+        compiled3 = compile_chat_payload_if_enabled(config=config3, route=route3, payload=payload)
+        require(payload == before3, payload)
+        context3 = compiled3.payload["messages"][0]["content"]
+        require("<retrieved_memory>" in context3, context3)
+        require("<room_state>" in context3, context3)
+        require(context3.index("<retrieved_memory>") < context3.index("<room_state>"), context3)
+        print("ok room_state with selected memory keeps slow-before-dynamic order")
+
     return 0
 
 

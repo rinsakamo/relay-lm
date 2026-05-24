@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from relaylm.compiler import ContextBlock
+from relaylm.compiler import ContextBlock, StabilityClass
 from relaylm.config import RelayLMConfig
 from relaylm.memory_seed import (
     build_memory_context_block,
@@ -58,4 +58,19 @@ def insert_memory_block(
 
     if memory_block is None:
         return list(profile_blocks)
-    return [*profile_blocks, memory_block]
+
+    blocks = list(profile_blocks)
+    rank = {
+        StabilityClass.STABLE_PREFIX: 0,
+        StabilityClass.SLOW_PREFIX: 1,
+        StabilityClass.DYNAMIC_SUFFIX: 2,
+    }
+    memory_rank = rank[memory_block.stability_class]
+
+    insert_at = len(blocks)
+    for idx, block in enumerate(blocks):
+        if rank[block.stability_class] > memory_rank:
+            insert_at = idx
+            break
+
+    return [*blocks[:insert_at], memory_block, *blocks[insert_at:]]
