@@ -11,7 +11,7 @@ import yaml
 from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply
 from relaylm.compiler import build_stable_prefix_hash_diagnostics, compile_profile_messages_with_system_fallback
 from relaylm.config import RelayLMConfig
-from relaylm.memory_adapter import build_local_seed_memory_adapter_dry_run
+from relaylm.memory_adapter import build_local_seed_memory_adapter_dry_run_from_selection
 from relaylm.memory_candidate import MemoryBlockAssembly, MemorySelectionSummary
 from relaylm.memory_context import MemoryConfigurationError, insert_memory_block
 from relaylm.memory_selection import ConfiguredMemorySelection, build_configured_candidate_memory_selection
@@ -95,10 +95,11 @@ def compile_chat_payload_if_enabled(
         config=config,
         route=route,
     )
-    memory_adapter_dry_run = _resolve_memory_adapter_dry_run_best_effort(
-        config=config,
+    memory_adapter_dry_run = build_local_seed_memory_adapter_dry_run_from_selection(
         route=route,
-    )
+        memory_selection=memory_selection,
+        memory_fallback_reason=memory_fallback_reason,
+    ).to_log_dict()
     token_dry_run = _resolve_token_memory_dry_run_best_effort(
         config=config,
         memory_selection=memory_selection,
@@ -151,31 +152,6 @@ def _resolve_memory_selection_best_effort(
 
 
 
-
-def _resolve_memory_adapter_dry_run_best_effort(
-    *,
-    config: RelayLMConfig,
-    route: ResolvedRoute,
-) -> dict[str, Any]:
-    try:
-        return build_local_seed_memory_adapter_dry_run(config=config, route=route).to_log_dict()
-    except MemoryConfigurationError:
-        raise
-    except (FileNotFoundError, OSError, ValueError, TypeError, yaml.YAMLError, json.JSONDecodeError) as exc:
-        return {
-            "adapter_name": "local_seed",
-            "adapter_kind": "seed_file",
-            "status": "load_error",
-            "scope": {
-                "character_id": route.character_id,
-                "memory_namespace": route.memory_namespace,
-                "cache_namespace": route.cache_namespace,
-            },
-            "candidate_count": 0,
-            "candidate_ids": [],
-            "selected_candidate_ids": [],
-            "fallback_reason": f"memory_seed_load_error:{exc.__class__.__name__}",
-        }
 
 def _resolve_token_memory_dry_run_best_effort(
     *,

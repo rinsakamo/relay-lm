@@ -48,6 +48,12 @@ def main() -> int:
     require(isinstance(dry.get("candidate_count"), int) and dry["candidate_count"] > 0, dry)
     require(isinstance(dry.get("candidate_ids"), list) and dry["candidate_ids"], dry)
     require(isinstance(dry.get("selected_candidate_ids"), list), dry)
+    summary = compiled.memory_selection_summary
+    require(summary is not None, compiled)
+    require(dry.get("candidate_count") == summary.total_candidates, (dry, summary))
+    require(dry.get("selected_candidate_ids") == summary.selected_memory_ids, (dry, summary))
+    expected_ids = [*summary.selected_memory_ids, *summary.excluded_disabled_ids, *summary.excluded_character_ids]
+    require(dry.get("candidate_ids") == expected_ids, (dry, summary))
     print("ok memory adapter dry-run emits local seed contract")
 
     cfg_no_seed = copy.deepcopy(cfg)
@@ -66,6 +72,7 @@ def main() -> int:
         require(isinstance(dry_err, dict), dry_err)
         require(dry_err.get("status") == "load_error", dry_err)
         require(isinstance(dry_err.get("fallback_reason"), str), dry_err)
+        require(dry_err.get("fallback_reason") == compiled_err.memory_fallback_reason, (dry_err, compiled_err))
         require(compiled_err.memory_fallback_reason is not None, compiled_err)
         print("ok memory adapter dry-run load_error preserves compile fallback behavior")
 
