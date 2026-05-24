@@ -12,6 +12,7 @@ from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply
 from relaylm.compiler import build_stable_prefix_hash_diagnostics, compile_profile_messages_with_system_fallback
 from relaylm.config import RelayLMConfig
 from relaylm.memory_adapter import (
+    build_memory_adapter_conflict_diagnostics,
     build_local_seed_memory_adapter_dry_run_from_selection,
     build_memory_adapter_readiness_check,
 )
@@ -40,6 +41,7 @@ class CompiledRequest:
     stable_prefix_block_ids: list[str] | None = None
     memory_adapter_dry_run: dict[str, Any] | None = None
     memory_adapter_readiness: dict[str, Any] | None = None
+    memory_adapter_conflicts: dict[str, Any] | None = None
 
     def to_log_dict(self) -> dict[str, Any]:
         return {
@@ -62,6 +64,7 @@ class CompiledRequest:
             "stable_prefix_block_ids": self.stable_prefix_block_ids,
             "memory_adapter_dry_run": self.memory_adapter_dry_run,
             "memory_adapter_readiness": self.memory_adapter_readiness,
+            "memory_adapter_conflicts": self.memory_adapter_conflicts,
             "plan": self.plan.to_log_dict(),
             "decision": self.decision.to_log_dict(),
         }
@@ -106,6 +109,7 @@ def compile_chat_payload_if_enabled(
         memory_fallback_reason=memory_fallback_reason,
     ).to_log_dict()
     memory_adapter_readiness = build_memory_adapter_readiness_check(memory_adapter_dry_run).to_log_dict()
+    memory_adapter_conflicts = build_memory_adapter_conflict_diagnostics(memory_adapter_dry_run).to_log_dict()
     token_dry_run = _resolve_token_memory_dry_run_best_effort(
         config=config,
         memory_selection=memory_selection,
@@ -135,6 +139,7 @@ def compile_chat_payload_if_enabled(
         stable_prefix_block_ids=stable_prefix_block_ids,
         memory_adapter_dry_run=memory_adapter_dry_run,
         memory_adapter_readiness=memory_adapter_readiness,
+        memory_adapter_conflicts=memory_adapter_conflicts,
     )
 
 
