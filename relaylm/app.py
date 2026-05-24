@@ -21,6 +21,7 @@ from relaylm.adapter import (
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.diagnostics import RequestDiagnostics
 from relaylm.request_compiler import compile_chat_payload_if_enabled
+from relaylm.request_scope import extract_request_scope_identity
 from relaylm.routing import (
     ResolvedRoute,
     RouteConfigurationError,
@@ -159,6 +160,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             shadow_source=shadow_source,
         )
         token_policy_readiness = build_token_policy_readiness_check(token_policy_decision)
+        request_scope_identity = extract_request_scope_identity(request.headers, payload)
         forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
             config=config,
             payload=compiled_request.payload,
@@ -196,6 +198,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             memory_adapter_dry_run=compiled_request.memory_adapter_dry_run,
             memory_adapter_readiness=compiled_request.memory_adapter_readiness,
             memory_adapter_conflicts=compiled_request.memory_adapter_conflicts,
+            request_scope_identity=request_scope_identity.to_log_dict(),
             trace_enabled=config.trace.enabled,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
