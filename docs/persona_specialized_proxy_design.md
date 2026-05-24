@@ -33,9 +33,9 @@ RelayLM treats persona as layered source material:
 - `OUTPUT_POLICY.md`: expression mode, tone, emotional manifestation, TTS-friendly style, and response style.
 - `RELATIONSHIP_ANCHOR.md`: slow-changing relationship state between the character and the user/viewer.
 - `STABLE_MEMORY_SUMMARY.md`: durable memory summary and long-term context.
-- `ROOM_STATE.md` or scene state: dynamic current situation, topic, and mood.
+- `SCENE_STATE.md`: dynamic current situation, topic, mood, and temporary conversational context.
 
-These files should not all update at the same speed. `SOUL.md` is the slowest and should normally require explicit approval for changes. `RELATIONSHIP_ANCHOR.md` and stable memory may grow from repeated interaction. `ROOM_STATE.md` may change every session or turn.
+These files should not all update at the same speed. `SOUL.md` is the slowest and should normally require explicit approval for changes. `RELATIONSHIP_ANCHOR.md` and stable memory may grow from repeated interaction. `SCENE_STATE.md` may change every session or turn.
 
 ## Persona Anchor KV
 
@@ -76,7 +76,7 @@ This tier may change slowly after session boundaries, explicit corrections, or c
 
 ### Dynamic Conversation Context
 
-- `room_state` / `scene_state`
+- `scene_state`
 - `retrieved_memory`
 - `retrieved_rag`
 - `agent_result_summary`
@@ -118,7 +118,7 @@ RelayLM should use XML-like tags for the compiled prompt body that the LLM reads
 <character_output_policy>...</character_output_policy>
 <relationship_anchor>...</relationship_anchor>
 <stable_memory_summary>...</stable_memory_summary>
-<room_state>...</room_state>
+<scene_state>...</scene_state>
 <retrieved_memory>...</retrieved_memory>
 <recent_turns>...</recent_turns>
 <latest_input>...</latest_input>
@@ -158,7 +158,7 @@ conversation trace
 
 Suggested update speed:
 
-- `room_state`: fast, often automatic.
+- `scene_state`: fast, often automatic.
 - `stable_memory_summary`: medium, candidate-based.
 - `RELATIONSHIP_ANCHOR.md`: medium-slow, rate-gated.
 - `OUTPUT_POLICY.md`: slow, explicit feedback or repeated evidence.
