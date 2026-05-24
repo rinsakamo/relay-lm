@@ -30,6 +30,7 @@ class RequestDiagnostics:
     stable_prefix_block_ids: list[str] | None = None
     memory_adapter_dry_run: dict[str, Any] | None = None
     memory_adapter_readiness: dict[str, Any] | None = None
+    memory_adapter_conflicts: dict[str, Any] | None = None
     trace_enabled: bool = False
     profile_compile_dry_run_enabled: bool | None = None
     profile_compile_fallback_reason: str | None = None

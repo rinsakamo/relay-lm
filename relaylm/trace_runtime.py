@@ -52,6 +52,8 @@ def trace_runtime_event(
             trace_metadata["memory_adapter_dry_run"] = diagnostics.memory_adapter_dry_run
         if diagnostics.memory_adapter_readiness is not None:
             trace_metadata["memory_adapter_readiness"] = diagnostics.memory_adapter_readiness
+        if diagnostics.memory_adapter_conflicts is not None:
+            trace_metadata["memory_adapter_conflicts"] = diagnostics.memory_adapter_conflicts
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,

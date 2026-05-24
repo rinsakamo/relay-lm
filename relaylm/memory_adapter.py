@@ -53,6 +53,20 @@ class MemoryAdapterReadinessCheck:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class MemoryAdapterConflictDiagnostics:
+    conflict_status: str
+    conflict_count: int
+    conflict_reasons: list[str]
+    duplicate_candidate_ids: list[str]
+    duplicate_selected_ids: list[str]
+    selected_not_in_candidates: list[str]
+    scope_conflict_reasons: list[str]
+
+    def to_log_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
 def evaluate_memory_adapter_scope_isolation(
     scope: dict[str, str | None],
 ) -> tuple[str, list[str], int]:
@@ -138,6 +152,62 @@ def build_memory_adapter_readiness_check(
         adapter_status=adapter_status,
         scope_isolation_status=scope_isolation_status,
         missing_scope_fields=missing_scope_fields,
+    )
+
+
+def build_memory_adapter_conflict_diagnostics(
+    memory_adapter_dry_run: dict[str, object] | None,
+) -> MemoryAdapterConflictDiagnostics:
+    if not isinstance(memory_adapter_dry_run, dict):
+        return MemoryAdapterConflictDiagnostics(
+            conflict_status="unknown",
+            conflict_count=1,
+            conflict_reasons=["missing_dry_run"],
+            duplicate_candidate_ids=[],
+            duplicate_selected_ids=[],
+            selected_not_in_candidates=[],
+            scope_conflict_reasons=[],
+        )
+
+    candidate_ids_raw = memory_adapter_dry_run.get("candidate_ids")
+    selected_ids_raw = memory_adapter_dry_run.get("selected_candidate_ids")
+    candidate_ids = [x for x in candidate_ids_raw if isinstance(x, str)] if isinstance(candidate_ids_raw, list) else []
+    selected_ids = [x for x in selected_ids_raw if isinstance(x, str)] if isinstance(selected_ids_raw, list) else []
+    candidate_set = set(candidate_ids)
+
+    def duplicates(items: list[str]) -> list[str]:
+        seen: set[str] = set()
+        dup: list[str] = []
+        for item in items:
+            if item in seen and item not in dup:
+                dup.append(item)
+            seen.add(item)
+        return dup
+
+    duplicate_candidate_ids = duplicates(candidate_ids)
+    duplicate_selected_ids = duplicates(selected_ids)
+    selected_not_in_candidates = sorted({item for item in selected_ids if item not in candidate_set})
+
+    conflict_reasons: list[str] = []
+    scope_conflict_reasons: list[str] = []
+    if duplicate_candidate_ids:
+        conflict_reasons.append("duplicate_candidate_ids")
+    if duplicate_selected_ids:
+        conflict_reasons.append("duplicate_selected_ids")
+    if selected_not_in_candidates:
+        conflict_reasons.append("selected_not_in_candidates")
+    if memory_adapter_dry_run.get("scope_isolation_status") == "partial_scope":
+        scope_conflict_reasons.append("partial_scope")
+        conflict_reasons.append("partial_scope")
+
+    return MemoryAdapterConflictDiagnostics(
+        conflict_status="ok" if not conflict_reasons else "warning",
+        conflict_count=len(conflict_reasons),
+        conflict_reasons=conflict_reasons,
+        duplicate_candidate_ids=duplicate_candidate_ids,
+        duplicate_selected_ids=duplicate_selected_ids,
+        selected_not_in_candidates=selected_not_in_candidates,
+        scope_conflict_reasons=scope_conflict_reasons,
     )
 
 
