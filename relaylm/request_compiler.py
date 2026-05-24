@@ -9,7 +9,7 @@ from typing import Any, Mapping
 import yaml
 
 from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply
-from relaylm.compiler import compile_profile_messages_with_system_fallback
+from relaylm.compiler import build_stable_prefix_hash_diagnostics, compile_profile_messages_with_system_fallback
 from relaylm.config import RelayLMConfig
 from relaylm.memory_candidate import MemoryBlockAssembly, MemorySelectionSummary
 from relaylm.memory_context import MemoryConfigurationError, insert_memory_block
@@ -32,6 +32,8 @@ class CompiledRequest:
     memory_block_assembly: MemoryBlockAssembly | None = None
     memory_fallback_reason: str | None = None
     token_memory_dry_run: dict[str, Any] | None = None
+    stable_prefix_hash: str | None = None
+    stable_prefix_block_ids: list[str] | None = None
 
     def to_log_dict(self) -> dict[str, Any]:
         return {
@@ -50,6 +52,8 @@ class CompiledRequest:
             ),
             "memory_fallback_reason": self.memory_fallback_reason,
             "token_memory_dry_run": self.token_memory_dry_run,
+            "stable_prefix_hash": self.stable_prefix_hash,
+            "stable_prefix_block_ids": self.stable_prefix_block_ids,
             "plan": self.plan.to_log_dict(),
             "decision": self.decision.to_log_dict(),
         }
@@ -101,6 +105,7 @@ def compile_chat_payload_if_enabled(
         blocks,
         incoming_messages,
     )
+    stable_prefix_hash, stable_prefix_block_ids = build_stable_prefix_hash_diagnostics(blocks)
     return CompiledRequest(
         payload=payload_dict,
         plan=plan,
@@ -112,6 +117,8 @@ def compile_chat_payload_if_enabled(
         memory_block_assembly=memory_selection.assembly,
         memory_fallback_reason=memory_fallback_reason,
         token_memory_dry_run=token_dry_run.to_log_dict(),
+        stable_prefix_hash=stable_prefix_hash,
+        stable_prefix_block_ids=stable_prefix_block_ids,
     )
 
 

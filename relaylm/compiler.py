@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 from enum import Enum
 from typing import Any
 
@@ -77,6 +78,24 @@ def validate_block_order(blocks: list[ContextBlock]) -> None:
             )
         previous_rank = current_rank
 
+
+
+
+def build_stable_prefix_hash_diagnostics(
+    blocks: list[ContextBlock],
+) -> tuple[str | None, list[str] | None]:
+    prefix_blocks = [b for b in blocks if b.include_in_prefix_cache_target]
+    if not prefix_blocks:
+        return None, None
+
+    parts: list[str] = []
+    block_ids: list[str] = []
+    for block in prefix_blocks:
+        block_ids.append(block.block_id)
+        parts.append(f"{block.block_type.value}\n{block.content}")
+
+    digest = hashlib.sha256("\n\n".join(parts).encode("utf-8")).hexdigest()
+    return digest, block_ids
 
 def compile_profile_system_message(blocks: list[ContextBlock]) -> dict[str, str]:
     """Compile context blocks into one OpenAI-compatible system message."""

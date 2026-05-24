@@ -44,6 +44,10 @@ def trace_runtime_event(
             trace_metadata["token_policy_readiness"] = diagnostics.token_policy_readiness
         if diagnostics.token_budget_truncation is not None:
             trace_metadata["token_budget_truncation"] = diagnostics.token_budget_truncation
+        if diagnostics.stable_prefix_hash is not None:
+            trace_metadata["stable_prefix_hash"] = diagnostics.stable_prefix_hash
+        if diagnostics.stable_prefix_block_ids is not None:
+            trace_metadata["stable_prefix_block_ids"] = diagnostics.stable_prefix_block_ids
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,

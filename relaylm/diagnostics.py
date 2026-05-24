@@ -26,6 +26,8 @@ class RequestDiagnostics:
     token_policy_decision: dict[str, Any] | None = None
     token_policy_readiness: dict[str, Any] | None = None
     token_budget_truncation: dict[str, Any] | None = None
+    stable_prefix_hash: str | None = None
+    stable_prefix_block_ids: list[str] | None = None
     trace_enabled: bool = False
     profile_compile_dry_run_enabled: bool | None = None
     profile_compile_fallback_reason: str | None = None
