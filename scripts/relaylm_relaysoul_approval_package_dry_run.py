@@ -84,6 +84,9 @@ def main() -> None:
     warnings = revision.get("warnings")
     warning_list = [w for w in warnings if isinstance(w, str)] if isinstance(warnings, list) else []
 
+    approval_required = bool(revision.get("approval_required", True))
+    approval_status = "pending_user_approval" if approval_required else "approval_not_required"
+
     stable_prefix_changed = bool(revision.get("stable_prefix_changed"))
     risk_summary = {
         "high_risk_candidate_count": revision.get("high_risk_candidate_count", 0),
@@ -101,8 +104,8 @@ def main() -> None:
         "parent_revision_id": revision.get("parent_revision_id"),
         "mode": revision.get("mode"),
         "changed_files": revision["changed_files"],
-        "approval_required": bool(revision.get("approval_required", True)),
-        "approval_status": "pending_user_approval",
+        "approval_required": approval_required,
+        "approval_status": approval_status,
         "risk_summary": risk_summary,
         "stable_prefix_changed": stable_prefix_changed,
         "rollback_available": True,
