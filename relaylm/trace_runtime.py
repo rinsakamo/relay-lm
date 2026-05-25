@@ -64,6 +64,8 @@ def trace_runtime_event(
             trace_metadata["memory_adapter_shadow_readiness"] = diagnostics.memory_adapter_shadow_readiness
         if diagnostics.memory_adapter_shadow_conflicts is not None:
             trace_metadata["memory_adapter_shadow_conflicts"] = diagnostics.memory_adapter_shadow_conflicts
+        if diagnostics.memory_adapter_shadow_delta is not None:
+            trace_metadata["memory_adapter_shadow_delta"] = diagnostics.memory_adapter_shadow_delta
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,
