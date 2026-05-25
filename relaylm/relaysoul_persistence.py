@@ -13,8 +13,6 @@ ALLOWED_ARTIFACT_KINDS = {
     "approval_package",
 }
 
-
-
 FORBIDDEN_PAYLOAD_KEYS = {
     "persona_body",
     "memory_body",
@@ -93,7 +91,7 @@ def build_relaysoul_storage_envelope_dry_run(
         "payload": dict(payload),
     }
 
-    envelope_status = "warning" if persistence_dry_run.persistence_status == "warning" else "ok"
+    envelope_status = persistence_dry_run.persistence_status
 
     return RelaySOULStorageEnvelopeDryRun(
         envelope_status=envelope_status,
@@ -102,6 +100,7 @@ def build_relaysoul_storage_envelope_dry_run(
         content_free=content_free,
         envelope=envelope,
     )
+
 
 @dataclass(frozen=True)
 class RelaySOULArtifactPersistenceDryRun:

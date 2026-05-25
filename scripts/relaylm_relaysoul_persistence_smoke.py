@@ -182,6 +182,29 @@ def main() -> int:
     require("payload_contains_forbidden_content_keys" in envelope_blocked_key["blocking_reasons"], envelope_blocked_key)
     require(envelope_blocked_key["envelope"] is None, envelope_blocked_key)
     print("ok storage envelope fail-closed")
+
+
+    blocked_missing_id_artifact = {
+        "dry_run_status": "ok",
+        "content_free": True,
+        "candidate": {},
+    }
+    blocked_persistence = build_relaysoul_artifact_persistence_dry_run(
+        "patch_dry_run", blocked_missing_id_artifact
+    )
+    require(blocked_persistence.persistence_status == "blocked", blocked_persistence.to_log_dict())
+
+    envelope_from_blocked = build_relaysoul_storage_envelope_dry_run(
+        blocked_persistence,
+        blocked_missing_id_artifact,
+        "char-1",
+        created_at="2026-05-25T00:00:00Z",
+        source_commit_sha="abc123",
+    ).to_log_dict()
+    require(envelope_from_blocked["envelope_status"] == "blocked", envelope_from_blocked)
+    require(envelope_from_blocked["envelope"]["persistence_status"] == "blocked", envelope_from_blocked)
+    require("missing_artifact_id" in envelope_from_blocked["envelope"]["blocking_reasons"], envelope_from_blocked)
+    print("ok blocked persistence envelope status alignment")
     require("patch_text" not in str(out), out)
     print("ok content-free artifact")
     return 0
