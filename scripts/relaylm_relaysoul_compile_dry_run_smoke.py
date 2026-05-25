@@ -86,6 +86,17 @@ def main() -> int:
     require("target_block_missing_from_compile" in out["warning_reasons"], out)
     print("ok missing target block warning")
 
+    empty_observed = copy.deepcopy(log)
+    empty_observed["context_block_summary"] = dict(empty_observed.get("context_block_summary") or {})
+    empty_observed["context_block_summary"]["block_ids"] = []
+    empty_target = copy.deepcopy(patch_ok)
+    empty_target["candidate"] = dict(empty_target["candidate"])
+    empty_target["candidate"]["target_files"] = ["OUTPUT_POLICY.md"]
+    out = build_relaysoul_patch_compile_dry_run(empty_target, empty_observed).to_log_dict()
+    require("character_output_policy" in out["missing_target_block_ids"], out)
+    require("target_block_missing_from_compile" in out["warning_reasons"], out)
+    print("ok empty observed block_ids treated as missing")
+
     budget_warn_log = copy.deepcopy(log)
     budget_warn_log["persona_source_budget_diagnostics"] = {
         "budget_status": "warning",

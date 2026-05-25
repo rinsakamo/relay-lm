@@ -84,6 +84,7 @@ def build_relaysoul_patch_compile_dry_run(
                 target_files = [x for x in raw_targets if isinstance(x, str)]
 
     context_block_ids: set[str] = set()
+    context_block_ids_observed = False
     dynamic_block_ids: set[str] = set()
     stable_prefix_block_ids: set[str] = set()
 
@@ -102,6 +103,7 @@ def build_relaysoul_patch_compile_dry_run(
         if isinstance(summary, dict):
             raw_block_ids = summary.get("block_ids")
             if isinstance(raw_block_ids, list):
+                context_block_ids_observed = True
                 context_block_ids = {x for x in raw_block_ids if isinstance(x, str)}
             raw_dynamic = summary.get("dynamic_block_ids")
             if isinstance(raw_dynamic, list):
@@ -120,7 +122,7 @@ def build_relaysoul_patch_compile_dry_run(
 
         target_block_ids.append(block_id)
 
-        if context_block_ids and block_id not in context_block_ids:
+        if context_block_ids_observed and block_id not in context_block_ids:
             missing_target_block_ids.append(block_id)
             if "target_block_missing_from_compile" not in warning_reasons:
                 warning_reasons.append("target_block_missing_from_compile")

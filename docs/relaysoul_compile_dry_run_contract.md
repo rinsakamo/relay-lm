@@ -24,6 +24,7 @@ Before patch apply, RelaySOUL can validate whether patch targets are observable 
 - `stable_prefix_target_files` indicates patch targets that are in stable prefix blocks.
 - `dynamic_target_files` indicates patch targets that are dynamic suffix blocks.
 - `missing_target_block_ids` indicates mapped targets that were not observed in `context_block_summary.block_ids`.
+- when `context_block_summary.block_ids` is present as an empty list, it is treated as an observed empty result and mapped targets are considered missing.
 
 ## Warning and blocking rules
 
