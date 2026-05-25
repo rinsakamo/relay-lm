@@ -50,10 +50,12 @@ def _parse_created_at_utc(value: Any) -> datetime | None:
         return None
     normalized = value.strip().replace("Z", "+00:00")
     try:
-        return datetime.fromisoformat(normalized)
+        parsed = datetime.fromisoformat(normalized)
     except ValueError:
         return None
-
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed
 
 def _resolve_parent_revision_id(history_dir: Path) -> str | None:
     latest_key: tuple[datetime, int, str] | None = None
