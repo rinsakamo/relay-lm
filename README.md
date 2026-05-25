@@ -6,9 +6,10 @@ It is not a language model or a memory database. RelayLM sits in front of an LLM
 
 Initial product target:
 
-- Open-LLM-VTuber memory proxy
+- OpenWebUI model preset / avatar -> RelayLM -> LM Studio as the standard MVP UI/backend path
 - URL-swap integration through an OpenAI-compatible `/v1/chat/completions` endpoint
 - persona-stable and KV-reuse-aware context packing
+- Open-LLM-VTuber as an optional frontend / example integration
 
 ## Core idea
 
@@ -44,7 +45,8 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [RelaySOUL patch compile dry-run contract](docs/relaysoul_compile_dry_run_contract.md)
 - [RelaySOUL persistence storage design](docs/relaysoul_persistence_storage_design.md)
 - [RelaySOUL dry-run chain summary](docs/relaysoul_dry_run_chain_summary.md)
-- [Open-LLM-VTuber integration](docs/open_llm_vtuber_integration.md)
+- [OpenWebUI + LM Studio MVP](docs/openwebui_lmstudio_mvp.md)
+- [Open-LLM-VTuber integration (optional example)](docs/open_llm_vtuber_integration.md)
 - [Runtime architecture](docs/runtime_architecture.md)
 - [Config schema](docs/config_schema.md)
 - [Token policy profile settings](docs/token_policy_profiles.md)
@@ -86,20 +88,21 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 
 ## MVP direction
 
-The first implementation is a thin OpenAI-compatible proxy:
+The first implementation is a thin OpenAI-compatible proxy with this standard MVP path:
+
+```text
+OpenWebUI
+  -> RelayLM /v1/chat/completions
+  -> LM Studio /v1/chat/completions
+```
+
+Optional integration path:
 
 ```text
 Open-LLM-VTuber
   -> RelayLM /v1/chat/completions
-  -> vLLM / SGLang / other OpenAI-compatible backend
+  -> OpenAI-compatible backend
 ```
-
-The default integration should be easy for existing Open-LLM-VTuber users:
-
-1. Start an LLM backend.
-2. Start RelayLM.
-3. Change the OpenAI-compatible API URL in Open-LLM-VTuber to RelayLM.
-4. Keep using the existing character configuration.
 
 ## MVP-0 quick start
 
