@@ -211,6 +211,40 @@ def build_memory_adapter_conflict_diagnostics(
     )
 
 
+def build_memory_adapter_shadow_dry_run_with_scope(
+    *,
+    base_dry_run: dict[str, object] | None,
+    merged_scope: dict[str, str | None],
+) -> dict[str, object] | None:
+    if not isinstance(base_dry_run, dict):
+        return None
+    scope = {
+        "character_id": merged_scope.get("character_id"),
+        "memory_namespace": merged_scope.get("memory_namespace"),
+        "cache_namespace": merged_scope.get("cache_namespace"),
+        "user_id": merged_scope.get("user_id"),
+        "user_type": merged_scope.get("user_type"),
+        "room_id": merged_scope.get("room_id"),
+        "scene_id": merged_scope.get("scene_id"),
+        "session_id": merged_scope.get("session_id"),
+    }
+    scope_isolation_status, missing_scope_fields, scope_warning_count = evaluate_memory_adapter_scope_isolation(scope)
+    return {
+        "adapter_name": base_dry_run.get("adapter_name"),
+        "adapter_kind": base_dry_run.get("adapter_kind"),
+        "status": base_dry_run.get("status"),
+        "scope": scope,
+        "candidate_count": base_dry_run.get("candidate_count"),
+        "candidate_ids": base_dry_run.get("candidate_ids"),
+        "selected_candidate_ids": base_dry_run.get("selected_candidate_ids"),
+        "scope_isolation_status": scope_isolation_status,
+        "missing_scope_fields": missing_scope_fields,
+        "scope_warning_count": scope_warning_count,
+        "fallback_reason": base_dry_run.get("fallback_reason"),
+        "shadow_source": "scope_resolution_merged_scope",
+    }
+
+
 def build_local_seed_memory_adapter_dry_run_from_selection(
     *,
     route: ResolvedRoute,
