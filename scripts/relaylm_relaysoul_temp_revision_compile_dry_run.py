@@ -270,9 +270,9 @@ def main() -> None:
     for candidate in candidates:
         target_path = _resolve_target_file(temp_dir, candidate["target_file"])
         _append_candidate_patch(target_path, candidate)
-        rel = target_path.relative_to(temp_dir).as_posix()
-        if rel not in changed_files:
-            changed_files.append(rel)
+        canonical = candidate["target_file"]
+        if canonical not in changed_files:
+            changed_files.append(canonical)
 
     temp_profile_files = _build_profile_files_for_dir(temp_dir)
     temp_blocks = build_profile_blocks(temp_profile_files)
@@ -322,7 +322,7 @@ def main() -> None:
         "high_risk_candidate_count": high_risk_candidate_count,
         "soul_patch_candidate_present": soul_patch_candidate_present,
         "revision_preview": revision_preview,
-        "compile_dry_run_status": "passed",
+        "compile_dry_run_status": "ok",
         "stable_prefix_hash_before": stable_prefix_hash_before,
         "stable_prefix_hash_after": stable_prefix_hash_after,
         "stable_prefix_changed": stable_prefix_changed,
