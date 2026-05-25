@@ -1,0 +1,27 @@
+{
+  "schema_version": "mvp-soul-0",
+  "artifact_type": "persona_revision_metadata",
+  "metadata_only": true,
+  "revision": {
+    "revision_id": "rev_2026_05_25_001",
+    "parent_revision_id": "rev_2026_05_20_004",
+    "mode": "calibration",
+    "changed_files": [
+      "OUTPUT_POLICY.md",
+      "RELATIONSHIP_ANCHOR.md"
+    ],
+    "feedback_ids": [
+      "fb_tech_warmth_001",
+      "fb_memory_disclosure_001"
+    ],
+    "patch_prompt_id": "patch_prompt_2026_05_25_01",
+    "model_response_id": "model_resp_2026_05_25_01",
+    "stable_prefix_hash_before": "13d83d8fe9d0a2f594078b73f535cfd7fc7be3d1d6e6f4f6aa958ea945f2f97e",
+    "stable_prefix_hash_after": "7c7107cd2f1575cc51f35e15d129ce33859d6d8e6f589d0a4de44c1127cb0f20",
+    "compile_dry_run_status": "passed",
+    "applied_at": "2026-05-25T11:40:00Z",
+    "applied_by": "human_reviewer",
+    "rollback_available": true
+  },
+  "notes": "This artifact tracks revision lineage and dry-run diagnostics metadata only. It does not apply runtime mutations."
+}
