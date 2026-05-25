@@ -77,6 +77,8 @@ def build_relaysoul_rollback_summary(revision: RelaySOULPersonaRevision) -> Rela
     unsupported_files = [f for f in revision.changed_files if f not in ALLOWED_CHANGED_FILES]
     if unsupported_files:
         blocking_reasons.append("unsupported_changed_file")
+    if revision.mode == "normal_chat" and "SOUL.md" in revision.changed_files:
+        blocking_reasons.append("soul_patch_not_allowed_in_normal_chat")
 
     if not revision.rollback_available:
         blocking_reasons.append("rollback_unavailable")

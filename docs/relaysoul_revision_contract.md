@@ -48,6 +48,10 @@ Allowed changed files:
 
 Unsupported mode or changed file yields blocking diagnostics.
 
+Additional guard:
+
+- `normal_chat` with `SOUL.md` in `changed_files` is blocked (`soul_patch_not_allowed_in_normal_chat`).
+
 ## Stable prefix hash before/after
 
 `stable_prefix_hash_before` and `stable_prefix_hash_after` indicate whether the stable persona prefix changed across revisions.

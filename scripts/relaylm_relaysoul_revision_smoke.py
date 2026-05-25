@@ -124,6 +124,27 @@ def main() -> int:
     require("unsupported_mode" in blocked_mode["blocking_reasons"], blocked_mode)
     print("ok unsupported mode blocked")
 
+    normal_chat_soul = RelaySOULPersonaRevision(
+        revision_id="rev-6b",
+        parent_revision_id="rev-6",
+        mode="normal_chat",
+        changed_files=["SOUL.md"],
+        feedback_ids=[],
+        patch_candidate_id=None,
+        patch_dry_run_status="ok",
+        stable_prefix_hash_before=None,
+        stable_prefix_hash_after=None,
+        compile_dry_run_status="ok",
+        applied_by=None,
+        rollback_available=True,
+    )
+    blocked_normal_chat_soul = build_relaysoul_rollback_summary(normal_chat_soul).to_log_dict()
+    require(
+        "soul_patch_not_allowed_in_normal_chat" in blocked_normal_chat_soul["blocking_reasons"],
+        blocked_normal_chat_soul,
+    )
+    print("ok normal_chat soul change blocked")
+
     patch_blocked = RelaySOULPersonaRevision(
         revision_id="rev-7",
         parent_revision_id="rev-6",
