@@ -104,6 +104,8 @@ Open-LLM-VTuber
   -> OpenAI-compatible backend
 ```
 
+For step-by-step OpenWebUI + LM Studio setup and route-model mapping, see [OpenWebUI + LM Studio MVP](docs/openwebui_lmstudio_mvp.md).
+
 ## MVP-0 quick start
 
 Install locally:

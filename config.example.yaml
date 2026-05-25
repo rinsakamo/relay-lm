@@ -58,3 +58,38 @@ characters:
   #   room_anchor: examples/profiles/default/ROOM_ANCHOR.md
   #   memory_seed_path: examples/memory/default_memories.yaml
   #   token_policy_shadow_enabled: false
+
+
+# Optional OpenWebUI + LM Studio MVP route example (docs-only reference).
+# This commented block does not change defaults unless you opt in.
+# backends:
+#   lmstudio_backend:
+#     type: openai_compatible
+#     base_url: http://127.0.0.1:1234/v1
+#     api_key: relaylm
+#     default_model: local-model
+#
+# model_routes:
+#   relaylm-companion:
+#     backend: lmstudio_backend
+#     backend_model: local-model
+#     character_id: default
+#     mode: memory_light
+#     cache_namespace: character/companion
+#     memory_namespace: character/companion
+#
+#   relaylm-work-assistant:
+#     backend: lmstudio_backend
+#     backend_model: local-model
+#     character_id: default
+#     mode: memory_light
+#     cache_namespace: character/work-assistant
+#     memory_namespace: character/work-assistant
+#
+#   relaylm-code-reviewer:
+#     backend: lmstudio_backend
+#     backend_model: local-model
+#     character_id: default
+#     mode: memory_light
+#     cache_namespace: character/code-reviewer
+#     memory_namespace: character/code-reviewer

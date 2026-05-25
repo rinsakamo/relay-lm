@@ -62,3 +62,102 @@ LM Studio owns backend inference runtime:
 Open-LLM-VTuber is supported as an optional frontend / example integration.
 
 It is not the default MVP standard UI in this positioning update.
+
+
+## Quick setup (config-first)
+
+### 1) LM Studio
+
+Start LM Studio OpenAI-compatible server and ensure the endpoint is reachable:
+
+- `http://127.0.0.1:1234/v1`
+
+### 2) RelayLM
+
+Point RelayLM backend to LM Studio and expose RelayLM as OpenAI-compatible endpoint:
+
+- RelayLM listen URL example: `http://127.0.0.1:8090/v1`
+- LM Studio backend URL example: `http://127.0.0.1:1234/v1`
+
+Minimal route mapping example:
+
+```yaml
+backends:
+  lmstudio_backend:
+    type: openai_compatible
+    base_url: http://127.0.0.1:1234/v1
+    api_key: relaylm
+    default_model: local-model
+
+model_routes:
+  relaylm-companion:
+    backend: lmstudio_backend
+    backend_model: local-model
+    character_id: default
+    mode: memory_light
+    cache_namespace: character/companion
+    memory_namespace: character/companion
+
+  relaylm-work-assistant:
+    backend: lmstudio_backend
+    backend_model: local-model
+    character_id: default
+    mode: memory_light
+    cache_namespace: character/work-assistant
+    memory_namespace: character/work-assistant
+
+  relaylm-code-reviewer:
+    backend: lmstudio_backend
+    backend_model: local-model
+    character_id: default
+    mode: memory_light
+    cache_namespace: character/code-reviewer
+    memory_namespace: character/code-reviewer
+```
+
+### 3) OpenWebUI
+
+Configure OpenAI-compatible connection in OpenWebUI:
+
+- Base URL: `http://127.0.0.1:8090/v1`
+- API key: `relaylm` (dummy is acceptable)
+
+Create model preset / avatar cards and set Base Model (Model ID) to one of:
+
+- `relaylm-companion`
+- `relaylm-work-assistant`
+- `relaylm-code-reviewer`
+
+### 4) Smoke checks
+
+Check route publication:
+
+```bash
+curl http://127.0.0.1:8090/v1/models
+```
+
+Non-streaming completion:
+
+```bash
+curl http://127.0.0.1:8090/v1/chat/completions   -H 'content-type: application/json'   -d '{
+    "model": "relaylm-companion",
+    "messages": [{"role": "user", "content": "hello"}],
+    "stream": false
+  }'
+```
+
+Streaming completion:
+
+```bash
+curl -N http://127.0.0.1:8090/v1/chat/completions   -H 'content-type: application/json'   -d '{
+    "model": "relaylm-companion",
+    "messages": [{"role": "user", "content": "hello"}],
+    "stream": true
+  }'
+```
+
+## Prompt layering notes
+
+- OpenWebUI should focus on display name / avatar / prompt suggestions.
+- Avoid heavy system prompt duplication in OpenWebUI when RelayLM already provides `SOUL`/`OUTPUT_POLICY`.
+- RelayLM remains responsible for persona/memory/context/token-budget control.
