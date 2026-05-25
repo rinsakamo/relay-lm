@@ -15,7 +15,7 @@
 MVP-17 establishes a reviewable storage-design baseline before any real persistence work.
 
 - Define what a persistable RelaySOUL artifact record should look like.
-- Preserve lineage traceability across `patch_dry_run` / `patch_compile_dry_run` / `approval_summary` or `approval_package` / `rollback_summary`.
+- Preserve lineage traceability across `patch_dry_run` / `patch_compile_dry_run` / `rollback_summary` / `approval_summary` / `approval_package`.
 - Keep warning/blocked artifact records auditable as future policy-controlled decisions.
 - Enforce content-free-only artifact handling as a hard boundary.
 
