@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-ALLOWED_ARTIFACT_KINDS = {"patch_dry_run", "rollback_summary", "approval_summary"}
+ALLOWED_ARTIFACT_KINDS = {"patch_dry_run", "rollback_summary", "approval_summary", "approval_package"}
 
 
 @dataclass(frozen=True)
@@ -38,6 +38,8 @@ def _extract_status(kind: str, artifact: dict[str, object]) -> str | None:
     elif kind == "rollback_summary":
         status = artifact.get("rollback_status")
     elif kind == "approval_summary":
+        status = artifact.get("approval_status")
+    elif kind == "approval_package":
         status = artifact.get("approval_status")
     else:
         return None
@@ -93,6 +95,14 @@ def build_relaysoul_artifact_persistence_dry_run(
             if artifact_id is None and isinstance(cid, str):
                 artifact_id = cid
             parent_artifact_id = cid if isinstance(cid, str) and cid != "" else None
+            if parent_artifact_id is None:
+                warning_reasons.append("missing_parent_artifact_id")
+
+        elif kind == "approval_package":
+            aid = artifact.get("approval_package_id")
+            rid = artifact.get("revision_id")
+            artifact_id = aid if isinstance(aid, str) and aid != "" else None
+            parent_artifact_id = rid if isinstance(rid, str) and rid != "" else None
             if parent_artifact_id is None:
                 warning_reasons.append("missing_parent_artifact_id")
 
