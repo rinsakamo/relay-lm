@@ -52,6 +52,33 @@ def main() -> int:
     require(out["persistence_status"] == "warning" and out["persistence_ready"] is True and "missing_parent_artifact_id" in out["warning_reasons"], out)
     print("ok approval parent lineage warning")
 
+
+    approval_package_ok = {
+        "approval_status": "pending_user_approval",
+        "content_free": True,
+        "approval_package_id": "apkg-1",
+        "revision_id": "rev-1",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("approval_package", approval_package_ok).to_log_dict()
+    require(out["persistence_status"] == "ok" and out["artifact_id"] == "apkg-1" and out["parent_artifact_id"] == "rev-1", out)
+    print("ok approval package persistence")
+
+    approval_package_missing_id = {
+        "approval_status": "pending_user_approval",
+        "content_free": True,
+        "revision_id": "rev-1",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("approval_package", approval_package_missing_id).to_log_dict()
+    require("missing_artifact_id" in out["blocking_reasons"], out)
+
+    approval_package_missing_parent = {
+        "approval_status": "pending_user_approval",
+        "content_free": True,
+        "approval_package_id": "apkg-2",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("approval_package", approval_package_missing_parent).to_log_dict()
+    require(out["persistence_status"] == "warning" and "missing_parent_artifact_id" in out["warning_reasons"], out)
+    print("ok approval package lineage warnings")
     out = build_relaysoul_artifact_persistence_dry_run("unknown", patch_ok).to_log_dict()
     require("unsupported_artifact_kind" in out["blocking_reasons"], out)
 
