@@ -151,7 +151,7 @@ def main() -> int:
             print("ok proxy truncation default disabled keeps backend payload unchanged")
 
             trace_apply = Path(tmpdir) / "trace-apply.jsonl"
-            cfg_apply = _write_config(f"http://127.0.0.1:{port}", True, 300, trace_apply)
+            cfg_apply = _write_config(f"http://127.0.0.1:{port}", True, 420, trace_apply)
             baseline_apply = _compiled_messages(cfg_apply, copy.deepcopy(payload))
             _, backend_payload_apply, _ = _post_and_capture(cfg_apply, payload, capture)
             backend_messages = backend_payload_apply.get("messages")

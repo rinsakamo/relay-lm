@@ -40,6 +40,7 @@ characters:
     soul: examples/profiles/default/SOUL.md
     output_policy: examples/profiles/default/style.md
     room_anchor: examples/profiles/default/ROOM_ANCHOR.md
+    scene_state: examples/profiles/default/SCENE_STATE.md
     memory_seed_path: examples/memory/default_memories.yaml
     # unset -> falls back to memory.token_policy_shadow_enabled
     # token_policy_shadow_enabled:

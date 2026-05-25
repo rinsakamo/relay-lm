@@ -22,7 +22,7 @@ class BlockType(str, Enum):
     ROOM_ANCHOR = "room_anchor"
     RELATIONSHIP_ANCHOR = "relationship_anchor"
     STABLE_MEMORY_SUMMARY = "stable_memory_summary"
-    ROOM_STATE = "room_state"
+    SCENE_STATE = "scene_state"
     RETRIEVED_MEMORY = "retrieved_memory"
     RECENT_TURNS = "recent_turns"
     INCOMING_SYSTEM_PROMPT = "incoming_system_prompt"
@@ -202,7 +202,7 @@ def build_placeholder_persona_blocks(
     room_anchor: str,
     relationship_anchor: str | None = None,
     stable_memory_summary: str | None = None,
-    room_state: str | None = None,
+    scene_state: str | None = None,
 ) -> list[ContextBlock]:
     """Build the first stable prefix block set for MVP-2 smoke tests."""
 
@@ -271,14 +271,14 @@ def build_placeholder_persona_blocks(
             )
         )
 
-    if room_state:
+    if scene_state:
         blocks.append(
             ContextBlock(
-                block_id=BlockType.ROOM_STATE.value,
-                block_type=BlockType.ROOM_STATE,
+                block_id=BlockType.SCENE_STATE.value,
+                block_type=BlockType.SCENE_STATE,
                 stability_class=StabilityClass.DYNAMIC_SUFFIX,
-                source="placeholder/ROOM_STATE.md",
-                content=room_state,
+                source="placeholder/SCENE_STATE.md",
+                content=scene_state,
                 token_budget_hint=300,
                 include_in_prefix_cache_target=False,
             )
