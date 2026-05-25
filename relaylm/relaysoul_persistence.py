@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-ALLOWED_ARTIFACT_KINDS = {"patch_dry_run", "rollback_summary", "approval_summary"}
+ALLOWED_ARTIFACT_KINDS = {"patch_dry_run", "patch_compile_dry_run", "rollback_summary", "approval_summary"}
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,8 @@ class RelaySOULArtifactPersistenceDryRun:
 def _extract_status(kind: str, artifact: dict[str, object]) -> str | None:
     if kind == "patch_dry_run":
         status = artifact.get("dry_run_status")
+    elif kind == "patch_compile_dry_run":
+        status = artifact.get("compile_dry_run_status")
     elif kind == "rollback_summary":
         status = artifact.get("rollback_status")
     elif kind == "approval_summary":
@@ -75,6 +77,14 @@ def build_relaysoul_artifact_persistence_dry_run(
             if isinstance(candidate, dict):
                 value = candidate.get("candidate_id")
                 artifact_id = value if isinstance(value, str) else None
+
+
+        elif kind == "patch_compile_dry_run":
+            cid = artifact.get("patch_candidate_id")
+            artifact_id = cid if isinstance(cid, str) and cid != "" else None
+            parent_artifact_id = cid if isinstance(cid, str) and cid != "" else None
+            if parent_artifact_id is None:
+                warning_reasons.append("missing_parent_artifact_id")
 
         elif kind == "rollback_summary":
             revision = artifact.get("revision")
