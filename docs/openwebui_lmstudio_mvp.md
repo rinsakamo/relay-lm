@@ -93,7 +93,7 @@ model_routes:
   relaylm-companion:
     backend: lmstudio_backend
     backend_model: local-model
-    character_id: default
+    character_id: companion
     mode: memory_light
     cache_namespace: character/companion
     memory_namespace: character/companion
@@ -101,7 +101,7 @@ model_routes:
   relaylm-work-assistant:
     backend: lmstudio_backend
     backend_model: local-model
-    character_id: default
+    character_id: work_assistant
     mode: memory_light
     cache_namespace: character/work-assistant
     memory_namespace: character/work-assistant
@@ -109,7 +109,7 @@ model_routes:
   relaylm-code-reviewer:
     backend: lmstudio_backend
     backend_model: local-model
-    character_id: default
+    character_id: code_reviewer
     mode: memory_light
     cache_namespace: character/code-reviewer
     memory_namespace: character/code-reviewer
@@ -161,3 +161,23 @@ curl -N http://127.0.0.1:8090/v1/chat/completions   -H 'content-type: applicatio
 - OpenWebUI should focus on display name / avatar / prompt suggestions.
 - Avoid heavy system prompt duplication in OpenWebUI when RelayLM already provides `SOUL`/`OUTPUT_POLICY`.
 - RelayLM remains responsible for persona/memory/context/token-budget control.
+
+
+## Example profiles and memory seeds
+
+RelayLM repository includes abstract example profiles for the OpenWebUI route IDs:
+
+- `examples/profiles/companion/SOUL.md`
+- `examples/profiles/companion/OUTPUT_POLICY.md`
+- `examples/profiles/work_assistant/SOUL.md`
+- `examples/profiles/work_assistant/OUTPUT_POLICY.md`
+- `examples/profiles/code_reviewer/SOUL.md`
+- `examples/profiles/code_reviewer/OUTPUT_POLICY.md`
+
+Optional memory seed examples:
+
+- `examples/memory/companion_memories.yaml`
+- `examples/memory/work_assistant_memories.yaml`
+- `examples/memory/code_reviewer_memories.yaml`
+
+When mapping OpenWebUI preset model IDs to RelayLM routes, bind each route to its matching abstract `character_id` profile and seed file.

@@ -1,0 +1,13 @@
+memories:
+  - memory_id: work-assistant-conclusion-first
+    character_id: work_assistant
+    importance: 5
+    state: promoted
+    tags: [decision]
+    content: Structure support as conclusion, assumptions, and next actions.
+  - memory_id: work-assistant-plan-clarity
+    character_id: work_assistant
+    importance: 4
+    state: active
+    tags: [planning]
+    content: Convert ambiguous requests into concrete, bounded action plans.

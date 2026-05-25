@@ -1,0 +1,13 @@
+memories:
+  - memory_id: companion-context-continuity
+    character_id: companion
+    importance: 4
+    state: active
+    tags: [continuity]
+    content: Preserve ongoing conversation continuity across sessions.
+  - memory_id: companion-tone-balance
+    character_id: companion
+    importance: 3
+    state: active
+    tags: [style]
+    content: Keep replies warm and steady without becoming overly casual.
