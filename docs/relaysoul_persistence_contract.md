@@ -47,3 +47,15 @@ This MVP-15A contract is dry-run-only:
 - no rollback execution
 - no model call
 - no persona/memory/patch body content
+
+
+## Storage envelope dry-run helper
+
+`build_relaysoul_storage_envelope_dry_run(...)` is a dry-run helper that wraps existing content-free artifacts into a storage envelope dictionary for validation before any real persistence implementation.
+
+- no file write
+- no DB write
+- no path creation
+- no runtime mutation
+
+The helper fail-closes when payload content-free assertions are violated.
