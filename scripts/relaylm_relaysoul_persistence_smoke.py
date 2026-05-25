@@ -52,6 +52,45 @@ def main() -> int:
     require(out["persistence_status"] == "warning" and out["persistence_ready"] is True and "missing_parent_artifact_id" in out["warning_reasons"], out)
     print("ok approval parent lineage warning")
 
+    compile_ok = {
+        "compile_dry_run_status": "ok",
+        "content_free": True,
+        "patch_candidate_id": "cand-compile-1",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("patch_compile_dry_run", compile_ok).to_log_dict()
+    require(out["persistence_status"] == "ok", out)
+    require(out["artifact_id"] == "cand-compile-1", out)
+    require(out["parent_artifact_id"] == "cand-compile-1", out)
+    require(out["persistence_ready"] is True, out)
+
+    compile_warning = {
+        "compile_dry_run_status": "warning",
+        "content_free": True,
+        "patch_candidate_id": "cand-compile-2",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("patch_compile_dry_run", compile_warning).to_log_dict()
+    require("artifact_status_warning" in out["warning_reasons"], out)
+    require(out["persistence_ready"] is True, out)
+
+    compile_blocked = {
+        "compile_dry_run_status": "blocked",
+        "content_free": True,
+        "patch_candidate_id": "cand-compile-3",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("patch_compile_dry_run", compile_blocked).to_log_dict()
+    require("artifact_status_blocked" in out["warning_reasons"], out)
+    require(out["persistence_ready"] is True, out)
+
+    compile_missing_id = {
+        "compile_dry_run_status": "ok",
+        "content_free": True,
+        "patch_candidate_id": "",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("patch_compile_dry_run", compile_missing_id).to_log_dict()
+    require("missing_artifact_id" in out["blocking_reasons"], out)
+    require("missing_parent_artifact_id" in out["warning_reasons"], out)
+    require(out["persistence_status"] == "blocked", out)
+    print("ok patch compile persistence linkage")
 
     approval_package_ok = {
         "approval_status": "pending_user_approval",
@@ -79,6 +118,7 @@ def main() -> int:
     out = build_relaysoul_artifact_persistence_dry_run("approval_package", approval_package_missing_parent).to_log_dict()
     require(out["persistence_status"] == "warning" and "missing_parent_artifact_id" in out["warning_reasons"], out)
     print("ok approval package lineage warnings")
+
     out = build_relaysoul_artifact_persistence_dry_run("unknown", patch_ok).to_log_dict()
     require("unsupported_artifact_kind" in out["blocking_reasons"], out)
 

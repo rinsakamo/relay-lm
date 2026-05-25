@@ -9,6 +9,7 @@ Before any persistence implementation, RelaySOUL should validate artifact lineag
 ## Supported artifact kinds
 
 - `patch_dry_run`
+- `patch_compile_dry_run`
 - `rollback_summary`
 - `approval_summary`
 
@@ -17,6 +18,10 @@ Before any persistence implementation, RelaySOUL should validate artifact lineag
 - `patch_dry_run`
   - `artifact_id`: `artifact.candidate.candidate_id`
   - `parent_artifact_id`: `None`
+- `patch_compile_dry_run`
+  - `artifact_id`: `artifact.patch_candidate_id`
+  - `parent_artifact_id`: `artifact.patch_candidate_id`
+  - missing/empty `patch_candidate_id` emits `missing_artifact_id` blocking and `missing_parent_artifact_id` warning
 - `rollback_summary`
   - `artifact_id`: `artifact.revision.revision_id`
   - `parent_artifact_id`: `artifact.revision.parent_revision_id`
@@ -28,7 +33,7 @@ Before any persistence implementation, RelaySOUL should validate artifact lineag
 
 ## Status handling
 
-Blocked or warning source artifacts can still be marked persistence-ready for audit if no persistence-contract blocking rule is violated.
+Blocked or warning source artifacts (including `compile_dry_run_status`) can still be marked persistence-ready for audit if no persistence-contract blocking rule is violated.
 
 ## Safety constraints
 
