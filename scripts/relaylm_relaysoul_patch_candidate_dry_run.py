@@ -107,6 +107,15 @@ def _validate_feedback_refs_if_requested(
     return warnings
 
 
+def _require_non_empty_string(item: dict[str, Any], field: str, idx: int) -> str:
+    value = item.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise PatchCandidateShapeError(
+            f"Patch candidate at index {idx} must provide non-empty string field '{field}'"
+        )
+    return value
+
+
 def _validate_and_normalize_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     normalized: list[dict[str, Any]] = []
 
@@ -122,6 +131,12 @@ def _validate_and_normalize_items(items: list[dict[str, Any]]) -> list[dict[str,
             raise PatchCandidateShapeError(
                 f"Patch candidate at index {idx} has invalid target_file: {target_file}"
             )
+
+        target_block = _require_non_empty_string(item, "target_block", idx)
+        operation = _require_non_empty_string(item, "operation", idx)
+        reason = _require_non_empty_string(item, "reason", idx)
+        patch_text = _require_non_empty_string(item, "patch_text", idx)
+        budget_effect = _require_non_empty_string(item, "budget_effect", idx)
 
         source_feedback_ids = item["source_feedback_ids"]
         if (
@@ -164,14 +179,14 @@ def _validate_and_normalize_items(items: list[dict[str, Any]]) -> list[dict[str,
         normalized.append(
             {
                 "target_file": target_file,
-                "target_block": str(item["target_block"]),
-                "operation": str(item["operation"]),
-                "reason": str(item["reason"]),
-                "patch_text": str(item["patch_text"]),
+                "target_block": target_block,
+                "operation": operation,
+                "reason": reason,
+                "patch_text": patch_text,
                 "source_feedback_ids": source_feedback_ids,
                 "risk_level": risk_level,
                 "requires_user_approval": requires_user_approval,
-                "budget_effect": str(item["budget_effect"]),
+                "budget_effect": budget_effect,
                 "stable_prefix_change_expected": stable_prefix_change_expected,
             }
         )
