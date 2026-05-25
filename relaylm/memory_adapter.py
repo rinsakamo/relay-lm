@@ -67,6 +67,30 @@ class MemoryAdapterConflictDiagnostics:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class MemoryAdapterShadowDelta:
+    delta_status: str
+    scope_changed: bool
+    scope_improved: bool
+    scope_regressed: bool
+    readiness_improved: bool
+    readiness_regressed: bool
+    conflicts_improved: bool
+    conflicts_regressed: bool
+    candidate_ids_changed: bool
+    selected_candidate_ids_changed: bool
+    before_scope_isolation_status: str | None
+    after_scope_isolation_status: str | None
+    before_readiness_blocked_reason: str | None
+    after_readiness_blocked_reason: str | None
+    before_conflict_status: str | None
+    after_conflict_status: str | None
+    changed_scope_fields: list[str]
+
+    def to_log_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
 def evaluate_memory_adapter_scope_isolation(
     scope: dict[str, str | None],
 ) -> tuple[str, list[str], int]:
@@ -243,6 +267,120 @@ def build_memory_adapter_shadow_dry_run_with_scope(
         "fallback_reason": base_dry_run.get("fallback_reason"),
         "shadow_source": "scope_resolution_merged_scope",
     }
+
+
+def build_memory_adapter_shadow_delta(
+    *,
+    base_dry_run: dict[str, object] | None,
+    shadow_dry_run: dict[str, object] | None,
+    base_readiness: dict[str, object] | None,
+    shadow_readiness: dict[str, object] | None,
+    base_conflicts: dict[str, object] | None,
+    shadow_conflicts: dict[str, object] | None,
+) -> MemoryAdapterShadowDelta:
+    if not isinstance(base_dry_run, dict) or not isinstance(shadow_dry_run, dict):
+        return MemoryAdapterShadowDelta(
+            delta_status="missing",
+            scope_changed=False,
+            scope_improved=False,
+            scope_regressed=False,
+            readiness_improved=False,
+            readiness_regressed=False,
+            conflicts_improved=False,
+            conflicts_regressed=False,
+            candidate_ids_changed=False,
+            selected_candidate_ids_changed=False,
+            before_scope_isolation_status=None,
+            after_scope_isolation_status=None,
+            before_readiness_blocked_reason=None,
+            after_readiness_blocked_reason=None,
+            before_conflict_status=None,
+            after_conflict_status=None,
+            changed_scope_fields=[],
+        )
+
+    base_scope = base_dry_run.get("scope") if isinstance(base_dry_run.get("scope"), dict) else {}
+    shadow_scope = shadow_dry_run.get("scope") if isinstance(shadow_dry_run.get("scope"), dict) else {}
+    scope_keys = ("user_id", "user_type", "room_id", "scene_id", "session_id")
+    changed_scope_fields = [k for k in scope_keys if base_scope.get(k) != shadow_scope.get(k)]
+    scope_changed = bool(changed_scope_fields)
+
+    base_candidate_ids = base_dry_run.get("candidate_ids")
+    shadow_candidate_ids = shadow_dry_run.get("candidate_ids")
+    base_selected_ids = base_dry_run.get("selected_candidate_ids")
+    shadow_selected_ids = shadow_dry_run.get("selected_candidate_ids")
+    candidate_ids_changed = base_candidate_ids != shadow_candidate_ids
+    selected_candidate_ids_changed = base_selected_ids != shadow_selected_ids
+
+    before_scope_isolation_status = (
+        base_dry_run.get("scope_isolation_status")
+        if isinstance(base_dry_run.get("scope_isolation_status"), str)
+        else None
+    )
+    after_scope_isolation_status = (
+        shadow_dry_run.get("scope_isolation_status")
+        if isinstance(shadow_dry_run.get("scope_isolation_status"), str)
+        else None
+    )
+    scope_improved = before_scope_isolation_status == "partial_scope" and after_scope_isolation_status == "ok"
+    scope_regressed = before_scope_isolation_status == "ok" and after_scope_isolation_status == "partial_scope"
+
+    before_readiness_blocked_reason = (
+        base_readiness.get("blocked_reason")
+        if isinstance(base_readiness, dict) and isinstance(base_readiness.get("blocked_reason"), str)
+        else None
+    )
+    after_readiness_blocked_reason = (
+        shadow_readiness.get("blocked_reason")
+        if isinstance(shadow_readiness, dict) and isinstance(shadow_readiness.get("blocked_reason"), str)
+        else None
+    )
+    readiness_improved = before_readiness_blocked_reason is not None and after_readiness_blocked_reason is None
+    readiness_regressed = before_readiness_blocked_reason is None and after_readiness_blocked_reason is not None
+
+    before_conflict_status = (
+        base_conflicts.get("conflict_status")
+        if isinstance(base_conflicts, dict) and isinstance(base_conflicts.get("conflict_status"), str)
+        else None
+    )
+    after_conflict_status = (
+        shadow_conflicts.get("conflict_status")
+        if isinstance(shadow_conflicts, dict) and isinstance(shadow_conflicts.get("conflict_status"), str)
+        else None
+    )
+    conflicts_improved = before_conflict_status == "warning" and after_conflict_status == "ok"
+    conflicts_regressed = before_conflict_status == "ok" and after_conflict_status == "warning"
+
+    if candidate_ids_changed or selected_candidate_ids_changed:
+        delta_status = "changed_candidates"
+    elif scope_improved or readiness_improved or conflicts_improved:
+        delta_status = "improved" if not (scope_regressed or readiness_regressed or conflicts_regressed) else "regressed"
+    elif scope_regressed or readiness_regressed or conflicts_regressed:
+        delta_status = "regressed"
+    elif scope_changed:
+        delta_status = "changed"
+    else:
+        delta_status = "same"
+
+    return MemoryAdapterShadowDelta(
+        delta_status=delta_status,
+        scope_changed=scope_changed,
+        scope_improved=scope_improved,
+        scope_regressed=scope_regressed,
+        readiness_improved=readiness_improved,
+        readiness_regressed=readiness_regressed,
+        conflicts_improved=conflicts_improved,
+        conflicts_regressed=conflicts_regressed,
+        candidate_ids_changed=candidate_ids_changed,
+        selected_candidate_ids_changed=selected_candidate_ids_changed,
+        before_scope_isolation_status=before_scope_isolation_status,
+        after_scope_isolation_status=after_scope_isolation_status,
+        before_readiness_blocked_reason=before_readiness_blocked_reason,
+        after_readiness_blocked_reason=after_readiness_blocked_reason,
+        before_conflict_status=before_conflict_status,
+        after_conflict_status=after_conflict_status,
+        changed_scope_fields=changed_scope_fields,
+    )
 
 
 def build_local_seed_memory_adapter_dry_run_from_selection(
