@@ -126,7 +126,7 @@ def _validate_and_normalize_items(items: list[dict[str, Any]]) -> list[dict[str,
                 f"Patch candidate at index {idx} is missing required fields: {', '.join(missing)}"
             )
 
-        target_file = item["target_file"]
+        target_file = _require_non_empty_string(item, "target_file", idx)
         if target_file not in ALLOWED_TARGET_FILES:
             raise PatchCandidateShapeError(
                 f"Patch candidate at index {idx} has invalid target_file: {target_file}"
@@ -160,7 +160,7 @@ def _validate_and_normalize_items(items: list[dict[str, Any]]) -> list[dict[str,
                 f"Patch candidate at index {idx} stable_prefix_change_expected must be bool"
             )
 
-        risk_level = item["risk_level"]
+        risk_level = _require_non_empty_string(item, "risk_level", idx)
         if risk_level not in ALLOWED_RISK_LEVELS:
             raise PatchCandidateShapeError(
                 f"Patch candidate at index {idx} has invalid risk_level: {risk_level}"
