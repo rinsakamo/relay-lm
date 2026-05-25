@@ -102,9 +102,9 @@ def build_relaysoul_approval_summary(
             if isinstance(r_patch_id, str):
                 revision_patch_candidate_id = r_patch_id
 
-    if patch_candidate_id and revision_patch_candidate_id and patch_candidate_id != revision_patch_candidate_id:
+    if patch_candidate_id is not None and revision_patch_candidate_id is not None and patch_candidate_id != revision_patch_candidate_id:
         blocking_reasons.append("patch_candidate_id_mismatch")
-    if mode and revision_mode and mode != revision_mode:
+    if mode is not None and revision_mode is not None and mode != revision_mode:
         blocking_reasons.append("mode_mismatch")
     if mode is None and revision_mode is not None:
         mode = revision_mode

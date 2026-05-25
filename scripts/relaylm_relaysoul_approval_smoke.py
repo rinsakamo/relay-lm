@@ -98,6 +98,13 @@ def main() -> int:
     require("target_changed_file_mismatch" in one_sided_target_only["blocking_reasons"], one_sided_target_only)
     print("ok one-sided file lists blocked as mismatch")
 
+    empty_patch_id_mismatch = build_relaysoul_approval_summary(_patch(cid=""), _rollback(cid="cand-1")).to_log_dict()
+    require("patch_candidate_id_mismatch" in empty_patch_id_mismatch["blocking_reasons"], empty_patch_id_mismatch)
+
+    empty_mode_mismatch = build_relaysoul_approval_summary(_patch(mode=""), _rollback(mode="calibration")).to_log_dict()
+    require("mode_mismatch" in empty_mode_mismatch["blocking_reasons"], empty_mode_mismatch)
+    print("ok empty-string identities are compared")
+
     require("patch_text" not in str(ok), ok)
     print("ok content-free artifact")
     return 0

@@ -33,6 +33,7 @@ Before approval execution, RelaySOUL should be able to evaluate whether a patch 
 - mode mismatch -> `mode_mismatch`
 - target files vs changed files mismatch -> `target_changed_file_mismatch`
 - one-sided non-empty file lists (target only or changed only) are treated as `target_changed_file_mismatch`
+- empty-string identity fields are still compared when present (not skipped by truthiness)
 
 ## Warning and blocking rules
 
