@@ -6,6 +6,8 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from relaylm.routing import ResolvedRoute
+
 
 @dataclass(frozen=True)
 class RequestScopeIdentity:
@@ -16,6 +18,22 @@ class RequestScopeIdentity:
     session_id: str | None
     source: str
     missing_fields: list[str]
+
+    def to_log_dict(self) -> dict[str, object]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class ScopeResolutionDiagnostics:
+    resolution_status: str
+    merged_scope: dict[str, str | None]
+    route_scope: dict[str, str | None]
+    request_scope: dict[str, str | None]
+    conflict_fields: list[str]
+    request_override_fields: list[str]
+    request_fill_fields: list[str]
+    missing_fields: list[str]
+    source: str
 
     def to_log_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -83,3 +101,52 @@ def extract_request_scope_identity(
         missing_fields=missing_fields,
     )
 
+
+def build_scope_resolution_diagnostics(
+    route: ResolvedRoute,
+    request_scope: RequestScopeIdentity,
+) -> ScopeResolutionDiagnostics:
+    keys = ("user_id", "user_type", "room_id", "scene_id", "session_id")
+    route_scope: dict[str, str | None] = {key: getattr(route, key) for key in keys}
+    request_scope_values: dict[str, str | None] = {key: getattr(request_scope, key) for key in keys}
+    merged_scope: dict[str, str | None] = {}
+    conflict_fields: list[str] = []
+    request_override_fields: list[str] = []
+    request_fill_fields: list[str] = []
+    missing_fields: list[str] = []
+
+    for key in keys:
+        route_value = route_scope[key]
+        request_value = request_scope_values[key]
+        if route_value is not None and request_value is None:
+            merged_scope[key] = route_value
+        elif route_value is None and request_value is not None:
+            merged_scope[key] = request_value
+            request_fill_fields.append(key)
+        elif route_value is not None and request_value is not None:
+            merged_scope[key] = route_value
+            if route_value != request_value:
+                conflict_fields.append(key)
+                request_override_fields.append(key)
+        else:
+            merged_scope[key] = None
+            missing_fields.append(key)
+
+    if conflict_fields:
+        resolution_status = "conflict"
+    elif missing_fields:
+        resolution_status = "partial"
+    else:
+        resolution_status = "ok"
+
+    return ScopeResolutionDiagnostics(
+        resolution_status=resolution_status,
+        merged_scope=merged_scope,
+        route_scope=route_scope,
+        request_scope=request_scope_values,
+        conflict_fields=conflict_fields,
+        request_override_fields=request_override_fields,
+        request_fill_fields=request_fill_fields,
+        missing_fields=missing_fields,
+        source=request_scope.source,
+    )
