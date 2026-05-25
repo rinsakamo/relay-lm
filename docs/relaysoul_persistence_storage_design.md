@@ -87,12 +87,13 @@ Envelope constraints:
 
 Lineage must be reconstructable from `artifact_id -> parent_artifact_id` links and index records.
 
-Conceptual chain (can branch by retries/revisions):
+Conceptual dependency chain (can branch by retries/revisions):
 
 - `patch_dry_run`
 - `patch_compile_dry_run`
-- `approval_package` or `approval_summary`
 - `rollback_summary`
+- `approval_summary`
+- `approval_package`
 
 Audit requirements:
 
