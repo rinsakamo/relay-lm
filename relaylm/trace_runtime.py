@@ -56,6 +56,8 @@ def trace_runtime_event(
             trace_metadata["memory_adapter_conflicts"] = diagnostics.memory_adapter_conflicts
         if diagnostics.request_scope_identity is not None:
             trace_metadata["request_scope_identity"] = diagnostics.request_scope_identity
+        if diagnostics.scope_resolution_diagnostics is not None:
+            trace_metadata["scope_resolution_diagnostics"] = diagnostics.scope_resolution_diagnostics
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,
