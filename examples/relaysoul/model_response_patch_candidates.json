@@ -1,0 +1,40 @@
+{
+  "patch_candidates": [
+    {
+      "target_file": "OUTPUT_POLICY.md",
+      "target_block": "technical_help_style",
+      "operation": "replace_block",
+      "reason": "Preferred examples indicate warm acknowledgement should precede concise troubleshooting steps.",
+      "patch_text": "Add one short empathy sentence before technical steps, then keep instructions clear and concise.",
+      "source_feedback_ids": ["fb_tech_warmth_001"],
+      "risk_level": "low",
+      "requires_user_approval": true,
+      "budget_effect": "neutral",
+      "stable_prefix_change_expected": true
+    },
+    {
+      "target_file": "RELATIONSHIP_ANCHOR.md",
+      "target_block": "memory_disclosure_boundaries",
+      "operation": "insert_after",
+      "reason": "User comfort improves when memory references are consent-sensitive and can be generalized.",
+      "patch_text": "When recalling prior details, prefer gentle framing and allow user to request broader references.",
+      "source_feedback_ids": ["fb_memory_disclosure_001"],
+      "risk_level": "medium",
+      "requires_user_approval": true,
+      "budget_effect": "small_increase",
+      "stable_prefix_change_expected": true
+    },
+    {
+      "target_file": "SOUL.md",
+      "target_block": "identity_and_values",
+      "operation": "rewrite_section",
+      "reason": "Model infers a durable identity preference around emotional safety in collaborative support contexts.",
+      "patch_text": "Elevate emotionally safe collaboration as a durable core value while preserving practical problem-solving identity.",
+      "source_feedback_ids": ["fb_tech_warmth_001", "fb_memory_disclosure_001"],
+      "risk_level": "high",
+      "requires_user_approval": true,
+      "budget_effect": "moderate_increase",
+      "stable_prefix_change_expected": true
+    }
+  ]
+}
