@@ -37,6 +37,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [Context packing design](docs/context_packing_design.md)
 - [Persona-specialized proxy design](docs/persona_specialized_proxy_design.md)
 - [RelaySOUL persona source calibration design](docs/relaysoul_design.md)
+- [RelaySOUL patch candidate contract](docs/relaysoul_patch_candidate_contract.md)
 - [Open-LLM-VTuber integration](docs/open_llm_vtuber_integration.md)
 - [Runtime architecture](docs/runtime_architecture.md)
 - [Config schema](docs/config_schema.md)
