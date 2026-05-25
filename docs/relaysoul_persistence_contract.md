@@ -23,6 +23,7 @@ Before any persistence implementation, RelaySOUL should validate artifact lineag
 - `approval_summary`
   - `artifact_id`: `artifact.revision_id` if present, else `artifact.patch_candidate_id`
   - `parent_artifact_id`: `artifact.patch_candidate_id`
+  - missing/empty `patch_candidate_id` emits `missing_parent_artifact_id` warning
 
 ## Status handling
 

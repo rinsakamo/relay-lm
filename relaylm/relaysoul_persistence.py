@@ -92,7 +92,9 @@ def build_relaysoul_artifact_persistence_dry_run(
             artifact_id = rid if isinstance(rid, str) and rid != "" else None
             if artifact_id is None and isinstance(cid, str):
                 artifact_id = cid
-            parent_artifact_id = cid if isinstance(cid, str) else None
+            parent_artifact_id = cid if isinstance(cid, str) and cid != "" else None
+            if parent_artifact_id is None:
+                warning_reasons.append("missing_parent_artifact_id")
 
         if artifact_id is None or artifact_id == "":
             blocking_reasons.append("missing_artifact_id")

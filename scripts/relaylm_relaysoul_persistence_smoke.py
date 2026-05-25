@@ -43,6 +43,15 @@ def main() -> int:
     require(out["artifact_id"] == "cand-2", out)
     print("ok approval artifact id extraction")
 
+    approval_missing_parent = {"approval_status": "ok", "content_free": True, "revision_id": "rev-1"}
+    out = build_relaysoul_artifact_persistence_dry_run("approval_summary", approval_missing_parent).to_log_dict()
+    require(out["persistence_status"] == "warning" and out["persistence_ready"] is True and "missing_parent_artifact_id" in out["warning_reasons"], out)
+
+    approval_empty_parent = {"approval_status": "ok", "content_free": True, "revision_id": "rev-1", "patch_candidate_id": ""}
+    out = build_relaysoul_artifact_persistence_dry_run("approval_summary", approval_empty_parent).to_log_dict()
+    require(out["persistence_status"] == "warning" and out["persistence_ready"] is True and "missing_parent_artifact_id" in out["warning_reasons"], out)
+    print("ok approval parent lineage warning")
+
     out = build_relaysoul_artifact_persistence_dry_run("unknown", patch_ok).to_log_dict()
     require("unsupported_artifact_kind" in out["blocking_reasons"], out)
 
