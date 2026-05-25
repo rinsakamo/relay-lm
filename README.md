@@ -42,6 +42,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [RelaySOUL approval contract](docs/relaysoul_approval_contract.md)
 - [RelaySOUL persistence contract](docs/relaysoul_persistence_contract.md)
 - [RelaySOUL patch compile dry-run contract](docs/relaysoul_compile_dry_run_contract.md)
+- [RelaySOUL persistence storage design](docs/relaysoul_persistence_storage_design.md)
 - [RelaySOUL dry-run chain summary](docs/relaysoul_dry_run_chain_summary.md)
 - [Open-LLM-VTuber integration](docs/open_llm_vtuber_integration.md)
 - [Runtime architecture](docs/runtime_architecture.md)
