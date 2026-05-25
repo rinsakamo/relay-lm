@@ -20,6 +20,11 @@ from relaylm.adapter import (
 )
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.diagnostics import RequestDiagnostics
+from relaylm.memory_adapter import (
+    build_memory_adapter_conflict_diagnostics,
+    build_memory_adapter_readiness_check,
+    build_memory_adapter_shadow_dry_run_with_scope,
+)
 from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.request_scope import build_scope_resolution_diagnostics, extract_request_scope_identity
 from relaylm.routing import (
@@ -162,6 +167,24 @@ def create_app(config_path: str | None = None) -> FastAPI:
         token_policy_readiness = build_token_policy_readiness_check(token_policy_decision)
         request_scope_identity = extract_request_scope_identity(request.headers, payload)
         scope_resolution_diagnostics = build_scope_resolution_diagnostics(route, request_scope_identity)
+        merged_scope = dict(scope_resolution_diagnostics.merged_scope)
+        merged_scope["character_id"] = route.character_id
+        merged_scope["memory_namespace"] = route.memory_namespace
+        merged_scope["cache_namespace"] = route.cache_namespace
+        memory_adapter_shadow_dry_run = build_memory_adapter_shadow_dry_run_with_scope(
+            base_dry_run=compiled_request.memory_adapter_dry_run,
+            merged_scope=merged_scope,
+        )
+        memory_adapter_shadow_readiness = (
+            build_memory_adapter_readiness_check(memory_adapter_shadow_dry_run).to_log_dict()
+            if memory_adapter_shadow_dry_run is not None
+            else None
+        )
+        memory_adapter_shadow_conflicts = (
+            build_memory_adapter_conflict_diagnostics(memory_adapter_shadow_dry_run).to_log_dict()
+            if memory_adapter_shadow_dry_run is not None
+            else None
+        )
         forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
             config=config,
             payload=compiled_request.payload,
@@ -201,6 +224,9 @@ def create_app(config_path: str | None = None) -> FastAPI:
             memory_adapter_conflicts=compiled_request.memory_adapter_conflicts,
             request_scope_identity=request_scope_identity.to_log_dict(),
             scope_resolution_diagnostics=scope_resolution_diagnostics.to_log_dict(),
+            memory_adapter_shadow_dry_run=memory_adapter_shadow_dry_run,
+            memory_adapter_shadow_readiness=memory_adapter_shadow_readiness,
+            memory_adapter_shadow_conflicts=memory_adapter_shadow_conflicts,
             trace_enabled=config.trace.enabled,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,

@@ -58,6 +58,12 @@ def trace_runtime_event(
             trace_metadata["request_scope_identity"] = diagnostics.request_scope_identity
         if diagnostics.scope_resolution_diagnostics is not None:
             trace_metadata["scope_resolution_diagnostics"] = diagnostics.scope_resolution_diagnostics
+        if diagnostics.memory_adapter_shadow_dry_run is not None:
+            trace_metadata["memory_adapter_shadow_dry_run"] = diagnostics.memory_adapter_shadow_dry_run
+        if diagnostics.memory_adapter_shadow_readiness is not None:
+            trace_metadata["memory_adapter_shadow_readiness"] = diagnostics.memory_adapter_shadow_readiness
+        if diagnostics.memory_adapter_shadow_conflicts is not None:
+            trace_metadata["memory_adapter_shadow_conflicts"] = diagnostics.memory_adapter_shadow_conflicts
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,
