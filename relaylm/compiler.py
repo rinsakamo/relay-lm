@@ -135,6 +135,50 @@ def summarize_context_blocks(blocks: list[ContextBlock]) -> dict[str, object]:
         "retrieved_memory_present": any(block.block_type == BlockType.RETRIEVED_MEMORY for block in blocks),
     }
 
+
+def build_persona_source_budget_diagnostics(blocks: list[ContextBlock]) -> dict[str, object]:
+    """Build content-free character-source budget diagnostics from profile blocks."""
+
+    source_budgets: dict[str, int] = {
+        BlockType.CHARACTER_SOUL_ANCHOR.value: 3200,
+        BlockType.CHARACTER_OUTPUT_POLICY.value: 2400,
+        BlockType.RELATIONSHIP_ANCHOR.value: 2000,
+        BlockType.STABLE_MEMORY_SUMMARY.value: 4000,
+        BlockType.SCENE_STATE.value: 1200,
+    }
+    source_blocks = [block for block in blocks if block.block_id in source_budgets]
+    if not source_blocks:
+        return {
+            "budget_status": "missing",
+            "total_source_chars": 0,
+            "over_budget_block_ids": [],
+            "source_budgets": source_budgets,
+            "source_char_counts": {},
+            "source_budget_ratios": {},
+            "source_warning_count": 0,
+        }
+
+    source_char_counts: dict[str, int] = {}
+    source_budget_ratios: dict[str, float] = {}
+    over_budget_block_ids: list[str] = []
+    for block in source_blocks:
+        char_count = len(block.content)
+        budget = source_budgets[block.block_id]
+        source_char_counts[block.block_id] = char_count
+        source_budget_ratios[block.block_id] = (char_count / budget) if budget > 0 else 0.0
+        if char_count > budget:
+            over_budget_block_ids.append(block.block_id)
+
+    return {
+        "budget_status": "warning" if over_budget_block_ids else "ok",
+        "total_source_chars": sum(source_char_counts.values()),
+        "over_budget_block_ids": over_budget_block_ids,
+        "source_budgets": source_budgets,
+        "source_char_counts": source_char_counts,
+        "source_budget_ratios": source_budget_ratios,
+        "source_warning_count": len(over_budget_block_ids),
+    }
+
 def compile_profile_system_message(blocks: list[ContextBlock]) -> dict[str, str]:
     """Compile context blocks into one OpenAI-compatible system message."""
 

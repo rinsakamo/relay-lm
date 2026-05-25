@@ -10,6 +10,7 @@ import yaml
 
 from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply
 from relaylm.compiler import (
+    build_persona_source_budget_diagnostics,
     build_stable_prefix_hash_diagnostics,
     compile_profile_messages_with_system_fallback,
     summarize_context_blocks,
@@ -47,6 +48,7 @@ class CompiledRequest:
     memory_adapter_readiness: dict[str, Any] | None = None
     memory_adapter_conflicts: dict[str, Any] | None = None
     context_block_summary: dict[str, Any] | None = None
+    persona_source_budget_diagnostics: dict[str, Any] | None = None
 
     def to_log_dict(self) -> dict[str, Any]:
         return {
@@ -71,6 +73,7 @@ class CompiledRequest:
             "memory_adapter_readiness": self.memory_adapter_readiness,
             "memory_adapter_conflicts": self.memory_adapter_conflicts,
             "context_block_summary": self.context_block_summary,
+            "persona_source_budget_diagnostics": self.persona_source_budget_diagnostics,
             "plan": self.plan.to_log_dict(),
             "decision": self.decision.to_log_dict(),
         }
@@ -105,6 +108,7 @@ def compile_chat_payload_if_enabled(
 
     profile_files = resolve_profile_files(config, route)
     profile_blocks = build_profile_blocks(profile_files)
+    persona_source_budget_diagnostics = build_persona_source_budget_diagnostics(profile_blocks)
     memory_selection, memory_fallback_reason = _resolve_memory_selection_best_effort(
         config=config,
         route=route,
@@ -148,6 +152,7 @@ def compile_chat_payload_if_enabled(
         memory_adapter_readiness=memory_adapter_readiness,
         memory_adapter_conflicts=memory_adapter_conflicts,
         context_block_summary=context_block_summary,
+        persona_source_budget_diagnostics=persona_source_budget_diagnostics,
     )
 
 
