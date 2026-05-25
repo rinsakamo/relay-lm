@@ -9,7 +9,11 @@ from typing import Any, Mapping
 import yaml
 
 from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply
-from relaylm.compiler import build_stable_prefix_hash_diagnostics, compile_profile_messages_with_system_fallback
+from relaylm.compiler import (
+    build_stable_prefix_hash_diagnostics,
+    compile_profile_messages_with_system_fallback,
+    summarize_context_blocks,
+)
 from relaylm.config import RelayLMConfig
 from relaylm.memory_adapter import (
     build_memory_adapter_conflict_diagnostics,
@@ -42,6 +46,7 @@ class CompiledRequest:
     memory_adapter_dry_run: dict[str, Any] | None = None
     memory_adapter_readiness: dict[str, Any] | None = None
     memory_adapter_conflicts: dict[str, Any] | None = None
+    context_block_summary: dict[str, Any] | None = None
 
     def to_log_dict(self) -> dict[str, Any]:
         return {
@@ -65,6 +70,7 @@ class CompiledRequest:
             "memory_adapter_dry_run": self.memory_adapter_dry_run,
             "memory_adapter_readiness": self.memory_adapter_readiness,
             "memory_adapter_conflicts": self.memory_adapter_conflicts,
+            "context_block_summary": self.context_block_summary,
             "plan": self.plan.to_log_dict(),
             "decision": self.decision.to_log_dict(),
         }
@@ -124,6 +130,7 @@ def compile_chat_payload_if_enabled(
         incoming_messages,
     )
     stable_prefix_hash, stable_prefix_block_ids = build_stable_prefix_hash_diagnostics(blocks)
+    context_block_summary = summarize_context_blocks(blocks)
     return CompiledRequest(
         payload=payload_dict,
         plan=plan,
@@ -140,6 +147,7 @@ def compile_chat_payload_if_enabled(
         memory_adapter_dry_run=memory_adapter_dry_run,
         memory_adapter_readiness=memory_adapter_readiness,
         memory_adapter_conflicts=memory_adapter_conflicts,
+        context_block_summary=context_block_summary,
     )
 
 

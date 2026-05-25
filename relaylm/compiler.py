@@ -108,6 +108,33 @@ def build_stable_prefix_hash_diagnostics(
     digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
     return digest, block_ids
 
+
+def summarize_context_blocks(blocks: list[ContextBlock]) -> dict[str, object]:
+    """Build machine-readable diagnostics for compiled profile/memory blocks."""
+
+    block_ids = [block.block_id for block in blocks]
+    block_types = [block.block_type.value for block in blocks]
+    stability_classes = [block.stability_class.value for block in blocks]
+    prefix_cache_target_block_ids = [
+        block.block_id for block in blocks if block.include_in_prefix_cache_target
+    ]
+    dynamic_block_ids = [
+        block.block_id
+        for block in blocks
+        if block.stability_class == StabilityClass.DYNAMIC_SUFFIX
+    ]
+
+    return {
+        "block_count": len(blocks),
+        "block_ids": block_ids,
+        "block_types": block_types,
+        "stability_classes": stability_classes,
+        "prefix_cache_target_block_ids": prefix_cache_target_block_ids,
+        "dynamic_block_ids": dynamic_block_ids,
+        "scene_state_present": any(block.block_type == BlockType.SCENE_STATE for block in blocks),
+        "retrieved_memory_present": any(block.block_type == BlockType.RETRIEVED_MEMORY for block in blocks),
+    }
+
 def compile_profile_system_message(blocks: list[ContextBlock]) -> dict[str, str]:
     """Compile context blocks into one OpenAI-compatible system message."""
 

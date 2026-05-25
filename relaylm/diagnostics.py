@@ -31,6 +31,7 @@ class RequestDiagnostics:
     memory_adapter_dry_run: dict[str, Any] | None = None
     memory_adapter_readiness: dict[str, Any] | None = None
     memory_adapter_conflicts: dict[str, Any] | None = None
+    context_block_summary: dict[str, Any] | None = None
     request_scope_identity: dict[str, Any] | None = None
     scope_resolution_diagnostics: dict[str, Any] | None = None
     memory_adapter_shadow_dry_run: dict[str, Any] | None = None
