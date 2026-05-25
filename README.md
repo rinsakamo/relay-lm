@@ -82,6 +82,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [MVP-15 summary](docs/mvp15_summary.md)
 - [MVP-16 summary](docs/mvp16_summary.md)
 - [MVP-17 summary](docs/mvp17_summary.md)
+- [MVP-18 summary](docs/mvp18_summary.md)
 
 ## MVP direction
 
