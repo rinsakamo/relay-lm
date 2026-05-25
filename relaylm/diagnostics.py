@@ -39,6 +39,7 @@ class RequestDiagnostics:
     memory_adapter_shadow_readiness: dict[str, Any] | None = None
     memory_adapter_shadow_conflicts: dict[str, Any] | None = None
     memory_adapter_shadow_delta: dict[str, Any] | None = None
+    relaysoul_runtime_feedback_summary: dict[str, Any] | None = None
     trace_enabled: bool = False
     profile_compile_dry_run_enabled: bool | None = None
     profile_compile_fallback_reason: str | None = None
@@ -67,3 +68,80 @@ class RequestDiagnostics:
 
     def to_log_dict(self) -> dict[str, object]:
         return asdict(self)
+
+
+def build_relaysoul_runtime_feedback_summary(diagnostics: RequestDiagnostics) -> dict[str, object]:
+    persona_budget = diagnostics.persona_source_budget_diagnostics or {}
+    context_summary = diagnostics.context_block_summary or {}
+    token_policy_readiness = diagnostics.token_policy_readiness or {}
+    token_budget_truncation = diagnostics.token_budget_truncation or {}
+    memory_adapter_conflicts = diagnostics.memory_adapter_conflicts or {}
+    memory_adapter_readiness = diagnostics.memory_adapter_readiness or {}
+    scope_resolution = diagnostics.scope_resolution_diagnostics or {}
+    shadow_delta = diagnostics.memory_adapter_shadow_delta or {}
+
+    warning_reasons: list[str] = []
+    blocking_reasons: list[str] = []
+
+    persona_budget_status = (
+        persona_budget.get("budget_status")
+        if isinstance(persona_budget.get("budget_status"), str)
+        else None
+    )
+    persona_budget_warning_count = (
+        persona_budget.get("source_warning_count")
+        if isinstance(persona_budget.get("source_warning_count"), int)
+        else 0
+    )
+    if persona_budget_status == "warning" or persona_budget_warning_count > 0:
+        warning_reasons.append("persona_source_budget_warning")
+
+    if memory_adapter_conflicts.get("conflict_status") == "warning":
+        warning_reasons.append("memory_adapter_conflict_warning")
+    if scope_resolution.get("resolution_status") == "conflict":
+        warning_reasons.append("scope_resolution_conflict")
+    if memory_adapter_readiness.get("blocked_reason") is not None:
+        warning_reasons.append("memory_adapter_not_ready")
+    if token_policy_readiness.get("ready_for_future_enforcement") is False:
+        warning_reasons.append("token_policy_not_ready")
+
+    if blocking_reasons:
+        feedback_status = "blocked_candidate"
+    elif warning_reasons:
+        feedback_status = "warning"
+    else:
+        feedback_status = "ok"
+
+    return {
+        "feedback_status": feedback_status,
+        "warning_reasons": warning_reasons,
+        "blocking_reasons": blocking_reasons,
+        "persona_budget_status": persona_budget_status,
+        "persona_budget_warning_count": persona_budget_warning_count,
+        "stable_prefix_hash_present": diagnostics.stable_prefix_hash is not None,
+        "scene_state_present": bool(context_summary.get("scene_state_present")),
+        "retrieved_memory_present": bool(context_summary.get("retrieved_memory_present")),
+        "context_block_count": (
+            context_summary.get("block_count")
+            if isinstance(context_summary.get("block_count"), int)
+            else None
+        ),
+        "token_policy_ready": token_policy_readiness.get("ready_for_future_enforcement")
+        if isinstance(token_policy_readiness.get("ready_for_future_enforcement"), bool)
+        else None,
+        "token_truncation_applied": token_budget_truncation.get("applied")
+        if isinstance(token_budget_truncation.get("applied"), bool)
+        else None,
+        "memory_adapter_conflict_status": memory_adapter_conflicts.get("conflict_status")
+        if isinstance(memory_adapter_conflicts.get("conflict_status"), str)
+        else None,
+        "memory_adapter_readiness_blocked_reason": memory_adapter_readiness.get("blocked_reason")
+        if isinstance(memory_adapter_readiness.get("blocked_reason"), str)
+        else None,
+        "scope_resolution_status": scope_resolution.get("resolution_status")
+        if isinstance(scope_resolution.get("resolution_status"), str)
+        else None,
+        "shadow_delta_status": shadow_delta.get("delta_status")
+        if isinstance(shadow_delta.get("delta_status"), str)
+        else None,
+    }
