@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import replace
 import json
 import os
 import uuid
@@ -19,7 +20,7 @@ from relaylm.adapter import (
     open_chat_completion_stream,
 )
 from relaylm.config import RelayLMConfig, load_config
-from relaylm.diagnostics import RequestDiagnostics
+from relaylm.diagnostics import RequestDiagnostics, build_relaysoul_runtime_feedback_summary
 from relaylm.memory_adapter import (
     build_memory_adapter_shadow_delta,
     build_memory_adapter_conflict_diagnostics,
@@ -203,7 +204,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             payload=compiled_request.payload,
         )
 
-        diagnostics = RequestDiagnostics(
+        base_diagnostics = RequestDiagnostics(
             request_id=request_id,
             route_model=route.route_model,
             backend_model=route.backend_model,
@@ -246,6 +247,15 @@ def create_app(config_path: str | None = None) -> FastAPI:
             trace_enabled=config.trace.enabled,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
+        )
+        feedback_summary = (
+            build_relaysoul_runtime_feedback_summary(base_diagnostics)
+            if base_diagnostics.compiler_used
+            else None
+        )
+        diagnostics = replace(
+            base_diagnostics,
+            relaysoul_runtime_feedback_summary=feedback_summary,
         )
 
         if stream_enabled:
