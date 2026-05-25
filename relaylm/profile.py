@@ -18,7 +18,7 @@ class ProfileFiles:
     room_anchor: Path
     relationship_anchor: Path | None = None
     stable_memory_summary: Path | None = None
-    room_state: Path | None = None
+    scene_state: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -29,7 +29,7 @@ class ProfileTexts:
     room_anchor: str
     relationship_anchor: str | None = None
     stable_memory_summary: str | None = None
-    room_state: str | None = None
+    scene_state: str | None = None
 
 
 class ProfileConfigurationError(ValueError):
@@ -55,7 +55,7 @@ def load_profile_texts(files: ProfileFiles) -> ProfileTexts:
         room_anchor=read_text_file(files.room_anchor),
         relationship_anchor=_read_optional_text_file(files.relationship_anchor),
         stable_memory_summary=_read_optional_text_file(files.stable_memory_summary),
-        room_state=_read_optional_text_file(files.room_state),
+        scene_state=_read_optional_text_file(files.scene_state),
     )
 
 
@@ -85,7 +85,7 @@ def resolve_profile_files(config: RelayLMConfig, route: ResolvedRoute) -> Profil
         room_anchor=Path(character.room_anchor),
         relationship_anchor=(Path(character.relationship_anchor) if character.relationship_anchor else None),
         stable_memory_summary=(Path(character.stable_memory_summary) if character.stable_memory_summary else None),
-        room_state=(Path(character.room_state) if character.room_state else None),
+        scene_state=(Path(character.scene_state) if character.scene_state else None),
     )
 
 
@@ -98,5 +98,5 @@ def build_profile_blocks(files: ProfileFiles) -> list[ContextBlock]:
         room_anchor=texts.room_anchor,
         relationship_anchor=texts.relationship_anchor,
         stable_memory_summary=texts.stable_memory_summary,
-        room_state=texts.room_state,
+        scene_state=texts.scene_state,
     )

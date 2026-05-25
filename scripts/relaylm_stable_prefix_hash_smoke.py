@@ -53,7 +53,7 @@ def main() -> int:
         ch = cfg["characters"]["default"]
         ch["relationship_anchor"] = str(p / "rel-a.md")
         ch["stable_memory_summary"] = str(p / "stable-a.md")
-        ch["room_state"] = str(p / "room-a.md")
+        ch["scene_state"] = str(p / "room-a.md")
 
         before = copy.deepcopy(payload)
         c1 = _compile(cfg, payload)
@@ -66,10 +66,10 @@ def main() -> int:
         print("ok stable prefix hash consistent for same stable blocks")
 
         cfg_room = copy.deepcopy(cfg)
-        cfg_room["characters"]["default"]["room_state"] = str(p / "room-b.md")
+        cfg_room["characters"]["default"]["scene_state"] = str(p / "room-b.md")
         c_room = _compile(cfg_room, payload)
         require(c1.stable_prefix_hash == c_room.stable_prefix_hash, (c1, c_room))
-        print("ok room_state change does not change stable prefix hash")
+        print("ok scene_state change does not change stable prefix hash")
 
         payload_sys = copy.deepcopy(payload)
         payload_sys["messages"][0]["content"] = "incoming system b"

@@ -41,36 +41,37 @@ def main() -> int:
     context = compiled.payload["messages"][0]["content"]
     require("<relationship_anchor>" not in context, context)
     require("<stable_memory_summary>" not in context, context)
-    require("<room_state>" not in context, context)
+    require("<scene_state>" in context, context)
     print("ok optional persona blocks omitted when unset")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         p = Path(tmpdir)
         (p / "rel.md").write_text("Important relationship anchor.", encoding="utf-8")
         (p / "stable.md").write_text("Stable summary notes.", encoding="utf-8")
-        (p / "room_state.md").write_text("Room mood is energetic.", encoding="utf-8")
+        (p / "scene_state.md").write_text("Scene mood is energetic.", encoding="utf-8")
+        (p / "room_state_alias.md").write_text("Deprecated alias scene text.", encoding="utf-8")
 
         cfg2 = copy.deepcopy(cfg)
         char = cfg2["characters"]["default"]
         char["memory_seed_path"] = str(p / "missing-seed.yaml")
         char["relationship_anchor"] = str(p / "rel.md")
         char["stable_memory_summary"] = str(p / "stable.md")
-        char["room_state"] = str(p / "room_state.md")
+        char["scene_state"] = str(p / "scene_state.md")
         config2 = RelayLMConfig.model_validate(cfg2)
         route2 = resolve_route(config2, "relaylm-default")
         compiled2 = compile_chat_payload_if_enabled(config=config2, route=route2, payload=payload)
         context2 = compiled2.payload["messages"][0]["content"]
         require("<relationship_anchor>" in context2, context2)
         require("<stable_memory_summary>" in context2, context2)
-        require("<room_state>" in context2, context2)
+        require("<scene_state>" in context2, context2)
         require(context2.index("<relationship_anchor>") < context2.index("<stable_memory_summary>"), context2)
-        require(context2.index("<stable_memory_summary>") < context2.index("<room_state>"), context2)
+        require(context2.index("<stable_memory_summary>") < context2.index("<scene_state>"), context2)
         print("ok optional persona blocks compiled with stable/slow/dynamic order")
 
         cfg3 = copy.deepcopy(cfg)
         char3 = cfg3["characters"]["default"]
         char3["memory_seed_path"] = "examples/memory/default_memories.yaml"
-        char3["room_state"] = str(p / "room_state.md")
+        char3["scene_state"] = str(p / "scene_state.md")
         config3 = RelayLMConfig.model_validate(cfg3)
         route3 = resolve_route(config3, "relaylm-default")
         before3 = copy.deepcopy(payload)
@@ -78,9 +79,32 @@ def main() -> int:
         require(payload == before3, payload)
         context3 = compiled3.payload["messages"][0]["content"]
         require("<retrieved_memory>" in context3, context3)
-        require("<room_state>" in context3, context3)
-        require(context3.index("<retrieved_memory>") < context3.index("<room_state>"), context3)
-        print("ok room_state with selected memory keeps slow-before-dynamic order")
+        require("<scene_state>" in context3, context3)
+        require(context3.index("<retrieved_memory>") < context3.index("<scene_state>"), context3)
+        print("ok scene_state with selected memory keeps slow-before-dynamic order")
+
+        cfg4 = copy.deepcopy(cfg)
+        char4 = cfg4["characters"]["default"]
+        char4["room_state"] = str(p / "room_state_alias.md")
+        config4 = RelayLMConfig.model_validate(cfg4)
+        route4 = resolve_route(config4, "relaylm-default")
+        compiled4 = compile_chat_payload_if_enabled(config=config4, route=route4, payload=payload)
+        context4 = compiled4.payload["messages"][0]["content"]
+        require("<scene_state>" in context4, context4)
+        require("<room_state>" not in context4, context4)
+        print("ok deprecated room_state alias renders as scene_state")
+
+        cfg5 = copy.deepcopy(cfg)
+        char5 = cfg5["characters"]["default"]
+        char5["scene_state"] = str(p / "scene_state.md")
+        char5["room_state"] = str(p / "room_state_alias.md")
+        config5 = RelayLMConfig.model_validate(cfg5)
+        route5 = resolve_route(config5, "relaylm-default")
+        compiled5 = compile_chat_payload_if_enabled(config=config5, route=route5, payload=payload)
+        context5 = compiled5.payload["messages"][0]["content"]
+        require("Scene mood is energetic." in context5, context5)
+        require("Deprecated alias scene text." not in context5, context5)
+        print("ok scene_state takes precedence over deprecated room_state alias")
 
     return 0
 
