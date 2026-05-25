@@ -56,7 +56,7 @@ def _parse_created_at_utc(value: Any) -> datetime | None:
 
 
 def _resolve_parent_revision_id(history_dir: Path) -> str | None:
-    latest_key: tuple[datetime, str] | None = None
+    latest_key: tuple[datetime, int, str] | None = None
     latest_revision_id: str | None = None
 
     for path in history_dir.glob("*.json"):
@@ -72,7 +72,12 @@ def _resolve_parent_revision_id(history_dir: Path) -> str | None:
         if not isinstance(revision_id, str) or not revision_id.strip() or created_at is None:
             continue
 
-        candidate_key = (created_at, path.name)
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+
+        candidate_key = (created_at, stat.st_mtime_ns, path.name)
         if latest_key is None or candidate_key > latest_key:
             latest_key = candidate_key
             latest_revision_id = revision_id
