@@ -109,9 +109,11 @@ def build_relaysoul_approval_summary(
     if mode is None and revision_mode is not None:
         mode = revision_mode
 
-    if target_files and changed_files and set(target_files) != set(changed_files):
-        target_changed_file_mismatch = True
-        blocking_reasons.append("target_changed_file_mismatch")
+    if isinstance(patch_dry_run, dict) and isinstance(rollback_summary, dict):
+        if target_files or changed_files:
+            if set(target_files) != set(changed_files):
+                target_changed_file_mismatch = True
+                blocking_reasons.append("target_changed_file_mismatch")
 
     if blocking_reasons:
         approval_status = "blocked"

@@ -21,7 +21,7 @@ def _patch(dry_run_status: str = "ok", *, cid: str = "cand-1", mode: str = "cali
         "candidate": {
             "candidate_id": cid,
             "mode": mode,
-            "target_files": targets or ["OUTPUT_POLICY.md"],
+            "target_files": ["OUTPUT_POLICY.md"] if targets is None else targets,
         },
     }
 
@@ -34,7 +34,7 @@ def _rollback(rollback_status: str = "ok", *, rid: str = "rev-1", cid: str = "ca
             "revision_id": rid,
             "patch_candidate_id": cid,
             "mode": mode,
-            "changed_files": changed or ["OUTPUT_POLICY.md"],
+            "changed_files": ["OUTPUT_POLICY.md"] if changed is None else changed,
         },
     }
 
@@ -84,6 +84,19 @@ def main() -> int:
     missing_rollback = build_relaysoul_approval_summary(_patch(), None).to_log_dict()
     require("missing_rollback_summary" in missing_rollback["blocking_reasons"], missing_rollback)
     print("ok missing artifacts blocked")
+
+    one_sided_changed_only = build_relaysoul_approval_summary(
+        _patch(targets=[]),
+        _rollback(changed=["OUTPUT_POLICY.md"]),
+    ).to_log_dict()
+    require("target_changed_file_mismatch" in one_sided_changed_only["blocking_reasons"], one_sided_changed_only)
+
+    one_sided_target_only = build_relaysoul_approval_summary(
+        _patch(targets=["OUTPUT_POLICY.md"]),
+        _rollback(changed=[]),
+    ).to_log_dict()
+    require("target_changed_file_mismatch" in one_sided_target_only["blocking_reasons"], one_sided_target_only)
+    print("ok one-sided file lists blocked as mismatch")
 
     require("patch_text" not in str(ok), ok)
     print("ok content-free artifact")
