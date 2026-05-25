@@ -82,7 +82,7 @@ def build_relaysoul_artifact_persistence_dry_run(
                 rid = revision.get("revision_id")
                 pid = revision.get("parent_revision_id")
                 artifact_id = rid if isinstance(rid, str) else None
-                parent_artifact_id = pid if isinstance(pid, str) else None
+                parent_artifact_id = pid if isinstance(pid, str) and pid != "" else None
                 if parent_artifact_id is None:
                     warning_reasons.append("missing_parent_artifact_id")
 

@@ -75,6 +75,10 @@ def main() -> int:
     rollback_missing_parent = {"rollback_status": "ok", "content_free": True, "revision": {"revision_id": "rev-2", "parent_revision_id": None}}
     out = build_relaysoul_artifact_persistence_dry_run("rollback_summary", rollback_missing_parent).to_log_dict()
     require(out["persistence_status"] == "warning" and "missing_parent_artifact_id" in out["warning_reasons"], out)
+    rollback_empty_parent = {"rollback_status": "ok", "content_free": True, "revision": {"revision_id": "rev-1", "parent_revision_id": ""}}
+    out = build_relaysoul_artifact_persistence_dry_run("rollback_summary", rollback_empty_parent).to_log_dict()
+    require(out["persistence_status"] == "warning" and out["persistence_ready"] is True and "missing_parent_artifact_id" in out["warning_reasons"], out)
+
     print("ok warnings and blocking rules")
 
     require("patch_text" not in str(out), out)

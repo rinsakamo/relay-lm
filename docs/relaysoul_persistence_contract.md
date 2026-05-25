@@ -20,6 +20,7 @@ Before any persistence implementation, RelaySOUL should validate artifact lineag
 - `rollback_summary`
   - `artifact_id`: `artifact.revision.revision_id`
   - `parent_artifact_id`: `artifact.revision.parent_revision_id`
+  - missing/empty `parent_revision_id` emits `missing_parent_artifact_id` warning
 - `approval_summary`
   - `artifact_id`: `artifact.revision_id` if present, else `artifact.patch_candidate_id`
   - `parent_artifact_id`: `artifact.patch_candidate_id`
