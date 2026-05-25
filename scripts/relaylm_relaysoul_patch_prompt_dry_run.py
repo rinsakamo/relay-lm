@@ -29,6 +29,11 @@ def read_text(path: str | Path) -> str:
 def load_feedback(path: str | Path) -> list[dict[str, Any]]:
     feedback_path = Path(path)
     data = json.loads(feedback_path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise FeedbackShapeError(
+            f"Feedback JSON root must be an object: {feedback_path}"
+        )
+
     items = data.get("items")
     if not isinstance(items, list):
         raise FeedbackShapeError(
@@ -40,6 +45,11 @@ def load_feedback(path: str | Path) -> list[dict[str, Any]]:
         if not isinstance(item, dict):
             raise FeedbackShapeError(
                 f"Feedback item at index {idx} must be an object: {feedback_path}"
+            )
+        labels = item.get("feedback_labels")
+        if isinstance(labels, list) and any(not isinstance(label, str) for label in labels):
+            raise FeedbackShapeError(
+                f"Feedback item at index {idx} has non-string feedback_labels: {feedback_path}"
             )
         normalized.append(item)
     return normalized
