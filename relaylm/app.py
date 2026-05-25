@@ -236,6 +236,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             memory_adapter_readiness=compiled_request.memory_adapter_readiness,
             memory_adapter_conflicts=compiled_request.memory_adapter_conflicts,
             context_block_summary=compiled_request.context_block_summary,
+            persona_source_budget_diagnostics=compiled_request.persona_source_budget_diagnostics,
             request_scope_identity=request_scope_identity.to_log_dict(),
             scope_resolution_diagnostics=scope_resolution_diagnostics.to_log_dict(),
             memory_adapter_shadow_dry_run=memory_adapter_shadow_dry_run,
