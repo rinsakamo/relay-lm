@@ -6,8 +6,9 @@ from __future__ import annotations
 import argparse
 import json
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
+
+from pathlib import Path
 
 SCHEMA_VERSION = "mvp-soul-0"
 INPUT_ARTIFACT_TYPE = "relaysoul_temp_revision_compile_dry_run"
@@ -35,11 +36,59 @@ def _require_object(value: Any, label: str) -> dict[str, Any]:
     return value
 
 
-def _build_revision_id(stable_prefix_hash_after: str | None) -> str:
+def _build_revision_id(created_at_utc: datetime, stable_prefix_hash_after: str | None) -> str:
+    ts = created_at_utc.strftime('%Y%m%dT%H%M%S%fZ')
     if isinstance(stable_prefix_hash_after, str) and stable_prefix_hash_after.strip():
-        return f"relaysoul-rev-{stable_prefix_hash_after[:12]}"
-    return f"relaysoul-rev-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
+        return f"relaysoul-rev-{ts}-{stable_prefix_hash_after[:12]}"
+    return f"relaysoul-rev-{ts}"
 
+
+
+
+def _parse_created_at_utc(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    normalized = value.strip().replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+
+
+def _resolve_parent_revision_id(history_dir: Path) -> str | None:
+    latest_key: tuple[datetime, str] | None = None
+    latest_revision_id: str | None = None
+
+    for path in history_dir.glob("*.json"):
+        try:
+            payload = _read_json(path)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        revision_id = payload.get("revision_id")
+        created_at_raw = payload.get("created_at_utc")
+        created_at = _parse_created_at_utc(created_at_raw)
+        if not isinstance(revision_id, str) or not revision_id.strip() or created_at is None:
+            continue
+
+        candidate_key = (created_at, path.name)
+        if latest_key is None or candidate_key > latest_key:
+            latest_key = candidate_key
+            latest_revision_id = revision_id
+
+    return latest_revision_id
+
+
+def _build_unique_revision_path(history_dir: Path, base_revision_id: str) -> tuple[str, Path]:
+    revision_id = base_revision_id
+    revision_path = history_dir / f"{revision_id}.json"
+    suffix = 2
+    while revision_path.exists():
+        revision_id = f"{base_revision_id}-{suffix}"
+        revision_path = history_dir / f"{revision_id}.json"
+        suffix += 1
+    return revision_id, revision_path
 
 def _validate_input_artifact(payload: Any) -> dict[str, Any]:
     root = _require_object(payload, "temp revision compile artifact")
@@ -81,16 +130,13 @@ def main() -> None:
     history_dir = Path(args.history_dir)
     history_dir.mkdir(parents=True, exist_ok=True)
 
-    created_at_utc = datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    created_at = datetime.now(UTC)
+    created_at_utc = created_at.isoformat(timespec="microseconds").replace("+00:00", "Z")
     stable_prefix_hash_after = source_artifact.get("stable_prefix_hash_after")
-    revision_id = _build_revision_id(stable_prefix_hash_after if isinstance(stable_prefix_hash_after, str) else None)
+    base_revision_id = _build_revision_id(created_at, stable_prefix_hash_after if isinstance(stable_prefix_hash_after, str) else None)
+    revision_id, revision_path = _build_unique_revision_path(history_dir, base_revision_id)
 
-    parent_revision_id: str | None = None
-    existing_files = sorted(history_dir.glob("*.json"))
-    if existing_files:
-        latest = _read_json(existing_files[-1])
-        if isinstance(latest, dict) and isinstance(latest.get("revision_id"), str):
-            parent_revision_id = latest["revision_id"]
+    parent_revision_id = _resolve_parent_revision_id(history_dir)
 
     changed_files = list(source_artifact["changed_files"])
     warnings = source_artifact.get("warnings")
@@ -125,7 +171,6 @@ def main() -> None:
         "content_free": True,
     }
 
-    revision_path = history_dir / f"{revision_id}.json"
     revision_path.write_text(json.dumps(revision_entry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     summary = {
