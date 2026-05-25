@@ -122,6 +122,64 @@ def main() -> int:
     require(out["persistence_status"] == "warning" and "missing_parent_artifact_id" in out["warning_reasons"], out)
     print("ok approval package lineage warnings")
 
+
+    apply_plan_ok = {
+        "apply_plan_status": "ready",
+        "content_free": True,
+        "apply_plan_id": "ap-1",
+        "approval_decision_id": "dec-1",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("apply_plan", apply_plan_ok).to_log_dict()
+    require(out["persistence_status"] == "ok", out)
+    require(out["artifact_id"] == "ap-1", out)
+    require(out["parent_artifact_id"] == "dec-1", out)
+
+    apply_plan_missing_id = {
+        "apply_plan_status": "ready",
+        "content_free": True,
+        "approval_decision_id": "dec-1",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("apply_plan", apply_plan_missing_id).to_log_dict()
+    require("missing_artifact_id" in out["blocking_reasons"], out)
+
+    apply_plan_missing_parent = {
+        "apply_plan_status": "ready",
+        "content_free": True,
+        "apply_plan_id": "ap-2",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("apply_plan", apply_plan_missing_parent).to_log_dict()
+    require("missing_parent_artifact_id" in out["warning_reasons"], out)
+    require(out["persistence_status"] == "warning", out)
+
+    rollback_plan_ok = {
+        "rollback_plan_status": "ready",
+        "content_free": True,
+        "rollback_plan_id": "rp-1",
+        "apply_plan_id": "ap-1",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("rollback_plan", rollback_plan_ok).to_log_dict()
+    require(out["persistence_status"] == "ok", out)
+    require(out["artifact_id"] == "rp-1", out)
+    require(out["parent_artifact_id"] == "ap-1", out)
+
+    rollback_plan_missing_id = {
+        "rollback_plan_status": "ready",
+        "content_free": True,
+        "apply_plan_id": "ap-1",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("rollback_plan", rollback_plan_missing_id).to_log_dict()
+    require("missing_artifact_id" in out["blocking_reasons"], out)
+
+    rollback_plan_missing_parent = {
+        "rollback_plan_status": "ready",
+        "content_free": True,
+        "rollback_plan_id": "rp-2",
+    }
+    out = build_relaysoul_artifact_persistence_dry_run("rollback_plan", rollback_plan_missing_parent).to_log_dict()
+    require("missing_parent_artifact_id" in out["warning_reasons"], out)
+    require(out["persistence_status"] == "warning", out)
+    print("ok apply/rollback plan persistence")
+
     out = build_relaysoul_artifact_persistence_dry_run("unknown", patch_ok).to_log_dict()
     require("unsupported_artifact_kind" in out["blocking_reasons"], out)
 
@@ -164,6 +222,22 @@ def main() -> int:
     require(isinstance(envelope_ok["envelope"], dict), envelope_ok)
     require(envelope_ok["envelope"]["payload"]["content_free"] is True, envelope_ok)
     print("ok storage envelope dry-run")
+
+
+    apply_plan_envelope = build_relaysoul_storage_envelope_dry_run(
+        build_relaysoul_artifact_persistence_dry_run("apply_plan", apply_plan_ok),
+        apply_plan_ok,
+        "char-1",
+    ).to_log_dict()
+    require(apply_plan_envelope["envelope_status"] == "ok", apply_plan_envelope)
+
+    rollback_plan_envelope = build_relaysoul_storage_envelope_dry_run(
+        build_relaysoul_artifact_persistence_dry_run("rollback_plan", rollback_plan_ok),
+        rollback_plan_ok,
+        "char-1",
+    ).to_log_dict()
+    require(rollback_plan_envelope["envelope_status"] == "ok", rollback_plan_envelope)
+    print("ok apply/rollback plan storage envelope")
 
     envelope_blocked_cf = build_relaysoul_storage_envelope_dry_run(
         build_relaysoul_artifact_persistence_dry_run("patch_dry_run", patch_ok),

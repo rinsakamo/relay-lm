@@ -11,6 +11,8 @@ ALLOWED_ARTIFACT_KINDS = {
     "rollback_summary",
     "approval_summary",
     "approval_package",
+    "apply_plan",
+    "rollback_plan",
 }
 
 FORBIDDEN_PAYLOAD_KEYS = {
@@ -137,6 +139,10 @@ def _extract_status(kind: str, artifact: dict[str, object]) -> str | None:
         status = artifact.get("approval_status")
     elif kind == "approval_package":
         status = artifact.get("approval_status")
+    elif kind == "apply_plan":
+        status = artifact.get("apply_plan_status")
+    elif kind == "rollback_plan":
+        status = artifact.get("rollback_plan_status")
     else:
         return None
     return status if isinstance(status, str) else None
@@ -206,6 +212,22 @@ def build_relaysoul_artifact_persistence_dry_run(
             rid = artifact.get("revision_id")
             artifact_id = aid if isinstance(aid, str) and aid != "" else None
             parent_artifact_id = rid if isinstance(rid, str) and rid != "" else None
+            if parent_artifact_id is None:
+                warning_reasons.append("missing_parent_artifact_id")
+
+        elif kind == "apply_plan":
+            apid = artifact.get("apply_plan_id")
+            did = artifact.get("approval_decision_id")
+            artifact_id = apid if isinstance(apid, str) and apid != "" else None
+            parent_artifact_id = did if isinstance(did, str) and did != "" else None
+            if parent_artifact_id is None:
+                warning_reasons.append("missing_parent_artifact_id")
+
+        elif kind == "rollback_plan":
+            rpid = artifact.get("rollback_plan_id")
+            apid = artifact.get("apply_plan_id")
+            artifact_id = rpid if isinstance(rpid, str) and rpid != "" else None
+            parent_artifact_id = apid if isinstance(apid, str) and apid != "" else None
             if parent_artifact_id is None:
                 warning_reasons.append("missing_parent_artifact_id")
 
