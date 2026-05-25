@@ -47,7 +47,7 @@ def _extract_candidates(payload: Any, source_path: str | Path) -> list[dict[str,
             f"Model response JSON root must be an object: {source_path}"
         )
 
-    for key in ("items", "patch_candidates", "candidates"):
+    for key in ("patch_candidates", "candidates", "items"):
         if key in payload:
             candidates = payload[key]
             if not isinstance(candidates, list):
