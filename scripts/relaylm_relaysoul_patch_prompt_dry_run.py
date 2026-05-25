@@ -39,6 +39,10 @@ def load_feedback(path: str | Path) -> list[dict[str, Any]]:
         raise FeedbackShapeError(
             f"Feedback JSON must include list field 'items': {feedback_path}"
         )
+    if not items:
+        raise FeedbackShapeError(
+            f"Feedback JSON field 'items' must not be empty: {feedback_path}"
+        )
 
     normalized: list[dict[str, Any]] = []
     for idx, item in enumerate(items):
@@ -47,6 +51,10 @@ def load_feedback(path: str | Path) -> list[dict[str, Any]]:
                 f"Feedback item at index {idx} must be an object: {feedback_path}"
             )
         labels = item.get("feedback_labels")
+        if "feedback_labels" in item and labels is not None and not isinstance(labels, list):
+            raise FeedbackShapeError(
+                f"Feedback item at index {idx} must provide feedback_labels as a list: {feedback_path}"
+            )
         if isinstance(labels, list) and any(not isinstance(label, str) for label in labels):
             raise FeedbackShapeError(
                 f"Feedback item at index {idx} has non-string feedback_labels: {feedback_path}"
