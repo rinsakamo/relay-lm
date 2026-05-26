@@ -48,6 +48,20 @@ def _validate_safe_posix_path(path_text: str, field: str) -> str:
     return path_text
 
 
+def _sanitize_component(value: str, field: str) -> str:
+    if value in {".", ".."} or "/" in value or "\\" in value or "\x00" in value:
+        raise StorageIndexDryRunError(f"{field} contains invalid path component")
+    return value
+
+
+def _validate_optional_component(value: Any, field: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise StorageIndexDryRunError(f"{field} must be non-empty string when present")
+    return _sanitize_component(value, field)
+
+
 def _expected_storage_paths(character_id: str, artifact_kind: str, artifact_id: str) -> tuple[str, str, str]:
     artifact_path = str(
         PurePosixPath(".relaylm") / "relaysoul" / "artifacts" / character_id / artifact_kind / f"{artifact_id}.json"
@@ -76,12 +90,12 @@ def _validate_path_plan(payload: Any) -> dict[str, Any]:
     if artifact_kind not in ALLOWED_ARTIFACT_KINDS:
         raise StorageIndexDryRunError("artifact_kind must be supported by ALLOWED_ARTIFACT_KINDS")
 
-    artifact_id = _require_non_empty_string(artifact.get("artifact_id"), "artifact_id")
-    character_id = _require_non_empty_string(artifact.get("character_id"), "character_id")
+    artifact_id = _sanitize_component(_require_non_empty_string(artifact.get("artifact_id"), "artifact_id"), "artifact_id")
+    character_id = _sanitize_component(
+        _require_non_empty_string(artifact.get("character_id"), "character_id"), "character_id"
+    )
 
-    parent_artifact_id = artifact.get("parent_artifact_id")
-    if parent_artifact_id is not None and (not isinstance(parent_artifact_id, str) or not parent_artifact_id.strip()):
-        raise StorageIndexDryRunError("parent_artifact_id must be non-empty string when present")
+    _validate_optional_component(artifact.get("parent_artifact_id"), "parent_artifact_id")
 
     artifact_path = _require_non_empty_string(artifact.get("artifact_path"), "artifact_path")
     _validate_safe_posix_path(artifact_path, "artifact_path")
