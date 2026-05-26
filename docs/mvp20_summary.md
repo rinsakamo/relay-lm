@@ -2,67 +2,47 @@
 
 ## Completed scope
 
-- Added RelaySOUL storage envelope blocked-reason propagation follow-up (`#133`).
-- Top-level storage envelope dry-run `warning_reasons` and `blocking_reasons` now include persistence dry-run reasons.
-- Blocked envelope results now expose blockers such as `missing_artifact_id` at top level, without requiring callers to inspect only embedded envelope fields.
-- Added RelaySOUL storage envelope CLI dry-run (`#135`).
-- CLI now wraps content-free artifacts into storage envelope dry-run output.
-- Added apply-plan and rollback-plan envelope CLI validation paths.
-- Added negative validation for non-content-free payloads and unsupported artifact kinds.
+- Established `OpenWebUI -> RelayLM -> LM Studio` as the standard MVP UI/backend path.
+- Kept Open-LLM-VTuber as an optional frontend/example integration path.
+- Standardized abstract route IDs for OpenWebUI model preset/model ID mapping:
+  - `relaylm-companion`
+  - `relaylm-work-assistant`
+  - `relaylm-code-reviewer`
+- Added abstract example profiles and memory seeds for the three route personas.
+- Added copy-ready config for the standard MVP route/profile setup:
+  - `examples/config/openwebui_lmstudio.yaml`
+- Added config-only local smoke:
+  - `scripts/relaylm_openwebui_lmstudio_config_smoke.py`
+- Added fake-backend proxy-path local smoke:
+  - `scripts/relaylm_openwebui_lmstudio_proxy_smoke.py`
 
 ## Design intent
 
-- Make envelope dry-run outputs audit/UX friendly at top level.
-- Expose explicit reason fields before any actual persistence exists.
-- Provide a small CLI boundary for future persistence-writer integration.
-- Keep storage envelope creation separate from actual persistence.
+- Treat OpenWebUI model preset/avatar as card-like UI for route selection and UX.
+- Keep RelayLM responsible for route resolution, persona/profile binding, memory context assembly, and context compile behavior.
+- Keep LM Studio responsible for local OpenAI-compatible inference execution.
+- Allow the same backend model to present differentiated behavior by route/profile/memory configuration.
 
 ## Runtime safety
 
-MVP-20 remains dry-run-only and contract-only.
-
-- no actual persistence
-- no file write / DB write beyond requested output JSON
-- no storage path creation
-- no patch apply
-- no rollback execution
-- no persona source mutation
-- no model call
-- no runtime behavior change
-- no backend forwarding change
-- content-free artifact boundary remains enforced
+- MVP-20 completion is centered on docs/examples/smoke hardening; no runtime behavior expansion is required.
+- Real LM Studio verification remains manual smoke scope.
+- Fake-backend proxy smoke does not connect to a real backend.
+- RelaySOUL actual persistence/apply/rollback/persona mutation remains unimplemented.
+- Backend forwarding payload contract remains unchanged.
 
 ## Main validation
 
 - `python -m compileall relaylm`
-- `python scripts/relaylm_relaysoul_persistence_smoke.py`
-- `python -m compileall relaylm scripts/relaylm_relaysoul_storage_envelope_dry_run.py`
-- storage envelope CLI dry-run for apply plan artifacts
-- storage envelope CLI dry-run for rollback plan artifacts
-- content-free validation
-- negative validation for non-content-free payloads and unsupported artifact kinds
-
-## Current chain
-
-```text
-feedback/examples
-  -> patch prompt dry-run
-  -> patch candidate parser dry-run
-  -> temp revision compile dry-run
-  -> revision history store dry-run
-  -> approval package dry-run
-  -> approval decision dry-run
-  -> apply plan dry-run
-  -> rollback plan dry-run
-  -> persistence classification
-  -> storage envelope CLI dry-run
-  -> future actual persistence / apply / rollback (not implemented)
-```
+- `python scripts/relaylm_openwebui_lmstudio_config_smoke.py`
+- `python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py`
+- `python scripts/relaylm_config_routing_smoke.py`
+- `python scripts/relaylm_profile_compile_dry_run_smoke.py`
 
 ## Next phase
 
-- apply execution dry-run preflight
-- rollback execution dry-run preflight
-- actual persistence writer dry-run / path planner
-- storage index dry-run
-- only later: real persistence and real apply/rollback with explicit approval and fail-closed checks
+- Real LM Studio manual smoke in target environments.
+- OpenWebUI model preset/avatar setup verification checklist.
+- Route-specific response differentiation check under shared backend model.
+- Optional manual smoke result template and troubleshooting refinement.
+- Later: RelaySOUL actual persistence/apply integration behind explicit safety gates.
