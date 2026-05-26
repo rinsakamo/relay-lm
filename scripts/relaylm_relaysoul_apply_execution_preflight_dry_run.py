@@ -9,6 +9,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import sys
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from relaylm.relaysoul_persistence import FORBIDDEN_PAYLOAD_KEYS
+
 SCHEMA_VERSION = "mvp-soul-0"
 APPLY_PLAN_ARTIFACT_TYPE = "relaysoul_apply_plan_dry_run"
 STORAGE_ENVELOPE_ARTIFACT_TYPE = "relaysoul_storage_envelope_dry_run"
@@ -146,6 +154,12 @@ def _validate_storage_envelope(payload: Any, apply_plan: dict[str, Any]) -> dict
         raise ApplyExecutionPreflightError("envelope.payload.rollback_available must match rollback_available")
     if inner_payload.get("changed_files") != apply_plan["changed_files"]:
         raise ApplyExecutionPreflightError("envelope.payload.changed_files must match changed_files")
+
+    forbidden_payload_keys = sorted(key for key in FORBIDDEN_PAYLOAD_KEYS if key in inner_payload)
+    if forbidden_payload_keys:
+        raise ApplyExecutionPreflightError(
+            "envelope.payload contains forbidden content keys: " + ", ".join(forbidden_payload_keys)
+        )
 
     return envelope
 
