@@ -105,9 +105,14 @@ def _validate_storage_envelope(payload: Any) -> tuple[str, str, str, str | None]
             "envelope.payload contains forbidden content keys: " + ", ".join(forbidden_payload_keys)
         )
 
+    if "parent_artifact_id" not in artifact:
+        raise StoragePathPlanError("parent_artifact_id key must exist at top-level")
+    if "parent_artifact_id" not in envelope:
+        raise StoragePathPlanError("envelope.parent_artifact_id key must exist")
+
     top_parent = _validate_optional_parent_id(artifact.get("parent_artifact_id"), "parent_artifact_id")
     inner_parent = _validate_optional_parent_id(envelope.get("parent_artifact_id"), "envelope.parent_artifact_id")
-    if top_parent is not None and inner_parent is not None and top_parent != inner_parent:
+    if top_parent != inner_parent:
         raise StoragePathPlanError("parent_artifact_id mismatch between top-level and envelope")
 
     parent_artifact_id = top_parent if top_parent is not None else inner_parent
