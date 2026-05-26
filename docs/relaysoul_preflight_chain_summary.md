@@ -4,6 +4,8 @@
 
 This document summarizes the content-free artifact chain after the MVP-20 baseline, focused on preflight-oriented safety stages.
 
+RelaySOUL preflight artifacts in this chain are content-free artifacts for safety validation and storage-readiness classification, not runtime compiled context payloads.
+
 - storage path planner dry-run
 - storage index dry-run
 - apply execution preflight dry-run
@@ -75,3 +77,10 @@ feedback/examples
 - apply execution gate design
 - rollback execution gate design
 - real persistence / real apply / real rollback only after explicit approval and fail-closed checks
+
+## Handoff reminder
+
+- RelayMEM proposes candidates.
+- RelayCTX packs selected context for runtime prompts.
+- RelaySOUL versions persona-source artifacts and preflight/storage metadata.
+- RelayPLC decides policy and execution gating.

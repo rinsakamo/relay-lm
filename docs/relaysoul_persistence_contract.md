@@ -2,6 +2,18 @@
 
 This contract defines a content-free dry-run validator for artifact persistence readiness.
 
+## Terminology boundaries
+
+- RelaySOUL artifact: versioned persona-source governance artifact used for preflight/storage contracts.
+- runtime compiled context: per-request RelayCTX output prompt payload (not a RelaySOUL artifact).
+- memory record: RelayMEM-side memory datum/candidate (not a RelaySOUL artifact).
+- RAG document: retrieval corpus unit (not a RelaySOUL artifact).
+- trace log: observability/debug record (not a RelaySOUL artifact).
+- `STABLE_MEMORY_SUMMARY.md`: profile-facing summary artifact consumed by persona/context assembly; not the underlying memory DB.
+- content-free artifact: artifact constrained to metadata/lineage/status fields only, with no persona/memory/patch body payload content.
+
+RelaySOUL versions persona-source artifacts. RelaySOUL does not store runtime compiled prompts as canonical SOUL artifacts.
+
 ## Goal
 
 Before any persistence implementation, RelaySOUL should validate artifact lineage and status fields in a consistent, auditable way.
@@ -47,6 +59,14 @@ This MVP-15A contract is dry-run-only:
 - no rollback execution
 - no model call
 - no persona/memory/patch body content
+
+## Stage term separation
+
+- approval: decision artifact about whether a candidate may proceed.
+- preflight: dry-run verification stage before any real execution.
+- gate: explicit allow/deny control point for apply/rollback execution.
+- apply: real mutation path (out of scope in this dry-run contract).
+- rollback: real reversal path (out of scope in this dry-run contract).
 
 
 ## Storage envelope dry-run helper
