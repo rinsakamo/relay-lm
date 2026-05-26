@@ -4,6 +4,8 @@
 
 This document is a manual smoke runbook for connection/path verification.
 
+Related checklist: [OpenWebUI model preset/avatar checklist](docs/openwebui_model_preset_checklist.md).
+
 - manual smoke only
 - no automated real backend integration test in this doc
 - no runtime behavior change
