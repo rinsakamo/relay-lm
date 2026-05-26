@@ -66,6 +66,8 @@ It is not the default MVP standard UI in this positioning update.
 
 ## Quick setup (config-first)
 
+- Manual smoke runbook: [OpenWebUI + LM Studio manual smoke](docs/openwebui_lmstudio_manual_smoke.md)
+
 ### 1) LM Studio
 
 Start LM Studio OpenAI-compatible server and ensure the endpoint is reachable:
