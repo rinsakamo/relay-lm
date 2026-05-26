@@ -106,7 +106,11 @@ def _temp_config(base_url: str) -> Path:
     base = yaml.safe_load((REPO_ROOT / "examples/config/openwebui_lmstudio.yaml").read_text(encoding="utf-8"))
     base["backends"]["lmstudio_backend"]["base_url"] = f"{base_url}/v1"
     fd, path = tempfile.mkstemp(prefix="relaylm-openwebui-proxy-", suffix=".yaml")
-    Path(path).write_text(yaml.safe_dump(base), encoding="utf-8")
+    try:
+        Path(path).write_text(yaml.safe_dump(base), encoding="utf-8")
+    finally:
+        import os
+        os.close(fd)
     return Path(path)
 
 
