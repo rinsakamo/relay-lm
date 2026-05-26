@@ -47,7 +47,15 @@ def _sanitize_component(value: str, field: str) -> str:
     return value
 
 
-def _validate_storage_envelope(payload: Any) -> tuple[str, str, str]:
+def _validate_optional_parent_id(value: Any, field: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise StoragePathPlanError(f"{field} must be non-empty string when present")
+    return value
+
+
+def _validate_storage_envelope(payload: Any) -> tuple[str, str, str, str | None]:
     artifact = _require_object(payload, "storage envelope")
     if artifact.get("artifact_type") != INPUT_ARTIFACT_TYPE:
         raise StoragePathPlanError(f"artifact_type must be {INPUT_ARTIFACT_TYPE}")
@@ -97,7 +105,21 @@ def _validate_storage_envelope(payload: Any) -> tuple[str, str, str]:
             "envelope.payload contains forbidden content keys: " + ", ".join(forbidden_payload_keys)
         )
 
-    return kind, artifact_id, character_id
+    if "parent_artifact_id" not in artifact:
+        raise StoragePathPlanError("parent_artifact_id key must exist at top-level")
+    if "parent_artifact_id" not in envelope:
+        raise StoragePathPlanError("envelope.parent_artifact_id key must exist")
+
+    top_parent = _validate_optional_parent_id(artifact.get("parent_artifact_id"), "parent_artifact_id")
+    inner_parent = _validate_optional_parent_id(envelope.get("parent_artifact_id"), "envelope.parent_artifact_id")
+    if top_parent != inner_parent:
+        raise StoragePathPlanError("parent_artifact_id mismatch between top-level and envelope")
+
+    parent_artifact_id = top_parent if top_parent is not None else inner_parent
+    if parent_artifact_id is not None:
+        parent_artifact_id = _sanitize_component(parent_artifact_id, "parent_artifact_id")
+
+    return kind, artifact_id, character_id, parent_artifact_id
 
 
 def main() -> None:
@@ -106,7 +128,7 @@ def main() -> None:
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
-    artifact_kind, artifact_id, character_id = _validate_storage_envelope(_read_json(args.storage_envelope))
+    artifact_kind, artifact_id, character_id, parent_artifact_id = _validate_storage_envelope(_read_json(args.storage_envelope))
 
     artifact_path = str(
         PurePosixPath(".relaylm") / "relaysoul" / "artifacts" / character_id / artifact_kind / f"{artifact_id}.json"
@@ -124,6 +146,7 @@ def main() -> None:
         "artifact_kind": artifact_kind,
         "artifact_id": artifact_id,
         "character_id": character_id,
+        "parent_artifact_id": parent_artifact_id,
         "artifact_path": artifact_path,
         "artifact_index_path": artifact_index_path,
         "lineage_index_path": lineage_index_path,
