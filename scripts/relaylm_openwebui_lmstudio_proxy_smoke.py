@@ -16,7 +16,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.app import create_app
-from relaylm.config import load_config
+from relaylm.config import RelayLMConfig
 from relaylm.routing import resolve_route
 
 
@@ -47,7 +47,12 @@ class _BackendHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             return
-        body = json.dumps({"object": "list", "data": [{"id": "local-model", "object": "model"}]}).encode("utf-8")
+        body = json.dumps(
+            {
+                "object": "list",
+                "data": [{"id": "local-model", "object": "model", "owned_by": "fake-backend"}],
+            }
+        ).encode("utf-8")
         self.send_response(200)
         self.send_header("content-type", "application/json")
         self.send_header("content-length", str(len(body)))
@@ -59,32 +64,32 @@ class _BackendHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             return
+
         length = int(self.headers.get("content-length", "0"))
         raw = self.rfile.read(length)
         payload = json.loads(raw.decode("utf-8")) if raw else {}
         type(self).capture.add(payload)
 
         if payload.get("stream") is True:
-            self.send_response(200)
-            self.send_header("content-type", "text/event-stream")
-            self.end_headers()
             chunks = [
-                'data: {"id":"chatcmpl-smoke","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant"}}]}\n\n',
                 'data: {"id":"chatcmpl-smoke","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"ok"}}]}\n\n',
                 "data: [DONE]\n\n",
             ]
-            for c in chunks:
-                self.wfile.write(c.encode("utf-8"))
-                self.wfile.flush()
+            body = "".join(chunks).encode("utf-8")
+            self.send_response(200)
+            self.send_header("content-type", "text/event-stream")
+            self.send_header("cache-control", "no-cache")
+            self.send_header("content-length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
             return
 
-        body = json.dumps(
-            {
-                "id": "chatcmpl-smoke",
-                "object": "chat.completion",
-                "choices": [{"index": 0, "message": {"role": "assistant", "content": "ok"}}],
-            }
-        ).encode("utf-8")
+        response = {
+            "id": "chatcmpl-smoke",
+            "object": "chat.completion",
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": "ok"}}],
+        }
+        body = json.dumps(response).encode("utf-8")
         self.send_response(200)
         self.send_header("content-type", "application/json")
         self.send_header("content-length", str(len(body)))
@@ -97,10 +102,9 @@ def require(condition: bool, message: object) -> None:
         raise AssertionError(message)
 
 
-def _write_temp_config(base_url: str) -> Path:
-    base = load_config(REPO_ROOT / "examples/config/openwebui_lmstudio.yaml").model_dump()
+def _temp_config(base_url: str) -> Path:
+    base = yaml.safe_load((REPO_ROOT / "examples/config/openwebui_lmstudio.yaml").read_text(encoding="utf-8"))
     base["backends"]["lmstudio_backend"]["base_url"] = f"{base_url}/v1"
-
     fd, path = tempfile.mkstemp(prefix="relaylm-openwebui-proxy-", suffix=".yaml")
     Path(path).write_text(yaml.safe_dump(base), encoding="utf-8")
     return Path(path)
@@ -114,52 +118,64 @@ def main() -> int:
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
-    try:
-        config_path = _write_temp_config(f"http://127.0.0.1:{port}")
-        app = create_app(str(config_path))
+    config_path = _temp_config(f"http://127.0.0.1:{port}")
 
+    try:
+        config = RelayLMConfig.model_validate(yaml.safe_load(config_path.read_text(encoding="utf-8")) or {})
+        for route_model, expected_character in {
+            "relaylm-companion": "companion",
+            "relaylm-work-assistant": "work_assistant",
+            "relaylm-code-reviewer": "code_reviewer",
+        }.items():
+            route = resolve_route(config, route_model)
+            require(route.character_id == expected_character, route)
+        print("ok route-specific character resolution")
+
+        app = create_app(str(config_path))
         with TestClient(app) as client:
-            models = client.get("/v1/models")
-            require(models.status_code == 200, models.text)
-            ids = [m.get("id") for m in models.json().get("data", []) if isinstance(m, dict)]
+            models_resp = client.get("/v1/models")
+            require(models_resp.status_code == 200, models_resp.text)
+            data = models_resp.json().get("data", [])
+            ids = [x.get("id") for x in data if isinstance(x, dict)]
             require("relaylm-companion" in ids, ids)
             require("relaylm-work-assistant" in ids, ids)
             require("relaylm-code-reviewer" in ids, ids)
             print("ok /v1/models route ids")
 
-            payload = {
-                "model": "relaylm-work-assistant",
+            non_stream_payload = {
+                "model": "relaylm-companion",
                 "messages": [{"role": "user", "content": "hello"}],
                 "stream": False,
             }
-            resp = client.post("/v1/chat/completions", json=payload)
-            require(resp.status_code == 200, resp.text)
-            backend_payload = capture.last()
-            require(backend_payload.get("model") == "local-model", backend_payload)
-            require(backend_payload.get("stream") is False, backend_payload)
-            route = resolve_route(load_config(config_path), "relaylm-work-assistant")
-            require(route.character_id == "work_assistant", route)
-            print("ok non-stream proxy forward and model mapping")
+            non_stream_resp = client.post("/v1/chat/completions", json=non_stream_payload)
+            require(non_stream_resp.status_code == 200, non_stream_resp.text)
+            require(isinstance(non_stream_resp.json(), dict), non_stream_resp.text)
+            forwarded = capture.last()
+            require(forwarded.get("model") == "local-model", forwarded)
+            require(forwarded.get("stream") is False, forwarded)
+            print("ok non-stream proxy forwarding")
 
             stream_payload = {
                 "model": "relaylm-code-reviewer",
-                "messages": [{"role": "user", "content": "hello stream"}],
+                "messages": [{"role": "user", "content": "hello"}],
                 "stream": True,
             }
             with client.stream("POST", "/v1/chat/completions", json=stream_payload) as stream_resp:
                 require(stream_resp.status_code == 200, stream_resp.status_code)
                 body = "".join(stream_resp.iter_text())
             require("data:" in body and "[DONE]" in body, body)
-            backend_payload_stream = capture.last()
-            require(backend_payload_stream.get("model") == "local-model", backend_payload_stream)
-            require(backend_payload_stream.get("stream") is True, backend_payload_stream)
-            route2 = resolve_route(load_config(config_path), "relaylm-code-reviewer")
-            require(route2.character_id == "code_reviewer", route2)
-            print("ok stream proxy forward and sse")
+            forwarded_stream = capture.last()
+            require(forwarded_stream.get("model") == "local-model", forwarded_stream)
+            require(forwarded_stream.get("stream") is True, forwarded_stream)
+            print("ok stream proxy forwarding and sse")
 
     finally:
         server.shutdown()
         server.server_close()
+        try:
+            config_path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
     return 0
 
