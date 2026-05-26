@@ -60,7 +60,7 @@ RelayLM should order context from stable to dynamic.
 3. character_output_policy
 4. relationship_anchor
 5. stable_memory_summary
-6. room_state
+6. scene_state
 7. retrieved_memory / RAG / spill chunks
 8. recent_turns
 9. latest_input
@@ -136,21 +136,28 @@ This contains durable factual memory.
 
 Relationship anchor is about distance and tone. Stable memory summary is about remembered facts and ongoing topics.
 
-## Room anchor vs room state
+## Scene state and optional room metadata
 
-Avoid putting changing topic content in a fixed room anchor.
+Use `scene_state` for the dynamic situation that RelayLM compiles into the prompt.
 
-Use this distinction:
+Examples:
 
 ```text
-room_anchor:
-  fixed room protocol and constraints only
-
-room_state:
+scene_state:
   current topic, mood, recent stream context, open questions, group conversation state
 ```
 
-`room_anchor` should be short and stable. `room_state` is dynamic and should be placed later in the context.
+`scene_state` is dynamic and should be placed later in the context.
+
+`room_id` may still exist as optional scope metadata for the external host, such as a channel, room, stream, or frontend conversation space. Do not treat `room_id` as a prompt block by default.
+
+Legacy `room_anchor` content should usually move to one of these places:
+
+- common rules -> `common_runtime_policy`
+- character expression rules -> `character_output_policy`
+- relationship expectations -> `relationship_anchor`
+- temporary situation context -> `scene_state`
+- external host identity -> `room_id` metadata
 
 ## Retrieved memory and RAG
 
@@ -176,7 +183,7 @@ Suggested tag set:
 <character_output_policy>
 <relationship_anchor>
 <stable_memory_summary>
-<room_state>
+<scene_state>
 <retrieved_memory>
 <recent_turns>
 <latest_input>
@@ -236,9 +243,9 @@ Stable SOUL and output policy before memory/RAG means:
     ...durable memory facts...
   </stable_memory_summary>
 
-  <room_state>
+  <scene_state>
     ...current topic and stream state...
-  </room_state>
+  </scene_state>
 
   <retrieved_memory>
     ...selected memory, RAG, or spill chunks...
