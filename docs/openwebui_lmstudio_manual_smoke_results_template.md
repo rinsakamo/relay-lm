@@ -2,6 +2,8 @@
 
 ## Scope
 
+- Latest filled result sample: [OpenWebUI + RelayLM + LM Studio manual smoke result (2026-05-26)](docs/openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
+
 This document is a manual result template for real-environment smoke reporting.
 
 - manual result template only
