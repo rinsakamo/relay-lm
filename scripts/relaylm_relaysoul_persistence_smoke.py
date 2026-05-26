@@ -276,6 +276,7 @@ def main() -> int:
         source_commit_sha="abc123",
     ).to_log_dict()
     require(envelope_from_blocked["envelope_status"] == "blocked", envelope_from_blocked)
+    require("missing_artifact_id" in envelope_from_blocked["blocking_reasons"], envelope_from_blocked)
     require(envelope_from_blocked["envelope"]["persistence_status"] == "blocked", envelope_from_blocked)
     require("missing_artifact_id" in envelope_from_blocked["envelope"]["blocking_reasons"], envelope_from_blocked)
     print("ok blocked persistence envelope status alignment")

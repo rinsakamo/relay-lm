@@ -67,13 +67,15 @@ def build_relaysoul_storage_envelope_dry_run(
     if forbidden_payload_keys:
         blocking_reasons.append("payload_contains_forbidden_content_keys")
 
+    combined_warning_reasons = warning_reasons + list(persistence_dry_run.warning_reasons)
+    combined_blocking_reasons = blocking_reasons + list(persistence_dry_run.blocking_reasons)
     content_free = not blocking_reasons
 
     if blocking_reasons:
         return RelaySOULStorageEnvelopeDryRun(
             envelope_status="blocked",
-            warning_reasons=warning_reasons,
-            blocking_reasons=blocking_reasons,
+            warning_reasons=combined_warning_reasons,
+            blocking_reasons=combined_blocking_reasons,
             content_free=False,
             envelope=None,
         )
@@ -97,8 +99,8 @@ def build_relaysoul_storage_envelope_dry_run(
 
     return RelaySOULStorageEnvelopeDryRun(
         envelope_status=envelope_status,
-        warning_reasons=warning_reasons,
-        blocking_reasons=blocking_reasons,
+        warning_reasons=combined_warning_reasons,
+        blocking_reasons=combined_blocking_reasons,
         content_free=content_free,
         envelope=envelope,
     )
