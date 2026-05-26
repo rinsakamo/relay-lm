@@ -95,6 +95,8 @@ def _validate_path_plan(payload: Any) -> dict[str, Any]:
         _require_non_empty_string(artifact.get("character_id"), "character_id"), "character_id"
     )
 
+    if "parent_artifact_id" not in artifact:
+        raise StorageIndexDryRunError("parent_artifact_id key must exist")
     _validate_optional_component(artifact.get("parent_artifact_id"), "parent_artifact_id")
 
     artifact_path = _require_non_empty_string(artifact.get("artifact_path"), "artifact_path")
