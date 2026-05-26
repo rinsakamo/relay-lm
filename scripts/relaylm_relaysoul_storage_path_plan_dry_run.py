@@ -47,7 +47,7 @@ def _sanitize_component(value: str, field: str) -> str:
     return value
 
 
-def _validate_storage_envelope(payload: Any) -> tuple[str, str, str]:
+def _validate_storage_envelope(payload: Any) -> tuple[str, str, str, str | None]:
     artifact = _require_object(payload, "storage envelope")
     if artifact.get("artifact_type") != INPUT_ARTIFACT_TYPE:
         raise StoragePathPlanError(f"artifact_type must be {INPUT_ARTIFACT_TYPE}")
@@ -97,7 +97,20 @@ def _validate_storage_envelope(payload: Any) -> tuple[str, str, str]:
             "envelope.payload contains forbidden content keys: " + ", ".join(forbidden_payload_keys)
         )
 
-    return kind, artifact_id, character_id
+    top_parent = artifact.get("parent_artifact_id")
+    inner_parent = envelope.get("parent_artifact_id")
+    if top_parent is not None and not isinstance(top_parent, str):
+        raise StoragePathPlanError("parent_artifact_id must be string when present")
+    if inner_parent is not None and not isinstance(inner_parent, str):
+        raise StoragePathPlanError("envelope.parent_artifact_id must be string when present")
+    if top_parent is not None and inner_parent is not None and top_parent != inner_parent:
+        raise StoragePathPlanError("parent_artifact_id mismatch between top-level and envelope")
+
+    parent_artifact_id = top_parent if top_parent is not None else inner_parent
+    if parent_artifact_id is not None:
+        parent_artifact_id = _sanitize_component(parent_artifact_id, "parent_artifact_id")
+
+    return kind, artifact_id, character_id, parent_artifact_id
 
 
 def main() -> None:
@@ -106,7 +119,7 @@ def main() -> None:
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
-    artifact_kind, artifact_id, character_id = _validate_storage_envelope(_read_json(args.storage_envelope))
+    artifact_kind, artifact_id, character_id, parent_artifact_id = _validate_storage_envelope(_read_json(args.storage_envelope))
 
     artifact_path = str(
         PurePosixPath(".relaylm") / "relaysoul" / "artifacts" / character_id / artifact_kind / f"{artifact_id}.json"
@@ -124,6 +137,7 @@ def main() -> None:
         "artifact_kind": artifact_kind,
         "artifact_id": artifact_id,
         "character_id": character_id,
+        "parent_artifact_id": parent_artifact_id,
         "artifact_path": artifact_path,
         "artifact_index_path": artifact_index_path,
         "lineage_index_path": lineage_index_path,

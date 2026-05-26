@@ -56,9 +56,16 @@ def _validate_path_plan(payload: Any) -> dict[str, Any]:
     _require_non_empty_string(artifact.get("artifact_id"), "artifact_id")
     _require_non_empty_string(artifact.get("character_id"), "character_id")
 
-    _validate_safe_posix_path(str(artifact.get("artifact_path", "")), "artifact_path")
-    _validate_safe_posix_path(str(artifact.get("artifact_index_path", "")), "artifact_index_path")
-    _validate_safe_posix_path(str(artifact.get("lineage_index_path", "")), "lineage_index_path")
+    parent_artifact_id = artifact.get("parent_artifact_id")
+    if parent_artifact_id is not None and (not isinstance(parent_artifact_id, str) or not parent_artifact_id.strip()):
+        raise StorageIndexDryRunError("parent_artifact_id must be non-empty string when present")
+
+    artifact_path = _require_non_empty_string(artifact.get("artifact_path"), "artifact_path")
+    _validate_safe_posix_path(artifact_path, "artifact_path")
+    artifact_index_path = _require_non_empty_string(artifact.get("artifact_index_path"), "artifact_index_path")
+    _validate_safe_posix_path(artifact_index_path, "artifact_index_path")
+    lineage_index_path = _require_non_empty_string(artifact.get("lineage_index_path"), "lineage_index_path")
+    _validate_safe_posix_path(lineage_index_path, "lineage_index_path")
 
     return artifact
 
@@ -85,7 +92,7 @@ def main() -> None:
         "artifact_id": plan["artifact_id"],
         "character_id": plan["character_id"],
         "artifact_path": plan["artifact_path"],
-        "parent_artifact_id": None,
+        "parent_artifact_id": plan.get("parent_artifact_id"),
         "content_free": True,
     }
 
