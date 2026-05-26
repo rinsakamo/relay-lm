@@ -260,6 +260,11 @@ def _validate_storage_index_plan(
         raise ApplyExecutionPreflightError("lineage_index_record.record_type must be lineage")
     if artifact_record.get("content_free") is not True or lineage_record.get("content_free") is not True:
         raise ApplyExecutionPreflightError("index records content_free must be true")
+    for key in FORBIDDEN_PAYLOAD_KEYS:
+        if key in artifact_record:
+            raise ApplyExecutionPreflightError(f"artifact_index_record contains forbidden content key: {key}")
+        if key in lineage_record:
+            raise ApplyExecutionPreflightError(f"lineage_index_record contains forbidden content key: {key}")
     for field in ("artifact_kind", "artifact_id", "character_id", "artifact_path"):
         if artifact_record.get(field) != storage_path_plan.get(field):
             raise ApplyExecutionPreflightError(f"artifact_index_record.{field} must match storage path plan")
