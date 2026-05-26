@@ -27,6 +27,14 @@ OpenAI-compatible API layer
   -> Backend adapter layer
 ```
 
+## Terminology boundary notes
+
+- `route`: RelayLM-internal mapping from incoming `model` value to runtime config bundle.
+- `mode`: prompt-assembly behavior profile (`pass_through`, `memory_light`, `memory_full`).
+- `backend`: actual model-serving endpoint and engine family behind adapter forwarding.
+
+These three terms should stay distinct: route chooses configuration, mode chooses compilation behavior, backend chooses execution target.
+
 ### OpenAI-compatible API layer
 
 Responsibilities:
@@ -91,6 +99,12 @@ The first memory implementation should be simple and local. Embeddings, reranker
 
 External memory systems may specialize in user facts, episodic recall, temporal relationship memory, procedural persona updates, or external knowledge. RelayLM should normalize, arbitrate, and repack those outputs rather than expose all memory output directly to the backend model.
 
+RelayMEM boundary:
+
+- RelayMEM proposes memory candidates and retrieval candidates.
+- RelayMEM does not finalize prompt packing.
+- RelayMEM does not version persona-source artifacts.
+
 ### Context compiler layer
 
 Responsibilities:
@@ -102,6 +116,12 @@ Responsibilities:
 - emit an OpenAI-compatible message list for the backend adapter
 
 RelayLM should treat prompt construction as context compilation rather than concatenation.
+
+RelayCTX boundary:
+
+- RelayCTX packs selected context into the compiled runtime prompt shape.
+- RelayCTX consumes policy and memory selections but does not own policy decisions.
+- RelayCTX output is runtime compiled context, not a RelaySOUL artifact.
 
 The compiled prompt should use tags for persona and conversation context. Machine contracts such as adapter results, diagnostics, traces, and tool protocols should remain JSON/dataclass-shaped. In short: JSON is for machine contracts; tags are for persona/context conditioning.
 
@@ -115,6 +135,21 @@ Responsibilities:
 - preserve pass-through fields such as `temperature`, `tools`, and sampling parameters when possible
 
 Backend-specific optimization should be hidden behind adapters. vLLM and SGLang are important long-term targets, but the MVP should work with any OpenAI-compatible backend.
+
+Relay Adapter boundary:
+
+- preserve OpenAI-compatible frontend/backend interoperability.
+- preserve request/response compatibility and streaming semantics.
+- avoid changing persona policy or memory decisions.
+
+RelayPLC boundary:
+
+- RelayPLC decides policy for approval/gating and high-level execution allowance.
+- RelayPLC does not pack context and does not execute backend transport.
+
+Core handoff rule:
+
+`MEM proposes candidates -> CTX packs selected context -> SOUL versions persona-source artifacts -> PLC decides policy -> adapters preserve API/backend compatibility`.
 
 ## Mode contract
 
