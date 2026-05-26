@@ -189,6 +189,12 @@ curl -N http://127.0.0.1:8090/v1/chat/completions   -H 'content-type: applicatio
   }'
 ```
 
+Config-only local smoke command:
+
+```bash
+python scripts/relaylm_openwebui_lmstudio_config_smoke.py
+```
+
 ## Prompt layering notes
 
 - OpenWebUI should focus on display name / avatar / prompt suggestions.
