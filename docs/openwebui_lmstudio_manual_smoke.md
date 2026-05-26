@@ -67,6 +67,13 @@ relaylm --config config.yaml
 
 ## Step 3: RelayLM route check
 
+
+Config-only local smoke (no real backend connection):
+
+```bash
+python scripts/relaylm_openwebui_lmstudio_config_smoke.py
+```
+
 Check route model IDs exposed by RelayLM:
 
 ```bash
