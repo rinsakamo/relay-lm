@@ -193,6 +193,7 @@ Config-only local smoke command:
 
 ```bash
 python scripts/relaylm_openwebui_lmstudio_config_smoke.py
+python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
 ```
 
 ## Prompt layering notes
