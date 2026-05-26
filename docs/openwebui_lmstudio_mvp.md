@@ -113,6 +113,28 @@ model_routes:
     mode: memory_light
     cache_namespace: character/code-reviewer
     memory_namespace: character/code-reviewer
+
+characters:
+  companion:
+    soul: examples/profiles/companion/SOUL.md
+    output_policy: examples/profiles/companion/OUTPUT_POLICY.md
+    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
+    scene_state: examples/profiles/default/SCENE_STATE.md
+    memory_seed_path: examples/memory/companion_memories.yaml
+
+  work_assistant:
+    soul: examples/profiles/work_assistant/SOUL.md
+    output_policy: examples/profiles/work_assistant/OUTPUT_POLICY.md
+    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
+    scene_state: examples/profiles/default/SCENE_STATE.md
+    memory_seed_path: examples/memory/work_assistant_memories.yaml
+
+  code_reviewer:
+    soul: examples/profiles/code_reviewer/SOUL.md
+    output_policy: examples/profiles/code_reviewer/OUTPUT_POLICY.md
+    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
+    scene_state: examples/profiles/default/SCENE_STATE.md
+    memory_seed_path: examples/memory/code_reviewer_memories.yaml
 ```
 
 ### 3) OpenWebUI
