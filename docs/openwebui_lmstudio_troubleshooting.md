@@ -11,9 +11,9 @@
 ## Quick topology
 
 ```text
-LM Studio (Windows host)
+OpenWebUI (Docker container)
   -> RelayLM (WSL)
-  -> OpenWebUI (Docker container)
+  -> LM Studio (Windows host)
 ```
 
 ## 1) WSL -> Windows LM Studio
