@@ -48,6 +48,19 @@ def _validate_safe_posix_path(path_text: str, field: str) -> str:
     return path_text
 
 
+def _expected_storage_paths(character_id: str, artifact_kind: str, artifact_id: str) -> tuple[str, str, str]:
+    artifact_path = str(
+        PurePosixPath(".relaylm") / "relaysoul" / "artifacts" / character_id / artifact_kind / f"{artifact_id}.json"
+    )
+    artifact_index_path = str(
+        PurePosixPath(".relaylm") / "relaysoul" / "index" / character_id / "artifact_index.jsonl"
+    )
+    lineage_index_path = str(
+        PurePosixPath(".relaylm") / "relaysoul" / "index" / character_id / "lineage_index.jsonl"
+    )
+    return artifact_path, artifact_index_path, lineage_index_path
+
+
 def _validate_path_plan(payload: Any) -> dict[str, Any]:
     artifact = _require_object(payload, "storage path plan")
     if artifact.get("artifact_type") != INPUT_ARTIFACT_TYPE:
@@ -77,15 +90,15 @@ def _validate_path_plan(payload: Any) -> dict[str, Any]:
     lineage_index_path = _require_non_empty_string(artifact.get("lineage_index_path"), "lineage_index_path")
     _validate_safe_posix_path(lineage_index_path, "lineage_index_path")
 
-    expected_artifact_path = f".relaylm/relaysoul/artifacts/{character_id}/{artifact_kind}/{artifact_id}.json"
+    expected_artifact_path, expected_artifact_index_path, expected_lineage_index_path = _expected_storage_paths(
+        character_id=character_id,
+        artifact_kind=artifact_kind,
+        artifact_id=artifact_id,
+    )
     if artifact_path != expected_artifact_path:
         raise StorageIndexDryRunError("artifact_path must match character_id/artifact_kind/artifact_id identity")
-
-    expected_artifact_index_path = f".relaylm/relaysoul/index/{character_id}/artifact_index.jsonl"
     if artifact_index_path != expected_artifact_index_path:
         raise StorageIndexDryRunError("artifact_index_path must match character_id index path")
-
-    expected_lineage_index_path = f".relaylm/relaysoul/index/{character_id}/lineage_index.jsonl"
     if lineage_index_path != expected_lineage_index_path:
         raise StorageIndexDryRunError("lineage_index_path must match character_id index path")
 

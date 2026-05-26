@@ -47,6 +47,14 @@ def _sanitize_component(value: str, field: str) -> str:
     return value
 
 
+def _validate_optional_parent_id(value: Any, field: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise StoragePathPlanError(f"{field} must be non-empty string when present")
+    return value
+
+
 def _validate_storage_envelope(payload: Any) -> tuple[str, str, str, str | None]:
     artifact = _require_object(payload, "storage envelope")
     if artifact.get("artifact_type") != INPUT_ARTIFACT_TYPE:
@@ -97,12 +105,8 @@ def _validate_storage_envelope(payload: Any) -> tuple[str, str, str, str | None]
             "envelope.payload contains forbidden content keys: " + ", ".join(forbidden_payload_keys)
         )
 
-    top_parent = artifact.get("parent_artifact_id")
-    inner_parent = envelope.get("parent_artifact_id")
-    if top_parent is not None and (not isinstance(top_parent, str) or not top_parent.strip()):
-        raise StoragePathPlanError("parent_artifact_id must be non-empty string when present")
-    if inner_parent is not None and (not isinstance(inner_parent, str) or not inner_parent.strip()):
-        raise StoragePathPlanError("envelope.parent_artifact_id must be non-empty string when present")
+    top_parent = _validate_optional_parent_id(artifact.get("parent_artifact_id"), "parent_artifact_id")
+    inner_parent = _validate_optional_parent_id(envelope.get("parent_artifact_id"), "envelope.parent_artifact_id")
     if top_parent is not None and inner_parent is not None and top_parent != inner_parent:
         raise StoragePathPlanError("parent_artifact_id mismatch between top-level and envelope")
 
