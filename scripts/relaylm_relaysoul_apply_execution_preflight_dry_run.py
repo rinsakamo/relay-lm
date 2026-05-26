@@ -111,6 +111,22 @@ def _validate_storage_envelope(payload: Any, apply_plan: dict[str, Any]) -> dict
     if inner.get("content_free") is not True:
         raise ApplyExecutionPreflightError("envelope.content_free must be true")
 
+    inner_payload = inner.get("payload")
+    if not isinstance(inner_payload, dict):
+        raise ApplyExecutionPreflightError("envelope.payload must be object")
+    if inner_payload.get("content_free") is not True:
+        raise ApplyExecutionPreflightError("envelope.payload.content_free must be true")
+    if inner_payload.get("apply_plan_id") != apply_plan["apply_plan_id"]:
+        raise ApplyExecutionPreflightError("envelope.payload.apply_plan_id must match apply_plan_id")
+    if inner_payload.get("approval_decision_id") != apply_plan["approval_decision_id"]:
+        raise ApplyExecutionPreflightError("envelope.payload.approval_decision_id must match approval_decision_id")
+    if inner_payload.get("approval_package_id") != apply_plan["approval_package_id"]:
+        raise ApplyExecutionPreflightError("envelope.payload.approval_package_id must match approval_package_id")
+    if inner_payload.get("revision_id") != apply_plan["revision_id"]:
+        raise ApplyExecutionPreflightError("envelope.payload.revision_id must match revision_id")
+    if inner_payload.get("changed_files") != apply_plan["changed_files"]:
+        raise ApplyExecutionPreflightError("envelope.payload.changed_files must match changed_files")
+
     return envelope
 
 
