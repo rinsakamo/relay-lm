@@ -111,6 +111,22 @@ def _validate_storage_envelope(payload: Any, apply_plan: dict[str, Any]) -> dict
     if inner.get("content_free") is not True:
         raise ApplyExecutionPreflightError("envelope.content_free must be true")
 
+    inner_persistence_status = inner.get("persistence_status")
+    if inner_persistence_status not in {"ok", "warning"}:
+        raise ApplyExecutionPreflightError("envelope.persistence_status must be ok or warning")
+    if inner_persistence_status != envelope.get("persistence_status"):
+        raise ApplyExecutionPreflightError("envelope.persistence_status must match top-level persistence_status")
+
+    inner_blocking_reasons = inner.get("blocking_reasons")
+    if not isinstance(inner_blocking_reasons, list):
+        raise ApplyExecutionPreflightError("envelope.blocking_reasons must be list")
+    if inner_blocking_reasons:
+        raise ApplyExecutionPreflightError("envelope.blocking_reasons must be empty")
+
+    inner_warning_reasons = inner.get("warning_reasons")
+    if inner_warning_reasons is not None and not isinstance(inner_warning_reasons, list):
+        raise ApplyExecutionPreflightError("envelope.warning_reasons must be list when present")
+
     inner_payload = inner.get("payload")
     if not isinstance(inner_payload, dict):
         raise ApplyExecutionPreflightError("envelope.payload must be object")
