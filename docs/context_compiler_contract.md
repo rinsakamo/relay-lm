@@ -2,7 +2,7 @@
 
 RelayLM should treat prompt construction as context compilation, not simple prompt concatenation.
 
-The context compiler turns route, character, memory, room/scene, and request information into an OpenAI-compatible message list.
+The context compiler turns route, character, memory, scene, optional external host metadata, and request information into an OpenAI-compatible message list.
 
 ## Goals
 
@@ -23,8 +23,8 @@ The compiler receives:
 - route config
 - character profile
 - common runtime policy
-- room anchor
-- room/scene state
+- scene state
+- optional scope metadata such as `room_id`, `scene_id`, and `session_id`
 - incoming OpenAI-compatible messages
 - lightweight memory candidates
 - optional retrieved memory, RAG, or spill chunks
@@ -64,7 +64,6 @@ stable_prefix
   character_soul_anchor
   character_output_policy
   relationship_anchor
-  room_anchor
 
 slow_prefix
   stable_memory_summary
@@ -72,7 +71,7 @@ slow_prefix
   durable_character_memory
 
 dynamic_suffix
-  room_state / scene_state
+  scene_state
   retrieved_memory
   retrieved_rag
   agent_result_summary
@@ -122,7 +121,7 @@ Examples:
 
 - current topic
 - scene state
-- room mood
+- current mood
 - retrieved memories
 - RAG evidence
 - agent result summaries
@@ -162,9 +161,8 @@ Examples:
 - `character_soul_anchor`
 - `character_output_policy`
 - `relationship_anchor`
-- `room_anchor`
 - `stable_memory_summary`
-- `room_state`
+- `scene_state`
 - `retrieved_memory`
 - `retrieved_rag`
 - `agent_result_summary`
@@ -172,6 +170,8 @@ Examples:
 - `recent_turns`
 - `latest_input`
 - `response_instruction`
+
+Legacy implementations may still emit `room_state` or `room_anchor`, but new docs and tests should prefer `scene_state` and optional `room_id` scope metadata.
 
 ### block_type
 
@@ -229,9 +229,8 @@ RelayLM should start with simple XML-like tags.
   <character_soul_anchor>...</character_soul_anchor>
   <character_output_policy>...</character_output_policy>
   <relationship_anchor>...</relationship_anchor>
-  <room_anchor>...</room_anchor>
   <stable_memory_summary>...</stable_memory_summary>
-  <room_state>...</room_state>
+  <scene_state>...</scene_state>
   <retrieved_memory>...</retrieved_memory>
   <retrieved_rag>...</retrieved_rag>
   <agent_result_summary>...</agent_result_summary>
@@ -264,30 +263,32 @@ For `memory_full`, compile full memory/RAG/spill/compression results with budget
 
 For future agent integrations, internal planning/tool/structured-output requests should default to pass-through. Final natural-language responses may use persona/context repacking.
 
-## Room anchor, room state, and scene state
+## Scene state and optional room metadata
 
-`room_anchor` is fixed room protocol and constraints only.
-
-Examples:
-
-- this is a live conversation room
-- keep replies speakable
-- avoid exposing internal retrieval tags
-- handle multiple speakers according to configured rules
-
-`room_state` is dynamic.
+`scene_state` is the dynamic situation state compiled into the prompt.
 
 Examples:
 
 - current topic
-- current stream mood
+- current mood
 - open questions
 - recently discussed points
 - active viewer or group state
+- temporary scenario or mode
 
-`scene_id` and scene state identify the conversational situation or scenario. `room_id` identifies the channel, room, stream, or frontend conversation space. `room_id` is where the conversation is hosted; `scene_id` is what situation the conversation is in.
+`scene_id` and `scene_state` identify the conversational situation or scenario.
 
-Do not place room state or scene state into stable prefix.
+`room_id` is optional external host metadata. It identifies the channel, room, stream, or frontend conversation space where the conversation is hosted. It should be available to adapters, memory scoping, and diagnostics when useful, but it should not become a prompt block by default.
+
+Legacy `room_anchor` content should usually be reclassified:
+
+- fixed shared constraints -> `common_runtime_policy`
+- character-specific expression constraints -> `character_output_policy`
+- relationship expectations -> `relationship_anchor`
+- temporary situation context -> `scene_state`
+- external host identity -> `room_id` metadata
+
+Do not place scene state or room metadata into stable prefix.
 
 ## Identity and scope boundaries
 
@@ -296,9 +297,9 @@ RelayLM should use simple operator-facing identity names:
 - `character_id`: which persona is speaking.
 - `user_id`: the conversation counterpart identity. This may represent a registered user, guest, viewer, operator, anonymous visitor, or agent caller.
 - `user_type`: the identity class, such as `user`, `guest`, `viewer`, `operator`, `anonymous`, or `agent`.
-- `room_id`: the channel, room, stream, or frontend conversation space.
 - `scene_id`: the conversational situation or scenario.
 - `session_id`: the current conversation/session run.
+- `room_id`: optional external host reference such as a channel, room, stream, or frontend conversation space.
 
 These fields should be available to memory adapters and diagnostics so memory does not leak across users, scenes, rooms, characters, or agent callers.
 
@@ -323,7 +324,7 @@ The compiler should eventually log:
 - selected route
 - character ID
 - user ID and user type when available
-- room ID, scene ID, and session ID when available
+- scene ID, session ID, and optional room ID when available
 - runtime mode
 - block IDs
 - stability classes

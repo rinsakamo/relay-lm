@@ -14,7 +14,6 @@ listen:
   port: 8090
 
 common_runtime_policy: ./policies/common_runtime_policy.md
-room_anchor: ./rooms/default/ROOM_ANCHOR.md
 
 backends:
   vllm_main:
@@ -46,7 +45,7 @@ characters:
     output_policy: ./characters/mili/OUTPUT_POLICY.md
     relationship_anchor: ./characters/mili/RELATIONSHIP_ANCHOR.md
     stable_memory_summary: ./characters/mili/STABLE_MEMORY_SUMMARY.md
-    room_state: ./rooms/default/ROOM_STATE.md
+    scene_state: ./scenes/default/SCENE_STATE.md
 
 memory:
   default_store: local_jsonl
@@ -99,13 +98,24 @@ This should include shared constraints such as:
 
 This is not a character identity file.
 
-### room_anchor
+### scene state and room metadata
 
-Path to fixed room constraints only.
+`scene_state` is the preferred dynamic situation file for context compilation.
 
-`room_anchor` should not contain current topic, current mood, current viewer question, recent events, or volatile stream state.
+It may include:
 
-Dynamic room information belongs in `room_state`.
+- current topic
+- current stream mood
+- open questions
+- recent stream state
+- current group conversation state
+- temporary scenario or mode
+
+Because it is dynamic, it should appear after stable prefix blocks in the compiled context.
+
+`room_id` may be used as optional scope metadata for an external host such as a channel, room, stream, or frontend conversation space. It is not a prompt block by default.
+
+Legacy `room_anchor` configuration should be avoided for new profiles. Existing `room_anchor` content should usually move to `common_runtime_policy`, `character_output_policy`, `relationship_anchor`, `scene_state`, or optional `room_id` metadata depending on its role.
 
 ## backends
 
@@ -163,7 +173,7 @@ characters:
     output_policy: ./characters/mili/OUTPUT_POLICY.md
     relationship_anchor: ./characters/mili/RELATIONSHIP_ANCHOR.md
     stable_memory_summary: ./characters/mili/STABLE_MEMORY_SUMMARY.md
-    room_state: ./rooms/default/ROOM_STATE.md
+    scene_state: ./scenes/default/SCENE_STATE.md
 ```
 
 ### soul
@@ -188,7 +198,7 @@ This is character-specific.
 
 ### relationship_anchor
 
-Stable relationship context with the viewer or room.
+Stable relationship context with the viewer, user, or relevant counterpart.
 
 It should change slowly and should not be rewritten every turn.
 
@@ -198,9 +208,9 @@ Durable memory facts and ongoing long-term context.
 
 This is separate from relationship tone.
 
-### room_state
+### scene_state
 
-Dynamic current room state.
+Dynamic current scene state.
 
 This may include:
 
@@ -209,6 +219,7 @@ This may include:
 - open questions
 - recent stream state
 - current group conversation state
+- temporary scenario or mode
 
 Because it is dynamic, it should appear after stable prefix blocks in the compiled context.
 
@@ -233,6 +244,6 @@ The first runtime should support simple local memory or no memory. Embeddings, v
 - Keep character profile paths stable.
 - Keep cache and memory namespaces first-class.
 - Allow per-route mode overrides.
-- Keep `room_anchor` and `room_state` separate.
+- Prefer `scene_state` for dynamic context and keep `room_id` as optional external host metadata.
 - Do not require SOUL files for pass-through compatibility.
 - Use incoming system prompts as a fallback SOUL source when character files are absent.
