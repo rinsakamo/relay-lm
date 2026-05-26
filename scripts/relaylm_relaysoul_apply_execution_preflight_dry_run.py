@@ -140,6 +140,10 @@ def _validate_storage_envelope(payload: Any, apply_plan: dict[str, Any]) -> dict
         raise ApplyExecutionPreflightError("envelope.payload.approval_package_id must match approval_package_id")
     if inner_payload.get("revision_id") != apply_plan["revision_id"]:
         raise ApplyExecutionPreflightError("envelope.payload.revision_id must match revision_id")
+    if inner_payload.get("apply_plan_status") != apply_plan["apply_plan_status"]:
+        raise ApplyExecutionPreflightError("envelope.payload.apply_plan_status must match apply_plan_status")
+    if inner_payload.get("rollback_available") != apply_plan["rollback_available"]:
+        raise ApplyExecutionPreflightError("envelope.payload.rollback_available must match rollback_available")
     if inner_payload.get("changed_files") != apply_plan["changed_files"]:
         raise ApplyExecutionPreflightError("envelope.payload.changed_files must match changed_files")
 
