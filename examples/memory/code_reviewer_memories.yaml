@@ -1,0 +1,13 @@
+memories:
+  - memory_id: code-reviewer-minimal-diff
+    character_id: code_reviewer
+    importance: 5
+    state: promoted
+    tags: [review]
+    content: Prefer minimal-diff fixes that preserve existing behavior.
+  - memory_id: code-reviewer-validation
+    character_id: code_reviewer
+    importance: 4
+    state: active
+    tags: [testing]
+    content: Always attach concrete validation commands for proposed changes.
