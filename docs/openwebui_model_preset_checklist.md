@@ -104,3 +104,4 @@ Use this template for real-environment verification records.
 ## Troubleshooting references
 
 - [OpenWebUI + LM Studio manual smoke runbook](docs/openwebui_lmstudio_manual_smoke.md)
+- [OpenWebUI route response differentiation checks](docs/openwebui_response_differentiation_checks.md)

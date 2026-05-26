@@ -5,6 +5,7 @@
 This document is a manual smoke runbook for connection/path verification.
 
 Related checklist: [OpenWebUI model preset/avatar checklist](docs/openwebui_model_preset_checklist.md).
+Related differentiation checks: [OpenWebUI route response differentiation checks](docs/openwebui_response_differentiation_checks.md).
 
 - manual smoke only
 - no automated real backend integration test in this doc
