@@ -46,6 +46,13 @@ If this fails, troubleshoot LM Studio first before RelayLM/OpenWebUI.
 
 ## Step 2: RelayLM startup
 
+
+Recommended quick start config:
+
+```bash
+cp examples/config/openwebui_lmstudio.yaml config.yaml
+```
+
 Start RelayLM with your config:
 
 ```bash

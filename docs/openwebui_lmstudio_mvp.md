@@ -78,6 +78,15 @@ Start LM Studio OpenAI-compatible server and ensure the endpoint is reachable:
 
 Point RelayLM backend to LM Studio and expose RelayLM as OpenAI-compatible endpoint:
 
+Copy-ready config example:
+
+```bash
+cp examples/config/openwebui_lmstudio.yaml config.yaml
+```
+
+Then start RelayLM with that config.
+
+
 - RelayLM listen URL example: `http://127.0.0.1:8090/v1`
 - LM Studio backend URL example: `http://127.0.0.1:1234/v1`
 
