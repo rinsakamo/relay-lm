@@ -74,6 +74,12 @@ Config-only local smoke (no real backend connection):
 python scripts/relaylm_openwebui_lmstudio_config_smoke.py
 ```
 
+Proxy-path local smoke (fake backend, no LM Studio connection):
+
+```bash
+python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+```
+
 Check route model IDs exposed by RelayLM:
 
 ```bash
