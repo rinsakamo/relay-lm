@@ -158,9 +158,16 @@ def _validate_storage_path_plan(payload: Any, storage_envelope: dict[str, Any]) 
     if plan.get("path_plan_status") != "ready":
         raise RollbackExecutionPreflightError("path_plan_status must be ready")
 
+    envelope_character_id = _require_safe_path_component(
+        storage_envelope.get("envelope", {}).get("character_id"),
+        "storage envelope.envelope.character_id",
+    )
+
     for field in ("artifact_kind", "artifact_id", "parent_artifact_id"):
         if plan.get(field) != storage_envelope.get(field):
             raise RollbackExecutionPreflightError(f"storage path plan {field} must match storage envelope {field}")
+    if plan.get("character_id") != envelope_character_id:
+        raise RollbackExecutionPreflightError("storage path plan character_id must match storage envelope character_id")
 
     character_id = _require_safe_path_component(plan.get("character_id"), "storage path plan character_id")
     artifact_kind = _require_safe_path_component(plan.get("artifact_kind"), "storage path plan artifact_kind")
