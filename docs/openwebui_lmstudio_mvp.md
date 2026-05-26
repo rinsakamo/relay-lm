@@ -69,6 +69,7 @@ It is not the default MVP standard UI in this positioning update.
 - Manual smoke runbook: [OpenWebUI + LM Studio manual smoke](docs/openwebui_lmstudio_manual_smoke.md)
 - Model preset/avatar checklist: [OpenWebUI model preset/avatar checklist](docs/openwebui_model_preset_checklist.md)
 - Response differentiation checks: [OpenWebUI route response differentiation checks](docs/openwebui_response_differentiation_checks.md)
+- Troubleshooting guide: [OpenWebUI + RelayLM + LM Studio troubleshooting](docs/openwebui_lmstudio_troubleshooting.md)
 
 ### 1) LM Studio
 

@@ -52,6 +52,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [OpenWebUI route response differentiation checks](docs/openwebui_response_differentiation_checks.md)
 - [OpenWebUI + LM Studio manual smoke results template](docs/openwebui_lmstudio_manual_smoke_results_template.md)
 - [OpenWebUI + RelayLM + LM Studio manual smoke result (2026-05-26)](docs/openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
+- [OpenWebUI + RelayLM + LM Studio troubleshooting](docs/openwebui_lmstudio_troubleshooting.md)
 - [OpenWebUI + LM Studio copy-ready config](examples/config/openwebui_lmstudio.yaml)
 - [OpenWebUI example profiles](examples/profiles/)
 - [Open-LLM-VTuber integration (optional example)](docs/open_llm_vtuber_integration.md)

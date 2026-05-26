@@ -7,6 +7,7 @@ This document is a manual smoke runbook for connection/path verification.
 Related checklist: [OpenWebUI model preset/avatar checklist](docs/openwebui_model_preset_checklist.md).
 Related differentiation checks: [OpenWebUI route response differentiation checks](docs/openwebui_response_differentiation_checks.md).
 Results template: [OpenWebUI + LM Studio manual smoke results template](docs/openwebui_lmstudio_manual_smoke_results_template.md).
+Troubleshooting guide: [OpenWebUI + RelayLM + LM Studio troubleshooting](docs/openwebui_lmstudio_troubleshooting.md).
 - Latest real run result: [OpenWebUI + RelayLM + LM Studio manual smoke result (2026-05-26)](docs/openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
 
 - manual smoke only
