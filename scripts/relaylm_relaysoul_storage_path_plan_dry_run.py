@@ -99,10 +99,10 @@ def _validate_storage_envelope(payload: Any) -> tuple[str, str, str, str | None]
 
     top_parent = artifact.get("parent_artifact_id")
     inner_parent = envelope.get("parent_artifact_id")
-    if top_parent is not None and not isinstance(top_parent, str):
-        raise StoragePathPlanError("parent_artifact_id must be string when present")
-    if inner_parent is not None and not isinstance(inner_parent, str):
-        raise StoragePathPlanError("envelope.parent_artifact_id must be string when present")
+    if top_parent is not None and (not isinstance(top_parent, str) or not top_parent.strip()):
+        raise StoragePathPlanError("parent_artifact_id must be non-empty string when present")
+    if inner_parent is not None and (not isinstance(inner_parent, str) or not inner_parent.strip()):
+        raise StoragePathPlanError("envelope.parent_artifact_id must be non-empty string when present")
     if top_parent is not None and inner_parent is not None and top_parent != inner_parent:
         raise StoragePathPlanError("parent_artifact_id mismatch between top-level and envelope")
 
