@@ -1,0 +1,72 @@
+mode: memory_light
+
+listen:
+  host: 127.0.0.1
+  port: 8090
+
+common_runtime_policy: examples/profiles/default/common_runtime_policy.md
+
+trace:
+  enabled: false
+  path: traces/relaylm_trace.jsonl
+
+memory:
+  candidate_limit: 3
+  token_budget_hint: 800
+  character_budget: 1200
+  token_policy_shadow_enabled: false
+  token_budget_truncation_enabled: false
+
+backends:
+  lmstudio_backend:
+    type: openai_compatible
+    base_url: http://127.0.0.1:1234/v1
+    api_key: relaylm
+    default_model: local-model
+
+model_routes:
+  relaylm-companion:
+    backend: lmstudio_backend
+    backend_model: local-model
+    character_id: companion
+    mode: memory_light
+    cache_namespace: character/companion
+    memory_namespace: character/companion
+
+  relaylm-work-assistant:
+    backend: lmstudio_backend
+    backend_model: local-model
+    character_id: work_assistant
+    mode: memory_light
+    cache_namespace: character/work-assistant
+    memory_namespace: character/work-assistant
+
+  relaylm-code-reviewer:
+    backend: lmstudio_backend
+    backend_model: local-model
+    character_id: code_reviewer
+    mode: memory_light
+    cache_namespace: character/code-reviewer
+    memory_namespace: character/code-reviewer
+
+characters:
+  companion:
+    soul: examples/profiles/companion/SOUL.md
+    output_policy: examples/profiles/companion/OUTPUT_POLICY.md
+    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
+    scene_state: examples/profiles/default/SCENE_STATE.md
+    memory_seed_path: examples/memory/companion_memories.yaml
+
+  work_assistant:
+    soul: examples/profiles/work_assistant/SOUL.md
+    output_policy: examples/profiles/work_assistant/OUTPUT_POLICY.md
+    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
+    scene_state: examples/profiles/default/SCENE_STATE.md
+    memory_seed_path: examples/memory/work_assistant_memories.yaml
+
+  code_reviewer:
+    soul: examples/profiles/code_reviewer/SOUL.md
+    output_policy: examples/profiles/code_reviewer/OUTPUT_POLICY.md
+    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
+    scene_state: examples/profiles/default/SCENE_STATE.md
+    memory_seed_path: examples/memory/code_reviewer_memories.yaml
