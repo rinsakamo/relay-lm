@@ -52,6 +52,15 @@ def _require_non_empty_string(value: Any, field: str) -> str:
     return value
 
 
+def _require_safe_path_component(value: Any, field: str) -> str:
+    component = _require_non_empty_string(value, field)
+    if component in {".", ".."}:
+        raise ApplyExecutionPreflightError(f"{field} must be safe single path component")
+    if "/" in component or "\\" in component or "\x00" in component:
+        raise ApplyExecutionPreflightError(f"{field} must be safe single path component")
+    return component
+
+
 def _validate_apply_plan(payload: Any) -> dict[str, Any]:
     apply_plan = _require_object(payload, "apply plan")
     if apply_plan.get("artifact_type") != APPLY_PLAN_ARTIFACT_TYPE:
@@ -186,9 +195,12 @@ def _validate_storage_path_plan(payload: Any, storage_envelope: dict[str, Any]) 
             "storage path plan parent_artifact_id must match storage envelope parent_artifact_id"
         )
 
-    character_id = _require_non_empty_string(plan.get("character_id"), "storage path plan character_id")
-    artifact_kind = _require_non_empty_string(plan.get("artifact_kind"), "storage path plan artifact_kind")
-    artifact_id = _require_non_empty_string(plan.get("artifact_id"), "storage path plan artifact_id")
+    character_id = _require_safe_path_component(plan.get("character_id"), "storage path plan character_id")
+    artifact_kind = _require_safe_path_component(plan.get("artifact_kind"), "storage path plan artifact_kind")
+    artifact_id = _require_safe_path_component(plan.get("artifact_id"), "storage path plan artifact_id")
+    parent_artifact_id = plan.get("parent_artifact_id")
+    if parent_artifact_id is not None:
+        _require_safe_path_component(parent_artifact_id, "storage path plan parent_artifact_id")
     artifact_path = _require_non_empty_string(plan.get("artifact_path"), "storage path plan artifact_path")
     artifact_index_path = _require_non_empty_string(
         plan.get("artifact_index_path"), "storage path plan artifact_index_path"
@@ -248,6 +260,11 @@ def _validate_storage_index_plan(
         raise ApplyExecutionPreflightError("lineage_index_record.record_type must be lineage")
     if artifact_record.get("content_free") is not True or lineage_record.get("content_free") is not True:
         raise ApplyExecutionPreflightError("index records content_free must be true")
+    for field in ("artifact_kind", "artifact_id", "character_id", "artifact_path"):
+        if artifact_record.get(field) != storage_path_plan.get(field):
+            raise ApplyExecutionPreflightError(f"artifact_index_record.{field} must match storage path plan")
+        if lineage_record.get(field) != storage_path_plan.get(field):
+            raise ApplyExecutionPreflightError(f"lineage_index_record.{field} must match storage path plan")
     if lineage_record.get("parent_artifact_id") != apply_plan.get("approval_decision_id"):
         raise ApplyExecutionPreflightError("lineage_index_record.parent_artifact_id must match approval_decision_id")
     return plan
