@@ -45,6 +45,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [RelaySOUL patch compile dry-run contract](docs/relaysoul_compile_dry_run_contract.md)
 - [RelaySOUL persistence storage design](docs/relaysoul_persistence_storage_design.md)
 - [RelaySOUL dry-run chain summary](docs/relaysoul_dry_run_chain_summary.md)
+- [RelaySOUL preflight chain summary](docs/relaysoul_preflight_chain_summary.md)
 - [OpenWebUI + LM Studio MVP](docs/openwebui_lmstudio_mvp.md)
 - [OpenWebUI + LM Studio manual smoke runbook](docs/openwebui_lmstudio_manual_smoke.md)
 - [OpenWebUI model preset/avatar checklist](docs/openwebui_model_preset_checklist.md)

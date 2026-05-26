@@ -11,14 +11,22 @@ This document summarizes the current RelaySOUL dry-run chain before real apply/r
 ## Pipeline
 
 ```text
-feedback examples / user calibration
+feedback/examples
   -> patch prompt dry-run
   -> patch candidate parser dry-run
-  -> temporary revision compile dry-run
+  -> temp revision compile dry-run
   -> revision history store dry-run
   -> approval package dry-run
-  -> approval package persistence dry-run linkage
-  -> future approval decision / apply / rollback (not implemented)
+  -> approval decision dry-run
+  -> apply plan dry-run
+  -> rollback plan dry-run
+  -> persistence classification
+  -> storage envelope CLI dry-run
+  -> storage path planner dry-run
+  -> storage index dry-run
+  -> apply execution preflight dry-run
+  -> rollback execution preflight dry-run
+  -> future actual persistence / apply / rollback
 ```
 
 ## Implemented scripts and artifact support
@@ -28,7 +36,15 @@ feedback examples / user calibration
 - `scripts/relaylm_relaysoul_temp_revision_compile_dry_run.py`
 - `scripts/relaylm_relaysoul_revision_history_store_dry_run.py`
 - `scripts/relaylm_relaysoul_approval_package_dry_run.py`
-- `relaylm/relaysoul_persistence.py` (includes `approval_package` support)
+- `scripts/relaylm_relaysoul_approval_decision_dry_run.py`
+- `scripts/relaylm_relaysoul_apply_plan_dry_run.py`
+- `scripts/relaylm_relaysoul_rollback_plan_dry_run.py`
+- `scripts/relaylm_relaysoul_storage_envelope_dry_run.py`
+- `scripts/relaylm_relaysoul_storage_path_plan_dry_run.py`
+- `scripts/relaylm_relaysoul_storage_index_dry_run.py`
+- `scripts/relaylm_relaysoul_apply_execution_preflight_dry_run.py`
+- `scripts/relaylm_relaysoul_rollback_execution_preflight_dry_run.py`
+- `relaylm/relaysoul_persistence.py` (includes persistence classification + envelope helper support)
 
 ## Safety invariants
 
@@ -37,6 +53,8 @@ feedback examples / user calibration
 - no patch apply
 - no rollback execution
 - no actual persistence / DB write
+- no storage path creation
+- no storage index append
 - no runtime behavior change
 - no backend forwarding change
 - no persona body / memory body / patch_text / prompt_text in persisted metadata artifacts
@@ -75,9 +93,8 @@ Current boundary remains dry-run and contract-only.
 
 ## Next phase options
 
-- approval decision dry-run
-- apply plan dry-run
-- rollback plan dry-run
-- artifact persistence storage design
-- UI-facing approval summary
-- later only: real apply/rollback with explicit approval
+- storage writer preflight dry-run
+- persistence execution preflight dry-run
+- apply execution gate design
+- rollback execution gate design
+- later only: real persistence / real apply / real rollback with explicit approval and fail-closed checks
