@@ -40,6 +40,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [RelaySOUL persona source calibration design](docs/relaysoul_design.md)
 - [Safe SOUL / Scene / CTX compile chain](docs/safe_soul_scene_ctx_compile_chain.md)
 - [Runtime compile gate design](docs/runtime_compile_gate_design.md)
+- [Runtime compile artifact contract](docs/runtime_compile_artifact_contract.md)
 - [RelaySOUL patch candidate contract](docs/relaysoul_patch_candidate_contract.md)
 - [RelaySOUL revision contract](docs/relaysoul_revision_contract.md)
 - [RelaySOUL approval contract](docs/relaysoul_approval_contract.md)
