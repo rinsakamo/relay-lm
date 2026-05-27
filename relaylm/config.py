@@ -45,7 +45,7 @@ class CharacterConfig(BaseModel):
     common_runtime_policy: str | None = None
     soul: str
     output_policy: str
-    room_anchor: str
+    room_anchor: str | None = None
     memory_seed_path: str | None = None
     relationship_anchor: str | None = None
     stable_memory_summary: str | None = None
