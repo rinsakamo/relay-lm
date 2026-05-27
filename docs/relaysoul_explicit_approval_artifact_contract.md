@@ -59,7 +59,7 @@ This document defines a future content-free approval artifact used by apply / ro
 - `approval_status` must be `approved`
 - `approval_scope` must match target gate
 - `approval_id` must be non-empty
-- `character_id` / `artifact_id` / `parent_artifact_id` must match target chain
+- `character_id` / `target_artifact_id` / `parent_artifact_id` must match target chain (target artifact identity)
 - referenced preflight/gate IDs must match expected chain
 - approval must not be stale
 - `blocking_reasons` must be empty
@@ -70,7 +70,7 @@ This document defines a future content-free approval artifact used by apply / ro
 - missing approval -> blocked
 - `approval_status != approved` -> blocked
 - scope mismatch -> blocked
-- id/path/lineage mismatch -> blocked
+- target artifact id/path/lineage mismatch -> blocked
 - stale approval -> blocked
 - ambiguous approver -> blocked
 - `content_free = false` -> blocked
