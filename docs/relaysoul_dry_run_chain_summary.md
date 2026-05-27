@@ -26,6 +26,8 @@ feedback/examples
   -> storage index dry-run
   -> apply execution preflight dry-run
   -> rollback execution preflight dry-run
+  -> storage writer preflight dry-run
+  -> persistence execution preflight dry-run
   -> future actual persistence / apply / rollback
 ```
 
@@ -44,6 +46,8 @@ feedback/examples
 - `scripts/relaylm_relaysoul_storage_index_dry_run.py`
 - `scripts/relaylm_relaysoul_apply_execution_preflight_dry_run.py`
 - `scripts/relaylm_relaysoul_rollback_execution_preflight_dry_run.py`
+- `scripts/relaylm_relaysoul_storage_writer_preflight_dry_run.py`
+- `scripts/relaylm_relaysoul_persistence_execution_preflight_dry_run.py`
 - `relaylm/relaysoul_persistence.py` (includes persistence classification + envelope helper support)
 
 ## Safety invariants
@@ -93,8 +97,7 @@ Current boundary remains dry-run and contract-only.
 
 ## Next phase options
 
-- storage writer preflight dry-run
-- persistence execution preflight dry-run
 - apply execution gate design
 - rollback execution gate design
-- later only: real persistence / real apply / real rollback with explicit approval and fail-closed checks
+- storage writer gate design
+- later only: real persistence writer / real apply / real rollback with explicit approval and fail-closed checks

@@ -1,27 +1,18 @@
-# RelaySOUL Preflight Chain Summary
+# RelaySOUL Persistence Preflight Summary
 
 ## Scope
 
-This document summarizes the content-free artifact chain after the MVP-20 baseline, focused on preflight-oriented safety stages.
+This document summarizes the content-free artifact chain after apply/rollback execution preflight.
 
-RelaySOUL preflight artifacts in this chain are content-free artifacts for safety validation and storage-readiness classification, not runtime compiled context payloads.
-
-- storage path planner dry-run
-- storage index dry-run
-- apply execution preflight dry-run
-- rollback execution preflight dry-run
 - storage writer preflight dry-run
 - persistence execution preflight dry-run
 
 ## Completed scope
 
-- storage envelope CLI dry-run
-- storage path planner dry-run
-- storage index dry-run
-- apply execution preflight dry-run
-- rollback execution preflight dry-run
 - storage writer preflight dry-run
 - persistence execution preflight dry-run
+- apply and rollback normal chains
+- fail-closed checks for status mismatch, blocking reasons, id/path mismatch, content_free false, forbidden keys, nested forbidden keys, unsafe identity
 
 ## Current chain
 
@@ -59,8 +50,6 @@ feedback/examples
 - no runtime behavior change
 - no backend forwarding payload change
 - content-free boundary maintained
-- `apply_execution_allowed = false`
-- `rollback_execution_allowed = false`
 - `writer_execution_allowed = false`
 - `persistence_execution_allowed = false`
 
@@ -68,15 +57,9 @@ feedback/examples
 
 - compileall
 - persistence smoke
-- normal chain checks
-- fail-closed checks for:
-  - status mismatch
-  - blocking reasons
-  - id/path mismatch
-  - `content_free = false`
-  - forbidden keys
-  - nested forbidden keys
-  - unsafe identity
+- apply normal chain
+- rollback normal chain
+- fail-closed checks
 
 ## Next phase
 
@@ -85,10 +68,3 @@ feedback/examples
 - storage writer gate design
 - real persistence writer only after explicit approval and fail-closed checks
 - real apply / rollback only after separate explicit gate design
-
-## Handoff reminder
-
-- RelayMEM proposes candidates.
-- RelayCTX packs selected context for runtime prompts.
-- RelaySOUL versions persona-source artifacts and preflight/storage metadata.
-- RelayPLC decides policy and execution gating.
