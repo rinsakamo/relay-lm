@@ -2,6 +2,8 @@
 
 ## Scope
 
+Manual smoke runbook: [OpenWebUI + LM Studio manual smoke runbook](docs/openwebui_lmstudio_manual_smoke.md).
+
 - real local setup troubleshooting
 - OpenWebUI -> RelayLM -> LM Studio
 - Windows + WSL2 + Docker Desktop
