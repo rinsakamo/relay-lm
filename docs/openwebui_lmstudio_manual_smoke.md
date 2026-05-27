@@ -50,6 +50,23 @@ curl http://127.0.0.1:1234/v1/chat/completions \
 
 If this fails, troubleshoot LM Studio first before RelayLM/OpenWebUI.
 
+If RelayLM runs on WSL and LM Studio runs on Windows host, note:
+
+- `127.0.0.1` inside WSL points to WSL itself, not Windows host.
+- discover Windows host IP from WSL:
+
+```bash
+WIN_HOST=$(ip route show default | awk '{print $3}')
+```
+
+- check LM Studio from WSL:
+
+```bash
+curl http://${WIN_HOST}:1234/v1/models
+```
+
+For Windows Firewall and LM Studio local network serving checks, see the troubleshooting guide.
+
 ## Step 2: RelayLM startup
 
 
@@ -129,10 +146,39 @@ Expect SSE chunks to stream progressively.
 
 ## Step 6: OpenWebUI connection check
 
-In OpenWebUI OpenAI-compatible connection settings:
+In OpenWebUI OpenAI-compatible connection settings, use the Base URL that matches your runtime placement.
 
-- Base URL: `http://127.0.0.1:8090/v1`
 - API key: `relaylm` (dummy is acceptable)
+
+Decision tree:
+
+- OpenWebUI runs directly on host:
+  - Base URL: `http://127.0.0.1:8090/v1`
+
+- OpenWebUI runs in Docker container:
+  1. try `host.docker.internal` first
+  2. if it fails, use WSL IP
+
+WSL IP check:
+
+```bash
+hostname -I
+```
+
+Container-side connectivity check:
+
+```bash
+docker exec open-webui curl http://<WSL_IP>:8090/v1/models
+```
+
+Docker/WSL fallback Base URL:
+
+- `http://<WSL_IP>:8090/v1`
+
+Note:
+
+- RelayLM may need `listen.host: 0.0.0.0` so the container can reach it.
+- WSL IP values are environment-dependent and may change after restart.
 
 Create model preset / avatar entries and bind model IDs to:
 
