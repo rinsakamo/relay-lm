@@ -15,7 +15,7 @@ class ProfileFiles:
     common_runtime_policy: Path
     soul: Path
     output_policy: Path
-    room_anchor: Path
+    room_anchor: Path | None = None
     relationship_anchor: Path | None = None
     stable_memory_summary: Path | None = None
     scene_state: Path | None = None
@@ -26,7 +26,7 @@ class ProfileTexts:
     common_runtime_policy: str
     soul: str
     output_policy: str
-    room_anchor: str
+    room_anchor: str | None = None
     relationship_anchor: str | None = None
     stable_memory_summary: str | None = None
     scene_state: str | None = None
@@ -52,7 +52,7 @@ def load_profile_texts(files: ProfileFiles) -> ProfileTexts:
         common_runtime_policy=read_text_file(files.common_runtime_policy),
         soul=read_text_file(files.soul),
         output_policy=read_text_file(files.output_policy),
-        room_anchor=read_text_file(files.room_anchor),
+        room_anchor=_read_optional_text_file(files.room_anchor),
         relationship_anchor=_read_optional_text_file(files.relationship_anchor),
         stable_memory_summary=_read_optional_text_file(files.stable_memory_summary),
         scene_state=_read_optional_text_file(files.scene_state),
@@ -82,7 +82,7 @@ def resolve_profile_files(config: RelayLMConfig, route: ResolvedRoute) -> Profil
         common_runtime_policy=Path(common_runtime_policy),
         soul=Path(character.soul),
         output_policy=Path(character.output_policy),
-        room_anchor=Path(character.room_anchor),
+        room_anchor=(Path(character.room_anchor) if character.room_anchor else None),
         relationship_anchor=(Path(character.relationship_anchor) if character.relationship_anchor else None),
         stable_memory_summary=(Path(character.stable_memory_summary) if character.stable_memory_summary else None),
         scene_state=(Path(character.scene_state) if character.scene_state else None),
