@@ -52,6 +52,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [RelaySOUL rollback execution gate design](docs/relaysoul_rollback_execution_gate_design.md)
 - [RelaySOUL storage writer gate design](docs/relaysoul_storage_writer_gate_design.md)
 - [RelaySOUL persistence execution gate design](docs/relaysoul_persistence_execution_gate_design.md)
+- [RelaySOUL gate design consistency review](docs/relaysoul_gate_design_consistency_review.md)
 - [OpenWebUI + LM Studio MVP](docs/openwebui_lmstudio_mvp.md)
 - [OpenWebUI + LM Studio manual smoke runbook](docs/openwebui_lmstudio_manual_smoke.md)
 - [OpenWebUI model preset/avatar checklist](docs/openwebui_model_preset_checklist.md)
