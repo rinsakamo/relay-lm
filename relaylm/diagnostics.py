@@ -44,6 +44,7 @@ class RequestDiagnostics:
     profile_compile_dry_run_enabled: bool | None = None
     profile_compile_fallback_reason: str | None = None
     fallback_reason: str | None = None
+    compile_decision_dry_run: dict[str, Any] | None = None
 
     def to_headers(self) -> dict[str, str]:
         headers = {"x-relaylm-request-id": self.request_id}
@@ -144,4 +145,55 @@ def build_relaysoul_runtime_feedback_summary(diagnostics: RequestDiagnostics) ->
         "shadow_delta_status": shadow_delta.get("delta_status")
         if isinstance(shadow_delta.get("delta_status"), str)
         else None,
+    }
+
+
+def build_compile_decision_dry_run(
+    *,
+    decision_id: str | None = None,
+    plan_id: str | None = None,
+    result_id: str | None = None,
+    selected_route: str | None = None,
+    selected_mode: str | None = None,
+    backend: str | None = None,
+    character_id: str | None = None,
+    compiled_message_count: int | None = None,
+    fallback_reason: str | None = None,
+    blocking_reasons: list[str] | None = None,
+    omitted_block_ids: list[str] | None = None,
+    token_budget_status: str | None = None,
+    schema_version: str = "mvp-ctx-apply-0",
+) -> dict[str, Any]:
+    """Build a compile decision dry-run diagnostics payload.
+
+    This helper is fail-safe and never raises on missing/unknown values.
+    It intentionally excludes prompt text and full messages.
+    """
+
+    safe_blocking_reasons = [str(x) for x in (blocking_reasons or [])]
+    safe_omitted_block_ids = [str(x) for x in (omitted_block_ids or [])]
+
+    safe_compiled_message_count: int | None
+    if isinstance(compiled_message_count, int) and compiled_message_count >= 0:
+        safe_compiled_message_count = compiled_message_count
+    else:
+        safe_compiled_message_count = None
+
+    return {
+        "schema_version": schema_version,
+        "decision_id": decision_id,
+        "plan_id": plan_id,
+        "result_id": result_id,
+        "decision_state": "COMPILE_DRY_RUN",
+        "apply_compiled_messages": False,
+        "diagnostics_only": True,
+        "fallback_reason": fallback_reason,
+        "blocking_reasons": safe_blocking_reasons,
+        "selected_route": selected_route,
+        "selected_mode": selected_mode,
+        "backend": backend,
+        "character_id": character_id,
+        "compiled_message_count": safe_compiled_message_count,
+        "omitted_block_ids": safe_omitted_block_ids,
+        "token_budget_status": token_budget_status,
     }

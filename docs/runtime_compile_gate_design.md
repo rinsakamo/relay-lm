@@ -288,3 +288,14 @@ Future work can add:
 - RelayTRC trace integration
 - profile prefix hash stability checks
 - memory-full apply readiness gates
+
+## Initial implementation note (MVP)
+
+Current implementation is diagnostics/trace-only for compile decision dry-run:
+
+- emits a compile decision dry-run object into runtime diagnostics
+- propagates the object into trace metadata when trace is enabled
+- does not apply compiled messages
+- does not mutate outbound backend forwarding payload
+
+This keeps runtime behavior fail-safe while making gate decisions observable.
