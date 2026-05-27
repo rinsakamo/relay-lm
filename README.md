@@ -42,6 +42,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [Runtime compile gate design](docs/runtime_compile_gate_design.md)
 - [Runtime compile artifact contract](docs/runtime_compile_artifact_contract.md)
 - [Scene lifecycle design](docs/scene_lifecycle_design.md)
+- [Scene-aware memory scope design](docs/scene_memory_scope_design.md)
 - [RelaySOUL patch candidate contract](docs/relaysoul_patch_candidate_contract.md)
 - [RelaySOUL revision contract](docs/relaysoul_revision_contract.md)
 - [RelaySOUL approval contract](docs/relaysoul_approval_contract.md)
