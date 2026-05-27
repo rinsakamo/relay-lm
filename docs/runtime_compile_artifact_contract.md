@@ -185,9 +185,11 @@ Dry-run lifecycle:
 
 ```text
 CompilePlan
+  -> CompileDecision(COMPILE_DRY_RUN)
   -> Diagnostics / TraceEvent
   -> pass-through forwarding
 ```
+Diagnostics-only dry-run paths should still emit `CompileDecision` with `decision_state = COMPILE_DRY_RUN` and `diagnostics_only = true` so decision logs and traces remain consistent with gate semantics.
 
 Shadow-only lifecycle:
 
