@@ -116,7 +116,7 @@ Because it is dynamic, it should appear after stable prefix blocks in the compil
 
 `room_id` may be used as optional scope metadata for an external host such as a channel, room, stream, or frontend conversation space. It is not a prompt block by default.
 
-Current runtime compatibility note: `room_anchor` is still required by `CharacterConfig` in current releases, so runnable config examples should keep it until the runtime makes it optional or provides a migration alias. New designs should avoid putting dynamic topic, mood, viewer question, recent event, or volatile stream state into `room_anchor`.
+Runtime compatibility note: `room_anchor` is now an optional legacy compatibility field in `CharacterConfig`. Runnable config examples may keep it for interoperability, but `scene_state` is the preferred dynamic situation field and `room_state` remains a legacy alias to `scene_state`. New designs should avoid putting dynamic topic, mood, viewer question, recent event, or volatile stream state into `room_anchor`.
 
 Legacy `room_anchor` content should usually move to `common_runtime_policy`, `character_output_policy`, `relationship_anchor`, `scene_state`, or optional `room_id` metadata depending on its role.
 
@@ -202,9 +202,9 @@ This is character-specific.
 
 ### room_anchor
 
-Current-runtime required legacy field for fixed room constraints.
+Optional legacy compatibility field for fixed room constraints.
 
-Keep this field in runnable examples until `room_anchor` becomes optional or a migration alias is implemented. It should not contain dynamic scene information such as current topic, mood, recent events, current viewer question, or volatile stream state.
+Runnable examples may keep this field for compatibility, but new designs should prefer `scene_state` for dynamic situation context. `room_state` is kept as a legacy alias that maps to `scene_state` when `scene_state` is unset. `room_anchor` should not contain dynamic scene information such as current topic, mood, recent events, current viewer question, or volatile stream state.
 
 ### relationship_anchor
 
@@ -255,6 +255,6 @@ The first runtime should support simple local memory or no memory. Embeddings, v
 - Keep cache and memory namespaces first-class.
 - Allow per-route mode overrides.
 - Prefer `scene_state` for dynamic context and keep `room_id` as optional external host metadata.
-- Keep `room_anchor` in runnable examples until runtime compatibility makes it optional.
+- `room_anchor` is optional legacy compatibility metadata; runnable examples may keep it.
 - Do not require SOUL files for pass-through compatibility.
 - Use incoming system prompts as a fallback SOUL source when character files are absent.
