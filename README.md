@@ -58,6 +58,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [RelaySOUL gate design consistency review](docs/relaysoul_gate_design_consistency_review.md)
 - [RelaySOUL explicit approval artifact contract](docs/relaysoul_explicit_approval_artifact_contract.md)
 - [RelaySOUL preflight lineage freshness policy](docs/relaysoul_preflight_lineage_freshness_policy.md)
+- [RelaySOUL gate dry-run CLI design](docs/relaysoul_gate_dry_run_cli_design.md)
 - [OpenWebUI + LM Studio MVP](docs/openwebui_lmstudio_mvp.md)
 - [OpenWebUI + LM Studio manual smoke runbook](docs/openwebui_lmstudio_manual_smoke.md)
 - [OpenWebUI model preset/avatar checklist](docs/openwebui_model_preset_checklist.md)
