@@ -105,8 +105,36 @@ def main() -> int:
         require(dry.get("selected_route") == "relaylm-default", dry)
         require(dry.get("selected_mode") == "memory_light", dry)
         require(dry.get("backend") == "local_backend", dry)
+        require(dry.get("compiled_message_count") == 2, dry)
         require("messages" not in dry and "prompt" not in dry and "content" not in dry, dry)
         print("ok trace includes compile decision dry-run metadata")
+
+
+    with tempfile.TemporaryDirectory() as td2:
+        cfg2 = yaml.safe_load((REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8"))
+        cfg2["backends"]["local_backend"]["base_url"] = f"http://127.0.0.1:{port}/v1"
+        cfg2["trace"] = {"enabled": True, "path": str(Path(td2) / "trace.jsonl")}
+        cfg2["model_routes"]["relaylm-default"]["mode"] = "pass_through"
+        cfg2_path = Path(td2) / "cfg.yaml"
+        cfg2_path.write_text(yaml.safe_dump(cfg2), encoding="utf-8")
+
+        app2 = create_app(str(cfg2_path))
+        with TestClient(app2) as client:
+            payload2 = {
+                "model": "relaylm-default",
+                "messages": [{"role": "user", "content": "hello"}],
+                "stream": False,
+            }
+            resp2 = client.post("/v1/chat/completions", json=payload2)
+            require(resp2.status_code == 200, resp2.text)
+
+        trace_text2 = (Path(td2) / "trace.jsonl").read_text(encoding="utf-8")
+        record2 = json.loads(trace_text2.strip().splitlines()[-1])
+        dry2 = record2.get("metadata", {}).get("compile_decision_dry_run")
+        require(isinstance(dry2, dict), record2)
+        require(dry2.get("selected_mode") == "pass_through", dry2)
+        require(dry2.get("compiled_message_count") != 1, dry2)
+        print("ok pass_through compile count is not forwarded input count")
 
     server.shutdown()
     server.server_close()
