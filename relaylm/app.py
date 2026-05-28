@@ -28,6 +28,7 @@ from relaylm.memory_adapter import (
     build_memory_adapter_shadow_dry_run_with_scope,
 )
 from relaylm.request_compiler import compile_chat_payload_if_enabled
+from relaylm.relayemo import run_relayemo
 from relaylm.request_scope import build_scope_resolution_diagnostics, extract_request_scope_identity
 from relaylm.routing import (
     ResolvedRoute,
@@ -203,6 +204,13 @@ def create_app(config_path: str | None = None) -> FastAPI:
             config=config,
             payload=compiled_request.payload,
         )
+        relayemo_artifact: dict[str, Any] | None = None
+        if config.relayemo_enabled and config.relayemo_text_marker_enabled:
+            relayemo_result = run_relayemo(
+                config=config,
+                messages=_extract_trace_messages(forwarded_payload),
+            )
+            relayemo_artifact = relayemo_result.artifact
 
         base_diagnostics = RequestDiagnostics(
             request_id=request_id,
@@ -247,6 +255,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             trace_enabled=config.trace.enabled,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
+            relayemo_artifact=relayemo_artifact,
         )
         feedback_summary = (
             build_relaysoul_runtime_feedback_summary(base_diagnostics)
@@ -301,6 +310,15 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 headers=diagnostics.to_headers(),
             )
         headers = diagnostics.to_headers()
+        if isinstance(body, dict) and relayemo_artifact is not None:
+            marker_preview = _build_relayemo_text_marker_preview(config, relayemo_artifact)
+            relayemo_artifact["text_marker_preview"] = marker_preview
+            apply_mode = config.relayemo_text_marker_apply_mode
+            if apply_mode == "apply":
+                body = _apply_relayemo_marker_to_response(body, marker_preview)
+                relayemo_artifact["text_marker_apply"]["applied_to_text"] = bool(
+                    marker_preview.get("gate_open")
+                )
         if isinstance(body, dict) or isinstance(body, list):
             trace_runtime_event(
                 config=config,
@@ -418,6 +436,52 @@ def _build_token_budget_truncation_dry_run(
     result["applied"] = False
     result["apply_mode"] = "dry_run"
     return result
+
+
+def _build_relayemo_text_marker_preview(
+    config: RelayLMConfig,
+    relayemo_artifact: dict[str, Any],
+) -> dict[str, Any]:
+    scene_type = relayemo_artifact.get("scene_state", {}).get("scene_type", "unknown")
+    affect = relayemo_artifact.get("user_affect_estimate", {})
+    intensity = float(affect.get("intensity", 0.0))
+    confidence = float(affect.get("confidence", 0.0))
+    if scene_type in {"review_work", "formal_document", "medical_or_safety"}:
+        return {"gate_open": False, "marker": "", "marker_count": 0, "placement": "postfix_replace_punctuation", "applied_to_text": False, "suppression_reason": "scene_suppressed"}
+    if confidence < 0.4:
+        return {"gate_open": False, "marker": "", "marker_count": 0, "placement": "postfix_replace_punctuation", "applied_to_text": False, "suppression_reason": "low_confidence"}
+    if scene_type in {"implementation_work"}:
+        return {"gate_open": False, "marker": "✨", "marker_count": 1, "placement": "postfix_replace_punctuation", "applied_to_text": False, "suppression_reason": "preview_only_scene"}
+    gate_open = intensity >= config.relayemo_marker_open_threshold
+    marker_count = min(config.relayemo_max_markers, max(1, int(1 + intensity * 2))) if gate_open else 0
+    return {"gate_open": gate_open, "marker": "✨" * marker_count, "marker_count": marker_count, "placement": "postfix_replace_punctuation", "applied_to_text": False, "suppression_reason": None if gate_open else "below_open_threshold"}
+
+
+def _apply_relayemo_marker_to_response(body: dict[str, Any], preview: dict[str, Any]) -> dict[str, Any]:
+    if not preview.get("gate_open"):
+        return body
+    marker = preview.get("marker") or ""
+    if not marker:
+        return body
+    choices = body.get("choices")
+    if not isinstance(choices, list):
+        return body
+    for choice in choices:
+        if not isinstance(choice, dict):
+            continue
+        message = choice.get("message")
+        if not isinstance(message, dict):
+            continue
+        content = message.get("content")
+        if not isinstance(content, str) or not content:
+            continue
+        if content.endswith(("。", "！", "!", ".")):
+            message["content"] = content[:-1] + marker
+        elif content.endswith(("？", "?")):
+            message["content"] = content + marker
+        else:
+            message["content"] = content + marker
+    return body
 
 
 def main() -> None:

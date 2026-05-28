@@ -87,6 +87,16 @@ class RelayLMConfig(BaseModel):
     backends: dict[str, BackendConfig]
     model_routes: dict[str, ModelRoute]
     characters: dict[str, CharacterConfig] = Field(default_factory=dict)
+    relayemo_enabled: bool = False
+    relayemo_dry_run: bool = True
+    relayemo_text_marker_enabled: bool = False
+    relayemo_text_marker_apply_mode: Literal["diagnostics_only", "preview", "apply"] = (
+        "diagnostics_only"
+    )
+    relayemo_marker_open_threshold: float = 0.65
+    relayemo_marker_close_threshold: float = 0.45
+    relayemo_max_markers: int = Field(default=3, ge=1, le=3)
+    relayemo_scene_gate_enabled: bool = True
 
 
 def default_config_path() -> Path:

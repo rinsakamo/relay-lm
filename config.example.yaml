@@ -59,6 +59,16 @@ characters:
   #   memory_seed_path: examples/memory/default_memories.yaml
   #   token_policy_shadow_enabled: false
 
+# RelayEMO MVP initial (default off, diagnostics/preview first)
+relayemo_enabled: false
+relayemo_dry_run: true
+relayemo_text_marker_enabled: false
+relayemo_text_marker_apply_mode: diagnostics_only
+relayemo_marker_open_threshold: 0.65
+relayemo_marker_close_threshold: 0.45
+relayemo_max_markers: 3
+relayemo_scene_gate_enabled: true
+
 
 # Optional OpenWebUI + LM Studio MVP route example (docs-only reference).
 # This commented block does not change defaults unless you opt in.

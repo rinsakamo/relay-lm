@@ -258,3 +258,18 @@ The first runtime should support simple local memory or no memory. Embeddings, v
 - `room_anchor` is optional legacy compatibility metadata; runnable examples may keep it.
 - Do not require SOUL files for pass-through compatibility.
 - Use incoming system prompts as a fallback SOUL source when character files are absent.
+
+## RelayEMO MVP initial flags
+
+RelayEMO is default-off and diagnostics/preview-first.
+
+```yaml
+relayemo_enabled: false
+relayemo_dry_run: true
+relayemo_text_marker_enabled: false
+relayemo_text_marker_apply_mode: diagnostics_only # diagnostics_only | preview | apply
+relayemo_marker_open_threshold: 0.65
+relayemo_marker_close_threshold: 0.45
+relayemo_max_markers: 3
+relayemo_scene_gate_enabled: true
+```

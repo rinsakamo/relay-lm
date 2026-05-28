@@ -45,6 +45,7 @@ class RequestDiagnostics:
     profile_compile_fallback_reason: str | None = None
     fallback_reason: str | None = None
     compile_decision_dry_run: dict[str, Any] | None = None
+    relayemo_artifact: dict[str, Any] | None = None
 
     def to_headers(self) -> dict[str, str]:
         headers = {"x-relaylm-request-id": self.request_id}
