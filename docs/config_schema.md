@@ -285,3 +285,19 @@ relayemo_llm_affect_probe_max_output_tokens: 160
 relayemo_llm_affect_probe_skip_when_busy: true
 relayemo_llm_affect_probe_every_n_turns: 1
 ```
+
+### RelayEMO LLM affect probe runtime dry-run notes
+
+`relayemo_affect_probe_mode: llm_structured_dry_run` is a diagnostics-only mode. The runtime LLM probe must remain default-off, dry-run-only, budgeted, and fail-closed.
+
+The active path remains the heuristic `user_affect_estimate`. LLM probe candidates are recorded as diagnostics/trace candidates and must not update `assistant_emotion_state`, text marker decisions, session drift, SOUL, MEM, TTS, Irodori, or persisted user affect until a later candidate apply gate exists.
+
+Runtime invocation should respect:
+
+- `relayemo_llm_affect_probe_max_input_chars`
+- `relayemo_llm_affect_probe_timeout_ms`
+- `relayemo_llm_affect_probe_max_output_tokens`
+- `relayemo_llm_affect_probe_skip_when_busy`
+- `relayemo_llm_affect_probe_every_n_turns`
+
+If a probe backend/route is unavailable, busy, timed out, recursively invoked, malformed, or validation-failed, RelayEMO should record a skip/fail-closed reason and continue the main response with the heuristic path.
