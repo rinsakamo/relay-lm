@@ -13,7 +13,10 @@ if str(REPO_ROOT) not in sys.path:
 from relaylm.app import _apply_relayemo_marker_to_response, _build_relayemo_text_marker_preview
 import relaylm.app as relay_app
 from relaylm.config import load_config
-from relaylm.relayemo import run_relayemo
+from relaylm.relayemo import (
+    parse_llm_affect_probe_output,
+    run_relayemo,
+)
 
 
 def require(condition: bool, message: object) -> None:
@@ -67,6 +70,39 @@ def main() -> int:
     require("assistant_emotion_state" in off_artifact, off_artifact)
     require(off_artifact["text_marker_apply"]["applied_to_text"] is False, off_artifact)
     require(off_artifact.get("session_state_enabled") is None, off_artifact)
+    require(off_artifact.get("heuristic_user_affect_estimate") is not None, off_artifact)
+
+    llm_cfg = config.model_copy(
+        update={
+            "relayemo_affect_probe_mode": "llm_structured_dry_run",
+            "relayemo_llm_affect_probe_enabled": True,
+        }
+    )
+    llm_artifact = run_relayemo(config=llm_cfg, messages=msgs).artifact
+    require(llm_artifact["llm_candidate_applied"] is False, llm_artifact)
+    require(isinstance(llm_artifact["llm_affect_probe_meta"], dict), llm_artifact)
+
+    bad = parse_llm_affect_probe_output("{bad json")
+    require(bad["classifier_meta"]["parse_ok"] is False, bad)
+    clamp = parse_llm_affect_probe_output(
+        json.dumps(
+            {
+                "user_affect_estimate_candidate": {
+                    "valence": 9,
+                    "arousal": -1,
+                    "dominance": -9,
+                    "intensity": 3,
+                    "confidence": 2,
+                    "mode": "x",
+                },
+                "scene_state_candidate": {"scene_type": "unknown_scene", "confidence": 3},
+            }
+        )
+    )
+    cand = clamp["user_affect_estimate_candidate"]
+    require(cand["valence"] == 1.0 and cand["arousal"] == 0.0 and cand["dominance"] == -1.0, clamp)
+    require(cand["intensity"] == 1.0 and cand["confidence"] == 1.0, clamp)
+    require(clamp["scene_state_candidate"]["scene_type"] == "unknown", clamp)
 
     jp = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "RelayEMOめちゃくちゃ良いね！"}]).artifact
     jp["scene_state"]["scene_type"] = "casual_chat"
