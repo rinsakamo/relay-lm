@@ -33,7 +33,20 @@ def estimate_user_affect(text: str) -> dict[str, Any]:
     if not t:
         score = low_conf
         mode, evidence = "unknown", "none"
-    elif "!" in t or "嬉" in t or "楽" in t:
+    elif (
+        "!" in t
+        or "！" in t
+        or "嬉" in t
+        or "楽" in t
+        or "良い" in text
+        or "いいね" in text
+        or "最高" in text
+        or "好き" in text
+        or "楽しい" in text
+        or "すごい" in text
+        or "面白い" in text
+        or "エモい" in text
+    ):
         score = {"valence": 0.4, "arousal": 0.6, "dominance": 0.2, "intensity": 0.7, "confidence": 0.55}
         mode, evidence = "light_positive_estimate", "light_text_heuristic"
     elif "?" in t or "不安" in t or "心配" in t:
