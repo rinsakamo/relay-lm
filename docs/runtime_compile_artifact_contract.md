@@ -272,3 +272,5 @@ This does not apply compiled messages and does not change backend forwarding pay
 
 
 - CompileDecision dry-run is now wired into request-local diagnostics and trace metadata on the normal request path (`/v1/chat/completions`) without applying compiled messages.
+
+- request-path compile decision diagnostics now mirror actual apply state, so trace metadata matches forwarded payload state without embedding prompt content.

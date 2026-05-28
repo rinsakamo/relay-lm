@@ -221,7 +221,6 @@ def create_app(config_path: str | None = None) -> FastAPI:
             if compiled_request.plan.enabled
             else None
         )
-
         apply_compiled_messages = compiled_request.decision.should_apply is True
         if apply_compiled_messages:
             compile_decision_state = "COMPILE_APPLY"

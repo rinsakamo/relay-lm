@@ -302,3 +302,5 @@ This keeps runtime behavior fail-safe while making gate decisions observable.
 
 
 - request path now emits compile decision dry-run diagnostics for normal `/v1/chat/completions` handling, while keeping outbound payload behavior unchanged.
+
+- request-path diagnostics now reflect actual compile apply state (`COMPILE_APPLY` vs dry-run) while keeping forwarding behavior unchanged.
