@@ -24,6 +24,7 @@
 - fail-closed（parse失敗/validation失敗時は heuristic path 維持）を採用する。
 - user emotion は断定せず推定として扱う。
 - nested candidate fields (`user_affect_estimate_candidate`, `scene_state_candidate`) は object 必須で、non-object は fail-closed とする。
+- VAD/intensity/confidence (`valence`, `arousal`, `dominance`, `intensity`, `confidence`) は required numeric fields とし、missing/non-numeric は fail-closed とする。
 
 ## assistant_emotion_state
 - user_affect_estimate と scene 文脈から、表現用の内部状態を更新する。

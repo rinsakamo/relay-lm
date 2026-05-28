@@ -179,6 +179,12 @@ def _clamp(v: Any, lo: float, hi: float) -> float:
     return max(lo, min(hi, f))
 
 
+def _is_numeric(v: Any) -> bool:
+    if isinstance(v, bool):
+        return False
+    return isinstance(v, (int, float))
+
+
 def build_llm_affect_probe_prompt(*, user_text: str, recent_assistant_text: str, scene_hint: str) -> str:
     return (
         "You are an affect probe. Estimate only, never assert certainty.\n"
@@ -222,14 +228,35 @@ def parse_llm_affect_probe_output(raw_text: str) -> dict[str, Any]:
     if scene_type not in SCENE_TYPES:
         errors.append("invalid_scene_type")
         scene_type = "unknown"
+    numeric_fields = ("valence", "arousal", "dominance", "intensity", "confidence")
+    for field in numeric_fields:
+        if field not in cand:
+            errors.append(f"missing_numeric_field:{field}")
+            continue
+        value = cand.get(field)
+        if value is None or not _is_numeric(value):
+            errors.append(f"invalid_numeric_field:{field}")
+
     parse_ok = len(errors) == 0
+    if parse_ok:
+        valence = _clamp(cand.get("valence"), -1.0, 1.0)
+        arousal = _clamp(cand.get("arousal"), 0.0, 1.0)
+        dominance = _clamp(cand.get("dominance"), -1.0, 1.0)
+        intensity = _clamp(cand.get("intensity"), 0.0, 1.0)
+        confidence = _clamp(cand.get("confidence"), 0.0, 1.0)
+    else:
+        valence = 0.0
+        arousal = 0.0
+        dominance = 0.0
+        intensity = 0.0
+        confidence = 0.0
     parsed = {
         "user_affect_estimate_candidate": {
-            "valence": _clamp(cand.get("valence"), -1.0, 1.0),
-            "arousal": _clamp(cand.get("arousal"), 0.0, 1.0),
-            "dominance": _clamp(cand.get("dominance"), -1.0, 1.0),
-            "intensity": _clamp(cand.get("intensity"), 0.0, 1.0),
-            "confidence": _clamp(cand.get("confidence"), 0.0, 1.0),
+            "valence": valence,
+            "arousal": arousal,
+            "dominance": dominance,
+            "intensity": intensity,
+            "confidence": confidence,
             "mode": str(cand.get("mode", "unknown")),
             "evidence_level": "llm_structured_dry_run",
             "is_estimate": True,
