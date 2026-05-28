@@ -45,7 +45,7 @@ def _require_safe_component(value: str | None, field: str) -> str:
 
 
 
-def _require_safe_metadata_code(value: str | None, field: str) -> str:
+def _require_safe_metadata_code(value: str | None, field: str, *, reject_forbidden_tokens: bool = True) -> str:
     text = _require_non_empty_string(value, field)
     if len(text) > MAX_METADATA_CODE_LENGTH:
         raise ExplicitApprovalDryRunError(f"{field} must be <= {MAX_METADATA_CODE_LENGTH} chars")
@@ -57,6 +57,10 @@ def _require_safe_metadata_code(value: str | None, field: str) -> str:
         raise ExplicitApprovalDryRunError(
             f"{field} must match [A-Za-z0-9_.:-] without whitespace"
         )
+    if reject_forbidden_tokens:
+        forbidden_key_hits = [key for key in FORBIDDEN_PAYLOAD_KEYS if key in text]
+        if forbidden_key_hits:
+            raise ExplicitApprovalDryRunError(f"{field} contains forbidden content key token")
     return text
 
 
@@ -90,17 +94,19 @@ def main() -> None:
     if args.execution_preflight_type not in ALLOWED_EXEC_PREFLIGHT:
         raise ExplicitApprovalDryRunError("execution_preflight_type must be apply, rollback, or null")
 
-    approval_id = _require_safe_component(args.approval_id, "approval_id")
-    target_artifact_id = _require_safe_component(args.target_artifact_id, "target_artifact_id")
-    character_id = _require_safe_component(args.character_id, "character_id")
-    target_artifact_kind = _require_safe_component(args.target_artifact_kind, "target_artifact_kind")
+    approval_id = _require_safe_metadata_code(args.approval_id, "approval_id")
+    target_artifact_id = _require_safe_metadata_code(args.target_artifact_id, "target_artifact_id")
+    character_id = _require_safe_metadata_code(args.character_id, "character_id")
+    target_artifact_kind = _require_safe_metadata_code(args.target_artifact_kind, "target_artifact_kind")
 
     parent_artifact_id = None
     if args.parent_artifact_id is not None:
-        parent_artifact_id = _require_safe_component(args.parent_artifact_id, "parent_artifact_id")
+        parent_artifact_id = _require_safe_metadata_code(args.parent_artifact_id, "parent_artifact_id")
 
     approved_at = _require_non_empty_string(args.approved_at, "approved_at")
-    target_gate_artifact_type = _require_non_empty_string(args.target_gate_artifact_type, "target_gate_artifact_type")
+    target_gate_artifact_type = _require_safe_metadata_code(
+        args.target_gate_artifact_type, "target_gate_artifact_type"
+    )
 
     blocking_reasons = [b for b in args.blocking_reason if isinstance(b, str) and b.strip()]
     if args.approval_status == "approved" and blocking_reasons:
@@ -125,18 +131,6 @@ def main() -> None:
     validated_blocking_reasons = []
     for value in blocking_reasons:
         validated_blocking_reasons.append(_require_safe_metadata_code(value, "blocking_reason"))
-
-    for field, values in {
-        "referenced_preflight_ids": referenced_preflight_ids,
-        "referenced_gate_ids": referenced_gate_ids,
-        "approval_reason_codes": approval_reason_codes,
-        "warnings": warning_codes,
-        "blocking_reasons": validated_blocking_reasons,
-    }.items():
-        for value in values:
-            forbidden_key_hits = [key for key in FORBIDDEN_PAYLOAD_KEYS if key in value]
-            if forbidden_key_hits:
-                raise ExplicitApprovalDryRunError(f"{field} contains forbidden content key token")
 
     execution_preflight_type: str | None
     execution_preflight_type = None if args.execution_preflight_type == "null" else args.execution_preflight_type
