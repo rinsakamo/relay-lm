@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 import sys
@@ -21,6 +22,8 @@ ALLOWED_SCOPE = {"apply_execution", "rollback_execution", "storage_writer", "per
 ALLOWED_STATUS = {"approved", "blocked"}
 ALLOWED_APPROVER_KIND = {"user", "operator", "system_test"}
 ALLOWED_EXEC_PREFLIGHT = {"apply", "rollback", "null"}
+SAFE_METADATA_CODE_RE = re.compile(r"^[A-Za-z0-9_.:-]+$")
+MAX_METADATA_CODE_LENGTH = 128
 
 
 class ExplicitApprovalDryRunError(ValueError):
@@ -37,6 +40,23 @@ def _require_safe_component(value: str | None, field: str) -> str:
     text = _require_non_empty_string(value, field)
     if text in {".", ".."} or "/" in text or "\\" in text or "\x00" in text:
         raise ExplicitApprovalDryRunError(f"{field} must be safe single path component")
+    return text
+
+
+
+
+def _require_safe_metadata_code(value: str | None, field: str) -> str:
+    text = _require_non_empty_string(value, field)
+    if len(text) > MAX_METADATA_CODE_LENGTH:
+        raise ExplicitApprovalDryRunError(f"{field} must be <= {MAX_METADATA_CODE_LENGTH} chars")
+    if not text.isascii():
+        raise ExplicitApprovalDryRunError(f"{field} must be ASCII")
+    if text in {".", ".."} or "/" in text or "\\" in text or "\x00" in text:
+        raise ExplicitApprovalDryRunError(f"{field} must be safe metadata code")
+    if not SAFE_METADATA_CODE_RE.fullmatch(text):
+        raise ExplicitApprovalDryRunError(
+            f"{field} must match [A-Za-z0-9_.:-] without whitespace"
+        )
     return text
 
 
@@ -86,16 +106,34 @@ def main() -> None:
     if args.approval_status == "approved" and blocking_reasons:
         raise ExplicitApprovalDryRunError("blocking_reasons must be empty when approval_status is approved")
 
+    referenced_preflight_ids = []
+    for value in args.referenced_preflight_id:
+        referenced_preflight_ids.append(_require_safe_metadata_code(value, "referenced_preflight_id"))
+
+    referenced_gate_ids = []
+    for value in args.referenced_gate_id:
+        referenced_gate_ids.append(_require_safe_metadata_code(value, "referenced_gate_id"))
+
+    approval_reason_codes = []
+    for value in args.approval_reason_code:
+        approval_reason_codes.append(_require_safe_metadata_code(value, "approval_reason_code"))
+
+    warning_codes = []
+    for value in args.warning:
+        warning_codes.append(_require_safe_metadata_code(value, "warning"))
+
+    validated_blocking_reasons = []
+    for value in blocking_reasons:
+        validated_blocking_reasons.append(_require_safe_metadata_code(value, "blocking_reason"))
+
     for field, values in {
-        "referenced_preflight_ids": args.referenced_preflight_id,
-        "referenced_gate_ids": args.referenced_gate_id,
-        "approval_reason_codes": args.approval_reason_code,
-        "warnings": args.warning,
-        "blocking_reasons": blocking_reasons,
+        "referenced_preflight_ids": referenced_preflight_ids,
+        "referenced_gate_ids": referenced_gate_ids,
+        "approval_reason_codes": approval_reason_codes,
+        "warnings": warning_codes,
+        "blocking_reasons": validated_blocking_reasons,
     }.items():
         for value in values:
-            if not isinstance(value, str) or not value.strip():
-                raise ExplicitApprovalDryRunError(f"{field} entries must be non-empty strings")
             forbidden_key_hits = [key for key in FORBIDDEN_PAYLOAD_KEYS if key in value]
             if forbidden_key_hits:
                 raise ExplicitApprovalDryRunError(f"{field} contains forbidden content key token")
@@ -118,11 +156,11 @@ def main() -> None:
         "parent_artifact_id": parent_artifact_id,
         "character_id": character_id,
         "execution_preflight_type": execution_preflight_type,
-        "referenced_preflight_ids": list(args.referenced_preflight_id),
-        "referenced_gate_ids": list(args.referenced_gate_id),
-        "approval_reason_codes": list(args.approval_reason_code),
-        "blocking_reasons": list(blocking_reasons),
-        "warnings": [w for w in args.warning if isinstance(w, str) and w.strip()],
+        "referenced_preflight_ids": referenced_preflight_ids,
+        "referenced_gate_ids": referenced_gate_ids,
+        "approval_reason_codes": approval_reason_codes,
+        "blocking_reasons": validated_blocking_reasons,
+        "warnings": warning_codes,
     }
 
     forbidden_hits = [key for key in FORBIDDEN_PAYLOAD_KEYS if key in artifact]
