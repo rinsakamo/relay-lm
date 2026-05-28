@@ -67,6 +67,25 @@ def main() -> int:
     require("assistant_emotion_state" in off_artifact, off_artifact)
     require(off_artifact["text_marker_apply"]["applied_to_text"] is False, off_artifact)
 
+    jp = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "RelayEMOめちゃくちゃ良いね！"}]).artifact
+    jp["scene_state"]["scene_type"] = "casual_chat"
+    jp_p = _build_relayemo_text_marker_preview(cfg_apply, jp)
+    require(jp_p["gate_open"] is True, jp_p)
+
+    zenkaku = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "！"}]).artifact
+    zenkaku["scene_state"]["scene_type"] = "casual_chat"
+    zenkaku_p = _build_relayemo_text_marker_preview(cfg_apply, zenkaku)
+    require(zenkaku_p["gate_open"] is True, zenkaku_p)
+
+    saiko = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "最高!"}]).artifact
+    saiko["scene_state"]["scene_type"] = "casual_chat"
+    saiko_p = _build_relayemo_text_marker_preview(cfg_apply, saiko)
+    require(saiko_p["gate_open"] is True, saiko_p)
+
+    impl = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "実装を進めたい！"}]).artifact
+    impl_p = _build_relayemo_text_marker_preview(cfg_apply, impl)
+    require(impl_p["suppression_reason"] == "preview_only_scene", impl_p)
+
     with tempfile.TemporaryDirectory() as td:
         trace_path = Path(td) / "trace.jsonl"
         cfg_path = Path(td) / "config.yaml"

@@ -19,6 +19,7 @@
 - 入力文から lightweight heuristic で生成する推定値。
 - 断定しないため `is_estimate=true` を常時付与する。
 - confidence が低い場合は neutral/unknown 側へ倒す。
+- 日本語 positive cue（例: 良い/いいね/最高/好き/楽しい/すごい/面白い/エモい）と全角 `！` を軽く拾う。
 
 ## assistant_emotion_state
 - user_affect_estimate と scene 文脈から、表現用の内部状態を更新する。
@@ -39,6 +40,11 @@
 - marker gate:
   - `assistant_emotion_state.intensity` と open/close threshold で gate 判定（hysteresis 対応可能な設定形）。
   - confidence 低値は suppress。
+- marker map:
+  - `light_positive_estimate -> ✨`
+  - `playful_positive_estimate -> ♪`
+  - `warm_positive_estimate -> ☺️`
+  - neutral/uncertain/unknown は marker なし
 - placement:
   - `postfix_replace_punctuation`。
   - 末尾が `。`, `！`, `!`, `.` の場合は marker 置換。
