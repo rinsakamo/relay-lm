@@ -149,6 +149,9 @@ def main() -> int:
             artifact_meta = metadata.get("relayemo_artifact") or {}
             require(artifact_meta.get("session_state_enabled") is True, artifact_meta)
             require(artifact_meta.get("state_storage") == "process_memory", artifact_meta)
+            require(artifact_meta.get("session_key_source") == "unavailable", artifact_meta)
+            require(artifact_meta.get("state_updated") is False, artifact_meta)
+            require(artifact_meta.get("fallback_reason") == "session_key_unavailable", artifact_meta)
             with client.stream(
                 "POST",
                 "/v1/chat/completions",
@@ -156,6 +159,7 @@ def main() -> int:
                     "model": "relaylm-default",
                     "stream": True,
                     "user": "session-a",
+                    "metadata": {"session_id": "session-a"},
                     "messages": [{"role": "user", "content": "最高!"}],
                 },
             ) as response:
@@ -168,6 +172,7 @@ def main() -> int:
                     "model": "relaylm-default",
                     "stream": True,
                     "user": "session-a",
+                    "metadata": {"session_id": "session-a"},
                     "messages": [{"role": "user", "content": "..."}],
                 },
             ) as response:
@@ -177,6 +182,23 @@ def main() -> int:
             record2 = json.loads(lines2[-1])
             artifact2 = (record2.get("metadata") or {}).get("relayemo_artifact") or {}
             require(artifact2.get("previous_state_found") is True, artifact2)
+            with client.stream(
+                "POST",
+                "/v1/chat/completions",
+                json={
+                    "model": "relaylm-default",
+                    "stream": True,
+                    "user": "session-a",
+                    "metadata": {"session_id": "session-b"},
+                    "messages": [{"role": "user", "content": "..." }],
+                },
+            ) as response:
+                require(response.status_code == 200, f"bad stream status: {response.status_code}")
+                _ = b"".join(response.iter_bytes())
+            lines3 = [line for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            record3 = json.loads(lines3[-1])
+            artifact3 = (record3.get("metadata") or {}).get("relayemo_artifact") or {}
+            require(artifact3.get("previous_state_found") is False, artifact3)
         finally:
             relay_app.open_chat_completion_stream = original
 

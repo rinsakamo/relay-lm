@@ -218,10 +218,19 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 route=route,
                 payload=payload,
                 request=request,
+                request_scope_identity=request_scope_identity,
             )
             previous_assistant_state = None
             previous_state_found = False
-            if config.relayemo_session_state_enabled:
+            state_updated = True
+            fallback_reason: str | None = None
+            can_use_session_state = (
+                config.relayemo_session_state_enabled and session_key is not None
+            )
+            if config.relayemo_session_state_enabled and session_key is None:
+                state_updated = False
+                fallback_reason = "session_key_unavailable"
+            if can_use_session_state and session_key is not None:
                 previous_assistant_state = load_session_assistant_state(
                     session_key,
                     ttl_seconds=config.relayemo_session_state_ttl_seconds,
@@ -236,10 +245,12 @@ def create_app(config_path: str | None = None) -> FastAPI:
             relayemo_artifact["session_state_enabled"] = config.relayemo_session_state_enabled
             relayemo_artifact["session_key_source"] = session_key_source
             relayemo_artifact["previous_state_found"] = previous_state_found
-            relayemo_artifact["state_updated"] = True
+            relayemo_artifact["state_updated"] = state_updated
             relayemo_artifact["state_persisted"] = False
             relayemo_artifact["state_storage"] = "process_memory"
-            if config.relayemo_session_state_enabled:
+            if fallback_reason is not None:
+                relayemo_artifact["fallback_reason"] = fallback_reason
+            if can_use_session_state and session_key is not None:
                 save_session_assistant_state(
                     session_key,
                     relayemo_result.assistant_state,
@@ -460,14 +471,12 @@ def _resolve_relayemo_session_key(
     route: ResolvedRoute,
     payload: Mapping[str, Any],
     request: Request,
-) -> tuple[str, str]:
-    payload_user = payload.get("user")
-    if isinstance(payload_user, str) and payload_user:
-        return payload_user, "payload_user"
-    client_host = request.client.host if request.client is not None else "unknown"
-    if client_host:
-        return f"{route.route_model}:{route.character_id or 'none'}:{client_host}", "route_character_client"
-    return "default", "default"
+    request_scope_identity: Any,
+) -> tuple[str | None, str]:
+    session_id = getattr(request_scope_identity, "session_id", None)
+    if isinstance(session_id, str) and session_id:
+        return f"{session_id}:{route.route_model}:{route.character_id or 'none'}", "session_id"
+    return None, "unavailable"
 
 
 def _resolve_token_policy_shadow_setting(
