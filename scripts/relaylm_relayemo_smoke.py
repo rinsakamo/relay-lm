@@ -219,6 +219,61 @@ def main() -> int:
         '{"user_affect_estimate_candidate":{"valence":0.1,"arousal":0.2,"dominance":0.1,"intensity":0.2,"confidence":-Infinity},"scene_state_candidate":{"scene_type":"casual_chat"}}'
     )
     require("invalid_numeric_field:confidence" in neginf_conf["classifier_meta"]["validation_errors"], neginf_conf)
+    miss_scene_conf = parse_llm_affect_probe_output(
+        json.dumps(
+            {
+                "user_affect_estimate_candidate": {"valence": 0.1, "arousal": 0.2, "dominance": 0.1, "intensity": 0.2, "confidence": 0.2},
+                "scene_state_candidate": {"scene_type": "casual_chat"},
+            }
+        )
+    )
+    require(
+        "missing_numeric_field:scene_state_candidate.confidence"
+        in miss_scene_conf["classifier_meta"]["validation_errors"],
+        miss_scene_conf,
+    )
+    bad_scene_conf_str = parse_llm_affect_probe_output(
+        json.dumps(
+            {
+                "user_affect_estimate_candidate": {"valence": 0.1, "arousal": 0.2, "dominance": 0.1, "intensity": 0.2, "confidence": 0.2},
+                "scene_state_candidate": {"scene_type": "casual_chat", "confidence": "high"},
+            }
+        )
+    )
+    require(
+        "invalid_numeric_field:scene_state_candidate.confidence"
+        in bad_scene_conf_str["classifier_meta"]["validation_errors"],
+        bad_scene_conf_str,
+    )
+    bad_scene_conf_bool = parse_llm_affect_probe_output(
+        json.dumps(
+            {
+                "user_affect_estimate_candidate": {"valence": 0.1, "arousal": 0.2, "dominance": 0.1, "intensity": 0.2, "confidence": 0.2},
+                "scene_state_candidate": {"scene_type": "casual_chat", "confidence": True},
+            }
+        )
+    )
+    require(
+        "invalid_numeric_field:scene_state_candidate.confidence"
+        in bad_scene_conf_bool["classifier_meta"]["validation_errors"],
+        bad_scene_conf_bool,
+    )
+    bad_scene_conf_nan = parse_llm_affect_probe_output(
+        '{"user_affect_estimate_candidate":{"valence":0.1,"arousal":0.2,"dominance":0.1,"intensity":0.2,"confidence":0.2},"scene_state_candidate":{"scene_type":"casual_chat","confidence":NaN}}'
+    )
+    require(
+        "invalid_numeric_field:scene_state_candidate.confidence"
+        in bad_scene_conf_nan["classifier_meta"]["validation_errors"],
+        bad_scene_conf_nan,
+    )
+    bad_scene_conf_inf = parse_llm_affect_probe_output(
+        '{"user_affect_estimate_candidate":{"valence":0.1,"arousal":0.2,"dominance":0.1,"intensity":0.2,"confidence":0.2},"scene_state_candidate":{"scene_type":"casual_chat","confidence":Infinity}}'
+    )
+    require(
+        "invalid_numeric_field:scene_state_candidate.confidence"
+        in bad_scene_conf_inf["classifier_meta"]["validation_errors"],
+        bad_scene_conf_inf,
+    )
 
     jp = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "RelayEMOめちゃくちゃ良いね！"}]).artifact
     jp["scene_state"]["scene_type"] = "casual_chat"

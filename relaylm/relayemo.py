@@ -231,6 +231,16 @@ def parse_llm_affect_probe_output(raw_text: str) -> dict[str, Any]:
     if scene_type not in SCENE_TYPES:
         errors.append("invalid_scene_type")
         scene_type = "unknown"
+    if "confidence" not in scene:
+        errors.append("missing_numeric_field:scene_state_candidate.confidence")
+        scene_confidence = 0.0
+    else:
+        scene_confidence_raw = scene.get("confidence")
+        if scene_confidence_raw is None or not _is_numeric(scene_confidence_raw):
+            errors.append("invalid_numeric_field:scene_state_candidate.confidence")
+            scene_confidence = 0.0
+        else:
+            scene_confidence = _clamp(scene_confidence_raw, 0.0, 1.0)
     numeric_fields = ("valence", "arousal", "dominance", "intensity", "confidence")
     for field in numeric_fields:
         if field not in cand:
@@ -266,7 +276,7 @@ def parse_llm_affect_probe_output(raw_text: str) -> dict[str, Any]:
         },
         "scene_state_candidate": {
             "scene_type": scene_type,
-            "confidence": _clamp(scene.get("confidence"), 0.0, 1.0),
+            "confidence": scene_confidence,
         },
         "classifier_meta": {
             "probe_mode": "llm_structured_dry_run",
