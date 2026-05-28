@@ -163,6 +163,9 @@ def build_compile_decision_dry_run(
     blocking_reasons: list[str] | None = None,
     omitted_block_ids: list[str] | None = None,
     token_budget_status: str | None = None,
+    decision_state: str = "COMPILE_DRY_RUN",
+    apply_compiled_messages: bool = False,
+    diagnostics_only: bool = True,
     schema_version: str = "mvp-ctx-apply-0",
 ) -> dict[str, Any]:
     """Build a compile decision dry-run diagnostics payload.
@@ -180,14 +183,20 @@ def build_compile_decision_dry_run(
     else:
         safe_compiled_message_count = None
 
+    safe_decision_state = decision_state if isinstance(decision_state, str) else "COMPILE_DRY_RUN"
+    safe_apply_compiled_messages = (
+        apply_compiled_messages if isinstance(apply_compiled_messages, bool) else False
+    )
+    safe_diagnostics_only = diagnostics_only if isinstance(diagnostics_only, bool) else True
+
     return {
         "schema_version": schema_version,
         "decision_id": decision_id,
         "plan_id": plan_id,
         "result_id": result_id,
-        "decision_state": "COMPILE_DRY_RUN",
-        "apply_compiled_messages": False,
-        "diagnostics_only": True,
+        "decision_state": safe_decision_state,
+        "apply_compiled_messages": safe_apply_compiled_messages,
+        "diagnostics_only": safe_diagnostics_only,
         "fallback_reason": fallback_reason,
         "blocking_reasons": safe_blocking_reasons,
         "selected_route": selected_route,
