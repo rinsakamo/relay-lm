@@ -257,3 +257,15 @@ Future work can add:
 - risk scores
 - RelayTRC export format
 - operator-visible diagnostics endpoint
+
+## Initial diagnostics wiring status
+
+Initial implementation wires CompileDecision dry-run schema into runtime diagnostics and trace metadata only.
+
+- diagnostics field: `RequestDiagnostics.compile_decision_dry_run`
+- trace metadata key: `compile_decision_dry_run`
+- default dry-run state: `COMPILE_DRY_RUN`
+- apply flag: `apply_compiled_messages=false`
+- diagnostics mode: `diagnostics_only=true`
+
+This does not apply compiled messages and does not change backend forwarding payload behavior.

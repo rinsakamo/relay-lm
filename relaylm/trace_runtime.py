@@ -72,6 +72,8 @@ def trace_runtime_event(
             trace_metadata["memory_adapter_shadow_delta"] = diagnostics.memory_adapter_shadow_delta
         if diagnostics.relaysoul_runtime_feedback_summary is not None:
             trace_metadata["relaysoul_runtime_feedback_summary"] = diagnostics.relaysoul_runtime_feedback_summary
+        if diagnostics.compile_decision_dry_run is not None:
+            trace_metadata["compile_decision_dry_run"] = diagnostics.compile_decision_dry_run
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,
