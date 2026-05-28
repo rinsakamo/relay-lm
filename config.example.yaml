@@ -73,6 +73,11 @@ relayemo_scene_gate_enabled: true
 relayemo_session_state_enabled: false
 relayemo_session_state_ttl_seconds: 1800
 relayemo_session_state_max_entries: 256
+
+# RelayEMO LLM affect probe remains heuristic-active by default.
+# llm_structured_dry_run exposes LLM candidates in diagnostics only.
+# Runtime invocation should stay dry-run, budgeted, fail-closed, and protected
+# from recursive RelayLM calls before any candidate apply gate is introduced.
 relayemo_affect_probe_mode: heuristic
 relayemo_llm_affect_probe_enabled: false
 relayemo_llm_affect_probe_dry_run: true
