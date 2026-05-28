@@ -207,6 +207,18 @@ def main() -> int:
         )
     )
     require("invalid_numeric_field:valence" in bad_bool["classifier_meta"]["validation_errors"], bad_bool)
+    nan_valence = parse_llm_affect_probe_output(
+        '{"user_affect_estimate_candidate":{"valence":NaN,"arousal":0.2,"dominance":0.1,"intensity":0.2,"confidence":0.2},"scene_state_candidate":{"scene_type":"casual_chat"}}'
+    )
+    require("invalid_numeric_field:valence" in nan_valence["classifier_meta"]["validation_errors"], nan_valence)
+    inf_intensity = parse_llm_affect_probe_output(
+        '{"user_affect_estimate_candidate":{"valence":0.1,"arousal":0.2,"dominance":0.1,"intensity":Infinity,"confidence":0.2},"scene_state_candidate":{"scene_type":"casual_chat"}}'
+    )
+    require("invalid_numeric_field:intensity" in inf_intensity["classifier_meta"]["validation_errors"], inf_intensity)
+    neginf_conf = parse_llm_affect_probe_output(
+        '{"user_affect_estimate_candidate":{"valence":0.1,"arousal":0.2,"dominance":0.1,"intensity":0.2,"confidence":-Infinity},"scene_state_candidate":{"scene_type":"casual_chat"}}'
+    )
+    require("invalid_numeric_field:confidence" in neginf_conf["classifier_meta"]["validation_errors"], neginf_conf)
 
     jp = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "RelayEMOめちゃくちゃ良いね！"}]).artifact
     jp["scene_state"]["scene_type"] = "casual_chat"

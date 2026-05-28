@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import math
 import time
 from typing import Any
 
@@ -182,7 +183,9 @@ def _clamp(v: Any, lo: float, hi: float) -> float:
 def _is_numeric(v: Any) -> bool:
     if isinstance(v, bool):
         return False
-    return isinstance(v, (int, float))
+    if not isinstance(v, (int, float)):
+        return False
+    return math.isfinite(float(v))
 
 
 def build_llm_affect_probe_prompt(*, user_text: str, recent_assistant_text: str, scene_hint: str) -> str:
