@@ -32,7 +32,11 @@ from relaylm.memory_adapter import (
     build_memory_adapter_shadow_dry_run_with_scope,
 )
 from relaylm.request_compiler import compile_chat_payload_if_enabled
-from relaylm.relayemo import run_relayemo
+from relaylm.relayemo import (
+    load_session_assistant_state,
+    run_relayemo,
+    save_session_assistant_state,
+)
 from relaylm.request_scope import build_scope_resolution_diagnostics, extract_request_scope_identity
 from relaylm.routing import (
     ResolvedRoute,
@@ -210,11 +214,49 @@ def create_app(config_path: str | None = None) -> FastAPI:
         )
         relayemo_artifact: dict[str, Any] | None = None
         if config.relayemo_enabled:
+            session_key, session_key_source = _resolve_relayemo_session_key(
+                route=route,
+                payload=payload,
+                request=request,
+                request_scope_identity=request_scope_identity,
+                scope_resolution_diagnostics=scope_resolution_diagnostics,
+            )
+            previous_assistant_state = None
+            previous_state_found = False
+            state_updated = True
+            fallback_reason: str | None = None
+            can_use_session_state = (
+                config.relayemo_session_state_enabled and session_key is not None
+            )
+            if config.relayemo_session_state_enabled and session_key is None:
+                state_updated = False
+                fallback_reason = "session_key_unavailable"
+            if can_use_session_state and session_key is not None:
+                previous_assistant_state = load_session_assistant_state(
+                    session_key,
+                    ttl_seconds=config.relayemo_session_state_ttl_seconds,
+                )
+                previous_state_found = previous_assistant_state is not None
             relayemo_result = run_relayemo(
                 config=config,
                 messages=_extract_trace_messages(forwarded_payload),
+                previous_assistant_state=previous_assistant_state,
             )
             relayemo_artifact = relayemo_result.artifact
+            relayemo_artifact["session_state_enabled"] = config.relayemo_session_state_enabled
+            relayemo_artifact["session_key_source"] = session_key_source
+            relayemo_artifact["previous_state_found"] = previous_state_found
+            relayemo_artifact["state_updated"] = state_updated
+            relayemo_artifact["state_persisted"] = False
+            relayemo_artifact["state_storage"] = "process_memory"
+            if fallback_reason is not None:
+                relayemo_artifact["fallback_reason"] = fallback_reason
+            if can_use_session_state and session_key is not None:
+                save_session_assistant_state(
+                    session_key,
+                    relayemo_result.assistant_state,
+                    max_entries=config.relayemo_session_state_max_entries,
+                )
 
         compiled_message_count = (
             compiled_request.plan.compiled_message_count
@@ -423,6 +465,33 @@ def _extract_trace_messages(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(raw_messages, list):
         return []
     return [message for message in raw_messages if isinstance(message, dict)]
+
+
+def _resolve_relayemo_session_key(
+    *,
+    route: ResolvedRoute,
+    payload: Mapping[str, Any],
+    request: Request,
+    request_scope_identity: Any,
+    scope_resolution_diagnostics: Any,
+) -> tuple[str | None, str]:
+    merged_scope = getattr(scope_resolution_diagnostics, "merged_scope", {})
+    resolved_session_id = merged_scope.get("session_id") if isinstance(merged_scope, dict) else None
+    if isinstance(resolved_session_id, str) and resolved_session_id:
+        return (
+            f"{resolved_session_id}:{route.route_model}:{route.character_id or 'none'}",
+            "resolved_session_id",
+        )
+    session_id = getattr(request_scope_identity, "session_id", None)
+    if isinstance(session_id, str) and session_id:
+        return f"{session_id}:{route.route_model}:{route.character_id or 'none'}", "request_session_id"
+    route_session_id = getattr(route, "session_id", None)
+    if isinstance(route_session_id, str) and route_session_id:
+        return (
+            f"{route_session_id}:{route.route_model}:{route.character_id or 'none'}",
+            "route_session_id",
+        )
+    return None, "unavailable"
 
 
 def _resolve_token_policy_shadow_setting(

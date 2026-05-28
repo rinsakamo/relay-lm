@@ -66,6 +66,7 @@ def main() -> int:
     off_artifact = run_relayemo(config=off_marker, messages=msgs).artifact
     require("assistant_emotion_state" in off_artifact, off_artifact)
     require(off_artifact["text_marker_apply"]["applied_to_text"] is False, off_artifact)
+    require(off_artifact.get("session_state_enabled") is None, off_artifact)
 
     jp = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "RelayEMOめちゃくちゃ良いね！"}]).artifact
     jp["scene_state"]["scene_type"] = "casual_chat"
@@ -86,6 +87,13 @@ def main() -> int:
     impl_p = _build_relayemo_text_marker_preview(cfg_apply, impl)
     require(impl_p["suppression_reason"] == "preview_only_scene", impl_p)
 
+    async def _fake_open_chat_completion_stream(
+        payload: dict[str, Any], route: Any
+    ) -> tuple[int, str, Any]:
+        async def _iter() -> Any:
+            yield b"data: [DONE]\n\n"
+        return 200, "text/event-stream", _iter()
+
     with tempfile.TemporaryDirectory() as td:
         trace_path = Path(td) / "trace.jsonl"
         cfg_path = Path(td) / "config.yaml"
@@ -95,6 +103,9 @@ def main() -> int:
                     "mode: pass_through",
                     "relayemo_enabled: true",
                     "relayemo_text_marker_enabled: false",
+                    "relayemo_session_state_enabled: true",
+                    "relayemo_session_state_ttl_seconds: 1800",
+                    "relayemo_session_state_max_entries: 256",
                     "trace:",
                     "  enabled: true",
                     f"  path: {trace_path}",
@@ -112,13 +123,6 @@ def main() -> int:
             ),
             encoding="utf-8",
         )
-        async def _fake_open_chat_completion_stream(
-            payload: dict[str, Any], route: Any
-        ) -> tuple[int, str, Any]:
-            async def _iter() -> Any:
-                yield b"data: [DONE]\n\n"
-            return 200, "text/event-stream", _iter()
-
         from fastapi.testclient import TestClient
         original = relay_app.open_chat_completion_stream
         relay_app.open_chat_completion_stream = _fake_open_chat_completion_stream
@@ -136,14 +140,132 @@ def main() -> int:
             ) as response:
                 require(response.status_code == 200, f"bad stream status: {response.status_code}")
                 _ = b"".join(response.iter_bytes())
+            lines = [line for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            require(bool(lines), "trace should be written for stream success")
+            record = json.loads(lines[-1])
+            metadata = record.get("metadata") or {}
+            require(metadata.get("event") == "backend_stream_response", metadata)
+            require(isinstance(metadata.get("relayemo_artifact"), dict), metadata)
+            artifact_meta = metadata.get("relayemo_artifact") or {}
+            require(artifact_meta.get("session_state_enabled") is True, artifact_meta)
+            require(artifact_meta.get("state_storage") == "process_memory", artifact_meta)
+            require(artifact_meta.get("session_key_source") == "unavailable", artifact_meta)
+            require(artifact_meta.get("state_updated") is False, artifact_meta)
+            require(artifact_meta.get("fallback_reason") == "session_key_unavailable", artifact_meta)
+            with client.stream(
+                "POST",
+                "/v1/chat/completions",
+                json={
+                    "model": "relaylm-default",
+                    "stream": True,
+                    "user": "session-a",
+                    "metadata": {"session_id": "session-a"},
+                    "messages": [{"role": "user", "content": "最高!"}],
+                },
+            ) as response:
+                require(response.status_code == 200, f"bad stream status: {response.status_code}")
+                _ = b"".join(response.iter_bytes())
+            with client.stream(
+                "POST",
+                "/v1/chat/completions",
+                json={
+                    "model": "relaylm-default",
+                    "stream": True,
+                    "user": "session-a",
+                    "metadata": {"session_id": "session-a"},
+                    "messages": [{"role": "user", "content": "..."}],
+                },
+            ) as response:
+                require(response.status_code == 200, f"bad stream status: {response.status_code}")
+                _ = b"".join(response.iter_bytes())
+            lines2 = [line for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            record2 = json.loads(lines2[-1])
+            artifact2 = (record2.get("metadata") or {}).get("relayemo_artifact") or {}
+            require(artifact2.get("previous_state_found") is True, artifact2)
+            with client.stream(
+                "POST",
+                "/v1/chat/completions",
+                json={
+                    "model": "relaylm-default",
+                    "stream": True,
+                    "user": "session-a",
+                    "metadata": {"session_id": "session-b"},
+                    "messages": [{"role": "user", "content": "..." }],
+                },
+            ) as response:
+                require(response.status_code == 200, f"bad stream status: {response.status_code}")
+                _ = b"".join(response.iter_bytes())
+            lines3 = [line for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            record3 = json.loads(lines3[-1])
+            artifact3 = (record3.get("metadata") or {}).get("relayemo_artifact") or {}
+            require(artifact3.get("previous_state_found") is False, artifact3)
         finally:
             relay_app.open_chat_completion_stream = original
-        lines = [line for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
-        require(bool(lines), "trace should be written for stream success")
-        record = json.loads(lines[-1])
-        metadata = record.get("metadata") or {}
-        require(metadata.get("event") == "backend_stream_response", metadata)
-        require(isinstance(metadata.get("relayemo_artifact"), dict), metadata)
+    with tempfile.TemporaryDirectory() as td2:
+        trace_path2 = Path(td2) / "trace_route_session.jsonl"
+        cfg_path2 = Path(td2) / "config.yaml"
+        cfg_path2.write_text(
+            "\n".join(
+                [
+                    "mode: pass_through",
+                    "relayemo_enabled: true",
+                    "relayemo_text_marker_enabled: false",
+                    "relayemo_session_state_enabled: true",
+                    "trace:",
+                    "  enabled: true",
+                    f"  path: {trace_path2}",
+                    "backends:",
+                    "  local_backend:",
+                    "    type: openai_compatible",
+                    "    base_url: http://127.0.0.1:8000/v1",
+                    "    api_key: dummy",
+                    "model_routes:",
+                    "  relaylm-default:",
+                    "    backend: local_backend",
+                    "    backend_model: local-model",
+                    "    mode: pass_through",
+                    "    session_id: route-session-1",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        from fastapi.testclient import TestClient
+        original2 = relay_app.open_chat_completion_stream
+        relay_app.open_chat_completion_stream = _fake_open_chat_completion_stream
+        try:
+            app2 = relay_app.create_app(str(cfg_path2))
+            client2 = TestClient(app2)
+            with client2.stream(
+                "POST",
+                "/v1/chat/completions",
+                json={"model": "relaylm-default", "stream": True, "messages": [{"role": "user", "content": "最高!"}]},
+            ) as response:
+                require(response.status_code == 200, f"bad stream status: {response.status_code}")
+                _ = b"".join(response.iter_bytes())
+            with client2.stream(
+                "POST",
+                "/v1/chat/completions",
+                json={"model": "relaylm-default", "stream": True, "messages": [{"role": "user", "content": "..."}]},
+            ) as response:
+                require(response.status_code == 200, f"bad stream status: {response.status_code}")
+                _ = b"".join(response.iter_bytes())
+        finally:
+            relay_app.open_chat_completion_stream = original2
+        lines_route = [line for line in trace_path2.read_text(encoding="utf-8").splitlines() if line.strip()]
+        artifact_route = (json.loads(lines_route[-1]).get("metadata") or {}).get("relayemo_artifact") or {}
+        require(artifact_route.get("previous_state_found") is True, artifact_route)
+        require(artifact_route.get("session_key_source") == "resolved_session_id", artifact_route)
+    s_cfg = config.model_copy(update={"relayemo_session_state_enabled": True})
+    first = run_relayemo(config=s_cfg, messages=[{"role": "user", "content": "最高!"}], previous_assistant_state=None).artifact
+    second = run_relayemo(
+        config=s_cfg,
+        messages=[{"role": "user", "content": "..."}],
+        previous_assistant_state=first["assistant_emotion_state"],
+    ).artifact
+    require(
+        float(second["assistant_emotion_state"]["intensity"]) < float(first["assistant_emotion_state"]["intensity"]),
+        {"first": first, "second": second},
+    )
 
     print("ok relayemo smoke")
     return 0

@@ -273,4 +273,7 @@ relayemo_marker_open_threshold: 0.65
 relayemo_marker_close_threshold: 0.45
 relayemo_max_markers: 3
 relayemo_scene_gate_enabled: true
+relayemo_session_state_enabled: false
+relayemo_session_state_ttl_seconds: 1800
+relayemo_session_state_max_entries: 256
 ```
