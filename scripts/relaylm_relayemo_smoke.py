@@ -21,7 +21,7 @@ def main() -> int:
     config = load_config(REPO_ROOT / "config.example.yaml")
     require(config.relayemo_enabled is False, "default relayemo_enabled must be false")
 
-    msgs = [{"role": "user", "content": "今日はうれしい！"}]
+    msgs = [{"role": "user", "content": "今日は嬉しい!"}]
     artifact = run_relayemo(config=config, messages=msgs).artifact
     require(artifact["user_affect_estimate_is_estimate"] is True, artifact)
     require(artifact["text_marker_apply"]["applied_to_soul"] is False, artifact)
@@ -33,15 +33,21 @@ def main() -> int:
     preview = _build_relayemo_text_marker_preview(cfg_preview, artifact)
     require("gate_open" in preview, preview)
 
-    cfg_apply = config.model_copy(update={"relayemo_enabled": True, "relayemo_text_marker_enabled": True, "relayemo_text_marker_apply_mode": "apply", "relayemo_marker_open_threshold": 0.1})
+    cfg_apply = config.model_copy(update={"relayemo_enabled": True, "relayemo_text_marker_enabled": True, "relayemo_text_marker_apply_mode": "apply"})
     hi = run_relayemo(config=cfg_apply, messages=msgs).artifact
     hi["user_affect_estimate"]["confidence"] = 0.9
-    hi["assistant_emotion_state"]["intensity"] = 0.9
     hi["scene_state"]["scene_type"] = "casual_chat"
     p = _build_relayemo_text_marker_preview(cfg_apply, hi)
+    require(p["gate_open"] is True, p)
     body = {"choices": [{"message": {"content": "了解しました。"}}]}
     out = _apply_relayemo_marker_to_response(body, p)
     require(out["choices"][0]["message"]["content"].endswith("✨"), out)
+
+    design = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "設計の方向性、嬉しい!"}]).artifact
+    design["user_affect_estimate"]["confidence"] = 0.9
+    design["scene_state"]["scene_type"] = "design_talk"
+    design_p = _build_relayemo_text_marker_preview(cfg_apply, design)
+    require(design_p["gate_open"] is True, design_p)
 
     formal = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "formal report を作成"}]).artifact
     formal_p = _build_relayemo_text_marker_preview(cfg_apply, formal)

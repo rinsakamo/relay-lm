@@ -24,6 +24,8 @@
 - user_affect_estimate と scene 文脈から、表現用の内部状態を更新する。
 - max_delta_per_turn / decay_per_turn / stability を持つ。
 - classifier 無効/低信頼度時は decay_only を適用する。
+- stateless MVP では initial request 時、confidence が十分な場合に user_affect_estimate から bootstrap する。
+- 将来の session-state runtime では turn 蓄積状態に対して smoothing/decay を適用する。
 
 ## scene-gated text marker
 - default false。

@@ -91,7 +91,14 @@ def run_relayemo(
     delta = 0.2
     decay = 0.05
     confidence = float(affect.get("confidence", 0.0))
-    if confidence < 0.4:
+    if previous_assistant_state is None and confidence >= 0.4:
+        next_state = dict(previous)
+        next_state["valence"] = float(affect.get("valence", 0.0))
+        next_state["arousal"] = float(affect.get("arousal", 0.0))
+        next_state["dominance"] = float(affect.get("dominance", 0.0))
+        next_state["intensity"] = float(affect.get("intensity", 0.0))
+        next_state["updated_by"] = "bootstrap_from_user_affect_estimate"
+    elif confidence < 0.4:
         next_state = dict(previous)
         next_state["intensity"] = max(0.0, float(previous.get("intensity", 0.0)) - decay)
         next_state["updated_by"] = "decay_only"
