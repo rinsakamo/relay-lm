@@ -60,6 +60,8 @@ characters:
   #   token_policy_shadow_enabled: false
 
 # RelayEMO MVP initial (default off, diagnostics/preview first)
+# relayemo_enabled=true で diagnostics/trace artifact は出力される
+# relayemo_text_marker_enabled=true のときだけ marker preview/apply を有効化
 relayemo_enabled: false
 relayemo_dry_run: true
 relayemo_text_marker_enabled: false

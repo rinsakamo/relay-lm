@@ -262,6 +262,7 @@ The first runtime should support simple local memory or no memory. Embeddings, v
 ## RelayEMO MVP initial flags
 
 RelayEMO is default-off and diagnostics/preview-first.
+When `relayemo_enabled: true`, RelayEMO diagnostics artifacts are produced even if `relayemo_text_marker_enabled: false`.
 
 ```yaml
 relayemo_enabled: false
