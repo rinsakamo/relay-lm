@@ -7,7 +7,7 @@
 
 ## 非目的
 - SOUL/MEM/TTS への書き込み。
-- 外部 LLM API を使った感情推定。
+- 外部 LLM API を使った感情推定の apply。
 - Voice affect / Irodori-TTS / feedback learning。
 
 ## SOUL contamination guard
@@ -27,6 +27,16 @@
 - VAD/intensity/confidence (`valence`, `arousal`, `dominance`, `intensity`, `confidence`) は required numeric fields とし、missing/non-numeric は fail-closed とする。
 - numeric fields は finite number 必須で、NaN/Infinity/-Infinity は fail-closed とする。
 - `scene_state_candidate.confidence` も required finite numeric field とし、missing/non-finite は fail-closed とする。
+
+## LLM structured affect probe runtime dry-run
+- runtime invocation は default off / dry-run only で開始する。
+- `relayemo_affect_probe_mode=llm_structured_dry_run` かつ `relayemo_llm_affect_probe_enabled=true` かつ `relayemo_llm_affect_probe_dry_run=true` のときだけ候補生成を試みる。
+- runtime candidate は diagnostics/trace にのみ出力し、active `user_affect_estimate`、`assistant_emotion_state`、text marker、session drift には適用しない。
+- probe failure / timeout / invalid JSON / validation error は main response を止めず fail-closed とし、heuristic path を維持する。
+- budget policy は `max_input_chars`, `timeout_ms`, `max_output_tokens`, `skip_when_busy`, `every_n_turns` で制御する。
+- recursive RelayLM call を避けるため、runtime invocation 実装では dedicated backend/route 未設定時は skip するか、internal probe guard を必須にする。
+- API key や token は diagnostics/trace/log に出さない。
+- candidate apply gate、outcome observer、feedback loop、Irodori-TTS/voice affect 連携は future scope とする。
 
 ## assistant_emotion_state
 - user_affect_estimate と scene 文脈から、表現用の内部状態を更新する。
@@ -66,6 +76,6 @@
 - voice affect
 - feedback learning
 - SOUL update
-- LLM structured classifier
+- LLM structured classifier candidate apply
 - feedback loop learning
 - candidate apply gate / outcome observer
