@@ -100,6 +100,14 @@ class RelayLMConfig(BaseModel):
     relayemo_session_state_enabled: bool = False
     relayemo_session_state_ttl_seconds: int = Field(default=1800, ge=1)
     relayemo_session_state_max_entries: int = Field(default=256, ge=1)
+    relayemo_affect_probe_mode: Literal["heuristic", "llm_structured_dry_run"] = "heuristic"
+    relayemo_llm_affect_probe_enabled: bool = False
+    relayemo_llm_affect_probe_dry_run: bool = True
+    relayemo_llm_affect_probe_max_input_chars: int = Field(default=2000, ge=1)
+    relayemo_llm_affect_probe_timeout_ms: int = Field(default=1500, ge=1)
+    relayemo_llm_affect_probe_max_output_tokens: int = Field(default=160, ge=1)
+    relayemo_llm_affect_probe_skip_when_busy: bool = True
+    relayemo_llm_affect_probe_every_n_turns: int = Field(default=1, ge=1)
 
 
 def default_config_path() -> Path:

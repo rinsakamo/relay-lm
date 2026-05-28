@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+import math
 import time
 from typing import Any
 
@@ -98,6 +100,12 @@ def run_relayemo(
     text = latest_user_text(messages)
     affect = estimate_user_affect(text)
     scene_type = infer_scene_type(text)
+    llm_probe = build_llm_affect_probe_candidate(
+        config=config,
+        user_text=text,
+        recent_assistant_text=latest_assistant_text(messages),
+        scene_hint=scene_type,
+    )
     previous = previous_assistant_state or {
         "valence": 0.0, "arousal": 0.0, "dominance": 0.0, "intensity": 0.0, "mode": "neutral",
         "stability": 1.0, "updated_by": "init",
@@ -129,6 +137,12 @@ def run_relayemo(
 
     artifact: dict[str, Any] = {
         "user_affect_estimate": affect,
+        "affect_probe_mode": config.relayemo_affect_probe_mode,
+        "heuristic_user_affect_estimate": affect,
+        "llm_user_affect_estimate_candidate": llm_probe.get("user_affect_estimate_candidate"),
+        "llm_scene_state_candidate": llm_probe.get("scene_state_candidate"),
+        "llm_affect_probe_meta": llm_probe.get("classifier_meta"),
+        "llm_candidate_applied": False,
         "assistant_emotion_state": next_state,
         "scene_state": {"scene_type": scene_type},
         "text_marker_preview": {
@@ -149,6 +163,173 @@ def run_relayemo(
         "user_affect_estimate_is_estimate": True,
     }
     return RelayEmoRuntimeResult(artifact=artifact, assistant_state=next_state)
+
+
+def latest_assistant_text(messages: list[dict[str, Any]]) -> str:
+    for message in reversed(messages):
+        if message.get("role") == "assistant" and isinstance(message.get("content"), str):
+            return message["content"]
+    return ""
+
+
+def _clamp(v: Any, lo: float, hi: float) -> float:
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return lo
+    return max(lo, min(hi, f))
+
+
+def _is_numeric(v: Any) -> bool:
+    if isinstance(v, bool):
+        return False
+    if not isinstance(v, (int, float)):
+        return False
+    return math.isfinite(float(v))
+
+
+def build_llm_affect_probe_prompt(*, user_text: str, recent_assistant_text: str, scene_hint: str) -> str:
+    return (
+        "You are an affect probe. Estimate only, never assert certainty.\n"
+        "Return JSON only with keys user_affect_estimate_candidate, scene_state_candidate, classifier_meta.\n"
+        f"user_text: {user_text}\n"
+        f"recent_assistant_text: {recent_assistant_text}\n"
+        f"scene_hint: {scene_hint}\n"
+    )
+
+
+def parse_llm_affect_probe_output(raw_text: str) -> dict[str, Any]:
+    errors: list[str] = []
+    try:
+        payload = json.loads(raw_text)
+    except json.JSONDecodeError:
+        return {
+            "user_affect_estimate_candidate": None,
+            "scene_state_candidate": None,
+            "classifier_meta": {
+                "probe_mode": "llm_structured_dry_run",
+                "applied": False,
+                "skipped": False,
+                "skip_reason": None,
+                "parse_ok": False,
+                "validation_errors": ["invalid_json"],
+            },
+        }
+    cand_raw = payload.get("user_affect_estimate_candidate", {}) if isinstance(payload, dict) else {}
+    scene_raw = payload.get("scene_state_candidate", {}) if isinstance(payload, dict) else {}
+    if not isinstance(cand_raw, dict):
+        errors.append("user_affect_estimate_candidate_not_object")
+        cand = {}
+    else:
+        cand = cand_raw
+    if not isinstance(scene_raw, dict):
+        errors.append("scene_state_candidate_not_object")
+        scene = {}
+    else:
+        scene = scene_raw
+    scene_type = scene.get("scene_type")
+    if scene_type not in SCENE_TYPES:
+        errors.append("invalid_scene_type")
+        scene_type = "unknown"
+    if "confidence" not in scene:
+        errors.append("missing_numeric_field:scene_state_candidate.confidence")
+        scene_confidence = 0.0
+    else:
+        scene_confidence_raw = scene.get("confidence")
+        if scene_confidence_raw is None or not _is_numeric(scene_confidence_raw):
+            errors.append("invalid_numeric_field:scene_state_candidate.confidence")
+            scene_confidence = 0.0
+        else:
+            scene_confidence = _clamp(scene_confidence_raw, 0.0, 1.0)
+    numeric_fields = ("valence", "arousal", "dominance", "intensity", "confidence")
+    for field in numeric_fields:
+        if field not in cand:
+            errors.append(f"missing_numeric_field:{field}")
+            continue
+        value = cand.get(field)
+        if value is None or not _is_numeric(value):
+            errors.append(f"invalid_numeric_field:{field}")
+
+    parse_ok = len(errors) == 0
+    if parse_ok:
+        valence = _clamp(cand.get("valence"), -1.0, 1.0)
+        arousal = _clamp(cand.get("arousal"), 0.0, 1.0)
+        dominance = _clamp(cand.get("dominance"), -1.0, 1.0)
+        intensity = _clamp(cand.get("intensity"), 0.0, 1.0)
+        confidence = _clamp(cand.get("confidence"), 0.0, 1.0)
+    else:
+        valence = 0.0
+        arousal = 0.0
+        dominance = 0.0
+        intensity = 0.0
+        confidence = 0.0
+    parsed = {
+        "user_affect_estimate_candidate": {
+            "valence": valence,
+            "arousal": arousal,
+            "dominance": dominance,
+            "intensity": intensity,
+            "confidence": confidence,
+            "mode": str(cand.get("mode", "unknown")),
+            "evidence_level": "llm_structured_dry_run",
+            "is_estimate": True,
+        },
+        "scene_state_candidate": {
+            "scene_type": scene_type,
+            "confidence": scene_confidence,
+        },
+        "classifier_meta": {
+            "probe_mode": "llm_structured_dry_run",
+            "applied": False,
+            "skipped": False,
+            "skip_reason": None,
+            "parse_ok": parse_ok,
+            "validation_errors": errors,
+        },
+    }
+    return parsed
+
+
+def build_llm_affect_probe_candidate(
+    *,
+    config: RelayLMConfig,
+    user_text: str,
+    recent_assistant_text: str,
+    scene_hint: str,
+) -> dict[str, Any]:
+    if not config.relayemo_llm_affect_probe_enabled or config.relayemo_affect_probe_mode != "llm_structured_dry_run":
+        return {
+            "user_affect_estimate_candidate": None,
+            "scene_state_candidate": None,
+            "classifier_meta": {
+                "probe_mode": "llm_structured_dry_run",
+                "applied": False,
+                "skipped": True,
+                "skip_reason": "probe_disabled_or_mode_not_selected",
+                "parse_ok": False,
+                "validation_errors": [],
+            },
+        }
+    prompt = build_llm_affect_probe_prompt(
+        user_text=user_text[: config.relayemo_llm_affect_probe_max_input_chars],
+        recent_assistant_text=recent_assistant_text[: config.relayemo_llm_affect_probe_max_input_chars],
+        scene_hint=scene_hint,
+    )
+    _ = prompt
+    synthetic = json.dumps(
+        {
+            "user_affect_estimate_candidate": {
+                "valence": 0.2,
+                "arousal": 0.5,
+                "dominance": 0.1,
+                "intensity": 0.6,
+                "confidence": 0.5,
+                "mode": "light_positive_estimate",
+            },
+            "scene_state_candidate": {"scene_type": scene_hint, "confidence": 0.6},
+        }
+    )
+    return parse_llm_affect_probe_output(synthetic)
 
 
 _RELAYEMO_SESSION_STATE: dict[str, dict[str, Any]] = {}

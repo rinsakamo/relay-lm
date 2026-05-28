@@ -20,6 +20,13 @@
 - 断定しないため `is_estimate=true` を常時付与する。
 - confidence が低い場合は neutral/unknown 側へ倒す。
 - 日本語 positive cue（例: 良い/いいね/最高/好き/楽しい/すごい/面白い/エモい）と全角 `！` を軽く拾う。
+- LLM structured affect probe は dry-run candidate として diagnostics に並記し、初期は apply しない。
+- fail-closed（parse失敗/validation失敗時は heuristic path 維持）を採用する。
+- user emotion は断定せず推定として扱う。
+- nested candidate fields (`user_affect_estimate_candidate`, `scene_state_candidate`) は object 必須で、non-object は fail-closed とする。
+- VAD/intensity/confidence (`valence`, `arousal`, `dominance`, `intensity`, `confidence`) は required numeric fields とし、missing/non-numeric は fail-closed とする。
+- numeric fields は finite number 必須で、NaN/Infinity/-Infinity は fail-closed とする。
+- `scene_state_candidate.confidence` も required finite numeric field とし、missing/non-finite は fail-closed とする。
 
 ## assistant_emotion_state
 - user_affect_estimate と scene 文脈から、表現用の内部状態を更新する。
@@ -61,3 +68,4 @@
 - SOUL update
 - LLM structured classifier
 - feedback loop learning
+- candidate apply gate / outcome observer

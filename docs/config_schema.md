@@ -276,4 +276,12 @@ relayemo_scene_gate_enabled: true
 relayemo_session_state_enabled: false
 relayemo_session_state_ttl_seconds: 1800
 relayemo_session_state_max_entries: 256
+relayemo_affect_probe_mode: heuristic # heuristic | llm_structured_dry_run
+relayemo_llm_affect_probe_enabled: false
+relayemo_llm_affect_probe_dry_run: true
+relayemo_llm_affect_probe_max_input_chars: 2000
+relayemo_llm_affect_probe_timeout_ms: 1500
+relayemo_llm_affect_probe_max_output_tokens: 160
+relayemo_llm_affect_probe_skip_when_busy: true
+relayemo_llm_affect_probe_every_n_turns: 1
 ```
