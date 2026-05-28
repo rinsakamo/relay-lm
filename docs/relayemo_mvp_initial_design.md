@@ -28,13 +28,14 @@
 ## scene-gated text marker
 - default false。
 - apply mode: `diagnostics_only`, `preview`, `apply`。
+- diagnostics 実行条件と marker 実行条件は分離し、`relayemo_enabled=true` で artifact を生成する。
 - scene gate:
   - casual_chat / vtuber_roleplay / design_talk: allow 系
   - implementation_work: preview_only
   - review_work / formal_document / medical_or_safety: suppress
   - unknown: suppress or preview_only
 - marker gate:
-  - intensity と open/close threshold で gate 判定（hysteresis 対応可能な設定形）。
+  - `assistant_emotion_state.intensity` と open/close threshold で gate 判定（hysteresis 対応可能な設定形）。
   - confidence 低値は suppress。
 - placement:
   - `postfix_replace_punctuation`。

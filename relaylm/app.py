@@ -205,7 +205,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             payload=compiled_request.payload,
         )
         relayemo_artifact: dict[str, Any] | None = None
-        if config.relayemo_enabled and config.relayemo_text_marker_enabled:
+        if config.relayemo_enabled:
             relayemo_result = run_relayemo(
                 config=config,
                 messages=_extract_trace_messages(forwarded_payload),
@@ -310,7 +310,11 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 headers=diagnostics.to_headers(),
             )
         headers = diagnostics.to_headers()
-        if isinstance(body, dict) and relayemo_artifact is not None:
+        if (
+            isinstance(body, dict)
+            and relayemo_artifact is not None
+            and config.relayemo_text_marker_enabled
+        ):
             marker_preview = _build_relayemo_text_marker_preview(config, relayemo_artifact)
             relayemo_artifact["text_marker_preview"] = marker_preview
             apply_mode = config.relayemo_text_marker_apply_mode
@@ -444,7 +448,8 @@ def _build_relayemo_text_marker_preview(
 ) -> dict[str, Any]:
     scene_type = relayemo_artifact.get("scene_state", {}).get("scene_type", "unknown")
     affect = relayemo_artifact.get("user_affect_estimate", {})
-    intensity = float(affect.get("intensity", 0.0))
+    assistant_state = relayemo_artifact.get("assistant_emotion_state", {})
+    intensity = float(assistant_state.get("intensity", 0.0))
     confidence = float(affect.get("confidence", 0.0))
     if scene_type in {"review_work", "formal_document", "medical_or_safety"}:
         return {"gate_open": False, "marker": "", "marker_count": 0, "placement": "postfix_replace_punctuation", "applied_to_text": False, "suppression_reason": "scene_suppressed"}

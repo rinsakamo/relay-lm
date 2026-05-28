@@ -26,6 +26,7 @@ def main() -> int:
     require(artifact["user_affect_estimate_is_estimate"] is True, artifact)
     require(artifact["text_marker_apply"]["applied_to_soul"] is False, artifact)
     require(artifact["text_marker_apply"]["applied_to_mem"] is False, artifact)
+    require(artifact["text_marker_apply"]["applied_to_tts"] is False, artifact)
     require(artifact["text_marker_apply"]["persisted_user_affect"] is False, artifact)
 
     cfg_preview = config.model_copy(update={"relayemo_enabled": True, "relayemo_text_marker_enabled": True, "relayemo_text_marker_apply_mode": "preview"})
@@ -35,7 +36,7 @@ def main() -> int:
     cfg_apply = config.model_copy(update={"relayemo_enabled": True, "relayemo_text_marker_enabled": True, "relayemo_text_marker_apply_mode": "apply", "relayemo_marker_open_threshold": 0.1})
     hi = run_relayemo(config=cfg_apply, messages=msgs).artifact
     hi["user_affect_estimate"]["confidence"] = 0.9
-    hi["user_affect_estimate"]["intensity"] = 0.9
+    hi["assistant_emotion_state"]["intensity"] = 0.9
     hi["scene_state"]["scene_type"] = "casual_chat"
     p = _build_relayemo_text_marker_preview(cfg_apply, hi)
     body = {"choices": [{"message": {"content": "了解しました。"}}]}
@@ -47,8 +48,14 @@ def main() -> int:
     require(formal_p["suppression_reason"] == "scene_suppressed", formal_p)
 
     low = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "..."}]).artifact
+    low["assistant_emotion_state"]["intensity"] = 0.9
     low_p = _build_relayemo_text_marker_preview(cfg_apply, low)
     require(low_p["suppression_reason"] == "low_confidence", low_p)
+
+    off_marker = config.model_copy(update={"relayemo_enabled": True, "relayemo_text_marker_enabled": False})
+    off_artifact = run_relayemo(config=off_marker, messages=msgs).artifact
+    require("assistant_emotion_state" in off_artifact, off_artifact)
+    require(off_artifact["text_marker_apply"]["applied_to_text"] is False, off_artifact)
 
     print("ok relayemo smoke")
     return 0
