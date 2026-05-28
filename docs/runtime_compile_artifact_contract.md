@@ -269,3 +269,6 @@ Initial implementation wires CompileDecision dry-run schema into runtime diagnos
 - diagnostics mode: `diagnostics_only=true`
 
 This does not apply compiled messages and does not change backend forwarding payload behavior.
+
+
+- CompileDecision dry-run is now wired into request-local diagnostics and trace metadata on the normal request path (`/v1/chat/completions`) without applying compiled messages.

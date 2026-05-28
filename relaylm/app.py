@@ -20,7 +20,11 @@ from relaylm.adapter import (
     open_chat_completion_stream,
 )
 from relaylm.config import RelayLMConfig, load_config
-from relaylm.diagnostics import RequestDiagnostics, build_relaysoul_runtime_feedback_summary
+from relaylm.diagnostics import (
+    RequestDiagnostics,
+    build_compile_decision_dry_run,
+    build_relaysoul_runtime_feedback_summary,
+)
 from relaylm.memory_adapter import (
     build_memory_adapter_shadow_delta,
     build_memory_adapter_conflict_diagnostics,
@@ -212,6 +216,51 @@ def create_app(config_path: str | None = None) -> FastAPI:
             )
             relayemo_artifact = relayemo_result.artifact
 
+        compiled_message_count = (
+            compiled_request.plan.compiled_message_count
+            if compiled_request.plan.enabled
+            else None
+        )
+
+        apply_compiled_messages = compiled_request.decision.should_apply is True
+        if apply_compiled_messages:
+            compile_decision_state = "COMPILE_APPLY"
+            compile_diagnostics_only = False
+            compile_fallback_reason = None
+            compile_blocking_reasons: list[str] = []
+        else:
+            compile_decision_state = "COMPILE_DRY_RUN"
+            compile_diagnostics_only = True
+            compile_fallback_reason = (
+                compiled_request.plan.fallback_reason or compiled_request.decision.reason
+            )
+            compile_blocking_reasons = []
+            if compiled_request.decision.reason:
+                compile_blocking_reasons.append(compiled_request.decision.reason)
+            if (
+                compiled_request.plan.fallback_reason
+                and compiled_request.plan.fallback_reason not in compile_blocking_reasons
+            ):
+                compile_blocking_reasons.append(compiled_request.plan.fallback_reason)
+
+        compile_decision_dry_run = build_compile_decision_dry_run(
+            decision_id=f"{request_id}:compile-decision-dry-run",
+            plan_id=f"{request_id}:compile-plan",
+            result_id=f"{request_id}:compile-result",
+            selected_route=route.route_model,
+            selected_mode=route.mode_applied,
+            backend=route.backend_name,
+            character_id=route.character_id,
+            compiled_message_count=compiled_message_count,
+            fallback_reason=compile_fallback_reason,
+            blocking_reasons=compile_blocking_reasons,
+            omitted_block_ids=[],
+            token_budget_status=None,
+            decision_state=compile_decision_state,
+            apply_compiled_messages=apply_compiled_messages,
+            diagnostics_only=compile_diagnostics_only,
+        )
+
         base_diagnostics = RequestDiagnostics(
             request_id=request_id,
             route_model=route.route_model,
@@ -255,6 +304,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             trace_enabled=config.trace.enabled,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
+            compile_decision_dry_run=compile_decision_dry_run,
             relayemo_artifact=relayemo_artifact,
         )
         feedback_summary = (
