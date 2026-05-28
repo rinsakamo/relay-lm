@@ -27,6 +27,7 @@
 - classifier 無効/低信頼度時は decay_only を適用する。
 - stateless MVP では initial request 時、confidence が十分な場合に user_affect_estimate から bootstrap する。
 - 将来の session-state runtime では turn 蓄積状態に対して smoothing/decay を適用する。
+- session-local emotion drift は process memory only で保持し、永続化しない。
 
 ## scene-gated text marker
 - default false。
@@ -56,3 +57,5 @@
 - voice affect
 - feedback learning
 - SOUL update
+- LLM structured classifier
+- feedback loop learning

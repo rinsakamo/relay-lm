@@ -32,7 +32,11 @@ from relaylm.memory_adapter import (
     build_memory_adapter_shadow_dry_run_with_scope,
 )
 from relaylm.request_compiler import compile_chat_payload_if_enabled
-from relaylm.relayemo import run_relayemo
+from relaylm.relayemo import (
+    load_session_assistant_state,
+    run_relayemo,
+    save_session_assistant_state,
+)
 from relaylm.request_scope import build_scope_resolution_diagnostics, extract_request_scope_identity
 from relaylm.routing import (
     ResolvedRoute,
@@ -210,11 +214,37 @@ def create_app(config_path: str | None = None) -> FastAPI:
         )
         relayemo_artifact: dict[str, Any] | None = None
         if config.relayemo_enabled:
+            session_key, session_key_source = _resolve_relayemo_session_key(
+                route=route,
+                payload=payload,
+                request=request,
+            )
+            previous_assistant_state = None
+            previous_state_found = False
+            if config.relayemo_session_state_enabled:
+                previous_assistant_state = load_session_assistant_state(
+                    session_key,
+                    ttl_seconds=config.relayemo_session_state_ttl_seconds,
+                )
+                previous_state_found = previous_assistant_state is not None
             relayemo_result = run_relayemo(
                 config=config,
                 messages=_extract_trace_messages(forwarded_payload),
+                previous_assistant_state=previous_assistant_state,
             )
             relayemo_artifact = relayemo_result.artifact
+            relayemo_artifact["session_state_enabled"] = config.relayemo_session_state_enabled
+            relayemo_artifact["session_key_source"] = session_key_source
+            relayemo_artifact["previous_state_found"] = previous_state_found
+            relayemo_artifact["state_updated"] = True
+            relayemo_artifact["state_persisted"] = False
+            relayemo_artifact["state_storage"] = "process_memory"
+            if config.relayemo_session_state_enabled:
+                save_session_assistant_state(
+                    session_key,
+                    relayemo_result.assistant_state,
+                    max_entries=config.relayemo_session_state_max_entries,
+                )
 
         compiled_message_count = (
             compiled_request.plan.compiled_message_count
@@ -423,6 +453,21 @@ def _extract_trace_messages(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(raw_messages, list):
         return []
     return [message for message in raw_messages if isinstance(message, dict)]
+
+
+def _resolve_relayemo_session_key(
+    *,
+    route: ResolvedRoute,
+    payload: Mapping[str, Any],
+    request: Request,
+) -> tuple[str, str]:
+    payload_user = payload.get("user")
+    if isinstance(payload_user, str) and payload_user:
+        return payload_user, "payload_user"
+    client_host = request.client.host if request.client is not None else "unknown"
+    if client_host:
+        return f"{route.route_model}:{route.character_id or 'none'}:{client_host}", "route_character_client"
+    return "default", "default"
 
 
 def _resolve_token_policy_shadow_setting(

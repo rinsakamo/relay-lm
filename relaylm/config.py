@@ -97,6 +97,9 @@ class RelayLMConfig(BaseModel):
     relayemo_marker_close_threshold: float = 0.45
     relayemo_max_markers: int = Field(default=3, ge=1, le=3)
     relayemo_scene_gate_enabled: bool = True
+    relayemo_session_state_enabled: bool = False
+    relayemo_session_state_ttl_seconds: int = Field(default=1800, ge=1)
+    relayemo_session_state_max_entries: int = Field(default=256, ge=1)
 
 
 def default_config_path() -> Path:

@@ -66,6 +66,7 @@ def main() -> int:
     off_artifact = run_relayemo(config=off_marker, messages=msgs).artifact
     require("assistant_emotion_state" in off_artifact, off_artifact)
     require(off_artifact["text_marker_apply"]["applied_to_text"] is False, off_artifact)
+    require(off_artifact.get("session_state_enabled") is None, off_artifact)
 
     jp = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "RelayEMOめちゃくちゃ良いね！"}]).artifact
     jp["scene_state"]["scene_type"] = "casual_chat"
@@ -95,6 +96,9 @@ def main() -> int:
                     "mode: pass_through",
                     "relayemo_enabled: true",
                     "relayemo_text_marker_enabled: false",
+                    "relayemo_session_state_enabled: true",
+                    "relayemo_session_state_ttl_seconds: 1800",
+                    "relayemo_session_state_max_entries: 256",
                     "trace:",
                     "  enabled: true",
                     f"  path: {trace_path}",
@@ -136,14 +140,57 @@ def main() -> int:
             ) as response:
                 require(response.status_code == 200, f"bad stream status: {response.status_code}")
                 _ = b"".join(response.iter_bytes())
+            lines = [line for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            require(bool(lines), "trace should be written for stream success")
+            record = json.loads(lines[-1])
+            metadata = record.get("metadata") or {}
+            require(metadata.get("event") == "backend_stream_response", metadata)
+            require(isinstance(metadata.get("relayemo_artifact"), dict), metadata)
+            artifact_meta = metadata.get("relayemo_artifact") or {}
+            require(artifact_meta.get("session_state_enabled") is True, artifact_meta)
+            require(artifact_meta.get("state_storage") == "process_memory", artifact_meta)
+            with client.stream(
+                "POST",
+                "/v1/chat/completions",
+                json={
+                    "model": "relaylm-default",
+                    "stream": True,
+                    "user": "session-a",
+                    "messages": [{"role": "user", "content": "最高!"}],
+                },
+            ) as response:
+                require(response.status_code == 200, f"bad stream status: {response.status_code}")
+                _ = b"".join(response.iter_bytes())
+            with client.stream(
+                "POST",
+                "/v1/chat/completions",
+                json={
+                    "model": "relaylm-default",
+                    "stream": True,
+                    "user": "session-a",
+                    "messages": [{"role": "user", "content": "..."}],
+                },
+            ) as response:
+                require(response.status_code == 200, f"bad stream status: {response.status_code}")
+                _ = b"".join(response.iter_bytes())
+            lines2 = [line for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+            record2 = json.loads(lines2[-1])
+            artifact2 = (record2.get("metadata") or {}).get("relayemo_artifact") or {}
+            require(artifact2.get("previous_state_found") is True, artifact2)
         finally:
             relay_app.open_chat_completion_stream = original
-        lines = [line for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
-        require(bool(lines), "trace should be written for stream success")
-        record = json.loads(lines[-1])
-        metadata = record.get("metadata") or {}
-        require(metadata.get("event") == "backend_stream_response", metadata)
-        require(isinstance(metadata.get("relayemo_artifact"), dict), metadata)
+
+    s_cfg = config.model_copy(update={"relayemo_session_state_enabled": True})
+    first = run_relayemo(config=s_cfg, messages=[{"role": "user", "content": "最高!"}], previous_assistant_state=None).artifact
+    second = run_relayemo(
+        config=s_cfg,
+        messages=[{"role": "user", "content": "..."}],
+        previous_assistant_state=first["assistant_emotion_state"],
+    ).artifact
+    require(
+        float(second["assistant_emotion_state"]["intensity"]) < float(first["assistant_emotion_state"]["intensity"]),
+        {"first": first, "second": second},
+    )
 
     print("ok relayemo smoke")
     return 0

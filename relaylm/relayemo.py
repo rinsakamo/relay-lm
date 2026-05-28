@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
 from typing import Any
 
 from relaylm.config import RelayLMConfig
@@ -148,3 +149,44 @@ def run_relayemo(
         "user_affect_estimate_is_estimate": True,
     }
     return RelayEmoRuntimeResult(artifact=artifact, assistant_state=next_state)
+
+
+_RELAYEMO_SESSION_STATE: dict[str, dict[str, Any]] = {}
+
+
+def load_session_assistant_state(
+    session_key: str,
+    *,
+    ttl_seconds: int,
+) -> dict[str, Any] | None:
+    entry = _RELAYEMO_SESSION_STATE.get(session_key)
+    if not isinstance(entry, dict):
+        return None
+    ts = entry.get("updated_at")
+    state = entry.get("assistant_state")
+    if not isinstance(ts, (float, int)) or not isinstance(state, dict):
+        _RELAYEMO_SESSION_STATE.pop(session_key, None)
+        return None
+    if time.time() - float(ts) > ttl_seconds:
+        _RELAYEMO_SESSION_STATE.pop(session_key, None)
+        return None
+    return dict(state)
+
+
+def save_session_assistant_state(
+    session_key: str,
+    assistant_state: dict[str, Any],
+    *,
+    max_entries: int,
+) -> None:
+    _RELAYEMO_SESSION_STATE[session_key] = {
+        "assistant_state": dict(assistant_state),
+        "updated_at": time.time(),
+    }
+    if len(_RELAYEMO_SESSION_STATE) <= max_entries:
+        return
+    for key, _ in sorted(
+        _RELAYEMO_SESSION_STATE.items(),
+        key=lambda item: float(item[1].get("updated_at", 0.0)),
+    )[: max(0, len(_RELAYEMO_SESSION_STATE) - max_entries)]:
+        _RELAYEMO_SESSION_STATE.pop(key, None)
