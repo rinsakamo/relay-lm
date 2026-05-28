@@ -23,6 +23,7 @@
 - LLM structured affect probe は dry-run candidate として diagnostics に並記し、初期は apply しない。
 - fail-closed（parse失敗/validation失敗時は heuristic path 維持）を採用する。
 - user emotion は断定せず推定として扱う。
+- nested candidate fields (`user_affect_estimate_candidate`, `scene_state_candidate`) は object 必須で、non-object は fail-closed とする。
 
 ## assistant_emotion_state
 - user_affect_estimate と scene 文脈から、表現用の内部状態を更新する。

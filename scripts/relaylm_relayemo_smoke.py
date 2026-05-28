@@ -103,6 +103,37 @@ def main() -> int:
     require(cand["valence"] == 1.0 and cand["arousal"] == 0.0 and cand["dominance"] == -1.0, clamp)
     require(cand["intensity"] == 1.0 and cand["confidence"] == 1.0, clamp)
     require(clamp["scene_state_candidate"]["scene_type"] == "unknown", clamp)
+    null_cand = parse_llm_affect_probe_output(
+        json.dumps(
+            {
+                "user_affect_estimate_candidate": None,
+                "scene_state_candidate": {"scene_type": "casual_chat", "confidence": 0.4},
+            }
+        )
+    )
+    require("user_affect_estimate_candidate_not_object" in null_cand["classifier_meta"]["validation_errors"], null_cand)
+    null_scene = parse_llm_affect_probe_output(
+        json.dumps(
+            {
+                "user_affect_estimate_candidate": {"valence": 0.1},
+                "scene_state_candidate": None,
+            }
+        )
+    )
+    require("scene_state_candidate_not_object" in null_scene["classifier_meta"]["validation_errors"], null_scene)
+    list_fields = parse_llm_affect_probe_output(
+        json.dumps(
+            {
+                "user_affect_estimate_candidate": [],
+                "scene_state_candidate": "oops",
+            }
+        )
+    )
+    require(
+        "user_affect_estimate_candidate_not_object" in list_fields["classifier_meta"]["validation_errors"]
+        and "scene_state_candidate_not_object" in list_fields["classifier_meta"]["validation_errors"],
+        list_fields,
+    )
 
     jp = run_relayemo(config=cfg_apply, messages=[{"role": "user", "content": "RelayEMOめちゃくちゃ良いね！"}]).artifact
     jp["scene_state"]["scene_type"] = "casual_chat"

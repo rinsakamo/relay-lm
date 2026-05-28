@@ -206,12 +206,23 @@ def parse_llm_affect_probe_output(raw_text: str) -> dict[str, Any]:
                 "validation_errors": ["invalid_json"],
             },
         }
-    cand = payload.get("user_affect_estimate_candidate", {}) if isinstance(payload, dict) else {}
-    scene = payload.get("scene_state_candidate", {}) if isinstance(payload, dict) else {}
+    cand_raw = payload.get("user_affect_estimate_candidate", {}) if isinstance(payload, dict) else {}
+    scene_raw = payload.get("scene_state_candidate", {}) if isinstance(payload, dict) else {}
+    if not isinstance(cand_raw, dict):
+        errors.append("user_affect_estimate_candidate_not_object")
+        cand = {}
+    else:
+        cand = cand_raw
+    if not isinstance(scene_raw, dict):
+        errors.append("scene_state_candidate_not_object")
+        scene = {}
+    else:
+        scene = scene_raw
     scene_type = scene.get("scene_type")
     if scene_type not in SCENE_TYPES:
         errors.append("invalid_scene_type")
         scene_type = "unknown"
+    parse_ok = len(errors) == 0
     parsed = {
         "user_affect_estimate_candidate": {
             "valence": _clamp(cand.get("valence"), -1.0, 1.0),
@@ -232,7 +243,7 @@ def parse_llm_affect_probe_output(raw_text: str) -> dict[str, Any]:
             "applied": False,
             "skipped": False,
             "skip_reason": None,
-            "parse_ok": True,
+            "parse_ok": parse_ok,
             "validation_errors": errors,
         },
     }
