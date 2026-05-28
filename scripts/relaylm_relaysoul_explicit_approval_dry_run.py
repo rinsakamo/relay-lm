@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 
 import sys
@@ -64,6 +65,33 @@ def _require_safe_metadata_code(value: str | None, field: str, *, reject_forbidd
     return text
 
 
+
+
+def _require_approved_at_timestamp(value: str | None, field: str) -> str:
+    text = _require_non_empty_string(value, field)
+    if len(text) > MAX_METADATA_CODE_LENGTH:
+        raise ExplicitApprovalDryRunError(f"{field} must be <= {MAX_METADATA_CODE_LENGTH} chars")
+    if not text.isascii():
+        raise ExplicitApprovalDryRunError(f"{field} must be ASCII")
+    if any(ch.isspace() for ch in text) or "\x00" in text:
+        raise ExplicitApprovalDryRunError(f"{field} must not contain whitespace or NUL")
+    forbidden_key_hits = [key for key in FORBIDDEN_PAYLOAD_KEYS if key in text]
+    if forbidden_key_hits:
+        raise ExplicitApprovalDryRunError(f"{field} contains forbidden content key token")
+    normalized = text.replace("Z", "+00:00") if text.endswith("Z") else text
+    try:
+        dt = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise ExplicitApprovalDryRunError(
+            f"{field} must be timezone-aware ISO 8601/RFC3339-like timestamp"
+        ) from exc
+    if dt.tzinfo is None or dt.utcoffset() is None:
+        raise ExplicitApprovalDryRunError(
+            f"{field} must include timezone offset or Z"
+        )
+    return text
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--approval-scope", required=True)
@@ -103,7 +131,7 @@ def main() -> None:
     if args.parent_artifact_id is not None:
         parent_artifact_id = _require_safe_metadata_code(args.parent_artifact_id, "parent_artifact_id")
 
-    approved_at = _require_non_empty_string(args.approved_at, "approved_at")
+    approved_at = _require_approved_at_timestamp(args.approved_at, "approved_at")
     target_gate_artifact_type = _require_safe_metadata_code(
         args.target_gate_artifact_type, "target_gate_artifact_type"
     )
