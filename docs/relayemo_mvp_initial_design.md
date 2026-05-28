@@ -29,6 +29,7 @@
 - 将来の session-state runtime では turn 蓄積状態に対して smoothing/decay を適用する。
 - session-local emotion drift は process memory only で保持し、永続化しない。
 - session-local reuse は session_id がある場合のみ有効化し、session_id がない場合は stateless/fail-safe とする。
+- session key は resolved session_id を優先し、route-provided session_id も利用する。
 
 ## scene-gated text marker
 - default false。

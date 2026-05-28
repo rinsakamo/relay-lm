@@ -219,6 +219,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 payload=payload,
                 request=request,
                 request_scope_identity=request_scope_identity,
+                scope_resolution_diagnostics=scope_resolution_diagnostics,
             )
             previous_assistant_state = None
             previous_state_found = False
@@ -472,10 +473,24 @@ def _resolve_relayemo_session_key(
     payload: Mapping[str, Any],
     request: Request,
     request_scope_identity: Any,
+    scope_resolution_diagnostics: Any,
 ) -> tuple[str | None, str]:
+    merged_scope = getattr(scope_resolution_diagnostics, "merged_scope", {})
+    resolved_session_id = merged_scope.get("session_id") if isinstance(merged_scope, dict) else None
+    if isinstance(resolved_session_id, str) and resolved_session_id:
+        return (
+            f"{resolved_session_id}:{route.route_model}:{route.character_id or 'none'}",
+            "resolved_session_id",
+        )
     session_id = getattr(request_scope_identity, "session_id", None)
     if isinstance(session_id, str) and session_id:
-        return f"{session_id}:{route.route_model}:{route.character_id or 'none'}", "session_id"
+        return f"{session_id}:{route.route_model}:{route.character_id or 'none'}", "request_session_id"
+    route_session_id = getattr(route, "session_id", None)
+    if isinstance(route_session_id, str) and route_session_id:
+        return (
+            f"{route_session_id}:{route.route_model}:{route.character_id or 'none'}",
+            "route_session_id",
+        )
     return None, "unavailable"
 
 
