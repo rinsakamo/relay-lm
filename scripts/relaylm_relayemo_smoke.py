@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import sys
+import json
+import tempfile
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.app import _apply_relayemo_marker_to_response, _build_relayemo_text_marker_preview
+import relaylm.app as relay_app
 from relaylm.config import load_config
 from relaylm.relayemo import run_relayemo
 
@@ -62,6 +66,65 @@ def main() -> int:
     off_artifact = run_relayemo(config=off_marker, messages=msgs).artifact
     require("assistant_emotion_state" in off_artifact, off_artifact)
     require(off_artifact["text_marker_apply"]["applied_to_text"] is False, off_artifact)
+
+    with tempfile.TemporaryDirectory() as td:
+        trace_path = Path(td) / "trace.jsonl"
+        cfg_path = Path(td) / "config.yaml"
+        cfg_path.write_text(
+            "\n".join(
+                [
+                    "mode: pass_through",
+                    "relayemo_enabled: true",
+                    "relayemo_text_marker_enabled: false",
+                    "trace:",
+                    "  enabled: true",
+                    f"  path: {trace_path}",
+                    "backends:",
+                    "  local_backend:",
+                    "    type: openai_compatible",
+                    "    base_url: http://127.0.0.1:8000/v1",
+                    "    api_key: dummy",
+                    "model_routes:",
+                    "  relaylm-default:",
+                    "    backend: local_backend",
+                    "    backend_model: local-model",
+                    "    mode: pass_through",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        async def _fake_open_chat_completion_stream(
+            payload: dict[str, Any], route: Any
+        ) -> tuple[int, str, Any]:
+            async def _iter() -> Any:
+                yield b"data: [DONE]\n\n"
+            return 200, "text/event-stream", _iter()
+
+        from fastapi.testclient import TestClient
+        original = relay_app.open_chat_completion_stream
+        relay_app.open_chat_completion_stream = _fake_open_chat_completion_stream
+        try:
+            app = relay_app.create_app(str(cfg_path))
+            client = TestClient(app)
+            with client.stream(
+                "POST",
+                "/v1/chat/completions",
+                json={
+                    "model": "relaylm-default",
+                    "stream": True,
+                    "messages": [{"role": "user", "content": "今日は嬉しい!"}],
+                },
+            ) as response:
+                require(response.status_code == 200, f"bad stream status: {response.status_code}")
+                _ = b"".join(response.iter_bytes())
+        finally:
+            relay_app.open_chat_completion_stream = original
+        lines = [line for line in trace_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        require(bool(lines), "trace should be written for stream success")
+        record = json.loads(lines[-1])
+        metadata = record.get("metadata") or {}
+        require(metadata.get("event") == "backend_stream_response", metadata)
+        require(isinstance(metadata.get("relayemo_artifact"), dict), metadata)
 
     print("ok relayemo smoke")
     return 0

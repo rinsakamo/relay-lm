@@ -285,6 +285,16 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     error_type="backend_connection_error",
                     headers=diagnostics.to_headers(),
                 )
+            trace_runtime_event(
+                config=config,
+                diagnostics=diagnostics,
+                messages=_extract_trace_messages(forwarded_payload),
+                metadata={
+                    "event": "backend_stream_response",
+                    "status_code": status_code,
+                    "content_type": content_type,
+                },
+            )
             return StreamingResponse(
                 body_iter,
                 status_code=status_code,
