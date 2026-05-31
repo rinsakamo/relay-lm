@@ -68,6 +68,7 @@ def discover_relaymem_page_candidates(
         "fallback_reason": None,
         "candidate_scan_seen": 0,
         "candidate_scan_truncated": False,
+        "candidate_cap_reached": False,
         "full_candidate_tree_materialized": False,
     }
     if not root_path:
@@ -85,6 +86,7 @@ def discover_relaymem_page_candidates(
     blocked_files: list[dict[str, str]] = []
     scan_seen = 0
     scan_truncated = False
+    candidate_cap_reached = False
 
     for file_path in _iter_candidate_page_files(root):
         if scan_seen >= max_scan:
@@ -92,13 +94,13 @@ def discover_relaymem_page_candidates(
             break
         scan_seen += 1
         relative = file_path.relative_to(root).as_posix()
-        if len(candidates) >= max_candidates:
-            scan_truncated = True
-            break
         try:
             sample = _read_text_sample(file_path, max_read_bytes)
         except (UnicodeDecodeError, OSError):
             blocked_files.append({"path": relative, "reason": "malformed_or_unreadable_file"})
+            continue
+        if len(candidates) >= max_candidates:
+            candidate_cap_reached = True
             continue
         reason = _selection_reason(relative, sample, query_terms)
         candidates.append(
@@ -113,12 +115,15 @@ def discover_relaymem_page_candidates(
 
     result["candidate_scan_seen"] = scan_seen
     result["candidate_scan_truncated"] = scan_truncated
+    result["candidate_cap_reached"] = candidate_cap_reached
     result["candidates"] = candidates
     result["blocked_files"] = blocked_files
     if blocked_files:
         result["fallback_reason"] = "memory_store_files_blocked"
     elif scan_truncated:
         result["fallback_reason"] = "memory_store_candidate_scan_truncated"
+    elif candidate_cap_reached:
+        result["fallback_reason"] = "memory_store_candidate_cap_reached"
     elif not candidates:
         result["fallback_reason"] = "memory_store_no_candidate_pages"
     else:
