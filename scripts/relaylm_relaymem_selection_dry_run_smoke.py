@@ -153,6 +153,18 @@ def _build_store(root: Path) -> None:
     (projects / "broken.md").write_bytes(b"\xff\xfe\x00")
 
 
+def _build_large_store(root: Path) -> None:
+    projects = root / "memory" / "mem" / "projects"
+    projects.mkdir(parents=True)
+    (root / "memory" / "mem" / "index.md").write_text("# Index\nRelayMEM\n", encoding="utf-8")
+    (root / "memory" / "mem" / "log.md").write_text("# Log\n", encoding="utf-8")
+    for idx in range(150):
+        (projects / f"relaymem_large_{idx:03d}.md").write_text(
+            f"# RelayMEM Large {idx}\n" + ("x" * 2048),
+            encoding="utf-8",
+        )
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as store_td:
         store_root = Path(store_td)
@@ -165,7 +177,25 @@ def main() -> int:
         )
         require(len(direct["candidates"]) == 2, direct)
         require(all(item["estimated_chars"] <= 24 for item in direct["candidates"]), direct)
+        require(direct["full_candidate_tree_materialized"] is False, direct)
         print("ok direct discovery respects max candidate and read limits")
+
+        with tempfile.TemporaryDirectory() as large_td:
+            large_root = Path(large_td)
+            _build_large_store(large_root)
+            capped = discover_relaymem_page_candidates(
+                root_path=str(large_root),
+                query_terms=["relaymem"],
+                max_candidates=4,
+                max_read_bytes=32,
+                max_scan=8,
+            )
+            require(len(capped["candidates"]) == 4, capped)
+            require(capped["candidate_scan_seen"] <= 8, capped)
+            require(capped["candidate_scan_truncated"] is True, capped)
+            require(capped["full_candidate_tree_materialized"] is False, capped)
+            require(capped["fallback_reason"] == "memory_store_candidate_scan_truncated", capped)
+            print("ok candidate discovery streams directory scan and caps work")
 
         capture = _Capture()
         _BackendHandler.capture = capture
