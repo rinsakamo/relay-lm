@@ -417,3 +417,44 @@ user input + scene/task -> index search -> candidate pages -> safety filter -> t
 ```
 
 It keeps runtime memory useful, bounded, and auditable while leaving memory editing to RelaySLP.
+
+---
+
+## Runtime dry-run artifact contract
+
+RelayLM runtime diagnostics emit a diagnostics-only `relaymem_retrieval_artifact` for the current request. The MVP artifact consumes RelaySCN scene policy and RelayREF recovery guidance, but it does not search a long-term memory store, does not build a context block, does not edit MEM/SOUL, and does not mutate the forwarded backend payload.
+
+```yaml
+relaymem_retrieval_artifact:
+  artifact_version: relaymem_retrieval.v0
+  diagnostics_only: true
+  apply_allowed: false
+  retrieval_scope: project_context
+  scene_type: design_talk
+  query_summary:
+    source: latest_user_message
+    input_chars: 28
+    term_hints:
+      - RelayMEM
+      - retrieval
+    ambiguous_reference_terms_present: false
+  selected: []
+  blocked: []
+  ctx_block: null
+  fallback_reason: memory_store_not_configured
+  token_budget:
+    limit: 800
+    source: runtime_config
+  used_tokens: 0
+  persistence_block: false
+  persistence_block_reasons: []
+```
+
+Dry-run scope handling:
+
+- `recovery` / `current_context_only` => no external MEM selection, `fallback_reason: current_context_only_no_external_mem` unless RelayREF reports an unresolved reference that requires confirmation.
+- `formal_document` / `medical_or_safety` => external memory is blocked unless explicit evidence/docs are provided by a future retrieval gate.
+- unknown or malformed RelaySCN artifact => fail closed with `fallback_reason: scene_policy_blocks_memory` and `persistence_block: true`.
+- `design_talk` / `project_context` => dry-run eligible, but current MVP returns `selected: []`, `ctx_block: null`, and `fallback_reason: memory_store_not_configured`.
+
+RelayMEM Retrieval must not silently resolve ambiguous references through MEM. If RelayREF marks `unresolved_reference_detected`, retrieval remains dry-run and requires confirmation instead of selecting long-term memory.

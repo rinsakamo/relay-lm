@@ -82,6 +82,10 @@ def trace_runtime_event(
             )
         if diagnostics.relayref_artifact is not None:
             trace_metadata["relayref_artifact"] = diagnostics.relayref_artifact
+        if diagnostics.relaymem_retrieval_artifact is not None:
+            trace_metadata["relaymem_retrieval_artifact"] = (
+                diagnostics.relaymem_retrieval_artifact
+            )
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,
