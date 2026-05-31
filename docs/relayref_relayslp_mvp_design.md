@@ -184,6 +184,93 @@ These defaults should be conservative.
 
 Normal ambiguous reference should use clarification, not Reflect/Sleep.
 
+## RelaySCN recovery integration
+
+RelaySCN owns scene detection and scene policy. RelayREF / RelaySLP should not independently decide the global scene; they consume RelaySCN's `scene_state` and `scene_policy` as control inputs.
+
+MVP relationship:
+
+```text
+RelaySCN recovery scene
+↓
+RelayREF context repair / resynchronization
+↓
+user confirmation or open clarification
+↓
+Wake resumes only after user reanchor
+```
+
+RelaySCN `recovery` is the normal recovery path for confusion, drift, unresolved references, or user correction after drift. It should usually invoke RelayREF behavior, not RelaySLP. RelaySLP `forced_sleep` is heavier than recovery and should be reserved for cases where Wake continuation is unsafe.
+
+Recommended RelaySCN recovery entry defaults:
+
+```yaml
+relay_scn_recovery_trigger_defaults:
+  confusion_gte: 0.50
+  confidence_lt_and_stability_lt:
+    confidence: 0.50
+    stability: 0.50
+  contradiction_with_unresolved_ref: true
+  user_correction_after_drift: true
+```
+
+When RelaySCN enters `recovery`, RelayREF should run in a context-repair posture:
+
+```yaml
+recovery_scene_policy:
+  relayctx_mode: recovery_repack
+  relayref_mode: context_repair
+  relayslp_mode: none
+  relaymem_retrieval_scope: current_context_only
+  relaymem_update_gate: blocked
+  relaysoul_update_gate: blocked
+  relayemo_marker_policy: suppressed
+  relayemo_expression_policy: suppressed
+  persistence_block: true
+  user_confirmation_required: true
+```
+
+Recovery output should not pretend that the repaired context is trusted. It should expose a confirmation candidate or ask an open clarification, for example:
+
+```text
+少し整理するね。
+今の話は A と B が混ざっているかもしれない。
+ここでは A の続きを優先する？それとも B に戻る？
+```
+
+## Persistence block integration
+
+RelayREF and RelaySLP must preserve RelaySCN's persistence block decisions. Recovery, formal/safety-sensitive scenes, unresolved references, low confidence/stability, and user confirmation requirements should block MEM/SOUL persistence.
+
+MVP diagnostics must always emit persistence block status and reasons:
+
+```yaml
+persistence_block: true
+persistence_block_reasons:
+  - recovery_scene
+  - unresolved_reference
+  - user_confirmation_required
+```
+
+RelayREF may classify candidates, but it must not save them:
+
+```text
+RelayREF -> reflection artifact / repair plan / MEM candidate / SOUL proposal candidate
+RelayMEM SLP path -> possible later MEM update, only if gate allows it
+RelaySOUL -> proposal only, explicit approval required before any persistent change
+```
+
+In recovery, candidate handling should be conservative:
+
+```yaml
+recovery_candidate_policy:
+  mem_candidates: blocked
+  soul_proposal_candidates: blocked
+  emo_review: diagnostics_only
+  policy_candidates: diagnostics_only
+  apply_allowed: false
+```
+
 ## Resume policy
 
 After any context rewrite, do not auto-resume.
@@ -198,6 +285,7 @@ Policy:
 | micro_reflect | ask confirmation |
 | soft_reflect | ask confirmation |
 | forced_sleep | ask open clarification |
+| RelaySCN recovery + RelayREF context_repair | ask confirmation or open clarification |
 
 Examples:
 
@@ -219,6 +307,12 @@ Wake must not emit extra SLP-only LLM outputs.
 
 RelayREF / RelaySLP input should be reconstructed from existing logs:
 
+- SCN log
+  - `scene_state`
+  - `scene_policy`
+  - transition reason
+  - confidence / stability / confusion
+  - persistence block decision
 - CTX log
   - `ctx_working_update`
   - `response_mode`
@@ -248,8 +342,16 @@ relay_ref_artifact:
   run_id: string
   created_at: string
 
+  scene_context:
+    scene_type: string
+    scene_confidence: float
+    scene_stability: float
+    confusion: float
+    transition_reason: string | null
+    recovery_scene: bool
+
   trigger:
-    mode: manual | suggest_reflect | micro_reflect | soft_reflect | forced_sleep
+    mode: manual | suggest_reflect | micro_reflect | soft_reflect | context_repair | forced_sleep
     reasons: []
     user_permission_obtained: bool
 
@@ -258,6 +360,7 @@ relay_ref_artifact:
     end_turn_id: string
     turn_count: int
     source_logs:
+      - scn_logs
       - lm_turn_logs
       - ctx_logs
       - emo_logs
@@ -281,6 +384,12 @@ relay_ref_artifact:
     major_decisions: []
     unresolved_threads: []
 
+  persistence_guard:
+    persistence_block: bool
+    persistence_block_reasons: []
+    relaymem_update_gate: free_to_update | review_required | explicit_approval_required | blocked
+    relaysoul_update_gate: proposal_only | explicit_approval_required | blocked
+
   mem_candidates: []
   emo_review: []
   policy_candidates: []
@@ -302,6 +411,8 @@ RelayMEM can remain:
 - recall event log only
 
 MVP must prove that RelayCTX internal RAM working memory can maintain short-term continuity before adding full long-term memory.
+
+RelayREF may inspect MEM recall summaries, but it must not silently resolve ambiguous references through MEM. In recovery, RelaySCN should restrict retrieval to `current_context_only` unless the user explicitly reanchors the conversation or confirms a broader scope.
 
 ## CTX internal retention and drop
 
@@ -335,6 +446,9 @@ A simplified 100-turn conceptual simulation suggested:
 - Return-side EMO should be strongly scene-gated
 - micro_reflect should be rare
 - forced_sleep should be very rare
+- RelaySCN recovery should usually call RelayREF context repair, not RelaySLP forced sleep
+- recovery should block MEM/SOUL persistence and suppress EMO expression
+- recovery should restrict retrieval to `current_context_only`
 
 Target behavior per 100 turns:
 
@@ -344,6 +458,8 @@ target_100_turn_behavior:
   ask_reference_confirmation: 8-18
   ask_open_clarification: 3-10
   pause_and_recall: 3-10
+  relayscn_recovery: 3-8
+  relayref_context_repair: 3-8
   micro_reflect: 0-3
   soft_reflect: 0-2
   forced_sleep: 0-1
@@ -360,6 +476,8 @@ RelayREF / RelaySLP MVP must not:
 - silently resolve ambiguous references through MEM
 - treat transient EMO observations as long-term user facts
 - run full offline consolidation during normal Wake
+- override RelaySCN recovery or persistence block policy
+- surface EMO markers during recovery scene
 
 ## Core design statement
 
@@ -367,10 +485,14 @@ RelayREF is Wake-side reflection and resynchronization.
 
 RelaySLP is the true Sleep/reset/deep consolidation mode.
 
+RelaySCN recovery is the normal scene-level context repair path. Recovery should usually invoke RelayREF context repair while blocking persistence, suppressing EMO expression, and restricting retrieval to current context only.
+
 MVP should first deliver safe CTX resynchronization and user-confirmed Wake recovery:
 
 ```text
 Wake gets unstable
+↓
+RelaySCN enters recovery when needed
 ↓
 RelayREF reflects from existing logs
 ↓
