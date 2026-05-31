@@ -6,6 +6,19 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 
+KNOWN_SCENE_TYPES = {
+    "casual_chat",
+    "design_talk",
+    "implementation_work",
+    "review_work",
+    "formal_document",
+    "medical_or_safety",
+    "system_ops",
+    "vtuber_roleplay",
+    "recovery",
+}
+
+
 def build_relaymem_retrieval_dry_run_artifact(
     *,
     relayscn_scene_policy_artifact: Mapping[str, Any] | None,
@@ -69,6 +82,9 @@ def _parse_relayscn_artifact(artifact: Mapping[str, Any] | None) -> dict[str, An
     scene_type = scene_state.get("scene_type")
     if not isinstance(scene_type, str) or not scene_type:
         scene_type = "unknown"
+    if scene_type not in KNOWN_SCENE_TYPES:
+        return _unsupported_scene_policy(scene_type)
+
     retrieval_scope = scene_policy.get("relaymem_retrieval_scope")
     if not isinstance(retrieval_scope, str) or not retrieval_scope:
         retrieval_scope = "current_context_only"
@@ -90,6 +106,16 @@ def _malformed_scene_policy() -> dict[str, Any]:
         "retrieval_scope": "current_context_only",
         "persistence_block": True,
         "persistence_block_reasons": ["malformed_relayscn_artifact"],
+    }
+
+
+def _unsupported_scene_policy(scene_type: str) -> dict[str, Any]:
+    return {
+        "malformed": False,
+        "scene_type": "unknown",
+        "retrieval_scope": "current_context_only",
+        "persistence_block": True,
+        "persistence_block_reasons": [f"unsupported_scene_type:{scene_type}"],
     }
 
 
