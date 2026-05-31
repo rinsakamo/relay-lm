@@ -76,6 +76,10 @@ def trace_runtime_event(
             trace_metadata["compile_decision_dry_run"] = diagnostics.compile_decision_dry_run
         if diagnostics.relayemo_artifact is not None:
             trace_metadata["relayemo_artifact"] = diagnostics.relayemo_artifact
+        if diagnostics.relayscn_scene_policy_artifact is not None:
+            trace_metadata["relayscn_scene_policy_artifact"] = (
+                diagnostics.relayscn_scene_policy_artifact
+            )
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,

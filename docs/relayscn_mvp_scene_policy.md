@@ -449,3 +449,49 @@ If SLP cannot resolve confusion, switch to recovery/context_repair.
 Output-side SCN is normally next_turn only.
 RelayCTX Unpack is mandatory after Main LLM and before Return-side RelayEMO.
 ```
+---
+
+## 8. MVP Runtime Dry-run Artifact
+
+RelayLM runtime diagnostics should emit a diagnostics-only RelaySCN artifact on every valid chat request. The artifact must not alter forwarded backend payloads and must not enforce policy at runtime until a later apply gate is introduced.
+
+```yaml
+relayscn_scene_policy_artifact:
+  schema_version: relayscn.scene_policy_artifact.v0
+  diagnostics_only: true
+  scene_state_source: request_metadata | relayemo_artifact | heuristic
+  scene_state:
+    schema_version: relayscn.scene_state.v0
+    scene_type: design_talk
+    confidence: 0.74
+    stability: 0.70
+    signals:
+      - keyword:design_talk
+    is_estimate: true
+  scene_policy:
+    schema_version: relayscn.scene_policy.v0
+    relayctx_mode: design_compact
+    relayemo_marker_policy: light
+    relayemo_expression_policy: light
+    relaymem_retrieval_scope: project_context
+    relaymem_update_gate: allowed_dry_run
+    relaysoul_update_gate: proposal_only
+    slp_mode: optional
+    user_confirmation_required: false
+    output_rewrite_allowed: false
+    persistence_block: false
+    persistence_block_reasons: []
+    diagnostics_required: true
+  persistence_block: false
+  persistence_block_reasons: []
+  diagnostics_required: true
+```
+
+MVP priority order is:
+
+1. explicit request metadata (`metadata.scene_state` or `metadata.relayscn.scene_state`)
+2. RelayEMO scene artifact, when enabled
+3. lightweight input heuristic
+4. fail-closed unknown scene
+
+Unknown or missing scene metadata must remain safe: scene confidence/stability are low, diagnostics are required, and persistence is blocked or diagnostics-only. Recovery, formal document, medical/safety, user-confirmation, low confidence, and low stability cases must emit `persistence_block: true` with reasons.
