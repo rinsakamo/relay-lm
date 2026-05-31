@@ -505,3 +505,49 @@ Fail-soft rules:
 - valid store => `fallback_reason: memory_store_read_only_dry_run`
 
 This stage is intentionally read-only. It validates layout and exposes diagnostics so later retrieval work can safely add ranking/selection gates without changing backend forwarding payloads or automatically updating MEM/SOUL.
+
+---
+
+## Selection dry-run diagnostics
+
+After the read-only store inspector is available, RelayMEM Retrieval may also emit bounded page-selection diagnostics. This is still dry-run only: selected MEM candidates are not inserted into `ctx_block`, not forwarded to the backend, and not written back to MEM/SOUL.
+
+Candidate discovery rules:
+
+- Read `memory/mem/index.md` only as a bounded UTF-8 sample.
+- Consider only compiled MEM pages under:
+  - `memory/mem/projects/*.md`
+  - `memory/mem/concepts/*.md`
+  - `memory/mem/summaries/*.md`
+- Do not select `memory/raw/` files in this stage.
+- Respect max candidate and max read-byte limits.
+- Report malformed or unreadable pages in `blocked` / `blocked_files`.
+
+Artifact shape:
+
+```yaml
+relaymem_retrieval_artifact:
+  selected: []
+  selected_mem_candidates:
+    - path: memory/mem/projects/relaymem.md
+      source: mem_page
+      reason: keyword_match
+      estimated_chars: 320
+      estimated_tokens: 80
+      applied_to_ctx: false
+  blocked:
+    - path: memory/mem/projects/broken.md
+      reason: malformed_or_unreadable_file
+  ctx_block: null
+  apply_allowed: false
+  diagnostics_only: true
+```
+
+Safety gates:
+
+- `recovery` / `current_context_only` => no external MEM candidates.
+- `formal_document` / `medical_or_safety` => no external MEM candidates.
+- unknown or malformed RelaySCN artifact => fail closed.
+- RelayREF unresolved reference => no MEM candidates; ask for confirmation instead.
+
+This stage proves that the runtime can inspect file-backed MEM pages and produce auditable selection diagnostics while preserving the current backend payload and avoiding all MEM/SOUL mutation.
