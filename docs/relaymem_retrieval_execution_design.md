@@ -608,3 +608,53 @@ Safety gates are unchanged:
 - Unknown or malformed RelaySCN artifacts fail closed and leave entries empty.
 - RelayREF unresolved references leave entries empty so ambiguous references are not silently resolved through MEM.
 - `ctx_block` remains `null`, `apply_allowed` remains `false`, and every entry has `applied_to_ctx: false`.
+
+---
+
+## Apply readiness gate dry-run diagnostics
+
+RelayMEM Retrieval also emits apply-readiness diagnostics for the `ctx_block_candidate`. This is a gate report only. It does not enable runtime CTX injection, does not change the backend forwarding payload, and does not edit MEM/SOUL. `apply_allowed` remains `false` until a separate future apply PR implements and reviews the runtime gate.
+
+Additional artifact fields:
+
+```yaml
+relaymem_retrieval_artifact:
+  apply_allowed: false
+  apply_decision: dry_run_only
+  apply_readiness_score: 0.833
+  apply_blocked_reasons:
+    - dry_run_only
+    - retrieval_dry_run_only
+    - ctx_block_apply_disabled
+    - runtime_ctx_injection_not_implemented
+  apply_preconditions:
+    scene_policy_allows_apply: true
+    reference_resolved: true
+    candidate_entries_present: true
+    included_entries_present: true
+    token_budget_allows_candidate: true
+    retrieval_dry_run_only: true
+    ctx_block_apply_enabled: false
+    ctx_block_injection_enabled: false
+    backend_payload_mutation_allowed: false
+    mem_soul_mutation_allowed: false
+```
+
+MVP decision order:
+
+- `blocked_scene_policy` for recovery/current-context-only retrieval, formal documents, medical/safety scenes, unknown scenes, or malformed RelaySCN artifacts.
+- `blocked_unresolved_reference` when RelayREF requires confirmation.
+- `blocked_no_candidates` when no CTX block candidate entries exist.
+- `blocked_token_budget` when token-budget packing truncated the candidate.
+- `dry_run_only` when candidates are otherwise valid but retrieval remains dry-run or `memory.ctx_block_apply_enabled` is false.
+- `eligible_but_not_applied` only means the dry-run diagnostics preconditions look eligible; runtime apply is still intentionally not implemented and `apply_allowed` remains false.
+
+Default config remains safe:
+
+```yaml
+memory:
+  retrieval_dry_run_only: true
+  ctx_block_apply_enabled: false
+```
+
+Future apply work must add a separate reviewed gate before any `ctx_block_candidate` can become `ctx_block`, alter request metadata, or affect backend prompts.

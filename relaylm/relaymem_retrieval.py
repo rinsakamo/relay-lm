@@ -36,6 +36,7 @@ def build_relaymem_retrieval_dry_run_artifact(
     token_budget: int | None = None,
     store_diagnostics: Mapping[str, Any] | None = None,
     max_candidates: int = 3,
+    ctx_block_apply_enabled: bool = False,
 ) -> dict[str, Any]:
     """Build a diagnostics-only RelayMEM runtime retrieval artifact.
 
@@ -69,6 +70,15 @@ def build_relaymem_retrieval_dry_run_artifact(
         selected_mem_candidates=selected_mem_candidates,
         token_limit=normalized_token_budget["limit"],
     )
+    apply_readiness = _build_apply_readiness(
+        malformed=parsed_scn["malformed"],
+        scene_type=scene_type,
+        retrieval_scope=retrieval_scope,
+        relayref_unresolved=relayref_unresolved,
+        ctx_block_candidate=ctx_block_candidate,
+        retrieval_dry_run_only=_retrieval_dry_run_only(store_diagnostics),
+        ctx_block_apply_enabled=ctx_block_apply_enabled,
+    )
     blocked = _build_blocked_reasons(
         fallback_reason=fallback_reason,
         scene_type=scene_type,
@@ -97,6 +107,10 @@ def build_relaymem_retrieval_dry_run_artifact(
         "used_tokens": used_tokens,
         "persistence_block": persistence_block,
         "persistence_block_reasons": persistence_block_reasons,
+        "apply_decision": apply_readiness["apply_decision"],
+        "apply_readiness_score": apply_readiness["apply_readiness_score"],
+        "apply_blocked_reasons": apply_readiness["apply_blocked_reasons"],
+        "apply_preconditions": apply_readiness["apply_preconditions"],
         "store_diagnostics": (
             dict(store_diagnostics) if isinstance(store_diagnostics, Mapping) else None
         ),
@@ -296,6 +310,119 @@ def _candidate_estimated_tokens(candidate: Mapping[str, Any]) -> int:
     if isinstance(estimated_chars, int) and estimated_chars > 0:
         return max(1, estimated_chars // 4)
     return 0
+
+
+def _build_apply_readiness(
+    *,
+    malformed: bool,
+    scene_type: str,
+    retrieval_scope: str,
+    relayref_unresolved: bool,
+    ctx_block_candidate: Mapping[str, Any],
+    retrieval_dry_run_only: bool,
+    ctx_block_apply_enabled: bool,
+) -> dict[str, Any]:
+    entries = ctx_block_candidate.get("entries")
+    candidate_entries = entries if isinstance(entries, Sequence) else []
+    included_entries = [
+        entry
+        for entry in candidate_entries
+        if isinstance(entry, Mapping) and entry.get("included") is True
+    ]
+    budget = ctx_block_candidate.get("budget")
+    budget_truncated = (
+        isinstance(budget, Mapping) and budget.get("truncated") is True
+    )
+    scene_policy_blocks = (
+        malformed
+        or scene_type == "unknown"
+        or retrieval_scope == "current_context_only"
+        or scene_type in {"recovery", "formal_document", "medical_or_safety"}
+    )
+    preconditions = {
+        "scene_policy_allows_apply": not scene_policy_blocks,
+        "reference_resolved": not relayref_unresolved,
+        "candidate_entries_present": bool(candidate_entries),
+        "included_entries_present": bool(included_entries),
+        "token_budget_allows_candidate": not budget_truncated,
+        "retrieval_dry_run_only": bool(retrieval_dry_run_only),
+        "ctx_block_apply_enabled": bool(ctx_block_apply_enabled),
+        "ctx_block_injection_enabled": False,
+        "backend_payload_mutation_allowed": False,
+        "mem_soul_mutation_allowed": False,
+    }
+
+    if scene_policy_blocks:
+        decision = "blocked_scene_policy"
+    elif relayref_unresolved:
+        decision = "blocked_unresolved_reference"
+    elif not candidate_entries:
+        decision = "blocked_no_candidates"
+    elif budget_truncated:
+        decision = "blocked_token_budget"
+    elif not included_entries:
+        decision = "blocked_no_candidates"
+    elif retrieval_dry_run_only or not ctx_block_apply_enabled:
+        decision = "dry_run_only"
+    else:
+        decision = "eligible_but_not_applied"
+
+    blocked_reasons = _apply_blocked_reasons(decision, preconditions)
+    return {
+        "apply_decision": decision,
+        "apply_readiness_score": _apply_readiness_score(preconditions),
+        "apply_blocked_reasons": blocked_reasons,
+        "apply_preconditions": preconditions,
+    }
+
+
+def _apply_blocked_reasons(decision: str, preconditions: Mapping[str, bool]) -> list[str]:
+    if decision == "eligible_but_not_applied":
+        return ["runtime_apply_not_implemented"]
+    reasons: list[str] = [decision]
+    if not preconditions.get("scene_policy_allows_apply", False):
+        reasons.append("scene_policy_does_not_allow_apply")
+    if not preconditions.get("reference_resolved", False):
+        reasons.append("unresolved_reference_requires_confirmation")
+    if not preconditions.get("candidate_entries_present", False):
+        reasons.append("ctx_block_candidate_entries_empty")
+    elif not preconditions.get("included_entries_present", False):
+        reasons.append("ctx_block_candidate_has_no_included_entries")
+    if not preconditions.get("token_budget_allows_candidate", False):
+        reasons.append("token_budget_exceeded")
+    if preconditions.get("retrieval_dry_run_only", True):
+        reasons.append("retrieval_dry_run_only")
+    if not preconditions.get("ctx_block_apply_enabled", False):
+        reasons.append("ctx_block_apply_disabled")
+    reasons.append("runtime_ctx_injection_not_implemented")
+    return _dedupe_reasons(reasons)
+
+
+def _apply_readiness_score(preconditions: Mapping[str, bool]) -> float:
+    readiness_keys = (
+        "scene_policy_allows_apply",
+        "reference_resolved",
+        "candidate_entries_present",
+        "included_entries_present",
+        "token_budget_allows_candidate",
+        "ctx_block_apply_enabled",
+    )
+    passed = sum(1 for key in readiness_keys if preconditions.get(key) is True)
+    return round(passed / len(readiness_keys), 3)
+
+
+def _dedupe_reasons(reasons: Sequence[str]) -> list[str]:
+    deduped: list[str] = []
+    for reason in reasons:
+        if reason not in deduped:
+            deduped.append(reason)
+    return deduped
+
+
+def _retrieval_dry_run_only(store_diagnostics: Mapping[str, Any] | None) -> bool:
+    if not isinstance(store_diagnostics, Mapping):
+        return True
+    return store_diagnostics.get("retrieval_dry_run_only") is not False
 
 
 def _store_fallback_reason(store_diagnostics: Mapping[str, Any] | None) -> str | None:
