@@ -23,6 +23,7 @@ memory:
   root_path: .
   store_enabled: false
   retrieval_dry_run_only: true
+  ctx_block_apply_enabled: false
 
 backends:
   local_backend:

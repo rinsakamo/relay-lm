@@ -42,6 +42,7 @@ class MemorySelectionConfig(BaseModel):
     root_path: str | None = None
     store_enabled: bool = False
     retrieval_dry_run_only: bool = True
+    ctx_block_apply_enabled: bool = False
 
 
 class CharacterConfig(BaseModel):

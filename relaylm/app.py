@@ -283,6 +283,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             token_budget=_resolve_relaymem_retrieval_token_budget(config),
             store_diagnostics=relaymem_store_diagnostics,
             max_candidates=config.memory.candidate_limit,
+            ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
         )
 
         compiled_message_count = (
