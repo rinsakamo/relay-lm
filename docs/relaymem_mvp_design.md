@@ -49,7 +49,7 @@ RelaySCN
 = Scene-state controller.
 = Resolves memory scope and persistence/update gates.
 
-RelaySLP / ReallyREF
+RelayREF / RelaySLP
 = Reflection, lint, consolidation, and memory compile cycle.
 
 RelayMEM
