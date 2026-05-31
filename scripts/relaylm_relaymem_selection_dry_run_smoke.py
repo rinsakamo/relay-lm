@@ -16,7 +16,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.app import create_app
-from relaylm.relaymem_store import discover_relaymem_page_candidates
+from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
+from relaylm.relaymem_store import (
+    build_relaymem_store_diagnostics,
+    discover_relaymem_page_candidates,
+)
 
 
 class _Capture:
@@ -106,6 +110,15 @@ def _scene_payload(scene_type: str, content: str) -> dict[str, Any]:
             }
         },
         "stream": False,
+    }
+
+
+def _scene_artifact(scene_type: str = "design_talk") -> dict[str, Any]:
+    return {
+        "scene_state": {"scene_type": scene_type, "confidence": 0.95, "stability": 0.9},
+        "scene_policy": {"relaymem_retrieval_scope": "project_context"},
+        "persistence_block": False,
+        "persistence_block_reasons": [],
     }
 
 
@@ -224,6 +237,29 @@ def main() -> int:
             require(capped["full_candidate_tree_materialized"] is False, capped)
             require(capped["fallback_reason"] == "memory_store_candidate_scan_truncated", capped)
             print("ok candidate discovery streams directory scan and caps work")
+
+            truncated_store = build_relaymem_store_diagnostics(
+                root_path=str(large_root),
+                store_enabled=True,
+                retrieval_dry_run_only=True,
+            )
+            require(
+                truncated_store["fallback_reason"] in {
+                    "memory_store_scan_truncated",
+                    "memory_store_validation_truncated",
+                },
+                truncated_store,
+            )
+            retrieval = build_relaymem_retrieval_dry_run_artifact(
+                relayscn_scene_policy_artifact=_scene_artifact(),
+                messages=[{"role": "user", "content": "RelayMEM Large"}],
+                store_diagnostics=truncated_store,
+                max_candidates=3,
+            )
+            require(0 < len(retrieval["selected_mem_candidates"]) <= 3, retrieval)
+            require(retrieval["ctx_block"] is None, retrieval)
+            require(retrieval["apply_allowed"] is False, retrieval)
+            print("ok truncated store diagnostics still allow bounded selection dry-run")
 
         capture = _Capture()
         _BackendHandler.capture = capture
