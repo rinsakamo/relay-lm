@@ -35,6 +35,7 @@ from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relayref import build_relayref_dry_run_artifact
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
+from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.relayemo import (
     load_session_assistant_state,
     run_relayemo,
@@ -270,11 +271,17 @@ def create_app(config_path: str | None = None) -> FastAPI:
             messages=_extract_trace_messages(payload),
             ctx_hints=_extract_ctx_hints(payload),
         )
+        relaymem_store_diagnostics = build_relaymem_store_diagnostics(
+            root_path=config.memory.root_path,
+            store_enabled=config.memory.store_enabled,
+            retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
+        )
         relaymem_retrieval_artifact = build_relaymem_retrieval_dry_run_artifact(
             relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
             relayref_artifact=relayref_artifact,
             messages=_extract_trace_messages(payload),
             token_budget=_resolve_relaymem_retrieval_token_budget(config),
+            store_diagnostics=relaymem_store_diagnostics,
         )
 
         compiled_message_count = (

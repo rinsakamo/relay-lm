@@ -458,3 +458,50 @@ Dry-run scope handling:
 - `design_talk` / `project_context` => dry-run eligible, but current MVP returns `selected: []`, `ctx_block: null`, and `fallback_reason: memory_store_not_configured`.
 
 RelayMEM Retrieval must not silently resolve ambiguous references through MEM. If RelayREF marks `unresolved_reference_detected`, retrieval remains dry-run and requires confirmation instead of selecting long-term memory.
+
+---
+
+## File-backed store dry-run/read-only stage
+
+The RelayMEM file-backed store MVP starts as a read-only diagnostics layer. Runtime may inspect the expected layout and report store readiness, but it must not inject retrieved MEM into `ctx_block` yet and must not write MEM/SOUL state.
+
+Default layout:
+
+```text
+memory/raw/
+memory/mem/index.md
+memory/mem/log.md
+memory/mem/projects/
+memory/mem/concepts/
+memory/mem/summaries/
+memory/mem/relations/
+```
+
+Store diagnostics are nested under `relaymem_retrieval_artifact.store_diagnostics`:
+
+```yaml
+store_diagnostics:
+  schema_version: relaymem.store_diagnostics.v0
+  diagnostics_only: true
+  read_only: true
+  store_enabled: false
+  retrieval_dry_run_only: true
+  root_path: .
+  root_present: false
+  index_present: false
+  log_present: false
+  pages_discovered: 0
+  page_paths: []
+  blocked_files: []
+  fallback_reason: memory_store_disabled
+```
+
+Fail-soft rules:
+
+- disabled store => `fallback_reason: memory_store_disabled`
+- missing root => `fallback_reason: memory_store_root_missing`
+- missing index => `fallback_reason: memory_store_index_missing`
+- unsupported or unreadable files => entries in `blocked_files`
+- valid store => `fallback_reason: memory_store_read_only_dry_run`
+
+This stage is intentionally read-only. It validates layout and exposes diagnostics so later retrieval work can safely add ranking/selection gates without changing backend forwarding payloads or automatically updating MEM/SOUL.

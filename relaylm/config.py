@@ -39,6 +39,9 @@ class MemorySelectionConfig(BaseModel):
     chars_per_token: int = Field(default=4, gt=0)
     token_policy_shadow_enabled: bool = False
     token_budget_truncation_enabled: bool = False
+    root_path: str | None = None
+    store_enabled: bool = False
+    retrieval_dry_run_only: bool = True
 
 
 class CharacterConfig(BaseModel):
