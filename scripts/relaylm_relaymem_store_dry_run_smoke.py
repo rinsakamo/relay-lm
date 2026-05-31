@@ -157,7 +157,31 @@ def main() -> int:
         blocked_reasons = {item["reason"] for item in store["blocked_files"]}
         require("unsupported_file_type" in blocked_reasons, store)
         require("malformed_or_unreadable_file" in blocked_reasons, store)
+        validation = store["validation"]
+        require(validation["full_file_reads"] is False, store)
+        require(validation["max_sample_bytes"] == 4096, store)
         print("ok minimal store discovers pages and blocks malformed files")
+
+        with tempfile.TemporaryDirectory() as capped_td:
+            capped_root = Path(capped_td)
+            capped_mem = capped_root / "memory" / "mem" / "projects"
+            capped_mem.mkdir(parents=True)
+            (capped_root / "memory" / "mem" / "index.md").write_text("# Index\n", encoding="utf-8")
+            (capped_root / "memory" / "mem" / "log.md").write_text("# Log\n", encoding="utf-8")
+            for idx in range(70):
+                (capped_mem / f"page_{idx:03d}.md").write_text("# Page\n" + ("x" * 8192), encoding="utf-8")
+            capped = build_relaymem_store_diagnostics(
+                root_path=str(capped_root),
+                store_enabled=True,
+                retrieval_dry_run_only=True,
+            )
+            capped_validation = capped["validation"]
+            require(capped_validation["files_seen"] > capped_validation["max_files_to_validate"], capped)
+            require(capped_validation["files_validated"] == capped_validation["max_files_to_validate"], capped)
+            require(capped_validation["validation_truncated"] is True, capped)
+            require(capped_validation["full_file_reads"] is False, capped)
+            require(capped["fallback_reason"] == "memory_store_validation_truncated", capped)
+            print("ok store validation is capped and does not read full files")
 
         capture = _Capture()
         _BackendHandler.capture = capture
@@ -210,6 +234,7 @@ def main() -> int:
                     require(store_diag["store_enabled"] is True, store_diag)
                     require(store_diag["index_present"] is True, store_diag)
                     require(store_diag["pages_discovered"] > 0, store_diag)
+                    require(store_diag["validation"]["full_file_reads"] is False, store_diag)
                     require(artifact["selected"] == [], artifact)
                     require(artifact["ctx_block"] is None, artifact)
                     _assert_no_backend_artifact(capture.last())
