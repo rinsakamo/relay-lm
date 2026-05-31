@@ -19,6 +19,13 @@ KNOWN_SCENE_TYPES = {
     "vtuber_roleplay",
     "recovery",
 }
+_RETRIEVAL_ELIGIBLE_FALLBACK_REASONS = {
+    "memory_store_read_only_dry_run",
+    "memory_store_read_only_selection_dry_run",
+    "memory_store_files_blocked",
+    "memory_store_validation_truncated",
+    "memory_store_scan_truncated",
+}
 
 
 def build_relaymem_retrieval_dry_run_artifact(
@@ -186,11 +193,7 @@ def _select_mem_candidates_dry_run(
     query_terms: list[str],
     max_candidates: int,
 ) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
-    if fallback_reason not in {
-        "memory_store_read_only_dry_run",
-        "memory_store_read_only_selection_dry_run",
-        "memory_store_files_blocked",
-    }:
+    if fallback_reason not in _RETRIEVAL_ELIGIBLE_FALLBACK_REASONS:
         return [], []
     if not isinstance(store_diagnostics, Mapping):
         return [], []
@@ -220,6 +223,11 @@ def _select_mem_candidates_dry_run(
         for item in discovery.get("blocked_files", [])
         if isinstance(item, Mapping)
     ]
+    discovery_reason = discovery.get("fallback_reason")
+    if isinstance(discovery_reason, str) and discovery_reason not in {
+        "memory_store_read_only_selection_dry_run",
+    }:
+        blocked.append({"reason": discovery_reason})
     return candidates, blocked
 
 
