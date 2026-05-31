@@ -47,6 +47,7 @@ class RequestDiagnostics:
     compile_decision_dry_run: dict[str, Any] | None = None
     relayemo_artifact: dict[str, Any] | None = None
     relayscn_scene_policy_artifact: dict[str, Any] | None = None
+    relayref_artifact: dict[str, Any] | None = None
 
     def to_headers(self) -> dict[str, str]:
         headers = {"x-relaylm-request-id": self.request_id}

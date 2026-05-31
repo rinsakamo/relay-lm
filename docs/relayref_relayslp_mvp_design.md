@@ -520,3 +520,49 @@ reset / dry-run consolidation
 ↓
 user reanchors the conversation
 ```
+
+---
+
+## RelayREF MVP runtime dry-run artifact
+
+RelayLM runtime diagnostics should emit a diagnostics-only `relayref_artifact` alongside the RelaySCN scene-policy artifact. The artifact is Wake-side only: it may recommend reflection, resynchronization, or recovery posture, but it must not rewrite context, auto-resume, run RelaySLP forced sleep, persist memory, or mutate the forwarded backend payload.
+
+```yaml
+relayref_artifact:
+  schema_version: relayref.dry_run_artifact.v0
+  diagnostics_only: true
+  mode: none | suggest_reflect | context_repair
+  mode_reasons:
+    - recovery_scene
+  apply_allowed: false
+  auto_resume_allowed: false
+  unresolved_reference_detected: false
+  persistence_guard:
+    source: relayscn_scene_policy_artifact
+    persistence_block: true
+    persistence_block_reasons:
+      - scene_type_is_recovery
+    safe_to_persist: false
+  ctx_handoff_guess:
+    value: "candidate summary"
+    use_as: confirmation_candidate
+    auto_resume_allowed: false
+    trusted_context: false
+  context_rewrite:
+    candidate: true
+    applied: false
+    auto_resume_allowed: false
+  forced_sleep_candidate:
+    candidate: true
+    slp_mode: forced_or_recently_attempted
+    apply_allowed: false
+    reason: relayscn_slp_mode
+```
+
+Mode selection is conservative:
+
+- `recovery` scene => `context_repair`
+- unresolved reference, low confidence, low stability, malformed RelaySCN artifact, or unknown scene => `suggest_reflect`
+- normal stable scene => `none`
+
+`ctx_handoff_guess` is always a `confirmation_candidate`. Runtime must not treat it as trusted context and must not auto-resume from it.

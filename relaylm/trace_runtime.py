@@ -80,6 +80,8 @@ def trace_runtime_event(
             trace_metadata["relayscn_scene_policy_artifact"] = (
                 diagnostics.relayscn_scene_policy_artifact
             )
+        if diagnostics.relayref_artifact is not None:
+            trace_metadata["relayref_artifact"] = diagnostics.relayref_artifact
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,
