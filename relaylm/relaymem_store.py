@@ -268,7 +268,11 @@ def _validate_file_sample(file_path: Path) -> str | None:
     try:
         with file_path.open("rb") as handle:
             sample = handle.read(_MAX_SAMPLE_BYTES)
-        _decode_utf8_prefix(sample)
+            reached_limit = len(sample) == _MAX_SAMPLE_BYTES
+            if reached_limit:
+                extra = handle.read(1)
+                reached_limit = bool(extra)
+        _decode_utf8_sample(sample, allow_truncated_final_sequence=reached_limit)
     except UnicodeDecodeError:
         return "malformed_or_unreadable_file"
     except OSError:
@@ -305,12 +309,20 @@ def _iter_candidate_page_files(root: Path) -> Iterator[Path]:
 def _read_text_sample(file_path: Path, max_read_bytes: int) -> str:
     with file_path.open("rb") as handle:
         sample = handle.read(max(1, max_read_bytes))
-    return _decode_utf8_prefix(sample)
+        reached_limit = len(sample) == max(1, max_read_bytes)
+        if reached_limit:
+            extra = handle.read(1)
+            reached_limit = bool(extra)
+    return _decode_utf8_sample(sample, allow_truncated_final_sequence=reached_limit)
 
 
-def _decode_utf8_prefix(sample: bytes) -> str:
+def _decode_utf8_sample(
+    sample: bytes,
+    *,
+    allow_truncated_final_sequence: bool,
+) -> str:
     decoder = codecs.getincrementaldecoder("utf-8")()
-    return decoder.decode(sample, final=False)
+    return decoder.decode(sample, final=not allow_truncated_final_sequence)
 
 
 def _selection_reason(relative_path: str, sample: str, query_terms: list[str]) -> str:
