@@ -186,7 +186,7 @@ def main() -> int:
             utf8_projects.mkdir(parents=True)
             (utf8_root / "memory" / "mem" / "index.md").write_text("# Index\n", encoding="utf-8")
             (utf8_root / "memory" / "mem" / "log.md").write_text("# Log\n", encoding="utf-8")
-            (utf8_projects / "jp.md").write_text("あ", encoding="utf-8")
+            (utf8_projects / "jp.md").write_text("ああ", encoding="utf-8")
             utf8 = discover_relaymem_page_candidates(
                 root_path=str(utf8_root),
                 query_terms=[],
@@ -196,6 +196,17 @@ def main() -> int:
             require(len(utf8["candidates"]) == 1, utf8)
             require(utf8["blocked_files"] == [], utf8)
             print("ok truncated UTF-8 sample does not false-block valid page")
+
+            (utf8_projects / "incomplete.md").write_bytes(b"abc\xe3")
+            incomplete = discover_relaymem_page_candidates(
+                root_path=str(utf8_root),
+                query_terms=[],
+                max_candidates=4,
+                max_read_bytes=16,
+            )
+            blocked = {item["path"]: item["reason"] for item in incomplete["blocked_files"]}
+            require(blocked.get("memory/mem/projects/incomplete.md") == "malformed_or_unreadable_file", incomplete)
+            print("ok incomplete UTF-8 at EOF is blocked")
 
         with tempfile.TemporaryDirectory() as large_td:
             large_root = Path(large_td)
