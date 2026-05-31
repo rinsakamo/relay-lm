@@ -220,7 +220,7 @@ When RelaySCN enters `recovery`, RelayREF should run in a context-repair posture
 recovery_scene_policy:
   relayctx_mode: recovery_repack
   relayref_mode: context_repair
-  relayslp_mode: none
+  relayslp_mode: forced_or_recently_attempted
   relaymem_retrieval_scope: current_context_only
   relaymem_update_gate: blocked
   relaysoul_update_gate: blocked
@@ -229,6 +229,8 @@ recovery_scene_policy:
   persistence_block: true
   user_confirmation_required: true
 ```
+
+`relayslp_mode: forced_or_recently_attempted` mirrors the canonical RelaySCN recovery policy. It means recovery may follow a failed or forced SLP attempt, or mark that SLP-level risk exists. It does not mean RelaySLP `forced_sleep` should always run; the active Wake-side repair behavior remains `relayref_mode: context_repair` unless the stricter forced-sleep thresholds are reached.
 
 Recovery output should not pretend that the repaired context is trusted. It should expose a confirmation candidate or ask an open clarification, for example:
 
