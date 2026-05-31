@@ -180,6 +180,23 @@ def main() -> int:
         require(direct["full_candidate_tree_materialized"] is False, direct)
         print("ok direct discovery respects max candidate and read limits")
 
+        with tempfile.TemporaryDirectory() as utf8_td:
+            utf8_root = Path(utf8_td)
+            utf8_projects = utf8_root / "memory" / "mem" / "projects"
+            utf8_projects.mkdir(parents=True)
+            (utf8_root / "memory" / "mem" / "index.md").write_text("# Index\n", encoding="utf-8")
+            (utf8_root / "memory" / "mem" / "log.md").write_text("# Log\n", encoding="utf-8")
+            (utf8_projects / "jp.md").write_text("あ", encoding="utf-8")
+            utf8 = discover_relaymem_page_candidates(
+                root_path=str(utf8_root),
+                query_terms=[],
+                max_candidates=1,
+                max_read_bytes=1,
+            )
+            require(len(utf8["candidates"]) == 1, utf8)
+            require(utf8["blocked_files"] == [], utf8)
+            print("ok truncated UTF-8 sample does not false-block valid page")
+
         with tempfile.TemporaryDirectory() as large_td:
             large_root = Path(large_td)
             _build_large_store(large_root)
