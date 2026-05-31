@@ -33,6 +33,7 @@ from relaylm.memory_adapter import (
 )
 from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
+from relaylm.relayref import build_relayref_dry_run_artifact
 from relaylm.relayemo import (
     load_session_assistant_state,
     run_relayemo,
@@ -263,6 +264,11 @@ def create_app(config_path: str | None = None) -> FastAPI:
             payload=payload,
             relayemo_artifact=relayemo_artifact,
         )
+        relayref_artifact = build_relayref_dry_run_artifact(
+            relayscn_artifact=relayscn_scene_policy_artifact,
+            messages=_extract_trace_messages(payload),
+            ctx_hints=_extract_ctx_hints(payload),
+        )
 
         compiled_message_count = (
             compiled_request.plan.compiled_message_count
@@ -354,6 +360,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             compile_decision_dry_run=compile_decision_dry_run,
             relayemo_artifact=relayemo_artifact,
             relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+            relayref_artifact=relayref_artifact,
         )
         feedback_summary = (
             build_relaysoul_runtime_feedback_summary(base_diagnostics)
@@ -632,6 +639,17 @@ def _apply_relayemo_marker_to_response(body: dict[str, Any], preview: dict[str, 
         else:
             message["content"] = content + marker
     return body
+
+
+def _extract_ctx_hints(payload: Mapping[str, Any]) -> dict[str, Any]:
+    metadata = payload.get("metadata")
+    if not isinstance(metadata, Mapping):
+        return {}
+    ctx = metadata.get("ctx")
+    hints: dict[str, Any] = dict(ctx) if isinstance(ctx, Mapping) else {}
+    if "ctx_handoff_guess" in metadata and "ctx_handoff_guess" not in hints:
+        hints["ctx_handoff_guess"] = metadata.get("ctx_handoff_guess")
+    return hints
 
 
 def main() -> None:
