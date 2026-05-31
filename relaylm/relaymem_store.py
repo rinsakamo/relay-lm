@@ -20,6 +20,8 @@ _ALLOWED_SUFFIXES = {
     "memory/raw": {".jsonl", ".md"},
     "memory/mem": {".md"},
 }
+_MAX_FILES_TO_VALIDATE = 64
+_MAX_SAMPLE_BYTES = 4096
 
 
 def build_relaymem_store_diagnostics(
@@ -28,7 +30,11 @@ def build_relaymem_store_diagnostics(
     store_enabled: bool,
     retrieval_dry_run_only: bool,
 ) -> dict[str, Any]:
-    """Inspect the RelayMEM file-backed store layout without writing to it."""
+    """Inspect the RelayMEM file-backed store layout without writing to it.
+
+    The runtime dry-run path intentionally validates only a bounded sample of
+    files. It must not read the full memory store on every request.
+    """
 
     diagnostics: dict[str, Any] = {
         "schema_version": "relaymem.store_diagnostics.v0",
@@ -45,6 +51,14 @@ def build_relaymem_store_diagnostics(
         "page_paths": [],
         "blocked_files": [],
         "fallback_reason": None,
+        "validation": {
+            "max_files_to_validate": _MAX_FILES_TO_VALIDATE,
+            "max_sample_bytes": _MAX_SAMPLE_BYTES,
+            "files_seen": 0,
+            "files_validated": 0,
+            "validation_truncated": False,
+            "full_file_reads": False,
+        },
     }
 
     if not store_enabled:
@@ -68,24 +82,42 @@ def build_relaymem_store_diagnostics(
 
     page_paths: list[str] = []
     blocked_files: list[dict[str, str]] = []
+    files_seen = 0
+    files_validated = 0
+    validation_truncated = False
+
     for file_path in _iter_store_files(root):
+        files_seen += 1
         relative = file_path.relative_to(root).as_posix()
         if not _is_supported_file(relative, file_path.suffix):
             blocked_files.append({"path": relative, "reason": "unsupported_file_type"})
             continue
-        try:
-            file_path.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
-            blocked_files.append({"path": relative, "reason": "malformed_or_unreadable_file"})
+        if files_validated >= _MAX_FILES_TO_VALIDATE:
+            validation_truncated = True
+            continue
+        validation_result = _validate_file_sample(file_path)
+        files_validated += 1
+        if validation_result is not None:
+            blocked_files.append({"path": relative, "reason": validation_result})
             continue
         if relative.startswith("memory/mem/") and file_path.suffix == ".md":
             page_paths.append(relative)
 
+    diagnostics["validation"] = {
+        "max_files_to_validate": _MAX_FILES_TO_VALIDATE,
+        "max_sample_bytes": _MAX_SAMPLE_BYTES,
+        "files_seen": files_seen,
+        "files_validated": files_validated,
+        "validation_truncated": validation_truncated,
+        "full_file_reads": False,
+    }
     diagnostics["page_paths"] = sorted(page_paths)
     diagnostics["pages_discovered"] = len(page_paths)
     diagnostics["blocked_files"] = blocked_files
     if blocked_files:
         diagnostics["fallback_reason"] = "memory_store_files_blocked"
+    elif validation_truncated:
+        diagnostics["fallback_reason"] = "memory_store_validation_truncated"
     elif not diagnostics["index_present"]:
         diagnostics["fallback_reason"] = "memory_store_index_missing"
     else:
@@ -114,3 +146,15 @@ def _is_supported_file(relative_path: str, suffix: str) -> bool:
     if relative_path.startswith("memory/mem/"):
         return suffix in _ALLOWED_SUFFIXES["memory/mem"]
     return False
+
+
+def _validate_file_sample(file_path: Path) -> str | None:
+    try:
+        with file_path.open("rb") as handle:
+            sample = handle.read(_MAX_SAMPLE_BYTES)
+        sample.decode("utf-8")
+    except UnicodeDecodeError:
+        return "malformed_or_unreadable_file"
+    except OSError:
+        return "malformed_or_unreadable_file"
+    return None
