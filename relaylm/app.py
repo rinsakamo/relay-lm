@@ -32,6 +32,7 @@ from relaylm.memory_adapter import (
     build_memory_adapter_shadow_dry_run_with_scope,
 )
 from relaylm.request_compiler import compile_chat_payload_if_enabled
+from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relayemo import (
     load_session_assistant_state,
     run_relayemo,
@@ -258,6 +259,11 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     max_entries=config.relayemo_session_state_max_entries,
                 )
 
+        relayscn_scene_policy_artifact = build_relayscn_scene_policy_artifact(
+            payload=payload,
+            relayemo_artifact=relayemo_artifact,
+        )
+
         compiled_message_count = (
             compiled_request.plan.compiled_message_count
             if compiled_request.plan.enabled
@@ -347,6 +353,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
             compile_decision_dry_run=compile_decision_dry_run,
             relayemo_artifact=relayemo_artifact,
+            relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
         )
         feedback_summary = (
             build_relaysoul_runtime_feedback_summary(base_diagnostics)
