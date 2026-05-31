@@ -178,6 +178,16 @@ def _build_large_store(root: Path) -> None:
         )
 
 
+def _build_candidate_cap_store(root: Path) -> None:
+    projects = root / "memory" / "mem" / "projects"
+    projects.mkdir(parents=True)
+    (root / "memory" / "mem" / "index.md").write_text("# Index\n", encoding="utf-8")
+    (root / "memory" / "mem" / "log.md").write_text("# Log\n", encoding="utf-8")
+    (projects / "001_valid.md").write_text("# One\nRelayMEM\n", encoding="utf-8")
+    (projects / "002_valid.md").write_text("# Two\nRelayMEM\n", encoding="utf-8")
+    (projects / "003_broken.md").write_bytes(b"\xff\xfe\x00")
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as store_td:
         store_root = Path(store_td)
@@ -192,6 +202,22 @@ def main() -> int:
         require(all(item["estimated_chars"] <= 24 for item in direct["candidates"]), direct)
         require(direct["full_candidate_tree_materialized"] is False, direct)
         print("ok direct discovery respects max candidate and read limits")
+
+        with tempfile.TemporaryDirectory() as cap_td:
+            cap_root = Path(cap_td)
+            _build_candidate_cap_store(cap_root)
+            cap = discover_relaymem_page_candidates(
+                root_path=str(cap_root),
+                query_terms=["relaymem"],
+                max_candidates=2,
+                max_read_bytes=32,
+                max_scan=10,
+            )
+            cap_blocked = {item["path"]: item["reason"] for item in cap["blocked_files"]}
+            require(len(cap["candidates"]) == 2, cap)
+            require(cap["candidate_cap_reached"] is True, cap)
+            require(cap_blocked.get("memory/mem/projects/003_broken.md") == "malformed_or_unreadable_file", cap)
+            print("ok candidate scan continues after candidate cap to report blocked files")
 
         with tempfile.TemporaryDirectory() as utf8_td:
             utf8_root = Path(utf8_td)
