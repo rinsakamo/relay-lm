@@ -207,6 +207,26 @@ def main() -> int:
         require(malformed["fallback_reason"] == "scene_policy_blocks_memory", malformed)
         require(malformed["persistence_block"] is True, malformed)
         print("ok malformed RelaySCN retrieval policy fails closed")
+
+        unsupported = build_relaymem_retrieval_dry_run_artifact(
+            relayscn_scene_policy_artifact={
+                "scene_state": {"scene_type": "future_scene"},
+                "scene_policy": {"relaymem_retrieval_scope": "project_context"},
+                "persistence_block": False,
+                "persistence_block_reasons": [],
+            },
+            relayref_artifact=None,
+            messages=[],
+        )
+        require(unsupported["scene_type"] == "unknown", unsupported)
+        require(unsupported["retrieval_scope"] == "current_context_only", unsupported)
+        require(unsupported["fallback_reason"] == "scene_policy_blocks_memory", unsupported)
+        require(unsupported["persistence_block"] is True, unsupported)
+        require(
+            "unsupported_scene_type:future_scene" in unsupported["persistence_block_reasons"],
+            unsupported,
+        )
+        print("ok syntactically valid unsupported RelaySCN scene fails closed")
     finally:
         server.shutdown()
         server.server_close()
