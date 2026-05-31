@@ -25,6 +25,7 @@ def build_relaymem_retrieval_dry_run_artifact(
     relayref_artifact: Mapping[str, Any] | None = None,
     messages: Sequence[Mapping[str, Any]] | None = None,
     token_budget: int | None = None,
+    store_diagnostics: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a diagnostics-only RelayMEM runtime retrieval artifact.
 
@@ -45,6 +46,7 @@ def build_relaymem_retrieval_dry_run_artifact(
         scene_type=scene_type,
         retrieval_scope=retrieval_scope,
         relayref_unresolved=relayref_unresolved,
+        store_diagnostics=store_diagnostics,
     )
     blocked = _build_blocked_reasons(
         fallback_reason=fallback_reason,
@@ -67,6 +69,9 @@ def build_relaymem_retrieval_dry_run_artifact(
         "used_tokens": 0,
         "persistence_block": persistence_block,
         "persistence_block_reasons": persistence_block_reasons,
+        "store_diagnostics": (
+            dict(store_diagnostics) if isinstance(store_diagnostics, Mapping) else None
+        ),
     }
 
 
@@ -125,6 +130,7 @@ def _resolve_fallback_reason(
     scene_type: str,
     retrieval_scope: str,
     relayref_unresolved: bool,
+    store_diagnostics: Mapping[str, Any] | None = None,
 ) -> str:
     if malformed or scene_type == "unknown":
         return "scene_policy_blocks_memory"
@@ -134,6 +140,9 @@ def _resolve_fallback_reason(
         return "external_memory_blocked_by_scene_policy"
     if retrieval_scope == "current_context_only":
         return "current_context_only_no_external_mem"
+    store_reason = _store_fallback_reason(store_diagnostics)
+    if store_reason is not None:
+        return store_reason
     return "memory_store_not_configured"
 
 
@@ -151,6 +160,17 @@ def _build_blocked_reasons(
     if relayref_unresolved:
         blocked.append({"reason": "must_not_silently_resolve_ambiguous_reference"})
     return blocked
+
+
+def _store_fallback_reason(store_diagnostics: Mapping[str, Any] | None) -> str | None:
+    if not isinstance(store_diagnostics, Mapping):
+        return "memory_store_not_configured"
+    reason = store_diagnostics.get("fallback_reason")
+    if reason == "memory_store_disabled":
+        return "memory_store_not_configured"
+    if isinstance(reason, str) and reason:
+        return reason
+    return None
 
 
 def _relayref_unresolved_reference(relayref_artifact: Mapping[str, Any] | None) -> bool:

@@ -18,6 +18,11 @@ memory:
   # false keeps policy_mode=disabled unless a character override enables shadow mode.
   token_policy_shadow_enabled: false
   # Hard enforcement is not implemented yet. Token policy remains diagnostics/trace only.
+  # RelayMEM file-backed store MVP is read-only and diagnostics-first.
+  # Disabled by default; enabling it only inspects layout and does not inject CTX.
+  root_path: .
+  store_enabled: false
+  retrieval_dry_run_only: true
 
 backends:
   local_backend:
