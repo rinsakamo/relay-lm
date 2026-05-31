@@ -34,6 +34,7 @@ from relaylm.memory_adapter import (
 from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relayref import build_relayref_dry_run_artifact
+from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relayemo import (
     load_session_assistant_state,
     run_relayemo,
@@ -269,6 +270,12 @@ def create_app(config_path: str | None = None) -> FastAPI:
             messages=_extract_trace_messages(payload),
             ctx_hints=_extract_ctx_hints(payload),
         )
+        relaymem_retrieval_artifact = build_relaymem_retrieval_dry_run_artifact(
+            relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+            relayref_artifact=relayref_artifact,
+            messages=_extract_trace_messages(payload),
+            token_budget=_resolve_relaymem_retrieval_token_budget(config),
+        )
 
         compiled_message_count = (
             compiled_request.plan.compiled_message_count
@@ -361,6 +368,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             relayemo_artifact=relayemo_artifact,
             relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
             relayref_artifact=relayref_artifact,
+            relaymem_retrieval_artifact=relaymem_retrieval_artifact,
         )
         feedback_summary = (
             build_relaysoul_runtime_feedback_summary(base_diagnostics)
@@ -639,6 +647,17 @@ def _apply_relayemo_marker_to_response(body: dict[str, Any], preview: dict[str, 
         else:
             message["content"] = content + marker
     return body
+
+
+def _resolve_relaymem_retrieval_token_budget(config: RelayLMConfig) -> int | None:
+    if config.memory.token_budget is not None:
+        return config.memory.token_budget
+    if (
+        isinstance(config.memory.token_budget_hint, int)
+        and config.memory.token_budget_hint > 0
+    ):
+        return config.memory.token_budget_hint
+    return None
 
 
 def _extract_ctx_hints(payload: Mapping[str, Any]) -> dict[str, Any]:
