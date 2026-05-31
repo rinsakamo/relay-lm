@@ -282,6 +282,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             messages=_extract_trace_messages(payload),
             token_budget=_resolve_relaymem_retrieval_token_budget(config),
             store_diagnostics=relaymem_store_diagnostics,
+            max_candidates=config.memory.candidate_limit,
         )
 
         compiled_message_count = (

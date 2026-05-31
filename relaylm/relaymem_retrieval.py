@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from relaylm.relaymem_store import discover_relaymem_page_candidates
+
 
 KNOWN_SCENE_TYPES = {
     "casual_chat",
@@ -17,6 +19,13 @@ KNOWN_SCENE_TYPES = {
     "vtuber_roleplay",
     "recovery",
 }
+_RETRIEVAL_ELIGIBLE_FALLBACK_REASONS = {
+    "memory_store_read_only_dry_run",
+    "memory_store_read_only_selection_dry_run",
+    "memory_store_files_blocked",
+    "memory_store_validation_truncated",
+    "memory_store_scan_truncated",
+}
 
 
 def build_relaymem_retrieval_dry_run_artifact(
@@ -26,6 +35,7 @@ def build_relaymem_retrieval_dry_run_artifact(
     messages: Sequence[Mapping[str, Any]] | None = None,
     token_budget: int | None = None,
     store_diagnostics: Mapping[str, Any] | None = None,
+    max_candidates: int = 3,
 ) -> dict[str, Any]:
     """Build a diagnostics-only RelayMEM runtime retrieval artifact.
 
@@ -48,10 +58,21 @@ def build_relaymem_retrieval_dry_run_artifact(
         relayref_unresolved=relayref_unresolved,
         store_diagnostics=store_diagnostics,
     )
+    selected_mem_candidates, discovery_blocked = _select_mem_candidates_dry_run(
+        fallback_reason=fallback_reason,
+        store_diagnostics=store_diagnostics,
+        query_terms=_term_hints(_latest_user_text(messages)),
+        max_candidates=max_candidates,
+    )
     blocked = _build_blocked_reasons(
         fallback_reason=fallback_reason,
         scene_type=scene_type,
         relayref_unresolved=relayref_unresolved,
+        discovery_blocked=discovery_blocked,
+    )
+    used_tokens = sum(
+        int(candidate.get("estimated_tokens", 0))
+        for candidate in selected_mem_candidates
     )
 
     return {
@@ -62,11 +83,12 @@ def build_relaymem_retrieval_dry_run_artifact(
         "scene_type": scene_type,
         "query_summary": _build_query_summary(messages),
         "selected": [],
+        "selected_mem_candidates": selected_mem_candidates,
         "blocked": blocked,
         "ctx_block": None,
         "fallback_reason": fallback_reason,
         "token_budget": _normalize_token_budget(token_budget),
-        "used_tokens": 0,
+        "used_tokens": used_tokens,
         "persistence_block": persistence_block,
         "persistence_block_reasons": persistence_block_reasons,
         "store_diagnostics": (
@@ -151,6 +173,7 @@ def _build_blocked_reasons(
     fallback_reason: str,
     scene_type: str,
     relayref_unresolved: bool,
+    discovery_blocked: list[dict[str, str]] | None = None,
 ) -> list[dict[str, str]]:
     if fallback_reason == "memory_store_not_configured":
         return []
@@ -159,7 +182,53 @@ def _build_blocked_reasons(
         blocked.append({"reason": f"scene_type:{scene_type}"})
     if relayref_unresolved:
         blocked.append({"reason": "must_not_silently_resolve_ambiguous_reference"})
+    blocked.extend(discovery_blocked or [])
     return blocked
+
+
+def _select_mem_candidates_dry_run(
+    *,
+    fallback_reason: str,
+    store_diagnostics: Mapping[str, Any] | None,
+    query_terms: list[str],
+    max_candidates: int,
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    if fallback_reason not in _RETRIEVAL_ELIGIBLE_FALLBACK_REASONS:
+        return [], []
+    if not isinstance(store_diagnostics, Mapping):
+        return [], []
+    root_path = store_diagnostics.get("root_path")
+    if not isinstance(root_path, str) or not root_path:
+        return [], []
+    discovery = discover_relaymem_page_candidates(
+        root_path=root_path,
+        query_terms=query_terms,
+        max_candidates=max(0, max_candidates),
+    )
+    candidates = []
+    for candidate in discovery.get("candidates", []):
+        if not isinstance(candidate, Mapping):
+            continue
+        dry_run_candidate = dict(candidate)
+        estimated_chars = dry_run_candidate.get("estimated_chars")
+        dry_run_candidate["estimated_tokens"] = (
+            max(1, int(estimated_chars) // 4)
+            if isinstance(estimated_chars, int) and estimated_chars > 0
+            else 0
+        )
+        dry_run_candidate["applied_to_ctx"] = False
+        candidates.append(dry_run_candidate)
+    blocked = [
+        {"path": str(item.get("path")), "reason": str(item.get("reason"))}
+        for item in discovery.get("blocked_files", [])
+        if isinstance(item, Mapping)
+    ]
+    discovery_reason = discovery.get("fallback_reason")
+    if isinstance(discovery_reason, str) and discovery_reason not in {
+        "memory_store_read_only_selection_dry_run",
+    }:
+        blocked.append({"reason": discovery_reason})
+    return candidates, blocked
 
 
 def _store_fallback_reason(store_diagnostics: Mapping[str, Any] | None) -> str | None:

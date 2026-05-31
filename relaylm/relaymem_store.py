@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import codecs
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,110 @@ _ALLOWED_SUFFIXES = {
 _MAX_FILES_TO_VALIDATE = 64
 _MAX_FILES_TO_SCAN = 128
 _MAX_SAMPLE_BYTES = 4096
+
+
+_CANDIDATE_DIRS = (
+    "memory/mem/projects",
+    "memory/mem/concepts",
+    "memory/mem/summaries",
+)
+_DEFAULT_MAX_CANDIDATES = 8
+_DEFAULT_MAX_CANDIDATE_READ_BYTES = 4096
+_DEFAULT_MAX_CANDIDATE_SCAN = 128
+
+
+def discover_relaymem_page_candidates(
+    *,
+    root_path: str | None,
+    query_terms: list[str] | None = None,
+    max_candidates: int = _DEFAULT_MAX_CANDIDATES,
+    max_read_bytes: int = _DEFAULT_MAX_CANDIDATE_READ_BYTES,
+    max_scan: int = _DEFAULT_MAX_CANDIDATE_SCAN,
+) -> dict[str, Any]:
+    """Discover MEM page candidates without writing or building ctx blocks.
+
+    Candidate discovery is bounded because this can run from the request path
+    when the store is enabled.
+    """
+
+    max_candidates = max(0, int(max_candidates))
+    max_read_bytes = max(1, int(max_read_bytes))
+    max_scan = max(0, int(max_scan))
+    result: dict[str, Any] = {
+        "schema_version": "relaymem.page_candidates.v0",
+        "diagnostics_only": True,
+        "read_only": True,
+        "root_path": root_path,
+        "max_candidates": max_candidates,
+        "max_read_bytes": max_read_bytes,
+        "max_scan": max_scan,
+        "index_summary": None,
+        "candidates": [],
+        "blocked_files": [],
+        "fallback_reason": None,
+        "candidate_scan_seen": 0,
+        "candidate_scan_truncated": False,
+        "candidate_cap_reached": False,
+        "full_candidate_tree_materialized": False,
+    }
+    if not root_path:
+        result["fallback_reason"] = "memory_store_root_not_configured"
+        return result
+
+    root = Path(root_path)
+    if not root.exists() or not root.is_dir():
+        result["fallback_reason"] = "memory_store_root_missing"
+        return result
+
+    result["index_summary"] = _read_index_summary(root, max_read_bytes)
+    query_terms = [term.lower() for term in (query_terms or []) if term]
+    candidates: list[dict[str, Any]] = []
+    blocked_files: list[dict[str, str]] = []
+    scan_seen = 0
+    scan_truncated = False
+    candidate_cap_reached = False
+
+    for file_path in _iter_candidate_page_files(root):
+        if scan_seen >= max_scan:
+            scan_truncated = True
+            break
+        scan_seen += 1
+        relative = file_path.relative_to(root).as_posix()
+        try:
+            sample = _read_text_sample(file_path, max_read_bytes)
+        except (UnicodeDecodeError, OSError):
+            blocked_files.append({"path": relative, "reason": "malformed_or_unreadable_file"})
+            continue
+        if len(candidates) >= max_candidates:
+            candidate_cap_reached = True
+            continue
+        reason = _selection_reason(relative, sample, query_terms)
+        candidates.append(
+            {
+                "path": relative,
+                "source": "mem_page",
+                "reason": reason,
+                "estimated_chars": len(sample),
+                "applied_to_ctx": False,
+            }
+        )
+
+    result["candidate_scan_seen"] = scan_seen
+    result["candidate_scan_truncated"] = scan_truncated
+    result["candidate_cap_reached"] = candidate_cap_reached
+    result["candidates"] = candidates
+    result["blocked_files"] = blocked_files
+    if blocked_files:
+        result["fallback_reason"] = "memory_store_files_blocked"
+    elif scan_truncated:
+        result["fallback_reason"] = "memory_store_candidate_scan_truncated"
+    elif candidate_cap_reached:
+        result["fallback_reason"] = "memory_store_candidate_cap_reached"
+    elif not candidates:
+        result["fallback_reason"] = "memory_store_no_candidate_pages"
+    else:
+        result["fallback_reason"] = "memory_store_read_only_selection_dry_run"
+    return result
 
 
 def build_relaymem_store_diagnostics(
@@ -168,9 +273,65 @@ def _validate_file_sample(file_path: Path) -> str | None:
     try:
         with file_path.open("rb") as handle:
             sample = handle.read(_MAX_SAMPLE_BYTES)
-        sample.decode("utf-8")
+            reached_limit = len(sample) == _MAX_SAMPLE_BYTES
+            if reached_limit:
+                extra = handle.read(1)
+                reached_limit = bool(extra)
+        _decode_utf8_sample(sample, allow_truncated_final_sequence=reached_limit)
     except UnicodeDecodeError:
         return "malformed_or_unreadable_file"
     except OSError:
         return "malformed_or_unreadable_file"
     return None
+
+
+
+def _read_index_summary(root: Path, max_read_bytes: int) -> dict[str, Any] | None:
+    index_path = root / "memory" / "mem" / "index.md"
+    if not index_path.is_file():
+        return None
+    try:
+        sample = _read_text_sample(index_path, max_read_bytes)
+    except (UnicodeDecodeError, OSError):
+        return {"path": "memory/mem/index.md", "readable": False}
+    return {
+        "path": "memory/mem/index.md",
+        "readable": True,
+        "estimated_chars": len(sample),
+    }
+
+
+def _iter_candidate_page_files(root: Path) -> Iterator[Path]:
+    for relative_dir in _CANDIDATE_DIRS:
+        page_dir = root / relative_dir
+        if not page_dir.exists() or not page_dir.is_dir():
+            continue
+        for path in page_dir.glob("*.md"):
+            if path.is_file():
+                yield path
+
+
+def _read_text_sample(file_path: Path, max_read_bytes: int) -> str:
+    with file_path.open("rb") as handle:
+        sample = handle.read(max(1, max_read_bytes))
+        reached_limit = len(sample) == max(1, max_read_bytes)
+        if reached_limit:
+            extra = handle.read(1)
+            reached_limit = bool(extra)
+    return _decode_utf8_sample(sample, allow_truncated_final_sequence=reached_limit)
+
+
+def _decode_utf8_sample(
+    sample: bytes,
+    *,
+    allow_truncated_final_sequence: bool,
+) -> str:
+    decoder = codecs.getincrementaldecoder("utf-8")()
+    return decoder.decode(sample, final=not allow_truncated_final_sequence)
+
+
+def _selection_reason(relative_path: str, sample: str, query_terms: list[str]) -> str:
+    haystack = f"{relative_path}\n{sample}".lower()
+    if any(term in haystack for term in query_terms):
+        return "keyword_match"
+    return "store_page_available"
