@@ -551,3 +551,60 @@ Safety gates:
 - RelayREF unresolved reference => no MEM candidates; ask for confirmation instead.
 
 This stage proves that the runtime can inspect file-backed MEM pages and produce auditable selection diagnostics while preserving the current backend payload and avoiding all MEM/SOUL mutation.
+
+---
+
+## CTX block candidate dry-run diagnostics
+
+RelayMEM Retrieval may now assemble a token-budgeted `ctx_block_candidate` from `selected_mem_candidates`. This remains diagnostics-only: the runtime does not copy the candidate into `ctx_block`, does not inject it into backend prompts, does not mutate request metadata, and does not edit MEM/SOUL. A future apply gate must be introduced separately before any candidate can affect runtime context.
+
+Minimal artifact shape:
+
+```yaml
+relaymem_retrieval_artifact:
+  selected: []
+  selected_mem_candidates:
+    - path: memory/mem/projects/relaymem.md
+      source: mem_page
+      reason: keyword_match
+      estimated_chars: 320
+      estimated_tokens: 80
+      applied_to_ctx: false
+  ctx_block: null
+  ctx_block_candidate:
+    schema_version: relaymem.ctx_block_candidate.v0
+    diagnostics_only: true
+    applied_to_ctx: false
+    source: selected_mem_candidates
+    budget:
+      token_limit: 800
+      estimated_tokens: 80
+      truncated: false
+    entries:
+      - path: memory/mem/projects/relaymem.md
+        source: mem_page
+        reason: keyword_match
+        estimated_tokens: 80
+        included: true
+        truncated: false
+        applied_to_ctx: false
+    blocked: []
+  apply_allowed: false
+  diagnostics_only: true
+```
+
+Token-budget rules:
+
+- Use the runtime RelayMEM retrieval token budget resolved from `memory.token_budget` or `memory.token_budget_hint`.
+- Estimate tokens with the MVP heuristic `estimated_chars // 4`, with a minimum of one token for non-empty candidates.
+- Include candidates only while the cumulative estimated tokens remain within the diagnostics budget.
+- Candidates that exceed the diagnostics budget remain unapplied and are reported with `reason: token_budget_exceeded`.
+- `budget.estimated_tokens` is diagnostic only and must not be treated as prompt token usage.
+
+Safety gates are unchanged:
+
+- `recovery` / `current_context_only` leaves `ctx_block_candidate.entries` empty.
+- `formal_document` / `medical_or_safety` leaves entries empty.
+- Unknown or malformed RelaySCN artifacts fail closed and leave entries empty.
+- RelayREF unresolved references leave entries empty so ambiguous references are not silently resolved through MEM.
+- `ctx_block` remains `null`, `apply_allowed` remains `false`, and every entry has `applied_to_ctx: false`.

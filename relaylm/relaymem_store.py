@@ -94,6 +94,8 @@ def discover_relaymem_page_candidates(
             break
         scan_seen += 1
         relative = file_path.relative_to(root).as_posix()
+        if len(candidates) >= max_candidates:
+            candidate_cap_reached = True
         try:
             sample = _read_text_sample(file_path, max_read_bytes)
         except (UnicodeDecodeError, OSError):
@@ -115,7 +117,11 @@ def discover_relaymem_page_candidates(
 
     result["candidate_scan_seen"] = scan_seen
     result["candidate_scan_truncated"] = scan_truncated
-    result["candidate_cap_reached"] = candidate_cap_reached
+    result["candidate_cap_reached"] = candidate_cap_reached or (
+        max_candidates > 0
+        and len(candidates) >= max_candidates
+        and scan_seen > len(candidates)
+    )
     result["candidates"] = candidates
     result["blocked_files"] = blocked_files
     if blocked_files:

@@ -58,11 +58,16 @@ def build_relaymem_retrieval_dry_run_artifact(
         relayref_unresolved=relayref_unresolved,
         store_diagnostics=store_diagnostics,
     )
+    normalized_token_budget = _normalize_token_budget(token_budget)
     selected_mem_candidates, discovery_blocked = _select_mem_candidates_dry_run(
         fallback_reason=fallback_reason,
         store_diagnostics=store_diagnostics,
         query_terms=_term_hints(_latest_user_text(messages)),
         max_candidates=max_candidates,
+    )
+    ctx_block_candidate = _build_ctx_block_candidate(
+        selected_mem_candidates=selected_mem_candidates,
+        token_limit=normalized_token_budget["limit"],
     )
     blocked = _build_blocked_reasons(
         fallback_reason=fallback_reason,
@@ -86,8 +91,9 @@ def build_relaymem_retrieval_dry_run_artifact(
         "selected_mem_candidates": selected_mem_candidates,
         "blocked": blocked,
         "ctx_block": None,
+        "ctx_block_candidate": ctx_block_candidate,
         "fallback_reason": fallback_reason,
-        "token_budget": _normalize_token_budget(token_budget),
+        "token_budget": normalized_token_budget,
         "used_tokens": used_tokens,
         "persistence_block": persistence_block,
         "persistence_block_reasons": persistence_block_reasons,
@@ -229,6 +235,67 @@ def _select_mem_candidates_dry_run(
     }:
         blocked.append({"reason": discovery_reason})
     return candidates, blocked
+
+
+def _build_ctx_block_candidate(
+    *,
+    selected_mem_candidates: list[dict[str, Any]],
+    token_limit: int | None,
+) -> dict[str, Any]:
+    entries: list[dict[str, Any]] = []
+    blocked: list[dict[str, str]] = []
+    estimated_tokens = 0
+    truncated = False
+
+    for candidate in selected_mem_candidates:
+        estimated = _candidate_estimated_tokens(candidate)
+        path = str(candidate.get("path", ""))
+        source = str(candidate.get("source", "mem_page"))
+        reason = str(candidate.get("reason", "candidate_available"))
+        would_exceed_budget = (
+            token_limit is not None and estimated_tokens + estimated > token_limit
+        )
+        included = not would_exceed_budget
+        if included:
+            estimated_tokens += estimated
+        else:
+            truncated = True
+            blocked.append({"path": path, "reason": "token_budget_exceeded"})
+        entries.append(
+            {
+                "path": path,
+                "source": source,
+                "reason": reason,
+                "estimated_tokens": estimated,
+                "included": included,
+                "truncated": would_exceed_budget,
+                "applied_to_ctx": False,
+            }
+        )
+
+    return {
+        "schema_version": "relaymem.ctx_block_candidate.v0",
+        "diagnostics_only": True,
+        "applied_to_ctx": False,
+        "source": "selected_mem_candidates",
+        "budget": {
+            "token_limit": token_limit,
+            "estimated_tokens": estimated_tokens,
+            "truncated": truncated,
+        },
+        "entries": entries,
+        "blocked": blocked,
+    }
+
+
+def _candidate_estimated_tokens(candidate: Mapping[str, Any]) -> int:
+    estimated_tokens = candidate.get("estimated_tokens")
+    if isinstance(estimated_tokens, int) and estimated_tokens >= 0:
+        return estimated_tokens
+    estimated_chars = candidate.get("estimated_chars")
+    if isinstance(estimated_chars, int) and estimated_chars > 0:
+        return max(1, estimated_chars // 4)
+    return 0
 
 
 def _store_fallback_reason(store_diagnostics: Mapping[str, Any] | None) -> str | None:
