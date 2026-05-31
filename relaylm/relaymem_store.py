@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,7 @@ _ALLOWED_SUFFIXES = {
     "memory/mem": {".md"},
 }
 _MAX_FILES_TO_VALIDATE = 64
+_MAX_FILES_TO_SCAN = 128
 _MAX_SAMPLE_BYTES = 4096
 
 
@@ -32,8 +34,8 @@ def build_relaymem_store_diagnostics(
 ) -> dict[str, Any]:
     """Inspect the RelayMEM file-backed store layout without writing to it.
 
-    The runtime dry-run path intentionally validates only a bounded sample of
-    files. It must not read the full memory store on every request.
+    The runtime dry-run path intentionally streams only a bounded sample of the
+    store. It must not materialize or read the full memory tree on every request.
     """
 
     diagnostics: dict[str, Any] = {
@@ -52,11 +54,14 @@ def build_relaymem_store_diagnostics(
         "blocked_files": [],
         "fallback_reason": None,
         "validation": {
+            "max_files_to_scan": _MAX_FILES_TO_SCAN,
             "max_files_to_validate": _MAX_FILES_TO_VALIDATE,
             "max_sample_bytes": _MAX_SAMPLE_BYTES,
             "files_seen": 0,
             "files_validated": 0,
+            "scan_truncated": False,
             "validation_truncated": False,
+            "full_tree_materialized": False,
             "full_file_reads": False,
         },
     }
@@ -84,9 +89,13 @@ def build_relaymem_store_diagnostics(
     blocked_files: list[dict[str, str]] = []
     files_seen = 0
     files_validated = 0
+    scan_truncated = False
     validation_truncated = False
 
     for file_path in _iter_store_files(root):
+        if files_seen >= _MAX_FILES_TO_SCAN:
+            scan_truncated = True
+            break
         files_seen += 1
         relative = file_path.relative_to(root).as_posix()
         if not _is_supported_file(relative, file_path.suffix):
@@ -104,11 +113,14 @@ def build_relaymem_store_diagnostics(
             page_paths.append(relative)
 
     diagnostics["validation"] = {
+        "max_files_to_scan": _MAX_FILES_TO_SCAN,
         "max_files_to_validate": _MAX_FILES_TO_VALIDATE,
         "max_sample_bytes": _MAX_SAMPLE_BYTES,
         "files_seen": files_seen,
         "files_validated": files_validated,
+        "scan_truncated": scan_truncated,
         "validation_truncated": validation_truncated,
+        "full_tree_materialized": False,
         "full_file_reads": False,
     }
     diagnostics["page_paths"] = sorted(page_paths)
@@ -116,6 +128,8 @@ def build_relaymem_store_diagnostics(
     diagnostics["blocked_files"] = blocked_files
     if blocked_files:
         diagnostics["fallback_reason"] = "memory_store_files_blocked"
+    elif scan_truncated:
+        diagnostics["fallback_reason"] = "memory_store_scan_truncated"
     elif validation_truncated:
         diagnostics["fallback_reason"] = "memory_store_validation_truncated"
     elif not diagnostics["index_present"]:
@@ -133,11 +147,13 @@ def _layout(root_path: str | None) -> dict[str, list[str]]:
     }
 
 
-def _iter_store_files(root: Path) -> list[Path]:
+def _iter_store_files(root: Path) -> Iterator[Path]:
     memory_root = root / "memory"
     if not memory_root.exists() or not memory_root.is_dir():
-        return []
-    return [path for path in memory_root.rglob("*") if path.is_file()]
+        return
+    for path in memory_root.rglob("*"):
+        if path.is_file():
+            yield path
 
 
 def _is_supported_file(relative_path: str, suffix: str) -> bool:
