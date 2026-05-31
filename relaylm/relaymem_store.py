@@ -33,6 +33,7 @@ _CANDIDATE_DIRS = (
 )
 _DEFAULT_MAX_CANDIDATES = 8
 _DEFAULT_MAX_CANDIDATE_READ_BYTES = 4096
+_DEFAULT_MAX_CANDIDATE_SCAN = 128
 
 
 def discover_relaymem_page_candidates(
@@ -41,9 +42,17 @@ def discover_relaymem_page_candidates(
     query_terms: list[str] | None = None,
     max_candidates: int = _DEFAULT_MAX_CANDIDATES,
     max_read_bytes: int = _DEFAULT_MAX_CANDIDATE_READ_BYTES,
+    max_scan: int = _DEFAULT_MAX_CANDIDATE_SCAN,
 ) -> dict[str, Any]:
-    """Discover MEM page candidates without writing or building ctx blocks."""
+    """Discover MEM page candidates without writing or building ctx blocks.
 
+    Candidate discovery is bounded because this can run from the request path
+    when the store is enabled.
+    """
+
+    max_candidates = max(0, int(max_candidates))
+    max_read_bytes = max(1, int(max_read_bytes))
+    max_scan = max(0, int(max_scan))
     result: dict[str, Any] = {
         "schema_version": "relaymem.page_candidates.v0",
         "diagnostics_only": True,
@@ -51,11 +60,14 @@ def discover_relaymem_page_candidates(
         "root_path": root_path,
         "max_candidates": max_candidates,
         "max_read_bytes": max_read_bytes,
+        "max_scan": max_scan,
         "index_summary": None,
         "candidates": [],
         "blocked_files": [],
         "fallback_reason": None,
+        "candidate_scan_seen": 0,
         "candidate_scan_truncated": False,
+        "full_candidate_tree_materialized": False,
     }
     if not root_path:
         result["fallback_reason"] = "memory_store_root_not_configured"
@@ -70,11 +82,17 @@ def discover_relaymem_page_candidates(
     query_terms = [term.lower() for term in (query_terms or []) if term]
     candidates: list[dict[str, Any]] = []
     blocked_files: list[dict[str, str]] = []
+    scan_seen = 0
+    scan_truncated = False
 
     for file_path in _iter_candidate_page_files(root):
+        if scan_seen >= max_scan:
+            scan_truncated = True
+            break
+        scan_seen += 1
         relative = file_path.relative_to(root).as_posix()
         if len(candidates) >= max_candidates:
-            result["candidate_scan_truncated"] = True
+            scan_truncated = True
             break
         try:
             sample = _read_text_sample(file_path, max_read_bytes)
@@ -92,10 +110,14 @@ def discover_relaymem_page_candidates(
             }
         )
 
+    result["candidate_scan_seen"] = scan_seen
+    result["candidate_scan_truncated"] = scan_truncated
     result["candidates"] = candidates
     result["blocked_files"] = blocked_files
     if blocked_files:
         result["fallback_reason"] = "memory_store_files_blocked"
+    elif scan_truncated:
+        result["fallback_reason"] = "memory_store_candidate_scan_truncated"
     elif not candidates:
         result["fallback_reason"] = "memory_store_no_candidate_pages"
     else:
@@ -274,7 +296,7 @@ def _iter_candidate_page_files(root: Path) -> Iterator[Path]:
         page_dir = root / relative_dir
         if not page_dir.exists() or not page_dir.is_dir():
             continue
-        for path in sorted(page_dir.glob("*.md")):
+        for path in page_dir.glob("*.md"):
             if path.is_file():
                 yield path
 
