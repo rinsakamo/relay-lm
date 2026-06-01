@@ -869,3 +869,50 @@ Blocked reasons include:
 The gated runtime CTX injection path remains metadata-only. Runtime prompt content may include sanitized path/reason metadata from the CTX injection plan, but it must not include `snippet_text` or raw MEM page body content in this phase.
 
 Before any future snippet apply gate, RelayMEM still needs stricter CTX packing, source evidence review, user-visible/debug diagnostics, and explicit policy for when snippet text is allowed to become prompt-visible.
+
+## CTX block candidate evidence metadata dry-run
+
+`ctx_block_candidate.entries` now carries diagnostics-only evidence metadata that links an entry back to the bounded snippet evidence envelope. This does not make snippet text prompt-visible and does not create a runtime `ctx_block`.
+
+Entry-level evidence metadata:
+
+```yaml
+ctx_block_candidate:
+  schema_version: relaymem.ctx_block_candidate.v0
+  diagnostics_only: true
+  applied_to_ctx: false
+  entries:
+    - path: memory/mem/projects/relaymem.md
+      source: mem_page
+      reason: keyword_match
+      estimated_tokens: 80
+      included: true
+      truncated: false
+      applied_to_ctx: false
+      evidence_id: evidence:0
+      snippet_available: true
+      evidence_kind: bounded_page_snippet
+      snippet_chars: 240
+      snippet_estimated_tokens: 60
+      snippet_included_in_runtime_prompt: false
+```
+
+Linking rules:
+
+- `evidence_envelope.snippets[*].evidence_id` is stable within the request artifact and matches `ctx_block_candidate.entries[*].evidence_id` when a bounded snippet is available.
+- `selected_index` is included in the evidence envelope so duplicate paths can still be tied back to the selected candidate order.
+- If extraction is disabled or skipped, entries remain metadata-only with `snippet_available: false`, `evidence_kind: none`, zero snippet counts, and `snippet_included_in_runtime_prompt: false`.
+- If extraction is blocked for an entry, `evidence_envelope.blocked[*].evidence_id` can be referenced by the entry and the entry may expose `evidence_blocked_reason` without carrying `snippet_text`.
+
+Safety posture:
+
+- `snippet_text` is not copied into `ctx_block_candidate.entries`.
+- `snippet_text` is not copied into runtime CTX injection source entries.
+- Runtime prompts remain path/reason metadata-only in this phase.
+- `ctx_block` remains `null` and `apply_allowed` remains `false`.
+- Recovery, current-context-only, formal-document, medical/safety, unknown/malformed scene, and unresolved-reference paths do not produce snippet-bearing CTX entries.
+
+Future phase:
+
+- A gated snippet-bearing CTX block can use `evidence_id` links to decide which evidence snippets are eligible for prompt-visible packing.
+- That future gate must still enforce source evidence policy, stricter token budgeting, scene/ref safety, and user/debug observability before copying any snippet body into a runtime prompt.
