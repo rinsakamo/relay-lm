@@ -163,11 +163,40 @@ def _runtime_context_message_content(plan: Mapping[str, Any]) -> str:
     for entry in source_entries:
         if not isinstance(entry, Mapping):
             continue
-        path = str(entry.get("path", "")).strip()
-        reason = str(entry.get("reason", "candidate_available")).strip()
+        path = _sanitize_mem_prompt_metadata(entry.get("path"))
+        reason = _sanitize_mem_prompt_metadata(entry.get("reason"), max_chars=80)
         if path:
             lines.append(f"- {path} (reason: {reason})")
     return "\n".join(lines) if len(lines) > 2 else ""
+
+
+def _sanitize_mem_prompt_metadata(value: object, *, max_chars: int = 160) -> str:
+    """Normalize RelayMEM metadata before embedding it in runtime prompts."""
+
+    text = "" if value is None else str(value)
+    normalized_chars: list[str] = []
+    replacements = {
+        "`": "'",
+        '"': "'",
+        "[": "(",
+        "]": ")",
+        "{": "(",
+        "}": ")",
+        "<": "(",
+        ">": ")",
+        ":": " -",
+    }
+    for char in text:
+        codepoint = ord(char)
+        if char in {"\r", "\n", "\t"} or codepoint < 32 or codepoint == 127:
+            normalized_chars.append(" ")
+            continue
+        normalized_chars.append(replacements.get(char, char))
+    normalized = " ".join("".join(normalized_chars).split())
+    max_chars = max(1, int(max_chars))
+    if len(normalized) > max_chars:
+        return normalized[: max_chars - 3].rstrip() + "..." if max_chars > 3 else normalized[:max_chars]
+    return normalized
 
 
 def _before_latest_user_index(messages: Sequence[Any]) -> int | None:

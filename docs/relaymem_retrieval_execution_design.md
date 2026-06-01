@@ -771,3 +771,10 @@ Token-budget ordering:
 - When `memory.token_budget_truncation_enabled` is true, the injected RelayMEM system message is part of the payload evaluated by truncation.
 - The backend receives only the final post-truncation payload.
 - `runtime_ctx_injection_result` records whether the RelayMEM context message was inserted, while `token_budget_truncation` records any subsequent truncation of the injected payload.
+
+Prompt metadata safety:
+
+- Runtime CTX injection sanitizes RelayMEM path/reason metadata before embedding it in a system message.
+- Newlines, tabs, carriage returns, ASCII control characters, role-like colon separators, quotes/backticks, and brackets are normalized before insertion.
+- Long metadata values are truncated before insertion.
+- Raw MEM page bodies remain excluded from runtime CTX injection.
