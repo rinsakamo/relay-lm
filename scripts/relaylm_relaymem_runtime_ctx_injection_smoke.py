@@ -91,6 +91,8 @@ def _write_config(
     retrieval_dry_run_only: bool = True,
     ctx_block_apply_enabled: bool = False,
     token_budget_hint: int = 800,
+    token_budget: int | None = None,
+    token_budget_truncation_enabled: bool = False,
 ) -> None:
     cfg = yaml.safe_load((REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8"))
     cfg["backends"]["local_backend"]["base_url"] = f"http://127.0.0.1:{port}/v1"
@@ -104,8 +106,11 @@ def _write_config(
             "root_path": str(store_root),
             "candidate_limit": 4,
             "token_budget_hint": token_budget_hint,
+            "token_budget_truncation_enabled": token_budget_truncation_enabled,
         }
     )
+    if token_budget is not None:
+        cfg["memory"]["token_budget"] = token_budget
     path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
 
 
@@ -132,6 +137,8 @@ def _post(
     retrieval_dry_run_only: bool,
     ctx_block_apply_enabled: bool,
     token_budget_hint: int = 800,
+    token_budget: int | None = None,
+    token_budget_truncation_enabled: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     with tempfile.TemporaryDirectory() as td:
         trace_path = Path(td) / "trace.jsonl"
@@ -144,6 +151,8 @@ def _post(
             retrieval_dry_run_only=retrieval_dry_run_only,
             ctx_block_apply_enabled=ctx_block_apply_enabled,
             token_budget_hint=token_budget_hint,
+            token_budget=token_budget,
+            token_budget_truncation_enabled=token_budget_truncation_enabled,
         )
         app = create_app(str(cfg_path))
         with TestClient(app) as client:
@@ -178,12 +187,26 @@ def _assert_no_injected_context(payload: dict[str, Any]) -> None:
 def _assert_injected_context(payload: dict[str, Any]) -> None:
     messages = payload.get("messages")
     require(isinstance(messages, list), payload)
-    require(len(messages) == 2, payload)
-    require(messages[0]["role"] == "system", payload)
-    require(messages[0]["content"].startswith("[RelayMEM Context]"), payload)
-    require("diagnostics-only" not in messages[0]["content"], payload)
-    require("memory/mem/projects/relaymem.md" in messages[0]["content"], payload)
-    require(messages[1]["role"] == "user", payload)
+    context_indexes = [
+        index
+        for index, message in enumerate(messages)
+        if (
+            isinstance(message, dict)
+            and message.get("role") == "system"
+            and isinstance(message.get("content"), str)
+            and message["content"].startswith("[RelayMEM Context]")
+        )
+    ]
+    require(len(context_indexes) == 1, payload)
+    context = messages[context_indexes[0]]
+    require("diagnostics-only" not in context["content"], payload)
+    require("memory/mem/projects/relaymem.md" in context["content"], payload)
+    latest_user_index = max(
+        index
+        for index, message in enumerate(messages)
+        if isinstance(message, dict) and message.get("role") == "user"
+    )
+    require(context_indexes[0] == latest_user_index - 1, payload)
 
 
 def main() -> int:
@@ -232,6 +255,51 @@ def main() -> int:
             _assert_injected_context(capture.last())
             require(isinstance(enabled_metadata.get("runtime_ctx_injection_result"), dict), enabled_metadata)
             print("ok enabled gates insert RelayMEM Context system message before latest user")
+
+            truncation_payload = {
+                "model": "relaylm-default",
+                "messages": [
+                    {"role": "user", "content": "RelayMEM runtime ctx injection"},
+                    {"role": "assistant", "content": "older assistant message " * 80},
+                    {"role": "user", "content": "RelayMEM runtime ctx injection latest"},
+                ],
+                "metadata": {
+                    "scene_state": {
+                        "scene_type": "design_talk",
+                        "confidence": 0.95,
+                        "stability": 0.9,
+                    }
+                },
+                "stream": False,
+            }
+            truncation_original_messages = [dict(message) for message in truncation_payload["messages"]]
+            truncation_result, truncation_metadata = _post(
+                port=port,
+                store_root=store_root,
+                payload=truncation_payload,
+                retrieval_dry_run_only=False,
+                ctx_block_apply_enabled=True,
+                token_budget=80,
+                token_budget_truncation_enabled=True,
+            )
+            token_truncation = truncation_metadata.get("token_budget_truncation")
+            require(truncation_result["applied"] is True, truncation_result)
+            require(isinstance(token_truncation, dict), truncation_metadata)
+            require(token_truncation.get("applied") is True, token_truncation)
+            require("assistant" in token_truncation.get("dropped_roles", []), token_truncation)
+            require(
+                token_truncation.get("original_estimated_tokens", 0)
+                > token_truncation.get("truncated_estimated_tokens", 0),
+                token_truncation,
+            )
+            require(truncation_payload["messages"] == truncation_original_messages, truncation_payload)
+            truncated_backend_payload = capture.last()
+            _assert_injected_context(truncated_backend_payload)
+            require(
+                all(message.get("role") != "assistant" for message in truncated_backend_payload["messages"]),
+                truncated_backend_payload,
+            )
+            print("ok token budget truncation runs after RelayMEM context injection")
 
             for scene_type in ("recovery", "formal_document", "medical_or_safety"):
                 payload = _scene_payload(scene_type, "RelayMEM runtime ctx injection")

@@ -213,10 +213,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
             if memory_adapter_shadow_dry_run is not None
             else None
         )
-        forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
-            config=config,
-            payload=compiled_request.payload,
-        )
+        forwarded_payload = dict(compiled_request.payload)
+        token_budget_truncation: dict[str, Any] | None = None
         relayemo_artifact: dict[str, Any] | None = None
         if config.relayemo_enabled:
             session_key, session_key_source = _resolve_relayemo_session_key(
@@ -293,6 +291,10 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
                 retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
             )
+        )
+        forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
+            config=config,
+            payload=forwarded_payload,
         )
 
         compiled_message_count = (

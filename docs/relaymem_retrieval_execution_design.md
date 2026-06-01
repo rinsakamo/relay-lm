@@ -764,3 +764,10 @@ Blocked/runtime-safe cases:
 - no-candidate plans do not inject.
 
 This stage intentionally keeps MEM/SOUL mutation out of scope. Future work may add page-body packing, stronger provenance, and stricter downstream apply gates.
+
+Token-budget ordering:
+
+- Runtime CTX injection runs before message-level token-budget truncation.
+- When `memory.token_budget_truncation_enabled` is true, the injected RelayMEM system message is part of the payload evaluated by truncation.
+- The backend receives only the final post-truncation payload.
+- `runtime_ctx_injection_result` records whether the RelayMEM context message was inserted, while `token_budget_truncation` records any subsequent truncation of the injected payload.
