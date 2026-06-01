@@ -1016,7 +1016,8 @@ ctx_block_snippet_candidate:
 Generation rules:
 
 - `dry_run_only` and `eligible_but_not_applied` can produce entries for diagnostics review.
-- `blocked_scene_policy`, `blocked_unresolved_reference`, `blocked_no_candidates`, `blocked_no_snippet`, `blocked_snippet_budget`, and `blocked_snippet_evidence` keep `entries` empty.
+- `blocked_scene_policy`, `blocked_unresolved_reference`, `blocked_no_candidates`, `blocked_no_snippet`, and `blocked_snippet_evidence` keep `entries` empty without snippet budget packing.
+- `blocked_snippet_budget` keeps `entries` empty but still scans snippet diagnostics so the candidate reports `budget.truncated: true` and `blocked` entries with `reason: snippet_budget_exceeded`.
 - `memory.snippet_budget` is reflected in the candidate budget summary and any over-budget snippet evidence is moved to `blocked` with `snippet_budget_exceeded`.
 - `snippet_text` is present only inside this diagnostics artifact and the source snippet evidence diagnostics.
 

@@ -182,7 +182,19 @@ def _assert_blocked_candidates(root: Path) -> None:
         snippet_budget=1,
     )
     require(small_budget["snippet_apply_decision"] == "blocked_snippet_budget", small_budget)
-    require(small_budget["ctx_block_snippet_candidate"]["entries"] == [], small_budget)
+    small_candidate = small_budget["ctx_block_snippet_candidate"]
+    require(small_candidate["entries"] == [], small_budget)
+    require(small_candidate["budget"]["truncated"] is True, small_candidate)
+    require(
+        any(item.get("reason") == "snippet_budget_exceeded" for item in small_candidate["blocked"]),
+        small_candidate,
+    )
+    require(
+        all("snippet_text" not in item for item in small_candidate["blocked"]),
+        small_candidate,
+    )
+    require(small_budget["ctx_block"] is None, small_budget)
+    require(small_budget["apply_allowed"] is False, small_budget)
     print("ok blocked snippet decisions leave snippet ctx block entries empty")
 
 

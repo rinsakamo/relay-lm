@@ -835,7 +835,12 @@ def _build_ctx_block_snippet_candidate(
             for item in envelope_blocked
             if isinstance(item, Mapping)
         )
-    if snippet_apply_decision not in {"dry_run_only", "eligible_but_not_applied"}:
+    budget_blocked = snippet_apply_decision == "blocked_snippet_budget"
+    if snippet_apply_decision not in {
+        "dry_run_only",
+        "eligible_but_not_applied",
+        "blocked_snippet_budget",
+    }:
         blocked_reasons = {
             str(item.get("reason"))
             for item in candidate["blocked"]
@@ -852,8 +857,11 @@ def _build_ctx_block_snippet_candidate(
             continue
         snippet_tokens = _non_negative_int(raw_snippet.get("estimated_tokens"))
         would_exceed_budget = (
-            normalized_budget is not None
-            and estimated_tokens + snippet_tokens > normalized_budget
+            budget_blocked
+            or (
+                normalized_budget is not None
+                and estimated_tokens + snippet_tokens > normalized_budget
+            )
         )
         if would_exceed_budget:
             truncated = True
@@ -862,6 +870,8 @@ def _build_ctx_block_snippet_candidate(
                     "evidence_id": str(raw_snippet.get("evidence_id", "")),
                     "path": str(raw_snippet.get("path", "")),
                     "reason": "snippet_budget_exceeded",
+                    "estimated_tokens": snippet_tokens,
+                    "token_limit": normalized_budget,
                 }
             )
             continue
