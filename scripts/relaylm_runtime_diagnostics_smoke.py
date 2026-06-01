@@ -26,6 +26,10 @@ def main() -> int:
         mode_applied="pass_through",
         stream_enabled=False,
         compiler_used=False,
+        runtime_ctx_injection_result={
+            "schema_version": "relaymem.runtime_ctx_injection_result.v0",
+            "applied": False,
+        },
     )
 
     headers = diagnostics.to_headers()
@@ -43,6 +47,9 @@ def main() -> int:
     require(payload["mode_applied"] == "pass_through", f"bad mode_applied: {payload}")
     require(payload["stream_enabled"] is False, f"bad stream_enabled: {payload}")
     require(payload["compiler_used"] is False, f"bad compiler_used: {payload}")
+    runtime_ctx = payload.get("runtime_ctx_injection_result")
+    require(isinstance(runtime_ctx, dict), f"missing runtime ctx diagnostics: {payload}")
+    require(runtime_ctx.get("applied") is False, f"bad runtime ctx diagnostics: {payload}")
     print("ok diagnostics log payload")
 
     fallback = RequestDiagnostics(

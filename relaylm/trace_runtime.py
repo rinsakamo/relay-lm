@@ -86,6 +86,10 @@ def trace_runtime_event(
             trace_metadata["relaymem_retrieval_artifact"] = (
                 diagnostics.relaymem_retrieval_artifact
             )
+        if diagnostics.runtime_ctx_injection_result is not None:
+            trace_metadata["runtime_ctx_injection_result"] = (
+                diagnostics.runtime_ctx_injection_result
+            )
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,

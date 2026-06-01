@@ -35,6 +35,7 @@ from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relayref import build_relayref_dry_run_artifact
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
+from relaylm.relaymem_runtime_ctx import maybe_apply_relaymem_runtime_ctx_injection
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.relayemo import (
     load_session_assistant_state,
@@ -212,10 +213,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
             if memory_adapter_shadow_dry_run is not None
             else None
         )
-        forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
-            config=config,
-            payload=compiled_request.payload,
-        )
+        forwarded_payload = dict(compiled_request.payload)
+        token_budget_truncation: dict[str, Any] | None = None
         relayemo_artifact: dict[str, Any] | None = None
         if config.relayemo_enabled:
             session_key, session_key_source = _resolve_relayemo_session_key(
@@ -284,6 +283,21 @@ def create_app(config_path: str | None = None) -> FastAPI:
             store_diagnostics=relaymem_store_diagnostics,
             max_candidates=config.memory.candidate_limit,
             ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
+        )
+        forwarded_payload, runtime_ctx_injection_result = (
+            maybe_apply_relaymem_runtime_ctx_injection(
+                payload=forwarded_payload,
+                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+                ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
+                retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
+                token_budget_truncation_enabled=config.memory.token_budget_truncation_enabled,
+                token_budget=config.memory.token_budget,
+                chars_per_token=config.memory.chars_per_token,
+            )
+        )
+        forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
+            config=config,
+            payload=forwarded_payload,
         )
 
         compiled_message_count = (
@@ -378,6 +392,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
             relayref_artifact=relayref_artifact,
             relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+            runtime_ctx_injection_result=runtime_ctx_injection_result,
         )
         feedback_summary = (
             build_relaysoul_runtime_feedback_summary(base_diagnostics)
