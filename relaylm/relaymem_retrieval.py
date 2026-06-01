@@ -79,6 +79,11 @@ def build_relaymem_retrieval_dry_run_artifact(
         retrieval_dry_run_only=_retrieval_dry_run_only(store_diagnostics),
         ctx_block_apply_enabled=ctx_block_apply_enabled,
     )
+    ctx_injection_plan = _build_ctx_injection_plan(
+        ctx_block_candidate=ctx_block_candidate,
+        apply_decision=apply_readiness["apply_decision"],
+        apply_blocked_reasons=apply_readiness["apply_blocked_reasons"],
+    )
     blocked = _build_blocked_reasons(
         fallback_reason=fallback_reason,
         scene_type=scene_type,
@@ -102,6 +107,7 @@ def build_relaymem_retrieval_dry_run_artifact(
         "blocked": blocked,
         "ctx_block": None,
         "ctx_block_candidate": ctx_block_candidate,
+        "ctx_injection_plan": ctx_injection_plan,
         "fallback_reason": fallback_reason,
         "token_budget": normalized_token_budget,
         "used_tokens": used_tokens,
@@ -309,6 +315,98 @@ def _candidate_estimated_tokens(candidate: Mapping[str, Any]) -> int:
     estimated_chars = candidate.get("estimated_chars")
     if isinstance(estimated_chars, int) and estimated_chars > 0:
         return max(1, estimated_chars // 4)
+    return 0
+
+
+def _build_ctx_injection_plan(
+    *,
+    ctx_block_candidate: Mapping[str, Any],
+    apply_decision: str,
+    apply_blocked_reasons: Sequence[str],
+) -> dict[str, Any]:
+    included_entries = _included_ctx_candidate_entries(ctx_block_candidate)
+    plan_eligible = apply_decision in {"dry_run_only", "eligible_but_not_applied"}
+    preview_text = (
+        _build_ctx_injection_preview(included_entries)
+        if plan_eligible and included_entries
+        else None
+    )
+    estimated_tokens = sum(
+        _entry_estimated_tokens(entry) for entry in included_entries
+    ) if preview_text else 0
+    blocked_reasons = _ctx_injection_blocked_reasons(
+        apply_decision=apply_decision,
+        apply_blocked_reasons=apply_blocked_reasons,
+        has_included_entries=bool(included_entries),
+        plan_eligible=plan_eligible,
+    )
+    return {
+        "schema_version": "relaymem.ctx_injection_plan.v0",
+        "diagnostics_only": True,
+        "applied": False,
+        "payload_mutation_allowed": False,
+        "target": "backend_messages",
+        "insertion_point": "before_latest_user",
+        "preview_text": preview_text,
+        "estimated_tokens": estimated_tokens,
+        "source": "ctx_block_candidate",
+        "source_entries": [
+            {
+                "path": str(entry.get("path", "")),
+                "reason": str(entry.get("reason", "candidate_available")),
+                "estimated_tokens": _entry_estimated_tokens(entry),
+            }
+            for entry in included_entries
+        ],
+        "blocked_reasons": blocked_reasons,
+    }
+
+
+def _included_ctx_candidate_entries(
+    ctx_block_candidate: Mapping[str, Any],
+) -> list[Mapping[str, Any]]:
+    entries = ctx_block_candidate.get("entries")
+    if not isinstance(entries, Sequence) or isinstance(entries, str):
+        return []
+    return [
+        entry
+        for entry in entries
+        if isinstance(entry, Mapping) and entry.get("included") is True
+    ]
+
+
+def _build_ctx_injection_preview(entries: Sequence[Mapping[str, Any]]) -> str:
+    lines = ["[RelayMEM Context Candidate]"]
+    for entry in entries:
+        path = str(entry.get("path", ""))
+        reason = str(entry.get("reason", "candidate_available"))
+        lines.append(f"- {path} (reason: {reason})")
+    lines.append("This block is diagnostics-only and was not injected.")
+    return "\n".join(lines)
+
+
+def _ctx_injection_blocked_reasons(
+    *,
+    apply_decision: str,
+    apply_blocked_reasons: Sequence[str],
+    has_included_entries: bool,
+    plan_eligible: bool,
+) -> list[str]:
+    reasons: list[str] = []
+    if not has_included_entries:
+        reasons.append("ctx_block_candidate_has_no_included_entries")
+    if not plan_eligible:
+        reasons.append(apply_decision)
+    reasons.extend(str(reason) for reason in apply_blocked_reasons)
+    reasons.append("runtime_ctx_injection_not_implemented")
+    reasons.append("backend_payload_mutation_disabled")
+    return _dedupe_reasons(reasons)
+
+
+def _entry_estimated_tokens(entry: Mapping[str, Any]) -> int:
+    estimated = entry.get("estimated_tokens")
+    if isinstance(estimated, int) and estimated >= 0:
+        return estimated
     return 0
 
 
