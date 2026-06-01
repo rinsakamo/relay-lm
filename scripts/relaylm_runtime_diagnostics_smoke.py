@@ -30,6 +30,10 @@ def main() -> int:
             "schema_version": "relaymem.runtime_ctx_injection_result.v0",
             "applied": False,
         },
+        runtime_snippet_injection_result={
+            "schema_version": "relaymem.runtime_snippet_injection_result.v0",
+            "applied": False,
+        },
     )
 
     headers = diagnostics.to_headers()
@@ -50,6 +54,15 @@ def main() -> int:
     runtime_ctx = payload.get("runtime_ctx_injection_result")
     require(isinstance(runtime_ctx, dict), f"missing runtime ctx diagnostics: {payload}")
     require(runtime_ctx.get("applied") is False, f"bad runtime ctx diagnostics: {payload}")
+    runtime_snippet = payload.get("runtime_snippet_injection_result")
+    require(
+        isinstance(runtime_snippet, dict),
+        f"missing runtime snippet diagnostics: {payload}",
+    )
+    require(
+        runtime_snippet.get("applied") is False,
+        f"bad runtime snippet diagnostics: {payload}",
+    )
     print("ok diagnostics log payload")
 
     fallback = RequestDiagnostics(

@@ -79,8 +79,12 @@
   - Summarizes whether the chain is blocked by scene policy, unresolved reference, no candidates, token budget, dry-run gates, or eligible-but-not-applied state.
 - `ctx_injection_plan`:
   - Summarizes the candidate context that could be inserted, source entries, preview text, budget estimate, and blocked reasons.
+- `snippet_runtime_injection_plan`:
+  - Previews diagnostics-only snippet-bearing runtime context from bounded evidence snippets.
 - `runtime_ctx_injection_result`:
-  - Reports whether runtime CTX injection was attempted, applied, blocked, and whether payload mutation occurred.
+  - Reports whether metadata-only runtime CTX injection was attempted, applied, blocked, and whether payload mutation occurred.
+- `runtime_snippet_injection_result`:
+  - Reports whether gated snippet-bearing runtime injection was attempted, applied, blocked, and whether payload mutation occurred.
 
 ## Diagnostics / trace
 
@@ -89,11 +93,13 @@
   - `relayref_artifact`
   - `relaymem_retrieval_artifact`
   - `runtime_ctx_injection_result`
+  - `runtime_snippet_injection_result`
 - Trace metadata fields emitted when present:
   - `relayscn_scene_policy_artifact`
   - `relayref_artifact`
   - `relaymem_retrieval_artifact`
   - `runtime_ctx_injection_result`
+  - `runtime_snippet_injection_result`
 - Diagnostics remain request-local and trace-local.
 - Backend-facing payloads do not receive diagnostics artifacts as hidden metadata.
 
@@ -112,6 +118,7 @@
   - `python scripts/relaylm_relaymem_apply_readiness_dry_run_smoke.py`
   - `python scripts/relaylm_relaymem_ctx_injection_plan_dry_run_smoke.py`
   - `python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py`
+  - `python scripts/relaylm_relaymem_snippet_runtime_injection_apply_smoke.py`
 - Token budget truncation smokes:
   - `python scripts/relaylm_token_budget_truncation_smoke.py`
   - `python scripts/relaylm_token_budget_truncation_apply_smoke.py`
@@ -125,10 +132,12 @@
 
 - Default disabled:
   - Runtime CTX injection is not active unless explicit gates are enabled.
-- Path/reason metadata only:
-  - Runtime RelayMEM prompt content is limited to sanitized path and reason metadata.
-- No MEM page body injection:
-  - Page bodies are not extracted or inserted into runtime prompts yet.
+- Default path/reason metadata only:
+  - Runtime RelayMEM prompt content remains sanitized path and reason metadata unless all snippet runtime gates are explicitly enabled.
+- Bounded snippet apply only behind gates:
+  - Snippet-bearing runtime context can be inserted only when snippet apply and runtime injection gates are enabled and dry-run gates are disabled.
+- No raw MEM page body injection:
+  - Full page bodies are not inserted; gated snippet context uses bounded evidence snippets only.
 - No MEM/SOUL write/update:
   - The chain does not create, update, approve, persist, roll back, or delete MEM/SOUL state.
 - No semantic ranking yet:
@@ -138,8 +147,7 @@
 
 ## Next phase
 
-- Add controlled page snippet extraction.
-- Add source evidence envelope for any future snippet-bearing context.
+- Add stricter source evidence envelopes around snippet-bearing runtime context.
 - Add stricter budgeted CTX packing before wider apply enablement.
 - Add user-visible diagnostics or a debug endpoint if needed.
 - Eventually add an SLP write path, but not yet.
