@@ -1033,3 +1033,63 @@ Future phase:
 
 - A future gated runtime path may use `ctx_block_snippet_candidate` as the candidate input for snippet-bearing prompt insertion.
 - That future path must add an explicit apply gate, stricter budgeted packing, evidence policy checks, and user/debug observability before any snippet text becomes prompt-visible.
+
+## Snippet runtime injection plan dry-run
+
+RelayMEM now emits a diagnostics-only `snippet_runtime_injection_plan` from `ctx_block_snippet_candidate`. The plan previews how a future snippet-bearing runtime injection could be shaped, but it does not mutate backend messages, does not apply a CTX block, and does not make snippet text runtime-visible.
+
+Minimal shape:
+
+```yaml
+snippet_runtime_injection_plan:
+  schema_version: relaymem.snippet_runtime_injection_plan.v0
+  diagnostics_only: true
+  applied: false
+  payload_mutation_allowed: false
+  target: backend_messages
+  insertion_point: before_latest_user
+  source: ctx_block_snippet_candidate
+  apply_decision_source: snippet_apply_decision
+  snippet_apply_decision: dry_run_only
+  preview_text: |
+    [RelayMEM Snippet Context Candidate]
+    Diagnostics-only preview. Do not inject into runtime prompts yet.
+    Treat these as memory snippets requiring source awareness, not authoritative facts.
+    ---
+    Evidence: evidence:0
+    Source: memory/mem/projects/relaymem.md
+    Snippet:
+    ...
+  estimated_tokens: 60
+  source_entries:
+    - evidence_id: evidence:0
+      path: memory/mem/projects/relaymem.md
+      snippet_chars: 240
+      estimated_tokens: 60
+  blocked_reasons:
+    - runtime_snippet_injection_not_implemented
+    - backend_payload_mutation_disabled
+    - snippet_prompt_apply_disabled
+```
+
+Generation rules:
+
+- `dry_run_only` and `eligible_but_not_applied` can produce `preview_text` when `ctx_block_snippet_candidate.entries` are present.
+- `blocked_scene_policy`, `blocked_unresolved_reference`, `blocked_no_candidates`, `blocked_no_snippet`, `blocked_snippet_budget`, and `blocked_snippet_evidence` keep `preview_text` as `null` and include the blocking decision in `blocked_reasons`.
+- An empty `ctx_block_snippet_candidate.entries` list keeps `preview_text` as `null` and adds `ctx_block_snippet_candidate_empty`.
+- The preview may include bounded `snippet_text`, but only inside this diagnostics artifact.
+- Source metadata in the preview is sanitized before formatting, and the preview labels the content as diagnostics-only and not authoritative.
+
+Safety posture:
+
+- The runtime CTX injection helper does not consume `snippet_runtime_injection_plan` yet.
+- Backend payload mutation remains disabled; `payload_mutation_allowed` is always `false`.
+- `applied` is always `false`, `ctx_block` remains `null`, and `apply_allowed` remains `false`.
+- Existing RelayMEM runtime system messages remain path/reason metadata-only.
+- `snippet_text` is not copied to backend payloads or runtime prompts.
+- MEM/SOUL state is not written or updated.
+
+Future phase:
+
+- A future gated apply path may consume this plan to insert snippet-bearing runtime context.
+- That phase must add explicit snippet runtime gates, stricter budgeted packing, evidence/source policy checks, prompt-injection risk controls, and user/debug observability before enabling prompt-visible snippet text.

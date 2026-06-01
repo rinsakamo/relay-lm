@@ -119,6 +119,10 @@ def build_relaymem_retrieval_dry_run_artifact(
         evidence_envelope=snippet_evidence["evidence_envelope"],
         snippet_budget=snippet_budget,
     )
+    snippet_runtime_injection_plan = _build_snippet_runtime_injection_plan(
+        snippet_apply_decision=snippet_apply_readiness["snippet_apply_decision"],
+        ctx_block_snippet_candidate=ctx_block_snippet_candidate,
+    )
     ctx_injection_plan = _build_ctx_injection_plan(
         ctx_block_candidate=ctx_block_candidate,
         apply_decision=apply_readiness["apply_decision"],
@@ -149,6 +153,7 @@ def build_relaymem_retrieval_dry_run_artifact(
         "ctx_block_candidate": ctx_block_candidate,
         "ctx_block_snippet_candidate": ctx_block_snippet_candidate,
         "ctx_injection_plan": ctx_injection_plan,
+        "snippet_runtime_injection_plan": snippet_runtime_injection_plan,
         "snippet_candidates": snippet_evidence["snippet_candidates"],
         "evidence_envelope": snippet_evidence["evidence_envelope"],
         "fallback_reason": fallback_reason,
@@ -798,7 +803,6 @@ def _snippet_apply_readiness_score(preconditions: Mapping[str, bool]) -> float:
 
 
 
-
 def _build_ctx_block_snippet_candidate(
     *,
     snippet_apply_decision: str,
@@ -898,6 +902,147 @@ def _build_ctx_block_snippet_candidate(
         "truncated": truncated,
     }
     return candidate
+
+
+def _build_snippet_runtime_injection_plan(
+    *,
+    snippet_apply_decision: str,
+    ctx_block_snippet_candidate: Mapping[str, Any],
+) -> dict[str, Any]:
+    entries = ctx_block_snippet_candidate.get("entries")
+    snippet_entries = (
+        entries
+        if isinstance(entries, Sequence) and not isinstance(entries, str)
+        else []
+    )
+    plan_eligible = snippet_apply_decision in {"dry_run_only", "eligible_but_not_applied"}
+    preview_text = (
+        _build_snippet_runtime_preview(snippet_entries)
+        if plan_eligible and snippet_entries
+        else None
+    )
+    source_entries = (
+        _snippet_runtime_source_entries(snippet_entries)
+        if preview_text is not None
+        else []
+    )
+    estimated_tokens = (
+        sum(
+            _non_negative_int(entry.get("estimated_tokens"))
+            for entry in snippet_entries
+            if isinstance(entry, Mapping)
+        )
+        if preview_text is not None
+        else 0
+    )
+    return {
+        "schema_version": "relaymem.snippet_runtime_injection_plan.v0",
+        "diagnostics_only": True,
+        "applied": False,
+        "payload_mutation_allowed": False,
+        "target": "backend_messages",
+        "insertion_point": "before_latest_user",
+        "source": "ctx_block_snippet_candidate",
+        "apply_decision_source": "snippet_apply_decision",
+        "snippet_apply_decision": snippet_apply_decision,
+        "preview_text": preview_text,
+        "estimated_tokens": estimated_tokens,
+        "source_entries": source_entries,
+        "blocked_reasons": _snippet_runtime_plan_blocked_reasons(
+            snippet_apply_decision=snippet_apply_decision,
+            has_entries=bool(snippet_entries),
+            plan_eligible=plan_eligible,
+        ),
+    }
+
+
+def _build_snippet_runtime_preview(entries: Sequence[Mapping[str, Any]]) -> str:
+    lines = [
+        "[RelayMEM Snippet Context Candidate]",
+        "Diagnostics-only preview. Do not inject into runtime prompts yet.",
+        "Treat these as memory snippets requiring source awareness, not authoritative facts.",
+    ]
+    for entry in entries:
+        if not isinstance(entry, Mapping):
+            continue
+        path = _sanitize_preview_metadata(entry.get("path"))
+        evidence_id = _sanitize_preview_metadata(entry.get("evidence_id"), max_chars=80)
+        snippet_text = str(entry.get("snippet_text", ""))
+        lines.extend(
+            [
+                "---",
+                f"Evidence: {evidence_id}" if evidence_id else "Evidence: unknown",
+                f"Source: {path}" if path else "Source: unknown",
+                "Snippet:",
+                snippet_text,
+            ]
+        )
+    return "\n".join(lines) if len(lines) > 3 else ""
+
+
+def _snippet_runtime_source_entries(
+    entries: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "evidence_id": str(entry.get("evidence_id", "")),
+            "path": str(entry.get("path", "")),
+            "snippet_chars": _non_negative_int(entry.get("snippet_chars")),
+            "estimated_tokens": _non_negative_int(entry.get("estimated_tokens")),
+        }
+        for entry in entries
+        if isinstance(entry, Mapping)
+    ]
+
+
+def _snippet_runtime_plan_blocked_reasons(
+    *,
+    snippet_apply_decision: str,
+    has_entries: bool,
+    plan_eligible: bool,
+) -> list[str]:
+    reasons: list[str] = []
+    if not has_entries:
+        reasons.append("ctx_block_snippet_candidate_empty")
+    if not plan_eligible:
+        reasons.append(snippet_apply_decision)
+    reasons.extend(
+        [
+            "runtime_snippet_injection_not_implemented",
+            "backend_payload_mutation_disabled",
+            "snippet_prompt_apply_disabled",
+        ]
+    )
+    return _dedupe_reasons(reasons)
+
+
+def _sanitize_preview_metadata(value: object, *, max_chars: int = 160) -> str:
+    text = "" if value is None else str(value)
+    normalized_chars: list[str] = []
+    replacements = {
+        "`": "'",
+        '"': "'",
+        "[": "(",
+        "]": ")",
+        "{": "(",
+        "}": ")",
+        "<": "(",
+        ">": ")",
+        ":": " -",
+    }
+    for char in text:
+        codepoint = ord(char)
+        if char in {"\r", "\n", "\t"} or codepoint < 32 or codepoint == 127:
+            normalized_chars.append(" ")
+            continue
+        normalized_chars.append(replacements.get(char, char))
+    normalized = " ".join("".join(normalized_chars).split())
+    max_chars = max(1, int(max_chars))
+    if len(normalized) > max_chars:
+        if max_chars > 3:
+            return normalized[: max_chars - 3].rstrip() + "..."
+        return normalized[:max_chars]
+    return normalized
 
 
 def _snippet_candidate_blocked_item(item: Mapping[str, Any]) -> dict[str, str]:
