@@ -658,3 +658,47 @@ memory:
 ```
 
 Future apply work must add a separate reviewed gate before any `ctx_block_candidate` can become `ctx_block`, alter request metadata, or affect backend prompts.
+
+---
+
+## CTX injection plan dry-run diagnostics
+
+RelayMEM Retrieval may produce a `ctx_injection_plan` from the diagnostics-only `ctx_block_candidate` and apply-readiness result. This plan is a preview contract only: it does not create `ctx_block`, does not mutate request metadata, does not alter the backend forwarding payload, and does not edit MEM/SOUL.
+
+Minimal artifact shape:
+
+```yaml
+relaymem_retrieval_artifact:
+  ctx_block: null
+  apply_allowed: false
+  ctx_injection_plan:
+    schema_version: relaymem.ctx_injection_plan.v0
+    diagnostics_only: true
+    applied: false
+    payload_mutation_allowed: false
+    target: backend_messages
+    insertion_point: before_latest_user
+    preview_text: |-
+      [RelayMEM Context Candidate]
+      - memory/mem/projects/relaymem.md (reason: keyword_match)
+      This block is diagnostics-only and was not injected.
+    estimated_tokens: 80
+    source: ctx_block_candidate
+    source_entries:
+      - path: memory/mem/projects/relaymem.md
+        reason: keyword_match
+        estimated_tokens: 80
+    blocked_reasons:
+      - runtime_ctx_injection_not_implemented
+      - backend_payload_mutation_disabled
+```
+
+Plan generation rules:
+
+- A preview is generated only from `ctx_block_candidate.entries` where `included: true`.
+- A preview is eligible only when `apply_decision` is `dry_run_only` or `eligible_but_not_applied`.
+- `blocked_scene_policy`, `blocked_unresolved_reference`, `blocked_no_candidates`, and `blocked_token_budget` produce no preview text and include the apply decision in `blocked_reasons`.
+- Preview text is deterministic and uses entry path/reason metadata only; current MEM page bodies are not packed into the preview.
+- `applied` remains `false`, `payload_mutation_allowed` remains `false`, and `apply_allowed` remains `false`.
+
+Future apply work must introduce an explicit reviewed runtime gate before this plan can become an injected backend message or persisted context block.
