@@ -113,6 +113,12 @@ def build_relaymem_retrieval_dry_run_artifact(
         snippet_apply_enabled=snippet_apply_enabled,
         snippet_budget=snippet_budget,
     )
+    ctx_block_snippet_candidate = _build_ctx_block_snippet_candidate(
+        snippet_apply_decision=snippet_apply_readiness["snippet_apply_decision"],
+        snippet_candidates=snippet_evidence["snippet_candidates"],
+        evidence_envelope=snippet_evidence["evidence_envelope"],
+        snippet_budget=snippet_budget,
+    )
     ctx_injection_plan = _build_ctx_injection_plan(
         ctx_block_candidate=ctx_block_candidate,
         apply_decision=apply_readiness["apply_decision"],
@@ -141,6 +147,7 @@ def build_relaymem_retrieval_dry_run_artifact(
         "blocked": blocked,
         "ctx_block": None,
         "ctx_block_candidate": ctx_block_candidate,
+        "ctx_block_snippet_candidate": ctx_block_snippet_candidate,
         "ctx_injection_plan": ctx_injection_plan,
         "snippet_candidates": snippet_evidence["snippet_candidates"],
         "evidence_envelope": snippet_evidence["evidence_envelope"],
@@ -788,6 +795,120 @@ def _snippet_apply_readiness_score(preconditions: Mapping[str, bool]) -> float:
     )
     passed = sum(1 for key in readiness_keys if preconditions.get(key) is True)
     return round(passed / len(readiness_keys), 3)
+
+
+
+
+def _build_ctx_block_snippet_candidate(
+    *,
+    snippet_apply_decision: str,
+    snippet_candidates: Sequence[Mapping[str, Any]],
+    evidence_envelope: Mapping[str, Any],
+    snippet_budget: int | None,
+) -> dict[str, Any]:
+    normalized_budget = (
+        snippet_budget
+        if isinstance(snippet_budget, int) and snippet_budget > 0
+        else None
+    )
+    candidate: dict[str, Any] = {
+        "schema_version": "relaymem.ctx_block_snippet_candidate.v0",
+        "diagnostics_only": True,
+        "applied_to_ctx": False,
+        "runtime_prompt_included": False,
+        "source": "evidence_envelope",
+        "apply_decision_source": "snippet_apply_decision",
+        "snippet_apply_decision": snippet_apply_decision,
+        "budget": {
+            "token_limit": normalized_budget,
+            "estimated_tokens": 0,
+            "truncated": False,
+        },
+        "estimated_tokens": 0,
+        "entries": [],
+        "blocked": [],
+    }
+    envelope_blocked = evidence_envelope.get("blocked")
+    if isinstance(envelope_blocked, Sequence) and not isinstance(envelope_blocked, str):
+        candidate["blocked"].extend(
+            _snippet_candidate_blocked_item(item)
+            for item in envelope_blocked
+            if isinstance(item, Mapping)
+        )
+    budget_blocked = snippet_apply_decision == "blocked_snippet_budget"
+    if snippet_apply_decision not in {
+        "dry_run_only",
+        "eligible_but_not_applied",
+        "blocked_snippet_budget",
+    }:
+        blocked_reasons = {
+            str(item.get("reason"))
+            for item in candidate["blocked"]
+            if isinstance(item, Mapping)
+        }
+        if snippet_apply_decision not in blocked_reasons:
+            candidate["blocked"].append({"reason": snippet_apply_decision})
+        return candidate
+
+    estimated_tokens = 0
+    truncated = False
+    for raw_snippet in snippet_candidates:
+        if not isinstance(raw_snippet, Mapping):
+            continue
+        snippet_tokens = _non_negative_int(raw_snippet.get("estimated_tokens"))
+        would_exceed_budget = (
+            budget_blocked
+            or (
+                normalized_budget is not None
+                and estimated_tokens + snippet_tokens > normalized_budget
+            )
+        )
+        if would_exceed_budget:
+            truncated = True
+            candidate["blocked"].append(
+                {
+                    "evidence_id": str(raw_snippet.get("evidence_id", "")),
+                    "path": str(raw_snippet.get("path", "")),
+                    "reason": "snippet_budget_exceeded",
+                    "estimated_tokens": snippet_tokens,
+                    "token_limit": normalized_budget,
+                }
+            )
+            continue
+        estimated_tokens += snippet_tokens
+        candidate["entries"].append(
+            {
+                "evidence_id": str(raw_snippet.get("evidence_id", "")),
+                "path": str(raw_snippet.get("path", "")),
+                "evidence_kind": str(
+                    raw_snippet.get("evidence_kind", "bounded_page_snippet")
+                ),
+                "snippet_text": str(raw_snippet.get("snippet_text", "")),
+                "snippet_chars": _non_negative_int(raw_snippet.get("snippet_chars")),
+                "estimated_tokens": snippet_tokens,
+                "included": True,
+                "applied_to_ctx": False,
+                "runtime_prompt_included": False,
+            }
+        )
+    candidate["estimated_tokens"] = estimated_tokens
+    candidate["budget"] = {
+        "token_limit": normalized_budget,
+        "estimated_tokens": estimated_tokens,
+        "truncated": truncated,
+    }
+    return candidate
+
+
+def _snippet_candidate_blocked_item(item: Mapping[str, Any]) -> dict[str, str]:
+    blocked: dict[str, str] = {"reason": str(item.get("reason", "snippet_blocked"))}
+    evidence_id = item.get("evidence_id")
+    path = item.get("path")
+    if evidence_id is not None:
+        blocked["evidence_id"] = str(evidence_id)
+    if path is not None:
+        blocked["path"] = str(path)
+    return blocked
 
 
 def _build_apply_readiness(

@@ -979,3 +979,57 @@ Future phase:
 
 - A gated snippet-bearing CTX block can use `snippet_apply_*` diagnostics as the review surface before allowing any snippet body into a prompt.
 - That future apply gate must keep explicit scene/reference safety, source evidence policy, strict token packing, and user/debug observability.
+
+## Snippet-bearing CTX block candidate dry-run
+
+RelayMEM now emits a diagnostics-only `ctx_block_snippet_candidate` when snippet apply readiness is `dry_run_only` or `eligible_but_not_applied`. This artifact is a review surface for future snippet-bearing CTX packing; it is not applied to runtime prompts.
+
+Minimal shape:
+
+```yaml
+ctx_block_snippet_candidate:
+  schema_version: relaymem.ctx_block_snippet_candidate.v0
+  diagnostics_only: true
+  applied_to_ctx: false
+  runtime_prompt_included: false
+  source: evidence_envelope
+  apply_decision_source: snippet_apply_decision
+  snippet_apply_decision: dry_run_only
+  estimated_tokens: 60
+  budget:
+    token_limit: 512
+    estimated_tokens: 60
+    truncated: false
+  entries:
+    - evidence_id: evidence:0
+      path: memory/mem/projects/relaymem.md
+      evidence_kind: bounded_page_snippet
+      snippet_text: "..."
+      snippet_chars: 240
+      estimated_tokens: 60
+      included: true
+      applied_to_ctx: false
+      runtime_prompt_included: false
+  blocked: []
+```
+
+Generation rules:
+
+- `dry_run_only` and `eligible_but_not_applied` can produce entries for diagnostics review.
+- `blocked_scene_policy`, `blocked_unresolved_reference`, `blocked_no_candidates`, `blocked_no_snippet`, and `blocked_snippet_evidence` keep `entries` empty without snippet budget packing.
+- `blocked_snippet_budget` keeps `entries` empty but still scans snippet diagnostics so the candidate reports `budget.truncated: true` and `blocked` entries with `reason: snippet_budget_exceeded`.
+- `memory.snippet_budget` is reflected in the candidate budget summary and any over-budget snippet evidence is moved to `blocked` with `snippet_budget_exceeded`.
+- `snippet_text` is present only inside this diagnostics artifact and the source snippet evidence diagnostics.
+
+Safety posture:
+
+- `ctx_block` remains `null` and `apply_allowed` remains `false`.
+- `ctx_block_candidate.entries` still do not carry `snippet_text`.
+- Runtime CTX injection still builds a path/reason metadata-only system message.
+- Backend payloads must not receive `snippet_text` or raw MEM page body content.
+- MEM/SOUL state is not written or updated.
+
+Future phase:
+
+- A future gated runtime path may use `ctx_block_snippet_candidate` as the candidate input for snippet-bearing prompt insertion.
+- That future path must add an explicit apply gate, stricter budgeted packing, evidence policy checks, and user/debug observability before any snippet text becomes prompt-visible.
