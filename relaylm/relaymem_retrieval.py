@@ -38,11 +38,7 @@ def build_relaymem_retrieval_dry_run_artifact(
     max_candidates: int = 3,
     ctx_block_apply_enabled: bool = False,
 ) -> dict[str, Any]:
-    """Build a diagnostics-only RelayMEM runtime retrieval artifact.
-
-    This MVP does not search a long-term memory store. It only exposes the
-    scene-policy-derived retrieval posture that a future read path can consume.
-    """
+    """Build a diagnostics-only RelayMEM runtime retrieval artifact."""
 
     messages = messages or []
     parsed_scn = _parse_relayscn_artifact(relayscn_scene_policy_artifact)
@@ -331,6 +327,11 @@ def _build_ctx_injection_plan(
         if plan_eligible and included_entries
         else None
     )
+    plan_source_entries = (
+        _ctx_injection_source_entries(included_entries)
+        if preview_text is not None
+        else []
+    )
     estimated_tokens = sum(
         _entry_estimated_tokens(entry) for entry in included_entries
     ) if preview_text else 0
@@ -350,16 +351,22 @@ def _build_ctx_injection_plan(
         "preview_text": preview_text,
         "estimated_tokens": estimated_tokens,
         "source": "ctx_block_candidate",
-        "source_entries": [
-            {
-                "path": str(entry.get("path", "")),
-                "reason": str(entry.get("reason", "candidate_available")),
-                "estimated_tokens": _entry_estimated_tokens(entry),
-            }
-            for entry in included_entries
-        ],
+        "source_entries": plan_source_entries,
         "blocked_reasons": blocked_reasons,
     }
+
+
+def _ctx_injection_source_entries(
+    included_entries: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "path": str(entry.get("path", "")),
+            "reason": str(entry.get("reason", "candidate_available")),
+            "estimated_tokens": _entry_estimated_tokens(entry),
+        }
+        for entry in included_entries
+    ]
 
 
 def _included_ctx_candidate_entries(
