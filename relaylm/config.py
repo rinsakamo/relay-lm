@@ -45,6 +45,8 @@ class MemorySelectionConfig(BaseModel):
     ctx_block_apply_enabled: bool = False
     snippet_extraction_enabled: bool = False
     snippet_dry_run_only: bool = True
+    snippet_apply_enabled: bool = False
+    snippet_budget: int = Field(default=512, gt=0)
     max_snippet_chars: int = Field(default=512, gt=0)
     max_snippet_candidates: int = Field(default=3, ge=0)
 

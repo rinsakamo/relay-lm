@@ -285,6 +285,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
             ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
             snippet_extraction_enabled=config.memory.snippet_extraction_enabled,
             snippet_dry_run_only=config.memory.snippet_dry_run_only,
+            snippet_apply_enabled=config.memory.snippet_apply_enabled,
+            snippet_budget=config.memory.snippet_budget,
             max_snippet_chars=config.memory.max_snippet_chars,
             max_snippet_candidates=config.memory.max_snippet_candidates,
         )

@@ -916,3 +916,66 @@ Future phase:
 
 - A gated snippet-bearing CTX block can use `evidence_id` links to decide which evidence snippets are eligible for prompt-visible packing.
 - That future gate must still enforce source evidence policy, stricter token budgeting, scene/ref safety, and user/debug observability before copying any snippet body into a runtime prompt.
+
+## Snippet apply readiness dry-run
+
+RelayMEM now reports snippet-specific apply readiness next to the broader `apply_decision`. This is still diagnostics-only: snippet-bearing CTX blocks are not applied, `ctx_block` remains `null`, `apply_allowed` remains `false`, and runtime CTX injection remains path/reason metadata-only.
+
+Artifact fields:
+
+```yaml
+relaymem_retrieval_artifact:
+  snippet_apply_decision: dry_run_only
+  snippet_apply_readiness_score: 0.875
+  snippet_apply_blocked_reasons:
+    - dry_run_only
+    - snippet_dry_run_only
+    - snippet_apply_disabled
+    - runtime_snippet_injection_not_implemented
+  snippet_apply_preconditions:
+    scene_policy_allows_apply: true
+    reference_resolved: true
+    candidate_entries_present: true
+    evidence_envelope_present: true
+    snippet_candidates_present: true
+    included_snippet_entries_present: true
+    snippet_budget_allows_candidate: true
+    snippet_dry_run_only: true
+    snippet_apply_enabled: false
+    runtime_snippet_injection_enabled: false
+    backend_payload_mutation_allowed: false
+    mem_soul_mutation_allowed: false
+```
+
+Decision states:
+
+- `blocked_scene_policy`: recovery, current-context-only, formal-document, medical/safety, unknown, or malformed scene policy blocks snippet apply.
+- `blocked_unresolved_reference`: RelayREF requires confirmation before memory evidence can be applied.
+- `blocked_no_candidates`: no CTX block candidate entries exist.
+- `blocked_no_snippet`: candidate entries exist but no bounded snippet is available.
+- `blocked_snippet_evidence`: snippet evidence exists only as blocked evidence diagnostics.
+- `blocked_snippet_budget`: included snippet metadata exceeds `memory.snippet_budget`.
+- `dry_run_only`: snippet evidence is present, but `memory.snippet_dry_run_only` is true or `memory.snippet_apply_enabled` is false.
+- `eligible_but_not_applied`: snippet evidence passes dry-run readiness gates, but runtime snippet insertion is not implemented.
+
+Default-safe config:
+
+```yaml
+memory:
+  snippet_dry_run_only: true
+  snippet_apply_enabled: false
+  snippet_budget: 512
+```
+
+Safety posture:
+
+- `snippet_text` is not copied into `ctx_block_candidate.entries`.
+- `snippet_text` is not copied into runtime CTX injection source entries or backend payloads.
+- `snippet_included_in_runtime_prompt` remains `false`.
+- Runtime snippet injection remains disabled even when readiness reports `eligible_but_not_applied`.
+- MEM/SOUL state is not written or updated.
+
+Future phase:
+
+- A gated snippet-bearing CTX block can use `snippet_apply_*` diagnostics as the review surface before allowing any snippet body into a prompt.
+- That future apply gate must keep explicit scene/reference safety, source evidence policy, strict token packing, and user/debug observability.

@@ -27,6 +27,8 @@ memory:
   # Bounded page snippets are diagnostics-only and never injected into runtime prompts yet.
   snippet_extraction_enabled: false
   snippet_dry_run_only: true
+  snippet_apply_enabled: false
+  snippet_budget: 512
   max_snippet_chars: 512
   max_snippet_candidates: 3
 
