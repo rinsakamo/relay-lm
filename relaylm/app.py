@@ -35,6 +35,7 @@ from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relayref import build_relayref_dry_run_artifact
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
+from relaylm.relaymem_runtime_ctx import maybe_apply_relaymem_runtime_ctx_injection
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.relayemo import (
     load_session_assistant_state,
@@ -285,6 +286,14 @@ def create_app(config_path: str | None = None) -> FastAPI:
             max_candidates=config.memory.candidate_limit,
             ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
         )
+        forwarded_payload, runtime_ctx_injection_result = (
+            maybe_apply_relaymem_runtime_ctx_injection(
+                payload=forwarded_payload,
+                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+                ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
+                retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
+            )
+        )
 
         compiled_message_count = (
             compiled_request.plan.compiled_message_count
@@ -378,6 +387,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
             relayref_artifact=relayref_artifact,
             relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+            runtime_ctx_injection_result=runtime_ctx_injection_result,
         )
         feedback_summary = (
             build_relaysoul_runtime_feedback_summary(base_diagnostics)

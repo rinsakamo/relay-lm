@@ -702,3 +702,65 @@ Plan generation rules:
 - `applied` remains `false`, `payload_mutation_allowed` remains `false`, and `apply_allowed` remains `false`.
 
 Future apply work must introduce an explicit reviewed runtime gate before this plan can become an injected backend message or persisted context block.
+
+---
+
+## Gated runtime CTX injection apply path
+
+RelayMEM runtime CTX injection remains disabled by default. When both explicit config gates are opened, RelayLM may convert an eligible `ctx_injection_plan` preview into a short system message inserted into the forwarded backend messages. This is the first minimal apply path for RelayMEM retrieval context, but it still does not edit MEM/SOUL and does not inject MEM page bodies.
+
+Default-safe config:
+
+```yaml
+memory:
+  retrieval_dry_run_only: true
+  ctx_block_apply_enabled: false
+```
+
+Apply gates that must all pass:
+
+- `memory.ctx_block_apply_enabled == true`
+- `memory.retrieval_dry_run_only == false`
+- `relaymem_retrieval_artifact.apply_decision == eligible_but_not_applied`
+- `ctx_injection_plan.preview_text` is non-empty
+- `ctx_injection_plan.applied == false`
+- scene policy did not block retrieval/apply
+- RelayREF did not require unresolved-reference confirmation
+- token-budget packing did not block the candidate
+
+Runtime result diagnostics are emitted separately from the dry-run plan:
+
+```yaml
+runtime_ctx_injection_result:
+  schema_version: relaymem.runtime_ctx_injection_result.v0
+  attempted: true
+  applied: true
+  insertion_point: before_latest_user
+  inserted_message_role: system
+  inserted_chars: 188
+  estimated_tokens: 47
+  blocked_reasons: []
+  payload_mutation_applied: true
+  original_message_count: 1
+  forwarded_message_count: 2
+```
+
+Insertion contract:
+
+- Insert one `role: system` message immediately before the latest user message.
+- The inserted content starts with `[RelayMEM Context]`.
+- The inserted content uses only candidate path/reason metadata from the plan source entries.
+- It does not include MEM page bodies yet.
+- It instructs the backend to treat memory hints as contextual hints, not standalone facts.
+- The original request payload/messages are copied; RelayLM does not mutate the caller-provided payload object in place.
+
+Blocked/runtime-safe cases:
+
+- default config remains no-op and reports blocked reasons.
+- recovery/current-context-only scenes do not inject.
+- formal-document and medical/safety scenes do not inject.
+- unresolved references do not inject.
+- token-budget blocked candidates do not inject.
+- no-candidate plans do not inject.
+
+This stage intentionally keeps MEM/SOUL mutation out of scope. Future work may add page-body packing, stronger provenance, and stricter downstream apply gates.
