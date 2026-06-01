@@ -1093,3 +1093,73 @@ Future phase:
 
 - A future gated apply path may consume this plan to insert snippet-bearing runtime context.
 - That phase must add explicit snippet runtime gates, stricter budgeted packing, evidence/source policy checks, prompt-injection risk controls, and user/debug observability before enabling prompt-visible snippet text.
+
+## Gated snippet-bearing runtime injection apply path
+
+RelayMEM now has a default-off runtime apply path that can consume `snippet_runtime_injection_plan` and insert a snippet-bearing system message before the latest user message. This is the first prompt-visible snippet path, so it is guarded by explicit config gates and keeps the previous metadata-only behavior by default.
+
+Default-safe config:
+
+```yaml
+memory:
+  ctx_block_apply_enabled: false
+  retrieval_dry_run_only: true
+  snippet_apply_enabled: false
+  snippet_dry_run_only: true
+  snippet_runtime_injection_enabled: false
+  snippet_runtime_dry_run_only: true
+```
+
+Apply gates:
+
+- `memory.ctx_block_apply_enabled` must be `true`.
+- `memory.retrieval_dry_run_only` must be `false`.
+- `memory.snippet_apply_enabled` must be `true`.
+- `memory.snippet_dry_run_only` must be `false`.
+- `memory.snippet_runtime_injection_enabled` must be `true`.
+- `memory.snippet_runtime_dry_run_only` must be `false`.
+- `relaymem_retrieval_artifact.snippet_apply_decision` must be `eligible_but_not_applied`.
+- `snippet_runtime_injection_plan.preview_text` must be non-empty and not already applied.
+- Scene policy, RelayREF unresolved-reference policy, snippet evidence, and snippet budget gates must already have passed through `snippet_apply_decision`.
+- If token-budget truncation is enabled, preserved system messages plus the latest user message plus the snippet system message must fit inside `memory.token_budget`.
+
+Runtime behavior:
+
+- When all gates pass, RelayLM inserts one `system` message whose content starts with `[RelayMEM Snippet Context]` before the latest user message.
+- Snippet-bearing injection has priority over the metadata-only `[RelayMEM Context]` message to avoid duplicate RelayMEM context. If snippet injection applies, metadata-only runtime CTX injection is skipped with diagnostics.
+- Snippet-bearing injection runs before token-budget truncation; truncation may then remove older non-preserved messages while preserving system messages and the latest user message.
+- If the preserved-budget guard would overflow, snippet insertion is skipped with `relaymem_snippet_context_would_break_token_budget` and snippet text is not sent to the backend.
+- The inserted snippet content is bounded evidence from the prior snippet candidate pipeline, not a raw full MEM page body.
+- The input request payload is copied before mutation; the original payload is not mutated.
+- MEM/SOUL state is not written or updated.
+
+Runtime diagnostics:
+
+```yaml
+runtime_snippet_injection_result:
+  schema_version: relaymem.runtime_snippet_injection_result.v0
+  attempted: true
+  applied: true
+  insertion_point: before_latest_user
+  inserted_message_role: system
+  inserted_chars: 320
+  estimated_tokens: 80
+  blocked_reasons: []
+  payload_mutation_applied: true
+  original_message_count: 1
+  forwarded_message_count: 2
+  source: snippet_runtime_injection_plan
+```
+
+Trace / diagnostics contract:
+
+- `RequestDiagnostics.runtime_snippet_injection_result` records the snippet apply attempt even when default gates block it.
+- Trace metadata includes `runtime_snippet_injection_result` alongside `runtime_ctx_injection_result`.
+- Backend payloads do not receive diagnostics artifacts; they receive only the gated system message when all gates pass.
+
+Safety posture:
+
+- Default config keeps backend payloads metadata-only and snippet-free.
+- Recovery, current-context-only, formal-document, medical/safety, unknown/malformed scene, unresolved RelayREF reference, missing snippet evidence, and snippet budget blocked states do not inject snippets.
+- The preserved-budget guard is evaluated before token truncation so protected system/latest-user budget is never exceeded by snippet insertion.
+- Future phases can add stricter source evidence envelopes and user-visible debug endpoints, but MEM/SOUL write/update remains out of scope here.

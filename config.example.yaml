@@ -28,6 +28,8 @@ memory:
   snippet_extraction_enabled: false
   snippet_dry_run_only: true
   snippet_apply_enabled: false
+  snippet_runtime_injection_enabled: false
+  snippet_runtime_dry_run_only: true
   snippet_budget: 512
   max_snippet_chars: 512
   max_snippet_candidates: 3

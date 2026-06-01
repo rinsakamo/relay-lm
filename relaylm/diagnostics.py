@@ -50,6 +50,7 @@ class RequestDiagnostics:
     relayref_artifact: dict[str, Any] | None = None
     relaymem_retrieval_artifact: dict[str, Any] | None = None
     runtime_ctx_injection_result: dict[str, Any] | None = None
+    runtime_snippet_injection_result: dict[str, Any] | None = None
 
     def to_headers(self) -> dict[str, str]:
         headers = {"x-relaylm-request-id": self.request_id}
