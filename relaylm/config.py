@@ -43,6 +43,10 @@ class MemorySelectionConfig(BaseModel):
     store_enabled: bool = False
     retrieval_dry_run_only: bool = True
     ctx_block_apply_enabled: bool = False
+    snippet_extraction_enabled: bool = False
+    snippet_dry_run_only: bool = True
+    max_snippet_chars: int = Field(default=512, gt=0)
+    max_snippet_candidates: int = Field(default=3, ge=0)
 
 
 class CharacterConfig(BaseModel):

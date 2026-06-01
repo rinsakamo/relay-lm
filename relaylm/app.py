@@ -283,6 +283,10 @@ def create_app(config_path: str | None = None) -> FastAPI:
             store_diagnostics=relaymem_store_diagnostics,
             max_candidates=config.memory.candidate_limit,
             ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
+            snippet_extraction_enabled=config.memory.snippet_extraction_enabled,
+            snippet_dry_run_only=config.memory.snippet_dry_run_only,
+            max_snippet_chars=config.memory.max_snippet_chars,
+            max_snippet_candidates=config.memory.max_snippet_candidates,
         )
         forwarded_payload, runtime_ctx_injection_result = (
             maybe_apply_relaymem_runtime_ctx_injection(

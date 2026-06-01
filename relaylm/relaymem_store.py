@@ -35,6 +35,14 @@ _CANDIDATE_DIRS = (
 _DEFAULT_MAX_CANDIDATES = 8
 _DEFAULT_MAX_CANDIDATE_READ_BYTES = 4096
 _DEFAULT_MAX_CANDIDATE_SCAN = 128
+_SNIPPET_DIRS = (
+    "memory/mem/projects",
+    "memory/mem/concepts",
+    "memory/mem/summaries",
+)
+_DEFAULT_MAX_SNIPPET_CHARS = 512
+_DEFAULT_MAX_SNIPPET_CANDIDATES = 3
+_DEFAULT_MAX_SNIPPET_READ_BYTES = 4096
 
 
 def discover_relaymem_page_candidates(
@@ -96,10 +104,15 @@ def discover_relaymem_page_candidates(
         relative = file_path.relative_to(root).as_posix()
         if len(candidates) >= max_candidates:
             candidate_cap_reached = True
+        if file_path.is_symlink():
+            blocked_files.append({"path": relative, "reason": "symlink_blocked"})
+            continue
         try:
             sample = _read_text_sample(file_path, max_read_bytes)
         except (UnicodeDecodeError, OSError):
-            blocked_files.append({"path": relative, "reason": "malformed_or_unreadable_file"})
+            blocked_files.append(
+                {"path": relative, "reason": "malformed_or_unreadable_file"}
+            )
             continue
         if len(candidates) >= max_candidates:
             candidate_cap_reached = True
@@ -134,6 +147,101 @@ def discover_relaymem_page_candidates(
         result["fallback_reason"] = "memory_store_no_candidate_pages"
     else:
         result["fallback_reason"] = "memory_store_read_only_selection_dry_run"
+    return result
+
+
+def build_relaymem_snippet_evidence_dry_run(
+    *,
+    root_path: str | None,
+    selected_mem_candidates: list[dict[str, Any]] | None,
+    snippet_extraction_enabled: bool,
+    snippet_dry_run_only: bool,
+    max_snippet_chars: int = _DEFAULT_MAX_SNIPPET_CHARS,
+    max_snippet_candidates: int = _DEFAULT_MAX_SNIPPET_CANDIDATES,
+    max_read_bytes: int = _DEFAULT_MAX_SNIPPET_READ_BYTES,
+) -> dict[str, Any]:
+    """Build bounded MEM page snippet diagnostics without prompt injection."""
+
+    max_snippet_chars = max(1, int(max_snippet_chars))
+    max_snippet_candidates = max(0, int(max_snippet_candidates))
+    max_read_bytes = max(1, int(max_read_bytes))
+    result: dict[str, Any] = {
+        "schema_version": "relaymem.snippet_evidence_dry_run.v0",
+        "diagnostics_only": True,
+        "read_only": True,
+        "snippet_extraction_enabled": bool(snippet_extraction_enabled),
+        "snippet_dry_run_only": bool(snippet_dry_run_only),
+        "root_path": root_path,
+        "max_snippet_chars": max_snippet_chars,
+        "max_snippet_candidates": max_snippet_candidates,
+        "max_read_bytes": max_read_bytes,
+        "snippet_candidates": [],
+        "evidence_envelope": {
+            "schema_version": "relaymem.evidence_envelope.v0",
+            "diagnostics_only": True,
+            "applied_to_ctx": False,
+            "source": "selected_mem_candidates",
+            "snippets": [],
+            "blocked": [],
+        },
+    }
+    envelope = result["evidence_envelope"]
+    if not snippet_extraction_enabled:
+        return result
+    if not root_path:
+        envelope["blocked"].append({"reason": "memory_store_root_not_configured"})
+        return result
+    root = Path(root_path)
+    if not root.exists() or not root.is_dir():
+        envelope["blocked"].append({"reason": "memory_store_root_missing"})
+        return result
+
+    candidates = selected_mem_candidates or []
+    for candidate in candidates[:max_snippet_candidates]:
+        if not isinstance(candidate, dict):
+            continue
+        relative = str(candidate.get("path", ""))
+        source = str(candidate.get("source", "mem_page"))
+        blocked_reason = _snippet_path_block_reason(root, relative)
+        if blocked_reason is not None:
+            envelope["blocked"].append({"path": relative, "reason": blocked_reason})
+            continue
+        file_path = root / relative
+        try:
+            snippet = _read_bounded_snippet(file_path, max_read_bytes, max_snippet_chars)
+        except UnicodeDecodeError:
+            envelope["blocked"].append({"path": relative, "reason": "malformed_utf8"})
+            continue
+        except OSError:
+            envelope["blocked"].append({"path": relative, "reason": "unreadable_file"})
+            continue
+        except ValueError as exc:
+            envelope["blocked"].append({"path": relative, "reason": str(exc)})
+            continue
+        estimated_tokens = max(1, len(snippet) // 4) if snippet else 0
+        snippet_candidate = {
+            "path": relative,
+            "source": source,
+            "evidence_kind": "bounded_page_snippet",
+            "snippet_text": snippet,
+            "snippet_chars": len(snippet),
+            "estimated_tokens": estimated_tokens,
+            "applied_to_ctx": False,
+            "safe_for_prompt_preview": False,
+            "blocked_reasons": [],
+        }
+        result["snippet_candidates"].append(snippet_candidate)
+        envelope["snippets"].append(
+            {
+                "path": relative,
+                "evidence_kind": "bounded_page_snippet",
+                "snippet_chars": len(snippet),
+                "estimated_tokens": estimated_tokens,
+                "content_included_in_runtime_prompt": False,
+            }
+        )
+    if len(candidates) > max_snippet_candidates:
+        envelope["blocked"].append({"reason": "snippet_candidate_cap_reached"})
     return result
 
 
@@ -276,6 +384,8 @@ def _is_supported_file(relative_path: str, suffix: str) -> bool:
 
 
 def _validate_file_sample(file_path: Path) -> str | None:
+    if file_path.is_symlink():
+        return "symlink_blocked"
     try:
         with file_path.open("rb") as handle:
             sample = handle.read(_MAX_SAMPLE_BYTES)
@@ -290,6 +400,56 @@ def _validate_file_sample(file_path: Path) -> str | None:
         return "malformed_or_unreadable_file"
     return None
 
+
+
+def _snippet_path_block_reason(root: Path, relative_path: str) -> str | None:
+    if not relative_path or Path(relative_path).is_absolute():
+        return "path_outside_mem_scope"
+    if ".." in Path(relative_path).parts:
+        return "path_outside_mem_scope"
+    if not any(relative_path.startswith(f"{allowed}/") for allowed in _SNIPPET_DIRS):
+        return "unsupported_scope"
+    if not relative_path.endswith(".md"):
+        return "unsupported_scope"
+    candidate_path = root / relative_path
+    try:
+        root_resolved = root.resolve(strict=True)
+        parent_resolved = candidate_path.parent.resolve(strict=True)
+    except OSError:
+        return "path_outside_mem_scope"
+    if root_resolved != parent_resolved and root_resolved not in parent_resolved.parents:
+        return "path_outside_mem_scope"
+    if _path_contains_symlink(root, candidate_path):
+        return "symlink_blocked"
+    if not candidate_path.is_file():
+        return "file_missing"
+    return None
+
+
+def _path_contains_symlink(root: Path, candidate_path: Path) -> bool:
+    current = root
+    try:
+        relative_parts = candidate_path.relative_to(root).parts
+    except ValueError:
+        return True
+    for part in relative_parts:
+        current = current / part
+        if current.is_symlink():
+            return True
+    return False
+
+
+def _read_bounded_snippet(
+    file_path: Path,
+    max_read_bytes: int,
+    max_snippet_chars: int,
+) -> str:
+    with file_path.open("rb") as handle:
+        sample = handle.read(max_read_bytes + 1)
+    if len(sample) > max_read_bytes:
+        raise ValueError("read_limit_exceeded")
+    text = sample.decode("utf-8")
+    return text[:max_snippet_chars]
 
 
 def _read_index_summary(root: Path, max_read_bytes: int) -> dict[str, Any] | None:

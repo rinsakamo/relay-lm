@@ -785,3 +785,87 @@ Preserved-budget overflow guard:
 - The check estimates all preserved system messages, the latest user message, and the candidate RelayMEM system message.
 - If that preserved set would exceed `memory.token_budget`, runtime CTX injection is skipped before payload mutation.
 - The runtime result reports `relaymem_context_would_break_token_budget`, and token-budget truncation still evaluates the non-injected payload.
+
+## Bounded page snippet extraction dry-run
+
+RelayMEM retrieval may build bounded page snippet diagnostics from `selected_mem_candidates`, but this phase does not inject MEM page body content into the runtime prompt. Snippet extraction is a diagnostics-only evidence preparation step for future apply gates.
+
+Default-safe config:
+
+- `memory.snippet_extraction_enabled`: default `false`
+- `memory.snippet_dry_run_only`: default `true`
+- `memory.max_snippet_chars`: default `512`
+- `memory.max_snippet_candidates`: default `3`
+
+When enabled, extraction is limited to selected candidate paths under these MEM page scopes:
+
+- `memory/mem/projects/*.md`
+- `memory/mem/concepts/*.md`
+- `memory/mem/summaries/*.md`
+
+The extraction helper must not read `memory/raw`, must not follow symlinks, and must block root-outside path traversal attempts. Reads are bounded by `max_read_bytes`, snippets are bounded by `max_snippet_chars`, and malformed UTF-8 fails soft into blocked diagnostics instead of failing the request.
+
+Snippet candidates use this diagnostics-only shape:
+
+```yaml
+snippet_candidates:
+  - path: memory/mem/projects/relaymem.md
+    source: mem_page
+    evidence_kind: bounded_page_snippet
+    snippet_text: "..."
+    snippet_chars: 240
+    estimated_tokens: 60
+    applied_to_ctx: false
+    safe_for_prompt_preview: false
+    blocked_reasons: []
+```
+
+Safety gates skip snippet extraction for:
+
+- `recovery` scene policy
+- `current_context_only` retrieval scope
+- `formal_document` scene policy
+- `medical_or_safety` scene policy
+- unknown or malformed RelaySCN artifacts
+- unresolved RelayREF references
+- empty selected MEM candidates
+- token-budget-blocked retrieval artifacts
+
+## Evidence envelope dry-run contract
+
+RelayMEM retrieval artifacts include an evidence envelope next to `snippet_candidates`:
+
+```yaml
+evidence_envelope:
+  schema_version: relaymem.evidence_envelope.v0
+  diagnostics_only: true
+  applied_to_ctx: false
+  source: selected_mem_candidates
+  snippets:
+    - path: memory/mem/projects/relaymem.md
+      evidence_kind: bounded_page_snippet
+      snippet_chars: 240
+      estimated_tokens: 60
+      content_included_in_runtime_prompt: false
+  blocked:
+    - path: memory/raw/example.md
+      reason: unsupported_scope
+```
+
+The envelope is emitted in diagnostics / trace metadata so future review can compare candidate snippets against retrieval decisions. It is not a prompt contract yet.
+
+Blocked reasons include:
+
+- `path_outside_mem_scope`
+- `malformed_utf8`
+- `unsupported_scope`
+- `read_limit_exceeded`
+- `symlink_blocked`
+- `file_missing`
+- `unreadable_file`
+
+## No runtime snippet injection yet
+
+The gated runtime CTX injection path remains metadata-only. Runtime prompt content may include sanitized path/reason metadata from the CTX injection plan, but it must not include `snippet_text` or raw MEM page body content in this phase.
+
+Before any future snippet apply gate, RelayMEM still needs stricter CTX packing, source evidence review, user-visible/debug diagnostics, and explicit policy for when snippet text is allowed to become prompt-visible.

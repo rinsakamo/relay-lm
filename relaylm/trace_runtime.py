@@ -86,6 +86,11 @@ def trace_runtime_event(
             trace_metadata["relaymem_retrieval_artifact"] = (
                 diagnostics.relaymem_retrieval_artifact
             )
+            evidence_envelope = diagnostics.relaymem_retrieval_artifact.get(
+                "evidence_envelope"
+            )
+            if evidence_envelope is not None:
+                trace_metadata["evidence_envelope"] = evidence_envelope
         if diagnostics.runtime_ctx_injection_result is not None:
             trace_metadata["runtime_ctx_injection_result"] = (
                 diagnostics.runtime_ctx_injection_result

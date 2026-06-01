@@ -5,7 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from relaylm.relaymem_store import discover_relaymem_page_candidates
+from relaylm.relaymem_store import (
+    build_relaymem_snippet_evidence_dry_run,
+    discover_relaymem_page_candidates,
+)
 
 
 KNOWN_SCENE_TYPES = {
@@ -37,6 +40,10 @@ def build_relaymem_retrieval_dry_run_artifact(
     store_diagnostics: Mapping[str, Any] | None = None,
     max_candidates: int = 3,
     ctx_block_apply_enabled: bool = False,
+    snippet_extraction_enabled: bool = False,
+    snippet_dry_run_only: bool = True,
+    max_snippet_chars: int = 512,
+    max_snippet_candidates: int = 3,
 ) -> dict[str, Any]:
     """Build a diagnostics-only RelayMEM runtime retrieval artifact."""
 
@@ -80,6 +87,19 @@ def build_relaymem_retrieval_dry_run_artifact(
         apply_decision=apply_readiness["apply_decision"],
         apply_blocked_reasons=apply_readiness["apply_blocked_reasons"],
     )
+    snippet_evidence = _build_snippet_evidence_dry_run(
+        selected_mem_candidates=selected_mem_candidates,
+        store_diagnostics=store_diagnostics,
+        scene_type=scene_type,
+        retrieval_scope=retrieval_scope,
+        malformed=parsed_scn["malformed"],
+        relayref_unresolved=relayref_unresolved,
+        apply_decision=apply_readiness["apply_decision"],
+        snippet_extraction_enabled=snippet_extraction_enabled,
+        snippet_dry_run_only=snippet_dry_run_only,
+        max_snippet_chars=max_snippet_chars,
+        max_snippet_candidates=max_snippet_candidates,
+    )
     blocked = _build_blocked_reasons(
         fallback_reason=fallback_reason,
         scene_type=scene_type,
@@ -104,6 +124,8 @@ def build_relaymem_retrieval_dry_run_artifact(
         "ctx_block": None,
         "ctx_block_candidate": ctx_block_candidate,
         "ctx_injection_plan": ctx_injection_plan,
+        "snippet_candidates": snippet_evidence["snippet_candidates"],
+        "evidence_envelope": snippet_evidence["evidence_envelope"],
         "fallback_reason": fallback_reason,
         "token_budget": normalized_token_budget,
         "used_tokens": used_tokens,
@@ -117,6 +139,90 @@ def build_relaymem_retrieval_dry_run_artifact(
             dict(store_diagnostics) if isinstance(store_diagnostics, Mapping) else None
         ),
     }
+
+
+def _build_snippet_evidence_dry_run(
+    *,
+    selected_mem_candidates: list[dict[str, Any]],
+    store_diagnostics: Mapping[str, Any] | None,
+    scene_type: str,
+    retrieval_scope: str,
+    malformed: bool,
+    relayref_unresolved: bool,
+    apply_decision: str,
+    snippet_extraction_enabled: bool,
+    snippet_dry_run_only: bool,
+    max_snippet_chars: int,
+    max_snippet_candidates: int,
+) -> dict[str, Any]:
+    empty = {
+        "snippet_candidates": [],
+        "evidence_envelope": {
+            "schema_version": "relaymem.evidence_envelope.v0",
+            "diagnostics_only": True,
+            "applied_to_ctx": False,
+            "source": "selected_mem_candidates",
+            "snippets": [],
+            "blocked": [],
+        },
+    }
+    skip_reason = _snippet_extraction_skip_reason(
+        malformed=malformed,
+        scene_type=scene_type,
+        retrieval_scope=retrieval_scope,
+        relayref_unresolved=relayref_unresolved,
+        selected_mem_candidates=selected_mem_candidates,
+        apply_decision=apply_decision,
+    )
+    if skip_reason is not None:
+        if selected_mem_candidates or snippet_extraction_enabled:
+            empty["evidence_envelope"]["blocked"].append({"reason": skip_reason})
+        return empty
+    if not isinstance(store_diagnostics, Mapping):
+        empty["evidence_envelope"]["blocked"].append(
+            {"reason": "memory_store_not_configured"}
+        )
+        return empty
+    snippet_evidence = build_relaymem_snippet_evidence_dry_run(
+        root_path=(
+            store_diagnostics.get("root_path")
+            if isinstance(store_diagnostics.get("root_path"), str)
+            else None
+        ),
+        selected_mem_candidates=selected_mem_candidates,
+        snippet_extraction_enabled=snippet_extraction_enabled,
+        snippet_dry_run_only=snippet_dry_run_only,
+        max_snippet_chars=max_snippet_chars,
+        max_snippet_candidates=max_snippet_candidates,
+    )
+    return {
+        "snippet_candidates": snippet_evidence["snippet_candidates"],
+        "evidence_envelope": snippet_evidence["evidence_envelope"],
+    }
+
+
+def _snippet_extraction_skip_reason(
+    *,
+    malformed: bool,
+    scene_type: str,
+    retrieval_scope: str,
+    relayref_unresolved: bool,
+    selected_mem_candidates: Sequence[Mapping[str, Any]],
+    apply_decision: str,
+) -> str | None:
+    if malformed or scene_type == "unknown":
+        return "scene_policy_blocks_memory"
+    if retrieval_scope == "current_context_only":
+        return "current_context_only_no_external_mem"
+    if scene_type in {"recovery", "formal_document", "medical_or_safety"}:
+        return "external_memory_blocked_by_scene_policy"
+    if relayref_unresolved:
+        return "unresolved_reference_requires_confirmation"
+    if not selected_mem_candidates:
+        return "no_selected_mem_candidates"
+    if apply_decision == "blocked_token_budget":
+        return "token_budget_exceeded"
+    return None
 
 
 def _parse_relayscn_artifact(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
