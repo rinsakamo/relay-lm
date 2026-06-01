@@ -290,6 +290,9 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 relaymem_retrieval_artifact=relaymem_retrieval_artifact,
                 ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
                 retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
+                token_budget_truncation_enabled=config.memory.token_budget_truncation_enabled,
+                token_budget=config.memory.token_budget,
+                chars_per_token=config.memory.chars_per_token,
             )
         )
         forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(

@@ -6,6 +6,8 @@ from copy import deepcopy
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from relaylm.token_budget import estimate_text_tokens
+
 
 def maybe_apply_relaymem_runtime_ctx_injection(
     *,
@@ -13,6 +15,9 @@ def maybe_apply_relaymem_runtime_ctx_injection(
     relaymem_retrieval_artifact: Mapping[str, Any] | None,
     ctx_block_apply_enabled: bool,
     retrieval_dry_run_only: bool,
+    token_budget_truncation_enabled: bool = False,
+    token_budget: int | None = None,
+    chars_per_token: int = 4,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return a copied payload and diagnostics for gated RelayMEM CTX injection.
 
@@ -56,6 +61,18 @@ def maybe_apply_relaymem_runtime_ctx_injection(
     if not inserted_content:
         result["attempted"] = True
         result["blocked_reasons"] = ["ctx_injection_plan_preview_empty"]
+        result["forwarded_message_count"] = original_message_count
+        return forwarded_payload, result
+
+    if _would_break_preserved_token_budget(
+        messages=original_messages,
+        inserted_content=inserted_content,
+        token_budget_truncation_enabled=token_budget_truncation_enabled,
+        token_budget=token_budget,
+        chars_per_token=chars_per_token,
+    ):
+        result["attempted"] = True
+        result["blocked_reasons"] = ["relaymem_context_would_break_token_budget"]
         result["forwarded_message_count"] = original_message_count
         return forwarded_payload, result
 
@@ -197,6 +214,47 @@ def _sanitize_mem_prompt_metadata(value: object, *, max_chars: int = 160) -> str
     if len(normalized) > max_chars:
         return normalized[: max_chars - 3].rstrip() + "..." if max_chars > 3 else normalized[:max_chars]
     return normalized
+
+
+def _would_break_preserved_token_budget(
+    *,
+    messages: Sequence[Any],
+    inserted_content: str,
+    token_budget_truncation_enabled: bool,
+    token_budget: int | None,
+    chars_per_token: int,
+) -> bool:
+    if not token_budget_truncation_enabled or token_budget is None or token_budget <= 0:
+        return False
+    preserved_messages: list[dict[str, Any]] = [
+        {"role": "system", "content": inserted_content}
+    ]
+    latest_user_index = _before_latest_user_index(messages)
+    for index, message in enumerate(messages):
+        if not isinstance(message, Mapping):
+            continue
+        if message.get("role") == "system" or index == latest_user_index:
+            preserved_messages.append(dict(message))
+    return _estimate_messages_tokens(preserved_messages, chars_per_token) > token_budget
+
+
+def _estimate_messages_tokens(messages: Sequence[Mapping[str, Any]], chars_per_token: int) -> int:
+    rendered = "\n".join(
+        f"{_safe_str(message.get('role'))}: {_safe_str(message.get('content'))}"
+        for message in messages
+    )
+    return estimate_text_tokens(
+        rendered,
+        chars_per_token=max(1, int(chars_per_token)),
+    ).estimated_tokens
+
+
+def _safe_str(value: Any) -> str:
+    if isinstance(value, str):
+        return value
+    if value is None:
+        return ""
+    return str(value)
 
 
 def _before_latest_user_index(messages: Sequence[Any]) -> int | None:

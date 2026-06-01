@@ -778,3 +778,10 @@ Prompt metadata safety:
 - Newlines, tabs, carriage returns, ASCII control characters, role-like colon separators, quotes/backticks, and brackets are normalized before insertion.
 - Long metadata values are truncated before insertion.
 - Raw MEM page bodies remain excluded from runtime CTX injection.
+
+Preserved-budget overflow guard:
+
+- When token-budget truncation is enabled, RelayLM checks the would-be preserved set before inserting RelayMEM context.
+- The check estimates all preserved system messages, the latest user message, and the candidate RelayMEM system message.
+- If that preserved set would exceed `memory.token_budget`, runtime CTX injection is skipped before payload mutation.
+- The runtime result reports `relaymem_context_would_break_token_budget`, and token-budget truncation still evaluates the non-injected payload.

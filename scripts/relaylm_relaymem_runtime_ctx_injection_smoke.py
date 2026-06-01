@@ -354,6 +354,35 @@ def main() -> int:
             )
             print("ok token budget truncation runs after RelayMEM context injection")
 
+            overflow_payload = _scene_payload("design_talk", "RelayMEM runtime ctx injection")
+            overflow_original_messages = [dict(message) for message in overflow_payload["messages"]]
+            overflow_result, overflow_metadata = _post(
+                port=port,
+                store_root=store_root,
+                payload=overflow_payload,
+                retrieval_dry_run_only=False,
+                ctx_block_apply_enabled=True,
+                token_budget=30,
+                token_budget_truncation_enabled=True,
+            )
+            overflow_truncation = overflow_metadata.get("token_budget_truncation")
+            require(overflow_result["attempted"] is True, overflow_result)
+            require(overflow_result["applied"] is False, overflow_result)
+            require(
+                "relaymem_context_would_break_token_budget" in overflow_result["blocked_reasons"],
+                overflow_result,
+            )
+            require(overflow_result["payload_mutation_applied"] is False, overflow_result)
+            require(
+                overflow_result["original_message_count"]
+                == overflow_result["forwarded_message_count"],
+                overflow_result,
+            )
+            require(isinstance(overflow_truncation, dict), overflow_metadata)
+            require(overflow_payload["messages"] == overflow_original_messages, overflow_payload)
+            _assert_no_injected_context(capture.last())
+            print("ok preserved budget overflow skips RelayMEM context injection before truncation")
+
             with tempfile.TemporaryDirectory() as malicious_td:
                 malicious_root = Path(malicious_td)
                 _build_malicious_store(malicious_root)
