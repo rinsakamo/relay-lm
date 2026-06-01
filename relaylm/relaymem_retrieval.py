@@ -82,11 +82,6 @@ def build_relaymem_retrieval_dry_run_artifact(
         retrieval_dry_run_only=_retrieval_dry_run_only(store_diagnostics),
         ctx_block_apply_enabled=ctx_block_apply_enabled,
     )
-    ctx_injection_plan = _build_ctx_injection_plan(
-        ctx_block_candidate=ctx_block_candidate,
-        apply_decision=apply_readiness["apply_decision"],
-        apply_blocked_reasons=apply_readiness["apply_blocked_reasons"],
-    )
     snippet_evidence = _build_snippet_evidence_dry_run(
         selected_mem_candidates=selected_mem_candidates,
         store_diagnostics=store_diagnostics,
@@ -99,6 +94,15 @@ def build_relaymem_retrieval_dry_run_artifact(
         snippet_dry_run_only=snippet_dry_run_only,
         max_snippet_chars=max_snippet_chars,
         max_snippet_candidates=max_snippet_candidates,
+    )
+    ctx_block_candidate = _attach_evidence_metadata_to_ctx_block_candidate(
+        ctx_block_candidate=ctx_block_candidate,
+        evidence_envelope=snippet_evidence["evidence_envelope"],
+    )
+    ctx_injection_plan = _build_ctx_injection_plan(
+        ctx_block_candidate=ctx_block_candidate,
+        apply_decision=apply_readiness["apply_decision"],
+        apply_blocked_reasons=apply_readiness["apply_blocked_reasons"],
     )
     blocked = _build_blocked_reasons(
         fallback_reason=fallback_reason,
@@ -286,7 +290,7 @@ def _resolve_fallback_reason(
         return "scene_policy_blocks_memory"
     if relayref_unresolved:
         return "unresolved_reference_requires_confirmation"
-    if scene_type in {"formal_document", "medical_or_safety"}:
+    if scene_type in {"recovery", "formal_document", "medical_or_safety"}:
         return "external_memory_blocked_by_scene_policy"
     if retrieval_scope == "current_context_only":
         return "current_context_only_no_external_mem"
@@ -358,6 +362,97 @@ def _select_mem_candidates_dry_run(
         blocked.append({"reason": discovery_reason})
     return candidates, blocked
 
+
+
+def _attach_evidence_metadata_to_ctx_block_candidate(
+    *,
+    ctx_block_candidate: Mapping[str, Any],
+    evidence_envelope: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    candidate = dict(ctx_block_candidate)
+    raw_entries = candidate.get("entries")
+    if not isinstance(raw_entries, Sequence) or isinstance(raw_entries, str):
+        candidate["entries"] = []
+        return candidate
+
+    snippets_by_key = _evidence_items_by_entry_key(
+        evidence_envelope.get("snippets") if isinstance(evidence_envelope, Mapping) else None
+    )
+    blocked_by_key = _evidence_items_by_entry_key(
+        evidence_envelope.get("blocked") if isinstance(evidence_envelope, Mapping) else None
+    )
+    entries: list[dict[str, Any]] = []
+    for selected_index, raw_entry in enumerate(raw_entries):
+        if not isinstance(raw_entry, Mapping):
+            continue
+        entry = dict(raw_entry)
+        key = (str(entry.get("path", "")), selected_index)
+        snippet = snippets_by_key.get(key)
+        blocked = blocked_by_key.get(key)
+        if snippet is not None:
+            entry.update(
+                {
+                    "evidence_id": str(
+                        snippet.get("evidence_id", f"evidence:{selected_index}")
+                    ),
+                    "snippet_available": True,
+                    "evidence_kind": str(
+                        snippet.get("evidence_kind", "bounded_page_snippet")
+                    ),
+                    "snippet_chars": _non_negative_int(snippet.get("snippet_chars")),
+                    "snippet_estimated_tokens": _non_negative_int(
+                        snippet.get("estimated_tokens")
+                    ),
+                    "snippet_included_in_runtime_prompt": False,
+                }
+            )
+        else:
+            evidence_id = None
+            blocked_reason = None
+            if blocked is not None:
+                evidence_id = str(
+                    blocked.get("evidence_id", f"evidence:{selected_index}")
+                )
+                blocked_reason = str(blocked.get("reason", "snippet_unavailable"))
+            entry.update(
+                {
+                    "evidence_id": evidence_id,
+                    "snippet_available": False,
+                    "evidence_kind": "none",
+                    "snippet_chars": 0,
+                    "snippet_estimated_tokens": 0,
+                    "snippet_included_in_runtime_prompt": False,
+                }
+            )
+            if blocked_reason is not None:
+                entry["evidence_blocked_reason"] = blocked_reason
+        entries.append(entry)
+    candidate["entries"] = entries
+    return candidate
+
+
+def _evidence_items_by_entry_key(raw_items: object) -> dict[tuple[str, int], Mapping[str, Any]]:
+    if not isinstance(raw_items, Sequence) or isinstance(raw_items, str):
+        return {}
+    indexed: dict[tuple[str, int], Mapping[str, Any]] = {}
+    fallback_counts: dict[str, int] = {}
+    for raw_item in raw_items:
+        if not isinstance(raw_item, Mapping):
+            continue
+        path = str(raw_item.get("path", ""))
+        selected_index = raw_item.get("selected_index")
+        if isinstance(selected_index, int) and selected_index >= 0:
+            key = (path, selected_index)
+        else:
+            occurrence = fallback_counts.get(path, 0)
+            fallback_counts[path] = occurrence + 1
+            key = (path, occurrence)
+        indexed[key] = raw_item
+    return indexed
+
+
+def _non_negative_int(value: object) -> int:
+    return value if isinstance(value, int) and value >= 0 else 0
 
 def _build_ctx_block_candidate(
     *,

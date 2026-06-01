@@ -197,29 +197,60 @@ def build_relaymem_snippet_evidence_dry_run(
         return result
 
     candidates = selected_mem_candidates or []
-    for candidate in candidates[:max_snippet_candidates]:
+    for selected_index, candidate in enumerate(candidates[:max_snippet_candidates]):
         if not isinstance(candidate, dict):
             continue
+        evidence_id = f"evidence:{selected_index}"
         relative = str(candidate.get("path", ""))
         source = str(candidate.get("source", "mem_page"))
         blocked_reason = _snippet_path_block_reason(root, relative)
         if blocked_reason is not None:
-            envelope["blocked"].append({"path": relative, "reason": blocked_reason})
+            envelope["blocked"].append(
+                {
+                    "evidence_id": evidence_id,
+                    "selected_index": selected_index,
+                    "path": relative,
+                    "reason": blocked_reason,
+                }
+            )
             continue
         file_path = root / relative
         try:
             snippet = _read_bounded_snippet(file_path, max_read_bytes, max_snippet_chars)
         except UnicodeDecodeError:
-            envelope["blocked"].append({"path": relative, "reason": "malformed_utf8"})
+            envelope["blocked"].append(
+                {
+                    "evidence_id": evidence_id,
+                    "selected_index": selected_index,
+                    "path": relative,
+                    "reason": "malformed_utf8",
+                }
+            )
             continue
         except OSError:
-            envelope["blocked"].append({"path": relative, "reason": "unreadable_file"})
+            envelope["blocked"].append(
+                {
+                    "evidence_id": evidence_id,
+                    "selected_index": selected_index,
+                    "path": relative,
+                    "reason": "unreadable_file",
+                }
+            )
             continue
         except ValueError as exc:
-            envelope["blocked"].append({"path": relative, "reason": str(exc)})
+            envelope["blocked"].append(
+                {
+                    "evidence_id": evidence_id,
+                    "selected_index": selected_index,
+                    "path": relative,
+                    "reason": str(exc),
+                }
+            )
             continue
         estimated_tokens = max(1, len(snippet) // 4) if snippet else 0
         snippet_candidate = {
+            "evidence_id": evidence_id,
+            "selected_index": selected_index,
             "path": relative,
             "source": source,
             "evidence_kind": "bounded_page_snippet",
@@ -233,6 +264,8 @@ def build_relaymem_snippet_evidence_dry_run(
         result["snippet_candidates"].append(snippet_candidate)
         envelope["snippets"].append(
             {
+                "evidence_id": evidence_id,
+                "selected_index": selected_index,
                 "path": relative,
                 "evidence_kind": "bounded_page_snippet",
                 "snippet_chars": len(snippet),
