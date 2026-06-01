@@ -42,6 +42,8 @@ def build_relaymem_retrieval_dry_run_artifact(
     ctx_block_apply_enabled: bool = False,
     snippet_extraction_enabled: bool = False,
     snippet_dry_run_only: bool = True,
+    snippet_apply_enabled: bool = False,
+    snippet_budget: int | None = 512,
     max_snippet_chars: int = 512,
     max_snippet_candidates: int = 3,
 ) -> dict[str, Any]:
@@ -99,6 +101,18 @@ def build_relaymem_retrieval_dry_run_artifact(
         ctx_block_candidate=ctx_block_candidate,
         evidence_envelope=snippet_evidence["evidence_envelope"],
     )
+    snippet_apply_readiness = _build_snippet_apply_readiness(
+        malformed=parsed_scn["malformed"],
+        scene_type=scene_type,
+        retrieval_scope=retrieval_scope,
+        relayref_unresolved=relayref_unresolved,
+        ctx_block_candidate=ctx_block_candidate,
+        evidence_envelope=snippet_evidence["evidence_envelope"],
+        snippet_candidates=snippet_evidence["snippet_candidates"],
+        snippet_dry_run_only=snippet_dry_run_only,
+        snippet_apply_enabled=snippet_apply_enabled,
+        snippet_budget=snippet_budget,
+    )
     ctx_injection_plan = _build_ctx_injection_plan(
         ctx_block_candidate=ctx_block_candidate,
         apply_decision=apply_readiness["apply_decision"],
@@ -139,6 +153,16 @@ def build_relaymem_retrieval_dry_run_artifact(
         "apply_readiness_score": apply_readiness["apply_readiness_score"],
         "apply_blocked_reasons": apply_readiness["apply_blocked_reasons"],
         "apply_preconditions": apply_readiness["apply_preconditions"],
+        "snippet_apply_decision": snippet_apply_readiness["snippet_apply_decision"],
+        "snippet_apply_readiness_score": snippet_apply_readiness[
+            "snippet_apply_readiness_score"
+        ],
+        "snippet_apply_blocked_reasons": snippet_apply_readiness[
+            "snippet_apply_blocked_reasons"
+        ],
+        "snippet_apply_preconditions": snippet_apply_readiness[
+            "snippet_apply_preconditions"
+        ],
         "store_diagnostics": (
             dict(store_diagnostics) if isinstance(store_diagnostics, Mapping) else None
         ),
@@ -616,6 +640,154 @@ def _entry_estimated_tokens(entry: Mapping[str, Any]) -> int:
     if isinstance(estimated, int) and estimated >= 0:
         return estimated
     return 0
+
+
+def _build_snippet_apply_readiness(
+    *,
+    malformed: bool,
+    scene_type: str,
+    retrieval_scope: str,
+    relayref_unresolved: bool,
+    ctx_block_candidate: Mapping[str, Any],
+    evidence_envelope: Mapping[str, Any],
+    snippet_candidates: Sequence[Mapping[str, Any]],
+    snippet_dry_run_only: bool,
+    snippet_apply_enabled: bool,
+    snippet_budget: int | None,
+) -> dict[str, Any]:
+    entries = ctx_block_candidate.get("entries")
+    candidate_entries = (
+        entries
+        if isinstance(entries, Sequence) and not isinstance(entries, str)
+        else []
+    )
+    included_entries = [
+        entry
+        for entry in candidate_entries
+        if isinstance(entry, Mapping) and entry.get("included") is True
+    ]
+    included_snippet_entries = [
+        entry
+        for entry in included_entries
+        if isinstance(entry, Mapping) and entry.get("snippet_available") is True
+    ]
+    envelope_blocked = evidence_envelope.get("blocked")
+    evidence_envelope_present = isinstance(evidence_envelope, Mapping)
+    snippet_candidates_present = bool(snippet_candidates)
+    blocked_evidence_present = (
+        isinstance(envelope_blocked, Sequence)
+        and not isinstance(envelope_blocked, str)
+        and bool(envelope_blocked)
+    )
+    snippet_tokens = sum(
+        _non_negative_int(entry.get("snippet_estimated_tokens"))
+        for entry in included_snippet_entries
+    )
+    normalized_budget = (
+        snippet_budget
+        if isinstance(snippet_budget, int) and snippet_budget > 0
+        else None
+    )
+    snippet_budget_allows_candidate = (
+        normalized_budget is None or snippet_tokens <= normalized_budget
+    )
+    scene_policy_blocks = (
+        malformed
+        or scene_type == "unknown"
+        or retrieval_scope == "current_context_only"
+        or scene_type in {"recovery", "formal_document", "medical_or_safety"}
+    )
+    preconditions = {
+        "scene_policy_allows_apply": not scene_policy_blocks,
+        "reference_resolved": not relayref_unresolved,
+        "candidate_entries_present": bool(candidate_entries),
+        "evidence_envelope_present": evidence_envelope_present,
+        "snippet_candidates_present": snippet_candidates_present,
+        "included_snippet_entries_present": bool(included_snippet_entries),
+        "snippet_budget_allows_candidate": snippet_budget_allows_candidate,
+        "snippet_dry_run_only": bool(snippet_dry_run_only),
+        "snippet_apply_enabled": bool(snippet_apply_enabled),
+        "runtime_snippet_injection_enabled": False,
+        "backend_payload_mutation_allowed": False,
+        "mem_soul_mutation_allowed": False,
+    }
+
+    if scene_policy_blocks:
+        decision = "blocked_scene_policy"
+    elif relayref_unresolved:
+        decision = "blocked_unresolved_reference"
+    elif not candidate_entries:
+        decision = "blocked_no_candidates"
+    elif blocked_evidence_present and not included_snippet_entries:
+        decision = "blocked_snippet_evidence"
+    elif not included_snippet_entries:
+        decision = "blocked_no_snippet"
+    elif not snippet_budget_allows_candidate:
+        decision = "blocked_snippet_budget"
+    elif snippet_dry_run_only or not snippet_apply_enabled:
+        decision = "dry_run_only"
+    else:
+        decision = "eligible_but_not_applied"
+
+    return {
+        "snippet_apply_decision": decision,
+        "snippet_apply_readiness_score": _snippet_apply_readiness_score(preconditions),
+        "snippet_apply_blocked_reasons": _snippet_apply_blocked_reasons(
+            decision,
+            preconditions,
+            blocked_evidence_present=blocked_evidence_present,
+        ),
+        "snippet_apply_preconditions": preconditions,
+    }
+
+
+def _snippet_apply_blocked_reasons(
+    decision: str,
+    preconditions: Mapping[str, bool],
+    *,
+    blocked_evidence_present: bool,
+) -> list[str]:
+    reasons: list[str] = [decision]
+    if decision == "eligible_but_not_applied":
+        reasons.append("runtime_snippet_injection_not_implemented")
+        return _dedupe_reasons(reasons)
+    if not preconditions.get("scene_policy_allows_apply", False):
+        reasons.append("scene_policy_does_not_allow_snippet_apply")
+    if not preconditions.get("reference_resolved", False):
+        reasons.append("unresolved_reference_requires_confirmation")
+    if not preconditions.get("candidate_entries_present", False):
+        reasons.append("ctx_block_candidate_entries_empty")
+    if not preconditions.get("evidence_envelope_present", False):
+        reasons.append("evidence_envelope_missing")
+    if not preconditions.get("snippet_candidates_present", False):
+        reasons.append("snippet_candidates_empty")
+    if blocked_evidence_present:
+        reasons.append("snippet_evidence_blocked")
+    if not preconditions.get("included_snippet_entries_present", False):
+        reasons.append("included_snippet_entries_empty")
+    if not preconditions.get("snippet_budget_allows_candidate", False):
+        reasons.append("snippet_budget_exceeded")
+    if preconditions.get("snippet_dry_run_only", True):
+        reasons.append("snippet_dry_run_only")
+    if not preconditions.get("snippet_apply_enabled", False):
+        reasons.append("snippet_apply_disabled")
+    reasons.append("runtime_snippet_injection_not_implemented")
+    return _dedupe_reasons(reasons)
+
+
+def _snippet_apply_readiness_score(preconditions: Mapping[str, bool]) -> float:
+    readiness_keys = (
+        "scene_policy_allows_apply",
+        "reference_resolved",
+        "candidate_entries_present",
+        "evidence_envelope_present",
+        "snippet_candidates_present",
+        "included_snippet_entries_present",
+        "snippet_budget_allows_candidate",
+        "snippet_apply_enabled",
+    )
+    passed = sum(1 for key in readiness_keys if preconditions.get(key) is True)
+    return round(passed / len(readiness_keys), 3)
 
 
 def _build_apply_readiness(
