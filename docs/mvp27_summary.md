@@ -114,10 +114,12 @@
   - `python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py`
 - Token budget truncation smokes:
   - `python scripts/relaylm_token_budget_truncation_smoke.py`
-  - `python scripts/relaylm_token_budget_truncation_request_path_smoke.py`
+  - `python scripts/relaylm_token_budget_truncation_apply_smoke.py`
+  - `python scripts/relaylm_token_budget_truncation_dry_run_smoke.py`
+  - `python scripts/relaylm_token_budget_truncation_proxy_smoke.py`
 - Runtime diagnostics / trace smokes:
   - `python scripts/relaylm_runtime_diagnostics_smoke.py`
-  - `python scripts/relaylm_jsonl_trace_smoke.py`
+  - `python scripts/relaylm_trace_success_smoke.py`
 
 ## Remaining limitations
 
