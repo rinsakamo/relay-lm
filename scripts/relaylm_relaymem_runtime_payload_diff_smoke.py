@@ -230,8 +230,12 @@ def _assert_metadata_only_case(root: Path, capture: _Capture, port: int) -> None
         snippet_runtime_dry_run_only=True,
     )
     summary = _summary("metadata_only_default", backend_payload, metadata)
+    metadata_indexes = _heading_indexes(backend_payload, "[RelayMEM Context]")
+    snippet_indexes = _heading_indexes(backend_payload, "[RelayMEM Snippet Context]")
     backend_text = json.dumps(backend_payload, ensure_ascii=False)
     require("PAYLOAD_DIFF_SNIPPET_SENTINEL" not in backend_text, backend_payload)
+    require(len(metadata_indexes) == 1, backend_payload)
+    require(len(snippet_indexes) == 0, backend_payload)
     require(summary["snippet_context_applied"] is False, summary)
     require(summary["metadata_context_applied"] is True, summary)
     require(summary["runtime_snippet_injection_result.applied"] is False, summary)
