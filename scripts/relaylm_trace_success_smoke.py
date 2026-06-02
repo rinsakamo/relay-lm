@@ -68,6 +68,24 @@ def main() -> int:
             memory_source="memory_candidate_selection",
             memory_selection_summary=selection_summary,
             memory_block_assembly=block_assembly,
+            relayrun_artifact={
+                "schema_version": "relayrun.runtime_checkpoint.v0",
+                "diagnostics_only": True,
+                "applied": False,
+                "run_id": "run-trace-001",
+                "run_status": "diagnostics_only",
+                "node_statuses": [
+                    {
+                        "node_name": "request_received",
+                        "node_status": "completed",
+                    }
+                ],
+                "resume_allowed": False,
+                "resume_mode": "none",
+                "checkpoint_persisted": False,
+                "recovery_transition_created": False,
+                "blocked_reasons": [],
+            },
             trace_enabled=True,
         )
         written = trace_runtime_event(
@@ -87,11 +105,14 @@ def main() -> int:
         require(records[0].metadata["memory_source"] == "memory_candidate_selection", records[0].metadata)
         require(records[0].metadata["memory_selection_summary"] == selection_summary, records[0].metadata)
         require(records[0].metadata["memory_block_assembly"] == block_assembly, records[0].metadata)
+        require(isinstance(records[0].metadata["relayrun_artifact"], dict), records[0].metadata)
+        require(records[0].metadata["relayrun_artifact"]["run_id"] == "run-trace-001", records[0].metadata)
         print("ok trace backend response event")
         print("ok trace response text captured")
         print("ok trace memory source captured")
         print("ok trace memory selection summary captured")
         print("ok trace memory block assembly captured")
+        print("ok trace relayrun artifact captured")
 
     return 0
 

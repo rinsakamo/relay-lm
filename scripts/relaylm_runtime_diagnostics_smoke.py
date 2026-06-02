@@ -34,11 +34,24 @@ def main() -> int:
             "schema_version": "relaymem.runtime_snippet_injection_result.v0",
             "applied": False,
         },
+        relayrun_artifact={
+            "schema_version": "relayrun.runtime_checkpoint.v0",
+            "diagnostics_only": True,
+            "applied": False,
+            "run_id": "run-001",
+            "run_status": "diagnostics_only",
+            "resume_mode": "none",
+            "node_statuses": [],
+            "checkpoint_persisted": False,
+        },
     )
 
     headers = diagnostics.to_headers()
     require(headers["x-relaylm-request-id"] == "request-001", f"bad request id header: {headers}")
     require(headers["x-relaylm-mode"] == "pass_through", f"bad mode header: {headers}")
+    require(headers["x-relaylm-run-id"] == "run-001", f"bad run id header: {headers}")
+    require(headers["x-relaylm-run-status"] == "diagnostics_only", f"bad run status header: {headers}")
+    require(headers["x-relaylm-resume-mode"] == "none", f"bad resume mode header: {headers}")
     require("x-relaylm-fallback-reason" not in headers, f"unexpected fallback header: {headers}")
     print("ok diagnostics headers")
 
@@ -63,6 +76,10 @@ def main() -> int:
         runtime_snippet.get("applied") is False,
         f"bad runtime snippet diagnostics: {payload}",
     )
+    relayrun = payload.get("relayrun_artifact")
+    require(isinstance(relayrun, dict), f"missing relayrun diagnostics: {payload}")
+    require(relayrun.get("diagnostics_only") is True, f"bad relayrun diagnostics: {payload}")
+    require(relayrun.get("checkpoint_persisted") is False, f"bad relayrun diagnostics: {payload}")
     print("ok diagnostics log payload")
 
     fallback = RequestDiagnostics(

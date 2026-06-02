@@ -47,6 +47,16 @@ DEFAULT_RELAYRUN_NODE_SEQUENCE: tuple[str, ...] = (
     "response_trace",
 )
 
+RUNTIME_CHECKPOINT_NODE_SEQUENCE: tuple[str, ...] = (
+    "request_received",
+    "relayscn",
+    "relayref",
+    "relaymem_retrieval",
+    "relaymem_runtime_ctx",
+    "token_budget_truncation",
+    "backend_forward",
+)
+
 
 @dataclass(frozen=True)
 class RelayRunStreamState:
@@ -213,3 +223,59 @@ def build_relayrun_node(
         output_artifact_id=output_artifact_id,
     )
     return node.to_log_dict()
+
+
+def build_runtime_checkpoint_dry_run_artifact(
+    *,
+    request_id: str,
+    route_model: str | None = None,
+    backend_name: str | None = None,
+    character_id: str | None = None,
+    stream_enabled: bool | None = None,
+    turn_id: str | None = None,
+    run_id: str | None = None,
+    node_statuses: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+    blocked_reasons: list[str] | tuple[str, ...] | None = None,
+    stream_started: bool | None = None,
+    first_token_sent: bool | None = None,
+    resume_allowed: bool = False,
+    resume_mode: ResumeMode = "none",
+    checkpoint_persisted: bool = False,
+    recovery_transition_created: bool = False,
+    applied: bool = False,
+) -> dict[str, Any]:
+    """Build the request-path RelayRUN runtime checkpoint dry-run artifact.
+
+    This artifact is metadata-only. It must not write checkpoint files, mutate
+    forwarded payloads, enable resume, or create recovery transitions yet.
+    """
+
+    safe_nodes = []
+    for node in node_statuses or ():
+        if isinstance(node, dict):
+            safe_nodes.append(dict(node))
+
+    safe_blocked_reasons = [str(reason) for reason in (blocked_reasons or ())]
+
+    return {
+        "schema_version": "relayrun.runtime_checkpoint.v0",
+        "diagnostics_only": True,
+        "applied": bool(applied),
+        "run_id": run_id or new_run_id(),
+        "request_id": request_id,
+        "turn_id": turn_id,
+        "route_model": route_model,
+        "backend_name": backend_name,
+        "character_id": character_id,
+        "stream_enabled": stream_enabled,
+        "run_status": "diagnostics_only",
+        "node_sequence": list(RUNTIME_CHECKPOINT_NODE_SEQUENCE),
+        "node_statuses": safe_nodes,
+        "stream_started": stream_started,
+        "first_token_sent": first_token_sent,
+        "resume_allowed": bool(resume_allowed),
+        "resume_mode": resume_mode,
+        "checkpoint_persisted": bool(checkpoint_persisted),
+        "recovery_transition_created": bool(recovery_transition_created),
+        "blocked_reasons": safe_blocked_reasons,
+    }
