@@ -8,7 +8,7 @@ changing backend forwarding, or writing checkpoints.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any, Literal
 import uuid
 
@@ -127,7 +127,7 @@ class RelayRunDiagnosticsArtifact:
     diagnostics_only: bool = True
     checkpoint_written: bool = False
     schema_version: str = "relayrun-diagnostics-0"
-    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_log_dict(self) -> dict[str, Any]:
         return {
