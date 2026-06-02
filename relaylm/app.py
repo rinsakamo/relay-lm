@@ -40,6 +40,11 @@ from relaylm.relaymem_runtime_ctx import (
     maybe_apply_relaymem_snippet_runtime_injection,
     skipped_relaymem_runtime_ctx_injection_result,
 )
+from relaylm.relayrun import (
+    build_relayrun_node,
+    build_runtime_checkpoint_dry_run_artifact,
+    new_run_id,
+)
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.relayemo import (
     load_session_assistant_state,
@@ -171,6 +176,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 error_type="server_error",
                 headers=diagnostics.to_headers(),
             )
+
+        relayrun_run_id = new_run_id()
 
         compiled_request = compile_chat_payload_if_enabled(
             config=config,
@@ -379,6 +386,22 @@ def create_app(config_path: str | None = None) -> FastAPI:
             diagnostics_only=compile_diagnostics_only,
         )
 
+        relayrun_artifact = _build_relayrun_runtime_artifact(
+            request_id=request_id,
+            run_id=relayrun_run_id,
+            route=route,
+            stream_enabled=stream_enabled,
+            relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+            relayref_artifact=relayref_artifact,
+            relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+            runtime_ctx_injection_result=runtime_ctx_injection_result,
+            runtime_snippet_injection_result=runtime_snippet_injection_result,
+            token_budget_truncation=token_budget_truncation,
+            backend_forward_status="pending",
+            stream_started=False,
+            first_token_sent=False,
+        )
+
         base_diagnostics = RequestDiagnostics(
             request_id=request_id,
             route_model=route.route_model,
@@ -429,6 +452,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             relaymem_retrieval_artifact=relaymem_retrieval_artifact,
             runtime_ctx_injection_result=runtime_ctx_injection_result,
             runtime_snippet_injection_result=runtime_snippet_injection_result,
+            relayrun_artifact=relayrun_artifact,
         )
         feedback_summary = (
             build_relaysoul_runtime_feedback_summary(base_diagnostics)
@@ -446,9 +470,29 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     forwarded_payload, route
                 )
             except BackendRequestError as exc:
+                failed_relayrun_artifact = _build_relayrun_runtime_artifact(
+                    request_id=request_id,
+                    run_id=relayrun_run_id,
+                    route=route,
+                    stream_enabled=stream_enabled,
+                    relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+                    relayref_artifact=relayref_artifact,
+                    relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+                    runtime_ctx_injection_result=runtime_ctx_injection_result,
+                    runtime_snippet_injection_result=runtime_snippet_injection_result,
+                    token_budget_truncation=token_budget_truncation,
+                    backend_forward_status="failed",
+                    backend_forward_blocked_reasons=[exc.__class__.__name__],
+                    stream_started=False,
+                    first_token_sent=False,
+                )
+                failed_diagnostics = replace(
+                    diagnostics,
+                    relayrun_artifact=failed_relayrun_artifact,
+                )
                 trace_runtime_event(
                     config=config,
-                    diagnostics=diagnostics,
+                    diagnostics=failed_diagnostics,
                     messages=_extract_trace_messages(forwarded_payload),
                     metadata={"event": "backend_error", "error_type": exc.__class__.__name__},
                 )
@@ -456,11 +500,30 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     status_code=502,
                     message=f"RelayLM could not reach backend: {exc}",
                     error_type="backend_connection_error",
-                    headers=diagnostics.to_headers(),
+                    headers=failed_diagnostics.to_headers(),
                 )
+            stream_relayrun_artifact = _build_relayrun_runtime_artifact(
+                request_id=request_id,
+                run_id=relayrun_run_id,
+                route=route,
+                stream_enabled=stream_enabled,
+                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+                relayref_artifact=relayref_artifact,
+                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+                runtime_ctx_injection_result=runtime_ctx_injection_result,
+                runtime_snippet_injection_result=runtime_snippet_injection_result,
+                token_budget_truncation=token_budget_truncation,
+                backend_forward_status="completed",
+                stream_started=True,
+                first_token_sent=False,
+            )
+            stream_diagnostics = replace(
+                diagnostics,
+                relayrun_artifact=stream_relayrun_artifact,
+            )
             trace_runtime_event(
                 config=config,
-                diagnostics=diagnostics,
+                diagnostics=stream_diagnostics,
                 messages=_extract_trace_messages(forwarded_payload),
                 metadata={
                     "event": "backend_stream_response",
@@ -472,7 +535,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 body_iter,
                 status_code=status_code,
                 media_type=content_type,
-                headers=diagnostics.to_headers(),
+                headers=stream_diagnostics.to_headers(),
             )
 
         try:
@@ -480,9 +543,29 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 forwarded_payload, route
             )
         except BackendRequestError as exc:
+            failed_relayrun_artifact = _build_relayrun_runtime_artifact(
+                request_id=request_id,
+                run_id=relayrun_run_id,
+                route=route,
+                stream_enabled=stream_enabled,
+                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+                relayref_artifact=relayref_artifact,
+                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+                runtime_ctx_injection_result=runtime_ctx_injection_result,
+                runtime_snippet_injection_result=runtime_snippet_injection_result,
+                token_budget_truncation=token_budget_truncation,
+                backend_forward_status="failed",
+                backend_forward_blocked_reasons=[exc.__class__.__name__],
+                stream_started=False,
+                first_token_sent=False,
+            )
+            failed_diagnostics = replace(
+                diagnostics,
+                relayrun_artifact=failed_relayrun_artifact,
+            )
             trace_runtime_event(
                 config=config,
-                diagnostics=diagnostics,
+                diagnostics=failed_diagnostics,
                 messages=_extract_trace_messages(forwarded_payload),
                 metadata={"event": "backend_error", "error_type": exc.__class__.__name__},
             )
@@ -490,9 +573,28 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 status_code=502,
                 message=f"RelayLM could not reach backend: {exc}",
                 error_type="backend_connection_error",
-                headers=diagnostics.to_headers(),
+                headers=failed_diagnostics.to_headers(),
             )
-        headers = diagnostics.to_headers()
+        success_relayrun_artifact = _build_relayrun_runtime_artifact(
+            request_id=request_id,
+            run_id=relayrun_run_id,
+            route=route,
+            stream_enabled=stream_enabled,
+            relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+            relayref_artifact=relayref_artifact,
+            relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+            runtime_ctx_injection_result=runtime_ctx_injection_result,
+            runtime_snippet_injection_result=runtime_snippet_injection_result,
+            token_budget_truncation=token_budget_truncation,
+            backend_forward_status="completed",
+            stream_started=False,
+            first_token_sent=False,
+        )
+        success_diagnostics = replace(
+            diagnostics,
+            relayrun_artifact=success_relayrun_artifact,
+        )
+        headers = success_diagnostics.to_headers()
         if (
             isinstance(body, dict)
             and relayemo_artifact is not None
@@ -509,7 +611,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
         if isinstance(body, dict) or isinstance(body, list):
             trace_runtime_event(
                 config=config,
-                diagnostics=diagnostics,
+                diagnostics=success_diagnostics,
                 messages=_extract_trace_messages(forwarded_payload),
                 response_text=extract_response_text(body),
                 metadata={"event": "backend_response", "status_code": status_code},
@@ -729,6 +831,245 @@ def _extract_ctx_hints(payload: Mapping[str, Any]) -> dict[str, Any]:
     if "ctx_handoff_guess" in metadata and "ctx_handoff_guess" not in hints:
         hints["ctx_handoff_guess"] = metadata.get("ctx_handoff_guess")
     return hints
+
+
+def _build_relayrun_runtime_artifact(
+    *,
+    request_id: str,
+    run_id: str,
+    route: ResolvedRoute,
+    stream_enabled: bool,
+    relayscn_scene_policy_artifact: Mapping[str, Any] | None,
+    relayref_artifact: Mapping[str, Any] | None,
+    relaymem_retrieval_artifact: Mapping[str, Any] | None,
+    runtime_ctx_injection_result: Mapping[str, Any] | None,
+    runtime_snippet_injection_result: Mapping[str, Any] | None,
+    token_budget_truncation: Mapping[str, Any] | None,
+    backend_forward_status: str,
+    backend_forward_blocked_reasons: list[str] | None = None,
+    stream_started: bool | None = None,
+    first_token_sent: bool | None = None,
+) -> dict[str, Any]:
+    node_statuses = [
+        build_relayrun_node(node_name="request_received", node_status="completed"),
+        _relayrun_relayscn_node(relayscn_scene_policy_artifact),
+        _relayrun_relayref_node(relayref_artifact),
+        _relayrun_relaymem_retrieval_node(relaymem_retrieval_artifact),
+        _relayrun_relaymem_runtime_ctx_node(
+            runtime_ctx_injection_result=runtime_ctx_injection_result,
+            runtime_snippet_injection_result=runtime_snippet_injection_result,
+        ),
+        _relayrun_token_budget_truncation_node(token_budget_truncation),
+        build_relayrun_node(
+            node_name="backend_forward",
+            node_status=_relayrun_backend_forward_status(backend_forward_status),
+            blocked_reasons=backend_forward_blocked_reasons,
+            fallback_reason=(
+                "backend_request_error"
+                if backend_forward_status == "failed"
+                else None
+            ),
+        ),
+    ]
+    blocked_reasons = _relayrun_collect_blocked_reasons(node_statuses)
+    return build_runtime_checkpoint_dry_run_artifact(
+        request_id=request_id,
+        run_id=run_id,
+        turn_id=None,
+        route_model=route.route_model,
+        backend_name=route.backend_name,
+        character_id=route.character_id,
+        stream_enabled=stream_enabled,
+        node_statuses=node_statuses,
+        blocked_reasons=blocked_reasons,
+        stream_started=stream_started,
+        first_token_sent=first_token_sent,
+        resume_allowed=False,
+        resume_mode="none",
+        checkpoint_persisted=False,
+        recovery_transition_created=False,
+        applied=False,
+    )
+
+
+def _relayrun_relayscn_node(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(artifact, Mapping):
+        return build_relayrun_node(
+            node_name="relayscn",
+            node_status="failed",
+            blocked_reasons=["relayscn_scene_policy_artifact_missing"],
+            fallback_reason="relayscn_artifact_missing",
+        )
+    scene_state = artifact.get("scene_state")
+    scene_type = scene_state.get("scene_type") if isinstance(scene_state, Mapping) else None
+    scene_policy = artifact.get("scene_policy")
+    blocked_reasons = _string_list(artifact.get("persistence_block_reasons"))
+    blocked_reasons.extend(
+        reason
+        for reason in _string_list(
+            scene_policy.get("persistence_block_reasons")
+            if isinstance(scene_policy, Mapping)
+            else None
+        )
+        if reason not in blocked_reasons
+    )
+    persistence_block = artifact.get("persistence_block") is True
+    if isinstance(scene_policy, Mapping) and scene_policy.get("persistence_block") is True:
+        persistence_block = True
+    if persistence_block and not blocked_reasons:
+        if isinstance(scene_type, str) and scene_type:
+            blocked_reasons = [f"scene_policy:{scene_type}"]
+        else:
+            blocked_reasons = ["scene_policy:blocked"]
+    status = "blocked" if blocked_reasons else "completed"
+    return build_relayrun_node(
+        node_name="relayscn",
+        node_status=status,
+        blocked_reasons=blocked_reasons,
+        fallback_reason="scene_policy_fail_closed" if blocked_reasons else None,
+    )
+
+
+def _relayrun_relayref_node(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(artifact, Mapping):
+        return build_relayrun_node(
+            node_name="relayref",
+            node_status="failed",
+            blocked_reasons=["relayref_artifact_missing"],
+            fallback_reason="relayref_artifact_missing",
+        )
+    blocked_reasons = []
+    if artifact.get("unresolved_reference_detected") is True:
+        blocked_reasons.append("unresolved_reference_detected")
+    blocked_reasons.extend(
+        reason
+        for reason in _string_list(artifact.get("mode_reasons"))
+        if reason not in blocked_reasons
+    )
+    status = "blocked" if blocked_reasons else "completed"
+    return build_relayrun_node(
+        node_name="relayref",
+        node_status=status,
+        blocked_reasons=blocked_reasons,
+        fallback_reason=(
+            str(artifact.get("mode"))
+            if blocked_reasons and isinstance(artifact.get("mode"), str)
+            else None
+        ),
+    )
+
+
+def _relayrun_relaymem_retrieval_node(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(artifact, Mapping):
+        return build_relayrun_node(
+            node_name="relaymem_retrieval",
+            node_status="failed",
+            blocked_reasons=["relaymem_retrieval_artifact_missing"],
+            fallback_reason="relaymem_retrieval_artifact_missing",
+        )
+    blocked_reasons = []
+    apply_decision = artifact.get("apply_decision")
+    if isinstance(apply_decision, str) and apply_decision.startswith("blocked_"):
+        blocked_reasons.append(f"apply_decision:{apply_decision}")
+    fallback_reason = artifact.get("fallback_reason")
+    snippet_apply_decision = artifact.get("snippet_apply_decision")
+    if (
+        isinstance(snippet_apply_decision, str)
+        and snippet_apply_decision.startswith("blocked_")
+    ):
+        blocked_reasons.append(f"snippet_apply_decision:{snippet_apply_decision}")
+    status = "blocked" if blocked_reasons else "completed"
+    return build_relayrun_node(
+        node_name="relaymem_retrieval",
+        node_status=status,
+        blocked_reasons=blocked_reasons,
+        fallback_reason=fallback_reason if isinstance(fallback_reason, str) else None,
+    )
+
+
+def _relayrun_relaymem_runtime_ctx_node(
+    *,
+    runtime_ctx_injection_result: Mapping[str, Any] | None,
+    runtime_snippet_injection_result: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    if (
+        not isinstance(runtime_ctx_injection_result, Mapping)
+        or not isinstance(runtime_snippet_injection_result, Mapping)
+    ):
+        return build_relayrun_node(
+            node_name="relaymem_runtime_ctx",
+            node_status="failed",
+            blocked_reasons=["runtime_ctx_or_snippet_result_missing"],
+            fallback_reason="runtime_ctx_result_missing",
+        )
+    if (
+        runtime_ctx_injection_result.get("applied") is True
+        or runtime_snippet_injection_result.get("applied") is True
+    ):
+        return build_relayrun_node(
+            node_name="relaymem_runtime_ctx",
+            node_status="completed",
+        )
+    blocked_reasons = _string_list(runtime_snippet_injection_result.get("blocked_reasons"))
+    blocked_reasons.extend(
+        reason
+        for reason in _string_list(runtime_ctx_injection_result.get("blocked_reasons"))
+        if reason not in blocked_reasons
+    )
+    status = "blocked" if blocked_reasons else "skipped"
+    return build_relayrun_node(
+        node_name="relaymem_runtime_ctx",
+        node_status=status,
+        blocked_reasons=blocked_reasons,
+        fallback_reason="runtime_ctx_not_applied" if blocked_reasons else None,
+    )
+
+
+def _relayrun_token_budget_truncation_node(
+    artifact: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(artifact, Mapping):
+        return build_relayrun_node(
+            node_name="token_budget_truncation",
+            node_status="skipped",
+        )
+    blocked_reasons = []
+    blocked_reason = artifact.get("blocked_reason")
+    if isinstance(blocked_reason, str) and blocked_reason:
+        blocked_reasons.append(blocked_reason)
+    status = "blocked" if blocked_reasons else "completed"
+    return build_relayrun_node(
+        node_name="token_budget_truncation",
+        node_status=status,
+        blocked_reasons=blocked_reasons,
+        fallback_reason="token_budget_blocked" if blocked_reasons else None,
+    )
+
+
+def _relayrun_backend_forward_status(status: str) -> str:
+    if status in {"completed", "failed", "blocked", "skipped"}:
+        return status
+    return "pending"
+
+
+def _relayrun_collect_blocked_reasons(node_statuses: list[dict[str, Any]]) -> list[str]:
+    blocked_reasons: list[str] = []
+    for node in node_statuses:
+        if not isinstance(node, Mapping):
+            continue
+        node_name = node.get("node_name")
+        prefix = f"{node_name}:" if isinstance(node_name, str) and node_name else ""
+        for reason in _string_list(node.get("blocked_reasons")):
+            value = f"{prefix}{reason}" if prefix else reason
+            if value not in blocked_reasons:
+                blocked_reasons.append(value)
+    return blocked_reasons
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, list | tuple):
+        return []
+    return [str(item) for item in value if isinstance(item, str) and item]
 
 
 def main() -> None:

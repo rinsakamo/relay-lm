@@ -222,6 +222,64 @@ The first skeleton can expose lineage keys as `null` until app-level wiring is a
 5. Later, wire `app.py` node updates in diagnostics-only mode.
 6. Later, add metadata-only checkpoint JSONL behind an explicit disabled-by-default config flag.
 
+## Runtime dry-run wiring
+
+The next request-path step is diagnostics-only wiring inside `app.py`.
+
+- Each runtime request emits a diagnostics-only `relayrun_artifact`.
+- The first wired artifact is metadata-only:
+  - no checkpoint persistence
+  - no resume
+  - no recovery transition apply
+  - no payload mutation from RelayRUN itself
+- The runtime artifact should currently expose:
+  - `schema_version: relayrun.runtime_checkpoint.v0`
+  - `diagnostics_only: true`
+  - `applied: false`
+  - `run_id`
+  - `turn_id`
+  - `route_model`
+  - `node_statuses`
+  - `stream_started`
+  - `first_token_sent`
+  - `resume_allowed: false`
+  - `resume_mode: none`
+  - `checkpoint_persisted: false`
+  - `recovery_transition_created: false`
+  - `blocked_reasons`
+
+## Initial node status coverage
+
+The first runtime dry-run wiring should summarize these request-path nodes:
+
+- `request_received`
+- `relayscn`
+- `relayref`
+- `relaymem_retrieval`
+- `relaymem_runtime_ctx`
+- `token_budget_truncation`
+- `backend_forward`
+
+These node statuses are diagnostics summaries, not executable orchestration state. They must not change existing runtime ordering or apply behavior.
+
+## Interaction with existing runtime layers
+
+- RelaySCN:
+  - RelayRUN may summarize fail-closed scene-policy outcomes as blocked node states.
+  - It must not change scene classification or persistence rules.
+- RelayREF:
+  - RelayRUN may summarize unresolved-reference or reflect-style paths as blocked node states.
+  - It must not rewrite context or force resume behavior.
+- RelayMEM retrieval:
+  - RelayRUN may summarize retrieval dry-run fallback or blocked apply decisions.
+  - It must not change retrieval ranking, candidate selection, or evidence extraction.
+- RelayMEM runtime ctx / snippet injection:
+  - RelayRUN may summarize whether runtime context was applied, blocked, or skipped.
+  - It must not change metadata-only vs snippet-bearing ordering.
+- Token budget truncation:
+  - RelayRUN may summarize whether truncation was skipped, completed, or blocked.
+  - It must not change truncation timing or preserved-message rules.
+
 ## Safety invariants for current work
 
 - Do not mutate forwarded payloads from RelayRUN.
