@@ -68,6 +68,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [RelayMEM SLP execution design](docs/relaymem_slp_execution_design.md)
 - [RelayMEM retrieval execution design](docs/relaymem_retrieval_execution_design.md)
 - [RelayMEM runtime payload diff evaluation smoke](docs/relaymem_runtime_payload_eval.md)
+- [RelayMEM local LLM evaluation guide](docs/relaymem_local_llm_eval_guide.md)
 - [OpenWebUI + LM Studio MVP](docs/openwebui_lmstudio_mvp.md)
 - [OpenWebUI + LM Studio manual smoke runbook](docs/openwebui_lmstudio_manual_smoke.md)
 - [OpenWebUI model preset/avatar checklist](docs/openwebui_model_preset_checklist.md)
