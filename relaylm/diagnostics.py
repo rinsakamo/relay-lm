@@ -51,6 +51,7 @@ class RequestDiagnostics:
     relaymem_retrieval_artifact: dict[str, Any] | None = None
     runtime_ctx_injection_result: dict[str, Any] | None = None
     runtime_snippet_injection_result: dict[str, Any] | None = None
+    relayrun_artifact: dict[str, Any] | None = None
 
     def to_headers(self) -> dict[str, str]:
         headers = {"x-relaylm-request-id": self.request_id}
@@ -71,6 +72,16 @@ class RequestDiagnostics:
             )
         if self.fallback_reason:
             headers["x-relaylm-fallback-reason"] = self.fallback_reason
+        if self.relayrun_artifact:
+            run_id = self.relayrun_artifact.get("run_id")
+            if isinstance(run_id, str) and run_id:
+                headers["x-relaylm-run-id"] = run_id
+            run_status = self.relayrun_artifact.get("run_status")
+            if isinstance(run_status, str) and run_status:
+                headers["x-relaylm-run-status"] = run_status
+            resume_mode = self.relayrun_artifact.get("resume_mode")
+            if isinstance(resume_mode, str) and resume_mode:
+                headers["x-relaylm-resume-mode"] = resume_mode
         return headers
 
     def to_log_dict(self) -> dict[str, object]:

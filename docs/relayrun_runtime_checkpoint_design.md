@@ -1,0 +1,233 @@
+# RelayRUN Runtime Checkpoint Design
+
+Date basis: 2026-06-02 JST
+
+## Purpose
+
+RelayRUN is RelayLM's runtime orchestration layer. It tracks one request/turn as an explicit run so RelayLM can record node progress, failure boundaries, fallback decisions, and future resume points without turning RelayLM into a semantic decision layer.
+
+This design is intentionally narrow for the first implementation. It should not change RelayMEM local tests, request payload mutation, streaming forwarding, backend behavior, or memory retrieval semantics.
+
+## Positioning
+
+RelayLM remains an OpenAI-compatible runtime proxy. RelayRUN sits inside RelayLM and coordinates the runtime path.
+
+```text
+OpenAI-compatible API / proxy transport
+  -> RelayRUN orchestration
+  -> RelaySCN / RelayEMO / RelayMEM / RelayCTX / RelaySOUL nodes
+  -> backend adapter
+```
+
+RelayRUN is not RelayPRX. RelayPRX remains only a future extraction candidate if transport, backend routing, multi-backend behavior, streaming recovery, or non-OpenAI-compatible adapters become complex enough.
+
+## Core boundary
+
+RelayRUN owns:
+
+- `run_id`, `turn_id`, and request/runtime correlation
+- node execution order and `node_status` tracking
+- runtime checkpoint artifacts
+- failure, blocked, skipped, and waiting-user states
+- resume mode metadata
+- recovery transition artifacts
+- diagnostics and trace linkage
+- stream-state boundary metadata
+- fallback summary aggregation
+- artifact lineage identifiers
+- idempotency and duplicate-prevention hooks in later phases
+
+RelayRUN must not own:
+
+- scene classification
+- user affect estimation
+- memory retrieval ranking or filtering
+- memory write/update semantics
+- RelaySOUL change decisions
+- prompt content construction
+- final character style or expression
+- backend/KV optimization
+- response rewriting after streaming has started
+
+## Trace vs checkpoint
+
+RelayLM must keep trace/diagnostics separate from runtime checkpoints.
+
+```text
+Trace = what happened, best-effort observability
+Checkpoint = where execution can resume or safely stop
+Artifact lineage = what evidence/output allowed the next step
+Recovery scene = how RelayLM asks, stops, or transitions safely
+```
+
+Initial checkpoint output should be diagnostics-only and metadata-only. It should not capture full prompt text, full messages, raw user affect estimates as long-term facts, or backend API keys.
+
+## Initial node sequence
+
+The current `app.py` handler already behaves like a straight-line runtime. RelayRUN should first model that flow as nodes without changing behavior.
+
+```text
+request_parse
+route_resolve
+ctx_compile
+token_policy
+scope_resolution
+input_relayemo
+input_relayscn
+relayref
+relaymem_retrieval
+relaymem_runtime_injection
+token_budget_truncation
+diagnostics_build
+backend_forward
+response_trace
+```
+
+Later, the node names can converge with the canonical stack:
+
+```text
+Input-side RelaySCN
+Input-side RelayEMO
+RelayMEM Retrieval
+RelayCTX Repack
+Main LLM
+RelayCTX Unpack
+Return-side RelayEMO
+Output-side RelaySCN
+```
+
+## Node status schema
+
+```yaml
+run_node:
+  schema_version: relayrun-node-0
+  node_name: relaymem_retrieval
+  node_status: pending | running | completed | failed | blocked | skipped | waiting_user
+  started_at: null
+  completed_at: null
+  fallback_reason: null
+  blocked_reasons: []
+  input_artifact_id: null
+  output_artifact_id: null
+  diagnostics_only: true
+```
+
+The MVP skeleton may build these dictionaries without writing them to disk or wiring them into every node yet.
+
+## Runtime checkpoint schema
+
+```yaml
+runtime_checkpoint:
+  schema_version: relayrun-checkpoint-0
+  run_id: run_...
+  request_id: ...
+  turn_id: null
+  route_model: relaylm-companion
+  backend_name: lmstudio
+  character_id: mili
+  stream_enabled: false
+  node_name: relaymem_retrieval
+  node_status: completed
+  input_artifact_id: null
+  output_artifact_id: relaymem_retrieval_artifact_...
+  blocked_reasons: []
+  fallback_reason: null
+  resume_allowed: false
+  resume_mode: none
+  stream_state:
+    stream_requested: false
+    backend_stream_opened: false
+    first_token_sent: false
+    recovery_response_allowed: true
+  created_at: '2026-06-02T00:00:00+09:00'
+```
+
+## Stream boundary rule
+
+Streaming is the main recovery boundary.
+
+```text
+Before backend stream opens:
+  recovery response, OpenAI-compatible error, or fallback may be selected.
+
+After backend stream opens but before first token:
+  recovery is limited and must preserve transport semantics.
+
+After first token is sent:
+  user-visible text must not be replaced or rewritten by RelayRUN.
+```
+
+RelayRUN may record a stream failure checkpoint after first token, but it should not synthesize character-facing text directly in normal character or VTuber modes.
+
+## Recovery transition artifact
+
+RelayRUN may create a recovery transition artifact, but character-facing recovery text must still pass through the full RelayLM output pipeline.
+
+```yaml
+recovery_transition_artifact:
+  schema_version: relayrun-recovery-transition-0
+  run_id: run_...
+  transition_type: resume_from_checkpoint | blocked | fallback
+  recovery_intent: ask_user_confirmation | explain_blocked_state | request_minimal_reentry
+  blocked_reasons: []
+  required_user_action:
+    type: confirm | restate_topic | approve_artifact | choose_option | none
+    prompt_intent: null
+  user_visible_allowed: false
+  diagnostics_only: true
+```
+
+For MVP, this remains diagnostics-only. Direct RUN responses are reserved for transport-level failures, streaming-before-start complete failures, diagnostics-only internal records, or explicitly non-character system modes.
+
+## Fallback summary
+
+Fallback should be normal product behavior, not an exceptional crash path.
+
+```yaml
+run_fallback:
+  fallback_applied: false
+  from_mode: null
+  to_mode: null
+  node_name: null
+  reason: null
+  user_visible: false
+```
+
+RelayRUN records which node caused fallback, but it does not decide memory semantics or SOUL updates.
+
+## Artifact lineage
+
+RelayRUN should link existing diagnostics artifacts by ID or metadata reference, not duplicate full payloads.
+
+```yaml
+artifact_lineage:
+  input_payload_artifact_id: null
+  compiled_request_artifact_id: null
+  relayemo_artifact_id: null
+  relayscn_artifact_id: null
+  relayref_artifact_id: null
+  relaymem_retrieval_artifact_id: null
+  runtime_ctx_injection_artifact_id: null
+  backend_response_artifact_id: null
+```
+
+The first skeleton can expose lineage keys as `null` until app-level wiring is added.
+
+## MVP implementation order
+
+1. Add this design document and README link.
+2. Add a pure `relaylm/relayrun.py` diagnostics skeleton.
+3. Add optional `relayrun_artifact` to `RequestDiagnostics` and trace metadata.
+4. Keep payload, MEM retrieval, injection order, token truncation order, backend forwarding, streaming, and error payloads unchanged.
+5. Later, wire `app.py` node updates in diagnostics-only mode.
+6. Later, add metadata-only checkpoint JSONL behind an explicit disabled-by-default config flag.
+
+## Safety invariants for current work
+
+- Do not mutate forwarded payloads from RelayRUN.
+- Do not change RelayMEM local retrieval test inputs.
+- Do not change snippet/runtime ctx injection priority.
+- Do not change token-budget truncation timing.
+- Do not change streaming forwarding behavior.
+- Do not replace backend errors with recovery text yet.
+- Do not enable checkpoint file writes by default.

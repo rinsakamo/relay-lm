@@ -99,6 +99,8 @@ def trace_runtime_event(
             trace_metadata["runtime_snippet_injection_result"] = (
                 diagnostics.runtime_snippet_injection_result
             )
+        if diagnostics.relayrun_artifact is not None:
+            trace_metadata["relayrun_artifact"] = diagnostics.relayrun_artifact
         record = build_trace_record(
             trace_id=diagnostics.request_id,
             character_id=diagnostics.character_id,
