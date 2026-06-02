@@ -16,6 +16,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.app import create_app
+from relaylm.app import _relayrun_relayscn_node
 
 
 class _Capture:
@@ -305,6 +306,39 @@ def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> No
     print("ok trace metadata includes relayrun_artifact")
 
 
+def _assert_relayscn_persistence_block_design_talk_case() -> None:
+    node = _relayrun_relayscn_node(
+        {
+            "schema_version": "relayscn.scene_policy_artifact.v0",
+            "diagnostics_only": True,
+            "scene_state": {
+                "scene_type": "design_talk",
+                "confidence": 0.4,
+                "stability": 0.4,
+            },
+            "scene_policy": {
+                "schema_version": "relayscn.scene_policy.v0",
+                "persistence_block": True,
+                "persistence_block_reasons": [
+                    "confidence_below_threshold",
+                    "stability_below_threshold",
+                ],
+            },
+            "persistence_block": True,
+            "persistence_block_reasons": [
+                "confidence_below_threshold",
+                "stability_below_threshold",
+            ],
+        }
+    )
+    require(node.get("node_status") == "blocked", node)
+    blocked_reasons = node.get("blocked_reasons")
+    require(isinstance(blocked_reasons, list), node)
+    require("confidence_below_threshold" in blocked_reasons, node)
+    require("stability_below_threshold" in blocked_reasons, node)
+    print("ok relayscn persistence block marks design_talk node blocked")
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
@@ -315,6 +349,7 @@ def main() -> int:
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
+            _assert_relayscn_persistence_block_design_talk_case()
             port = server.server_address[1]
             _assert_normal_case(root, capture, port)
             _assert_recovery_case(root, capture, port)

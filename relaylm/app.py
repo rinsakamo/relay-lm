@@ -902,11 +902,25 @@ def _relayrun_relayscn_node(artifact: Mapping[str, Any] | None) -> dict[str, Any
         )
     scene_state = artifact.get("scene_state")
     scene_type = scene_state.get("scene_type") if isinstance(scene_state, Mapping) else None
-    blocked_reasons = []
-    if scene_type in {"recovery", "formal_document", "medical_or_safety", "unknown"}:
-        blocked_reasons = _string_list(artifact.get("persistence_block_reasons"))
-        if not blocked_reasons:
+    scene_policy = artifact.get("scene_policy")
+    blocked_reasons = _string_list(artifact.get("persistence_block_reasons"))
+    blocked_reasons.extend(
+        reason
+        for reason in _string_list(
+            scene_policy.get("persistence_block_reasons")
+            if isinstance(scene_policy, Mapping)
+            else None
+        )
+        if reason not in blocked_reasons
+    )
+    persistence_block = artifact.get("persistence_block") is True
+    if isinstance(scene_policy, Mapping) and scene_policy.get("persistence_block") is True:
+        persistence_block = True
+    if persistence_block and not blocked_reasons:
+        if isinstance(scene_type, str) and scene_type:
             blocked_reasons = [f"scene_policy:{scene_type}"]
+        else:
+            blocked_reasons = ["scene_policy:blocked"]
     status = "blocked" if blocked_reasons else "completed"
     return build_relayrun_node(
         node_name="relayscn",
