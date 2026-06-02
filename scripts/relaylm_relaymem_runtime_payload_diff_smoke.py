@@ -27,11 +27,13 @@ class _Capture:
         with self._lock:
             self.payloads.append(payload)
 
-    def last(self) -> dict[str, Any]:
+    def count(self) -> int:
         with self._lock:
-            if not self.payloads:
-                raise AssertionError("no backend payload captured")
-            return self.payloads[-1]
+            return len(self.payloads)
+
+    def get(self, index: int) -> dict[str, Any]:
+        with self._lock:
+            return self.payloads[index]
 
 
 class _BackendHandler(BaseHTTPRequestHandler):
@@ -153,14 +155,17 @@ def _post(
         )
         app = create_app(str(cfg_path))
         original = json.loads(json.dumps(payload))
+        before_count = capture.count()
         with TestClient(app) as client:
             resp = client.post("/v1/chat/completions", json=payload)
             require(resp.status_code == 200, resp.text)
+        after_count = capture.count()
+        require(after_count == before_count + 1, (before_count, after_count, payload))
         require(payload == original, payload)
         record = json.loads(trace_path.read_text(encoding="utf-8").strip().splitlines()[-1])
         metadata = record.get("metadata", {})
         require(isinstance(metadata, dict), record)
-        return capture.last(), metadata
+        return capture.get(before_count), metadata
 
 
 def _messages(backend_payload: dict[str, Any]) -> list[dict[str, Any]]:
