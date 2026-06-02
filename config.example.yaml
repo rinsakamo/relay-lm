@@ -24,7 +24,13 @@ memory:
   store_enabled: false
   retrieval_dry_run_only: true
   ctx_block_apply_enabled: false
-  # Bounded page snippets are diagnostics-only and never injected into runtime prompts yet.
+  # Bounded snippet-bearing runtime injection is default-off.
+  # With snippet_runtime_injection_enabled=false and snippet_runtime_dry_run_only=true,
+  # RelayMEM may still produce diagnostics, but snippet text is not sent to the backend.
+  # Only when all explicit gates pass for an eligible request can RelayLM insert a
+  # bounded [RelayMEM Snippet Context] message. When that happens, the metadata-only
+  # [RelayMEM Context] message is skipped to avoid duplicate RelayMEM context.
+  # Retrieval does not mutate MEM or SOUL state.
   snippet_extraction_enabled: false
   snippet_dry_run_only: true
   snippet_apply_enabled: false

@@ -19,6 +19,29 @@ This is not a quality benchmark. It is an initial manual smoke / behavior check 
 - Example LM Studio backend URL: `http://127.0.0.1:1234/v1`.
 - Example RelayLM URL: `http://127.0.0.1:8090/v1`.
 
+### WSL to Windows LM Studio backend
+
+If LM Studio is running on Windows and RelayLM is running inside WSL, `127.0.0.1:1234` from WSL may not reach the Windows-hosted LM Studio server. In that setup, use the Windows host IP address as seen from WSL instead of assuming loopback works.
+
+Example observed backend URL:
+
+```yaml
+backends:
+  local_backend:
+    type: openai_compatible
+    base_url: http://172.27.96.1:1234/v1
+    api_key: dummy
+    default_model: local-model
+```
+
+The `172.27.96.1` address is environment-specific, not a portable default. Confirm the correct address for your machine after starting the LM Studio server on Windows:
+
+```bash
+curl http://<windows-host-ip>:1234/v1/models
+```
+
+If `curl http://127.0.0.1:1234/v1/models` fails from WSL, the Windows host IP form may still succeed.
+
 ## Repo setup commands
 
 Use your local repository path and virtual environment name. Example:
@@ -257,13 +280,20 @@ The unresolved reference request should avoid silently using memory as a substit
 - Metadata-only RelayMEM:
   - Backend payload should include `[RelayMEM Context]` when eligible.
   - Content should be source/path/reason metadata, not bounded snippet text.
+  - Path or source hints can affect the model response.
+  - The bounded snippet body should not be visible to the backend.
   - `runtime_ctx_injection_result.applied` should be `true` when inserted.
   - `runtime_snippet_injection_result.applied` should be `false`.
 - Snippet-bearing RelayMEM:
   - Backend payload should include `[RelayMEM Snippet Context]` when eligible.
   - The inserted context should use bounded snippet evidence.
+  - Bounded snippet content can affect the model response.
   - Metadata-only `[RelayMEM Context]` should not duplicate the snippet context.
   - `runtime_snippet_injection_result.applied` should be `true` when inserted.
+  - `runtime_ctx_injection_result.applied` should be `false` when snippet context is applied.
+- Safety cases:
+  - Recovery scenes should fail closed and avoid memory injection.
+  - RelayREF unresolved references should fail closed and avoid silent memory resolution.
 - Trace metadata to inspect:
   - `relaymem_retrieval_artifact`
   - `evidence_envelope`
