@@ -406,6 +406,42 @@ def _append_unique_reasons(existing: Any, reasons: list[str]) -> list[str]:
     return merged
 
 
+def _set_checkpoint_persistence_plan_state(
+    artifact: dict[str, Any],
+    *,
+    write_allowed: bool,
+    checkpoint_persisted: bool,
+    checkpoint_write_attempted: bool,
+    persisted_path: str | None = None,
+    blocked_reasons: list[str] | None = None,
+) -> None:
+    plan = artifact.get("checkpoint_persistence_plan")
+    if not isinstance(plan, dict):
+        return
+
+    stale_reasons = {
+        "checkpoint_persistence_not_implemented",
+        "checkpoint_write_disabled",
+    }
+    current_reasons = [
+        str(reason)
+        for reason in plan.get("blocked_reasons", [])
+        if str(reason) not in stale_reasons
+    ]
+    plan["write_allowed"] = bool(write_allowed)
+    plan["checkpoint_persisted"] = bool(checkpoint_persisted)
+    plan["checkpoint_write_attempted"] = bool(checkpoint_write_attempted)
+    if persisted_path is not None:
+        plan["persisted_path"] = persisted_path
+        plan["target_path_preview"] = persisted_path
+    else:
+        plan.pop("persisted_path", None)
+    plan["blocked_reasons"] = _append_unique_reasons(
+        current_reasons, [str(reason) for reason in (blocked_reasons or [])]
+    )
+    plan["resume_allowed_after_persist"] = False
+
+
 def _checkpoint_envelope_from_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
     preflight = artifact.get("checkpoint_writer_preflight")
     if not isinstance(preflight, dict):
@@ -544,13 +580,30 @@ def write_relayrun_checkpoint_if_enabled(
     updated["persisted_path"] = None
     updated["persisted_bytes"] = None
     updated["content_free"] = content_free
+    _set_checkpoint_persistence_plan_state(
+        updated,
+        write_allowed=False,
+        checkpoint_persisted=False,
+        checkpoint_write_attempted=preflight["checkpoint_write_attempted"],
+        blocked_reasons=blocked_reasons,
+    )
 
     if blocked_reasons:
         return updated
 
+    persisted_path = target_path.as_posix()
+    _set_checkpoint_persistence_plan_state(
+        updated,
+        write_allowed=True,
+        checkpoint_persisted=True,
+        checkpoint_write_attempted=True,
+        persisted_path=persisted_path,
+        blocked_reasons=[],
+    )
     preflight["write_allowed"] = True
     preflight["preflight_passed"] = True
     preflight["directory_creation_attempted"] = True
+    envelope = _checkpoint_envelope_from_artifact(updated)
     envelope["checkpoint_persisted"] = True
     envelope["checkpoint_writer_preflight"]["write_allowed"] = True
     envelope["checkpoint_writer_preflight"]["preflight_passed"] = True
@@ -567,8 +620,17 @@ def write_relayrun_checkpoint_if_enabled(
         try:
             os.link(temp_path, target_path)
         except FileExistsError:
+            preflight["write_allowed"] = False
+            preflight["preflight_passed"] = False
             preflight["blocked_reasons"] = _append_unique_reasons(
                 preflight.get("blocked_reasons"), ["checkpoint_file_exists"]
+            )
+            _set_checkpoint_persistence_plan_state(
+                updated,
+                write_allowed=False,
+                checkpoint_persisted=False,
+                checkpoint_write_attempted=True,
+                blocked_reasons=["checkpoint_file_exists"],
             )
             return updated
         finally:
@@ -579,9 +641,18 @@ def write_relayrun_checkpoint_if_enabled(
                 pass
     except Exception as exc:  # noqa: BLE001 - writer failure must stay diagnostics-only.
         updated["checkpoint_writer_failed"] = True
+        preflight["write_allowed"] = False
+        preflight["preflight_passed"] = False
         preflight["writer_error_type"] = exc.__class__.__name__
         preflight["blocked_reasons"] = _append_unique_reasons(
             preflight.get("blocked_reasons"), ["checkpoint_writer_failed"]
+        )
+        _set_checkpoint_persistence_plan_state(
+            updated,
+            write_allowed=False,
+            checkpoint_persisted=False,
+            checkpoint_write_attempted=preflight["checkpoint_write_attempted"],
+            blocked_reasons=["checkpoint_writer_failed"],
         )
         try:
             if temp_path.exists():
@@ -591,11 +662,11 @@ def write_relayrun_checkpoint_if_enabled(
         return updated
 
     updated["checkpoint_persisted"] = True
-    updated["persisted_path"] = target_path.as_posix()
+    updated["persisted_path"] = persisted_path
     updated["persisted_bytes"] = len(data)
     updated["content_free"] = True
     preflight["checkpoint_persisted"] = True
-    preflight["persisted_path"] = target_path.as_posix()
+    preflight["persisted_path"] = persisted_path
     preflight["persisted_bytes"] = len(data)
     preflight["content_free"] = True
     return updated

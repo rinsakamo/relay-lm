@@ -165,6 +165,56 @@ def _assert_no_forbidden_checkpoint_content(envelope: dict[str, Any], raw_text: 
     require("snippet_text" not in raw_text, raw_text)
 
 
+def _assert_plan_blocked(artifact: dict[str, Any], expected_reason: str) -> None:
+    plan = artifact.get("checkpoint_persistence_plan")
+    require(isinstance(plan, dict), artifact)
+    require(plan.get("checkpoint_persisted") is False, artifact)
+    require(plan.get("write_allowed") is False, artifact)
+    require(plan.get("checkpoint_write_attempted") == artifact.get("checkpoint_write_attempted"), artifact)
+    require(expected_reason in plan.get("blocked_reasons", []), artifact)
+
+
+def _assert_plan_success(
+    artifact: dict[str, Any],
+    *,
+    persisted_path: str,
+) -> None:
+    plan = artifact.get("checkpoint_persistence_plan")
+    preflight = artifact.get("checkpoint_writer_preflight")
+    require(isinstance(plan, dict), artifact)
+    require(isinstance(preflight, dict), artifact)
+    require(artifact.get("checkpoint_persisted") is True, artifact)
+    require(artifact.get("checkpoint_write_attempted") is True, artifact)
+    require(preflight.get("write_allowed") is True, artifact)
+    require(preflight.get("preflight_passed") is True, artifact)
+    require(plan.get("checkpoint_persisted") is True, artifact)
+    require(plan.get("write_allowed") is True, artifact)
+    require(plan.get("checkpoint_write_attempted") is True, artifact)
+    require(plan.get("persisted_path") == persisted_path, artifact)
+    require(plan.get("target_path_preview") == persisted_path, artifact)
+    blocked_reasons = plan.get("blocked_reasons")
+    require(isinstance(blocked_reasons, list), artifact)
+    require("checkpoint_persistence_not_implemented" not in blocked_reasons, artifact)
+    require("checkpoint_write_disabled" not in blocked_reasons, artifact)
+
+
+def _assert_envelope_plan_success(envelope: dict[str, Any], *, persisted_path: str) -> None:
+    plan = envelope.get("checkpoint_persistence_plan")
+    preflight = envelope.get("checkpoint_writer_preflight")
+    require(isinstance(plan, dict), envelope)
+    require(isinstance(preflight, dict), envelope)
+    require(envelope.get("checkpoint_persisted") is True, envelope)
+    require(plan.get("checkpoint_persisted") is True, envelope)
+    require(plan.get("write_allowed") is True, envelope)
+    require(plan.get("checkpoint_write_attempted") is True, envelope)
+    require(plan.get("persisted_path") == persisted_path, envelope)
+    require(preflight.get("write_allowed") is True, envelope)
+    require(preflight.get("preflight_passed") is True, envelope)
+    blocked_reasons = plan.get("blocked_reasons")
+    require(isinstance(blocked_reasons, list), envelope)
+    require("checkpoint_persistence_not_implemented" not in blocked_reasons, envelope)
+    require("checkpoint_write_disabled" not in blocked_reasons, envelope)
+
 def _assert_default_disabled(root: Path, capture: _Capture, port: int) -> None:
     checkpoint_root = (root / "default_disabled").relative_to(REPO_ROOT).as_posix()
     backend_payload, metadata, _ = _post(
@@ -181,6 +231,7 @@ def _assert_default_disabled(root: Path, capture: _Capture, port: int) -> None:
     require(artifact.get("checkpoint_persisted") is False, artifact)
     require(artifact.get("checkpoint_write_attempted") is False, artifact)
     require("checkpoint_write_disabled" in preflight.get("blocked_reasons", []), artifact)
+    _assert_plan_blocked(artifact, "checkpoint_write_disabled")
     require(not (root / "default_disabled").exists(), root)
     _assert_backend_payload_not_mutated(backend_payload)
     print("ok default disabled does not write checkpoint")
@@ -202,6 +253,7 @@ def _assert_enabled_dry_run(root: Path, capture: _Capture, port: int) -> None:
     require(artifact.get("checkpoint_persisted") is False, artifact)
     require(artifact.get("checkpoint_write_attempted") is False, artifact)
     require("checkpoint_dry_run_only" in preflight.get("blocked_reasons", []), artifact)
+    _assert_plan_blocked(artifact, "checkpoint_dry_run_only")
     require(not (root / "enabled_dry_run").exists(), root)
     _assert_backend_payload_not_mutated(backend_payload)
     print("ok enabled dry-run-only does not write checkpoint")
@@ -226,6 +278,7 @@ def _assert_enabled_write(root: Path, capture: _Capture, port: int) -> None:
     require(artifact.get("content_free") is True, artifact)
     persisted_path = artifact.get("persisted_path")
     require(isinstance(persisted_path, str) and persisted_path, artifact)
+    _assert_plan_success(artifact, persisted_path=persisted_path)
     persisted = (REPO_ROOT / persisted_path).resolve()
     require(persisted.exists(), persisted)
     require(checkpoint_root_abs.resolve() in persisted.parents, persisted)
@@ -234,6 +287,7 @@ def _assert_enabled_write(root: Path, capture: _Capture, port: int) -> None:
     require(envelope.get("schema_version") == "relayrun.checkpoint_envelope.v0", envelope)
     require(envelope.get("content_free") is True, envelope)
     require(envelope.get("checkpoint_persisted") is True, envelope)
+    _assert_envelope_plan_success(envelope, persisted_path=persisted_path)
     require(artifact.get("persisted_bytes") == len(raw_text.encode("utf-8")), artifact)
     _assert_no_forbidden_checkpoint_content(envelope, raw_text)
     _assert_backend_payload_not_mutated(backend_payload)
@@ -258,6 +312,7 @@ def _assert_unsafe_path_direct(root: Path) -> None:
     preflight = result.get("checkpoint_writer_preflight", {})
     require(result.get("checkpoint_persisted") is False, result)
     require("checkpoint_path_traversal_detected" in preflight.get("blocked_reasons", []), result)
+    _assert_plan_blocked(result, "checkpoint_path_traversal_detected")
     require(not (root.parent / "unsafe-checkpoints").exists(), root)
     print("ok unsafe traversal preflight blocks checkpoint write")
 
@@ -287,6 +342,7 @@ def _assert_existing_file_collision(root: Path) -> None:
     require(list(target.parent.glob(".*.tmp")) == [], list(target.parent.iterdir()))
     preflight = result.get("checkpoint_writer_preflight", {})
     require("checkpoint_file_exists" in preflight.get("blocked_reasons", []), result)
+    _assert_plan_blocked(result, "checkpoint_file_exists")
     print("ok existing checkpoint collision does not overwrite")
 
 
@@ -324,7 +380,9 @@ def _assert_final_link_race_no_overwrite(root: Path) -> None:
     require(list(target.parent.glob(".*.tmp")) == [], list(target.parent.iterdir()))
     preflight = result.get("checkpoint_writer_preflight", {})
     require("checkpoint_file_exists" in preflight.get("blocked_reasons", []), result)
+    _assert_plan_blocked(result, "checkpoint_file_exists")
     print("ok raced final checkpoint creation does not overwrite")
+
 
 def main() -> int:
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
