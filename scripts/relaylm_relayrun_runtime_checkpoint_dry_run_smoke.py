@@ -194,6 +194,11 @@ def _assert_artifact_common(artifact: dict[str, Any], headers: dict[str, str]) -
     require(artifact.get("resume_allowed") is False, artifact)
     require(artifact.get("resume_mode") == "none", artifact)
     require(artifact.get("checkpoint_persisted") is False, artifact)
+    require(artifact.get("checkpoint_write_attempted") is False, artifact)
+    require(artifact.get("checkpoint_writer_failed") is False, artifact)
+    require(artifact.get("persisted_path") is None, artifact)
+    require(artifact.get("persisted_bytes") is None, artifact)
+    require(artifact.get("content_free") is True, artifact)
     plan = artifact.get("checkpoint_persistence_plan")
     require(isinstance(plan, dict), artifact)
     require(plan.get("schema_version") == "relayrun.checkpoint_persistence_plan.v0", plan)
@@ -234,8 +239,8 @@ def _assert_artifact_common(artifact: dict[str, Any], headers: dict[str, str]) -
     require(content_policy.get("raw_user_message_included") is False, preflight)
     preflight_blocked_reasons = preflight.get("blocked_reasons")
     require(isinstance(preflight_blocked_reasons, list), preflight)
-    require("checkpoint_writer_not_implemented" in preflight_blocked_reasons, preflight)
     require("checkpoint_write_disabled" in preflight_blocked_reasons, preflight)
+    require("checkpoint_dry_run_only" in preflight_blocked_reasons, preflight)
     future_writer_required_gates = preflight.get("future_writer_required_gates")
     require(isinstance(future_writer_required_gates, list), preflight)
     require("explicit_config_enabled" in future_writer_required_gates, preflight)
@@ -269,6 +274,7 @@ def _assert_backend_payload_not_polluted(backend_payload: dict[str, Any]) -> Non
     require("relayrun.checkpoint_persistence_plan.v0" not in backend_text, backend_payload)
     require("checkpoint_writer_preflight" not in backend_text, backend_payload)
     require("relayrun.checkpoint_writer_preflight.v0" not in backend_text, backend_payload)
+    require("checkpoint_envelope" not in backend_text, backend_payload)
 
 
 def _assert_normal_case(root: Path, capture: _Capture, port: int) -> None:

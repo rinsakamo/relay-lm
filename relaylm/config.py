@@ -120,6 +120,9 @@ class RelayLMConfig(BaseModel):
     relayemo_llm_affect_probe_max_output_tokens: int = Field(default=160, ge=1)
     relayemo_llm_affect_probe_skip_when_busy: bool = True
     relayemo_llm_affect_probe_every_n_turns: int = Field(default=1, ge=1)
+    relayrun_checkpoint_write_enabled: bool = False
+    relayrun_checkpoint_root: str = ".relayrun/checkpoints"
+    relayrun_checkpoint_dry_run_only: bool = True
 
 
 def default_config_path() -> Path:

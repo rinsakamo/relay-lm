@@ -83,6 +83,11 @@ def main() -> int:
                 "resume_allowed": False,
                 "resume_mode": "none",
                 "checkpoint_persisted": False,
+                "checkpoint_write_attempted": False,
+                "checkpoint_writer_failed": False,
+                "persisted_path": None,
+                "persisted_bytes": None,
+                "content_free": True,
                 "checkpoint_persistence_plan": {
                     "schema_version": "relayrun.checkpoint_persistence_plan.v0",
                     "diagnostics_only": True,
@@ -162,6 +167,7 @@ def main() -> int:
         require(preflight.get("write_allowed") is False, records[0].metadata)
         require(preflight.get("checkpoint_write_attempted") is False, records[0].metadata)
         require(preflight.get("directory_creation_attempted") is False, records[0].metadata)
+        require(records[0].metadata["relayrun_artifact"].get("content_free") is True, records[0].metadata)
         print("ok trace backend response event")
         print("ok trace response text captured")
         print("ok trace memory source captured")
