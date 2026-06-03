@@ -44,6 +44,7 @@ from relaylm.relayrun import (
     build_relayrun_node,
     build_runtime_checkpoint_dry_run_artifact,
     new_run_id,
+    write_relayrun_checkpoint_if_enabled,
 )
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.relayemo import (
@@ -387,6 +388,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
         )
 
         relayrun_artifact = _build_relayrun_runtime_artifact(
+            config=config,
             request_id=request_id,
             run_id=relayrun_run_id,
             route=route,
@@ -471,6 +473,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 )
             except BackendRequestError as exc:
                 failed_relayrun_artifact = _build_relayrun_runtime_artifact(
+                    config=config,
                     request_id=request_id,
                     run_id=relayrun_run_id,
                     route=route,
@@ -503,6 +506,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     headers=failed_diagnostics.to_headers(),
                 )
             stream_relayrun_artifact = _build_relayrun_runtime_artifact(
+                config=config,
                 request_id=request_id,
                 run_id=relayrun_run_id,
                 route=route,
@@ -544,6 +548,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             )
         except BackendRequestError as exc:
             failed_relayrun_artifact = _build_relayrun_runtime_artifact(
+                config=config,
                 request_id=request_id,
                 run_id=relayrun_run_id,
                 route=route,
@@ -576,6 +581,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 headers=failed_diagnostics.to_headers(),
             )
         success_relayrun_artifact = _build_relayrun_runtime_artifact(
+            config=config,
             request_id=request_id,
             run_id=relayrun_run_id,
             route=route,
@@ -835,6 +841,7 @@ def _extract_ctx_hints(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 def _build_relayrun_runtime_artifact(
     *,
+    config: RelayLMConfig,
     request_id: str,
     run_id: str,
     route: ResolvedRoute,
@@ -872,7 +879,7 @@ def _build_relayrun_runtime_artifact(
         ),
     ]
     blocked_reasons = _relayrun_collect_blocked_reasons(node_statuses)
-    return build_runtime_checkpoint_dry_run_artifact(
+    artifact = build_runtime_checkpoint_dry_run_artifact(
         request_id=request_id,
         run_id=run_id,
         turn_id=None,
@@ -887,8 +894,16 @@ def _build_relayrun_runtime_artifact(
         resume_allowed=False,
         resume_mode="none",
         checkpoint_persisted=False,
+        checkpoint_target_root=config.relayrun_checkpoint_root,
         recovery_transition_created=False,
         applied=False,
+    )
+    if backend_forward_status == "pending":
+        return artifact
+    return write_relayrun_checkpoint_if_enabled(
+        artifact,
+        write_enabled=config.relayrun_checkpoint_write_enabled,
+        dry_run_only=config.relayrun_checkpoint_dry_run_only,
     )
 
 

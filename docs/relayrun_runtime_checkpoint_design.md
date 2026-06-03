@@ -245,6 +245,49 @@ a second transcript store. Future writers should persist only redacted runtime
 state and references to already-governed diagnostics artifacts after all required
 gates pass.
 
+
+## File-backed checkpoint writer default-off
+
+RelayRUN now has a default-off file-backed checkpoint writer for a
+content-free checkpoint envelope. The writer remains disabled unless all explicit
+operator gates are set:
+
+```yaml
+relayrun_checkpoint_write_enabled: true
+relayrun_checkpoint_dry_run_only: false
+relayrun_checkpoint_root: .relayrun/checkpoints
+```
+
+With the default configuration (`relayrun_checkpoint_write_enabled: false` and
+`relayrun_checkpoint_dry_run_only: true`), RelayRUN does not create directories,
+does not write files, and reports `checkpoint_persisted: false` with
+`checkpoint_write_attempted: false`. When writing is enabled but dry-run-only
+remains true, the writer still does not touch the filesystem and reports
+`checkpoint_dry_run_only` as a blocked reason.
+
+When all gates pass, the writer persists only `relayrun.checkpoint_envelope.v0`,
+a content-free control envelope containing safe runtime metadata such as run/turn
+ids, route/model identifiers, node statuses, blocked reason summaries, the
+checkpoint persistence plan summary, and the checkpoint writer preflight summary.
+The envelope must not contain backend forwarding payloads, raw messages, raw user
+message text, backend response text, full prompt text, snippet text, full RelayMEM
+page bodies, API keys, or URLs containing secrets. The artifact reports
+`content_free: true`, `checkpoint_write_attempted: true`, `checkpoint_persisted:
+true`, `persisted_path`, and `persisted_bytes` only after a successful write.
+
+Path safety is enforced before any directory creation. The writer blocks path
+traversal, absolute paths, unsafe target roots, content-policy failures, and
+existing checkpoint file collisions. Directory creation happens only after the
+write gates and path/content checks pass. The write flow is temp-file then rename
+and uses a no-overwrite policy for the final checkpoint path; an existing file is
+reported as `checkpoint_file_exists` and is not replaced.
+
+This writer is persistence-only. It does not implement resume, retry, recovery
+transition apply, or stream recovery behavior. Rollback remains operationally
+simple: keep `relayrun_checkpoint_write_enabled: false`, keep
+`relayrun_checkpoint_dry_run_only: true`, or point `relayrun_checkpoint_root` at
+a disposable workspace-local directory and remove that directory.
+
 ## Stream boundary rule
 
 Streaming is the main recovery boundary.

@@ -43,6 +43,11 @@ def main() -> int:
             "resume_mode": "none",
             "node_statuses": [],
             "checkpoint_persisted": False,
+            "checkpoint_write_attempted": False,
+            "checkpoint_writer_failed": False,
+            "persisted_path": None,
+            "persisted_bytes": None,
+            "content_free": True,
             "checkpoint_persistence_plan": {
                 "schema_version": "relayrun.checkpoint_persistence_plan.v0",
                 "diagnostics_only": True,
@@ -79,8 +84,8 @@ def main() -> int:
                     "raw_user_message_included": False,
                 },
                 "blocked_reasons": [
-                    "checkpoint_writer_not_implemented",
                     "checkpoint_write_disabled",
+                    "checkpoint_dry_run_only",
                 ],
                 "future_writer_required_gates": [
                     "explicit_config_enabled",
@@ -127,6 +132,8 @@ def main() -> int:
     require(isinstance(relayrun, dict), f"missing relayrun diagnostics: {payload}")
     require(relayrun.get("diagnostics_only") is True, f"bad relayrun diagnostics: {payload}")
     require(relayrun.get("checkpoint_persisted") is False, f"bad relayrun diagnostics: {payload}")
+    require(relayrun.get("checkpoint_write_attempted") is False, f"bad relayrun diagnostics: {payload}")
+    require(relayrun.get("content_free") is True, f"bad relayrun diagnostics: {payload}")
     plan = relayrun.get("checkpoint_persistence_plan")
     require(isinstance(plan, dict), f"missing checkpoint persistence plan: {payload}")
     require(plan.get("diagnostics_only") is True, f"bad checkpoint persistence plan: {payload}")

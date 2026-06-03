@@ -108,6 +108,14 @@ relayemo_llm_affect_probe_max_output_tokens: 160
 relayemo_llm_affect_probe_skip_when_busy: true
 relayemo_llm_affect_probe_every_n_turns: 1
 
+# RelayRUN checkpoint writer is default-off.
+# The writer only persists a content-free checkpoint envelope when explicitly enabled
+# and dry-run mode is disabled. It never stores backend payloads, raw user content,
+# response text, or prompt text.
+relayrun_checkpoint_write_enabled: false
+relayrun_checkpoint_root: .relayrun/checkpoints
+relayrun_checkpoint_dry_run_only: true
+
 
 # Optional OpenWebUI + LM Studio MVP route example (docs-only reference).
 # This commented block does not change defaults unless you opt in.

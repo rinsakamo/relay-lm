@@ -9,6 +9,9 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
 from typing import Any, Literal
 import uuid
 
@@ -242,7 +245,7 @@ def build_relayrun_checkpoint_persistence_plan(
     """
 
     preview_turn_id = turn_id or request_id or "turn_unknown"
-    safe_target_root = target_root.strip("/") or ".relayrun/checkpoints"
+    safe_target_root = target_root.rstrip("/") or ".relayrun/checkpoints"
     target_path_preview = f"{safe_target_root}/{run_id}/{preview_turn_id}.json"
 
     return {
@@ -331,6 +334,7 @@ def build_runtime_checkpoint_dry_run_artifact(
     resume_allowed: bool = False,
     resume_mode: ResumeMode = "none",
     checkpoint_persisted: bool = False,
+    checkpoint_target_root: str = ".relayrun/checkpoints",
     recovery_transition_created: bool = False,
     applied: bool = False,
 ) -> dict[str, Any]:
@@ -351,6 +355,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         run_id=safe_run_id,
         turn_id=turn_id,
         request_id=request_id,
+        target_root=checkpoint_target_root,
         checkpoint_persisted=checkpoint_persisted,
     )
     checkpoint_writer_preflight = build_relayrun_checkpoint_writer_preflight(
@@ -377,8 +382,291 @@ def build_runtime_checkpoint_dry_run_artifact(
         "resume_allowed": bool(resume_allowed),
         "resume_mode": resume_mode,
         "checkpoint_persisted": bool(checkpoint_persisted),
+        "checkpoint_write_attempted": False,
+        "checkpoint_writer_failed": False,
+        "persisted_path": None,
+        "persisted_bytes": None,
+        "content_free": True,
         "checkpoint_persistence_plan": checkpoint_persistence_plan,
         "checkpoint_writer_preflight": checkpoint_writer_preflight,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
     }
+
+
+def _copy_jsonable_mapping(value: dict[str, Any]) -> dict[str, Any]:
+    return json.loads(json.dumps(value, ensure_ascii=False))
+
+
+def _append_unique_reasons(existing: Any, reasons: list[str]) -> list[str]:
+    merged = [str(reason) for reason in existing or ()]
+    for reason in reasons:
+        if reason not in merged:
+            merged.append(reason)
+    return merged
+
+
+def _set_checkpoint_persistence_plan_state(
+    artifact: dict[str, Any],
+    *,
+    write_allowed: bool,
+    checkpoint_persisted: bool,
+    checkpoint_write_attempted: bool,
+    persisted_path: str | None = None,
+    blocked_reasons: list[str] | None = None,
+) -> None:
+    plan = artifact.get("checkpoint_persistence_plan")
+    if not isinstance(plan, dict):
+        return
+
+    stale_reasons = {
+        "checkpoint_persistence_not_implemented",
+        "checkpoint_write_disabled",
+    }
+    current_reasons = [
+        str(reason)
+        for reason in plan.get("blocked_reasons", [])
+        if str(reason) not in stale_reasons
+    ]
+    plan["write_allowed"] = bool(write_allowed)
+    plan["checkpoint_persisted"] = bool(checkpoint_persisted)
+    plan["checkpoint_write_attempted"] = bool(checkpoint_write_attempted)
+    if persisted_path is not None:
+        plan["persisted_path"] = persisted_path
+        plan["target_path_preview"] = persisted_path
+    else:
+        plan.pop("persisted_path", None)
+    plan["blocked_reasons"] = _append_unique_reasons(
+        current_reasons, [str(reason) for reason in (blocked_reasons or [])]
+    )
+    plan["resume_allowed_after_persist"] = False
+
+
+def _checkpoint_envelope_from_artifact(artifact: dict[str, Any]) -> dict[str, Any]:
+    preflight = artifact.get("checkpoint_writer_preflight")
+    if not isinstance(preflight, dict):
+        preflight = {}
+    return {
+        "schema_version": "relayrun.checkpoint_envelope.v0",
+        "diagnostics_only": True,
+        "content_free": True,
+        "run_id": artifact.get("run_id"),
+        "request_id": artifact.get("request_id"),
+        "turn_id": artifact.get("turn_id"),
+        "route_model": artifact.get("route_model"),
+        "backend_name": artifact.get("backend_name"),
+        "character_id": artifact.get("character_id"),
+        "stream_enabled": artifact.get("stream_enabled"),
+        "run_status": artifact.get("run_status"),
+        "node_sequence": artifact.get("node_sequence") or [],
+        "node_statuses": artifact.get("node_statuses") or [],
+        "blocked_reasons": artifact.get("blocked_reasons") or [],
+        "checkpoint_persisted": False,
+        "checkpoint_persistence_plan": artifact.get("checkpoint_persistence_plan"),
+        "checkpoint_writer_preflight": {
+            "schema_version": preflight.get("schema_version"),
+            "diagnostics_only": preflight.get("diagnostics_only"),
+            "write_allowed": preflight.get("write_allowed"),
+            "preflight_passed": preflight.get("preflight_passed"),
+            "checkpoint_write_attempted": preflight.get("checkpoint_write_attempted"),
+            "directory_creation_attempted": preflight.get("directory_creation_attempted"),
+            "target_root": preflight.get("target_root"),
+            "target_path_preview": preflight.get("target_path_preview"),
+            "path_safety": preflight.get("path_safety"),
+            "content_policy": preflight.get("content_policy"),
+            "blocked_reasons": preflight.get("blocked_reasons") or [],
+            "future_writer_required_gates": preflight.get("future_writer_required_gates") or [],
+        },
+    }
+
+
+def _is_checkpoint_content_free(envelope: dict[str, Any]) -> bool:
+    forbidden_keys = {
+        "backend_payload",
+        "messages",
+        "raw_messages",
+        "raw_user_message",
+        "response_text",
+        "prompt",
+        "prompt_text",
+        "snippet_text",
+        "page_body",
+        "api_key",
+    }
+
+    def walk(value: Any) -> bool:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if str(key) in forbidden_keys:
+                    return False
+                if not walk(item):
+                    return False
+        elif isinstance(value, list):
+            return all(walk(item) for item in value)
+        return True
+
+    return walk(envelope)
+
+
+def write_relayrun_checkpoint_if_enabled(
+    artifact: dict[str, Any],
+    *,
+    write_enabled: bool = False,
+    dry_run_only: bool = True,
+) -> dict[str, Any]:
+    """Persist a content-free RelayRUN checkpoint envelope when gates allow it.
+
+    The default path is diagnostics-only and does not write files or create
+    directories. Even when enabled, this writer stores only a content-free
+    envelope and uses a no-overwrite temp-file-then-rename flow.
+    """
+
+    updated = _copy_jsonable_mapping(artifact)
+    preflight = updated.get("checkpoint_writer_preflight")
+    if not isinstance(preflight, dict):
+        return updated
+
+    target_root = str(preflight.get("target_root") or ".relayrun/checkpoints")
+    target_path_preview = str(preflight.get("target_path_preview") or "")
+    path_safety = preflight.get("path_safety")
+    if not isinstance(path_safety, dict):
+        path_safety = {}
+    content_policy = preflight.get("content_policy")
+    if not isinstance(content_policy, dict):
+        content_policy = {}
+
+    blocked_reasons: list[str] = []
+    if not write_enabled:
+        blocked_reasons.append("checkpoint_write_disabled")
+    if dry_run_only:
+        blocked_reasons.append("checkpoint_dry_run_only")
+    if path_safety.get("path_traversal_detected") is True:
+        blocked_reasons.append("checkpoint_path_traversal_detected")
+    if path_safety.get("absolute_path_detected") is True:
+        blocked_reasons.append("checkpoint_absolute_path_detected")
+    if content_policy.get("content_free") is not True:
+        blocked_reasons.append("checkpoint_content_policy_failed")
+
+    target_root_path = Path(target_root)
+    target_path = Path(target_path_preview)
+    if target_root_path.is_absolute() or target_path.is_absolute():
+        blocked_reasons.append("checkpoint_absolute_path_detected")
+    if ".." in target_root_path.parts or ".." in target_path.parts:
+        blocked_reasons.append("checkpoint_path_traversal_detected")
+
+    try:
+        root_resolved = target_root_path.resolve()
+        target_resolved = target_path.resolve()
+        if target_resolved != root_resolved and root_resolved not in target_resolved.parents:
+            blocked_reasons.append("checkpoint_target_outside_root")
+    except OSError:
+        blocked_reasons.append("checkpoint_path_resolution_failed")
+
+    envelope = _checkpoint_envelope_from_artifact(updated)
+    content_free = _is_checkpoint_content_free(envelope)
+    if not content_free:
+        blocked_reasons.append("checkpoint_content_policy_failed")
+
+    preflight["content_policy"] = dict(content_policy)
+    preflight["content_policy"]["content_free"] = content_free
+    preflight["checkpoint_write_attempted"] = bool(write_enabled and not dry_run_only)
+    preflight["write_allowed"] = False
+    preflight["preflight_passed"] = False
+    preflight["directory_creation_attempted"] = False
+    preflight["blocked_reasons"] = _append_unique_reasons([], blocked_reasons)
+    updated["checkpoint_write_attempted"] = preflight["checkpoint_write_attempted"]
+    updated["checkpoint_persisted"] = False
+    updated["checkpoint_writer_failed"] = False
+    updated["persisted_path"] = None
+    updated["persisted_bytes"] = None
+    updated["content_free"] = content_free
+    _set_checkpoint_persistence_plan_state(
+        updated,
+        write_allowed=False,
+        checkpoint_persisted=False,
+        checkpoint_write_attempted=preflight["checkpoint_write_attempted"],
+        blocked_reasons=blocked_reasons,
+    )
+
+    if blocked_reasons:
+        return updated
+
+    persisted_path = target_path.as_posix()
+    _set_checkpoint_persistence_plan_state(
+        updated,
+        write_allowed=True,
+        checkpoint_persisted=True,
+        checkpoint_write_attempted=True,
+        persisted_path=persisted_path,
+        blocked_reasons=[],
+    )
+    preflight["write_allowed"] = True
+    preflight["preflight_passed"] = True
+    preflight["directory_creation_attempted"] = True
+    envelope = _checkpoint_envelope_from_artifact(updated)
+    envelope["checkpoint_persisted"] = True
+    envelope["checkpoint_writer_preflight"]["write_allowed"] = True
+    envelope["checkpoint_writer_preflight"]["preflight_passed"] = True
+    envelope["checkpoint_writer_preflight"]["checkpoint_write_attempted"] = True
+    envelope["checkpoint_writer_preflight"]["directory_creation_attempted"] = True
+    envelope["checkpoint_writer_preflight"]["blocked_reasons"] = []
+    data = (json.dumps(envelope, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
+    temp_path = target_path.with_name(f".{target_path.name}.{uuid.uuid4().hex}.tmp")
+
+    try:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        with temp_path.open("xb") as f:
+            f.write(data)
+        try:
+            os.link(temp_path, target_path)
+        except FileExistsError:
+            preflight["write_allowed"] = False
+            preflight["preflight_passed"] = False
+            preflight["blocked_reasons"] = _append_unique_reasons(
+                preflight.get("blocked_reasons"), ["checkpoint_file_exists"]
+            )
+            _set_checkpoint_persistence_plan_state(
+                updated,
+                write_allowed=False,
+                checkpoint_persisted=False,
+                checkpoint_write_attempted=True,
+                blocked_reasons=["checkpoint_file_exists"],
+            )
+            return updated
+        finally:
+            try:
+                if temp_path.exists():
+                    temp_path.unlink()
+            except OSError:
+                pass
+    except Exception as exc:  # noqa: BLE001 - writer failure must stay diagnostics-only.
+        updated["checkpoint_writer_failed"] = True
+        preflight["write_allowed"] = False
+        preflight["preflight_passed"] = False
+        preflight["writer_error_type"] = exc.__class__.__name__
+        preflight["blocked_reasons"] = _append_unique_reasons(
+            preflight.get("blocked_reasons"), ["checkpoint_writer_failed"]
+        )
+        _set_checkpoint_persistence_plan_state(
+            updated,
+            write_allowed=False,
+            checkpoint_persisted=False,
+            checkpoint_write_attempted=preflight["checkpoint_write_attempted"],
+            blocked_reasons=["checkpoint_writer_failed"],
+        )
+        try:
+            if temp_path.exists():
+                temp_path.unlink()
+        except OSError:
+            pass
+        return updated
+
+    updated["checkpoint_persisted"] = True
+    updated["persisted_path"] = persisted_path
+    updated["persisted_bytes"] = len(data)
+    updated["content_free"] = True
+    preflight["checkpoint_persisted"] = True
+    preflight["persisted_path"] = persisted_path
+    preflight["persisted_bytes"] = len(data)
+    preflight["content_free"] = True
+    return updated
