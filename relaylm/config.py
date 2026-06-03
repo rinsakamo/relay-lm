@@ -123,6 +123,8 @@ class RelayLMConfig(BaseModel):
     relayrun_checkpoint_write_enabled: bool = False
     relayrun_checkpoint_root: str = ".relayrun/checkpoints"
     relayrun_checkpoint_dry_run_only: bool = True
+    relayrun_resume_preflight_enabled: bool = False
+    relayrun_resume_dry_run_only: bool = True
 
 
 def default_config_path() -> Path:

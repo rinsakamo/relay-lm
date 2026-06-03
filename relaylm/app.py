@@ -895,6 +895,8 @@ def _build_relayrun_runtime_artifact(
         resume_mode="none",
         checkpoint_persisted=False,
         checkpoint_target_root=config.relayrun_checkpoint_root,
+        resume_preflight_enabled=config.relayrun_resume_preflight_enabled,
+        resume_dry_run_only=config.relayrun_resume_dry_run_only,
         recovery_transition_created=False,
         applied=False,
     )

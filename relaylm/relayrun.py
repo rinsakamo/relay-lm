@@ -318,6 +318,122 @@ def build_relayrun_checkpoint_writer_preflight(
     }
 
 
+
+def build_relayrun_resume_preflight(
+    *,
+    resume_preflight_enabled: bool = False,
+    resume_dry_run_only: bool = True,
+    checkpoint_path: str | None = None,
+    checkpoint_root: str = ".relayrun/checkpoints",
+) -> dict[str, Any]:
+    """Build diagnostics-only resume readiness metadata.
+
+    This helper may read and validate a candidate checkpoint envelope when
+    explicitly enabled, but it never applies resume, retry, or recovery
+    transitions.
+    """
+
+    blocked_reasons = ["resume_not_implemented"]
+    if not resume_preflight_enabled:
+        blocked_reasons.append("resume_disabled")
+    if resume_dry_run_only:
+        blocked_reasons.append("resume_dry_run_only")
+
+    artifact: dict[str, Any] = {
+        "schema_version": "relayrun.resume_preflight.v0",
+        "diagnostics_only": True,
+        "resume_allowed": False,
+        "resume_attempted": False,
+        "resume_applied": False,
+        "checkpoint_read_attempted": False,
+        "checkpoint_read_ok": False,
+        "checkpoint_schema_valid": False,
+        "content_free": None,
+        "source_checkpoint_path": None,
+        "blocked_reasons": blocked_reasons,
+        "future_resume_required_gates": [
+            "explicit_config_enabled",
+            "valid_checkpoint_schema",
+            "content_free_checkpoint",
+            "safe_resume_mode",
+            "user_or_policy_confirmation",
+        ],
+    }
+
+    if not checkpoint_path:
+        return artifact
+
+    artifact["source_checkpoint_path"] = checkpoint_path
+    checkpoint_root_path = Path(checkpoint_root)
+    candidate_path = Path(checkpoint_path)
+    if candidate_path.is_absolute() or checkpoint_root_path.is_absolute():
+        artifact["blocked_reasons"] = _append_unique_reasons(
+            artifact["blocked_reasons"], ["resume_checkpoint_absolute_path_detected"]
+        )
+        return artifact
+    if ".." in candidate_path.parts or ".." in checkpoint_root_path.parts:
+        artifact["blocked_reasons"] = _append_unique_reasons(
+            artifact["blocked_reasons"], ["resume_checkpoint_path_traversal_detected"]
+        )
+        return artifact
+
+    try:
+        root_resolved = checkpoint_root_path.resolve()
+        candidate_resolved = candidate_path.resolve()
+        if candidate_resolved != root_resolved and root_resolved not in candidate_resolved.parents:
+            artifact["blocked_reasons"] = _append_unique_reasons(
+                artifact["blocked_reasons"], ["resume_checkpoint_outside_root"]
+            )
+            return artifact
+    except OSError:
+        artifact["blocked_reasons"] = _append_unique_reasons(
+            artifact["blocked_reasons"], ["resume_checkpoint_path_resolution_failed"]
+        )
+        return artifact
+
+    if not resume_preflight_enabled:
+        return artifact
+
+    artifact["checkpoint_read_attempted"] = True
+    try:
+        raw = candidate_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        artifact["blocked_reasons"] = _append_unique_reasons(
+            artifact["blocked_reasons"], ["resume_checkpoint_missing"]
+        )
+        return artifact
+    except OSError as exc:
+        artifact["read_error_type"] = exc.__class__.__name__
+        artifact["blocked_reasons"] = _append_unique_reasons(
+            artifact["blocked_reasons"], ["resume_checkpoint_read_failed"]
+        )
+        return artifact
+
+    try:
+        envelope = json.loads(raw)
+    except json.JSONDecodeError:
+        artifact["blocked_reasons"] = _append_unique_reasons(
+            artifact["blocked_reasons"], ["resume_checkpoint_malformed_json"]
+        )
+        return artifact
+
+    artifact["checkpoint_read_ok"] = True
+    if not isinstance(envelope, dict) or envelope.get("schema_version") != "relayrun.checkpoint_envelope.v0":
+        artifact["blocked_reasons"] = _append_unique_reasons(
+            artifact["blocked_reasons"], ["resume_checkpoint_schema_invalid"]
+        )
+        return artifact
+
+    artifact["checkpoint_schema_valid"] = True
+    content_free = envelope.get("content_free") is True and _is_checkpoint_content_free(envelope)
+    artifact["content_free"] = content_free
+    if not content_free:
+        artifact["blocked_reasons"] = _append_unique_reasons(
+            artifact["blocked_reasons"], ["resume_checkpoint_content_policy_failed"]
+        )
+
+    return artifact
+
 def build_runtime_checkpoint_dry_run_artifact(
     *,
     request_id: str,
@@ -335,6 +451,8 @@ def build_runtime_checkpoint_dry_run_artifact(
     resume_mode: ResumeMode = "none",
     checkpoint_persisted: bool = False,
     checkpoint_target_root: str = ".relayrun/checkpoints",
+    resume_preflight_enabled: bool = False,
+    resume_dry_run_only: bool = True,
     recovery_transition_created: bool = False,
     applied: bool = False,
 ) -> dict[str, Any]:
@@ -362,6 +480,12 @@ def build_runtime_checkpoint_dry_run_artifact(
         target_root=checkpoint_persistence_plan["target_root"],
         target_path_preview=checkpoint_persistence_plan["target_path_preview"],
     )
+    resume_preflight = build_relayrun_resume_preflight(
+        resume_preflight_enabled=resume_preflight_enabled,
+        resume_dry_run_only=resume_dry_run_only,
+        checkpoint_path=None,
+        checkpoint_root=checkpoint_target_root,
+    )
 
     return {
         "schema_version": "relayrun.runtime_checkpoint.v0",
@@ -381,6 +505,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "first_token_sent": first_token_sent,
         "resume_allowed": bool(resume_allowed),
         "resume_mode": resume_mode,
+        "resume_preflight": resume_preflight,
         "checkpoint_persisted": bool(checkpoint_persisted),
         "checkpoint_write_attempted": False,
         "checkpoint_writer_failed": False,

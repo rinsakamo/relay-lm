@@ -82,7 +82,31 @@ def main() -> int:
                 ],
                 "resume_allowed": False,
                 "resume_mode": "none",
-                "checkpoint_persisted": False,
+                "resume_preflight": {
+                "schema_version": "relayrun.resume_preflight.v0",
+                "diagnostics_only": True,
+                "resume_allowed": False,
+                "resume_attempted": False,
+                "resume_applied": False,
+                "checkpoint_read_attempted": False,
+                "checkpoint_read_ok": False,
+                "checkpoint_schema_valid": False,
+                "content_free": None,
+                "source_checkpoint_path": None,
+                "blocked_reasons": [
+                    "resume_not_implemented",
+                    "resume_disabled",
+                    "resume_dry_run_only",
+                ],
+                "future_resume_required_gates": [
+                    "explicit_config_enabled",
+                    "valid_checkpoint_schema",
+                    "content_free_checkpoint",
+                    "safe_resume_mode",
+                    "user_or_policy_confirmation",
+                ],
+            },
+            "checkpoint_persisted": False,
                 "checkpoint_write_attempted": False,
                 "checkpoint_writer_failed": False,
                 "persisted_path": None,
@@ -159,6 +183,9 @@ def main() -> int:
         require(records[0].metadata["memory_block_assembly"] == block_assembly, records[0].metadata)
         require(isinstance(records[0].metadata["relayrun_artifact"], dict), records[0].metadata)
         require(records[0].metadata["relayrun_artifact"]["run_id"] == "run-trace-001", records[0].metadata)
+        resume_preflight = records[0].metadata["relayrun_artifact"].get("resume_preflight")
+        require(isinstance(resume_preflight, dict), records[0].metadata)
+        require(resume_preflight.get("resume_allowed") is False, records[0].metadata)
         plan = records[0].metadata["relayrun_artifact"].get("checkpoint_persistence_plan")
         require(isinstance(plan, dict), records[0].metadata)
         require(plan.get("write_allowed") is False, records[0].metadata)
