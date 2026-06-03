@@ -106,6 +106,31 @@ def main() -> int:
                     "user_or_policy_confirmation",
                 ],
             },
+            "recovery_transition_artifact": {
+                "schema_version": "relayrun.recovery_transition.v0",
+                "diagnostics_only": True,
+                "user_visible": False,
+                "apply_allowed": False,
+                "applied": False,
+                "transition_created": False,
+                "proposed_transition_type": "none",
+                "source_node": None,
+                "next_node": None,
+                "resume_mode": "none",
+                "required_user_action": None,
+                "blocked_reasons": [
+                    "recovery_transition_not_implemented",
+                    "recovery_transition_disabled",
+                    "recovery_transition_dry_run_only",
+                ],
+                "safety": {
+                    "passes_through_output_pipeline": True,
+                    "direct_user_output_allowed": False,
+                    "contains_user_content": False,
+                    "contains_backend_payload": False,
+                    "contains_response_text": False,
+                },
+            },
             "checkpoint_persisted": False,
                 "checkpoint_write_attempted": False,
                 "checkpoint_writer_failed": False,
@@ -186,6 +211,9 @@ def main() -> int:
         resume_preflight = records[0].metadata["relayrun_artifact"].get("resume_preflight")
         require(isinstance(resume_preflight, dict), records[0].metadata)
         require(resume_preflight.get("resume_allowed") is False, records[0].metadata)
+        transition = records[0].metadata["relayrun_artifact"].get("recovery_transition_artifact")
+        require(isinstance(transition, dict), records[0].metadata)
+        require(transition.get("applied") is False, records[0].metadata)
         plan = records[0].metadata["relayrun_artifact"].get("checkpoint_persistence_plan")
         require(isinstance(plan, dict), records[0].metadata)
         require(plan.get("write_allowed") is False, records[0].metadata)
