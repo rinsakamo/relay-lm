@@ -193,6 +193,19 @@ def _assert_artifact_common(artifact: dict[str, Any], headers: dict[str, str]) -
     require(isinstance(artifact.get("run_id"), str) and artifact.get("run_id"), artifact)
     require(artifact.get("resume_allowed") is False, artifact)
     require(artifact.get("resume_mode") == "none", artifact)
+    resume_preflight = artifact.get("resume_preflight")
+    require(isinstance(resume_preflight, dict), artifact)
+    require(resume_preflight.get("schema_version") == "relayrun.resume_preflight.v0", resume_preflight)
+    require(resume_preflight.get("diagnostics_only") is True, resume_preflight)
+    require(resume_preflight.get("resume_allowed") is False, resume_preflight)
+    require(resume_preflight.get("resume_attempted") is False, resume_preflight)
+    require(resume_preflight.get("resume_applied") is False, resume_preflight)
+    require(resume_preflight.get("checkpoint_read_attempted") is False, resume_preflight)
+    resume_blocked_reasons = resume_preflight.get("blocked_reasons")
+    require(isinstance(resume_blocked_reasons, list), resume_preflight)
+    require("resume_not_implemented" in resume_blocked_reasons, resume_preflight)
+    require("resume_disabled" in resume_blocked_reasons, resume_preflight)
+    require("resume_dry_run_only" in resume_blocked_reasons, resume_preflight)
     require(artifact.get("checkpoint_persisted") is False, artifact)
     require(artifact.get("checkpoint_write_attempted") is False, artifact)
     require(artifact.get("checkpoint_writer_failed") is False, artifact)
@@ -275,6 +288,8 @@ def _assert_backend_payload_not_polluted(backend_payload: dict[str, Any]) -> Non
     require("checkpoint_writer_preflight" not in backend_text, backend_payload)
     require("relayrun.checkpoint_writer_preflight.v0" not in backend_text, backend_payload)
     require("checkpoint_envelope" not in backend_text, backend_payload)
+    require("resume_preflight" not in backend_text, backend_payload)
+    require("relayrun.resume_preflight.v0" not in backend_text, backend_payload)
 
 
 def _assert_normal_case(root: Path, capture: _Capture, port: int) -> None:
@@ -371,6 +386,7 @@ def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> No
     print("ok trace metadata includes relayrun_artifact")
     print("ok trace metadata includes checkpoint_persistence_plan")
     print("ok trace metadata includes checkpoint_writer_preflight")
+    print("ok trace metadata includes resume_preflight")
 
 
 def _assert_relayscn_persistence_block_design_talk_case() -> None:

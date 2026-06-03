@@ -288,6 +288,52 @@ simple: keep `relayrun_checkpoint_write_enabled: false`, keep
 `relayrun_checkpoint_dry_run_only: true`, or point `relayrun_checkpoint_root` at
 a disposable workspace-local directory and remove that directory.
 
+
+## Resume preflight dry-run
+
+RelayRUN exposes a diagnostics-only `resume_preflight` artifact in
+`relayrun_artifact`. It is a readiness check for future resume/retry work only;
+it does not resume a run, retry a node, apply a recovery transition, or alter
+backend forwarding behavior. Resume preflight is default-off with
+`relayrun_resume_preflight_enabled: false` and remains dry-run-only with
+`relayrun_resume_dry_run_only: true`.
+
+```yaml
+resume_preflight:
+  schema_version: relayrun.resume_preflight.v0
+  diagnostics_only: true
+  resume_allowed: false
+  resume_attempted: false
+  resume_applied: false
+  checkpoint_read_attempted: false
+  checkpoint_read_ok: false
+  checkpoint_schema_valid: false
+  content_free: null
+  source_checkpoint_path: null
+  blocked_reasons:
+    - resume_not_implemented
+    - resume_disabled
+    - resume_dry_run_only
+  future_resume_required_gates:
+    - explicit_config_enabled
+    - valid_checkpoint_schema
+    - content_free_checkpoint
+    - safe_resume_mode
+    - user_or_policy_confirmation
+```
+
+When a checkpoint path is provided to the helper, RelayRUN may read and validate
+a candidate `relayrun.checkpoint_envelope.v0` file. Validation is limited to
+path safety, JSON parsing, checkpoint schema, and content-free policy checks.
+Malformed JSON, wrong schema, missing files, path traversal, absolute paths,
+`content_free: false`, or forbidden raw content keys all keep
+`resume_allowed: false` and add blocked reasons.
+
+Future resume work must still add explicit config enablement, a valid
+content-free checkpoint, safe resume-mode selection, user or policy confirmation,
+and dedicated retry/recovery-transition apply gates before any runtime behavior
+can change.
+
 ## Stream boundary rule
 
 Streaming is the main recovery boundary.

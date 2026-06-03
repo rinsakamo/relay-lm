@@ -42,6 +42,30 @@ def main() -> int:
             "run_status": "diagnostics_only",
             "resume_mode": "none",
             "node_statuses": [],
+            "resume_preflight": {
+                "schema_version": "relayrun.resume_preflight.v0",
+                "diagnostics_only": True,
+                "resume_allowed": False,
+                "resume_attempted": False,
+                "resume_applied": False,
+                "checkpoint_read_attempted": False,
+                "checkpoint_read_ok": False,
+                "checkpoint_schema_valid": False,
+                "content_free": None,
+                "source_checkpoint_path": None,
+                "blocked_reasons": [
+                    "resume_not_implemented",
+                    "resume_disabled",
+                    "resume_dry_run_only",
+                ],
+                "future_resume_required_gates": [
+                    "explicit_config_enabled",
+                    "valid_checkpoint_schema",
+                    "content_free_checkpoint",
+                    "safe_resume_mode",
+                    "user_or_policy_confirmation",
+                ],
+            },
             "checkpoint_persisted": False,
             "checkpoint_write_attempted": False,
             "checkpoint_writer_failed": False,
@@ -131,6 +155,11 @@ def main() -> int:
     relayrun = payload.get("relayrun_artifact")
     require(isinstance(relayrun, dict), f"missing relayrun diagnostics: {payload}")
     require(relayrun.get("diagnostics_only") is True, f"bad relayrun diagnostics: {payload}")
+    resume_preflight = relayrun.get("resume_preflight")
+    require(isinstance(resume_preflight, dict), f"missing resume preflight: {payload}")
+    require(resume_preflight.get("resume_allowed") is False, f"bad resume preflight: {payload}")
+    require(resume_preflight.get("resume_attempted") is False, f"bad resume preflight: {payload}")
+    require(resume_preflight.get("resume_applied") is False, f"bad resume preflight: {payload}")
     require(relayrun.get("checkpoint_persisted") is False, f"bad relayrun diagnostics: {payload}")
     require(relayrun.get("checkpoint_write_attempted") is False, f"bad relayrun diagnostics: {payload}")
     require(relayrun.get("content_free") is True, f"bad relayrun diagnostics: {payload}")
