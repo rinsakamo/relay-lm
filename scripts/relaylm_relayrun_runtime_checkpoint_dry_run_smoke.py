@@ -194,6 +194,23 @@ def _assert_artifact_common(artifact: dict[str, Any], headers: dict[str, str]) -
     require(artifact.get("resume_allowed") is False, artifact)
     require(artifact.get("resume_mode") == "none", artifact)
     require(artifact.get("checkpoint_persisted") is False, artifact)
+    plan = artifact.get("checkpoint_persistence_plan")
+    require(isinstance(plan, dict), artifact)
+    require(plan.get("schema_version") == "relayrun.checkpoint_persistence_plan.v0", plan)
+    require(plan.get("diagnostics_only") is True, plan)
+    require(plan.get("write_allowed") is False, plan)
+    require(plan.get("checkpoint_persisted") is False, plan)
+    require(plan.get("run_id") == artifact.get("run_id"), plan)
+    require(isinstance(plan.get("turn_id"), str) and plan.get("turn_id"), plan)
+    target_path_preview = plan.get("target_path_preview")
+    require(isinstance(target_path_preview, str), plan)
+    require(str(plan.get("run_id")) in target_path_preview, plan)
+    require(str(plan.get("turn_id")) in target_path_preview, plan)
+    blocked_reasons = plan.get("blocked_reasons")
+    require(isinstance(blocked_reasons, list), plan)
+    require("checkpoint_persistence_not_implemented" in blocked_reasons, plan)
+    require("checkpoint_write_disabled" in blocked_reasons, plan)
+    require(plan.get("resume_allowed_after_persist") is False, plan)
     require(artifact.get("recovery_transition_created") is False, artifact)
     require(artifact.get("stream_started") is False, artifact)
     require(artifact.get("first_token_sent") is False, artifact)
@@ -216,6 +233,8 @@ def _assert_backend_payload_not_polluted(backend_payload: dict[str, Any]) -> Non
     backend_text = json.dumps(backend_payload, ensure_ascii=False)
     require("relayrun_artifact" not in backend_text, backend_payload)
     require("relayrun.runtime_checkpoint.v0" not in backend_text, backend_payload)
+    require("checkpoint_persistence_plan" not in backend_text, backend_payload)
+    require("relayrun.checkpoint_persistence_plan.v0" not in backend_text, backend_payload)
 
 
 def _assert_normal_case(root: Path, capture: _Capture, port: int) -> None:
@@ -239,6 +258,7 @@ def _assert_normal_case(root: Path, capture: _Capture, port: int) -> None:
     require(_find_node(artifact, "token_budget_truncation")["node_status"] == "skipped", artifact)
     require(_find_node(artifact, "backend_forward")["node_status"] == "completed", artifact)
     print("ok normal request emits relayrun_artifact")
+    print("ok normal request emits checkpoint_persistence_plan")
     print("ok backend payload not polluted by relayrun diagnostics")
 
 
@@ -260,6 +280,7 @@ def _assert_recovery_case(root: Path, capture: _Capture, port: int) -> None:
     require(_find_node(artifact, "relayscn")["node_status"] == "blocked", artifact)
     require(_find_node(artifact, "relaymem_runtime_ctx")["node_status"] == "blocked", artifact)
     print("ok recovery scene still emits relayrun_artifact")
+    print("ok recovery scene still emits checkpoint_persistence_plan")
 
 
 def _assert_unresolved_reference_case(root: Path, capture: _Capture, port: int) -> None:
@@ -280,6 +301,7 @@ def _assert_unresolved_reference_case(root: Path, capture: _Capture, port: int) 
     require(_find_node(artifact, "relayref")["node_status"] == "blocked", artifact)
     require(_find_node(artifact, "relaymem_runtime_ctx")["node_status"] == "blocked", artifact)
     print("ok unresolved reference still emits relayrun_artifact")
+    print("ok unresolved reference still emits checkpoint_persistence_plan")
 
 
 def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> None:
@@ -304,6 +326,7 @@ def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> No
     require(_find_node(artifact, "relaymem_runtime_ctx")["node_status"] == "completed", artifact)
     print("ok snippet-bearing path keeps relayrun node statuses intact")
     print("ok trace metadata includes relayrun_artifact")
+    print("ok trace metadata includes checkpoint_persistence_plan")
 
 
 def _assert_relayscn_persistence_block_design_talk_case() -> None:
