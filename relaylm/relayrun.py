@@ -261,6 +261,60 @@ def build_relayrun_checkpoint_persistence_plan(
         "resume_allowed_after_persist": False,
     }
 
+
+def build_relayrun_checkpoint_writer_preflight(
+    *,
+    target_root: str,
+    target_path_preview: str,
+) -> dict[str, Any]:
+    """Build diagnostics-only checkpoint writer preflight metadata.
+
+    This helper only describes the future writer gates. It must not create
+    directories, write checkpoint files, include backend payload/content text,
+    enable resume/retry, or apply recovery transitions.
+    """
+
+    path_segments = target_path_preview.split("/")
+    root_segments = target_root.split("/")
+    path_traversal_detected = ".." in path_segments or ".." in root_segments
+    absolute_path_detected = target_path_preview.startswith("/") or target_root.startswith(
+        "/"
+    )
+
+    return {
+        "schema_version": "relayrun.checkpoint_writer_preflight.v0",
+        "diagnostics_only": True,
+        "write_allowed": False,
+        "preflight_passed": False,
+        "checkpoint_write_attempted": False,
+        "directory_creation_attempted": False,
+        "target_root": target_root,
+        "target_path_preview": target_path_preview,
+        "path_safety": {
+            "root_relative": not absolute_path_detected,
+            "path_traversal_detected": path_traversal_detected,
+            "absolute_path_detected": absolute_path_detected,
+        },
+        "content_policy": {
+            "content_free": True,
+            "backend_payload_included": False,
+            "response_text_included": False,
+            "raw_user_message_included": False,
+        },
+        "blocked_reasons": [
+            "checkpoint_writer_not_implemented",
+            "checkpoint_write_disabled",
+        ],
+        "future_writer_required_gates": [
+            "explicit_config_enabled",
+            "safe_target_root",
+            "content_free_payload",
+            "atomic_write",
+            "idempotent_run_turn_key",
+        ],
+    }
+
+
 def build_runtime_checkpoint_dry_run_artifact(
     *,
     request_id: str,
@@ -299,6 +353,10 @@ def build_runtime_checkpoint_dry_run_artifact(
         request_id=request_id,
         checkpoint_persisted=checkpoint_persisted,
     )
+    checkpoint_writer_preflight = build_relayrun_checkpoint_writer_preflight(
+        target_root=checkpoint_persistence_plan["target_root"],
+        target_path_preview=checkpoint_persistence_plan["target_path_preview"],
+    )
 
     return {
         "schema_version": "relayrun.runtime_checkpoint.v0",
@@ -320,6 +378,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "resume_mode": resume_mode,
         "checkpoint_persisted": bool(checkpoint_persisted),
         "checkpoint_persistence_plan": checkpoint_persistence_plan,
+        "checkpoint_writer_preflight": checkpoint_writer_preflight,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
     }
