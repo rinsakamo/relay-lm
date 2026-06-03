@@ -18,6 +18,7 @@ for path in (REPO_ROOT, SCRIPTS_ROOT):
         sys.path.insert(0, str(path))
 
 from relaylm.app import create_app
+import relaylm.relayrun as relayrun_module
 from relaylm.relayrun import (
     build_relayrun_node,
     build_runtime_checkpoint_dry_run_artifact,
@@ -281,11 +282,49 @@ def _assert_existing_file_collision(root: Path) -> None:
         dry_run_only=False,
     )
     require(result.get("checkpoint_persisted") is False, result)
+    require(result.get("checkpoint_write_attempted") is True, result)
     require(target.read_text(encoding="utf-8") == "existing\n", target.read_text(encoding="utf-8"))
+    require(list(target.parent.glob(".*.tmp")) == [], list(target.parent.iterdir()))
     preflight = result.get("checkpoint_writer_preflight", {})
     require("checkpoint_file_exists" in preflight.get("blocked_reasons", []), result)
     print("ok existing checkpoint collision does not overwrite")
 
+
+def _assert_final_link_race_no_overwrite(root: Path) -> None:
+    checkpoint_root = root / "link-race"
+    artifact = build_runtime_checkpoint_dry_run_artifact(
+        request_id="request-link-race",
+        run_id="run-link-race",
+        route_model="relaylm-default",
+        node_statuses=[build_relayrun_node(node_name="request_received", node_status="completed")],
+        checkpoint_target_root=checkpoint_root.relative_to(REPO_ROOT).as_posix(),
+    )
+    plan = artifact.get("checkpoint_persistence_plan")
+    require(isinstance(plan, dict), artifact)
+    target = REPO_ROOT / str(plan.get("target_path_preview"))
+    original_link = relayrun_module.os.link
+
+    def racing_link(src: object, dst: object, *args: object, **kwargs: object) -> object:
+        Path(dst).write_text("raced\n", encoding="utf-8")
+        return original_link(src, dst, *args, **kwargs)
+
+    relayrun_module.os.link = racing_link
+    try:
+        result = write_relayrun_checkpoint_if_enabled(
+            artifact,
+            write_enabled=True,
+            dry_run_only=False,
+        )
+    finally:
+        relayrun_module.os.link = original_link
+
+    require(result.get("checkpoint_persisted") is False, result)
+    require(result.get("checkpoint_write_attempted") is True, result)
+    require(target.read_text(encoding="utf-8") == "raced\n", target.read_text(encoding="utf-8"))
+    require(list(target.parent.glob(".*.tmp")) == [], list(target.parent.iterdir()))
+    preflight = result.get("checkpoint_writer_preflight", {})
+    require("checkpoint_file_exists" in preflight.get("blocked_reasons", []), result)
+    print("ok raced final checkpoint creation does not overwrite")
 
 def main() -> int:
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
@@ -304,6 +343,7 @@ def main() -> int:
             _assert_enabled_write(root, capture, port)
             _assert_unsafe_path_direct(root)
             _assert_existing_file_collision(root)
+            _assert_final_link_race_no_overwrite(root)
         finally:
             server.shutdown()
             thread.join(timeout=5)

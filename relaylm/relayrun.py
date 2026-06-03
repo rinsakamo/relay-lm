@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 from typing import Any, Literal
 import uuid
@@ -561,14 +562,21 @@ def write_relayrun_checkpoint_if_enabled(
 
     try:
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        if target_path.exists():
+        with temp_path.open("xb") as f:
+            f.write(data)
+        try:
+            os.link(temp_path, target_path)
+        except FileExistsError:
             preflight["blocked_reasons"] = _append_unique_reasons(
                 preflight.get("blocked_reasons"), ["checkpoint_file_exists"]
             )
             return updated
-        with temp_path.open("xb") as f:
-            f.write(data)
-        temp_path.replace(target_path)
+        finally:
+            try:
+                if temp_path.exists():
+                    temp_path.unlink()
+            except OSError:
+                pass
     except Exception as exc:  # noqa: BLE001 - writer failure must stay diagnostics-only.
         updated["checkpoint_writer_failed"] = True
         preflight["writer_error_type"] = exc.__class__.__name__
