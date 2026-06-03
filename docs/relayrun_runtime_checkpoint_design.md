@@ -142,6 +142,57 @@ runtime_checkpoint:
   created_at: '2026-06-02T00:00:00+09:00'
 ```
 
+
+## Checkpoint persistence plan dry-run
+
+The current request path exposes a diagnostics-only checkpoint persistence plan
+inside `relayrun_artifact.checkpoint_persistence_plan`. The plan is a preview of
+the future writer contract only; it does not persist checkpoint files, create
+checkpoint directories, enable resume, retry failed nodes, or apply recovery
+transitions. It also must not mutate the backend forwarding payload.
+
+```yaml
+checkpoint_persistence_plan:
+  schema_version: relayrun.checkpoint_persistence_plan.v0
+  diagnostics_only: true
+  write_allowed: false
+  checkpoint_persisted: false
+  target_root: .relayrun/checkpoints
+  target_path_preview: .relayrun/checkpoints/<run_id>/<turn_id>.json
+  run_id: run_...
+  turn_id: request_or_turn_id
+  blocked_reasons:
+    - checkpoint_persistence_not_implemented
+    - checkpoint_write_disabled
+  resume_allowed_after_persist: false
+```
+
+`target_path_preview` is intentionally a string preview rather than a filesystem
+operation. Until RelayLM carries an explicit durable turn id through the full
+request path, the preview may use the request id as the turn path segment; this
+keeps the planned `<run_id>/<turn_id>.json` layout visible without introducing
+new persistence semantics.
+
+The blocked reasons are stable diagnostics for downstream smoke tests and UI
+inspection:
+
+- `checkpoint_persistence_not_implemented` means no checkpoint writer exists in
+  this phase.
+- `checkpoint_write_disabled` means writes remain disabled even if the preview
+  can compute a target path.
+
+Future writer preconditions should include all of the following before
+`write_allowed` can become true: an explicit operator/config opt-in, a safe
+checkpoint root resolved inside the workspace, atomic write behavior, metadata
+redaction rules, schema migration/version checks, backend-payload isolation
+checks, and tests proving RelayMEM ordering and token truncation ordering remain
+unchanged.
+
+Persisting a checkpoint is only a prerequisite for future resume/retry work. This
+dry-run plan does not make resume available (`resume_allowed_after_persist:
+false`), does not apply `recovery_transition_artifact`, and does not change
+stream-boundary recovery behavior.
+
 ## Stream boundary rule
 
 Streaming is the main recovery boundary.

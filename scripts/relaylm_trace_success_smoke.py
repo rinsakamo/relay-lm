@@ -83,6 +83,21 @@ def main() -> int:
                 "resume_allowed": False,
                 "resume_mode": "none",
                 "checkpoint_persisted": False,
+                "checkpoint_persistence_plan": {
+                    "schema_version": "relayrun.checkpoint_persistence_plan.v0",
+                    "diagnostics_only": True,
+                    "write_allowed": False,
+                    "checkpoint_persisted": False,
+                    "target_root": ".relayrun/checkpoints",
+                    "target_path_preview": ".relayrun/checkpoints/run-trace-001/trace-success-001.json",
+                    "run_id": "run-trace-001",
+                    "turn_id": "trace-success-001",
+                    "blocked_reasons": [
+                        "checkpoint_persistence_not_implemented",
+                        "checkpoint_write_disabled",
+                    ],
+                    "resume_allowed_after_persist": False,
+                },
                 "recovery_transition_created": False,
                 "blocked_reasons": [],
             },
@@ -107,6 +122,9 @@ def main() -> int:
         require(records[0].metadata["memory_block_assembly"] == block_assembly, records[0].metadata)
         require(isinstance(records[0].metadata["relayrun_artifact"], dict), records[0].metadata)
         require(records[0].metadata["relayrun_artifact"]["run_id"] == "run-trace-001", records[0].metadata)
+        plan = records[0].metadata["relayrun_artifact"].get("checkpoint_persistence_plan")
+        require(isinstance(plan, dict), records[0].metadata)
+        require(plan.get("write_allowed") is False, records[0].metadata)
         print("ok trace backend response event")
         print("ok trace response text captured")
         print("ok trace memory source captured")

@@ -225,6 +225,42 @@ def build_relayrun_node(
     return node.to_log_dict()
 
 
+def build_relayrun_checkpoint_persistence_plan(
+    *,
+    run_id: str,
+    turn_id: str | None = None,
+    request_id: str | None = None,
+    target_root: str = ".relayrun/checkpoints",
+    checkpoint_persisted: bool = False,
+) -> dict[str, Any]:
+    """Build a diagnostics-only preview for future checkpoint persistence.
+
+    The plan is intentionally side-effect free: it does not create directories,
+    write checkpoint files, allow resume, or apply recovery transitions. When a
+    durable turn identifier is not available yet, the request id is used only as
+    the preview path segment so diagnostics can show a stable intended shape.
+    """
+
+    preview_turn_id = turn_id or request_id or "turn_unknown"
+    safe_target_root = target_root.strip("/") or ".relayrun/checkpoints"
+    target_path_preview = f"{safe_target_root}/{run_id}/{preview_turn_id}.json"
+
+    return {
+        "schema_version": "relayrun.checkpoint_persistence_plan.v0",
+        "diagnostics_only": True,
+        "write_allowed": False,
+        "checkpoint_persisted": bool(checkpoint_persisted),
+        "target_root": safe_target_root,
+        "target_path_preview": target_path_preview,
+        "run_id": run_id,
+        "turn_id": preview_turn_id,
+        "blocked_reasons": [
+            "checkpoint_persistence_not_implemented",
+            "checkpoint_write_disabled",
+        ],
+        "resume_allowed_after_persist": False,
+    }
+
 def build_runtime_checkpoint_dry_run_artifact(
     *,
     request_id: str,
@@ -256,12 +292,19 @@ def build_runtime_checkpoint_dry_run_artifact(
             safe_nodes.append(dict(node))
 
     safe_blocked_reasons = [str(reason) for reason in (blocked_reasons or ())]
+    safe_run_id = run_id or new_run_id()
+    checkpoint_persistence_plan = build_relayrun_checkpoint_persistence_plan(
+        run_id=safe_run_id,
+        turn_id=turn_id,
+        request_id=request_id,
+        checkpoint_persisted=checkpoint_persisted,
+    )
 
     return {
         "schema_version": "relayrun.runtime_checkpoint.v0",
         "diagnostics_only": True,
         "applied": bool(applied),
-        "run_id": run_id or new_run_id(),
+        "run_id": safe_run_id,
         "request_id": request_id,
         "turn_id": turn_id,
         "route_model": route_model,
@@ -276,6 +319,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "resume_allowed": bool(resume_allowed),
         "resume_mode": resume_mode,
         "checkpoint_persisted": bool(checkpoint_persisted),
+        "checkpoint_persistence_plan": checkpoint_persistence_plan,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
     }

@@ -43,6 +43,21 @@ def main() -> int:
             "resume_mode": "none",
             "node_statuses": [],
             "checkpoint_persisted": False,
+            "checkpoint_persistence_plan": {
+                "schema_version": "relayrun.checkpoint_persistence_plan.v0",
+                "diagnostics_only": True,
+                "write_allowed": False,
+                "checkpoint_persisted": False,
+                "target_root": ".relayrun/checkpoints",
+                "target_path_preview": ".relayrun/checkpoints/run-001/request-001.json",
+                "run_id": "run-001",
+                "turn_id": "request-001",
+                "blocked_reasons": [
+                    "checkpoint_persistence_not_implemented",
+                    "checkpoint_write_disabled",
+                ],
+                "resume_allowed_after_persist": False,
+            },
         },
     )
 
@@ -80,6 +95,11 @@ def main() -> int:
     require(isinstance(relayrun, dict), f"missing relayrun diagnostics: {payload}")
     require(relayrun.get("diagnostics_only") is True, f"bad relayrun diagnostics: {payload}")
     require(relayrun.get("checkpoint_persisted") is False, f"bad relayrun diagnostics: {payload}")
+    plan = relayrun.get("checkpoint_persistence_plan")
+    require(isinstance(plan, dict), f"missing checkpoint persistence plan: {payload}")
+    require(plan.get("diagnostics_only") is True, f"bad checkpoint persistence plan: {payload}")
+    require(plan.get("write_allowed") is False, f"bad checkpoint persistence plan: {payload}")
+    require(plan.get("checkpoint_persisted") is False, f"bad checkpoint persistence plan: {payload}")
     print("ok diagnostics log payload")
 
     fallback = RequestDiagnostics(
