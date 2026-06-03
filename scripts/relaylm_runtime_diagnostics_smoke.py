@@ -58,6 +58,38 @@ def main() -> int:
                 ],
                 "resume_allowed_after_persist": False,
             },
+            "checkpoint_writer_preflight": {
+                "schema_version": "relayrun.checkpoint_writer_preflight.v0",
+                "diagnostics_only": True,
+                "write_allowed": False,
+                "preflight_passed": False,
+                "checkpoint_write_attempted": False,
+                "directory_creation_attempted": False,
+                "target_root": ".relayrun/checkpoints",
+                "target_path_preview": ".relayrun/checkpoints/run-001/request-001.json",
+                "path_safety": {
+                    "root_relative": True,
+                    "path_traversal_detected": False,
+                    "absolute_path_detected": False,
+                },
+                "content_policy": {
+                    "content_free": True,
+                    "backend_payload_included": False,
+                    "response_text_included": False,
+                    "raw_user_message_included": False,
+                },
+                "blocked_reasons": [
+                    "checkpoint_writer_not_implemented",
+                    "checkpoint_write_disabled",
+                ],
+                "future_writer_required_gates": [
+                    "explicit_config_enabled",
+                    "safe_target_root",
+                    "content_free_payload",
+                    "atomic_write",
+                    "idempotent_run_turn_key",
+                ],
+            },
         },
     )
 
@@ -100,6 +132,19 @@ def main() -> int:
     require(plan.get("diagnostics_only") is True, f"bad checkpoint persistence plan: {payload}")
     require(plan.get("write_allowed") is False, f"bad checkpoint persistence plan: {payload}")
     require(plan.get("checkpoint_persisted") is False, f"bad checkpoint persistence plan: {payload}")
+    preflight = relayrun.get("checkpoint_writer_preflight")
+    require(isinstance(preflight, dict), f"missing checkpoint writer preflight: {payload}")
+    require(preflight.get("diagnostics_only") is True, f"bad checkpoint writer preflight: {payload}")
+    require(preflight.get("write_allowed") is False, f"bad checkpoint writer preflight: {payload}")
+    require(preflight.get("preflight_passed") is False, f"bad checkpoint writer preflight: {payload}")
+    require(
+        preflight.get("checkpoint_write_attempted") is False,
+        f"bad checkpoint writer preflight: {payload}",
+    )
+    require(
+        preflight.get("directory_creation_attempted") is False,
+        f"bad checkpoint writer preflight: {payload}",
+    )
     print("ok diagnostics log payload")
 
     fallback = RequestDiagnostics(

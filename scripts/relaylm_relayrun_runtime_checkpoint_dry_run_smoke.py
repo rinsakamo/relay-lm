@@ -211,6 +211,38 @@ def _assert_artifact_common(artifact: dict[str, Any], headers: dict[str, str]) -
     require("checkpoint_persistence_not_implemented" in blocked_reasons, plan)
     require("checkpoint_write_disabled" in blocked_reasons, plan)
     require(plan.get("resume_allowed_after_persist") is False, plan)
+    preflight = artifact.get("checkpoint_writer_preflight")
+    require(isinstance(preflight, dict), artifact)
+    require(preflight.get("schema_version") == "relayrun.checkpoint_writer_preflight.v0", preflight)
+    require(preflight.get("diagnostics_only") is True, preflight)
+    require(preflight.get("write_allowed") is False, preflight)
+    require(preflight.get("preflight_passed") is False, preflight)
+    require(preflight.get("checkpoint_write_attempted") is False, preflight)
+    require(preflight.get("directory_creation_attempted") is False, preflight)
+    require(preflight.get("target_root") == plan.get("target_root"), preflight)
+    require(preflight.get("target_path_preview") == plan.get("target_path_preview"), preflight)
+    path_safety = preflight.get("path_safety")
+    require(isinstance(path_safety, dict), preflight)
+    require(path_safety.get("root_relative") is True, preflight)
+    require(path_safety.get("path_traversal_detected") is False, preflight)
+    require(path_safety.get("absolute_path_detected") is False, preflight)
+    content_policy = preflight.get("content_policy")
+    require(isinstance(content_policy, dict), preflight)
+    require(content_policy.get("content_free") is True, preflight)
+    require(content_policy.get("backend_payload_included") is False, preflight)
+    require(content_policy.get("response_text_included") is False, preflight)
+    require(content_policy.get("raw_user_message_included") is False, preflight)
+    preflight_blocked_reasons = preflight.get("blocked_reasons")
+    require(isinstance(preflight_blocked_reasons, list), preflight)
+    require("checkpoint_writer_not_implemented" in preflight_blocked_reasons, preflight)
+    require("checkpoint_write_disabled" in preflight_blocked_reasons, preflight)
+    future_writer_required_gates = preflight.get("future_writer_required_gates")
+    require(isinstance(future_writer_required_gates, list), preflight)
+    require("explicit_config_enabled" in future_writer_required_gates, preflight)
+    require("safe_target_root" in future_writer_required_gates, preflight)
+    require("content_free_payload" in future_writer_required_gates, preflight)
+    require("atomic_write" in future_writer_required_gates, preflight)
+    require("idempotent_run_turn_key" in future_writer_required_gates, preflight)
     require(artifact.get("recovery_transition_created") is False, artifact)
     require(artifact.get("stream_started") is False, artifact)
     require(artifact.get("first_token_sent") is False, artifact)
@@ -235,6 +267,8 @@ def _assert_backend_payload_not_polluted(backend_payload: dict[str, Any]) -> Non
     require("relayrun.runtime_checkpoint.v0" not in backend_text, backend_payload)
     require("checkpoint_persistence_plan" not in backend_text, backend_payload)
     require("relayrun.checkpoint_persistence_plan.v0" not in backend_text, backend_payload)
+    require("checkpoint_writer_preflight" not in backend_text, backend_payload)
+    require("relayrun.checkpoint_writer_preflight.v0" not in backend_text, backend_payload)
 
 
 def _assert_normal_case(root: Path, capture: _Capture, port: int) -> None:
@@ -259,6 +293,7 @@ def _assert_normal_case(root: Path, capture: _Capture, port: int) -> None:
     require(_find_node(artifact, "backend_forward")["node_status"] == "completed", artifact)
     print("ok normal request emits relayrun_artifact")
     print("ok normal request emits checkpoint_persistence_plan")
+    print("ok normal request emits checkpoint_writer_preflight")
     print("ok backend payload not polluted by relayrun diagnostics")
 
 
@@ -281,6 +316,7 @@ def _assert_recovery_case(root: Path, capture: _Capture, port: int) -> None:
     require(_find_node(artifact, "relaymem_runtime_ctx")["node_status"] == "blocked", artifact)
     print("ok recovery scene still emits relayrun_artifact")
     print("ok recovery scene still emits checkpoint_persistence_plan")
+    print("ok recovery scene still emits checkpoint_writer_preflight")
 
 
 def _assert_unresolved_reference_case(root: Path, capture: _Capture, port: int) -> None:
@@ -302,6 +338,7 @@ def _assert_unresolved_reference_case(root: Path, capture: _Capture, port: int) 
     require(_find_node(artifact, "relaymem_runtime_ctx")["node_status"] == "blocked", artifact)
     print("ok unresolved reference still emits relayrun_artifact")
     print("ok unresolved reference still emits checkpoint_persistence_plan")
+    print("ok unresolved reference still emits checkpoint_writer_preflight")
 
 
 def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> None:
@@ -327,6 +364,7 @@ def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> No
     print("ok snippet-bearing path keeps relayrun node statuses intact")
     print("ok trace metadata includes relayrun_artifact")
     print("ok trace metadata includes checkpoint_persistence_plan")
+    print("ok trace metadata includes checkpoint_writer_preflight")
 
 
 def _assert_relayscn_persistence_block_design_talk_case() -> None:

@@ -98,6 +98,38 @@ def main() -> int:
                     ],
                     "resume_allowed_after_persist": False,
                 },
+                "checkpoint_writer_preflight": {
+                    "schema_version": "relayrun.checkpoint_writer_preflight.v0",
+                    "diagnostics_only": True,
+                    "write_allowed": False,
+                    "preflight_passed": False,
+                    "checkpoint_write_attempted": False,
+                    "directory_creation_attempted": False,
+                    "target_root": ".relayrun/checkpoints",
+                    "target_path_preview": ".relayrun/checkpoints/run-trace-001/trace-success-001.json",
+                    "path_safety": {
+                        "root_relative": True,
+                        "path_traversal_detected": False,
+                        "absolute_path_detected": False,
+                    },
+                    "content_policy": {
+                        "content_free": True,
+                        "backend_payload_included": False,
+                        "response_text_included": False,
+                        "raw_user_message_included": False,
+                    },
+                    "blocked_reasons": [
+                        "checkpoint_writer_not_implemented",
+                        "checkpoint_write_disabled",
+                    ],
+                    "future_writer_required_gates": [
+                        "explicit_config_enabled",
+                        "safe_target_root",
+                        "content_free_payload",
+                        "atomic_write",
+                        "idempotent_run_turn_key",
+                    ],
+                },
                 "recovery_transition_created": False,
                 "blocked_reasons": [],
             },
@@ -125,6 +157,11 @@ def main() -> int:
         plan = records[0].metadata["relayrun_artifact"].get("checkpoint_persistence_plan")
         require(isinstance(plan, dict), records[0].metadata)
         require(plan.get("write_allowed") is False, records[0].metadata)
+        preflight = records[0].metadata["relayrun_artifact"].get("checkpoint_writer_preflight")
+        require(isinstance(preflight, dict), records[0].metadata)
+        require(preflight.get("write_allowed") is False, records[0].metadata)
+        require(preflight.get("checkpoint_write_attempted") is False, records[0].metadata)
+        require(preflight.get("directory_creation_attempted") is False, records[0].metadata)
         print("ok trace backend response event")
         print("ok trace response text captured")
         print("ok trace memory source captured")

@@ -193,6 +193,58 @@ dry-run plan does not make resume available (`resume_allowed_after_persist:
 false`), does not apply `recovery_transition_artifact`, and does not change
 stream-boundary recovery behavior.
 
+
+## Checkpoint writer preflight dry-run
+
+RelayRUN also exposes a diagnostics-only writer preflight at
+`relayrun_artifact.checkpoint_writer_preflight`. The preflight is a gate report
+for a future checkpoint writer; it does not write checkpoint files, create the
+target directory, enable resume/retry, or apply recovery transitions.
+
+```yaml
+checkpoint_writer_preflight:
+  schema_version: relayrun.checkpoint_writer_preflight.v0
+  diagnostics_only: true
+  write_allowed: false
+  preflight_passed: false
+  checkpoint_write_attempted: false
+  directory_creation_attempted: false
+  target_root: .relayrun/checkpoints
+  target_path_preview: .relayrun/checkpoints/<run_id>/<turn_id>.json
+  path_safety:
+    root_relative: true
+    path_traversal_detected: false
+    absolute_path_detected: false
+  content_policy:
+    content_free: true
+    backend_payload_included: false
+    response_text_included: false
+    raw_user_message_included: false
+  blocked_reasons:
+    - checkpoint_writer_not_implemented
+    - checkpoint_write_disabled
+  future_writer_required_gates:
+    - explicit_config_enabled
+    - safe_target_root
+    - content_free_payload
+    - atomic_write
+    - idempotent_run_turn_key
+```
+
+The preflight uses the same `target_root` and `target_path_preview` as
+`checkpoint_persistence_plan` so diagnostics can compare the intended writer path
+without touching the filesystem. The path safety block is metadata-only: it
+records whether the preview is root-relative and whether traversal or absolute
+path indicators were detected, but it does not resolve, create, or validate a
+real directory.
+
+Checkpoint preflight artifacts must remain content-free. They intentionally
+exclude backend forwarding payloads, backend response text, and raw user message
+content because checkpoints are intended to be resumability/control metadata, not
+a second transcript store. Future writers should persist only redacted runtime
+state and references to already-governed diagnostics artifacts after all required
+gates pass.
+
 ## Stream boundary rule
 
 Streaming is the main recovery boundary.
