@@ -443,6 +443,65 @@ content-free checkpoint or current-context state, safe resume/retry mode, user o
 policy confirmation when required, and output-pipeline rendering for any
 user-visible text.
 
+## Waiting user contract diagnostics
+
+RelayRUN exposes a diagnostics-only `waiting_user_contract` artifact inside
+`relayrun_artifact`. The contract structures when a future orchestrator may need
+user confirmation or clarification, but it does not generate user-visible text,
+does not apply resume/retry/recovery transitions, and does not mutate backend
+forwarding payloads. Any future user-visible recovery or clarification prompt
+must pass through the normal RelayLM output pipeline.
+
+Waiting-user contract diagnostics are default-off and dry-run-only by default:
+
+```yaml
+relayrun_waiting_user_contract_enabled: false
+relayrun_waiting_user_contract_dry_run_only: true
+```
+
+Default requests still emit the artifact for observability:
+
+```yaml
+waiting_user_contract:
+  schema_version: relayrun.waiting_user_contract.v0
+  diagnostics_only: true
+  user_visible: false
+  apply_allowed: false
+  applied: false
+  waiting_user_required: false
+  waiting_user_reason: null
+  source_node: null
+  source_artifacts:
+    resume_preflight: {}
+    recovery_transition_artifact: {}
+  allowed_user_actions: []
+  blocked_reasons:
+    - waiting_user_contract_disabled
+    - waiting_user_contract_dry_run_only
+  safety:
+    direct_user_output_allowed: false
+    passes_through_output_pipeline_required: true
+    contains_user_content: false
+    contains_backend_payload: false
+    contains_response_text: false
+```
+
+The contract is derived from existing diagnostics such as `resume_preflight`,
+`recovery_transition_artifact`, and RelayRUN node state. Recovery scenes can set
+`waiting_user_required: true` with `waiting_user_reason:
+recovery_context_repair` and actions such as `confirm_context` or
+`provide_clarification`. Unresolved references can set
+`waiting_user_reason: unresolved_reference` with `provide_clarification`. Backend
+forwarding failures can propose `backend_error_recovery_confirmation` with retry
+or cancellation actions. A readable checkpoint in resume preflight remains
+diagnostics-only until resume selection and apply gates exist.
+
+The contract is intentionally not a response renderer. It must keep
+`user_visible: false`, `apply_allowed: false`, and `applied: false` until a later
+phase adds explicit operator config, safe resume/retry mode selection, user or
+policy confirmation, and output-pipeline rendering for any user-visible text.
+
+
 ## Stream boundary rule
 
 Streaming is the main recovery boundary.

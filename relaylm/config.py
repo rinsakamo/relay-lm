@@ -130,6 +130,8 @@ class RelayLMConfig(BaseModel):
     relayrun_checkpoint_index_max_files: int = Field(default=100, ge=1)
     relayrun_recovery_transition_enabled: bool = False
     relayrun_recovery_transition_dry_run_only: bool = True
+    relayrun_waiting_user_contract_enabled: bool = False
+    relayrun_waiting_user_contract_dry_run_only: bool = True
 
 
 def default_config_path() -> Path:
