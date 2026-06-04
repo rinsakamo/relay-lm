@@ -264,6 +264,29 @@ def _assert_scan_cases() -> None:
         print("ok indexed summaries exclude forbidden raw fields")
 
 
+def _assert_absolute_root_blocked() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td) / "absolute-checkpoints"
+        root.mkdir()
+        (root / "candidate.json").write_text("{not json", encoding="utf-8")
+        index = build_relayrun_checkpoint_index_diagnostics(
+            checkpoint_root=str(root),
+            index_enabled=True,
+            dry_run_only=False,
+            max_files=10,
+        )
+        require(index.get("scan_attempted") is False, index)
+        require(index.get("scanned_files") == 0, index)
+        require(index.get("indexed_checkpoints") == [], index)
+        require(index.get("blocked_files") == [], index)
+        require("checkpoint_index_absolute_root" in index.get("blocked_reasons", []), index)
+        path_safety = index.get("path_safety")
+        require(isinstance(path_safety, dict), index)
+        require(path_safety.get("absolute_path_detected") is True, index)
+        require(path_safety.get("root_relative") is False, index)
+        print("ok absolute checkpoint index root is blocked before scan")
+
+
 def _assert_truncation() -> None:
     max_files = 2
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
@@ -300,6 +323,7 @@ def main() -> int:
     try:
         _assert_default_request(capture, port)
         _assert_scan_cases()
+        _assert_absolute_root_blocked()
         _assert_truncation()
     finally:
         server.shutdown()

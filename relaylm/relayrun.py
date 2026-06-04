@@ -475,7 +475,11 @@ def build_relayrun_checkpoint_index_diagnostics(
         blocked_reasons.append("checkpoint_index_disabled")
     if dry_run_only:
         blocked_reasons.append("checkpoint_index_dry_run_only")
-    if ".." in root.parts:
+    absolute_path_detected = root.is_absolute()
+    path_traversal_detected = ".." in root.parts
+    if absolute_path_detected:
+        blocked_reasons.append("checkpoint_index_absolute_root")
+    if path_traversal_detected:
         blocked_reasons.append("checkpoint_index_path_traversal_detected")
 
     artifact: dict[str, Any] = {
@@ -491,6 +495,11 @@ def build_relayrun_checkpoint_index_diagnostics(
         "blocked_files": [],
         "truncated": False,
         "blocked_reasons": blocked_reasons,
+        "path_safety": {
+            "root_relative": not absolute_path_detected,
+            "absolute_path_detected": absolute_path_detected,
+            "path_traversal_detected": path_traversal_detected,
+        },
         "content_policy": _checkpoint_content_policy(),
     }
 
