@@ -265,23 +265,29 @@ def _assert_scan_cases() -> None:
 
 
 def _assert_truncation() -> None:
+    max_files = 2
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
         root = Path(td) / "checkpoints"
         root.mkdir()
         root_rel = root.relative_to(REPO_ROOT).as_posix()
         _persist_valid_checkpoint(root_rel, run_id="run-index-cap-1", turn_id="turn-1")
         _persist_valid_checkpoint(root_rel, run_id="run-index-cap-2", turn_id="turn-2")
+        _persist_valid_checkpoint(root_rel, run_id="run-index-cap-3", turn_id="turn-3")
+        (root / "malformed-cap.json").write_text("{not json", encoding="utf-8")
         index = build_relayrun_checkpoint_index_diagnostics(
             checkpoint_root=root_rel,
             index_enabled=True,
             dry_run_only=False,
-            max_files=1,
+            max_files=max_files,
         )
         require(index.get("scan_attempted") is True, index)
         require(index.get("truncated") is True, index)
-        require(index.get("scanned_files") == 1, index)
-        require(len(index.get("indexed_checkpoints", [])) <= 1, index)
-        print("ok max_files truncation works")
+        require(index.get("scanned_files") <= max_files, index)
+        indexed_count = len(index.get("indexed_checkpoints", []))
+        blocked_count = len(index.get("blocked_files", []))
+        require(indexed_count + blocked_count <= max_files, index)
+        require("checkpoint_index_truncated" in index.get("blocked_reasons", []), index)
+        print("ok max_files truncation bounds traversal and results")
 
 
 def main() -> int:

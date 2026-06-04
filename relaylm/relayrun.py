@@ -517,14 +517,15 @@ def build_relayrun_checkpoint_index_diagnostics(
         return artifact
 
     artifact["scan_attempted"] = True
-    candidates = sorted(
-        path for path in root.rglob("*.json") if path.is_file() or path.is_symlink()
-    )
-    if len(candidates) > safe_max_files:
-        artifact["truncated"] = True
-        candidates = candidates[:safe_max_files]
-
-    for candidate in candidates:
+    for candidate in root.rglob("*.json"):
+        if artifact["scanned_files"] >= safe_max_files:
+            artifact["truncated"] = True
+            artifact["blocked_reasons"] = _append_unique_reasons(
+                artifact["blocked_reasons"], ["checkpoint_index_truncated"]
+            )
+            break
+        if not candidate.is_file() and not candidate.is_symlink():
+            continue
         artifact["scanned_files"] += 1
         blocked_file = _build_checkpoint_index_file_summary(
             candidate=candidate,
