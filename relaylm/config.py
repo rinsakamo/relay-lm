@@ -125,6 +125,9 @@ class RelayLMConfig(BaseModel):
     relayrun_checkpoint_dry_run_only: bool = True
     relayrun_resume_preflight_enabled: bool = False
     relayrun_resume_dry_run_only: bool = True
+    relayrun_checkpoint_index_enabled: bool = False
+    relayrun_checkpoint_index_dry_run_only: bool = True
+    relayrun_checkpoint_index_max_files: int = Field(default=100, ge=1)
     relayrun_recovery_transition_enabled: bool = False
     relayrun_recovery_transition_dry_run_only: bool = True
 

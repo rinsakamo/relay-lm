@@ -289,6 +289,69 @@ simple: keep `relayrun_checkpoint_write_enabled: false`, keep
 a disposable workspace-local directory and remove that directory.
 
 
+## Checkpoint index / listing diagnostics
+
+RelayRUN exposes a diagnostics-only checkpoint index artifact at
+`relayrun_artifact.checkpoint_index`. The index is a safe listing and validation
+summary for checkpoint-root contents only. It does not select a checkpoint for
+resume, retry failed nodes, apply a recovery transition, expose raw checkpoint
+content to the backend, or change the response body.
+
+Checkpoint index diagnostics are default-off:
+
+```yaml
+relayrun_checkpoint_index_enabled: false
+relayrun_checkpoint_index_dry_run_only: true
+relayrun_checkpoint_index_max_files: 100
+```
+
+Default requests still include the artifact for observability, but they do not
+scan the filesystem:
+
+```yaml
+checkpoint_index:
+  schema_version: relayrun.checkpoint_index.v0
+  diagnostics_only: true
+  index_enabled: false
+  dry_run_only: true
+  scan_attempted: false
+  root_path: .relayrun/checkpoints
+  root_exists: false
+  scanned_files: 0
+  indexed_checkpoints: []
+  blocked_files: []
+  truncated: false
+  blocked_reasons:
+    - checkpoint_index_disabled
+    - checkpoint_index_dry_run_only
+  content_policy:
+    content_free_only: true
+    raw_user_message_included: false
+    backend_payload_included: false
+    response_text_included: false
+    snippet_text_included: false
+```
+
+RelayRUN scans only when `relayrun_checkpoint_index_enabled: true` and
+`relayrun_checkpoint_index_dry_run_only: false`. The scan is capped by
+`relayrun_checkpoint_index_max_files`, considers only `.json` files under the
+checkpoint root, blocks path traversal, symlinks, and any file that resolves
+outside the root, and marks `truncated: true` when the cap is hit.
+
+Malformed JSON, wrong schema, `content_free: false`, and envelopes containing
+forbidden raw-content keys are reported in `blocked_files`. A valid
+`relayrun.checkpoint_envelope.v0` contributes only a metadata summary to
+`indexed_checkpoints`: checkpoint path, run id, turn id, route model, backend
+name, run status, persisted flag, node count, blocked-reason count, optional
+`created_at`, and `content_free: true`. Raw messages, raw user content, backend
+payloads, response text, prompt text, snippet text, and full page bodies must not
+appear in indexed summaries.
+
+This index is listing diagnostics only. It does not implement resume selection,
+multi-run lookup semantics, retry execution, multi-run recovery apply, or
+user-visible recovery output.
+
+
 ## Resume preflight dry-run
 
 RelayRUN exposes a diagnostics-only `resume_preflight` artifact in
