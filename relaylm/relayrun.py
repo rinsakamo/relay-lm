@@ -477,8 +477,11 @@ def build_relayrun_checkpoint_index_diagnostics(
         blocked_reasons.append("checkpoint_index_dry_run_only")
     absolute_path_detected = root.is_absolute()
     path_traversal_detected = ".." in root.parts
+    symlink_root_detected = root.is_symlink()
     if absolute_path_detected:
         blocked_reasons.append("checkpoint_index_absolute_root")
+    if symlink_root_detected:
+        blocked_reasons.append("checkpoint_index_symlink_root")
     if path_traversal_detected:
         blocked_reasons.append("checkpoint_index_path_traversal_detected")
 
@@ -498,6 +501,7 @@ def build_relayrun_checkpoint_index_diagnostics(
         "path_safety": {
             "root_relative": not absolute_path_detected,
             "absolute_path_detected": absolute_path_detected,
+            "symlink_root_detected": symlink_root_detected,
             "path_traversal_detected": path_traversal_detected,
         },
         "content_policy": _checkpoint_content_policy(),

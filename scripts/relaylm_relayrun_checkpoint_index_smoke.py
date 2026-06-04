@@ -287,6 +287,40 @@ def _assert_absolute_root_blocked() -> None:
         print("ok absolute checkpoint index root is blocked before scan")
 
 
+def _assert_symlink_root_blocked() -> None:
+    with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
+        base = Path(td)
+        target = base / "target-checkpoints"
+        target.mkdir()
+        target_rel = target.relative_to(REPO_ROOT).as_posix()
+        _persist_valid_checkpoint(
+            target_rel, run_id="run-index-symlink-target", turn_id="turn-target"
+        )
+        symlink_root = base / "symlink-checkpoints"
+        try:
+            symlink_root.symlink_to(target, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            print("skip symlink root smoke: symlink unsupported")
+            return
+        symlink_root_rel = symlink_root.relative_to(REPO_ROOT).as_posix()
+        index = build_relayrun_checkpoint_index_diagnostics(
+            checkpoint_root=symlink_root_rel,
+            index_enabled=True,
+            dry_run_only=False,
+            max_files=10,
+        )
+        require(index.get("scan_attempted") is False, index)
+        require(index.get("scanned_files") == 0, index)
+        require(index.get("indexed_checkpoints") == [], index)
+        require(index.get("blocked_files") == [], index)
+        require("checkpoint_index_symlink_root" in index.get("blocked_reasons", []), index)
+        path_safety = index.get("path_safety")
+        require(isinstance(path_safety, dict), index)
+        require(path_safety.get("symlink_root_detected") is True, index)
+        require(path_safety.get("absolute_path_detected") is False, index)
+        print("ok symlink checkpoint index root is blocked before scan")
+
+
 def _assert_truncation() -> None:
     max_files = 2
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
@@ -324,6 +358,7 @@ def main() -> int:
         _assert_default_request(capture, port)
         _assert_scan_cases()
         _assert_absolute_root_blocked()
+        _assert_symlink_root_blocked()
         _assert_truncation()
     finally:
         server.shutdown()
