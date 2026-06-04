@@ -742,6 +742,91 @@ def build_relayrun_recovery_transition_artifact(
         },
     }
 
+
+def build_relayrun_waiting_user_contract(
+    *,
+    waiting_user_contract_enabled: bool = False,
+    waiting_user_contract_dry_run_only: bool = True,
+    resume_preflight: dict[str, Any] | None = None,
+    recovery_transition_artifact: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build diagnostics-only waiting-user contract metadata.
+
+    The contract structures possible user-confirmation needs for future
+    orchestration only. It never emits direct user-visible output, applies
+    resume/retry/recovery, or mutates backend payloads.
+    """
+
+    safe_resume_preflight = (
+        _copy_jsonable_mapping(resume_preflight)
+        if isinstance(resume_preflight, dict)
+        else None
+    )
+    safe_recovery_transition = (
+        _copy_jsonable_mapping(recovery_transition_artifact)
+        if isinstance(recovery_transition_artifact, dict)
+        else None
+    )
+    transition_type = (
+        safe_recovery_transition.get("proposed_transition_type")
+        if isinstance(safe_recovery_transition, dict)
+        else None
+    )
+    source_node = (
+        safe_recovery_transition.get("source_node")
+        if isinstance(safe_recovery_transition, dict)
+        else None
+    )
+
+    waiting_user_required = False
+    waiting_user_reason = None
+    allowed_user_actions: list[str] = []
+    if transition_type == "context_repair":
+        waiting_user_required = True
+        waiting_user_reason = "recovery_context_repair"
+        allowed_user_actions = ["confirm_context", "provide_clarification"]
+    elif transition_type == "ask_user_confirmation":
+        waiting_user_required = True
+        waiting_user_reason = "unresolved_reference"
+        allowed_user_actions = ["provide_clarification"]
+    elif transition_type == "retry_safe_node" and source_node == "backend_forward":
+        waiting_user_required = True
+        waiting_user_reason = "backend_error_recovery_confirmation"
+        allowed_user_actions = ["confirm_retry", "cancel_recovery"]
+
+    blocked_reasons: list[str] = []
+    if not waiting_user_contract_enabled:
+        blocked_reasons.append("waiting_user_contract_disabled")
+    if waiting_user_contract_dry_run_only:
+        blocked_reasons.append("waiting_user_contract_dry_run_only")
+    if waiting_user_required:
+        blocked_reasons.append("waiting_user_apply_not_implemented")
+
+    return {
+        "schema_version": "relayrun.waiting_user_contract.v0",
+        "diagnostics_only": True,
+        "user_visible": False,
+        "apply_allowed": False,
+        "applied": False,
+        "waiting_user_required": waiting_user_required,
+        "waiting_user_reason": waiting_user_reason,
+        "source_node": source_node,
+        "source_artifacts": {
+            "resume_preflight": safe_resume_preflight,
+            "recovery_transition_artifact": safe_recovery_transition,
+        },
+        "allowed_user_actions": allowed_user_actions,
+        "blocked_reasons": blocked_reasons,
+        "safety": {
+            "direct_user_output_allowed": False,
+            "passes_through_output_pipeline_required": True,
+            "contains_user_content": False,
+            "contains_backend_payload": False,
+            "contains_response_text": False,
+        },
+    }
+
+
 def build_runtime_checkpoint_dry_run_artifact(
     *,
     request_id: str,
@@ -766,6 +851,8 @@ def build_runtime_checkpoint_dry_run_artifact(
     resume_dry_run_only: bool = True,
     recovery_transition_enabled: bool = False,
     recovery_transition_dry_run_only: bool = True,
+    waiting_user_contract_enabled: bool = False,
+    waiting_user_contract_dry_run_only: bool = True,
     recovery_transition_created: bool = False,
     applied: bool = False,
 ) -> dict[str, Any]:
@@ -811,6 +898,12 @@ def build_runtime_checkpoint_dry_run_artifact(
         recovery_transition_dry_run_only=recovery_transition_dry_run_only,
         resume_mode=resume_mode,
     )
+    waiting_user_contract = build_relayrun_waiting_user_contract(
+        waiting_user_contract_enabled=waiting_user_contract_enabled,
+        waiting_user_contract_dry_run_only=waiting_user_contract_dry_run_only,
+        resume_preflight=resume_preflight,
+        recovery_transition_artifact=recovery_transition_artifact,
+    )
 
     return {
         "schema_version": "relayrun.runtime_checkpoint.v0",
@@ -841,6 +934,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "checkpoint_writer_preflight": checkpoint_writer_preflight,
         "checkpoint_index": checkpoint_index,
         "recovery_transition_artifact": recovery_transition_artifact,
+        "waiting_user_contract": waiting_user_contract,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
     }

@@ -902,6 +902,8 @@ def _build_relayrun_runtime_artifact(
         resume_dry_run_only=config.relayrun_resume_dry_run_only,
         recovery_transition_enabled=config.relayrun_recovery_transition_enabled,
         recovery_transition_dry_run_only=config.relayrun_recovery_transition_dry_run_only,
+        waiting_user_contract_enabled=config.relayrun_waiting_user_contract_enabled,
+        waiting_user_contract_dry_run_only=config.relayrun_waiting_user_contract_dry_run_only,
         recovery_transition_created=False,
         applied=False,
     )
