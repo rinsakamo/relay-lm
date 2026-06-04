@@ -380,7 +380,10 @@ def build_relayrun_resume_preflight(
     try:
         root_resolved = checkpoint_root_path.resolve()
         candidate_resolved = candidate_path.resolve()
-        if candidate_resolved != root_resolved and root_resolved not in candidate_resolved.parents:
+        if (
+            candidate_resolved != root_resolved
+            and root_resolved not in candidate_resolved.parents
+        ):
             artifact["blocked_reasons"] = _append_unique_reasons(
                 artifact["blocked_reasons"], ["resume_checkpoint_outside_root"]
             )
@@ -418,14 +421,19 @@ def build_relayrun_resume_preflight(
         return artifact
 
     artifact["checkpoint_read_ok"] = True
-    if not isinstance(envelope, dict) or envelope.get("schema_version") != "relayrun.checkpoint_envelope.v0":
+    if (
+        not isinstance(envelope, dict)
+        or envelope.get("schema_version") != "relayrun.checkpoint_envelope.v0"
+    ):
         artifact["blocked_reasons"] = _append_unique_reasons(
             artifact["blocked_reasons"], ["resume_checkpoint_schema_invalid"]
         )
         return artifact
 
     artifact["checkpoint_schema_valid"] = True
-    content_free = envelope.get("content_free") is True and _is_checkpoint_content_free(envelope)
+    content_free = (
+        envelope.get("content_free") is True and _is_checkpoint_content_free(envelope)
+    )
     artifact["content_free"] = content_free
     if not content_free:
         artifact["blocked_reasons"] = _append_unique_reasons(
@@ -433,6 +441,208 @@ def build_relayrun_resume_preflight(
         )
 
     return artifact
+
+
+def _checkpoint_content_policy() -> dict[str, bool]:
+    return {
+        "content_free_only": True,
+        "raw_user_message_included": False,
+        "backend_payload_included": False,
+        "response_text_included": False,
+        "snippet_text_included": False,
+    }
+
+
+def build_relayrun_checkpoint_index_diagnostics(
+    *,
+    checkpoint_root: str = ".relayrun/checkpoints",
+    index_enabled: bool = False,
+    dry_run_only: bool = True,
+    max_files: int = 100,
+) -> dict[str, Any]:
+    """Build safe checkpoint index/listing diagnostics.
+
+    The index is diagnostics-only. It scans only explicitly enabled,
+    non-dry-run checkpoint roots, indexes only content-free checkpoint envelope
+    metadata, and never applies resume/retry/recovery behavior.
+    """
+
+    safe_max_files = max(1, int(max_files))
+    root_path = str(checkpoint_root or ".relayrun/checkpoints")
+    root = Path(root_path)
+    blocked_reasons: list[str] = []
+    if not index_enabled:
+        blocked_reasons.append("checkpoint_index_disabled")
+    if dry_run_only:
+        blocked_reasons.append("checkpoint_index_dry_run_only")
+    if ".." in root.parts:
+        blocked_reasons.append("checkpoint_index_path_traversal_detected")
+
+    artifact: dict[str, Any] = {
+        "schema_version": "relayrun.checkpoint_index.v0",
+        "diagnostics_only": True,
+        "index_enabled": bool(index_enabled),
+        "dry_run_only": bool(dry_run_only),
+        "scan_attempted": False,
+        "root_path": root_path,
+        "root_exists": root.exists(),
+        "scanned_files": 0,
+        "indexed_checkpoints": [],
+        "blocked_files": [],
+        "truncated": False,
+        "blocked_reasons": blocked_reasons,
+        "content_policy": _checkpoint_content_policy(),
+    }
+
+    if blocked_reasons:
+        return artifact
+
+    try:
+        root_resolved = root.resolve()
+    except OSError:
+        artifact["blocked_reasons"] = _append_unique_reasons(
+            artifact["blocked_reasons"], ["checkpoint_index_root_resolution_failed"]
+        )
+        return artifact
+
+    if not root.exists():
+        artifact["blocked_reasons"] = _append_unique_reasons(
+            artifact["blocked_reasons"], ["checkpoint_index_root_missing"]
+        )
+        return artifact
+    if not root.is_dir():
+        artifact["blocked_reasons"] = _append_unique_reasons(
+            artifact["blocked_reasons"], ["checkpoint_index_root_not_directory"]
+        )
+        return artifact
+
+    artifact["scan_attempted"] = True
+    candidates = sorted(
+        path for path in root.rglob("*.json") if path.is_file() or path.is_symlink()
+    )
+    if len(candidates) > safe_max_files:
+        artifact["truncated"] = True
+        candidates = candidates[:safe_max_files]
+
+    for candidate in candidates:
+        artifact["scanned_files"] += 1
+        blocked_file = _build_checkpoint_index_file_summary(
+            candidate=candidate,
+            root=root,
+            root_resolved=root_resolved,
+        )
+        if "blocked_reasons" in blocked_file:
+            artifact["blocked_files"].append(blocked_file)
+        else:
+            artifact["indexed_checkpoints"].append(blocked_file)
+
+    return artifact
+
+
+def _checkpoint_index_relative_path(path: Path, root: Path) -> str:
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def _build_checkpoint_index_file_summary(
+    *,
+    candidate: Path,
+    root: Path,
+    root_resolved: Path,
+) -> dict[str, Any]:
+    checkpoint_path = _checkpoint_index_relative_path(candidate, root)
+    blocked_reasons: list[str] = []
+    if candidate.suffix != ".json":
+        blocked_reasons.append("checkpoint_index_non_json_file")
+    if candidate.is_symlink():
+        blocked_reasons.append("checkpoint_index_symlink_blocked")
+    if ".." in candidate.parts:
+        blocked_reasons.append("checkpoint_index_path_traversal_detected")
+
+    try:
+        candidate_resolved = candidate.resolve()
+        if (
+            candidate_resolved != root_resolved
+            and root_resolved not in candidate_resolved.parents
+        ):
+            blocked_reasons.append("checkpoint_index_file_outside_root")
+    except OSError:
+        blocked_reasons.append("checkpoint_index_file_resolution_failed")
+
+    if blocked_reasons:
+        return {
+            "checkpoint_path": checkpoint_path,
+            "blocked_reasons": _append_unique_reasons([], blocked_reasons),
+        }
+
+    try:
+        raw = candidate.read_text(encoding="utf-8")
+    except OSError as exc:
+        return {
+            "checkpoint_path": checkpoint_path,
+            "blocked_reasons": ["checkpoint_index_file_read_failed"],
+            "read_error_type": exc.__class__.__name__,
+        }
+
+    try:
+        envelope = json.loads(raw)
+    except json.JSONDecodeError:
+        return {
+            "checkpoint_path": checkpoint_path,
+            "blocked_reasons": ["checkpoint_index_malformed_json"],
+        }
+
+    if (
+        not isinstance(envelope, dict)
+        or envelope.get("schema_version") != "relayrun.checkpoint_envelope.v0"
+    ):
+        return {
+            "checkpoint_path": checkpoint_path,
+            "blocked_reasons": ["checkpoint_index_schema_invalid"],
+        }
+
+    content_free = (
+        envelope.get("content_free") is True and _is_checkpoint_content_free(envelope)
+    )
+    if not content_free:
+        return {
+            "checkpoint_path": checkpoint_path,
+            "blocked_reasons": ["checkpoint_index_content_policy_failed"],
+        }
+
+    node_statuses = envelope.get("node_statuses")
+    if not isinstance(node_statuses, list):
+        node_statuses = []
+    blocked = envelope.get("blocked_reasons")
+    if not isinstance(blocked, list):
+        blocked = []
+    summary = {
+        "checkpoint_path": checkpoint_path,
+        "run_id": envelope.get("run_id")
+        if isinstance(envelope.get("run_id"), str)
+        else None,
+        "turn_id": envelope.get("turn_id")
+        if isinstance(envelope.get("turn_id"), str)
+        else None,
+        "route_model": envelope.get("route_model")
+        if isinstance(envelope.get("route_model"), str)
+        else None,
+        "backend_name": envelope.get("backend_name")
+        if isinstance(envelope.get("backend_name"), str)
+        else None,
+        "run_status": envelope.get("run_status")
+        if isinstance(envelope.get("run_status"), str)
+        else None,
+        "checkpoint_persisted": envelope.get("checkpoint_persisted") is True,
+        "node_count": len(node_statuses),
+        "blocked_reason_count": len(blocked),
+        "content_free": True,
+    }
+    if isinstance(envelope.get("created_at"), str):
+        summary["created_at"] = envelope.get("created_at")
+    return summary
 
 
 def build_relayrun_recovery_transition_artifact(
@@ -520,6 +730,9 @@ def build_runtime_checkpoint_dry_run_artifact(
     resume_mode: ResumeMode = "none",
     checkpoint_persisted: bool = False,
     checkpoint_target_root: str = ".relayrun/checkpoints",
+    checkpoint_index_enabled: bool = False,
+    checkpoint_index_dry_run_only: bool = True,
+    checkpoint_index_max_files: int = 100,
     resume_preflight_enabled: bool = False,
     resume_dry_run_only: bool = True,
     recovery_transition_enabled: bool = False,
@@ -557,6 +770,12 @@ def build_runtime_checkpoint_dry_run_artifact(
         checkpoint_path=None,
         checkpoint_root=checkpoint_target_root,
     )
+    checkpoint_index = build_relayrun_checkpoint_index_diagnostics(
+        checkpoint_root=checkpoint_target_root,
+        index_enabled=checkpoint_index_enabled,
+        dry_run_only=checkpoint_index_dry_run_only,
+        max_files=checkpoint_index_max_files,
+    )
     recovery_transition_artifact = build_relayrun_recovery_transition_artifact(
         node_statuses=safe_nodes,
         recovery_transition_enabled=recovery_transition_enabled,
@@ -591,6 +810,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "content_free": True,
         "checkpoint_persistence_plan": checkpoint_persistence_plan,
         "checkpoint_writer_preflight": checkpoint_writer_preflight,
+        "checkpoint_index": checkpoint_index,
         "recovery_transition_artifact": recovery_transition_artifact,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
@@ -694,6 +914,10 @@ def _is_checkpoint_content_free(envelope: dict[str, Any]) -> bool:
         "prompt_text",
         "snippet_text",
         "page_body",
+        "full_page_body",
+        "raw_user_content",
+        "user_content",
+        "backend_response_text",
         "api_key",
     }
 
