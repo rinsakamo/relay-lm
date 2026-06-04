@@ -139,6 +139,11 @@ relayrun_recovery_transition_dry_run_only: true
 relayrun_waiting_user_contract_enabled: false
 relayrun_waiting_user_contract_dry_run_only: true
 
+# RelayRUN recovery apply preflight artifacts are diagnostics-only and default-off.
+# They define future apply gates without applying resume/retry/recovery or visible output.
+relayrun_recovery_apply_preflight_enabled: false
+relayrun_recovery_apply_dry_run_only: true
+
 
 # Optional OpenWebUI + LM Studio MVP route example (docs-only reference).
 # This commented block does not change defaults unless you opt in.
