@@ -453,6 +453,17 @@ def _checkpoint_content_policy() -> dict[str, bool]:
     }
 
 
+def _path_has_symlink_parent(path: Path) -> bool:
+    """Return whether an existing configured path ancestor is a symlink."""
+
+    for parent in path.parents:
+        if parent == Path("."):
+            continue
+        if parent.is_symlink():
+            return True
+    return False
+
+
 def build_relayrun_checkpoint_index_diagnostics(
     *,
     checkpoint_root: str = ".relayrun/checkpoints",
@@ -478,10 +489,13 @@ def build_relayrun_checkpoint_index_diagnostics(
     absolute_path_detected = root.is_absolute()
     path_traversal_detected = ".." in root.parts
     symlink_root_detected = root.is_symlink()
+    symlink_parent_detected = _path_has_symlink_parent(root)
     if absolute_path_detected:
         blocked_reasons.append("checkpoint_index_absolute_root")
     if symlink_root_detected:
         blocked_reasons.append("checkpoint_index_symlink_root")
+    if symlink_parent_detected:
+        blocked_reasons.append("checkpoint_index_symlink_parent")
     if path_traversal_detected:
         blocked_reasons.append("checkpoint_index_path_traversal_detected")
 
@@ -502,6 +516,7 @@ def build_relayrun_checkpoint_index_diagnostics(
             "root_relative": not absolute_path_detected,
             "absolute_path_detected": absolute_path_detected,
             "symlink_root_detected": symlink_root_detected,
+            "symlink_parent_detected": symlink_parent_detected,
             "path_traversal_detected": path_traversal_detected,
         },
         "content_policy": _checkpoint_content_policy(),

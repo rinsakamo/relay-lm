@@ -321,6 +321,42 @@ def _assert_symlink_root_blocked() -> None:
         print("ok symlink checkpoint index root is blocked before scan")
 
 
+def _assert_symlink_parent_blocked() -> None:
+    with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
+        base = Path(td)
+        target_parent = base / "target-parent"
+        target_root = target_parent / "checkpoints"
+        target_root.mkdir(parents=True)
+        target_root_rel = target_root.relative_to(REPO_ROOT).as_posix()
+        _persist_valid_checkpoint(
+            target_root_rel, run_id="run-index-symlink-parent-target", turn_id="turn-target"
+        )
+        symlink_parent = base / "link-parent"
+        try:
+            symlink_parent.symlink_to(target_parent, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            print("skip symlink parent smoke: symlink unsupported")
+            return
+        checkpoint_root = symlink_parent / "checkpoints"
+        checkpoint_root_rel = checkpoint_root.relative_to(REPO_ROOT).as_posix()
+        index = build_relayrun_checkpoint_index_diagnostics(
+            checkpoint_root=checkpoint_root_rel,
+            index_enabled=True,
+            dry_run_only=False,
+            max_files=10,
+        )
+        require(index.get("scan_attempted") is False, index)
+        require(index.get("scanned_files") == 0, index)
+        require(index.get("indexed_checkpoints") == [], index)
+        require(index.get("blocked_files") == [], index)
+        require("checkpoint_index_symlink_parent" in index.get("blocked_reasons", []), index)
+        path_safety = index.get("path_safety")
+        require(isinstance(path_safety, dict), index)
+        require(path_safety.get("symlink_parent_detected") is True, index)
+        require(path_safety.get("symlink_root_detected") is False, index)
+        print("ok symlink checkpoint index parent is blocked before scan")
+
+
 def _assert_truncation() -> None:
     max_files = 2
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
@@ -359,6 +395,7 @@ def main() -> int:
         _assert_scan_cases()
         _assert_absolute_root_blocked()
         _assert_symlink_root_blocked()
+        _assert_symlink_parent_blocked()
         _assert_truncation()
     finally:
         server.shutdown()
