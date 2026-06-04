@@ -434,6 +434,75 @@ def build_relayrun_resume_preflight(
 
     return artifact
 
+
+def build_relayrun_recovery_transition_artifact(
+    *,
+    node_statuses: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
+    recovery_transition_enabled: bool = False,
+    recovery_transition_dry_run_only: bool = True,
+    resume_mode: ResumeMode = "none",
+) -> dict[str, Any]:
+    """Build diagnostics-only recovery transition metadata.
+
+    This artifact proposes a future orchestration transition only. It must not
+    create user-visible output, mutate payloads, apply resume/retry, or apply
+    recovery transitions.
+    """
+
+    safe_nodes = [node for node in (node_statuses or ()) if isinstance(node, dict)]
+    source_node = None
+    for node in safe_nodes:
+        if node.get("node_status") in {"failed", "blocked"}:
+            source_node = str(node.get("node_name") or "unknown")
+            break
+
+    proposed_transition_type = "none"
+    next_node = None
+    required_user_action = None
+    if source_node == "backend_forward":
+        proposed_transition_type = "retry_safe_node"
+        next_node = "backend_forward"
+    elif source_node == "relayref":
+        proposed_transition_type = "ask_user_confirmation"
+        next_node = "waiting_user"
+        required_user_action = "clarify_reference"
+    elif source_node in {"relayscn", "relaymem_retrieval", "relaymem_runtime_ctx"}:
+        proposed_transition_type = "context_repair"
+        next_node = "waiting_user"
+        required_user_action = "confirm_context_repair"
+    elif source_node is not None:
+        proposed_transition_type = "explain_blocked_state"
+        next_node = "waiting_user"
+        required_user_action = "review_blocked_state"
+
+    blocked_reasons = ["recovery_transition_not_implemented"]
+    if not recovery_transition_enabled:
+        blocked_reasons.append("recovery_transition_disabled")
+    if recovery_transition_dry_run_only:
+        blocked_reasons.append("recovery_transition_dry_run_only")
+
+    return {
+        "schema_version": "relayrun.recovery_transition.v0",
+        "diagnostics_only": True,
+        "user_visible": False,
+        "apply_allowed": False,
+        "applied": False,
+        "transition_created": False,
+        "proposed_transition_type": proposed_transition_type,
+        "source_node": source_node,
+        "next_node": next_node,
+        "resume_mode": resume_mode,
+        "required_user_action": required_user_action,
+        "blocked_reasons": blocked_reasons,
+        "safety": {
+            "passes_through_output_pipeline": True,
+            "direct_user_output_allowed": False,
+            "contains_user_content": False,
+            "contains_backend_payload": False,
+            "contains_response_text": False,
+        },
+    }
+
 def build_runtime_checkpoint_dry_run_artifact(
     *,
     request_id: str,
@@ -453,6 +522,8 @@ def build_runtime_checkpoint_dry_run_artifact(
     checkpoint_target_root: str = ".relayrun/checkpoints",
     resume_preflight_enabled: bool = False,
     resume_dry_run_only: bool = True,
+    recovery_transition_enabled: bool = False,
+    recovery_transition_dry_run_only: bool = True,
     recovery_transition_created: bool = False,
     applied: bool = False,
 ) -> dict[str, Any]:
@@ -486,6 +557,12 @@ def build_runtime_checkpoint_dry_run_artifact(
         checkpoint_path=None,
         checkpoint_root=checkpoint_target_root,
     )
+    recovery_transition_artifact = build_relayrun_recovery_transition_artifact(
+        node_statuses=safe_nodes,
+        recovery_transition_enabled=recovery_transition_enabled,
+        recovery_transition_dry_run_only=recovery_transition_dry_run_only,
+        resume_mode=resume_mode,
+    )
 
     return {
         "schema_version": "relayrun.runtime_checkpoint.v0",
@@ -514,6 +591,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "content_free": True,
         "checkpoint_persistence_plan": checkpoint_persistence_plan,
         "checkpoint_writer_preflight": checkpoint_writer_preflight,
+        "recovery_transition_artifact": recovery_transition_artifact,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
     }

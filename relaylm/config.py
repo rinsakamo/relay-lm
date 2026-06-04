@@ -125,6 +125,8 @@ class RelayLMConfig(BaseModel):
     relayrun_checkpoint_dry_run_only: bool = True
     relayrun_resume_preflight_enabled: bool = False
     relayrun_resume_dry_run_only: bool = True
+    relayrun_recovery_transition_enabled: bool = False
+    relayrun_recovery_transition_dry_run_only: bool = True
 
 
 def default_config_path() -> Path:

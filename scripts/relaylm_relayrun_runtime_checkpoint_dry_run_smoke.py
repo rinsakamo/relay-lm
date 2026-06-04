@@ -261,6 +261,18 @@ def _assert_artifact_common(artifact: dict[str, Any], headers: dict[str, str]) -
     require("content_free_payload" in future_writer_required_gates, preflight)
     require("atomic_write" in future_writer_required_gates, preflight)
     require("idempotent_run_turn_key" in future_writer_required_gates, preflight)
+    transition = artifact.get("recovery_transition_artifact")
+    require(isinstance(transition, dict), artifact)
+    require(transition.get("schema_version") == "relayrun.recovery_transition.v0", transition)
+    require(transition.get("diagnostics_only") is True, transition)
+    require(transition.get("user_visible") is False, transition)
+    require(transition.get("apply_allowed") is False, transition)
+    require(transition.get("applied") is False, transition)
+    safety = transition.get("safety")
+    require(isinstance(safety, dict), transition)
+    require(safety.get("direct_user_output_allowed") is False, transition)
+    require(safety.get("contains_backend_payload") is False, transition)
+    require(safety.get("contains_response_text") is False, transition)
     require(artifact.get("recovery_transition_created") is False, artifact)
     require(artifact.get("stream_started") is False, artifact)
     require(artifact.get("first_token_sent") is False, artifact)
@@ -290,6 +302,8 @@ def _assert_backend_payload_not_polluted(backend_payload: dict[str, Any]) -> Non
     require("checkpoint_envelope" not in backend_text, backend_payload)
     require("resume_preflight" not in backend_text, backend_payload)
     require("relayrun.resume_preflight.v0" not in backend_text, backend_payload)
+    require("recovery_transition_artifact" not in backend_text, backend_payload)
+    require("relayrun.recovery_transition.v0" not in backend_text, backend_payload)
 
 
 def _assert_normal_case(root: Path, capture: _Capture, port: int) -> None:
@@ -387,6 +401,7 @@ def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> No
     print("ok trace metadata includes checkpoint_persistence_plan")
     print("ok trace metadata includes checkpoint_writer_preflight")
     print("ok trace metadata includes resume_preflight")
+    print("ok trace metadata includes recovery_transition_artifact")
 
 
 def _assert_relayscn_persistence_block_design_talk_case() -> None:

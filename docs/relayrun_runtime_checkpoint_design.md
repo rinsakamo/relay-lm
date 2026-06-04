@@ -334,6 +334,52 @@ content-free checkpoint, safe resume-mode selection, user or policy confirmation
 and dedicated retry/recovery-transition apply gates before any runtime behavior
 can change.
 
+
+## Recovery transition artifact dry-run
+
+RelayRUN emits a diagnostics-only `recovery_transition_artifact` inside
+`relayrun_artifact`. The artifact proposes how a future orchestrator might move
+from a blocked or failed node toward a safe next step, but it is never applied in
+this phase. RelayRUN must not produce direct character output, must not mutate the
+backend payload, and must not replace the response body with recovery text. Any
+future user-visible recovery must pass through the full RelayLM output pipeline.
+
+```yaml
+recovery_transition_artifact:
+  schema_version: relayrun.recovery_transition.v0
+  diagnostics_only: true
+  user_visible: false
+  apply_allowed: false
+  applied: false
+  transition_created: false
+  proposed_transition_type: none
+  source_node: null
+  next_node: null
+  resume_mode: none
+  required_user_action: null
+  blocked_reasons:
+    - recovery_transition_not_implemented
+    - recovery_transition_disabled
+    - recovery_transition_dry_run_only
+  safety:
+    passes_through_output_pipeline: true
+    direct_user_output_allowed: false
+    contains_user_content: false
+    contains_backend_payload: false
+    contains_response_text: false
+```
+
+For recovery scenes or context-blocked paths, RelayRUN may propose
+`context_repair` or `ask_user_confirmation`. For backend failures, it may propose
+`retry_safe_node` or `explain_blocked_state`. These are diagnostics only: they do
+not set `resume_allowed`, do not retry backend calls, do not apply a recovery
+transition, and do not enter `waiting_user` behavior yet.
+
+Future apply gates must include explicit operator config, a validated
+content-free checkpoint or current-context state, safe resume/retry mode, user or
+policy confirmation when required, and output-pipeline rendering for any
+user-visible text.
+
 ## Stream boundary rule
 
 Streaming is the main recovery boundary.
