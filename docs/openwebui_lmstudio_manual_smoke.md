@@ -224,3 +224,166 @@ This runbook does not add or require:
 - RelaySOUL apply execution
 - persona file mutation
 - backend forwarding payload changes beyond configured compile behavior
+
+## MVP-38 preparation: RelayRUN recovery diagnostics manual smoke checklist
+
+### Scope
+
+This checklist prepares the MVP-38 real-environment smoke run. It is not an
+MVP-37 execution record.
+
+Use it to prepare checks that:
+
+- verify the normal OpenWebUI -> RelayLM -> LM Studio conversation path is still
+  working;
+- verify RelayRUN recovery-chain artifacts are visible only through diagnostics
+  and trace metadata;
+- verify recovery diagnostics remain preflight-only and fail-closed;
+- avoid testing or expecting actual user-visible recovery output.
+
+### Non-goals
+
+Do not use MVP-38 preparation to validate or enable:
+
+- visible recovery response apply;
+- response body mutation by RelayRUN recovery diagnostics;
+- backend payload mutation by RelayRUN recovery diagnostics;
+- actual resume;
+- retry execution;
+- user action parse or apply;
+- stream recovery.
+
+### Pre-test setup
+
+Before running MVP-38 manual smoke:
+
+1. Start LM Studio and confirm the OpenAI-compatible server is enabled.
+2. Start RelayLM with a local `config.yaml` that prioritizes the normal
+   conversation path.
+3. Point OpenWebUI's OpenAI-compatible Base URL at RelayLM, not directly at LM
+   Studio.
+4. Keep recovery-related config flags default-off unless a specific diagnostics
+   check explicitly requires enabling trace or diagnostics collection.
+5. If diagnostics or trace are enabled, confirm where outputs are written and
+   ensure no secrets are captured in shared evidence.
+6. Before execution, compare `config.example.yaml` with local `config.yaml` and
+   record intentional differences only.
+
+Suggested config review before testing:
+
+```bash
+git diff --no-index config.example.yaml config.yaml
+```
+
+Review these items before the run:
+
+- route/model mapping used by OpenWebUI;
+- RelayLM listen host and port;
+- LM Studio backend URL and model name;
+- diagnostics enabled/disabled state;
+- trace enabled/disabled state and trace path;
+- recovery config flags remain default-off unless intentionally overridden for
+  diagnostics visibility.
+
+### Normal conversation smoke
+
+Run normal chat first. Use a simple Japanese message such as:
+
+```text
+こんにちは。今日の作業を短く整理して。
+```
+
+Check at least one persona/profile route, for example `relaylm-companion`. If a
+memory-light route is available in the local config, also check that route.
+
+Expected normal-path result:
+
+- OpenWebUI completes the request without an error banner.
+- RelayLM returns the backend response body normally.
+- LM Studio receives the expected normal chat request.
+- RelayLM logs, diagnostics headers, and trace writing do not break the request.
+- Route/persona behavior is plausible for the selected preset.
+- No recovery text is injected into the user-visible response.
+
+### Recovery diagnostics smoke preparation
+
+Recovery diagnostics are checked through RelayLM diagnostics or trace metadata,
+not through visible output.
+
+For MVP-38, prepare to inspect that:
+
+- recovery-chain artifact names appear in diagnostics/trace when the request path
+  emits `relayrun_artifact`;
+- backend payloads sent to LM Studio do not contain recovery artifacts;
+- response bodies returned to OpenWebUI remain the backend response bodies;
+- user-visible recovery text is not produced;
+- `final_text_generated` remains `false` in recovery diagnostics artifacts;
+- diagnostics remain content-free.
+
+### Recovery chain expected artifact order
+
+When `relayrun_artifact` is present, the recovery diagnostics chain should be
+understood in this order:
+
+1. `runtime_checkpoint`
+2. `recovery_transition_artifact`
+3. `waiting_user_contract`
+4. `recovery_apply_preflight`
+5. `recovery_response_draft`
+6. `visible_recovery_response_preflight`
+7. `recovery_response_generator`
+8. `output_relayscn_recovery_gate`
+9. `visible_recovery_apply_preflight`
+10. `user_action_contract`
+
+### Expected safety flags
+
+For recovery diagnostics artifacts, expect fail-closed safety metadata such as:
+
+- `diagnostics_only=true`
+- `user_visible_allowed=false`
+- `final_text_generated=false`
+- `backend_payload_mutation_allowed=false`
+- `response_body_mutation_allowed=false`
+- `direct_user_output_allowed=false`
+- `run_direct_text_finalization_allowed=false`
+
+Some upstream artifacts may use older field names, but the expected operational
+boundary is the same: no direct user-visible recovery output and no payload or
+response mutation.
+
+### Manual pass/fail criteria
+
+PASS criteria:
+
+- normal chat works through OpenWebUI -> RelayLM -> LM Studio;
+- OpenWebUI receives a normal backend response;
+- no recovery artifact appears in the backend payload sent to LM Studio;
+- response body is not mutated by RelayRUN recovery diagnostics;
+- trace/diagnostics artifacts are content-free;
+- recovery chain remains blocked and fail-closed;
+- no user-visible recovery output appears.
+
+FAIL criteria:
+
+- visible recovery text appears;
+- response body changes unexpectedly;
+- backend payload contains recovery artifact data;
+- raw user/backend/snippet/prompt/final text appears inside a recovery artifact;
+- OpenWebUI cannot complete normal chat;
+- LM Studio receives unexpected recovery/system payload content.
+
+### Evidence to collect in MVP-38
+
+Collect only redacted, shareable evidence:
+
+- redacted `config.yaml` summary;
+- RelayLM startup command;
+- OpenWebUI Base URL setting;
+- LM Studio model name;
+- normal chat prompt and result summary;
+- diagnostics header summary;
+- trace artifact names only;
+- backend payload mutation check result;
+- response body mutation check result;
+- optional screenshots, with secrets and local tokens hidden.
