@@ -717,3 +717,63 @@ because recovery apply is not implemented. Future apply work must keep
 `direct_user_output_allowed: false`, must pass through the full RelayLM output
 pipeline, and must not include raw user content, backend payloads, response text,
 prompt text, snippet text, or page bodies in the preflight artifact.
+
+## Recovery response draft artifact dry-run diagnostics
+
+RelayRUN exposes a diagnostics-only `recovery_response_draft` artifact inside
+`relayrun_artifact`. The artifact is a draft contract only: it describes the
+kind of recovery response a future output pipeline may generate, but it does not
+produce final character-facing text, does not become user-visible, and does not
+apply resume, retry, recovery transitions, or response mutation.
+
+The feature is default-off and dry-run protected:
+
+```yaml
+relayrun_recovery_response_draft_enabled: false
+relayrun_recovery_response_draft_dry_run_only: true
+```
+
+The artifact remains stable on normal requests and recovery paths:
+
+```yaml
+recovery_response_draft:
+  schema_version: relayrun.recovery_response_draft.v0
+  diagnostics_only: true
+  draft_only: true
+  user_visible: false
+  apply_allowed: false
+  applied: false
+  source_transition_type: none
+  waiting_user_required: false
+  suggested_message_kind: none
+  draft_prompt_for_output_pipeline: null
+  blocked_reasons:
+    - recovery_response_draft_not_implemented
+    - recovery_response_draft_disabled
+    - recovery_response_draft_dry_run_only
+  safety:
+    direct_user_output_allowed: false
+    final_text_generated: false
+    passes_through_output_pipeline_required: true
+    contains_user_content: false
+    contains_backend_payload: false
+    contains_response_text: false
+    contains_prompt_text: false
+```
+
+The draft is derived from `recovery_apply_preflight`, which is itself derived
+from `waiting_user_contract` and `recovery_transition_artifact`. Normal requests
+use `suggested_message_kind: none`. Recovery context repair uses
+`context_repair_prompt` with a content-free internal instruction to ask the user
+to confirm or restate context before continuing. Unresolved references use
+`ask_clarification` with a content-free instruction to ask for clarification.
+Backend errors use `explain_backend_error` with a content-free instruction to
+explain the backend failure and ask whether to retry.
+
+RelayRUN must not bypass the output pipeline. Future user-visible recovery must
+flow through RelaySCN, RelayEMO, RelayCTX, the main LLM or a recovery generator,
+and output-side scene/safety checks before any final response reaches the user.
+This phase keeps `final_text_generated: false`, `user_visible: false`, and
+`direct_user_output_allowed: false` even when the draft config is enabled and
+dry-run-only is disabled. The artifact must not contain raw user content,
+backend payloads, response text, prompt text, snippet text, or page bodies.

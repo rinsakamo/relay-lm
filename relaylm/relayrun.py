@@ -914,6 +914,90 @@ def build_relayrun_recovery_apply_preflight(
     }
 
 
+def build_relayrun_recovery_response_draft(
+    *,
+    recovery_response_draft_enabled: bool = False,
+    recovery_response_draft_dry_run_only: bool = True,
+    recovery_apply_preflight: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a diagnostics-only recovery response draft artifact.
+
+    RelayRUN does not finalize character-facing text. The draft only provides
+    content-free instructions for a future output pipeline and never mutates
+    backend payloads or response bodies.
+    """
+
+    safe_apply_preflight = (
+        _copy_jsonable_mapping(recovery_apply_preflight)
+        if isinstance(recovery_apply_preflight, dict)
+        else None
+    )
+    source_transition_type = "none"
+    waiting_user_required = False
+    if isinstance(safe_apply_preflight, dict):
+        transition_value = safe_apply_preflight.get("source_transition_type")
+        if isinstance(transition_value, str) and transition_value:
+            source_transition_type = transition_value
+        waiting_user_required = safe_apply_preflight.get("waiting_user_required") is True
+
+    suggested_message_kind = "none"
+    draft_prompt_for_output_pipeline = None
+    if source_transition_type == "context_repair":
+        suggested_message_kind = "context_repair_prompt"
+        draft_prompt_for_output_pipeline = (
+            "Ask the user to confirm or restate the current context before continuing."
+        )
+    elif source_transition_type == "ask_user_confirmation":
+        suggested_message_kind = "ask_clarification"
+        draft_prompt_for_output_pipeline = (
+            "Ask the user to clarify the unresolved reference before using memory or continuing."
+        )
+    elif source_transition_type == "retry_safe_node":
+        suggested_message_kind = "explain_backend_error"
+        draft_prompt_for_output_pipeline = (
+            "Explain that the backend request failed and ask whether to retry."
+        )
+    elif source_transition_type == "explain_blocked_state":
+        suggested_message_kind = "confirm_recovery"
+        draft_prompt_for_output_pipeline = (
+            "Ask the user to confirm how to proceed from the blocked recovery state."
+        )
+
+    blocked_reasons: list[str] = ["recovery_response_draft_not_implemented"]
+    if not recovery_response_draft_enabled:
+        blocked_reasons.append("recovery_response_draft_disabled")
+    if recovery_response_draft_dry_run_only:
+        blocked_reasons.append("recovery_response_draft_dry_run_only")
+    if safe_apply_preflight is None:
+        blocked_reasons.append("recovery_apply_preflight_missing")
+
+    return {
+        "schema_version": "relayrun.recovery_response_draft.v0",
+        "diagnostics_only": True,
+        "draft_only": True,
+        "user_visible": False,
+        "apply_allowed": False,
+        "applied": False,
+        "source_transition_type": source_transition_type,
+        "waiting_user_required": waiting_user_required,
+        "suggested_message_kind": suggested_message_kind,
+        "draft_prompt_for_output_pipeline": draft_prompt_for_output_pipeline,
+        "source_artifacts": {
+            "recovery_apply_preflight": safe_apply_preflight,
+        },
+        "blocked_reasons": blocked_reasons,
+        "safety": {
+            "direct_user_output_allowed": False,
+            "final_text_generated": False,
+            "passes_through_output_pipeline_required": True,
+            "contains_user_content": False,
+            "contains_backend_payload": False,
+            "contains_response_text": False,
+            "contains_prompt_text": False,
+        },
+    }
+
+
 def build_runtime_checkpoint_dry_run_artifact(
     *,
     request_id: str,
@@ -942,6 +1026,8 @@ def build_runtime_checkpoint_dry_run_artifact(
     waiting_user_contract_dry_run_only: bool = True,
     recovery_apply_preflight_enabled: bool = False,
     recovery_apply_dry_run_only: bool = True,
+    recovery_response_draft_enabled: bool = False,
+    recovery_response_draft_dry_run_only: bool = True,
     recovery_transition_created: bool = False,
     applied: bool = False,
 ) -> dict[str, Any]:
@@ -999,6 +1085,11 @@ def build_runtime_checkpoint_dry_run_artifact(
         recovery_transition_artifact=recovery_transition_artifact,
         waiting_user_contract=waiting_user_contract,
     )
+    recovery_response_draft = build_relayrun_recovery_response_draft(
+        recovery_response_draft_enabled=recovery_response_draft_enabled,
+        recovery_response_draft_dry_run_only=recovery_response_draft_dry_run_only,
+        recovery_apply_preflight=recovery_apply_preflight,
+    )
 
     return {
         "schema_version": "relayrun.runtime_checkpoint.v0",
@@ -1031,6 +1122,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "recovery_transition_artifact": recovery_transition_artifact,
         "waiting_user_contract": waiting_user_contract,
         "recovery_apply_preflight": recovery_apply_preflight,
+        "recovery_response_draft": recovery_response_draft,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
     }

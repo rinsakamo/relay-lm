@@ -906,6 +906,8 @@ def _build_relayrun_runtime_artifact(
         waiting_user_contract_dry_run_only=config.relayrun_waiting_user_contract_dry_run_only,
         recovery_apply_preflight_enabled=config.relayrun_recovery_apply_preflight_enabled,
         recovery_apply_dry_run_only=config.relayrun_recovery_apply_dry_run_only,
+        recovery_response_draft_enabled=config.relayrun_recovery_response_draft_enabled,
+        recovery_response_draft_dry_run_only=config.relayrun_recovery_response_draft_dry_run_only,
         recovery_transition_created=False,
         applied=False,
     )
