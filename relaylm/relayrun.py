@@ -1389,6 +1389,151 @@ def build_relayrun_output_relayscn_recovery_gate_artifact(
     }
 
 
+def _project_output_relayscn_recovery_gate_for_visible_apply(
+    output_relayscn_recovery_gate: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(output_relayscn_recovery_gate, dict):
+        return {"present": False}
+
+    blocked_reasons = output_relayscn_recovery_gate.get("blocked_reasons")
+    safety = output_relayscn_recovery_gate.get("safety")
+
+    return {
+        "present": True,
+        "schema_version": output_relayscn_recovery_gate.get("schema_version"),
+        "diagnostics_only": output_relayscn_recovery_gate.get("diagnostics_only"),
+        "gate_allowed": output_relayscn_recovery_gate.get("gate_allowed"),
+        "gate_attempted": output_relayscn_recovery_gate.get("gate_attempted"),
+        "gate_passed": output_relayscn_recovery_gate.get("gate_passed"),
+        "user_visible_allowed": output_relayscn_recovery_gate.get("user_visible_allowed"),
+        "final_text_generated": output_relayscn_recovery_gate.get("final_text_generated"),
+        "output_pipeline_required": output_relayscn_recovery_gate.get("output_pipeline_required"),
+        "source_message_kind": output_relayscn_recovery_gate.get("source_message_kind"),
+        "allowed_message_intent": output_relayscn_recovery_gate.get("allowed_message_intent"),
+        "scene_gate_required": output_relayscn_recovery_gate.get("scene_gate_required"),
+        "output_side_relayscn_required": output_relayscn_recovery_gate.get(
+            "output_side_relayscn_required"
+        ),
+        "blocked_reasons": [str(reason) for reason in blocked_reasons]
+        if isinstance(blocked_reasons, list)
+        else [],
+        "safety": dict(safety) if isinstance(safety, dict) else {},
+    }
+
+
+def build_relayrun_visible_recovery_apply_preflight_artifact(
+    *,
+    visible_recovery_apply_preflight_enabled: bool = False,
+    visible_recovery_apply_preflight_dry_run_only: bool = True,
+    output_relayscn_recovery_gate: dict[str, Any] | None = None,
+    recovery_response_generator: dict[str, Any] | None = None,
+    visible_recovery_response_preflight: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build diagnostics-only visible recovery response apply preflight metadata.
+
+    This artifact records whether a future visible recovery response apply could
+    mutate the response body. It does not apply visible output, mutate response
+    bodies, mutate backend payloads, generate final text, execute a generator,
+    retry, or resume. Source artifacts are projected to metadata only.
+    """
+
+    gate_projection = _project_output_relayscn_recovery_gate_for_visible_apply(
+        output_relayscn_recovery_gate
+    )
+    generator_projection = _project_recovery_response_generator_for_output_gate(
+        recovery_response_generator
+    )
+    visible_preflight_projection = _project_visible_recovery_preflight_for_output_gate(
+        visible_recovery_response_preflight
+    )
+
+    source_message_kind = "none"
+    gate_kind = gate_projection.get("source_message_kind")
+    generator_kind = generator_projection.get("source_message_kind")
+    if isinstance(gate_kind, str) and gate_kind:
+        source_message_kind = gate_kind
+    elif isinstance(generator_kind, str) and generator_kind:
+        source_message_kind = generator_kind
+
+    allowed_message_intent = "none"
+    gate_intent = gate_projection.get("allowed_message_intent")
+    generator_intent = generator_projection.get("allowed_message_intent")
+    if isinstance(gate_intent, str) and gate_intent:
+        allowed_message_intent = gate_intent
+    elif isinstance(generator_intent, str) and generator_intent:
+        allowed_message_intent = generator_intent
+
+    gate_passed = gate_projection.get("gate_passed") is True
+    gate_user_visible_allowed = gate_projection.get("user_visible_allowed") is True
+    generated_text_present = generator_projection.get("generated_text_present") is True
+    generator_allowed = generator_projection.get("generator_allowed") is True
+    visible_user_visible_allowed = visible_preflight_projection.get("user_visible_allowed") is True
+    waiting_user_required = generator_projection.get("waiting_user_required") is True
+
+    blocked_reasons: list[str] = [
+        "visible_recovery_apply_not_implemented",
+        "response_body_mutation_not_implemented",
+        "output_pipeline_not_executed",
+    ]
+    if not visible_recovery_apply_preflight_enabled:
+        blocked_reasons.append("visible_recovery_apply_preflight_disabled")
+    if visible_recovery_apply_preflight_dry_run_only:
+        blocked_reasons.append("visible_recovery_apply_preflight_dry_run_only")
+    if gate_projection.get("present") is not True:
+        blocked_reasons.append("output_relayscn_recovery_gate_missing")
+    if generator_projection.get("present") is not True:
+        blocked_reasons.append("recovery_response_generator_missing")
+    if visible_preflight_projection.get("present") is not True:
+        blocked_reasons.append("visible_recovery_preflight_missing")
+    if not gate_passed:
+        blocked_reasons.append("output_relayscn_recovery_gate_not_passed")
+    if not gate_user_visible_allowed:
+        blocked_reasons.append("output_relayscn_user_visible_not_allowed")
+    if not generated_text_present:
+        blocked_reasons.append("generated_text_missing")
+    if not generator_allowed:
+        blocked_reasons.append("recovery_response_generator_not_allowed")
+    if not visible_user_visible_allowed:
+        blocked_reasons.append("visible_recovery_not_allowed")
+    if waiting_user_required:
+        blocked_reasons.append("waiting_user_confirmation_required")
+    blocked_reasons.append("content_policy_not_verified")
+
+    return {
+        "schema_version": "relayrun.visible_recovery_apply_preflight.v0",
+        "diagnostics_only": True,
+        "apply_allowed": False,
+        "apply_attempted": False,
+        "applied": False,
+        "response_body_mutation_allowed": False,
+        "backend_payload_mutation_allowed": False,
+        "user_visible_allowed": False,
+        "final_text_generated": False,
+        "output_pipeline_required": True,
+        "output_side_relayscn_gate_required": True,
+        "source_message_kind": source_message_kind,
+        "allowed_message_intent": allowed_message_intent,
+        "source_artifacts": {
+            "output_relayscn_recovery_gate": gate_projection,
+            "recovery_response_generator": generator_projection,
+            "visible_recovery_response_preflight": visible_preflight_projection,
+        },
+        "blocked_reasons": blocked_reasons,
+        "safety": {
+            "contains_user_content": False,
+            "contains_backend_payload": False,
+            "contains_response_text": False,
+            "contains_prompt_text": False,
+            "contains_snippet_text": False,
+            "contains_final_text": False,
+            "direct_user_output_allowed": False,
+            "run_direct_text_finalization_allowed": False,
+            "backend_payload_mutation_allowed": False,
+            "response_body_mutation_allowed": False,
+        },
+    }
+
+
 def build_runtime_checkpoint_dry_run_artifact(
     *,
     request_id: str,
@@ -1425,6 +1570,8 @@ def build_runtime_checkpoint_dry_run_artifact(
     recovery_response_generator_dry_run_only: bool = True,
     output_relayscn_recovery_gate_enabled: bool = False,
     output_relayscn_recovery_gate_dry_run_only: bool = True,
+    visible_recovery_apply_preflight_enabled: bool = False,
+    visible_recovery_apply_preflight_dry_run_only: bool = True,
     recovery_transition_created: bool = False,
     applied: bool = False,
 ) -> dict[str, Any]:
@@ -1504,6 +1651,13 @@ def build_runtime_checkpoint_dry_run_artifact(
         recovery_response_generator=recovery_response_generator,
         visible_recovery_response_preflight=visible_recovery_response_preflight,
     )
+    visible_recovery_apply_preflight = build_relayrun_visible_recovery_apply_preflight_artifact(
+        visible_recovery_apply_preflight_enabled=visible_recovery_apply_preflight_enabled,
+        visible_recovery_apply_preflight_dry_run_only=visible_recovery_apply_preflight_dry_run_only,
+        output_relayscn_recovery_gate=output_relayscn_recovery_gate,
+        recovery_response_generator=recovery_response_generator,
+        visible_recovery_response_preflight=visible_recovery_response_preflight,
+    )
 
     return {
         "schema_version": "relayrun.runtime_checkpoint.v0",
@@ -1540,6 +1694,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "visible_recovery_response_preflight": visible_recovery_response_preflight,
         "recovery_response_generator": recovery_response_generator,
         "output_relayscn_recovery_gate": output_relayscn_recovery_gate,
+        "visible_recovery_apply_preflight": visible_recovery_apply_preflight,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
     }
