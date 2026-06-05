@@ -144,6 +144,11 @@ relayrun_waiting_user_contract_dry_run_only: true
 relayrun_recovery_apply_preflight_enabled: false
 relayrun_recovery_apply_dry_run_only: true
 
+# RelayRUN recovery response draft artifacts are diagnostics-only and default-off.
+# They draft output-pipeline instructions without generating final user-visible text.
+relayrun_recovery_response_draft_enabled: false
+relayrun_recovery_response_draft_dry_run_only: true
+
 
 # Optional OpenWebUI + LM Studio MVP route example (docs-only reference).
 # This commented block does not change defaults unless you opt in.
