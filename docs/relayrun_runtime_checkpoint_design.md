@@ -924,3 +924,78 @@ prompt text, raw content, final text, or nested source artifacts. Future visible
 output still requires output-side RelaySCN gating and a separate visible
 recovery apply preflight. RelayRUN must not mutate backend payloads or response
 bodies and must not finalize character-facing text directly.
+
+## Output-side RelaySCN recovery gate diagnostics
+
+RelayRUN exposes a diagnostics-only `output_relayscn_recovery_gate` artifact
+inside `relayrun_artifact` after `recovery_response_generator`. This is only
+preflight metadata for a future output-side scene/safety gate. It does not run
+RelaySCN, does not generate text, does not allow visible output, does not apply
+visible recovery, does not resume or retry, does not mutate backend payloads,
+and does not mutate response bodies.
+
+The feature is default-off and dry-run protected:
+
+```yaml
+relayrun_output_relayscn_recovery_gate_enabled: false
+relayrun_output_relayscn_recovery_gate_dry_run_only: true
+```
+
+The recovery chain is now:
+
+1. `recovery_transition_artifact`
+2. `waiting_user_contract`
+3. `recovery_apply_preflight`
+4. `recovery_response_draft`
+5. `visible_recovery_response_preflight`
+6. `recovery_response_generator`
+7. `output_relayscn_recovery_gate`
+
+The gate stores metadata-only projections of `recovery_response_generator` and
+`visible_recovery_response_preflight`. It must not embed full upstream
+artifacts, nested `source_artifacts`, `draft_prompt_for_output_pipeline`, raw
+prompt text, raw user content, backend payloads, backend response text, snippet
+text, generated final text, or response bodies.
+
+```yaml
+output_relayscn_recovery_gate:
+  schema_version: relayrun.output_relayscn_recovery_gate.v0
+  diagnostics_only: true
+  gate_allowed: false
+  gate_attempted: false
+  gate_passed: false
+  user_visible_allowed: false
+  final_text_generated: false
+  output_pipeline_required: true
+  source_message_kind: none
+  allowed_message_intent: none
+  scene_gate_required: true
+  output_side_relayscn_required: true
+  blocked_reasons:
+    - output_relayscn_recovery_gate_not_implemented
+    - output_pipeline_not_executed
+    - output_relayscn_recovery_gate_disabled
+    - output_relayscn_recovery_gate_dry_run_only
+    - recovery_response_generator_not_allowed
+    - generated_text_missing
+    - content_policy_not_verified
+  safety:
+    contains_user_content: false
+    contains_backend_payload: false
+    contains_response_text: false
+    contains_prompt_text: false
+    contains_snippet_text: false
+    contains_final_text: false
+    direct_user_output_allowed: false
+    run_direct_text_finalization_allowed: false
+    backend_payload_mutation_allowed: false
+    response_body_mutation_allowed: false
+```
+
+`output_relayscn_recovery_gate_not_implemented` and
+`output_pipeline_not_executed` are always present. Enabling the config and
+setting dry-run-only to false still leaves `gate_allowed=false`,
+`gate_attempted=false`, `gate_passed=false`, `user_visible_allowed=false`, and
+`final_text_generated=false`. A later visible recovery phase still needs a
+separate visible recovery apply preflight before any response body mutation or
+user-visible recovery output can be considered.

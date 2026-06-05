@@ -38,10 +38,10 @@ The future generator contract is downstream of the existing recovery diagnostics
    - Records content-free recovery-output intent and draft instructions without generating final text.
 5. `visible_recovery_response_preflight`
    - Records full output-pipeline requirements before any user-visible recovery text can be allowed.
-6. Future `recovery_response_generator_contract`
+6. `recovery_response_generator`
    - Defines whether a generator may be invoked and what content-free intent it may use.
-7. Future output-side RelaySCN visible recovery gate
-   - Performs output-side scene and safety gating before any recovery text can become visible.
+7. `output_relayscn_recovery_gate`
+   - Records projected source metadata for a future output-side scene/safety gate before any recovery text can become visible.
 8. Future visible recovery response apply preflight
    - Performs the final pre-apply check before response mutation or visible recovery output is allowed.
 
@@ -187,3 +187,19 @@ No visible recovery output should be introduced until both the output-side Relay
 A diagnostics-only `recovery_response_generator` artifact now implements the first runtime form of this contract. The artifact is still fail-closed: `generator_allowed=false`, `generator_attempted=false`, and `generated_text_present=false` remain fixed while generator execution is not implemented.
 
 The implementation does not generate user-visible text, does not execute a recovery response generator, does not mutate backend payloads, and does not mutate response bodies. It only maps content-free `source_message_kind` values from `recovery_response_draft` to content-free `allowed_message_intent` values and records blocked reasons for future output-pipeline work. The runtime artifact stores source projections only and intentionally omits draft prompt text plus nested source artifact trees.
+
+## Next downstream gate
+
+The next downstream runtime artifact is `output_relayscn_recovery_gate`. It is
+also diagnostics-only and fail-closed. It receives only projected source
+metadata from `recovery_response_generator` and
+`visible_recovery_response_preflight`; it must not embed full source artifacts,
+nested `source_artifacts`, draft prompts, raw user/backend/response/snippet
+content, prompt text, or final generated text.
+
+This gate still does not execute the generator, does not generate user-visible
+text, does not run output-side RelaySCN, does not apply visible output, does not
+mutate backend payloads, and does not mutate response bodies. It exists only to
+record that future visible recovery must pass output-side RelaySCN and a later
+visible recovery apply preflight before any final user-visible response can be
+considered.

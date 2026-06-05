@@ -140,6 +140,8 @@ class RelayLMConfig(BaseModel):
     relayrun_visible_recovery_dry_run_only: bool = True
     relayrun_recovery_response_generator_enabled: bool = False
     relayrun_recovery_response_generator_dry_run_only: bool = True
+    relayrun_output_relayscn_recovery_gate_enabled: bool = False
+    relayrun_output_relayscn_recovery_gate_dry_run_only: bool = True
 
 
 def default_config_path() -> Path:
