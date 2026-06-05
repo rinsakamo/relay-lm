@@ -827,6 +827,93 @@ def build_relayrun_waiting_user_contract(
     }
 
 
+def build_relayrun_recovery_apply_preflight(
+    *,
+    recovery_apply_preflight_enabled: bool = False,
+    recovery_apply_dry_run_only: bool = True,
+    recovery_transition_artifact: dict[str, Any] | None = None,
+    waiting_user_contract: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build diagnostics-only recovery transition apply preflight metadata.
+
+    This preflight fixes the future apply gates for recovery transitions. It is
+    intentionally non-applying: no resume, retry, recovery transition, backend
+    payload mutation, or direct user-visible output is attempted here.
+    """
+
+    safe_recovery_transition = (
+        _copy_jsonable_mapping(recovery_transition_artifact)
+        if isinstance(recovery_transition_artifact, dict)
+        else None
+    )
+    safe_waiting_user_contract = (
+        _copy_jsonable_mapping(waiting_user_contract)
+        if isinstance(waiting_user_contract, dict)
+        else None
+    )
+    source_transition_type = "none"
+    if isinstance(safe_recovery_transition, dict):
+        transition_value = safe_recovery_transition.get("proposed_transition_type")
+        if isinstance(transition_value, str) and transition_value:
+            source_transition_type = transition_value
+
+    waiting_user_required = False
+    waiting_user_reason = None
+    if isinstance(safe_waiting_user_contract, dict):
+        waiting_user_required = safe_waiting_user_contract.get("waiting_user_required") is True
+        reason_value = safe_waiting_user_contract.get("waiting_user_reason")
+        if isinstance(reason_value, str):
+            waiting_user_reason = reason_value
+
+    required_gates = [
+        "explicit_config_enabled",
+        "dry_run_only_false",
+        "recovery_transition_artifact_present",
+        "waiting_user_contract_present",
+        "scene_policy_allows_recovery_output",
+        "output_pipeline_required",
+        "user_confirmation_if_required",
+    ]
+
+    blocked_reasons: list[str] = ["recovery_apply_not_implemented"]
+    if not recovery_apply_preflight_enabled:
+        blocked_reasons.append("recovery_apply_disabled")
+    if recovery_apply_dry_run_only:
+        blocked_reasons.append("recovery_apply_dry_run_only")
+    if safe_recovery_transition is None:
+        blocked_reasons.append("recovery_transition_artifact_missing")
+    if safe_waiting_user_contract is None:
+        blocked_reasons.append("waiting_user_contract_missing")
+    if waiting_user_required:
+        blocked_reasons.append("waiting_user_confirmation_required")
+
+    return {
+        "schema_version": "relayrun.recovery_apply_preflight.v0",
+        "diagnostics_only": True,
+        "user_visible": False,
+        "apply_allowed": False,
+        "apply_attempted": False,
+        "applied": False,
+        "source_transition_type": source_transition_type,
+        "waiting_user_required": waiting_user_required,
+        "waiting_user_reason": waiting_user_reason,
+        "source_artifacts": {
+            "recovery_transition_artifact": safe_recovery_transition,
+            "waiting_user_contract": safe_waiting_user_contract,
+        },
+        "required_gates": required_gates,
+        "blocked_reasons": blocked_reasons,
+        "safety": {
+            "direct_user_output_allowed": False,
+            "passes_through_output_pipeline_required": True,
+            "contains_user_content": False,
+            "contains_backend_payload": False,
+            "contains_response_text": False,
+            "contains_prompt_text": False,
+        },
+    }
+
+
 def build_runtime_checkpoint_dry_run_artifact(
     *,
     request_id: str,
@@ -853,6 +940,8 @@ def build_runtime_checkpoint_dry_run_artifact(
     recovery_transition_dry_run_only: bool = True,
     waiting_user_contract_enabled: bool = False,
     waiting_user_contract_dry_run_only: bool = True,
+    recovery_apply_preflight_enabled: bool = False,
+    recovery_apply_dry_run_only: bool = True,
     recovery_transition_created: bool = False,
     applied: bool = False,
 ) -> dict[str, Any]:
@@ -904,6 +993,12 @@ def build_runtime_checkpoint_dry_run_artifact(
         resume_preflight=resume_preflight,
         recovery_transition_artifact=recovery_transition_artifact,
     )
+    recovery_apply_preflight = build_relayrun_recovery_apply_preflight(
+        recovery_apply_preflight_enabled=recovery_apply_preflight_enabled,
+        recovery_apply_dry_run_only=recovery_apply_dry_run_only,
+        recovery_transition_artifact=recovery_transition_artifact,
+        waiting_user_contract=waiting_user_contract,
+    )
 
     return {
         "schema_version": "relayrun.runtime_checkpoint.v0",
@@ -935,6 +1030,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "checkpoint_index": checkpoint_index,
         "recovery_transition_artifact": recovery_transition_artifact,
         "waiting_user_contract": waiting_user_contract,
+        "recovery_apply_preflight": recovery_apply_preflight,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
     }

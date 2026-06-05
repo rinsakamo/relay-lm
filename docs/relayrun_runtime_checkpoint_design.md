@@ -649,3 +649,71 @@ These node statuses are diagnostics summaries, not executable orchestration stat
 - Do not change streaming forwarding behavior.
 - Do not replace backend errors with recovery text yet.
 - Do not enable checkpoint file writes by default.
+
+## Recovery transition apply preflight diagnostics
+
+RelayRUN exposes a diagnostics-only `recovery_apply_preflight` artifact inside
+`relayrun_artifact`. The preflight fixes the gates that a future recovery
+transition apply path must satisfy before it can become user-visible or mutate
+runtime state. MVP-31 follow-up behavior is preflight only: it does not resume a
+run, retry a node, apply a recovery transition, produce direct character output,
+or alter the backend forwarding payload or response body.
+
+The feature is default-off and dry-run protected:
+
+```yaml
+relayrun_recovery_apply_preflight_enabled: false
+relayrun_recovery_apply_dry_run_only: true
+```
+
+The artifact is emitted even for a normal request so trace metadata has a stable
+shape:
+
+```yaml
+recovery_apply_preflight:
+  schema_version: relayrun.recovery_apply_preflight.v0
+  diagnostics_only: true
+  user_visible: false
+  apply_allowed: false
+  apply_attempted: false
+  applied: false
+  source_transition_type: none
+  waiting_user_required: false
+  waiting_user_reason: null
+  required_gates:
+    - explicit_config_enabled
+    - dry_run_only_false
+    - recovery_transition_artifact_present
+    - waiting_user_contract_present
+    - scene_policy_allows_recovery_output
+    - output_pipeline_required
+    - user_confirmation_if_required
+  blocked_reasons:
+    - recovery_apply_not_implemented
+    - recovery_apply_disabled
+    - recovery_apply_dry_run_only
+  safety:
+    direct_user_output_allowed: false
+    passes_through_output_pipeline_required: true
+    contains_user_content: false
+    contains_backend_payload: false
+    contains_response_text: false
+    contains_prompt_text: false
+```
+
+The preflight is derived from `recovery_transition_artifact` and
+`waiting_user_contract`. A normal request reports `source_transition_type: none`.
+A recovery scene can report `source_transition_type: context_repair` and carries
+`waiting_user_confirmation_required` when the waiting-user contract requires
+confirmation. An unresolved reference can report `source_transition_type:
+ask_user_confirmation` with the same confirmation gate. A backend error can
+report `source_transition_type: retry_safe_node` or another blocked-state
+transition, but apply remains blocked by `recovery_apply_not_implemented`.
+
+Safety gates are intentionally stricter than the current runtime can satisfy.
+Even if `relayrun_recovery_apply_preflight_enabled: true` and
+`relayrun_recovery_apply_dry_run_only: false`, `apply_allowed` remains `false`
+because recovery apply is not implemented. Future apply work must keep
+`direct_user_output_allowed: false`, must pass through the full RelayLM output
+pipeline, and must not include raw user content, backend payloads, response text,
+prompt text, snippet text, or page bodies in the preflight artifact.
