@@ -97,3 +97,93 @@ Reference prompt IDs from:
 - verdict: pass / partial / fail
 - next docs follow-up:
 - next code follow-up (if needed):
+
+## MVP-38 RelayRUN recovery diagnostics manual smoke record
+
+### Date
+
+- date:
+- JST date:
+
+### Environment
+
+- OS:
+- Python version:
+- RelayLM commit SHA:
+- LM Studio version:
+- LM Studio model:
+- OpenWebUI version:
+
+### Config summary
+
+- route/model:
+- diagnostics enabled/disabled:
+- trace enabled/disabled:
+- trace path if enabled:
+- recovery configs default-off or overridden:
+- config differences from `config.example.yaml` reviewed? (yes/no):
+- notes:
+
+### Normal conversation result
+
+- prompt used:
+- route/model used:
+- OpenWebUI result summary:
+- backend response body returned normally? (yes/no):
+- OpenWebUI error banner? (yes/no):
+- pass/fail:
+- notes:
+
+### Recovery diagnostics result
+
+- `relayrun_artifact` observed in diagnostics/trace? (yes/no):
+- recovery artifact names observed:
+  - `recovery_transition_artifact`:
+  - `waiting_user_contract`:
+  - `recovery_apply_preflight`:
+  - `recovery_response_draft`:
+  - `visible_recovery_response_preflight`:
+  - `recovery_response_generator`:
+  - `output_relayscn_recovery_gate`:
+  - `visible_recovery_apply_preflight`:
+  - `user_action_contract`:
+- recovery chain remained blocked/fail-closed? (yes/no):
+- user-visible recovery output appeared? (yes/no):
+- notes:
+
+### Backend payload mutation result
+
+- LM Studio backend payload inspected? (yes/no):
+- recovery artifacts absent from backend payload? (yes/no):
+- unexpected recovery/system payload content? (yes/no):
+- pass/fail:
+- notes:
+
+### Response body mutation result
+
+- OpenWebUI received backend response body unchanged? (yes/no):
+- RelayRUN recovery diagnostics changed response body? (yes/no):
+- pass/fail:
+- notes:
+
+### Content-free artifact result
+
+- raw user text absent from recovery artifacts? (yes/no):
+- backend response text absent from recovery artifacts? (yes/no):
+- snippet/page text absent from recovery artifacts? (yes/no):
+- prompt/final text absent from recovery artifacts? (yes/no):
+- trace artifact names only collected for shared evidence? (yes/no):
+- pass/fail:
+- notes:
+
+### Pass/fail
+
+- overall result: pass / partial / fail
+- blocking issue:
+- safe to proceed beyond MVP-38? (yes/no):
+
+### Notes / follow-up
+
+- follow-up docs:
+- follow-up code:
+- follow-up environment/config:
