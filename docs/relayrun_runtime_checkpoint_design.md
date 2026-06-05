@@ -852,3 +852,69 @@ RelayCTX unpack, and return-side RelayEMO have run. RelayRUN must continue to
 avoid direct final text generation and must keep visible recovery artifacts free
 of raw user content, backend payloads, response text, prompt text, snippet text,
 page bodies, and final generated text.
+
+## Recovery response generator diagnostics
+
+RelayRUN exposes a diagnostics-only `recovery_response_generator` artifact inside
+`relayrun_artifact`. The artifact is the runtime counterpart of the recovery
+response generator contract. It models whether a future generator could turn
+content-free recovery intent into user-facing recovery text, but it does not
+execute a generator and does not contain generated text.
+
+The feature is default-off and dry-run protected:
+
+```yaml
+relayrun_recovery_response_generator_enabled: false
+relayrun_recovery_response_generator_dry_run_only: true
+```
+
+The artifact is built after `recovery_response_draft` and
+`visible_recovery_response_preflight`:
+
+```yaml
+recovery_response_generator:
+  schema_version: relayrun.recovery_response_generator.v0
+  diagnostics_only: true
+  generator_allowed: false
+  generator_attempted: false
+  generated_text_present: false
+  output_pipeline_required: true
+  user_visible_allowed: false
+  final_text_generated: false
+  source_message_kind: none
+  allowed_message_intent: none
+  blocked_reasons:
+    - recovery_response_generator_not_implemented
+    - recovery_response_generator_disabled
+    - recovery_response_generator_dry_run_only
+    - visible_recovery_not_allowed
+    - output_pipeline_not_executed
+    - content_policy_not_verified
+  safety:
+    contains_user_content: false
+    contains_backend_payload: false
+    contains_response_text: false
+    contains_prompt_text: false
+    contains_snippet_text: false
+    contains_final_text: false
+    direct_user_output_allowed: false
+    run_direct_text_finalization_allowed: false
+    backend_payload_mutation_allowed: false
+    response_body_mutation_allowed: false
+```
+
+The generator artifact maps content-free `suggested_message_kind` values from the
+recovery response draft into content-free `allowed_message_intent` values:
+`none`, `clarify_unresolved_reference`, `confirm_or_restate_context`,
+`explain_backend_error_and_ask_retry`, or
+`ask_how_to_proceed_from_blocked_state`. Unknown source kinds fail closed to
+`none`.
+
+This artifact remains diagnostics-only even when enabled and non-dry-run because
+`recovery_response_generator_not_implemented` is always present. It also remains
+blocked when the visible recovery preflight does not allow user-visible output,
+when the output pipeline has not executed, when user confirmation is still
+required, or when content policy has not been verified. Future visible output
+still requires output-side RelaySCN gating and a separate visible recovery apply
+preflight. RelayRUN must not mutate backend payloads or response bodies and must
+not finalize character-facing text directly.

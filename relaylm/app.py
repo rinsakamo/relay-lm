@@ -910,6 +910,8 @@ def _build_relayrun_runtime_artifact(
         recovery_response_draft_dry_run_only=config.relayrun_recovery_response_draft_dry_run_only,
         visible_recovery_preflight_enabled=config.relayrun_visible_recovery_preflight_enabled,
         visible_recovery_dry_run_only=config.relayrun_visible_recovery_dry_run_only,
+        recovery_response_generator_enabled=config.relayrun_recovery_response_generator_enabled,
+        recovery_response_generator_dry_run_only=config.relayrun_recovery_response_generator_dry_run_only,
         recovery_transition_created=False,
         applied=False,
     )

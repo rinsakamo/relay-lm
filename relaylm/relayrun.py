@@ -1077,6 +1077,108 @@ def build_relayrun_visible_recovery_response_preflight(
     }
 
 
+def build_relayrun_recovery_response_generator_artifact(
+    *,
+    recovery_response_generator_enabled: bool = False,
+    recovery_response_generator_dry_run_only: bool = True,
+    recovery_response_draft: dict[str, Any] | None = None,
+    visible_recovery_response_preflight: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build diagnostics-only recovery response generator contract metadata.
+
+    This artifact models whether a future generator may turn content-free
+    recovery intent into user-facing recovery text. It does not invoke a
+    generator, create final text, mutate backend payloads, or mutate response
+    bodies.
+    """
+
+    safe_recovery_response_draft = (
+        _copy_jsonable_mapping(recovery_response_draft)
+        if isinstance(recovery_response_draft, dict)
+        else None
+    )
+    safe_visible_preflight = (
+        _copy_jsonable_mapping(visible_recovery_response_preflight)
+        if isinstance(visible_recovery_response_preflight, dict)
+        else None
+    )
+
+    source_message_kind = "none"
+    if isinstance(safe_recovery_response_draft, dict):
+        draft_kind = safe_recovery_response_draft.get("suggested_message_kind")
+        if isinstance(draft_kind, str) and draft_kind:
+            source_message_kind = draft_kind
+
+    allowed_message_intent_map = {
+        "none": "none",
+        "ask_clarification": "clarify_unresolved_reference",
+        "context_repair_prompt": "confirm_or_restate_context",
+        "explain_backend_error": "explain_backend_error_and_ask_retry",
+        "confirm_recovery": "ask_how_to_proceed_from_blocked_state",
+    }
+    allowed_message_intent = allowed_message_intent_map.get(source_message_kind, "none")
+
+    waiting_user_required = False
+    if isinstance(safe_recovery_response_draft, dict):
+        draft_sources = safe_recovery_response_draft.get("source_artifacts")
+        if isinstance(draft_sources, dict):
+            apply_preflight = draft_sources.get("recovery_apply_preflight")
+            if isinstance(apply_preflight, dict):
+                waiting_user_required = apply_preflight.get("waiting_user_required") is True
+
+    blocked_reasons: list[str] = ["recovery_response_generator_not_implemented"]
+    if not recovery_response_generator_enabled:
+        blocked_reasons.append("recovery_response_generator_disabled")
+    if recovery_response_generator_dry_run_only:
+        blocked_reasons.append("recovery_response_generator_dry_run_only")
+    if safe_recovery_response_draft is None:
+        blocked_reasons.append("recovery_response_draft_missing")
+    if safe_visible_preflight is None:
+        blocked_reasons.append("visible_recovery_preflight_missing")
+    if isinstance(safe_visible_preflight, dict):
+        if safe_visible_preflight.get("user_visible_allowed") is False:
+            blocked_reasons.append("visible_recovery_not_allowed")
+        visible_blocked_reasons = safe_visible_preflight.get("blocked_reasons")
+        if (
+            isinstance(visible_blocked_reasons, list)
+            and "output_pipeline_not_executed" in visible_blocked_reasons
+        ):
+            blocked_reasons.append("output_pipeline_not_executed")
+    if waiting_user_required:
+        blocked_reasons.append("waiting_user_confirmation_required")
+    blocked_reasons.append("content_policy_not_verified")
+
+    return {
+        "schema_version": "relayrun.recovery_response_generator.v0",
+        "diagnostics_only": True,
+        "generator_allowed": False,
+        "generator_attempted": False,
+        "generated_text_present": False,
+        "output_pipeline_required": True,
+        "user_visible_allowed": False,
+        "final_text_generated": False,
+        "source_message_kind": source_message_kind,
+        "allowed_message_intent": allowed_message_intent,
+        "source_artifacts": {
+            "recovery_response_draft": safe_recovery_response_draft,
+            "visible_recovery_response_preflight": safe_visible_preflight,
+        },
+        "blocked_reasons": blocked_reasons,
+        "safety": {
+            "contains_user_content": False,
+            "contains_backend_payload": False,
+            "contains_response_text": False,
+            "contains_prompt_text": False,
+            "contains_snippet_text": False,
+            "contains_final_text": False,
+            "direct_user_output_allowed": False,
+            "run_direct_text_finalization_allowed": False,
+            "backend_payload_mutation_allowed": False,
+            "response_body_mutation_allowed": False,
+        },
+    }
+
+
 def build_runtime_checkpoint_dry_run_artifact(
     *,
     request_id: str,
@@ -1109,6 +1211,8 @@ def build_runtime_checkpoint_dry_run_artifact(
     recovery_response_draft_dry_run_only: bool = True,
     visible_recovery_preflight_enabled: bool = False,
     visible_recovery_dry_run_only: bool = True,
+    recovery_response_generator_enabled: bool = False,
+    recovery_response_generator_dry_run_only: bool = True,
     recovery_transition_created: bool = False,
     applied: bool = False,
 ) -> dict[str, Any]:
@@ -1176,6 +1280,12 @@ def build_runtime_checkpoint_dry_run_artifact(
         visible_recovery_dry_run_only=visible_recovery_dry_run_only,
         recovery_response_draft=recovery_response_draft,
     )
+    recovery_response_generator = build_relayrun_recovery_response_generator_artifact(
+        recovery_response_generator_enabled=recovery_response_generator_enabled,
+        recovery_response_generator_dry_run_only=recovery_response_generator_dry_run_only,
+        recovery_response_draft=recovery_response_draft,
+        visible_recovery_response_preflight=visible_recovery_response_preflight,
+    )
 
     return {
         "schema_version": "relayrun.runtime_checkpoint.v0",
@@ -1210,6 +1320,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "recovery_apply_preflight": recovery_apply_preflight,
         "recovery_response_draft": recovery_response_draft,
         "visible_recovery_response_preflight": visible_recovery_response_preflight,
+        "recovery_response_generator": recovery_response_generator,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
     }

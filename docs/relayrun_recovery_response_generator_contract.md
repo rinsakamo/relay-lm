@@ -174,3 +174,9 @@ After that, add smoke tests for:
 - Backend error.
 
 No visible recovery output should be introduced until both the output-side RelaySCN gate and visible recovery response apply preflight exist. Runtime implementation must continue to preserve backend forwarding payloads, response bodies, RelayMEM ordering, and token truncation ordering.
+
+## MVP implementation note
+
+A diagnostics-only `recovery_response_generator` artifact now implements the first runtime form of this contract. The artifact is still fail-closed: `generator_allowed=false`, `generator_attempted=false`, and `generated_text_present=false` remain fixed while generator execution is not implemented.
+
+The implementation does not generate user-visible text, does not execute a recovery response generator, does not mutate backend payloads, and does not mutate response bodies. It only maps content-free `source_message_kind` values from `recovery_response_draft` to content-free `allowed_message_intent` values and records blocked reasons for future output-pipeline work.
