@@ -147,6 +147,15 @@ RelayPLC boundary:
 - RelayPLC decides policy for approval/gating and high-level execution allowance.
 - RelayPLC does not pack context and does not execute backend transport.
 
+Boundary-first safety:
+
+- RelayLM should not rely on disclaimers as the primary safety mechanism.
+- For safety-sensitive scenes such as `medical_or_safety`, RelaySCN should first resolve a restrictive runtime `scene_policy`.
+- That policy should constrain context packing, allowed answer shapes, blocked answer shapes, persistence, and final output inspection before user-facing rendering.
+- The goal is not to generate a risky answer and append a disclaimer; the goal is to avoid unsafe answer shapes before final rendering.
+- Example blocked answer shapes include diagnosis claims, prescription or dosage instructions, emergency reassurance, and treatment plan overrides.
+- Example allowed answer shapes include general information, symptom triage questions, red flags or when to seek care, and preparation for consultation.
+
 Core handoff rule:
 
 `MEM proposes candidates -> CTX packs selected context -> SOUL versions persona-source artifacts -> PLC decides policy -> adapters preserve API/backend compatibility`.
