@@ -70,6 +70,13 @@ Forbidden inputs include:
 - Final generated text from a prior attempt.
 - Unapproved memory body.
 - Full checkpoint payload body.
+- Full source artifact payloads that contain draft prompt text or nested
+  artifact trees.
+
+Source artifacts in the generator artifact must be content-free projections only.
+They may include schema versions, booleans, source kinds, blocked reason names,
+pipeline preflight booleans, and required pipeline node names, but must not
+include `draft_prompt_for_output_pipeline` or nested `source_artifacts`.
 
 ## Output contract
 
@@ -179,4 +186,4 @@ No visible recovery output should be introduced until both the output-side Relay
 
 A diagnostics-only `recovery_response_generator` artifact now implements the first runtime form of this contract. The artifact is still fail-closed: `generator_allowed=false`, `generator_attempted=false`, and `generated_text_present=false` remain fixed while generator execution is not implemented.
 
-The implementation does not generate user-visible text, does not execute a recovery response generator, does not mutate backend payloads, and does not mutate response bodies. It only maps content-free `source_message_kind` values from `recovery_response_draft` to content-free `allowed_message_intent` values and records blocked reasons for future output-pipeline work.
+The implementation does not generate user-visible text, does not execute a recovery response generator, does not mutate backend payloads, and does not mutate response bodies. It only maps content-free `source_message_kind` values from `recovery_response_draft` to content-free `allowed_message_intent` values and records blocked reasons for future output-pipeline work. The runtime artifact stores source projections only and intentionally omits draft prompt text plus nested source artifact trees.

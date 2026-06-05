@@ -166,8 +166,19 @@ def _assert_generator_common(
     require(generator.get("final_text_generated") is False, generator)
     source_artifacts = generator.get("source_artifacts")
     require(isinstance(source_artifacts, dict), generator)
-    require(isinstance(source_artifacts.get("recovery_response_draft"), dict), generator)
-    require(isinstance(source_artifacts.get("visible_recovery_response_preflight"), dict), generator)
+    draft_source = source_artifacts.get("recovery_response_draft")
+    visible_source = source_artifacts.get("visible_recovery_response_preflight")
+    require(isinstance(draft_source, dict), generator)
+    require(isinstance(visible_source, dict), generator)
+    require(draft_source.get("present") is True, generator)
+    require(visible_source.get("present") is True, generator)
+    require("draft_prompt_for_output_pipeline" not in draft_source, generator)
+    require("source_artifacts" not in draft_source, generator)
+    require("source_artifacts" not in visible_source, generator)
+    require("recovery_response_draft" not in visible_source, generator)
+    require(isinstance(visible_source.get("blocked_reasons"), list), generator)
+    require(isinstance(visible_source.get("pipeline_preflight"), dict), generator)
+    require(isinstance(visible_source.get("required_pipeline_nodes"), list), generator)
     blocked_reasons = generator.get("blocked_reasons")
     require(isinstance(blocked_reasons, list), generator)
     require("recovery_response_generator_not_implemented" in blocked_reasons, generator)
@@ -214,6 +225,14 @@ def _assert_no_raw_content(generator: dict[str, Any]) -> None:
     require("それについて教えて" not in text, generator)
     require("Backend error recovery generator check" not in text, generator)
     require("RELAYRUN_SNIPPET_SENTINEL" not in text, generator)
+    require("Ask the user to confirm or restate the current context before continuing." not in text, generator)
+    require(
+        "Ask the user to clarify the unresolved reference before using memory or continuing."
+        not in text,
+        generator,
+    )
+    require("Explain that the backend request failed and ask whether to retry." not in text, generator)
+    require("draft_prompt_for_output_pipeline" not in text, generator)
 
 
 def _assert_success_response_unchanged(response_body: Any) -> None:

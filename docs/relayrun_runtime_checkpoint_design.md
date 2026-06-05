@@ -869,7 +869,10 @@ relayrun_recovery_response_generator_dry_run_only: true
 ```
 
 The artifact is built after `recovery_response_draft` and
-`visible_recovery_response_preflight`:
+`visible_recovery_response_preflight`. It stores projected source metadata only;
+it must not embed the full `recovery_response_draft`, the full
+`visible_recovery_response_preflight`, `draft_prompt_for_output_pipeline`, or
+any nested `source_artifacts` tree.
 
 ```yaml
 recovery_response_generator:
@@ -914,7 +917,10 @@ This artifact remains diagnostics-only even when enabled and non-dry-run because
 `recovery_response_generator_not_implemented` is always present. It also remains
 blocked when the visible recovery preflight does not allow user-visible output,
 when the output pipeline has not executed, when user confirmation is still
-required, or when content policy has not been verified. Future visible output
-still requires output-side RelaySCN gating and a separate visible recovery apply
-preflight. RelayRUN must not mutate backend payloads or response bodies and must
-not finalize character-facing text directly.
+required, or when content policy has not been verified. The source projections
+are content-free summaries only, so they may include booleans, schema versions,
+message kinds, blocked reason names, and pipeline node names, but not draft
+prompt text, raw content, final text, or nested source artifacts. Future visible
+output still requires output-side RelaySCN gating and a separate visible
+recovery apply preflight. RelayRUN must not mutate backend payloads or response
+bodies and must not finalize character-facing text directly.
