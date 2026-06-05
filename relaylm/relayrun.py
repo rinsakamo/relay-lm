@@ -1077,6 +1077,152 @@ def build_relayrun_visible_recovery_response_preflight(
     }
 
 
+def _project_recovery_response_draft_for_generator(
+    recovery_response_draft: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(recovery_response_draft, dict):
+        return {"present": False}
+
+    return {
+        "present": True,
+        "schema_version": recovery_response_draft.get("schema_version"),
+        "diagnostics_only": recovery_response_draft.get("diagnostics_only"),
+        "draft_only": recovery_response_draft.get("draft_only"),
+        "source_transition_type": recovery_response_draft.get("source_transition_type"),
+        "waiting_user_required": recovery_response_draft.get("waiting_user_required"),
+        "suggested_message_kind": recovery_response_draft.get("suggested_message_kind"),
+        "apply_allowed": recovery_response_draft.get("apply_allowed"),
+        "applied": recovery_response_draft.get("applied"),
+    }
+
+
+def _project_visible_recovery_preflight_for_generator(
+    visible_recovery_response_preflight: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(visible_recovery_response_preflight, dict):
+        return {"present": False}
+
+    blocked_reasons = visible_recovery_response_preflight.get("blocked_reasons")
+    required_pipeline_nodes = visible_recovery_response_preflight.get("required_pipeline_nodes")
+    pipeline_preflight = visible_recovery_response_preflight.get("pipeline_preflight")
+
+    return {
+        "present": True,
+        "schema_version": visible_recovery_response_preflight.get("schema_version"),
+        "diagnostics_only": visible_recovery_response_preflight.get("diagnostics_only"),
+        "user_visible_allowed": visible_recovery_response_preflight.get("user_visible_allowed"),
+        "apply_allowed": visible_recovery_response_preflight.get("apply_allowed"),
+        "apply_attempted": visible_recovery_response_preflight.get("apply_attempted"),
+        "applied": visible_recovery_response_preflight.get("applied"),
+        "final_text_generated": visible_recovery_response_preflight.get("final_text_generated"),
+        "source_message_kind": visible_recovery_response_preflight.get("source_message_kind"),
+        "source_recovery_response_draft_present": visible_recovery_response_preflight.get(
+            "source_recovery_response_draft_present"
+        ),
+        "blocked_reasons": [str(reason) for reason in blocked_reasons]
+        if isinstance(blocked_reasons, list)
+        else [],
+        "pipeline_preflight": dict(pipeline_preflight)
+        if isinstance(pipeline_preflight, dict)
+        else {},
+        "required_pipeline_nodes": [str(node) for node in required_pipeline_nodes]
+        if isinstance(required_pipeline_nodes, list)
+        else [],
+    }
+
+
+def build_relayrun_recovery_response_generator_artifact(
+    *,
+    recovery_response_generator_enabled: bool = False,
+    recovery_response_generator_dry_run_only: bool = True,
+    recovery_response_draft: dict[str, Any] | None = None,
+    visible_recovery_response_preflight: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build diagnostics-only recovery response generator contract metadata.
+
+    This artifact models whether a future generator may turn content-free
+    recovery intent into user-facing recovery text. It does not invoke a
+    generator, create final text, mutate backend payloads, or mutate response
+    bodies. Source artifacts are projected to metadata-only fields so draft
+    prompts and nested artifacts are not embedded.
+    """
+
+    recovery_response_draft_projection = _project_recovery_response_draft_for_generator(
+        recovery_response_draft
+    )
+    visible_preflight_projection = _project_visible_recovery_preflight_for_generator(
+        visible_recovery_response_preflight
+    )
+
+    source_message_kind = "none"
+    draft_kind = recovery_response_draft_projection.get("suggested_message_kind")
+    if isinstance(draft_kind, str) and draft_kind:
+        source_message_kind = draft_kind
+
+    allowed_message_intent_map = {
+        "none": "none",
+        "ask_clarification": "clarify_unresolved_reference",
+        "context_repair_prompt": "confirm_or_restate_context",
+        "explain_backend_error": "explain_backend_error_and_ask_retry",
+        "confirm_recovery": "ask_how_to_proceed_from_blocked_state",
+    }
+    allowed_message_intent = allowed_message_intent_map.get(source_message_kind, "none")
+
+    waiting_user_required = recovery_response_draft_projection.get("waiting_user_required") is True
+
+    blocked_reasons: list[str] = ["recovery_response_generator_not_implemented"]
+    if not recovery_response_generator_enabled:
+        blocked_reasons.append("recovery_response_generator_disabled")
+    if recovery_response_generator_dry_run_only:
+        blocked_reasons.append("recovery_response_generator_dry_run_only")
+    if recovery_response_draft_projection.get("present") is not True:
+        blocked_reasons.append("recovery_response_draft_missing")
+    if visible_preflight_projection.get("present") is not True:
+        blocked_reasons.append("visible_recovery_preflight_missing")
+    if visible_preflight_projection.get("present") is True:
+        if visible_preflight_projection.get("user_visible_allowed") is False:
+            blocked_reasons.append("visible_recovery_not_allowed")
+        visible_blocked_reasons = visible_preflight_projection.get("blocked_reasons")
+        if (
+            isinstance(visible_blocked_reasons, list)
+            and "output_pipeline_not_executed" in visible_blocked_reasons
+        ):
+            blocked_reasons.append("output_pipeline_not_executed")
+    if waiting_user_required:
+        blocked_reasons.append("waiting_user_confirmation_required")
+    blocked_reasons.append("content_policy_not_verified")
+
+    return {
+        "schema_version": "relayrun.recovery_response_generator.v0",
+        "diagnostics_only": True,
+        "generator_allowed": False,
+        "generator_attempted": False,
+        "generated_text_present": False,
+        "output_pipeline_required": True,
+        "user_visible_allowed": False,
+        "final_text_generated": False,
+        "source_message_kind": source_message_kind,
+        "allowed_message_intent": allowed_message_intent,
+        "source_artifacts": {
+            "recovery_response_draft": recovery_response_draft_projection,
+            "visible_recovery_response_preflight": visible_preflight_projection,
+        },
+        "blocked_reasons": blocked_reasons,
+        "safety": {
+            "contains_user_content": False,
+            "contains_backend_payload": False,
+            "contains_response_text": False,
+            "contains_prompt_text": False,
+            "contains_snippet_text": False,
+            "contains_final_text": False,
+            "direct_user_output_allowed": False,
+            "run_direct_text_finalization_allowed": False,
+            "backend_payload_mutation_allowed": False,
+            "response_body_mutation_allowed": False,
+        },
+    }
+
+
 def build_runtime_checkpoint_dry_run_artifact(
     *,
     request_id: str,
@@ -1109,6 +1255,8 @@ def build_runtime_checkpoint_dry_run_artifact(
     recovery_response_draft_dry_run_only: bool = True,
     visible_recovery_preflight_enabled: bool = False,
     visible_recovery_dry_run_only: bool = True,
+    recovery_response_generator_enabled: bool = False,
+    recovery_response_generator_dry_run_only: bool = True,
     recovery_transition_created: bool = False,
     applied: bool = False,
 ) -> dict[str, Any]:
@@ -1176,6 +1324,12 @@ def build_runtime_checkpoint_dry_run_artifact(
         visible_recovery_dry_run_only=visible_recovery_dry_run_only,
         recovery_response_draft=recovery_response_draft,
     )
+    recovery_response_generator = build_relayrun_recovery_response_generator_artifact(
+        recovery_response_generator_enabled=recovery_response_generator_enabled,
+        recovery_response_generator_dry_run_only=recovery_response_generator_dry_run_only,
+        recovery_response_draft=recovery_response_draft,
+        visible_recovery_response_preflight=visible_recovery_response_preflight,
+    )
 
     return {
         "schema_version": "relayrun.runtime_checkpoint.v0",
@@ -1210,6 +1364,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "recovery_apply_preflight": recovery_apply_preflight,
         "recovery_response_draft": recovery_response_draft,
         "visible_recovery_response_preflight": visible_recovery_response_preflight,
+        "recovery_response_generator": recovery_response_generator,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
     }
