@@ -950,6 +950,7 @@ The recovery chain is now:
 5. `visible_recovery_response_preflight`
 6. `recovery_response_generator`
 7. `output_relayscn_recovery_gate`
+8. `visible_recovery_apply_preflight`
 
 The gate stores metadata-only projections of `recovery_response_generator` and
 `visible_recovery_response_preflight`. It must not embed full upstream
@@ -999,3 +1000,92 @@ setting dry-run-only to false still leaves `gate_allowed=false`,
 `final_text_generated=false`. A later visible recovery phase still needs a
 separate visible recovery apply preflight before any response body mutation or
 user-visible recovery output can be considered.
+
+## Visible recovery response apply preflight diagnostics
+
+RelayRUN exposes a diagnostics-only `visible_recovery_apply_preflight` artifact
+inside `relayrun_artifact` after `output_relayscn_recovery_gate`. This artifact
+records future apply readiness metadata only. It does not mutate response bodies,
+does not mutate backend payloads, does not produce user-visible output, does not
+generate or store final text, does not execute a generator, and does not resume
+or retry.
+
+The feature is default-off and dry-run protected:
+
+```yaml
+relayrun_visible_recovery_apply_preflight_enabled: false
+relayrun_visible_recovery_apply_preflight_dry_run_only: true
+```
+
+The recovery chain is now:
+
+1. `recovery_transition_artifact`
+2. `waiting_user_contract`
+3. `recovery_apply_preflight`
+4. `recovery_response_draft`
+5. `visible_recovery_response_preflight`
+6. `recovery_response_generator`
+7. `output_relayscn_recovery_gate`
+8. `visible_recovery_apply_preflight`
+
+The apply preflight is downstream of the output-side RelaySCN gate. A future
+visible recovery response cannot be applied unless the output-side RelaySCN gate
+passes and allows user-visible output. This MVP keeps the gate and apply path
+fail-closed, so actual visible recovery apply remains unimplemented.
+
+The artifact stores metadata-only projections of `output_relayscn_recovery_gate`,
+`recovery_response_generator`, and `visible_recovery_response_preflight`. It
+must not embed full upstream artifacts, nested `source_artifacts`,
+`draft_prompt_for_output_pipeline`, prompt text, raw user content, backend
+payloads, backend response text, snippet text, generated final text, or response
+bodies.
+
+```yaml
+visible_recovery_apply_preflight:
+  schema_version: relayrun.visible_recovery_apply_preflight.v0
+  diagnostics_only: true
+  apply_allowed: false
+  apply_attempted: false
+  applied: false
+  response_body_mutation_allowed: false
+  backend_payload_mutation_allowed: false
+  user_visible_allowed: false
+  final_text_generated: false
+  output_pipeline_required: true
+  output_side_relayscn_gate_required: true
+  source_message_kind: none
+  allowed_message_intent: none
+  blocked_reasons:
+    - visible_recovery_apply_not_implemented
+    - response_body_mutation_not_implemented
+    - output_pipeline_not_executed
+    - visible_recovery_apply_preflight_disabled
+    - visible_recovery_apply_preflight_dry_run_only
+    - output_relayscn_recovery_gate_not_passed
+    - output_relayscn_user_visible_not_allowed
+    - generated_text_missing
+    - recovery_response_generator_not_allowed
+    - visible_recovery_not_allowed
+    - content_policy_not_verified
+  safety:
+    contains_user_content: false
+    contains_backend_payload: false
+    contains_response_text: false
+    contains_prompt_text: false
+    contains_snippet_text: false
+    contains_final_text: false
+    direct_user_output_allowed: false
+    run_direct_text_finalization_allowed: false
+    backend_payload_mutation_allowed: false
+    response_body_mutation_allowed: false
+```
+
+`visible_recovery_apply_not_implemented`,
+`response_body_mutation_not_implemented`, and `output_pipeline_not_executed` are
+always present. Enabling the config and setting dry-run-only to false still
+leaves `apply_allowed=false`, `apply_attempted=false`, `applied=false`,
+`response_body_mutation_allowed=false`, `backend_payload_mutation_allowed=false`,
+`user_visible_allowed=false`, and `final_text_generated=false`. The next phase
+needs a user action / confirmation API and an explicit visible recovery apply
+implementation before any response body mutation or final visible recovery output
+can be considered.

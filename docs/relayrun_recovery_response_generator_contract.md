@@ -42,8 +42,8 @@ The future generator contract is downstream of the existing recovery diagnostics
    - Defines whether a generator may be invoked and what content-free intent it may use.
 7. `output_relayscn_recovery_gate`
    - Records projected source metadata for a future output-side scene/safety gate before any recovery text can become visible.
-8. Future visible recovery response apply preflight
-   - Performs the final pre-apply check before response mutation or visible recovery output is allowed.
+8. `visible_recovery_apply_preflight`
+   - Records future apply readiness metadata after the output-side RelaySCN gate without permitting response body mutation or visible output.
 
 ## Required inputs
 
@@ -203,3 +203,9 @@ mutate backend payloads, and does not mutate response bodies. It exists only to
 record that future visible recovery must pass output-side RelaySCN and a later
 visible recovery apply preflight before any final user-visible response can be
 considered.
+
+The downstream `visible_recovery_apply_preflight` artifact is also
+diagnostics-only. It sits after `output_relayscn_recovery_gate` and records that
+response body mutation remains forbidden while visible recovery apply is not
+implemented. It still does not allow visible output, does not execute a
+generator, and does not generate final text.
