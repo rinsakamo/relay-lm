@@ -916,6 +916,8 @@ def _build_relayrun_runtime_artifact(
         output_relayscn_recovery_gate_dry_run_only=config.relayrun_output_relayscn_recovery_gate_dry_run_only,
         visible_recovery_apply_preflight_enabled=config.relayrun_visible_recovery_apply_preflight_enabled,
         visible_recovery_apply_preflight_dry_run_only=config.relayrun_visible_recovery_apply_preflight_dry_run_only,
+        user_action_dry_run_enabled=config.relayrun_user_action_dry_run_enabled,
+        user_action_dry_run_only=config.relayrun_user_action_dry_run_only,
         recovery_transition_created=False,
         applied=False,
     )

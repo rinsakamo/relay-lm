@@ -44,6 +44,8 @@ The future generator contract is downstream of the existing recovery diagnostics
    - Records projected source metadata for a future output-side scene/safety gate before any recovery text can become visible.
 8. `visible_recovery_apply_preflight`
    - Records future apply readiness metadata after the output-side RelaySCN gate without permitting response body mutation or visible output.
+9. `user_action_contract`
+   - Records the future user confirmation / clarification / retry-choice contract without applying actions.
 
 ## Required inputs
 
@@ -209,3 +211,9 @@ diagnostics-only. It sits after `output_relayscn_recovery_gate` and records that
 response body mutation remains forbidden while visible recovery apply is not
 implemented. It still does not allow visible output, does not execute a
 generator, and does not generate final text.
+
+The downstream `user_action_contract` artifact sits after
+`visible_recovery_apply_preflight`. It records the future contract for receiving
+user confirmation, clarification, or retry choice, but it still does not parse
+or apply user actions, does not allow visible output, does not apply recovery,
+does not resume, and does not retry.

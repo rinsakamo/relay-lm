@@ -144,6 +144,8 @@ class RelayLMConfig(BaseModel):
     relayrun_output_relayscn_recovery_gate_dry_run_only: bool = True
     relayrun_visible_recovery_apply_preflight_enabled: bool = False
     relayrun_visible_recovery_apply_preflight_dry_run_only: bool = True
+    relayrun_user_action_dry_run_enabled: bool = False
+    relayrun_user_action_dry_run_only: bool = True
 
 
 def default_config_path() -> Path:

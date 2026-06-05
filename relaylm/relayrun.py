@@ -1534,6 +1534,219 @@ def build_relayrun_visible_recovery_apply_preflight_artifact(
     }
 
 
+def _project_waiting_user_contract_for_user_action(
+    waiting_user_contract: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(waiting_user_contract, dict):
+        return {"present": False}
+
+    blocked_reasons = waiting_user_contract.get("blocked_reasons")
+    allowed_user_actions = waiting_user_contract.get("allowed_user_actions")
+    safety = waiting_user_contract.get("safety")
+
+    return {
+        "present": True,
+        "schema_version": waiting_user_contract.get("schema_version"),
+        "diagnostics_only": waiting_user_contract.get("diagnostics_only"),
+        "user_visible": waiting_user_contract.get("user_visible"),
+        "apply_allowed": waiting_user_contract.get("apply_allowed"),
+        "applied": waiting_user_contract.get("applied"),
+        "waiting_user_required": waiting_user_contract.get("waiting_user_required"),
+        "waiting_user_reason": waiting_user_contract.get("waiting_user_reason"),
+        "source_node": waiting_user_contract.get("source_node"),
+        "allowed_user_actions": [str(action) for action in allowed_user_actions]
+        if isinstance(allowed_user_actions, list)
+        else [],
+        "blocked_reasons": [str(reason) for reason in blocked_reasons]
+        if isinstance(blocked_reasons, list)
+        else [],
+        "safety": dict(safety) if isinstance(safety, dict) else {},
+    }
+
+
+def _project_visible_recovery_apply_preflight_for_user_action(
+    visible_recovery_apply_preflight: dict[str, Any] | None,
+) -> dict[str, Any]:
+    if not isinstance(visible_recovery_apply_preflight, dict):
+        return {"present": False}
+
+    blocked_reasons = visible_recovery_apply_preflight.get("blocked_reasons")
+    safety = visible_recovery_apply_preflight.get("safety")
+
+    return {
+        "present": True,
+        "schema_version": visible_recovery_apply_preflight.get("schema_version"),
+        "diagnostics_only": visible_recovery_apply_preflight.get("diagnostics_only"),
+        "apply_allowed": visible_recovery_apply_preflight.get("apply_allowed"),
+        "apply_attempted": visible_recovery_apply_preflight.get("apply_attempted"),
+        "applied": visible_recovery_apply_preflight.get("applied"),
+        "response_body_mutation_allowed": visible_recovery_apply_preflight.get(
+            "response_body_mutation_allowed"
+        ),
+        "backend_payload_mutation_allowed": visible_recovery_apply_preflight.get(
+            "backend_payload_mutation_allowed"
+        ),
+        "user_visible_allowed": visible_recovery_apply_preflight.get("user_visible_allowed"),
+        "final_text_generated": visible_recovery_apply_preflight.get("final_text_generated"),
+        "output_pipeline_required": visible_recovery_apply_preflight.get("output_pipeline_required"),
+        "output_side_relayscn_gate_required": visible_recovery_apply_preflight.get(
+            "output_side_relayscn_gate_required"
+        ),
+        "source_message_kind": visible_recovery_apply_preflight.get("source_message_kind"),
+        "allowed_message_intent": visible_recovery_apply_preflight.get("allowed_message_intent"),
+        "blocked_reasons": [str(reason) for reason in blocked_reasons]
+        if isinstance(blocked_reasons, list)
+        else [],
+        "safety": dict(safety) if isinstance(safety, dict) else {},
+    }
+
+
+def _user_action_required_kind(
+    *,
+    waiting_user_reason: str,
+    source_message_kind: str,
+) -> str:
+    waiting_reason_map = {
+        "unresolved_reference": "clarify_reference",
+        "recovery_scene": "confirm_context_repair",
+        "recovery_context_repair": "confirm_context_repair",
+        "backend_error": "confirm_retry",
+        "backend_error_recovery_confirmation": "confirm_retry",
+    }
+    if waiting_user_reason in waiting_reason_map:
+        return waiting_reason_map[waiting_user_reason]
+
+    message_kind_map = {
+        "ask_clarification": "clarify_reference",
+        "context_repair_prompt": "confirm_context_repair",
+        "explain_backend_error": "confirm_retry",
+        "confirm_recovery": "choose_recovery_action",
+    }
+    return message_kind_map.get(source_message_kind, "none")
+
+
+def build_relayrun_user_action_contract_artifact(
+    *,
+    user_action_dry_run_enabled: bool = False,
+    user_action_dry_run_only: bool = True,
+    waiting_user_contract: dict[str, Any] | None = None,
+    visible_recovery_apply_preflight: dict[str, Any] | None = None,
+    output_relayscn_recovery_gate: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build diagnostics-only future user action contract metadata.
+
+    This contract models future confirmation, clarification, and retry-choice
+    actions. It does not parse or apply user actions, resume, retry, apply
+    visible recovery, mutate response bodies, mutate backend payloads, or create
+    user-visible recovery output.
+    """
+
+    waiting_projection = _project_waiting_user_contract_for_user_action(
+        waiting_user_contract
+    )
+    visible_apply_projection = _project_visible_recovery_apply_preflight_for_user_action(
+        visible_recovery_apply_preflight
+    )
+    gate_projection = _project_output_relayscn_recovery_gate_for_visible_apply(
+        output_relayscn_recovery_gate
+    )
+
+    waiting_user_required = waiting_projection.get("waiting_user_required") is True
+    visible_apply_blocked_reasons = visible_apply_projection.get("blocked_reasons")
+    visible_apply_waiting_required = (
+        isinstance(visible_apply_blocked_reasons, list)
+        and "waiting_user_confirmation_required" in visible_apply_blocked_reasons
+    )
+    user_action_required = waiting_user_required or visible_apply_waiting_required
+
+    source_waiting_user_reason = "none"
+    reason_value = waiting_projection.get("waiting_user_reason")
+    if isinstance(reason_value, str) and reason_value:
+        source_waiting_user_reason = reason_value
+
+    source_message_kind = "none"
+    gate_kind = gate_projection.get("source_message_kind")
+    visible_apply_kind = visible_apply_projection.get("source_message_kind")
+    if isinstance(gate_kind, str) and gate_kind:
+        source_message_kind = gate_kind
+    elif isinstance(visible_apply_kind, str) and visible_apply_kind:
+        source_message_kind = visible_apply_kind
+
+    allowed_message_intent = "none"
+    gate_intent = gate_projection.get("allowed_message_intent")
+    visible_apply_intent = visible_apply_projection.get("allowed_message_intent")
+    if isinstance(gate_intent, str) and gate_intent:
+        allowed_message_intent = gate_intent
+    elif isinstance(visible_apply_intent, str) and visible_apply_intent:
+        allowed_message_intent = visible_apply_intent
+
+    required_action_kind = _user_action_required_kind(
+        waiting_user_reason=source_waiting_user_reason,
+        source_message_kind=source_message_kind,
+    )
+    accepted_action_kinds = [
+        "clarify_reference",
+        "confirm_context_repair",
+        "confirm_retry",
+        "choose_recovery_action",
+        "cancel_recovery",
+    ]
+
+    blocked_reasons: list[str] = ["user_action_api_not_implemented"]
+    if not user_action_dry_run_enabled:
+        blocked_reasons.append("user_action_dry_run_disabled")
+    if user_action_dry_run_only:
+        blocked_reasons.append("user_action_dry_run_only")
+    if waiting_projection.get("present") is not True:
+        blocked_reasons.append("waiting_user_contract_missing")
+    if visible_apply_projection.get("present") is not True:
+        blocked_reasons.append("visible_recovery_apply_preflight_missing")
+    if gate_projection.get("present") is not True:
+        blocked_reasons.append("output_relayscn_recovery_gate_missing")
+    if user_action_required:
+        blocked_reasons.append("waiting_user_action_required")
+    if visible_apply_projection.get("apply_allowed") is False:
+        blocked_reasons.append("visible_recovery_apply_not_allowed")
+    blocked_reasons.append("content_policy_not_verified")
+
+    return {
+        "schema_version": "relayrun.user_action_contract.v0",
+        "diagnostics_only": True,
+        "user_action_required": user_action_required,
+        "user_action_allowed": False,
+        "user_action_attempted": False,
+        "user_action_applied": False,
+        "resume_allowed": False,
+        "retry_allowed": False,
+        "visible_recovery_apply_allowed": False,
+        "response_body_mutation_allowed": False,
+        "backend_payload_mutation_allowed": False,
+        "source_waiting_user_reason": source_waiting_user_reason,
+        "source_message_kind": source_message_kind,
+        "allowed_message_intent": allowed_message_intent,
+        "required_action_kind": required_action_kind,
+        "accepted_action_kinds": accepted_action_kinds,
+        "source_artifacts": {
+            "waiting_user_contract": waiting_projection,
+            "visible_recovery_apply_preflight": visible_apply_projection,
+            "output_relayscn_recovery_gate": gate_projection,
+        },
+        "blocked_reasons": blocked_reasons,
+        "safety": {
+            "contains_user_content": False,
+            "contains_backend_payload": False,
+            "contains_response_text": False,
+            "contains_prompt_text": False,
+            "contains_snippet_text": False,
+            "contains_final_text": False,
+            "direct_user_output_allowed": False,
+            "run_direct_text_finalization_allowed": False,
+            "backend_payload_mutation_allowed": False,
+            "response_body_mutation_allowed": False,
+        },
+    }
+
+
 def build_runtime_checkpoint_dry_run_artifact(
     *,
     request_id: str,
@@ -1572,6 +1785,8 @@ def build_runtime_checkpoint_dry_run_artifact(
     output_relayscn_recovery_gate_dry_run_only: bool = True,
     visible_recovery_apply_preflight_enabled: bool = False,
     visible_recovery_apply_preflight_dry_run_only: bool = True,
+    user_action_dry_run_enabled: bool = False,
+    user_action_dry_run_only: bool = True,
     recovery_transition_created: bool = False,
     applied: bool = False,
 ) -> dict[str, Any]:
@@ -1658,6 +1873,13 @@ def build_runtime_checkpoint_dry_run_artifact(
         recovery_response_generator=recovery_response_generator,
         visible_recovery_response_preflight=visible_recovery_response_preflight,
     )
+    user_action_contract = build_relayrun_user_action_contract_artifact(
+        user_action_dry_run_enabled=user_action_dry_run_enabled,
+        user_action_dry_run_only=user_action_dry_run_only,
+        waiting_user_contract=waiting_user_contract,
+        visible_recovery_apply_preflight=visible_recovery_apply_preflight,
+        output_relayscn_recovery_gate=output_relayscn_recovery_gate,
+    )
 
     return {
         "schema_version": "relayrun.runtime_checkpoint.v0",
@@ -1695,6 +1917,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "recovery_response_generator": recovery_response_generator,
         "output_relayscn_recovery_gate": output_relayscn_recovery_gate,
         "visible_recovery_apply_preflight": visible_recovery_apply_preflight,
+        "user_action_contract": user_action_contract,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
     }

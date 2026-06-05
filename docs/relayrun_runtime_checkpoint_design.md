@@ -951,6 +951,7 @@ The recovery chain is now:
 6. `recovery_response_generator`
 7. `output_relayscn_recovery_gate`
 8. `visible_recovery_apply_preflight`
+9. `user_action_contract`
 
 The gate stores metadata-only projections of `recovery_response_generator` and
 `visible_recovery_response_preflight`. It must not embed full upstream
@@ -1089,3 +1090,97 @@ leaves `apply_allowed=false`, `apply_attempted=false`, `applied=false`,
 needs a user action / confirmation API and an explicit visible recovery apply
 implementation before any response body mutation or final visible recovery output
 can be considered.
+
+## User action contract diagnostics
+
+RelayRUN exposes a diagnostics-only `user_action_contract` artifact inside
+`relayrun_artifact` after `visible_recovery_apply_preflight`. This artifact is a
+dry-run contract for a future user confirmation / clarification / retry-choice
+API. It does not parse user action input, does not apply user action input, does
+not resume, does not retry, does not apply visible recovery, does not mutate
+response bodies, does not mutate backend payloads, and does not produce
+user-visible recovery output.
+
+The feature is default-off and dry-run protected:
+
+```yaml
+relayrun_user_action_dry_run_enabled: false
+relayrun_user_action_dry_run_only: true
+```
+
+The recovery chain is now:
+
+1. `recovery_transition_artifact`
+2. `waiting_user_contract`
+3. `recovery_apply_preflight`
+4. `recovery_response_draft`
+5. `visible_recovery_response_preflight`
+6. `recovery_response_generator`
+7. `output_relayscn_recovery_gate`
+8. `visible_recovery_apply_preflight`
+9. `user_action_contract`
+
+The contract derives whether user action is required from the projected
+`waiting_user_contract` and the projected `visible_recovery_apply_preflight`
+blocked reasons. It maps content-free waiting reasons and message kinds to dry-
+run action kinds such as `clarify_reference`, `confirm_context_repair`,
+`confirm_retry`, `choose_recovery_action`, and `cancel_recovery`. It does not
+parse or apply those actions yet.
+
+The artifact stores metadata-only projections of `waiting_user_contract`,
+`visible_recovery_apply_preflight`, and `output_relayscn_recovery_gate`. It must
+not embed full upstream artifacts, nested `source_artifacts`,
+`draft_prompt_for_output_pipeline`, prompt text, raw user content, backend
+payloads, backend response text, snippet text, generated final text, or response
+bodies.
+
+```yaml
+user_action_contract:
+  schema_version: relayrun.user_action_contract.v0
+  diagnostics_only: true
+  user_action_required: false
+  user_action_allowed: false
+  user_action_attempted: false
+  user_action_applied: false
+  resume_allowed: false
+  retry_allowed: false
+  visible_recovery_apply_allowed: false
+  response_body_mutation_allowed: false
+  backend_payload_mutation_allowed: false
+  source_waiting_user_reason: none
+  source_message_kind: none
+  allowed_message_intent: none
+  required_action_kind: none
+  accepted_action_kinds:
+    - clarify_reference
+    - confirm_context_repair
+    - confirm_retry
+    - choose_recovery_action
+    - cancel_recovery
+  blocked_reasons:
+    - user_action_api_not_implemented
+    - user_action_dry_run_disabled
+    - user_action_dry_run_only
+    - visible_recovery_apply_not_allowed
+    - content_policy_not_verified
+  safety:
+    contains_user_content: false
+    contains_backend_payload: false
+    contains_response_text: false
+    contains_prompt_text: false
+    contains_snippet_text: false
+    contains_final_text: false
+    direct_user_output_allowed: false
+    run_direct_text_finalization_allowed: false
+    backend_payload_mutation_allowed: false
+    response_body_mutation_allowed: false
+```
+
+`user_action_api_not_implemented` is always present. Enabling the config and
+setting dry-run-only to false still leaves `user_action_allowed=false`,
+`user_action_attempted=false`, `user_action_applied=false`, `resume_allowed=false`,
+`retry_allowed=false`, and `visible_recovery_apply_allowed=false`. A future API
+endpoint and request schema are required before RelayRUN can accept user
+confirmation, clarification, or retry-choice input. Until the MVP-38 real-environment
+smoke / manual testing phase and a later explicit apply implementation, RelayRUN
+must not apply visible output or mutate response bodies.
