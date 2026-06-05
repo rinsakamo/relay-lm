@@ -18,6 +18,7 @@ for path in (REPO_ROOT, SCRIPTS_ROOT):
         sys.path.insert(0, str(path))
 
 from relaylm.app import create_app
+from relaylm.relayrun import build_relayrun_user_action_contract_artifact
 from relaylm_relayrun_runtime_checkpoint_dry_run_smoke import (  # type: ignore[import-not-found]
     _BackendHandler,
     _Capture,
@@ -406,6 +407,92 @@ def _assert_enabled_non_dry_run_still_blocked(root: Path, capture: _Capture, por
     print("ok enabled non-dry-run user action contract remains blocked by not implemented")
 
 
+def _assert_confirm_recovery_message_kind_requires_action() -> None:
+    contract = build_relayrun_user_action_contract_artifact(
+        waiting_user_contract={
+            "schema_version": "relayrun.waiting_user_contract.v0",
+            "diagnostics_only": True,
+            "user_visible": False,
+            "apply_allowed": False,
+            "applied": False,
+            "waiting_user_required": False,
+            "waiting_user_reason": None,
+            "source_node": "recovery_apply_preflight",
+            "allowed_user_actions": [],
+            "blocked_reasons": ["waiting_user_contract_disabled"],
+            "safety": {
+                "contains_user_content": False,
+                "contains_backend_payload": False,
+                "contains_response_text": False,
+            },
+        },
+        visible_recovery_apply_preflight={
+            "schema_version": "relayrun.visible_recovery_apply_preflight.v0",
+            "diagnostics_only": True,
+            "apply_allowed": False,
+            "apply_attempted": False,
+            "applied": False,
+            "response_body_mutation_allowed": False,
+            "backend_payload_mutation_allowed": False,
+            "user_visible_allowed": False,
+            "final_text_generated": False,
+            "output_pipeline_required": True,
+            "output_side_relayscn_gate_required": True,
+            "source_message_kind": "confirm_recovery",
+            "allowed_message_intent": "ask_how_to_proceed_from_blocked_state",
+            "blocked_reasons": [
+                "visible_recovery_apply_not_implemented",
+                "response_body_mutation_not_implemented",
+                "output_pipeline_not_executed",
+            ],
+            "safety": {
+                "contains_user_content": False,
+                "contains_backend_payload": False,
+                "contains_response_text": False,
+                "contains_prompt_text": False,
+                "contains_snippet_text": False,
+                "contains_final_text": False,
+            },
+        },
+        output_relayscn_recovery_gate={
+            "schema_version": "relayrun.output_relayscn_recovery_gate.v0",
+            "diagnostics_only": True,
+            "gate_allowed": False,
+            "gate_attempted": False,
+            "gate_passed": False,
+            "user_visible_allowed": False,
+            "final_text_generated": False,
+            "output_pipeline_required": True,
+            "source_message_kind": "confirm_recovery",
+            "allowed_message_intent": "ask_how_to_proceed_from_blocked_state",
+            "scene_gate_required": True,
+            "output_side_relayscn_required": True,
+            "blocked_reasons": ["output_relayscn_recovery_gate_not_implemented"],
+            "safety": {
+                "contains_user_content": False,
+                "contains_backend_payload": False,
+                "contains_response_text": False,
+                "contains_prompt_text": False,
+                "contains_snippet_text": False,
+                "contains_final_text": False,
+            },
+        },
+    )
+    _assert_user_action_common(contract)
+    require(contract.get("source_message_kind") == "confirm_recovery", contract)
+    require(
+        contract.get("allowed_message_intent") == "ask_how_to_proceed_from_blocked_state",
+        contract,
+    )
+    require(contract.get("required_action_kind") == "choose_recovery_action", contract)
+    require(contract.get("user_action_required") is True, contract)
+    require("waiting_user_action_required" in contract.get("blocked_reasons", []), contract)
+    require(contract.get("user_action_allowed") is False, contract)
+    require(contract.get("user_action_applied") is False, contract)
+    _assert_no_raw_content(contract)
+    print("ok confirm_recovery maps to required choose_recovery_action user action")
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
         root = Path(td)
@@ -423,6 +510,7 @@ def main() -> int:
             _assert_unresolved_reference(store_root, capture, port)
             _assert_backend_error(store_root, capture)
             _assert_enabled_non_dry_run_still_blocked(store_root, capture, port)
+            _assert_confirm_recovery_message_kind_requires_action()
         finally:
             server.shutdown()
             server.server_close()

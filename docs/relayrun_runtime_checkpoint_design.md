@@ -1127,6 +1127,12 @@ run action kinds such as `clarify_reference`, `confirm_context_repair`,
 `confirm_retry`, `choose_recovery_action`, and `cancel_recovery`. It does not
 parse or apply those actions yet.
 
+Any `required_action_kind` other than `none` is treated as
+`user_action_required: true`, even when the upstream waiting-user flag is false.
+This keeps message-kind-driven actions such as `confirm_recovery` ->
+`choose_recovery_action` consistent with `waiting_user_action_required`
+diagnostics.
+
 The artifact stores metadata-only projections of `waiting_user_contract`,
 `visible_recovery_apply_preflight`, and `output_relayscn_recovery_gate`. It must
 not embed full upstream artifacts, nested `source_artifacts`,

@@ -217,3 +217,8 @@ The downstream `user_action_contract` artifact sits after
 user confirmation, clarification, or retry choice, but it still does not parse
 or apply user actions, does not allow visible output, does not apply recovery,
 does not resume, and does not retry.
+
+Message-kind-driven actions are also required user actions. In particular,
+`confirm_recovery` maps to `choose_recovery_action`, which must make
+`user_action_required=true` and keep recovery blocked until a future user action
+API exists.

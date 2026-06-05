@@ -1651,14 +1651,6 @@ def build_relayrun_user_action_contract_artifact(
         output_relayscn_recovery_gate
     )
 
-    waiting_user_required = waiting_projection.get("waiting_user_required") is True
-    visible_apply_blocked_reasons = visible_apply_projection.get("blocked_reasons")
-    visible_apply_waiting_required = (
-        isinstance(visible_apply_blocked_reasons, list)
-        and "waiting_user_confirmation_required" in visible_apply_blocked_reasons
-    )
-    user_action_required = waiting_user_required or visible_apply_waiting_required
-
     source_waiting_user_reason = "none"
     reason_value = waiting_projection.get("waiting_user_reason")
     if isinstance(reason_value, str) and reason_value:
@@ -1683,6 +1675,17 @@ def build_relayrun_user_action_contract_artifact(
     required_action_kind = _user_action_required_kind(
         waiting_user_reason=source_waiting_user_reason,
         source_message_kind=source_message_kind,
+    )
+    waiting_user_flag_required = waiting_projection.get("waiting_user_required") is True
+    visible_apply_blocked_reasons = visible_apply_projection.get("blocked_reasons")
+    visible_apply_waiting_required = (
+        isinstance(visible_apply_blocked_reasons, list)
+        and "waiting_user_confirmation_required" in visible_apply_blocked_reasons
+    )
+    user_action_required = (
+        waiting_user_flag_required
+        or visible_apply_waiting_required
+        or required_action_kind != "none"
     )
     accepted_action_kinds = [
         "clarify_reference",
