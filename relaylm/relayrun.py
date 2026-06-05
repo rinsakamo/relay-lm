@@ -998,6 +998,85 @@ def build_relayrun_recovery_response_draft(
     }
 
 
+def build_relayrun_visible_recovery_response_preflight(
+    *,
+    visible_recovery_preflight_enabled: bool = False,
+    visible_recovery_dry_run_only: bool = True,
+    recovery_response_draft: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build diagnostics-only visible recovery response preflight metadata.
+
+    This preflight fixes the future full-output-pipeline requirements for any
+    user-visible recovery response. RelayRUN still does not finalize text, apply
+    recovery, mutate backend payloads, or mutate response bodies.
+    """
+
+    safe_recovery_response_draft = (
+        _copy_jsonable_mapping(recovery_response_draft)
+        if isinstance(recovery_response_draft, dict)
+        else None
+    )
+    source_message_kind = "none"
+    if isinstance(safe_recovery_response_draft, dict):
+        message_kind = safe_recovery_response_draft.get("suggested_message_kind")
+        if isinstance(message_kind, str) and message_kind:
+            source_message_kind = message_kind
+
+    required_pipeline_nodes = [
+        "input_side_relayscn",
+        "input_side_relayemo",
+        "relayctx_repack",
+        "main_llm_or_recovery_generator",
+        "relayctx_unpack",
+        "return_side_relayemo",
+        "output_side_relayscn",
+    ]
+    blocked_reasons: list[str] = [
+        "visible_recovery_not_implemented",
+        "output_pipeline_not_executed",
+    ]
+    if not visible_recovery_preflight_enabled:
+        blocked_reasons.append("visible_recovery_disabled")
+    if visible_recovery_dry_run_only:
+        blocked_reasons.append("visible_recovery_dry_run_only")
+    if safe_recovery_response_draft is None:
+        blocked_reasons.append("recovery_response_draft_missing")
+
+    return {
+        "schema_version": "relayrun.visible_recovery_response_preflight.v0",
+        "diagnostics_only": True,
+        "user_visible_allowed": False,
+        "apply_allowed": False,
+        "apply_attempted": False,
+        "applied": False,
+        "final_text_generated": False,
+        "source_recovery_response_draft_present": safe_recovery_response_draft is not None,
+        "source_message_kind": source_message_kind,
+        "required_pipeline_nodes": required_pipeline_nodes,
+        "pipeline_preflight": {
+            "relayscn_required": True,
+            "relayemo_required": True,
+            "relayctx_repack_required": True,
+            "relayctx_unpack_required": True,
+            "output_side_relayscn_required": True,
+            "main_llm_or_recovery_generator_required": True,
+        },
+        "source_artifacts": {
+            "recovery_response_draft": safe_recovery_response_draft,
+        },
+        "blocked_reasons": blocked_reasons,
+        "safety": {
+            "direct_user_output_allowed": False,
+            "run_direct_text_finalization_allowed": False,
+            "contains_user_content": False,
+            "contains_backend_payload": False,
+            "contains_response_text": False,
+            "contains_prompt_text": False,
+            "contains_final_text": False,
+        },
+    }
+
+
 def build_runtime_checkpoint_dry_run_artifact(
     *,
     request_id: str,
@@ -1028,6 +1107,8 @@ def build_runtime_checkpoint_dry_run_artifact(
     recovery_apply_dry_run_only: bool = True,
     recovery_response_draft_enabled: bool = False,
     recovery_response_draft_dry_run_only: bool = True,
+    visible_recovery_preflight_enabled: bool = False,
+    visible_recovery_dry_run_only: bool = True,
     recovery_transition_created: bool = False,
     applied: bool = False,
 ) -> dict[str, Any]:
@@ -1090,6 +1171,11 @@ def build_runtime_checkpoint_dry_run_artifact(
         recovery_response_draft_dry_run_only=recovery_response_draft_dry_run_only,
         recovery_apply_preflight=recovery_apply_preflight,
     )
+    visible_recovery_response_preflight = build_relayrun_visible_recovery_response_preflight(
+        visible_recovery_preflight_enabled=visible_recovery_preflight_enabled,
+        visible_recovery_dry_run_only=visible_recovery_dry_run_only,
+        recovery_response_draft=recovery_response_draft,
+    )
 
     return {
         "schema_version": "relayrun.runtime_checkpoint.v0",
@@ -1123,6 +1209,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "waiting_user_contract": waiting_user_contract,
         "recovery_apply_preflight": recovery_apply_preflight,
         "recovery_response_draft": recovery_response_draft,
+        "visible_recovery_response_preflight": visible_recovery_response_preflight,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
     }

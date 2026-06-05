@@ -136,6 +136,8 @@ class RelayLMConfig(BaseModel):
     relayrun_recovery_apply_dry_run_only: bool = True
     relayrun_recovery_response_draft_enabled: bool = False
     relayrun_recovery_response_draft_dry_run_only: bool = True
+    relayrun_visible_recovery_preflight_enabled: bool = False
+    relayrun_visible_recovery_dry_run_only: bool = True
 
 
 def default_config_path() -> Path:
