@@ -777,3 +777,78 @@ This phase keeps `final_text_generated: false`, `user_visible: false`, and
 `direct_user_output_allowed: false` even when the draft config is enabled and
 dry-run-only is disabled. The artifact must not contain raw user content,
 backend payloads, response text, prompt text, snippet text, or page bodies.
+
+## Visible recovery response preflight diagnostics
+
+RelayRUN exposes a diagnostics-only `visible_recovery_response_preflight`
+artifact inside `relayrun_artifact`. The artifact is preflight only: it verifies
+that a future user-visible recovery response must pass through the full output
+pipeline before text can be shown to the user. This phase does not generate
+user-visible output, does not finalize character-facing text, does not apply
+resume/retry/recovery transitions, and does not mutate backend payloads or
+response bodies.
+
+The feature is default-off and dry-run protected:
+
+```yaml
+relayrun_visible_recovery_preflight_enabled: false
+relayrun_visible_recovery_dry_run_only: true
+```
+
+The required full output pipeline is explicit in the artifact:
+
+```yaml
+visible_recovery_response_preflight:
+  schema_version: relayrun.visible_recovery_response_preflight.v0
+  diagnostics_only: true
+  user_visible_allowed: false
+  apply_allowed: false
+  apply_attempted: false
+  applied: false
+  final_text_generated: false
+  source_recovery_response_draft_present: true
+  source_message_kind: none
+  required_pipeline_nodes:
+    - input_side_relayscn
+    - input_side_relayemo
+    - relayctx_repack
+    - main_llm_or_recovery_generator
+    - relayctx_unpack
+    - return_side_relayemo
+    - output_side_relayscn
+  pipeline_preflight:
+    relayscn_required: true
+    relayemo_required: true
+    relayctx_repack_required: true
+    relayctx_unpack_required: true
+    output_side_relayscn_required: true
+    main_llm_or_recovery_generator_required: true
+  blocked_reasons:
+    - visible_recovery_not_implemented
+    - visible_recovery_disabled
+    - visible_recovery_dry_run_only
+    - output_pipeline_not_executed
+  safety:
+    direct_user_output_allowed: false
+    run_direct_text_finalization_allowed: false
+    contains_user_content: false
+    contains_backend_payload: false
+    contains_response_text: false
+    contains_prompt_text: false
+    contains_final_text: false
+```
+
+The preflight is derived from `recovery_response_draft`, which is derived from
+`recovery_apply_preflight` and `waiting_user_contract`. Normal requests report
+`source_message_kind: none`. Recovery scenes can report
+`context_repair_prompt`; unresolved references can report `ask_clarification`;
+backend errors can report `explain_backend_error`. In every case,
+`user_visible_allowed` remains `false` because the full output pipeline has not
+executed and visible recovery is not implemented.
+
+Future apply work must be gated by output-side RelaySCN after input-side
+RelaySCN, RelayEMO, RelayCTX repack, the main LLM or a recovery generator,
+RelayCTX unpack, and return-side RelayEMO have run. RelayRUN must continue to
+avoid direct final text generation and must keep visible recovery artifacts free
+of raw user content, backend payloads, response text, prompt text, snippet text,
+page bodies, and final generated text.

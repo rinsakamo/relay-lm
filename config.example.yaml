@@ -149,6 +149,11 @@ relayrun_recovery_apply_dry_run_only: true
 relayrun_recovery_response_draft_enabled: false
 relayrun_recovery_response_draft_dry_run_only: true
 
+# RelayRUN visible recovery response preflight artifacts are diagnostics-only and default-off.
+# They require the full output pipeline before any future user-visible recovery text.
+relayrun_visible_recovery_preflight_enabled: false
+relayrun_visible_recovery_dry_run_only: true
+
 
 # Optional OpenWebUI + LM Studio MVP route example (docs-only reference).
 # This commented block does not change defaults unless you opt in.
