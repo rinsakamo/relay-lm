@@ -98,6 +98,8 @@ class RelayLMConfig(BaseModel):
     relayctx_short_term_source_diagnostics_enabled: bool = False
     relayctx_short_term_extraction_dry_run_enabled: bool = False
     relayctx_short_term_block_assembly_dry_run_enabled: bool = False
+    relayctx_short_term_runtime_injection_preflight_enabled: bool = False
+    relayctx_short_term_runtime_injection_dry_run_only: bool = True
     memory: MemorySelectionConfig = Field(default_factory=MemorySelectionConfig)
     backends: dict[str, BackendConfig]
     model_routes: dict[str, ModelRoute]

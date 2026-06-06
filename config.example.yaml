@@ -27,6 +27,13 @@ relayctx_short_term_extraction_dry_run_enabled: false
 # runtime context, mutate backend payloads, mutate responses, or rewrite messages.
 relayctx_short_term_block_assembly_dry_run_enabled: false
 
+# RelayCTX short-term runtime injection preflight is default-off and content-free.
+# Even when enabled, dry-run-only remains true by default: RelayLM only emits
+# future insertion metadata and never mutates backend payloads, responses,
+# OpenWebUI messages, persisted CTX, or restored cross-thread CTX.
+relayctx_short_term_runtime_injection_preflight_enabled: false
+relayctx_short_term_runtime_injection_dry_run_only: true
+
 memory:
   candidate_limit: 3
   token_budget_hint: 800

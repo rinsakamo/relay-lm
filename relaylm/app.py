@@ -25,6 +25,7 @@ from relaylm.diagnostics import (
     build_compile_decision_dry_run,
     build_relayctx_short_term_block_assembly_dry_run,
     build_relayctx_short_term_extraction_dry_run,
+    build_relayctx_short_term_runtime_injection_preflight,
     build_relayctx_short_term_source_diagnostics,
     build_relaysoul_runtime_feedback_summary,
 )
@@ -428,6 +429,13 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 enabled=config.relayctx_short_term_block_assembly_dry_run_enabled,
             )
         )
+        relayctx_short_term_runtime_injection_preflight = (
+            build_relayctx_short_term_runtime_injection_preflight(
+                assembly_artifact=relayctx_short_term_block_assembly_dry_run,
+                enabled=config.relayctx_short_term_runtime_injection_preflight_enabled,
+                dry_run_only=config.relayctx_short_term_runtime_injection_dry_run_only,
+            )
+        )
 
         base_diagnostics = RequestDiagnostics(
             request_id=request_id,
@@ -481,7 +489,12 @@ def create_app(config_path: str | None = None) -> FastAPI:
             runtime_snippet_injection_result=runtime_snippet_injection_result,
             relayctx_short_term_source_diagnostics=relayctx_short_term_source_diagnostics,
             relayctx_short_term_extraction_dry_run=relayctx_short_term_extraction_dry_run,
-            relayctx_short_term_block_assembly_dry_run=relayctx_short_term_block_assembly_dry_run,
+            relayctx_short_term_block_assembly_dry_run=(
+                relayctx_short_term_block_assembly_dry_run
+            ),
+            relayctx_short_term_runtime_injection_preflight=(
+                relayctx_short_term_runtime_injection_preflight
+            ),
             relayrun_artifact=relayrun_artifact,
         )
         feedback_summary = (
