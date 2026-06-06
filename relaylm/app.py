@@ -23,6 +23,7 @@ from relaylm.config import RelayLMConfig, load_config
 from relaylm.diagnostics import (
     RequestDiagnostics,
     build_compile_decision_dry_run,
+    build_relayctx_short_term_extraction_dry_run,
     build_relayctx_short_term_source_diagnostics,
     build_relaysoul_runtime_feedback_summary,
 )
@@ -404,12 +405,20 @@ def create_app(config_path: str | None = None) -> FastAPI:
             stream_started=False,
             first_token_sent=False,
         )
+        inbound_messages = _extract_trace_messages(payload)
         relayctx_short_term_source_diagnostics = (
             build_relayctx_short_term_source_diagnostics(
-                messages=_extract_trace_messages(payload),
+                messages=inbound_messages,
                 enabled=config.relayctx_short_term_source_diagnostics_enabled,
                 memory_source=compiled_request.memory_source,
                 relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+            )
+        )
+        relayctx_short_term_extraction_dry_run = (
+            build_relayctx_short_term_extraction_dry_run(
+                messages=inbound_messages,
+                enabled=config.relayctx_short_term_extraction_dry_run_enabled,
+                memory_source=compiled_request.memory_source,
             )
         )
 
@@ -464,6 +473,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             runtime_ctx_injection_result=runtime_ctx_injection_result,
             runtime_snippet_injection_result=runtime_snippet_injection_result,
             relayctx_short_term_source_diagnostics=relayctx_short_term_source_diagnostics,
+            relayctx_short_term_extraction_dry_run=relayctx_short_term_extraction_dry_run,
             relayrun_artifact=relayrun_artifact,
         )
         feedback_summary = (

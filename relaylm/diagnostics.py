@@ -52,6 +52,7 @@ class RequestDiagnostics:
     runtime_ctx_injection_result: dict[str, Any] | None = None
     runtime_snippet_injection_result: dict[str, Any] | None = None
     relayctx_short_term_source_diagnostics: dict[str, Any] | None = None
+    relayctx_short_term_extraction_dry_run: dict[str, Any] | None = None
     relayrun_artifact: dict[str, Any] | None = None
 
     def to_headers(self) -> dict[str, str]:
@@ -166,18 +167,26 @@ def build_relaysoul_runtime_feedback_summary(diagnostics: RequestDiagnostics) ->
     }
 
 
-def _content_text_length(content: Any) -> int:
+def _content_text_parts(content: Any) -> list[str]:
     if isinstance(content, str):
-        return len(content)
+        return [content]
     if isinstance(content, list):
-        return sum(
-            len(item["text"])
+        return [
+            item["text"]
             for item in content
             if isinstance(item, dict)
             and item.get("type") == "text"
             and isinstance(item.get("text"), str)
-        )
-    return 0
+        ]
+    return []
+
+
+def _content_text_length(content: Any) -> int:
+    return sum(len(part) for part in _content_text_parts(content))
+
+
+def _content_text(content: Any) -> str:
+    return "\n".join(_content_text_parts(content))
 
 
 def build_relayctx_short_term_source_diagnostics(
@@ -277,6 +286,135 @@ def build_relayctx_short_term_source_diagnostics(
             "response_body_mutation_allowed": False,
         },
     }
+
+
+def build_relayctx_short_term_extraction_dry_run(
+    *,
+    messages: list[dict[str, Any]],
+    enabled: bool = False,
+    memory_source: str | None = None,
+) -> dict[str, Any] | None:
+    """Build content-free RelayCTX short-term extraction dry-run diagnostics.
+
+    This deterministic dry-run only classifies OpenWebUI message text into
+    aggregate candidate counts. It never stores, restores, injects, rewrites,
+    compresses, or copies message content into the artifact.
+    """
+
+    if not enabled:
+        return None
+
+    safe_messages = [message for message in messages if isinstance(message, dict)]
+    user_messages = [message for message in safe_messages if message.get("role") == "user"]
+    assistant_messages = [
+        message for message in safe_messages if message.get("role") == "assistant"
+    ]
+    latest_user_message = user_messages[-1] if user_messages else None
+    latest_user_content = (
+        latest_user_message.get("content")
+        if isinstance(latest_user_message, dict)
+        else None
+    )
+
+    temporary_fact_candidate_count = 0
+    temporary_preference_candidate_count = 0
+    instruction_candidate_count = 0
+    override_candidate_count = 0
+    contradiction_candidate_count = 0
+
+    for message in user_messages:
+        text = _content_text(message.get("content"))
+        if not text:
+            continue
+        lowered = text.lower()
+        if _looks_like_temporary_fact(text, lowered):
+            temporary_fact_candidate_count += 1
+        if _looks_like_temporary_preference(text, lowered):
+            temporary_preference_candidate_count += 1
+        if _looks_like_instruction(text, lowered):
+            instruction_candidate_count += 1
+        if _looks_like_override(text, lowered):
+            override_candidate_count += 1
+        if _looks_like_contradiction(text, lowered, memory_source=memory_source):
+            contradiction_candidate_count += 1
+
+    short_term_candidate_count = (
+        temporary_fact_candidate_count
+        + temporary_preference_candidate_count
+        + instruction_candidate_count
+        + override_candidate_count
+        + contradiction_candidate_count
+    )
+    message_count = len(safe_messages)
+    blocked_reasons = [] if message_count > 0 else ["no_openwebui_messages"]
+
+    return {
+        "schema_version": "relayctx_short_term_extraction_dry_run.v0",
+        "enabled": True,
+        "dry_run_only": True,
+        "applied": False,
+        "source": "openwebui_messages",
+        "extraction_attempted": message_count > 0,
+        "message_count": message_count,
+        "user_message_count": len(user_messages),
+        "assistant_message_count": len(assistant_messages),
+        "latest_user_message_present": latest_user_message is not None,
+        "latest_user_message_chars": _content_text_length(latest_user_content),
+        "temporary_fact_candidate_count": temporary_fact_candidate_count,
+        "temporary_preference_candidate_count": temporary_preference_candidate_count,
+        "instruction_candidate_count": instruction_candidate_count,
+        "override_candidate_count": override_candidate_count,
+        "contradiction_candidate_count": contradiction_candidate_count,
+        "short_term_candidate_count": short_term_candidate_count,
+        "persistence_allowed": False,
+        "restore_allowed": False,
+        "injection_allowed": False,
+        "backend_payload_mutation_allowed": False,
+        "response_mutation_allowed": False,
+        "content_free": True,
+        "blocked_reasons": blocked_reasons,
+    }
+
+
+def _looks_like_temporary_fact(text: str, lowered: str) -> bool:
+    del lowered
+    markers = (
+        "今日の合言葉",
+        "合言葉は",
+        "この会話内だけ",
+        "この会話だけ",
+        "今回だけ",
+        "一時情報",
+    )
+    return any(marker in text for marker in markers)
+
+
+def _looks_like_temporary_preference(text: str, lowered: str) -> bool:
+    markers = ("好み", "prefer", "preference")
+    if any(marker in lowered for marker in markers):
+        return True
+    return "今日は" in text and ("ではなく" in text or "冷たい" in text or "温かい" in text)
+
+
+def _looks_like_instruction(text: str, lowered: str) -> bool:
+    markers = ("優先してください", "この一時設定", "指示", "instruction", "follow this")
+    return any(marker in text or marker in lowered for marker in markers)
+
+
+def _looks_like_override(text: str, lowered: str) -> bool:
+    markers = ("優先", "ではなく", "上書き", "override", "instead")
+    return any(marker in text or marker in lowered for marker in markers)
+
+
+def _looks_like_contradiction(
+    text: str,
+    lowered: str,
+    *,
+    memory_source: str | None,
+) -> bool:
+    del memory_source
+    markers = ("ではなく", "矛盾", "contradict", "not ")
+    return any(marker in text or marker in lowered for marker in markers)
 
 
 def build_compile_decision_dry_run(
