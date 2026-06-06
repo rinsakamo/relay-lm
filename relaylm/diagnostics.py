@@ -205,9 +205,11 @@ def build_relayctx_short_term_source_diagnostics(
     short_term_candidate_present = short_term_candidate_count > 0
     retrieval_candidates = None
     if isinstance(relaymem_retrieval_artifact, dict):
-        candidate_count = relaymem_retrieval_artifact.get("candidate_count")
-        if isinstance(candidate_count, int):
-            retrieval_candidates = candidate_count
+        selected_mem_candidates = relaymem_retrieval_artifact.get(
+            "selected_mem_candidates"
+        )
+        if isinstance(selected_mem_candidates, list):
+            retrieval_candidates = len(selected_mem_candidates)
 
     return {
         "schema_version": "relayctx_short_term_source_diagnostics.v0",

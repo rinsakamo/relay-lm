@@ -18,6 +18,7 @@ for path in (REPO_ROOT, SCRIPTS_ROOT):
         sys.path.insert(0, str(path))
 
 from relaylm.app import create_app
+from relaylm.diagnostics import build_relayctx_short_term_source_diagnostics
 from relaylm_relayrun_runtime_checkpoint_dry_run_smoke import (  # type: ignore[import-not-found]
     _BackendHandler,
     _Capture,
@@ -156,7 +157,33 @@ def _assert_no_raw_content_in_artifact(artifact: dict[str, Any]) -> None:
     require("青いカモメ" not in text, artifact)
     require("OpenWebUI short term sentinel" not in text, artifact)
     require("assistant remembered the bird" not in text, artifact)
+    require("relaymem candidate raw body" not in text, artifact)
+    require("relaymem candidate raw snippet" not in text, artifact)
     require("ok" not in text, artifact)
+
+
+def _assert_relaymem_selected_candidates_counted() -> None:
+    artifact = build_relayctx_short_term_source_diagnostics(
+        messages=[{"role": "user", "content": "OpenWebUI short term sentinel: 青いカモメ"}],
+        enabled=True,
+        relaymem_retrieval_artifact={
+            "schema_version": "relaymem.retrieval_dry_run.v0",
+            "selected_mem_candidates": [
+                {"candidate_id": "mem-1", "content": "relaymem candidate raw body"},
+                {"candidate_id": "mem-2", "snippet": "relaymem candidate raw snippet"},
+            ],
+        },
+    )
+    require(isinstance(artifact, dict), artifact)
+    registry = artifact.get("source_registry")
+    require(isinstance(registry, dict), artifact)
+    relaymem_registry = registry.get("relaymem_retrieval")
+    require(isinstance(relaymem_registry, dict), artifact)
+    require(relaymem_registry.get("present") is True, artifact)
+    require(relaymem_registry.get("candidate_count") == 2, artifact)
+    require("selected_mem_candidates" not in json.dumps(artifact, ensure_ascii=False), artifact)
+    _assert_no_raw_content_in_artifact(artifact)
+    print("ok RelayMEM selected candidates are counted without copying candidate content")
 
 
 def _assert_pass_through_single_message(root: Path, capture: _Capture, port: int) -> None:
@@ -256,6 +283,7 @@ def main() -> int:
             _assert_pass_through_single_message(store_root, capture, port)
             _assert_pass_through_multi_message(store_root, capture, port)
             _assert_memory_light_keeps_source_separate(store_root, capture, port)
+            _assert_relaymem_selected_candidates_counted()
         finally:
             server.shutdown()
             server.server_close()
