@@ -55,6 +55,7 @@ class RequestDiagnostics:
     relayctx_short_term_extraction_dry_run: dict[str, Any] | None = None
     relayctx_short_term_block_assembly_dry_run: dict[str, Any] | None = None
     relayctx_short_term_runtime_injection_preflight: dict[str, Any] | None = None
+    relayctx_short_term_runtime_injection_apply_result: dict[str, Any] | None = None
     relayrun_artifact: dict[str, Any] | None = None
 
     def to_headers(self) -> dict[str, str]:
@@ -563,6 +564,23 @@ def build_relayctx_short_term_runtime_injection_preflight(
     priority_order = _priority_order(
         assembly_artifact.get("priority_order") if input_assembly_present else None
     )
+    temporary_fact_count = _non_negative_int(
+        assembly_artifact.get("temporary_fact_count") if input_assembly_present else None
+    )
+    temporary_preference_count = _non_negative_int(
+        assembly_artifact.get("temporary_preference_count")
+        if input_assembly_present
+        else None
+    )
+    instruction_count = _non_negative_int(
+        assembly_artifact.get("instruction_count") if input_assembly_present else None
+    )
+    override_count = _non_negative_int(
+        assembly_artifact.get("override_count") if input_assembly_present else None
+    )
+    contradiction_count = _non_negative_int(
+        assembly_artifact.get("contradiction_count") if input_assembly_present else None
+    )
 
     blocked_reasons: list[str] = []
     if dry_run_only:
@@ -602,6 +620,11 @@ def build_relayctx_short_term_runtime_injection_preflight(
         else 0,
         "token_budget_hint": token_budget_hint,
         "priority_order": priority_order,
+        "temporary_fact_count": temporary_fact_count,
+        "temporary_preference_count": temporary_preference_count,
+        "instruction_count": instruction_count,
+        "override_count": override_count,
+        "contradiction_count": contradiction_count,
         "apply_allowed": False,
         "apply_attempted": False,
         "backend_payload_mutation_allowed": False,
@@ -638,6 +661,67 @@ def _estimated_inserted_tokens(*, candidate_count: int, token_budget_hint: int) 
     if candidate_count <= 0:
         return 0
     return min(token_budget_hint, candidate_count * 24)
+
+
+def build_relayctx_short_term_runtime_injection_apply_result(
+    *,
+    preflight_artifact: dict[str, Any] | None,
+    enabled: bool = False,
+    dry_run_only: bool = True,
+    attempted: bool = False,
+    applied: bool = False,
+    original_message_count: int = 0,
+    forwarded_message_count: int = 0,
+    inserted_chars: int = 0,
+    estimated_inserted_tokens: int = 0,
+    blocked_reasons: list[str] | None = None,
+) -> dict[str, Any] | None:
+    if not enabled:
+        return None
+
+    preflight_present = isinstance(preflight_artifact, dict)
+    injection_plan_present = (
+        preflight_artifact.get("injection_plan_present") is True
+        if preflight_present
+        else False
+    )
+    insertion_point = (
+        preflight_artifact.get("insertion_point") if preflight_present else None
+    )
+    inserted_message_role = (
+        preflight_artifact.get("inserted_message_role") if preflight_present else None
+    )
+    mutation_applied = bool(applied)
+    safe_blocked_reasons = [str(reason) for reason in (blocked_reasons or [])]
+
+    return {
+        "schema_version": "relayctx_short_term_runtime_injection_apply_result.v0",
+        "enabled": True,
+        "dry_run_only": dry_run_only,
+        "attempted": bool(attempted),
+        "applied": mutation_applied,
+        "source": "relayctx_short_term_runtime_injection_preflight",
+        "preflight_present": preflight_present,
+        "injection_plan_present": injection_plan_present,
+        "insertion_point": insertion_point if isinstance(insertion_point, str) else None,
+        "inserted_message_role": inserted_message_role
+        if isinstance(inserted_message_role, str)
+        else None,
+        "inserted_chars": max(0, inserted_chars),
+        "estimated_inserted_tokens": max(0, estimated_inserted_tokens),
+        "original_message_count": max(0, original_message_count),
+        "forwarded_message_count": max(0, forwarded_message_count),
+        "apply_allowed": mutation_applied,
+        "apply_attempted": bool(attempted),
+        "backend_payload_mutation_allowed": mutation_applied,
+        "backend_payload_mutation_applied": mutation_applied,
+        "response_mutation_allowed": False,
+        "openwebui_message_mutation_allowed": False,
+        "persistence_allowed": False,
+        "restore_allowed": False,
+        "content_free": True,
+        "blocked_reasons": safe_blocked_reasons,
+    }
 
 
 def build_compile_decision_dry_run(

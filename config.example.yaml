@@ -32,7 +32,15 @@ relayctx_short_term_block_assembly_dry_run_enabled: false
 # future insertion metadata and never mutates backend payloads, responses,
 # OpenWebUI messages, persisted CTX, or restored cross-thread CTX.
 relayctx_short_term_runtime_injection_preflight_enabled: false
+
+# RelayCTX short-term runtime injection gated apply is default-off. Backend
+# payload mutation can occur only when apply_enabled=true and dry_run_only=false
+# are both explicitly set. The inserted system message is a content-free count
+# summary only; RelayLM still does not persist/restore CTX, mutate responses, or
+# compress/rewrite OpenWebUI messages.
+relayctx_short_term_runtime_injection_apply_enabled: false
 relayctx_short_term_runtime_injection_dry_run_only: true
+relayctx_short_term_runtime_injection_token_budget: 400
 
 memory:
   candidate_limit: 3

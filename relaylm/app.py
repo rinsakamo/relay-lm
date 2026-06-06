@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
 from dataclasses import replace
 import json
 import os
@@ -25,6 +26,7 @@ from relaylm.diagnostics import (
     build_compile_decision_dry_run,
     build_relayctx_short_term_block_assembly_dry_run,
     build_relayctx_short_term_extraction_dry_run,
+    build_relayctx_short_term_runtime_injection_apply_result,
     build_relayctx_short_term_runtime_injection_preflight,
     build_relayctx_short_term_source_diagnostics,
     build_relaysoul_runtime_feedback_summary,
@@ -64,6 +66,7 @@ from relaylm.routing import (
     list_model_ids,
     resolve_route,
 )
+from relaylm.token_budget import estimate_text_tokens
 from relaylm.token_budget_truncation import apply_token_budget_message_truncation
 from relaylm.token_policy_signal import (
     build_token_policy_decision_artifact,
@@ -436,6 +439,16 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 dry_run_only=config.relayctx_short_term_runtime_injection_dry_run_only,
             )
         )
+        forwarded_payload, relayctx_short_term_runtime_injection_apply_result = (
+            _maybe_apply_relayctx_short_term_runtime_injection(
+                payload=forwarded_payload,
+                preflight_artifact=relayctx_short_term_runtime_injection_preflight,
+                apply_enabled=config.relayctx_short_term_runtime_injection_apply_enabled,
+                dry_run_only=config.relayctx_short_term_runtime_injection_dry_run_only,
+                token_budget=config.relayctx_short_term_runtime_injection_token_budget,
+                chars_per_token=config.memory.chars_per_token,
+            )
+        )
 
         base_diagnostics = RequestDiagnostics(
             request_id=request_id,
@@ -494,6 +507,9 @@ def create_app(config_path: str | None = None) -> FastAPI:
             ),
             relayctx_short_term_runtime_injection_preflight=(
                 relayctx_short_term_runtime_injection_preflight
+            ),
+            relayctx_short_term_runtime_injection_apply_result=(
+                relayctx_short_term_runtime_injection_apply_result
             ),
             relayrun_artifact=relayrun_artifact,
         )
@@ -780,6 +796,162 @@ def _maybe_apply_token_budget_truncation(
     result["apply_mode"] = "runtime_apply"
     return forwarded_payload, result
 
+
+def _maybe_apply_relayctx_short_term_runtime_injection(
+    *,
+    payload: Mapping[str, Any],
+    preflight_artifact: Mapping[str, Any] | None,
+    apply_enabled: bool,
+    dry_run_only: bool,
+    token_budget: int,
+    chars_per_token: int,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    forwarded_payload = deepcopy(dict(payload))
+    original_messages = payload.get("messages")
+    original_message_count = len(original_messages) if isinstance(original_messages, list) else 0
+
+    if not apply_enabled:
+        return forwarded_payload, None
+
+    preflight_present = isinstance(preflight_artifact, Mapping)
+    blocked_reasons: list[str] = []
+    if dry_run_only:
+        blocked_reasons.append("dry_run_only")
+    if not preflight_present:
+        blocked_reasons.append("preflight_missing")
+    if preflight_present and preflight_artifact.get("injection_plan_present") is not True:
+        blocked_reasons.append("injection_plan_missing")
+    if preflight_present and preflight_artifact.get("input_assembled_block_present") is not True:
+        blocked_reasons.append("assembled_block_missing")
+    input_short_term_candidate_count = _non_negative_int(
+        preflight_artifact.get("input_short_term_candidate_count")
+        if preflight_present
+        else None
+    )
+    if preflight_present and input_short_term_candidate_count <= 0:
+        blocked_reasons.append("no_short_term_candidates")
+    if preflight_present and preflight_artifact.get("content_free") is not True:
+        blocked_reasons.append("preflight_not_content_free")
+    if not isinstance(original_messages, list):
+        blocked_reasons.append("messages_not_list")
+
+    insertion_index = None
+    if isinstance(original_messages, list):
+        insertion_index = _relayctx_before_latest_user_index(original_messages)
+        if insertion_index is None:
+            blocked_reasons.append("latest_user_message_not_found")
+
+    inserted_content = (
+        _relayctx_short_term_inserted_content(preflight_artifact)
+        if preflight_present
+        else ""
+    )
+    if not inserted_content:
+        blocked_reasons.append("inserted_content_empty")
+
+    estimated_tokens = _estimate_text_tokens(inserted_content, chars_per_token)
+    if token_budget <= 0 or estimated_tokens > token_budget:
+        blocked_reasons.append("token_budget_exceeded")
+
+    if blocked_reasons:
+        if dry_run_only or not apply_enabled:
+            blocked_reasons.append("payload_mutation_disabled")
+        result = build_relayctx_short_term_runtime_injection_apply_result(
+            preflight_artifact=dict(preflight_artifact) if preflight_present else None,
+            enabled=True,
+            dry_run_only=dry_run_only,
+            attempted=not dry_run_only,
+            applied=False,
+            original_message_count=original_message_count,
+            forwarded_message_count=original_message_count,
+            inserted_chars=0,
+            estimated_inserted_tokens=0,
+            blocked_reasons=blocked_reasons,
+        )
+        return forwarded_payload, result
+
+    assert isinstance(original_messages, list)
+    assert insertion_index is not None
+    forwarded_messages = [
+        deepcopy(message) for message in original_messages if isinstance(message, Mapping)
+    ]
+    if len(forwarded_messages) != original_message_count:
+        result = build_relayctx_short_term_runtime_injection_apply_result(
+            preflight_artifact=dict(preflight_artifact) if preflight_present else None,
+            enabled=True,
+            dry_run_only=dry_run_only,
+            attempted=True,
+            applied=False,
+            original_message_count=original_message_count,
+            forwarded_message_count=len(forwarded_messages),
+            inserted_chars=0,
+            estimated_inserted_tokens=0,
+            blocked_reasons=["messages_contain_non_object_items"],
+        )
+        return forwarded_payload, result
+
+    forwarded_messages.insert(
+        insertion_index,
+        {"role": "system", "content": inserted_content},
+    )
+    forwarded_payload["messages"] = forwarded_messages
+    result = build_relayctx_short_term_runtime_injection_apply_result(
+        preflight_artifact=dict(preflight_artifact) if preflight_present else None,
+        enabled=True,
+        dry_run_only=dry_run_only,
+        attempted=True,
+        applied=True,
+        original_message_count=original_message_count,
+        forwarded_message_count=len(forwarded_messages),
+        inserted_chars=len(inserted_content),
+        estimated_inserted_tokens=estimated_tokens,
+        blocked_reasons=[],
+    )
+    return forwarded_payload, result
+
+
+def _relayctx_before_latest_user_index(messages: list[Any]) -> int | None:
+    for index in range(len(messages) - 1, -1, -1):
+        message = messages[index]
+        if isinstance(message, Mapping) and message.get("role") == "user":
+            return index
+    return None
+
+
+def _relayctx_short_term_inserted_content(preflight_artifact: Mapping[str, Any]) -> str:
+    return "\n".join(
+        [
+            "[RelayCTX Short-Term Context]",
+            "The current thread contains short-term context candidates. Treat current user instructions and current-thread temporary context as higher priority than stable memory. Do not treat these hints as long-term memory.",
+            "",
+            "Candidate summary:",
+            f"- temporary facts: {_non_negative_int(preflight_artifact.get('temporary_fact_count'))}",
+            f"- temporary preferences: {_non_negative_int(preflight_artifact.get('temporary_preference_count'))}",
+            f"- instructions: {_non_negative_int(preflight_artifact.get('instruction_count'))}",
+            f"- overrides: {_non_negative_int(preflight_artifact.get('override_count'))}",
+            f"- contradictions: {_non_negative_int(preflight_artifact.get('contradiction_count'))}",
+            "",
+            "Rules:",
+            "- Prefer current user instruction and current-thread temporary context over memory_seed when they conflict.",
+            "- Do not persist these hints as long-term memory.",
+            "- Do not mention this block unless asked about context handling.",
+        ]
+    )
+
+
+def _non_negative_int(value: Any) -> int:
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, int) and value >= 0:
+        return value
+    return 0
+
+
+def _estimate_text_tokens(text: str, chars_per_token: int) -> int:
+    return estimate_text_tokens(
+        text,
+        chars_per_token=max(1, int(chars_per_token)),
+    ).estimated_tokens
 
 def _build_token_budget_truncation_dry_run(
     *,
