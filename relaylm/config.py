@@ -97,6 +97,7 @@ class RelayLMConfig(BaseModel):
     trace: TraceConfig = Field(default_factory=TraceConfig)
     relayctx_short_term_source_diagnostics_enabled: bool = False
     relayctx_short_term_extraction_dry_run_enabled: bool = False
+    relayctx_short_term_block_assembly_dry_run_enabled: bool = False
     memory: MemorySelectionConfig = Field(default_factory=MemorySelectionConfig)
     backends: dict[str, BackendConfig]
     model_routes: dict[str, ModelRoute]
