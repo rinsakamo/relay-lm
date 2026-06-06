@@ -99,6 +99,10 @@ def trace_runtime_event(
             trace_metadata["runtime_snippet_injection_result"] = (
                 diagnostics.runtime_snippet_injection_result
             )
+        if diagnostics.relayctx_short_term_source_diagnostics is not None:
+            trace_metadata["relayctx_short_term_source_diagnostics"] = (
+                diagnostics.relayctx_short_term_source_diagnostics
+            )
         if diagnostics.relayrun_artifact is not None:
             trace_metadata["relayrun_artifact"] = diagnostics.relayrun_artifact
         record = build_trace_record(

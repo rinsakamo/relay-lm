@@ -51,6 +51,7 @@ class RequestDiagnostics:
     relaymem_retrieval_artifact: dict[str, Any] | None = None
     runtime_ctx_injection_result: dict[str, Any] | None = None
     runtime_snippet_injection_result: dict[str, Any] | None = None
+    relayctx_short_term_source_diagnostics: dict[str, Any] | None = None
     relayrun_artifact: dict[str, Any] | None = None
 
     def to_headers(self) -> dict[str, str]:
@@ -162,6 +163,105 @@ def build_relaysoul_runtime_feedback_summary(diagnostics: RequestDiagnostics) ->
         "shadow_delta_status": shadow_delta.get("delta_status")
         if isinstance(shadow_delta.get("delta_status"), str)
         else None,
+    }
+
+
+def build_relayctx_short_term_source_diagnostics(
+    *,
+    messages: list[dict[str, Any]],
+    enabled: bool = False,
+    memory_source: str | None = None,
+    relaymem_retrieval_artifact: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Build content-free RelayCTX short-term source diagnostics.
+
+    The artifact only records source names, counts, and character lengths from
+    inbound OpenWebUI/OpenAI-compatible messages. It does not store, restore,
+    rewrite, compress, or inject short-term context and intentionally excludes
+    message text, prompt text, snippet text, backend payloads, and final text.
+    """
+
+    if not enabled:
+        return None
+
+    safe_messages = [message for message in messages if isinstance(message, dict)]
+    openwebui_message_count = len(safe_messages)
+    recent_user_messages = [
+        message for message in safe_messages if message.get("role") == "user"
+    ]
+    recent_assistant_messages = [
+        message for message in safe_messages if message.get("role") == "assistant"
+    ]
+    latest_user_message = recent_user_messages[-1] if recent_user_messages else None
+    latest_user_content = (
+        latest_user_message.get("content")
+        if isinstance(latest_user_message, dict)
+        else None
+    )
+    latest_user_message_chars = (
+        len(latest_user_content) if isinstance(latest_user_content, str) else 0
+    )
+    short_term_candidate_count = len(recent_user_messages) + len(recent_assistant_messages)
+    short_term_candidate_present = short_term_candidate_count > 0
+    retrieval_candidates = None
+    if isinstance(relaymem_retrieval_artifact, dict):
+        candidate_count = relaymem_retrieval_artifact.get("candidate_count")
+        if isinstance(candidate_count, int):
+            retrieval_candidates = candidate_count
+
+    return {
+        "schema_version": "relayctx_short_term_source_diagnostics.v0",
+        "diagnostics_only": True,
+        "enabled": True,
+        "content_free": True,
+        "short_term_storage_attempted": False,
+        "short_term_restore_attempted": False,
+        "short_term_injection_attempted": False,
+        "openwebui_messages_present": openwebui_message_count > 0,
+        "openwebui_message_count": openwebui_message_count,
+        "openwebui_recent_user_count": len(recent_user_messages),
+        "openwebui_recent_assistant_count": len(recent_assistant_messages),
+        "latest_user_message_present": latest_user_message is not None,
+        "latest_user_message_chars": latest_user_message_chars,
+        "short_term_candidate_present": short_term_candidate_present,
+        "short_term_candidate_count": short_term_candidate_count,
+        "short_term_source": "openwebui_messages"
+        if openwebui_message_count > 0
+        else "none",
+        "source_registry": {
+            "openwebui_messages": {
+                "present": openwebui_message_count > 0,
+                "message_count": openwebui_message_count,
+            },
+            "memory_seed": {
+                "present": memory_source is not None,
+                "source_name": memory_source,
+            },
+            "relaymem_retrieval": {
+                "present": isinstance(relaymem_retrieval_artifact, dict),
+                "candidate_count": retrieval_candidates,
+            },
+            "relayctx_short_term": {
+                "present": short_term_candidate_present,
+                "source": "openwebui_messages"
+                if short_term_candidate_present
+                else "none",
+            },
+        },
+        "safety": {
+            "contains_user_content": False,
+            "contains_backend_payload": False,
+            "contains_response_text": False,
+            "contains_prompt_text": False,
+            "contains_snippet_text": False,
+            "contains_final_text": False,
+            "stores_short_term_context": False,
+            "restores_cross_thread_context": False,
+            "rewrites_openwebui_messages": False,
+            "compresses_openwebui_messages": False,
+            "backend_payload_mutation_allowed": False,
+            "response_body_mutation_allowed": False,
+        },
     }
 
 

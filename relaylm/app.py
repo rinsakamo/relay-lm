@@ -23,6 +23,7 @@ from relaylm.config import RelayLMConfig, load_config
 from relaylm.diagnostics import (
     RequestDiagnostics,
     build_compile_decision_dry_run,
+    build_relayctx_short_term_source_diagnostics,
     build_relaysoul_runtime_feedback_summary,
 )
 from relaylm.memory_adapter import (
@@ -403,6 +404,14 @@ def create_app(config_path: str | None = None) -> FastAPI:
             stream_started=False,
             first_token_sent=False,
         )
+        relayctx_short_term_source_diagnostics = (
+            build_relayctx_short_term_source_diagnostics(
+                messages=_extract_trace_messages(payload),
+                enabled=config.relayctx_short_term_source_diagnostics_enabled,
+                memory_source=compiled_request.memory_source,
+                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+            )
+        )
 
         base_diagnostics = RequestDiagnostics(
             request_id=request_id,
@@ -454,6 +463,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             relaymem_retrieval_artifact=relaymem_retrieval_artifact,
             runtime_ctx_injection_result=runtime_ctx_injection_result,
             runtime_snippet_injection_result=runtime_snippet_injection_result,
+            relayctx_short_term_source_diagnostics=relayctx_short_term_source_diagnostics,
             relayrun_artifact=relayrun_artifact,
         )
         feedback_summary = (
