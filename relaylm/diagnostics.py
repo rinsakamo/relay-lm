@@ -54,6 +54,7 @@ class RequestDiagnostics:
     relayctx_short_term_source_diagnostics: dict[str, Any] | None = None
     relayctx_short_term_extraction_dry_run: dict[str, Any] | None = None
     relayctx_short_term_block_assembly_dry_run: dict[str, Any] | None = None
+    relayctx_short_term_runtime_injection_preflight: dict[str, Any] | None = None
     relayrun_artifact: dict[str, Any] | None = None
 
     def to_headers(self) -> dict[str, str]:
@@ -523,6 +524,120 @@ def _non_negative_int(value: Any) -> int:
     if isinstance(value, int) and value >= 0:
         return value
     return 0
+
+
+def build_relayctx_short_term_runtime_injection_preflight(
+    *,
+    assembly_artifact: dict[str, Any] | None,
+    enabled: bool = False,
+    dry_run_only: bool = True,
+    fallback_token_budget_hint: int = 400,
+) -> dict[str, Any] | None:
+    """Build a content-free RelayCTX short-term runtime injection preflight.
+
+    This artifact plans only future insertion metadata. It never renders block
+    content, creates a system-message preview, mutates backend payloads, mutates
+    responses, persists short-term CTX, or restores cross-thread CTX.
+    """
+
+    if not enabled:
+        return None
+
+    input_assembly_present = isinstance(assembly_artifact, dict)
+    input_assembled_block_present = (
+        assembly_artifact.get("assembled_block_present") is True
+        if input_assembly_present
+        else False
+    )
+    input_short_term_candidate_count = _non_negative_int(
+        assembly_artifact.get("input_short_term_candidate_count")
+        if input_assembly_present
+        else None
+    )
+    token_budget_hint = _positive_int(
+        assembly_artifact.get("assembled_block_token_budget_hint")
+        if input_assembly_present
+        else None,
+        default=fallback_token_budget_hint,
+    )
+    priority_order = _priority_order(
+        assembly_artifact.get("priority_order") if input_assembly_present else None
+    )
+
+    blocked_reasons: list[str] = []
+    if dry_run_only:
+        blocked_reasons.append("dry_run_only")
+    if not input_assembly_present:
+        blocked_reasons.append("assembly_missing")
+    if input_assembly_present and not input_assembled_block_present:
+        blocked_reasons.append("assembled_block_missing")
+    if input_assembly_present and input_short_term_candidate_count <= 0:
+        blocked_reasons.append("no_short_term_candidates")
+    blocked_reasons.append("payload_mutation_disabled")
+
+    injection_plan_present = (
+        input_assembly_present
+        and input_assembled_block_present
+        and input_short_term_candidate_count > 0
+    )
+
+    return {
+        "schema_version": "relayctx_short_term_runtime_injection_preflight.v0",
+        "enabled": True,
+        "dry_run_only": dry_run_only,
+        "attempted": True,
+        "applied": False,
+        "source": "relayctx_short_term_block_assembly_dry_run",
+        "input_assembly_present": input_assembly_present,
+        "input_assembled_block_present": input_assembled_block_present,
+        "input_short_term_candidate_count": input_short_term_candidate_count,
+        "injection_plan_present": injection_plan_present,
+        "insertion_point": "before_latest_user" if injection_plan_present else None,
+        "inserted_message_role": "system" if injection_plan_present else None,
+        "estimated_inserted_tokens": _estimated_inserted_tokens(
+            candidate_count=input_short_term_candidate_count,
+            token_budget_hint=token_budget_hint,
+        )
+        if injection_plan_present
+        else 0,
+        "token_budget_hint": token_budget_hint,
+        "priority_order": priority_order,
+        "apply_allowed": False,
+        "apply_attempted": False,
+        "backend_payload_mutation_allowed": False,
+        "backend_payload_mutation_applied": False,
+        "response_mutation_allowed": False,
+        "openwebui_message_mutation_allowed": False,
+        "persistence_allowed": False,
+        "restore_allowed": False,
+        "content_free": True,
+        "blocked_reasons": blocked_reasons,
+    }
+
+
+def _positive_int(value: Any, *, default: int) -> int:
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, int) and value > 0:
+        return value
+    return default
+
+
+def _priority_order(value: Any) -> list[str]:
+    if isinstance(value, list) and all(isinstance(item, str) for item in value):
+        return list(value)
+    return [
+        "current_user_instruction",
+        "openwebui_recent_messages",
+        "relayctx_short_term",
+        "memory_seed",
+    ]
+
+
+def _estimated_inserted_tokens(*, candidate_count: int, token_budget_hint: int) -> int:
+    if candidate_count <= 0:
+        return 0
+    return min(token_budget_hint, candidate_count * 24)
 
 
 def build_compile_decision_dry_run(
