@@ -61,7 +61,7 @@ def _write_config(
     path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
 
 
-def _payload(messages: list[dict[str, str]]) -> dict[str, Any]:
+def _payload(messages: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "model": "relaylm-default",
         "messages": messages,
@@ -159,6 +159,10 @@ def _assert_no_raw_content_in_artifact(artifact: dict[str, Any]) -> None:
     require("assistant remembered the bird" not in text, artifact)
     require("relaymem candidate raw body" not in text, artifact)
     require("relaymem candidate raw snippet" not in text, artifact)
+    require("array text part one" not in text, artifact)
+    require("array text part two" not in text, artifact)
+    require("https://example.invalid/raw-image.png" not in text, artifact)
+    require("non OpenAI chat text part" not in text, artifact)
     require("ok" not in text, artifact)
 
 
@@ -237,6 +241,42 @@ def _assert_pass_through_multi_message(root: Path, capture: _Capture, port: int)
     print("ok pass_through counts multi-message OpenWebUI history")
 
 
+def _assert_pass_through_content_array_message(root: Path, capture: _Capture, port: int) -> None:
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "array text part one"},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "https://example.invalid/raw-image.png"},
+                },
+                {"type": "text", "text": "array text part two"},
+                {"type": "text", "text": 123},
+                {"type": "input_text", "text": "non OpenAI chat text part"},
+            ],
+        }
+    ]
+    payload = _payload(messages)
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        mode="pass_through",
+    )
+    artifact = _diagnostics(metadata)
+    expected_chars = len("array text part one") + len("array text part two")
+    require(artifact.get("latest_user_message_present") is True, artifact)
+    require(artifact.get("latest_user_message_chars") == expected_chars, artifact)
+    require(backend_payload.get("messages") == messages, backend_payload)
+    require(payload["messages"] == messages, payload)
+    _assert_no_artifact_in_backend(backend_payload)
+    _assert_response_unchanged(response_body)
+    _assert_no_raw_content_in_artifact(artifact)
+    print("ok pass_through counts only text parts in OpenAI content arrays")
+
+
 def _assert_memory_light_keeps_source_separate(root: Path, capture: _Capture, port: int) -> None:
     messages = [
         {"role": "user", "content": "memory light turn one: 青いカモメ"},
@@ -282,6 +322,7 @@ def main() -> int:
             port = int(server.server_address[1])
             _assert_pass_through_single_message(store_root, capture, port)
             _assert_pass_through_multi_message(store_root, capture, port)
+            _assert_pass_through_content_array_message(store_root, capture, port)
             _assert_memory_light_keeps_source_separate(store_root, capture, port)
             _assert_relaymem_selected_candidates_counted()
         finally:

@@ -166,6 +166,20 @@ def build_relaysoul_runtime_feedback_summary(diagnostics: RequestDiagnostics) ->
     }
 
 
+def _content_text_length(content: Any) -> int:
+    if isinstance(content, str):
+        return len(content)
+    if isinstance(content, list):
+        return sum(
+            len(item["text"])
+            for item in content
+            if isinstance(item, dict)
+            and item.get("type") == "text"
+            and isinstance(item.get("text"), str)
+        )
+    return 0
+
+
 def build_relayctx_short_term_source_diagnostics(
     *,
     messages: list[dict[str, Any]],
@@ -198,9 +212,7 @@ def build_relayctx_short_term_source_diagnostics(
         if isinstance(latest_user_message, dict)
         else None
     )
-    latest_user_message_chars = (
-        len(latest_user_content) if isinstance(latest_user_content, str) else 0
-    )
+    latest_user_message_chars = _content_text_length(latest_user_content)
     short_term_candidate_count = len(recent_user_messages) + len(recent_assistant_messages)
     short_term_candidate_present = short_term_candidate_count > 0
     retrieval_candidates = None
