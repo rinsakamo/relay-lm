@@ -15,6 +15,12 @@ trace:
 # it never stores, restores, rewrites, compresses, or injects short-term CTX.
 relayctx_short_term_source_diagnostics_enabled: false
 
+# RelayCTX short-term extraction dry-run is default-off, diagnostics-only,
+# deterministic, and content-free. When enabled, RelayLM classifies aggregate
+# OpenWebUI short-term CTX candidate counts only; it does not store/restore CTX,
+# inject runtime context, mutate backend payloads, or mutate response bodies.
+relayctx_short_term_extraction_dry_run_enabled: false
+
 memory:
   candidate_limit: 3
   token_budget_hint: 800
