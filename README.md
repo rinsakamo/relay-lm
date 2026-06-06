@@ -75,6 +75,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [OpenWebUI + LM Studio MVP](docs/openwebui_lmstudio_mvp.md)
 - [OpenWebUI + LM Studio manual smoke runbook](docs/openwebui_lmstudio_manual_smoke.md)
 - [MVP-40 RelayCTX short-term extraction dry-run summary](docs/mvp40_summary.md)
+- [MVP-41 RelayCTX short-term block assembly dry-run summary](docs/mvp41_summary.md)
 - [OpenWebUI model preset/avatar checklist](docs/openwebui_model_preset_checklist.md)
 - [OpenWebUI route response differentiation checks](docs/openwebui_response_differentiation_checks.md)
 - [OpenWebUI + LM Studio manual smoke results template](docs/openwebui_lmstudio_manual_smoke_results_template.md)

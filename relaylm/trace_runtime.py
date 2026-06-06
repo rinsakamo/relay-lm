@@ -107,6 +107,10 @@ def trace_runtime_event(
             trace_metadata["relayctx_short_term_extraction_dry_run"] = (
                 diagnostics.relayctx_short_term_extraction_dry_run
             )
+        if diagnostics.relayctx_short_term_block_assembly_dry_run is not None:
+            trace_metadata["relayctx_short_term_block_assembly_dry_run"] = (
+                diagnostics.relayctx_short_term_block_assembly_dry_run
+            )
         if diagnostics.relayrun_artifact is not None:
             trace_metadata["relayrun_artifact"] = diagnostics.relayrun_artifact
         record = build_trace_record(

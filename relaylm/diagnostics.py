@@ -53,6 +53,7 @@ class RequestDiagnostics:
     runtime_snippet_injection_result: dict[str, Any] | None = None
     relayctx_short_term_source_diagnostics: dict[str, Any] | None = None
     relayctx_short_term_extraction_dry_run: dict[str, Any] | None = None
+    relayctx_short_term_block_assembly_dry_run: dict[str, Any] | None = None
     relayrun_artifact: dict[str, Any] | None = None
 
     def to_headers(self) -> dict[str, str]:
@@ -415,6 +416,113 @@ def _looks_like_contradiction(
     del memory_source
     markers = ("ではなく", "矛盾", "contradict", "not ")
     return any(marker in text or marker in lowered for marker in markers)
+
+
+def build_relayctx_short_term_block_assembly_dry_run(
+    *,
+    extraction_artifact: dict[str, Any] | None,
+    enabled: bool = False,
+    token_budget_hint: int = 400,
+) -> dict[str, Any] | None:
+    """Build a content-free RelayCTX short-term block assembly dry-run plan.
+
+    The returned artifact describes only aggregate counts and internal block
+    metadata. It does not create a ContextBlock, render content, persist data,
+    restore cross-thread state, inject runtime context, or mutate payloads.
+    """
+
+    if not enabled:
+        return None
+
+    input_extraction_present = isinstance(extraction_artifact, dict)
+    input_short_term_candidate_count = _non_negative_int(
+        extraction_artifact.get("short_term_candidate_count")
+        if input_extraction_present
+        else None
+    )
+    temporary_fact_count = _non_negative_int(
+        extraction_artifact.get("temporary_fact_candidate_count")
+        if input_extraction_present
+        else None
+    )
+    temporary_preference_count = _non_negative_int(
+        extraction_artifact.get("temporary_preference_candidate_count")
+        if input_extraction_present
+        else None
+    )
+    instruction_count = _non_negative_int(
+        extraction_artifact.get("instruction_candidate_count")
+        if input_extraction_present
+        else None
+    )
+    override_count = _non_negative_int(
+        extraction_artifact.get("override_candidate_count")
+        if input_extraction_present
+        else None
+    )
+    contradiction_count = _non_negative_int(
+        extraction_artifact.get("contradiction_candidate_count")
+        if input_extraction_present
+        else None
+    )
+
+    blocked_reasons: list[str] = []
+    if not input_extraction_present:
+        blocked_reasons.append("extraction_missing")
+    if input_extraction_present and input_short_term_candidate_count <= 0:
+        blocked_reasons.append("no_short_term_candidates")
+    assembled_block_present = not blocked_reasons
+
+    return {
+        "schema_version": "relayctx_short_term_block_assembly_dry_run.v0",
+        "enabled": True,
+        "dry_run_only": True,
+        "attempted": True,
+        "applied": False,
+        "source": "relayctx_short_term_extraction_dry_run",
+        "input_extraction_present": input_extraction_present,
+        "input_short_term_candidate_count": input_short_term_candidate_count,
+        "assembled_block_present": assembled_block_present,
+        "assembled_block_type": "relayctx_short_term"
+        if assembled_block_present
+        else None,
+        "assembled_block_source": "openwebui_messages"
+        if assembled_block_present
+        else None,
+        "assembled_block_priority": "current_thread_over_memory_seed"
+        if assembled_block_present
+        else None,
+        "assembled_block_token_budget_hint": token_budget_hint
+        if assembled_block_present
+        else None,
+        "temporary_fact_count": temporary_fact_count,
+        "temporary_preference_count": temporary_preference_count,
+        "instruction_count": instruction_count,
+        "override_count": override_count,
+        "contradiction_count": contradiction_count,
+        "priority_order": [
+            "current_user_instruction",
+            "openwebui_recent_messages",
+            "relayctx_short_term",
+            "memory_seed",
+        ],
+        "content_free": True,
+        "persistence_allowed": False,
+        "restore_allowed": False,
+        "injection_allowed": False,
+        "backend_payload_mutation_allowed": False,
+        "response_mutation_allowed": False,
+        "openwebui_message_mutation_allowed": False,
+        "blocked_reasons": blocked_reasons,
+    }
+
+
+def _non_negative_int(value: Any) -> int:
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, int) and value >= 0:
+        return value
+    return 0
 
 
 def build_compile_decision_dry_run(
