@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
+from relaylm.token_budget import estimate_text_tokens
+
 
 ReferenceKind = Literal["none", "pronoun_like", "continuation", "prior_memory_request"]
 CandidateAction = Literal[
@@ -18,6 +20,10 @@ CandidateAction = Literal[
 PRONOUN_LIKE_TERMS = ("それ", "これ", "前の", "さっき", "この件")
 CONTINUATION_TERMS = ("続き", "その方向", "それで")
 PRIOR_MEMORY_TERMS = ("前に話した", "覚えてる", "思い出して", "前回", "前のスレッド")
+QUICK_CLARIFICATION_RESPONSE_TEMPLATES = (
+    "どの話のことか、もう少しだけ教えて。",
+    "その話として探す前に、前回の要点をもう一度教えて。",
+)
 
 
 SAFE_CTX_KEYS = {
@@ -351,6 +357,25 @@ def build_relayint_request_compatibility_gate(
     functions_count = len(functions) if isinstance(functions, list) else 0
     function_call_present = _request_choice_present(payload, "function_call")
     n_requested_count, n_block_reason = _n_request_constraint(payload.get("n"))
+    max_completion_tokens = _token_limit_constraint(
+        payload,
+        "max_completion_tokens",
+        too_small_reason="max_completion_tokens_too_small",
+    )
+    max_tokens = _token_limit_constraint(
+        payload,
+        "max_tokens",
+        too_small_reason="max_tokens_too_small",
+    )
+    numeric_limits = [
+        limit
+        for limit in (max_completion_tokens["limit"], max_tokens["limit"])
+        if isinstance(limit, int | float)
+    ]
+    max_output_token_limit = min(numeric_limits) if numeric_limits else None
+    logprobs_requested = payload.get("logprobs") is True
+    top_logprobs_requested = "top_logprobs" in payload and payload.get("top_logprobs") is not None
+    stop_present = "stop" in payload and payload.get("stop") is not None
 
     block_reasons: list[str] = []
     if response_format_present:
@@ -365,6 +390,18 @@ def build_relayint_request_compatibility_gate(
         block_reasons.append("function_call_requested")
     if n_block_reason is not None:
         block_reasons.append(n_block_reason)
+    for reason in max_completion_tokens["block_reasons"]:
+        if reason not in block_reasons:
+            block_reasons.append(reason)
+    for reason in max_tokens["block_reasons"]:
+        if reason not in block_reasons:
+            block_reasons.append(reason)
+    if logprobs_requested:
+        block_reasons.append("logprobs_requested")
+    if top_logprobs_requested:
+        block_reasons.append("top_logprobs_requested")
+    if stop_present:
+        block_reasons.append("stop_sequence_requested")
 
     return {
         "compatible": not block_reasons,
@@ -374,6 +411,12 @@ def build_relayint_request_compatibility_gate(
         "functions_count": functions_count,
         "function_call_present": function_call_present,
         "n_requested_count": n_requested_count,
+        "max_completion_tokens_present": max_completion_tokens["present"],
+        "max_tokens_present": max_tokens["present"],
+        "max_output_token_limit": max_output_token_limit,
+        "logprobs_requested": logprobs_requested,
+        "top_logprobs_requested": top_logprobs_requested,
+        "stop_present": stop_present,
         "block_reasons": block_reasons,
     }
 
@@ -629,6 +672,37 @@ def _quick_clarification_scene_gate(
         "block_reasons": block_reasons,
     }
 
+
+
+def _token_limit_constraint(
+    payload: Mapping[str, Any],
+    key: str,
+    *,
+    too_small_reason: str,
+) -> dict[str, Any]:
+    if key not in payload or payload.get(key) is None:
+        return {"present": False, "limit": None, "block_reasons": []}
+
+    value = payload.get(key)
+    if isinstance(value, bool) or not isinstance(value, int | float) or value <= 0:
+        return {
+            "present": True,
+            "limit": value if isinstance(value, int | float) and not isinstance(value, bool) else None,
+            "block_reasons": ["unsupported_token_limit"],
+        }
+
+    block_reasons = ["token_limit_requested"]
+    if value < _quick_clarification_response_token_floor():
+        block_reasons.append(too_small_reason)
+    return {"present": True, "limit": value, "block_reasons": block_reasons}
+
+
+def _quick_clarification_response_token_floor() -> int:
+    estimates = [
+        estimate_text_tokens(template).estimated_tokens
+        for template in QUICK_CLARIFICATION_RESPONSE_TEMPLATES
+    ]
+    return max(estimates) if estimates else 0
 
 def _n_request_constraint(value: Any) -> tuple[int | float | None, str | None]:
     if value is None:
