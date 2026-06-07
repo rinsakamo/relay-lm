@@ -130,6 +130,79 @@ def build_relayint_fast_path_dry_run(
     }
 
 
+def build_relayint_quick_clarification_preflight(
+    *,
+    relayint_fast_path_dry_run: Mapping[str, Any] | None,
+    relayscn_scene_policy_artifact: Mapping[str, Any] | None = None,
+    enabled: bool = False,
+    dry_run_only: bool = True,
+) -> dict[str, Any] | None:
+    """Build content-free RelayINT quick clarification preflight diagnostics.
+
+    MVP-46 only plans whether a quick clarification could be prepared. It does
+    not generate user-visible clarification text, call an LLM, execute MEM
+    lookup, mutate backend payloads, or mutate responses.
+    """
+
+    if not enabled or not isinstance(relayint_fast_path_dry_run, Mapping):
+        return None
+
+    source_candidate_action = relayint_fast_path_dry_run.get("candidate_action")
+    preflight_applicable = source_candidate_action == "ask_clarification"
+    source_schema_version = relayint_fast_path_dry_run.get("schema_version")
+    ctx_metadata = relayint_fast_path_dry_run.get("ctx_working_metadata")
+    if not isinstance(ctx_metadata, Mapping):
+        ctx_metadata = {}
+
+    candidate_label_kinds = _quick_clarification_candidate_label_kinds(
+        relayint_fast_path_dry_run=relayint_fast_path_dry_run,
+        ctx_metadata=ctx_metadata,
+        preflight_applicable=preflight_applicable,
+    )
+    clarification_type = _quick_clarification_type(
+        relayint_fast_path_dry_run=relayint_fast_path_dry_run,
+        candidate_label_kinds=candidate_label_kinds,
+        preflight_applicable=preflight_applicable,
+    )
+
+    return {
+        "schema_version": "relayint_quick_clarification_preflight.v0",
+        "enabled": True,
+        "dry_run_only": dry_run_only,
+        "content_free": True,
+        "source_artifact_schema_version": (
+            source_schema_version if isinstance(source_schema_version, str) else None
+        ),
+        "source_candidate_action": (
+            source_candidate_action if isinstance(source_candidate_action, str) else None
+        ),
+        "preflight_applicable": preflight_applicable,
+        "clarification_type": clarification_type,
+        "candidate_count": len(candidate_label_kinds),
+        "candidate_labels_are_content_free": True,
+        "candidate_label_kinds": candidate_label_kinds,
+        "suggested_response_mode": (
+            "quick_clarification_candidate"
+            if preflight_applicable
+            else "no_quick_clarification"
+        ),
+        "scene_gate": _quick_clarification_scene_gate(relayscn_scene_policy_artifact),
+        "safety_gates": {
+            "content_free": True,
+            "llm_call_allowed": False,
+            "mem_lookup_allowed": False,
+            "backend_payload_mutation_allowed": False,
+            "response_mutation_allowed": False,
+            "user_visible_apply_allowed": False,
+        },
+        "llm_called": False,
+        "mem_lookup_executed": False,
+        "backend_payload_mutation_allowed": False,
+        "response_mutation_allowed": False,
+        "user_visible_apply_allowed": False,
+    }
+
+
 def _latest_user_text(messages: Sequence[Mapping[str, Any]]) -> str:
     for message in reversed(messages):
         if not isinstance(message, Mapping) or message.get("role") != "user":
@@ -305,6 +378,73 @@ def _ctx_metadata_summary(ctx_hints: Mapping[str, Any]) -> dict[str, Any]:
         "ctx_handoff_guess_present": ctx_handoff_guess_present,
         "ctx_handoff_guess_confirmation_candidate": ctx_handoff_guess_present,
     }
+
+
+def _quick_clarification_candidate_label_kinds(
+    *,
+    relayint_fast_path_dry_run: Mapping[str, Any],
+    ctx_metadata: Mapping[str, Any],
+    preflight_applicable: bool,
+) -> list[str]:
+    if not preflight_applicable:
+        return []
+
+    kinds: list[str] = []
+    if ctx_metadata.get("ctx_handoff_guess_confirmation_candidate") is True:
+        kinds.append("topic_anchor")
+    if _positive_int(ctx_metadata.get("usable_referable_item_count")) or _positive_int(
+        ctx_metadata.get("referable_item_count")
+    ):
+        kinds.append("referable_item")
+    if relayint_fast_path_dry_run.get("explicit_prior_memory_request_detected") is True:
+        kinds.append("prior_memory")
+    if not kinds:
+        kinds.append("unknown")
+    return kinds
+
+
+def _quick_clarification_type(
+    *,
+    relayint_fast_path_dry_run: Mapping[str, Any],
+    candidate_label_kinds: Sequence[str],
+    preflight_applicable: bool,
+) -> str:
+    if not preflight_applicable:
+        return "none"
+    if relayint_fast_path_dry_run.get("explicit_prior_memory_request_detected") is True:
+        return "prior_memory_reentry"
+    if any(kind in {"topic_anchor", "referable_item"} for kind in candidate_label_kinds):
+        return "reference_confirmation"
+    return "open_clarification"
+
+
+def _quick_clarification_scene_gate(
+    relayscn_scene_policy_artifact: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    scene_state: Mapping[str, Any] = {}
+    scene_policy: Mapping[str, Any] = {}
+    if isinstance(relayscn_scene_policy_artifact, Mapping):
+        raw_scene_state = relayscn_scene_policy_artifact.get("scene_state")
+        raw_scene_policy = relayscn_scene_policy_artifact.get("scene_policy")
+        if isinstance(raw_scene_state, Mapping):
+            scene_state = raw_scene_state
+        if isinstance(raw_scene_policy, Mapping):
+            scene_policy = raw_scene_policy
+
+    scene_type = scene_state.get("scene_type")
+    scene_type = scene_type if isinstance(scene_type, str) else "unknown"
+    user_confirmation_required = scene_policy.get("user_confirmation_required") is True
+    recovery_mode = scene_type == "recovery"
+    return {
+        "scene_type": scene_type,
+        "recovery_mode": recovery_mode,
+        "user_confirmation_required": user_confirmation_required,
+        "quick_clarification_allowed": True,
+    }
+
+
+def _positive_int(value: Any) -> bool:
+    return isinstance(value, int) and value > 0
 
 
 def _usable_referable_item_count(referable_items: Any) -> int:
