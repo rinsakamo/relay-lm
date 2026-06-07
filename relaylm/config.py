@@ -102,6 +102,9 @@ class RelayLMConfig(BaseModel):
     relayctx_short_term_runtime_injection_apply_enabled: bool = False
     relayctx_short_term_runtime_injection_dry_run_only: bool = True
     relayctx_short_term_runtime_injection_token_budget: int = Field(default=400, gt=0)
+    relayint_fast_path_dry_run_enabled: bool = False
+    relayint_fast_path_high_confidence_threshold: float = Field(default=0.80, ge=0.0, le=1.0)
+    relayint_fast_path_low_confidence_threshold: float = Field(default=0.55, ge=0.0, le=1.0)
     memory: MemorySelectionConfig = Field(default_factory=MemorySelectionConfig)
     backends: dict[str, BackendConfig]
     model_routes: dict[str, ModelRoute]
