@@ -72,6 +72,10 @@ def trace_runtime_event(
             trace_metadata["memory_adapter_shadow_delta"] = diagnostics.memory_adapter_shadow_delta
         if diagnostics.relaysoul_runtime_feedback_summary is not None:
             trace_metadata["relaysoul_runtime_feedback_summary"] = diagnostics.relaysoul_runtime_feedback_summary
+        if diagnostics.relayint_fast_path_dry_run is not None:
+            trace_metadata["relayint_fast_path_dry_run"] = (
+                diagnostics.relayint_fast_path_dry_run
+            )
         if diagnostics.compile_decision_dry_run is not None:
             trace_metadata["compile_decision_dry_run"] = diagnostics.compile_decision_dry_run
         if diagnostics.relayemo_artifact is not None:

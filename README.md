@@ -47,6 +47,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [Scene-aware memory scope design](docs/scene_memory_scope_design.md)
 - [RelaySCN MVP scene policy](docs/relayscn_mvp_scene_policy.md)
 - [RelayINT MVP design](docs/relayint_mvp_design.md)
+- [MVP-45 RelayINT Fast Path dry-run summary](docs/mvp45_summary.md)
 - [RelaySOUL patch candidate contract](docs/relaysoul_patch_candidate_contract.md)
 - [RelaySOUL revision contract](docs/relaysoul_revision_contract.md)
 - [RelaySOUL approval contract](docs/relaysoul_approval_contract.md)

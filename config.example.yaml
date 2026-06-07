@@ -42,6 +42,13 @@ relayctx_short_term_runtime_injection_apply_enabled: false
 relayctx_short_term_runtime_injection_dry_run_only: true
 relayctx_short_term_runtime_injection_token_budget: 400
 
+# RelayINT fast path dry-run is default-off, diagnostics-only, and content-free.
+# It uses deterministic heuristics only: no LLM call, no MEM lookup, and no
+# backend payload or response mutation.
+relayint_fast_path_dry_run_enabled: false
+relayint_fast_path_high_confidence_threshold: 0.80
+relayint_fast_path_low_confidence_threshold: 0.55
+
 memory:
   candidate_limit: 3
   token_budget_hint: 800

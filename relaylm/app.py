@@ -38,6 +38,7 @@ from relaylm.memory_adapter import (
     build_memory_adapter_shadow_dry_run_with_scope,
 )
 from relaylm.request_compiler import compile_chat_payload_if_enabled
+from relaylm.relayint import build_relayint_fast_path_dry_run
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relayref import build_relayref_dry_run_artifact
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
@@ -289,6 +290,17 @@ def create_app(config_path: str | None = None) -> FastAPI:
             messages=_extract_trace_messages(payload),
             ctx_hints=_extract_ctx_hints(payload),
         )
+        relayint_fast_path_dry_run = build_relayint_fast_path_dry_run(
+            messages=_extract_trace_messages(payload),
+            ctx_hints=_extract_ctx_hints(payload),
+            enabled=config.relayint_fast_path_dry_run_enabled,
+            high_confidence_threshold=(
+                config.relayint_fast_path_high_confidence_threshold
+            ),
+            low_confidence_threshold=(
+                config.relayint_fast_path_low_confidence_threshold
+            ),
+        )
         relaymem_store_diagnostics = build_relaymem_store_diagnostics(
             root_path=config.memory.root_path,
             store_enabled=config.memory.store_enabled,
@@ -490,6 +502,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             memory_adapter_shadow_readiness=memory_adapter_shadow_readiness,
             memory_adapter_shadow_conflicts=memory_adapter_shadow_conflicts,
             memory_adapter_shadow_delta=memory_adapter_shadow_delta,
+            relayint_fast_path_dry_run=relayint_fast_path_dry_run,
             trace_enabled=config.trace.enabled,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
