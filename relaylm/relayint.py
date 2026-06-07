@@ -20,6 +20,16 @@ CONTINUATION_TERMS = ("続き", "その方向", "それで")
 PRIOR_MEMORY_TERMS = ("前に話した", "覚えてる", "思い出して", "前回", "前のスレッド")
 
 
+SAFE_CTX_KEYS = {
+    "ctx_handoff_guess",
+    "current_topic",
+    "active_question",
+    "referable_items",
+    "unresolved_slots",
+    "next_expected_action",
+}
+
+
 def build_relayint_fast_path_dry_run(
     *,
     messages: Sequence[Mapping[str, Any]],
@@ -50,7 +60,7 @@ def build_relayint_fast_path_dry_run(
         continuation_count=continuation_count,
         pronoun_count=pronoun_count,
     )
-    ctx_signal_present = bool(ctx_summary["ctx_metadata_present"])
+    ctx_signal_present = bool(ctx_summary["ctx_signal_present"])
     ambiguity_detected = _ambiguity_detected(
         detected_reference_kind=detected_reference_kind,
         ctx_signal_present=ctx_signal_present,
@@ -229,7 +239,7 @@ def _llm_path_reasons(
 ) -> list[str]:
     reasons: list[str] = []
     if ambiguity_detected:
-        reasons.append("ambiguous_reference_without_ctx_working_metadata")
+        reasons.append("ambiguous_reference_without_ctx_working_signal")
     if confidence_bucket == "low":
         reasons.append("low_confidence_fast_path")
     if detected_reference_kind == "prior_memory_request":
@@ -253,7 +263,7 @@ def _decision_reasons(
     if ambiguity_detected:
         reasons.append("clarification_candidate_due_to_ambiguity")
     if ctx_signal_present:
-        reasons.append("ctx_working_metadata_present")
+        reasons.append("ctx_working_signal_present")
     return reasons
 
 
@@ -261,14 +271,26 @@ def _ctx_metadata_summary(ctx_hints: Mapping[str, Any]) -> dict[str, Any]:
     safe_keys = [
         key
         for key in ctx_hints.keys()
-        if isinstance(key, str) and key in {"ctx_handoff_guess", "current_topic", "active_question", "referable_items", "unresolved_slots", "next_expected_action"}
+        if isinstance(key, str) and key in SAFE_CTX_KEYS
     ]
     referable_items = ctx_hints.get("referable_items")
     unresolved_slots = ctx_hints.get("unresolved_slots")
+    referable_item_count = len(referable_items) if isinstance(referable_items, list) else 0
+    unresolved_slot_count = len(unresolved_slots) if isinstance(unresolved_slots, list) else 0
+    ctx_handoff_guess_present = isinstance(ctx_hints.get("ctx_handoff_guess"), Mapping)
+    recognized_ctx_field_present = bool(safe_keys)
+    ctx_signal_present = (
+        recognized_ctx_field_present
+        or referable_item_count > 0
+        or unresolved_slot_count > 0
+        or ctx_handoff_guess_present
+    )
     return {
         "ctx_metadata_present": bool(ctx_hints),
+        "ctx_signal_present": ctx_signal_present,
+        "recognized_ctx_field_present": recognized_ctx_field_present,
         "safe_key_count": len(safe_keys),
-        "referable_item_count": len(referable_items) if isinstance(referable_items, list) else 0,
-        "unresolved_slot_count": len(unresolved_slots) if isinstance(unresolved_slots, list) else 0,
-        "ctx_handoff_guess_present": isinstance(ctx_hints.get("ctx_handoff_guess"), Mapping),
+        "referable_item_count": referable_item_count,
+        "unresolved_slot_count": unresolved_slot_count,
+        "ctx_handoff_guess_present": ctx_handoff_guess_present,
     }
