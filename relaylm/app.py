@@ -43,6 +43,7 @@ from relaylm.relayint import (
     build_relayint_fast_path_dry_run,
     build_relayint_quick_clarification_apply_plan,
     build_relayint_quick_clarification_preflight,
+    build_relayint_request_compatibility_gate,
     quick_clarification_response_text_for_template,
 )
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
@@ -324,6 +325,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 dry_run_only=config.relayint_quick_clarification_apply_dry_run_only,
                 stream_enabled=stream_enabled,
                 response_max_chars=config.relayint_quick_clarification_response_max_chars,
+                request_compatibility_gate=build_relayint_request_compatibility_gate(payload),
             )
         )
         relaymem_store_diagnostics = build_relaymem_store_diagnostics(

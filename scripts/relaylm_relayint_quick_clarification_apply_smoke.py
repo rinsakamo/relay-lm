@@ -30,6 +30,9 @@ RAW_VALUES = (
     "それで",
     "some topic",
     "hidden raw referable",
+    "hidden_schema_name",
+    "hidden_tool_name",
+    "hidden_function_name",
     "https://example.invalid/relayint-apply.png",
 )
 
@@ -167,6 +170,8 @@ def _apply_plan(metadata: dict[str, Any]) -> dict[str, Any]:
     require(plan.get("mem_lookup_executed") is False, plan)
     require(plan.get("backend_payload_mutation_allowed") is False, plan)
     require(plan.get("backend_payload_mutation_applied") is False, plan)
+    compatibility_gate = plan.get("request_compatibility_gate")
+    require(isinstance(compatibility_gate, dict), plan)
     _assert_no_raw_content(plan)
     return plan
 
@@ -310,6 +315,108 @@ def _assert_scene_gate_blocks(root: Path, capture: _Capture, port: int) -> None:
     print("ok RelayINT quick clarification apply respects scene gate blocks")
 
 
+
+def _assert_response_format_blocks_apply(root: Path, capture: _Capture, port: int) -> None:
+    payload = _ambiguous_payload()
+    payload["response_format"] = {
+        "type": "json_schema",
+        "json_schema": {"name": "hidden_schema_name", "schema": {"type": "object"}},
+    }
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        apply_enabled=True,
+        apply_dry_run_only=False,
+        expect_backend_called=True,
+    )
+    require(backend_payload is not None and backend_payload.get("messages") == payload["messages"], backend_payload)
+    plan = _apply_plan(metadata)
+    reasons = plan.get("apply_block_reasons", [])
+    require(plan.get("apply_allowed") is False, plan)
+    require(plan.get("response_short_circuit_allowed") is False, plan)
+    require("response_format_requested" in reasons, plan)
+    gate = plan.get("request_compatibility_gate")
+    require(isinstance(gate, dict), plan)
+    require(gate.get("compatible") is False, plan)
+    require(gate.get("response_format_present") is True, plan)
+    require(gate.get("tools_count") == 0, plan)
+    _assert_backend_response(response_body)
+    require(_response_text(response_body) != FIXED_REFERENCE_CLARIFICATION, response_body)
+    print("ok response_format blocks RelayINT quick clarification apply")
+
+
+def _assert_tools_block_apply(root: Path, capture: _Capture, port: int) -> None:
+    payload = _ambiguous_payload()
+    payload["tools"] = [
+        {
+            "type": "function",
+            "function": {
+                "name": "hidden_tool_name",
+                "parameters": {"type": "object"},
+            },
+        }
+    ]
+    payload["tool_choice"] = "auto"
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        apply_enabled=True,
+        apply_dry_run_only=False,
+        expect_backend_called=True,
+    )
+    require(backend_payload is not None and backend_payload.get("messages") == payload["messages"], backend_payload)
+    plan = _apply_plan(metadata)
+    reasons = plan.get("apply_block_reasons", [])
+    require(plan.get("apply_allowed") is False, plan)
+    require("tools_requested" in reasons, plan)
+    require("tool_choice_requested" in reasons, plan)
+    gate = plan.get("request_compatibility_gate")
+    require(isinstance(gate, dict), plan)
+    require(gate.get("compatible") is False, plan)
+    require(gate.get("tools_count") == 1, plan)
+    require(gate.get("tool_choice_present") is True, plan)
+    _assert_backend_response(response_body)
+    require(_response_text(response_body) != FIXED_REFERENCE_CLARIFICATION, response_body)
+    print("ok tools/tool_choice block RelayINT quick clarification apply")
+
+
+def _assert_functions_block_apply(root: Path, capture: _Capture, port: int) -> None:
+    payload = _ambiguous_payload()
+    payload["functions"] = [
+        {
+            "name": "hidden_function_name",
+            "parameters": {"type": "object"},
+        }
+    ]
+    payload["function_call"] = {"name": "hidden_function_name"}
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        apply_enabled=True,
+        apply_dry_run_only=False,
+        expect_backend_called=True,
+    )
+    require(backend_payload is not None and backend_payload.get("messages") == payload["messages"], backend_payload)
+    plan = _apply_plan(metadata)
+    reasons = plan.get("apply_block_reasons", [])
+    require(plan.get("apply_allowed") is False, plan)
+    require("functions_requested" in reasons, plan)
+    require("function_call_requested" in reasons, plan)
+    gate = plan.get("request_compatibility_gate")
+    require(isinstance(gate, dict), plan)
+    require(gate.get("compatible") is False, plan)
+    require(gate.get("functions_count") == 1, plan)
+    require(gate.get("function_call_present") is True, plan)
+    _assert_backend_response(response_body)
+    require(_response_text(response_body) != FIXED_REFERENCE_CLARIFICATION, response_body)
+    print("ok legacy functions/function_call block RelayINT quick clarification apply")
+
 def _assert_streaming_unsupported_plan() -> None:
     preflight = {
         "schema_version": "relayint_quick_clarification_preflight.v0",
@@ -347,6 +454,9 @@ def main() -> int:
             _assert_actual_apply(store_root, capture, port)
             _assert_resolved_reference_falls_through(store_root, capture, port)
             _assert_scene_gate_blocks(store_root, capture, port)
+            _assert_response_format_blocks_apply(store_root, capture, port)
+            _assert_tools_block_apply(store_root, capture, port)
+            _assert_functions_block_apply(store_root, capture, port)
             _assert_streaming_unsupported_plan()
         finally:
             server.shutdown()

@@ -215,6 +215,7 @@ def build_relayint_quick_clarification_apply_plan(
     dry_run_only: bool = True,
     stream_enabled: bool = False,
     response_max_chars: int = 120,
+    request_compatibility_gate: Mapping[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Build a gated, content-free quick clarification apply plan.
 
@@ -245,6 +246,12 @@ def build_relayint_quick_clarification_apply_plan(
         isinstance(scene_gate, Mapping)
         and scene_gate.get("quick_clarification_allowed") is True
     )
+    compatibility_gate = (
+        dict(request_compatibility_gate)
+        if isinstance(request_compatibility_gate, Mapping)
+        else build_relayint_request_compatibility_gate(None)
+    )
+    request_compatible = compatibility_gate.get("compatible") is True
     clarification_type = (
         relayint_quick_clarification_preflight.get("clarification_type")
         if preflight_present
@@ -272,6 +279,10 @@ def build_relayint_quick_clarification_apply_plan(
         block_reasons.append("dry_run_only")
     if stream_enabled:
         block_reasons.append("streaming_not_supported")
+    if not request_compatible:
+        for reason in _string_list(compatibility_gate.get("block_reasons")):
+            if reason not in block_reasons:
+                block_reasons.append(reason)
     if response_template_id == "none" or response_chars == 0:
         block_reasons.append("response_template_missing")
     if response_chars > response_max_chars:
@@ -295,6 +306,7 @@ def build_relayint_quick_clarification_apply_plan(
         "response_template_id": response_template_id if apply_allowed else "none",
         "response_chars": response_chars if apply_allowed else 0,
         "content_free_template": True,
+        "request_compatibility_gate": compatibility_gate,
         "safety_gates": {
             "content_free": True,
             "llm_call_allowed": False,
@@ -321,6 +333,45 @@ def quick_clarification_response_text_for_template(template_id: str | None) -> s
     }:
         return "どの話のことか、もう少しだけ教えて。"
     return ""
+
+
+def build_relayint_request_compatibility_gate(
+    payload: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Summarize structured/tool request constraints without copying values."""
+
+    payload = payload or {}
+    response_format_present = (
+        "response_format" in payload and payload.get("response_format") is not None
+    )
+    tools = payload.get("tools")
+    tools_count = len(tools) if isinstance(tools, list) else 0
+    tool_choice_present = _request_choice_present(payload, "tool_choice")
+    functions = payload.get("functions")
+    functions_count = len(functions) if isinstance(functions, list) else 0
+    function_call_present = _request_choice_present(payload, "function_call")
+
+    block_reasons: list[str] = []
+    if response_format_present:
+        block_reasons.append("response_format_requested")
+    if tools_count > 0:
+        block_reasons.append("tools_requested")
+    if tool_choice_present:
+        block_reasons.append("tool_choice_requested")
+    if functions_count > 0:
+        block_reasons.append("functions_requested")
+    if function_call_present:
+        block_reasons.append("function_call_requested")
+
+    return {
+        "compatible": not block_reasons,
+        "response_format_present": response_format_present,
+        "tools_count": tools_count,
+        "tool_choice_present": tool_choice_present,
+        "functions_count": functions_count,
+        "function_call_present": function_call_present,
+        "block_reasons": block_reasons,
+    }
 
 
 def _latest_user_text(messages: Sequence[Mapping[str, Any]]) -> str:
@@ -574,6 +625,16 @@ def _quick_clarification_scene_gate(
         "block_reasons": block_reasons,
     }
 
+
+def _request_choice_present(payload: Mapping[str, Any], key: str) -> bool:
+    if key not in payload:
+        return False
+    value = payload.get(key)
+    if value is None:
+        return False
+    if isinstance(value, str) and value == "none":
+        return False
+    return True
 
 def _quick_clarification_response_kind(clarification_type: Any) -> str:
     if clarification_type == "prior_memory_reentry":
