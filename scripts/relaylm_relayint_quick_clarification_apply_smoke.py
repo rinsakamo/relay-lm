@@ -35,6 +35,7 @@ RAW_VALUES = (
     "hidden_function_name",
     "hidden memory content",
     "hidden stop sequence",
+    "hidden_voice",
     "https://example.invalid/relayint-apply.png",
 )
 
@@ -641,6 +642,120 @@ def _assert_stop_blocks_apply(root: Path, capture: _Capture, port: int) -> None:
     _assert_backend_response(response_body)
     print("ok stop sequences block RelayINT quick clarification apply without leaking values")
 
+
+def _assert_audio_modality_blocks_apply(root: Path, capture: _Capture, port: int) -> None:
+    payload = _ambiguous_payload()
+    payload["modalities"] = ["audio"]
+    payload["audio"] = {"voice": "hidden_voice", "format": "mp3"}
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        apply_enabled=True,
+        apply_dry_run_only=False,
+        expect_backend_called=True,
+    )
+    require(backend_payload is not None and backend_payload.get("messages") == payload["messages"], backend_payload)
+    plan = _apply_plan(metadata)
+    reasons = plan.get("apply_block_reasons", [])
+    require(plan.get("apply_allowed") is False, plan)
+    require(plan.get("response_short_circuit_allowed") is False, plan)
+    require("audio_modality_requested" in reasons or "audio_options_requested" in reasons, plan)
+    gate = plan.get("request_compatibility_gate")
+    require(isinstance(gate, dict), plan)
+    require(gate.get("compatible") is False, plan)
+    require(gate.get("modalities_present") is True, plan)
+    require(gate.get("modalities_count") == 1, plan)
+    require(gate.get("audio_modality_requested") is True, plan)
+    require(gate.get("audio_options_present") is True, plan)
+    require("hidden_voice" not in json.dumps(metadata, ensure_ascii=False), metadata)
+    require("hidden_voice" not in json.dumps(response_body, ensure_ascii=False), response_body)
+    require('"mp3"' not in json.dumps(metadata, ensure_ascii=False), metadata)
+    require('"mp3"' not in json.dumps(response_body, ensure_ascii=False), response_body)
+    _assert_backend_response(response_body)
+    print("ok audio modality blocks RelayINT quick clarification apply")
+
+
+def _assert_text_audio_modalities_block_apply(root: Path, capture: _Capture, port: int) -> None:
+    payload = _ambiguous_payload()
+    payload["modalities"] = ["text", "audio"]
+    payload["audio"] = {"voice": "hidden_voice", "format": "mp3"}
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        apply_enabled=True,
+        apply_dry_run_only=False,
+        expect_backend_called=True,
+    )
+    require(backend_payload is not None and backend_payload.get("messages") == payload["messages"], backend_payload)
+    plan = _apply_plan(metadata)
+    reasons = plan.get("apply_block_reasons", [])
+    require(plan.get("apply_allowed") is False, plan)
+    require("audio_modality_requested" in reasons, plan)
+    gate = plan.get("request_compatibility_gate")
+    require(isinstance(gate, dict), plan)
+    require(gate.get("modalities_count") == 2, plan)
+    require(gate.get("audio_modality_requested") is True, plan)
+    require("hidden_voice" not in json.dumps(metadata, ensure_ascii=False), metadata)
+    require("hidden_voice" not in json.dumps(response_body, ensure_ascii=False), response_body)
+    require('"mp3"' not in json.dumps(metadata, ensure_ascii=False), metadata)
+    require('"mp3"' not in json.dumps(response_body, ensure_ascii=False), response_body)
+    _assert_backend_response(response_body)
+    print("ok text+audio modalities block RelayINT quick clarification apply")
+
+
+def _assert_text_only_modalities_allow_apply(root: Path, capture: _Capture, port: int) -> None:
+    payload = _ambiguous_payload()
+    payload["modalities"] = ["text"]
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        apply_enabled=True,
+        apply_dry_run_only=False,
+        expect_backend_called=False,
+    )
+    require(backend_payload is None, backend_payload)
+    plan = _apply_plan(metadata)
+    require(plan.get("apply_allowed") is True, plan)
+    gate = plan.get("request_compatibility_gate")
+    require(isinstance(gate, dict), plan)
+    require(gate.get("compatible") is True, plan)
+    require(gate.get("modalities_present") is True, plan)
+    require(gate.get("modalities_count") == 1, plan)
+    require(gate.get("audio_modality_requested") is False, plan)
+    require(_response_text(response_body) == FIXED_REFERENCE_CLARIFICATION, response_body)
+    print("ok text-only modalities allow RelayINT quick clarification apply")
+
+
+def _assert_invalid_modalities_block_apply(root: Path, capture: _Capture, port: int) -> None:
+    payload = _ambiguous_payload()
+    payload["modalities"] = "audio"
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        apply_enabled=True,
+        apply_dry_run_only=False,
+        expect_backend_called=True,
+    )
+    require(backend_payload is not None and backend_payload.get("messages") == payload["messages"], backend_payload)
+    plan = _apply_plan(metadata)
+    reasons = plan.get("apply_block_reasons", [])
+    require(plan.get("apply_allowed") is False, plan)
+    require("unsupported_modalities_value" in reasons, plan)
+    gate = plan.get("request_compatibility_gate")
+    require(isinstance(gate, dict), plan)
+    require(gate.get("modalities_present") is True, plan)
+    require(gate.get("modalities_count") == 0, plan)
+    _assert_backend_response(response_body)
+    print("ok invalid modalities block RelayINT quick clarification apply")
+
 def _assert_streaming_unsupported_plan() -> None:
     preflight = {
         "schema_version": "relayint_quick_clarification_preflight.v0",
@@ -689,6 +804,10 @@ def main() -> int:
             _assert_logprobs_block_apply(store_root, capture, port)
             _assert_top_logprobs_block_apply(store_root, capture, port)
             _assert_stop_blocks_apply(store_root, capture, port)
+            _assert_audio_modality_blocks_apply(store_root, capture, port)
+            _assert_text_audio_modalities_block_apply(store_root, capture, port)
+            _assert_text_only_modalities_allow_apply(store_root, capture, port)
+            _assert_invalid_modalities_block_apply(store_root, capture, port)
             _assert_streaming_unsupported_plan()
         finally:
             server.shutdown()

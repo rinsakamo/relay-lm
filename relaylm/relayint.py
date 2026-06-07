@@ -376,6 +376,7 @@ def build_relayint_request_compatibility_gate(
     logprobs_requested = payload.get("logprobs") is True
     top_logprobs_requested = "top_logprobs" in payload and payload.get("top_logprobs") is not None
     stop_present = "stop" in payload and payload.get("stop") is not None
+    modalities_gate = _modalities_constraint(payload)
 
     block_reasons: list[str] = []
     if response_format_present:
@@ -402,6 +403,9 @@ def build_relayint_request_compatibility_gate(
         block_reasons.append("top_logprobs_requested")
     if stop_present:
         block_reasons.append("stop_sequence_requested")
+    for reason in modalities_gate["block_reasons"]:
+        if reason not in block_reasons:
+            block_reasons.append(reason)
 
     return {
         "compatible": not block_reasons,
@@ -417,6 +421,10 @@ def build_relayint_request_compatibility_gate(
         "logprobs_requested": logprobs_requested,
         "top_logprobs_requested": top_logprobs_requested,
         "stop_present": stop_present,
+        "modalities_present": modalities_gate["modalities_present"],
+        "modalities_count": modalities_gate["modalities_count"],
+        "audio_modality_requested": modalities_gate["audio_modality_requested"],
+        "audio_options_present": modalities_gate["audio_options_present"],
         "block_reasons": block_reasons,
     }
 
@@ -673,6 +681,50 @@ def _quick_clarification_scene_gate(
     }
 
 
+
+
+def _modalities_constraint(payload: Mapping[str, Any]) -> dict[str, Any]:
+    modalities_present = "modalities" in payload and payload.get("modalities") is not None
+    modalities_count = 0
+    audio_modality_requested = False
+    block_reasons: list[str] = []
+
+    if modalities_present:
+        modalities = payload.get("modalities")
+        if not isinstance(modalities, list) or not modalities:
+            block_reasons.append("unsupported_modalities_value")
+        else:
+            modalities_count = len(modalities)
+            unsupported_value = False
+            non_text_modality_requested = False
+            for modality in modalities:
+                if not isinstance(modality, str) or not modality.strip():
+                    unsupported_value = True
+                    continue
+                normalized = modality.strip().lower()
+                if normalized == "audio":
+                    audio_modality_requested = True
+                    non_text_modality_requested = True
+                elif normalized != "text":
+                    non_text_modality_requested = True
+            if unsupported_value:
+                block_reasons.append("unsupported_modalities_value")
+            if audio_modality_requested:
+                block_reasons.append("audio_modality_requested")
+            elif non_text_modality_requested:
+                block_reasons.append("non_text_modality_requested")
+
+    audio_options_present = "audio" in payload and payload.get("audio") is not None
+    if audio_options_present:
+        block_reasons.append("audio_options_requested")
+
+    return {
+        "modalities_present": modalities_present,
+        "modalities_count": modalities_count,
+        "audio_modality_requested": audio_modality_requested,
+        "audio_options_present": audio_options_present,
+        "block_reasons": block_reasons,
+    }
 
 def _token_limit_constraint(
     payload: Mapping[str, Any],
