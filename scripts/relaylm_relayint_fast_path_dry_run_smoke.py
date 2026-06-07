@@ -147,6 +147,7 @@ def _assert_no_raw_content(artifact: dict[str, Any]) -> None:
     require("それで進めよう" not in text, artifact)
     require("前に話したMEMのやつを思い出して" not in text, artifact)
     require("hidden raw ctx topic" not in text, artifact)
+    require("some topic" not in text, artifact)
     require("https://example.invalid/relayint-image.png" not in text, artifact)
 
 
@@ -218,6 +219,60 @@ def _assert_unrecognized_ctx_keeps_ambiguity(root: Path, capture: _Capture, port
     print("ok RelayINT ignores unrecognized ctx metadata for ambiguity clearing")
 
 
+
+def _assert_empty_ctx_fields_keep_ambiguity(root: Path, capture: _Capture, port: int) -> None:
+    payload = _payload(
+        "それで",
+        ctx={
+            "current_topic": "",
+            "next_expected_action": None,
+            "referable_items": [],
+            "unresolved_slots": [],
+        },
+    )
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        relayint_enabled=True,
+    )
+    artifact = _artifact(metadata)
+    require(artifact.get("ambiguity_detected") is True, artifact)
+    require(artifact.get("candidate_action") == "ask_clarification", artifact)
+    ctx_metadata = artifact.get("ctx_working_metadata")
+    require(isinstance(ctx_metadata, dict), artifact)
+    require(ctx_metadata.get("ctx_metadata_present") is True, artifact)
+    require(ctx_metadata.get("safe_key_count") > 0, artifact)
+    require(ctx_metadata.get("usable_ctx_field_count") == 0, artifact)
+    require(ctx_metadata.get("ctx_signal_present") is False, artifact)
+    require(backend_payload.get("messages") == payload["messages"], backend_payload)
+    _assert_response_unchanged(response_body)
+    _assert_no_raw_content(artifact)
+    print("ok RelayINT ignores empty safe ctx fields for ambiguity clearing")
+
+
+def _assert_non_empty_ctx_field_clears_ambiguity(root: Path, capture: _Capture, port: int) -> None:
+    payload = _payload("それで", ctx={"current_topic": "some topic"})
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        relayint_enabled=True,
+    )
+    artifact = _artifact(metadata)
+    require(artifact.get("ambiguity_detected") is False, artifact)
+    require(artifact.get("candidate_action") == "continue_without_clarification", artifact)
+    ctx_metadata = artifact.get("ctx_working_metadata")
+    require(isinstance(ctx_metadata, dict), artifact)
+    require(ctx_metadata.get("ctx_signal_present") is True, artifact)
+    require(ctx_metadata.get("usable_ctx_field_count") == 1, artifact)
+    require(backend_payload.get("messages") == payload["messages"], backend_payload)
+    _assert_response_unchanged(response_body)
+    _assert_no_raw_content(artifact)
+    print("ok RelayINT uses non-empty safe ctx fields without copying raw ctx")
+
 def _assert_prior_memory(root: Path, capture: _Capture, port: int) -> None:
     payload = _payload("前に話したMEMのやつを思い出して")
     backend_payload, metadata, response_body = _post(
@@ -253,6 +308,8 @@ def main() -> int:
             _assert_default_false(store_root, capture, port)
             _assert_continuation(store_root, capture, port)
             _assert_unrecognized_ctx_keeps_ambiguity(store_root, capture, port)
+            _assert_empty_ctx_fields_keep_ambiguity(store_root, capture, port)
+            _assert_non_empty_ctx_field_clears_ambiguity(store_root, capture, port)
             _assert_prior_memory(store_root, capture, port)
         finally:
             server.shutdown()

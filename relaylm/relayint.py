@@ -277,20 +277,34 @@ def _ctx_metadata_summary(ctx_hints: Mapping[str, Any]) -> dict[str, Any]:
     unresolved_slots = ctx_hints.get("unresolved_slots")
     referable_item_count = len(referable_items) if isinstance(referable_items, list) else 0
     unresolved_slot_count = len(unresolved_slots) if isinstance(unresolved_slots, list) else 0
-    ctx_handoff_guess_present = isinstance(ctx_hints.get("ctx_handoff_guess"), Mapping)
-    recognized_ctx_field_present = bool(safe_keys)
-    ctx_signal_present = (
-        recognized_ctx_field_present
-        or referable_item_count > 0
-        or unresolved_slot_count > 0
-        or ctx_handoff_guess_present
+    ctx_handoff_guess = ctx_hints.get("ctx_handoff_guess")
+    ctx_handoff_guess_present = (
+        isinstance(ctx_handoff_guess, Mapping) and len(ctx_handoff_guess) > 0
     )
+    usable_string_keys = [
+        key
+        for key in ("current_topic", "active_question", "next_expected_action")
+        if _usable_string(ctx_hints.get(key))
+    ]
+    usable_ctx_field_count = (
+        len(usable_string_keys)
+        + (1 if ctx_handoff_guess_present else 0)
+        + (1 if referable_item_count > 0 else 0)
+        + (1 if unresolved_slot_count > 0 else 0)
+    )
+    ctx_signal_present = usable_ctx_field_count > 0
     return {
         "ctx_metadata_present": bool(ctx_hints),
         "ctx_signal_present": ctx_signal_present,
-        "recognized_ctx_field_present": recognized_ctx_field_present,
+        "recognized_ctx_field_present": ctx_signal_present,
         "safe_key_count": len(safe_keys),
+        "usable_ctx_field_count": usable_ctx_field_count,
+        "ctx_signal_key_count": usable_ctx_field_count,
         "referable_item_count": referable_item_count,
         "unresolved_slot_count": unresolved_slot_count,
         "ctx_handoff_guess_present": ctx_handoff_guess_present,
     }
+
+
+def _usable_string(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
