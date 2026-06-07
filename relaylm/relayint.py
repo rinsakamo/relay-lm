@@ -276,6 +276,7 @@ def _ctx_metadata_summary(ctx_hints: Mapping[str, Any]) -> dict[str, Any]:
     referable_items = ctx_hints.get("referable_items")
     unresolved_slots = ctx_hints.get("unresolved_slots")
     referable_item_count = len(referable_items) if isinstance(referable_items, list) else 0
+    usable_referable_item_count = _usable_referable_item_count(referable_items)
     unresolved_slot_count = len(unresolved_slots) if isinstance(unresolved_slots, list) else 0
     ctx_handoff_guess = ctx_hints.get("ctx_handoff_guess")
     ctx_handoff_guess_present = (
@@ -287,7 +288,7 @@ def _ctx_metadata_summary(ctx_hints: Mapping[str, Any]) -> dict[str, Any]:
         if _usable_string(ctx_hints.get(key))
     ]
     usable_ctx_field_count = len(usable_string_keys) + (
-        1 if referable_item_count > 0 else 0
+        1 if usable_referable_item_count > 0 else 0
     )
     ctx_signal_present = usable_ctx_field_count > 0
     return {
@@ -299,10 +300,24 @@ def _ctx_metadata_summary(ctx_hints: Mapping[str, Any]) -> dict[str, Any]:
         "usable_ctx_field_count": usable_ctx_field_count,
         "ctx_signal_key_count": usable_ctx_field_count,
         "referable_item_count": referable_item_count,
+        "usable_referable_item_count": usable_referable_item_count,
         "unresolved_slot_count": unresolved_slot_count,
         "ctx_handoff_guess_present": ctx_handoff_guess_present,
         "ctx_handoff_guess_confirmation_candidate": ctx_handoff_guess_present,
     }
+
+
+def _usable_referable_item_count(referable_items: Any) -> int:
+    if not isinstance(referable_items, list):
+        return 0
+    usable_fields = ("label", "kind", "id", "topic_anchor", "text", "name")
+    count = 0
+    for item in referable_items:
+        if not isinstance(item, Mapping):
+            continue
+        if any(_usable_string(item.get(field)) for field in usable_fields):
+            count += 1
+    return count
 
 
 def _usable_string(value: Any) -> bool:

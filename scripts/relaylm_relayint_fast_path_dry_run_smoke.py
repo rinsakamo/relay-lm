@@ -150,6 +150,7 @@ def _assert_no_raw_content(artifact: dict[str, Any]) -> None:
     require("some topic" not in text, artifact)
     require("hidden handoff guess" not in text, artifact)
     require("hidden unresolved slot" not in text, artifact)
+    require("hidden raw referable" not in text, artifact)
     require("https://example.invalid/relayint-image.png" not in text, artifact)
 
 
@@ -191,6 +192,7 @@ def _assert_continuation(root: Path, capture: _Capture, port: int) -> None:
     ctx_metadata = artifact.get("ctx_working_metadata")
     require(isinstance(ctx_metadata, dict), artifact)
     require(ctx_metadata.get("ctx_signal_present") is True, artifact)
+    require(ctx_metadata.get("usable_referable_item_count") == 1, artifact)
     require(backend_payload.get("messages") == payload["messages"], backend_payload)
     _assert_response_unchanged(response_body)
     _assert_no_raw_content(artifact)
@@ -274,6 +276,88 @@ def _assert_non_empty_ctx_field_clears_ambiguity(root: Path, capture: _Capture, 
     _assert_response_unchanged(response_body)
     _assert_no_raw_content(artifact)
     print("ok RelayINT uses non-empty safe ctx fields without copying raw ctx")
+
+
+def _assert_placeholder_referable_items_keep_ambiguity(
+    root: Path, capture: _Capture, port: int
+) -> None:
+    payload = _payload(
+        "それで",
+        ctx={"referable_items": [{}, None, {"label": ""}]},
+    )
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        relayint_enabled=True,
+    )
+    artifact = _artifact(metadata)
+    require(artifact.get("ambiguity_detected") is True, artifact)
+    require(artifact.get("candidate_action") == "ask_clarification", artifact)
+    ctx_metadata = artifact.get("ctx_working_metadata")
+    require(isinstance(ctx_metadata, dict), artifact)
+    require(ctx_metadata.get("referable_item_count") == 3, artifact)
+    require(ctx_metadata.get("usable_referable_item_count") == 0, artifact)
+    require(ctx_metadata.get("ctx_signal_present") is False, artifact)
+    require(ctx_metadata.get("trusted_ctx_signal_present") is False, artifact)
+    require(backend_payload.get("messages") == payload["messages"], backend_payload)
+    _assert_response_unchanged(response_body)
+    _assert_no_raw_content(artifact)
+    print("ok RelayINT ignores placeholder referable items for ambiguity clearing")
+
+
+def _assert_usable_referable_items_clear_ambiguity(
+    root: Path, capture: _Capture, port: int
+) -> None:
+    payload = _payload("それで", ctx={"referable_items": [{"kind": "topic"}]})
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        relayint_enabled=True,
+    )
+    artifact = _artifact(metadata)
+    require(artifact.get("ambiguity_detected") is False, artifact)
+    require(artifact.get("candidate_action") == "continue_without_clarification", artifact)
+    ctx_metadata = artifact.get("ctx_working_metadata")
+    require(isinstance(ctx_metadata, dict), artifact)
+    require(ctx_metadata.get("referable_item_count") == 1, artifact)
+    require(ctx_metadata.get("usable_referable_item_count") == 1, artifact)
+    require(ctx_metadata.get("ctx_signal_present") is True, artifact)
+    require(ctx_metadata.get("trusted_ctx_signal_present") is True, artifact)
+    require(backend_payload.get("messages") == payload["messages"], backend_payload)
+    _assert_response_unchanged(response_body)
+    _assert_no_raw_content(artifact)
+    print("ok RelayINT uses usable referable anchors for ambiguity clearing")
+
+
+def _assert_raw_referable_value_does_not_leak(
+    root: Path, capture: _Capture, port: int
+) -> None:
+    payload = _payload(
+        "それで",
+        ctx={"referable_items": [{"label": "hidden raw referable"}]},
+    )
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        relayint_enabled=True,
+    )
+    artifact = _artifact(metadata)
+    require(artifact.get("ambiguity_detected") is False, artifact)
+    ctx_metadata = artifact.get("ctx_working_metadata")
+    require(isinstance(ctx_metadata, dict), artifact)
+    require(ctx_metadata.get("referable_item_count") == 1, artifact)
+    require(ctx_metadata.get("usable_referable_item_count") == 1, artifact)
+    require(ctx_metadata.get("ctx_signal_present") is True, artifact)
+    require(backend_payload.get("messages") == payload["messages"], backend_payload)
+    _assert_response_unchanged(response_body)
+    _assert_no_raw_content(artifact)
+    print("ok RelayINT counts raw referable anchors without leaking their values")
 
 
 def _assert_unresolved_slots_keep_ambiguity(root: Path, capture: _Capture, port: int) -> None:
@@ -401,6 +485,9 @@ def main() -> int:
             _assert_unrecognized_ctx_keeps_ambiguity(store_root, capture, port)
             _assert_empty_ctx_fields_keep_ambiguity(store_root, capture, port)
             _assert_non_empty_ctx_field_clears_ambiguity(store_root, capture, port)
+            _assert_placeholder_referable_items_keep_ambiguity(store_root, capture, port)
+            _assert_usable_referable_items_clear_ambiguity(store_root, capture, port)
+            _assert_raw_referable_value_does_not_leak(store_root, capture, port)
             _assert_unresolved_slots_keep_ambiguity(store_root, capture, port)
             _assert_handoff_guess_only_keeps_ambiguity(store_root, capture, port)
             _assert_handoff_guess_with_trusted_ctx_clears_ambiguity(store_root, capture, port)
