@@ -146,6 +146,7 @@ def _assert_no_raw_content(artifact: dict[str, Any]) -> None:
     text = json.dumps(artifact, ensure_ascii=False)
     require("それで進めよう" not in text, artifact)
     require("前に話したMEMのやつを思い出して" not in text, artifact)
+    require("hidden raw ctx topic" not in text, artifact)
     require("https://example.invalid/relayint-image.png" not in text, artifact)
 
 
@@ -184,10 +185,37 @@ def _assert_continuation(root: Path, capture: _Capture, port: int) -> None:
     require(artifact.get("reference_terms_detected_count") >= 1, artifact)
     require(artifact.get("candidate_action") == "continue_without_clarification", artifact)
     require(artifact.get("mem_query_needed_candidate") is False, artifact)
+    ctx_metadata = artifact.get("ctx_working_metadata")
+    require(isinstance(ctx_metadata, dict), artifact)
+    require(ctx_metadata.get("ctx_signal_present") is True, artifact)
     require(backend_payload.get("messages") == payload["messages"], backend_payload)
     _assert_response_unchanged(response_body)
     _assert_no_raw_content(artifact)
     print("ok RelayINT fast path detects continuation without mutation")
+
+
+def _assert_unrecognized_ctx_keeps_ambiguity(root: Path, capture: _Capture, port: int) -> None:
+    payload = _payload("それで", ctx={"trace_id": "trace-123", "source": "unrelated"})
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        relayint_enabled=True,
+    )
+    artifact = _artifact(metadata)
+    require(artifact.get("detected_reference_kind") == "continuation", artifact)
+    require(artifact.get("ambiguity_detected") is True, artifact)
+    require(artifact.get("candidate_action") == "ask_clarification", artifact)
+    ctx_metadata = artifact.get("ctx_working_metadata")
+    require(isinstance(ctx_metadata, dict), artifact)
+    require(ctx_metadata.get("ctx_metadata_present") is True, artifact)
+    require(ctx_metadata.get("ctx_signal_present") is False, artifact)
+    require(ctx_metadata.get("safe_key_count") == 0, artifact)
+    require(backend_payload.get("messages") == payload["messages"], backend_payload)
+    _assert_response_unchanged(response_body)
+    _assert_no_raw_content(artifact)
+    print("ok RelayINT ignores unrecognized ctx metadata for ambiguity clearing")
 
 
 def _assert_prior_memory(root: Path, capture: _Capture, port: int) -> None:
@@ -224,6 +252,7 @@ def main() -> int:
             port = int(server.server_address[1])
             _assert_default_false(store_root, capture, port)
             _assert_continuation(store_root, capture, port)
+            _assert_unrecognized_ctx_keeps_ambiguity(store_root, capture, port)
             _assert_prior_memory(store_root, capture, port)
         finally:
             server.shutdown()
