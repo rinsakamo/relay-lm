@@ -342,6 +342,49 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 if isinstance(applied_apply_plan.get("response_template_id"), str)
                 else None
             )
+            relaymem_retrieval_skipped_artifact = {
+                "schema_version": "relaymem.retrieval_skipped.v0",
+                "content_free": True,
+                "skipped": True,
+                "relaymem_retrieval_skipped_reason": (
+                    "relayint_quick_clarification_apply"
+                ),
+            }
+            runtime_ctx_skipped_result = skipped_relaymem_runtime_ctx_injection_result(
+                payload=compiled_request.payload,
+                reason="relayint_quick_clarification_apply",
+            )
+            runtime_snippet_skipped_result = dict(runtime_ctx_skipped_result)
+            runtime_snippet_skipped_result["schema_version"] = (
+                "relaymem.runtime_snippet_injection_result.v0"
+            )
+            runtime_snippet_skipped_result["source"] = "snippet_runtime_injection_plan"
+            relayrun_artifact = _build_relayrun_runtime_artifact(
+                config=config,
+                request_id=request_id,
+                run_id=relayrun_run_id,
+                route=route,
+                stream_enabled=stream_enabled,
+                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+                relayref_artifact=relayref_artifact,
+                relaymem_retrieval_artifact=relaymem_retrieval_skipped_artifact,
+                runtime_ctx_injection_result=runtime_ctx_skipped_result,
+                runtime_snippet_injection_result=runtime_snippet_skipped_result,
+                token_budget_truncation=None,
+                backend_forward_status="skipped",
+                backend_forward_blocked_reasons=[
+                    "relayint_quick_clarification_apply"
+                ],
+                stream_started=False,
+                first_token_sent=False,
+                run_status="completed",
+                response_source="relayint_quick_clarification_apply",
+                short_circuit_applied=True,
+                backend_forwarded=False,
+                relaymem_retrieval_skipped_reason=(
+                    "relayint_quick_clarification_apply"
+                ),
+            )
             diagnostics = RequestDiagnostics(
                 request_id=request_id,
                 route_model=route.route_model,
@@ -362,6 +405,9 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 trace_enabled=config.trace.enabled,
                 relayemo_artifact=relayemo_artifact,
                 relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+                runtime_ctx_injection_result=runtime_ctx_skipped_result,
+                runtime_snippet_injection_result=runtime_snippet_skipped_result,
+                relayrun_artifact=relayrun_artifact,
             )
             body = _relayint_quick_clarification_response_body(
                 request_id=request_id,
@@ -1198,6 +1244,11 @@ def _build_relayrun_runtime_artifact(
     backend_forward_blocked_reasons: list[str] | None = None,
     stream_started: bool | None = None,
     first_token_sent: bool | None = None,
+    run_status: str | None = None,
+    response_source: str | None = None,
+    short_circuit_applied: bool | None = None,
+    backend_forwarded: bool | None = None,
+    relaymem_retrieval_skipped_reason: str | None = None,
 ) -> dict[str, Any]:
     node_statuses = [
         build_relayrun_node(node_name="request_received", node_status="completed"),
@@ -1263,6 +1314,21 @@ def _build_relayrun_runtime_artifact(
         recovery_transition_created=False,
         applied=False,
     )
+    if isinstance(run_status, str) and run_status:
+        artifact["run_status"] = run_status
+    if isinstance(response_source, str) and response_source:
+        artifact["response_source"] = response_source
+    if short_circuit_applied is not None:
+        artifact["short_circuit_applied"] = bool(short_circuit_applied)
+    if backend_forwarded is not None:
+        artifact["backend_forwarded"] = bool(backend_forwarded)
+    if (
+        isinstance(relaymem_retrieval_skipped_reason, str)
+        and relaymem_retrieval_skipped_reason
+    ):
+        artifact["relaymem_retrieval_skipped_reason"] = (
+            relaymem_retrieval_skipped_reason
+        )
     if backend_forward_status == "pending":
         return artifact
     return write_relayrun_checkpoint_if_enabled(
@@ -1346,6 +1412,14 @@ def _relayrun_relaymem_retrieval_node(artifact: Mapping[str, Any] | None) -> dic
             node_status="failed",
             blocked_reasons=["relaymem_retrieval_artifact_missing"],
             fallback_reason="relaymem_retrieval_artifact_missing",
+        )
+    skipped_reason = artifact.get("relaymem_retrieval_skipped_reason")
+    if isinstance(skipped_reason, str) and skipped_reason:
+        return build_relayrun_node(
+            node_name="relaymem_retrieval",
+            node_status="skipped",
+            blocked_reasons=[skipped_reason],
+            fallback_reason=skipped_reason,
         )
     blocked_reasons = []
     apply_decision = artifact.get("apply_decision")

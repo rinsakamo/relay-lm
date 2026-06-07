@@ -54,6 +54,8 @@ def _write_config(
     apply_enabled: bool,
     apply_dry_run_only: bool,
     store_enabled: bool = False,
+    relayrun_checkpoint_write_enabled: bool = False,
+    relayrun_checkpoint_dry_run_only: bool = True,
 ) -> None:
     cfg = yaml.safe_load((REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8"))
     cfg["backends"]["local_backend"]["base_url"] = f"http://127.0.0.1:{port}/v1"
@@ -65,6 +67,11 @@ def _write_config(
     cfg["relayint_quick_clarification_apply_dry_run_only"] = apply_dry_run_only
     cfg["relayint_quick_clarification_response_max_chars"] = 120
     cfg["model_routes"]["relaylm-default"]["mode"] = "pass_through"
+    cfg["relayrun_checkpoint_root"] = (
+        store_root / "relayrun-checkpoints"
+    ).relative_to(REPO_ROOT).as_posix()
+    cfg["relayrun_checkpoint_write_enabled"] = relayrun_checkpoint_write_enabled
+    cfg["relayrun_checkpoint_dry_run_only"] = relayrun_checkpoint_dry_run_only
     cfg["memory"].update(
         {
             "root_path": str(store_root),
@@ -126,7 +133,9 @@ def _post(
     apply_dry_run_only: bool,
     expect_backend_called: bool,
     store_enabled: bool = False,
-) -> tuple[dict[str, Any] | None, dict[str, Any], Any]:
+    relayrun_checkpoint_write_enabled: bool = False,
+    relayrun_checkpoint_dry_run_only: bool = True,
+) -> tuple[dict[str, Any] | None, dict[str, Any], Any, dict[str, str]]:
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
         trace_path = Path(td) / "trace.jsonl"
         cfg_path = Path(td) / "cfg.yaml"
@@ -138,6 +147,8 @@ def _post(
             apply_enabled=apply_enabled,
             apply_dry_run_only=apply_dry_run_only,
             store_enabled=store_enabled,
+            relayrun_checkpoint_write_enabled=relayrun_checkpoint_write_enabled,
+            relayrun_checkpoint_dry_run_only=relayrun_checkpoint_dry_run_only,
         )
         app = create_app(str(cfg_path))
         original = json.loads(json.dumps(payload, ensure_ascii=False))
@@ -146,6 +157,7 @@ def _post(
             resp = client.post("/v1/chat/completions", json=payload)
             require(resp.status_code == 200, resp.text)
             response_body = resp.json()
+            headers = dict(resp.headers)
         require(payload == original, payload)
         if expect_backend_called:
             require(capture.count() > before_count, capture.count())
@@ -156,8 +168,27 @@ def _post(
         record = json.loads(trace_path.read_text(encoding="utf-8").strip().splitlines()[-1])
         metadata = record.get("metadata", {})
         require(isinstance(metadata, dict), record)
-        return backend_payload, metadata, response_body
+        return backend_payload, metadata, response_body, headers
 
+
+
+def _relayrun_artifact(metadata: dict[str, Any]) -> dict[str, Any]:
+    artifact = metadata.get("relayrun_artifact")
+    require(isinstance(artifact, dict), metadata)
+    require(artifact.get("schema_version") == "relayrun.runtime_checkpoint.v0", artifact)
+    return artifact
+
+
+def _checkpoint_envelope(artifact: dict[str, Any]) -> dict[str, Any]:
+    persisted_path = artifact.get("persisted_path")
+    require(isinstance(persisted_path, str) and persisted_path, artifact)
+    path = Path(persisted_path)
+    if not path.is_absolute():
+        path = REPO_ROOT / path
+    require(path.is_file(), persisted_path)
+    envelope = json.loads(path.read_text(encoding="utf-8"))
+    require(isinstance(envelope, dict), envelope)
+    return envelope
 
 def _apply_plan(metadata: dict[str, Any]) -> dict[str, Any]:
     plan = metadata.get("relayint_quick_clarification_apply_plan")
@@ -205,7 +236,7 @@ def _assert_no_raw_content(value: Any) -> None:
 
 def _assert_default_false(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -222,7 +253,7 @@ def _assert_default_false(root: Path, capture: _Capture, port: int) -> None:
 
 def _assert_dry_run_only(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -245,7 +276,7 @@ def _assert_dry_run_only(root: Path, capture: _Capture, port: int) -> None:
 def _assert_actual_apply(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
     payload["n"] = 1
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -267,11 +298,59 @@ def _assert_actual_apply(root: Path, capture: _Capture, port: int) -> None:
 
 
 
+
+def _assert_short_circuit_preserves_relayrun_checkpoint(root: Path, capture: _Capture, port: int) -> None:
+    payload = _ambiguous_payload()
+    backend_payload, metadata, response_body, headers = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        apply_enabled=True,
+        apply_dry_run_only=False,
+        expect_backend_called=False,
+        relayrun_checkpoint_write_enabled=True,
+        relayrun_checkpoint_dry_run_only=False,
+    )
+    require(backend_payload is None, backend_payload)
+    require(_response_text(response_body) == FIXED_REFERENCE_CLARIFICATION, response_body)
+    require("relayrun_artifact" not in json.dumps(response_body, ensure_ascii=False), response_body)
+    artifact = _relayrun_artifact(metadata)
+    require(headers.get("x-relaylm-run-id") == artifact.get("run_id"), headers)
+    require(headers.get("x-relaylm-run-status") == "completed", headers)
+    require(artifact.get("run_status") == "completed", artifact)
+    require(artifact.get("response_source") == "relayint_quick_clarification_apply", artifact)
+    require(artifact.get("short_circuit_applied") is True, artifact)
+    require(artifact.get("backend_forwarded") is False, artifact)
+    require(artifact.get("checkpoint_write_attempted") is True, artifact)
+    require(artifact.get("checkpoint_persisted") is True, artifact)
+    require(artifact.get("content_free") is True, artifact)
+    require(
+        artifact.get("relaymem_retrieval_skipped_reason")
+        == "relayint_quick_clarification_apply",
+        artifact,
+    )
+    envelope = _checkpoint_envelope(artifact)
+    require(envelope.get("checkpoint_persisted") is True, envelope)
+    require(envelope.get("run_status") == "completed", envelope)
+    require(envelope.get("response_source") == "relayint_quick_clarification_apply", envelope)
+    require(envelope.get("short_circuit_applied") is True, envelope)
+    require(envelope.get("backend_forwarded") is False, envelope)
+    require(
+        envelope.get("relaymem_retrieval_skipped_reason")
+        == "relayint_quick_clarification_apply",
+        envelope,
+    )
+    _assert_no_raw_content(artifact)
+    _assert_no_raw_content(envelope)
+    _assert_no_raw_content(response_body)
+    print("ok RelayINT short-circuit preserves RelayRUN checkpoint and headers")
+
 def _assert_short_circuit_skips_relaymem(root: Path, capture: _Capture, port: int) -> None:
     raw_memory = root / "hidden-memory.txt"
     raw_memory.write_text("hidden memory content", encoding="utf-8")
     payload = _ambiguous_payload()
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -280,8 +359,12 @@ def _assert_short_circuit_skips_relaymem(root: Path, capture: _Capture, port: in
         apply_dry_run_only=False,
         expect_backend_called=False,
         store_enabled=True,
+        relayrun_checkpoint_write_enabled=True,
+        relayrun_checkpoint_dry_run_only=False,
     )
     require(backend_payload is None, backend_payload)
+    artifact = _relayrun_artifact(metadata)
+    require(artifact.get("checkpoint_persisted") is True, artifact)
     require("relaymem_retrieval_artifact" not in metadata, metadata)
     require(
         metadata.get("relaymem_retrieval_skipped_reason")
@@ -305,7 +388,7 @@ def _assert_short_circuit_skips_relaymem(root: Path, capture: _Capture, port: in
 
 def _assert_dry_run_with_store_forwards(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -324,7 +407,7 @@ def _assert_dry_run_with_store_forwards(root: Path, capture: _Capture, port: int
 
 def _assert_resolved_reference_falls_through(root: Path, capture: _Capture, port: int) -> None:
     payload = _payload("それで", ctx={"current_topic": "some topic"})
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -355,7 +438,7 @@ def _assert_scene_gate_blocks(root: Path, capture: _Capture, port: int) -> None:
             "user_confirmation_required": True,
         },
     )
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -385,7 +468,7 @@ def _assert_response_format_blocks_apply(root: Path, capture: _Capture, port: in
         "type": "json_schema",
         "json_schema": {"name": "hidden_schema_name", "schema": {"type": "object"}},
     }
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -422,7 +505,7 @@ def _assert_tools_block_apply(root: Path, capture: _Capture, port: int) -> None:
         }
     ]
     payload["tool_choice"] = "auto"
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -456,7 +539,7 @@ def _assert_functions_block_apply(root: Path, capture: _Capture, port: int) -> N
         }
     ]
     payload["function_call"] = {"name": "hidden_function_name"}
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -484,7 +567,7 @@ def _assert_functions_block_apply(root: Path, capture: _Capture, port: int) -> N
 def _assert_multiple_choices_block_apply(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
     payload["n"] = 2
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -511,7 +594,7 @@ def _assert_multiple_choices_block_apply(root: Path, capture: _Capture, port: in
 def _assert_max_completion_tokens_block_apply(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
     payload["max_completion_tokens"] = 1
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -543,7 +626,7 @@ def _assert_max_completion_tokens_block_apply(root: Path, capture: _Capture, por
 def _assert_max_tokens_block_apply(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
     payload["max_tokens"] = 1
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -571,7 +654,7 @@ def _assert_max_tokens_block_apply(root: Path, capture: _Capture, port: int) -> 
 def _assert_logprobs_block_apply(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
     payload["logprobs"] = True
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -595,7 +678,7 @@ def _assert_logprobs_block_apply(root: Path, capture: _Capture, port: int) -> No
 def _assert_top_logprobs_block_apply(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
     payload["top_logprobs"] = 3
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -619,7 +702,7 @@ def _assert_top_logprobs_block_apply(root: Path, capture: _Capture, port: int) -
 def _assert_stop_blocks_apply(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
     payload["stop"] = ["hidden stop sequence"]
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -647,7 +730,7 @@ def _assert_audio_modality_blocks_apply(root: Path, capture: _Capture, port: int
     payload = _ambiguous_payload()
     payload["modalities"] = ["audio"]
     payload["audio"] = {"voice": "hidden_voice", "format": "mp3"}
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -681,7 +764,7 @@ def _assert_text_audio_modalities_block_apply(root: Path, capture: _Capture, por
     payload = _ambiguous_payload()
     payload["modalities"] = ["text", "audio"]
     payload["audio"] = {"voice": "hidden_voice", "format": "mp3"}
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -710,7 +793,7 @@ def _assert_text_audio_modalities_block_apply(root: Path, capture: _Capture, por
 def _assert_text_only_modalities_allow_apply(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
     payload["modalities"] = ["text"]
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -735,7 +818,7 @@ def _assert_text_only_modalities_allow_apply(root: Path, capture: _Capture, port
 def _assert_invalid_modalities_block_apply(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
     payload["modalities"] = "audio"
-    backend_payload, metadata, response_body = _post(
+    backend_payload, metadata, response_body, _headers = _post(
         port=port,
         store_root=root,
         payload=payload,
@@ -791,6 +874,7 @@ def main() -> int:
             _assert_default_false(store_root, capture, port)
             _assert_dry_run_only(store_root, capture, port)
             _assert_actual_apply(store_root, capture, port)
+            _assert_short_circuit_preserves_relayrun_checkpoint(store_root, capture, port)
             _assert_short_circuit_skips_relaymem(store_root, capture, port)
             _assert_dry_run_with_store_forwards(store_root, capture, port)
             _assert_resolved_reference_falls_through(store_root, capture, port)
