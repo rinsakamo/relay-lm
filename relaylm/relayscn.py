@@ -246,6 +246,8 @@ def _normalize_scene_state(raw_scene_state: Mapping[str, Any], *, source: str) -
         "stability": stability,
         "signals": normalized_signals,
         "is_estimate": source != "request_metadata",
+        "recovery_mode": raw_scene_state.get("recovery_mode") is True,
+        "user_confirmation_required": raw_scene_state.get("user_confirmation_required") is True,
     }
 
 

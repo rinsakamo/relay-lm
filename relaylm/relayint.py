@@ -148,7 +148,11 @@ def build_relayint_quick_clarification_preflight(
         return None
 
     source_candidate_action = relayint_fast_path_dry_run.get("candidate_action")
-    preflight_applicable = source_candidate_action == "ask_clarification"
+    scene_gate = _quick_clarification_scene_gate(relayscn_scene_policy_artifact)
+    quick_clarification_allowed = scene_gate["quick_clarification_allowed"] is True
+    preflight_applicable = (
+        source_candidate_action == "ask_clarification" and quick_clarification_allowed
+    )
     source_schema_version = relayint_fast_path_dry_run.get("schema_version")
     ctx_metadata = relayint_fast_path_dry_run.get("ctx_working_metadata")
     if not isinstance(ctx_metadata, Mapping):
@@ -186,7 +190,8 @@ def build_relayint_quick_clarification_preflight(
             if preflight_applicable
             else "no_quick_clarification"
         ),
-        "scene_gate": _quick_clarification_scene_gate(relayscn_scene_policy_artifact),
+        "scene_gate": scene_gate,
+        "quick_clarification_block_reasons": scene_gate["block_reasons"],
         "safety_gates": {
             "content_free": True,
             "llm_call_allowed": False,
@@ -433,13 +438,25 @@ def _quick_clarification_scene_gate(
 
     scene_type = scene_state.get("scene_type")
     scene_type = scene_type if isinstance(scene_type, str) else "unknown"
-    user_confirmation_required = scene_policy.get("user_confirmation_required") is True
-    recovery_mode = scene_type == "recovery"
+    scene_policy_confirmation_required = scene_policy.get("user_confirmation_required") is True
+    scene_state_confirmation_required = scene_state.get("user_confirmation_required") is True
+    user_confirmation_required = (
+        scene_policy_confirmation_required or scene_state_confirmation_required
+    )
+    recovery_mode = scene_type == "recovery" or scene_state.get("recovery_mode") is True
+    block_reasons: list[str] = []
+    if scene_type == "recovery":
+        block_reasons.append("scene_type_is_recovery")
+    if recovery_mode:
+        block_reasons.append("recovery_mode_enabled")
+    if user_confirmation_required:
+        block_reasons.append("user_confirmation_required")
     return {
         "scene_type": scene_type,
         "recovery_mode": recovery_mode,
         "user_confirmation_required": user_confirmation_required,
-        "quick_clarification_allowed": True,
+        "quick_clarification_allowed": not block_reasons,
+        "block_reasons": block_reasons,
     }
 
 

@@ -63,9 +63,15 @@ def _write_config(
     path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
 
 
-def _payload(content: Any, *, ctx: dict[str, Any] | None = None) -> dict[str, Any]:
+def _payload(
+    content: Any,
+    *,
+    ctx: dict[str, Any] | None = None,
+    scene_state: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     metadata: dict[str, Any] = {
-        "scene_state": {
+        "scene_state": scene_state
+        or {
             "scene_type": "design_talk",
             "confidence": 0.95,
             "stability": 0.9,
@@ -225,10 +231,99 @@ def _assert_ambiguous_reference_preflight(root: Path, capture: _Capture, port: i
     require(isinstance(scene_gate, dict), artifact)
     require(scene_gate.get("scene_type") == "design_talk", artifact)
     require(scene_gate.get("quick_clarification_allowed") is True, artifact)
+    require(scene_gate.get("block_reasons") == [], artifact)
+    require(artifact.get("quick_clarification_block_reasons") == [], artifact)
     require(backend_payload.get("messages") == payload["messages"], backend_payload)
     _assert_response_unchanged(response_body)
     _assert_no_raw_content(artifact)
     print("ok ambiguous RelayINT reference emits content-free quick clarification preflight")
+
+
+def _assert_recovery_scene_blocks_preflight(root: Path, capture: _Capture, port: int) -> None:
+    payload = _payload(
+        "それで",
+        scene_state={
+            "scene_type": "recovery",
+            "confidence": 0.95,
+            "stability": 0.9,
+            "recovery_mode": True,
+            "user_confirmation_required": True,
+        },
+    )
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        relayint_enabled=True,
+        preflight_enabled=True,
+    )
+    fast_path = metadata.get("relayint_fast_path_dry_run")
+    require(isinstance(fast_path, dict), metadata)
+    require(fast_path.get("candidate_action") == "ask_clarification", fast_path)
+    artifact = _preflight(metadata)
+    require(artifact.get("source_candidate_action") == "ask_clarification", artifact)
+    require(artifact.get("preflight_applicable") is False, artifact)
+    require(artifact.get("suggested_response_mode") == "no_quick_clarification", artifact)
+    scene_gate = artifact.get("scene_gate")
+    require(isinstance(scene_gate, dict), artifact)
+    require(scene_gate.get("scene_type") == "recovery", artifact)
+    require(scene_gate.get("recovery_mode") is True, artifact)
+    require(scene_gate.get("user_confirmation_required") is True, artifact)
+    require(scene_gate.get("quick_clarification_allowed") is False, artifact)
+    block_reasons = scene_gate.get("block_reasons")
+    require(isinstance(block_reasons, list), artifact)
+    require("scene_type_is_recovery" in block_reasons, artifact)
+    require("recovery_mode_enabled" in block_reasons, artifact)
+    require("user_confirmation_required" in block_reasons, artifact)
+    require(artifact.get("quick_clarification_block_reasons") == block_reasons, artifact)
+    require(backend_payload.get("messages") == payload["messages"], backend_payload)
+    _assert_response_unchanged(response_body)
+    _assert_no_raw_content(artifact)
+    print("ok recovery scene blocks RelayINT quick clarification preflight")
+
+
+def _assert_user_confirmation_required_blocks_preflight(
+    root: Path, capture: _Capture, port: int
+) -> None:
+    payload = _payload(
+        "それで",
+        scene_state={
+            "scene_type": "design_talk",
+            "confidence": 0.95,
+            "stability": 0.9,
+            "user_confirmation_required": True,
+        },
+    )
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        relayint_enabled=True,
+        preflight_enabled=True,
+    )
+    fast_path = metadata.get("relayint_fast_path_dry_run")
+    require(isinstance(fast_path, dict), metadata)
+    require(fast_path.get("candidate_action") == "ask_clarification", fast_path)
+    artifact = _preflight(metadata)
+    require(artifact.get("source_candidate_action") == "ask_clarification", artifact)
+    require(artifact.get("preflight_applicable") is False, artifact)
+    require(artifact.get("suggested_response_mode") == "no_quick_clarification", artifact)
+    scene_gate = artifact.get("scene_gate")
+    require(isinstance(scene_gate, dict), artifact)
+    require(scene_gate.get("scene_type") == "design_talk", artifact)
+    require(scene_gate.get("recovery_mode") is False, artifact)
+    require(scene_gate.get("user_confirmation_required") is True, artifact)
+    require(scene_gate.get("quick_clarification_allowed") is False, artifact)
+    block_reasons = scene_gate.get("block_reasons")
+    require(isinstance(block_reasons, list), artifact)
+    require("user_confirmation_required" in block_reasons, artifact)
+    require(artifact.get("quick_clarification_block_reasons") == block_reasons, artifact)
+    require(backend_payload.get("messages") == payload["messages"], backend_payload)
+    _assert_response_unchanged(response_body)
+    _assert_no_raw_content(artifact)
+    print("ok user confirmation requirement blocks RelayINT quick clarification preflight")
 
 
 def _assert_resolved_reference_not_applicable(root: Path, capture: _Capture, port: int) -> None:
@@ -272,6 +367,8 @@ def main() -> int:
             _assert_default_false(store_root, capture, port)
             _assert_fast_path_disabled(store_root, capture, port)
             _assert_ambiguous_reference_preflight(store_root, capture, port)
+            _assert_recovery_scene_blocks_preflight(store_root, capture, port)
+            _assert_user_confirmation_required_blocks_preflight(store_root, capture, port)
             _assert_resolved_reference_not_applicable(store_root, capture, port)
         finally:
             server.shutdown()
