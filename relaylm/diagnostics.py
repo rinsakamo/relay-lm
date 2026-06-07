@@ -41,6 +41,7 @@ class RequestDiagnostics:
     memory_adapter_shadow_delta: dict[str, Any] | None = None
     relaysoul_runtime_feedback_summary: dict[str, Any] | None = None
     relayint_fast_path_dry_run: dict[str, Any] | None = None
+    relayint_quick_clarification_preflight: dict[str, Any] | None = None
     trace_enabled: bool = False
     profile_compile_dry_run_enabled: bool | None = None
     profile_compile_fallback_reason: str | None = None
