@@ -288,7 +288,6 @@ def _ctx_metadata_summary(ctx_hints: Mapping[str, Any]) -> dict[str, Any]:
     ]
     usable_ctx_field_count = (
         len(usable_string_keys)
-        + (1 if ctx_handoff_guess_present else 0)
         + (1 if referable_item_count > 0 else 0)
         + (1 if unresolved_slot_count > 0 else 0)
     )
@@ -296,6 +295,7 @@ def _ctx_metadata_summary(ctx_hints: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "ctx_metadata_present": bool(ctx_hints),
         "ctx_signal_present": ctx_signal_present,
+        "trusted_ctx_signal_present": ctx_signal_present,
         "recognized_ctx_field_present": ctx_signal_present,
         "safe_key_count": len(safe_keys),
         "usable_ctx_field_count": usable_ctx_field_count,
@@ -303,6 +303,7 @@ def _ctx_metadata_summary(ctx_hints: Mapping[str, Any]) -> dict[str, Any]:
         "referable_item_count": referable_item_count,
         "unresolved_slot_count": unresolved_slot_count,
         "ctx_handoff_guess_present": ctx_handoff_guess_present,
+        "ctx_handoff_guess_confirmation_candidate": ctx_handoff_guess_present,
     }
 
 
