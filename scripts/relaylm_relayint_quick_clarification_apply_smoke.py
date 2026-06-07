@@ -33,6 +33,7 @@ RAW_VALUES = (
     "hidden_schema_name",
     "hidden_tool_name",
     "hidden_function_name",
+    "hidden memory content",
     "https://example.invalid/relayint-apply.png",
 )
 
@@ -50,6 +51,7 @@ def _write_config(
     store_root: Path,
     apply_enabled: bool,
     apply_dry_run_only: bool,
+    store_enabled: bool = False,
 ) -> None:
     cfg = yaml.safe_load((REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8"))
     cfg["backends"]["local_backend"]["base_url"] = f"http://127.0.0.1:{port}/v1"
@@ -64,7 +66,7 @@ def _write_config(
     cfg["memory"].update(
         {
             "root_path": str(store_root),
-            "store_enabled": False,
+            "store_enabled": store_enabled,
             "retrieval_dry_run_only": True,
             "ctx_block_apply_enabled": False,
             "snippet_extraction_enabled": False,
@@ -121,6 +123,7 @@ def _post(
     apply_enabled: bool,
     apply_dry_run_only: bool,
     expect_backend_called: bool,
+    store_enabled: bool = False,
 ) -> tuple[dict[str, Any] | None, dict[str, Any], Any]:
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
         trace_path = Path(td) / "trace.jsonl"
@@ -132,6 +135,7 @@ def _post(
             store_root=store_root,
             apply_enabled=apply_enabled,
             apply_dry_run_only=apply_dry_run_only,
+            store_enabled=store_enabled,
         )
         app = create_app(str(cfg_path))
         original = json.loads(json.dumps(payload, ensure_ascii=False))
@@ -238,6 +242,7 @@ def _assert_dry_run_only(root: Path, capture: _Capture, port: int) -> None:
 
 def _assert_actual_apply(root: Path, capture: _Capture, port: int) -> None:
     payload = _ambiguous_payload()
+    payload["n"] = 1
     backend_payload, metadata, response_body = _post(
         port=port,
         store_root=root,
@@ -258,6 +263,62 @@ def _assert_actual_apply(root: Path, capture: _Capture, port: int) -> None:
     _assert_no_raw_content(response_body)
     print("ok RelayINT quick clarification apply short-circuits with fixed response")
 
+
+
+def _assert_short_circuit_skips_relaymem(root: Path, capture: _Capture, port: int) -> None:
+    raw_memory = root / "hidden-memory.txt"
+    raw_memory.write_text("hidden memory content", encoding="utf-8")
+    payload = _ambiguous_payload()
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        apply_enabled=True,
+        apply_dry_run_only=False,
+        expect_backend_called=False,
+        store_enabled=True,
+    )
+    require(backend_payload is None, backend_payload)
+    require("relaymem_retrieval_artifact" not in metadata, metadata)
+    require(
+        metadata.get("relaymem_retrieval_skipped_reason")
+        == "relayint_quick_clarification_apply",
+        metadata,
+    )
+    plan = _apply_plan(metadata)
+    require(plan.get("apply_allowed") is True, plan)
+    require(plan.get("short_circuit_applied") is True, plan)
+    require(plan.get("mem_lookup_executed") is False, plan)
+    require(
+        plan.get("relaymem_retrieval_skipped_reason")
+        == "relayint_quick_clarification_apply",
+        plan,
+    )
+    require(_response_text(response_body) == FIXED_REFERENCE_CLARIFICATION, response_body)
+    _assert_no_raw_content(metadata)
+    _assert_no_raw_content(response_body)
+    print("ok RelayINT quick clarification short-circuit skips RelayMEM retrieval")
+
+
+def _assert_dry_run_with_store_forwards(root: Path, capture: _Capture, port: int) -> None:
+    payload = _ambiguous_payload()
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        apply_enabled=True,
+        apply_dry_run_only=True,
+        expect_backend_called=True,
+        store_enabled=True,
+    )
+    require(backend_payload is not None and backend_payload.get("messages") == payload["messages"], backend_payload)
+    plan = _apply_plan(metadata)
+    require(plan.get("apply_allowed") is False, plan)
+    require("dry_run_only" in plan.get("apply_block_reasons", []), plan)
+    _assert_backend_response(response_body)
+    print("ok RelayINT quick clarification dry-run with store still forwards")
 
 def _assert_resolved_reference_falls_through(root: Path, capture: _Capture, port: int) -> None:
     payload = _payload("それで", ctx={"current_topic": "some topic"})
@@ -417,6 +478,33 @@ def _assert_functions_block_apply(root: Path, capture: _Capture, port: int) -> N
     require(_response_text(response_body) != FIXED_REFERENCE_CLARIFICATION, response_body)
     print("ok legacy functions/function_call block RelayINT quick clarification apply")
 
+
+def _assert_multiple_choices_block_apply(root: Path, capture: _Capture, port: int) -> None:
+    payload = _ambiguous_payload()
+    payload["n"] = 2
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        apply_enabled=True,
+        apply_dry_run_only=False,
+        expect_backend_called=True,
+    )
+    require(backend_payload is not None and backend_payload.get("messages") == payload["messages"], backend_payload)
+    plan = _apply_plan(metadata)
+    reasons = plan.get("apply_block_reasons", [])
+    require(plan.get("apply_allowed") is False, plan)
+    require(plan.get("response_short_circuit_allowed") is False, plan)
+    require("multiple_choices_requested" in reasons, plan)
+    gate = plan.get("request_compatibility_gate")
+    require(isinstance(gate, dict), plan)
+    require(gate.get("compatible") is False, plan)
+    require(gate.get("n_requested_count") == 2, plan)
+    _assert_backend_response(response_body)
+    require(_response_text(response_body) != FIXED_REFERENCE_CLARIFICATION, response_body)
+    print("ok n>1 blocks RelayINT quick clarification apply")
+
 def _assert_streaming_unsupported_plan() -> None:
     preflight = {
         "schema_version": "relayint_quick_clarification_preflight.v0",
@@ -452,11 +540,14 @@ def main() -> int:
             _assert_default_false(store_root, capture, port)
             _assert_dry_run_only(store_root, capture, port)
             _assert_actual_apply(store_root, capture, port)
+            _assert_short_circuit_skips_relaymem(store_root, capture, port)
+            _assert_dry_run_with_store_forwards(store_root, capture, port)
             _assert_resolved_reference_falls_through(store_root, capture, port)
             _assert_scene_gate_blocks(store_root, capture, port)
             _assert_response_format_blocks_apply(store_root, capture, port)
             _assert_tools_block_apply(store_root, capture, port)
             _assert_functions_block_apply(store_root, capture, port)
+            _assert_multiple_choices_block_apply(store_root, capture, port)
             _assert_streaming_unsupported_plan()
         finally:
             server.shutdown()

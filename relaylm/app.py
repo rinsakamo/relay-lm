@@ -328,6 +328,65 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 request_compatibility_gate=build_relayint_request_compatibility_gate(payload),
             )
         )
+        if (
+            relayint_quick_clarification_apply_plan is not None
+            and relayint_quick_clarification_apply_plan.get("apply_allowed") is True
+        ):
+            applied_apply_plan = dict(relayint_quick_clarification_apply_plan)
+            applied_apply_plan["short_circuit_applied"] = True
+            applied_apply_plan["relaymem_retrieval_skipped_reason"] = (
+                "relayint_quick_clarification_apply"
+            )
+            response_text = quick_clarification_response_text_for_template(
+                applied_apply_plan.get("response_template_id")
+                if isinstance(applied_apply_plan.get("response_template_id"), str)
+                else None
+            )
+            diagnostics = RequestDiagnostics(
+                request_id=request_id,
+                route_model=route.route_model,
+                backend_model=route.backend_model,
+                backend_name=route.backend_name,
+                character_id=route.character_id,
+                mode_requested=route.mode_requested,
+                mode_applied=route.mode_applied,
+                stream_enabled=stream_enabled,
+                compiler_used=compiled_request.compiler_used,
+                memory_block_used=compiled_request.memory_block_used,
+                memory_source=compiled_request.memory_source,
+                relayint_fast_path_dry_run=relayint_fast_path_dry_run,
+                relayint_quick_clarification_preflight=(
+                    relayint_quick_clarification_preflight
+                ),
+                relayint_quick_clarification_apply_plan=applied_apply_plan,
+                trace_enabled=config.trace.enabled,
+                relayemo_artifact=relayemo_artifact,
+                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+            )
+            body = _relayint_quick_clarification_response_body(
+                request_id=request_id,
+                model=payload.get("model"),
+                response_text=response_text,
+            )
+            trace_runtime_event(
+                config=config,
+                diagnostics=diagnostics,
+                messages=_extract_trace_messages(forwarded_payload),
+                response_text=response_text,
+                metadata={
+                    "event": "relayint_quick_clarification_short_circuit",
+                    "status_code": 200,
+                    "relaymem_retrieval_skipped_reason": (
+                        "relayint_quick_clarification_apply"
+                    ),
+                },
+            )
+            return JSONResponse(
+                status_code=200,
+                content=body,
+                headers=diagnostics.to_headers(),
+            )
+
         relaymem_store_diagnostics = build_relaymem_store_diagnostics(
             root_path=config.memory.root_path,
             store_enabled=config.memory.store_enabled,
@@ -564,63 +623,6 @@ def create_app(config_path: str | None = None) -> FastAPI:
             base_diagnostics,
             relaysoul_runtime_feedback_summary=feedback_summary,
         )
-
-        if (
-            relayint_quick_clarification_apply_plan is not None
-            and relayint_quick_clarification_apply_plan.get("apply_allowed") is True
-        ):
-            applied_apply_plan = dict(relayint_quick_clarification_apply_plan)
-            applied_apply_plan["short_circuit_applied"] = True
-            applied_diagnostics = replace(
-                diagnostics,
-                relayint_quick_clarification_apply_plan=applied_apply_plan,
-            )
-            response_text = quick_clarification_response_text_for_template(
-                applied_apply_plan.get("response_template_id")
-                if isinstance(applied_apply_plan.get("response_template_id"), str)
-                else None
-            )
-            short_circuit_relayrun_artifact = _build_relayrun_runtime_artifact(
-                config=config,
-                request_id=request_id,
-                run_id=relayrun_run_id,
-                route=route,
-                stream_enabled=stream_enabled,
-                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-                relayref_artifact=relayref_artifact,
-                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-                runtime_ctx_injection_result=runtime_ctx_injection_result,
-                runtime_snippet_injection_result=runtime_snippet_injection_result,
-                token_budget_truncation=token_budget_truncation,
-                backend_forward_status="skipped",
-                backend_forward_blocked_reasons=["relayint_quick_clarification_short_circuit"],
-                stream_started=False,
-                first_token_sent=False,
-            )
-            short_circuit_diagnostics = replace(
-                applied_diagnostics,
-                relayrun_artifact=short_circuit_relayrun_artifact,
-            )
-            body = _relayint_quick_clarification_response_body(
-                request_id=request_id,
-                model=payload.get("model"),
-                response_text=response_text,
-            )
-            trace_runtime_event(
-                config=config,
-                diagnostics=short_circuit_diagnostics,
-                messages=_extract_trace_messages(forwarded_payload),
-                response_text=response_text,
-                metadata={
-                    "event": "relayint_quick_clarification_short_circuit",
-                    "status_code": 200,
-                },
-            )
-            return JSONResponse(
-                status_code=200,
-                content=body,
-                headers=short_circuit_diagnostics.to_headers(),
-            )
 
         if stream_enabled:
             try:

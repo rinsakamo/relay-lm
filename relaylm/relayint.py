@@ -350,6 +350,7 @@ def build_relayint_request_compatibility_gate(
     functions = payload.get("functions")
     functions_count = len(functions) if isinstance(functions, list) else 0
     function_call_present = _request_choice_present(payload, "function_call")
+    n_requested_count, n_block_reason = _n_request_constraint(payload.get("n"))
 
     block_reasons: list[str] = []
     if response_format_present:
@@ -362,6 +363,8 @@ def build_relayint_request_compatibility_gate(
         block_reasons.append("functions_requested")
     if function_call_present:
         block_reasons.append("function_call_requested")
+    if n_block_reason is not None:
+        block_reasons.append(n_block_reason)
 
     return {
         "compatible": not block_reasons,
@@ -370,6 +373,7 @@ def build_relayint_request_compatibility_gate(
         "tool_choice_present": tool_choice_present,
         "functions_count": functions_count,
         "function_call_present": function_call_present,
+        "n_requested_count": n_requested_count,
         "block_reasons": block_reasons,
     }
 
@@ -625,6 +629,19 @@ def _quick_clarification_scene_gate(
         "block_reasons": block_reasons,
     }
 
+
+def _n_request_constraint(value: Any) -> tuple[int | float | None, str | None]:
+    if value is None:
+        return None, None
+    if isinstance(value, bool):
+        return None, "unsupported_n_value"
+    if isinstance(value, int | float):
+        if value > 1:
+            return value, "multiple_choices_requested"
+        if value == 1:
+            return value, None
+        return value, "unsupported_n_value"
+    return None, "unsupported_n_value"
 
 def _request_choice_present(payload: Mapping[str, Any], key: str) -> bool:
     if key not in payload:
