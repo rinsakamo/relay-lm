@@ -7,6 +7,7 @@ from copy import deepcopy
 from dataclasses import replace
 import json
 import os
+import time
 import uuid
 from collections.abc import Mapping
 from typing import Any
@@ -40,7 +41,9 @@ from relaylm.memory_adapter import (
 from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.relayint import (
     build_relayint_fast_path_dry_run,
+    build_relayint_quick_clarification_apply_plan,
     build_relayint_quick_clarification_preflight,
+    quick_clarification_response_text_for_template,
 )
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relayref import build_relayref_dry_run_artifact
@@ -312,6 +315,17 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 dry_run_only=config.relayint_quick_clarification_dry_run_only,
             )
         )
+        relayint_quick_clarification_apply_plan = (
+            build_relayint_quick_clarification_apply_plan(
+                relayint_quick_clarification_preflight=(
+                    relayint_quick_clarification_preflight
+                ),
+                enabled=config.relayint_quick_clarification_apply_enabled,
+                dry_run_only=config.relayint_quick_clarification_apply_dry_run_only,
+                stream_enabled=stream_enabled,
+                response_max_chars=config.relayint_quick_clarification_response_max_chars,
+            )
+        )
         relaymem_store_diagnostics = build_relaymem_store_diagnostics(
             root_path=config.memory.root_path,
             store_enabled=config.memory.store_enabled,
@@ -515,6 +529,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             memory_adapter_shadow_delta=memory_adapter_shadow_delta,
             relayint_fast_path_dry_run=relayint_fast_path_dry_run,
             relayint_quick_clarification_preflight=relayint_quick_clarification_preflight,
+            relayint_quick_clarification_apply_plan=relayint_quick_clarification_apply_plan,
             trace_enabled=config.trace.enabled,
             profile_compile_dry_run_enabled=compiled_request.plan.enabled,
             profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
@@ -547,6 +562,63 @@ def create_app(config_path: str | None = None) -> FastAPI:
             base_diagnostics,
             relaysoul_runtime_feedback_summary=feedback_summary,
         )
+
+        if (
+            relayint_quick_clarification_apply_plan is not None
+            and relayint_quick_clarification_apply_plan.get("apply_allowed") is True
+        ):
+            applied_apply_plan = dict(relayint_quick_clarification_apply_plan)
+            applied_apply_plan["short_circuit_applied"] = True
+            applied_diagnostics = replace(
+                diagnostics,
+                relayint_quick_clarification_apply_plan=applied_apply_plan,
+            )
+            response_text = quick_clarification_response_text_for_template(
+                applied_apply_plan.get("response_template_id")
+                if isinstance(applied_apply_plan.get("response_template_id"), str)
+                else None
+            )
+            short_circuit_relayrun_artifact = _build_relayrun_runtime_artifact(
+                config=config,
+                request_id=request_id,
+                run_id=relayrun_run_id,
+                route=route,
+                stream_enabled=stream_enabled,
+                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+                relayref_artifact=relayref_artifact,
+                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+                runtime_ctx_injection_result=runtime_ctx_injection_result,
+                runtime_snippet_injection_result=runtime_snippet_injection_result,
+                token_budget_truncation=token_budget_truncation,
+                backend_forward_status="skipped",
+                backend_forward_blocked_reasons=["relayint_quick_clarification_short_circuit"],
+                stream_started=False,
+                first_token_sent=False,
+            )
+            short_circuit_diagnostics = replace(
+                applied_diagnostics,
+                relayrun_artifact=short_circuit_relayrun_artifact,
+            )
+            body = _relayint_quick_clarification_response_body(
+                request_id=request_id,
+                model=payload.get("model"),
+                response_text=response_text,
+            )
+            trace_runtime_event(
+                config=config,
+                diagnostics=short_circuit_diagnostics,
+                messages=_extract_trace_messages(forwarded_payload),
+                response_text=response_text,
+                metadata={
+                    "event": "relayint_quick_clarification_short_circuit",
+                    "status_code": 200,
+                },
+            )
+            return JSONResponse(
+                status_code=200,
+                content=body,
+                headers=short_circuit_diagnostics.to_headers(),
+            )
 
         if stream_enabled:
             try:
@@ -709,6 +781,34 @@ def create_app(config_path: str | None = None) -> FastAPI:
         return JSONResponse(status_code=status_code, content={"raw": body}, headers=headers)
 
     return app
+
+
+def _relayint_quick_clarification_response_body(
+    *,
+    request_id: str,
+    model: Any,
+    response_text: str,
+) -> dict[str, Any]:
+    model_name = model if isinstance(model, str) and model else "relaylm-default"
+    completion_tokens = estimate_text_tokens(response_text).estimated_tokens
+    return {
+        "id": f"chatcmpl-relayint-qc-{request_id}",
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": model_name,
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": response_text},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {
+            "prompt_tokens": 0,
+            "completion_tokens": completion_tokens,
+            "total_tokens": completion_tokens,
+        },
+    }
 
 
 def openai_error(

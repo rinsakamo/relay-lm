@@ -208,6 +208,121 @@ def build_relayint_quick_clarification_preflight(
     }
 
 
+def build_relayint_quick_clarification_apply_plan(
+    *,
+    relayint_quick_clarification_preflight: Mapping[str, Any] | None,
+    enabled: bool = False,
+    dry_run_only: bool = True,
+    stream_enabled: bool = False,
+    response_max_chars: int = 120,
+) -> dict[str, Any] | None:
+    """Build a gated, content-free quick clarification apply plan.
+
+    MVP-47 keeps the response short-circuit default-off. The plan never calls an
+    LLM, never executes MEM lookup, and never mutates backend payloads.
+    """
+
+    if not enabled:
+        return None
+
+    preflight_present = isinstance(relayint_quick_clarification_preflight, Mapping)
+    source_schema_version = (
+        relayint_quick_clarification_preflight.get("schema_version")
+        if preflight_present
+        else None
+    )
+    source_preflight_applicable = (
+        relayint_quick_clarification_preflight.get("preflight_applicable") is True
+        if preflight_present
+        else False
+    )
+    scene_gate = (
+        relayint_quick_clarification_preflight.get("scene_gate")
+        if preflight_present
+        else None
+    )
+    scene_allows = (
+        isinstance(scene_gate, Mapping)
+        and scene_gate.get("quick_clarification_allowed") is True
+    )
+    clarification_type = (
+        relayint_quick_clarification_preflight.get("clarification_type")
+        if preflight_present
+        else None
+    )
+    generated_response_kind = _quick_clarification_response_kind(clarification_type)
+    response_template_id = _quick_clarification_response_template_id(
+        generated_response_kind
+    )
+    response_text = quick_clarification_response_text_for_template(response_template_id)
+    response_chars = len(response_text) if response_template_id != "none" else 0
+
+    block_reasons: list[str] = []
+    if not preflight_present:
+        block_reasons.append("preflight_missing")
+    if preflight_present and not source_preflight_applicable:
+        block_reasons.append("preflight_not_applicable")
+    if preflight_present and not scene_allows:
+        block_reasons.append("scene_gate_blocked")
+        if isinstance(scene_gate, Mapping):
+            for reason in _string_list(scene_gate.get("block_reasons")):
+                if reason not in block_reasons:
+                    block_reasons.append(reason)
+    if dry_run_only:
+        block_reasons.append("dry_run_only")
+    if stream_enabled:
+        block_reasons.append("streaming_not_supported")
+    if response_template_id == "none" or response_chars == 0:
+        block_reasons.append("response_template_missing")
+    if response_chars > response_max_chars:
+        block_reasons.append("response_max_chars_exceeded")
+
+    apply_allowed = not block_reasons
+    return {
+        "schema_version": "relayint_quick_clarification_apply_plan.v0",
+        "enabled": True,
+        "dry_run_only": dry_run_only,
+        "content_free": True,
+        "source_artifact_schema_version": (
+            source_schema_version if isinstance(source_schema_version, str) else None
+        ),
+        "source_preflight_applicable": source_preflight_applicable,
+        "apply_allowed": apply_allowed,
+        "apply_block_reasons": block_reasons,
+        "response_short_circuit_allowed": apply_allowed,
+        "short_circuit_applied": False,
+        "generated_response_kind": generated_response_kind if apply_allowed else "none",
+        "response_template_id": response_template_id if apply_allowed else "none",
+        "response_chars": response_chars if apply_allowed else 0,
+        "content_free_template": True,
+        "safety_gates": {
+            "content_free": True,
+            "llm_call_allowed": False,
+            "mem_lookup_allowed": False,
+            "backend_payload_mutation_allowed": False,
+            "response_mutation_allowed": apply_allowed,
+            "user_visible_apply_allowed": apply_allowed,
+        },
+        "llm_called": False,
+        "mem_lookup_executed": False,
+        "backend_payload_mutation_allowed": False,
+        "backend_payload_mutation_applied": False,
+        "response_mutation_allowed": apply_allowed,
+        "user_visible_apply_allowed": apply_allowed,
+    }
+
+
+def quick_clarification_response_text_for_template(template_id: str | None) -> str:
+    if template_id == "generic_prior_memory_reentry.ja.v0":
+        return "その話として探す前に、前回の要点をもう一度教えて。"
+    if template_id in {
+        "generic_reference_clarification.ja.v0",
+        "generic_open_clarification.ja.v0",
+    }:
+        return "どの話のことか、もう少しだけ教えて。"
+    return ""
+
+
 def _latest_user_text(messages: Sequence[Mapping[str, Any]]) -> str:
     for message in reversed(messages):
         if not isinstance(message, Mapping) or message.get("role") != "user":
@@ -458,6 +573,32 @@ def _quick_clarification_scene_gate(
         "quick_clarification_allowed": not block_reasons,
         "block_reasons": block_reasons,
     }
+
+
+def _quick_clarification_response_kind(clarification_type: Any) -> str:
+    if clarification_type == "prior_memory_reentry":
+        return "generic_prior_memory_reentry"
+    if clarification_type == "reference_confirmation":
+        return "generic_reference_clarification"
+    if clarification_type == "open_clarification":
+        return "generic_open_clarification"
+    return "none"
+
+
+def _quick_clarification_response_template_id(generated_response_kind: str) -> str:
+    if generated_response_kind == "generic_prior_memory_reentry":
+        return "generic_prior_memory_reentry.ja.v0"
+    if generated_response_kind == "generic_reference_clarification":
+        return "generic_reference_clarification.ja.v0"
+    if generated_response_kind == "generic_open_clarification":
+        return "generic_open_clarification.ja.v0"
+    return "none"
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, Sequence) or isinstance(value, str):
+        return []
+    return [item for item in value if isinstance(item, str) and item]
 
 
 def _positive_int(value: Any) -> bool:
