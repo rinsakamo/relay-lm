@@ -286,10 +286,8 @@ def _ctx_metadata_summary(ctx_hints: Mapping[str, Any]) -> dict[str, Any]:
         for key in ("current_topic", "active_question", "next_expected_action")
         if _usable_string(ctx_hints.get(key))
     ]
-    usable_ctx_field_count = (
-        len(usable_string_keys)
-        + (1 if referable_item_count > 0 else 0)
-        + (1 if unresolved_slot_count > 0 else 0)
+    usable_ctx_field_count = len(usable_string_keys) + (
+        1 if referable_item_count > 0 else 0
     )
     ctx_signal_present = usable_ctx_field_count > 0
     return {
