@@ -79,6 +79,8 @@ from relaylm.token_policy_signal import (
 )
 from relaylm.trace_runtime import extract_response_text, trace_runtime_event
 
+from relaylm.pipeline_context import PipelineContext
+
 
 def create_app(config_path: str | None = None) -> FastAPI:
     config = load_config(config_path)
@@ -196,6 +198,14 @@ def create_app(config_path: str | None = None) -> FastAPI:
             route=route,
             payload=payload,
         )
+        pipeline_context = PipelineContext(
+            request_id=request_id,
+            run_id=relayrun_run_id,
+            original_payload=payload,
+            forwarded_payload=dict(compiled_request.payload),
+            route=route,
+            stream_enabled=stream_enabled,
+        )
         effective_shadow_enabled, shadow_source = _resolve_token_policy_shadow_setting(config, route)
         token_policy_signal = build_token_policy_signal(compiled_request.token_memory_dry_run)
         token_policy_decision = build_token_policy_decision_artifact(
@@ -236,7 +246,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             if memory_adapter_shadow_dry_run is not None
             else None
         )
-        forwarded_payload = dict(compiled_request.payload)
+        forwarded_payload = pipeline_context.forwarded_payload
         token_budget_truncation: dict[str, Any] | None = None
         relayemo_artifact: dict[str, Any] | None = None
         if config.relayemo_enabled:
@@ -348,6 +358,10 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 token_budget=config.memory.token_budget,
                 chars_per_token=config.memory.chars_per_token,
             )
+        )
+        pipeline_context.replace_forwarded_payload(
+            forwarded_payload,
+            "relaymem_snippet_runtime_injection",
         )
         if runtime_snippet_injection_result.get("applied") is True:
             runtime_ctx_injection_result = skipped_relaymem_runtime_ctx_injection_result(
