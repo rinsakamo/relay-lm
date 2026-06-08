@@ -383,8 +383,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 )
             )
         pipeline_context.replace_forwarded_payload(
-                forwarded_payload,
-                "relaymem_runtime_ctx_injection",
+            forwarded_payload,
+            "relaymem_runtime_ctx_injection",
         )
         forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
             config=config,
