@@ -382,9 +382,17 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     chars_per_token=config.memory.chars_per_token,
                 )
             )
+        pipeline_context.replace_forwarded_payload(
+                forwarded_payload,
+                "relaymem_runtime_ctx_injection",
+        )
         forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
             config=config,
             payload=forwarded_payload,
+        )
+        pipeline_context.replace_forwarded_payload(
+            forwarded_payload,
+            "token_budget_truncation",
         )
 
         compiled_message_count = (
@@ -485,6 +493,10 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 token_budget=config.relayctx_short_term_runtime_injection_token_budget,
                 chars_per_token=config.memory.chars_per_token,
             )
+        )
+        pipeline_context.replace_forwarded_payload(
+            forwarded_payload,
+            "relayctx_short_term_runtime_injection",
         )
 
         base_diagnostics = RequestDiagnostics(
