@@ -113,3 +113,24 @@ def relayint_runtime_diagnostics_kwargs(
         "trace_enabled": trace_enabled,
         "compile_decision_dry_run": compile_decision_dry_run,
     }
+
+
+def runtime_artifact_diagnostics_kwargs(
+    *,
+    relayemo_artifact: Any,
+    relayscn_scene_policy_artifact: Any,
+    relayref_artifact: Any,
+    relaymem_retrieval_artifact: Any,
+    runtime_ctx_injection_result: Any,
+    runtime_snippet_injection_result: Any,
+) -> dict[str, Any]:
+    """Return RequestDiagnostics kwargs derived from runtime artifacts."""
+
+    return {
+        "relayemo_artifact": relayemo_artifact,
+        "relayscn_scene_policy_artifact": relayscn_scene_policy_artifact,
+        "relayref_artifact": relayref_artifact,
+        "relaymem_retrieval_artifact": relaymem_retrieval_artifact,
+        "runtime_ctx_injection_result": runtime_ctx_injection_result,
+        "runtime_snippet_injection_result": runtime_snippet_injection_result,
+    }
