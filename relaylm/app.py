@@ -31,7 +31,10 @@ from relaylm.diagnostics import (
     build_relayctx_short_term_source_diagnostics,
     build_relaysoul_runtime_feedback_summary,
 )
-from relaylm.diagnostics_builder import build_base_request_diagnostics
+from relaylm.diagnostics_builder import (
+    build_base_request_diagnostics,
+    compiled_request_diagnostics_kwargs,
+)
 from relaylm.memory_adapter import (
     build_memory_adapter_shadow_delta,
     build_memory_adapter_conflict_diagnostics,
@@ -509,31 +512,11 @@ def create_app(config_path: str | None = None) -> FastAPI:
             mode_requested=route.mode_requested,
             mode_applied=route.mode_applied,
             stream_enabled=stream_enabled,
-            compiler_used=compiled_request.compiler_used,
-            memory_block_used=compiled_request.memory_block_used,
-            memory_source=compiled_request.memory_source,
-            memory_selection_summary=(
-                compiled_request.memory_selection_summary.to_log_dict()
-                if compiled_request.memory_selection_summary is not None
-                else None
-            ),
-            memory_block_assembly=(
-                compiled_request.memory_block_assembly.to_log_dict()
-                if compiled_request.memory_block_assembly is not None
-                else None
-            ),
-            token_memory_dry_run=compiled_request.token_memory_dry_run,
+            **compiled_request_diagnostics_kwargs(compiled_request),
             token_policy_signal=token_policy_signal.to_log_dict(),
             token_policy_decision=token_policy_decision.to_log_dict(),
             token_policy_readiness=token_policy_readiness.to_log_dict(),
             token_budget_truncation=token_budget_truncation,
-            stable_prefix_hash=compiled_request.stable_prefix_hash,
-            stable_prefix_block_ids=compiled_request.stable_prefix_block_ids,
-            memory_adapter_dry_run=compiled_request.memory_adapter_dry_run,
-            memory_adapter_readiness=compiled_request.memory_adapter_readiness,
-            memory_adapter_conflicts=compiled_request.memory_adapter_conflicts,
-            context_block_summary=compiled_request.context_block_summary,
-            persona_source_budget_diagnostics=compiled_request.persona_source_budget_diagnostics,
             request_scope_identity=request_scope_identity.to_log_dict(),
             scope_resolution_diagnostics=scope_resolution_diagnostics.to_log_dict(),
             memory_adapter_shadow_dry_run=memory_adapter_shadow_dry_run,
@@ -543,8 +526,6 @@ def create_app(config_path: str | None = None) -> FastAPI:
             relayint_fast_path_dry_run=relayint_fast_path_dry_run,
             relayint_quick_clarification_preflight=relayint_quick_clarification_preflight,
             trace_enabled=config.trace.enabled,
-            profile_compile_dry_run_enabled=compiled_request.plan.enabled,
-            profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
             compile_decision_dry_run=compile_decision_dry_run,
             relayemo_artifact=relayemo_artifact,
             relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
