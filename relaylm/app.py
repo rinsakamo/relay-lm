@@ -27,13 +27,7 @@ from relaylm.diagnostics_builder import (
     memory_adapter_shadow_diagnostics_kwargs,
     relayint_runtime_diagnostics_kwargs,
     request_scope_diagnostics_kwargs,
-    token_policy_diagnostics_kwargs,
-)
-from relaylm.diagnostics_builder import (
-    build_base_request_diagnostics,
-    compiled_request_diagnostics_kwargs,
-    memory_adapter_shadow_diagnostics_kwargs,
-    request_scope_diagnostics_kwargs,
+    runtime_artifact_diagnostics_kwargs,
     token_policy_diagnostics_kwargs,
 )
 from relaylm.memory_adapter import (
@@ -538,12 +532,14 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 trace_enabled=config.trace.enabled,
                 compile_decision_dry_run=compile_decision_dry_run,
             ),
-            relayemo_artifact=relayemo_artifact,
-            relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-            relayref_artifact=relayref_artifact,
-            relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-            runtime_ctx_injection_result=runtime_ctx_injection_result,
-            runtime_snippet_injection_result=runtime_snippet_injection_result,
+            **runtime_artifact_diagnostics_kwargs(
+                relayemo_artifact=relayemo_artifact,
+                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+                relayref_artifact=relayref_artifact,
+                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+                runtime_ctx_injection_result=runtime_ctx_injection_result,
+                runtime_snippet_injection_result=runtime_snippet_injection_result,
+            ),
             relayctx_short_term_source_diagnostics=relayctx_short_term_source_diagnostics,
             relayctx_short_term_extraction_dry_run=relayctx_short_term_extraction_dry_run,
             relayctx_short_term_block_assembly_dry_run=(
