@@ -25,6 +25,7 @@ from relaylm.diagnostics_builder import (
     build_base_request_diagnostics,
     compiled_request_diagnostics_kwargs,
     memory_adapter_shadow_diagnostics_kwargs,
+    relayctx_short_term_diagnostics_kwargs,
     relayint_runtime_diagnostics_kwargs,
     request_scope_diagnostics_kwargs,
     runtime_artifact_diagnostics_kwargs,
@@ -540,16 +541,22 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 runtime_ctx_injection_result=runtime_ctx_injection_result,
                 runtime_snippet_injection_result=runtime_snippet_injection_result,
             ),
-            relayctx_short_term_source_diagnostics=relayctx_short_term_source_diagnostics,
-            relayctx_short_term_extraction_dry_run=relayctx_short_term_extraction_dry_run,
-            relayctx_short_term_block_assembly_dry_run=(
-                relayctx_short_term_block_assembly_dry_run
-            ),
-            relayctx_short_term_runtime_injection_preflight=(
-                relayctx_short_term_runtime_injection_preflight
-            ),
-            relayctx_short_term_runtime_injection_apply_result=(
-                relayctx_short_term_runtime_injection_apply_result
+            **relayctx_short_term_diagnostics_kwargs(
+                relayctx_short_term_source_diagnostics=(
+                    relayctx_short_term_source_diagnostics
+                ),
+                relayctx_short_term_extraction_dry_run=(
+                    relayctx_short_term_extraction_dry_run
+                ),
+                relayctx_short_term_block_assembly_dry_run=(
+                    relayctx_short_term_block_assembly_dry_run
+                ),
+                relayctx_short_term_runtime_injection_preflight=(
+                    relayctx_short_term_runtime_injection_preflight
+                ),
+                relayctx_short_term_runtime_injection_apply_result=(
+                    relayctx_short_term_runtime_injection_apply_result
+                ),
             ),
             relayrun_artifact=relayrun_artifact,
         )
