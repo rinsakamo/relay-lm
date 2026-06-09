@@ -34,6 +34,7 @@ from relaylm.diagnostics import (
 from relaylm.diagnostics_builder import (
     build_base_request_diagnostics,
     compiled_request_diagnostics_kwargs,
+    memory_adapter_shadow_diagnostics_kwargs,
     request_scope_diagnostics_kwargs,
     token_policy_diagnostics_kwargs,
 )
@@ -525,10 +526,12 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 request_scope_identity=request_scope_identity,
                 scope_resolution_diagnostics=scope_resolution_diagnostics,
             ),
-            memory_adapter_shadow_dry_run=memory_adapter_shadow_dry_run,
-            memory_adapter_shadow_readiness=memory_adapter_shadow_readiness,
-            memory_adapter_shadow_conflicts=memory_adapter_shadow_conflicts,
-            memory_adapter_shadow_delta=memory_adapter_shadow_delta,
+            **memory_adapter_shadow_diagnostics_kwargs(
+                memory_adapter_shadow_dry_run=memory_adapter_shadow_dry_run,
+                memory_adapter_shadow_readiness=memory_adapter_shadow_readiness,
+                memory_adapter_shadow_conflicts=memory_adapter_shadow_conflicts,
+                memory_adapter_shadow_delta=memory_adapter_shadow_delta,
+            ),
             relayint_fast_path_dry_run=relayint_fast_path_dry_run,
             relayint_quick_clarification_preflight=relayint_quick_clarification_preflight,
             trace_enabled=config.trace.enabled,
