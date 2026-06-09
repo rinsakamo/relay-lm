@@ -21,6 +21,7 @@ from relaylm.adapter import (
     open_chat_completion_stream,
 )
 from relaylm.config import RelayLMConfig, load_config
+from relaylm.diagnostics import RequestDiagnostics
 from relaylm.diagnostics_builder import (
     build_base_request_diagnostics,
     compiled_request_diagnostics_kwargs,
