@@ -28,6 +28,7 @@ from relaylm.diagnostics_builder import (
     memory_adapter_shadow_diagnostics_kwargs,
     relayctx_short_term_diagnostics_kwargs,
     relayint_runtime_diagnostics_kwargs,
+    relayrun_diagnostics_kwargs,
     request_scope_diagnostics_kwargs,
     runtime_artifact_diagnostics_kwargs,
     token_policy_diagnostics_kwargs,
@@ -559,7 +560,9 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     relayctx_short_term_runtime_injection_apply_result
                 ),
             ),
-            relayrun_artifact=relayrun_artifact,
+            **relayrun_diagnostics_kwargs(
+                relayrun_artifact=relayrun_artifact,
+            ),
         )
         feedback_summary = (
             build_relaysoul_runtime_feedback_summary(base_diagnostics)
