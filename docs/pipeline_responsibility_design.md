@@ -77,6 +77,21 @@ Current implementation status:
 - Early RelayREF should be lightweight and diagnostics-only.
   - It should not require a second Main LLM call in the near term.
 
+## Next implementation boundary
+
+After the PipelineContext and diagnostics-builder cleanup, the next safe implementation boundary is not deeper semantic behavior yet.
+
+Recommended order:
+
+1. Keep `PipelineContext` and diagnostics output stable.
+2. Split CTX Repack boundaries from `app.py` without changing backend forwarding behavior.
+3. Rename or split the current input-side `relayref.py` behavior into RelayINT-facing code.
+4. Add a minimal RelayCTX Unpack layer after Main LLM output.
+5. Add failure route table / node result handling.
+6. Add lightweight output-side REF diagnostics.
+7. Add Output-side SCN observation.
+8. Only after these are stable, evolve RelayRUN into a true cross-cutting checkpoint / node-state reporter.
+
 ## Per-stage responsibilities
 
 ### 1. User input
