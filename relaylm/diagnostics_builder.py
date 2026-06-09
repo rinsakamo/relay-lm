@@ -79,3 +79,20 @@ def request_scope_diagnostics_kwargs(
         "request_scope_identity": request_scope_identity.to_log_dict(),
         "scope_resolution_diagnostics": scope_resolution_diagnostics.to_log_dict(),
     }
+
+
+def memory_adapter_shadow_diagnostics_kwargs(
+    *,
+    memory_adapter_shadow_dry_run: Any,
+    memory_adapter_shadow_readiness: Any,
+    memory_adapter_shadow_conflicts: Any,
+    memory_adapter_shadow_delta: Any,
+) -> dict[str, Any]:
+    """Return RequestDiagnostics kwargs derived from memory adapter shadow artifacts."""
+
+    return {
+        "memory_adapter_shadow_dry_run": memory_adapter_shadow_dry_run,
+        "memory_adapter_shadow_readiness": memory_adapter_shadow_readiness,
+        "memory_adapter_shadow_conflicts": memory_adapter_shadow_conflicts,
+        "memory_adapter_shadow_delta": memory_adapter_shadow_delta,
+    }
