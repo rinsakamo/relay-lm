@@ -58,14 +58,24 @@ User input
 
 The target order above is the design direction, not a statement that every layer is fully implemented today.
 
-Current caveats:
+Current implementation status:
 
-- `app.py` still carries too much orchestration and payload mutation logic.
-- `PipelineContext` is the intended stabilization point for forwarded payload replacement, node results, diagnostics, and future RelayRUN handoff.
-- Current `RelayRUN` is mostly a request-end artifact writer. It is not yet a true cross-cutting node-state reporter.
-- Current `relayref.py` is named like REF, but its behavior is input-side unresolved reference / quick clarification logic. In the target design this is closer to RelayINT.
-- `RelayCTX Unpack` is not yet a real response separation layer. Main LLM output is mostly returned directly.
-- Early RelayREF should be lightweight and diagnostics-only. It should not require a second Main LLM call in the near term.
+- `PipelineContext` is now introduced as a request-local state holder.
+  - It keeps `original_payload` and the current backend-bound `forwarded_payload` separate.
+  - Payload replacement steps now record mutation reasons through `PipelineContext.replace_forwarded_payload(...)`.
+- `diagnostics_builder.py` now owns grouped `RequestDiagnostics` field mapping helpers.
+  - `app.py` still calls `build_base_request_diagnostics(...)`, but most grouped diagnostics kwargs are no longer mapped inline.
+  - Current grouped helpers cover compiled request state, token policy, request scope, memory adapter shadow state, RelayINT/runtime state, runtime artifacts, RelayCTX short-term artifacts, and RelayRUN artifact wiring.
+- `app.py` still carries too much orchestration and node execution order.
+  - The diagnostics mapping is thinner, but actual runtime node execution is still mostly in `app.py`.
+- Current `RelayRUN` is mostly a request-end artifact writer.
+  - It is not yet a true cross-cutting node-state reporter.
+- Current `relayref.py` is named like REF, but its behavior is input-side unresolved reference / quick clarification logic.
+  - In the target design this is closer to RelayINT and should be renamed or split later.
+- `RelayCTX Unpack` is not yet a real response separation layer.
+  - Main LLM output is mostly returned directly.
+- Early RelayREF should be lightweight and diagnostics-only.
+  - It should not require a second Main LLM call in the near term.
 
 ## Per-stage responsibilities
 
