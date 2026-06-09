@@ -17,7 +17,7 @@ def build_base_request_diagnostics(**kwargs: Any) -> RequestDiagnostics:
     """
 
     return RequestDiagnostics(**kwargs)
-    
+
 
 def compiled_request_diagnostics_kwargs(compiled_request: Any) -> dict[str, Any]:
     """Return RequestDiagnostics kwargs derived from compiled_request."""
