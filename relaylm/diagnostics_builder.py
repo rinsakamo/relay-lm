@@ -17,6 +17,7 @@ def build_base_request_diagnostics(**kwargs: Any) -> RequestDiagnostics:
     """
 
     return RequestDiagnostics(**kwargs)
+    
 
 def compiled_request_diagnostics_kwargs(compiled_request: Any) -> dict[str, Any]:
     """Return RequestDiagnostics kwargs derived from compiled_request."""
@@ -47,4 +48,34 @@ def compiled_request_diagnostics_kwargs(compiled_request: Any) -> dict[str, Any]
         ),
         "profile_compile_dry_run_enabled": compiled_request.plan.enabled,
         "profile_compile_fallback_reason": compiled_request.plan.fallback_reason,
+    }
+
+
+def token_policy_diagnostics_kwargs(
+    *,
+    token_policy_signal: Any,
+    token_policy_decision: Any,
+    token_policy_readiness: Any,
+    token_budget_truncation: Any,
+) -> dict[str, Any]:
+    """Return RequestDiagnostics kwargs derived from token policy artifacts."""
+
+    return {
+        "token_policy_signal": token_policy_signal.to_log_dict(),
+        "token_policy_decision": token_policy_decision.to_log_dict(),
+        "token_policy_readiness": token_policy_readiness.to_log_dict(),
+        "token_budget_truncation": token_budget_truncation,
+    }
+
+
+def request_scope_diagnostics_kwargs(
+    *,
+    request_scope_identity: Any,
+    scope_resolution_diagnostics: Any,
+) -> dict[str, Any]:
+    """Return RequestDiagnostics kwargs derived from request scope artifacts."""
+
+    return {
+        "request_scope_identity": request_scope_identity.to_log_dict(),
+        "scope_resolution_diagnostics": scope_resolution_diagnostics.to_log_dict(),
     }
