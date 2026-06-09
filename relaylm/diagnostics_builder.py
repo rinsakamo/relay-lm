@@ -163,3 +163,14 @@ def relayctx_short_term_diagnostics_kwargs(
             relayctx_short_term_runtime_injection_apply_result
         ),
     }
+
+
+def relayrun_diagnostics_kwargs(
+    *,
+    relayrun_artifact: Any,
+) -> dict[str, Any]:
+    """Return RequestDiagnostics kwargs derived from RelayRUN artifacts."""
+
+    return {
+        "relayrun_artifact": relayrun_artifact,
+    }
