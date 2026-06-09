@@ -527,7 +527,6 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 scope_resolution_diagnostics=scope_resolution_diagnostics,
             ),
             memory_adapter_shadow_dry_run=memory_adapter_shadow_dry_run,
-            memory_adapter_shadow_dry_run=memory_adapter_shadow_dry_run,
             memory_adapter_shadow_readiness=memory_adapter_shadow_readiness,
             memory_adapter_shadow_conflicts=memory_adapter_shadow_conflicts,
             memory_adapter_shadow_delta=memory_adapter_shadow_delta,
