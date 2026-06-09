@@ -1,0 +1,11 @@
+
+# Local runtime config
+config.yaml
+
+# Windows / WSL metadata
+*:Zone.Identifier
+*.Zone.Identifier
+
+# Python cache
+__pycache__/
+*.py[cod]
