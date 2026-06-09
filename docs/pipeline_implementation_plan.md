@@ -13,6 +13,10 @@ It is a phase-order memo, not a full architecture specification. Detailed behavi
 - `RelayCTX Unpack` is not yet implemented as a real output separation layer. Main LLM output is still mostly returned directly.
 - `RelayCTX Repack` overlaps with `request_compiler.py`, memory injection, short-term CTX injection, and token budget truncation. Its boundary should be hardened before adding more downstream behavior.
 - `RelayREF` should start as a lightweight diagnostics-only observer. Accurate answer-quality evaluation may require another model call and is not an early implementation requirement.
+- `PipelineContext` and `diagnostics_builder.py` are now present as the first stabilization layer.
+  - `PipelineContext` owns request-local forwarded payload state.
+  - `diagnostics_builder.py` owns grouped `RequestDiagnostics` mapping helpers.
+  - Runtime node execution is still mostly in `app.py`.
 
 ## Target responsibility boundary
 
@@ -38,7 +42,7 @@ RelayREF should initially record observations after the Main LLM response. It sh
 
 ## Implementation order
 
-### Phase 1: `app.py` lightweight separation
+### Phase 1: `app.py` lightweight separation — mostly complete
 
 - Stabilize `PipelineContext` as the shared request-local runtime object.
 - Centralize `forwarded_payload` replacement through `PipelineContext`.
@@ -46,8 +50,14 @@ RelayREF should initially record observations after the Main LLM response. It sh
 - Keep short-circuit clarification safe and explicit.
 - Keep trace / diagnostics / RelayRUN artifact connection behavior stable.
 - Preserve existing behavior by default.
+Current status:
 
-### Phase 2: documentation consolidation
+- `PipelineContext` has been introduced.
+- `forwarded_payload` mutation tracking is routed through `PipelineContext.replace_forwarded_payload(...)`.
+- `diagnostics_builder.py` now reduces inline `RequestDiagnostics` field mapping in `app.py`.
+- Remaining work in this phase should be limited to small safety fixes, not deeper semantic behavior.
+
+### Phase 2: documentation consolidation — in progress
 
 - Document the current pipeline.
 - Document the target pipeline.
@@ -55,6 +65,11 @@ RelayREF should initially record observations after the Main LLM response. It sh
 - Clarify `RelayREF` as the output-side observer.
 - Clarify the current `RelayRUN` limitation: request-end artifact writing first, true cross-cutting node-state reporting later.
 - Add a failure route table that connects `blocked_reason` / `failure_reason` values to actual behavior.
+Current status:
+
+- `docs/pipeline_responsibility_design.md` now documents the current implementation status.
+- It also records the next implementation boundary after PipelineContext and diagnostics-builder cleanup.
+- Remaining Phase 2 work should focus on failure route details and implementation handoff notes before deeper code movement.
 
 ### Phase 3: `RelayCTX Repack` boundary hardening
 
