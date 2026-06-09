@@ -10,10 +10,9 @@ from relaylm.diagnostics import RequestDiagnostics
 def build_base_request_diagnostics(**kwargs: Any) -> RequestDiagnostics:
     """Build the base request diagnostics artifact.
 
-    This helper is intentionally thin for the first diagnostics-builder split.
-    Keeping the argument shape identical to RequestDiagnostics lets app.py move
-    diagnostics construction behind a stable module boundary without changing
-    runtime behavior.
+    The grouped ``*_diagnostics_kwargs`` helpers below keep app.py from owning
+    every RequestDiagnostics field mapping directly while preserving the
+    existing RequestDiagnostics constructor contract.
     """
 
     return RequestDiagnostics(**kwargs)
