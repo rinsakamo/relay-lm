@@ -134,3 +134,32 @@ def runtime_artifact_diagnostics_kwargs(
         "runtime_ctx_injection_result": runtime_ctx_injection_result,
         "runtime_snippet_injection_result": runtime_snippet_injection_result,
     }
+
+
+def relayctx_short_term_diagnostics_kwargs(
+    *,
+    relayctx_short_term_source_diagnostics: Any,
+    relayctx_short_term_extraction_dry_run: Any,
+    relayctx_short_term_block_assembly_dry_run: Any,
+    relayctx_short_term_runtime_injection_preflight: Any,
+    relayctx_short_term_runtime_injection_apply_result: Any,
+) -> dict[str, Any]:
+    """Return RequestDiagnostics kwargs derived from RelayCTX short-term artifacts."""
+
+    return {
+        "relayctx_short_term_source_diagnostics": (
+            relayctx_short_term_source_diagnostics
+        ),
+        "relayctx_short_term_extraction_dry_run": (
+            relayctx_short_term_extraction_dry_run
+        ),
+        "relayctx_short_term_block_assembly_dry_run": (
+            relayctx_short_term_block_assembly_dry_run
+        ),
+        "relayctx_short_term_runtime_injection_preflight": (
+            relayctx_short_term_runtime_injection_preflight
+        ),
+        "relayctx_short_term_runtime_injection_apply_result": (
+            relayctx_short_term_runtime_injection_apply_result
+        ),
+    }
