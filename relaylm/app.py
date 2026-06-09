@@ -34,6 +34,8 @@ from relaylm.diagnostics import (
 from relaylm.diagnostics_builder import (
     build_base_request_diagnostics,
     compiled_request_diagnostics_kwargs,
+    request_scope_diagnostics_kwargs,
+    token_policy_diagnostics_kwargs,
 )
 from relaylm.memory_adapter import (
     build_memory_adapter_shadow_delta,
@@ -513,12 +515,18 @@ def create_app(config_path: str | None = None) -> FastAPI:
             mode_applied=route.mode_applied,
             stream_enabled=stream_enabled,
             **compiled_request_diagnostics_kwargs(compiled_request),
-            token_policy_signal=token_policy_signal.to_log_dict(),
-            token_policy_decision=token_policy_decision.to_log_dict(),
-            token_policy_readiness=token_policy_readiness.to_log_dict(),
-            token_budget_truncation=token_budget_truncation,
-            request_scope_identity=request_scope_identity.to_log_dict(),
-            scope_resolution_diagnostics=scope_resolution_diagnostics.to_log_dict(),
+            **compiled_request_diagnostics_kwargs(compiled_request),
+            **token_policy_diagnostics_kwargs(
+                token_policy_signal=token_policy_signal,
+                token_policy_decision=token_policy_decision,
+                token_policy_readiness=token_policy_readiness,
+                token_budget_truncation=token_budget_truncation,
+            ),
+            **request_scope_diagnostics_kwargs(
+                request_scope_identity=request_scope_identity,
+                scope_resolution_diagnostics=scope_resolution_diagnostics,
+            ),
+            memory_adapter_shadow_dry_run=memory_adapter_shadow_dry_run,
             memory_adapter_shadow_dry_run=memory_adapter_shadow_dry_run,
             memory_adapter_shadow_readiness=memory_adapter_shadow_readiness,
             memory_adapter_shadow_conflicts=memory_adapter_shadow_conflicts,
