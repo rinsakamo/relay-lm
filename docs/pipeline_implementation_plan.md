@@ -50,6 +50,7 @@ RelayREF should initially record observations after the Main LLM response. It sh
 - Keep short-circuit clarification safe and explicit.
 - Keep trace / diagnostics / RelayRUN artifact connection behavior stable.
 - Preserve existing behavior by default.
+
 Current status:
 
 - `PipelineContext` has been introduced.
@@ -65,6 +66,7 @@ Current status:
 - Clarify `RelayREF` as the output-side observer.
 - Clarify the current `RelayRUN` limitation: request-end artifact writing first, true cross-cutting node-state reporting later.
 - Add a failure route table that connects `blocked_reason` / `failure_reason` values to actual behavior.
+
 Current status:
 
 - `docs/pipeline_responsibility_design.md` now documents the current implementation status.
