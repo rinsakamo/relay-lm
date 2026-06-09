@@ -96,3 +96,20 @@ def memory_adapter_shadow_diagnostics_kwargs(
         "memory_adapter_shadow_conflicts": memory_adapter_shadow_conflicts,
         "memory_adapter_shadow_delta": memory_adapter_shadow_delta,
     }
+
+
+def relayint_runtime_diagnostics_kwargs(
+    *,
+    relayint_fast_path_dry_run: Any,
+    relayint_quick_clarification_preflight: Any,
+    trace_enabled: bool,
+    compile_decision_dry_run: Any,
+) -> dict[str, Any]:
+    """Return RequestDiagnostics kwargs derived from RelayINT/runtime artifacts."""
+
+    return {
+        "relayint_fast_path_dry_run": relayint_fast_path_dry_run,
+        "relayint_quick_clarification_preflight": relayint_quick_clarification_preflight,
+        "trace_enabled": trace_enabled,
+        "compile_decision_dry_run": compile_decision_dry_run,
+    }
