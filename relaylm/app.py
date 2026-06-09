@@ -21,15 +21,13 @@ from relaylm.adapter import (
     open_chat_completion_stream,
 )
 from relaylm.config import RelayLMConfig, load_config
-from relaylm.diagnostics import (
-    RequestDiagnostics,
-    build_compile_decision_dry_run,
-    build_relayctx_short_term_block_assembly_dry_run,
-    build_relayctx_short_term_extraction_dry_run,
-    build_relayctx_short_term_runtime_injection_apply_result,
-    build_relayctx_short_term_runtime_injection_preflight,
-    build_relayctx_short_term_source_diagnostics,
-    build_relaysoul_runtime_feedback_summary,
+from relaylm.diagnostics_builder import (
+    build_base_request_diagnostics,
+    compiled_request_diagnostics_kwargs,
+    memory_adapter_shadow_diagnostics_kwargs,
+    relayint_runtime_diagnostics_kwargs,
+    request_scope_diagnostics_kwargs,
+    token_policy_diagnostics_kwargs,
 )
 from relaylm.diagnostics_builder import (
     build_base_request_diagnostics,
@@ -532,10 +530,14 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 memory_adapter_shadow_conflicts=memory_adapter_shadow_conflicts,
                 memory_adapter_shadow_delta=memory_adapter_shadow_delta,
             ),
-            relayint_fast_path_dry_run=relayint_fast_path_dry_run,
-            relayint_quick_clarification_preflight=relayint_quick_clarification_preflight,
-            trace_enabled=config.trace.enabled,
-            compile_decision_dry_run=compile_decision_dry_run,
+            **relayint_runtime_diagnostics_kwargs(
+                relayint_fast_path_dry_run=relayint_fast_path_dry_run,
+                relayint_quick_clarification_preflight=(
+                    relayint_quick_clarification_preflight
+                ),
+                trace_enabled=config.trace.enabled,
+                compile_decision_dry_run=compile_decision_dry_run,
+            ),
             relayemo_artifact=relayemo_artifact,
             relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
             relayref_artifact=relayref_artifact,
