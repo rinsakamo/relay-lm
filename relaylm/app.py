@@ -31,6 +31,7 @@ from relaylm.diagnostics import (
     build_relayctx_short_term_source_diagnostics,
     build_relaysoul_runtime_feedback_summary,
 )
+from relaylm.diagnostics_builder import build_base_request_diagnostics
 from relaylm.memory_adapter import (
     build_memory_adapter_shadow_delta,
     build_memory_adapter_conflict_diagnostics,
@@ -499,7 +500,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             "relayctx_short_term_runtime_injection",
         )
 
-        base_diagnostics = RequestDiagnostics(
+        base_diagnostics = build_base_request_diagnostics(
             request_id=request_id,
             route_model=route.route_model,
             backend_model=route.backend_model,
