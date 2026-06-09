@@ -17,3 +17,34 @@ def build_base_request_diagnostics(**kwargs: Any) -> RequestDiagnostics:
     """
 
     return RequestDiagnostics(**kwargs)
+
+def compiled_request_diagnostics_kwargs(compiled_request: Any) -> dict[str, Any]:
+    """Return RequestDiagnostics kwargs derived from compiled_request."""
+
+    return {
+        "compiler_used": compiled_request.compiler_used,
+        "memory_block_used": compiled_request.memory_block_used,
+        "memory_source": compiled_request.memory_source,
+        "memory_selection_summary": (
+            compiled_request.memory_selection_summary.to_log_dict()
+            if compiled_request.memory_selection_summary is not None
+            else None
+        ),
+        "memory_block_assembly": (
+            compiled_request.memory_block_assembly.to_log_dict()
+            if compiled_request.memory_block_assembly is not None
+            else None
+        ),
+        "token_memory_dry_run": compiled_request.token_memory_dry_run,
+        "stable_prefix_hash": compiled_request.stable_prefix_hash,
+        "stable_prefix_block_ids": compiled_request.stable_prefix_block_ids,
+        "memory_adapter_dry_run": compiled_request.memory_adapter_dry_run,
+        "memory_adapter_readiness": compiled_request.memory_adapter_readiness,
+        "memory_adapter_conflicts": compiled_request.memory_adapter_conflicts,
+        "context_block_summary": compiled_request.context_block_summary,
+        "persona_source_budget_diagnostics": (
+            compiled_request.persona_source_budget_diagnostics
+        ),
+        "profile_compile_dry_run_enabled": compiled_request.plan.enabled,
+        "profile_compile_fallback_reason": compiled_request.plan.fallback_reason,
+    }
