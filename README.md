@@ -91,6 +91,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [Open-LLM-VTuber integration (optional example)](docs/open_llm_vtuber_integration.md)
 - [Runtime architecture](docs/runtime_architecture.md)
 - [RelayLM pipeline implementation plan](docs/pipeline_implementation_plan.md)
+- [RelayLM pipeline responsibility design](docs/pipeline_responsibility_design.md)
 - [Config schema](docs/config_schema.md)
 - [Token policy profile settings](docs/token_policy_profiles.md)
 - [Context compiler contract](docs/context_compiler_contract.md)
