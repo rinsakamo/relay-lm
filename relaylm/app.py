@@ -515,7 +515,6 @@ def create_app(config_path: str | None = None) -> FastAPI:
             mode_applied=route.mode_applied,
             stream_enabled=stream_enabled,
             **compiled_request_diagnostics_kwargs(compiled_request),
-            **compiled_request_diagnostics_kwargs(compiled_request),
             **token_policy_diagnostics_kwargs(
                 token_policy_signal=token_policy_signal,
                 token_policy_decision=token_policy_decision,
