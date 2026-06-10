@@ -95,11 +95,14 @@ Recommended order:
 1. Keep `PipelineContext` and diagnostics output stable.
 2. Split CTX Repack boundaries from `app.py` without changing backend forwarding behavior.
 3. Rename or split the current input-side `relayref.py` behavior into RelayINT-facing code.
-4. Add a minimal RelayCTX Unpack layer after Main LLM output.
-5. Add failure route table / node result handling.
-6. Add lightweight output-side REF diagnostics.
-7. Add Output-side SCN observation.
-8. Only after these are stable, evolve RelayRUN into a true cross-cutting checkpoint / node-state reporter.
+4. Add a diagnostics-only pipeline node result scaffold that records what happened without changing runtime behavior.
+5. Add a minimal RelayCTX Unpack layer after Main LLM output.
+6. Promote node results into the failure route table / runtime behavior only after the scaffold and Unpack are stable.
+7. Add lightweight output-side REF diagnostics.
+8. Add Output-side SCN observation.
+9. Only after these are stable, evolve RelayRUN into a true cross-cutting checkpoint / node-state reporter.
+
+The pipeline node result scaffold is intentionally narrower than full failure routing: it should create a common record shape and let `PipelineContext` collect node results, but it should not decide fallback, retry, short-circuit, or recovery behavior yet.
 
 ## Per-stage responsibilities
 
@@ -156,6 +159,13 @@ Target behavior:
 
 ```text
 Any runtime step that replaces the backend-bound payload should do so through PipelineContext and provide a reason.
+```
+
+Near-term node-result behavior:
+
+```text
+Phase 4.5 records node results for diagnostics and future RelayRUN consumption.
+Phase 4.5 node results should not change runtime behavior yet.
 ```
 
 ### 4. Input-side RelaySCN
@@ -454,6 +464,19 @@ Degrade in this order:
 4. Shorten conversation history.
 5. Use a safe fallback response if no valid payload can be produced.
 
+### Pipeline node result scaffold
+
+The early node result scaffold records observed runtime step results, but it does not define failure behavior by itself.
+
+```text
+Pipeline step happens
+  -> PipelineNodeResult is recorded
+  -> PipelineContext collects the result
+  -> existing runtime behavior continues unchanged
+```
+
+Full routing decisions remain part of the later failure route table / node result handling phase.
+
 ### Main LLM / backend failure
 
 Backend transport failures belong to proxy transport / RelayRUN handling.
@@ -496,6 +519,7 @@ app.py lightweight separation
   -> documentation consolidation
   -> CTX Repack boundary hardening
   -> RelayINT split / alias from current relayref.py behavior
+  -> pipeline node result scaffold
   -> minimal RelayCTX Unpack
   -> failure route table / node result handling
   -> lightweight RelayREF diagnostics-only observer
