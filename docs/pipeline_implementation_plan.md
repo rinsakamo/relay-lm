@@ -117,11 +117,16 @@ Current status:
 - The runtime artifact variable name remains `relayref_artifact` to avoid diagnostics/schema churn.
 - `scripts/relaylm_relayint_reference_repair_wrapper_smoke.py` fixes the wrapper contract and verifies that `relayref_artifact` remains the compatibility diagnostics key.
 - `relayref.py` remains as the compatibility implementation for now.
+- MVP-45 has added the default-off RelayINT Fast Path dry-run artifact for low-latency reference / continuation / prior-memory intent signals.
+- MVP-46 has added the default-off RelayINT quick clarification preflight artifact, still diagnostics-only and without user-visible clarification text.
+- PR #241 should be reduced before merge into a Phase 4 completion handoff: keep the RelayINT quick clarification apply plan, request compatibility gate, default-off / dry-run-only config flags, diagnostics / trace wiring, MVP-47 summary, and smoke coverage.
+- PR #241 should not land actual user-visible short-circuit behavior in Phase 4. Remove or defer the immediate `app.py` response return path, response-body helper, backend-forward skip behavior, and completed short-circuit RelayRUN artifact wiring until Phase 6.
+- The reduced #241 plan-only merge belongs after the existing RelayINT split / preflight work and before Phase 4.5 `PipelineNodeResult` scaffolding.
 - Next Phase 4 work should avoid a destructive rename and instead continue moving input-side reference repair terminology toward RelayINT.
 
 ### Phase 4.5: pipeline node result scaffold
 
-This phase introduces the shared recording shape for pipeline steps before the full failure-route behavior of Phase 6.
+This phase starts after the reduced #241 plan-only merge has landed. It introduces the shared recording shape for pipeline steps before the full failure-route behavior of Phase 6.
 
 - Add a minimal `PipelineNodeResult` / pipeline step record module.
 - Add request-local node result collection to `PipelineContext`.
@@ -187,6 +192,9 @@ This phase is an extension point after minimal non-streaming Unpack is stable.
 - Connect `blocked_reason` and `failure_reason` to actual runtime behavior.
 - Define routes for continue, skip, short-circuit, diagnostic-only, fallback, blocked, and failed states.
 - Allow RelayRUN to consume node results at request end first.
+- Reintroduce RelayINT quick clarification actual apply here, after the #241 plan-only merge and Phase 4.5 node-result scaffold are stable.
+  - The actual apply path should be expressed through node results / response adapter / backend-forward routing rather than direct `app.py` response construction.
+  - The short-circuit response should keep the same content-free, fixed-template, compatibility-gated constraints established by the reduced #241 plan.
 - Keep the shape compatible with future per-node RelayRUN checkpoint reporting.
 - Include AI VTuber stream/output adapter failure routes.
   - chunk parse failure,
@@ -312,6 +320,7 @@ app.py lightweight separation
   -> docs consolidation
   -> CTX Repack boundary hardening
   -> RelayINT split / alias
+  -> #241 reduced plan-only merge: RelayINT quick clarification apply plan
   -> pipeline node result scaffold
   -> minimal RelayCTX Unpack
   -> RelayCTX Stream Unpack / Output Segmenter
