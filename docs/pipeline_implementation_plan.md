@@ -119,6 +119,46 @@ Current status:
 - `relayref.py` remains as the compatibility implementation for now.
 - Next Phase 4 work should avoid a destructive rename and instead continue moving input-side reference repair terminology toward RelayINT.
 
+### Phase 4.5: pipeline node result scaffold
+
+This phase introduces the shared recording shape for pipeline steps before the full failure-route behavior of Phase 6.
+
+- Add a minimal `PipelineNodeResult` / pipeline step record module.
+- Add request-local node result collection to `PipelineContext`.
+- Record early node results for already-separated runtime phases when safe.
+- Keep recorded node results diagnostics-only at first.
+- Do not use node results to change runtime routing yet.
+- Preserve existing response bodies, headers, diagnostics, trace output, RelayRUN artifacts, and backend forwarding behavior.
+- Keep the shape compatible with the full Phase 6 failure route table and future per-node RelayRUN checkpoint reporting.
+
+Non-goals for this phase:
+
+- Do not implement full blocked / failed / fallback routing.
+- Do not change short-circuit clarification behavior.
+- Do not move backend forwarding control to the node result layer yet.
+- Do not implement CTX Unpack, RelayREF, Output-side SCN, or cross-cutting RelayRUN checkpoints here.
+
+Suggested minimal shape:
+
+```python
+@dataclass(frozen=True)
+class PipelineNodeResult:
+    node_name: str
+    status: Literal[
+        "applied",
+        "skipped",
+        "blocked",
+        "failed",
+        "diagnostic_only",
+    ]
+    decision: str | None = None
+    blocked_reasons: list[str] = field(default_factory=list)
+    diagnostics: dict[str, Any] = field(default_factory=dict)
+    artifacts: list[dict[str, Any]] = field(default_factory=list)
+```
+
+Phase 4.5 is intentionally narrower than Phase 6: it records what happened, but it does not yet decide what the runtime should do next.
+
 ### Phase 5: minimal `RelayCTX Unpack`
 
 - Extract user-visible response text.
@@ -126,6 +166,7 @@ Current status:
 - Parse optional `ctx_working_update` only when the format is safe and expected.
 - Fail safe: return user-visible text when possible, but block internal updates if unpacking fails.
 - Do not write MEM / SOUL / SLP candidates directly from a failed or ambiguous unpack result.
+- Record unpack diagnostics through the Phase 4.5 node result scaffold when available.
 
 ### Phase 5.5: `RelayCTX Stream Unpack` and output segmentation
 
@@ -142,7 +183,7 @@ This phase is an extension point after minimal non-streaming Unpack is stable.
 
 ### Phase 6: failure route table / node result handling
 
-- Introduce a common node result shape for pipeline steps.
+- Promote the Phase 4.5 node result scaffold from diagnostics-only recording into runtime behavior where appropriate.
 - Connect `blocked_reason` and `failure_reason` to actual runtime behavior.
 - Define routes for continue, skip, short-circuit, diagnostic-only, fallback, blocked, and failed states.
 - Allow RelayRUN to consume node results at request end first.
@@ -153,25 +194,6 @@ This phase is an extension point after minimal non-streaming Unpack is stable.
   - partial stream failure,
   - internal update parse failure,
   - caption-only fallback.
-
-Suggested conceptual shape:
-
-```python
-@dataclass
-class PipelineNodeResult:
-    node_name: str
-    status: Literal[
-        "applied",
-        "skipped",
-        "blocked",
-        "failed",
-        "diagnostic_only",
-    ]
-    decision: str | None = None
-    blocked_reasons: list[str] = field(default_factory=list)
-    diagnostics: dict[str, Any] = field(default_factory=dict)
-    artifacts: list[dict[str, Any]] = field(default_factory=list)
-```
 
 ### Phase 7: lightweight `RelayREF` observer
 
@@ -290,6 +312,7 @@ app.py lightweight separation
   -> docs consolidation
   -> CTX Repack boundary hardening
   -> RelayINT split / alias
+  -> pipeline node result scaffold
   -> minimal RelayCTX Unpack
   -> RelayCTX Stream Unpack / Output Segmenter
   -> failure route table / node result handling
