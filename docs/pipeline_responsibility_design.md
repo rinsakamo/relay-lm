@@ -76,8 +76,10 @@ Current implementation status:
   - Backend forwarding, response handling, and top-level runtime ordering are still mostly in `app.py`.
 - Current `RelayRUN` is mostly a request-end artifact writer.
   - It is not yet a true cross-cutting node-state reporter.
-- Current `relayref.py` is named like REF, but its behavior is input-side unresolved reference / quick clarification logic.
-  - In the target design this is closer to RelayINT and should be renamed or split later.
+- Current `relayref.py` is named like REF, but its behavior is input-side unresolved reference / context repair diagnostics.
+  - In the target design this is closer to RelayINT.
+  - `app.py` now reaches this behavior through `build_relayint_reference_repair_dry_run(...)`.
+  - The historical `relayref.py` implementation remains as a compatibility backend until the schema and diagnostics names can be migrated safely.
 - `RelayCTX Unpack` is not yet a real response separation layer.
   - Main LLM output is mostly returned directly.
 - Early RelayREF should be lightweight and diagnostics-only.
