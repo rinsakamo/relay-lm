@@ -77,6 +77,7 @@ Current status:
 - It also records the next implementation boundary after PipelineContext and diagnostics-builder cleanup.
 - `docs/ai_vtuber_pipeline_profile.md` documents the AI VTuber-specific adapter and output segmentation profile.
 - Remaining Phase 2 work should focus on failure route details and implementation handoff notes before deeper code movement.
+- The AI VTuber profile now includes the adapter boundary contract and TTS-safe segmentation rules needed before Phase 5.5.
 
 ### Phase 3: `RelayCTX Repack` boundary hardening — mostly complete
 
