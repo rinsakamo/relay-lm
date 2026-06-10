@@ -219,6 +219,12 @@ SegmentedOutputChunk:
 
 ## TTS-safe chunk rules
 
+General rule:
+
+Structured or machine-oriented content should not be read aloud by default.
+When in doubt, prefer `caption_only` over sending noisy or unsafe text to TTS.
+Return-side EMO may adjust delivery style for speakable chunks, but it should not override segmenter safety policy.
+
 ### normal_sentence
 
 - TTS policy: `speak`
