@@ -81,3 +81,90 @@ def apply_relaymem_runtime_injection_phase(
         runtime_ctx_injection_result,
         runtime_snippet_injection_result,
     )
+
+def apply_token_budget_truncation_phase(
+    *,
+    config: RelayLMConfig,
+    pipeline_context: PipelineContext,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Apply token budget truncation as one CTX Repack phase."""
+
+    forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
+        config=config,
+        payload=pipeline_context.forwarded_payload,
+    )
+    forwarded_payload = replace_pipeline_forwarded_payload(
+        pipeline_context,
+        forwarded_payload,
+        "token_budget_truncation",
+    )
+    return forwarded_payload, token_budget_truncation
+
+
+def _maybe_apply_token_budget_truncation(
+    *,
+    config: RelayLMConfig,
+    payload: Mapping[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    forwarded_payload = dict(payload)
+    forwarded_messages = _extract_repack_messages(payload)
+    result = _build_token_budget_truncation_dry_run(
+        config=config,
+        forwarded_messages=forwarded_messages,
+    )
+    if result is None:
+        return forwarded_payload, None
+
+    if not config.memory.token_budget_truncation_enabled:
+        return forwarded_payload, result
+
+    blocked_reason = result.get("blocked_reason")
+    over_after = result.get("over_budget_after") is True
+    dropped_message_count = result.get("dropped_message_count")
+    truncated_messages = result.get("truncated_messages")
+    if (
+        blocked_reason
+        or over_after
+        or not isinstance(truncated_messages, list)
+        or not isinstance(dropped_message_count, int)
+        or dropped_message_count <= 0
+    ):
+        result["applied"] = False
+        result["apply_mode"] = "runtime_apply"
+        return forwarded_payload, result
+
+    original_messages = payload.get("messages")
+    if not isinstance(original_messages, list):
+        return forwarded_payload, result
+
+    forwarded_payload["messages"] = [m for m in truncated_messages if isinstance(m, dict)]
+    result["applied"] = True
+    result["apply_mode"] = "runtime_apply"
+    return forwarded_payload, result
+
+
+def _build_token_budget_truncation_dry_run(
+    *,
+    config: RelayLMConfig,
+    forwarded_messages: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    if config.memory.token_budget is None:
+        return None
+    result = apply_token_budget_message_truncation(
+        messages=forwarded_messages,
+        token_budget=config.memory.token_budget,
+        chars_per_token=config.memory.chars_per_token,
+        keep_system=True,
+        keep_latest_user=True,
+    ).to_log_dict()
+    result["enforcement_enabled"] = config.memory.token_budget_truncation_enabled
+    result["applied"] = False
+    result["apply_mode"] = "dry_run"
+    return result
+
+
+def _extract_repack_messages(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
+    raw_messages = payload.get("messages")
+    if not isinstance(raw_messages, list):
+        return []
+    return [message for message in raw_messages if isinstance(message, dict)]
