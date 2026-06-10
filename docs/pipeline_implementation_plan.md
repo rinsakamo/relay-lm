@@ -66,11 +66,16 @@ Current status:
 - Clarify `RelayREF` as the output-side observer.
 - Clarify the current `RelayRUN` limitation: request-end artifact writing first, true cross-cutting node-state reporting later.
 - Add a failure route table that connects `blocked_reason` / `failure_reason` values to actual behavior.
+- Add profile-specific implementation contracts that should not pollute the generic pipeline responsibility document.
+  - `docs/ai_vtuber_pipeline_profile.md` owns the text-in / voice-out AI VTuber MVP profile.
+  - It documents ASR as out of scope for the MVP.
+  - It documents the Return-side EMO hint contract, TTS adapter boundary, avatar adapter boundary, and TTS-safe chunk rules.
 
 Current status:
 
 - `docs/pipeline_responsibility_design.md` now documents the current implementation status.
 - It also records the next implementation boundary after PipelineContext and diagnostics-builder cleanup.
+- `docs/ai_vtuber_pipeline_profile.md` documents the AI VTuber-specific adapter and output segmentation profile.
 - Remaining Phase 2 work should focus on failure route details and implementation handoff notes before deeper code movement.
 
 ### Phase 3: `RelayCTX Repack` boundary hardening
@@ -80,6 +85,10 @@ Current status:
 - Keep short-term CTX injection explicit.
 - Keep token budget truncation behavior explicit.
 - Ensure each payload mutation has a reason and diagnostics trail.
+- Keep the AI VTuber profile small-context friendly.
+  - Main LLM should receive a token-budgeted payload rather than raw long client history.
+  - VTuber-style routes should be compatible with 8k-16k backend context targets when possible.
+  - The Main LLM may produce user-visible response text plus a bounded `ctx_working_update` / structured summary delta.
 
 ### Phase 4: `RelayINT` split / alias
 
@@ -88,6 +97,7 @@ Current status:
 - Treat unresolved reference detection as an INT responsibility.
 - Treat quick clarification and short-circuit clarification as INT responsibilities.
 - Keep Main LLM bypass behavior explicit for high-confidence clarification paths.
+- Keep ASR outside RelayINT for the AI VTuber MVP: RelayINT receives text after any external device/OS/browser speech input has already converted voice to text.
 
 ### Phase 5: minimal `RelayCTX Unpack`
 
@@ -97,6 +107,19 @@ Current status:
 - Fail safe: return user-visible text when possible, but block internal updates if unpacking fails.
 - Do not write MEM / SOUL / SLP candidates directly from a failed or ambiguous unpack result.
 
+### Phase 5.5: `RelayCTX Stream Unpack` and output segmentation
+
+This phase is an extension point after minimal non-streaming Unpack is stable.
+
+- Add streaming token/chunk parsing without changing the core meaning of Phase 5.
+- Forward user-visible text chunks as early as possible.
+- Keep internal marker suppression fail-closed.
+- Collect terminal `ctx_working_update` / structured summary delta candidates.
+- Add `RelayCTX Output Segmenter` for TTS-safe chunking.
+- Classify output chunks before they enter a TTS adapter queue.
+- Apply the AI VTuber profile's TTS-safe chunk rules for code blocks, URLs, JSON/YAML, tables, commands, file paths, quotes, and parenthetical notes.
+- Keep Return-side EMO lightweight and non-meaning-changing during streaming.
+
 ### Phase 6: failure route table / node result handling
 
 - Introduce a common node result shape for pipeline steps.
@@ -104,6 +127,12 @@ Current status:
 - Define routes for continue, skip, short-circuit, diagnostic-only, fallback, blocked, and failed states.
 - Allow RelayRUN to consume node results at request end first.
 - Keep the shape compatible with future per-node RelayRUN checkpoint reporting.
+- Include AI VTuber stream/output adapter failure routes.
+  - chunk parse failure,
+  - TTS adapter failure,
+  - partial stream failure,
+  - internal update parse failure,
+  - caption-only fallback.
 
 Suggested conceptual shape:
 
@@ -134,6 +163,7 @@ class PipelineNodeResult:
 - Detect obviously unsafe diagnostic leakage.
 - Detect likely scene / policy mismatch only as a warning.
 - Emit observations for Output-side RelaySCN and future RelayRUN diagnostics.
+- For stream/output adapter profiles, observe chunk and marker leakage diagnostics but do not directly rewrite normal visible output.
 
 ### Phase 8: Output-side `RelaySCN`
 
@@ -142,6 +172,7 @@ class PipelineNodeResult:
 - Emit persistence block reasons.
 - Keep immediate output blocking limited to safety, leakage, or recovery-critical cases.
 - Treat normal scene transition as next-turn state, not a reason to rewrite the current response.
+- For AI VTuber routes, treat TTS/avatar failure as output-adapter state unless it also implies semantic leakage, safety mismatch, or recovery-critical failure.
 
 ### Phase 9: `RelayRUN` cross-cutting checkpoint layer
 
@@ -150,6 +181,7 @@ class PipelineNodeResult:
 - Persist runtime checkpoints with resume metadata.
 - Keep RelayRUN semantic-neutral: it should orchestrate runtime state, not decide meaning.
 - Route user-visible recovery text through the normal output pipeline unless the failure is transport-level or explicitly non-character system mode.
+- Eventually track stream chunk lifecycle and TTS/avatar adapter diagnostics as runtime artifacts, not semantic decisions.
 
 ### Phase 10: `RelaySLP` separation
 
@@ -209,6 +241,20 @@ Block ctx_working_update / MEM / SOUL / SLP candidates.
 Record unpack_failed diagnostics.
 ```
 
+### Stream / output adapter failure
+
+Stream and output adapter failures should not invalidate already-safe visible text:
+
+```text
+partial visible chunks emitted
+  -> preserve emitted chunks
+  -> block incomplete internal update candidates
+  -> record partial stream / chunk / adapter diagnostics
+  -> allow Output-side SCN and RelayRUN to prepare next-turn recovery hints when needed
+```
+
+TTS adapter failure should normally fall back to caption/text output and diagnostics.
+
 ### REF warning
 
 Early RelayREF findings should be diagnostics-only unless they detect leakage, empty output, or a safety-critical mismatch.
@@ -225,6 +271,7 @@ app.py lightweight separation
   -> CTX Repack boundary hardening
   -> RelayINT split / alias
   -> minimal RelayCTX Unpack
+  -> RelayCTX Stream Unpack / Output Segmenter
   -> failure route table / node result handling
   -> lightweight REF diagnostics-only observer
   -> Output-side SCN
