@@ -66,8 +66,14 @@ Current implementation status:
 - `diagnostics_builder.py` now owns grouped `RequestDiagnostics` field mapping helpers.
   - `app.py` still calls `build_base_request_diagnostics(...)`, but most grouped diagnostics kwargs are no longer mapped inline.
   - Current grouped helpers cover compiled request state, token policy, request scope, memory adapter shadow state, RelayINT/runtime state, runtime artifacts, RelayCTX short-term artifacts, and RelayRUN artifact wiring.
-- `app.py` still carries too much orchestration and node execution order.
-  - The diagnostics mapping is thinner, but actual runtime node execution is still mostly in `app.py`.
+- `relayctx_repack.py` now owns the main CTX Repack payload mutation phases.
+  - RelayMEM snippet/runtime CTX injection is grouped as one Repack phase.
+  - Token budget truncation is grouped as one Repack phase.
+  - RelayCTX short-term runtime injection apply is grouped as one Repack phase.
+  - These phases still update `PipelineContext` with explicit payload replacement reasons.
+- `app.py` still carries orchestration and node execution order.
+  - Diagnostics mapping and CTX Repack payload mutation are thinner than before.
+  - Backend forwarding, response handling, and top-level runtime ordering are still mostly in `app.py`.
 - Current `RelayRUN` is mostly a request-end artifact writer.
   - It is not yet a true cross-cutting node-state reporter.
 - Current `relayref.py` is named like REF, but its behavior is input-side unresolved reference / quick clarification logic.
