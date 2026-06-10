@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 from relaylm.config import RelayLMConfig
 from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
+from relaylm.token_budget_truncation import apply_token_budget_message_truncation
 from relaylm.relaymem_runtime_ctx import (
     maybe_apply_relaymem_runtime_ctx_injection,
     maybe_apply_relaymem_snippet_runtime_injection,
