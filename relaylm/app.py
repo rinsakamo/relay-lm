@@ -55,7 +55,6 @@ from relaylm.relayint import (
     build_relayint_reference_repair_dry_run,
 )
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
-from relaylm.relayref import build_relayref_dry_run_artifact
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relayrun import (
     build_relayrun_node,
