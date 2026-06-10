@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from typing import Any, Literal
+from relaylm.relayref import build_relayref_dry_run_artifact
 
 
 ReferenceKind = Literal["none", "pronoun_like", "continuation", "prior_memory_request"]
@@ -29,6 +30,28 @@ SAFE_CTX_KEYS = {
     "next_expected_action",
 }
 
+
+def build_relayint_reference_repair_dry_run(
+    *,
+    relayscn_artifact: Mapping[str, Any] | None,
+    messages: Sequence[Mapping[str, Any]] | None = None,
+    ctx_hints: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build input-side reference/context repair diagnostics.
+
+    This is a compatibility wrapper around the historical RelayREF dry-run
+    artifact. The behavior remains unchanged while Phase 4 moves input-side
+    unresolved reference handling toward RelayINT terminology.
+    """
+
+    artifact = build_relayref_dry_run_artifact(
+        relayscn_artifact=relayscn_artifact,
+        messages=messages,
+        ctx_hints=ctx_hints,
+    )
+    artifact["relayint_alias"] = True
+    artifact["source_compat_module"] = "relayref"
+    return artifact
 
 def build_relayint_fast_path_dry_run(
     *,
