@@ -56,7 +56,6 @@ from relaylm.relayint import (
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relayref import build_relayref_dry_run_artifact
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
-
 from relaylm.relayrun import (
     build_relayrun_node,
     build_runtime_checkpoint_dry_run_artifact,
@@ -85,9 +84,7 @@ from relaylm.token_policy_signal import (
     build_token_policy_signal,
 )
 from relaylm.trace_runtime import extract_response_text, trace_runtime_event
-
 from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
-
 from relaylm.relayctx_repack import apply_relaymem_runtime_injection_phase
 
 def create_app(config_path: str | None = None) -> FastAPI:
