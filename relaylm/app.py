@@ -56,11 +56,7 @@ from relaylm.relayint import (
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relayref import build_relayref_dry_run_artifact
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
-from relaylm.relaymem_runtime_ctx import (
-    maybe_apply_relaymem_runtime_ctx_injection,
-    maybe_apply_relaymem_snippet_runtime_injection,
-    skipped_relaymem_runtime_ctx_injection_result,
-)
+
 from relaylm.relayrun import (
     build_relayrun_node,
     build_runtime_checkpoint_dry_run_artifact,
@@ -92,6 +88,7 @@ from relaylm.trace_runtime import extract_response_text, trace_runtime_event
 
 from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
 
+from relaylm.relayctx_repack import apply_relaymem_runtime_injection_phase
 
 def create_app(config_path: str | None = None) -> FastAPI:
     config = load_config(config_path)
@@ -353,52 +350,16 @@ def create_app(config_path: str | None = None) -> FastAPI:
             max_snippet_chars=config.memory.max_snippet_chars,
             max_snippet_candidates=config.memory.max_snippet_candidates,
         )
-        forwarded_payload, runtime_snippet_injection_result = (
-            maybe_apply_relaymem_snippet_runtime_injection(
-                payload=forwarded_payload,
-                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-                ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
-                retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
-                snippet_apply_enabled=config.memory.snippet_apply_enabled,
-                snippet_dry_run_only=config.memory.snippet_dry_run_only,
-                snippet_runtime_injection_enabled=(
-                    config.memory.snippet_runtime_injection_enabled
-                ),
-                snippet_runtime_dry_run_only=config.memory.snippet_runtime_dry_run_only,
-                token_budget_truncation_enabled=config.memory.token_budget_truncation_enabled,
-                token_budget=config.memory.token_budget,
-                chars_per_token=config.memory.chars_per_token,
-            )
-        )
-        forwarded_payload = replace_pipeline_forwarded_payload(
-            pipeline_context,
+        (
             forwarded_payload,
-            "relaymem_snippet_runtime_injection",
+            runtime_ctx_injection_result,
+            runtime_snippet_injection_result,
+        ) = apply_relaymem_runtime_injection_phase(
+            config=config,
+            pipeline_context=pipeline_context,
+            relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+            compiled_payload=compiled_request.payload,
         )
-        if runtime_snippet_injection_result.get("applied") is True:
-            runtime_ctx_injection_result = skipped_relaymem_runtime_ctx_injection_result(
-                payload=compiled_request.payload,
-                reason="skipped_because_snippet_runtime_injection_applied",
-            )
-        else:
-            forwarded_payload, runtime_ctx_injection_result = (
-                maybe_apply_relaymem_runtime_ctx_injection(
-                    payload=forwarded_payload,
-                    relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-                    ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
-                    retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
-                    token_budget_truncation_enabled=(
-                        config.memory.token_budget_truncation_enabled
-                    ),
-                    token_budget=config.memory.token_budget,
-                    chars_per_token=config.memory.chars_per_token,
-                )
-            )
-            forwarded_payload = replace_pipeline_forwarded_payload(
-                pipeline_context,
-                forwarded_payload,
-                "relaymem_runtime_ctx_injection",
-            )
         forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
             config=config,
             payload=forwarded_payload,
