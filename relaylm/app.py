@@ -81,7 +81,7 @@ from relaylm.token_policy_signal import (
 )
 from relaylm.trace_runtime import extract_response_text, trace_runtime_event
 
-from relaylm.pipeline_context import PipelineContext
+from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
 
 
 def create_app(config_path: str | None = None) -> FastAPI:
@@ -361,7 +361,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 chars_per_token=config.memory.chars_per_token,
             )
         )
-        pipeline_context.replace_forwarded_payload(
+        forwarded_payload = replace_pipeline_forwarded_payload(
+            pipeline_context,
             forwarded_payload,
             "relaymem_snippet_runtime_injection",
         )
@@ -384,7 +385,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     chars_per_token=config.memory.chars_per_token,
                 )
             )
-        pipeline_context.replace_forwarded_payload(
+        forwarded_payload = replace_pipeline_forwarded_payload(
+            pipeline_context,
             forwarded_payload,
             "relaymem_runtime_ctx_injection",
         )
@@ -392,7 +394,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
             config=config,
             payload=forwarded_payload,
         )
-        pipeline_context.replace_forwarded_payload(
+        forwarded_payload = replace_pipeline_forwarded_payload(
+            pipeline_context,
             forwarded_payload,
             "token_budget_truncation",
         )
@@ -496,7 +499,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 chars_per_token=config.memory.chars_per_token,
             )
         )
-        pipeline_context.replace_forwarded_payload(
+        forwarded_payload = replace_pipeline_forwarded_payload(
+            pipeline_context,
             forwarded_payload,
             "relayctx_short_term_runtime_injection",
         )
