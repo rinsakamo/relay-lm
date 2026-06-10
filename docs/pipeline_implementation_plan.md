@@ -110,6 +110,14 @@ Current status:
 - Keep Main LLM bypass behavior explicit for high-confidence clarification paths.
 - Keep ASR outside RelayINT for the AI VTuber MVP: RelayINT receives text after any external device/OS/browser speech input has already converted voice to text.
 
+Current status:
+
+- `app.py` now calls `build_relayint_reference_repair_dry_run(...)` from `relayint.py`.
+- The wrapper delegates to the historical `relayref.py` dry-run artifact builder for compatibility.
+- The runtime artifact variable name remains `relayref_artifact` to avoid diagnostics/schema churn.
+- `relayref.py` remains as the compatibility implementation for now.
+- Next Phase 4 work should avoid a destructive rename and instead continue moving input-side reference repair terminology toward RelayINT.
+
 ### Phase 5: minimal `RelayCTX Unpack`
 
 - Extract user-visible response text.
