@@ -53,6 +53,7 @@ def build_relayint_reference_repair_dry_run(
     artifact["source_compat_module"] = "relayref"
     return artifact
 
+
 def build_relayint_fast_path_dry_run(
     *,
     messages: Sequence[Mapping[str, Any]],
