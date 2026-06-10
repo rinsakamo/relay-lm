@@ -78,7 +78,7 @@ Current status:
 - `docs/ai_vtuber_pipeline_profile.md` documents the AI VTuber-specific adapter and output segmentation profile.
 - Remaining Phase 2 work should focus on failure route details and implementation handoff notes before deeper code movement.
 
-### Phase 3: `RelayCTX Repack` boundary hardening
+### Phase 3: `RelayCTX Repack` boundary hardening — mostly complete
 
 - Separate `request_compiler.py` responsibilities from runtime injection steps.
 - Keep memory block injection explicit.
@@ -89,6 +89,16 @@ Current status:
   - Main LLM should receive a token-budgeted payload rather than raw long client history.
   - VTuber-style routes should be compatible with 8k-16k backend context targets when possible.
   - The Main LLM may produce user-visible response text plus a bounded `ctx_working_update` / structured summary delta.
+
+  Current status:
+
+- `relaylm/relayctx_repack.py` now owns the main backend-bound payload mutation phases.
+- RelayMEM snippet/runtime CTX injection has moved out of `app.py`.
+- Token budget truncation runtime application has moved out of `app.py`.
+- RelayCTX short-term runtime injection apply has moved out of `app.py`.
+- Each moved phase still records forwarded payload replacement through `PipelineContext`.
+- `app.py` still owns orchestration order, diagnostics assembly, backend forwarding, and response handling.
+- Remaining Phase 3 work should be limited to small cleanup and handoff notes unless a concrete bug appears.
 
 ### Phase 4: `RelayINT` split / alias
 
