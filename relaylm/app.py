@@ -21,7 +21,16 @@ from relaylm.adapter import (
     open_chat_completion_stream,
 )
 from relaylm.config import RelayLMConfig, load_config
-from relaylm.diagnostics import RequestDiagnostics
+from relaylm.diagnostics import (
+    RequestDiagnostics,
+    build_compile_decision_dry_run,
+    build_relayctx_short_term_block_assembly_dry_run,
+    build_relayctx_short_term_extraction_dry_run,
+    build_relayctx_short_term_runtime_injection_apply_result,
+    build_relayctx_short_term_runtime_injection_preflight,
+    build_relayctx_short_term_source_diagnostics,
+    build_relaysoul_runtime_feedback_summary,
+)
 from relaylm.diagnostics_builder import (
     build_base_request_diagnostics,
     compiled_request_diagnostics_kwargs,
