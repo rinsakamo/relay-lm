@@ -91,7 +91,7 @@ Current status:
   - VTuber-style routes should be compatible with 8k-16k backend context targets when possible.
   - The Main LLM may produce user-visible response text plus a bounded `ctx_working_update` / structured summary delta.
 
-  Current status:
+Current status:
 
 - `relaylm/relayctx_repack.py` now owns the main backend-bound payload mutation phases.
 - RelayMEM snippet/runtime CTX injection has moved out of `app.py`.
