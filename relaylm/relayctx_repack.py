@@ -3,19 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any
 from copy import deepcopy
+from typing import Any
 
 from relaylm.config import RelayLMConfig
+from relaylm.diagnostics import build_relayctx_short_term_runtime_injection_apply_result
 from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
-from relaylm.token_budget import estimate_text_tokens
-from relaylm.token_budget_truncation import apply_token_budget_message_truncation
 from relaylm.relaymem_runtime_ctx import (
     maybe_apply_relaymem_runtime_ctx_injection,
     maybe_apply_relaymem_snippet_runtime_injection,
     skipped_relaymem_runtime_ctx_injection_result,
 )
-from relaylm.diagnostics import build_relayctx_short_term_runtime_injection_apply_result
+from relaylm.token_budget import estimate_text_tokens
+from relaylm.token_budget_truncation import apply_token_budget_message_truncation
 
 
 def apply_relaymem_runtime_injection_phase(
