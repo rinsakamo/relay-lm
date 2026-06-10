@@ -115,6 +115,7 @@ Current status:
 - `app.py` now calls `build_relayint_reference_repair_dry_run(...)` from `relayint.py`.
 - The wrapper delegates to the historical `relayref.py` dry-run artifact builder for compatibility.
 - The runtime artifact variable name remains `relayref_artifact` to avoid diagnostics/schema churn.
+- `scripts/relaylm_relayint_reference_repair_wrapper_smoke.py` fixes the wrapper contract and verifies that `relayref_artifact` remains the compatibility diagnostics key.
 - `relayref.py` remains as the compatibility implementation for now.
 - Next Phase 4 work should avoid a destructive rename and instead continue moving input-side reference repair terminology toward RelayINT.
 
