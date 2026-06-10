@@ -167,7 +167,9 @@ def _maybe_apply_token_budget_truncation(
     if not isinstance(original_messages, list):
         return forwarded_payload, result
 
-    forwarded_payload["messages"] = [m for m in truncated_messages if isinstance(m, dict)]
+    forwarded_payload["messages"] = [
+        m for m in truncated_messages if isinstance(m, dict)
+    ]
     result["applied"] = True
     result["apply_mode"] = "runtime_apply"
     return forwarded_payload, result
@@ -211,7 +213,9 @@ def _maybe_apply_relayctx_short_term_runtime_injection(
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
     forwarded_payload = deepcopy(dict(payload))
     original_messages = payload.get("messages")
-    original_message_count = len(original_messages) if isinstance(original_messages, list) else 0
+    original_message_count = (
+        len(original_messages) if isinstance(original_messages, list) else 0
+    )
 
     if not apply_enabled:
         return forwarded_payload, None
@@ -321,11 +325,17 @@ def _relayctx_before_latest_user_index(messages: list[Any]) -> int | None:
     return None
 
 
-def _relayctx_short_term_inserted_content(preflight_artifact: Mapping[str, Any]) -> str:
+def _relayctx_short_term_inserted_content(
+    preflight_artifact: Mapping[str, Any]
+) -> str:
     return "\n".join(
         [
             "[RelayCTX Short-Term Context]",
-            "The current thread contains short-term context candidates. Treat current user instructions and current-thread temporary context as higher priority than stable memory. Do not treat these hints as long-term memory.",
+            (
+                "The current thread contains short-term context candidates. Treat current "
+                "user instructions and current-thread temporary context as higher priority "
+                than stable memory. Do not treat these hints as long-term memory."
+            ),
             "",
             "Candidate summary:",
             f"- temporary facts: {_non_negative_int(preflight_artifact.get('temporary_fact_count'))}",
