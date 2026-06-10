@@ -326,7 +326,7 @@ def _relayctx_before_latest_user_index(messages: list[Any]) -> int | None:
 
 
 def _relayctx_short_term_inserted_content(
-    preflight_artifact: Mapping[str, Any]
+    preflight_artifact: Mapping[str, Any],
 ) -> str:
     return "\n".join(
         [
@@ -334,7 +334,7 @@ def _relayctx_short_term_inserted_content(
             (
                 "The current thread contains short-term context candidates. Treat current "
                 "user instructions and current-thread temporary context as higher priority "
-                than stable memory. Do not treat these hints as long-term memory."
+                "than stable memory. Do not treat these hints as long-term memory."
             ),
             "",
             "Candidate summary:",
