@@ -52,6 +52,7 @@ from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.relayint import (
     build_relayint_fast_path_dry_run,
     build_relayint_quick_clarification_preflight,
+    build_relayint_reference_repair_dry_run,
 )
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relayref import build_relayref_dry_run_artifact
@@ -308,7 +309,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             payload=payload,
             relayemo_artifact=relayemo_artifact,
         )
-        relayref_artifact = build_relayref_dry_run_artifact(
+        relayref_artifact = build_relayint_reference_repair_dry_run(
             relayscn_artifact=relayscn_scene_policy_artifact,
             messages=_extract_trace_messages(payload),
             ctx_hints=_extract_ctx_hints(payload),
