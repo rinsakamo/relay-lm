@@ -174,14 +174,13 @@ def _post(
         require(isinstance(metadata, dict), record)
         relayrun = metadata.get("relayrun_artifact")
         require(isinstance(relayrun, dict), metadata)
-        require(relayrun.get("response_source") != "relayint_quick_clarification_apply", relayrun)
-        require(relayrun.get("short_circuit_applied") is not True, relayrun)
-        require(relayrun.get("backend_forwarded") is not False, relayrun)
-        require(
-            relayrun.get("relaymem_retrieval_skipped_reason")
-            != "relayint_quick_clarification_apply",
-            relayrun,
-        )
+        for phase6_key in (
+            "response_source",
+            "short_circuit_applied",
+            "backend_forwarded",
+            "relaymem_retrieval_skipped_reason",
+        ):
+            require(phase6_key not in relayrun, relayrun)
         _assert_backend_response(response_body)
         return backend_payload, metadata, response_body
 

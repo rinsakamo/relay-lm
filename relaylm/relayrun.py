@@ -2019,12 +2019,6 @@ def _checkpoint_envelope_from_artifact(artifact: dict[str, Any]) -> dict[str, An
         "character_id": artifact.get("character_id"),
         "stream_enabled": artifact.get("stream_enabled"),
         "run_status": artifact.get("run_status"),
-        "response_source": artifact.get("response_source"),
-        "short_circuit_applied": artifact.get("short_circuit_applied"),
-        "backend_forwarded": artifact.get("backend_forwarded"),
-        "relaymem_retrieval_skipped_reason": artifact.get(
-            "relaymem_retrieval_skipped_reason"
-        ),
         "node_sequence": artifact.get("node_sequence") or [],
         "node_statuses": artifact.get("node_statuses") or [],
         "blocked_reasons": artifact.get("blocked_reasons") or [],

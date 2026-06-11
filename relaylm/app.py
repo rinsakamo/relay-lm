@@ -899,11 +899,6 @@ def _build_relayrun_runtime_artifact(
     backend_forward_blocked_reasons: list[str] | None = None,
     stream_started: bool | None = None,
     first_token_sent: bool | None = None,
-    run_status: str | None = None,
-    response_source: str | None = None,
-    short_circuit_applied: bool | None = None,
-    backend_forwarded: bool | None = None,
-    relaymem_retrieval_skipped_reason: str | None = None,
 ) -> dict[str, Any]:
     node_statuses = [
         build_relayrun_node(node_name="request_received", node_status="completed"),
@@ -969,21 +964,6 @@ def _build_relayrun_runtime_artifact(
         recovery_transition_created=False,
         applied=False,
     )
-    if isinstance(run_status, str) and run_status:
-        artifact["run_status"] = run_status
-    if isinstance(response_source, str) and response_source:
-        artifact["response_source"] = response_source
-    if short_circuit_applied is not None:
-        artifact["short_circuit_applied"] = bool(short_circuit_applied)
-    if backend_forwarded is not None:
-        artifact["backend_forwarded"] = bool(backend_forwarded)
-    if (
-        isinstance(relaymem_retrieval_skipped_reason, str)
-        and relaymem_retrieval_skipped_reason
-    ):
-        artifact["relaymem_retrieval_skipped_reason"] = (
-            relaymem_retrieval_skipped_reason
-        )
     if backend_forward_status == "pending":
         return artifact
     return write_relayrun_checkpoint_if_enabled(
@@ -1067,14 +1047,6 @@ def _relayrun_relaymem_retrieval_node(artifact: Mapping[str, Any] | None) -> dic
             node_status="failed",
             blocked_reasons=["relaymem_retrieval_artifact_missing"],
             fallback_reason="relaymem_retrieval_artifact_missing",
-        )
-    skipped_reason = artifact.get("relaymem_retrieval_skipped_reason")
-    if isinstance(skipped_reason, str) and skipped_reason:
-        return build_relayrun_node(
-            node_name="relaymem_retrieval",
-            node_status="skipped",
-            blocked_reasons=[skipped_reason],
-            fallback_reason=skipped_reason,
         )
     blocked_reasons = []
     apply_decision = artifact.get("apply_decision")
