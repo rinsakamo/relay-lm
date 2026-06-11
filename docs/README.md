@@ -15,10 +15,14 @@ This page is the entry point for RelayLM documentation.
 Use these docs to understand the RelayLM pipeline, responsibility boundaries, and profile-specific runtime design.
 
 - [Architecture docs index](architecture/README.md)
-- [Runtime architecture](runtime_architecture.md)
+- [Runtime architecture](architecture/runtime_architecture.md)
+- [Product runtime hardening](architecture/product_runtime_hardening.md)
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md)
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md)
 - [AI VTuber pipeline profile](architecture/ai_vtuber_pipeline_profile.md)
+- [VTuber memory proxy design](architecture/vtuber_memory_proxy_design.md)
+- [Persona-specialized proxy design](architecture/persona_specialized_proxy_design.md)
+- [Open-LLM-VTuber integration](architecture/open_llm_vtuber_integration.md)
 
 ## MVP summaries
 
