@@ -81,6 +81,7 @@ Current implementation status:
   - `app.py` now reaches this behavior through `build_relayint_reference_repair_dry_run(...)`.
   - The historical `relayref.py` implementation remains as a compatibility backend until the schema and diagnostics names can be migrated safely.
   - `scripts/relaylm_relayint_reference_repair_wrapper_smoke.py` protects this compatibility contract.
+  - RelayRUN recovery / waiting-user artifacts keep `source_node: "relayref"` for compatibility while exposing `source_node_alias: "relayint_reference_repair"`.
 - `RelayCTX Unpack` is not yet a real response separation layer.
   - Main LLM output is mostly returned directly.
 - Early RelayREF should be lightweight and diagnostics-only.
