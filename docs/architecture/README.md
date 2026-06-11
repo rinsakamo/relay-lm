@@ -2,7 +2,7 @@
 
 This directory indexes RelayLM architecture and pipeline design documents.
 
-The main architecture, profile-specific architecture, context/scene architecture, and most module-responsibility architecture documents are housed here. A few large module docs still point to legacy `../*.md` files until they are moved by path-only copy or `git mv`.
+The main architecture, profile-specific architecture, context/scene architecture, and module-responsibility architecture documents are housed here.
 
 ## Pipeline architecture
 
@@ -30,19 +30,14 @@ The main architecture, profile-specific architecture, context/scene architecture
 ## Module responsibility docs
 
 - [RelayINT MVP design](relayint_mvp_design.md)
-- [RelayREF / RelaySLP MVP design](../relayref_relayslp_mvp_design.md)
+- [RelayREF / RelaySLP MVP design](relayref_relayslp_mvp_design.md)
 - [RelayMEM MVP design](relaymem_mvp_design.md)
 - [RelayMEM SLP execution design](relaymem_slp_execution_design.md)
-- [RelayMEM retrieval execution design](../relaymem_retrieval_execution_design.md)
+- [RelayMEM retrieval execution design](relaymem_retrieval_execution_design.md)
 - [RelayEMO return-side style adapter design](relayemo_return_side_style_adapter_design.md)
 
 ## Follow-up cleanup
 
 Future architecture docs should be created directly under `docs/architecture/` when they describe cross-cutting runtime design, pipeline order, responsibility boundaries, or profile-specific pipeline contracts.
 
-Suggested next physical move order:
-
-1. Move the remaining large module docs with safer path-only copy or `git mv`:
-   - `relayref_relayslp_mvp_design.md`
-   - `relaymem_retrieval_execution_design.md`
-2. Leave contracts, smoke runbooks, and MVP summaries in their own directories.
+Architecture consolidation is now complete for the documents tracked in this index. Contracts, smoke runbooks, and MVP summaries remain in their own directories.
