@@ -6,10 +6,10 @@ This document defines the AI VTuber MVP pipeline profile for RelayLM.
 
 It is a profile-specific companion to:
 
-- `docs/pipeline_responsibility_design.md`
-- `docs/pipeline_implementation_plan.md`
-- `docs/relayctx_wake_loop_design.md`
-- `docs/relayemo_return_side_style_adapter_design.md`
+- `pipeline_responsibility_design.md`
+- `pipeline_implementation_plan.md`
+- `../relayctx_wake_loop_design.md`
+- `../relayemo_return_side_style_adapter_design.md`
 
 The goal is to keep the core RelayLM responsibility model generic while documenting the VTuber-specific text-to-voice/avatar runtime contract separately.
 
