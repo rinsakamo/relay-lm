@@ -7,7 +7,6 @@ from copy import deepcopy
 from dataclasses import replace
 import json
 import os
-import time
 import uuid
 from collections.abc import Mapping
 from typing import Any
@@ -44,7 +43,6 @@ from relaylm.relayint import (
     build_relayint_quick_clarification_apply_plan,
     build_relayint_quick_clarification_preflight,
     build_relayint_request_compatibility_gate,
-    quick_clarification_response_text_for_template,
 )
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relayref import build_relayref_dry_run_artifact
@@ -328,110 +326,6 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 request_compatibility_gate=build_relayint_request_compatibility_gate(payload),
             )
         )
-        if (
-            relayint_quick_clarification_apply_plan is not None
-            and relayint_quick_clarification_apply_plan.get("apply_allowed") is True
-        ):
-            applied_apply_plan = dict(relayint_quick_clarification_apply_plan)
-            applied_apply_plan["short_circuit_applied"] = True
-            applied_apply_plan["relaymem_retrieval_skipped_reason"] = (
-                "relayint_quick_clarification_apply"
-            )
-            response_text = quick_clarification_response_text_for_template(
-                applied_apply_plan.get("response_template_id")
-                if isinstance(applied_apply_plan.get("response_template_id"), str)
-                else None
-            )
-            relaymem_retrieval_skipped_artifact = {
-                "schema_version": "relaymem.retrieval_skipped.v0",
-                "content_free": True,
-                "skipped": True,
-                "relaymem_retrieval_skipped_reason": (
-                    "relayint_quick_clarification_apply"
-                ),
-            }
-            runtime_ctx_skipped_result = skipped_relaymem_runtime_ctx_injection_result(
-                payload=compiled_request.payload,
-                reason="relayint_quick_clarification_apply",
-            )
-            runtime_snippet_skipped_result = dict(runtime_ctx_skipped_result)
-            runtime_snippet_skipped_result["schema_version"] = (
-                "relaymem.runtime_snippet_injection_result.v0"
-            )
-            runtime_snippet_skipped_result["source"] = "snippet_runtime_injection_plan"
-            relayrun_artifact = _build_relayrun_runtime_artifact(
-                config=config,
-                request_id=request_id,
-                run_id=relayrun_run_id,
-                route=route,
-                stream_enabled=stream_enabled,
-                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-                relayref_artifact=relayref_artifact,
-                relaymem_retrieval_artifact=relaymem_retrieval_skipped_artifact,
-                runtime_ctx_injection_result=runtime_ctx_skipped_result,
-                runtime_snippet_injection_result=runtime_snippet_skipped_result,
-                token_budget_truncation=None,
-                backend_forward_status="skipped",
-                backend_forward_blocked_reasons=[
-                    "relayint_quick_clarification_apply"
-                ],
-                stream_started=False,
-                first_token_sent=False,
-                run_status="completed",
-                response_source="relayint_quick_clarification_apply",
-                short_circuit_applied=True,
-                backend_forwarded=False,
-                relaymem_retrieval_skipped_reason=(
-                    "relayint_quick_clarification_apply"
-                ),
-            )
-            diagnostics = RequestDiagnostics(
-                request_id=request_id,
-                route_model=route.route_model,
-                backend_model=route.backend_model,
-                backend_name=route.backend_name,
-                character_id=route.character_id,
-                mode_requested=route.mode_requested,
-                mode_applied=route.mode_applied,
-                stream_enabled=stream_enabled,
-                compiler_used=compiled_request.compiler_used,
-                memory_block_used=compiled_request.memory_block_used,
-                memory_source=compiled_request.memory_source,
-                relayint_fast_path_dry_run=relayint_fast_path_dry_run,
-                relayint_quick_clarification_preflight=(
-                    relayint_quick_clarification_preflight
-                ),
-                relayint_quick_clarification_apply_plan=applied_apply_plan,
-                trace_enabled=config.trace.enabled,
-                relayemo_artifact=relayemo_artifact,
-                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-                runtime_ctx_injection_result=runtime_ctx_skipped_result,
-                runtime_snippet_injection_result=runtime_snippet_skipped_result,
-                relayrun_artifact=relayrun_artifact,
-            )
-            body = _relayint_quick_clarification_response_body(
-                request_id=request_id,
-                model=payload.get("model"),
-                response_text=response_text,
-            )
-            trace_runtime_event(
-                config=config,
-                diagnostics=diagnostics,
-                messages=_extract_trace_messages(forwarded_payload),
-                response_text=response_text,
-                metadata={
-                    "event": "relayint_quick_clarification_short_circuit",
-                    "status_code": 200,
-                    "relaymem_retrieval_skipped_reason": (
-                        "relayint_quick_clarification_apply"
-                    ),
-                },
-            )
-            return JSONResponse(
-                status_code=200,
-                content=body,
-                headers=diagnostics.to_headers(),
-            )
 
         relaymem_store_diagnostics = build_relaymem_store_diagnostics(
             root_path=config.memory.root_path,
@@ -831,34 +725,6 @@ def create_app(config_path: str | None = None) -> FastAPI:
         return JSONResponse(status_code=status_code, content={"raw": body}, headers=headers)
 
     return app
-
-
-def _relayint_quick_clarification_response_body(
-    *,
-    request_id: str,
-    model: Any,
-    response_text: str,
-) -> dict[str, Any]:
-    model_name = model if isinstance(model, str) and model else "relaylm-default"
-    completion_tokens = estimate_text_tokens(response_text).estimated_tokens
-    return {
-        "id": f"chatcmpl-relayint-qc-{request_id}",
-        "object": "chat.completion",
-        "created": int(time.time()),
-        "model": model_name,
-        "choices": [
-            {
-                "index": 0,
-                "message": {"role": "assistant", "content": response_text},
-                "finish_reason": "stop",
-            }
-        ],
-        "usage": {
-            "prompt_tokens": 0,
-            "completion_tokens": completion_tokens,
-            "total_tokens": completion_tokens,
-        },
-    }
 
 
 def openai_error(

@@ -225,8 +225,9 @@ def build_relayint_quick_clarification_apply_plan(
 ) -> dict[str, Any] | None:
     """Build a gated, content-free quick clarification apply plan.
 
-    MVP-47 keeps the response short-circuit default-off. The plan never calls an
-    LLM, never executes MEM lookup, and never mutates backend payloads.
+    MVP-47 is Phase 4 plan-only / preflight-only. The plan never calls an LLM,
+    never executes MEM lookup, never mutates backend payloads, and never enables
+    user-visible response mutation.
     """
 
     if not enabled:
@@ -267,8 +268,7 @@ def build_relayint_quick_clarification_apply_plan(
     response_template_id = _quick_clarification_response_template_id(
         generated_response_kind
     )
-    response_text = quick_clarification_response_text_for_template(response_template_id)
-    response_chars = len(response_text) if response_template_id != "none" else 0
+    response_chars = _quick_clarification_response_template_chars(response_template_id)
 
     block_reasons: list[str] = []
     if not preflight_present:
@@ -293,6 +293,7 @@ def build_relayint_quick_clarification_apply_plan(
         block_reasons.append("response_template_missing")
     if response_chars > response_max_chars:
         block_reasons.append("response_max_chars_exceeded")
+    block_reasons.append("phase4_plan_only")
 
     apply_allowed = not block_reasons
     return {
@@ -306,7 +307,7 @@ def build_relayint_quick_clarification_apply_plan(
         "source_preflight_applicable": source_preflight_applicable,
         "apply_allowed": apply_allowed,
         "apply_block_reasons": block_reasons,
-        "response_short_circuit_allowed": apply_allowed,
+        "response_short_circuit_allowed": False,
         "short_circuit_applied": False,
         "generated_response_kind": generated_response_kind if apply_allowed else "none",
         "response_template_id": response_template_id if apply_allowed else "none",
@@ -318,27 +319,30 @@ def build_relayint_quick_clarification_apply_plan(
             "llm_call_allowed": False,
             "mem_lookup_allowed": False,
             "backend_payload_mutation_allowed": False,
-            "response_mutation_allowed": apply_allowed,
-            "user_visible_apply_allowed": apply_allowed,
+            "response_mutation_allowed": False,
+            "user_visible_apply_allowed": False,
         },
         "llm_called": False,
         "mem_lookup_executed": False,
         "backend_payload_mutation_allowed": False,
         "backend_payload_mutation_applied": False,
-        "response_mutation_allowed": apply_allowed,
-        "user_visible_apply_allowed": apply_allowed,
+        "response_mutation_allowed": False,
+        "user_visible_apply_allowed": False,
     }
 
 
-def quick_clarification_response_text_for_template(template_id: str | None) -> str:
+def _quick_clarification_response_template_chars(template_id: str | None) -> int:
+    # Phase 4 keeps this plan content-free and diagnostics-only. Track only the
+    # bounded template length that a future apply phase would need for safety
+    # gates; do not materialize user-visible clarification text here.
     if template_id == "generic_prior_memory_reentry.ja.v0":
-        return "その話として探す前に、前回の要点をもう一度教えて。"
+        return 25
     if template_id in {
         "generic_reference_clarification.ja.v0",
         "generic_open_clarification.ja.v0",
     }:
-        return "どの話のことか、もう少しだけ教えて。"
-    return ""
+        return 19
+    return 0
 
 
 def build_relayint_request_compatibility_gate(

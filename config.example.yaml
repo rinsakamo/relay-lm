@@ -55,10 +55,11 @@ relayint_fast_path_low_confidence_threshold: 0.55
 relayint_quick_clarification_preflight_enabled: false
 relayint_quick_clarification_dry_run_only: true
 
-# RelayINT quick clarification apply is also default-off and dry-run-only by
-# default. Only relayint_quick_clarification_apply_enabled=true and
-# relayint_quick_clarification_apply_dry_run_only=false can short-circuit a
-# response; it still does not call LLM/MEM or mutate backend payloads.
+# RelayINT quick clarification apply planning is also default-off and
+# dry-run-only by default. MVP-47 is diagnostics-only / plan-only: enabling this
+# emits relayint_quick_clarification_apply_plan.v0 metadata for preflight smoke,
+# but does not short-circuit backend forwarding, mutate payloads, or mutate
+# response bodies.
 relayint_quick_clarification_apply_enabled: false
 relayint_quick_clarification_apply_dry_run_only: true
 relayint_quick_clarification_response_max_chars: 120
