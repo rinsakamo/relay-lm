@@ -2,7 +2,7 @@
 
 This directory indexes RelayLM architecture and pipeline design documents.
 
-The main architecture, profile-specific architecture, and most context/scene architecture documents are housed here. Some links still point to legacy `../*.md` files until the remaining large RelaySCN and module-responsibility docs are physically moved in later cleanup batches.
+The main architecture, profile-specific architecture, and context/scene architecture documents are housed here. Some links still point to legacy `../*.md` files until the remaining module-responsibility docs are physically moved in later cleanup batches.
 
 ## Pipeline architecture
 
@@ -25,7 +25,7 @@ The main architecture, profile-specific architecture, and most context/scene arc
 - [RelayCTX Wake loop design](relayctx_wake_loop_design.md)
 - [Scene lifecycle design](scene_lifecycle_design.md)
 - [Scene-aware memory scope design](scene_memory_scope_design.md)
-- [RelaySCN MVP scene policy](../relayscn_mvp_scene_policy.md)
+- [RelaySCN MVP scene policy](relayscn_mvp_scene_policy.md)
 
 ## Module responsibility docs
 
@@ -42,6 +42,5 @@ Future architecture docs should be created directly under `docs/architecture/` w
 
 Suggested next physical move order:
 
-1. Move the large RelaySCN scene policy doc with a safer `git mv` / manual path-only move.
-2. Move module-responsibility architecture docs.
-3. Leave contracts, smoke runbooks, and MVP summaries in their own directories.
+1. Move module-responsibility architecture docs.
+2. Leave contracts, smoke runbooks, and MVP summaries in their own directories.
