@@ -2,18 +2,18 @@
 
 This directory indexes RelayLM architecture and pipeline design documents.
 
-The core architecture documents are being consolidated out of the top-level `docs/` directory. During this transition, some links still point to legacy `../*.md` files until the documents are physically moved in small follow-up batches.
+The core architecture documents are housed here. Some links still point to legacy `../*.md` files until those architecture documents are physically moved in later small cleanup batches.
 
 ## Pipeline architecture
 
-- [Pipeline implementation plan](../pipeline_implementation_plan.md)
-- [Pipeline responsibility design](../pipeline_responsibility_design.md)
+- [Pipeline implementation plan](pipeline_implementation_plan.md)
+- [Pipeline responsibility design](pipeline_responsibility_design.md)
 - [Runtime architecture](../runtime_architecture.md)
 - [Product runtime hardening](../product_runtime_hardening.md)
 
 ## Profile-specific architecture
 
-- [AI VTuber pipeline profile](../ai_vtuber_pipeline_profile.md)
+- [AI VTuber pipeline profile](ai_vtuber_pipeline_profile.md)
 - [VTuber memory proxy design](../vtuber_memory_proxy_design.md)
 - [Persona-specialized proxy design](../persona_specialized_proxy_design.md)
 - [Open-LLM-VTuber integration](../open_llm_vtuber_integration.md)
@@ -40,12 +40,12 @@ The core architecture documents are being consolidated out of the top-level `doc
 
 Future architecture docs should be created directly under `docs/architecture/` when they describe cross-cutting runtime design, pipeline order, responsibility boundaries, or profile-specific pipeline contracts.
 
-Suggested physical move order:
+Suggested next physical move order:
 
-1. Move the three core pipeline files first:
-   - `pipeline_implementation_plan.md`
-   - `pipeline_responsibility_design.md`
-   - `ai_vtuber_pipeline_profile.md`
+1. Remove the old top-level copies of the three core pipeline files after link checks pass:
+   - `docs/pipeline_implementation_plan.md`
+   - `docs/pipeline_responsibility_design.md`
+   - `docs/ai_vtuber_pipeline_profile.md`
 2. Move runtime and product architecture docs.
 3. Move profile-specific architecture docs.
 4. Leave contracts, smoke runbooks, and MVP summaries in their own directories.
