@@ -23,6 +23,12 @@ Use these docs to understand the RelayLM pipeline, responsibility boundaries, an
 - [VTuber memory proxy design](architecture/vtuber_memory_proxy_design.md)
 - [Persona-specialized proxy design](architecture/persona_specialized_proxy_design.md)
 - [Open-LLM-VTuber integration](architecture/open_llm_vtuber_integration.md)
+- [RelayINT MVP design](architecture/relayint_mvp_design.md)
+- [RelayREF / RelaySLP MVP design](architecture/relayref_relayslp_mvp_design.md)
+- [RelayMEM MVP design](architecture/relaymem_mvp_design.md)
+- [RelayMEM SLP execution design](architecture/relaymem_slp_execution_design.md)
+- [RelayMEM retrieval execution design](architecture/relaymem_retrieval_execution_design.md)
+- [RelayEMO return-side style adapter design](architecture/relayemo_return_side_style_adapter_design.md)
 
 ## MVP summaries
 
@@ -58,9 +64,6 @@ These docs describe artifact schemas, dry-run contracts, approval boundaries, an
 
 ## RelayMEM and local behavior evaluation
 
-- [RelayMEM MVP design](relaymem_mvp_design.md)
-- [RelayMEM SLP execution design](relaymem_slp_execution_design.md)
-- [RelayMEM retrieval execution design](relaymem_retrieval_execution_design.md)
 - [RelayMEM runtime payload diff evaluation smoke](relaymem_runtime_payload_eval.md)
 - [RelayMEM local LLM evaluation guide](relaymem_local_llm_eval_guide.md)
 - [RelayMEM local response comparison guide](relaymem_local_response_comparison.md)
