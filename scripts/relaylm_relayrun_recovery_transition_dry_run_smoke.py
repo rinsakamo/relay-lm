@@ -202,6 +202,8 @@ def _assert_unresolved_reference(root: Path, capture: _Capture, port: int) -> No
     _assert_transition_common(transition)
     require(transition.get("proposed_transition_type") == "ask_user_confirmation", transition)
     require(transition.get("source_node") == "relayref", transition)
+    require(transition.get("source_node_alias") == "relayint_reference_repair", transition)
+    require(transition.get("compatibility_source_node") == "relayref", transition)
     require(transition.get("required_user_action") == "clarify_reference", transition)
     _assert_backend_payload_not_mutated(backend_payload)
     print("ok unresolved reference proposes user confirmation without apply")
