@@ -2,7 +2,7 @@
 
 This directory is the index for RelayLM MVP milestone summaries and MVP-focused implementation notes.
 
-The current pipeline MVP files are now housed in this directory. Older milestone entries still point to legacy `../mvp*` files until they are physically moved in follow-up docs-only cleanup.
+The current pipeline MVP files, MVP-0, and MVP-1 files are now housed in this directory. Older milestone entries still point to legacy `../mvp*` files until they are physically moved in follow-up docs-only cleanup.
 
 ## Current pipeline milestones
 
@@ -21,11 +21,11 @@ The current pipeline MVP files are now housed in this directory. Older milestone
 
 ## MVP-0 and MVP-1
 
-- [MVP-0: pass-through proxy](../mvp0_pass_through_proxy.md)
-- [MVP-1: config and routing smoke](../mvp1_config_routing_smoke.md)
-- [MVP-1: runtime diagnostics smoke](../mvp1_runtime_diagnostics_smoke.md)
-- [MVP-1: API diagnostics smoke](../mvp1_api_diagnostics_smoke.md)
-- [MVP-1 summary](../mvp1_summary.md)
+- [MVP-0: pass-through proxy](mvp0_pass_through_proxy.md)
+- [MVP-1: config and routing smoke](mvp1_config_routing_smoke.md)
+- [MVP-1: runtime diagnostics smoke](mvp1_runtime_diagnostics_smoke.md)
+- [MVP-1: API diagnostics smoke](mvp1_api_diagnostics_smoke.md)
+- [MVP-1 summary](mvp1_summary.md)
 
 ## MVP-2 focused notes
 
@@ -85,6 +85,6 @@ These older summaries are kept indexed for discoverability while the documentati
 
 A later docs-only PR should physically move the remaining legacy files into this directory and update links, preferably in small batches:
 
-1. Move earlier `mvp*_summary.md` files.
-2. Move MVP-0, MVP-1, and MVP-2 focused notes if they still belong under the MVP index.
+1. Move MVP-2 focused notes if they still belong under the MVP index.
+2. Move earlier `mvp*_summary.md` files.
 3. Remove legacy top-level `docs/mvp*` files after link checks pass.
