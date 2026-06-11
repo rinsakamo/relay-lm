@@ -2,7 +2,7 @@
 
 This directory is the index for RelayLM MVP milestone summaries and MVP-focused implementation notes.
 
-The current pipeline MVP files and MVP-0 through MVP-26 files are now housed in this directory. Older milestone entries still point to legacy `../mvp*` files until they are physically moved in follow-up docs-only cleanup.
+All MVP summary and MVP-focused implementation note files are now housed in this directory.
 
 ## Current pipeline milestones
 
@@ -72,18 +72,15 @@ These older summaries are kept indexed for discoverability while the documentati
 - [MVP-24 summary](mvp24_summary.md)
 - [MVP-25 summary](mvp25_summary.md)
 - [MVP-26 summary](mvp26_summary.md)
-- [MVP-27 summary](../mvp27_summary.md)
-- [MVP-28 summary](../mvp28_summary.md)
-- [MVP-29 summary](../mvp29_summary.md)
-- [MVP-30 summary](../mvp30_summary.md)
-- [MVP-31 summary](../mvp31_summary.md)
-- [MVP-32 summary](../mvp32_summary.md)
-- [MVP-33 summary](../mvp33_summary.md)
-- [MVP-37 summary](../mvp37_summary.md)
+- [MVP-27 summary](mvp27_summary.md)
+- [MVP-28 summary](mvp28_summary.md)
+- [MVP-29 summary](mvp29_summary.md)
+- [MVP-30 summary](mvp30_summary.md)
+- [MVP-31 summary](mvp31_summary.md)
+- [MVP-32 summary](mvp32_summary.md)
+- [MVP-33 summary](mvp33_summary.md)
+- [MVP-37 summary](mvp37_summary.md)
 
 ## Follow-up cleanup
 
-A later docs-only PR should physically move the remaining legacy files into this directory and update links, preferably in small batches:
-
-1. Move MVP-27 through MVP-37 summary files.
-2. Remove legacy top-level `docs/mvp*` files after link checks pass.
+After this consolidation pass, top-level `docs/mvp*` files should no longer be needed. Future MVP summaries should be created directly under `docs/mvp/` and linked from this index.
