@@ -2,7 +2,7 @@
 
 This directory is the index for RelayLM MVP milestone summaries and MVP-focused implementation notes.
 
-The current pipeline MVP files and MVP-0 through MVP-12 files are now housed in this directory. Older milestone entries still point to legacy `../mvp*` files until they are physically moved in follow-up docs-only cleanup.
+The current pipeline MVP files and MVP-0 through MVP-26 files are now housed in this directory. Older milestone entries still point to legacy `../mvp*` files until they are physically moved in follow-up docs-only cleanup.
 
 ## Current pipeline milestones
 
@@ -58,20 +58,20 @@ These older summaries are kept indexed for discoverability while the documentati
 - [MVP-10 summary](mvp10_summary.md)
 - [MVP-11 summary](mvp11_summary.md)
 - [MVP-12 summary](mvp12_summary.md)
-- [MVP-13 summary](../mvp13_summary.md)
-- [MVP-14 summary](../mvp14_summary.md)
-- [MVP-15 summary](../mvp15_summary.md)
-- [MVP-16 summary](../mvp16_summary.md)
-- [MVP-17 summary](../mvp17_summary.md)
-- [MVP-18 summary](../mvp18_summary.md)
-- [MVP-19 summary](../mvp19_summary.md)
-- [MVP-20 summary](../mvp20_summary.md)
-- [MVP-21 summary](../mvp21_summary.md)
-- [MVP-22 summary](../mvp22_summary.md)
-- [MVP-23 summary](../mvp23_summary.md)
-- [MVP-24 summary](../mvp24_summary.md)
-- [MVP-25 summary](../mvp25_summary.md)
-- [MVP-26 summary](../mvp26_summary.md)
+- [MVP-13 summary](mvp13_summary.md)
+- [MVP-14 summary](mvp14_summary.md)
+- [MVP-15 summary](mvp15_summary.md)
+- [MVP-16 summary](mvp16_summary.md)
+- [MVP-17 summary](mvp17_summary.md)
+- [MVP-18 summary](mvp18_summary.md)
+- [MVP-19 summary](mvp19_summary.md)
+- [MVP-20 summary](mvp20_summary.md)
+- [MVP-21 summary](mvp21_summary.md)
+- [MVP-22 summary](mvp22_summary.md)
+- [MVP-23 summary](mvp23_summary.md)
+- [MVP-24 summary](mvp24_summary.md)
+- [MVP-25 summary](mvp25_summary.md)
+- [MVP-26 summary](mvp26_summary.md)
 - [MVP-27 summary](../mvp27_summary.md)
 - [MVP-28 summary](../mvp28_summary.md)
 - [MVP-29 summary](../mvp29_summary.md)
@@ -85,5 +85,5 @@ These older summaries are kept indexed for discoverability while the documentati
 
 A later docs-only PR should physically move the remaining legacy files into this directory and update links, preferably in small batches:
 
-1. Move MVP-13 through MVP-37 summary files.
+1. Move MVP-27 through MVP-37 summary files.
 2. Remove legacy top-level `docs/mvp*` files after link checks pass.
