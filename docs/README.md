@@ -16,9 +16,9 @@ Use these docs to understand the RelayLM pipeline, responsibility boundaries, an
 
 - [Architecture docs index](architecture/README.md)
 - [Runtime architecture](runtime_architecture.md)
-- [Pipeline implementation plan](pipeline_implementation_plan.md)
-- [Pipeline responsibility design](pipeline_responsibility_design.md)
-- [AI VTuber pipeline profile](ai_vtuber_pipeline_profile.md)
+- [Pipeline implementation plan](architecture/pipeline_implementation_plan.md)
+- [Pipeline responsibility design](architecture/pipeline_responsibility_design.md)
+- [AI VTuber pipeline profile](architecture/ai_vtuber_pipeline_profile.md)
 
 ## MVP summaries
 
