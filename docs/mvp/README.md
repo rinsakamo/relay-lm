@@ -2,7 +2,7 @@
 
 This directory is the index for RelayLM MVP milestone summaries and MVP-focused implementation notes.
 
-The current pipeline MVP files and MVP-0 through MVP-2 files are now housed in this directory. Older milestone entries still point to legacy `../mvp*` files until they are physically moved in follow-up docs-only cleanup.
+The current pipeline MVP files and MVP-0 through MVP-12 files are now housed in this directory. Older milestone entries still point to legacy `../mvp*` files until they are physically moved in follow-up docs-only cleanup.
 
 ## Current pipeline milestones
 
@@ -48,16 +48,16 @@ MVP-2 has several focused notes rather than only one summary file:
 
 These older summaries are kept indexed for discoverability while the documentation tree is being reorganized.
 
-- [MVP-3 summary](../mvp3_summary.md)
-- [MVP-4 summary](../mvp4_summary.md)
-- [MVP-5 summary](../mvp5_summary.md)
-- [MVP-6 summary](../mvp6_summary.md)
-- [MVP-7 summary](../mvp7_summary.md)
-- [MVP-8 summary](../mvp8_summary.md)
-- [MVP-9 summary](../mvp9_summary.md)
-- [MVP-10 summary](../mvp10_summary.md)
-- [MVP-11 summary](../mvp11_summary.md)
-- [MVP-12 summary](../mvp12_summary.md)
+- [MVP-3 summary](mvp3_summary.md)
+- [MVP-4 summary](mvp4_summary.md)
+- [MVP-5 summary](mvp5_summary.md)
+- [MVP-6 summary](mvp6_summary.md)
+- [MVP-7 summary](mvp7_summary.md)
+- [MVP-8 summary](mvp8_summary.md)
+- [MVP-9 summary](mvp9_summary.md)
+- [MVP-10 summary](mvp10_summary.md)
+- [MVP-11 summary](mvp11_summary.md)
+- [MVP-12 summary](mvp12_summary.md)
 - [MVP-13 summary](../mvp13_summary.md)
 - [MVP-14 summary](../mvp14_summary.md)
 - [MVP-15 summary](../mvp15_summary.md)
@@ -85,5 +85,5 @@ These older summaries are kept indexed for discoverability while the documentati
 
 A later docs-only PR should physically move the remaining legacy files into this directory and update links, preferably in small batches:
 
-1. Move earlier `mvp*_summary.md` files.
+1. Move MVP-13 through MVP-37 summary files.
 2. Remove legacy top-level `docs/mvp*` files after link checks pass.
