@@ -2,21 +2,21 @@
 
 This directory indexes RelayLM architecture and pipeline design documents.
 
-The core architecture documents are housed here. Some links still point to legacy `../*.md` files until those architecture documents are physically moved in later small cleanup batches.
+The main architecture and profile-specific architecture documents are housed here. Some links still point to legacy `../*.md` files until the remaining context, scene, and module-responsibility docs are physically moved in later cleanup batches.
 
 ## Pipeline architecture
 
 - [Pipeline implementation plan](pipeline_implementation_plan.md)
 - [Pipeline responsibility design](pipeline_responsibility_design.md)
-- [Runtime architecture](../runtime_architecture.md)
-- [Product runtime hardening](../product_runtime_hardening.md)
+- [Runtime architecture](runtime_architecture.md)
+- [Product runtime hardening](product_runtime_hardening.md)
 
 ## Profile-specific architecture
 
 - [AI VTuber pipeline profile](ai_vtuber_pipeline_profile.md)
-- [VTuber memory proxy design](../vtuber_memory_proxy_design.md)
-- [Persona-specialized proxy design](../persona_specialized_proxy_design.md)
-- [Open-LLM-VTuber integration](../open_llm_vtuber_integration.md)
+- [VTuber memory proxy design](vtuber_memory_proxy_design.md)
+- [Persona-specialized proxy design](persona_specialized_proxy_design.md)
+- [Open-LLM-VTuber integration](open_llm_vtuber_integration.md)
 
 ## Context and scene architecture
 
@@ -42,10 +42,6 @@ Future architecture docs should be created directly under `docs/architecture/` w
 
 Suggested next physical move order:
 
-1. Remove the old top-level copies of the three core pipeline files after link checks pass:
-   - `docs/pipeline_implementation_plan.md`
-   - `docs/pipeline_responsibility_design.md`
-   - `docs/ai_vtuber_pipeline_profile.md`
-2. Move runtime and product architecture docs.
-3. Move profile-specific architecture docs.
-4. Leave contracts, smoke runbooks, and MVP summaries in their own directories.
+1. Move context and scene architecture docs.
+2. Move module-responsibility architecture docs.
+3. Leave contracts, smoke runbooks, and MVP summaries in their own directories.
