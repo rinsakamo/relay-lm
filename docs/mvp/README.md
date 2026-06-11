@@ -2,7 +2,7 @@
 
 This directory is the index for RelayLM MVP milestone summaries and MVP-focused implementation notes.
 
-The current pipeline MVP files, MVP-0, and MVP-1 files are now housed in this directory. Older milestone entries still point to legacy `../mvp*` files until they are physically moved in follow-up docs-only cleanup.
+The current pipeline MVP files and MVP-0 through MVP-2 files are now housed in this directory. Older milestone entries still point to legacy `../mvp*` files until they are physically moved in follow-up docs-only cleanup.
 
 ## Current pipeline milestones
 
@@ -31,18 +31,18 @@ The current pipeline MVP files, MVP-0, and MVP-1 files are now housed in this di
 
 MVP-2 has several focused notes rather than only one summary file:
 
-- [MVP-2: context compiler contract](../mvp2_context_compiler_contract.md)
-- [MVP-2: profile file loading](../mvp2_profile_file_loading.md)
-- [MVP-2: config profile resolution](../mvp2_config_profile_resolution.md)
-- [MVP-2: compiled system message](../mvp2_compiled_system_message.md)
-- [MVP-2: incoming system fallback](../mvp2_incoming_system_fallback.md)
-- [MVP-2: profile compile dry-run](../mvp2_profile_compile_dry_run.md)
-- [MVP-2: dry-run diagnostics headers](../mvp2_dry_run_diagnostics_headers.md)
-- [MVP-2: gated compile decision](../mvp2_gated_compile_decision.md)
-- [MVP-2: memory-light apply helper](../mvp2_memory_light_apply.md)
-- [MVP-2: runtime memory-light apply](../mvp2_runtime_memory_light_apply.md)
-- [MVP-2: memory-light API smoke](../mvp2_memory_light_api_smoke.md)
-- [MVP-2 summary](../mvp2_summary.md)
+- [MVP-2: context compiler contract](mvp2_context_compiler_contract.md)
+- [MVP-2: profile file loading](mvp2_profile_file_loading.md)
+- [MVP-2: config profile resolution](mvp2_config_profile_resolution.md)
+- [MVP-2: compiled system message](mvp2_compiled_system_message.md)
+- [MVP-2: incoming system fallback](mvp2_incoming_system_fallback.md)
+- [MVP-2: profile compile dry-run](mvp2_profile_compile_dry_run.md)
+- [MVP-2: dry-run diagnostics headers](mvp2_dry_run_diagnostics_headers.md)
+- [MVP-2: gated compile decision](mvp2_gated_compile_decision.md)
+- [MVP-2: memory-light apply helper](mvp2_memory_light_apply.md)
+- [MVP-2: runtime memory-light apply](mvp2_runtime_memory_light_apply.md)
+- [MVP-2: memory-light API smoke](mvp2_memory_light_api_smoke.md)
+- [MVP-2 summary](mvp2_summary.md)
 
 ## Earlier milestone summaries
 
@@ -85,6 +85,5 @@ These older summaries are kept indexed for discoverability while the documentati
 
 A later docs-only PR should physically move the remaining legacy files into this directory and update links, preferably in small batches:
 
-1. Move MVP-2 focused notes if they still belong under the MVP index.
-2. Move earlier `mvp*_summary.md` files.
-3. Remove legacy top-level `docs/mvp*` files after link checks pass.
+1. Move earlier `mvp*_summary.md` files.
+2. Remove legacy top-level `docs/mvp*` files after link checks pass.
