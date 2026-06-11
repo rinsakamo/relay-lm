@@ -2,7 +2,7 @@
 
 This directory collects RelayLM contract, artifact, schema, approval, and gate documentation.
 
-Some RelaySOUL links still point to legacy `../*.md` files until those files are moved here in small cleanup batches.
+The contract files tracked by this index are housed in this directory.
 
 ## Runtime and compiler contracts
 
@@ -12,15 +12,15 @@ Some RelaySOUL links still point to legacy `../*.md` files until those files are
 
 ## RelaySOUL contracts
 
-- [RelaySOUL patch candidate contract](../relaysoul_patch_candidate_contract.md)
-- [RelaySOUL patch schema](../relaysoul_patch_schema.md)
-- [RelaySOUL revision contract](../relaysoul_revision_contract.md)
-- [RelaySOUL approval contract](../relaysoul_approval_contract.md)
-- [RelaySOUL persistence contract](../relaysoul_persistence_contract.md)
-- [RelaySOUL patch compile dry-run contract](../relaysoul_compile_dry_run_contract.md)
-- [RelaySOUL explicit approval artifact contract](../relaysoul_explicit_approval_artifact_contract.md)
-- [RelaySOUL preflight lineage freshness policy](../relaysoul_preflight_lineage_freshness_policy.md)
+- [RelaySOUL patch candidate contract](relaysoul_patch_candidate_contract.md)
+- [RelaySOUL patch schema](relaysoul_patch_schema.md)
+- [RelaySOUL revision contract](relaysoul_revision_contract.md)
+- [RelaySOUL approval contract](relaysoul_approval_contract.md)
+- [RelaySOUL persistence contract](relaysoul_persistence_contract.md)
+- [RelaySOUL patch compile dry-run contract](relaysoul_compile_dry_run_contract.md)
+- [RelaySOUL explicit approval artifact contract](relaysoul_explicit_approval_artifact_contract.md)
+- [RelaySOUL preflight lineage freshness policy](relaysoul_preflight_lineage_freshness_policy.md)
 
-## Follow-up cleanup
+## Placement rule
 
-Move the linked RelaySOUL files into this directory in small batches. Keep MVP summary files under `docs/mvp/`, architecture documents under `docs/architecture/`, and smoke/manual runbooks under `docs/smoke/`.
+Create new contract, artifact, schema, approval, and gate docs directly under `docs/contracts/`. Keep MVP summaries under `docs/mvp/`, architecture documents under `docs/architecture/`, and smoke/manual runbooks under `docs/smoke/`.
