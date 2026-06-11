@@ -2,22 +2,22 @@
 
 This directory is the index for RelayLM MVP milestone summaries and MVP-focused implementation notes.
 
-The MVP files are being consolidated out of the top-level `docs/` directory. During the transition, entries point to legacy `../mvp*` files until they are physically moved in a follow-up docs-only cleanup.
+The current pipeline MVP files are now housed in this directory. Older milestone entries still point to legacy `../mvp*` files until they are physically moved in follow-up docs-only cleanup.
 
 ## Current pipeline milestones
 
 ### RelayCTX short-term context
 
-- [MVP-40: RelayCTX short-term extraction dry-run](../mvp40_summary.md)
-- [MVP-41: RelayCTX short-term block assembly dry-run](../mvp41_summary.md)
-- [MVP-42: RelayCTX short-term runtime injection preflight](../mvp42_summary.md)
-- [MVP-43: RelayCTX short-term runtime injection apply gate](../mvp43_summary.md)
+- [MVP-40: RelayCTX short-term extraction dry-run](mvp40_relayctx_short_term_extraction_dry_run.md)
+- [MVP-41: RelayCTX short-term block assembly dry-run](mvp41_relayctx_short_term_block_assembly_dry_run.md)
+- [MVP-42: RelayCTX short-term runtime injection preflight](mvp42_relayctx_short_term_runtime_injection_preflight.md)
+- [MVP-43: RelayCTX short-term runtime injection apply gate](mvp43_relayctx_short_term_runtime_injection_apply_gate.md)
 
 ### RelayINT
 
-- [MVP-45: RelayINT Fast Path dry-run](../mvp45_summary.md)
-- [MVP-46: RelayINT quick clarification preflight](../mvp46_summary.md)
-- [MVP-47: RelayINT quick clarification apply plan](../mvp47_summary.md)
+- [MVP-45: RelayINT Fast Path dry-run](mvp45_relayint_fast_path_dry_run.md)
+- [MVP-46: RelayINT quick clarification preflight](mvp46_relayint_quick_clarification_preflight.md)
+- [MVP-47: RelayINT quick clarification apply plan](mvp47_relayint_quick_clarification_apply_plan.md)
 
 ## MVP-0 and MVP-1
 
@@ -83,9 +83,8 @@ These older summaries are kept indexed for discoverability while the documentati
 
 ## Follow-up cleanup
 
-A later docs-only PR should physically move the legacy files into this directory and update links, preferably in small batches:
+A later docs-only PR should physically move the remaining legacy files into this directory and update links, preferably in small batches:
 
-1. Move current pipeline summaries first: MVP-40 through MVP-47.
-2. Move earlier `mvp*_summary.md` files.
-3. Move MVP-0, MVP-1, and MVP-2 focused notes if they still belong under the MVP index.
-4. Remove legacy top-level `docs/mvp*` files after link checks pass.
+1. Move earlier `mvp*_summary.md` files.
+2. Move MVP-0, MVP-1, and MVP-2 focused notes if they still belong under the MVP index.
+3. Remove legacy top-level `docs/mvp*` files after link checks pass.
