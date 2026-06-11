@@ -50,6 +50,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [RelayINT MVP design](docs/relayint_mvp_design.md)
 - [MVP-45 RelayINT Fast Path dry-run summary](docs/mvp45_summary.md)
 - [MVP-46 RelayINT quick clarification preflight summary](docs/mvp46_summary.md)
+- [MVP-47 RelayINT quick clarification apply plan summary](docs/mvp47_summary.md)
 - [RelaySOUL patch candidate contract](docs/relaysoul_patch_candidate_contract.md)
 - [RelaySOUL revision contract](docs/relaysoul_revision_contract.md)
 - [RelaySOUL approval contract](docs/relaysoul_approval_contract.md)

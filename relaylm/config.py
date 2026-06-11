@@ -107,6 +107,9 @@ class RelayLMConfig(BaseModel):
     relayint_fast_path_low_confidence_threshold: float = Field(default=0.55, ge=0.0, le=1.0)
     relayint_quick_clarification_preflight_enabled: bool = False
     relayint_quick_clarification_dry_run_only: bool = True
+    relayint_quick_clarification_apply_enabled: bool = False
+    relayint_quick_clarification_apply_dry_run_only: bool = True
+    relayint_quick_clarification_response_max_chars: int = Field(default=120, gt=0)
     memory: MemorySelectionConfig = Field(default_factory=MemorySelectionConfig)
     backends: dict[str, BackendConfig]
     model_routes: dict[str, ModelRoute]

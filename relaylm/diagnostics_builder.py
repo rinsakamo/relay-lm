@@ -101,6 +101,7 @@ def relayint_runtime_diagnostics_kwargs(
     *,
     relayint_fast_path_dry_run: Any,
     relayint_quick_clarification_preflight: Any,
+    relayint_quick_clarification_apply_plan: Any,
     trace_enabled: bool,
     compile_decision_dry_run: Any,
 ) -> dict[str, Any]:
@@ -109,6 +110,9 @@ def relayint_runtime_diagnostics_kwargs(
     return {
         "relayint_fast_path_dry_run": relayint_fast_path_dry_run,
         "relayint_quick_clarification_preflight": relayint_quick_clarification_preflight,
+        "relayint_quick_clarification_apply_plan": (
+            relayint_quick_clarification_apply_plan
+        ),
         "trace_enabled": trace_enabled,
         "compile_decision_dry_run": compile_decision_dry_run,
     }

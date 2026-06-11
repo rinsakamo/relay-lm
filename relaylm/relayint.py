@@ -6,6 +6,8 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 from relaylm.relayref import build_relayref_dry_run_artifact
 
+from relaylm.token_budget import estimate_text_tokens
+
 
 ReferenceKind = Literal["none", "pronoun_like", "continuation", "prior_memory_request"]
 CandidateAction = Literal[
@@ -19,6 +21,10 @@ CandidateAction = Literal[
 PRONOUN_LIKE_TERMS = ("それ", "これ", "前の", "さっき", "この件")
 CONTINUATION_TERMS = ("続き", "その方向", "それで")
 PRIOR_MEMORY_TERMS = ("前に話した", "覚えてる", "思い出して", "前回", "前のスレッド")
+QUICK_CLARIFICATION_RESPONSE_TEMPLATES = (
+    "どの話のことか、もう少しだけ教えて。",
+    "その話として探す前に、前回の要点をもう一度教えて。",
+)
 
 
 SAFE_CTX_KEYS = {
@@ -229,6 +235,225 @@ def build_relayint_quick_clarification_preflight(
         "backend_payload_mutation_allowed": False,
         "response_mutation_allowed": False,
         "user_visible_apply_allowed": False,
+    }
+
+
+def build_relayint_quick_clarification_apply_plan(
+    *,
+    relayint_quick_clarification_preflight: Mapping[str, Any] | None,
+    enabled: bool = False,
+    dry_run_only: bool = True,
+    stream_enabled: bool = False,
+    response_max_chars: int = 120,
+    request_compatibility_gate: Mapping[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Build a gated, content-free quick clarification apply plan.
+
+    MVP-47 is Phase 4 plan-only / preflight-only. The plan never calls an LLM,
+    never executes MEM lookup, never mutates backend payloads, and never enables
+    user-visible response mutation.
+    """
+
+    if not enabled:
+        return None
+
+    preflight_present = isinstance(relayint_quick_clarification_preflight, Mapping)
+    source_schema_version = (
+        relayint_quick_clarification_preflight.get("schema_version")
+        if preflight_present
+        else None
+    )
+    source_preflight_applicable = (
+        relayint_quick_clarification_preflight.get("preflight_applicable") is True
+        if preflight_present
+        else False
+    )
+    scene_gate = (
+        relayint_quick_clarification_preflight.get("scene_gate")
+        if preflight_present
+        else None
+    )
+    scene_allows = (
+        isinstance(scene_gate, Mapping)
+        and scene_gate.get("quick_clarification_allowed") is True
+    )
+    compatibility_gate = (
+        dict(request_compatibility_gate)
+        if isinstance(request_compatibility_gate, Mapping)
+        else build_relayint_request_compatibility_gate(None)
+    )
+    request_compatible = compatibility_gate.get("compatible") is True
+    clarification_type = (
+        relayint_quick_clarification_preflight.get("clarification_type")
+        if preflight_present
+        else None
+    )
+    generated_response_kind = _quick_clarification_response_kind(clarification_type)
+    response_template_id = _quick_clarification_response_template_id(
+        generated_response_kind
+    )
+    response_chars = _quick_clarification_response_template_chars(response_template_id)
+
+    block_reasons: list[str] = []
+    if not preflight_present:
+        block_reasons.append("preflight_missing")
+    if preflight_present and not source_preflight_applicable:
+        block_reasons.append("preflight_not_applicable")
+    if preflight_present and not scene_allows:
+        block_reasons.append("scene_gate_blocked")
+        if isinstance(scene_gate, Mapping):
+            for reason in _string_list(scene_gate.get("block_reasons")):
+                if reason not in block_reasons:
+                    block_reasons.append(reason)
+    if dry_run_only:
+        block_reasons.append("dry_run_only")
+    if stream_enabled:
+        block_reasons.append("streaming_not_supported")
+    if not request_compatible:
+        for reason in _string_list(compatibility_gate.get("block_reasons")):
+            if reason not in block_reasons:
+                block_reasons.append(reason)
+    if response_template_id == "none" or response_chars == 0:
+        block_reasons.append("response_template_missing")
+    if response_chars > response_max_chars:
+        block_reasons.append("response_max_chars_exceeded")
+    block_reasons.append("phase4_plan_only")
+
+    apply_allowed = not block_reasons
+    return {
+        "schema_version": "relayint_quick_clarification_apply_plan.v0",
+        "enabled": True,
+        "dry_run_only": dry_run_only,
+        "content_free": True,
+        "source_artifact_schema_version": (
+            source_schema_version if isinstance(source_schema_version, str) else None
+        ),
+        "source_preflight_applicable": source_preflight_applicable,
+        "apply_allowed": apply_allowed,
+        "apply_block_reasons": block_reasons,
+        "response_short_circuit_allowed": False,
+        "short_circuit_applied": False,
+        "generated_response_kind": generated_response_kind if apply_allowed else "none",
+        "response_template_id": response_template_id if apply_allowed else "none",
+        "response_chars": response_chars if apply_allowed else 0,
+        "content_free_template": True,
+        "request_compatibility_gate": compatibility_gate,
+        "safety_gates": {
+            "content_free": True,
+            "llm_call_allowed": False,
+            "mem_lookup_allowed": False,
+            "backend_payload_mutation_allowed": False,
+            "response_mutation_allowed": False,
+            "user_visible_apply_allowed": False,
+        },
+        "llm_called": False,
+        "mem_lookup_executed": False,
+        "backend_payload_mutation_allowed": False,
+        "backend_payload_mutation_applied": False,
+        "response_mutation_allowed": False,
+        "user_visible_apply_allowed": False,
+    }
+
+
+def _quick_clarification_response_template_chars(template_id: str | None) -> int:
+    # Phase 4 keeps this plan content-free and diagnostics-only. Track only the
+    # bounded template length that a future apply phase would need for safety
+    # gates; do not materialize user-visible clarification text here.
+    if template_id == "generic_prior_memory_reentry.ja.v0":
+        return 25
+    if template_id in {
+        "generic_reference_clarification.ja.v0",
+        "generic_open_clarification.ja.v0",
+    }:
+        return 19
+    return 0
+
+
+def build_relayint_request_compatibility_gate(
+    payload: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Summarize structured/tool request constraints without copying values."""
+
+    payload = payload or {}
+    response_format_present = (
+        "response_format" in payload and payload.get("response_format") is not None
+    )
+    tools = payload.get("tools")
+    tools_count = len(tools) if isinstance(tools, list) else 0
+    tool_choice_present = _request_choice_present(payload, "tool_choice")
+    functions = payload.get("functions")
+    functions_count = len(functions) if isinstance(functions, list) else 0
+    function_call_present = _request_choice_present(payload, "function_call")
+    n_requested_count, n_block_reason = _n_request_constraint(payload.get("n"))
+    max_completion_tokens = _token_limit_constraint(
+        payload,
+        "max_completion_tokens",
+        too_small_reason="max_completion_tokens_too_small",
+    )
+    max_tokens = _token_limit_constraint(
+        payload,
+        "max_tokens",
+        too_small_reason="max_tokens_too_small",
+    )
+    numeric_limits = [
+        limit
+        for limit in (max_completion_tokens["limit"], max_tokens["limit"])
+        if isinstance(limit, int | float)
+    ]
+    max_output_token_limit = min(numeric_limits) if numeric_limits else None
+    logprobs_requested = payload.get("logprobs") is True
+    top_logprobs_requested = "top_logprobs" in payload and payload.get("top_logprobs") is not None
+    stop_present = "stop" in payload and payload.get("stop") is not None
+    modalities_gate = _modalities_constraint(payload)
+
+    block_reasons: list[str] = []
+    if response_format_present:
+        block_reasons.append("response_format_requested")
+    if tools_count > 0:
+        block_reasons.append("tools_requested")
+    if tool_choice_present:
+        block_reasons.append("tool_choice_requested")
+    if functions_count > 0:
+        block_reasons.append("functions_requested")
+    if function_call_present:
+        block_reasons.append("function_call_requested")
+    if n_block_reason is not None:
+        block_reasons.append(n_block_reason)
+    for reason in max_completion_tokens["block_reasons"]:
+        if reason not in block_reasons:
+            block_reasons.append(reason)
+    for reason in max_tokens["block_reasons"]:
+        if reason not in block_reasons:
+            block_reasons.append(reason)
+    if logprobs_requested:
+        block_reasons.append("logprobs_requested")
+    if top_logprobs_requested:
+        block_reasons.append("top_logprobs_requested")
+    if stop_present:
+        block_reasons.append("stop_sequence_requested")
+    for reason in modalities_gate["block_reasons"]:
+        if reason not in block_reasons:
+            block_reasons.append(reason)
+
+    return {
+        "compatible": not block_reasons,
+        "response_format_present": response_format_present,
+        "tools_count": tools_count,
+        "tool_choice_present": tool_choice_present,
+        "functions_count": functions_count,
+        "function_call_present": function_call_present,
+        "n_requested_count": n_requested_count,
+        "max_completion_tokens_present": max_completion_tokens["present"],
+        "max_tokens_present": max_tokens["present"],
+        "max_output_token_limit": max_output_token_limit,
+        "logprobs_requested": logprobs_requested,
+        "top_logprobs_requested": top_logprobs_requested,
+        "stop_present": stop_present,
+        "modalities_present": modalities_gate["modalities_present"],
+        "modalities_count": modalities_gate["modalities_count"],
+        "audio_modality_requested": modalities_gate["audio_modality_requested"],
+        "audio_options_present": modalities_gate["audio_options_present"],
+        "block_reasons": block_reasons,
     }
 
 
@@ -482,6 +707,130 @@ def _quick_clarification_scene_gate(
         "quick_clarification_allowed": not block_reasons,
         "block_reasons": block_reasons,
     }
+
+
+
+
+def _modalities_constraint(payload: Mapping[str, Any]) -> dict[str, Any]:
+    modalities_present = "modalities" in payload and payload.get("modalities") is not None
+    modalities_count = 0
+    audio_modality_requested = False
+    block_reasons: list[str] = []
+
+    if modalities_present:
+        modalities = payload.get("modalities")
+        if not isinstance(modalities, list) or not modalities:
+            block_reasons.append("unsupported_modalities_value")
+        else:
+            modalities_count = len(modalities)
+            unsupported_value = False
+            non_text_modality_requested = False
+            for modality in modalities:
+                if not isinstance(modality, str) or not modality.strip():
+                    unsupported_value = True
+                    continue
+                normalized = modality.strip().lower()
+                if normalized == "audio":
+                    audio_modality_requested = True
+                    non_text_modality_requested = True
+                elif normalized != "text":
+                    non_text_modality_requested = True
+            if unsupported_value:
+                block_reasons.append("unsupported_modalities_value")
+            if audio_modality_requested:
+                block_reasons.append("audio_modality_requested")
+            elif non_text_modality_requested:
+                block_reasons.append("non_text_modality_requested")
+
+    audio_options_present = "audio" in payload and payload.get("audio") is not None
+    if audio_options_present:
+        block_reasons.append("audio_options_requested")
+
+    return {
+        "modalities_present": modalities_present,
+        "modalities_count": modalities_count,
+        "audio_modality_requested": audio_modality_requested,
+        "audio_options_present": audio_options_present,
+        "block_reasons": block_reasons,
+    }
+
+def _token_limit_constraint(
+    payload: Mapping[str, Any],
+    key: str,
+    *,
+    too_small_reason: str,
+) -> dict[str, Any]:
+    if key not in payload or payload.get(key) is None:
+        return {"present": False, "limit": None, "block_reasons": []}
+
+    value = payload.get(key)
+    if isinstance(value, bool) or not isinstance(value, int | float) or value <= 0:
+        return {
+            "present": True,
+            "limit": value if isinstance(value, int | float) and not isinstance(value, bool) else None,
+            "block_reasons": ["unsupported_token_limit"],
+        }
+
+    block_reasons = ["token_limit_requested"]
+    if value < _quick_clarification_response_token_floor():
+        block_reasons.append(too_small_reason)
+    return {"present": True, "limit": value, "block_reasons": block_reasons}
+
+
+def _quick_clarification_response_token_floor() -> int:
+    estimates = [
+        estimate_text_tokens(template).estimated_tokens
+        for template in QUICK_CLARIFICATION_RESPONSE_TEMPLATES
+    ]
+    return max(estimates) if estimates else 0
+
+def _n_request_constraint(value: Any) -> tuple[int | float | None, str | None]:
+    if value is None:
+        return None, None
+    if isinstance(value, bool):
+        return None, "unsupported_n_value"
+    if isinstance(value, int | float):
+        if value > 1:
+            return value, "multiple_choices_requested"
+        if value == 1:
+            return value, None
+        return value, "unsupported_n_value"
+    return None, "unsupported_n_value"
+
+def _request_choice_present(payload: Mapping[str, Any], key: str) -> bool:
+    if key not in payload:
+        return False
+    value = payload.get(key)
+    if value is None:
+        return False
+    if isinstance(value, str) and value == "none":
+        return False
+    return True
+
+def _quick_clarification_response_kind(clarification_type: Any) -> str:
+    if clarification_type == "prior_memory_reentry":
+        return "generic_prior_memory_reentry"
+    if clarification_type == "reference_confirmation":
+        return "generic_reference_clarification"
+    if clarification_type == "open_clarification":
+        return "generic_open_clarification"
+    return "none"
+
+
+def _quick_clarification_response_template_id(generated_response_kind: str) -> str:
+    if generated_response_kind == "generic_prior_memory_reentry":
+        return "generic_prior_memory_reentry.ja.v0"
+    if generated_response_kind == "generic_reference_clarification":
+        return "generic_reference_clarification.ja.v0"
+    if generated_response_kind == "generic_open_clarification":
+        return "generic_open_clarification.ja.v0"
+    return "none"
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, Sequence) or isinstance(value, str):
+        return []
+    return [item for item in value if isinstance(item, str) and item]
 
 
 def _positive_int(value: Any) -> bool:

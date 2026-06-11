@@ -80,6 +80,10 @@ def trace_runtime_event(
             trace_metadata["relayint_quick_clarification_preflight"] = (
                 diagnostics.relayint_quick_clarification_preflight
             )
+        if diagnostics.relayint_quick_clarification_apply_plan is not None:
+            trace_metadata["relayint_quick_clarification_apply_plan"] = (
+                diagnostics.relayint_quick_clarification_apply_plan
+            )
         if diagnostics.compile_decision_dry_run is not None:
             trace_metadata["compile_decision_dry_run"] = diagnostics.compile_decision_dry_run
         if diagnostics.relayemo_artifact is not None:

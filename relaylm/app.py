@@ -51,8 +51,10 @@ from relaylm.memory_adapter import (
 from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.relayint import (
     build_relayint_fast_path_dry_run,
+    build_relayint_quick_clarification_apply_plan,
     build_relayint_quick_clarification_preflight,
     build_relayint_reference_repair_dry_run,
+    build_relayint_request_compatibility_gate,
 )
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
@@ -332,6 +334,19 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 dry_run_only=config.relayint_quick_clarification_dry_run_only,
             )
         )
+        relayint_quick_clarification_apply_plan = (
+            build_relayint_quick_clarification_apply_plan(
+                relayint_quick_clarification_preflight=(
+                    relayint_quick_clarification_preflight
+                ),
+                enabled=config.relayint_quick_clarification_apply_enabled,
+                dry_run_only=config.relayint_quick_clarification_apply_dry_run_only,
+                stream_enabled=stream_enabled,
+                response_max_chars=config.relayint_quick_clarification_response_max_chars,
+                request_compatibility_gate=build_relayint_request_compatibility_gate(payload),
+            )
+        )
+
         relaymem_store_diagnostics = build_relaymem_store_diagnostics(
             root_path=config.memory.root_path,
             store_enabled=config.memory.store_enabled,
@@ -495,6 +510,9 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 relayint_fast_path_dry_run=relayint_fast_path_dry_run,
                 relayint_quick_clarification_preflight=(
                     relayint_quick_clarification_preflight
+                ),
+                relayint_quick_clarification_apply_plan=(
+                    relayint_quick_clarification_apply_plan
                 ),
                 trace_enabled=config.trace.enabled,
                 compile_decision_dry_run=compile_decision_dry_run,
