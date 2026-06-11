@@ -6,6 +6,7 @@ This page is the entry point for RelayLM documentation.
 
 - [Architecture docs](architecture/README.md)
 - [MVP summaries and milestone notes](mvp/README.md)
+- [Contract docs](contracts/README.md)
 - [Config schema](config_schema.md)
 - [OpenWebUI + LM Studio MVP](openwebui_lmstudio_mvp.md)
 - [OpenWebUI + LM Studio manual smoke runbook](openwebui_lmstudio_manual_smoke.md)
@@ -40,17 +41,9 @@ Future MVP summaries should be created directly under `docs/mvp/` and linked fro
 
 ## Contracts and safety gates
 
-These docs describe artifact schemas, dry-run contracts, approval boundaries, and persistence/apply gates.
+Contract, artifact, schema, approval, and gate docs are collected under `docs/contracts/`.
 
-- [Runtime compile artifact contract](runtime_compile_artifact_contract.md)
-- [Context compiler contract](context_compiler_contract.md)
-- [RelaySOUL patch candidate contract](relaysoul_patch_candidate_contract.md)
-- [RelaySOUL revision contract](relaysoul_revision_contract.md)
-- [RelaySOUL approval contract](relaysoul_approval_contract.md)
-- [RelaySOUL persistence contract](relaysoul_persistence_contract.md)
-- [RelaySOUL patch compile dry-run contract](relaysoul_compile_dry_run_contract.md)
-- [RelaySOUL explicit approval artifact contract](relaysoul_explicit_approval_artifact_contract.md)
-- [RelaySOUL preflight lineage freshness policy](relaysoul_preflight_lineage_freshness_policy.md)
+- [Contract docs](contracts/README.md)
 
 ## OpenWebUI / LM Studio setup and smoke
 
