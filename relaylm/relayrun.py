@@ -674,6 +674,12 @@ def _build_checkpoint_index_file_summary(
     return summary
 
 
+def _relayrun_node_name_alias(node_name: str | None) -> str | None:
+    if node_name == "relayref":
+        return "relayint_reference_repair"
+    return None
+    
+
 def build_relayrun_recovery_transition_artifact(
     *,
     node_statuses: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
@@ -694,7 +700,9 @@ def build_relayrun_recovery_transition_artifact(
         if node.get("node_status") in {"failed", "blocked"}:
             source_node = str(node.get("node_name") or "unknown")
             break
-
+            
+    source_node_alias = _relayrun_node_name_alias(source_node)
+    
     proposed_transition_type = "none"
     next_node = None
     required_user_action = None
@@ -729,6 +737,8 @@ def build_relayrun_recovery_transition_artifact(
         "transition_created": False,
         "proposed_transition_type": proposed_transition_type,
         "source_node": source_node,
+        "source_node_alias": source_node_alias,
+        "compatibility_source_node": source_node,
         "next_node": next_node,
         "resume_mode": resume_mode,
         "required_user_action": required_user_action,
@@ -778,6 +788,17 @@ def build_relayrun_waiting_user_contract(
         else None
     )
 
+    source_node_alias = (
+        safe_recovery_transition.get("source_node_alias")
+        if isinstance(safe_recovery_transition, dict)
+        else None
+    )
+    compatibility_source_node = (
+        safe_recovery_transition.get("compatibility_source_node")
+        if isinstance(safe_recovery_transition, dict)
+        else None
+    )    
+    
     waiting_user_required = False
     waiting_user_reason = None
     allowed_user_actions: list[str] = []
@@ -811,6 +832,14 @@ def build_relayrun_waiting_user_contract(
         "waiting_user_required": waiting_user_required,
         "waiting_user_reason": waiting_user_reason,
         "source_node": source_node,
+        "source_node_alias": (
+            source_node_alias if isinstance(source_node_alias, str) else None
+        ),
+        "compatibility_source_node": (
+            compatibility_source_node
+            if isinstance(compatibility_source_node, str)
+            else source_node
+        ),
         "source_artifacts": {
             "resume_preflight": safe_resume_preflight,
             "recovery_transition_artifact": safe_recovery_transition,
