@@ -2,13 +2,13 @@
 
 This directory collects RelayLM contract, artifact, schema, approval, and gate documentation.
 
-Some links still point to legacy `../*.md` files until the referenced contract files are physically moved here in small cleanup batches.
+Some RelaySOUL links still point to legacy `../*.md` files until those files are moved here in small cleanup batches.
 
 ## Runtime and compiler contracts
 
-- [Runtime compile artifact contract](../runtime_compile_artifact_contract.md)
-- [Context compiler contract](../context_compiler_contract.md)
-- [RelayRUN recovery response generator contract](../relayrun_recovery_response_generator_contract.md)
+- [Runtime compile artifact contract](runtime_compile_artifact_contract.md)
+- [Context compiler contract](context_compiler_contract.md)
+- [RelayRUN recovery response generator contract](relayrun_recovery_response_generator_contract.md)
 
 ## RelaySOUL contracts
 
@@ -23,4 +23,4 @@ Some links still point to legacy `../*.md` files until the referenced contract f
 
 ## Follow-up cleanup
 
-Move the linked files into this directory in small batches. Keep MVP summary files under `docs/mvp/`, architecture documents under `docs/architecture/`, and smoke/manual runbooks under `docs/smoke/`.
+Move the linked RelaySOUL files into this directory in small batches. Keep MVP summary files under `docs/mvp/`, architecture documents under `docs/architecture/`, and smoke/manual runbooks under `docs/smoke/`.
