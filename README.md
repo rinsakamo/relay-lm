@@ -35,6 +35,7 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 ## Initial docs
 
 - [VTuber memory proxy design](docs/vtuber_memory_proxy_design.md)
+- [AI VTuber pipeline profile](docs/ai_vtuber_pipeline_profile.md)
 - [Context packing design](docs/context_packing_design.md)
 - [Persona-specialized proxy design](docs/persona_specialized_proxy_design.md)
 - [RelaySOUL persona source calibration design](docs/relaysoul_design.md)
@@ -91,6 +92,8 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [OpenWebUI example profiles](examples/profiles/)
 - [Open-LLM-VTuber integration (optional example)](docs/open_llm_vtuber_integration.md)
 - [Runtime architecture](docs/runtime_architecture.md)
+- [RelayLM pipeline implementation plan](docs/pipeline_implementation_plan.md)
+- [RelayLM pipeline responsibility design](docs/pipeline_responsibility_design.md)
 - [Config schema](docs/config_schema.md)
 - [Token policy profile settings](docs/token_policy_profiles.md)
 - [Context compiler contract](docs/context_compiler_contract.md)

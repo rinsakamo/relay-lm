@@ -230,6 +230,8 @@ def _assert_unresolved_reference(root: Path, capture: _Capture, port: int) -> No
     require(contract.get("waiting_user_required") is True, contract)
     require(contract.get("waiting_user_reason") == "unresolved_reference", contract)
     require(contract.get("source_node") == "relayref", contract)
+    require(contract.get("source_node_alias") == "relayint_reference_repair", contract)
+    require(contract.get("compatibility_source_node") == "relayref", contract)
     actions = contract.get("allowed_user_actions")
     require(isinstance(actions, list), contract)
     require("provide_clarification" in actions, contract)

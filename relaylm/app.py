@@ -31,6 +31,17 @@ from relaylm.diagnostics import (
     build_relayctx_short_term_source_diagnostics,
     build_relaysoul_runtime_feedback_summary,
 )
+from relaylm.diagnostics_builder import (
+    build_base_request_diagnostics,
+    compiled_request_diagnostics_kwargs,
+    memory_adapter_shadow_diagnostics_kwargs,
+    relayctx_short_term_diagnostics_kwargs,
+    relayint_runtime_diagnostics_kwargs,
+    relayrun_diagnostics_kwargs,
+    request_scope_diagnostics_kwargs,
+    runtime_artifact_diagnostics_kwargs,
+    token_policy_diagnostics_kwargs,
+)
 from relaylm.memory_adapter import (
     build_memory_adapter_shadow_delta,
     build_memory_adapter_conflict_diagnostics,
@@ -42,16 +53,11 @@ from relaylm.relayint import (
     build_relayint_fast_path_dry_run,
     build_relayint_quick_clarification_apply_plan,
     build_relayint_quick_clarification_preflight,
+    build_relayint_reference_repair_dry_run,
     build_relayint_request_compatibility_gate,
 )
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
-from relaylm.relayref import build_relayref_dry_run_artifact
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
-from relaylm.relaymem_runtime_ctx import (
-    maybe_apply_relaymem_runtime_ctx_injection,
-    maybe_apply_relaymem_snippet_runtime_injection,
-    skipped_relaymem_runtime_ctx_injection_result,
-)
 from relaylm.relayrun import (
     build_relayrun_node,
     build_runtime_checkpoint_dry_run_artifact,
@@ -80,7 +86,13 @@ from relaylm.token_policy_signal import (
     build_token_policy_signal,
 )
 from relaylm.trace_runtime import extract_response_text, trace_runtime_event
-
+from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
+from relaylm.relayctx_repack import (
+    apply_relayctx_short_term_runtime_injection_phase,
+    apply_relaymem_runtime_injection_phase,
+    apply_token_budget_truncation_phase,
+)
+from collections.abc import Mapping
 
 def create_app(config_path: str | None = None) -> FastAPI:
     config = load_config(config_path)
@@ -198,6 +210,14 @@ def create_app(config_path: str | None = None) -> FastAPI:
             route=route,
             payload=payload,
         )
+        pipeline_context = PipelineContext(
+            request_id=request_id,
+            run_id=relayrun_run_id,
+            original_payload=payload,
+            forwarded_payload=dict(compiled_request.payload),
+            route=route,
+            stream_enabled=stream_enabled,
+        )
         effective_shadow_enabled, shadow_source = _resolve_token_policy_shadow_setting(config, route)
         token_policy_signal = build_token_policy_signal(compiled_request.token_memory_dry_run)
         token_policy_decision = build_token_policy_decision_artifact(
@@ -238,7 +258,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             if memory_adapter_shadow_dry_run is not None
             else None
         )
-        forwarded_payload = dict(compiled_request.payload)
+        forwarded_payload = pipeline_context.forwarded_payload
         token_budget_truncation: dict[str, Any] | None = None
         relayemo_artifact: dict[str, Any] | None = None
         if config.relayemo_enabled:
@@ -290,7 +310,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             payload=payload,
             relayemo_artifact=relayemo_artifact,
         )
-        relayref_artifact = build_relayref_dry_run_artifact(
+        relayref_artifact = build_relayint_reference_repair_dry_run(
             relayscn_artifact=relayscn_scene_policy_artifact,
             messages=_extract_trace_messages(payload),
             ctx_hints=_extract_ctx_hints(payload),
@@ -347,45 +367,19 @@ def create_app(config_path: str | None = None) -> FastAPI:
             max_snippet_chars=config.memory.max_snippet_chars,
             max_snippet_candidates=config.memory.max_snippet_candidates,
         )
-        forwarded_payload, runtime_snippet_injection_result = (
-            maybe_apply_relaymem_snippet_runtime_injection(
-                payload=forwarded_payload,
-                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-                ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
-                retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
-                snippet_apply_enabled=config.memory.snippet_apply_enabled,
-                snippet_dry_run_only=config.memory.snippet_dry_run_only,
-                snippet_runtime_injection_enabled=(
-                    config.memory.snippet_runtime_injection_enabled
-                ),
-                snippet_runtime_dry_run_only=config.memory.snippet_runtime_dry_run_only,
-                token_budget_truncation_enabled=config.memory.token_budget_truncation_enabled,
-                token_budget=config.memory.token_budget,
-                chars_per_token=config.memory.chars_per_token,
-            )
-        )
-        if runtime_snippet_injection_result.get("applied") is True:
-            runtime_ctx_injection_result = skipped_relaymem_runtime_ctx_injection_result(
-                payload=compiled_request.payload,
-                reason="skipped_because_snippet_runtime_injection_applied",
-            )
-        else:
-            forwarded_payload, runtime_ctx_injection_result = (
-                maybe_apply_relaymem_runtime_ctx_injection(
-                    payload=forwarded_payload,
-                    relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-                    ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
-                    retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
-                    token_budget_truncation_enabled=(
-                        config.memory.token_budget_truncation_enabled
-                    ),
-                    token_budget=config.memory.token_budget,
-                    chars_per_token=config.memory.chars_per_token,
-                )
-            )
-        forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
+        (
+            forwarded_payload,
+            runtime_ctx_injection_result,
+            runtime_snippet_injection_result,
+        ) = apply_relaymem_runtime_injection_phase(
             config=config,
-            payload=forwarded_payload,
+            pipeline_context=pipeline_context,
+            relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+            compiled_payload=compiled_request.payload,
+        )
+        forwarded_payload, token_budget_truncation = apply_token_budget_truncation_phase(
+            config=config,
+            pipeline_context=pipeline_context,
         )
 
         compiled_message_count = (
@@ -477,18 +471,16 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 dry_run_only=config.relayctx_short_term_runtime_injection_dry_run_only,
             )
         )
-        forwarded_payload, relayctx_short_term_runtime_injection_apply_result = (
-            _maybe_apply_relayctx_short_term_runtime_injection(
-                payload=forwarded_payload,
-                preflight_artifact=relayctx_short_term_runtime_injection_preflight,
-                apply_enabled=config.relayctx_short_term_runtime_injection_apply_enabled,
-                dry_run_only=config.relayctx_short_term_runtime_injection_dry_run_only,
-                token_budget=config.relayctx_short_term_runtime_injection_token_budget,
-                chars_per_token=config.memory.chars_per_token,
-            )
+        (
+            forwarded_payload,
+            relayctx_short_term_runtime_injection_apply_result,
+        ) = apply_relayctx_short_term_runtime_injection_phase(
+            config=config,
+            pipeline_context=pipeline_context,
+            preflight_artifact=relayctx_short_term_runtime_injection_preflight,
         )
 
-        base_diagnostics = RequestDiagnostics(
+        base_diagnostics = build_base_request_diagnostics(
             request_id=request_id,
             route_model=route.route_model,
             backend_model=route.backend_model,
@@ -497,62 +489,62 @@ def create_app(config_path: str | None = None) -> FastAPI:
             mode_requested=route.mode_requested,
             mode_applied=route.mode_applied,
             stream_enabled=stream_enabled,
-            compiler_used=compiled_request.compiler_used,
-            memory_block_used=compiled_request.memory_block_used,
-            memory_source=compiled_request.memory_source,
-            memory_selection_summary=(
-                compiled_request.memory_selection_summary.to_log_dict()
-                if compiled_request.memory_selection_summary is not None
-                else None
+            **compiled_request_diagnostics_kwargs(compiled_request),
+            **token_policy_diagnostics_kwargs(
+                token_policy_signal=token_policy_signal,
+                token_policy_decision=token_policy_decision,
+                token_policy_readiness=token_policy_readiness,
+                token_budget_truncation=token_budget_truncation,
             ),
-            memory_block_assembly=(
-                compiled_request.memory_block_assembly.to_log_dict()
-                if compiled_request.memory_block_assembly is not None
-                else None
+            **request_scope_diagnostics_kwargs(
+                request_scope_identity=request_scope_identity,
+                scope_resolution_diagnostics=scope_resolution_diagnostics,
             ),
-            token_memory_dry_run=compiled_request.token_memory_dry_run,
-            token_policy_signal=token_policy_signal.to_log_dict(),
-            token_policy_decision=token_policy_decision.to_log_dict(),
-            token_policy_readiness=token_policy_readiness.to_log_dict(),
-            token_budget_truncation=token_budget_truncation,
-            stable_prefix_hash=compiled_request.stable_prefix_hash,
-            stable_prefix_block_ids=compiled_request.stable_prefix_block_ids,
-            memory_adapter_dry_run=compiled_request.memory_adapter_dry_run,
-            memory_adapter_readiness=compiled_request.memory_adapter_readiness,
-            memory_adapter_conflicts=compiled_request.memory_adapter_conflicts,
-            context_block_summary=compiled_request.context_block_summary,
-            persona_source_budget_diagnostics=compiled_request.persona_source_budget_diagnostics,
-            request_scope_identity=request_scope_identity.to_log_dict(),
-            scope_resolution_diagnostics=scope_resolution_diagnostics.to_log_dict(),
-            memory_adapter_shadow_dry_run=memory_adapter_shadow_dry_run,
-            memory_adapter_shadow_readiness=memory_adapter_shadow_readiness,
-            memory_adapter_shadow_conflicts=memory_adapter_shadow_conflicts,
-            memory_adapter_shadow_delta=memory_adapter_shadow_delta,
-            relayint_fast_path_dry_run=relayint_fast_path_dry_run,
-            relayint_quick_clarification_preflight=relayint_quick_clarification_preflight,
-            relayint_quick_clarification_apply_plan=relayint_quick_clarification_apply_plan,
-            trace_enabled=config.trace.enabled,
-            profile_compile_dry_run_enabled=compiled_request.plan.enabled,
-            profile_compile_fallback_reason=compiled_request.plan.fallback_reason,
-            compile_decision_dry_run=compile_decision_dry_run,
-            relayemo_artifact=relayemo_artifact,
-            relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-            relayref_artifact=relayref_artifact,
-            relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-            runtime_ctx_injection_result=runtime_ctx_injection_result,
-            runtime_snippet_injection_result=runtime_snippet_injection_result,
-            relayctx_short_term_source_diagnostics=relayctx_short_term_source_diagnostics,
-            relayctx_short_term_extraction_dry_run=relayctx_short_term_extraction_dry_run,
-            relayctx_short_term_block_assembly_dry_run=(
-                relayctx_short_term_block_assembly_dry_run
+            **memory_adapter_shadow_diagnostics_kwargs(
+                memory_adapter_shadow_dry_run=memory_adapter_shadow_dry_run,
+                memory_adapter_shadow_readiness=memory_adapter_shadow_readiness,
+                memory_adapter_shadow_conflicts=memory_adapter_shadow_conflicts,
+                memory_adapter_shadow_delta=memory_adapter_shadow_delta,
             ),
-            relayctx_short_term_runtime_injection_preflight=(
-                relayctx_short_term_runtime_injection_preflight
+            **relayint_runtime_diagnostics_kwargs(
+                relayint_fast_path_dry_run=relayint_fast_path_dry_run,
+                relayint_quick_clarification_preflight=(
+                    relayint_quick_clarification_preflight
+                ),
+                relayint_quick_clarification_apply_plan=(
+                    relayint_quick_clarification_apply_plan
+                ),
+                trace_enabled=config.trace.enabled,
+                compile_decision_dry_run=compile_decision_dry_run,
             ),
-            relayctx_short_term_runtime_injection_apply_result=(
-                relayctx_short_term_runtime_injection_apply_result
+            **runtime_artifact_diagnostics_kwargs(
+                relayemo_artifact=relayemo_artifact,
+                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+                relayref_artifact=relayref_artifact,
+                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+                runtime_ctx_injection_result=runtime_ctx_injection_result,
+                runtime_snippet_injection_result=runtime_snippet_injection_result,
             ),
-            relayrun_artifact=relayrun_artifact,
+            **relayctx_short_term_diagnostics_kwargs(
+                relayctx_short_term_source_diagnostics=(
+                    relayctx_short_term_source_diagnostics
+                ),
+                relayctx_short_term_extraction_dry_run=(
+                    relayctx_short_term_extraction_dry_run
+                ),
+                relayctx_short_term_block_assembly_dry_run=(
+                    relayctx_short_term_block_assembly_dry_run
+                ),
+                relayctx_short_term_runtime_injection_preflight=(
+                    relayctx_short_term_runtime_injection_preflight
+                ),
+                relayctx_short_term_runtime_injection_apply_result=(
+                    relayctx_short_term_runtime_injection_apply_result
+                ),
+            ),
+            **relayrun_diagnostics_kwargs(
+                relayrun_artifact=relayrun_artifact,
+            ),
         )
         feedback_summary = (
             build_relaysoul_runtime_feedback_summary(base_diagnostics)
@@ -796,190 +788,6 @@ def _resolve_token_policy_shadow_setting(
     return character.token_policy_shadow_enabled, "character"
 
 
-def _maybe_apply_token_budget_truncation(
-    *,
-    config: RelayLMConfig,
-    payload: Mapping[str, Any],
-) -> tuple[dict[str, Any], dict[str, Any] | None]:
-    forwarded_payload = dict(payload)
-    forwarded_messages = _extract_trace_messages(payload)
-    result = _build_token_budget_truncation_dry_run(
-        config=config,
-        forwarded_messages=forwarded_messages,
-    )
-    if result is None:
-        return forwarded_payload, None
-
-    if not config.memory.token_budget_truncation_enabled:
-        return forwarded_payload, result
-
-    blocked_reason = result.get("blocked_reason")
-    over_after = result.get("over_budget_after") is True
-    dropped_message_count = result.get("dropped_message_count")
-    truncated_messages = result.get("truncated_messages")
-    if (
-        blocked_reason
-        or over_after
-        or not isinstance(truncated_messages, list)
-        or not isinstance(dropped_message_count, int)
-        or dropped_message_count <= 0
-    ):
-        result["applied"] = False
-        result["apply_mode"] = "runtime_apply"
-        return forwarded_payload, result
-
-    original_messages = payload.get("messages")
-    if not isinstance(original_messages, list):
-        return forwarded_payload, result
-
-    forwarded_payload["messages"] = [m for m in truncated_messages if isinstance(m, dict)]
-    result["applied"] = True
-    result["apply_mode"] = "runtime_apply"
-    return forwarded_payload, result
-
-
-def _maybe_apply_relayctx_short_term_runtime_injection(
-    *,
-    payload: Mapping[str, Any],
-    preflight_artifact: Mapping[str, Any] | None,
-    apply_enabled: bool,
-    dry_run_only: bool,
-    token_budget: int,
-    chars_per_token: int,
-) -> tuple[dict[str, Any], dict[str, Any] | None]:
-    forwarded_payload = deepcopy(dict(payload))
-    original_messages = payload.get("messages")
-    original_message_count = len(original_messages) if isinstance(original_messages, list) else 0
-
-    if not apply_enabled:
-        return forwarded_payload, None
-
-    preflight_present = isinstance(preflight_artifact, Mapping)
-    blocked_reasons: list[str] = []
-    if dry_run_only:
-        blocked_reasons.append("dry_run_only")
-    if not preflight_present:
-        blocked_reasons.append("preflight_missing")
-    if preflight_present and preflight_artifact.get("injection_plan_present") is not True:
-        blocked_reasons.append("injection_plan_missing")
-    if preflight_present and preflight_artifact.get("input_assembled_block_present") is not True:
-        blocked_reasons.append("assembled_block_missing")
-    input_short_term_candidate_count = _non_negative_int(
-        preflight_artifact.get("input_short_term_candidate_count")
-        if preflight_present
-        else None
-    )
-    if preflight_present and input_short_term_candidate_count <= 0:
-        blocked_reasons.append("no_short_term_candidates")
-    if preflight_present and preflight_artifact.get("content_free") is not True:
-        blocked_reasons.append("preflight_not_content_free")
-    if not isinstance(original_messages, list):
-        blocked_reasons.append("messages_not_list")
-
-    insertion_index = None
-    if isinstance(original_messages, list):
-        insertion_index = _relayctx_before_latest_user_index(original_messages)
-        if insertion_index is None:
-            blocked_reasons.append("latest_user_message_not_found")
-
-    inserted_content = (
-        _relayctx_short_term_inserted_content(preflight_artifact)
-        if preflight_present
-        else ""
-    )
-    if not inserted_content:
-        blocked_reasons.append("inserted_content_empty")
-
-    estimated_tokens = _estimate_text_tokens(inserted_content, chars_per_token)
-    if token_budget <= 0 or estimated_tokens > token_budget:
-        blocked_reasons.append("token_budget_exceeded")
-
-    if blocked_reasons:
-        if dry_run_only or not apply_enabled:
-            blocked_reasons.append("payload_mutation_disabled")
-        result = build_relayctx_short_term_runtime_injection_apply_result(
-            preflight_artifact=dict(preflight_artifact) if preflight_present else None,
-            enabled=True,
-            dry_run_only=dry_run_only,
-            attempted=not dry_run_only,
-            applied=False,
-            original_message_count=original_message_count,
-            forwarded_message_count=original_message_count,
-            inserted_chars=0,
-            estimated_inserted_tokens=0,
-            blocked_reasons=blocked_reasons,
-        )
-        return forwarded_payload, result
-
-    assert isinstance(original_messages, list)
-    assert insertion_index is not None
-    forwarded_messages = [
-        deepcopy(message) for message in original_messages if isinstance(message, Mapping)
-    ]
-    if len(forwarded_messages) != original_message_count:
-        result = build_relayctx_short_term_runtime_injection_apply_result(
-            preflight_artifact=dict(preflight_artifact) if preflight_present else None,
-            enabled=True,
-            dry_run_only=dry_run_only,
-            attempted=True,
-            applied=False,
-            original_message_count=original_message_count,
-            forwarded_message_count=len(forwarded_messages),
-            inserted_chars=0,
-            estimated_inserted_tokens=0,
-            blocked_reasons=["messages_contain_non_object_items"],
-        )
-        return forwarded_payload, result
-
-    forwarded_messages.insert(
-        insertion_index,
-        {"role": "system", "content": inserted_content},
-    )
-    forwarded_payload["messages"] = forwarded_messages
-    result = build_relayctx_short_term_runtime_injection_apply_result(
-        preflight_artifact=dict(preflight_artifact) if preflight_present else None,
-        enabled=True,
-        dry_run_only=dry_run_only,
-        attempted=True,
-        applied=True,
-        original_message_count=original_message_count,
-        forwarded_message_count=len(forwarded_messages),
-        inserted_chars=len(inserted_content),
-        estimated_inserted_tokens=estimated_tokens,
-        blocked_reasons=[],
-    )
-    return forwarded_payload, result
-
-
-def _relayctx_before_latest_user_index(messages: list[Any]) -> int | None:
-    for index in range(len(messages) - 1, -1, -1):
-        message = messages[index]
-        if isinstance(message, Mapping) and message.get("role") == "user":
-            return index
-    return None
-
-
-def _relayctx_short_term_inserted_content(preflight_artifact: Mapping[str, Any]) -> str:
-    return "\n".join(
-        [
-            "[RelayCTX Short-Term Context]",
-            "The current thread contains short-term context candidates. Treat current user instructions and current-thread temporary context as higher priority than stable memory. Do not treat these hints as long-term memory.",
-            "",
-            "Candidate summary:",
-            f"- temporary facts: {_non_negative_int(preflight_artifact.get('temporary_fact_count'))}",
-            f"- temporary preferences: {_non_negative_int(preflight_artifact.get('temporary_preference_count'))}",
-            f"- instructions: {_non_negative_int(preflight_artifact.get('instruction_count'))}",
-            f"- overrides: {_non_negative_int(preflight_artifact.get('override_count'))}",
-            f"- contradictions: {_non_negative_int(preflight_artifact.get('contradiction_count'))}",
-            "",
-            "Rules:",
-            "- Prefer current user instruction and current-thread temporary context over memory_seed when they conflict.",
-            "- Do not persist these hints as long-term memory.",
-            "- Do not mention this block unless asked about context handling.",
-        ]
-    )
-
-
 def _non_negative_int(value: Any) -> int:
     if isinstance(value, bool):
         return 0
@@ -993,25 +801,6 @@ def _estimate_text_tokens(text: str, chars_per_token: int) -> int:
         text,
         chars_per_token=max(1, int(chars_per_token)),
     ).estimated_tokens
-
-def _build_token_budget_truncation_dry_run(
-    *,
-    config: RelayLMConfig,
-    forwarded_messages: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    if config.memory.token_budget is None:
-        return None
-    result = apply_token_budget_message_truncation(
-        messages=forwarded_messages,
-        token_budget=config.memory.token_budget,
-        chars_per_token=config.memory.chars_per_token,
-        keep_system=True,
-        keep_latest_user=True,
-    ).to_log_dict()
-    result["enforcement_enabled"] = config.memory.token_budget_truncation_enabled
-    result["applied"] = False
-    result["apply_mode"] = "dry_run"
-    return result
 
 
 def _build_relayemo_text_marker_preview(

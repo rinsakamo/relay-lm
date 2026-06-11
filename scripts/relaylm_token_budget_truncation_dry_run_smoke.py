@@ -10,7 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.app import _build_token_budget_truncation_dry_run
+from relaylm.relayctx_repack import _build_token_budget_truncation_dry_run
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.diagnostics import RequestDiagnostics
 from relaylm.request_compiler import compile_chat_payload_if_enabled
