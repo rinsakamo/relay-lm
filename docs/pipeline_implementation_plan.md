@@ -119,6 +119,7 @@ Current status:
 - `relayref.py` remains as the compatibility implementation for now.
 - MVP-45 has added the default-off RelayINT Fast Path dry-run artifact for low-latency reference / continuation / prior-memory intent signals.
 - MVP-46 has added the default-off RelayINT quick clarification preflight artifact, still diagnostics-only and without user-visible clarification text.
+- RelayRUN recovery artifacts now keep historical `source_node: "relayref"` while also emitting `source_node_alias: "relayint_reference_repair"` and `compatibility_source_node: "relayref"` for RelayINT-facing diagnostics.
 - PR #241 should be reduced before merge into a Phase 4 completion handoff: keep the RelayINT quick clarification apply plan, request compatibility gate, default-off / dry-run-only config flags, diagnostics / trace wiring, MVP-47 summary, and smoke coverage.
 - PR #241 should not land actual user-visible short-circuit behavior in Phase 4. Remove or defer the immediate `app.py` response return path, response-body helper, backend-forward skip behavior, and completed short-circuit RelayRUN artifact wiring until Phase 6.
 - The reduced #241 plan-only merge belongs after the existing RelayINT split / preflight work and before Phase 4.5 `PipelineNodeResult` scaffolding.
