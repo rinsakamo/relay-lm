@@ -4,11 +4,11 @@ This directory indexes RelaySOUL persona-source calibration, dry-run/preflight c
 
 RelaySOUL artifact schemas and content-free contracts remain under `docs/contracts/`. MVP milestone summaries remain under `docs/mvp/`.
 
-The large persona-source calibration design still points to its legacy `../relaysoul_design.md` path until it is moved by path-only copy or `git mv`.
+The RelaySOUL design, chain, persistence architecture, and execution-gate documents tracked by this index are housed in this directory.
 
 ## Core design
 
-- [RelaySOUL persona source calibration design](../relaysoul_design.md)
+- [RelaySOUL persona source calibration design](relaysoul_design.md)
 - [RelaySOUL persistence storage design](relaysoul_persistence_storage_design.md)
 
 ## Chain summaries
