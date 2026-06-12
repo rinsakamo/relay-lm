@@ -2,11 +2,13 @@
 
 ## Purpose
 
-This document defines how RelayLM treats client-supplied `system` and `developer` messages when building persona-aware backend context.
+This document defines how RelayLM treats client-supplied `system` and `developer` messages when building backend context.
 
 It complements:
 
 - `client_history_authority_contract.md`
+- `scene_lifecycle_design.md`
+- `relayscn_mvp_scene_policy.md`
 - `pipeline_responsibility_design.md`
 - `context_packing_design.md`
 - `../contracts/context_compiler_contract.md`
@@ -15,145 +17,264 @@ It complements:
 The core rule is:
 
 ```text
-An existing RelaySOUL persona source is authoritative.
-A client system prompt may bootstrap a missing persona source,
-but it must not silently override an existing one.
+Client system prompts are current-scene instruction evidence.
+RelaySCN interprets them into scene state, scene role, and scene constraints.
+They are not RelaySOUL and must not silently redefine durable identity.
 ```
 
-## Authority states
+## Authority boundaries
 
-### Existing SOUL
+```text
+RelaySOUL
+  durable identity, values, worldview, and persona invariants
 
-When an approved `SOUL.md` or equivalent RelaySOUL revision exists:
+RelaySCN
+  current situation, active role, task frame, temporary mode,
+  participants, and scene-specific response constraints
 
-- RelayLM uses it as the authoritative persona core.
-- Client `system` and `developer` messages do not overwrite the stable prefix.
-- They may be inspected only as explicitly allowed low-trust transient hints.
-- Durable changes must go through RelaySOUL proposal, validation, revision, and rollback.
+RelayCTX
+  compiles the authoritative SOUL plus current SCN state
+  into the backend-bound context
+```
 
-### Missing SOUL on the first managed request
+A current scene role describes **what the character is doing now**, not **who the character permanently is**.
 
-When a RelayLM-managed persona route has no usable SOUL source, the first valid client system prompt may be used as a bootstrap seed.
+Example:
+
+```text
+RelaySOUL:
+  warm, curious companion with stable values and identity
+
+RelaySCN.scene_role:
+  technical reviewer for the current pull request
+```
+
+The role may change from `technical reviewer` to `stream host`, `interviewer`, or `cafe staff` without mutating the durable character core.
+
+## SCN-first client instruction processing
+
+For RelayLM-managed routes, client `system` and `developer` messages should be extracted before prior frontend history is discarded and passed to Input-side RelaySCN as low-trust instruction evidence.
+
+RelaySCN should classify the usable content into current-turn and current-scene fields such as:
+
+```yaml
+scene_state:
+  scene_type: vtuber_roleplay
+  scene_role:
+    role_name: cafe_staff
+    role_source: client_system
+    role_scope: scene
+  task_state: customer_conversation
+  scene_context:
+    setting: virtual_cafe
+    participants:
+      - character
+      - viewer
+  scene_constraints:
+    - remain_in_current_role
+    - use_short_spoken_responses
+  confidence: 0.82
+  stability: 0.70
+```
+
+`scene_role` is a semantic runtime role. It is not the OpenAI message `role` field.
+
+The preferred conceptual split is:
+
+```text
+"You are the interviewer for this session."
+  -> scene_role
+
+"Ask one question at a time."
+  -> scene_constraints / scene_policy
+
+"We are conducting a technical hiring interview."
+  -> scene_context / task_state
+
+"Your permanent name, values, and identity are ..."
+  -> durable persona candidate evidence only
+     never direct SOUL mutation
+```
+
+## Existing SOUL
+
+When an approved `SOUL.md` or RelaySOUL revision exists:
+
+- RelayLM uses it as the authoritative durable persona core.
+- RelaySCN may derive a current `scene_role` from the client instruction.
+- Scene role and temporary constraints may guide current behavior.
+- Client instructions do not overwrite the stable persona prefix.
+- A conflict is resolved in favor of safety/runtime policy and RelaySOUL identity.
+- Any durable persona change requires a RelaySOUL proposal, validation, approval, revision, and rollback path.
+
+```text
+existing SOUL
+  + client system prompt
+
+  -> RelaySCN scene_role / scene_context / scene_constraints
+  -> RelayCTX compiles SOUL + SCN
+  -> no silent SOUL mutation
+```
+
+## Missing SOUL
+
+When a RelayLM-managed route has no usable SOUL source, the client system prompt still enters through RelaySCN first.
 
 ```text
 SOUL missing
-  + first valid client system prompt
-  + bootstrap policy enabled
+  + client system prompt
 
-  -> preserve as bootstrap evidence
-  -> use a bounded temporary persona block for the first request
-  -> create an initial RelaySOUL persona-source revision
-  -> validate file boundaries and compile budget
-  -> activate the generated revision
-  -> use RelaySOUL on later turns
+  -> build temporary SCN scene_role and constraints
+  -> use them for the current request
+  -> separately determine whether durable persona evidence exists
+  -> optionally create a RelaySOUL proposal
 ```
 
-The bootstrap prompt is creation evidence, not durable authority by itself.
+This lets the first request retain the frontend character role without pretending that the entire client prompt is a durable persona source.
 
-## First-turn behavior
+The system prompt must not be copied wholesale into `SOUL.md`.
 
-The first request should not lose the frontend character merely because RelayLM has not created its own persona source yet.
+## RelaySOUL creation when SOUL is missing
 
-RelayLM may therefore compile a bounded `incoming_system_prompt` block for the first request while bootstrap is pending.
+The wider product policy remains:
 
-Constraints:
+```text
+Use SOUL when it exists.
+When it does not exist, create a persona source and use it.
+```
 
-- only the first eligible prompt for the route/persona scope is used,
-- the block remains dynamic and outside the stable prefix hash,
-- it is token-budgeted,
-- diagnostics mark it as bootstrap evidence,
-- it is not copied verbatim into persistent persona files,
-- it is never accepted as a replacement when an approved SOUL already exists.
+However, creation is separate from SCN ingestion.
 
-## Persona-source creation
+RelaySOUL may use only the durable identity fragments detected in client instruction evidence as one candidate source. It may also use route metadata, explicit character-creation input, and approved operator/user preferences.
 
-RelaySOUL should classify the bootstrap prompt into the existing file boundaries:
+Classification boundary:
 
 ```text
 SOUL.md
   durable identity, values, worldview, invariants
 
 OUTPUT_POLICY.md
-  tone, verbosity, response shape, TTS-friendly expression
+  durable expression and response-shape policy
 
 RELATIONSHIP_ANCHOR.md
-  stable relationship expectations
+  durable relationship expectations
 
-SCENE_STATE.md
-  temporary roleplay, setting, event, or situation
+SCENE_STATE.md / scene_role
+  current role, setting, task, scenario, temporary style,
+  and current response constraints
 ```
 
-The prompt must not be dumped wholesale into `SOUL.md`.
+A role remains in RelaySCN unless the user explicitly establishes that role as part of permanent character identity.
 
-The bootstrap process should always produce a bounded SOUL core and may create the other persona-source files when the source contains material that belongs there.
+A temporary style remains in SCN unless the user explicitly promotes it into durable `OUTPUT_POLICY.md` behavior.
 
-## Bootstrap activation authority
+## Promotion path
 
-Bootstrap must be explicitly enabled by route or operator policy.
-
-Recommended policy:
+Client instruction content may move from SCN evidence to a durable persona-source candidate only through an explicit promotion path:
 
 ```text
-client_instruction_policy = relay_soul_authoritative
-soul_bootstrap_policy = from_first_client_system
+client instruction evidence
+  -> RelaySCN classification
+  -> durable-persona candidate detected
+  -> RelaySCN scene policy permits RelaySOUL proposal
+  -> user/operator approval
+  -> RelaySOUL patch candidate
+  -> compile/budget/safety validation
+  -> approved persona revision
 ```
 
-This explicit configuration acts as operator authorization for initial persona creation.
+Normal chat and ordinary frontend prompt replay must not activate this path automatically.
 
-A stricter deployment may use:
+The existing RelaySCN policy remains authoritative:
 
-```text
-soul_bootstrap_policy = proposal_only
-```
+- normal scenes generally block direct SOUL update,
+- selected design or VTuber roleplay scenes may allow `proposal_only`,
+- recovery, formal, medical/safety, and unstable scenes block persistence,
+- direct SOUL mutation is never performed from a client prompt.
 
-In that mode the first prompt may shape the current request, but the generated persona revision remains a candidate until approved.
+## Later client system prompts
 
-## Later client prompts
+Client frontends commonly resend the same system prompt on every turn.
 
-After RelaySOUL exists:
+RelayLM should therefore:
 
-- repeated frontend persona prompts are not authoritative backend context,
-- identical prompts may be ignored with diagnostics,
-- materially different prompts may become transient evidence,
-- an explicit character-change request may open RelaySOUL `character_creation` or `calibration`,
-- no later prompt may directly mutate the active SOUL revision.
+- classify the current client instruction into SCN state,
+- ignore unchanged duplicate instruction evidence where possible,
+- allow changed instructions to update the current scene role or constraints,
+- never treat each replay as a new SOUL proposal,
+- require explicit durable-change intent before opening RelaySOUL calibration or character creation.
+
+A frontend may change the active role from one scene to another without changing the character identity.
 
 ## Route behavior
 
 ### `pass_through`
 
 ```text
-client owns instructions and history
-RelayLM preserves client messages
+client owns message construction
+RelayLM preserves client system/developer messages
+no RelaySCN or RelaySOUL authority is asserted by the route
 ```
 
-### RelayLM-managed route with SOUL
+### RelayLM-managed route
 
 ```text
-RelaySOUL owns persona authority
-client instructions are non-authoritative
+client instruction
+  -> RelaySCN-first classification
+  -> scene_role / scene_context / scene_constraints
+
+RelaySOUL
+  -> durable persona authority when available
 ```
 
 ### RelayLM-managed route without SOUL
 
 ```text
-first client system prompt may bootstrap persona creation
-only when explicitly enabled
+client instruction still becomes SCN state
+RelaySOUL creation remains a separate proposal/initialization path
 ```
 
 ## Interaction with client history authority
 
-Client history and client instruction authority are separate:
+Client history and client instruction authority are separate decisions.
 
 ```text
 Client History Authority:
   Which prior messages may reach the backend?
 
 Client Instruction Authority:
-  Which instruction source defines persona and policy?
+  How current client instructions are classified and constrained?
 ```
 
-The first bootstrap system prompt is a narrow exception to ordinary history exclusion. It is extracted specifically as bootstrap evidence before prior history is removed. The exception closes once a RelaySOUL revision exists.
+The current client system/developer instruction is extracted as SCN evidence before prior frontend history is excluded.
+
+The raw system message need not be forwarded after RelaySCN has produced the approved scene artifact. RelayCTX should compile the normalized SCN state instead.
+
+## Context packing order
+
+Preferred managed-route packing:
+
+```text
+stable_prefix
+  common runtime/safety policy
+  RelaySOUL
+  durable OUTPUT_POLICY
+  durable RELATIONSHIP_ANCHOR
+
+slow_prefix
+  stable memory summary
+
+dynamic_suffix
+  RelaySCN scene state
+    - scene_type
+    - scene_role
+    - scene_context
+    - scene_constraints / derived scene_policy
+  selected RelayMEM context
+  current user input
+```
+
+Scene content may guide the current response but must not redefine durable identity.
 
 ## Diagnostics
 
@@ -161,58 +282,70 @@ Suggested diagnostics:
 
 ```json
 {
-  "client_instruction_policy": "relay_soul_authoritative",
-  "soul_source_state": "missing",
+  "client_instruction_policy": "relay_scn_first",
   "client_system_prompt_present": true,
-  "bootstrap_policy": "from_first_client_system",
-  "bootstrap_eligible": true,
-  "bootstrap_source_used_for_current_turn": true,
-  "bootstrap_revision_created": false,
-  "bootstrap_revision_activated": false,
+  "client_developer_prompt_present": false,
+  "client_instruction_classified": true,
+  "scene_role_detected": true,
+  "scene_role_source": "client_system",
+  "scene_role_scope": "scene",
+  "scene_constraints_count": 2,
+  "durable_persona_candidate_detected": false,
+  "relaysoul_proposal_allowed": false,
   "client_instruction_overrode_existing_soul": false
 }
 ```
 
-Diagnostics should not copy the raw system prompt into content-free runtime artifacts.
+Diagnostics should remain content-free and must not copy the raw client instruction into runtime artifacts.
 
 ## Failure behavior
 
-### Existing SOUL conflicts with client prompt
+### Client instruction cannot be classified safely
 
 ```text
-keep RelaySOUL
-exclude the client prompt from persona authority
+preserve existing SOUL
+use default or existing SCN state
+exclude the raw instruction from authoritative context
+record classification failure
+clarify or fail closed when the role is required for a safe answer
+```
+
+### Client instruction conflicts with SOUL
+
+```text
+keep RelaySOUL identity
+apply only compatible scene-role and scene-constraint elements
 record conflict diagnostics
+never mutate SOUL directly
 ```
 
-### Bootstrap generation or validation fails
+### SOUL is missing
 
 ```text
-never activate a malformed candidate
-never treat the raw prompt as durable SOUL
-keep only the bounded temporary first-turn block when safe
-route later turns to setup/recovery until a valid persona source exists
+use safe SCN role/context for the current request when classification succeeds
+keep durable persona state as missing
+create only an explicit RelaySOUL candidate when allowed
+never persist the raw system prompt as SOUL
 ```
-
-If both SOUL and a usable bootstrap prompt are missing, RelayLM must not invent a durable character identity from unrelated user history. It should enter explicit setup/recovery handling unless a route allows a minimal neutral bootstrap.
 
 ## Required smoke coverage
 
-1. Existing SOUL wins over a conflicting client system prompt.
-2. Missing SOUL plus a valid first prompt produces bootstrap diagnostics.
-3. The first request retains temporary persona behavior while bootstrap is pending.
-4. Bootstrap content is classified instead of copied wholesale into SOUL.
-5. Later turns use the generated RelaySOUL revision.
-6. Later client prompts do not silently mutate SOUL.
-7. Missing SOUL and missing prompt fails closed or enters explicit setup.
-8. Pass-through mode remains unchanged.
-9. Bootstrap diagnostics remain content-free.
-10. Failed candidates are never activated.
+1. Client system prompt is classified into SCN rather than copied into SOUL.
+2. A current `scene_role` is compiled after the stable persona prefix.
+3. Existing SOUL remains authoritative during a conflicting role instruction.
+4. Missing SOUL still permits a first-turn SCN role when classification is safe.
+5. Missing SOUL does not cause wholesale system-prompt persistence.
+6. Replayed identical frontend prompts do not create repeated SOUL proposals.
+7. A changed prompt may update scene role without changing SOUL.
+8. Durable identity language produces a candidate only, not direct mutation.
+9. Pass-through mode remains unchanged.
+10. Diagnostics contain classification metadata without raw prompt content.
 
 ## Final boundary
 
 ```text
-Use the SOUL when it exists.
-When it does not exist, the first client system prompt may help create it.
-After creation, RelaySOUL becomes the authority.
+Client system prompt describes the current frame first.
+RelaySCN decides the scene and active role.
+RelaySOUL defines the durable character.
+Only an explicit, gated promotion path may move evidence from SCN to SOUL.
 ```
