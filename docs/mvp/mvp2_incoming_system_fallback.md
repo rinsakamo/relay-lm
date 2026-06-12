@@ -19,11 +19,20 @@ See `docs/architecture/client_instruction_authority_contract.md` for the canonic
 ## Added helpers
 
 - `split_incoming_system_messages()`
+- `extract_instruction_text()`
 - `build_incoming_system_prompt_block()`
 - `append_incoming_system_prompt_block()`
 - `compile_profile_messages_with_system_fallback()`
 
-The compatibility helper now treats both `system` and `developer` roles as instruction-bearing messages. This prevents `developer` messages from being appended unchanged after RelayLM's compiled system context in managed compilation.
+The compatibility helper treats both `system` and `developer` roles as instruction-bearing messages. This prevents `developer` messages from being appended unchanged after RelayLM's compiled system context in managed compilation.
+
+`extract_instruction_text()` supports:
+
+- ordinary string content,
+- ordered text-part arrays using `type: text`,
+- ordered text-part arrays using `type: input_text`.
+
+Unsupported non-text content parts are ignored rather than stringified into the instruction block. This preserves textual developer instructions without accidentally embedding image URLs or other non-text payloads.
 
 ## Authority behavior
 
@@ -66,6 +75,7 @@ python scripts/relaylm_system_fallback_smoke.py
 Expected output:
 
 ```text
+ok normalize array-valued instruction content
 ok split incoming system/developer messages
 ok append incoming instruction block
 ok compile messages with system/developer fallback
@@ -73,9 +83,11 @@ ok compile messages with system/developer fallback
 
 The smoke confirms that:
 
+- string and array-valued instruction content are normalized,
 - both `system` and `developer` messages are extracted,
 - neither remains in the recent-message chain,
-- both contents are included in the compatibility dynamic evidence block,
+- supported text parts are included in the compatibility dynamic evidence block,
+- unsupported non-text parts are not stringified into the block,
 - current user/assistant messages remain in their original order.
 
 ## Out of scope
@@ -90,4 +102,4 @@ This step does not add:
 - RelayCTX control-envelope Unpack,
 - RelaySOUL proposal generation or activation,
 - memory or RAG,
-- frontend-specific instruction parsing.
+- frontend-specific semantic instruction parsing.
