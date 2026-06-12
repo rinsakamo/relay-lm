@@ -1,13 +1,11 @@
 # MVP-2 Incoming System Prompt Fallback
 
-This step preserves incoming OpenAI-compatible `system` messages without letting them override RelayLM's configured stable persona prefix.
+This step preserves incoming OpenAI-compatible `system` and `developer` messages without letting them remain in the recent-message chain or override RelayLM's configured stable persona prefix.
 
-The compiler is still not connected to `/v1/chat/completions`. Pass-through runtime behavior remains unchanged.
-
-The historical helper name uses `fallback`, but the current authority meaning is:
+The historical helper name uses `system` and `fallback` for compatibility, but the current authority meaning is:
 
 ```text
-client system prompt
+client system / developer instruction
   -> dynamic instruction evidence
   -> Input-side RelaySCN classification
   -> scene role / scene context / scene constraints
@@ -25,19 +23,21 @@ See `docs/architecture/client_instruction_authority_contract.md` for the canonic
 - `append_incoming_system_prompt_block()`
 - `compile_profile_messages_with_system_fallback()`
 
+The compatibility helper now treats both `system` and `developer` roles as instruction-bearing messages. This prevents `developer` messages from being appended unchanged after RelayLM's compiled system context in managed compilation.
+
 ## Authority behavior
 
-Incoming system messages are treated as dynamic evidence, not as authority above RelayLM's stable persona blocks.
+Incoming system/developer messages are treated as dynamic evidence, not as authority above RelayLM's stable persona blocks.
 
 The historical compiled order is:
 
 ```text
 stable profile blocks
 incoming_system_prompt dynamic block
-recent non-system messages
+recent non-instruction messages
 ```
 
-The intended pipeline interpretation is now:
+The intended pipeline interpretation is:
 
 ```text
 incoming_system_prompt dynamic evidence
@@ -50,11 +50,11 @@ incoming_system_prompt dynamic evidence
   -> RelayCTX dynamic suffix
 ```
 
-When an approved SOUL exists, the SCN-derived role guides the current situation without replacing or mutating the durable identity.
+When an approved SOUL exists, the SCN-derived role guides the current situation without replacing or mutating durable identity.
 
-When SOUL is missing, the same client instruction may still establish a safe temporary scene role for the first request. RelaySOUL creation is a separate process: only explicitly identified durable persona evidence may become a proposal, and the raw prompt must never be persisted wholesale as `SOUL.md`.
+When SOUL is missing, the same client instruction may establish a safe temporary scene role for the first request. RelaySOUL creation is separate: only explicitly identified durable persona evidence may become a proposal, and the raw prompt must never be persisted wholesale as `SOUL.md`.
 
-Repeated frontend system prompts should update or confirm the current scene role, not create repeated SOUL proposals.
+Repeated frontend instructions should update or confirm the current scene role, not create repeated SOUL proposals.
 
 ## Run
 
@@ -66,19 +66,28 @@ python scripts/relaylm_system_fallback_smoke.py
 Expected output:
 
 ```text
-ok split incoming system messages
-ok append incoming system block
-ok compile messages with system fallback
+ok split incoming system/developer messages
+ok append incoming instruction block
+ok compile messages with system/developer fallback
 ```
+
+The smoke confirms that:
+
+- both `system` and `developer` messages are extracted,
+- neither remains in the recent-message chain,
+- both contents are included in the compatibility dynamic evidence block,
+- current user/assistant messages remain in their original order.
 
 ## Out of scope
 
 This step does not add:
 
-- FastAPI integration
-- automatic message rewriting in pass-through mode
-- RelaySCN instruction classification runtime
-- `scene_role` runtime schema wiring
-- RelaySOUL proposal generation or activation
-- memory or RAG
-- frontend-specific system prompt parsing
+- full client-history canonicalization in FastAPI,
+- automatic message rewriting in pass-through mode,
+- RelaySCN instruction-classification runtime,
+- instruction hash/cache persistence,
+- `scene_role` runtime schema wiring,
+- RelayCTX control-envelope Unpack,
+- RelaySOUL proposal generation or activation,
+- memory or RAG,
+- frontend-specific instruction parsing.
