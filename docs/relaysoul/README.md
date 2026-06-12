@@ -9,7 +9,7 @@ Some core design and gate links still point to legacy `../*.md` files until thos
 ## Core design
 
 - [RelaySOUL persona source calibration design](../relaysoul_design.md)
-- [RelaySOUL persistence storage design](../relaysoul_persistence_storage_design.md)
+- [RelaySOUL persistence storage design](relaysoul_persistence_storage_design.md)
 
 ## Chain summaries
 
