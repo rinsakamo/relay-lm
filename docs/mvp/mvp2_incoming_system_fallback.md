@@ -4,6 +4,19 @@ This step preserves incoming OpenAI-compatible `system` messages without letting
 
 The compiler is still not connected to `/v1/chat/completions`. Pass-through runtime behavior remains unchanged.
 
+The historical helper name uses `fallback`, but the current authority meaning is narrower:
+
+```text
+existing SOUL:
+  incoming system prompt is non-authoritative dynamic evidence
+
+missing SOUL on the first managed request:
+  the first eligible system prompt may be bootstrap evidence
+  for creating the initial RelaySOUL persona-source revision
+```
+
+See `docs/architecture/client_instruction_authority_contract.md` for the canonical policy.
+
 ## Added helpers
 
 - `split_incoming_system_messages()`
@@ -23,7 +36,11 @@ incoming_system_prompt dynamic block
 recent non-system messages
 ```
 
-This preserves OpenAI-compatible frontend instructions while keeping `SOUL`, output style, and room anchor earlier in the compiled context.
+When an approved SOUL exists, the dynamic block must not replace or mutate it.
+
+When SOUL is missing and the route explicitly enables bootstrap, the first valid incoming system prompt may temporarily preserve frontend persona behavior for the first request and seed RelaySOUL persona-source creation. The raw prompt must not be persisted wholesale as `SOUL.md`; RelaySOUL should classify durable identity, output policy, relationship state, and temporary scene material into the correct source files.
+
+After a valid RelaySOUL revision is activated, later client system prompts return to non-authoritative evidence and cannot silently replace the active persona.
 
 ## Run
 
@@ -46,5 +63,6 @@ This step does not add:
 
 - FastAPI integration
 - automatic message rewriting in pass-through mode
+- RelaySOUL bootstrap persistence or activation
 - memory or RAG
 - frontend-specific system prompt parsing
