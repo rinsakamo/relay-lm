@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from contextvars import ContextVar
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -23,6 +24,7 @@ class PipelineContext:
     stream_enabled: bool
     last_mutating_step: str | None = None
     node_results: list[PipelineNodeResult] = field(default_factory=list)
+    ctx_working_update_candidate: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         _ACTIVE_PIPELINE_CONTEXT.set(self)
@@ -40,6 +42,16 @@ class PipelineContext:
 
         self.node_results.append(result)
 
+    def set_ctx_working_update_candidate(
+        self,
+        candidate: Mapping[str, Any] | None,
+    ) -> None:
+        """Store one detached request-local candidate without persistence."""
+
+        self.ctx_working_update_candidate = (
+            deepcopy(dict(candidate)) if isinstance(candidate, Mapping) else None
+        )
+
     def node_results_to_log_dicts(self) -> list[dict[str, Any]]:
         """Return detached log dictionaries for recorded node results."""
 
@@ -50,6 +62,12 @@ _ACTIVE_PIPELINE_CONTEXT: ContextVar[PipelineContext | None] = ContextVar(
     "relaylm_active_pipeline_context",
     default=None,
 )
+
+
+def get_active_pipeline_context() -> PipelineContext | None:
+    """Return the active request-local context without consuming it."""
+
+    return _ACTIVE_PIPELINE_CONTEXT.get()
 
 
 def consume_active_pipeline_context() -> PipelineContext | None:

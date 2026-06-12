@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from relaylm.pipeline_context import PipelineContext
-from relaylm.pipeline_node_result import build_pipeline_node_result
+from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
 
 
 def record_phase45_node_results(
@@ -21,12 +21,18 @@ def record_phase45_node_results(
     token_budget_truncation: Mapping[str, Any] | None,
     relayctx_short_term_runtime_injection_apply_result: Mapping[str, Any] | None,
 ) -> None:
-    """Record Phase 4.5 diagnostics without copying request or response content."""
+    """Record Phase 4.5 diagnostics without copying request or response content.
+
+    Synthesized input/Repack records are inserted before directly recorded
+    downstream nodes such as ``relayctx_unpack`` so trace order follows the
+    pipeline even though Phase 4.5 synthesis still occurs at request end.
+    """
 
     existing = {result.node_name for result in pipeline_context.node_results}
+    synthesized: list[PipelineNodeResult] = []
 
     if "relayint_reference_repair" not in existing:
-        pipeline_context.record_node_result(
+        synthesized.append(
             build_pipeline_node_result(
                 node_name="relayint_reference_repair",
                 status="diagnostic_only",
@@ -59,7 +65,7 @@ def record_phase45_node_results(
             ),
         )
         quick_present = any(isinstance(value, Mapping) for _, value in quick_artifacts)
-        pipeline_context.record_node_result(
+        synthesized.append(
             build_pipeline_node_result(
                 node_name="relayint_quick_clarification",
                 status="diagnostic_only" if quick_present else "skipped",
@@ -137,7 +143,7 @@ def record_phase45_node_results(
             for _, value in repack_artifacts
             if isinstance(value, Mapping)
         )
-        pipeline_context.record_node_result(
+        synthesized.append(
             build_pipeline_node_result(
                 node_name="relayctx_repack",
                 status="applied" if applied else "diagnostic_only" if summaries else "skipped",
@@ -159,6 +165,9 @@ def record_phase45_node_results(
                 artifacts=summaries,
             )
         )
+
+    if synthesized:
+        pipeline_context.node_results[0:0] = synthesized
 
 
 def _summaries(
