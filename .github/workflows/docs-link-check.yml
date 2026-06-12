@@ -1,11 +1,13 @@
 name: Documentation links
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - README.md
       - docs/**
       - scripts/relaylm_docs_link_check.py
+      - scripts/relaylm_docs_link_check_smoke.py
       - .github/workflows/docs-link-check.yml
   push:
     branches:
@@ -14,6 +16,7 @@ on:
       - README.md
       - docs/**
       - scripts/relaylm_docs_link_check.py
+      - scripts/relaylm_docs_link_check_smoke.py
       - .github/workflows/docs-link-check.yml
 
 permissions:
@@ -27,5 +30,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Check local Markdown links
+      - name: Validate link checker fixtures
+        run: python scripts/relaylm_docs_link_check_smoke.py
+      - name: Check repository Markdown links
         run: python scripts/relaylm_docs_link_check.py
