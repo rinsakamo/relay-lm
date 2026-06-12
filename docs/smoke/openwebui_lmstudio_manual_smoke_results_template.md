@@ -70,7 +70,7 @@ python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
 
 Reference prompt IDs from:
 
-- [OpenWebUI route response differentiation checks](../openwebui_response_differentiation_checks.md)
+- [OpenWebUI route response differentiation checks](openwebui_response_differentiation_checks.md)
 
 ### Route comparison table
 
