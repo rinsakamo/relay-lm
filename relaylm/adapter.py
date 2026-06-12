@@ -8,6 +8,8 @@ from typing import Any
 
 import httpx
 
+from relaylm.pipeline_context import get_active_pipeline_context
+from relaylm.relayctx_unpack_runtime import apply_relayctx_unpack_runtime
 from relaylm.routing import ResolvedRoute
 
 
@@ -64,6 +66,21 @@ async def forward_chat_completion_json(
 
     content_type = response.headers.get("content-type", "application/json")
     body = _decode_response_body(response)
+    if route.relayctx_unpack_enabled:
+        unpack_runtime_result = apply_relayctx_unpack_runtime(
+            body,
+            status_code=response.status_code,
+            apply_enabled=route.relayctx_unpack_apply_enabled,
+            dry_run_only=route.relayctx_unpack_dry_run_only,
+            max_update_chars=route.relayctx_unpack_max_update_chars,
+        )
+        body = unpack_runtime_result.response_body
+        pipeline_context = get_active_pipeline_context()
+        if pipeline_context is not None:
+            pipeline_context.record_node_result(unpack_runtime_result.node_result)
+            pipeline_context.set_ctx_working_update_candidate(
+                unpack_runtime_result.ctx_working_update_candidate
+            )
     return response.status_code, body, {"content-type": content_type}
 
 
