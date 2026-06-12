@@ -10,8 +10,8 @@ It is a phase-order memo, not a full architecture specification. Detailed behavi
 
 - Current `RelayRUN` is mostly a request-end artifact writer. It is not yet a true cross-cutting node-state reporter.
 - Current `relayref.py` behaves as input-side unresolved reference / quick clarification logic. In target terminology, that behavior is closer to `RelayINT` than `RelayREF`.
-- `RelayCTX Unpack` is not yet implemented as a real output separation layer. Main LLM output is still mostly returned directly.
-- `RelayCTX Repack` overlaps with `request_compiler.py`, memory injection, short-term CTX injection, and token budget truncation. Its boundary should be hardened before adding more downstream behavior.
+- `RelayCTX Unpack` now has a pure non-streaming parser/contract, but runtime backend-response wiring is not yet enabled by default.
+- `RelayCTX Repack` overlaps with `request_compiler.py`, memory injection, short-term CTX injection, token budget truncation, and the newer client-message canonicalization boundary. Its large movement is mostly complete, but late boundary hardening remains before client instruction hash/cache behavior can be activated.
 - `RelayREF` should start as a lightweight diagnostics-only observer. Accurate answer-quality evaluation may require another model call and is not an early implementation requirement.
 - `PipelineContext` and `diagnostics_builder.py` are now present as the first stabilization layer.
   - `PipelineContext` owns request-local forwarded payload state.
@@ -79,7 +79,7 @@ Current status:
 - Remaining Phase 2 work should focus on failure route details and implementation handoff notes before deeper code movement.
 - The AI VTuber profile now includes the adapter boundary contract and TTS-safe segmentation rules needed before Phase 5.5.
 
-### Phase 3: `RelayCTX Repack` boundary hardening — mostly complete
+### Phase 3: `RelayCTX Repack` boundary hardening — mostly complete, with late prerequisites
 
 - Separate `request_compiler.py` responsibilities from runtime injection steps.
 - Keep memory block injection explicit.
@@ -99,7 +99,22 @@ Current status:
 - RelayCTX short-term runtime injection apply has moved out of `app.py`.
 - Each moved phase still records forwarded payload replacement through `PipelineContext`.
 - `app.py` still owns orchestration order, diagnostics assembly, backend forwarding, and response handling.
-- Remaining Phase 3 work should be limited to small cleanup and handoff notes unless a concrete bug appears.
+- PR #246 added the client-message authority contract and the compatibility fix for `system` / `developer` instruction extraction.
+- Remaining Phase 3 work should be treated as late boundary hardening, not a phase rollback.
+
+Late Phase 3 prerequisites before client instruction hash/cache activation:
+
+```text
+client_message_canonicalize
+  -> current_turn_extract
+  -> client_instruction_extract
+  -> client_instruction_hash
+  -> client_instruction_cache_lookup
+  -> cached SCN injection or one-time first-pass evidence
+  -> raw client history/system/developer exclusion
+```
+
+These prerequisites may be implemented while the project is otherwise in Phase 5, because they are input-side safety gates required by the later Phase 5-B client-instruction flow. They should remain narrow and should not reopen broad CTX Repack migration work.
 
 ### Phase 4: `RelayINT` split / alias — complete
 
@@ -176,21 +191,59 @@ class PipelineNodeResult:
 
 Phase 4.5 remains intentionally narrower than Phase 6: it records what happened, but it does not yet decide what the runtime should do next.
 
-### Phase 5: minimal `RelayCTX Unpack`
+### Phase 5-A: minimal non-stream `RelayCTX Unpack` parser — complete
 
-- Extract user-visible response text.
+- Extract user-visible response text from a complete backend response string.
 - Strip or block internal markers from user output.
 - Parse optional `ctx_working_update` only when the format is safe and expected.
 - Fail safe: return user-visible text when possible, but block internal updates if unpacking fails.
 - Do not write MEM / SOUL / SLP candidates directly from a failed or ambiguous unpack result.
-- Record unpack diagnostics through the Phase 4.5 node result scaffold at the Unpack execution boundary.
-- Keep the existing terminal Phase 4.5 summaries until the Phase 6 routing layer replaces them with direct per-node orchestration.
+- Record content-free unpack diagnostics through the Phase 4.5 node result scaffold shape.
+- Keep backend forwarding, response bodies, RelayRUN behavior, and app-level routing unchanged.
+
+Current status:
+
+- PR #247 added the pure non-streaming `RelayCTX Unpack` parser and contract.
+- The accepted MVP marker is a trailing `relayctx_working_update.v0` JSON envelope.
+- Malformed, repeated, reversed, or non-trailing internal markers are suppressed fail-closed.
+- The parser preserves ordinary backend response text unchanged when no internal marker is present.
+- The parser does not guess JSON/YAML from ordinary prose.
+- The parser does not persist accepted update candidates.
+- `app.py` wiring remains intentionally deferred to Phase 5-B.
+
+### Phase 5-B: non-stream `RelayCTX Unpack` runtime wiring — next
+
+This phase wires the Phase 5-A parser into actual non-streaming backend response handling behind explicit default-off/apply gates.
+
+- Add runtime configuration gates for non-stream Unpack apply.
+- Call the Unpack parser at the backend response boundary.
+- Replace only the user-visible assistant content with unpacked visible text when apply is enabled and safe.
+- Preserve backend-owned response shape when Unpack is disabled, skipped, or failed.
+- Record `relayctx_unpack` as a node result at the execution boundary.
+- Keep accepted `ctx_working_update` as a non-persistent request-local candidate.
+- Block MEM / SOUL / SLP writes from Unpack candidates.
+- Preserve Phase 5-A fail-safe behavior for malformed or ambiguous internal markers.
+- Do not implement streaming support here.
+- Do not implement client-instruction cache persistence here unless the generic Unpack runtime boundary is already stable.
+
+Client-instruction first-pass integration should be treated as a Phase 5-B follow-up after the generic Unpack wiring is stable:
+
+```text
+client instruction cache miss
+  -> one-time untrusted instruction evidence in CTX Repack
+  -> Main LLM visible response + control artifact
+  -> RelayCTX Unpack separates visible/control content
+  -> strict artifact validation
+  -> cache write candidate
+```
+
+The generic Unpack path must land before this client-instruction-specific use case, otherwise the instruction cache path would create a second ad hoc output parser.
 
 ### Phase 5.5: `RelayCTX Stream Unpack` and output segmentation
 
-This phase is an extension point after minimal non-streaming Unpack is stable.
+This phase is an extension point after non-streaming Unpack runtime wiring is stable.
 
-- Add streaming token/chunk parsing without changing the core meaning of Phase 5.
+- Add streaming token/chunk parsing without changing the core meaning of Phase 5-A/5-B.
 - Forward user-visible text chunks as early as possible.
 - Keep internal marker suppression fail-closed.
 - Collect terminal `ctx_working_update` / structured summary delta candidates.
@@ -198,6 +251,7 @@ This phase is an extension point after minimal non-streaming Unpack is stable.
 - Classify output chunks before they enter a TTS adapter queue.
 - Apply the AI VTuber profile's TTS-safe chunk rules for code blocks, URLs, JSON/YAML, tables, commands, file paths, quotes, and parenthetical notes.
 - Keep Return-side EMO lightweight and non-meaning-changing during streaming.
+- Extend the same sentinel-buffer principle to later client-instruction control envelopes so internal markers cannot leak to users, captions, or TTS.
 
 ### Phase 6: failure route table / node result handling
 
@@ -335,11 +389,33 @@ app.py lightweight separation
   -> RelayINT split / alias (complete)
   -> RelayINT quick clarification plan-only handoff (complete)
   -> pipeline node result scaffold (complete)
-  -> minimal RelayCTX Unpack
+  -> minimal non-stream RelayCTX Unpack parser (complete)
+  -> non-stream RelayCTX Unpack runtime wiring
+  -> client instruction hash/cache first-pass integration
   -> RelayCTX Stream Unpack / Output Segmenter
   -> failure route table / node result handling
   -> lightweight REF diagnostics-only observer
   -> Output-side SCN
   -> true cross-cutting RelayRUN
   -> SLP separation
+```
+
+## Phase boundary note after client-instruction contract
+
+PR #246 intentionally introduced both input-side and output-side design obligations:
+
+```text
+input-side obligation
+  client message canonicalization / instruction hash / cache lookup / raw context exclusion
+
+output-side obligation
+  visible/control separation / strict validation / cache write candidate
+```
+
+This does not require returning to Phase 3 as the main project phase. The correct implementation posture is:
+
+```text
+Phase 5 remains active.
+Late Phase 3 hardening may be done as narrow prerequisites.
+Client-instruction cache activation waits until generic Phase 5-B Unpack runtime wiring is stable.
 ```
