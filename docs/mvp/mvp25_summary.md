@@ -2,7 +2,7 @@
 
 ## Completed scope
 
-- Updated `docs/openwebui_lmstudio_manual_smoke.md` Step 6 into a practical connection decision tree.
+- Updated `docs/smoke/openwebui_lmstudio_manual_smoke.md` Step 6 into a practical connection decision tree.
 - Clarified OpenWebUI host-run Base URL:
   - `http://127.0.0.1:8090/v1`
 - Clarified OpenWebUI Docker-run fallback order:
