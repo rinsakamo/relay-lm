@@ -40,9 +40,9 @@ This design does not add:
 
 - automatic scene detection,
 - runtime client-instruction parsing,
-- instruction cache persistence,
+- instruction-cache persistence,
 - memory database writes,
-- persona source mutation,
+- persona-source mutation,
 - forced `room_id` prompt blocks,
 - hard request rejection when scene metadata is missing,
 - automatic rewriting of legacy `room_anchor`,
@@ -106,7 +106,7 @@ scene_role:
 
 `scene_role` is also distinct from the OpenAI message `role` field.
 
-Suggested shape:
+Suggested internal runtime shape:
 
 ```yaml
 scene_role:
@@ -125,11 +125,13 @@ scene
 
 A role must not be silently promoted to durable persona state.
 
+The normalized `role_name` belongs to the internal scene artifact used for prompt compilation. It is not content-free telemetry and must not be copied into persisted diagnostics by default.
+
 ### `scene_context`
 
 `scene_context` describes the present semantic setting.
 
-Suggested fields:
+Suggested internal runtime shape:
 
 ```yaml
 scene_context:
@@ -151,6 +153,8 @@ Scene context may include:
 
 It should remain compact and must not become a second conversation transcript.
 
+Normalized setting, task, participant, and object values are derived semantic content. They should remain in request-local/runtime scene state and should not be emitted in content-free diagnostics.
+
 ### `scene_constraints`
 
 `scene_constraints` contains normalized, bounded rules that apply only to the current turn or scene.
@@ -170,9 +174,11 @@ Typical sources include:
 - route/profile configuration,
 - operator-provided scene state,
 - validated cached interpretation of the current client system/developer prompt,
-- current scene transition policy.
+- current scene-transition policy.
 
 Scene constraints are lower authority than RelayLM runtime/safety policy and approved durable persona policy.
+
+Constraint names and values derived from client instructions are semantic content. Diagnostics should record counts and policy outcomes rather than the derived values themselves.
 
 ### `session_id`
 
@@ -200,6 +206,8 @@ Examples:
 - Open-LLM-VTuber room or stage identity.
 
 `room_id` may support scoping, diagnostics, and future memory boundaries, but it should not become prompt text by default.
+
+Deployments should still treat external IDs as potentially sensitive. Persisted diagnostics may hash, redact, or omit them according to operator policy.
 
 ## Boundary summary
 
@@ -239,7 +247,7 @@ Recommended precedence:
 1. explicit trusted route/operator scene configuration
 2. validated instruction-cache artifact for the current client instruction hash
 3. explicit request metadata allowed by route policy
-4. previous approved scene continuation state
+4. previous approved scene-continuation state
 5. current-turn heuristic/estimate
 6. safe default or unknown scene
 ```
@@ -398,11 +406,11 @@ current functional role -> scene_role
 external host identity -> room_id metadata
 ```
 
-## Memory scope implications
+## Memory-scope implications
 
 Scene can inform future memory retrieval, but scene state itself is not a memory record.
 
-Suggested future memory scope dimensions:
+Suggested future memory-scope dimensions:
 
 ```text
 character_id
@@ -426,35 +434,58 @@ The Runtime Compile Gate should treat scene metadata as optional but useful.
 - cache-miss client instruction -> permit one bounded untrusted evidence block only when first-pass parsing is enabled,
 - present `room_id` -> keep it as metadata unless explicitly configured otherwise.
 
-Compile diagnostics should record scene fields and their source without storing raw client instruction content.
+Compile diagnostics should record scene presence, source class, scope, counts, and policy decisions without storing raw or normalized semantic scene content.
 
 ## Diagnostics
+
+Persisted diagnostics and general telemetry should be content-free by default.
 
 Suggested fields:
 
 ```yaml
-scene_id: default
+scene_id_present: true
 scene_state_source: client_instruction_cache
 scene_state_present: true
 scene_role_present: true
-scene_role_name: technical_reviewer
 scene_role_scope: scene
 scene_role_source: client_system
+scene_role_classification_id_present: true
 scene_context_present: true
 scene_constraints_count: 2
 client_instruction_hash_present: true
 client_instruction_cache_status: hit
-session_id: session_001
-room_id: openwebui_conversation_123
+session_id_present: true
+room_id_present: true
 scene_transition_detected: false
 scene_fallback_reason: null
 ```
 
-Diagnostics should not be inserted into stable prompt prefixes and should not include raw prompt content.
+Do not emit the following client-derived values in persisted diagnostics by default:
+
+- `scene_role.role_name`,
+- scene setting or task text,
+- participant names,
+- constraint names or values,
+- normalized prompt fragments,
+- durable persona candidate values.
+
+When cross-request correlation is operationally necessary, diagnostics may include an opaque `scene_role_classification_id` generated by one of these methods:
+
+- random local identifier stored with the validated cache entry,
+- keyed HMAC over the normalized classification using an operator-controlled secret,
+- another non-reversible, deployment-local mapping.
+
+An unsalted hash of a small role vocabulary is not sufficient because it is dictionary-reversible.
+
+The opaque identifier must not be used as prompt content or as a durable persona identifier.
+
+Request-local debug tooling may expose normalized scene content only behind an explicit sensitive-debug mode with separate retention and access controls. That mode is not the default diagnostics contract.
+
+Diagnostics should not be inserted into stable prompt prefixes.
 
 ## Minimal MVP target
 
-A minimal scene lifecycle implementation should support:
+A minimal scene-lifecycle implementation should support:
 
 1. optional `scene_id` metadata,
 2. optional normalized `scene_state` prompt content,
@@ -464,7 +495,7 @@ A minimal scene lifecycle implementation should support:
 6. validated client-instruction cache as a scene source,
 7. legacy `room_state -> scene_state` alias,
 8. optional `room_id` external host metadata,
-9. content-free diagnostics for scene presence and source,
+9. content-free diagnostics for scene presence/source/scope/counts,
 10. no hard failure when optional scene metadata is missing.
 
 ## Future extensions
