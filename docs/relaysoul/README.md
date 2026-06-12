@@ -4,7 +4,7 @@ This directory indexes RelaySOUL persona-source calibration, dry-run/preflight c
 
 RelaySOUL artifact schemas and content-free contracts remain under `docs/contracts/`. MVP milestone summaries remain under `docs/mvp/`.
 
-Some links still point to legacy `../*.md` files until the referenced design documents are physically moved here in small cleanup batches.
+Some core design and gate links still point to legacy `../*.md` files until those documents are physically moved here in later cleanup batches.
 
 ## Core design
 
@@ -13,9 +13,9 @@ Some links still point to legacy `../*.md` files until the referenced design doc
 
 ## Chain summaries
 
-- [RelaySOUL dry-run chain summary](../relaysoul_dry_run_chain_summary.md)
-- [RelaySOUL preflight chain summary](../relaysoul_preflight_chain_summary.md)
-- [RelaySOUL persistence preflight summary](../relaysoul_persistence_preflight_summary.md)
+- [RelaySOUL dry-run chain summary](relaysoul_dry_run_chain_summary.md)
+- [RelaySOUL preflight chain summary](relaysoul_preflight_chain_summary.md)
+- [RelaySOUL persistence preflight summary](relaysoul_persistence_preflight_summary.md)
 
 ## Execution gate designs
 
