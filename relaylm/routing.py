@@ -23,6 +23,10 @@ class ResolvedRoute:
     room_id: str | None = None
     scene_id: str | None = None
     session_id: str | None = None
+    relayctx_unpack_enabled: bool = False
+    relayctx_unpack_apply_enabled: bool = False
+    relayctx_unpack_dry_run_only: bool = True
+    relayctx_unpack_max_update_chars: int = 4096
 
 
 class RouteNotFoundError(ValueError):
@@ -62,6 +66,10 @@ def resolve_route(config: RelayLMConfig, model: str) -> ResolvedRoute:
         room_id=route.room_id,
         scene_id=route.scene_id,
         session_id=route.session_id,
+        relayctx_unpack_enabled=config.relayctx_unpack_enabled,
+        relayctx_unpack_apply_enabled=config.relayctx_unpack_apply_enabled,
+        relayctx_unpack_dry_run_only=config.relayctx_unpack_dry_run_only,
+        relayctx_unpack_max_update_chars=config.relayctx_unpack_max_update_chars,
     )
 
 
