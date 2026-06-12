@@ -4,7 +4,7 @@ This directory indexes RelaySOUL persona-source calibration, dry-run/preflight c
 
 RelaySOUL artifact schemas and content-free contracts remain under `docs/contracts/`. MVP milestone summaries remain under `docs/mvp/`.
 
-Some core design and gate links still point to legacy `../*.md` files until those documents are physically moved here in later cleanup batches.
+The large persona-source calibration design still points to its legacy `../relaysoul_design.md` path until it is moved by path-only copy or `git mv`.
 
 ## Core design
 
@@ -19,12 +19,12 @@ Some core design and gate links still point to legacy `../*.md` files until thos
 
 ## Execution gate designs
 
-- [RelaySOUL apply execution gate design](../relaysoul_apply_execution_gate_design.md)
-- [RelaySOUL rollback execution gate design](../relaysoul_rollback_execution_gate_design.md)
-- [RelaySOUL storage writer gate design](../relaysoul_storage_writer_gate_design.md)
-- [RelaySOUL persistence execution gate design](../relaysoul_persistence_execution_gate_design.md)
-- [RelaySOUL gate design consistency review](../relaysoul_gate_design_consistency_review.md)
-- [RelaySOUL gate dry-run CLI design](../relaysoul_gate_dry_run_cli_design.md)
+- [RelaySOUL apply execution gate design](relaysoul_apply_execution_gate_design.md)
+- [RelaySOUL rollback execution gate design](relaysoul_rollback_execution_gate_design.md)
+- [RelaySOUL storage writer gate design](relaysoul_storage_writer_gate_design.md)
+- [RelaySOUL persistence execution gate design](relaysoul_persistence_execution_gate_design.md)
+- [RelaySOUL gate design consistency review](relaysoul_gate_design_consistency_review.md)
+- [RelaySOUL gate dry-run CLI design](relaysoul_gate_dry_run_cli_design.md)
 
 ## Related contracts
 
