@@ -7,9 +7,9 @@ This page is the entry point for RelayLM documentation.
 - [Architecture docs](architecture/README.md)
 - [MVP summaries and milestone notes](mvp/README.md)
 - [Contract docs](contracts/README.md)
+- [Smoke and validation docs](smoke/README.md)
 - [Config schema](config_schema.md)
 - [OpenWebUI + LM Studio MVP](openwebui_lmstudio_mvp.md)
-- [OpenWebUI + LM Studio manual smoke runbook](openwebui_lmstudio_manual_smoke.md)
 
 ## Architecture
 
@@ -45,21 +45,10 @@ Contract, artifact, schema, approval, and gate docs are collected under `docs/co
 
 - [Contract docs](contracts/README.md)
 
-## OpenWebUI / LM Studio setup and smoke
+## Setup, smoke, and validation
 
 - [OpenWebUI + LM Studio MVP](openwebui_lmstudio_mvp.md)
-- [OpenWebUI + LM Studio manual smoke runbook](openwebui_lmstudio_manual_smoke.md)
-- [OpenWebUI model preset/avatar checklist](openwebui_model_preset_checklist.md)
-- [OpenWebUI route response differentiation checks](openwebui_response_differentiation_checks.md)
-- [OpenWebUI + LM Studio manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md)
-- [OpenWebUI + RelayLM + LM Studio manual smoke result (2026-05-26)](openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
-- [OpenWebUI + RelayLM + LM Studio troubleshooting](openwebui_lmstudio_troubleshooting.md)
-
-## RelayMEM and local behavior evaluation
-
-- [RelayMEM runtime payload diff evaluation smoke](relaymem_runtime_payload_eval.md)
-- [RelayMEM local LLM evaluation guide](relaymem_local_llm_eval_guide.md)
-- [RelayMEM local response comparison guide](relaymem_local_response_comparison.md)
+- [Smoke and validation docs](smoke/README.md)
 
 ## RelaySOUL design and execution gates
 
