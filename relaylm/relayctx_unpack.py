@@ -196,6 +196,8 @@ def unpack_relayctx_response_text(
         try:
             envelope = json.loads(payload_text)
             payload_json_valid = True
+            if _contains_internal_marker(envelope):
+                reasons.append("decoded_internal_marker")
         except json.JSONDecodeError:
             reasons.append("update_json_invalid")
 
@@ -467,6 +469,19 @@ def _safe_visible_suffix(suffix: str) -> tuple[str, list[str]]:
     if RELAYCTX_UPDATE_CLOSE in suffix:
         reasons.append("multiple_closing_markers")
     return suffix[:first_marker].strip(), reasons
+
+
+def _contains_internal_marker(value: Any) -> bool:
+    if isinstance(value, str):
+        return RELAYCTX_UPDATE_OPEN in value or RELAYCTX_UPDATE_CLOSE in value
+    if isinstance(value, Mapping):
+        return any(
+            _contains_internal_marker(key) or _contains_internal_marker(item)
+            for key, item in value.items()
+        )
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return any(_contains_internal_marker(item) for item in value)
+    return False
 
 
 def _join_visible_parts(prefix: str, suffix: str) -> str:
