@@ -4,15 +4,16 @@ This step preserves incoming OpenAI-compatible `system` messages without letting
 
 The compiler is still not connected to `/v1/chat/completions`. Pass-through runtime behavior remains unchanged.
 
-The historical helper name uses `fallback`, but the current authority meaning is narrower:
+The historical helper name uses `fallback`, but the current authority meaning is:
 
 ```text
-existing SOUL:
-  incoming system prompt is non-authoritative dynamic evidence
+client system prompt
+  -> dynamic instruction evidence
+  -> Input-side RelaySCN classification
+  -> scene role / scene context / scene constraints
 
-missing SOUL on the first managed request:
-  the first eligible system prompt may be bootstrap evidence
-  for creating the initial RelaySOUL persona-source revision
+RelaySOUL
+  -> separate durable persona authority
 ```
 
 See `docs/architecture/client_instruction_authority_contract.md` for the canonical policy.
@@ -28,7 +29,7 @@ See `docs/architecture/client_instruction_authority_contract.md` for the canonic
 
 Incoming system messages are treated as dynamic evidence, not as authority above RelayLM's stable persona blocks.
 
-The compiled order is:
+The historical compiled order is:
 
 ```text
 stable profile blocks
@@ -36,11 +37,24 @@ incoming_system_prompt dynamic block
 recent non-system messages
 ```
 
-When an approved SOUL exists, the dynamic block must not replace or mutate it.
+The intended pipeline interpretation is now:
 
-When SOUL is missing and the route explicitly enables bootstrap, the first valid incoming system prompt may temporarily preserve frontend persona behavior for the first request and seed RelaySOUL persona-source creation. The raw prompt must not be persisted wholesale as `SOUL.md`; RelaySOUL should classify durable identity, output policy, relationship state, and temporary scene material into the correct source files.
+```text
+incoming_system_prompt dynamic evidence
+  -> RelaySCN
+  -> normalized scene_state
+     - scene_type
+     - scene_role
+     - scene_context
+     - scene_constraints / scene_policy
+  -> RelayCTX dynamic suffix
+```
 
-After a valid RelaySOUL revision is activated, later client system prompts return to non-authoritative evidence and cannot silently replace the active persona.
+When an approved SOUL exists, the SCN-derived role guides the current situation without replacing or mutating the durable identity.
+
+When SOUL is missing, the same client instruction may still establish a safe temporary scene role for the first request. RelaySOUL creation is a separate process: only explicitly identified durable persona evidence may become a proposal, and the raw prompt must never be persisted wholesale as `SOUL.md`.
+
+Repeated frontend system prompts should update or confirm the current scene role, not create repeated SOUL proposals.
 
 ## Run
 
@@ -63,6 +77,8 @@ This step does not add:
 
 - FastAPI integration
 - automatic message rewriting in pass-through mode
-- RelaySOUL bootstrap persistence or activation
+- RelaySCN instruction classification runtime
+- `scene_role` runtime schema wiring
+- RelaySOUL proposal generation or activation
 - memory or RAG
 - frontend-specific system prompt parsing
