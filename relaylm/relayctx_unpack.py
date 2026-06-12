@@ -128,9 +128,9 @@ def unpack_relayctx_response_text(
 
     input_chars = len(response_text)
     open_index = response_text.find(RELAYCTX_UPDATE_OPEN)
-    close_index = response_text.find(RELAYCTX_UPDATE_CLOSE)
+    first_close_index = response_text.find(RELAYCTX_UPDATE_CLOSE)
 
-    if open_index < 0 and close_index < 0:
+    if open_index < 0 and first_close_index < 0:
         return RelayCTXUnpackResult(
             user_visible_text=response_text,
             ctx_working_update=None,
@@ -146,23 +146,23 @@ def unpack_relayctx_response_text(
 
     if open_index < 0:
         return _blocked_result(
-            visible=response_text[:close_index].rstrip(),
+            visible=response_text[:first_close_index].rstrip(),
             input_chars=input_chars,
-            update_chars=max(0, input_chars - close_index),
+            update_chars=max(0, input_chars - first_close_index),
             reasons=("opening_marker_missing",),
         )
 
-    if 0 <= close_index < open_index:
+    if 0 <= first_close_index < open_index:
         return _blocked_result(
-            visible=response_text[:close_index].rstrip(),
+            visible=response_text[:first_close_index].rstrip(),
             input_chars=input_chars,
-            update_chars=max(0, input_chars - close_index),
+            update_chars=max(0, input_chars - first_close_index),
             reasons=("closing_marker_before_opening",),
         )
 
     visible_prefix = response_text[:open_index].rstrip()
     payload_start = open_index + len(RELAYCTX_UPDATE_OPEN)
-    closing_after_open = response_text.find(RELAYCTX_UPDATE_CLOSE, payload_start)
+    closing_after_open = response_text.rfind(RELAYCTX_UPDATE_CLOSE, payload_start)
     if closing_after_open < 0:
         return _blocked_result(
             visible=visible_prefix,
@@ -173,25 +173,44 @@ def unpack_relayctx_response_text(
 
     payload_text = response_text[payload_start:closing_after_open].strip()
     suffix = response_text[closing_after_open + len(RELAYCTX_UPDATE_CLOSE) :]
-    visible_suffix, suffix_marker_reasons = _safe_visible_suffix(suffix)
-    visible = _join_visible_parts(visible_prefix, visible_suffix)
+    reasons: list[str] = []
 
-    reasons = list(suffix_marker_reasons)
-    if response_text.find(RELAYCTX_UPDATE_OPEN, payload_start, closing_after_open) >= 0:
+    if RELAYCTX_UPDATE_OPEN in payload_text:
         reasons.append("multiple_opening_markers")
-    if visible_suffix:
-        reasons.append("update_block_not_trailing")
-    if not visible:
-        reasons.append("user_visible_text_empty")
+    if RELAYCTX_UPDATE_CLOSE in payload_text:
+        reasons.append("embedded_closing_marker")
+
+    max_chars_valid = (
+        isinstance(max_update_chars, int)
+        and not isinstance(max_update_chars, bool)
+        and max_update_chars > 0
+    )
     if not payload_text:
         reasons.append("update_payload_empty")
-    if (
-        not isinstance(max_update_chars, int)
-        or isinstance(max_update_chars, bool)
-        or max_update_chars <= 0
-        or len(payload_text) > max_update_chars
-    ):
+    if not max_chars_valid or len(payload_text) > max_update_chars:
         reasons.append("update_payload_too_large")
+
+    envelope: Any = None
+    payload_json_valid = False
+    if payload_text and max_chars_valid and len(payload_text) <= max_update_chars:
+        try:
+            envelope = json.loads(payload_text)
+            payload_json_valid = True
+        except json.JSONDecodeError:
+            reasons.append("update_json_invalid")
+
+    # Suffix text is exposed only after the complete payload parses as JSON.
+    # This prevents JSON tails after an embedded close-marker from leaking.
+    visible_suffix = ""
+    if payload_json_valid:
+        visible_suffix, suffix_marker_reasons = _safe_visible_suffix(suffix)
+        reasons.extend(suffix_marker_reasons)
+        if visible_suffix:
+            reasons.append("update_block_not_trailing")
+
+    visible = _join_visible_parts(visible_prefix, visible_suffix)
+    if not visible:
+        reasons.append("user_visible_text_empty")
 
     if reasons:
         return _blocked_result(
@@ -199,16 +218,6 @@ def unpack_relayctx_response_text(
             input_chars=input_chars,
             update_chars=len(payload_text),
             reasons=tuple(_dedupe(reasons)),
-        )
-
-    try:
-        envelope = json.loads(payload_text)
-    except json.JSONDecodeError:
-        return _blocked_result(
-            visible=visible,
-            input_chars=input_chars,
-            update_chars=len(payload_text),
-            reasons=("update_json_invalid",),
         )
 
     update, validation_reasons = _validate_envelope(envelope)
