@@ -4,19 +4,19 @@ This directory indexes manual smoke runbooks, recorded smoke results, troublesho
 
 MVP-specific implementation notes remain under `docs/mvp/`. Executable smoke scripts remain under `scripts/`.
 
-Some links still point to legacy `../*.md` files until the referenced runbook, troubleshooting, and evaluation documents are physically moved here in small cleanup batches.
+Some RelayMEM evaluation links still point to legacy `../*.md` files until those documents are physically moved here in a later cleanup batch.
 
 ## OpenWebUI / LM Studio manual smoke
 
-- [OpenWebUI + LM Studio manual smoke runbook](../openwebui_lmstudio_manual_smoke.md)
+- [OpenWebUI + LM Studio manual smoke runbook](openwebui_lmstudio_manual_smoke.md)
 - [Manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md)
 - [Manual smoke result: 2026-05-26](openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
 
 ## Setup checks and troubleshooting
 
-- [OpenWebUI model preset/avatar checklist](../openwebui_model_preset_checklist.md)
-- [OpenWebUI route response differentiation checks](../openwebui_response_differentiation_checks.md)
-- [OpenWebUI + RelayLM + LM Studio troubleshooting](../openwebui_lmstudio_troubleshooting.md)
+- [OpenWebUI model preset/avatar checklist](openwebui_model_preset_checklist.md)
+- [OpenWebUI route response differentiation checks](openwebui_response_differentiation_checks.md)
+- [OpenWebUI + RelayLM + LM Studio troubleshooting](openwebui_lmstudio_troubleshooting.md)
 
 ## RelayMEM and local behavior evaluation
 
