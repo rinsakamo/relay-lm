@@ -78,8 +78,31 @@ def main() -> None:
     require(result.user_visible_text == "本文。", result)
     require(unterminated_secret not in result.user_visible_text, result)
 
+    escaped_secret = "escaped decoded marker secret"
+    escaped_envelope = {
+        "schema_version": "relayctx_working_update.v0",
+        "ctx_working_update": {
+            "current_topic": f"safe {RELAYCTX_UPDATE_CLOSE} {escaped_secret}"
+        },
+    }
+    escaped_payload = json.dumps(escaped_envelope, ensure_ascii=False).replace(
+        "</relayctx_working_update>",
+        "<\\/relayctx_working_update>",
+    )
+    escaped = (
+        f"本文。\n{RELAYCTX_UPDATE_OPEN}\n"
+        f"{escaped_payload}\n"
+        f"{RELAYCTX_UPDATE_CLOSE}"
+    )
+    result = unpack_relayctx_response_text(escaped)
+    require(result.status == "update_blocked", result)
+    require("decoded_internal_marker" in result.blocked_reasons, result)
+    require(result.ctx_working_update is None, result)
+    require(result.user_visible_text == "本文。", result)
+    require(escaped_secret not in result.user_visible_text, result)
+
     print(
-        "ok RelayCTX Unpack suppresses repeated, reversed, and embedded internal markers"
+        "ok RelayCTX Unpack suppresses repeated, reversed, embedded, and decoded markers"
     )
 
 
