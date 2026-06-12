@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
+from relaylm.pipeline_node_result import PipelineNodeResult
 from relaylm.routing import ResolvedRoute
 
 
 @dataclass
 class PipelineContext:
-    """Carry immutable input and mutable forwarding payload state."""
+    """Carry request-local payload state and diagnostics-only node results."""
 
     request_id: str
     run_id: str
@@ -20,6 +21,7 @@ class PipelineContext:
     route: ResolvedRoute
     stream_enabled: bool
     last_mutating_step: str | None = None
+    node_results: list[PipelineNodeResult] = field(default_factory=list)
 
     def replace_forwarded_payload(
         self,
@@ -28,6 +30,16 @@ class PipelineContext:
     ) -> None:
         self.forwarded_payload = dict(new_payload)
         self.last_mutating_step = mutating_step
+
+    def record_node_result(self, result: PipelineNodeResult) -> None:
+        """Append one diagnostics-only result without changing runtime routing."""
+
+        self.node_results.append(result)
+
+    def node_results_to_log_dicts(self) -> list[dict[str, Any]]:
+        """Return detached log dictionaries for recorded node results."""
+
+        return [result.to_log_dict() for result in self.node_results]
 
 
 def replace_pipeline_forwarded_payload(
