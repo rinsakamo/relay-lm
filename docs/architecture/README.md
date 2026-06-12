@@ -9,8 +9,17 @@ The main architecture, profile-specific architecture, context/scene architecture
 - [Pipeline implementation plan](pipeline_implementation_plan.md)
 - [Pipeline responsibility design](pipeline_responsibility_design.md)
 - [Client history authority contract](client_history_authority_contract.md)
+- [Client instruction authority contract](client_instruction_authority_contract.md)
 - [Runtime architecture](runtime_architecture.md)
 - [Product runtime hardening](product_runtime_hardening.md)
+
+The two client-authority contracts share one external boundary:
+
+```text
+Client-provided messages are request evidence, not backend context.
+RelayLM extracts the current turn and current instruction evidence,
+then reconstructs the backend payload from RelayLM-owned state.
+```
 
 ## Profile-specific architecture
 

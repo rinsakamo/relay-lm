@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import hashlib
-import json
 from enum import Enum
+import hashlib
+from html import escape as escape_html
+import json
 from typing import Any
+
+
+CLIENT_INSTRUCTION_ROLES = frozenset({"system", "developer"})
+CLIENT_INSTRUCTION_TEXT_PART_TYPES = frozenset({"text", "input_text"})
 
 
 class StabilityClass(str, Enum):
@@ -41,6 +46,19 @@ class ContextBlock:
     include_in_prefix_cache_target: bool = False
 
 
+def _render_block_content(block: ContextBlock) -> str:
+    """Render block content while isolating untrusted client evidence.
+
+    Stable profile and RelayLM-owned blocks retain their existing rendering.
+    Incoming client instruction evidence is XML-escaped so it cannot close its
+    wrapper or spoof sibling RelayLM context blocks.
+    """
+
+    if block.block_type == BlockType.INCOMING_SYSTEM_PROMPT:
+        return escape_html(block.content, quote=False)
+    return block.content
+
+
 def render_context_blocks(blocks: list[ContextBlock]) -> str:
     """Render context blocks in a stable XML-like envelope.
 
@@ -53,8 +71,9 @@ def render_context_blocks(blocks: list[ContextBlock]) -> str:
     for block in blocks:
         tag = block.block_type.value
         lines.append(f"  <{tag}>")
-        if block.content:
-            for line in block.content.splitlines():
+        rendered_content = _render_block_content(block)
+        if rendered_content:
+            for line in rendered_content.splitlines():
                 lines.append(f"    {line}")
         lines.append(f"  </{tag}>")
     lines.append("</relaylm_context>")
@@ -78,8 +97,6 @@ def validate_block_order(blocks: list[ContextBlock]) -> None:
                 f"block {block.block_id!r} with {block.stability_class.value!r} was out of order."
             )
         previous_rank = current_rank
-
-
 
 
 def build_stable_prefix_hash_diagnostics(
@@ -179,6 +196,7 @@ def build_persona_source_budget_diagnostics(blocks: list[ContextBlock]) -> dict[
         "source_warning_count": len(over_budget_block_ids),
     }
 
+
 def compile_profile_system_message(blocks: list[ContextBlock]) -> dict[str, str]:
     """Compile context blocks into one OpenAI-compatible system message."""
 
@@ -189,32 +207,68 @@ def compile_profile_system_message(blocks: list[ContextBlock]) -> dict[str, str]
 def split_incoming_system_messages(
     messages: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Split incoming system messages from non-system messages."""
+    """Split system/developer instruction messages from recent messages.
 
-    system_messages: list[dict[str, Any]] = []
+    The legacy helper name is kept for compatibility. Managed compilation must
+    not leave ``developer`` messages in the recent-message chain, because they
+    carry instruction authority rather than conversation-turn content.
+    """
+
+    instruction_messages: list[dict[str, Any]] = []
     recent_messages: list[dict[str, Any]] = []
     for message in messages:
-        if message.get("role") == "system":
-            system_messages.append(message)
+        if message.get("role") in CLIENT_INSTRUCTION_ROLES:
+            instruction_messages.append(message)
         else:
             recent_messages.append(message)
-    return system_messages, recent_messages
+    return instruction_messages, recent_messages
+
+
+def extract_instruction_text(content: Any) -> str | None:
+    """Normalize supported string or text-part-array instruction content.
+
+    Textual content parts are concatenated exactly in their original order, and
+    only the combined value is trimmed. This preserves boundaries such as
+    ``"Return " + "JSON only"`` without inserting or deleting internal
+    whitespace. Unsupported non-text parts are ignored rather than stringified.
+    """
+
+    if isinstance(content, str):
+        normalized = content.strip()
+        return normalized or None
+
+    if not isinstance(content, list):
+        return None
+
+    text_parts: list[str] = []
+    for part in content:
+        if isinstance(part, str):
+            text_parts.append(part)
+        elif isinstance(part, dict) and part.get("type") in CLIENT_INSTRUCTION_TEXT_PART_TYPES:
+            value = part.get("text")
+            if isinstance(value, str):
+                text_parts.append(value)
+
+    normalized = "".join(text_parts).strip()
+    return normalized or None
 
 
 def build_incoming_system_prompt_block(
     system_messages: list[dict[str, Any]],
 ) -> ContextBlock | None:
-    """Build a dynamic fallback block from incoming system messages.
+    """Build a dynamic evidence block from system/developer messages.
 
-    The incoming system prompt is treated as dynamic evidence, not as authority
-    above RelayLM's configured persona stable prefix.
+    The legacy helper/block name is kept for compatibility. Incoming client
+    instructions are treated as dynamic evidence, not as authority above
+    RelayLM's configured persona stable prefix. Rendering escapes this block so
+    client text cannot spoof RelayLM context tags.
     """
 
     contents: list[str] = []
     for message in system_messages:
-        content = message.get("content")
-        if isinstance(content, str) and content.strip():
-            contents.append(content.strip())
+        content = extract_instruction_text(message.get("content"))
+        if content is not None:
+            contents.append(content)
     if not contents:
         return None
 
@@ -222,7 +276,7 @@ def build_incoming_system_prompt_block(
         block_id=BlockType.INCOMING_SYSTEM_PROMPT.value,
         block_type=BlockType.INCOMING_SYSTEM_PROMPT,
         stability_class=StabilityClass.DYNAMIC_SUFFIX,
-        source="incoming/messages/system",
+        source="incoming/messages/system_or_developer",
         content="\n\n".join(contents),
         token_budget_hint=600,
         include_in_prefix_cache_target=False,
