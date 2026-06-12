@@ -4,7 +4,7 @@ This directory indexes manual smoke runbooks, recorded smoke results, troublesho
 
 MVP-specific implementation notes remain under `docs/mvp/`. Executable smoke scripts remain under `scripts/`.
 
-Some RelayMEM evaluation links still point to legacy `../*.md` files until those documents are physically moved here in a later cleanup batch.
+The smoke and validation documents tracked by this index are housed in this directory.
 
 ## OpenWebUI / LM Studio manual smoke
 
@@ -20,9 +20,9 @@ Some RelayMEM evaluation links still point to legacy `../*.md` files until those
 
 ## RelayMEM and local behavior evaluation
 
-- [RelayMEM runtime payload diff evaluation](../relaymem_runtime_payload_eval.md)
-- [RelayMEM local LLM evaluation guide](../relaymem_local_llm_eval_guide.md)
-- [RelayMEM local response comparison guide](../relaymem_local_response_comparison.md)
+- [RelayMEM runtime payload diff evaluation](relaymem_runtime_payload_eval.md)
+- [RelayMEM local LLM evaluation guide](relaymem_local_llm_eval_guide.md)
+- [RelayMEM local response comparison guide](relaymem_local_response_comparison.md)
 
 ## Placement rule
 
