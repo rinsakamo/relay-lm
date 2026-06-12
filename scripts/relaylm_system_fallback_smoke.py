@@ -10,6 +10,7 @@ if str(REPO_ROOT) not in sys.path:
 from relaylm.compiler import (
     append_incoming_system_prompt_block,
     compile_profile_messages_with_system_fallback,
+    extract_instruction_text,
     split_incoming_system_messages,
 )
 from relaylm.config import load_config
@@ -28,9 +29,21 @@ def main() -> int:
     files = resolve_profile_files(config, route)
     blocks = build_profile_blocks(files)
 
+    developer_content = [
+        {"type": "text", "text": "Ask one question at a time."},
+        {"type": "image_url", "image_url": {"url": "https://example.invalid/ignored.png"}},
+        {"type": "input_text", "text": "Keep the tone calm."},
+    ]
+    require(
+        extract_instruction_text(developer_content)
+        == "Ask one question at a time.\nKeep the tone calm.",
+        "array-valued instruction text was not normalized",
+    )
+    print("ok normalize array-valued instruction content")
+
     incoming_messages = [
         {"role": "system", "content": "Keep this session concise."},
-        {"role": "developer", "content": "Ask one question at a time."},
+        {"role": "developer", "content": developer_content},
         {"role": "user", "content": "hello"},
         {"role": "assistant", "content": "hi"},
     ]
@@ -48,6 +61,9 @@ def main() -> int:
     require(blocks_with_fallback[-1].block_id == "incoming_system_prompt", blocks_with_fallback[-1])
     require(blocks_with_fallback[-1].include_in_prefix_cache_target is False, blocks_with_fallback[-1])
     require(blocks_with_fallback[-1].source == "incoming/messages/system_or_developer", blocks_with_fallback[-1])
+    require("Ask one question at a time." in blocks_with_fallback[-1].content, blocks_with_fallback[-1])
+    require("Keep the tone calm." in blocks_with_fallback[-1].content, blocks_with_fallback[-1])
+    require("example.invalid" not in blocks_with_fallback[-1].content, blocks_with_fallback[-1])
     print("ok append incoming instruction block")
 
     messages = compile_profile_messages_with_system_fallback(blocks, incoming_messages)
@@ -55,6 +71,8 @@ def main() -> int:
     require("<incoming_system_prompt>" in messages[0]["content"], messages[0]["content"])
     require("Keep this session concise." in messages[0]["content"], messages[0]["content"])
     require("Ask one question at a time." in messages[0]["content"], messages[0]["content"])
+    require("Keep the tone calm." in messages[0]["content"], messages[0]["content"])
+    require("example.invalid" not in messages[0]["content"], messages[0]["content"])
     require(messages[1:] == recent_messages, messages)
     require(all(message["role"] != "developer" for message in messages[1:]), messages)
     print("ok compile messages with system/developer fallback")
