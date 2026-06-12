@@ -42,6 +42,16 @@ relayctx_short_term_runtime_injection_apply_enabled: false
 relayctx_short_term_runtime_injection_dry_run_only: true
 relayctx_short_term_runtime_injection_token_budget: 400
 
+# RelayCTX non-stream Unpack is default-off. Setting enabled=true runs the strict
+# trailing relayctx_working_update.v0 parser and records content-free diagnostics.
+# Response mutation occurs only when apply_enabled=true and dry_run_only=false.
+# Accepted ctx_working_update remains request-local and is never persisted to
+# CTX, MEM, SOUL, or SLP by this phase. Streaming responses are unchanged.
+relayctx_unpack_enabled: false
+relayctx_unpack_apply_enabled: false
+relayctx_unpack_dry_run_only: true
+relayctx_unpack_max_update_chars: 4096
+
 # RelayINT fast path dry-run is default-off, diagnostics-only, and content-free.
 # It uses deterministic heuristics only: no LLM call, no MEM lookup, and no
 # backend payload or response mutation.
