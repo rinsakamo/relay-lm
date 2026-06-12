@@ -55,6 +55,23 @@ Contract, artifact, schema, approval, and gate docs are collected under `docs/co
 
 - [RelaySOUL design and gate docs](relaysoul/README.md)
 
+## Documentation maintenance
+
+Run the local Markdown-link audit after moving or renaming documentation:
+
+```bash
+python scripts/relaylm_docs_link_check.py
+```
+
+Placement rules:
+
+- cross-cutting architecture and pipeline docs -> `docs/architecture/`
+- MVP summaries and milestone notes -> `docs/mvp/`
+- artifact, schema, approval, and contract docs -> `docs/contracts/`
+- manual smoke, results, troubleshooting, and local evaluation docs -> `docs/smoke/`
+- RelaySOUL design, chain, persistence architecture, and execution-gate docs -> `docs/relaysoul/`
+- setup entry points and repository-wide indexes may remain directly under `docs/`
+
 ## Examples
 
 - [OpenWebUI + LM Studio copy-ready config](../examples/config/openwebui_lmstudio.yaml)
