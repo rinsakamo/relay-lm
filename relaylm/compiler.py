@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import hashlib
-import json
 from enum import Enum
+import hashlib
+from html import escape as escape_html
+import json
 from typing import Any
 
 
@@ -45,6 +46,19 @@ class ContextBlock:
     include_in_prefix_cache_target: bool = False
 
 
+def _render_block_content(block: ContextBlock) -> str:
+    """Render block content while isolating untrusted client evidence.
+
+    Stable profile and RelayLM-owned blocks retain their existing rendering.
+    Incoming client instruction evidence is XML-escaped so it cannot close its
+    wrapper or spoof sibling RelayLM context blocks.
+    """
+
+    if block.block_type == BlockType.INCOMING_SYSTEM_PROMPT:
+        return escape_html(block.content, quote=False)
+    return block.content
+
+
 def render_context_blocks(blocks: list[ContextBlock]) -> str:
     """Render context blocks in a stable XML-like envelope.
 
@@ -57,8 +71,9 @@ def render_context_blocks(blocks: list[ContextBlock]) -> str:
     for block in blocks:
         tag = block.block_type.value
         lines.append(f"  <{tag}>")
-        if block.content:
-            for line in block.content.splitlines():
+        rendered_content = _render_block_content(block)
+        if rendered_content:
+            for line in rendered_content.splitlines():
                 lines.append(f"    {line}")
         lines.append(f"  </{tag}>")
     lines.append("</relaylm_context>")
@@ -212,10 +227,10 @@ def split_incoming_system_messages(
 def extract_instruction_text(content: Any) -> str | None:
     """Normalize supported string or text-part-array instruction content.
 
-    OpenAI-compatible clients may send message content either as a string or as
-    an ordered array of content parts. Only textual parts are included in this
-    compatibility evidence block; unsupported non-text parts are ignored rather
-    than stringified into the prompt.
+    Textual content parts are concatenated exactly in their original order, and
+    only the combined value is trimmed. This preserves boundaries such as
+    ``"Return " + "JSON only"`` without inserting or deleting internal
+    whitespace. Unsupported non-text parts are ignored rather than stringified.
     """
 
     if isinstance(content, str):
@@ -228,17 +243,14 @@ def extract_instruction_text(content: Any) -> str | None:
     text_parts: list[str] = []
     for part in content:
         if isinstance(part, str):
-            text = part.strip()
+            text_parts.append(part)
         elif isinstance(part, dict) and part.get("type") in CLIENT_INSTRUCTION_TEXT_PART_TYPES:
             value = part.get("text")
-            text = value.strip() if isinstance(value, str) else ""
-        else:
-            text = ""
+            if isinstance(value, str):
+                text_parts.append(value)
 
-        if text:
-            text_parts.append(text)
-
-    return "\n".join(text_parts) or None
+    normalized = "".join(text_parts).strip()
+    return normalized or None
 
 
 def build_incoming_system_prompt_block(
@@ -248,7 +260,8 @@ def build_incoming_system_prompt_block(
 
     The legacy helper/block name is kept for compatibility. Incoming client
     instructions are treated as dynamic evidence, not as authority above
-    RelayLM's configured persona stable prefix.
+    RelayLM's configured persona stable prefix. Rendering escapes this block so
+    client text cannot spoof RelayLM context tags.
     """
 
     contents: list[str] = []
