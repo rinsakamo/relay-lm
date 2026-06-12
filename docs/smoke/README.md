@@ -4,13 +4,13 @@ This directory indexes manual smoke runbooks, recorded smoke results, troublesho
 
 MVP-specific implementation notes remain under `docs/mvp/`. Executable smoke scripts remain under `scripts/`.
 
-Some links still point to legacy `../*.md` files until the referenced documents are physically moved here in small cleanup batches.
+Some links still point to legacy `../*.md` files until the referenced runbook, troubleshooting, and evaluation documents are physically moved here in small cleanup batches.
 
 ## OpenWebUI / LM Studio manual smoke
 
 - [OpenWebUI + LM Studio manual smoke runbook](../openwebui_lmstudio_manual_smoke.md)
-- [Manual smoke results template](../openwebui_lmstudio_manual_smoke_results_template.md)
-- [Manual smoke result: 2026-05-26](../openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
+- [Manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md)
+- [Manual smoke result: 2026-05-26](openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
 
 ## Setup checks and troubleshooting
 
