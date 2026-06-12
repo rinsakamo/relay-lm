@@ -101,7 +101,7 @@ Current status:
 - `app.py` still owns orchestration order, diagnostics assembly, backend forwarding, and response handling.
 - Remaining Phase 3 work should be limited to small cleanup and handoff notes unless a concrete bug appears.
 
-### Phase 4: `RelayINT` split / alias
+### Phase 4: `RelayINT` split / alias — complete
 
 - Move current `relayref.py` input-side behavior toward `relayint.py`.
 - Keep a compatibility alias or wrapper if needed to avoid large breakage.
@@ -112,22 +112,22 @@ Current status:
 
 Current status:
 
-- `app.py` now calls `build_relayint_reference_repair_dry_run(...)` from `relayint.py`.
+- `app.py` calls `build_relayint_reference_repair_dry_run(...)` from `relayint.py`.
 - The wrapper delegates to the historical `relayref.py` dry-run artifact builder for compatibility.
-- The runtime artifact variable name remains `relayref_artifact` to avoid diagnostics/schema churn.
-- `scripts/relaylm_relayint_reference_repair_wrapper_smoke.py` fixes the wrapper contract and verifies that `relayref_artifact` remains the compatibility diagnostics key.
-- `relayref.py` remains as the compatibility implementation for now.
-- MVP-45 has added the default-off RelayINT Fast Path dry-run artifact for low-latency reference / continuation / prior-memory intent signals.
-- MVP-46 has added the default-off RelayINT quick clarification preflight artifact, still diagnostics-only and without user-visible clarification text.
-- RelayRUN recovery artifacts now keep historical `source_node: "relayref"` while also emitting `source_node_alias: "relayint_reference_repair"` and `compatibility_source_node: "relayref"` for RelayINT-facing diagnostics.
-- PR #241 should be reduced before merge into a Phase 4 completion handoff: keep the RelayINT quick clarification apply plan, request compatibility gate, default-off / dry-run-only config flags, diagnostics / trace wiring, MVP-47 summary, and smoke coverage.
-- PR #241 should not land actual user-visible short-circuit behavior in Phase 4. Remove or defer the immediate `app.py` response return path, response-body helper, backend-forward skip behavior, and completed short-circuit RelayRUN artifact wiring until Phase 6.
-- The reduced #241 plan-only merge belongs after the existing RelayINT split / preflight work and before Phase 4.5 `PipelineNodeResult` scaffolding.
-- Next Phase 4 work should avoid a destructive rename and instead continue moving input-side reference repair terminology toward RelayINT.
+- The runtime artifact variable and diagnostics key remain `relayref_artifact` to avoid schema churn.
+- `scripts/relaylm_relayint_reference_repair_wrapper_smoke.py` fixes the wrapper and compatibility diagnostics contract.
+- `relayref.py` remains as an intentional compatibility implementation, not an incomplete Phase 4 task.
+- MVP-45 provides the default-off RelayINT Fast Path dry-run artifact for reference, continuation, and prior-memory intent signals.
+- MVP-46 provides the default-off quick clarification preflight artifact without user-visible clarification text.
+- MVP-47 provides the default-off / dry-run-only quick clarification apply-plan artifact and request compatibility gate.
+- RelayRUN recovery artifacts preserve historical `source_node: "relayref"` while also emitting `source_node_alias: "relayint_reference_repair"` and `compatibility_source_node: "relayref"`.
+- PR #241 landed in plan-only form. Backend forwarding and backend-owned response bodies remain unchanged.
+- Actual user-visible quick clarification, Main LLM/backend bypass, and completed short-circuit RelayRUN wiring are intentionally deferred to Phase 6.
+- Destructive removal of historical `relayref` names is deferred to a later compatibility migration.
 
-### Phase 4.5: pipeline node result scaffold
+### Phase 4.5: pipeline node result scaffold — complete
 
-This phase starts after the reduced #241 plan-only merge has landed. It introduces the shared recording shape for pipeline steps before the full failure-route behavior of Phase 6.
+This phase introduced the shared recording shape for pipeline steps before the full failure-route behavior of Phase 6.
 
 - Add a minimal `PipelineNodeResult` / pipeline step record module.
 - Add request-local node result collection to `PipelineContext`.
@@ -137,6 +137,17 @@ This phase starts after the reduced #241 plan-only merge has landed. It introduc
 - Preserve existing response bodies, headers, diagnostics, trace output, RelayRUN artifacts, and backend forwarding behavior.
 - Keep the shape compatible with the full Phase 6 failure route table and future per-node RelayRUN checkpoint reporting.
 
+Current status:
+
+- `relaylm/pipeline_node_result.py` defines the frozen shared result shape and detached log serialization.
+- `PipelineContext.node_results` provides an ordered request-local collection.
+- `relaylm/pipeline_node_adapter.py` builds content-free summaries from existing RelayINT and RelayCTX artifacts.
+- Runtime trace metadata emits `pipeline_node_results` on a best-effort basis.
+- Initial recorded nodes are `relayint_reference_repair`, `relayint_quick_clarification`, and `relayctx_repack`.
+- Node-result recording does not mutate payload routing state, backend forwarding, response bodies, or RelayRUN behavior.
+- Full artifacts containing possible raw CTX handoff values are not copied into node results.
+- MVP-48 records the completed Phase 4.5 contract and Phase 5 handoff.
+
 Non-goals for this phase:
 
 - Do not implement full blocked / failed / fallback routing.
@@ -144,7 +155,7 @@ Non-goals for this phase:
 - Do not move backend forwarding control to the node result layer yet.
 - Do not implement CTX Unpack, RelayREF, Output-side SCN, or cross-cutting RelayRUN checkpoints here.
 
-Suggested minimal shape:
+Implemented minimal shape:
 
 ```python
 @dataclass(frozen=True)
@@ -163,7 +174,7 @@ class PipelineNodeResult:
     artifacts: list[dict[str, Any]] = field(default_factory=list)
 ```
 
-Phase 4.5 is intentionally narrower than Phase 6: it records what happened, but it does not yet decide what the runtime should do next.
+Phase 4.5 remains intentionally narrower than Phase 6: it records what happened, but it does not yet decide what the runtime should do next.
 
 ### Phase 5: minimal `RelayCTX Unpack`
 
@@ -172,7 +183,8 @@ Phase 4.5 is intentionally narrower than Phase 6: it records what happened, but 
 - Parse optional `ctx_working_update` only when the format is safe and expected.
 - Fail safe: return user-visible text when possible, but block internal updates if unpacking fails.
 - Do not write MEM / SOUL / SLP candidates directly from a failed or ambiguous unpack result.
-- Record unpack diagnostics through the Phase 4.5 node result scaffold when available.
+- Record unpack diagnostics through the Phase 4.5 node result scaffold at the Unpack execution boundary.
+- Keep the existing terminal Phase 4.5 summaries until the Phase 6 routing layer replaces them with direct per-node orchestration.
 
 ### Phase 5.5: `RelayCTX Stream Unpack` and output segmentation
 
@@ -320,9 +332,9 @@ The near-term order is:
 app.py lightweight separation
   -> docs consolidation
   -> CTX Repack boundary hardening
-  -> RelayINT split / alias
-  -> #241 reduced plan-only merge: RelayINT quick clarification apply plan
-  -> pipeline node result scaffold
+  -> RelayINT split / alias (complete)
+  -> RelayINT quick clarification plan-only handoff (complete)
+  -> pipeline node result scaffold (complete)
   -> minimal RelayCTX Unpack
   -> RelayCTX Stream Unpack / Output Segmenter
   -> failure route table / node result handling
