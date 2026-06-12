@@ -119,7 +119,7 @@ def _resolve_single_assistant_content(
     if not isinstance(choice, Mapping):
         return None
     message = choice.get("message")
-    if not isinstance(message, Mapping):
+    if not isinstance(message, Mapping) or message.get("role") != "assistant":
         return None
     content = message.get("content")
     if not isinstance(content, str):
