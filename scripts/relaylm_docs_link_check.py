@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import argparse
 import re
 import sys
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_REPO_ROOT = Path(__file__).resolve().parents[1]
 
 INLINE_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 REFERENCE_LINK_RE = re.compile(r"^\s*\[[^\]]+\]:\s*(\S+)")
@@ -82,9 +83,10 @@ def _iter_markdown_links(source: Path) -> list[tuple[int, str]]:
     return links
 
 
-def main() -> int:
-    markdown_files = [REPO_ROOT / "README.md"]
-    markdown_files.extend(sorted((REPO_ROOT / "docs").rglob("*.md")))
+def check_links(repo_root: Path) -> tuple[int, int, list[str]]:
+    root = repo_root.resolve()
+    markdown_files = [root / "README.md"]
+    markdown_files.extend(sorted((root / "docs").rglob("*.md")))
 
     checked_links = 0
     broken_links: list[str] = []
@@ -100,19 +102,40 @@ def main() -> int:
 
             checked_links += 1
             try:
-                resolved.relative_to(REPO_ROOT)
+                resolved.relative_to(root)
             except ValueError:
                 broken_links.append(
-                    f"{source.relative_to(REPO_ROOT)}:{line_number}: "
+                    f"{source.relative_to(root)}:{line_number}: "
                     f"link escapes repository: {target}"
                 )
                 continue
 
             if not resolved.exists():
                 broken_links.append(
-                    f"{source.relative_to(REPO_ROOT)}:{line_number}: "
-                    f"missing target {target} -> {resolved.relative_to(REPO_ROOT)}"
+                    f"{source.relative_to(root)}:{line_number}: "
+                    f"missing target {target} -> {resolved.relative_to(root)}"
                 )
+
+    return len(markdown_files), checked_links, broken_links
+
+
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Check local Markdown links in README.md and docs/**/*.md."
+    )
+    parser.add_argument(
+        "repo_root",
+        nargs="?",
+        type=Path,
+        default=DEFAULT_REPO_ROOT,
+        help="repository root to check (defaults to this script's repository)",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = _parse_args()
+    markdown_file_count, checked_links, broken_links = check_links(args.repo_root)
 
     if broken_links:
         for message in broken_links:
@@ -125,7 +148,7 @@ def main() -> int:
 
     print(
         "ok documentation links "
-        f"({len(markdown_files)} Markdown files, {checked_links} local links)"
+        f"({markdown_file_count} Markdown files, {checked_links} local links)"
     )
     return 0
 
