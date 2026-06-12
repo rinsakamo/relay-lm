@@ -19,6 +19,10 @@ All MVP summary and MVP-focused implementation note files are now housed in this
 - [MVP-46: RelayINT quick clarification preflight](mvp46_relayint_quick_clarification_preflight.md)
 - [MVP-47: RelayINT quick clarification apply plan](mvp47_relayint_quick_clarification_apply_plan.md)
 
+### Pipeline node result scaffold
+
+- [MVP-48: Pipeline node result scaffold](mvp48_pipeline_node_result_scaffold.md)
+
 ## MVP-0 and MVP-1
 
 - [MVP-0: pass-through proxy](mvp0_pass_through_proxy.md)
