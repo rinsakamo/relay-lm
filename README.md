@@ -37,8 +37,9 @@ RelayLM uses the RelayStack architecture as a product/control-plane layer:
 - [Documentation index](docs/README.md)
 - [Architecture docs](docs/architecture/README.md)
 - [MVP summaries and milestone notes](docs/mvp/README.md)
+- [Contract docs](docs/contracts/README.md)
+- [Smoke and validation docs](docs/smoke/README.md)
 - [OpenWebUI + LM Studio MVP](docs/openwebui_lmstudio_mvp.md)
-- [OpenWebUI + LM Studio manual smoke runbook](docs/openwebui_lmstudio_manual_smoke.md)
 - [Config schema](docs/config_schema.md)
 
 ## MVP direction
