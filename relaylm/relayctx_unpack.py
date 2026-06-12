@@ -145,19 +145,24 @@ def unpack_relayctx_response_text(
         )
 
     if open_index < 0:
-        visible = _strip_markers(response_text).strip()
         return _blocked_result(
-            visible=visible,
+            visible=response_text[:close_index].rstrip(),
             input_chars=input_chars,
-            update_chars=0,
+            update_chars=max(0, input_chars - close_index),
             reasons=("opening_marker_missing",),
         )
 
+    if 0 <= close_index < open_index:
+        return _blocked_result(
+            visible=response_text[:close_index].rstrip(),
+            input_chars=input_chars,
+            update_chars=max(0, input_chars - close_index),
+            reasons=("closing_marker_before_opening",),
+        )
+
     visible_prefix = response_text[:open_index].rstrip()
-    closing_after_open = response_text.find(
-        RELAYCTX_UPDATE_CLOSE,
-        open_index + len(RELAYCTX_UPDATE_OPEN),
-    )
+    payload_start = open_index + len(RELAYCTX_UPDATE_OPEN)
+    closing_after_open = response_text.find(RELAYCTX_UPDATE_CLOSE, payload_start)
     if closing_after_open < 0:
         return _blocked_result(
             visible=visible_prefix,
@@ -166,24 +171,26 @@ def unpack_relayctx_response_text(
             reasons=("closing_marker_missing",),
         )
 
-    payload_start = open_index + len(RELAYCTX_UPDATE_OPEN)
     payload_text = response_text[payload_start:closing_after_open].strip()
     suffix = response_text[closing_after_open + len(RELAYCTX_UPDATE_CLOSE) :]
-    visible_suffix = _strip_markers(suffix).strip()
+    visible_suffix, suffix_marker_reasons = _safe_visible_suffix(suffix)
     visible = _join_visible_parts(visible_prefix, visible_suffix)
 
-    reasons: list[str] = []
-    if response_text.find(RELAYCTX_UPDATE_OPEN, payload_start) >= 0:
+    reasons = list(suffix_marker_reasons)
+    if response_text.find(RELAYCTX_UPDATE_OPEN, payload_start, closing_after_open) >= 0:
         reasons.append("multiple_opening_markers")
-    if response_text.find(RELAYCTX_UPDATE_CLOSE, closing_after_open + 1) >= 0:
-        reasons.append("multiple_closing_markers")
     if visible_suffix:
         reasons.append("update_block_not_trailing")
     if not visible:
         reasons.append("user_visible_text_empty")
     if not payload_text:
         reasons.append("update_payload_empty")
-    if max_update_chars <= 0 or len(payload_text) > max_update_chars:
+    if (
+        not isinstance(max_update_chars, int)
+        or isinstance(max_update_chars, bool)
+        or max_update_chars <= 0
+        or len(payload_text) > max_update_chars
+    ):
         reasons.append("update_payload_too_large")
 
     if reasons:
@@ -214,7 +221,6 @@ def unpack_relayctx_response_text(
         )
 
     assert update is not None
-    accepted_field_names = tuple(sorted(update))
     return RelayCTXUnpackResult(
         user_visible_text=visible,
         ctx_working_update=deepcopy(update),
@@ -225,7 +231,7 @@ def unpack_relayctx_response_text(
         blocked_reasons=(),
         input_chars=input_chars,
         update_chars=len(payload_text),
-        accepted_field_names=accepted_field_names,
+        accepted_field_names=tuple(sorted(update)),
     )
 
 
@@ -268,12 +274,7 @@ def _validate_envelope(
         return None, ["update_envelope_not_object"]
 
     reasons: list[str] = []
-    unknown_envelope_fields = sorted(
-        key
-        for key in envelope
-        if key not in {"schema_version", "ctx_working_update"}
-    )
-    if unknown_envelope_fields:
+    if any(key not in {"schema_version", "ctx_working_update"} for key in envelope):
         reasons.append("update_envelope_unknown_fields")
     if envelope.get("schema_version") != RELAYCTX_UPDATE_SCHEMA_VERSION:
         reasons.append("update_schema_version_invalid")
@@ -292,8 +293,7 @@ def _validate_working_update(
     raw_update: Mapping[str, Any],
 ) -> tuple[dict[str, Any], list[str]]:
     reasons: list[str] = []
-    unknown_fields = sorted(key for key in raw_update if key not in _ALLOWED_UPDATE_FIELDS)
-    if unknown_fields:
+    if any(key not in _ALLOWED_UPDATE_FIELDS for key in raw_update):
         reasons.append("ctx_working_update_unknown_fields")
 
     normalized: dict[str, Any] = {}
@@ -439,8 +439,25 @@ def _blocked_result(
     )
 
 
-def _strip_markers(value: str) -> str:
-    return value.replace(RELAYCTX_UPDATE_OPEN, "").replace(RELAYCTX_UPDATE_CLOSE, "")
+def _safe_visible_suffix(suffix: str) -> tuple[str, list[str]]:
+    marker_positions = [
+        position
+        for position in (
+            suffix.find(RELAYCTX_UPDATE_OPEN),
+            suffix.find(RELAYCTX_UPDATE_CLOSE),
+        )
+        if position >= 0
+    ]
+    if not marker_positions:
+        return suffix.strip(), []
+
+    first_marker = min(marker_positions)
+    reasons: list[str] = []
+    if RELAYCTX_UPDATE_OPEN in suffix:
+        reasons.append("multiple_opening_markers")
+    if RELAYCTX_UPDATE_CLOSE in suffix:
+        reasons.append("multiple_closing_markers")
+    return suffix[:first_marker].strip(), reasons
 
 
 def _join_visible_parts(prefix: str, suffix: str) -> str:
@@ -450,7 +467,12 @@ def _join_visible_parts(prefix: str, suffix: str) -> str:
 
 
 def _bounded_string(value: Any, *, max_chars: int) -> bool:
-    return isinstance(value, str) and 0 < len(value) <= max_chars
+    return (
+        isinstance(value, str)
+        and 0 < len(value) <= max_chars
+        and bool(value.strip())
+        and "\x00" not in value
+    )
 
 
 def _bounded_sequence(value: Any, *, max_items: int) -> bool:
