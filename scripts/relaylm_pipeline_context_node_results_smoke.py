@@ -130,10 +130,38 @@ def _assert_recording_does_not_mutate_payload_state() -> None:
     print("ok PipelineContext recording does not mutate payload routing state")
 
 
+def _assert_ctx_candidate_is_detached_and_request_local() -> None:
+    first = _context(request_id="request-candidate-1", run_id="run-candidate-1")
+    second = _context(request_id="request-candidate-2", run_id="run-candidate-2")
+    candidate = {
+        "current_topic": "RelayCTX Unpack",
+        "referable_items": [{"label": "candidate", "kind": "component"}],
+    }
+
+    first.set_ctx_working_update_candidate(candidate)
+    candidate["current_topic"] = "caller mutation"
+    candidate["referable_items"][0]["label"] = "caller mutation"
+
+    require(
+        first.ctx_working_update_candidate
+        == {
+            "current_topic": "RelayCTX Unpack",
+            "referable_items": [{"label": "candidate", "kind": "component"}],
+        },
+        first.ctx_working_update_candidate,
+    )
+    require(second.ctx_working_update_candidate is None, second.ctx_working_update_candidate)
+
+    first.set_ctx_working_update_candidate(None)
+    require(first.ctx_working_update_candidate is None, first.ctx_working_update_candidate)
+    print("ok PipelineContext RelayCTX candidate is detached and request-local")
+
+
 def main() -> None:
     _assert_request_local_default_collection()
     _assert_recording_order_and_serialization()
     _assert_recording_does_not_mutate_payload_state()
+    _assert_ctx_candidate_is_detached_and_request_local()
 
 
 if __name__ == "__main__":
