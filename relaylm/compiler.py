@@ -10,6 +10,7 @@ from typing import Any
 
 
 CLIENT_INSTRUCTION_ROLES = frozenset({"system", "developer"})
+CLIENT_INSTRUCTION_TEXT_PART_TYPES = frozenset({"text", "input_text"})
 
 
 class StabilityClass(str, Enum):
@@ -81,7 +82,6 @@ def validate_block_order(blocks: list[ContextBlock]) -> None:
                 f"block {block.block_id!r} with {block.stability_class.value!r} was out of order."
             )
         previous_rank = current_rank
-
 
 
 def build_stable_prefix_hash_diagnostics(
@@ -209,6 +209,38 @@ def split_incoming_system_messages(
     return instruction_messages, recent_messages
 
 
+def extract_instruction_text(content: Any) -> str | None:
+    """Normalize supported string or text-part-array instruction content.
+
+    OpenAI-compatible clients may send message content either as a string or as
+    an ordered array of content parts. Only textual parts are included in this
+    compatibility evidence block; unsupported non-text parts are ignored rather
+    than stringified into the prompt.
+    """
+
+    if isinstance(content, str):
+        normalized = content.strip()
+        return normalized or None
+
+    if not isinstance(content, list):
+        return None
+
+    text_parts: list[str] = []
+    for part in content:
+        if isinstance(part, str):
+            text = part.strip()
+        elif isinstance(part, dict) and part.get("type") in CLIENT_INSTRUCTION_TEXT_PART_TYPES:
+            value = part.get("text")
+            text = value.strip() if isinstance(value, str) else ""
+        else:
+            text = ""
+
+        if text:
+            text_parts.append(text)
+
+    return "\n".join(text_parts) or None
+
+
 def build_incoming_system_prompt_block(
     system_messages: list[dict[str, Any]],
 ) -> ContextBlock | None:
@@ -221,9 +253,9 @@ def build_incoming_system_prompt_block(
 
     contents: list[str] = []
     for message in system_messages:
-        content = message.get("content")
-        if isinstance(content, str) and content.strip():
-            contents.append(content.strip())
+        content = extract_instruction_text(message.get("content"))
+        if content is not None:
+            contents.append(content)
     if not contents:
         return None
 
