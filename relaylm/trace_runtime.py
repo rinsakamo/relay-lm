@@ -6,6 +6,8 @@ from typing import Any
 
 from relaylm.config import RelayLMConfig
 from relaylm.diagnostics import RequestDiagnostics
+from relaylm.pipeline_context import consume_active_pipeline_context
+from relaylm.pipeline_node_adapter import record_phase45_node_results
 from relaylm.trace import append_trace_record, build_trace_record
 
 
@@ -19,15 +21,44 @@ def trace_runtime_event(
 ) -> bool:
     """Append one runtime trace record when tracing is enabled.
 
-    Returns whether a record was written. Trace writing is best-effort and must
-    never change request handling behavior.
+    Returns whether a record was written. Trace writing and PipelineNodeResult
+    recording are best-effort and must never change request handling behavior.
     """
+
+    pipeline_node_results: list[dict[str, Any]] | None = None
+    pipeline_context = consume_active_pipeline_context()
+    if pipeline_context is not None:
+        try:
+            record_phase45_node_results(
+                pipeline_context,
+                relayref_artifact=diagnostics.relayref_artifact,
+                relayint_fast_path_dry_run=diagnostics.relayint_fast_path_dry_run,
+                relayint_quick_clarification_preflight=(
+                    diagnostics.relayint_quick_clarification_preflight
+                ),
+                relayint_quick_clarification_apply_plan=(
+                    diagnostics.relayint_quick_clarification_apply_plan
+                ),
+                runtime_ctx_injection_result=diagnostics.runtime_ctx_injection_result,
+                runtime_snippet_injection_result=(
+                    diagnostics.runtime_snippet_injection_result
+                ),
+                token_budget_truncation=diagnostics.token_budget_truncation,
+                relayctx_short_term_runtime_injection_apply_result=(
+                    diagnostics.relayctx_short_term_runtime_injection_apply_result
+                ),
+            )
+            pipeline_node_results = pipeline_context.node_results_to_log_dicts()
+        except Exception:
+            pipeline_node_results = None
 
     if not config.trace.enabled or not config.trace.path:
         return False
 
     try:
         trace_metadata = dict(metadata or {})
+        if pipeline_node_results is not None:
+            trace_metadata["pipeline_node_results"] = pipeline_node_results
         if diagnostics.memory_source is not None:
             trace_metadata["memory_source"] = diagnostics.memory_source
         if diagnostics.memory_selection_summary is not None:
