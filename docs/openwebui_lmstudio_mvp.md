@@ -63,13 +63,12 @@ Open-LLM-VTuber is supported as an optional frontend / example integration.
 
 It is not the default MVP standard UI in this positioning update.
 
-
 ## Quick setup (config-first)
 
-- Manual smoke runbook: [OpenWebUI + LM Studio manual smoke](docs/openwebui_lmstudio_manual_smoke.md)
-- Model preset/avatar checklist: [OpenWebUI model preset/avatar checklist](docs/openwebui_model_preset_checklist.md)
-- Response differentiation checks: [OpenWebUI route response differentiation checks](docs/openwebui_response_differentiation_checks.md)
-- Troubleshooting guide: [OpenWebUI + RelayLM + LM Studio troubleshooting](docs/openwebui_lmstudio_troubleshooting.md)
+- Manual smoke runbook: [OpenWebUI + LM Studio manual smoke](smoke/openwebui_lmstudio_manual_smoke.md)
+- Model preset/avatar checklist: [OpenWebUI model preset/avatar checklist](smoke/openwebui_model_preset_checklist.md)
+- Response differentiation checks: [OpenWebUI route response differentiation checks](smoke/openwebui_response_differentiation_checks.md)
+- Troubleshooting guide: [OpenWebUI + RelayLM + LM Studio troubleshooting](smoke/openwebui_lmstudio_troubleshooting.md)
 
 ### 1) LM Studio
 
@@ -88,7 +87,6 @@ cp examples/config/openwebui_lmstudio.yaml config.yaml
 ```
 
 Then start RelayLM with that config.
-
 
 - RelayLM listen URL example: `http://127.0.0.1:8090/v1`
 - LM Studio backend URL example: `http://127.0.0.1:1234/v1`
@@ -204,7 +202,6 @@ python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
 - OpenWebUI should focus on display name / avatar / prompt suggestions.
 - Avoid heavy system prompt duplication in OpenWebUI when RelayLM already provides `SOUL`/`OUTPUT_POLICY`.
 - RelayLM remains responsible for persona/memory/context/token-budget control.
-
 
 ## Example profiles and memory seeds
 
