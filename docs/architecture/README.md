@@ -13,6 +13,14 @@ The main architecture, profile-specific architecture, context/scene architecture
 - [Runtime architecture](runtime_architecture.md)
 - [Product runtime hardening](product_runtime_hardening.md)
 
+The two client-authority contracts share one external boundary:
+
+```text
+Client-provided messages are request evidence, not backend context.
+RelayLM extracts the current turn and current instruction evidence,
+then reconstructs the backend payload from RelayLM-owned state.
+```
+
 ## Profile-specific architecture
 
 - [AI VTuber pipeline profile](ai_vtuber_pipeline_profile.md)
