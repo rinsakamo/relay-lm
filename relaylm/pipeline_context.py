@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -23,6 +24,9 @@ class PipelineContext:
     last_mutating_step: str | None = None
     node_results: list[PipelineNodeResult] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        _ACTIVE_PIPELINE_CONTEXT.set(self)
+
     def replace_forwarded_payload(
         self,
         new_payload: Mapping[str, Any],
@@ -40,6 +44,20 @@ class PipelineContext:
         """Return detached log dictionaries for recorded node results."""
 
         return [result.to_log_dict() for result in self.node_results]
+
+
+_ACTIVE_PIPELINE_CONTEXT: ContextVar[PipelineContext | None] = ContextVar(
+    "relaylm_active_pipeline_context",
+    default=None,
+)
+
+
+def consume_active_pipeline_context() -> PipelineContext | None:
+    """Return and clear the active request-local context for terminal diagnostics."""
+
+    pipeline_context = _ACTIVE_PIPELINE_CONTEXT.get()
+    _ACTIVE_PIPELINE_CONTEXT.set(None)
+    return pipeline_context
 
 
 def replace_pipeline_forwarded_payload(
