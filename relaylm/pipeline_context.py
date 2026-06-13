@@ -13,6 +13,9 @@ from relaylm.routing import ResolvedRoute
 
 if TYPE_CHECKING:
     from relaylm.client_instruction_identity import ClientInstructionIdentityResult
+    from relaylm.client_instruction_cache_lookup_runtime import (
+        ClientInstructionCacheLookupRuntimeResult,
+    )
 
 
 @dataclass
@@ -37,14 +40,26 @@ class PipelineContext:
         repr=False,
         compare=False,
     )
+    _client_instruction_cache_lookup_runtime_result: (
+        ClientInstructionCacheLookupRuntimeResult | None
+    ) = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     def __post_init__(self) -> None:
         _ACTIVE_PIPELINE_CONTEXT.set(self)
         from relaylm.client_instruction_identity_runtime import (
             prepare_client_instruction_identity_runtime_private,
         )
+        from relaylm.client_instruction_cache_lookup_runtime import (
+            prepare_client_instruction_cache_lookup_runtime_private,
+        )
 
         prepare_client_instruction_identity_runtime_private(pipeline_context=self)
+        prepare_client_instruction_cache_lookup_runtime_private(pipeline_context=self)
 
     def replace_forwarded_payload(
         self,
@@ -84,6 +99,22 @@ class PipelineContext:
         """Return the request-local private identity result without copying it."""
 
         return self._client_instruction_identity_result
+
+    def set_client_instruction_cache_lookup_runtime_result(
+        self,
+        result: ClientInstructionCacheLookupRuntimeResult | None,
+    ) -> None:
+        """Store one content-bearing cache lookup result without serialization."""
+
+        self._client_instruction_cache_lookup_runtime_result = result
+
+    @property
+    def client_instruction_cache_lookup_runtime_result(
+        self,
+    ) -> ClientInstructionCacheLookupRuntimeResult | None:
+        """Return request-local private cache lookup state without copying it."""
+
+        return self._client_instruction_cache_lookup_runtime_result
 
     def node_results_to_log_dicts(self) -> list[dict[str, Any]]:
         """Return detached log dictionaries for recorded node results."""

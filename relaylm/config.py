@@ -108,6 +108,13 @@ class RelayLMConfig(BaseModel):
     relayctx_unpack_max_update_chars: int = Field(default=4096, gt=0)
     client_message_canonicalization_dry_run_enabled: bool = False
     client_instruction_extraction_dry_run_enabled: bool = False
+    client_instruction_cache_lookup_enabled: bool = False
+    client_instruction_cache_root: str | None = None
+    client_instruction_cache_max_entry_bytes: int = Field(
+        default=65536,
+        ge=1,
+        le=1048576,
+    )
     relayint_fast_path_dry_run_enabled: bool = False
     relayint_fast_path_high_confidence_threshold: float = Field(default=0.80, ge=0.0, le=1.0)
     relayint_fast_path_low_confidence_threshold: float = Field(default=0.55, ge=0.0, le=1.0)

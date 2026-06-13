@@ -22,16 +22,22 @@ _SCHEMA_VERSION = "client_instruction_identity.v0"
 _RUNTIME_FAILURE_REASON = "identity_runtime_preparation_failed"
 
 
+def client_instruction_identity_dependency_enabled(route: Any) -> bool:
+    """Return whether identity preparation is required by extraction or lookup."""
+
+    return bool(
+        getattr(route, "client_instruction_extraction_dry_run_enabled", False)
+        or getattr(route, "client_instruction_cache_lookup_enabled", False)
+    )
+
+
 def prepare_client_instruction_identity_runtime_private(
     *,
     pipeline_context: PipelineContext,
 ) -> None:
     """Prepare one request-local content-bearing identity without side effects."""
 
-    enabled = bool(
-        pipeline_context.route.client_instruction_extraction_dry_run_enabled
-    )
-    if not enabled:
+    if not client_instruction_identity_dependency_enabled(pipeline_context.route):
         pipeline_context.set_client_instruction_identity_result(None)
         return
 
