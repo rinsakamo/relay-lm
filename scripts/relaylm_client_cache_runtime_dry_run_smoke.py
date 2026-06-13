@@ -1,0 +1,310 @@
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from typing import Any
+
+import yaml
+from fastapi.testclient import TestClient
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from relaylm.app import create_app
+
+RAW_VALUES = (
+    "system cache runtime secret",
+    "developer cache runtime secret",
+    "user cache runtime secret",
+    "tool cache runtime secret",
+    "https://example.invalid/cache-runtime-image.png",
+    "call_cache_runtime_secret_123",
+)
+
+
+class _Capture:
+    def __init__(self) -> None:
+        self.payloads: list[dict[str, Any]] = []
+        self._lock = threading.Lock()
+
+    def add(self, payload: dict[str, Any]) -> None:
+        with self._lock:
+            self.payloads.append(payload)
+
+    def count(self) -> int:
+        with self._lock:
+            return len(self.payloads)
+
+    def get(self, index: int) -> dict[str, Any]:
+        with self._lock:
+            return self.payloads[index]
+
+
+class _BackendHandler(BaseHTTPRequestHandler):
+    capture: _Capture
+
+    def log_message(self, format: str, *args: object) -> None:  # noqa: A003
+        return
+
+    def do_POST(self) -> None:  # noqa: N802
+        raw = self.rfile.read(int(self.headers.get("content-length", "0")))
+        payload = json.loads(raw.decode("utf-8")) if raw else {}
+        type(self).capture.add(payload)
+        body = json.dumps(
+            {
+                "id": "chatcmpl-client-cache-runtime-smoke",
+                "object": "chat.completion",
+                "choices": [
+                    {"index": 0, "message": {"role": "assistant", "content": "ok"}}
+                ],
+            }
+        ).encode("utf-8")
+        self.send_response(200)
+        self.send_header("content-type", "application/json")
+        self.send_header("content-length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
+def require(condition: bool, detail: object) -> None:
+    if not condition:
+        raise AssertionError(detail)
+
+
+def _write_config(path: Path, *, port: int, trace_path: Path, mode: str, enabled: bool) -> None:
+    cfg = yaml.safe_load((REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8"))
+    cfg["backends"]["local_backend"]["base_url"] = f"http://127.0.0.1:{port}/v1"
+    cfg["trace"] = {"enabled": True, "path": str(trace_path)}
+    cfg["client_message_canonicalization_dry_run_enabled"] = True
+    cfg["client_instruction_extraction_dry_run_enabled"] = enabled
+    cfg["model_routes"]["relaylm-default"]["mode"] = mode
+    cfg["memory"].update(
+        {
+            "store_enabled": False,
+            "retrieval_dry_run_only": True,
+            "ctx_block_apply_enabled": False,
+            "snippet_extraction_enabled": False,
+            "snippet_dry_run_only": True,
+            "snippet_apply_enabled": False,
+            "snippet_runtime_injection_enabled": False,
+            "snippet_runtime_dry_run_only": True,
+            "token_budget_truncation_enabled": False,
+        }
+    )
+    path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
+
+
+def _base_payload(messages: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "model": "relaylm-default",
+        "messages": messages,
+        "metadata": {"scene_state": {"scene_type": "implementation_work"}},
+        "stream": False,
+    }
+
+
+def _content_free_messages() -> list[dict[str, Any]]:
+    return [
+        {"role": "system", "content": "system cache runtime secret"},
+        {
+            "role": "developer",
+            "content": [{"type": "text", "text": "developer cache runtime secret"}],
+        },
+        {"role": "user", "content": "user cache runtime secret"},
+        {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call_cache_runtime_secret_123",
+                    "type": "function",
+                    "function": {"name": "lookup", "arguments": "{}"},
+                }
+            ],
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call_cache_runtime_secret_123",
+            "content": "tool cache runtime secret",
+        },
+    ]
+
+
+def _post(*, port: int, payload: dict[str, Any], capture: _Capture, mode: str = "memory_full", enabled: bool = True) -> list[dict[str, Any]]:
+    with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
+        root = Path(td)
+        trace_path = root / "trace.jsonl"
+        cfg_path = root / "cfg.yaml"
+        _write_config(cfg_path, port=port, trace_path=trace_path, mode=mode, enabled=enabled)
+        original = json.loads(json.dumps(payload, ensure_ascii=False))
+        before_count = capture.count()
+        with TestClient(create_app(str(cfg_path))) as client:
+            response = client.post("/v1/chat/completions", json=payload)
+        require(response.status_code == 200, response.text)
+        require(payload == original, payload)
+        require(capture.count() == before_count + 1, capture.count())
+        backend_payload = capture.get(before_count)
+        require(backend_payload.get("messages") == original.get("messages"), backend_payload)
+        require(backend_payload.get("metadata") == original.get("metadata"), backend_payload)
+        encoded_backend = json.dumps(backend_payload, ensure_ascii=False)
+        require("client_instruction_extraction" not in encoded_backend, backend_payload)
+        require("client_instruction_fingerprint" not in encoded_backend, backend_payload)
+        require("client_instruction_cache" not in encoded_backend, backend_payload)
+        require("cache_operation_plan_ready" not in encoded_backend, backend_payload)
+        records = trace_path.read_text(encoding="utf-8").strip().splitlines()
+        require(records, trace_path)
+        record = json.loads(records[-1])
+        results = record.get("metadata", {}).get("pipeline_node_results")
+        require(isinstance(results, list), record)
+        return results
+
+
+def _find(results: list[dict[str, Any]], node_name: str) -> dict[str, Any]:
+    for result in results:
+        if isinstance(result, dict) and result.get("node_name") == node_name:
+            return result
+    raise AssertionError((node_name, results))
+
+
+def _assert_no_node(results: list[dict[str, Any]], node_name: str) -> None:
+    require(all(not isinstance(result, dict) or result.get("node_name") != node_name for result in results), results)
+
+
+def _assert_no_raw_content(value: Any) -> None:
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    for raw in RAW_VALUES:
+        require(raw not in encoded, f"content leaked into diagnostics: {raw!r}")
+
+
+def _assert_default_off(capture: _Capture, port: int) -> None:
+    payload = _base_payload(_content_free_messages())
+    results = _post(port=port, payload=payload, capture=capture, enabled=False)
+    _assert_no_node(results, "client_instruction_extraction")
+    _assert_no_node(results, "client_instruction_fingerprint")
+    _assert_no_node(results, "client_instruction_cache")
+    _assert_no_raw_content(results)
+    print("ok default-off omits instruction cache runtime node")
+
+
+def _assert_ready(capture: _Capture, port: int) -> None:
+    payload = _base_payload(
+        [
+            {"role": "system", "content": "system cache runtime secret"},
+            {
+                "role": "developer",
+                "content": [{"type": "text", "text": "developer cache runtime secret"}],
+            },
+            {"role": "user", "content": "user cache runtime secret"},
+        ]
+    )
+    results = _post(port=port, payload=payload, capture=capture)
+    names = [result.get("node_name") for result in results if isinstance(result, dict)]
+    require(names.index("client_instruction_extraction") < names.index("client_instruction_fingerprint"), names)
+    require(names.index("client_instruction_fingerprint") < names.index("client_instruction_cache"), names)
+    require(names.index("client_instruction_cache") < names.index("relayint_reference_repair"), names)
+    require(names.index("client_instruction_cache") < names.index("relayctx_repack"), names)
+    result = _find(results, "client_instruction_cache")
+    require(result.get("status") == "diagnostic_only", result)
+    require(result.get("decision") == "instruction_cache_operation_plan_ready", result)
+    require(result.get("blocked_reasons") == [], result)
+    diag = result.get("diagnostics", {})
+    expected = {
+        "diagnostics_only": True,
+        "content_free": True,
+        "dry_run_only": True,
+        "operation_plan_mode": "metadata_contract_only",
+        "cache_operation_plan_ready": True,
+        "lookup_requested": False,
+        "save_requested": False,
+        "lookup_plan_ready": False,
+        "save_plan_ready": False,
+        "cache_lookup_attempted": False,
+        "cache_save_attempted": False,
+        "cache_key_computed": False,
+        "cache_key_available": False,
+        "fingerprint_hash_computed": False,
+        "fingerprint_hash_available": False,
+        "cache_hit_known": False,
+        "cache_result_available": False,
+        "payload_mutation_applied": False,
+        "history_exclusion_applied": False,
+        "persistence_applied": False,
+    }
+    for key, expected_value in expected.items():
+        require(diag.get(key) == expected_value, result)
+    require(diag.get("cache_hit") is None, result)
+    require(diag.get("instruction_candidate_count") == 2, result)
+    require(diag.get("candidate_roles") == ["system", "developer"], result)
+    require(diag.get("candidate_indices") == [0, 1], result)
+    _assert_no_raw_content(results)
+    print("ok managed route records ready cache node")
+
+
+def _assert_pass_through(capture: _Capture, port: int) -> None:
+    payload = _base_payload(_content_free_messages())
+    results = _post(port=port, payload=payload, capture=capture, mode="pass_through")
+    result = _find(results, "client_instruction_cache")
+    require(result.get("decision") == "instruction_cache_operation_plan_blocked", result)
+    blocked = result.get("blocked_reasons", [])
+    diag = result.get("diagnostics", {})
+    require(diag.get("cache_operation_plan_ready") is False, result)
+    require("source_fingerprint_plan_not_ready" in blocked, result)
+    require("source_fingerprint_blocked" in blocked, result)
+    _assert_no_raw_content(results)
+    print("ok pass-through blocks cache node")
+
+
+def _assert_source_block(capture: _Capture, port: int) -> None:
+    payload = _base_payload(
+        [
+            {
+                "role": "developer",
+                "content": [
+                    {"type": "text", "text": "developer cache runtime secret"},
+                    {"type": "image_url", "image_url": {"url": "https://example.invalid/cache-runtime-image.png"}},
+                ],
+            },
+            {"role": "user", "content": "user cache runtime secret"},
+        ]
+    )
+    results = _post(port=port, payload=payload, capture=capture)
+    result = _find(results, "client_instruction_cache")
+    require(result.get("decision") == "instruction_cache_operation_plan_blocked", result)
+    blocked = result.get("blocked_reasons", [])
+    require("source_fingerprint_plan_not_ready" in blocked, result)
+    require("source_fingerprint_blocked" in blocked, result)
+    _assert_no_raw_content(results)
+    print("ok source block propagates to cache node")
+
+
+def main() -> int:
+    capture = _Capture()
+    _BackendHandler.capture = capture
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _BackendHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        port = int(server.server_address[1])
+        _assert_default_off(capture, port)
+        _assert_ready(capture, port)
+        _assert_pass_through(capture, port)
+        _assert_source_block(capture, port)
+        print("ok backend payload unchanged and cache runtime diagnostics are content-free")
+        return 0
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except AssertionError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        raise SystemExit(1)
