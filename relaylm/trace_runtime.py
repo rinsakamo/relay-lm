@@ -8,6 +8,9 @@ from relaylm.client_instruction_cache import (
     build_client_instruction_cache_dry_run,
     build_client_instruction_cache_node_result,
 )
+from relaylm.client_instruction_cache_lookup_runtime import (
+    build_client_instruction_cache_lookup_runtime_node_result,
+)
 from relaylm.client_instruction_extraction import (
     build_client_instruction_extraction_dry_run,
     build_client_instruction_extraction_node_result,
@@ -99,12 +102,19 @@ def trace_runtime_event(
             client_instruction_cache_dry_run = build_client_instruction_cache_dry_run(
                 client_instruction_fingerprint_dry_run,
                 enabled=config.client_instruction_extraction_dry_run_enabled,
-                lookup_requested=False,
+                lookup_requested=(
+                    pipeline_context.route.client_instruction_cache_lookup_enabled
+                ),
                 save_requested=False,
             )
             client_instruction_cache_node_result = (
                 build_client_instruction_cache_node_result(
                     client_instruction_cache_dry_run
+                )
+            )
+            client_instruction_cache_lookup_node_result = (
+                build_client_instruction_cache_lookup_runtime_node_result(
+                    pipeline_context.client_instruction_cache_lookup_runtime_result
                 )
             )
 
@@ -155,6 +165,12 @@ def trace_runtime_event(
                     pipeline_context.node_results,
                     client_instruction_cache_node_result,
                     after_node_name=cache_after_node,
+                )
+            if client_instruction_cache_lookup_node_result is not None:
+                _insert_after_node_result(
+                    pipeline_context.node_results,
+                    client_instruction_cache_lookup_node_result,
+                    after_node_name="client_instruction_cache",
                 )
             pipeline_node_results = pipeline_context.node_results_to_log_dicts()
         except Exception:
