@@ -285,16 +285,40 @@ def _assert_fail_closed() -> None:
     _blocked(_identity(ready_payload, unsupported), "source_extraction_schema_unsupported")
     not_ready = dict(ready_artifact, fingerprint_candidate_ready=False)
     _blocked(_identity(ready_payload, not_ready), "source_extraction_not_ready")
+    unmanaged = dict(ready_artifact, managed_route=False, fingerprint_candidate_ready=True, blocked_reasons=[])
+    _blocked(_identity(ready_payload, unmanaged), "source_extraction_not_managed")
     source_blocked = dict(ready_artifact, blocked_reasons=["source_block"])
     _blocked(_identity(ready_payload, source_blocked), "source_extraction_blocked")
     mismatch = dict(ready_artifact, candidate_indices=[])
     _blocked(_identity(ready_payload, mismatch), "candidate_indices_mismatch")
+    count_two_one_index = dict(ready_artifact, instruction_candidate_count=2, candidate_indices=[0])
+    _blocked(_identity(ready_payload, count_two_one_index), "instruction_candidate_count_mismatch")
+    count_zero_one_index = dict(ready_artifact, instruction_candidate_count=0, candidate_indices=[0])
+    _blocked(_identity(ready_payload, count_zero_one_index), "instruction_candidate_count_mismatch")
+    for invalid_count in (True, -1, "1"):
+        invalid_count_artifact = dict(ready_artifact, instruction_candidate_count=invalid_count)
+        _blocked(_identity(ready_payload, invalid_count_artifact), "instruction_candidate_count_invalid")
     duplicate = dict(ready_artifact, candidate_indices=[0, 0])
     _blocked(_identity(ready_payload, duplicate), "candidate_indices_invalid")
     out_of_range = dict(ready_artifact, candidate_indices=[99])
     _blocked(_identity(ready_payload, out_of_range), "candidate_indices_invalid")
     invalid_role_artifact = dict(ready_artifact, candidate_roles=["user"])
     _blocked(_identity(ready_payload, invalid_role_artifact), "instruction_candidate_role_invalid")
+    developer_payload = _payload([{"role": "developer", "content": "developer identity secret"}])
+    developer_artifact = dict(_artifact(developer_payload), candidate_roles=["system"])
+    _blocked(_identity(developer_payload, developer_artifact), "candidate_roles_mismatch")
+    two_role_payload = _payload(
+        [
+            {"role": "system", "content": "system identity secret"},
+            {"role": "developer", "content": "developer identity secret"},
+        ]
+    )
+    two_role_artifact = dict(_artifact(two_role_payload), candidate_roles=["developer", "system"])
+    _blocked(_identity(two_role_payload, two_role_artifact), "candidate_roles_mismatch")
+    missing_role_artifact = dict(ready_artifact, candidate_roles=[])
+    _blocked(_identity(ready_payload, missing_role_artifact), "candidate_roles_mismatch")
+    extra_role_artifact = dict(ready_artifact, candidate_roles=["system", "developer"])
+    _blocked(_identity(ready_payload, extra_role_artifact), "candidate_roles_mismatch")
     role_payload = _payload([{"role": "user", "content": "user identity secret"}])
     role_artifact = dict(ready_artifact, candidate_indices=[0])
     _blocked(_identity(role_payload, role_artifact), "instruction_candidate_role_invalid")
@@ -348,8 +372,22 @@ def _assert_fail_closed() -> None:
         "active_tool_transaction_requires_preservation",
     )
     _blocked(_identity(ready_payload, route_model=""), "route_model_invalid")
+    _blocked(_identity(ready_payload, route_model="   "), "route_model_invalid")
+    _blocked(_identity(ready_payload, character_id="   "), "identity_context_version_invalid")
     _blocked(
         _identity(ready_payload, instruction_parse_schema_version=""),
+        "identity_context_version_invalid",
+    )
+    _blocked(
+        _identity(ready_payload, instruction_parse_schema_version="   "),
+        "identity_context_version_invalid",
+    )
+    _blocked(
+        _identity(ready_payload, authority_policy_version="\t"),
+        "identity_context_version_invalid",
+    )
+    _blocked(
+        _identity(ready_payload, parser_version="\n"),
         "identity_context_version_invalid",
     )
     print("ok fail-closed validation")

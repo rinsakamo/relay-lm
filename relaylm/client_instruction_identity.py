@@ -94,6 +94,8 @@ def build_client_instruction_identity(
             blocked_reasons.append("source_extraction_not_content_free")
         if extraction_artifact.get("fingerprint_candidate_ready") is not True:
             blocked_reasons.append("source_extraction_not_ready")
+        if extraction_artifact.get("managed_route") is not True:
+            blocked_reasons.append("source_extraction_not_managed")
         if _strings(extraction_artifact.get("blocked_reasons")):
             blocked_reasons.append("source_extraction_blocked")
         raw_candidate_roles = extraction_artifact.get("candidate_roles")
@@ -129,6 +131,11 @@ def build_client_instruction_identity(
             candidate_indices = list(raw_candidate_indices)
         else:
             blocked_reasons.append("candidate_indices_invalid")
+        raw_count = extraction_artifact.get("instruction_candidate_count")
+        if not isinstance(raw_count, int) or isinstance(raw_count, bool) or raw_count < 0:
+            blocked_reasons.append("instruction_candidate_count_invalid")
+        elif raw_count != len(candidate_indices):
+            blocked_reasons.append("instruction_candidate_count_mismatch")
 
     normalized_candidates: list[NormalizedInstructionCandidate] = []
     if messages is not None and candidate_indices:
@@ -139,6 +146,22 @@ def build_client_instruction_identity(
         ]
         if payload_instruction_indices != candidate_indices:
             blocked_reasons.append("candidate_indices_mismatch")
+        if isinstance(extraction_artifact, Mapping):
+            actual_candidate_roles = _unique_in_order(
+                [
+                    str(messages[index].get("role"))
+                    for index in candidate_indices
+                    if isinstance(messages[index], Mapping)
+                    and messages[index].get("role") in _INSTRUCTION_ROLES
+                ]
+            )
+            raw_candidate_roles = extraction_artifact.get("candidate_roles")
+            if (
+                isinstance(raw_candidate_roles, Sequence)
+                and not isinstance(raw_candidate_roles, (str, bytes, bytearray))
+                and list(raw_candidate_roles) != actual_candidate_roles
+            ):
+                blocked_reasons.append("candidate_roles_mismatch")
 
         for index in candidate_indices:
             message = messages[index]
@@ -169,6 +192,14 @@ def build_client_instruction_identity(
         ]
         if payload_instruction_indices:
             blocked_reasons.append("candidate_indices_mismatch")
+        if isinstance(extraction_artifact, Mapping):
+            raw_candidate_roles = extraction_artifact.get("candidate_roles")
+            if (
+                isinstance(raw_candidate_roles, Sequence)
+                and not isinstance(raw_candidate_roles, (str, bytes, bytearray))
+                and list(raw_candidate_roles) != []
+            ):
+                blocked_reasons.append("candidate_roles_mismatch")
 
     blocked_reasons = _unique_in_order(blocked_reasons)
     if blocked_reasons:
@@ -349,7 +380,11 @@ def _identity_context_valid(
 
 
 def _bounded_non_empty_string(value: Any) -> bool:
-    return isinstance(value, str) and bool(value) and len(value) <= _MAX_CONTEXT_VERSION_LENGTH
+    return (
+        isinstance(value, str)
+        and bool(value.strip())
+        and len(value) <= _MAX_CONTEXT_VERSION_LENGTH
+    )
 
 
 def _sha256_json(value: Mapping[str, Any]) -> str:
