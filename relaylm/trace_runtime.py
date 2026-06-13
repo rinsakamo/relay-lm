@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from relaylm.client_instruction_extraction import (
+    build_client_instruction_extraction_dry_run,
+    build_client_instruction_extraction_node_result,
+)
 from relaylm.client_message_canonicalization import (
     build_client_message_canonicalization_dry_run,
     build_client_message_canonicalization_node_result,
@@ -12,6 +16,7 @@ from relaylm.config import RelayLMConfig
 from relaylm.diagnostics import RequestDiagnostics
 from relaylm.pipeline_context import consume_active_pipeline_context
 from relaylm.pipeline_node_adapter import record_phase45_node_results
+from relaylm.pipeline_node_result import PipelineNodeResult
 from relaylm.trace import append_trace_record, build_trace_record
 
 
@@ -33,11 +38,12 @@ def trace_runtime_event(
     pipeline_context = consume_active_pipeline_context()
     if pipeline_context is not None:
         try:
+            managed_route = pipeline_context.route.mode_applied != "pass_through"
             client_message_canonicalization_dry_run = (
                 build_client_message_canonicalization_dry_run(
                     pipeline_context.original_payload,
                     enabled=config.client_message_canonicalization_dry_run_enabled,
-                    managed_route=pipeline_context.route.mode_applied != "pass_through",
+                    managed_route=managed_route,
                 )
             )
             client_message_canonicalization_node_result = (
@@ -50,6 +56,19 @@ def trace_runtime_event(
                     0,
                     client_message_canonicalization_node_result,
                 )
+
+            client_instruction_extraction_dry_run = (
+                build_client_instruction_extraction_dry_run(
+                    pipeline_context.original_payload,
+                    enabled=config.client_instruction_extraction_dry_run_enabled,
+                    managed_route=managed_route,
+                )
+            )
+            client_instruction_extraction_node_result = (
+                build_client_instruction_extraction_node_result(
+                    client_instruction_extraction_dry_run
+                )
+            )
 
             record_phase45_node_results(
                 pipeline_context,
@@ -70,6 +89,11 @@ def trace_runtime_event(
                     diagnostics.relayctx_short_term_runtime_injection_apply_result
                 ),
             )
+            if client_instruction_extraction_node_result is not None:
+                _insert_client_instruction_node_result(
+                    pipeline_context.node_results,
+                    client_instruction_extraction_node_result,
+                )
             pipeline_node_results = pipeline_context.node_results_to_log_dicts()
         except Exception:
             pipeline_node_results = None
@@ -200,6 +224,18 @@ def trace_runtime_event(
     except Exception:
         return False
     return True
+
+
+def _insert_client_instruction_node_result(
+    node_results: list[PipelineNodeResult],
+    node_result: PipelineNodeResult,
+) -> None:
+    insert_index = 0
+    for index, existing in enumerate(node_results):
+        if existing.node_name == "client_message_canonicalization":
+            insert_index = index + 1
+            break
+    node_results.insert(insert_index, node_result)
 
 
 def extract_response_text(body: Any) -> str | None:

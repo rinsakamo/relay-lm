@@ -29,6 +29,7 @@ def build_client_instruction_extraction_dry_run(
     payload: Mapping[str, Any] | None,
     *,
     enabled: bool,
+    managed_route: bool = True,
 ) -> dict[str, Any] | None:
     """Classify instruction candidates without mutating or copying content.
 
@@ -41,11 +42,15 @@ def build_client_instruction_extraction_dry_run(
         return None
 
     blocked_reasons: list[str] = []
+    if not managed_route:
+        blocked_reasons.append("pass_through_route_exempt")
     artifact: dict[str, Any] = {
         "schema_version": _SCHEMA_VERSION,
         "enabled": True,
         "diagnostics_only": True,
         "content_free": True,
+        "managed_route": bool(managed_route),
+        "route_policy": "relay_managed" if managed_route else "pass_through",
         "messages_present": False,
         "message_count": 0,
         "valid_message_count": 0,
@@ -66,12 +71,14 @@ def build_client_instruction_extraction_dry_run(
     }
 
     if not isinstance(payload, Mapping):
-        artifact["blocked_reasons"] = ["payload_not_object"]
+        blocked_reasons.append("payload_not_object")
+        artifact["blocked_reasons"] = _unique_in_order(blocked_reasons)
         return artifact
 
     raw_messages = payload.get("messages")
     if not isinstance(raw_messages, list):
-        artifact["blocked_reasons"] = ["messages_not_list"]
+        blocked_reasons.append("messages_not_list")
+        artifact["blocked_reasons"] = _unique_in_order(blocked_reasons)
         return artifact
 
     artifact["messages_present"] = True
@@ -139,7 +146,7 @@ def build_client_instruction_extraction_dry_run(
             ],
             "tool_message_count_after_latest_user": tool_state["tool_message_count"],
             "blocked_reasons": blocked_reasons,
-            "fingerprint_candidate_ready": not blocked_reasons,
+            "fingerprint_candidate_ready": managed_route and not blocked_reasons,
         }
     )
     return artifact
@@ -153,17 +160,23 @@ def build_client_instruction_extraction_node_result(
     if not isinstance(artifact, Mapping):
         return None
 
+    managed_route = artifact.get("managed_route") is True
     ready = artifact.get("fingerprint_candidate_ready") is True
+    if not managed_route:
+        status = "skipped"
+        decision = "pass_through_route_exempt"
+    elif ready:
+        status = "diagnostic_only"
+        decision = "instruction_fingerprint_candidate_ready"
+    else:
+        status = "diagnostic_only"
+        decision = "instruction_fingerprint_candidate_blocked"
+
     blocked_reasons = _strings(artifact.get("blocked_reasons"))
-    decision = (
-        "instruction_fingerprint_candidate_ready"
-        if ready
-        else "instruction_fingerprint_candidate_blocked"
-    )
     diagnostics = {key: value for key, value in artifact.items() if key != "blocked_reasons"}
     return build_pipeline_node_result(
         node_name="client_instruction_extraction",
-        status="diagnostic_only",
+        status=status,
         decision=decision,
         blocked_reasons=blocked_reasons,
         diagnostics=diagnostics,
