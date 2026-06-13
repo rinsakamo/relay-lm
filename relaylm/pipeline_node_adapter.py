@@ -9,6 +9,9 @@ from relaylm.pipeline_context import PipelineContext
 from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
 
 
+_INPUT_SIDE_DIRECT_NODE_NAMES = frozenset({"client_message_canonicalization"})
+
+
 def record_phase45_node_results(
     pipeline_context: PipelineContext,
     *,
@@ -23,9 +26,10 @@ def record_phase45_node_results(
 ) -> None:
     """Record Phase 4.5 diagnostics without copying request or response content.
 
-    Synthesized input/Repack records are inserted before directly recorded
-    downstream nodes such as ``relayctx_unpack`` so trace order follows the
-    pipeline even though Phase 4.5 synthesis still occurs at request end.
+    Synthesized input/Repack records are inserted after directly recorded
+    input-side nodes and before downstream nodes such as ``relayctx_unpack`` so
+    trace order follows the pipeline even though Phase 4.5 synthesis still
+    occurs at request end.
     """
 
     existing = {result.node_name for result in pipeline_context.node_results}
@@ -167,7 +171,8 @@ def record_phase45_node_results(
         )
 
     if synthesized:
-        pipeline_context.node_results[0:0] = synthesized
+        insertion_index = _synthesized_insertion_index(pipeline_context.node_results)
+        pipeline_context.node_results[insertion_index:insertion_index] = synthesized
 
 
 def _summaries(
@@ -204,6 +209,13 @@ def _repack_reasons(
         if reason and reason not in result:
             result.append(reason)
     return result
+
+
+def _synthesized_insertion_index(results: Sequence[PipelineNodeResult]) -> int:
+    index = 0
+    while index < len(results) and results[index].node_name in _INPUT_SIDE_DIRECT_NODE_NAMES:
+        index += 1
+    return index
 
 
 def _get(mapping: Mapping[str, Any] | None, key: str) -> Any:
