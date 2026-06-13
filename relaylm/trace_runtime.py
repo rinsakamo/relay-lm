@@ -21,6 +21,7 @@ from relaylm.client_instruction_fingerprint import (
 )
 from relaylm.client_instruction_identity_runtime import (
     build_client_instruction_identity_runtime_node_result,
+    client_instruction_identity_dependency_enabled,
 )
 from relaylm.client_message_canonicalization import (
     build_client_message_canonicalization_dry_run,
@@ -53,6 +54,9 @@ def trace_runtime_event(
     if pipeline_context is not None:
         try:
             managed_route = pipeline_context.route.mode_applied != "pass_through"
+            instruction_dependency_enabled = (
+                client_instruction_identity_dependency_enabled(pipeline_context.route)
+            )
             client_message_canonicalization_dry_run = (
                 build_client_message_canonicalization_dry_run(
                     pipeline_context.original_payload,
@@ -74,7 +78,7 @@ def trace_runtime_event(
             client_instruction_extraction_dry_run = (
                 build_client_instruction_extraction_dry_run(
                     pipeline_context.original_payload,
-                    enabled=config.client_instruction_extraction_dry_run_enabled,
+                    enabled=instruction_dependency_enabled,
                     managed_route=managed_route,
                 )
             )
@@ -86,7 +90,7 @@ def trace_runtime_event(
             client_instruction_fingerprint_dry_run = (
                 build_client_instruction_fingerprint_dry_run(
                     client_instruction_extraction_dry_run,
-                    enabled=config.client_instruction_extraction_dry_run_enabled,
+                    enabled=instruction_dependency_enabled,
                 )
             )
             client_instruction_fingerprint_node_result = (
@@ -101,7 +105,7 @@ def trace_runtime_event(
             )
             client_instruction_cache_dry_run = build_client_instruction_cache_dry_run(
                 client_instruction_fingerprint_dry_run,
-                enabled=config.client_instruction_extraction_dry_run_enabled,
+                enabled=instruction_dependency_enabled,
                 lookup_requested=(
                     pipeline_context.route.client_instruction_cache_lookup_enabled
                 ),
