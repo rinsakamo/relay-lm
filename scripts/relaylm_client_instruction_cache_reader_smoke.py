@@ -6,11 +6,16 @@ from __future__ import annotations
 import builtins
 import json
 import os
+import sys
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 from unittest import mock
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from relaylm.client_instruction_cache_reader import (
     build_client_instruction_cache_read_diagnostics,
@@ -25,6 +30,7 @@ def main() -> None:
     test_default_off_no_filesystem_access()
     test_missing_results()
     test_found_result()
+    test_root_swap_stays_anchored()
     test_size_limits()
     test_malformed_entries()
     test_path_blocks()
@@ -109,6 +115,57 @@ def test_found_result() -> None:
         assert sentinel not in repr(result)
 
 
+def test_root_swap_stays_anchored() -> None:
+    if os.name != "posix":
+        return
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base = Path(tmpdir)
+        root = base / "root"
+        outside = base / "outside"
+        saved_root = base / "saved-root"
+        root.mkdir()
+        outside.mkdir()
+        (root / f"{KEY}.json").write_text('{"inside": true}', encoding="utf-8")
+        (outside / f"{KEY}.json").write_text('{"outside": true}', encoding="utf-8")
+
+        original_open = os.open
+
+        def swapping_open(
+            path: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+            flags: int,
+            mode: int = 0o777,
+            *,
+            dir_fd: int | None = None,
+        ) -> int:
+            if dir_fd is not None:
+                return original_open(path, flags, mode, dir_fd=dir_fd)
+            fd = original_open(path, flags, mode)
+            if Path(path) == root and not swapping_open.swapped:
+                root.rename(saved_root)
+                root.symlink_to(outside, target_is_directory=True)
+                swapping_open.swapped = True
+            return fd
+
+        swapping_open.swapped = False  # type: ignore[attr-defined]
+        try:
+            with mock.patch.object(os, "open", side_effect=swapping_open):
+                result = read_client_instruction_cache_candidate(
+                    root_path=root,
+                    cache_key_sha256=KEY,
+                    enabled=True,
+                )
+        finally:
+            if root.is_symlink():
+                root.unlink()
+            if saved_root.exists():
+                saved_root.rename(root)
+
+        assert result is not None
+        assert result.status == "found"
+        assert result.candidate_entry == {"inside": True}
+
+
 def test_size_limits() -> None:
     exact = b'{"a":"' + (b"x" * 2) + b'"}'
     assert len(exact) == 10
@@ -158,6 +215,7 @@ def test_malformed_entries() -> None:
         (b'{"a": {"b": 1, "b": 2}}', "cache_entry_duplicate_json_key"),
         (b'{"a": NaN}', "cache_entry_nonstandard_number"),
         (b'{"a": Infinity}', "cache_entry_nonstandard_number"),
+        (b'{"a": -Infinity}', "cache_entry_nonstandard_number"),
         (b"[]", "cache_entry_not_object"),
         (b"null", "cache_entry_not_object"),
     ]
