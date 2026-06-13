@@ -197,7 +197,7 @@ def _classify_instruction_candidate_content(content: Any) -> dict[str, Any]:
     if isinstance(content, str):
         return {
             "valid": bool(content.strip()),
-            "kind": "text" if content.strip() else "empty_text",
+            "kind": "string" if content.strip() else "empty_string",
             "multimodal": False,
         }
 
