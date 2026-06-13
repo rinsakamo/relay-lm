@@ -75,7 +75,7 @@ def _assert_instruction_candidates_ready() -> None:
     require(artifact.get("instruction_candidate_count") == 2, artifact)
     require(artifact.get("candidate_roles") == ["system", "developer"], artifact)
     require(artifact.get("candidate_indices") == [0, 1], artifact)
-    require(artifact.get("content_shape_counts") == {"text": 1, "text_parts": 1}, artifact)
+    require(artifact.get("content_shape_counts") == {"string": 1, "text_parts": 1}, artifact)
     require(artifact.get("fingerprint_candidate_ready") is True, artifact)
     require(artifact.get("blocked_reasons") == [], artifact)
     _assert_no_raw_content(artifact)
