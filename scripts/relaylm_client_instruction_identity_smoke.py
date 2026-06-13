@@ -377,6 +377,63 @@ def _assert_fail_closed() -> None:
         "source_extraction_blocked",
         "active_tool_transaction_requires_preservation",
     )
+    fabricated_active_base = dict(
+        ready_artifact,
+        active_tool_transaction_candidate=False,
+        fingerprint_candidate_ready=True,
+        blocked_reasons=[],
+    )
+    assistant_tool_call_payload = _payload(
+        [
+            {"role": "system", "content": "system identity secret"},
+            {"role": "user", "content": "user identity secret"},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_identity_secret_123",
+                        "type": "function",
+                        "function": {"name": "lookup", "arguments": "{}"},
+                    }
+                ],
+            },
+        ]
+    )
+    _blocked(
+        _identity(assistant_tool_call_payload, fabricated_active_base),
+        "active_tool_transaction_requires_preservation",
+    )
+    tool_response_payload = _payload(
+        [
+            {"role": "system", "content": "system identity secret"},
+            {"role": "user", "content": "user identity secret"},
+            {"role": "tool", "tool_call_id": "call_identity_secret_123", "content": "tool identity secret"},
+        ]
+    )
+    _blocked(
+        _identity(tool_response_payload, fabricated_active_base),
+        "active_tool_transaction_requires_preservation",
+    )
+    prior_tool_history_payload = _payload(
+        [
+            {"role": "system", "content": "system identity secret"},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_identity_secret_123",
+                        "type": "function",
+                        "function": {"name": "lookup", "arguments": "{}"},
+                    }
+                ],
+            },
+            {"role": "tool", "tool_call_id": "call_identity_secret_123", "content": "tool identity secret"},
+            {"role": "user", "content": "user identity secret"},
+        ]
+    )
+    _ready(_identity(prior_tool_history_payload, fabricated_active_base))
     _blocked(_identity(ready_payload, route_model=""), "route_model_invalid")
     _blocked(_identity(ready_payload, route_model="   "), "route_model_invalid")
     _blocked(_identity(ready_payload, character_id="   "), "identity_context_version_invalid")

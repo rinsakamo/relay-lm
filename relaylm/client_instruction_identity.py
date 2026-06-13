@@ -126,6 +126,8 @@ def build_client_instruction_identity(
         blocked_reasons.append("messages_not_list")
     else:
         messages = payload["messages"]
+        if _payload_has_active_tool_transaction(messages):
+            blocked_reasons.append("active_tool_transaction_requires_preservation")
 
     candidate_indices: list[int] = []
     if isinstance(extraction_artifact, Mapping):
@@ -347,6 +349,36 @@ def _normalize_text(value: str) -> str:
     value = unicodedata.normalize("NFC", value)
     value = "\n".join(line.rstrip(" \t") for line in value.split("\n"))
     return value.strip()
+
+
+def _latest_user_message_index(messages: Sequence[Any]) -> int | None:
+    for index in range(len(messages) - 1, -1, -1):
+        message = messages[index]
+        if isinstance(message, Mapping) and message.get("role") == "user":
+            return index
+    return None
+
+
+def _payload_has_active_tool_transaction(messages: Sequence[Any]) -> bool:
+    latest_user_index = _latest_user_message_index(messages)
+    if latest_user_index is None:
+        return False
+
+    for message in messages[latest_user_index + 1 :]:
+        if not isinstance(message, Mapping):
+            continue
+
+        if (
+            message.get("role") == "assistant"
+            and isinstance(message.get("tool_calls"), list)
+            and bool(message.get("tool_calls"))
+        ):
+            return True
+
+        if message.get("role") == "tool":
+            return True
+
+    return False
 
 
 def _candidate_indices_valid(value: Any, messages: list[Any] | None) -> bool:
