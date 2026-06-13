@@ -76,11 +76,7 @@ def trace_runtime_event(
             client_instruction_fingerprint_dry_run = (
                 build_client_instruction_fingerprint_dry_run(
                     client_instruction_extraction_dry_run,
-                    enabled=getattr(
-                        config,
-                        "client_instruction_fingerprint_dry_run_enabled",
-                        False,
-                    ),
+                    enabled=config.client_instruction_extraction_dry_run_enabled,
                 )
             )
             client_instruction_fingerprint_node_result = (
