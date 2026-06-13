@@ -64,16 +64,14 @@ def _assert_instruction_candidates_ready() -> None:
                 "content": [{"type": "text", "text": "developer secret instruction"}],
             },
             {"role": "user", "content": "user private current request"},
-            {"role": "assistant", "content": "assistant private answer"},
-            {"role": "tool", "content": "tool private result", "tool_call_id": "tool-1"},
         ]
     )
     artifact = build_client_instruction_extraction_dry_run(payload, enabled=True)
     require(isinstance(artifact, dict), artifact)
     require(artifact.get("content_free") is True, artifact)
     require(artifact.get("diagnostics_only") is True, artifact)
-    require(artifact.get("message_count") == 5, artifact)
-    require(artifact.get("valid_message_count") == 5, artifact)
+    require(artifact.get("message_count") == 3, artifact)
+    require(artifact.get("valid_message_count") == 3, artifact)
     require(artifact.get("instruction_candidate_count") == 2, artifact)
     require(artifact.get("candidate_roles") == ["system", "developer"], artifact)
     require(artifact.get("candidate_indices") == [0, 1], artifact)
@@ -97,9 +95,9 @@ def _assert_instruction_candidates_ready() -> None:
 def _assert_user_assistant_tool_bodies_not_targets() -> None:
     payload = _base_payload(
         [
-            {"role": "user", "content": "user private current request"},
             {"role": "assistant", "content": "assistant private answer"},
             {"role": "tool", "content": "tool private result", "tool_call_id": "tool-1"},
+            {"role": "user", "content": "user private current request"},
         ]
     )
     artifact = build_client_instruction_extraction_dry_run(payload, enabled=True)
