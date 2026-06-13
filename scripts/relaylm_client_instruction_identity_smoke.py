@@ -304,6 +304,12 @@ def _assert_fail_closed() -> None:
     _blocked(_identity(ready_payload, out_of_range), "candidate_indices_invalid")
     invalid_role_artifact = dict(ready_artifact, candidate_roles=["user"])
     _blocked(_identity(ready_payload, invalid_role_artifact), "instruction_candidate_role_invalid")
+    for malformed_roles in ([[]], [1], [None], [{}]):
+        malformed_role_artifact = dict(ready_artifact, candidate_roles=malformed_roles)
+        _blocked(
+            _identity(ready_payload, malformed_role_artifact),
+            "instruction_candidate_role_invalid",
+        )
     developer_payload = _payload([{"role": "developer", "content": "developer identity secret"}])
     developer_artifact = dict(_artifact(developer_payload), candidate_roles=["system"])
     _blocked(_identity(developer_payload, developer_artifact), "candidate_roles_mismatch")

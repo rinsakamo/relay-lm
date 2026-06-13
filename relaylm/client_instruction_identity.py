@@ -102,7 +102,10 @@ def build_client_instruction_identity(
         if (
             not isinstance(raw_candidate_roles, Sequence)
             or isinstance(raw_candidate_roles, (str, bytes, bytearray))
-            or any(role not in _INSTRUCTION_ROLES for role in raw_candidate_roles)
+            or any(
+                not isinstance(role, str) or role not in _INSTRUCTION_ROLES
+                for role in raw_candidate_roles
+            )
         ):
             blocked_reasons.append("instruction_candidate_role_invalid")
         if extraction_artifact.get("active_tool_transaction_candidate") is True:
