@@ -125,11 +125,17 @@ def main() -> int:
     )
     require(isinstance(tool_artifact, dict), tool_artifact)
     require(tool_artifact["active_tool_transaction_candidate"] is True, tool_artifact)
+    require(tool_artifact["canonicalization_candidate_ready"] is False, tool_artifact)
+    require(
+        "active_tool_transaction_requires_preservation"
+        in tool_artifact["blocked_reasons"],
+        tool_artifact,
+    )
     require(tool_artifact["assistant_tool_call_message_count"] == 1, tool_artifact)
     require(tool_artifact["post_user_tool_message_count"] == 1, tool_artifact)
     require(tool_artifact["messages_after_current_user_count"] == 2, tool_artifact)
     require_content_free(tool_artifact, ["check the weather", "secret result", "call-1"])
-    print("ok detect active tool transaction candidate")
+    print("ok detect blocked active tool transaction candidate")
 
     pass_through = build_client_message_canonicalization_dry_run(
         payload,
@@ -160,6 +166,126 @@ def main() -> int:
     require("current_user_content_invalid" in invalid["blocked_reasons"], invalid)
     require(invalid["current_user_content_kind"] == "invalid_parts", invalid)
     print("ok fail closed on malformed active request evidence")
+
+    missing_text_part = build_client_message_canonicalization_dry_run(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text"},
+                        {"type": "image_url", "image_url": {"url": image_url}},
+                    ],
+                }
+            ]
+        },
+        enabled=True,
+        managed_route=True,
+    )
+    require(isinstance(missing_text_part, dict), missing_text_part)
+    require(
+        missing_text_part["canonicalization_candidate_ready"] is False,
+        missing_text_part,
+    )
+    require(missing_text_part["current_user_content_valid"] is False, missing_text_part)
+    require(missing_text_part["current_user_text_part_count"] == 0, missing_text_part)
+    require(missing_text_part["current_user_non_text_part_count"] == 1, missing_text_part)
+    require(missing_text_part["current_user_invalid_part_count"] == 1, missing_text_part)
+    require(
+        "current_user_content_invalid" in missing_text_part["blocked_reasons"],
+        missing_text_part,
+    )
+    require_content_free(missing_text_part, [image_url])
+    print("ok fail closed on missing text part text")
+
+    null_text_part = build_client_message_canonicalization_dry_run(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": None},
+                    ],
+                }
+            ]
+        },
+        enabled=True,
+        managed_route=True,
+    )
+    require(isinstance(null_text_part, dict), null_text_part)
+    require(
+        null_text_part["canonicalization_candidate_ready"] is False,
+        null_text_part,
+    )
+    require(null_text_part["current_user_content_valid"] is False, null_text_part)
+    require(null_text_part["current_user_text_part_count"] == 0, null_text_part)
+    require(null_text_part["current_user_non_text_part_count"] == 0, null_text_part)
+    require(null_text_part["current_user_invalid_part_count"] == 1, null_text_part)
+    require(
+        "current_user_content_invalid" in null_text_part["blocked_reasons"],
+        null_text_part,
+    )
+    print("ok fail closed on null input_text part text")
+
+    non_string_text_part = build_client_message_canonicalization_dry_run(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": 123},
+                    ],
+                }
+            ]
+        },
+        enabled=True,
+        managed_route=True,
+    )
+    require(isinstance(non_string_text_part, dict), non_string_text_part)
+    require(
+        non_string_text_part["canonicalization_candidate_ready"] is False,
+        non_string_text_part,
+    )
+    require(
+        non_string_text_part["current_user_content_valid"] is False,
+        non_string_text_part,
+    )
+    require(
+        non_string_text_part["current_user_invalid_part_count"] == 1,
+        non_string_text_part,
+    )
+    require(
+        "current_user_content_invalid" in non_string_text_part["blocked_reasons"],
+        non_string_text_part,
+    )
+    print("ok fail closed on non-string text part text")
+
+    empty_text_part = build_client_message_canonicalization_dry_run(
+        {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": ""},
+                    ],
+                }
+            ]
+        },
+        enabled=True,
+        managed_route=True,
+    )
+    require(isinstance(empty_text_part, dict), empty_text_part)
+    require(
+        empty_text_part["canonicalization_candidate_ready"] is False,
+        empty_text_part,
+    )
+    require(empty_text_part["current_user_content_valid"] is False, empty_text_part)
+    require(empty_text_part["current_user_invalid_part_count"] == 1, empty_text_part)
+    require(
+        "current_user_content_invalid" in empty_text_part["blocked_reasons"],
+        empty_text_part,
+    )
+    print("ok fail closed on empty input_text part text")
 
     missing_user = build_client_message_canonicalization_dry_run(
         {"messages": [{"role": "system", "content": "only instructions"}]},

@@ -99,6 +99,8 @@ def build_client_message_canonicalization_dry_run(
     active_tool_transaction_candidate = (
         assistant_tool_call_message_count > 0 or post_user_tool_message_count > 0
     )
+    if active_tool_transaction_candidate:
+        blocked_reasons.append("active_tool_transaction_requires_preservation")
 
     canonicalization_candidate_ready = managed_route and not blocked_reasons
     return {
@@ -239,8 +241,9 @@ def _classify_user_content(content: Any) -> dict[str, Any]:
             invalid_part_count += 1
             continue
         part_type = part.get("type")
-        if part_type in _TEXT_PART_TYPES and isinstance(part.get("text"), str):
-            if part.get("text"):
+        if part_type in _TEXT_PART_TYPES:
+            part_text = part.get("text")
+            if isinstance(part_text, str) and part_text.strip():
                 text_part_count += 1
             else:
                 invalid_part_count += 1
