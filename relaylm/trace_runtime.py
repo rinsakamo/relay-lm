@@ -8,6 +8,10 @@ from relaylm.client_instruction_extraction import (
     build_client_instruction_extraction_dry_run,
     build_client_instruction_extraction_node_result,
 )
+from relaylm.client_instruction_fingerprint import (
+    build_client_instruction_fingerprint_dry_run,
+    build_client_instruction_fingerprint_node_result,
+)
 from relaylm.client_message_canonicalization import (
     build_client_message_canonicalization_dry_run,
     build_client_message_canonicalization_node_result,
@@ -69,6 +73,17 @@ def trace_runtime_event(
                     client_instruction_extraction_dry_run
                 )
             )
+            client_instruction_fingerprint_dry_run = (
+                build_client_instruction_fingerprint_dry_run(
+                    client_instruction_extraction_dry_run,
+                    enabled=config.client_instruction_extraction_dry_run_enabled,
+                )
+            )
+            client_instruction_fingerprint_node_result = (
+                build_client_instruction_fingerprint_node_result(
+                    client_instruction_fingerprint_dry_run
+                )
+            )
 
             record_phase45_node_results(
                 pipeline_context,
@@ -90,9 +105,16 @@ def trace_runtime_event(
                 ),
             )
             if client_instruction_extraction_node_result is not None:
-                _insert_client_instruction_node_result(
+                _insert_after_node_result(
                     pipeline_context.node_results,
                     client_instruction_extraction_node_result,
+                    after_node_name="client_message_canonicalization",
+                )
+            if client_instruction_fingerprint_node_result is not None:
+                _insert_after_node_result(
+                    pipeline_context.node_results,
+                    client_instruction_fingerprint_node_result,
+                    after_node_name="client_instruction_extraction",
                 )
             pipeline_node_results = pipeline_context.node_results_to_log_dicts()
         except Exception:
@@ -226,13 +248,15 @@ def trace_runtime_event(
     return True
 
 
-def _insert_client_instruction_node_result(
+def _insert_after_node_result(
     node_results: list[PipelineNodeResult],
     node_result: PipelineNodeResult,
+    *,
+    after_node_name: str,
 ) -> None:
     insert_index = 0
     for index, existing in enumerate(node_results):
-        if existing.node_name == "client_message_canonicalization":
+        if existing.node_name == after_node_name:
             insert_index = index + 1
             break
     node_results.insert(insert_index, node_result)
