@@ -46,8 +46,9 @@ def trace_runtime_event(
                 )
             )
             if client_message_canonicalization_node_result is not None:
-                pipeline_context.record_node_result(
-                    client_message_canonicalization_node_result
+                pipeline_context.node_results.insert(
+                    0,
+                    client_message_canonicalization_node_result,
                 )
 
             record_phase45_node_results(
