@@ -183,6 +183,10 @@ def build_client_instruction_extraction_node_result(
 def assert_client_instruction_extraction_content_free(value: Any) -> None:
     """Fail if a dry-run artifact or node result exposes content-bearing keys."""
 
+    if isinstance(value, PipelineNodeResult):
+        assert_client_instruction_extraction_content_free(value.to_log_dict())
+        return
+
     if isinstance(value, Mapping):
         for key, nested in value.items():
             if str(key) in _FORBIDDEN_CONTENT_KEYS:
