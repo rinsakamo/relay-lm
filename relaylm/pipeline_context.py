@@ -6,10 +6,13 @@ from collections.abc import Mapping
 from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from relaylm.pipeline_node_result import PipelineNodeResult
 from relaylm.routing import ResolvedRoute
+
+if TYPE_CHECKING:
+    from relaylm.client_instruction_identity import ClientInstructionIdentityResult
 
 
 @dataclass
@@ -18,16 +21,30 @@ class PipelineContext:
 
     request_id: str
     run_id: str
-    original_payload: Mapping[str, Any]
-    forwarded_payload: dict[str, Any]
+    original_payload: Mapping[str, Any] = field(repr=False)
+    forwarded_payload: dict[str, Any] = field(repr=False)
     route: ResolvedRoute
     stream_enabled: bool
     last_mutating_step: str | None = None
     node_results: list[PipelineNodeResult] = field(default_factory=list)
-    ctx_working_update_candidate: dict[str, Any] | None = None
+    ctx_working_update_candidate: dict[str, Any] | None = field(
+        default=None,
+        repr=False,
+    )
+    _client_instruction_identity_result: ClientInstructionIdentityResult | None = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     def __post_init__(self) -> None:
         _ACTIVE_PIPELINE_CONTEXT.set(self)
+        from relaylm.client_instruction_identity_runtime import (
+            prepare_client_instruction_identity_runtime_private,
+        )
+
+        prepare_client_instruction_identity_runtime_private(pipeline_context=self)
 
     def replace_forwarded_payload(
         self,
@@ -51,6 +68,22 @@ class PipelineContext:
         self.ctx_working_update_candidate = (
             deepcopy(dict(candidate)) if isinstance(candidate, Mapping) else None
         )
+
+    def set_client_instruction_identity_result(
+        self,
+        result: ClientInstructionIdentityResult | None,
+    ) -> None:
+        """Store one content-bearing request-local result without serialization."""
+
+        self._client_instruction_identity_result = result
+
+    @property
+    def client_instruction_identity_result(
+        self,
+    ) -> ClientInstructionIdentityResult | None:
+        """Return the request-local private identity result without copying it."""
+
+        return self._client_instruction_identity_result
 
     def node_results_to_log_dicts(self) -> list[dict[str, Any]]:
         """Return detached log dictionaries for recorded node results."""
