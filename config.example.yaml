@@ -52,6 +52,13 @@ relayctx_unpack_apply_enabled: false
 relayctx_unpack_dry_run_only: true
 relayctx_unpack_max_update_chars: 4096
 
+# Client message canonicalization dry-run is default-off, diagnostics-only, and
+# content-free. When enabled, RelayLM inspects PipelineContext.original_payload
+# for current-request message shape, records a pipeline node result, and never
+# mutates forwarded/backend payloads, excludes history, caches instructions, or
+# persists CTX/MEM/SOUL/SLP state.
+client_message_canonicalization_dry_run_enabled: false
+
 # RelayINT fast path dry-run is default-off, diagnostics-only, and content-free.
 # It uses deterministic heuristics only: no LLM call, no MEM lookup, and no
 # backend payload or response mutation.

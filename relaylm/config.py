@@ -106,6 +106,7 @@ class RelayLMConfig(BaseModel):
     relayctx_unpack_apply_enabled: bool = False
     relayctx_unpack_dry_run_only: bool = True
     relayctx_unpack_max_update_chars: int = Field(default=4096, gt=0)
+    client_message_canonicalization_dry_run_enabled: bool = False
     relayint_fast_path_dry_run_enabled: bool = False
     relayint_fast_path_high_confidence_threshold: float = Field(default=0.80, ge=0.0, le=1.0)
     relayint_fast_path_low_confidence_threshold: float = Field(default=0.55, ge=0.0, le=1.0)

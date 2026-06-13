@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from relaylm.client_message_canonicalization import (
+    build_client_message_canonicalization_dry_run,
+    build_client_message_canonicalization_node_result,
+)
 from relaylm.config import RelayLMConfig
 from relaylm.diagnostics import RequestDiagnostics
 from relaylm.pipeline_context import consume_active_pipeline_context
@@ -29,6 +33,24 @@ def trace_runtime_event(
     pipeline_context = consume_active_pipeline_context()
     if pipeline_context is not None:
         try:
+            client_message_canonicalization_dry_run = (
+                build_client_message_canonicalization_dry_run(
+                    pipeline_context.original_payload,
+                    enabled=config.client_message_canonicalization_dry_run_enabled,
+                    managed_route=pipeline_context.route.mode_applied != "pass_through",
+                )
+            )
+            client_message_canonicalization_node_result = (
+                build_client_message_canonicalization_node_result(
+                    client_message_canonicalization_dry_run
+                )
+            )
+            if client_message_canonicalization_node_result is not None:
+                pipeline_context.node_results.insert(
+                    0,
+                    client_message_canonicalization_node_result,
+                )
+
             record_phase45_node_results(
                 pipeline_context,
                 relayref_artifact=diagnostics.relayref_artifact,
