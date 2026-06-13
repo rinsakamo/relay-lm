@@ -59,6 +59,11 @@ relayctx_unpack_max_update_chars: 4096
 # persists CTX/MEM/SOUL/SLP state.
 client_message_canonicalization_dry_run_enabled: false
 
+# Managed-route client-history exclusion preflight.
+# Identifies a detached current-turn reconstruction candidate and emits
+# content-free diagnostics only. It does not mutate backend payloads.
+client_history_exclusion_preflight_enabled: false
+
 # Client instruction extraction dry-run is default-off, diagnostics-only, and
 # content-free. When enabled, RelayLM inspects PipelineContext.original_payload
 # for system/developer instruction candidate shape, records a pipeline node

@@ -16,6 +16,9 @@ if TYPE_CHECKING:
     from relaylm.client_instruction_cache_lookup_runtime import (
         ClientInstructionCacheLookupRuntimeResult,
     )
+    from relaylm.client_history_exclusion_preflight import (
+        ClientHistoryExclusionPreflightResult,
+    )
 
 
 @dataclass
@@ -48,6 +51,14 @@ class PipelineContext:
         repr=False,
         compare=False,
     )
+    _client_history_exclusion_preflight_result: (
+        ClientHistoryExclusionPreflightResult | None
+    ) = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     def __post_init__(self) -> None:
         _ACTIVE_PIPELINE_CONTEXT.set(self)
@@ -57,9 +68,13 @@ class PipelineContext:
         from relaylm.client_instruction_cache_lookup_runtime import (
             prepare_client_instruction_cache_lookup_runtime_private,
         )
+        from relaylm.client_history_exclusion_preflight import (
+            prepare_client_history_exclusion_preflight_runtime_private,
+        )
 
         prepare_client_instruction_identity_runtime_private(pipeline_context=self)
         prepare_client_instruction_cache_lookup_runtime_private(pipeline_context=self)
+        prepare_client_history_exclusion_preflight_runtime_private(pipeline_context=self)
 
     def replace_forwarded_payload(
         self,
@@ -115,6 +130,22 @@ class PipelineContext:
         """Return request-local private cache lookup state without copying it."""
 
         return self._client_instruction_cache_lookup_runtime_result
+
+    def set_client_history_exclusion_preflight_result(
+        self,
+        result: ClientHistoryExclusionPreflightResult | None,
+    ) -> None:
+        """Store one content-bearing preflight result without serialization."""
+
+        self._client_history_exclusion_preflight_result = result
+
+    @property
+    def client_history_exclusion_preflight_result(
+        self,
+    ) -> ClientHistoryExclusionPreflightResult | None:
+        """Return request-local private preflight state without copying it."""
+
+        return self._client_history_exclusion_preflight_result
 
     def node_results_to_log_dicts(self) -> list[dict[str, Any]]:
         """Return detached log dictionaries for recorded node results."""

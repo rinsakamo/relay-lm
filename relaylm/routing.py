@@ -27,6 +27,8 @@ class ResolvedRoute:
     relayctx_unpack_apply_enabled: bool = False
     relayctx_unpack_dry_run_only: bool = True
     relayctx_unpack_max_update_chars: int = 4096
+    client_message_canonicalization_dry_run_enabled: bool = False
+    client_history_exclusion_preflight_enabled: bool = False
     client_instruction_extraction_dry_run_enabled: bool = False
     client_instruction_cache_lookup_enabled: bool = False
     client_instruction_cache_root: str | None = None
@@ -74,6 +76,12 @@ def resolve_route(config: RelayLMConfig, model: str) -> ResolvedRoute:
         relayctx_unpack_apply_enabled=config.relayctx_unpack_apply_enabled,
         relayctx_unpack_dry_run_only=config.relayctx_unpack_dry_run_only,
         relayctx_unpack_max_update_chars=config.relayctx_unpack_max_update_chars,
+        client_message_canonicalization_dry_run_enabled=(
+            config.client_message_canonicalization_dry_run_enabled
+        ),
+        client_history_exclusion_preflight_enabled=(
+            config.client_history_exclusion_preflight_enabled
+        ),
         client_instruction_extraction_dry_run_enabled=(
             config.client_instruction_extraction_dry_run_enabled
         ),

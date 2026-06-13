@@ -11,6 +11,10 @@ from relaylm.client_instruction_cache import (
 from relaylm.client_instruction_cache_lookup_runtime import (
     build_client_instruction_cache_lookup_runtime_node_result,
 )
+from relaylm.client_history_exclusion_preflight import (
+    build_client_history_exclusion_preflight_node_result,
+    client_message_canonicalization_dependency_enabled,
+)
 from relaylm.client_instruction_extraction import (
     build_client_instruction_extraction_dry_run,
     build_client_instruction_extraction_node_result,
@@ -60,7 +64,9 @@ def trace_runtime_event(
             client_message_canonicalization_dry_run = (
                 build_client_message_canonicalization_dry_run(
                     pipeline_context.original_payload,
-                    enabled=config.client_message_canonicalization_dry_run_enabled,
+                    enabled=client_message_canonicalization_dependency_enabled(
+                        pipeline_context.route
+                    ),
                     managed_route=managed_route,
                 )
             )
@@ -121,6 +127,11 @@ def trace_runtime_event(
                     pipeline_context.client_instruction_cache_lookup_runtime_result
                 )
             )
+            client_history_exclusion_preflight_node_result = (
+                build_client_history_exclusion_preflight_node_result(
+                    pipeline_context.client_history_exclusion_preflight_result
+                )
+            )
 
             record_phase45_node_results(
                 pipeline_context,
@@ -175,6 +186,19 @@ def trace_runtime_event(
                     pipeline_context.node_results,
                     client_instruction_cache_lookup_node_result,
                     after_node_name="client_instruction_cache",
+                )
+            if client_history_exclusion_preflight_node_result is not None:
+                preflight_after_node = (
+                    "client_instruction_cache_lookup"
+                    if client_instruction_cache_lookup_node_result is not None
+                    else "client_instruction_cache"
+                    if client_instruction_cache_node_result is not None
+                    else "client_message_canonicalization"
+                )
+                _insert_after_node_result(
+                    pipeline_context.node_results,
+                    client_history_exclusion_preflight_node_result,
+                    after_node_name=preflight_after_node,
                 )
             pipeline_node_results = pipeline_context.node_results_to_log_dicts()
         except Exception:
