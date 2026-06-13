@@ -37,7 +37,7 @@ def _base_payload(messages: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _assert_no_raw_content(value: Any) -> None:
-    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
     for raw in RAW_VALUES:
         require(raw not in encoded, f"content leaked into dry-run artifact: {raw!r}")
     assert_client_instruction_extraction_content_free(value)
@@ -82,6 +82,7 @@ def _assert_instruction_candidates_ready() -> None:
 
     result = build_client_instruction_extraction_node_result(artifact)
     require(result is not None, result)
+    _assert_no_raw_content(result)
     logged = result.to_log_dict()
     require(logged.get("node_name") == "client_instruction_extraction", logged)
     require(logged.get("status") == "diagnostic_only", logged)
