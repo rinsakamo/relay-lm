@@ -34,7 +34,6 @@ def main() -> int:
         omitted_block_ids=None,
         token_budget_status="within_budget",
     )
-
     require(dry["decision_state"] == "COMPILE_DRY_RUN", dry)
     require(dry["apply_compiled_messages"] is False, dry)
     require(dry["diagnostics_only"] is True, dry)
@@ -49,8 +48,7 @@ def main() -> int:
         compile_decision_dry_run=dry,
         trace_enabled=True,
     )
-    log_payload = diagnostics.to_log_dict()
-    require(log_payload.get("compile_decision_dry_run") == dry, log_payload)
+    require(diagnostics.to_log_dict().get("compile_decision_dry_run") == dry, dry)
     print("ok diagnostics log includes compile decision dry-run")
 
     cfg = yaml.safe_load((REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8"))
@@ -58,13 +56,12 @@ def main() -> int:
         trace_path = Path(td) / "trace.jsonl"
         cfg["trace"] = {"enabled": True, "path": str(trace_path)}
         config = RelayLMConfig.model_validate(cfg)
-
         wrote = trace_runtime_event(
             config=config,
             diagnostics=diagnostics,
-            messages=[{"role": "user", "content": "hello"}],
-            response_text="ok",
-            metadata={"phase": "smoke"},
+            message_count=1,
+            response_present=True,
+            metadata={"event": "backend_response", "status_code": 200},
         )
         require(wrote is True, wrote)
         content = trace_path.read_text(encoding="utf-8")
@@ -76,13 +73,12 @@ def main() -> int:
         wrote_disabled = trace_runtime_event(
             config=config_disabled,
             diagnostics=diagnostics,
-            messages=[{"role": "user", "content": "hello"}],
-            response_text="ok",
-            metadata={"phase": "disabled"},
+            message_count=1,
+            response_present=True,
+            metadata={"event": "backend_response", "status_code": 200},
         )
         require(wrote_disabled is False, wrote_disabled)
         print("ok trace disabled path unchanged")
-
     return 0
 
 
