@@ -1,0 +1,48 @@
+name: Audit projection validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - relaylm/audit_projection.py
+      - relaylm/trace.py
+      - relaylm/trace_runtime.py
+      - relaylm/app.py
+      - scripts/relaylm_audit_projection_contract_smoke.py
+      - scripts/relaylm_trace_content_free_contract_smoke.py
+      - scripts/relaylm_trace_success_smoke.py
+      - .github/workflows/audit-projection-validation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install RelayLM
+        run: python -m pip install -e .
+      - name: Compile
+        run: python -m compileall relaylm scripts
+      - name: Projection contract
+        run: python scripts/relaylm_audit_projection_contract_smoke.py
+      - name: Trace contract
+        run: python scripts/relaylm_trace_content_free_contract_smoke.py
+      - name: Trace JSONL
+        run: python scripts/relaylm_jsonl_trace_smoke.py
+      - name: Trace success
+        run: python scripts/relaylm_trace_success_smoke.py
+      - name: Hardening
+        run: python scripts/relaylm_hardening_smoke.py
+      - name: Pipeline runtime
+        run: python scripts/relaylm_pipeline_node_results_runtime_smoke.py
+      - name: Runtime diagnostics
+        run: python scripts/relaylm_runtime_diagnostics_smoke.py
+      - name: RelayCTX runtime app
+        run: python scripts/relaylm_relayctx_unpack_runtime_app_smoke.py
+      - name: Client message runtime
+        run: python scripts/relaylm_client_msg_runtime_dry_run_smoke.py
