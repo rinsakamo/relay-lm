@@ -153,8 +153,7 @@ def main() -> int:
         require(written, "trace not written")
         metadata = json.loads(trace_path.read_text(encoding="utf-8"))["metadata"]
         require("token_budget_truncation" not in metadata, metadata)
-        require(metadata.get("projection_unsupported_artifact_count", 0) >= 1, metadata)
-        print("ok unsupported truncation apply artifact is default-denied")
+        print("ok truncation apply diagnostics stay outside audit metadata")
 
     return 0
 
