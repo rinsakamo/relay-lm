@@ -1,28 +1,203 @@
-"""Local JSONL conversation trace helpers for RelayLM MVP-3."""
+"""Content-free local JSONL audit trace helpers for RelayLM."""
 
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field
+import re
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+AUDIT_TRACE_SCHEMA_VERSION = "relaylm.audit_trace.v1"
+
+# Runtime metadata is accepted only through this top-level allowlist. Nested
+# values are filtered again by key shape and scalar value shape below.
+_AUDIT_METADATA_TOP_LEVEL_KEYS = frozenset(
+    {
+        "event",
+        "status_code",
+        "error_class",
+        "latency_ms",
+        "bytes_in",
+        "bytes_out",
+        "bytes_avoided",
+        "pipeline_node_results",
+        "memory_source",
+        "memory_selection_summary",
+        "memory_block_assembly",
+        "token_memory_dry_run",
+        "token_policy_signal",
+        "token_policy_decision",
+        "token_policy_readiness",
+        "token_budget_truncation",
+        "stable_prefix_hash",
+        "stable_prefix_block_ids",
+        "memory_adapter_dry_run",
+        "memory_adapter_readiness",
+        "memory_adapter_conflicts",
+        "context_block_summary",
+        "persona_source_budget_diagnostics",
+        "request_scope_identity",
+        "scope_resolution_diagnostics",
+        "memory_adapter_shadow_dry_run",
+        "memory_adapter_shadow_readiness",
+        "memory_adapter_shadow_conflicts",
+        "memory_adapter_shadow_delta",
+        "relaysoul_runtime_feedback_summary",
+        "relayint_fast_path_dry_run",
+        "relayint_quick_clarification_preflight",
+        "relayint_quick_clarification_apply_plan",
+        "compile_decision_dry_run",
+        "relayemo_artifact",
+        "relayscn_scene_policy_artifact",
+        "relayref_artifact",
+        "runtime_ctx_injection_result",
+        "runtime_snippet_injection_result",
+        "relayctx_short_term_source_diagnostics",
+        "relayctx_short_term_extraction_dry_run",
+        "relayctx_short_term_block_assembly_dry_run",
+        "relayctx_short_term_runtime_injection_preflight",
+        "relayctx_short_term_runtime_injection_apply_result",
+        "relayrun_artifact",
+        "sanitizer_dropped_field_count",
+    }
+)
+
+# Content-bearing or local-structure-bearing keys are never persisted, even
+# when they appear inside an otherwise allowlisted diagnostics artifact.
+_FORBIDDEN_KEY_TOKENS = frozenset(
+    {
+        "argument",
+        "arguments",
+        "body",
+        "cache_entry",
+        "content",
+        "evidence",
+        "exception_text",
+        "forwarded_payload",
+        "instruction",
+        "message",
+        "messages",
+        "original_payload",
+        "page_path",
+        "path",
+        "payload",
+        "prompt",
+        "query",
+        "response_text",
+        "root_path",
+        "snippet",
+        "system_prompt",
+        "text",
+        "tool_result",
+        "url",
+    }
+)
+
+# Exact nested keys that are useful for audit and not covered by the suffix
+# rules. Values are still checked by _sanitize_audit_value().
+_SAFE_NESTED_KEYS = frozenset(
+    {
+        "applied",
+        "artifact_schema_version",
+        "blocked_reasons",
+        "compiler_used",
+        "content_free",
+        "decision",
+        "diagnostics_only",
+        "enabled",
+        "error_class",
+        "event",
+        "fallback_reason",
+        "node_name",
+        "node_status",
+        "reason",
+        "reasons",
+        "schema_version",
+        "source",
+        "status",
+        "status_code",
+    }
+)
+
+_SAFE_KEY_SUFFIXES = (
+    "_allowed",
+    "_applied",
+    "_attempted",
+    "_avoided",
+    "_blocked",
+    "_bytes",
+    "_characters",
+    "_chars",
+    "_class",
+    "_count",
+    "_decision",
+    "_detected",
+    "_enabled",
+    "_failed",
+    "_found",
+    "_hash",
+    "_id",
+    "_ids",
+    "_kind",
+    "_mode",
+    "_ms",
+    "_present",
+    "_ready",
+    "_reason",
+    "_reasons",
+    "_required",
+    "_source",
+    "_status",
+    "_type",
+    "_used",
+    "_valid",
+    "_version",
+)
+
+_SAFE_TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$")
+
 
 @dataclass(frozen=True)
 class TraceRecord:
+    """One content-free audit record.
+
+    The persisted schema deliberately has no messages, response text, snippet,
+    evidence, tool payload, or local path fields.
+    """
+
     trace_id: str
+    request_id: str
     created_at: str
     character_id: str | None
     route_model: str | None
     mode_applied: str | None
     compiler_used: bool
-    messages: list[dict[str, Any]]
-    response_text: str | None = None
+    message_count: int
+    response_present: bool
     metadata: dict[str, Any] = field(default_factory=dict)
+    schema_version: str = AUDIT_TRACE_SCHEMA_VERSION
+    content_free: bool = True
 
     def to_json_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        # Explicit serialization allowlist: adding a future dataclass field does
+        # not make it persistent by accident.
+        return {
+            "schema_version": AUDIT_TRACE_SCHEMA_VERSION,
+            "content_free": True,
+            "trace_id": self.trace_id,
+            "request_id": self.request_id,
+            "created_at": self.created_at,
+            "character_id": self.character_id,
+            "route_model": self.route_model,
+            "mode_applied": self.mode_applied,
+            "compiler_used": bool(self.compiler_used),
+            "message_count": max(0, int(self.message_count)),
+            "response_present": bool(self.response_present),
+            "metadata": sanitize_audit_metadata(self.metadata),
+        }
 
 
 def utc_now_iso() -> str:
@@ -36,22 +211,61 @@ def build_trace_record(
     route_model: str | None,
     mode_applied: str | None,
     compiler_used: bool,
-    messages: list[dict[str, Any]],
+    messages: list[dict[str, Any]] | None = None,
     response_text: str | None = None,
     metadata: dict[str, Any] | None = None,
     created_at: str | None = None,
+    request_id: str | None = None,
 ) -> TraceRecord:
+    """Build a content-free audit record from legacy runtime inputs.
+
+    ``messages`` and ``response_text`` remain compatibility inputs until the
+    P0-A2 runtime wiring change. Their content is never stored on TraceRecord;
+    only message count and response presence are retained.
+    """
+
     return TraceRecord(
         trace_id=trace_id,
+        request_id=request_id or trace_id,
         created_at=created_at or utc_now_iso(),
         character_id=character_id,
         route_model=route_model,
         mode_applied=mode_applied,
-        compiler_used=compiler_used,
-        messages=list(messages),
-        response_text=response_text,
-        metadata=dict(metadata or {}),
+        compiler_used=bool(compiler_used),
+        message_count=len(messages) if isinstance(messages, list) else 0,
+        response_present=isinstance(response_text, str) and bool(response_text),
+        metadata=sanitize_audit_metadata(metadata),
     )
+
+
+def sanitize_audit_metadata(metadata: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Return allowlisted, recursively content-free audit metadata.
+
+    Unsafe fields are dropped rather than serialized. A dropped-field counter
+    is retained so diagnostics can reveal that sanitization occurred without
+    retaining the rejected values.
+    """
+
+    if not isinstance(metadata, Mapping):
+        return {}
+
+    sanitized: dict[str, Any] = {}
+    dropped = 0
+    for raw_key, value in metadata.items():
+        key = str(raw_key)
+        if key not in _AUDIT_METADATA_TOP_LEVEL_KEYS:
+            dropped += 1
+            continue
+        clean_value, child_dropped = _sanitize_audit_value(value, key=key)
+        dropped += child_dropped
+        if clean_value is _DROP:
+            dropped += 1
+            continue
+        sanitized[key] = clean_value
+
+    if dropped:
+        sanitized["sanitizer_dropped_field_count"] = dropped
+    return sanitized
 
 
 def append_trace_record(path: str | Path, record: TraceRecord) -> None:
@@ -63,6 +277,8 @@ def append_trace_record(path: str | Path, record: TraceRecord) -> None:
 
 
 def read_trace_records(path: str | Path) -> list[TraceRecord]:
+    """Read audit records, discarding content from legacy trace rows."""
+
     trace_path = Path(path)
     if not trace_path.exists():
         return []
@@ -74,5 +290,129 @@ def read_trace_records(path: str | Path) -> list[TraceRecord]:
             if not stripped:
                 continue
             payload = json.loads(stripped)
-            records.append(TraceRecord(**payload))
+            if not isinstance(payload, Mapping):
+                continue
+            records.append(_trace_record_from_dict(payload))
     return records
+
+
+class _DropValue:
+    pass
+
+
+_DROP = _DropValue()
+
+
+def _trace_record_from_dict(payload: Mapping[str, Any]) -> TraceRecord:
+    legacy_messages = payload.get("messages")
+    message_count = _non_negative_int(payload.get("message_count"))
+    if message_count == 0 and isinstance(legacy_messages, list):
+        message_count = len(legacy_messages)
+
+    response_present = payload.get("response_present") is True
+    if not response_present:
+        legacy_response = payload.get("response_text")
+        response_present = isinstance(legacy_response, str) and bool(legacy_response)
+
+    trace_id = str(payload.get("trace_id") or payload.get("request_id") or "")
+    request_id = str(payload.get("request_id") or trace_id)
+    return TraceRecord(
+        trace_id=trace_id,
+        request_id=request_id,
+        created_at=str(payload.get("created_at") or utc_now_iso()),
+        character_id=_optional_string(payload.get("character_id")),
+        route_model=_optional_string(payload.get("route_model")),
+        mode_applied=_optional_string(payload.get("mode_applied")),
+        compiler_used=payload.get("compiler_used") is True,
+        message_count=message_count,
+        response_present=response_present,
+        metadata=sanitize_audit_metadata(
+            payload.get("metadata") if isinstance(payload.get("metadata"), Mapping) else None
+        ),
+        schema_version=AUDIT_TRACE_SCHEMA_VERSION,
+        content_free=True,
+    )
+
+
+def _sanitize_audit_value(value: Any, *, key: str) -> tuple[Any, int]:
+    if _is_forbidden_key(key):
+        return _DROP, 0
+
+    if value is None or isinstance(value, (bool, int, float)):
+        return value, 0
+
+    if isinstance(value, str):
+        if _safe_string_for_key(key, value):
+            return value, 0
+        return _DROP, 0
+
+    if isinstance(value, Mapping):
+        clean_mapping: dict[str, Any] = {}
+        dropped = 0
+        for raw_child_key, child_value in value.items():
+            child_key = str(raw_child_key)
+            if not _is_safe_nested_key(child_key):
+                dropped += 1
+                continue
+            clean_child, child_dropped = _sanitize_audit_value(
+                child_value,
+                key=child_key,
+            )
+            dropped += child_dropped
+            if clean_child is _DROP:
+                dropped += 1
+                continue
+            clean_mapping[child_key] = clean_child
+        return clean_mapping, dropped
+
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        clean_items: list[Any] = []
+        dropped = 0
+        for item in value:
+            clean_item, item_dropped = _sanitize_audit_value(item, key=key)
+            dropped += item_dropped
+            if clean_item is _DROP:
+                dropped += 1
+                continue
+            clean_items.append(clean_item)
+        return clean_items, dropped
+
+    return _DROP, 0
+
+
+def _is_safe_nested_key(key: str) -> bool:
+    if _is_forbidden_key(key):
+        return False
+    return key in _SAFE_NESTED_KEYS or key.endswith(_SAFE_KEY_SUFFIXES)
+
+
+def _is_forbidden_key(key: str) -> bool:
+    lowered = key.lower()
+    if lowered in _SAFE_NESTED_KEYS or lowered.endswith(_SAFE_KEY_SUFFIXES):
+        return False
+    return any(
+        lowered == token
+        or lowered.startswith(f"{token}_")
+        or lowered.endswith(f"_{token}")
+        for token in _FORBIDDEN_KEY_TOKENS
+    )
+
+
+def _safe_string_for_key(key: str, value: str) -> bool:
+    if not value or len(value) > 256:
+        return False
+    if key.endswith("_hash"):
+        return bool(re.fullmatch(r"[0-9a-fA-F]{16,128}", value))
+    return bool(_SAFE_TOKEN_RE.fullmatch(value))
+
+
+def _non_negative_int(value: Any) -> int:
+    if isinstance(value, bool):
+        return 0
+    if isinstance(value, int) and value >= 0:
+        return value
+    return 0
+
+
+def _optional_string(value: Any) -> str | None:
+    return value if isinstance(value, str) else None
