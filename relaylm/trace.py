@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -174,7 +174,9 @@ _SAFE_KEY_SUFFIXES = (
     "_version",
 )
 
-_SAFE_TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$")
+_ENUM_TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9_.:/-]{0,127}$")
+_OPAQUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$")
+_HASH_RE = re.compile(r"^[0-9a-fA-F]{16,128}$")
 
 
 @dataclass(frozen=True)
@@ -253,6 +255,9 @@ def build_trace_record(
     only message count and response presence are retained.
     """
 
+    sensitive_values = _collect_strings(messages)
+    if isinstance(response_text, str) and response_text:
+        sensitive_values.add(response_text)
     return TraceRecord(
         trace_id=trace_id,
         request_id=request_id or trace_id,
@@ -263,11 +268,18 @@ def build_trace_record(
         compiler_used=bool(compiler_used),
         message_count=len(messages) if isinstance(messages, list) else 0,
         response_present=isinstance(response_text, str) and bool(response_text),
-        metadata=sanitize_audit_metadata(metadata),
+        metadata=sanitize_audit_metadata(
+            metadata,
+            sensitive_values=sensitive_values,
+        ),
     )
 
 
-def sanitize_audit_metadata(metadata: Mapping[str, Any] | None) -> dict[str, Any]:
+def sanitize_audit_metadata(
+    metadata: Mapping[str, Any] | None,
+    *,
+    sensitive_values: Iterable[str] = (),
+) -> dict[str, Any]:
     """Return allowlisted, recursively content-free audit metadata.
 
     Unsafe fields are dropped rather than serialized. A dropped-field counter
@@ -278,6 +290,13 @@ def sanitize_audit_metadata(metadata: Mapping[str, Any] | None) -> dict[str, Any
     if not isinstance(metadata, Mapping):
         return {}
 
+    tainted_values = {
+        value.strip()
+        for value in sensitive_values
+        if isinstance(value, str) and value.strip()
+    }
+    tainted_values.update(_collect_tainted_metadata_strings(metadata))
+
     sanitized: dict[str, Any] = {}
     dropped = 0
     for raw_key, value in metadata.items():
@@ -285,7 +304,11 @@ def sanitize_audit_metadata(metadata: Mapping[str, Any] | None) -> dict[str, Any
         if key not in _AUDIT_METADATA_TOP_LEVEL_KEYS:
             dropped += 1
             continue
-        clean_value, child_dropped = _sanitize_audit_value(value, key=key)
+        clean_value, child_dropped = _sanitize_audit_value(
+            value,
+            key=key,
+            tainted_values=tainted_values,
+        )
         dropped += child_dropped
         if clean_value is _DROP:
             dropped += 1
@@ -338,10 +361,14 @@ def _trace_record_from_dict(payload: Mapping[str, Any]) -> TraceRecord:
     if message_count == 0 and isinstance(legacy_messages, list):
         message_count = len(legacy_messages)
 
+    legacy_response = payload.get("response_text")
     response_present = payload.get("response_present") is True
     if not response_present:
-        legacy_response = payload.get("response_text")
         response_present = isinstance(legacy_response, str) and bool(legacy_response)
+
+    sensitive_values = _collect_strings(legacy_messages)
+    if isinstance(legacy_response, str) and legacy_response:
+        sensitive_values.add(legacy_response)
 
     trace_id = str(payload.get("trace_id") or payload.get("request_id") or "")
     request_id = str(payload.get("request_id") or trace_id)
@@ -356,14 +383,20 @@ def _trace_record_from_dict(payload: Mapping[str, Any]) -> TraceRecord:
         message_count=message_count,
         response_present=response_present,
         metadata=sanitize_audit_metadata(
-            payload.get("metadata") if isinstance(payload.get("metadata"), Mapping) else None
+            payload.get("metadata") if isinstance(payload.get("metadata"), Mapping) else None,
+            sensitive_values=sensitive_values,
         ),
         schema_version=AUDIT_TRACE_SCHEMA_VERSION,
         content_free=True,
     )
 
 
-def _sanitize_audit_value(value: Any, *, key: str) -> tuple[Any, int]:
+def _sanitize_audit_value(
+    value: Any,
+    *,
+    key: str,
+    tainted_values: set[str],
+) -> tuple[Any, int]:
     if _is_forbidden_key(key):
         return _DROP, 0
 
@@ -371,7 +404,7 @@ def _sanitize_audit_value(value: Any, *, key: str) -> tuple[Any, int]:
         return value, 0
 
     if isinstance(value, str):
-        if _safe_string_for_key(key, value):
+        if _safe_string_for_key(key, value, tainted_values=tainted_values):
             return value, 0
         return _DROP, 0
 
@@ -383,6 +416,7 @@ def _sanitize_audit_value(value: Any, *, key: str) -> tuple[Any, int]:
             clean_child, child_dropped = _sanitize_audit_value(
                 child_value,
                 key=child_key,
+                tainted_values=tainted_values,
             )
             dropped += child_dropped
             if clean_child is _DROP:
@@ -395,7 +429,11 @@ def _sanitize_audit_value(value: Any, *, key: str) -> tuple[Any, int]:
         clean_items: list[Any] = []
         dropped = 0
         for item in value:
-            clean_item, item_dropped = _sanitize_audit_value(item, key=key)
+            clean_item, item_dropped = _sanitize_audit_value(
+                item,
+                key=key,
+                tainted_values=tainted_values,
+            )
             dropped += item_dropped
             if clean_item is _DROP:
                 dropped += 1
@@ -404,6 +442,46 @@ def _sanitize_audit_value(value: Any, *, key: str) -> tuple[Any, int]:
         return clean_items, dropped
 
     return _DROP, 0
+
+
+def _collect_tainted_metadata_strings(metadata: Mapping[str, Any]) -> set[str]:
+    tainted: set[str] = set()
+    for raw_key, value in metadata.items():
+        key = str(raw_key)
+        if key not in _AUDIT_METADATA_TOP_LEVEL_KEYS or _is_forbidden_key(key):
+            tainted.update(_collect_strings(value))
+            continue
+        tainted.update(_collect_forbidden_descendant_strings(value))
+    return tainted
+
+
+def _collect_forbidden_descendant_strings(value: Any) -> set[str]:
+    collected: set[str] = set()
+    if isinstance(value, Mapping):
+        for raw_key, child_value in value.items():
+            child_key = str(raw_key)
+            if _is_forbidden_key(child_key):
+                collected.update(_collect_strings(child_value))
+            else:
+                collected.update(_collect_forbidden_descendant_strings(child_value))
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        for item in value:
+            collected.update(_collect_forbidden_descendant_strings(item))
+    return collected
+
+
+def _collect_strings(value: Any) -> set[str]:
+    collected: set[str] = set()
+    if isinstance(value, str):
+        if value.strip():
+            collected.add(value.strip())
+    elif isinstance(value, Mapping):
+        for child_value in value.values():
+            collected.update(_collect_strings(child_value))
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        for item in value:
+            collected.update(_collect_strings(item))
+    return collected
 
 
 def _is_safe_nested_key(key: str) -> bool:
@@ -424,14 +502,35 @@ def _is_forbidden_key(key: str) -> bool:
     )
 
 
-def _safe_string_for_key(key: str, value: str) -> bool:
+def _safe_string_for_key(
+    key: str,
+    value: str,
+    *,
+    tainted_values: set[str],
+) -> bool:
     if not _is_safe_nested_key(key):
         return False
     if not value or len(value) > 256:
         return False
+    if _matches_tainted_value(value, tainted_values):
+        return False
     if key.endswith("_hash"):
-        return bool(re.fullmatch(r"[0-9a-fA-F]{16,128}", value))
-    return bool(_SAFE_TOKEN_RE.fullmatch(value))
+        return bool(_HASH_RE.fullmatch(value))
+    if key.endswith(("_id", "_ids")):
+        return bool(_OPAQUE_ID_RE.fullmatch(value))
+    return bool(_ENUM_TOKEN_RE.fullmatch(value))
+
+
+def _matches_tainted_value(value: str, tainted_values: set[str]) -> bool:
+    stripped = value.strip()
+    for tainted in tainted_values:
+        if stripped == tainted:
+            return True
+        if len(tainted) >= 8 and tainted in stripped:
+            return True
+        if len(stripped) >= 8 and stripped in tainted:
+            return True
+    return False
 
 
 def _non_negative_int(value: Any) -> int:
