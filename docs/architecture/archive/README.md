@@ -27,12 +27,13 @@ Reason archived:
 - assigns Wake-time reflection and recovery to RelayREF,
 - combines CTX working-memory concepts with semantic decisions now owned by RelayINT, RelaySCN, and RelayRUN.
 
-Still useful for:
+Useful principles migrated into current documents:
 
-- the distinction between RAM-side working state and prompt hints,
-- early reference-confidence ideas,
-- the two-step memory recall UX,
-- the motivation for minimal context repacking.
+- RAM-side working state remains separate from prompt-selected hints -> [Context packing design](../context_packing_design.md),
+- prompt packing selects only what the current turn needs rather than filling the available budget -> [Context packing design](../context_packing_design.md),
+- reference resolution prefers current CTX working state before long-term memory -> [RelayINT MVP design](../relayint_mvp_design.md),
+- ambiguous references require clarification before memory retrieval -> [RelayINT MVP design](../relayint_mvp_design.md),
+- explicit or confirmed long-term recall may use a clarification-gated two-step interaction -> [RelayINT MVP design](../relayint_mvp_design.md).
 
 Current replacements:
 
@@ -52,12 +53,14 @@ Reason archived:
 - places recovery orchestration and handoff repair under RelayREF rather than the current RelaySCN / RelayINT / RelayRUN split,
 - contains an early combined REF/SLP artifact model that no longer matches current typed runtime artifacts.
 
-Still useful for:
+Useful principles migrated or already represented in current documents:
 
-- recovery UX wording,
-- conservative sleep/reflect trigger ideas,
-- the rule that repaired context requires user confirmation,
-- simulation observations about ambiguity and forced sleep frequency.
+- repaired context is a confirmation candidate, not trusted context -> [RelaySCN MVP scene policy](../relayscn_mvp_scene_policy.md) and [RelayRUN recovery response generator contract](../../contracts/relayrun_recovery_response_generator_contract.md),
+- recovery must not auto-resume before user confirmation -> [RelayRUN recovery response generator contract](../../contracts/relayrun_recovery_response_generator_contract.md),
+- recovery blocks MEM/SOUL persistence and limits retrieval scope -> [RelaySCN MVP scene policy](../relayscn_mvp_scene_policy.md),
+- ordinary ambiguity should use RelayINT clarification rather than SLP -> [RelayINT MVP design](../relayint_mvp_design.md),
+- forced sleep/reset should remain rare and fail-closed -> [RelayMEM SLP execution design](../relaymem_slp_execution_design.md),
+- no extra Wake-time LLM output should be generated solely to run SLP -> [RelayMEM SLP execution design](../relaymem_slp_execution_design.md).
 
 Current replacements:
 
@@ -65,6 +68,7 @@ Current replacements:
 - [RelayINT MVP design](../relayint_mvp_design.md)
 - [RelaySCN MVP scene policy](../relayscn_mvp_scene_policy.md)
 - [RelayRUN runtime checkpoint design](../../relayrun_runtime_checkpoint_design.md)
+- [RelayRUN recovery response generator contract](../../contracts/relayrun_recovery_response_generator_contract.md)
 - [RelayMEM SLP execution design](../relaymem_slp_execution_design.md)
 
 ## Reviewed but retained as active documents
