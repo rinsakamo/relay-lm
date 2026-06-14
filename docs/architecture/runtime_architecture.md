@@ -27,6 +27,8 @@ OpenAI-compatible API layer
   -> Backend adapter layer
 ```
 
+This layer view is deployment- and integration-oriented. It complements, but does not replace, the canonical semantic/runtime pipeline vocabulary in [Pipeline Responsibility Design](pipeline_responsibility_design.md): RelaySCN, RelayEMO, RelayINT, RelayMEM, RelayCTX, RelayREF, RelayRUN, and RelaySLP.
+
 ## Terminology boundary notes
 
 - `route`: RelayLM-internal mapping from incoming `model` value to runtime config bundle.
@@ -120,7 +122,8 @@ RelayLM should treat prompt construction as context compilation rather than conc
 RelayCTX boundary:
 
 - RelayCTX packs selected context into the compiled runtime prompt shape.
-- RelayCTX consumes policy and memory selections but does not own policy decisions.
+- RelayCTX consumes policy and memory selections but does not own scene or persistence policy decisions.
+- RelayCTX Repack owns prompt-layout and token-budget application decisions.
 - RelayCTX output is runtime compiled context, not a RelaySOUL artifact.
 
 The compiled prompt should use tags for persona and conversation context. Machine contracts such as adapter results, diagnostics, traces, and tool protocols should remain JSON/dataclass-shaped. In short: JSON is for machine contracts; tags are for persona/context conditioning.
@@ -141,11 +144,15 @@ Relay Adapter boundary:
 - preserve OpenAI-compatible frontend/backend interoperability.
 - preserve request/response compatibility and streaming semantics.
 - avoid changing persona policy or memory decisions.
+- remain a transport/integration boundary rather than a semantic pipeline stage.
 
-RelayPLC boundary:
+Policy and runtime decision boundary:
 
-- RelayPLC decides policy for approval/gating and high-level execution allowance.
-- RelayPLC does not pack context and does not execute backend transport.
+- RelaySCN resolves scene, safety-sensitivity, expression, memory-scope, and persistence policy.
+- RelayINT owns pre-action intent, ambiguity, clarification, and semantic proceed/block decisions.
+- RelayCTX Repack owns prompt construction and token-budget degradation.
+- RelayRUN owns runtime orchestration, transport/runtime fallback and recovery routing, checkpoints, trace artifacts, and node-state reporting.
+- The Runtime Compile Gate is a request-local decision phase that consumes route, mode, preflight, scene-policy, and budget outcomes; it is not a standalone `RelayPLC` component.
 
 Boundary-first safety:
 
@@ -158,7 +165,7 @@ Boundary-first safety:
 
 Core handoff rule:
 
-`MEM proposes candidates -> CTX packs selected context -> SOUL versions persona-source artifacts -> PLC decides policy -> adapters preserve API/backend compatibility`.
+`MEM proposes candidates -> SCN resolves scene/persistence policy -> INT decides whether to proceed -> CTX packs selected context and applies token budgets -> RUN orchestrates runtime fallback/recovery and records trace/checkpoint artifacts -> adapters preserve API/backend compatibility`.
 
 ## Mode contract
 

@@ -23,14 +23,24 @@ RelayLM's longer-term product axis is conversation quality: preserve persona con
 
 ## Architecture
 
-RelayLM uses the RelayStack architecture as a product/control-plane layer:
+RelayLM's canonical runtime vocabulary follows the [pipeline responsibility design](docs/architecture/pipeline_responsibility_design.md):
 
-- RelayMEM: memory candidates and long-term memory sources
-- RelayCTX: effective context construction and compression
-- RelayKV: runtime/cache research boundary, developed in `rinsakamo/relay-kv`
-- RelayPLC: policy, fallback, routing, and budget control
-- RelayTRC: trace and lineage, deferred for the MVP
-- Relay Adapter: OpenAI-compatible proxy and backend adapters
+- RelaySCN: scene classification and scene/persistence policy
+- RelayEMO: affect estimation and scene-gated expression control
+- RelayINT: input-side intent, ambiguity, clarification, and proceed/block gate
+- RelayMEM: read-only retrieval in the normal response path; writes are separated from retrieval
+- RelayCTX: backend input construction through Repack and response/internal-candidate separation through Unpack
+- RelayREF: lightweight output-side observation and diagnostics
+- RelayRUN: runtime orchestration, fallback/recovery handling, checkpoints, trace artifacts, and node-state reporting
+- RelaySLP: out-of-band memory and SOUL compilation path
+
+Cross-cutting and adjacent boundaries:
+
+- `PipelineContext`: request-local coordination, payload replacement history, node results, and diagnostics handoff
+- OpenAI-compatible adapter / proxy transport: frontend and backend protocol boundary, not a semantic pipeline stage
+- RelayKV: adjacent runtime/cache research boundary, developed in `rinsakamo/relay-kv`, not a RelayLM pipeline component
+
+`RelayPLC` and `RelayTRC` are not standalone components in the current architecture. Responsibilities previously summarized under `RelayPLC` are owned by RelaySCN for scene and persistence policy, RelayINT for pre-action routing and clarification, RelayRUN for runtime fallback/recovery routing, and RelayCTX Repack for token-budget control. Trace and lineage are carried by RelayRUN artifacts, diagnostics, and typed audit projections rather than a separate RelayTRC stage.
 
 ## Documentation
 

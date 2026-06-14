@@ -18,6 +18,8 @@ Memory record
 
 This is a docs-only contract. It does not introduce runtime schema changes or persistence behavior.
 
+The Runtime Compile Gate is a request-local decision phase rather than a standalone `RelayPLC` component. Runtime trace/checkpoint ownership belongs to RelayRUN; durable or reviewable audit output should be expressed through typed audit projections rather than a separate `RelayTRC` stage.
+
 ## Motivation
 
 RelayLM now has design docs for the Safe SOUL / Scene / CTX compile chain and the Runtime Compile Gate. As implementation grows, words like plan, result, diagnostics, trace, artifact, and decision can become ambiguous.
@@ -70,9 +72,9 @@ Diagnostics must not be inserted into stable prompt prefixes by default.
 
 ### TraceEvent
 
-A `TraceEvent` is a compact machine-readable runtime event for logs, aggregation, debugging, or future RelayTRC lineage.
+A `TraceEvent` is a compact machine-readable runtime event for logs, aggregation, debugging, RelayRUN checkpoint/trace artifacts, or later typed audit projection.
 
-Trace events should prefer IDs, states, counters, hashes, and reason codes. They are not RelaySOUL artifacts unless explicitly promoted by a future audit workflow.
+Trace events should prefer IDs, states, counters, hashes, and reason codes. They are not RelaySOUL artifacts unless explicitly promoted by a separate audit workflow.
 
 ### RelaySOUL artifact
 
@@ -204,7 +206,7 @@ CompilePlan
 
 ## State and content rules
 
-- Compile objects are request-local unless a future trace or audit layer persists them.
+- Compile objects are request-local unless RelayRUN or a future explicit audit layer persists a content-free projection.
 - Trace events should avoid full prompt text by default.
 - RelaySOUL content-free artifacts must not embed runtime compiled prompt text.
 - Failed plans, results, or decisions should prefer pass-through or safe fallback over hard rejection.
@@ -222,6 +224,8 @@ CompilePlan + optional CompileResult + preflight status
   -> CompileDecision
 ```
 
+This phase consumes RelaySCN policy, RelayCTX Repack preflight/budget outcomes, route/mode configuration, and any RelayINT proceed/block result. RelayRUN orchestrates the chosen runtime path and records the request-local artifacts.
+
 ### Safe SOUL / Scene / CTX Compile Chain
 
 The safe chain defines the process. This contract defines the object vocabulary.
@@ -235,6 +239,10 @@ compile gate = runtime apply decision
 ### RelaySOUL
 
 RelaySOUL owns persona-source mutation workflows. Runtime compile artifacts describe request forwarding decisions and should remain separate.
+
+### RelayRUN
+
+RelayRUN owns runtime orchestration, checkpoint/trace artifact wiring, node-state reporting, and transport/runtime fallback or recovery routing. Typed audit projections may expose a bounded, content-free view of selected runtime artifacts without turning raw trace data into a separate semantic pipeline stage.
 
 ## Minimal MVP target
 
@@ -256,7 +264,7 @@ Future work can add:
 - token estimates per block
 - shadow compare summaries
 - risk scores
-- RelayTRC export format
+- RelayRUN export format for trace/checkpoint artifacts and typed audit projections
 - operator-visible diagnostics endpoint
 
 ## Initial diagnostics wiring status
@@ -271,7 +279,5 @@ Initial implementation wires CompileDecision dry-run schema into runtime diagnos
 
 This does not apply compiled messages and does not change backend forwarding payload behavior.
 
-
 - CompileDecision dry-run is now wired into request-local diagnostics and trace metadata on the normal request path (`/v1/chat/completions`) without applying compiled messages.
-
 - request-path compile decision diagnostics now mirror actual apply state, so trace metadata matches forwarded payload state without embedding prompt content.

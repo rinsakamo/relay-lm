@@ -49,9 +49,15 @@ RelayCTX owns effective context construction. It decides how selected persona, s
 
 The context compiler is the RelayCTX runtime component that renders selected blocks into OpenAI-compatible messages.
 
-### RelayPLC
+### Runtime decision ownership
 
-RelayPLC owns policy, routing, budget, fallback, and apply decisions. In this chain it decides whether to apply a compiled context, run shadow/dry-run diagnostics only, or preserve pass-through behavior.
+This chain does not define a standalone `RelayPLC` component. The responsibilities once grouped under that name are split across canonical pipeline owners:
+
+- RelaySCN resolves scene, safety-sensitivity, memory-scope, expression, and persistence policy.
+- RelayINT owns pre-action intent, ambiguity, clarification, and semantic proceed/block decisions.
+- RelayCTX Repack owns block assembly, token-budget degradation, and compile eligibility.
+- RelayRUN owns runtime orchestration, fallback/recovery routing, checkpoints, and decision/trace artifacts.
+- The Runtime Compile Gate is the request-local decision phase that consumes these outcomes and selects apply, shadow-only, pass-through, or fallback behavior.
 
 ## Source classes
 
@@ -201,7 +207,7 @@ Safety rule: preflight failure should produce diagnostics and fall back safely, 
 
 ### 8. Gate
 
-RelayPLC makes the final apply decision:
+The Runtime Compile Gate consumes route/mode configuration, RelaySCN policy, RelayCTX Repack budget/preflight results, and any RelayINT proceed/block outcome. RelayRUN orchestrates the selected runtime path and records the decision artifact:
 
 ```text
 APPLY
@@ -217,7 +223,7 @@ FALLBACK
   use a safe minimal context or backend-compatible fallback
 ```
 
-Safety rule: approval and preflight are not the same as gate. Approval accepts a proposed change. Preflight validates structure. Gate decides current runtime application.
+This gate is a request-local decision phase, not a standalone semantic module. Safety rule: approval and preflight are not the same as gate. Approval accepts a proposed change. Preflight validates structure. Gate decides current runtime application.
 
 ### 9. Render and forward
 
@@ -254,7 +260,7 @@ Memory record
   durable memory source item or retrieved candidate
 
 Trace event
-  runtime diagnostic line, optionally promoted later to an audit artifact
+  runtime diagnostic line, optionally promoted later to a typed audit projection
 ```
 
 Content-free RelaySOUL artifacts should remain content-free. Runtime compiled prompts may contain user-visible content, but they should not be persisted as RelaySOUL artifacts by default.
@@ -281,6 +287,6 @@ Future work can add:
 - token-budget-aware scene compression
 - profile prefix hash diagnostics
 - per-character runtime instances for stronger prefix reuse
-- RelayTRC lineage for compile plans and runtime decisions
+- RelayRUN trace/checkpoint lineage and typed audit projections for compile plans and runtime decisions
 
 These should be added after the minimal safe chain is stable.

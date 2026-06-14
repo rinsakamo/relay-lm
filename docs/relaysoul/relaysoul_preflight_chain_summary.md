@@ -88,7 +88,10 @@ feedback/examples
 
 ## Handoff reminder
 
-- RelayMEM proposes candidates.
-- RelayCTX packs selected context for runtime prompts.
+- RelayMEM proposes retrieval or memory candidates; normal retrieval remains read-only.
+- RelaySCN resolves scene and persistence policy.
+- RelayINT owns pre-action intent, ambiguity, clarification, and proceed/block decisions.
+- RelayCTX packs selected runtime context and applies token-budget constraints.
 - RelaySOUL versions persona-source artifacts and preflight/storage metadata.
-- RelayPLC decides policy and execution gating.
+- RelayRUN orchestrates runtime fallback/recovery, checkpoints, trace artifacts, and typed audit projections.
+- No standalone `RelayPLC` or `RelayTRC` component is defined by the current architecture.
