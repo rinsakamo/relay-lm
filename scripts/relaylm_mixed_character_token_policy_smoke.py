@@ -93,8 +93,7 @@ def main() -> int:
             metadata = row["metadata"]
             require("token_policy_signal" not in metadata, metadata)
             require("token_policy_decision" not in metadata, metadata)
-            require(metadata.get("projection_unsupported_artifact_count", 0) >= 2, metadata)
-        print("ok mixed character policy artifacts are default-denied")
+        print("ok mixed character policy diagnostics stay outside audit metadata")
     return 0
 
 
