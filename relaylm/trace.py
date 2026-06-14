@@ -106,6 +106,7 @@ _SAFE_NESTED_KEYS = frozenset(
         "compiler_used",
         "content_free",
         "decision",
+        "diagnostics",
         "diagnostics_only",
         "enabled",
         "error_class",
@@ -143,15 +144,31 @@ _SAFE_KEY_SUFFIXES = (
     "_ids",
     "_kind",
     "_mode",
+    "_model",
     "_ms",
+    "_name",
+    "_namespace",
+    "_node",
     "_present",
     "_ready",
     "_reason",
     "_reasons",
     "_required",
+    "_role",
+    "_scope",
+    "_state",
+    "_statuses",
+    "_storage",
+    "_strategy",
     "_source",
     "_status",
     "_type",
+    "_action",
+    "_alias",
+    "_format",
+    "_gates",
+    "_placement",
+    "_policy",
     "_used",
     "_valid",
     "_version",
@@ -198,6 +215,18 @@ class TraceRecord:
             "response_present": bool(self.response_present),
             "metadata": sanitize_audit_metadata(self.metadata),
         }
+
+    @property
+    def messages(self) -> list[dict[str, Any]]:
+        """Deprecated compatibility view; audit traces never expose messages."""
+
+        return []
+
+    @property
+    def response_text(self) -> None:
+        """Deprecated compatibility view; audit traces never expose response text."""
+
+        return None
 
 
 def utc_now_iso() -> str:
@@ -351,9 +380,6 @@ def _sanitize_audit_value(value: Any, *, key: str) -> tuple[Any, int]:
         dropped = 0
         for raw_child_key, child_value in value.items():
             child_key = str(raw_child_key)
-            if not _is_safe_nested_key(child_key):
-                dropped += 1
-                continue
             clean_child, child_dropped = _sanitize_audit_value(
                 child_value,
                 key=child_key,
@@ -399,6 +425,8 @@ def _is_forbidden_key(key: str) -> bool:
 
 
 def _safe_string_for_key(key: str, value: str) -> bool:
+    if not _is_safe_nested_key(key):
+        return False
     if not value or len(value) > 256:
         return False
     if key.endswith("_hash"):
