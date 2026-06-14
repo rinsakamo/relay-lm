@@ -19,6 +19,7 @@ _AUDIT_METADATA_TOP_LEVEL_KEYS = frozenset(
         "event",
         "status_code",
         "error_class",
+        "error_type",
         "latency_ms",
         "bytes_in",
         "bytes_out",
@@ -110,6 +111,7 @@ _SAFE_NESTED_KEYS = frozenset(
         "diagnostics_only",
         "enabled",
         "error_class",
+        "error_type",
         "event",
         "fallback_reason",
         "node_name",
@@ -175,8 +177,11 @@ _SAFE_KEY_SUFFIXES = (
 )
 
 _ENUM_TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9_.:/-]{0,127}$")
+_CLASS_TOKEN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
 _OPAQUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$")
 _HASH_RE = re.compile(r"^[0-9a-fA-F]{16,128}$")
+_URL_SCHEME_RE = re.compile(r"^(?:https?|file|ftp|ws|wss|ssh|s3|gs|mailto|data):", re.IGNORECASE)
+_WINDOWS_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
 _SUBSTRING_TAINT_MIN_LENGTH = 8
 _SUBSTRING_TAINT_MIN_RATIO = 0.5
 
@@ -269,7 +274,7 @@ def build_trace_record(
         mode_applied=mode_applied,
         compiler_used=bool(compiler_used),
         message_count=len(messages) if isinstance(messages, list) else 0,
-        response_present=isinstance(response_text, str) and bool(response_text),
+        response_present=isinstance(response_text, str),
         metadata=sanitize_audit_metadata(
             metadata,
             sensitive_values=sensitive_values,
@@ -366,7 +371,7 @@ def _trace_record_from_dict(payload: Mapping[str, Any]) -> TraceRecord:
     legacy_response = payload.get("response_text")
     response_present = payload.get("response_present") is True
     if not response_present:
-        response_present = isinstance(legacy_response, str) and bool(legacy_response)
+        response_present = isinstance(legacy_response, str)
 
     sensitive_values = _collect_strings(legacy_messages)
     if isinstance(legacy_response, str) and legacy_response:
@@ -516,11 +521,31 @@ def _safe_string_for_key(
         return False
     if _matches_tainted_value(value, tainted_values):
         return False
+    if _looks_like_url_or_path(key, value):
+        return False
+    if key in {"error_class", "error_type"}:
+        return bool(_CLASS_TOKEN_RE.fullmatch(value))
     if key.endswith("_hash"):
         return bool(_HASH_RE.fullmatch(value))
     if key.endswith(("_id", "_ids")):
         return bool(_OPAQUE_ID_RE.fullmatch(value))
     return bool(_ENUM_TOKEN_RE.fullmatch(value))
+
+
+def _looks_like_url_or_path(key: str, value: str) -> bool:
+    stripped = value.strip()
+    lowered = stripped.lower()
+    if _URL_SCHEME_RE.match(stripped) or stripped.startswith("//"):
+        return True
+    if lowered.startswith("www."):
+        return True
+    if stripped.startswith(("/", "./", "../", "~/")):
+        return True
+    if _WINDOWS_PATH_RE.match(stripped) or "\\" in stripped:
+        return True
+    if "/" in stripped and not key.endswith(("_model", "_id", "_ids")):
+        return True
+    return False
 
 
 def _matches_tainted_value(value: str, tainted_values: set[str]) -> bool:
