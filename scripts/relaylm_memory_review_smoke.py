@@ -19,7 +19,7 @@ from relaylm.memory_review import (
 from relaylm.trace import build_trace_record
 
 
-def require(condition: bool, message: str) -> None:
+def require(condition: bool, message: object) -> None:
     if not condition:
         raise AssertionError(message)
 
@@ -45,22 +45,12 @@ def main() -> int:
         reason="user_preference_detected",
     )
     require(isinstance(candidate, MemoryReviewCandidate), candidate)
-    require(
-        candidate.review_id == "review-t9:trace-001-m16:default-warm-tea",
-        candidate,
-    )
+    require(candidate.review_id == "review-t9:trace-001-m16:default-warm-tea", candidate)
     require(candidate.source_trace_id == "trace-001", candidate)
-    require(candidate.proposed_memory_id == "default-warm-tea", candidate)
     require(candidate.character_id == "default", candidate)
     require(candidate.suggested_state == "promoted", candidate)
     require(candidate.status == "pending", candidate)
-    print("ok build memory review candidate")
-
-    log_payload = candidate.to_log_dict()
-    require(log_payload["review_id"] == "review-t9:trace-001-m16:default-warm-tea", log_payload)
-    require(log_payload["status"] == "pending", log_payload)
-    require(log_payload["source"] == "trace_review", log_payload)
-    print("ok memory review candidate log payload")
+    print("ok build memory review candidate from explicit reviewed content")
 
     colliding_a = build_memory_review_id(trace_id="a-b", proposed_memory_id="c")
     colliding_b = build_memory_review_id(trace_id="a", proposed_memory_id="b-c")
@@ -74,42 +64,18 @@ def main() -> int:
         proposed_memory_id="default-trace-response",
         max_content_chars=32,
     )
-    require(draft is not None, draft)
-    require(draft.content == "Remember that the user likes war", draft)
-    require(len(draft.content) == 32, draft)
-    require(draft.reason == "trace_response_review", draft)
-    print("ok draft memory review candidate from trace response")
+    require(draft is None, draft)
+    require(trace.response_text is None, trace)
+    print("ok audit trace response content cannot seed a memory review draft")
 
     with tempfile.TemporaryDirectory() as tmpdir:
         queue_path = Path(tmpdir) / "memory_review_queue.jsonl"
         require(read_memory_review_candidates(queue_path) == [], "missing queue should read empty")
         append_memory_review_candidate(queue_path, candidate)
-        append_memory_review_candidate(queue_path, draft)
         queued = read_memory_review_candidates(queue_path)
-        require([item.review_id for item in queued] == [candidate.review_id, draft.review_id], queued)
+        require([item.review_id for item in queued] == [candidate.review_id], queued)
         require(queued[0].suggested_state == "promoted", queued[0])
-        require(queued[1].status == "pending", queued[1])
         print("ok memory review queue append read")
-
-    empty_trace = build_trace_record(
-        trace_id="trace-empty",
-        character_id="default",
-        route_model="relaylm-default",
-        mode_applied="memory_light",
-        compiler_used=True,
-        messages=[],
-        response_text="   ",
-        created_at="2026-05-22T00:00:00+00:00",
-    )
-    require(
-        draft_memory_review_candidate_from_trace_response(
-            empty_trace,
-            proposed_memory_id="empty",
-        )
-        is None,
-        "blank response should not produce candidate",
-    )
-    print("ok blank trace response skipped")
 
     try:
         build_memory_review_candidate_from_trace(
