@@ -98,6 +98,8 @@ def main() -> int:
                             "schema_version": "relayctx.unpack.v0",
                             "inserted_message_role": "system",
                             "current_user_content_kind": "text",
+                            "tool_call_reference_id": "call_001",
+                            "tool_function_name": "lookup_memory",
                             "unapproved_number": 42,
                             "private_numeric_marker": 123456789,
                             "user_prompt_status": "ready",
@@ -152,6 +154,16 @@ def main() -> int:
                 "memory_selection_summary": {
                     "schema_version": SECRET_VALUES[0],
                     "safe_counter_count": 1,
+                    "state_counts": {
+                        "active": 1,
+                        "promoted": 2,
+                        "demoted": 3,
+                        "disabled": 4,
+                        "candidate": True,
+                        "fractional": 1.5,
+                        "negative": -1,
+                        "private": 999,
+                    },
                 },
                 "relayrun_artifact": {
                     "schema_version": "relayrun.runtime_checkpoint.v0",
@@ -228,6 +240,16 @@ def main() -> int:
             payload,
         )
         require(
+            payload["metadata"]["memory_selection_summary"]["state_counts"]
+            == {
+                "active": 1,
+                "promoted": 2,
+                "demoted": 3,
+                "disabled": 4,
+            },
+            payload,
+        )
+        require(
             "schema_version" not in payload["metadata"]["memory_selection_summary"],
             payload,
         )
@@ -250,6 +272,8 @@ def main() -> int:
         require(diagnostics["schema_version"] == "relayctx.unpack.v0", node)
         require(diagnostics["inserted_message_role"] == "system", diagnostics)
         require(diagnostics["current_user_content_kind"] == "text", diagnostics)
+        require(diagnostics["tool_call_reference_id"] == "call_001", diagnostics)
+        require(diagnostics["tool_function_name"] == "lookup_memory", diagnostics)
         require("unapproved_number" not in diagnostics, node)
         require("private_numeric_marker" not in diagnostics, node)
         require("user_prompt_status" not in diagnostics, node)
