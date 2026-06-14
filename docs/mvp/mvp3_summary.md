@@ -4,7 +4,7 @@ MVP-3 adds the first practical local memory layer for RelayLM.
 
 The scope stays intentionally small: manual memory seed files, local JSONL trace helpers, and memory-light context insertion. It does not add embeddings or vector search yet.
 
-> **Current trace contract:** P0-A1 hardening supersedes the original MVP-3 trace payload shape. The default JSONL trace is now a content-free audit trace. It does not persist message bodies, assistant response text, snippets, evidence, tool payloads, or local paths. See `docs/architecture/audit_trace_content_free_contract.md`.
+> **Current trace contract:** P0-A1 hardening supersedes the original MVP-3 trace payload shape. The default JSONL trace is now a content-free audit trace backed by typed audit projections, not a recursive sanitizer. It does not persist message bodies, assistant response text, snippets, evidence, tool payloads, or local paths. See `docs/architecture/audit_trace_content_free_contract.md`.
 
 ## Completed scope
 
@@ -64,7 +64,7 @@ When enabled, RelayLM can write content-free JSONL audit records for:
 - backend error path
 - non-stream JSON backend response path
 
-The audit record retains request shape, event/status identifiers, content-free node diagnostics, counts, opaque IDs, and hashes. It does not retain conversation or retrieval content.
+The audit record retains request shape, event/status identifiers, and only content-free diagnostics explicitly copied by registered audit projectors. It does not retain conversation or retrieval content, and new metadata fields are not persisted automatically.
 
 Streaming success trace is not included yet.
 
