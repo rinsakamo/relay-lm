@@ -11,7 +11,7 @@ When architecture documents disagree, use this order:
 1. [Pipeline responsibility design](pipeline_responsibility_design.md) for canonical component names, pipeline order, and responsibility ownership.
 2. [Pipeline implementation plan](pipeline_implementation_plan.md) for current phase status and implementation sequencing.
 3. Dedicated current module or contract documents for schema and module-specific details.
-4. Dated MVP and pre-split design documents as historical rationale only.
+4. Dated MVP and archived pre-split design documents as historical rationale only.
 
 In particular, current terminology fixes these boundaries:
 
@@ -24,7 +24,7 @@ RelayRUN = runtime orchestration, fallback/recovery, checkpoints, trace, and lin
 RelaySLP = out-of-band memory / SOUL compilation path
 ```
 
-Documents dated before the RelayINT / RelayREF split may use `RelayREF` for Wake-time context repair. That usage is historical and maps primarily to RelayINT, RelaySCN recovery policy, and RelayRUN recovery orchestration in the current architecture.
+Historical pre-RelayINT documents are collected under [`archive/`](archive/README.md). They preserve design rationale but do not define current ownership.
 
 ## Pipeline architecture
 
@@ -54,7 +54,6 @@ then reconstructs the backend payload from RelayLM-owned state.
 
 - [Context packing design](context_packing_design.md)
 - [Safe SOUL / Scene / CTX compile chain](safe_soul_scene_ctx_compile_chain.md)
-- [RelayCTX Wake loop design](relayctx_wake_loop_design.md) — historical pre-RelayINT responsibility split; use for rationale, not canonical ownership
 - [Scene lifecycle design](scene_lifecycle_design.md)
 - [Scene-aware memory scope design](scene_memory_scope_design.md)
 - [RelaySCN MVP scene policy](relayscn_mvp_scene_policy.md)
@@ -62,14 +61,19 @@ then reconstructs the backend payload from RelayLM-owned state.
 ## Module responsibility docs
 
 - [RelayINT MVP design](relayint_mvp_design.md)
-- [RelayREF / RelaySLP MVP design](relayref_relayslp_mvp_design.md) — historical pre-split terminology; current RelayREF is output-side only
 - [RelayMEM MVP design](relaymem_mvp_design.md)
 - [RelayMEM SLP execution design](relaymem_slp_execution_design.md)
 - [RelayMEM retrieval execution design](relaymem_retrieval_execution_design.md)
 - [RelayEMO return-side style adapter design](relayemo_return_side_style_adapter_design.md)
 
+## Historical design archive
+
+- [Archive index](archive/README.md)
+- [RelayCTX Wake Loop Design](archive/relayctx_wake_loop_design.md) — pre-RelayINT responsibility split
+- [RelayREF / RelaySLP MVP Design](archive/relayref_relayslp_mvp_design.md) — pre-RelayINT RelayREF definition
+
 ## Follow-up cleanup
 
-Architecture consolidation is still in progress for dated pre-RelayINT documents and implementation-status notes. New architecture docs should be created directly under `docs/architecture/` when they describe cross-cutting runtime design, pipeline order, responsibility boundaries, or profile-specific pipeline contracts.
+Architecture consolidation is still in progress for implementation-status notes and overlapping early product documents. New current architecture docs should be created directly under `docs/architecture/`; superseded design rationale should move to `docs/architecture/archive/`.
 
 Contracts, smoke runbooks, and MVP summaries remain in their own directories. Historical MVP summaries should remain immutable snapshots unless a broken link or explicit factual correction requires an annotation.
