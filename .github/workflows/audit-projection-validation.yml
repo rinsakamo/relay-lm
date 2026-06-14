@@ -8,9 +8,7 @@ on:
       - relaylm/trace.py
       - relaylm/trace_runtime.py
       - relaylm/app.py
-      - scripts/relaylm_audit_projection_contract_smoke.py
-      - scripts/relaylm_trace_content_free_contract_smoke.py
-      - scripts/relaylm_trace_success_smoke.py
+      - scripts/**
       - .github/workflows/audit-projection-validation.yml
 
 permissions:
@@ -38,11 +36,27 @@ jobs:
         run: python scripts/relaylm_trace_success_smoke.py
       - name: Hardening
         run: python scripts/relaylm_hardening_smoke.py
+      - name: Memory review
+        run: python scripts/relaylm_memory_review_smoke.py
+      - name: Memory selection
+        run: python scripts/relaylm_memory_selection_summary_smoke.py
+      - name: Memory light apply
+        run: python scripts/relaylm_memory_light_apply_smoke.py
+      - name: Pipeline node result
+        run: python scripts/relaylm_pipeline_node_result_smoke.py
+      - name: Pipeline context node results
+        run: python scripts/relaylm_pipeline_context_node_results_smoke.py
       - name: Pipeline runtime
         run: python scripts/relaylm_pipeline_node_results_runtime_smoke.py
       - name: Runtime diagnostics
         run: python scripts/relaylm_runtime_diagnostics_smoke.py
+      - name: RelayCTX contract
+        run: python scripts/relaylm_relayctx_unpack_contract_smoke.py
+      - name: RelayCTX runtime
+        run: python scripts/relaylm_relayctx_unpack_runtime_smoke.py
       - name: RelayCTX runtime app
         run: python scripts/relaylm_relayctx_unpack_runtime_app_smoke.py
+      - name: Client canonicalization
+        run: python scripts/relaylm_client_message_canonicalization_dry_run_smoke.py
       - name: Client message runtime
         run: python scripts/relaylm_client_msg_runtime_dry_run_smoke.py
