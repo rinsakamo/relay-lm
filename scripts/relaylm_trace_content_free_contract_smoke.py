@@ -1,0 +1,165 @@
+from __future__ import annotations
+
+import json
+import sys
+import tempfile
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from relaylm.trace import (
+    AUDIT_TRACE_SCHEMA_VERSION,
+    append_trace_record,
+    build_trace_record,
+    read_trace_records,
+)
+
+
+SECRET_VALUES = (
+    "TRACE_SECRET_SENTINEL_7f5f4b22",
+    "system developer user assistant secret sentence",
+    "private snippet body",
+    "/home/private/relaymem/page.md",
+    "tool argument secret",
+    "evidence body secret",
+)
+
+
+def require(condition: bool, detail: object) -> None:
+    if not condition:
+        raise AssertionError(detail)
+
+
+def _assert_content_free(raw: str) -> None:
+    for secret in SECRET_VALUES:
+        require(secret not in raw, raw)
+
+
+def main() -> int:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        trace_path = Path(tmpdir) / "audit.jsonl"
+        record = build_trace_record(
+            trace_id="trace-content-free-001",
+            request_id="request-content-free-001",
+            created_at="2026-06-14T00:00:00+00:00",
+            character_id="default",
+            route_model="relaylm-default",
+            mode_applied="pass_through",
+            compiler_used=False,
+            messages=[
+                {"role": "system", "content": SECRET_VALUES[1]},
+                {"role": "user", "content": SECRET_VALUES[0]},
+            ],
+            response_text=SECRET_VALUES[1],
+            metadata={
+                "event": "backend_response",
+                "status_code": 200,
+                "pipeline_node_results": [
+                    {
+                        "node_name": "relayctx_unpack",
+                        "status": "diagnostic_only",
+                        "decision": "structured_update_dry_run",
+                        "diagnostics": {
+                            "candidate_present": True,
+                            "candidate_count": 1,
+                            "candidate_text": SECRET_VALUES[0],
+                            "snippet_text": SECRET_VALUES[2],
+                            "root_path": SECRET_VALUES[3],
+                            "tool_arguments": SECRET_VALUES[4],
+                            "evidence": SECRET_VALUES[5],
+                        },
+                    }
+                ],
+                "relayrun_artifact": {
+                    "schema_version": "relayrun.runtime_checkpoint.v0",
+                    "content_free": True,
+                    "run_id": "run-content-free-001",
+                    "target_path_preview": SECRET_VALUES[3],
+                    "response_text": SECRET_VALUES[1],
+                },
+                "relaymem_retrieval_artifact": {
+                    "snippet_text": SECRET_VALUES[2],
+                    "evidence_envelope": SECRET_VALUES[5],
+                },
+                "evidence_envelope": {"content": SECRET_VALUES[5]},
+                "tool_arguments": SECRET_VALUES[4],
+                "unknown_metadata": SECRET_VALUES[0],
+            },
+        )
+        append_trace_record(trace_path, record)
+
+        raw = trace_path.read_text(encoding="utf-8")
+        _assert_content_free(raw)
+        payload = json.loads(raw)
+        require(payload["schema_version"] == AUDIT_TRACE_SCHEMA_VERSION, payload)
+        require(payload["content_free"] is True, payload)
+        require(payload["message_count"] == 2, payload)
+        require(payload["response_present"] is True, payload)
+        require("messages" not in payload, payload)
+        require("response_text" not in payload, payload)
+        require(payload["metadata"]["event"] == "backend_response", payload)
+        require(payload["metadata"]["status_code"] == 200, payload)
+        require("relaymem_retrieval_artifact" not in payload["metadata"], payload)
+        require("evidence_envelope" not in payload["metadata"], payload)
+        require("tool_arguments" not in payload["metadata"], payload)
+        require(
+            payload["metadata"].get("sanitizer_dropped_field_count", 0) > 0,
+            payload,
+        )
+        node = payload["metadata"]["pipeline_node_results"][0]
+        require(node["node_name"] == "relayctx_unpack", node)
+        require(node["diagnostics"]["candidate_present"] is True, node)
+        require(node["diagnostics"]["candidate_count"] == 1, node)
+        require("candidate_text" not in node["diagnostics"], node)
+        print("ok audit trace persists only content-free allowlisted fields")
+        print("ok pass-through trace excludes messages response snippets paths tools and evidence")
+
+        records = read_trace_records(trace_path)
+        require(len(records) == 1, records)
+        require(records[0].messages == [], records[0])
+        require(records[0].response_text is None, records[0])
+        require(records[0].message_count == 2, records[0])
+        require(records[0].response_present is True, records[0])
+        print("ok audit trace reader exposes redacted compatibility views")
+
+        legacy_path = Path(tmpdir) / "legacy.jsonl"
+        legacy_path.write_text(
+            json.dumps(
+                {
+                    "trace_id": "legacy-trace-001",
+                    "created_at": "2026-05-21T00:00:00+00:00",
+                    "character_id": "default",
+                    "route_model": "relaylm-default",
+                    "mode_applied": "memory_light",
+                    "compiler_used": True,
+                    "messages": [{"role": "user", "content": SECRET_VALUES[0]}],
+                    "response_text": SECRET_VALUES[1],
+                    "metadata": {
+                        "event": "backend_response",
+                        "snippet_text": SECRET_VALUES[2],
+                    },
+                },
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        legacy = read_trace_records(legacy_path)[0]
+        require(legacy.message_count == 1, legacy)
+        require(legacy.response_present is True, legacy)
+        require(legacy.messages == [], legacy)
+        require(legacy.response_text is None, legacy)
+        require("snippet_text" not in legacy.metadata, legacy.metadata)
+        print("ok legacy content-bearing rows are read as redacted audit records")
+
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except AssertionError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        raise SystemExit(1)
