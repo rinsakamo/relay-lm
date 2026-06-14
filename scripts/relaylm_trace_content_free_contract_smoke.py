@@ -65,6 +65,10 @@ def main() -> int:
                         "diagnostics": {
                             "candidate_present": True,
                             "candidate_count": 1,
+                            "safe_counter_count": 2,
+                            SECRET_VALUES[0]: 3,
+                            f"{SECRET_VALUES[0]}_status": 4,
+                            "http://internal.example/path": 5,
                             "source": "http://internal.example/path",
                             "candidate_text": SECRET_VALUES[0],
                             "snippet_text": SECRET_VALUES[2],
@@ -119,12 +123,17 @@ def main() -> int:
             payload,
         )
         node = payload["metadata"]["pipeline_node_results"][0]
+        diagnostics = node["diagnostics"]
         require(node["node_name"] == "relayctx_unpack", node)
         require(node["decision"] == "current_request_evidence_identified", node)
-        require(node["diagnostics"]["candidate_present"] is True, node)
-        require(node["diagnostics"]["candidate_count"] == 1, node)
-        require("source" not in node["diagnostics"], node)
-        require("candidate_text" not in node["diagnostics"], node)
+        require(diagnostics["candidate_present"] is True, node)
+        require(diagnostics["candidate_count"] == 1, node)
+        require(diagnostics["safe_counter_count"] == 2, node)
+        require(SECRET_VALUES[0] not in diagnostics, node)
+        require(f"{SECRET_VALUES[0]}_status" not in diagnostics, node)
+        require("http://internal.example/path" not in diagnostics, node)
+        require("source" not in diagnostics, node)
+        require("candidate_text" not in diagnostics, node)
         require(
             "run_status" not in payload["metadata"]["relayrun_artifact"],
             payload,
@@ -135,6 +144,7 @@ def main() -> int:
         )
         print("ok audit trace persists only content-free allowlisted fields")
         print("ok tainted values are dropped even under structurally safe keys")
+        print("ok tainted and URL-shaped nested audit map keys are dropped")
         print("ok URL-shaped nested audit strings are dropped")
         print("ok backend error types remain actionable and content-free")
         print("ok pass-through trace excludes messages response snippets paths tools and evidence")
