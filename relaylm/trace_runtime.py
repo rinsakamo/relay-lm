@@ -43,8 +43,8 @@ def trace_runtime_event(
     *,
     config: RelayLMConfig,
     diagnostics: RequestDiagnostics,
-    messages: list[dict[str, Any]],
-    response_text: str | None = None,
+    message_count: int = 0,
+    response_present: bool = False,
     metadata: dict[str, Any] | None = None,
 ) -> bool:
     """Append one runtime trace record when tracing is enabled.
@@ -322,8 +322,8 @@ def trace_runtime_event(
             route_model=diagnostics.route_model,
             mode_applied=diagnostics.mode_applied,
             compiler_used=diagnostics.compiler_used,
-            message_count=len(messages) if isinstance(messages, list) else 0,
-            response_present=isinstance(response_text, str),
+            message_count=message_count,
+            response_present=response_present,
             metadata=trace_metadata,
         )
         append_trace_record(config.trace.path, record)
