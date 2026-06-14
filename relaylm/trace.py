@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -102,6 +103,7 @@ _FORBIDDEN_KEY_TOKENS = frozenset(
 _SAFE_NESTED_KEYS = frozenset(
     {
         "applied",
+        "applied_to_response",
         "artifact_schema_version",
         "blocked_reasons",
         "compiler_used",
@@ -114,6 +116,8 @@ _SAFE_NESTED_KEYS = frozenset(
         "error_type",
         "event",
         "fallback_reason",
+        "managed_route",
+        "active_tool_transaction_candidate",
         "node_name",
         "node_status",
         "reason",
@@ -176,12 +180,6 @@ _SAFE_KEY_SUFFIXES = (
     "_version",
 )
 
-_SAFE_AUDIT_STRUCTURAL_VALUES = frozenset(
-    {
-        "blocked",
-        "relayref",
-    }
-)
 
 _ENUM_TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9_.:/-]{0,127}$")
 _CLASS_TOKEN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
@@ -415,7 +413,14 @@ def _sanitize_audit_value(
     if _is_forbidden_key(key):
         return _DROP, 0
 
-    if value is None or isinstance(value, (bool, int, float)):
+    if value is None or isinstance(value, bool):
+        return (value, 0) if _is_safe_nested_key(key) else (_DROP, 0)
+
+    if isinstance(value, (int, float)):
+        if not _is_safe_nested_key(key):
+            return _DROP, 0
+        if isinstance(value, float) and not math.isfinite(value):
+            return _DROP, 0
         return value, 0
 
     if isinstance(value, str):
@@ -470,10 +475,42 @@ def _collect_tainted_metadata_strings(metadata: Mapping[str, Any]) -> set[str]:
     for raw_key, value in metadata.items():
         key = str(raw_key)
         if key not in _AUDIT_METADATA_TOP_LEVEL_KEYS or _is_forbidden_key(key):
-            tainted.update(_collect_strings(value))
+            tainted.update(_collect_rejected_metadata_strings(value, direct=True))
             continue
         tainted.update(_collect_forbidden_descendant_strings(value))
     return tainted
+
+
+def _collect_rejected_metadata_strings(
+    value: Any,
+    *,
+    direct: bool = False,
+    taint_all: bool = False,
+) -> set[str]:
+    if taint_all:
+        return _collect_strings(value)
+
+    collected: set[str] = set()
+    if isinstance(value, str):
+        if direct and value.strip():
+            collected.add(value.strip())
+    elif isinstance(value, Mapping):
+        for raw_key, child_value in value.items():
+            child_key = str(raw_key).strip()
+            if _is_forbidden_key(child_key):
+                collected.update(_collect_strings(child_value))
+            elif not _is_safe_nested_key(child_key):
+                if child_key:
+                    collected.add(child_key)
+                collected.update(
+                    _collect_rejected_metadata_strings(child_value, taint_all=True)
+                )
+            else:
+                collected.update(_collect_rejected_metadata_strings(child_value))
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        for item in value:
+            collected.update(_collect_rejected_metadata_strings(item))
+    return collected
 
 
 def _collect_forbidden_descendant_strings(value: Any) -> set[str]:
@@ -501,12 +538,6 @@ def _collect_strings(value: Any) -> set[str]:
             key = str(raw_key).strip()
             if key and not _is_safe_nested_key(key) and not _is_forbidden_key(key):
                 collected.add(key)
-            if (
-                _is_safe_nested_key(key)
-                and isinstance(child_value, str)
-                and child_value.strip() in _SAFE_AUDIT_STRUCTURAL_VALUES
-            ):
-                continue
             collected.update(_collect_strings(child_value))
     elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         for item in value:
@@ -540,7 +571,7 @@ def _is_safe_nested_key(key: str) -> bool:
 
 def _is_forbidden_key(key: str) -> bool:
     lowered = key.lower()
-    if lowered in _SAFE_NESTED_KEYS or lowered.endswith(_SAFE_KEY_SUFFIXES):
+    if lowered in _SAFE_NESTED_KEYS:
         return False
     return any(
         lowered == token
@@ -548,6 +579,17 @@ def _is_forbidden_key(key: str) -> bool:
         or lowered.endswith(f"_{token}")
         for token in _FORBIDDEN_KEY_TOKENS
     )
+
+
+def _is_safe_structural_string_key(key: str) -> bool:
+    return key in {
+        "source",
+        "node_name",
+        "status",
+        "decision",
+        "reason",
+        "schema_version",
+    }
 
 
 def _safe_string_for_key(
@@ -560,11 +602,9 @@ def _safe_string_for_key(
         return False
     if not value or len(value) > 256:
         return False
-    if value not in _SAFE_AUDIT_STRUCTURAL_VALUES and _matches_tainted_value(
-        value, tainted_values
-    ):
-        return False
     if _looks_like_url_or_path(key, value):
+        return False
+    if _matches_tainted_value(value, tainted_values) and not _is_safe_structural_string_key(key):
         return False
     if key in {"error_class", "error_type"}:
         return bool(_CLASS_TOKEN_RE.fullmatch(value))

@@ -68,11 +68,14 @@ def main() -> int:
                             "candidate_count": 1,
                             "safe_counter_count": 2,
                             "compatibility_source_node": "relayref",
+                            "source": "relayref",
+                            "unapproved_number": 42,
+                            "private_numeric_marker": 123456789,
                             SECRET_VALUES[6]: 6,
                             SECRET_VALUES[0]: 3,
                             f"{SECRET_VALUES[0]}_status": 4,
                             "http://internal.example/path": 5,
-                            "source": "http://internal.example/path",
+                            "source_url": "http://internal.example/path",
                             "candidate_text": SECRET_VALUES[0],
                             "snippet_text": SECRET_VALUES[2],
                             "root_path": SECRET_VALUES[3],
@@ -95,6 +98,10 @@ def main() -> int:
                     "cache_id": "redis://host/key",
                     "blob_id": "blob:secret-payload",
                     "browser_id": "chrome://settings",
+                    "page_path_id": "notes/private.md",
+                    "root_path_id": "private/root",
+                    "content_id": "secret-content",
+                    "url_id": "opaque-looking-url",
                     "evidence": {
                         SECRET_VALUES[6]: 1,
                     },
@@ -106,11 +113,13 @@ def main() -> int:
                     "response_text": SECRET_VALUES[1],
                 },
                 "relaymem_retrieval_artifact": {
-                    "query_summary": {
-                        "terms": ["evidence"],
-                    },
+                    "source": "relayref",
+                    "node_name": "relayint_reference_repair",
+                    "status": "diagnostic_only",
                     "snippet_text": SECRET_VALUES[2],
-                    "evidence_envelope": SECRET_VALUES[5],
+                    "evidence": {
+                        SECRET_VALUES[6]: 1,
+                    },
                 },
                 "evidence_envelope": {"content": SECRET_VALUES[5]},
                 "tool_arguments": SECRET_VALUES[4],
@@ -150,11 +159,14 @@ def main() -> int:
         require(diagnostics["candidate_count"] == 1, node)
         require(diagnostics["safe_counter_count"] == 2, node)
         require(diagnostics["compatibility_source_node"] == "relayref", node)
+        require(diagnostics["source"] == "relayref", node)
+        require("unapproved_number" not in diagnostics, node)
+        require("private_numeric_marker" not in diagnostics, node)
         require(SECRET_VALUES[6] not in diagnostics, node)
         require(SECRET_VALUES[0] not in diagnostics, node)
         require(f"{SECRET_VALUES[0]}_status" not in diagnostics, node)
         require("http://internal.example/path" not in diagnostics, node)
-        require("source" not in diagnostics, node)
+        require("source_url" not in diagnostics, node)
         require("candidate_text" not in diagnostics, node)
         relayrun = payload["metadata"]["relayrun_artifact"]
         require(relayrun["safe_reference_id"] == "opaque-id-001", relayrun)
@@ -163,6 +175,10 @@ def main() -> int:
         require("cache_id" not in relayrun, relayrun)
         require("blob_id" not in relayrun, relayrun)
         require("browser_id" not in relayrun, relayrun)
+        require("page_path_id" not in relayrun, relayrun)
+        require("root_path_id" not in relayrun, relayrun)
+        require("content_id" not in relayrun, relayrun)
+        require("url_id" not in relayrun, relayrun)
         require("evidence" not in relayrun, relayrun)
         require(
             "run_status" not in payload["metadata"]["relayrun_artifact"],
