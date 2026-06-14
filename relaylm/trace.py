@@ -178,9 +178,13 @@ _SAFE_KEY_SUFFIXES = (
 
 _ENUM_TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9_.:/-]{0,127}$")
 _CLASS_TOKEN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
+_MAPPING_KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,127}$")
 _OPAQUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$")
 _HASH_RE = re.compile(r"^[0-9a-fA-F]{16,128}$")
-_URL_SCHEME_RE = re.compile(r"^(?:https?|file|ftp|ws|wss|ssh|s3|gs|mailto|data):", re.IGNORECASE)
+_URL_SCHEME_RE = re.compile(
+    r"^(?:https?|file|ftp|ws|wss|ssh|s3|gs|mailto|data):",
+    re.IGNORECASE,
+)
 _WINDOWS_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
 _SUBSTRING_TAINT_MIN_LENGTH = 8
 _SUBSTRING_TAINT_MIN_RATIO = 0.5
@@ -420,6 +424,12 @@ def _sanitize_audit_value(
         dropped = 0
         for raw_child_key, child_value in value.items():
             child_key = str(raw_child_key)
+            if not _safe_audit_mapping_key(
+                child_key,
+                tainted_values=tainted_values,
+            ):
+                dropped += 1
+                continue
             clean_child, child_dropped = _sanitize_audit_value(
                 child_value,
                 key=child_key,
@@ -489,6 +499,24 @@ def _collect_strings(value: Any) -> set[str]:
         for item in value:
             collected.update(_collect_strings(item))
     return collected
+
+
+def _safe_audit_mapping_key(
+    key: str,
+    *,
+    tainted_values: set[str],
+) -> bool:
+    if not key or len(key) > 128:
+        return False
+    if _is_forbidden_key(key):
+        return False
+    if not _MAPPING_KEY_RE.fullmatch(key):
+        return False
+    if _matches_tainted_value(key, tainted_values):
+        return False
+    if _looks_like_url_or_path("", key):
+        return False
+    return True
 
 
 def _is_safe_nested_key(key: str) -> bool:
