@@ -50,9 +50,9 @@ Top-level fields are explicitly serialized through an allowlist:
 
 ## Metadata contract
 
-Metadata is accepted only through a top-level allowlist and is sanitized recursively before writing.
+Metadata is accepted through typed audit projections in `relaylm/audit_projection.py`. Only exact top-level projectors can copy values into persisted metadata; unknown top-level artifacts are omitted without recursive inspection. Complex artifacts such as pipeline node results, memory selection summaries, and RelayRUN checkpoints have dedicated projection contracts.
 
-Permitted values are limited to content-free audit information such as:
+Permitted projections are limited to content-free audit information such as:
 
 - event and status identifiers
 - schema versions
@@ -64,23 +64,21 @@ Permitted values are limited to content-free audit information such as:
 - opaque IDs and hashes
 - content-free `PipelineNodeResult` diagnostics
 
-Content-bearing keys and local-structure keys are dropped even when nested inside an otherwise permitted artifact.
-The sanitizer records `sanitizer_dropped_field_count` when values are rejected.
+Content-bearing keys and local-structure keys are not part of any projector. Projection diagnostics use `projection_dropped_field_count` and `projection_unsupported_artifact_count` so operators can see that data was omitted without retaining rejected content.
 
-Full `relaymem_retrieval_artifact` and `evidence_envelope` objects are not permitted top-level audit metadata.
+Full `relaymem_retrieval_artifact`, `evidence_envelope`, snippets, paths, URLs, raw tool payloads, and arbitrary runtime artifacts are not permitted top-level audit metadata.
 
 ## Fail-closed behavior
 
 The persisted dictionary is built by an explicit serialization allowlist. Adding a future field to `TraceRecord` does not automatically make it persistent.
 
-Unknown top-level metadata is dropped. Nested strings are retained only when the key represents an audit identifier, status, reason, mode, schema version, hash, or similar structural value and the value has an opaque token-like shape.
+Unknown top-level metadata is dropped by registry lookup. Nested strings are retained only when a dedicated projector explicitly copies that field and the final field validator accepts its type, bounds, enum/token grammar, and URL/path restrictions.
 
 Trace construction, sanitization, and writing remain best-effort. A trace failure must not change request handling behavior.
 
 ## P0-A1 compatibility boundary
 
-During P0-A1, `build_trace_record()` still accepts the legacy `messages` and `response_text` arguments so runtime call sites do not need to change in the same PR.
-Their content is reduced immediately to `message_count` and `response_present`; it is not stored on `TraceRecord` and cannot be serialized.
+During P0-A1, `build_trace_record()` accepts shape-first `message_count` and `response_present` inputs. Legacy `messages` and `response_text` arguments remain only for compatibility tests and legacy readers; their content is reduced immediately to shape fields and is not stored on `TraceRecord`.
 
 The compatibility properties `TraceRecord.messages` and `TraceRecord.response_text` return `[]` and `None` respectively. They exist only to prevent old readers from failing while making content recovery impossible.
 
@@ -92,7 +90,7 @@ P0-A2 removes raw messages, response text, full retrieval artifacts, and evidenc
 
 - legacy messages become only `message_count`
 - legacy response text becomes only `response_present`
-- legacy metadata is passed through the current sanitizer
+- legacy metadata is reduced through the current typed projection boundary
 
 Existing files are not rewritten automatically. Operators should remove or separately secure old trace files that may contain content.
 
