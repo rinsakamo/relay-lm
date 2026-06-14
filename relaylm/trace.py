@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from relaylm.audit_projection import project_audit_metadata
+
 AUDIT_TRACE_SCHEMA_VERSION = "relaylm.audit_trace.v1"
 
 # Runtime metadata is accepted only through this top-level allowlist. Nested
@@ -148,6 +150,30 @@ _SAFE_NESTED_KEYS = frozenset(
         "source",
         "status",
         "status_code",
+        "runtime_snippet_injection_result",
+        "candidate_roles",
+        "candidate_indices",
+        "content_shape_counts",
+        "lookup_requested",
+        "cache_hit",
+        "cache_hit_known",
+        "lookup_plan_ready",
+        "cache_lookup_attempted",
+        "cache_read_attempted",
+        "cache_root_present",
+        "entry_present",
+        "runtime_private_source",
+        "max_entry_bytes",
+        "lookup_status",
+        "reader_status",
+        "lookup_miss_reason",
+        "reader_miss_reason",
+        "route_policy",
+        "fingerprint_candidate_ready",
+        "instruction_candidate_count",
+        "has_multimodal_instruction_candidate",
+        "assistant_tool_call_message_count_after_latest_user",
+        "tool_message_count_after_latest_user",
     }
 )
 
@@ -309,7 +335,9 @@ def build_trace_record(
     mode_applied: str | None,
     compiler_used: bool,
     messages: list[dict[str, Any]] | None = None,
+    message_count: int | None = None,
     response_text: str | None = None,
+    response_present: bool | None = None,
     metadata: dict[str, Any] | None = None,
     created_at: str | None = None,
     request_id: str | None = None,
@@ -332,8 +360,12 @@ def build_trace_record(
         route_model=route_model,
         mode_applied=mode_applied,
         compiler_used=bool(compiler_used),
-        message_count=len(messages) if isinstance(messages, list) else 0,
-        response_present=isinstance(response_text, str),
+        message_count=(
+            _non_negative_int(message_count)
+            if message_count is not None
+            else len(messages) if isinstance(messages, list) else 0
+        ),
+        response_present=bool(response_present) if response_present is not None else isinstance(response_text, str),
         metadata=sanitize_audit_metadata(
             metadata,
             sensitive_values=sensitive_values,
@@ -353,6 +385,7 @@ def sanitize_audit_metadata(
     retaining the rejected values.
     """
 
+    projection = project_audit_metadata(metadata)
     if not isinstance(metadata, Mapping):
         return {}
 
@@ -381,8 +414,12 @@ def sanitize_audit_metadata(
             continue
         sanitized[key] = clean_value
 
+    dropped += projection.dropped_field_count
+    unsupported = projection.unsupported_artifact_count
     if dropped:
-        sanitized["sanitizer_dropped_field_count"] = dropped
+        sanitized["projection_dropped_field_count"] = dropped
+    if unsupported:
+        sanitized["projection_unsupported_artifact_count"] = unsupported
     return sanitized
 
 
@@ -481,12 +518,15 @@ def _sanitize_audit_value(
             return value, 0
         return _DROP, 0
 
-    if key == "state_counts" and isinstance(value, Mapping):
+    if key in {"state_counts", "content_shape_counts"} and isinstance(value, Mapping):
         clean_counts: dict[str, int] = {}
         dropped = 0
         for raw_count_key, raw_count in value.items():
             count_key = str(raw_count_key)
-            if count_key not in _SAFE_STATE_COUNT_ENTRY_KEYS:
+            if key == "state_counts" and count_key not in _SAFE_STATE_COUNT_ENTRY_KEYS:
+                dropped += 1
+                continue
+            if key == "content_shape_counts" and not _MAPPING_KEY_RE.fullmatch(count_key):
                 dropped += 1
                 continue
             if (

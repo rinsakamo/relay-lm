@@ -9,6 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from relaylm.audit_projection import registered_pipeline_node_projectors, registered_top_level_projectors
 from relaylm.trace import (
     AUDIT_TRACE_SCHEMA_VERSION,
     append_trace_record,
@@ -44,6 +45,10 @@ def _assert_content_free(raw: str) -> None:
 
 def main() -> int:
     with tempfile.TemporaryDirectory() as tmpdir:
+        top_projectors = set(registered_top_level_projectors())
+        require({"event", "content_type", "pipeline_node_results", "memory_selection_summary", "relayrun_artifact"}.issubset(top_projectors), top_projectors)
+        node_projectors = set(registered_pipeline_node_projectors())
+        require({"relayctx_unpack", "client_instruction_extraction", "client_instruction_cache_lookup"}.issubset(node_projectors), node_projectors)
         trace_path = Path(tmpdir) / "audit.jsonl"
         record = build_trace_record(
             trace_id="trace-content-free-001",
@@ -257,7 +262,7 @@ def main() -> int:
         require("evidence_envelope" not in payload["metadata"], payload)
         require("tool_arguments" not in payload["metadata"], payload)
         require(
-            payload["metadata"].get("sanitizer_dropped_field_count", 0) > 0,
+            payload["metadata"].get("projection_dropped_field_count", 0) > 0,
             payload,
         )
         node = payload["metadata"]["pipeline_node_results"][0]
@@ -349,6 +354,7 @@ def main() -> int:
         print("ok arbitrary URI schemes are dropped from opaque ID fields")
         print("ok backend error types remain actionable and content-free")
         print("ok pass-through trace excludes messages response snippets paths tools and evidence")
+        print("ok typed projection registries cover supported top-level and node projectors")
 
         records = read_trace_records(trace_path)
         require(len(records) == 1, records)

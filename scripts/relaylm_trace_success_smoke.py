@@ -140,7 +140,7 @@ def main() -> int:
         require("evidence_envelope" not in metadata, metadata)
         require(metadata["relayrun_artifact"]["run_id"] == "run-trace-001", metadata)
         require("target_path_preview" not in metadata["relayrun_artifact"], metadata)
-        require(metadata.get("sanitizer_dropped_field_count", 0) > 0, metadata)
+        require(metadata.get("projection_dropped_field_count", 0) > 0, metadata)
 
         records = read_trace_records(trace_path)
         require(len(records) == 1, records)
