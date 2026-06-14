@@ -18,7 +18,7 @@ from relaylm.trace import (
 
 
 SECRET_VALUES = (
-    "TRACE_SECRET_SENTINEL_7f5f4b22",
+    "trace_secret_sentinel_7f5f4b22",
     "system developer user assistant secret sentence",
     "private snippet body",
     "/home/private/relaymem/page.md",
@@ -76,6 +76,9 @@ def main() -> int:
                     "schema_version": "relayrun.runtime_checkpoint.v0",
                     "content_free": True,
                     "run_id": "run-content-free-001",
+                    # This key would normally be permitted, but its value is
+                    # tainted by the raw user message and must still be dropped.
+                    "run_status": SECRET_VALUES[0],
                     "target_path_preview": SECRET_VALUES[3],
                     "response_text": SECRET_VALUES[1],
                 },
@@ -113,7 +116,12 @@ def main() -> int:
         require(node["diagnostics"]["candidate_present"] is True, node)
         require(node["diagnostics"]["candidate_count"] == 1, node)
         require("candidate_text" not in node["diagnostics"], node)
+        require(
+            "run_status" not in payload["metadata"]["relayrun_artifact"],
+            payload,
+        )
         print("ok audit trace persists only content-free allowlisted fields")
+        print("ok tainted values are dropped even under structurally safe keys")
         print("ok pass-through trace excludes messages response snippets paths tools and evidence")
 
         records = read_trace_records(trace_path)
@@ -138,6 +146,7 @@ def main() -> int:
                     "response_text": SECRET_VALUES[1],
                     "metadata": {
                         "event": "backend_response",
+                        "status": SECRET_VALUES[0],
                         "snippet_text": SECRET_VALUES[2],
                     },
                 },
@@ -151,6 +160,7 @@ def main() -> int:
         require(legacy.response_present is True, legacy)
         require(legacy.messages == [], legacy)
         require(legacy.response_text is None, legacy)
+        require("status" not in legacy.metadata, legacy.metadata)
         require("snippet_text" not in legacy.metadata, legacy.metadata)
         print("ok legacy content-bearing rows are read as redacted audit records")
 
