@@ -106,11 +106,17 @@ _SAFE_NESTED_KEYS = frozenset(
         "applied",
         "applied_to_response",
         "artifact_schema_version",
+        "assistant_tool_call_message_count",
         "blocked",
         "blocked_reasons",
         "compiler_used",
         "content_free",
         "content_type",
+        "current_user_content_kind",
+        "current_user_content_valid",
+        "current_user_invalid_part_count",
+        "current_user_non_text_part_count",
+        "current_user_text_part_count",
         "decision",
         "diagnostics",
         "diagnostics_only",
@@ -122,10 +128,15 @@ _SAFE_NESTED_KEYS = frozenset(
         "managed_route",
         "active_tool_transaction_candidate",
         "node_name",
+        "node_sequence",
         "node_status",
+        "post_user_tool_message_count",
         "reason",
         "reasons",
+        "relaysoul_update_gate",
         "schema_version",
+        "required_pipeline_nodes",
+        "source_compat_module",
         "source",
         "status",
         "status_code",
@@ -493,11 +504,7 @@ def _collect_rejected_metadata_strings(
     value: Any,
     *,
     direct: bool = False,
-    taint_all: bool = False,
 ) -> set[str]:
-    if taint_all:
-        return _collect_strings(value)
-
     collected: set[str] = set()
     if isinstance(value, str):
         if direct and value.strip():
@@ -510,14 +517,25 @@ def _collect_rejected_metadata_strings(
             elif not _is_safe_nested_key(child_key):
                 if child_key:
                     collected.add(child_key)
-                collected.update(
-                    _collect_rejected_metadata_strings(child_value, taint_all=True)
-                )
+                collected.update(_collect_rejected_nested_value_strings(child_value))
             else:
-                collected.update(_collect_rejected_metadata_strings(child_value))
+                collected.update(_collect_forbidden_descendant_strings(child_value))
     elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         for item in value:
-            collected.update(_collect_rejected_metadata_strings(item))
+            collected.update(_collect_rejected_nested_value_strings(item))
+    return collected
+
+
+def _collect_rejected_nested_value_strings(value: Any) -> set[str]:
+    collected: set[str] = set()
+    if isinstance(value, str):
+        if value.strip():
+            collected.add(value.strip())
+    elif isinstance(value, Mapping):
+        collected.update(_collect_forbidden_descendant_strings(value))
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        for item in value:
+            collected.update(_collect_rejected_nested_value_strings(item))
     return collected
 
 
@@ -525,9 +543,11 @@ def _collect_forbidden_descendant_strings(value: Any) -> set[str]:
     collected: set[str] = set()
     if isinstance(value, Mapping):
         for raw_key, child_value in value.items():
-            child_key = str(raw_key)
+            child_key = str(raw_key).strip()
             if _is_forbidden_key(child_key):
                 collected.update(_collect_strings(child_value))
+            elif not _is_safe_nested_key(child_key):
+                collected.update(_collect_rejected_nested_value_strings(child_value))
             else:
                 collected.update(_collect_forbidden_descendant_strings(child_value))
     elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
@@ -562,6 +582,8 @@ def _safe_audit_mapping_key(
         return False
     if _is_forbidden_key(key):
         return False
+    if not _is_safe_nested_key(key):
+        return False
     if not _MAPPING_KEY_RE.fullmatch(key):
         return False
     if key not in _SAFE_NESTED_KEYS and _matches_tainted_value(key, tainted_values):
@@ -585,6 +607,7 @@ def _is_forbidden_key(key: str) -> bool:
         lowered == token
         or lowered.startswith(f"{token}_")
         or lowered.endswith(f"_{token}")
+        or f"_{token}_" in lowered
         for token in _FORBIDDEN_KEY_TOKENS
     )
 

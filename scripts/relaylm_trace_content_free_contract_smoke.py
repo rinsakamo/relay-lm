@@ -26,6 +26,7 @@ SECRET_VALUES = (
     "evidence body secret",
     "metadata_key_secret_9f31c4a2",
 )
+NESTED_REJECTED_SECRET = "nested_rejected_secret_45e9c81a"
 
 
 def require(condition: bool, detail: object) -> None:
@@ -36,6 +37,7 @@ def require(condition: bool, detail: object) -> None:
 def _assert_content_free(raw: str) -> None:
     for secret in SECRET_VALUES:
         require(secret not in raw, raw)
+    require(NESTED_REJECTED_SECRET not in raw, raw)
 
 
 def main() -> int:
@@ -56,6 +58,7 @@ def main() -> int:
             response_text=SECRET_VALUES[1],
             metadata={
                 "event": "backend_response",
+                "content_type": "text/event-stream",
                 "status_code": 200,
                 "error_type": "BackendRequestError",
                 "pipeline_node_results": [
@@ -72,6 +75,12 @@ def main() -> int:
                             "schema_version": "relayctx.unpack.v0",
                             "unapproved_number": 42,
                             "private_numeric_marker": 123456789,
+                            "user_prompt_status": "ready",
+                            "backend_response_text_status": "ready",
+                            "custom_page_path_id": "notes/private.md",
+                            "custom_root_path_id": "private/root",
+                            "internal_tool_result_count": 1,
+                            "retrieval_evidence_status": "ready",
                             "tainted_source": SECRET_VALUES[0],
                             "status": SECRET_VALUES[0],
                             "decision": SECRET_VALUES[0],
@@ -93,6 +102,20 @@ def main() -> int:
                                 "decision": 1,
                                 "compatibility_source_node": 1,
                             },
+                        },
+                    },
+                    {
+                        "node_name": "nested_rejected_taint_probe",
+                        "status": NESTED_REJECTED_SECRET,
+                        "reason": NESTED_REJECTED_SECRET,
+                        "diagnostics": {
+                            "private_summary": {
+                                "source": "relayref",
+                                "evidence": {
+                                    NESTED_REJECTED_SECRET: 1,
+                                },
+                            },
+                            "safe_counter_count": 1,
                         },
                     }
                 ],
@@ -119,6 +142,12 @@ def main() -> int:
                     "root_path_id": "private/root",
                     "content_id": "secret-content",
                     "url_id": "opaque-looking-url",
+                    "user_prompt_status": "ready",
+                    "backend_response_text_status": "ready",
+                    "custom_page_path_id": "notes/private.md",
+                    "custom_root_path_id": "private/root",
+                    "internal_tool_result_count": 1,
+                    "retrieval_evidence_status": "ready",
                     "evidence": {
                         SECRET_VALUES[6]: 1,
                     },
@@ -159,6 +188,7 @@ def main() -> int:
         require("messages" not in payload, payload)
         require("response_text" not in payload, payload)
         require(payload["metadata"]["event"] == "backend_response", payload)
+        require(payload["metadata"]["content_type"] == "text/event-stream", payload)
         require(payload["metadata"]["status_code"] == 200, payload)
         require(payload["metadata"]["error_type"] == "BackendRequestError", payload)
         require(
@@ -188,6 +218,12 @@ def main() -> int:
         require(diagnostics["schema_version"] == "relayctx.unpack.v0", node)
         require("unapproved_number" not in diagnostics, node)
         require("private_numeric_marker" not in diagnostics, node)
+        require("user_prompt_status" not in diagnostics, node)
+        require("backend_response_text_status" not in diagnostics, node)
+        require("custom_page_path_id" not in diagnostics, node)
+        require("custom_root_path_id" not in diagnostics, node)
+        require("internal_tool_result_count" not in diagnostics, node)
+        require("retrieval_evidence_status" not in diagnostics, node)
         require("tainted_source" not in diagnostics, node)
         require("status" not in diagnostics, node)
         require("decision" not in diagnostics, node)
@@ -200,6 +236,13 @@ def main() -> int:
         require("http://internal.example/path" not in diagnostics, node)
         require("source_url" not in diagnostics, node)
         require("candidate_text" not in diagnostics, node)
+        probe = payload["metadata"]["pipeline_node_results"][1]
+        require(probe["node_name"] == "nested_rejected_taint_probe", probe)
+        require("status" not in probe, probe)
+        require("reason" not in probe, probe)
+        probe_diagnostics = probe["diagnostics"]
+        require(probe_diagnostics["safe_counter_count"] == 1, probe_diagnostics)
+        require("private_summary" not in probe_diagnostics, probe_diagnostics)
         relayrun = payload["metadata"]["relayrun_artifact"]
         require(relayrun["safe_reference_id"] == "opaque-id-001", relayrun)
         require(relayrun["run_id"] == "run-content-free-001", relayrun)
@@ -217,6 +260,12 @@ def main() -> int:
         require("root_path_id" not in relayrun, relayrun)
         require("content_id" not in relayrun, relayrun)
         require("url_id" not in relayrun, relayrun)
+        require("user_prompt_status" not in relayrun, relayrun)
+        require("backend_response_text_status" not in relayrun, relayrun)
+        require("custom_page_path_id" not in relayrun, relayrun)
+        require("custom_root_path_id" not in relayrun, relayrun)
+        require("internal_tool_result_count" not in relayrun, relayrun)
+        require("retrieval_evidence_status" not in relayrun, relayrun)
         require("evidence" not in relayrun, relayrun)
         require(
             "run_status" not in payload["metadata"]["relayrun_artifact"],
