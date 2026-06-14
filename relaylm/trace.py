@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import json
-import math
-import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,262 +12,6 @@ from typing import Any
 from relaylm.audit_projection import project_audit_metadata
 
 AUDIT_TRACE_SCHEMA_VERSION = "relaylm.audit_trace.v1"
-
-# Runtime metadata is accepted only through this top-level allowlist. Nested
-# values are filtered again by key shape and scalar value shape below.
-_AUDIT_METADATA_TOP_LEVEL_KEYS = frozenset(
-    {
-        "event",
-        "content_type",
-        "status_code",
-        "error_class",
-        "error_type",
-        "latency_ms",
-        "bytes_in",
-        "bytes_out",
-        "bytes_avoided",
-        "pipeline_node_results",
-        "memory_source",
-        "memory_selection_summary",
-        "memory_block_assembly",
-        "token_memory_dry_run",
-        "token_policy_signal",
-        "token_policy_decision",
-        "token_policy_readiness",
-        "token_budget_truncation",
-        "stable_prefix_hash",
-        "stable_prefix_block_ids",
-        "memory_adapter_dry_run",
-        "memory_adapter_readiness",
-        "memory_adapter_conflicts",
-        "context_block_summary",
-        "persona_source_budget_diagnostics",
-        "request_scope_identity",
-        "scope_resolution_diagnostics",
-        "memory_adapter_shadow_dry_run",
-        "memory_adapter_shadow_readiness",
-        "memory_adapter_shadow_conflicts",
-        "memory_adapter_shadow_delta",
-        "relaysoul_runtime_feedback_summary",
-        "relayint_fast_path_dry_run",
-        "relayint_quick_clarification_preflight",
-        "relayint_quick_clarification_apply_plan",
-        "compile_decision_dry_run",
-        "relayemo_artifact",
-        "relayscn_scene_policy_artifact",
-        "relayref_artifact",
-        "runtime_ctx_injection_result",
-        "runtime_snippet_injection_result",
-        "relayctx_short_term_source_diagnostics",
-        "relayctx_short_term_extraction_dry_run",
-        "relayctx_short_term_block_assembly_dry_run",
-        "relayctx_short_term_runtime_injection_preflight",
-        "relayctx_short_term_runtime_injection_apply_result",
-        "relayrun_artifact",
-        "sanitizer_dropped_field_count",
-    }
-)
-
-_SELECTIVELY_REJECTED_TOP_LEVEL_KEYS = frozenset(
-    {
-        "relaymem_retrieval_artifact",
-    }
-)
-
-# Content-bearing or local-structure-bearing keys are never persisted, even
-# when they appear inside an otherwise allowlisted diagnostics artifact.
-_FORBIDDEN_KEY_TOKENS = frozenset(
-    {
-        "argument",
-        "arguments",
-        "body",
-        "cache_entry",
-        "content",
-        "evidence",
-        "exception_text",
-        "forwarded_payload",
-        "instruction",
-        "message",
-        "messages",
-        "original_payload",
-        "page_path",
-        "path",
-        "payload",
-        "prompt",
-        "query",
-        "response_text",
-        "root_path",
-        "snippet",
-        "system_prompt",
-        "text",
-        "tool_result",
-        "url",
-    }
-)
-
-# Exact nested keys that are useful for audit and not covered by the suffix
-# rules. Values are still checked by _sanitize_audit_value().
-_SAFE_NESTED_KEYS = frozenset(
-    {
-        "applied",
-        "applied_to_response",
-        "artifact_schema_version",
-        "assistant_tool_call_message_count",
-        "blocked",
-        "blocked_reasons",
-        "compiler_used",
-        "content_free",
-        "content_type",
-        "current_user_content_kind",
-        "current_user_content_valid",
-        "current_user_invalid_part_count",
-        "current_user_non_text_part_count",
-        "current_user_text_part_count",
-        "decision",
-        "diagnostics",
-        "diagnostics_only",
-        "enabled",
-        "error_class",
-        "error_type",
-        "event",
-        "fallback_reason",
-        "inserted_message_role",
-        "managed_route",
-        "active_tool_transaction_candidate",
-        "node_name",
-        "node_sequence",
-        "node_status",
-        "post_user_tool_message_count",
-        "reason",
-        "reasons",
-        "relaysoul_update_gate",
-        "schema_version",
-        "state_counts",
-        "required_pipeline_nodes",
-        "source_compat_module",
-        "source",
-        "status",
-        "status_code",
-        "runtime_snippet_injection_result",
-        "candidate_roles",
-        "candidate_indices",
-        "content_shape_counts",
-        "lookup_requested",
-        "cache_hit",
-        "cache_hit_known",
-        "lookup_plan_ready",
-        "cache_lookup_attempted",
-        "cache_read_attempted",
-        "cache_root_present",
-        "entry_present",
-        "runtime_private_source",
-        "max_entry_bytes",
-        "lookup_status",
-        "reader_status",
-        "lookup_miss_reason",
-        "reader_miss_reason",
-        "route_policy",
-        "fingerprint_candidate_ready",
-        "instruction_candidate_count",
-        "has_multimodal_instruction_candidate",
-        "assistant_tool_call_message_count_after_latest_user",
-        "tool_message_count_after_latest_user",
-    }
-)
-
-_SAFE_KEY_SUFFIXES = (
-    "_allowed",
-    "_applied",
-    "_attempted",
-    "_avoided",
-    "_blocked",
-    "_bytes",
-    "_characters",
-    "_chars",
-    "_class",
-    "_count",
-    "_decision",
-    "_detected",
-    "_enabled",
-    "_failed",
-    "_found",
-    "_hash",
-    "_id",
-    "_ids",
-    "_kind",
-    "_mode",
-    "_model",
-    "_ms",
-    "_name",
-    "_namespace",
-    "_node",
-    "_present",
-    "_ready",
-    "_reason",
-    "_reasons",
-    "_required",
-    "_role",
-    "_scope",
-    "_state",
-    "_statuses",
-    "_storage",
-    "_strategy",
-    "_source",
-    "_status",
-    "_type",
-    "_action",
-    "_alias",
-    "_format",
-    "_gates",
-    "_placement",
-    "_policy",
-    "_used",
-    "_valid",
-    "_version",
-)
-
-
-_ENUM_TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9_.:/-]{0,127}$")
-_CLASS_TOKEN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
-_MAPPING_KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,127}$")
-_OPAQUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$")
-_HASH_RE = re.compile(r"^[0-9a-fA-F]{16,128}$")
-_CONTENT_TYPE_RE = re.compile(
-    r"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,63}/"
-    r"[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,63}"
-    r"(?:\s*;\s*charset=[A-Za-z0-9._-]{1,32})?$"
-)
-_URI_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
-_WINDOWS_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
-_SUBSTRING_TAINT_MIN_LENGTH = 8
-_SUBSTRING_TAINT_MIN_RATIO = 0.5
-_MESSAGE_STRUCTURAL_SCALAR_KEYS = frozenset(
-    {
-        "role",
-        "type",
-        "name",
-        "id",
-        "tool_call_id",
-        "index",
-        "object",
-    }
-)
-_MESSAGE_STRUCTURAL_CONTAINER_KEYS = frozenset(
-    {
-        "tool_calls",
-        "function_call",
-        "function",
-    }
-)
-_SAFE_STATE_COUNT_ENTRY_KEYS = frozenset(
-    {
-        "active",
-        "promoted",
-        "demoted",
-        "disabled",
-    }
-)
-
 
 @dataclass(frozen=True)
 class TraceRecord:
@@ -307,7 +49,7 @@ class TraceRecord:
             "compiler_used": bool(self.compiler_used),
             "message_count": max(0, int(self.message_count)),
             "response_present": bool(self.response_present),
-            "metadata": sanitize_audit_metadata(self.metadata),
+            "metadata": dict(self.metadata),
         }
 
     @property
@@ -335,8 +77,8 @@ def build_trace_record(
     mode_applied: str | None,
     compiler_used: bool,
     messages: list[dict[str, Any]] | None = None,
-    message_count: int | None = None,
     response_text: str | None = None,
+    message_count: int | None = None,
     response_present: bool | None = None,
     metadata: dict[str, Any] | None = None,
     created_at: str | None = None,
@@ -352,6 +94,9 @@ def build_trace_record(
     sensitive_values = _collect_message_content_strings(messages)
     if isinstance(response_text, str) and response_text:
         sensitive_values.add(response_text)
+    projection = project_audit_metadata(metadata, sensitive_values=sensitive_values)
+    inferred_message_count = len(messages) if isinstance(messages, list) else 0
+    inferred_response_present = isinstance(response_text, str)
     return TraceRecord(
         trace_id=trace_id,
         request_id=request_id or trace_id,
@@ -360,67 +105,20 @@ def build_trace_record(
         route_model=route_model,
         mode_applied=mode_applied,
         compiler_used=bool(compiler_used),
-        message_count=(
-            _non_negative_int(message_count)
-            if message_count is not None
-            else len(messages) if isinstance(messages, list) else 0
-        ),
-        response_present=bool(response_present) if response_present is not None else isinstance(response_text, str),
-        metadata=sanitize_audit_metadata(
-            metadata,
-            sensitive_values=sensitive_values,
-        ),
+        message_count=_non_negative_int(message_count) if message_count is not None else inferred_message_count,
+        response_present=bool(response_present) if response_present is not None else inferred_response_present,
+        metadata=projection.metadata,
     )
 
 
 def sanitize_audit_metadata(
     metadata: Mapping[str, Any] | None,
     *,
-    sensitive_values: Iterable[str] = (),
+    sensitive_values: set[str] | None = None,
 ) -> dict[str, Any]:
-    """Return allowlisted, recursively content-free audit metadata.
+    """Project runtime metadata through the typed audit projection registry."""
 
-    Unsafe fields are dropped rather than serialized. A dropped-field counter
-    is retained so diagnostics can reveal that sanitization occurred without
-    retaining the rejected values.
-    """
-
-    projection = project_audit_metadata(metadata)
-    if not isinstance(metadata, Mapping):
-        return {}
-
-    tainted_values = {
-        value.strip()
-        for value in sensitive_values
-        if isinstance(value, str) and value.strip()
-    }
-    tainted_values.update(_collect_tainted_metadata_strings(metadata))
-
-    sanitized: dict[str, Any] = {}
-    dropped = 0
-    for raw_key, value in metadata.items():
-        key = str(raw_key)
-        if key not in _AUDIT_METADATA_TOP_LEVEL_KEYS:
-            dropped += 1
-            continue
-        clean_value, child_dropped = _sanitize_audit_value(
-            value,
-            key=key,
-            tainted_values=tainted_values,
-        )
-        dropped += child_dropped
-        if clean_value is _DROP:
-            dropped += 1
-            continue
-        sanitized[key] = clean_value
-
-    dropped += projection.dropped_field_count
-    unsupported = projection.unsupported_artifact_count
-    if dropped:
-        sanitized["projection_dropped_field_count"] = dropped
-    if unsupported:
-        sanitized["projection_unsupported_artifact_count"] = unsupported
-    return sanitized
+    return project_audit_metadata(metadata, sensitive_values=sensitive_values).metadata
 
 
 def append_trace_record(path: str | Path, record: TraceRecord) -> None:
@@ -449,13 +147,6 @@ def read_trace_records(path: str | Path) -> list[TraceRecord]:
                 continue
             records.append(_trace_record_from_dict(payload))
     return records
-
-
-class _DropValue:
-    pass
-
-
-_DROP = _DropValue()
 
 
 def _trace_record_from_dict(payload: Mapping[str, Any]) -> TraceRecord:
@@ -494,300 +185,6 @@ def _trace_record_from_dict(payload: Mapping[str, Any]) -> TraceRecord:
     )
 
 
-def _sanitize_audit_value(
-    value: Any,
-    *,
-    key: str,
-    tainted_values: set[str],
-) -> tuple[Any, int]:
-    if _is_forbidden_key(key):
-        return _DROP, 0
-
-    if value is None or isinstance(value, bool):
-        return (value, 0) if _is_safe_nested_key(key) else (_DROP, 0)
-
-    if isinstance(value, (int, float)):
-        if not _is_safe_nested_key(key):
-            return _DROP, 0
-        if isinstance(value, float) and not math.isfinite(value):
-            return _DROP, 0
-        return value, 0
-
-    if isinstance(value, str):
-        if _safe_string_for_key(key, value, tainted_values=tainted_values):
-            return value, 0
-        return _DROP, 0
-
-    if key in {"state_counts", "content_shape_counts"} and isinstance(value, Mapping):
-        clean_counts: dict[str, int] = {}
-        dropped = 0
-        for raw_count_key, raw_count in value.items():
-            count_key = str(raw_count_key)
-            if key == "state_counts" and count_key not in _SAFE_STATE_COUNT_ENTRY_KEYS:
-                dropped += 1
-                continue
-            if key == "content_shape_counts" and not _MAPPING_KEY_RE.fullmatch(count_key):
-                dropped += 1
-                continue
-            if (
-                isinstance(raw_count, bool)
-                or not isinstance(raw_count, int)
-                or raw_count < 0
-            ):
-                dropped += 1
-                continue
-            clean_counts[count_key] = raw_count
-        return clean_counts, dropped
-
-    if isinstance(value, Mapping):
-        clean_mapping: dict[str, Any] = {}
-        dropped = 0
-        for raw_child_key, child_value in value.items():
-            child_key = str(raw_child_key)
-            if not _safe_audit_mapping_key(
-                child_key,
-                tainted_values=tainted_values,
-            ):
-                dropped += 1
-                continue
-            clean_child, child_dropped = _sanitize_audit_value(
-                child_value,
-                key=child_key,
-                tainted_values=tainted_values,
-            )
-            dropped += child_dropped
-            if clean_child is _DROP:
-                dropped += 1
-                continue
-            clean_mapping[child_key] = clean_child
-        return clean_mapping, dropped
-
-    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        clean_items: list[Any] = []
-        dropped = 0
-        for item in value:
-            clean_item, item_dropped = _sanitize_audit_value(
-                item,
-                key=key,
-                tainted_values=tainted_values,
-            )
-            dropped += item_dropped
-            if clean_item is _DROP:
-                dropped += 1
-                continue
-            clean_items.append(clean_item)
-        return clean_items, dropped
-
-    return _DROP, 0
-
-
-def _collect_tainted_metadata_strings(metadata: Mapping[str, Any]) -> set[str]:
-    tainted: set[str] = set()
-    for raw_key, value in metadata.items():
-        key = str(raw_key)
-        if key in _SELECTIVELY_REJECTED_TOP_LEVEL_KEYS:
-            tainted.update(_collect_rejected_metadata_strings(value, direct=True))
-            continue
-        if key not in _AUDIT_METADATA_TOP_LEVEL_KEYS or _is_forbidden_key(key):
-            tainted.update(_collect_strings(value))
-            continue
-        tainted.update(_collect_forbidden_descendant_strings(value))
-    return tainted
-
-
-def _collect_rejected_metadata_strings(
-    value: Any,
-    *,
-    direct: bool = False,
-) -> set[str]:
-    collected: set[str] = set()
-    if isinstance(value, str):
-        if direct and value.strip():
-            collected.add(value.strip())
-    elif isinstance(value, Mapping):
-        for raw_key, child_value in value.items():
-            child_key = str(raw_key).strip()
-            if _is_forbidden_key(child_key):
-                collected.update(_collect_strings(child_value))
-            elif not _is_safe_nested_key(child_key):
-                if child_key:
-                    collected.add(child_key)
-                collected.update(_collect_rejected_nested_value_strings(child_value))
-            else:
-                collected.update(_collect_forbidden_descendant_strings(child_value))
-    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        for item in value:
-            collected.update(_collect_rejected_nested_value_strings(item))
-    return collected
-
-
-def _collect_rejected_nested_value_strings(value: Any) -> set[str]:
-    collected: set[str] = set()
-    if isinstance(value, str):
-        if value.strip():
-            collected.add(value.strip())
-    elif isinstance(value, Mapping):
-        collected.update(_collect_forbidden_descendant_strings(value))
-    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        for item in value:
-            collected.update(_collect_rejected_nested_value_strings(item))
-    return collected
-
-
-def _collect_message_content_strings(value: Any) -> set[str]:
-    collected: set[str] = set()
-    if isinstance(value, str):
-        if value.strip():
-            collected.add(value.strip())
-    elif isinstance(value, Mapping):
-        for raw_key, child_value in value.items():
-            key = str(raw_key).strip().lower()
-            if key in _MESSAGE_STRUCTURAL_SCALAR_KEYS:
-                continue
-            if key in _MESSAGE_STRUCTURAL_CONTAINER_KEYS:
-                collected.update(_collect_message_content_strings(child_value))
-                continue
-            collected.update(_collect_message_content_strings(child_value))
-    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        for item in value:
-            collected.update(_collect_message_content_strings(item))
-    return collected
-
-
-def _collect_forbidden_descendant_strings(value: Any) -> set[str]:
-    collected: set[str] = set()
-    if isinstance(value, Mapping):
-        for raw_key, child_value in value.items():
-            child_key = str(raw_key).strip()
-            if _is_forbidden_key(child_key):
-                collected.update(_collect_strings(child_value))
-            elif not _is_safe_nested_key(child_key):
-                collected.update(_collect_rejected_nested_value_strings(child_value))
-            else:
-                collected.update(_collect_forbidden_descendant_strings(child_value))
-    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        for item in value:
-            collected.update(_collect_forbidden_descendant_strings(item))
-    return collected
-
-
-def _collect_strings(value: Any) -> set[str]:
-    collected: set[str] = set()
-    if isinstance(value, str):
-        if value.strip():
-            collected.add(value.strip())
-    elif isinstance(value, Mapping):
-        for raw_key, child_value in value.items():
-            key = str(raw_key).strip()
-            if key and not _is_safe_nested_key(key) and not _is_forbidden_key(key):
-                collected.add(key)
-            collected.update(_collect_strings(child_value))
-    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-        for item in value:
-            collected.update(_collect_strings(item))
-    return collected
-
-
-def _safe_audit_mapping_key(
-    key: str,
-    *,
-    tainted_values: set[str],
-) -> bool:
-    if not key or len(key) > 128:
-        return False
-    if _is_forbidden_key(key):
-        return False
-    if not _is_safe_nested_key(key):
-        return False
-    if not _MAPPING_KEY_RE.fullmatch(key):
-        return False
-    if key not in _SAFE_NESTED_KEYS and _matches_tainted_value(key, tainted_values):
-        return False
-    if _looks_like_url_or_path("", key):
-        return False
-    return True
-
-
-def _is_safe_nested_key(key: str) -> bool:
-    if _is_forbidden_key(key):
-        return False
-    return key in _SAFE_NESTED_KEYS or key.endswith(_SAFE_KEY_SUFFIXES)
-
-
-def _is_forbidden_key(key: str) -> bool:
-    lowered = key.lower()
-    if lowered in _SAFE_NESTED_KEYS:
-        return False
-    return any(
-        lowered == token
-        or lowered.startswith(f"{token}_")
-        or lowered.endswith(f"_{token}")
-        or f"_{token}_" in lowered
-        for token in _FORBIDDEN_KEY_TOKENS
-    )
-
-
-def _safe_string_for_key(
-    key: str,
-    value: str,
-    *,
-    tainted_values: set[str],
-) -> bool:
-    if not _is_safe_nested_key(key):
-        return False
-    if not value or len(value) > 256:
-        return False
-    if _matches_tainted_value(value, tainted_values):
-        return False
-    if key == "content_type":
-        return bool(_CONTENT_TYPE_RE.fullmatch(value))
-    if _looks_like_url_or_path(key, value):
-        return False
-    if key in {"error_class", "error_type"}:
-        return bool(_CLASS_TOKEN_RE.fullmatch(value))
-    if key.endswith("_hash"):
-        return bool(_HASH_RE.fullmatch(value))
-    if key.endswith(("_id", "_ids")):
-        return bool(_OPAQUE_ID_RE.fullmatch(value))
-    return bool(_ENUM_TOKEN_RE.fullmatch(value))
-
-
-def _looks_like_url_or_path(key: str, value: str) -> bool:
-    stripped = value.strip()
-    lowered = stripped.lower()
-    if _URI_SCHEME_RE.match(stripped) or stripped.startswith("//"):
-        return True
-    if lowered.startswith("www."):
-        return True
-    if stripped.startswith(("/", "./", "../", "~/")):
-        return True
-    if _WINDOWS_PATH_RE.match(stripped) or "\\" in stripped:
-        return True
-    if "/" in stripped and not key.endswith(("_model", "_id", "_ids")):
-        return True
-    return False
-
-
-def _matches_tainted_value(value: str, tainted_values: set[str]) -> bool:
-    stripped = value.strip()
-    for tainted in tainted_values:
-        if stripped == tainted:
-            return True
-        if _is_substantial_tainted_containment(tainted, stripped):
-            return True
-        if _is_substantial_tainted_containment(stripped, tainted):
-            return True
-    return False
-
-
-def _is_substantial_tainted_containment(needle: str, haystack: str) -> bool:
-    if len(needle) < _SUBSTRING_TAINT_MIN_LENGTH:
-        return False
-    if needle not in haystack:
-        return False
-    return len(needle) / len(haystack) >= _SUBSTRING_TAINT_MIN_RATIO
-
-
 def _non_negative_int(value: Any) -> int:
     if isinstance(value, bool):
         return 0
@@ -798,3 +195,20 @@ def _non_negative_int(value: Any) -> int:
 
 def _optional_string(value: Any) -> str | None:
     return value if isinstance(value, str) else None
+
+
+def _collect_message_content_strings(value: Any) -> set[str]:
+    collected: set[str] = set()
+    if isinstance(value, str):
+        if value.strip():
+            collected.add(value.strip())
+    elif isinstance(value, Mapping):
+        for raw_key, child_value in value.items():
+            key = str(raw_key).strip().lower()
+            if key in {"role", "type", "name", "id", "tool_call_id", "index", "object"}:
+                continue
+            collected.update(_collect_message_content_strings(child_value))
+    elif isinstance(value, list):
+        for item in value:
+            collected.update(_collect_message_content_strings(item))
+    return collected
