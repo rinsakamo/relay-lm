@@ -27,9 +27,10 @@ jobs:
       - name: Compile
         run: python -m compileall relaylm scripts
       - name: Run audit projection smoke suite
+        id: suite
         shell: bash
         run: |
-          set -e
+          set +e
           scripts=(
             relaylm_audit_projection_contract_smoke.py
             relaylm_trace_content_free_contract_smoke.py
@@ -58,7 +59,17 @@ jobs:
             relaylm_client_instruction_cache_lookup_dependency_smoke.py
             relaylm_client_history_exclusion_preflight_smoke.py
           )
+          code=0
+          : > suite.log
           for script in "${scripts[@]}"; do
-            echo "== $script =="
-            python "scripts/$script"
+            echo "== $script ==" >> suite.log
+            python "scripts/$script" >> suite.log 2>&1 || { code=$?; break; }
           done
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: audit-projection-suite-log
+          path: suite.log
+      - name: Enforce suite result
+        run: test "${{ steps.suite.outputs.exit_code }}" = "0"
