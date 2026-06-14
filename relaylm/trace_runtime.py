@@ -51,7 +51,7 @@ def trace_runtime_event(
 
     Runtime producers pass only request/response shape and explicitly supported
     audit artifacts. Unsupported RequestDiagnostics fields never enter the
-    projection boundary.
+    projection boundary. This write API is intentionally shape-only.
     """
 
     pipeline_node_results = _consume_pipeline_node_results(diagnostics)
