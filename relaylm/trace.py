@@ -177,6 +177,8 @@ _SAFE_KEY_SUFFIXES = (
 _ENUM_TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9_.:/-]{0,127}$")
 _OPAQUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$")
 _HASH_RE = re.compile(r"^[0-9a-fA-F]{16,128}$")
+_SUBSTRING_TAINT_MIN_LENGTH = 8
+_SUBSTRING_TAINT_MIN_RATIO = 0.5
 
 
 @dataclass(frozen=True)
@@ -526,11 +528,19 @@ def _matches_tainted_value(value: str, tainted_values: set[str]) -> bool:
     for tainted in tainted_values:
         if stripped == tainted:
             return True
-        if len(tainted) >= 8 and tainted in stripped:
+        if _is_substantial_tainted_containment(tainted, stripped):
             return True
-        if len(stripped) >= 8 and stripped in tainted:
+        if _is_substantial_tainted_containment(stripped, tainted):
             return True
     return False
+
+
+def _is_substantial_tainted_containment(needle: str, haystack: str) -> bool:
+    if len(needle) < _SUBSTRING_TAINT_MIN_LENGTH:
+        return False
+    if needle not in haystack:
+        return False
+    return len(needle) / len(haystack) >= _SUBSTRING_TAINT_MIN_RATIO
 
 
 def _non_negative_int(value: Any) -> int:
