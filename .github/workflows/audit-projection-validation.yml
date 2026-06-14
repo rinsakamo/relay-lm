@@ -60,3 +60,21 @@ jobs:
         run: python scripts/relaylm_client_message_canonicalization_dry_run_smoke.py
       - name: Client message runtime
         run: python scripts/relaylm_client_msg_runtime_dry_run_smoke.py
+      - name: Compile decision trace
+        run: python scripts/relaylm_compile_decision_dry_run_smoke.py
+      - name: Token trace payload
+        run: python scripts/relaylm_token_trace_payload_smoke.py
+      - name: Token policy signal
+        run: python scripts/relaylm_token_policy_signal_smoke.py
+      - name: Token budget truncation dry run
+        run: python scripts/relaylm_token_budget_truncation_dry_run_smoke.py
+      - name: Token budget truncation apply
+        run: python scripts/relaylm_token_budget_truncation_apply_smoke.py
+      - name: Mixed character token policy
+        run: python scripts/relaylm_mixed_character_token_policy_smoke.py
+      - name: Token policy runtime gate
+        run: python scripts/relaylm_token_policy_runtime_gate_smoke.py
+      - name: Client cache lookup dependency
+        run: python scripts/relaylm_client_instruction_cache_lookup_dependency_smoke.py
+      - name: Client history exclusion preflight
+        run: python scripts/relaylm_client_history_exclusion_preflight_smoke.py
