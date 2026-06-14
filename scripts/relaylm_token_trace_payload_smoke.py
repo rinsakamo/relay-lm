@@ -14,19 +14,18 @@ from relaylm.diagnostics import RequestDiagnostics
 from relaylm.trace_runtime import trace_runtime_event
 
 
-def require(condition: bool, message: object) -> None:
+def require(condition: bool, detail: object) -> None:
     if not condition:
-        raise AssertionError(message)
+        raise AssertionError(detail)
 
 
 def main() -> int:
     with tempfile.TemporaryDirectory() as tmpdir:
         trace_path = Path(tmpdir) / "trace.jsonl"
-        base = load_config(REPO_ROOT / "config.example.yaml")
-        config_dict = base.model_dump()
-        config_dict["trace"] = {"enabled": True, "path": str(trace_path)}
-        config = RelayLMConfig.model_validate(config_dict)
-        payload = {
+        config_data = load_config(REPO_ROOT / "config.example.yaml").model_dump()
+        config_data["trace"] = {"enabled": True, "path": str(trace_path)}
+        config = RelayLMConfig.model_validate(config_data)
+        summary = {
             "summary": {
                 "selected_memory_ids": ["m1", "m2"],
                 "excluded_disabled_ids": ["m3"],
@@ -39,30 +38,21 @@ def main() -> int:
             },
         }
         diagnostics = RequestDiagnostics(
-            request_id="req-token-trace-payload",
-            token_memory_dry_run=payload,
+            request_id="req-token-trace",
+            token_memory_dry_run=summary,
         )
-
         written = trace_runtime_event(
             config=config,
             diagnostics=diagnostics,
-            messages=[{"role": "user", "content": "hello"}],
+            message_count=1,
+            response_present=False,
         )
-        require(written, "trace record was not written")
-        require(trace_path.exists(), "trace file was not created")
-
-        lines = trace_path.read_text(encoding="utf-8").strip().splitlines()
-        require(len(lines) == 1, lines)
-        record = json.loads(lines[0])
-        metadata = record.get("metadata")
-        require(isinstance(metadata, dict), metadata)
-        require(metadata.get("token_memory_dry_run") == payload, metadata)
-        print("ok trace token memory dry run payload")
-
-        log_payload = diagnostics.to_log_dict()
-        require(log_payload["token_memory_dry_run"] == payload, log_payload)
-        print("ok diagnostics token memory dry run log payload")
-
+        require(written, "trace write failed")
+        record = json.loads(trace_path.read_text(encoding="utf-8"))
+        metadata = record["metadata"]
+        require(metadata["token_memory_dry_run"] == summary, metadata)
+        require(diagnostics.to_log_dict()["token_memory_dry_run"] == summary, diagnostics)
+        print("ok token memory trace projection")
     return 0
 
 
