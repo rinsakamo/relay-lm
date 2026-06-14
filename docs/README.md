@@ -16,17 +16,20 @@ This page is the entry point for RelayLM documentation.
 
 Use these docs to understand the RelayLM pipeline, responsibility boundaries, and profile-specific runtime design.
 
+Canonical precedence and legacy-term handling are defined in the [architecture docs index](architecture/README.md). When documents disagree, `pipeline_responsibility_design.md` is the source of truth for component names and ownership, while `pipeline_implementation_plan.md` is the source of truth for phase status.
+
 - [Architecture docs index](architecture/README.md)
+- [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — canonical naming and responsibility source
+- [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — implementation order and phase status
 - [Runtime architecture](architecture/runtime_architecture.md)
 - [Product runtime hardening](architecture/product_runtime_hardening.md)
-- [Pipeline implementation plan](architecture/pipeline_implementation_plan.md)
-- [Pipeline responsibility design](architecture/pipeline_responsibility_design.md)
 - [AI VTuber pipeline profile](architecture/ai_vtuber_pipeline_profile.md)
 - [VTuber memory proxy design](architecture/vtuber_memory_proxy_design.md)
 - [Persona-specialized proxy design](architecture/persona_specialized_proxy_design.md)
 - [Open-LLM-VTuber integration](architecture/open_llm_vtuber_integration.md)
 - [RelayINT MVP design](architecture/relayint_mvp_design.md)
-- [RelayREF / RelaySLP MVP design](architecture/relayref_relayslp_mvp_design.md)
+- [RelayREF / RelaySLP MVP design](architecture/relayref_relayslp_mvp_design.md) — historical pre-RelayINT terminology; not the canonical current RelayREF definition
+- [RelayCTX Wake loop design](architecture/relayctx_wake_loop_design.md) — historical pre-RelayINT responsibility split
 - [RelayMEM MVP design](architecture/relaymem_mvp_design.md)
 - [RelayMEM SLP execution design](architecture/relaymem_slp_execution_design.md)
 - [RelayMEM retrieval execution design](architecture/relaymem_retrieval_execution_design.md)
@@ -37,6 +40,8 @@ Use these docs to understand the RelayLM pipeline, responsibility boundaries, an
 MVP summaries and MVP-focused implementation notes are collected under `docs/mvp/`.
 
 - [MVP summaries and milestone notes](mvp/README.md)
+
+MVP summaries are historical implementation snapshots. Later architecture and implementation-plan documents may supersede their terminology or current-status statements.
 
 Future MVP summaries should be created directly under `docs/mvp/` and linked from the MVP index.
 
