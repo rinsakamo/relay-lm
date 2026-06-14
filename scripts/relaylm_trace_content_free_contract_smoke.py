@@ -56,6 +56,7 @@ def main() -> int:
             metadata={
                 "event": "backend_response",
                 "status_code": 200,
+                "error_type": "BackendRequestError",
                 "pipeline_node_results": [
                     {
                         "node_name": "relayctx_unpack",
@@ -64,6 +65,7 @@ def main() -> int:
                         "diagnostics": {
                             "candidate_present": True,
                             "candidate_count": 1,
+                            "source": "http://internal.example/path",
                             "candidate_text": SECRET_VALUES[0],
                             "snippet_text": SECRET_VALUES[2],
                             "root_path": SECRET_VALUES[3],
@@ -108,6 +110,7 @@ def main() -> int:
         require("response_text" not in payload, payload)
         require(payload["metadata"]["event"] == "backend_response", payload)
         require(payload["metadata"]["status_code"] == 200, payload)
+        require(payload["metadata"]["error_type"] == "BackendRequestError", payload)
         require("relaymem_retrieval_artifact" not in payload["metadata"], payload)
         require("evidence_envelope" not in payload["metadata"], payload)
         require("tool_arguments" not in payload["metadata"], payload)
@@ -120,6 +123,7 @@ def main() -> int:
         require(node["decision"] == "current_request_evidence_identified", node)
         require(node["diagnostics"]["candidate_present"] is True, node)
         require(node["diagnostics"]["candidate_count"] == 1, node)
+        require("source" not in node["diagnostics"], node)
         require("candidate_text" not in node["diagnostics"], node)
         require(
             "run_status" not in payload["metadata"]["relayrun_artifact"],
@@ -131,6 +135,8 @@ def main() -> int:
         )
         print("ok audit trace persists only content-free allowlisted fields")
         print("ok tainted values are dropped even under structurally safe keys")
+        print("ok URL-shaped nested audit strings are dropped")
+        print("ok backend error types remain actionable and content-free")
         print("ok pass-through trace excludes messages response snippets paths tools and evidence")
 
         records = read_trace_records(trace_path)
@@ -140,6 +146,26 @@ def main() -> int:
         require(records[0].message_count == 2, records[0])
         require(records[0].response_present is True, records[0])
         print("ok audit trace reader exposes redacted compatibility views")
+
+        empty_response_path = Path(tmpdir) / "empty-response.jsonl"
+        empty_response = build_trace_record(
+            trace_id="trace-empty-response-001",
+            request_id="request-empty-response-001",
+            created_at="2026-06-14T00:00:01+00:00",
+            character_id="default",
+            route_model="relaylm-default",
+            mode_applied="memory_light",
+            compiler_used=False,
+            messages=[],
+            response_text="",
+            metadata={"event": "backend_response", "status_code": 200},
+        )
+        require(empty_response.response_present is True, empty_response)
+        append_trace_record(empty_response_path, empty_response)
+        empty_payload = json.loads(empty_response_path.read_text(encoding="utf-8"))
+        require(empty_payload["response_present"] is True, empty_payload)
+        require(read_trace_records(empty_response_path)[0].response_present is True, empty_payload)
+        print("ok empty string response is preserved as present without content")
 
         legacy_path = Path(tmpdir) / "legacy.jsonl"
         legacy_path.write_text(
@@ -172,6 +198,24 @@ def main() -> int:
         require("status" not in legacy.metadata, legacy.metadata)
         require("snippet_text" not in legacy.metadata, legacy.metadata)
         print("ok legacy content-bearing rows are read as redacted audit records")
+
+        legacy_empty_path = Path(tmpdir) / "legacy-empty-response.jsonl"
+        legacy_empty_path.write_text(
+            json.dumps(
+                {
+                    "trace_id": "legacy-empty-response-001",
+                    "created_at": "2026-05-21T00:00:01+00:00",
+                    "response_text": "",
+                    "metadata": {"event": "backend_response"},
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        legacy_empty = read_trace_records(legacy_empty_path)[0]
+        require(legacy_empty.response_present is True, legacy_empty)
+        require(legacy_empty.response_text is None, legacy_empty)
+        print("ok legacy empty string response is preserved as present")
 
     return 0
 
