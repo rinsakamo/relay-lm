@@ -492,7 +492,7 @@ def _collect_strings(value: Any) -> set[str]:
     elif isinstance(value, Mapping):
         for raw_key, child_value in value.items():
             key = str(raw_key).strip()
-            if key:
+            if key and not _is_safe_nested_key(key) and not _is_forbidden_key(key):
                 collected.add(key)
             collected.update(_collect_strings(child_value))
     elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
