@@ -67,6 +67,7 @@ def main() -> int:
                             "candidate_present": True,
                             "candidate_count": 1,
                             "safe_counter_count": 2,
+                            "compatibility_source_node": "relayref",
                             SECRET_VALUES[6]: 6,
                             SECRET_VALUES[0]: 3,
                             f"{SECRET_VALUES[0]}_status": 4,
@@ -78,6 +79,9 @@ def main() -> int:
                             "tool_arguments": SECRET_VALUES[4],
                             "evidence": {
                                 SECRET_VALUES[6]: 1,
+                                "diagnostics": 1,
+                                "decision": 1,
+                                "compatibility_source_node": 1,
                             },
                         },
                     }
@@ -110,7 +114,11 @@ def main() -> int:
                 },
                 "evidence_envelope": {"content": SECRET_VALUES[5]},
                 "tool_arguments": SECRET_VALUES[4],
-                "unknown_metadata": SECRET_VALUES[0],
+                "unknown_metadata": {
+                    "diagnostics": 1,
+                    "decision": 1,
+                    "compatibility_source_node": 1,
+                },
             },
         )
         append_trace_record(trace_path, record)
@@ -141,6 +149,7 @@ def main() -> int:
         require(diagnostics["candidate_present"] is True, node)
         require(diagnostics["candidate_count"] == 1, node)
         require(diagnostics["safe_counter_count"] == 2, node)
+        require(diagnostics["compatibility_source_node"] == "relayref", node)
         require(SECRET_VALUES[6] not in diagnostics, node)
         require(SECRET_VALUES[0] not in diagnostics, node)
         require(f"{SECRET_VALUES[0]}_status" not in diagnostics, node)
@@ -168,6 +177,7 @@ def main() -> int:
         print("ok tainted and URL-shaped nested audit map keys are dropped")
         print("ok URL-shaped nested audit strings are dropped")
         print("ok forbidden metadata map keys taint matching allowed keys")
+        print("ok safe audit structure keys are not over-tainted")
         print("ok arbitrary URI schemes are dropped from opaque ID fields")
         print("ok backend error types remain actionable and content-free")
         print("ok pass-through trace excludes messages response snippets paths tools and evidence")
