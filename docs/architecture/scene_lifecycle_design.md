@@ -6,6 +6,8 @@ This document defines how RelayLM should treat `scene_id`, `scene_state`, `scene
 
 It is a docs-only design note. It does not introduce runtime behavior changes.
 
+RelaySCN owns scene interpretation and scene-policy resolution. RelayRUN owns runtime transition/checkpoint/trace artifacts. This document does not define standalone `RelayPLC` or `RelayTRC` pipeline components.
+
 ## Goal
 
 RelayLM treats Scene as the preferred dynamic situation concept. Room remains optional external host metadata.
@@ -425,7 +427,7 @@ MVP safety rule: scene-aware memory scope should be diagnostics or candidate-sel
 
 ## Runtime compile implications
 
-The Runtime Compile Gate should treat scene metadata as optional but useful.
+The Runtime Compile Gate should treat scene metadata as optional but useful. It consumes RelaySCN policy and RelayCTX Repack preflight/budget outcomes; RelayRUN orchestrates the selected apply, pass-through, or fallback path.
 
 - missing `scene_id` -> continue with default or null scene metadata,
 - missing `scene_state` -> compile without a scene block,
@@ -510,4 +512,4 @@ Future work can add:
 - scene handoff between frontends,
 - scene-specific compile-gate thresholds,
 - automatic role-transition detection,
-- RelayTRC lineage for scene transitions.
+- RelayRUN trace/checkpoint lineage and typed audit projections for scene transitions.
