@@ -11,7 +11,7 @@ if str(REPO_ROOT) not in sys.path:
 from relaylm.trace import read_trace_records
 
 
-def require(condition: bool, message: str) -> None:
+def require(condition: bool, message: object) -> None:
     if not condition:
         raise AssertionError(message)
 
@@ -27,11 +27,14 @@ def main() -> int:
     require(len(records) == args.expected_count, records)
     record = records[-1]
     require(record.trace_id, record)
+    require(record.content_free is True, record)
     require(record.metadata.get("event") == args.expected_event, record.metadata)
-    require(record.messages, record)
+    require(record.message_count > 0, record)
+    require(record.messages == [], record)
+    require(record.response_text is None, record)
     print("ok trace file count")
     print("ok trace backend error event")
-    print("ok trace messages captured")
+    print("ok trace message count captured without message content")
     return 0
 
 
