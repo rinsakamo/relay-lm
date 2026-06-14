@@ -13,13 +13,10 @@ from relaylm.audit_projection import project_audit_metadata
 
 AUDIT_TRACE_SCHEMA_VERSION = "relaylm.audit_trace.v1"
 
+
 @dataclass(frozen=True)
 class TraceRecord:
-    """One content-free audit record.
-
-    The persisted schema deliberately has no messages, response text, snippet,
-    evidence, tool payload, or local path fields.
-    """
+    """One content-free audit record."""
 
     trace_id: str
     request_id: str
@@ -35,8 +32,6 @@ class TraceRecord:
     content_free: bool = True
 
     def to_json_dict(self) -> dict[str, Any]:
-        # Explicit serialization allowlist: adding a future dataclass field does
-        # not make it persistent by accident.
         return {
             "schema_version": AUDIT_TRACE_SCHEMA_VERSION,
             "content_free": True,
@@ -54,14 +49,10 @@ class TraceRecord:
 
     @property
     def messages(self) -> list[dict[str, Any]]:
-        """Deprecated compatibility view; audit traces never expose messages."""
-
         return []
 
     @property
     def response_text(self) -> None:
-        """Deprecated compatibility view; audit traces never expose response text."""
-
         return None
 
 
@@ -84,19 +75,9 @@ def build_trace_record(
     created_at: str | None = None,
     request_id: str | None = None,
 ) -> TraceRecord:
-    """Build a content-free audit record from legacy runtime inputs.
-
-    ``messages`` and ``response_text`` remain compatibility inputs until the
-    P0-A2 runtime wiring change. Their content is never stored on TraceRecord;
-    only message count and response presence are retained.
-    """
-
-    sensitive_values = _collect_message_content_strings(messages)
-    if isinstance(response_text, str) and response_text:
-        sensitive_values.add(response_text)
-    projection = project_audit_metadata(metadata, sensitive_values=sensitive_values)
     inferred_message_count = len(messages) if isinstance(messages, list) else 0
     inferred_response_present = isinstance(response_text, str)
+    projection = project_audit_metadata(metadata)
     return TraceRecord(
         trace_id=trace_id,
         request_id=request_id or trace_id,
@@ -105,20 +86,22 @@ def build_trace_record(
         route_model=route_model,
         mode_applied=mode_applied,
         compiler_used=bool(compiler_used),
-        message_count=_non_negative_int(message_count) if message_count is not None else inferred_message_count,
-        response_present=bool(response_present) if response_present is not None else inferred_response_present,
+        message_count=(
+            _non_negative_int(message_count)
+            if message_count is not None
+            else inferred_message_count
+        ),
+        response_present=(
+            bool(response_present)
+            if response_present is not None
+            else inferred_response_present
+        ),
         metadata=projection.metadata,
     )
 
 
-def sanitize_audit_metadata(
-    metadata: Mapping[str, Any] | None,
-    *,
-    sensitive_values: set[str] | None = None,
-) -> dict[str, Any]:
-    """Project runtime metadata through the typed audit projection registry."""
-
-    return project_audit_metadata(metadata, sensitive_values=sensitive_values).metadata
+def sanitize_audit_metadata(metadata: Mapping[str, Any] | None) -> dict[str, Any]:
+    return project_audit_metadata(metadata).metadata
 
 
 def append_trace_record(path: str | Path, record: TraceRecord) -> None:
@@ -130,8 +113,6 @@ def append_trace_record(path: str | Path, record: TraceRecord) -> None:
 
 
 def read_trace_records(path: str | Path) -> list[TraceRecord]:
-    """Read audit records, discarding content from legacy trace rows."""
-
     trace_path = Path(path)
     if not trace_path.exists():
         return []
@@ -160,10 +141,6 @@ def _trace_record_from_dict(payload: Mapping[str, Any]) -> TraceRecord:
     if not response_present:
         response_present = isinstance(legacy_response, str)
 
-    sensitive_values = _collect_message_content_strings(legacy_messages)
-    if isinstance(legacy_response, str) and legacy_response:
-        sensitive_values.add(legacy_response)
-
     trace_id = str(payload.get("trace_id") or payload.get("request_id") or "")
     request_id = str(payload.get("request_id") or trace_id)
     return TraceRecord(
@@ -177,8 +154,9 @@ def _trace_record_from_dict(payload: Mapping[str, Any]) -> TraceRecord:
         message_count=message_count,
         response_present=response_present,
         metadata=sanitize_audit_metadata(
-            payload.get("metadata") if isinstance(payload.get("metadata"), Mapping) else None,
-            sensitive_values=sensitive_values,
+            payload.get("metadata")
+            if isinstance(payload.get("metadata"), Mapping)
+            else None
         ),
         schema_version=AUDIT_TRACE_SCHEMA_VERSION,
         content_free=True,
@@ -195,20 +173,3 @@ def _non_negative_int(value: Any) -> int:
 
 def _optional_string(value: Any) -> str | None:
     return value if isinstance(value, str) else None
-
-
-def _collect_message_content_strings(value: Any) -> set[str]:
-    collected: set[str] = set()
-    if isinstance(value, str):
-        if value.strip():
-            collected.add(value.strip())
-    elif isinstance(value, Mapping):
-        for raw_key, child_value in value.items():
-            key = str(raw_key).strip().lower()
-            if key in {"role", "type", "name", "id", "tool_call_id", "index", "object"}:
-                continue
-            collected.update(_collect_message_content_strings(child_value))
-    elif isinstance(value, list):
-        for item in value:
-            collected.update(_collect_message_content_strings(item))
-    return collected
