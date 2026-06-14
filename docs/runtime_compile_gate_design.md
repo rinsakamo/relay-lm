@@ -6,6 +6,8 @@ This document defines the runtime gate for deciding whether a compiled RelayLM c
 
 It focuses on runtime context application, not RelaySOUL persona-source mutation. RelaySOUL apply gates decide whether persona source artifacts may be mutated. The runtime compile gate decides whether already-loaded sources and runtime inputs may be compiled into the messages sent to the backend for the current request.
 
+The Runtime Compile Gate is a request-local decision phase, not a standalone `RelayPLC` module. It consumes route/mode configuration, RelaySCN policy, RelayCTX Repack preflight and budget results, and any RelayINT proceed/block outcome. RelayRUN orchestrates the selected runtime path and records decision, checkpoint, and trace artifacts.
+
 ## Goal
 
 After the Safe SOUL / Scene / CTX compile chain builds or plans a context, RelayLM needs an explicit decision point:
@@ -224,7 +226,7 @@ Suggested fields:
 
 ## Interaction with token budgets
 
-Token budget planning should happen before the final gate. The gate consumes the budget decision and decides whether the compiled payload is safe to apply.
+Token budget planning should happen before the final gate. RelayCTX Repack owns the budget/degradation outcome; the gate consumes that decision and determines whether the compiled payload is safe to apply.
 
 Budget outcomes may map to gate decisions:
 
@@ -239,11 +241,12 @@ Stable persona sources should not be mutated or rewritten to satisfy a runtime b
 
 ## Interaction with Scene
 
-Scene affects compile apply through:
+RelaySCN policy affects compile apply through:
 
 - `scene_state` prompt content
 - `scene_id` diagnostics and memory scope
-- scene-aware token budget decisions
+- scene-aware token budget constraints
+- safety and persistence policy
 - scene transition diagnostics in future work
 
 `room_id` should remain optional host metadata. It may affect scoping and diagnostics, but it should not force a prompt block by default.
@@ -260,7 +263,7 @@ RelaySOUL approval/apply artifact:
   content-free audit object for persona-source mutation
 
 trace event:
-  machine-readable runtime event, optionally summarized later
+  machine-readable runtime event, optionally summarized through a typed audit projection
 ```
 
 Compiled prompts may contain user-visible content and must not be stored as content-free RelaySOUL artifacts by default.
@@ -285,7 +288,7 @@ Future work can add:
 - scene transition risk scoring
 - token budget risk scoring
 - user/operator-visible diagnostics endpoint
-- RelayTRC trace integration
+- RelayRUN trace/checkpoint integration and typed audit projections
 - profile prefix hash stability checks
 - memory-full apply readiness gates
 
@@ -300,7 +303,5 @@ Current implementation is diagnostics/trace-only for compile decision dry-run:
 
 This keeps runtime behavior fail-safe while making gate decisions observable.
 
-
 - request path now emits compile decision dry-run diagnostics for normal `/v1/chat/completions` handling, while keeping outbound payload behavior unchanged.
-
 - request-path diagnostics now reflect actual compile apply state (`COMPILE_APPLY` vs dry-run) while keeping forwarding behavior unchanged.
