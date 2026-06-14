@@ -176,6 +176,13 @@ _SAFE_KEY_SUFFIXES = (
     "_version",
 )
 
+_SAFE_AUDIT_STRUCTURAL_VALUES = frozenset(
+    {
+        "blocked",
+        "relayref",
+    }
+)
+
 _ENUM_TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9_.:/-]{0,127}$")
 _CLASS_TOKEN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
 _MAPPING_KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,127}$")
@@ -494,6 +501,12 @@ def _collect_strings(value: Any) -> set[str]:
             key = str(raw_key).strip()
             if key and not _is_safe_nested_key(key) and not _is_forbidden_key(key):
                 collected.add(key)
+            if (
+                _is_safe_nested_key(key)
+                and isinstance(child_value, str)
+                and child_value.strip() in _SAFE_AUDIT_STRUCTURAL_VALUES
+            ):
+                continue
             collected.update(_collect_strings(child_value))
     elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         for item in value:
@@ -512,7 +525,7 @@ def _safe_audit_mapping_key(
         return False
     if not _MAPPING_KEY_RE.fullmatch(key):
         return False
-    if _matches_tainted_value(key, tainted_values):
+    if key not in _SAFE_NESTED_KEYS and _matches_tainted_value(key, tainted_values):
         return False
     if _looks_like_url_or_path("", key):
         return False
@@ -547,7 +560,9 @@ def _safe_string_for_key(
         return False
     if not value or len(value) > 256:
         return False
-    if _matches_tainted_value(value, tainted_values):
+    if value not in _SAFE_AUDIT_STRUCTURAL_VALUES and _matches_tainted_value(
+        value, tainted_values
+    ):
         return False
     if _looks_like_url_or_path(key, value):
         return False
