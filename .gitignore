@@ -9,3 +9,13 @@ config.yaml
 # Python cache
 __pycache__/
 *.py[cod]
+
+# Python packaging / tooling
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
