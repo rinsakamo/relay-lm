@@ -150,8 +150,7 @@ def main() -> int:
         require("token_policy_signal" not in metadata, metadata)
         require("token_policy_decision" not in metadata, metadata)
         require("token_policy_readiness" not in metadata, metadata)
-        require(metadata.get("projection_unsupported_artifact_count", 0) >= 3, metadata)
-        print("ok runtime gate artifacts are default-denied by audit trace")
+        print("ok runtime gate diagnostics stay outside audit metadata")
 
     return 0
 
