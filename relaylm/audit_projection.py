@@ -1,4 +1,9 @@
-"""Typed audit metadata projections for content-free trace records."""
+"""Typed audit metadata projections for content-free trace records.
+
+Only fields explicitly copied by a registered projector can reach persisted
+audit metadata. Unknown artifacts, unknown nodes, and unknown nested fields are
+omitted by default.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +12,10 @@ import math
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any, Callable, Final
+
+Projection = tuple[object, int]
+Validator = Callable[[Any], Projection]
 
 
 @dataclass(frozen=True)
@@ -17,11 +25,14 @@ class AuditProjectionResult:
     unsupported_artifact_count: int
 
 
-_DROP = object()
+_DROP: Final = object()
+_OMIT: Final = object()
+
+_TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
+_LOWER_TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9_.:-]{0,127}$")
 _CLASS_TOKEN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
-_ENUM_TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9_.:-]{0,127}$")
 _OPAQUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,255}$")
-_HASH_RE = re.compile(r"^[0-9a-fA-F]{16,128}$")
+_SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 _CONTENT_TYPE_RE = re.compile(
     r"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,63}/"
     r"[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,63}"
@@ -30,290 +41,896 @@ _CONTENT_TYPE_RE = re.compile(
 _URI_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 _WINDOWS_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
 
-_ACTIVE_SENSITIVE_VALUES: set[str] = set()
-
-STATE_COUNT_KEYS = frozenset({"active", "promoted", "demoted", "disabled"})
-PIPELINE_NODE_NAMES = frozenset({
-    "client_message_canonicalization", "client_instruction_extraction",
-    "client_instruction_fingerprint", "client_instruction_identity",
-    "client_instruction_cache", "client_instruction_cache_lookup",
-    "client_history_exclusion_preflight", "relayctx_unpack",
-    "relayint_reference_repair", "relayint_quick_clarification",
-    "relayctx_repack", "nested_rejected_taint_probe", "unknown_top_level_taint_probe",
-})
-
-STRING_FIELDS = frozenset({
-    "event", "status", "decision", "reason", "fallback_reason", "source", "node_name",
-    "node_status", "schema_version", "artifact_schema_version", "content_type",
-    "error_class", "error_type", "compiler_used", "current_user_content_kind",
-    "inserted_message_role", "source_compat_module", "required_pipeline_nodes",
-    "relaysoul_update_gate", "instruction_resolution_mode",
-    "tool_function_name", "tool_call_reference_id", "safe_reference_id", "run_id", "run_status",
-    "run_state", "storage_status", "content_shape_kind", "fingerprint_status", "lookup_status", "reader_status",
-    "cache_key_hash", "stable_prefix_hash", "memory_source", "character_id",
-    "compatibility_source_node", "source_node_alias",
-    "reader_miss_reason", "lookup_miss_reason",
-})
-BOOL_FIELDS = frozenset({
-    "applied", "applied_to_response", "apply_allowed", "blocked", "diagnostics_only", "enabled", "content_free",
-    "current_user_content_valid", "managed_route", "lookup_requested", "lookup_plan_ready", "save_requested",
-    "cache_hit_known", "cache_hit", "cache_lookup_attempted", "cache_read_enabled", "cache_write_enabled",
-    "candidate_present", "candidate_persistence_allowed", "canonicalization_candidate_ready",
-    "fingerprint_candidate_ready", "has_multimodal_instruction_candidate",
-    "active_tool_transaction_candidate", "ready", "valid", "attempted", "detected", "found", "used",
-})
-INT_FIELDS = frozenset({
-    "status_code", "latency_ms", "bytes_in", "bytes_out", "bytes_avoided", "message_count",
-    "candidate_count", "safe_counter_count", "selected_count", "eligible_count", "total_count",
-    "limit", "inserted_chars", "node_sequence", "current_user_invalid_part_count",
-    "current_user_non_text_part_count", "current_user_text_part_count", "assistant_tool_call_message_count",
-    "post_user_tool_message_count", "candidate_role_count", "candidate_index_count",
-    "content_shape_kind_count", "instruction_candidate_count", "required_count", "blocked_count",
-    "assistant_tool_call_message_count_after_latest_user", "tool_message_count_after_latest_user",
-    "phase_artifact_count",
-})
-LIST_STRING_FIELDS = frozenset({
-    "blocked_reasons", "reasons", "candidate_roles", "selected_memory_ids", "excluded_memory_ids",
-    "stable_prefix_block_ids",
-})
-LIST_INT_FIELDS = frozenset({"candidate_indices"})
-MAP_INT_FIELDS = frozenset({"content_shape_counts", "state_counts"})
-CONTAINER_FIELDS = frozenset({"diagnostics", "artifacts"})
+_PIPELINE_STATUSES = frozenset(
+    {"applied", "skipped", "blocked", "failed", "diagnostic_only"}
+)
+_STATE_COUNT_KEYS = frozenset({"active", "promoted", "demoted", "disabled"})
+_CONTENT_SHAPE_KEYS = frozenset(
+    {
+        "string",
+        "empty_string",
+        "text_parts",
+        "empty_parts",
+        "multimodal_parts",
+        "missing",
+        "unknown",
+        "invalid_parts",
+        "unsupported",
+        "text",
+        "empty_text",
+    }
+)
+_FINGERPRINT_SCOPE_KEYS = frozenset(
+    {
+        "candidate_count",
+        "candidate_role_count",
+        "candidate_index_count",
+        "content_shape_kind_count",
+    }
+)
 
 
 def project_audit_metadata(
     metadata: Mapping[str, Any] | None,
-    *,
-    sensitive_values: set[str] | None = None,
 ) -> AuditProjectionResult:
+    """Project runtime metadata through exact, pure projector registries."""
+
     if not isinstance(metadata, Mapping):
         return AuditProjectionResult({}, 0, 0)
-    global _ACTIVE_SENSITIVE_VALUES
-    previous_sensitive_values = _ACTIVE_SENSITIVE_VALUES
-    _ACTIVE_SENSITIVE_VALUES = sensitive_values or set()
-    try:
-        projected: dict[str, object] = {}
+
+    projected: dict[str, object] = {}
+    dropped = 0
+    unsupported = 0
+
+    for raw_key, value in metadata.items():
+        key = str(raw_key)
+        projector = TOP_LEVEL_PROJECTORS.get(key)
+        if projector is None:
+            unsupported += 1
+            continue
+        clean, child_dropped = projector(value)
+        dropped += child_dropped
+        if clean is _OMIT:
+            continue
+        if clean is _DROP:
+            dropped += 1
+            continue
+        projected[key] = clean
+
+    if dropped:
+        projected["projection_dropped_field_count"] = dropped
+    if unsupported:
+        projected["projection_unsupported_artifact_count"] = unsupported
+    return AuditProjectionResult(projected, dropped, unsupported)
+
+
+def _ok(value: object) -> Projection:
+    return value, 0
+
+
+def _drop() -> Projection:
+    return _DROP, 0
+
+
+def _omit() -> Projection:
+    return _OMIT, 0
+
+
+def _optional(validator: Validator) -> Validator:
+    def validate(value: Any) -> Projection:
+        if value is None:
+            return _omit()
+        return validator(value)
+
+    return validate
+
+
+def _bool(value: Any) -> Projection:
+    return _ok(value) if isinstance(value, bool) else _drop()
+
+
+def _non_negative_int(value: Any) -> Projection:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return _drop()
+    return _ok(value)
+
+
+def _non_negative_number(value: Any) -> Projection:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return _drop()
+    if not math.isfinite(value) or value < 0:
+        return _drop()
+    return _ok(value)
+
+
+def _http_status(value: Any) -> Projection:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return _drop()
+    return _ok(value) if 100 <= value <= 599 else _drop()
+
+
+def _bounded_token(value: Any) -> Projection:
+    if not isinstance(value, str) or not value or len(value) > 128:
+        return _drop()
+    if _looks_like_url_or_path(value):
+        return _drop()
+    return _ok(value) if _TOKEN_RE.fullmatch(value) else _drop()
+
+
+def _lower_token(value: Any) -> Projection:
+    if not isinstance(value, str) or not value or len(value) > 128:
+        return _drop()
+    if _looks_like_url_or_path(value):
+        return _drop()
+    return _ok(value) if _LOWER_TOKEN_RE.fullmatch(value) else _drop()
+
+
+def _class_token(value: Any) -> Projection:
+    if not isinstance(value, str) or not value or len(value) > 128:
+        return _drop()
+    return _ok(value) if _CLASS_TOKEN_RE.fullmatch(value) else _drop()
+
+
+def _opaque_id(value: Any) -> Projection:
+    if not isinstance(value, str) or not value or len(value) > 256:
+        return _drop()
+    if _looks_like_url_or_path(value):
+        return _drop()
+    return _ok(value) if _OPAQUE_ID_RE.fullmatch(value) else _drop()
+
+
+def _sha256(value: Any) -> Projection:
+    return _ok(value) if isinstance(value, str) and _SHA256_RE.fullmatch(value) else _drop()
+
+
+def _content_type(value: Any) -> Projection:
+    if not isinstance(value, str):
+        return _drop()
+    return _ok(value) if _CONTENT_TYPE_RE.fullmatch(value) else _drop()
+
+
+def _enum(*allowed: str) -> Validator:
+    values = frozenset(allowed)
+
+    def validate(value: Any) -> Projection:
+        return _ok(value) if isinstance(value, str) and value in values else _drop()
+
+    return validate
+
+
+def _list_of(
+    validator: Validator,
+    *,
+    max_items: int = 256,
+) -> Validator:
+    def validate(value: Any) -> Projection:
+        if not isinstance(value, Sequence) or isinstance(
+            value, (str, bytes, bytearray)
+        ):
+            return _drop()
+        output: list[object] = []
         dropped = 0
-        unsupported = 0
-        for raw_key, value in metadata.items():
-            key = str(raw_key)
-            projector = TOP_LEVEL_PROJECTORS.get(key)
-            if projector is None:
-                unsupported += 1
-                continue
-            clean, child_dropped = projector(value)
+        for item in list(value)[:max_items]:
+            clean, child_dropped = validator(item)
             dropped += child_dropped
             if clean is _DROP:
                 dropped += 1
                 continue
-            projected[key] = clean
-        if dropped:
-            projected["projection_dropped_field_count"] = dropped
-        if unsupported:
-            projected["projection_unsupported_artifact_count"] = unsupported
-        return AuditProjectionResult(projected, dropped, unsupported)
-    finally:
-        _ACTIVE_SENSITIVE_VALUES = previous_sensitive_values
+            if clean is _OMIT:
+                continue
+            output.append(clean)
+        if len(value) > max_items:
+            dropped += len(value) - max_items
+        return output, dropped
+
+    return validate
 
 
-def _project_scalar_key(key: str, value: Any) -> tuple[Any, int]:
-    if key == "content_type":
-        return (value, 0) if isinstance(value, str) and _CONTENT_TYPE_RE.fullmatch(value) else (_DROP, 0)
-    if key == "status_code":
-        return (value, 0) if isinstance(value, int) and not isinstance(value, bool) and 100 <= value <= 599 else (_DROP, 0)
-    return _project_field(key, value)
+def _mapping(
+    fields: Mapping[str, Validator],
+) -> Validator:
+    exact_fields = dict(fields)
+
+    def validate(value: Any) -> Projection:
+        if not isinstance(value, Mapping):
+            return _drop()
+        output: dict[str, object] = {}
+        dropped = 0
+        for raw_key, raw_value in value.items():
+            key = str(raw_key)
+            validator = exact_fields.get(key)
+            if validator is None:
+                dropped += 1
+                continue
+            clean, child_dropped = validator(raw_value)
+            dropped += child_dropped
+            if clean is _DROP:
+                dropped += 1
+                continue
+            if clean is _OMIT:
+                continue
+            output[key] = clean
+        return output, dropped
+
+    return validate
 
 
-def _project_field(key: str, value: Any) -> tuple[Any, int]:
-    if key in BOOL_FIELDS:
-        return (value, 0) if isinstance(value, bool) else (_DROP, 0)
-    if key in INT_FIELDS:
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
-            return _DROP, 0
-        return (value, 0) if isinstance(value, int) else (value, 0)
-    if key in STRING_FIELDS:
-        if not isinstance(value, str) or not value or len(value) > 256 or _looks_like_url_or_path(value):
-            return _DROP, 0
-        if "secret" in value.lower():
-            return _DROP, 0
-        if _matches_sensitive(value):
-            return _DROP, 0
-        if key in {"error_class", "error_type"}:
-            return (value, 0) if _CLASS_TOKEN_RE.fullmatch(value) else (_DROP, 0)
-        if key.endswith("_hash"):
-            return (value, 0) if _HASH_RE.fullmatch(value) else (_DROP, 0)
-        if key.endswith("_id") or key.endswith("_ids") or key in {"tool_call_reference_id", "run_id", "safe_reference_id"}:
-            return (value, 0) if _OPAQUE_ID_RE.fullmatch(value) else (_DROP, 0)
-        return (value, 0) if _ENUM_TOKEN_RE.fullmatch(value) else (_DROP, 0)
-    if key in LIST_STRING_FIELDS:
-        if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
-            return _DROP, 0
-        out = [v for v in value if isinstance(v, str) and v and len(v) <= 128 and _ENUM_TOKEN_RE.fullmatch(v) and not _looks_like_url_or_path(v) and not _matches_sensitive(v)]
-        return out, len(value) - len(out)
-    if key in LIST_INT_FIELDS:
-        if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
-            return _DROP, 0
-        out = [v for v in value if isinstance(v, int) and not isinstance(v, bool) and v >= 0]
-        return out, len(value) - len(out)
-    if key == "state_counts":
-        return _project_state_counts(value)
-    if key == "content_shape_counts":
-        return _project_string_int_map(value, allowed_keys={"string", "text_parts", "unknown", "empty"})
-    return _DROP, 0
+def _exact_string_int_map(keys: frozenset[str]) -> Validator:
+    def validate(value: Any) -> Projection:
+        if not isinstance(value, Mapping):
+            return _drop()
+        output: dict[str, int] = {}
+        dropped = 0
+        for raw_key, raw_value in value.items():
+            key = str(raw_key)
+            if key not in keys:
+                dropped += 1
+                continue
+            clean, _ = _non_negative_int(raw_value)
+            if clean is _DROP:
+                dropped += 1
+                continue
+            output[key] = clean  # type: ignore[assignment]
+        return output, dropped
+
+    return validate
 
 
-def _project_state_counts(value: Any) -> tuple[Any, int]:
-    if not isinstance(value, Mapping):
-        return _DROP, 0
-    out: dict[str, int] = {}
+_REASON_LIST = _list_of(_lower_token)
+_TOKEN_LIST = _list_of(_bounded_token)
+_OPAQUE_ID_LIST = _list_of(_opaque_id)
+_INDEX_LIST = _list_of(_non_negative_int)
+_STATE_COUNTS = _exact_string_int_map(_STATE_COUNT_KEYS)
+_CONTENT_SHAPE_COUNTS = _exact_string_int_map(_CONTENT_SHAPE_KEYS)
+_FINGERPRINT_SCOPE = _exact_string_int_map(_FINGERPRINT_SCOPE_KEYS)
+
+_ARTIFACT_BASE_FIELDS: dict[str, Validator] = {
+    "artifact_name": _bounded_token,
+    "schema_version": _optional(_bounded_token),
+    "present": _bool,
+    "diagnostics_only": _optional(_bool),
+    "content_free": _optional(_bool),
+    "applied": _optional(_bool),
+    "dry_run_only": _optional(_bool),
+    "runtime_private_source": _optional(_bool),
+    "read_only": _optional(_bool),
+    "payload_mutation_applied": _optional(_bool),
+    "applied_to_response": _optional(_bool),
+    "candidate_present": _optional(_bool),
+    "persistence_allowed": _optional(_bool),
+}
+
+
+@dataclass(frozen=True)
+class NodeProjector:
+    decisions: frozenset[str] | None
+    diagnostics: Validator
+    artifact_names: frozenset[str]
+
+
+def _artifact_list(allowed_names: frozenset[str]) -> Validator:
+    base = _mapping(_ARTIFACT_BASE_FIELDS)
+
+    def validate(value: Any) -> Projection:
+        if not isinstance(value, Sequence) or isinstance(
+            value, (str, bytes, bytearray)
+        ):
+            return _drop()
+        output: list[object] = []
+        dropped = 0
+        for item in value:
+            if not isinstance(item, Mapping):
+                dropped += 1
+                continue
+            artifact_name = item.get("artifact_name")
+            if not isinstance(artifact_name, str) or artifact_name not in allowed_names:
+                dropped += 1
+                continue
+            clean, child_dropped = base(item)
+            dropped += child_dropped
+            if clean is _DROP or clean is _OMIT:
+                dropped += 1
+                continue
+            output.append(clean)
+        return output, dropped
+
+    return validate
+
+
+def _project_node(
+    value: Mapping[str, Any],
+    *,
+    node_name: str,
+    spec: NodeProjector,
+) -> Projection:
+    output: dict[str, object] = {"node_name": node_name}
     dropped = 0
-    for raw_key, raw_value in value.items():
-        key = str(raw_key)
-        if key not in STATE_COUNT_KEYS or isinstance(raw_value, bool) or not isinstance(raw_value, int) or raw_value < 0:
+
+    clean_status, _ = _enum(*sorted(_PIPELINE_STATUSES))(value.get("status"))
+    if clean_status is _DROP:
+        dropped += 1
+    else:
+        output["status"] = clean_status
+
+    decision = value.get("decision")
+    if decision is not None:
+        validator = _bounded_token if spec.decisions is None else _enum(*sorted(spec.decisions))
+        clean_decision, _ = validator(decision)
+        if clean_decision is _DROP:
             dropped += 1
-            continue
-        out[key] = raw_value
-    return out, dropped
+        else:
+            output["decision"] = clean_decision
 
-
-def _project_string_int_map(value: Any, *, allowed_keys: set[str]) -> tuple[Any, int]:
-    if not isinstance(value, Mapping):
-        return _DROP, 0
-    out: dict[str, int] = {}
-    dropped = 0
-    for raw_key, raw_value in value.items():
-        key = str(raw_key)
-        if key not in allowed_keys or isinstance(raw_value, bool) or not isinstance(raw_value, int) or raw_value < 0:
-            dropped += 1
-            continue
-        out[key] = raw_value
-    return out, dropped
-
-
-def _project_mapping(value: Any, allowed: set[str]) -> tuple[Any, int]:
-    if not isinstance(value, Mapping):
-        return _DROP, 0
-    out: dict[str, object] = {}
-    dropped = 0
-    for raw_key, raw_value in value.items():
-        key = str(raw_key)
-        if key not in allowed:
-            dropped += 1
-            continue
-        clean, child_dropped = _project_field(key, raw_value)
+    if "blocked_reasons" in value:
+        clean_reasons, child_dropped = _REASON_LIST(value.get("blocked_reasons"))
         dropped += child_dropped
-        if clean is _DROP:
+        if clean_reasons is _DROP:
             dropped += 1
-            continue
-        out[key] = clean
-    return out, dropped
+        else:
+            output["blocked_reasons"] = clean_reasons
+
+    if "diagnostics" in value:
+        clean_diagnostics, child_dropped = spec.diagnostics(value.get("diagnostics"))
+        dropped += child_dropped
+        if clean_diagnostics is _DROP:
+            dropped += 1
+        elif clean_diagnostics is not _OMIT and clean_diagnostics:
+            output["diagnostics"] = clean_diagnostics
+
+    if "artifacts" in value:
+        clean_artifacts, child_dropped = _artifact_list(spec.artifact_names)(
+            value.get("artifacts")
+        )
+        dropped += child_dropped
+        if clean_artifacts is _DROP:
+            dropped += 1
+        elif clean_artifacts is not _OMIT and clean_artifacts:
+            output["artifacts"] = clean_artifacts
+
+    for key in value:
+        if str(key) not in {
+            "node_name",
+            "status",
+            "decision",
+            "blocked_reasons",
+            "diagnostics",
+            "artifacts",
+        }:
+            dropped += 1
+    return output, dropped
 
 
-NODE_ENVELOPE_FIELDS = {"node_name", "status", "decision", "blocked_reasons"}
-NODE_DIAGNOSTIC_FIELDS = set(STRING_FIELDS | BOOL_FIELDS | INT_FIELDS | LIST_STRING_FIELDS | LIST_INT_FIELDS | MAP_INT_FIELDS) - {"event", "error_class", "error_type", "content_type"}
+_CANONICALIZATION_DIAGNOSTICS = _mapping(
+    {
+        "schema_version": _enum("client_message_canonicalization_dry_run.v0"),
+        "enabled": _bool,
+        "diagnostics_only": _bool,
+        "content_free": _bool,
+        "managed_route": _bool,
+        "route_policy": _enum("relay_managed", "pass_through"),
+        "messages_present": _bool,
+        "message_count": _non_negative_int,
+        "valid_message_count": _non_negative_int,
+        "invalid_message_count": _non_negative_int,
+        "system_message_count": _non_negative_int,
+        "developer_message_count": _non_negative_int,
+        "instruction_message_count": _non_negative_int,
+        "instruction_text_message_count": _non_negative_int,
+        "instruction_without_text_count": _non_negative_int,
+        "current_user_turn_present": _bool,
+        "current_user_content_valid": _bool,
+        "current_user_content_kind": _enum(
+            "text", "empty_text", "missing", "unsupported",
+            "multimodal_parts", "text_parts", "invalid_parts",
+        ),
+        "current_user_text_part_count": _non_negative_int,
+        "current_user_non_text_part_count": _non_negative_int,
+        "current_user_invalid_part_count": _non_negative_int,
+        "current_user_multimodal": _bool,
+        "messages_before_current_user_count": _non_negative_int,
+        "messages_after_current_user_count": _non_negative_int,
+        "prior_user_message_count": _non_negative_int,
+        "prior_assistant_message_count": _non_negative_int,
+        "tool_message_count": _non_negative_int,
+        "assistant_tool_call_message_count": _non_negative_int,
+        "post_user_tool_message_count": _non_negative_int,
+        "active_tool_transaction_candidate": _bool,
+        "canonicalization_candidate_ready": _bool,
+    }
+)
+
+_EXTRACTION_DIAGNOSTICS = _mapping(
+    {
+        "schema_version": _enum("client_instruction_extraction_dry_run.v0"),
+        "enabled": _bool,
+        "diagnostics_only": _bool,
+        "content_free": _bool,
+        "managed_route": _bool,
+        "route_policy": _enum("relay_managed", "pass_through"),
+        "messages_present": _bool,
+        "message_count": _non_negative_int,
+        "valid_message_count": _non_negative_int,
+        "invalid_message_count": _non_negative_int,
+        "instruction_candidate_count": _non_negative_int,
+        "candidate_roles": _list_of(_enum("system", "developer")),
+        "candidate_indices": _INDEX_LIST,
+        "content_shape_counts": _CONTENT_SHAPE_COUNTS,
+        "invalid_instruction_candidate_count": _non_negative_int,
+        "unknown_instruction_candidate_shape_count": _non_negative_int,
+        "multimodal_instruction_candidate_count": _non_negative_int,
+        "has_multimodal_instruction_candidate": _bool,
+        "active_tool_transaction_candidate": _bool,
+        "assistant_tool_call_message_count_after_latest_user": _non_negative_int,
+        "tool_message_count_after_latest_user": _non_negative_int,
+        "fingerprint_candidate_ready": _bool,
+    }
+)
+
+_FINGERPRINT_DIAGNOSTICS = _mapping(
+    {
+        "schema_version": _enum("client_instruction_fingerprint_dry_run.v0"),
+        "enabled": _bool,
+        "diagnostics_only": _bool,
+        "content_free": _bool,
+        "source_artifact_present": _bool,
+        "source_schema_version": _optional(_bounded_token),
+        "source_schema_supported": _bool,
+        "managed_route": _bool,
+        "route_policy": _optional(_enum("relay_managed", "pass_through")),
+        "extraction_candidate_ready": _bool,
+        "fingerprint_plan_ready": _bool,
+        "fingerprint_plan_mode": _enum("metadata_contract_only"),
+        "fingerprint_hash_computed": _bool,
+        "cache_key_computed": _bool,
+        "cache_lookup_attempted": _bool,
+        "cache_save_attempted": _bool,
+        "instruction_candidate_count": _non_negative_int,
+        "candidate_roles": _list_of(_enum("system", "developer")),
+        "candidate_indices": _INDEX_LIST,
+        "content_shape_counts": _CONTENT_SHAPE_COUNTS,
+        "message_count": _non_negative_int,
+        "valid_message_count": _non_negative_int,
+        "invalid_message_count": _non_negative_int,
+        "invalid_instruction_candidate_count": _non_negative_int,
+        "unknown_instruction_candidate_shape_count": _non_negative_int,
+        "multimodal_instruction_candidate_count": _non_negative_int,
+        "has_multimodal_instruction_candidate": _bool,
+        "active_tool_transaction_candidate": _bool,
+        "fingerprint_scope_summary": _FINGERPRINT_SCOPE,
+        "source_blocked_reasons": _REASON_LIST,
+    }
+)
+
+_IDENTITY_DIAGNOSTICS = _mapping(
+    {
+        "schema_version": _enum("client_instruction_identity.v0"),
+        "enabled": _bool,
+        "ready": _bool,
+        "runtime_private_artifact_present": _bool,
+        "content_bearing_artifact_present": _bool,
+        "instruction_candidate_count": _non_negative_int,
+        "candidate_roles": _list_of(_enum("system", "developer")),
+        "candidate_indices": _INDEX_LIST,
+        "empty_instruction": _bool,
+        "normalization_applied": _bool,
+        "instruction_fingerprint_computed": _bool,
+        "cache_key_computed": _bool,
+        "hash_algorithm": _optional(_enum("sha256")),
+    }
+)
+
+_CACHE_DIAGNOSTICS = _mapping(
+    {
+        "schema_version": _enum("client_instruction_cache_dry_run.v0"),
+        "enabled": _bool,
+        "diagnostics_only": _bool,
+        "content_free": _bool,
+        "dry_run_only": _bool,
+        "operation_plan_mode": _enum("metadata_contract_only"),
+        "source_artifact_present": _bool,
+        "source_schema_version": _optional(_bounded_token),
+        "source_schema_supported": _bool,
+        "cache_operation_plan_ready": _bool,
+        "lookup_requested": _bool,
+        "save_requested": _bool,
+        "lookup_plan_ready": _bool,
+        "save_plan_ready": _bool,
+        "cache_lookup_attempted": _bool,
+        "cache_save_attempted": _bool,
+        "cache_key_computed": _bool,
+        "cache_key_available": _bool,
+        "fingerprint_hash_computed": _bool,
+        "fingerprint_hash_available": _bool,
+        "cache_hit_known": _bool,
+        "cache_hit": _optional(_bool),
+        "cache_result_available": _bool,
+        "payload_mutation_applied": _bool,
+        "history_exclusion_applied": _bool,
+        "persistence_applied": _bool,
+        "instruction_candidate_count": _non_negative_int,
+        "candidate_roles": _list_of(_enum("system", "developer")),
+        "candidate_indices": _INDEX_LIST,
+        "content_shape_counts": _CONTENT_SHAPE_COUNTS,
+        "fingerprint_scope_summary": _FINGERPRINT_SCOPE,
+        "source_blocked_reasons": _REASON_LIST,
+    }
+)
+
+_LOOKUP_DIAGNOSTICS = _mapping(
+    {
+        "schema_version": _enum("client_instruction_cache_lookup_runtime.v0"),
+        "enabled": _bool,
+        "status": _enum("hit", "miss", "blocked", "skipped"),
+        "cache_hit": _bool,
+        "cache_miss": _bool,
+        "cache_read_attempted": _bool,
+        "cache_lookup_attempted": _bool,
+        "reader_status": _optional(_bounded_token),
+        "lookup_status": _optional(_bounded_token),
+        "entry_present": _bool,
+        "entry_parsed": _bool,
+        "bytes_read": _non_negative_int,
+        "max_entry_bytes": _non_negative_int,
+        "cache_root_configured": _bool,
+        "cache_root_present": _bool,
+        "reader_miss_reason": _optional(_lower_token),
+        "lookup_miss_reason": _optional(_lower_token),
+        "runtime_private_source": _bool,
+        "applied": _bool,
+        "read_only": _bool,
+    }
+)
+
+_HISTORY_DIAGNOSTICS = _mapping(
+    {
+        "schema_version": _enum("client_history_exclusion_preflight.v0"),
+        "enabled": _bool,
+        "status": _enum("ready", "pending", "blocked", "skipped"),
+        "managed_route": _bool,
+        "preflight_ready": _bool,
+        "history_exclusion_apply_ready": _bool,
+        "instruction_resolution_mode": _enum(
+            "none", "cache_hit", "cache_miss_first_pass", "blocked", "not_applicable",
+        ),
+        "first_pass_evidence_required": _bool,
+        "original_message_count": _non_negative_int,
+        "valid_message_count": _non_negative_int,
+        "excluded_message_count_candidate": _non_negative_int,
+        "preserved_client_message_count_candidate": _non_negative_int,
+        "system_message_count": _non_negative_int,
+        "developer_message_count": _non_negative_int,
+        "instruction_message_count": _non_negative_int,
+        "prior_user_message_count": _non_negative_int,
+        "prior_assistant_message_count": _non_negative_int,
+        "tool_message_count": _non_negative_int,
+        "current_user_turn_present": _bool,
+        "current_user_content_valid": _bool,
+        "current_user_content_kind": _enum(
+            "text", "empty_text", "missing", "unsupported",
+            "multimodal_parts", "text_parts", "invalid_parts",
+        ),
+        "current_user_multimodal": _bool,
+        "current_user_text_part_count": _non_negative_int,
+        "current_user_non_text_part_count": _non_negative_int,
+        "active_tool_transaction_candidate": _bool,
+        "cache_lookup_status": _optional(_enum("hit", "miss", "blocked", "skipped")),
+        "raw_instruction_exclusion_candidate": _bool,
+        "payload_mutation_applied": _bool,
+        "runtime_private_source": _bool,
+    }
+)
+
+_REFERENCE_DIAGNOSTICS = _mapping(
+    {
+        "diagnostics_only": _bool,
+        "content_free": _bool,
+        "source_node_alias": _enum("relayint_reference_repair"),
+        "compatibility_source_node": _enum("relayref"),
+        "artifact_present": _bool,
+        "unresolved_reference_detected": _bool,
+        "apply_allowed": _bool,
+    }
+)
+
+_QUICK_DIAGNOSTICS = _mapping(
+    {
+        "diagnostics_only": _bool,
+        "content_free": _bool,
+        "fast_path_present": _bool,
+        "preflight_present": _bool,
+        "apply_plan_present": _bool,
+        "candidate_action": _optional(_bounded_token),
+        "preflight_applicable": _bool,
+        "apply_allowed": _bool,
+    }
+)
+
+_REPACK_DIAGNOSTICS = _mapping(
+    {
+        "diagnostics_only": _bool,
+        "content_free": _bool,
+        "payload_mutation_applied": _bool,
+        "last_mutating_step": _optional(_bounded_token),
+        "phase_artifact_count": _non_negative_int,
+    }
+)
+
+_RELAYCTX_UNPACK_DIAGNOSTICS = _mapping(
+    {
+        "schema_version": _optional(_enum("relayctx_unpack_result.v0")),
+        "runtime_schema_version": _enum("relayctx_unpack_runtime.v0"),
+        "status": _optional(
+            _enum("plain_text", "structured_update", "update_blocked", "empty_response")
+        ),
+        "marker_present": _optional(_bool),
+        "update_candidate_present": _optional(_bool),
+        "update_accepted": _optional(_bool),
+        "input_chars": _optional(_non_negative_int),
+        "visible_chars": _optional(_non_negative_int),
+        "update_chars": _optional(_non_negative_int),
+        "accepted_field_names": _optional(_TOKEN_LIST),
+        "contains_user_visible_text": _optional(_bool),
+        "contains_ctx_working_update": _optional(_bool),
+        "content_free": _bool,
+        "persistence_allowed": _optional(_bool),
+        "apply_enabled": _bool,
+        "dry_run_only": _bool,
+        "applied_to_response": _bool,
+        "candidate_present": _bool,
+        "candidate_persistence_allowed": _bool,
+        "response_shape_supported": _bool,
+    }
+)
+
+PIPELINE_NODE_PROJECTORS: dict[str, NodeProjector] = {
+    "client_message_canonicalization": NodeProjector(
+        decisions=frozenset({
+            "pass_through_route_exempt", "current_request_evidence_identified",
+            "canonicalization_candidate_blocked",
+        }),
+        diagnostics=_CANONICALIZATION_DIAGNOSTICS,
+        artifact_names=frozenset({"client_message_canonicalization_dry_run"}),
+    ),
+    "client_instruction_extraction": NodeProjector(
+        decisions=frozenset({
+            "pass_through_route_exempt", "instruction_fingerprint_candidate_ready",
+            "instruction_fingerprint_candidate_blocked",
+        }),
+        diagnostics=_EXTRACTION_DIAGNOSTICS,
+        artifact_names=frozenset({"client_instruction_extraction_dry_run"}),
+    ),
+    "client_instruction_fingerprint": NodeProjector(
+        decisions=frozenset({
+            "pass_through_route_exempt", "instruction_fingerprint_plan_ready",
+            "instruction_fingerprint_plan_blocked",
+        }),
+        diagnostics=_FINGERPRINT_DIAGNOSTICS,
+        artifact_names=frozenset({"client_instruction_fingerprint_dry_run"}),
+    ),
+    "client_instruction_identity": NodeProjector(
+        decisions=frozenset({"instruction_identity_ready", "instruction_identity_blocked"}),
+        diagnostics=_IDENTITY_DIAGNOSTICS,
+        artifact_names=frozenset({"client_instruction_identity_runtime_summary"}),
+    ),
+    "client_instruction_cache": NodeProjector(
+        decisions=frozenset({
+            "instruction_cache_operation_plan_ready",
+            "instruction_cache_operation_plan_blocked",
+        }),
+        diagnostics=_CACHE_DIAGNOSTICS,
+        artifact_names=frozenset({"client_instruction_cache_dry_run"}),
+    ),
+    "client_instruction_cache_lookup": NodeProjector(
+        decisions=frozenset({
+            "instruction_cache_hit", "instruction_cache_miss",
+            "pass_through_route_exempt", "instruction_cache_runtime_preparation_failed",
+            "instruction_cache_read_blocked", "instruction_cache_source_blocked",
+            "instruction_cache_lookup_blocked",
+        }),
+        diagnostics=_LOOKUP_DIAGNOSTICS,
+        artifact_names=frozenset({"client_instruction_cache_lookup_runtime_summary"}),
+    ),
+    "client_history_exclusion_preflight": NodeProjector(
+        decisions=frozenset({
+            "history_exclusion_preflight_ready", "client_instruction_first_pass_required",
+            "pass_through_route_exempt", "history_exclusion_preflight_preparation_failed",
+            "history_exclusion_preflight_blocked",
+        }),
+        diagnostics=_HISTORY_DIAGNOSTICS,
+        artifact_names=frozenset({"client_history_exclusion_preflight_summary"}),
+    ),
+    "relayint_reference_repair": NodeProjector(
+        decisions=None,
+        diagnostics=_REFERENCE_DIAGNOSTICS,
+        artifact_names=frozenset({"relayref_artifact"}),
+    ),
+    "relayint_quick_clarification": NodeProjector(
+        decisions=frozenset({
+            "apply_plan_recorded", "preflight_recorded", "fast_path_recorded", "disabled",
+        }),
+        diagnostics=_QUICK_DIAGNOSTICS,
+        artifact_names=frozenset({
+            "relayint_fast_path_dry_run",
+            "relayint_quick_clarification_preflight",
+            "relayint_quick_clarification_apply_plan",
+        }),
+    ),
+    "relayctx_repack": NodeProjector(
+        decisions=frozenset({
+            "payload_mutation_applied", "diagnostics_recorded",
+            "no_repack_artifact", "payload_repacked",
+        }),
+        diagnostics=_REPACK_DIAGNOSTICS,
+        artifact_names=frozenset({
+            "runtime_ctx_injection_result", "runtime_snippet_injection_result",
+            "token_budget_truncation",
+            "relayctx_short_term_runtime_injection_apply_result",
+        }),
+    ),
+    "relayctx_unpack": NodeProjector(
+        decisions=frozenset({
+            "empty_response", "blocked_update_visible_text_applied",
+            "blocked_update_dry_run", "visible_text_applied",
+            "structured_update_dry_run", "plain_text_no_change",
+            "backend_status_not_success", "response_shape_unsupported",
+            "response_copy_shape_changed",
+        }),
+        diagnostics=_RELAYCTX_UNPACK_DIAGNOSTICS,
+        artifact_names=frozenset({"relayctx_unpack_runtime_result"}),
+    ),
+}
 
 
-def _project_pipeline_node_results(value: Any) -> tuple[Any, int]:
+def _project_pipeline_node_results(value: Any) -> Projection:
     if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
-        return _DROP, 0
-    out: list[dict[str, object]] = []
+        return _drop()
+    output: list[object] = []
     dropped = 0
     for item in value:
         if not isinstance(item, Mapping):
-            dropped += 1; continue
+            dropped += 1
+            continue
         node_name = item.get("node_name")
-        if not isinstance(node_name, str) or node_name not in PIPELINE_NODE_NAMES:
-            dropped += 1; continue
-        node: dict[str, object] = {"node_name": node_name}
-        for key in ("status", "decision", "blocked_reasons"):
-            if key in item:
-                clean, d = _project_field(key, item[key]); dropped += d
-                if clean is not _DROP: node[key] = clean
-                else: dropped += 1
-        if isinstance(item.get("diagnostics"), Mapping):
-            clean, d = _project_mapping(item["diagnostics"], NODE_DIAGNOSTIC_FIELDS); dropped += d
-            if clean is not _DROP and clean: node["diagnostics"] = clean
-        # Artifacts are intentionally reduced to typed content-free fields only.
-        if isinstance(item.get("artifacts"), Sequence) and not isinstance(item.get("artifacts"), (str, bytes, bytearray)):
-            artifacts = []
-            for artifact in item["artifacts"]:
-                clean, d = _project_mapping(artifact, NODE_DIAGNOSTIC_FIELDS) if isinstance(artifact, Mapping) else (_DROP, 0)
-                dropped += d
-                if clean is not _DROP and clean: artifacts.append(clean)
-            if artifacts: node["artifacts"] = artifacts
-        out.append(node)
-    return out, dropped
+        if not isinstance(node_name, str):
+            dropped += 1
+            continue
+        spec = PIPELINE_NODE_PROJECTORS.get(node_name)
+        if spec is None:
+            dropped += 1
+            continue
+        clean, child_dropped = _project_node(item, node_name=node_name, spec=spec)
+        dropped += child_dropped
+        if clean is _DROP or clean is _OMIT:
+            dropped += 1
+            continue
+        output.append(clean)
+    return output, dropped
 
 
-def _project_memory_selection_summary(value: Any) -> tuple[Any, int]:
-    allowed = set(INT_FIELDS | STRING_FIELDS | LIST_STRING_FIELDS | MAP_INT_FIELDS) | {"character_id"}
-    return _project_mapping(value, allowed)
+_MEMORY_SELECTION_SUMMARY = _mapping(
+    {
+        "total_candidates": _non_negative_int,
+        "eligible_count": _non_negative_int,
+        "selected_count": _non_negative_int,
+        "limit": _non_negative_int,
+        "character_id": _optional(_opaque_id),
+        "selected_memory_ids": _OPAQUE_ID_LIST,
+        "excluded_disabled_ids": _OPAQUE_ID_LIST,
+        "excluded_character_ids": _OPAQUE_ID_LIST,
+        "state_counts": _STATE_COUNTS,
+    }
+)
 
+_MEMORY_BLOCK_ASSEMBLY = _mapping(
+    {
+        "included_memory_ids": _OPAQUE_ID_LIST,
+        "dropped_memory_ids": _OPAQUE_ID_LIST,
+        "character_budget": _optional(_non_negative_int),
+        "rendered_characters": _non_negative_int,
+    }
+)
 
-def _project_relayrun_artifact(value: Any) -> tuple[Any, int]:
-    return _project_mapping(value, {"schema_version", "artifact_schema_version", "content_free", "run_id", "safe_reference_id", "run_status", "run_state", "node_status", "node_name"})
+_TOKEN_MEMORY_SUMMARY = _mapping(
+    {
+        "selected_memory_ids": _OPAQUE_ID_LIST,
+        "excluded_disabled_ids": _OPAQUE_ID_LIST,
+        "excluded_character_ids": _OPAQUE_ID_LIST,
+        "selected_count": _optional(_non_negative_int),
+        "eligible_count": _optional(_non_negative_int),
+        "total_candidates": _optional(_non_negative_int),
+    }
+)
 
+_TOKEN_MEMORY_ASSEMBLY = _mapping(
+    {
+        "included_memory_ids": _OPAQUE_ID_LIST,
+        "dropped_memory_ids": _OPAQUE_ID_LIST,
+        "token_budget": _non_negative_int,
+        "estimated_tokens": _non_negative_int,
+        "character_budget": _optional(_non_negative_int),
+        "rendered_characters": _optional(_non_negative_int),
+    }
+)
 
-def _project_runtime_injection(value: Any) -> tuple[Any, int]:
-    return _project_mapping(value, {"schema_version", "applied", "applied_to_response", "blocked", "blocked_reasons", "inserted_chars", "inserted_message_role", "status", "reason"})
+_TOKEN_MEMORY_DRY_RUN = _mapping({"summary": _TOKEN_MEMORY_SUMMARY, "assembly": _TOKEN_MEMORY_ASSEMBLY})
 
+_COMPILE_DECISION = _mapping(
+    {
+        "schema_version": _optional(_bounded_token),
+        "decision_id": _opaque_id,
+        "plan_id": _opaque_id,
+        "result_id": _opaque_id,
+        "decision_state": _enum("COMPILE_DRY_RUN"),
+        "selected_route": _bounded_token,
+        "selected_mode": _bounded_token,
+        "backend": _bounded_token,
+        "character_id": _optional(_opaque_id),
+        "compiled_message_count": _non_negative_int,
+        "blocking_reasons": _REASON_LIST,
+        "omitted_block_ids": _OPAQUE_ID_LIST,
+        "token_budget_status": _bounded_token,
+        "apply_compiled_messages": _bool,
+        "diagnostics_only": _bool,
+        "content_free": _optional(_bool),
+    }
+)
 
-def _project_generic_audit_mapping(value: Any) -> tuple[Any, int]:
-    # Exact supported scalar/list/count-map fields only; no arbitrary recursion.
-    allowed = set(STRING_FIELDS | BOOL_FIELDS | INT_FIELDS | LIST_STRING_FIELDS | LIST_INT_FIELDS | MAP_INT_FIELDS)
-    return _project_mapping(value, allowed)
+_RELAYRUN = _mapping(
+    {
+        "schema_version": _bounded_token,
+        "artifact_schema_version": _optional(_bounded_token),
+        "diagnostics_only": _optional(_bool),
+        "content_free": _bool,
+        "run_id": _opaque_id,
+        "safe_reference_id": _optional(_opaque_id),
+        "run_status": _bounded_token,
+        "run_state": _optional(_bounded_token),
+        "node_name": _optional(_bounded_token),
+        "node_status": _optional(_bounded_token),
+        "blocked": _optional(_bool),
+        "blocked_reasons": _optional(_REASON_LIST),
+        "resume_mode": _optional(_bounded_token),
+    }
+)
 
+_RUNTIME_INJECTION = _mapping(
+    {
+        "schema_version": _bounded_token,
+        "status": _optional(_bounded_token),
+        "reason": _optional(_lower_token),
+        "applied": _optional(_bool),
+        "applied_to_response": _optional(_bool),
+        "blocked": _optional(_bool),
+        "blocked_reasons": _optional(_REASON_LIST),
+        "inserted_chars": _optional(_non_negative_int),
+        "inserted_message_role": _optional(_enum("system", "developer", "user")),
+        "diagnostics_only": _optional(_bool),
+        "content_free": _optional(_bool),
+    }
+)
 
-def _matches_sensitive(value: str) -> bool:
-    stripped = value.strip()
-    for sensitive in _ACTIVE_SENSITIVE_VALUES:
-        if stripped == sensitive:
-            return True
-        if len(sensitive) >= 8 and sensitive in stripped and len(sensitive) / len(stripped) >= 0.5:
-            return True
-    return False
-
-
-def _looks_like_url_or_path(value: str) -> bool:
-    stripped = value.strip()
-    lowered = stripped.lower()
-    return (
-        bool(_URI_SCHEME_RE.match(stripped)) or stripped.startswith("//") or lowered.startswith("www.")
-        or stripped.startswith(("/", "./", "../", "~/")) or bool(_WINDOWS_PATH_RE.match(stripped))
-        or "\\" in stripped or "/" in stripped
-    )
-
-TOP_LEVEL_PROJECTORS: dict[str, Callable[[Any], tuple[Any, int]]] = {
-    "event": lambda v: _project_scalar_key("event", v),
-    "content_type": lambda v: _project_scalar_key("content_type", v),
-    "status_code": lambda v: _project_scalar_key("status_code", v),
-    "error_class": lambda v: _project_scalar_key("error_class", v),
-    "error_type": lambda v: _project_scalar_key("error_type", v),
-    "latency_ms": lambda v: _project_scalar_key("latency_ms", v),
-    "bytes_in": lambda v: _project_scalar_key("bytes_in", v),
-    "bytes_out": lambda v: _project_scalar_key("bytes_out", v),
-    "bytes_avoided": lambda v: _project_scalar_key("bytes_avoided", v),
+TOP_LEVEL_PROJECTORS: dict[str, Validator] = {
+    "event": _enum("backend_error", "backend_response", "backend_stream_response"),
+    "content_type": _content_type,
+    "status_code": _http_status,
+    "error_class": _class_token,
+    "error_type": _class_token,
+    "latency_ms": _non_negative_number,
+    "bytes_in": _non_negative_int,
+    "bytes_out": _non_negative_int,
+    "bytes_avoided": _non_negative_int,
     "pipeline_node_results": _project_pipeline_node_results,
-    "memory_selection_summary": _project_memory_selection_summary,
-    "relayrun_artifact": _project_relayrun_artifact,
-    "runtime_ctx_injection_result": _project_runtime_injection,
-    "runtime_snippet_injection_result": _project_runtime_injection,
+    "memory_source": _bounded_token,
+    "memory_selection_summary": _MEMORY_SELECTION_SUMMARY,
+    "memory_block_assembly": _MEMORY_BLOCK_ASSEMBLY,
+    "token_memory_dry_run": _TOKEN_MEMORY_DRY_RUN,
+    "compile_decision_dry_run": _COMPILE_DECISION,
+    "stable_prefix_hash": _sha256,
+    "stable_prefix_block_ids": _OPAQUE_ID_LIST,
+    "relayrun_artifact": _RELAYRUN,
+    "runtime_ctx_injection_result": _RUNTIME_INJECTION,
+    "runtime_snippet_injection_result": _RUNTIME_INJECTION,
 }
-for _name in (
-    "memory_source", "memory_block_assembly", "token_memory_dry_run", "token_policy_signal",
-    "token_policy_decision", "token_policy_readiness", "token_budget_truncation",
-    "memory_adapter_dry_run", "memory_adapter_readiness", "memory_adapter_conflicts",
-    "context_block_summary", "persona_source_budget_diagnostics", "request_scope_identity",
-    "scope_resolution_diagnostics", "memory_adapter_shadow_dry_run", "memory_adapter_shadow_readiness",
-    "memory_adapter_shadow_conflicts", "memory_adapter_shadow_delta", "relaysoul_runtime_feedback_summary",
-    "relayint_fast_path_dry_run", "relayint_quick_clarification_preflight",
-    "relayint_quick_clarification_apply_plan", "compile_decision_dry_run", "relayemo_artifact",
-    "relayscn_scene_policy_artifact", "relayref_artifact", "relayctx_short_term_source_diagnostics",
-    "relayctx_short_term_extraction_dry_run", "relayctx_short_term_block_assembly_dry_run",
-    "relayctx_short_term_runtime_injection_preflight", "relayctx_short_term_runtime_injection_apply_result",
-    "stable_prefix_hash", "stable_prefix_block_ids",
-):
-    TOP_LEVEL_PROJECTORS[_name] = (lambda key: (lambda v: _project_field(key, v) if key in STRING_FIELDS | LIST_STRING_FIELDS else _project_generic_audit_mapping(v)))(_name)
 
 
 def registered_top_level_projectors() -> tuple[str, ...]:
@@ -321,7 +938,7 @@ def registered_top_level_projectors() -> tuple[str, ...]:
 
 
 def registered_pipeline_node_projectors() -> tuple[str, ...]:
-    return tuple(sorted(PIPELINE_NODE_NAMES))
+    return tuple(sorted(PIPELINE_NODE_PROJECTORS))
 
 
 def assert_json_safe(value: object) -> bool:
@@ -330,3 +947,17 @@ def assert_json_safe(value: object) -> bool:
     except (TypeError, ValueError):
         return False
     return True
+
+
+def _looks_like_url_or_path(value: str) -> bool:
+    stripped = value.strip()
+    lowered = stripped.lower()
+    return (
+        bool(_URI_SCHEME_RE.match(stripped))
+        or stripped.startswith("//")
+        or lowered.startswith("www.")
+        or stripped.startswith(("/", "./", "../", "~/"))
+        or bool(_WINDOWS_PATH_RE.match(stripped))
+        or "\\" in stripped
+        or "/" in stripped
+    )
