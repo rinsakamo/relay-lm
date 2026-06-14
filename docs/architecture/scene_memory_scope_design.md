@@ -43,11 +43,17 @@ RelayMEM proposes memory candidates. RelayCTX decides how selected candidates ar
 RelayMEM:
   memory sources, scopes, candidate retrieval, candidate metadata
 
+RelaySCN:
+  scene policy and allowed memory scope
+
 RelayCTX:
   block assembly, token budget packing, prompt placement
 
 Runtime Compile Gate:
-  whether compiled context is applied to this request
+  request-local decision phase for whether compiled context is applied
+
+RelayRUN:
+  runtime fallback/recovery orchestration and trace/checkpoint artifacts
 ```
 
 Scene-aware memory scope should first be metadata for candidate filtering, ranking, and diagnostics. It should not become a write path until explicit memory write gates exist.
@@ -295,7 +301,7 @@ CompileResult:
   rendered prompt blocks/messages
 
 TraceEvent:
-  compact runtime event about selection/decision
+  compact RelayRUN runtime event about selection/decision
 ```
 
 Compiled context should not become a memory record unless a future explicit memory write gate approves it.
@@ -353,5 +359,5 @@ Future work can add:
 - session-to-scene memory promotion gates
 - room/group memory policies
 - memory candidate risk scoring
-- RelayTRC lineage for memory candidate selection
+- RelayRUN trace/checkpoint lineage and typed audit projections for memory candidate selection
 - explicit memory write approval gates
