@@ -68,6 +68,12 @@ _AUDIT_METADATA_TOP_LEVEL_KEYS = frozenset(
     }
 )
 
+_SELECTIVELY_REJECTED_TOP_LEVEL_KEYS = frozenset(
+    {
+        "relaymem_retrieval_artifact",
+    }
+)
+
 # Content-bearing or local-structure-bearing keys are never persisted, even
 # when they appear inside an otherwise allowlisted diagnostics artifact.
 _FORBIDDEN_KEY_TOKENS = frozenset(
@@ -125,6 +131,7 @@ _SAFE_NESTED_KEYS = frozenset(
         "error_type",
         "event",
         "fallback_reason",
+        "inserted_message_role",
         "managed_route",
         "active_tool_transaction_candidate",
         "node_name",
@@ -135,6 +142,7 @@ _SAFE_NESTED_KEYS = frozenset(
         "reasons",
         "relaysoul_update_gate",
         "schema_version",
+        "state_counts",
         "required_pipeline_nodes",
         "source_compat_module",
         "source",
@@ -209,6 +217,32 @@ _URI_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 _WINDOWS_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
 _SUBSTRING_TAINT_MIN_LENGTH = 8
 _SUBSTRING_TAINT_MIN_RATIO = 0.5
+_MESSAGE_STRUCTURAL_SCALAR_KEYS = frozenset(
+    {
+        "role",
+        "type",
+        "name",
+        "id",
+        "tool_call_id",
+        "index",
+        "object",
+    }
+)
+_MESSAGE_STRUCTURAL_CONTAINER_KEYS = frozenset(
+    {
+        "tool_calls",
+        "function_call",
+        "function",
+    }
+)
+_SAFE_STATE_COUNT_ENTRY_KEYS = frozenset(
+    {
+        "active",
+        "promoted",
+        "demoted",
+        "disabled",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -287,7 +321,7 @@ def build_trace_record(
     only message count and response presence are retained.
     """
 
-    sensitive_values = _collect_strings(messages)
+    sensitive_values = _collect_message_content_strings(messages)
     if isinstance(response_text, str) and response_text:
         sensitive_values.add(response_text)
     return TraceRecord(
@@ -398,7 +432,7 @@ def _trace_record_from_dict(payload: Mapping[str, Any]) -> TraceRecord:
     if not response_present:
         response_present = isinstance(legacy_response, str)
 
-    sensitive_values = _collect_strings(legacy_messages)
+    sensitive_values = _collect_message_content_strings(legacy_messages)
     if isinstance(legacy_response, str) and legacy_response:
         sensitive_values.add(legacy_response)
 
@@ -447,6 +481,24 @@ def _sanitize_audit_value(
             return value, 0
         return _DROP, 0
 
+    if key == "state_counts" and isinstance(value, Mapping):
+        clean_counts: dict[str, int] = {}
+        dropped = 0
+        for raw_count_key, raw_count in value.items():
+            count_key = str(raw_count_key)
+            if count_key not in _SAFE_STATE_COUNT_ENTRY_KEYS:
+                dropped += 1
+                continue
+            if (
+                isinstance(raw_count, bool)
+                or not isinstance(raw_count, int)
+                or raw_count < 0
+            ):
+                dropped += 1
+                continue
+            clean_counts[count_key] = raw_count
+        return clean_counts, dropped
+
     if isinstance(value, Mapping):
         clean_mapping: dict[str, Any] = {}
         dropped = 0
@@ -493,8 +545,11 @@ def _collect_tainted_metadata_strings(metadata: Mapping[str, Any]) -> set[str]:
     tainted: set[str] = set()
     for raw_key, value in metadata.items():
         key = str(raw_key)
-        if key not in _AUDIT_METADATA_TOP_LEVEL_KEYS or _is_forbidden_key(key):
+        if key in _SELECTIVELY_REJECTED_TOP_LEVEL_KEYS:
             tainted.update(_collect_rejected_metadata_strings(value, direct=True))
+            continue
+        if key not in _AUDIT_METADATA_TOP_LEVEL_KEYS or _is_forbidden_key(key):
+            tainted.update(_collect_strings(value))
             continue
         tainted.update(_collect_forbidden_descendant_strings(value))
     return tainted
@@ -536,6 +591,26 @@ def _collect_rejected_nested_value_strings(value: Any) -> set[str]:
     elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         for item in value:
             collected.update(_collect_rejected_nested_value_strings(item))
+    return collected
+
+
+def _collect_message_content_strings(value: Any) -> set[str]:
+    collected: set[str] = set()
+    if isinstance(value, str):
+        if value.strip():
+            collected.add(value.strip())
+    elif isinstance(value, Mapping):
+        for raw_key, child_value in value.items():
+            key = str(raw_key).strip().lower()
+            if key in _MESSAGE_STRUCTURAL_SCALAR_KEYS:
+                continue
+            if key in _MESSAGE_STRUCTURAL_CONTAINER_KEYS:
+                collected.update(_collect_message_content_strings(child_value))
+                continue
+            collected.update(_collect_message_content_strings(child_value))
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        for item in value:
+            collected.update(_collect_message_content_strings(item))
     return collected
 
 

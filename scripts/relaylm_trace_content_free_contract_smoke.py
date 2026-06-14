@@ -27,6 +27,7 @@ SECRET_VALUES = (
     "metadata_key_secret_9f31c4a2",
 )
 NESTED_REJECTED_SECRET = "nested_rejected_secret_45e9c81a"
+UNKNOWN_TOP_LEVEL_SECRET = "unknown_top_level_secret_5b06d2e1"
 
 
 def require(condition: bool, detail: object) -> None:
@@ -38,6 +39,7 @@ def _assert_content_free(raw: str) -> None:
     for secret in SECRET_VALUES:
         require(secret not in raw, raw)
     require(NESTED_REJECTED_SECRET not in raw, raw)
+    require(UNKNOWN_TOP_LEVEL_SECRET not in raw, raw)
 
 
 def main() -> int:
@@ -52,8 +54,29 @@ def main() -> int:
             mode_applied="pass_through",
             compiler_used=False,
             messages=[
-                {"role": "system", "content": SECRET_VALUES[1]},
-                {"role": "user", "content": SECRET_VALUES[0]},
+                {
+                    "role": "system",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": SECRET_VALUES[0],
+                        }
+                    ],
+                },
+                {"role": "user", "content": SECRET_VALUES[1]},
+                {
+                    "role": "assistant",
+                    "tool_calls": [
+                        {
+                            "id": "call_001",
+                            "type": "function",
+                            "function": {
+                                "name": "lookup_memory",
+                                "arguments": SECRET_VALUES[4],
+                            },
+                        }
+                    ],
+                },
             ],
             response_text=SECRET_VALUES[1],
             metadata={
@@ -73,6 +96,8 @@ def main() -> int:
                             "compatibility_source_node": "relayref",
                             "source": "relayref",
                             "schema_version": "relayctx.unpack.v0",
+                            "inserted_message_role": "system",
+                            "current_user_content_kind": "text",
                             "unapproved_number": 42,
                             "private_numeric_marker": 123456789,
                             "user_prompt_status": "ready",
@@ -117,6 +142,11 @@ def main() -> int:
                             },
                             "safe_counter_count": 1,
                         },
+                    },
+                    {
+                        "node_name": "unknown_top_level_taint_probe",
+                        "status": UNKNOWN_TOP_LEVEL_SECRET,
+                        "reason": UNKNOWN_TOP_LEVEL_SECRET,
                     }
                 ],
                 "memory_selection_summary": {
@@ -170,6 +200,8 @@ def main() -> int:
                 "evidence_envelope": {"content": SECRET_VALUES[5]},
                 "tool_arguments": SECRET_VALUES[4],
                 "unknown_metadata": {
+                    "status": UNKNOWN_TOP_LEVEL_SECRET,
+                    "source": UNKNOWN_TOP_LEVEL_SECRET,
                     "diagnostics": 1,
                     "decision": 1,
                     "compatibility_source_node": 1,
@@ -183,7 +215,7 @@ def main() -> int:
         payload = json.loads(raw)
         require(payload["schema_version"] == AUDIT_TRACE_SCHEMA_VERSION, payload)
         require(payload["content_free"] is True, payload)
-        require(payload["message_count"] == 2, payload)
+        require(payload["message_count"] == 3, payload)
         require(payload["response_present"] is True, payload)
         require("messages" not in payload, payload)
         require("response_text" not in payload, payload)
@@ -216,6 +248,8 @@ def main() -> int:
         require(diagnostics["compatibility_source_node"] == "relayref", node)
         require(diagnostics["source"] == "relayref", node)
         require(diagnostics["schema_version"] == "relayctx.unpack.v0", node)
+        require(diagnostics["inserted_message_role"] == "system", diagnostics)
+        require(diagnostics["current_user_content_kind"] == "text", diagnostics)
         require("unapproved_number" not in diagnostics, node)
         require("private_numeric_marker" not in diagnostics, node)
         require("user_prompt_status" not in diagnostics, node)
@@ -243,6 +277,13 @@ def main() -> int:
         probe_diagnostics = probe["diagnostics"]
         require(probe_diagnostics["safe_counter_count"] == 1, probe_diagnostics)
         require("private_summary" not in probe_diagnostics, probe_diagnostics)
+        unknown_probe = payload["metadata"]["pipeline_node_results"][2]
+        require(
+            unknown_probe["node_name"] == "unknown_top_level_taint_probe",
+            unknown_probe,
+        )
+        require("status" not in unknown_probe, unknown_probe)
+        require("reason" not in unknown_probe, unknown_probe)
         relayrun = payload["metadata"]["relayrun_artifact"]
         require(relayrun["safe_reference_id"] == "opaque-id-001", relayrun)
         require(relayrun["run_id"] == "run-content-free-001", relayrun)
@@ -289,7 +330,7 @@ def main() -> int:
         require(len(records) == 1, records)
         require(records[0].messages == [], records[0])
         require(records[0].response_text is None, records[0])
-        require(records[0].message_count == 2, records[0])
+        require(records[0].message_count == 3, records[0])
         require(records[0].response_present is True, records[0])
         print("ok audit trace reader exposes redacted compatibility views")
 

@@ -52,6 +52,16 @@ def main() -> int:
             memory_selection_summary={
                 "selected_count": 1,
                 "selected_memory_ids": ["default-memory-001"],
+                "state_counts": {
+                    "active": 1,
+                    "promoted": 2,
+                    "demoted": 3,
+                    "disabled": 4,
+                    "private": 999,
+                    "candidate": True,
+                    "negative": -1,
+                    "fractional": 1.5,
+                },
                 "snippet_text": secret_snippet,
             },
             relaymem_retrieval_artifact={
@@ -113,6 +123,17 @@ def main() -> int:
             metadata["memory_selection_summary"]["selected_memory_ids"]
             == ["default-memory-001"],
             metadata,
+        )
+        state_counts = metadata["memory_selection_summary"]["state_counts"]
+        require(
+            state_counts
+            == {
+                "active": 1,
+                "promoted": 2,
+                "demoted": 3,
+                "disabled": 4,
+            },
+            state_counts,
         )
         require("snippet_text" not in metadata["memory_selection_summary"], metadata)
         require("relaymem_retrieval_artifact" not in metadata, metadata)
