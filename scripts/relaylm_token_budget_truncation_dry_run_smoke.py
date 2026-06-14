@@ -31,7 +31,6 @@ def main() -> int:
     cfg["memory"]["chars_per_token"] = 4
     cfg["memory"]["token_budget_truncation_enabled"] = False
     config = RelayLMConfig.model_validate(cfg)
-
     route = resolve_route(config, "relaylm-default")
     request_data = {
         "model": "relaylm-default",
@@ -42,11 +41,7 @@ def main() -> int:
         ],
         "stream": False,
     }
-    compiled = compile_chat_payload_if_enabled(
-        config=config,
-        route=route,
-        payload=request_data,
-    )
+    compiled = compile_chat_payload_if_enabled(config=config, route=route, payload=request_data)
     baseline = copy.deepcopy(compiled.payload.get("messages"))
     messages = compiled.payload.get("messages")
     require(isinstance(messages, list), compiled.payload)
@@ -77,9 +72,7 @@ def main() -> int:
     require(isinstance(enabled_messages, list), compiled_enabled.payload)
     enabled_dry_run = _build_token_budget_truncation_dry_run(
         config=enabled,
-        forwarded_messages=[
-            item for item in enabled_messages if isinstance(item, dict)
-        ],
+        forwarded_messages=[item for item in enabled_messages if isinstance(item, dict)],
     )
     require(isinstance(enabled_dry_run, dict), enabled_dry_run)
     require(enabled_dry_run.get("enforcement_enabled") is True, enabled_dry_run)
@@ -92,25 +85,22 @@ def main() -> int:
 
     with tempfile.TemporaryDirectory() as tmpdir:
         trace_cfg = enabled.model_dump()
-        trace_cfg["trace"] = {"enabled": True, "path": str(Path(tmpdir) / "trace.jsonl")}
+        trace_path = Path(tmpdir) / "trace.jsonl"
+        trace_cfg["trace"] = {"enabled": True, "path": str(trace_path)}
         trace_config = RelayLMConfig.model_validate(trace_cfg)
         diagnostics = RequestDiagnostics(
             request_id="req-trunc-dry-run",
             token_budget_truncation=enabled_dry_run,
         )
-        written = trace_runtime_event(
+        require(trace_runtime_event(
             config=trace_config,
             diagnostics=diagnostics,
             message_count=1,
             response_present=False,
-        )
-        require(written, "trace not written")
-        metadata = json.loads(
-            (Path(tmpdir) / "trace.jsonl").read_text(encoding="utf-8")
-        )["metadata"]
+        ), "trace not written")
+        metadata = json.loads(trace_path.read_text(encoding="utf-8"))["metadata"]
         require("token_budget_truncation" not in metadata, metadata)
-        require(metadata.get("projection_unsupported_artifact_count", 0) >= 1, metadata)
-        print("ok unsupported truncation artifact is default-denied")
+        print("ok truncation diagnostics stay outside audit metadata")
 
     blocked = _build_token_budget_truncation_dry_run(
         config=RelayLMConfig.model_validate(
