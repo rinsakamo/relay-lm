@@ -69,8 +69,15 @@ def main() -> int:
                             "safe_counter_count": 2,
                             "compatibility_source_node": "relayref",
                             "source": "relayref",
+                            "schema_version": "relayctx.unpack.v0",
                             "unapproved_number": 42,
                             "private_numeric_marker": 123456789,
+                            "tainted_source": SECRET_VALUES[0],
+                            "status": SECRET_VALUES[0],
+                            "decision": SECRET_VALUES[0],
+                            "node_name": SECRET_VALUES[0],
+                            "reason": SECRET_VALUES[0],
+                            "schema_version_secret": SECRET_VALUES[0],
                             SECRET_VALUES[6]: 6,
                             SECRET_VALUES[0]: 3,
                             f"{SECRET_VALUES[0]}_status": 4,
@@ -89,11 +96,21 @@ def main() -> int:
                         },
                     }
                 ],
+                "memory_selection_summary": {
+                    "schema_version": SECRET_VALUES[0],
+                    "safe_counter_count": 1,
+                },
                 "relayrun_artifact": {
                     "schema_version": "relayrun.runtime_checkpoint.v0",
                     "content_free": True,
                     "run_id": "run-content-free-001",
                     "safe_reference_id": "opaque-id-001",
+                    "source": SECRET_VALUES[0],
+                    "node_name": SECRET_VALUES[0],
+                    "status": SECRET_VALUES[0],
+                    "decision": SECRET_VALUES[0],
+                    "reason": SECRET_VALUES[0],
+                    "schema_version_secret": SECRET_VALUES[0],
                     "database_id": "postgres://db/path",
                     "cache_id": "redis://host/key",
                     "blob_id": "blob:secret-payload",
@@ -144,6 +161,14 @@ def main() -> int:
         require(payload["metadata"]["event"] == "backend_response", payload)
         require(payload["metadata"]["status_code"] == 200, payload)
         require(payload["metadata"]["error_type"] == "BackendRequestError", payload)
+        require(
+            payload["metadata"]["memory_selection_summary"]["safe_counter_count"] == 1,
+            payload,
+        )
+        require(
+            "schema_version" not in payload["metadata"]["memory_selection_summary"],
+            payload,
+        )
         require("relaymem_retrieval_artifact" not in payload["metadata"], payload)
         require("evidence_envelope" not in payload["metadata"], payload)
         require("tool_arguments" not in payload["metadata"], payload)
@@ -160,8 +185,15 @@ def main() -> int:
         require(diagnostics["safe_counter_count"] == 2, node)
         require(diagnostics["compatibility_source_node"] == "relayref", node)
         require(diagnostics["source"] == "relayref", node)
+        require(diagnostics["schema_version"] == "relayctx.unpack.v0", node)
         require("unapproved_number" not in diagnostics, node)
         require("private_numeric_marker" not in diagnostics, node)
+        require("tainted_source" not in diagnostics, node)
+        require("status" not in diagnostics, node)
+        require("decision" not in diagnostics, node)
+        require("node_name" not in diagnostics, node)
+        require("reason" not in diagnostics, node)
+        require("schema_version_secret" not in diagnostics, node)
         require(SECRET_VALUES[6] not in diagnostics, node)
         require(SECRET_VALUES[0] not in diagnostics, node)
         require(f"{SECRET_VALUES[0]}_status" not in diagnostics, node)
@@ -171,6 +203,12 @@ def main() -> int:
         relayrun = payload["metadata"]["relayrun_artifact"]
         require(relayrun["safe_reference_id"] == "opaque-id-001", relayrun)
         require(relayrun["run_id"] == "run-content-free-001", relayrun)
+        require("source" not in relayrun, relayrun)
+        require("node_name" not in relayrun, relayrun)
+        require("status" not in relayrun, relayrun)
+        require("decision" not in relayrun, relayrun)
+        require("reason" not in relayrun, relayrun)
+        require("schema_version_secret" not in relayrun, relayrun)
         require("database_id" not in relayrun, relayrun)
         require("cache_id" not in relayrun, relayrun)
         require("blob_id" not in relayrun, relayrun)

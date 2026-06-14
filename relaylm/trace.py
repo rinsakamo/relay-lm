@@ -18,6 +18,7 @@ AUDIT_TRACE_SCHEMA_VERSION = "relaylm.audit_trace.v1"
 _AUDIT_METADATA_TOP_LEVEL_KEYS = frozenset(
     {
         "event",
+        "content_type",
         "status_code",
         "error_class",
         "error_type",
@@ -105,9 +106,11 @@ _SAFE_NESTED_KEYS = frozenset(
         "applied",
         "applied_to_response",
         "artifact_schema_version",
+        "blocked",
         "blocked_reasons",
         "compiler_used",
         "content_free",
+        "content_type",
         "decision",
         "diagnostics",
         "diagnostics_only",
@@ -186,6 +189,11 @@ _CLASS_TOKEN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
 _MAPPING_KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,127}$")
 _OPAQUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$")
 _HASH_RE = re.compile(r"^[0-9a-fA-F]{16,128}$")
+_CONTENT_TYPE_RE = re.compile(
+    r"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,63}/"
+    r"[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]{0,63}"
+    r"(?:\s*;\s*charset=[A-Za-z0-9._-]{1,32})?$"
+)
 _URI_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 _WINDOWS_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
 _SUBSTRING_TAINT_MIN_LENGTH = 8
@@ -581,17 +589,6 @@ def _is_forbidden_key(key: str) -> bool:
     )
 
 
-def _is_safe_structural_string_key(key: str) -> bool:
-    return key in {
-        "source",
-        "node_name",
-        "status",
-        "decision",
-        "reason",
-        "schema_version",
-    }
-
-
 def _safe_string_for_key(
     key: str,
     value: str,
@@ -602,9 +599,11 @@ def _safe_string_for_key(
         return False
     if not value or len(value) > 256:
         return False
-    if _looks_like_url_or_path(key, value):
+    if _matches_tainted_value(value, tainted_values):
         return False
-    if _matches_tainted_value(value, tainted_values) and not _is_safe_structural_string_key(key):
+    if key == "content_type":
+        return bool(_CONTENT_TYPE_RE.fullmatch(value))
+    if _looks_like_url_or_path(key, value):
         return False
     if key in {"error_class", "error_type"}:
         return bool(_CLASS_TOKEN_RE.fullmatch(value))

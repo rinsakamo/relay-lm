@@ -132,6 +132,74 @@ def main() -> int:
         print("ok trace backend response event persisted as content-free audit record")
         print("ok runtime trace redacts response memory evidence and local paths")
 
+        stream_trace_path = Path(tmpdir) / "stream-trace.jsonl"
+        config.trace.path = str(stream_trace_path)
+        stream_diagnostics = RequestDiagnostics(
+            request_id="trace-stream-001",
+            route_model="relaylm-default",
+            character_id="default",
+            mode_applied="pass_through",
+            compiler_used=False,
+            trace_enabled=True,
+        )
+        stream_written = trace_runtime_event(
+            config=config,
+            diagnostics=stream_diagnostics,
+            messages=[{"role": "user", "content": secret_user}],
+            response_text=None,
+            metadata={
+                "event": "backend_stream_response",
+                "status_code": 200,
+                "content_type": "text/event-stream",
+            },
+        )
+        require(stream_written is True, stream_written)
+
+        charset_written = trace_runtime_event(
+            config=config,
+            diagnostics=stream_diagnostics,
+            messages=[{"role": "user", "content": secret_user}],
+            response_text=None,
+            metadata={
+                "event": "backend_stream_response",
+                "status_code": 200,
+                "content_type": "text/event-stream; charset=utf-8",
+            },
+        )
+        require(charset_written is True, charset_written)
+
+        unsafe_written = trace_runtime_event(
+            config=config,
+            diagnostics=stream_diagnostics,
+            messages=[{"role": "user", "content": secret_user}],
+            response_text=None,
+            metadata={
+                "event": "backend_stream_response",
+                "status_code": 200,
+                "content_type": "http://internal.example/path",
+            },
+        )
+        require(unsafe_written is True, unsafe_written)
+
+        stream_payloads = [
+            json.loads(line)
+            for line in stream_trace_path.read_text(encoding="utf-8").splitlines()
+        ]
+        require(len(stream_payloads) == 3, stream_payloads)
+        stream_metadata = stream_payloads[0]["metadata"]
+        require(stream_metadata["event"] == "backend_stream_response", stream_metadata)
+        require(stream_metadata["status_code"] == 200, stream_metadata)
+        require(stream_metadata["content_type"] == "text/event-stream", stream_metadata)
+        charset_metadata = stream_payloads[1]["metadata"]
+        require(
+            charset_metadata["content_type"] == "text/event-stream; charset=utf-8",
+            charset_metadata,
+        )
+        unsafe_metadata = stream_payloads[2]["metadata"]
+        require("content_type" not in unsafe_metadata, unsafe_metadata)
+        print("ok stream trace preserves validated content_type audit metadata")
+        print("ok stream trace rejects URL-shaped content_type metadata")
+
     return 0
 
 
