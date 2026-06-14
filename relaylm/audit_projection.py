@@ -316,6 +316,14 @@ for _name in (
     TOP_LEVEL_PROJECTORS[_name] = (lambda key: (lambda v: _project_field(key, v) if key in STRING_FIELDS | LIST_STRING_FIELDS else _project_generic_audit_mapping(v)))(_name)
 
 
+def registered_top_level_projectors() -> tuple[str, ...]:
+    return tuple(sorted(TOP_LEVEL_PROJECTORS))
+
+
+def registered_pipeline_node_projectors() -> tuple[str, ...]:
+    return tuple(sorted(PIPELINE_NODE_NAMES))
+
+
 def assert_json_safe(value: object) -> bool:
     try:
         json.dumps(value, ensure_ascii=False, sort_keys=True)
