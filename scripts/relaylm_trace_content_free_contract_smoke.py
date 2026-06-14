@@ -24,6 +24,7 @@ SECRET_VALUES = (
     "/home/private/relaymem/page.md",
     "tool argument secret",
     "evidence body secret",
+    "metadata_key_secret_9f31c4a2",
 )
 
 
@@ -66,6 +67,7 @@ def main() -> int:
                             "candidate_present": True,
                             "candidate_count": 1,
                             "safe_counter_count": 2,
+                            SECRET_VALUES[6]: 6,
                             SECRET_VALUES[0]: 3,
                             f"{SECRET_VALUES[0]}_status": 4,
                             "http://internal.example/path": 5,
@@ -74,7 +76,9 @@ def main() -> int:
                             "snippet_text": SECRET_VALUES[2],
                             "root_path": SECRET_VALUES[3],
                             "tool_arguments": SECRET_VALUES[4],
-                            "evidence": SECRET_VALUES[5],
+                            "evidence": {
+                                SECRET_VALUES[6]: 1,
+                            },
                         },
                     }
                 ],
@@ -82,6 +86,14 @@ def main() -> int:
                     "schema_version": "relayrun.runtime_checkpoint.v0",
                     "content_free": True,
                     "run_id": "run-content-free-001",
+                    "safe_reference_id": "opaque-id-001",
+                    "database_id": "postgres://db/path",
+                    "cache_id": "redis://host/key",
+                    "blob_id": "blob:secret-payload",
+                    "browser_id": "chrome://settings",
+                    "evidence": {
+                        SECRET_VALUES[6]: 1,
+                    },
                     # These keys would normally be permitted, but their values
                     # are tainted by raw user content and must still be dropped.
                     "run_status": SECRET_VALUES[0],
@@ -129,11 +141,20 @@ def main() -> int:
         require(diagnostics["candidate_present"] is True, node)
         require(diagnostics["candidate_count"] == 1, node)
         require(diagnostics["safe_counter_count"] == 2, node)
+        require(SECRET_VALUES[6] not in diagnostics, node)
         require(SECRET_VALUES[0] not in diagnostics, node)
         require(f"{SECRET_VALUES[0]}_status" not in diagnostics, node)
         require("http://internal.example/path" not in diagnostics, node)
         require("source" not in diagnostics, node)
         require("candidate_text" not in diagnostics, node)
+        relayrun = payload["metadata"]["relayrun_artifact"]
+        require(relayrun["safe_reference_id"] == "opaque-id-001", relayrun)
+        require(relayrun["run_id"] == "run-content-free-001", relayrun)
+        require("database_id" not in relayrun, relayrun)
+        require("cache_id" not in relayrun, relayrun)
+        require("blob_id" not in relayrun, relayrun)
+        require("browser_id" not in relayrun, relayrun)
+        require("evidence" not in relayrun, relayrun)
         require(
             "run_status" not in payload["metadata"]["relayrun_artifact"],
             payload,
@@ -146,6 +167,8 @@ def main() -> int:
         print("ok tainted values are dropped even under structurally safe keys")
         print("ok tainted and URL-shaped nested audit map keys are dropped")
         print("ok URL-shaped nested audit strings are dropped")
+        print("ok forbidden metadata map keys taint matching allowed keys")
+        print("ok arbitrary URI schemes are dropped from opaque ID fields")
         print("ok backend error types remain actionable and content-free")
         print("ok pass-through trace excludes messages response snippets paths tools and evidence")
 

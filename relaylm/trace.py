@@ -181,10 +181,7 @@ _CLASS_TOKEN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_.-]{0,127}$")
 _MAPPING_KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,127}$")
 _OPAQUE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,255}$")
 _HASH_RE = re.compile(r"^[0-9a-fA-F]{16,128}$")
-_URL_SCHEME_RE = re.compile(
-    r"^(?:https?|file|ftp|ws|wss|ssh|s3|gs|mailto|data):",
-    re.IGNORECASE,
-)
+_URI_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 _WINDOWS_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
 _SUBSTRING_TAINT_MIN_LENGTH = 8
 _SUBSTRING_TAINT_MIN_RATIO = 0.5
@@ -493,7 +490,10 @@ def _collect_strings(value: Any) -> set[str]:
         if value.strip():
             collected.add(value.strip())
     elif isinstance(value, Mapping):
-        for child_value in value.values():
+        for raw_key, child_value in value.items():
+            key = str(raw_key).strip()
+            if key:
+                collected.add(key)
             collected.update(_collect_strings(child_value))
     elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         for item in value:
@@ -563,7 +563,7 @@ def _safe_string_for_key(
 def _looks_like_url_or_path(key: str, value: str) -> bool:
     stripped = value.strip()
     lowered = stripped.lower()
-    if _URL_SCHEME_RE.match(stripped) or stripped.startswith("//"):
+    if _URI_SCHEME_RE.match(stripped) or stripped.startswith("//"):
         return True
     if lowered.startswith("www."):
         return True
