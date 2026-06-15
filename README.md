@@ -49,6 +49,12 @@ RelayLM is **not** a language model and **not** a memory database. It is designe
 > [!NOTE]
 > RelayLM is local-first, but when a hosted or remote backend is configured, the selected compiled context is sent to that backend as part of the request.
 
+## 🛠️ What you can build
+
+- a local AI companion with more stable persona and conversation context
+- a memory-aware work assistant used through OpenWebUI
+- an AI VTuber context layer between Open-LLM-VTuber and a local LLM backend
+
 ## 🧭 Runtime paths
 
 ### Standard MVP path
@@ -74,6 +80,16 @@ RelayLM owns conversation proxying and context/runtime boundaries. It does not o
 For the current phase, implemented boundaries, dry-run/read-only/default-off behavior, and immediate next work, see [Project Status](docs/PROJECT_STATUS.md).
 
 `docs/PROJECT_STATUS.md` is the maintained current-state view. This README intentionally does not duplicate phase numbers or short-lived implementation status.
+
+## ✅ Requirements
+
+| Item | Requirement |
+|---|---|
+| Python | 3.10 or later |
+| Backend | OpenAI-compatible Chat Completions backend |
+| Standard setup | OpenWebUI + RelayLM + LM Studio |
+| OpenWebUI | Use an OpenAI-compatible connection and disable Responses API mode |
+| RelayLM endpoints | `/healthz`, `/v1/models`, `/v1/chat/completions` |
 
 ## 🚀 Quick start
 
@@ -145,6 +161,22 @@ Set the OpenAI-compatible base URL in OpenWebUI, Open-LLM-VTuber, or another com
 ```text
 http://127.0.0.1:8090/v1
 ```
+
+### 5. Verify the installation
+
+With the backend model loaded, check health, routes, and one non-stream response:
+
+```bash
+curl http://127.0.0.1:8090/healthz
+curl http://127.0.0.1:8090/v1/models
+curl http://127.0.0.1:8090/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{"model":"relaylm-work-assistant","messages":[{"role":"user","content":"hello"}],"stream":false}'
+```
+
+## 🧰 Troubleshooting
+
+Connection problem? See the [OpenWebUI + RelayLM + LM Studio troubleshooting guide](docs/smoke/openwebui_lmstudio_troubleshooting.md).
 
 ## 🏗️ Architecture
 
