@@ -14,7 +14,7 @@ Use these documents as the current sources of truth:
 
 Historical documents must not override those sources.
 
-## Archived documents
+## Archived responsibility-split designs
 
 ### [RelayCTX Wake Loop Design](relayctx_wake_loop_design.md)
 
@@ -35,13 +35,6 @@ Useful principles migrated into current documents:
 - ambiguous references require clarification before memory retrieval -> [RelayINT MVP design](../relayint_mvp_design.md),
 - explicit or confirmed long-term recall may use a clarification-gated two-step interaction -> [RelayINT MVP design](../relayint_mvp_design.md).
 
-Current replacements:
-
-- [RelayINT MVP design](../relayint_mvp_design.md)
-- [Pipeline responsibility design](../pipeline_responsibility_design.md)
-- [Context packing design](../context_packing_design.md)
-- [Context compiler contract](../../contracts/context_compiler_contract.md)
-
 ### [RelayREF / RelaySLP MVP Design](relayref_relayslp_mvp_design.md)
 
 Date basis: 2026-05-31 JST.
@@ -55,23 +48,63 @@ Reason archived:
 
 Useful principles migrated or already represented in current documents:
 
-- repaired context is a confirmation candidate, not trusted context -> [RelaySCN MVP scene policy](../relayscn_mvp_scene_policy.md) and [RelayRUN recovery response generator contract](../../contracts/relayrun_recovery_response_generator_contract.md),
+- repaired context is a confirmation candidate, not trusted context -> [RelayRUN recovery response generator contract](../../contracts/relayrun_recovery_response_generator_contract.md),
 - recovery must not auto-resume before user confirmation -> [RelayRUN recovery response generator contract](../../contracts/relayrun_recovery_response_generator_contract.md),
 - recovery blocks MEM/SOUL persistence and limits retrieval scope -> [RelaySCN MVP scene policy](../relayscn_mvp_scene_policy.md),
 - ordinary ambiguity should use RelayINT clarification rather than SLP -> [RelayINT MVP design](../relayint_mvp_design.md),
 - forced sleep/reset should remain rare and fail-closed -> [RelayMEM SLP execution design](../relaymem_slp_execution_design.md),
 - no extra Wake-time LLM output should be generated solely to run SLP -> [RelayMEM SLP execution design](../relaymem_slp_execution_design.md).
 
+## Archived product-origin designs
+
+### [Persona-Specialized Proxy Design](persona_specialized_proxy_design.md)
+
+Reason archived:
+
+- its proxy role, context hierarchy, adapter model, agent boundary, and scope identity are covered by current architecture and contracts,
+- its implementation-boundary notes describe an early post-MVP-12 state,
+- it mixes durable product principles with superseded implementation status.
+
+Useful principles migrated into current documents:
+
+- RelayLM is evaluated on whether persona and relationship continuity make conversation comfortable, not task success alone -> [AI character product principles](../ai_character_product_principles.md),
+- conversation stickiness must come from coherence and comfort rather than manipulative engagement -> [AI character product principles](../ai_character_product_principles.md),
+- memory warmth, non-creepiness, and growth feeling are explicit product-quality axes -> [AI character product principles](../ai_character_product_principles.md),
+- persona layers update at different speeds -> [RelaySOUL persona update cadence design](../../relaysoul/persona_update_cadence_design.md),
+- `persona_plasticity` changes proposal thresholds, not mutation authority -> [RelaySOUL persona update cadence design](../../relaysoul/persona_update_cadence_design.md).
+
 Current replacements:
 
-- [Pipeline responsibility design](../pipeline_responsibility_design.md)
-- [RelayINT MVP design](../relayint_mvp_design.md)
-- [RelaySCN MVP scene policy](../relayscn_mvp_scene_policy.md)
-- [RelayRUN runtime checkpoint design](../../relayrun_runtime_checkpoint_design.md)
-- [RelayRUN recovery response generator contract](../../contracts/relayrun_recovery_response_generator_contract.md)
-- [RelayMEM SLP execution design](../relaymem_slp_execution_design.md)
+- [Runtime architecture](../runtime_architecture.md)
+- [Context packing design](../context_packing_design.md)
+- [AI character product principles](../ai_character_product_principles.md)
+- [RelaySOUL design](../../relaysoul/relaysoul_design.md)
+- [RelaySOUL persona update cadence design](../../relaysoul/persona_update_cadence_design.md)
 
-## Reviewed but retained as active documents
+### [RelayLM VTuber Memory Proxy Design](vtuber_memory_proxy_design.md)
+
+Reason archived:
+
+- topology, modes, backend stance, routing, and compatibility behavior are covered by current runtime and integration documents,
+- its first-product implementation notes are historical,
+- its distinct remaining value is product positioning and realtime latency posture.
+
+Useful principles migrated into current documents:
+
+- AI character memory should improve continuity without replacing frontend ownership -> [AI character product principles](../ai_character_product_principles.md),
+- fast first speech takes priority over maximum retrieval depth -> [AI character product principles](../ai_character_product_principles.md),
+- heavy memory extraction and indexing belong outside the synchronous speech path -> [AI character product principles](../ai_character_product_principles.md),
+- ASR-prefetch and speculative repacking remain optional, discardable, non-mutating optimizations -> [AI character product principles](../ai_character_product_principles.md).
+
+Current replacements:
+
+- [Runtime architecture](../runtime_architecture.md)
+- [Open-LLM-VTuber integration design](../open_llm_vtuber_integration.md)
+- [AI VTuber pipeline profile](../ai_vtuber_pipeline_profile.md)
+- [AI character product principles](../ai_character_product_principles.md)
+- [Product runtime hardening](../product_runtime_hardening.md)
+
+## Reviewed and retained as active documents
 
 The following dated documents still contain a distinct current design contract and remain in the active architecture index:
 
@@ -83,15 +116,4 @@ The following dated documents still contain a distinct current design contract a
 - `ai_vtuber_pipeline_profile.md`
 - `open_llm_vtuber_integration.md`
 
-## Possible later archive candidates
-
-These documents overlap substantially with newer architecture documents, but still contain unique product rationale that should be migrated before archiving:
-
-- `persona_specialized_proxy_design.md`
-  - overlaps `runtime_architecture.md`, `context_packing_design.md`, and RelaySOUL docs,
-  - unique material: conversation-stickiness evaluation and persona-product framing.
-- `vtuber_memory_proxy_design.md`
-  - overlaps `runtime_architecture.md`, `open_llm_vtuber_integration.md`, and `ai_vtuber_pipeline_profile.md`,
-  - unique material: concise early product-value and latency-positioning summary.
-
-Do not delete these two until their unique material is either retained intentionally or folded into current product documentation.
+No remaining archive candidates are declared by this index. Future candidates should be archived only after their unique principles are mapped to current owner documents.

@@ -11,7 +11,7 @@ When architecture documents disagree, use this order:
 1. [Pipeline responsibility design](pipeline_responsibility_design.md) for canonical component names, pipeline order, and responsibility ownership.
 2. [Pipeline implementation plan](pipeline_implementation_plan.md) for current phase status and implementation sequencing.
 3. Dedicated current module or contract documents for schema and module-specific details.
-4. Dated MVP and archived pre-split design documents as historical rationale only.
+4. Dated MVP and archived design documents as historical rationale only.
 
 In particular, current terminology fixes these boundaries:
 
@@ -24,7 +24,7 @@ RelayRUN = runtime orchestration, fallback/recovery, checkpoints, trace, and lin
 RelaySLP = out-of-band memory / SOUL compilation path
 ```
 
-Historical pre-RelayINT documents are collected under [`archive/`](archive/README.md). They preserve design rationale but do not define current ownership.
+Historical and superseded documents are collected under [`archive/`](archive/README.md). They preserve design rationale but do not define current ownership or implementation status.
 
 ## Pipeline architecture
 
@@ -34,6 +34,7 @@ Historical pre-RelayINT documents are collected under [`archive/`](archive/READM
 - [Client instruction authority contract](client_instruction_authority_contract.md)
 - [Runtime architecture](runtime_architecture.md)
 - [Product runtime hardening](product_runtime_hardening.md)
+- [AI character product principles](ai_character_product_principles.md)
 
 The two client-authority contracts share one external boundary:
 
@@ -46,8 +47,6 @@ then reconstructs the backend payload from RelayLM-owned state.
 ## Profile-specific architecture
 
 - [AI VTuber pipeline profile](ai_vtuber_pipeline_profile.md)
-- [VTuber memory proxy design](vtuber_memory_proxy_design.md)
-- [Persona-specialized proxy design](persona_specialized_proxy_design.md)
 - [Open-LLM-VTuber integration](open_llm_vtuber_integration.md)
 
 ## Context and scene architecture
@@ -71,9 +70,11 @@ then reconstructs the backend payload from RelayLM-owned state.
 - [Archive index](archive/README.md)
 - [RelayCTX Wake Loop Design](archive/relayctx_wake_loop_design.md) — pre-RelayINT responsibility split
 - [RelayREF / RelaySLP MVP Design](archive/relayref_relayslp_mvp_design.md) — pre-RelayINT RelayREF definition
+- [Persona-Specialized Proxy Design](archive/persona_specialized_proxy_design.md) — early product and persona-proxy direction
+- [RelayLM VTuber Memory Proxy Design](archive/vtuber_memory_proxy_design.md) — early VTuber product-target direction
 
 ## Follow-up cleanup
 
-Architecture consolidation is still in progress for implementation-status notes and overlapping early product documents. New current architecture docs should be created directly under `docs/architecture/`; superseded design rationale should move to `docs/architecture/archive/`.
+Architecture consolidation is still in progress for implementation-status notes and any future overlapping design documents. New current architecture docs should be created directly under `docs/architecture/`; superseded design rationale should move to `docs/architecture/archive/` only after unique principles are migrated.
 
 Contracts, smoke runbooks, and MVP summaries remain in their own directories. Historical MVP summaries should remain immutable snapshots unless a broken link or explicit factual correction requires an annotation.
