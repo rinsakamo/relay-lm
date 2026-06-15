@@ -23,9 +23,8 @@ Canonical precedence and legacy-term handling are defined in the [architecture d
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — implementation order and phase status
 - [Runtime architecture](architecture/runtime_architecture.md)
 - [Product runtime hardening](architecture/product_runtime_hardening.md)
+- [AI character product principles](architecture/ai_character_product_principles.md)
 - [AI VTuber pipeline profile](architecture/ai_vtuber_pipeline_profile.md)
-- [VTuber memory proxy design](architecture/vtuber_memory_proxy_design.md)
-- [Persona-specialized proxy design](architecture/persona_specialized_proxy_design.md)
 - [Open-LLM-VTuber integration](architecture/open_llm_vtuber_integration.md)
 - [RelayINT MVP design](architecture/relayint_mvp_design.md)
 - [RelayMEM MVP design](architecture/relaymem_mvp_design.md)
