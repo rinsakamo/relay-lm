@@ -22,7 +22,7 @@ Canonical precedence and legacy-term handling are defined in the [architecture d
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — canonical naming and responsibility source
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — implementation order and phase status
 - [Runtime architecture](architecture/runtime_architecture.md)
-- [Product runtime hardening](architecture/product_runtime_hardening.md)
+- [Runtime operational requirements](architecture/runtime_operational_requirements.md)
 - [AI character product principles](architecture/ai_character_product_principles.md)
 - [AI VTuber pipeline profile](architecture/ai_vtuber_pipeline_profile.md)
 - [Open-LLM-VTuber integration](architecture/open_llm_vtuber_integration.md)
