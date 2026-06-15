@@ -47,6 +47,30 @@ The future generator contract is downstream of the existing recovery diagnostics
 9. `user_action_contract`
    - Records the future user confirmation / clarification / retry-choice contract without applying actions.
 
+## Recovery reanchor principle
+
+A reconstructed or repaired context is never trusted merely because RelayLM produced it.
+
+```text
+recovery evidence
+  -> context/handoff candidate
+  -> ask user to confirm, correct, or restate
+  -> only confirmed scope may re-enter the normal runtime path
+```
+
+Required behavior:
+
+- treat a repaired topic, task, reference, or handoff as a confirmation candidate,
+- keep `waiting_user_required=true` while confirmation or clarification is outstanding,
+- do not auto-resume the prior task from a guessed repair,
+- do not promote guessed repair content into RelayMEM or RelaySOUL,
+- use open clarification rather than a leading confirmation when the candidate itself is weak,
+- use candidate confirmation only when the evidence is bounded and sufficiently specific.
+
+A normal context-repair path may ask the user whether the reconstructed scope is correct. A forced reset/sleep-style path should normally ask the user to reanchor the conversation openly rather than pretending the previous topic was recovered.
+
+Character-facing wording, including sleep/reflection metaphors, remains presentation behavior. It must pass RelayCTX Unpack, output-side RelaySCN, RelayEMO, and the visible-response apply gates. RelayRUN records intent and state; it does not write the final line itself.
+
 ## Required inputs
 
 A future generator contract may use only metadata and content-free intent from approved upstream artifacts:

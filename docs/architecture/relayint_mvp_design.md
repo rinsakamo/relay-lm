@@ -115,6 +115,47 @@ ctx_working_memory:
 
 RelayINT converts the latest user input plus CTX state into a compact intent artifact.
 
+## Reference resolution and recall interaction policy
+
+RelayINT should separate short-term reference resolution from long-term memory retrieval.
+
+Recommended precedence:
+
+```text
+1. current user turn and explicit nouns
+2. current RAM-side CTX working state
+3. user confirmation of one candidate
+4. RelayMEM retrieval, only when explicitly requested or still needed after confirmation
+```
+
+Decision policy:
+
+| State | RelayINT action | RelayMEM action |
+|---|---|---|
+| One clear active-CTX referent | continue with resolved reference | do not retrieve |
+| Multiple plausible active-CTX referents | ask candidate confirmation | do not retrieve |
+| No active-CTX candidate | ask open clarification | do not retrieve |
+| User explicitly requests remembered information | confirm scope when needed | retrieval may run |
+| User confirms a reference but CTX lacks the needed facts | request retrieval | retrieval may run |
+
+An ambiguous reference must never trigger silent long-term recall. Retrieval can broaden the evidence only after the user has named, requested, or confirmed the intended scope.
+
+For a recall operation that cannot safely complete in the ordinary single-pass path, RelayINT may use a two-step interaction contract:
+
+```text
+turn 1:
+  detect explicit or confirmed recall need
+  -> ask/record the minimum required confirmation
+  -> no long-term memory mutation
+
+turn 2 after confirmation:
+  RelayMEM Retrieval reads the allowed scope
+  -> RelayCTX Repack inserts the selected memory block
+  -> Main LLM produces the final answer
+```
+
+A short character-facing acknowledgement such as a thinking or recall-pause phrase is optional presentation behavior. It must pass the normal output pipeline and scene/EMO gates, and RelayRUN must not directly finalize that text. The core contract is confirmation and safe repacking, not the wording of the pause.
+
 ## MVP responsibilities
 
 RelayINT MVP should do the following:

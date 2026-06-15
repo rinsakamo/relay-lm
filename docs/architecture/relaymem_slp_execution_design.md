@@ -276,6 +276,41 @@ trigger:
 
 If confusion remains unresolved, RelaySCN may switch to recovery scene and block persistence.
 
+## Clarification, recovery, and true Sleep boundary
+
+Ordinary ambiguity is not an SLP trigger.
+
+```text
+ambiguous reference
+  -> RelayINT clarification
+  -> optional user confirmation
+  -> RelayMEM Retrieval only when the scope is explicit or confirmed
+```
+
+Scene-level confusion and wrong-continuation risk are handled before SLP apply:
+
+```text
+confusion / contradiction / task loss
+  -> RelaySCN recovery policy
+  -> RelayRUN waiting-user / recovery orchestration
+  -> persistence blocked
+```
+
+SLP may inspect the resulting artifacts later, but it must not replace clarification or recovery with an automatic memory write.
+
+A true forced sleep/reset path should remain rare. It is appropriate only when normal Wake continuation is unsafe, for example after repeated structured-update parse failures, repeated contradictions, critical context pressure, or repeated inability to determine a safe next action. A single ambiguous reference, one failed retrieval, or moderate token pressure is insufficient.
+
+SLP input should be reconstructed from existing governed evidence:
+
+- RelaySCN state/policy summaries,
+- RelayINT intent and clarification artifacts,
+- RelayCTX Unpack/update candidates,
+- RelayRUN checkpoints and recovery-state metadata,
+- RelayMEM retrieval summaries,
+- existing raw conversation logs.
+
+RelayLM should not make an extra Wake-time Main LLM call solely to manufacture SLP input. SLP also does not emit user-visible sleep, reflection, or resume text directly. Any visible recovery/sleep metaphor belongs to the normal output pipeline and scene/EMO policy, while actual resume remains blocked until the required user confirmation or reanchor is received.
+
 ## SLP artifact contract
 
 Suggested dataclass shape:
@@ -398,6 +433,8 @@ relaymem_slp:
 - Do not persist raw affect estimates as long-term facts.
 - Do not auto-apply review_required or explicit_approval_required candidates.
 - Do not run heavy memory compilation inside the latency-critical Retrieval path.
+- Do not use SLP as a substitute for RelayINT clarification or RelaySCN recovery.
+- Do not generate user-visible sleep/recovery text directly from SLP.
 
 ## Summary
 

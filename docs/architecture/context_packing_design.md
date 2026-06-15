@@ -73,6 +73,43 @@ The core rule:
 
 This helps persona stability and backend prefix/KV cache reuse.
 
+## Working state versus prompt-selected context
+
+RelayCTX may maintain more request-local or RAM-side working state than the Main LLM should receive on every turn.
+
+```text
+working state
+  current topic, active task, active question, prior decision,
+  referable items, unresolved slots, and other continuity metadata
+
+prompt-selected context
+  only the bounded hints needed for the current turn
+```
+
+The two must stay separate:
+
+- internal working state is not automatically copied into the prompt,
+- RelayINT may inspect working state to resolve intent and references,
+- RelayCTX Repack selects only the fields required for the current action,
+- omitted working-state fields remain available to the runtime and are not automatically forgotten,
+- long-term persistence still requires RelaySLP and the applicable scene/persistence gates.
+
+This separation prevents the prompt from becoming a transcript-shaped dump of runtime state while preserving short-term continuity outside the backend context window.
+
+## Selection is not budget filling
+
+A token budget is an upper bound, not a target that RelayCTX must fill.
+
+RelayCTX Repack should prefer the smallest sufficient context for the current turn:
+
+1. preserve required runtime and persona anchors,
+2. include scene and intent evidence needed for the current action,
+3. include confirmed short-term context,
+4. include long-term memory only when RelayINT and RelaySCN allow retrieval,
+5. stop when the answer can be generated safely and coherently.
+
+Unused budget should remain unused. Dynamic blocks should not be added merely because space is available, and dropped prompt hints must not be promoted to durable memory solely because they were omitted from the current prompt.
+
 ## Common runtime policy
 
 This is a small shared block for all characters.

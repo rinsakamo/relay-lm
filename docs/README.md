@@ -28,12 +28,11 @@ Canonical precedence and legacy-term handling are defined in the [architecture d
 - [Persona-specialized proxy design](architecture/persona_specialized_proxy_design.md)
 - [Open-LLM-VTuber integration](architecture/open_llm_vtuber_integration.md)
 - [RelayINT MVP design](architecture/relayint_mvp_design.md)
-- [RelayREF / RelaySLP MVP design](architecture/relayref_relayslp_mvp_design.md) — historical pre-RelayINT terminology; not the canonical current RelayREF definition
-- [RelayCTX Wake loop design](architecture/relayctx_wake_loop_design.md) — historical pre-RelayINT responsibility split
 - [RelayMEM MVP design](architecture/relaymem_mvp_design.md)
 - [RelayMEM SLP execution design](architecture/relaymem_slp_execution_design.md)
 - [RelayMEM retrieval execution design](architecture/relaymem_retrieval_execution_design.md)
 - [RelayEMO return-side style adapter design](architecture/relayemo_return_side_style_adapter_design.md)
+- [Historical architecture design archive](architecture/archive/README.md)
 
 ## MVP summaries
 
@@ -71,6 +70,7 @@ python scripts/relaylm_docs_link_check.py
 Placement rules:
 
 - cross-cutting architecture and pipeline docs -> `docs/architecture/`
+- historical architecture rationale -> `docs/architecture/archive/`
 - MVP summaries and milestone notes -> `docs/mvp/`
 - artifact, schema, approval, and contract docs -> `docs/contracts/`
 - manual smoke, results, troubleshooting, and local evaluation docs -> `docs/smoke/`
