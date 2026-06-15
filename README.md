@@ -17,7 +17,7 @@
 </p>
 
 > [!WARNING]
-> RelayLM is under active MVP development. The OpenAI-compatible proxy and pass-through path are usable, while several managed-context, output-processing, and persistence features remain gated, default-off, or planned. See [Project Status](docs/PROJECT_STATUS.md) for the exact current boundary.
+> RelayLM is under active MVP development. The OpenAI-compatible proxy and pass-through path are usable, while several managed-context, output-processing, and persistence features remain dry-run, runtime-private, read-only, default-off, or planned. See [Project Status](docs/PROJECT_STATUS.md) for the exact current boundary.
 
 ## 🌉 What is RelayLM?
 
@@ -41,8 +41,11 @@ RelayLM is **not** a language model and **not** a memory database. It is designe
 - 🧠 **Persona-stable context** — keep identity and output policy above dynamic memory and retrieved evidence.
 - 🧩 **Explicit pipeline boundaries** — separate scene, affect, intent, retrieval, context packing, output observation, orchestration, and deferred persistence.
 - ⚡ **KV-reuse-aware layout** — prefer stable context ordering that can benefit prefix/KV cache reuse.
-- 🛡️ **Safe-by-default behavior** — new mutation and persistence paths are introduced behind explicit gates.
-- 💻 **Local-first operation** — use local frontends, local backends, and repository-visible configuration.
+- 🛡️ **Safe-by-default behavior** — introduce request mutation and persistence behind explicit compatibility, policy, and apply gates.
+- 💻 **Local-first posture** — keep storage local by default, expose backend URLs in configuration, and avoid hidden remote telemetry.
+
+> [!NOTE]
+> RelayLM is local-first, but when a hosted or remote backend is configured, the selected compiled context is sent to that backend as part of the request.
 
 ## 🧭 Runtime paths
 
@@ -66,35 +69,45 @@ RelayLM owns conversation proxying and context/runtime boundaries. It does not o
 
 ## 📍 Current state
 
-RelayLM is currently in **Phase 5-C**. The immediate next boundary is the managed-route apply path described in [Project Status](docs/PROJECT_STATUS.md).
+RelayLM is currently in **Phase 5-C**. The immediate next boundary is **Phase 5-C4 managed-route apply**, as described in [Project Status](docs/PROJECT_STATUS.md).
 
 ### ✅ Available foundations
 
 - OpenAI-compatible proxy and model-route handling
 - `pass_through` compatibility baseline
 - `PipelineContext` request-local coordination
-- RelayCTX Repack boundaries
+- main RelayCTX Repack separation
 - gated RelayMEM retrieval and context injection
 - RelayINT-facing reference-repair and diagnostics boundaries
 - ordered `PipelineNodeResult` collection
 - pure and gated non-stream RelayCTX Unpack
 - request-level RelayRUN artifacts, checkpoints, and typed content-free diagnostics
 
-### 🧪 Gated or diagnostic-only boundaries
+### 🧪 Dry-run, runtime-private, read-only, or default-off boundaries
 
-- managed-route client-message canonicalization
-- client-instruction identity and read-only cache lookup
-- client-history exclusion preflight
-- RelayINT Fast Path and quick-clarification planning
-- non-stream RelayCTX Unpack apply
-- short-term context injection
+| Boundary | Current posture |
+|---|---|
+| Client-message canonicalization | Dry-run / default-off; no payload mutation |
+| Client-instruction identity | Runtime-private; no visible effect |
+| Instruction-cache lookup | Read-only / default-off; no state injection or write |
+| Client-history exclusion | Diagnostics-only preflight / default-off |
+| RelayINT Fast Path | Diagnostics-only / default-off |
+| RelayINT quick clarification | Preflight/apply plan only; no completed short-circuit route |
+| Non-stream RelayCTX Unpack apply | Gated / default-off |
+| RelayCTX short-term injection | Gated / default-off apply |
 
-### 🛠️ Major planned boundaries
+### 🚧 Next boundary: Phase 5-C4
 
-- managed-route client-message replacement
-- cache-hit RelaySCN state injection and cache-miss instruction evidence
-- typed instruction artifact parsing and cache writes
+- replace managed-route client messages only from validated current-turn and instruction state
+- inject a validated cache-hit RelaySCN projection, or one escaped cache-miss instruction-evidence block
+- preserve `pass_through`, active tool transactions, current multimodal parts, and compatibility-sensitive requests
+- record payload replacement through `PipelineContext` while keeping diagnostics content-free
+
+### 🛠️ Planned after Phase 5-C4
+
+- typed client-instruction artifact parsing and independently gated cache writes
 - streaming RelayCTX Unpack and TTS-safe output segmentation
+- explicit routing/apply behavior for selected node results
 - output-side RelayREF and RelaySCN stages
 - cross-cutting per-node RelayRUN orchestration
 - asynchronous RelaySLP persistence path
@@ -131,11 +144,19 @@ pip install -e . --no-build-isolation
 
 ### 2. Create the configuration
 
+For the standard OpenWebUI + LM Studio path:
+
+```bash
+cp examples/config/openwebui_lmstudio.yaml config.yaml
+```
+
+For a generic starting point instead:
+
 ```bash
 cp config.example.yaml config.yaml
 ```
 
-Edit `config.yaml` for your backend URL, backend model, and RelayLM route. See the [configuration schema](docs/config_schema.md) and the [OpenWebUI + LM Studio guide](docs/openwebui_lmstudio_mvp.md).
+Edit `config.yaml` for your backend URL, backend model, and RelayLM route. The standard example expects LM Studio at `http://127.0.0.1:1234/v1` and RelayLM at `http://127.0.0.1:8090/v1`. See the [configuration schema](docs/config_schema.md) and the [OpenWebUI + LM Studio guide](docs/openwebui_lmstudio_mvp.md).
 
 ### 3. Start RelayLM
 
@@ -183,10 +204,10 @@ User input
   -> RelayREF
   -> Return-side RelayEMO
   -> Output-side RelaySCN
-  -> RelayRUN artifact / trace / checkpoint summary
+  -> RelayRUN final artifact / trace / checkpoint summary
   -> User output
 
-Out-of-band:
+Out-of-band after-turn path:
   governed evidence
   -> RelaySLP
   -> MEM update candidates / SOUL proposals
@@ -195,7 +216,7 @@ Out-of-band:
 
 This is the canonical responsibility order, not a claim that every stage is already active. Consult [Project Status](docs/PROJECT_STATUS.md) for implementation status.
 
-| Component | Responsibility |
+| Relay component | Responsibility |
 |---|---|
 | 🌬️ **RelaySCN** | Scene classification and scene/persistence policy |
 | 🙂 **RelayEMO** | Affect estimation and scene-gated expression control |
@@ -205,6 +226,12 @@ This is the canonical responsibility order, not a claim that every stage is alre
 | 🔎 **RelayREF** | Lightweight output-side observation and diagnostics |
 | 🎛️ **RelayRUN** | Runtime orchestration, fallback/recovery, checkpoints, trace, and node state |
 | 🌙 **RelaySLP** | Out-of-band memory and SOUL compilation path |
+
+Cross-cutting and transport boundaries:
+
+- `PipelineContext`: request-local coordination, payload replacement history, runtime-private state, node results, and diagnostics handoff
+- Runtime Compile Gate: request-local apply and compatibility decision phase; not a standalone `RelayPLC` component
+- OpenAI-compatible adapter: frontend/backend protocol boundary; not a semantic pipeline stage
 
 The short timing rule is:
 
