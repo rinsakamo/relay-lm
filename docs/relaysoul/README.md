@@ -1,14 +1,15 @@
 # RelaySOUL Design and Gate Docs
 
-This directory indexes RelaySOUL persona-source calibration, dry-run/preflight chains, persistence design, and execution-gate documentation.
+This directory indexes RelaySOUL persona-source calibration, update cadence, dry-run/preflight chains, persistence design, and execution-gate documentation.
 
 RelaySOUL artifact schemas and content-free contracts remain under `docs/contracts/`. MVP milestone summaries remain under `docs/mvp/`.
 
-The RelaySOUL design, chain, persistence architecture, and execution-gate documents tracked by this index are housed in this directory.
+The RelaySOUL design, cadence, chain, persistence architecture, and execution-gate documents tracked by this index are housed in this directory.
 
 ## Core design
 
 - [RelaySOUL persona source calibration design](relaysoul_design.md)
+- [RelaySOUL persona update cadence design](persona_update_cadence_design.md)
 - [RelaySOUL persistence storage design](relaysoul_persistence_storage_design.md)
 
 ## Chain summaries
@@ -32,4 +33,4 @@ The RelaySOUL design, chain, persistence architecture, and execution-gate docume
 
 ## Placement rule
 
-Create RelaySOUL design, chain, persistence architecture, and execution-gate docs directly under `docs/relaysoul/`. Keep schemas and artifact contracts under `docs/contracts/`.
+Create RelaySOUL design, cadence, chain, persistence architecture, and execution-gate docs directly under `docs/relaysoul/`. Keep schemas and artifact contracts under `docs/contracts/`.
