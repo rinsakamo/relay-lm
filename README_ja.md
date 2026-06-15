@@ -8,16 +8,18 @@
   <img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-blue">
   <img alt="OpenAI互換" src="https://img.shields.io/badge/API-OpenAI--compatible-6f42c1">
   <img alt="開発状況: active development" src="https://img.shields.io/badge/status-active%20development-orange">
+  <a href="./LICENSE"><img alt="ライセンス: Apache-2.0" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"></a>
 </p>
 
 <p align="center">
   <a href="./README.md">English README</a> ・
   <a href="./docs/PROJECT_STATUS.md">現在の実装状況</a> ・
-  <a href="./docs/README.md">ドキュメント</a>
+  <a href="./docs/README.md">ドキュメント</a> ・
+  <a href="./LICENSE">ライセンス</a>
 </p>
 
 > [!WARNING]
-> RelayLM はMVPを開発中です。OpenAI互換プロキシとパススルー経路は利用できますが、管理対象コンテキスト、出力処理、永続化の一部はdry-run、runtime-private、read-only、default-off、または未実装です。正確な現在地は [Project Status](docs/PROJECT_STATUS.md) を参照してください。
+> RelayLMはMVPを開発中です。現在のPhase、実装済み境界、ゲート付き・デフォルト無効の挙動、直近の実装予定は [Project Status](docs/PROJECT_STATUS.md) を参照してください。
 
 ## 🌉 RelayLMとは？
 
@@ -67,52 +69,11 @@ Open-LLM-VTuber
 
 RelayLMが担当するのは会話プロキシ、コンテキスト境界、ランタイム境界です。フロントエンドUI、ASR、TTS、アバター実行環境は担当しません。
 
-## 📍 現在の実装状況
+## 📍 開発状況
 
-現在のRelayLMは **Phase 5-C** です。直近の実装境界は [Project Status](docs/PROJECT_STATUS.md) に記載した **Phase 5-C4 managed-route apply** です。
+現在のPhase、実装済み境界、dry-run・read-only・default-offの挙動、直近の実装予定は [Project Status](docs/PROJECT_STATUS.md) を参照してください。
 
-### ✅ 利用可能な基盤
-
-- OpenAI互換プロキシとモデルルーティング
-- `pass_through` 互換性ベースライン
-- `PipelineContext` によるリクエスト単位の調整
-- RelayCTX Repackの主要分離
-- ゲート付きRelayMEM検索とコンテキスト注入
-- RelayINT向け参照修復・診断境界
-- 順序付き `PipelineNodeResult` 収集
-- 純粋パーサーとゲート付き非ストリームRelayCTX Unpack
-- リクエスト単位のRelayRUN artifact、checkpoint、型付きcontent-free診断
-
-### 🧪 Dry-run・runtime-private・read-only・default-offの境界
-
-| 境界 | 現在の状態 |
-|---|---|
-| Client-message canonicalization | Dry-run / default-off。payload mutationなし |
-| Client-instruction identity | Runtime-private。ユーザー可視効果なし |
-| Instruction-cache lookup | Read-only / default-off。state injection・writeなし |
-| Client-history exclusion | Diagnostics-only preflight / default-off |
-| RelayINT Fast Path | Diagnostics-only / default-off |
-| RelayINT quick clarification | Preflight/apply planのみ。short-circuit routeは未完成 |
-| 非ストリームRelayCTX Unpack apply | Gated / default-off |
-| RelayCTX短期コンテキスト注入 | Gated / default-off apply |
-
-### 🚧 次の実装境界: Phase 5-C4
-
-- 検証済みのcurrent-turnとinstruction stateだけからmanaged-route client messagesを置き換える
-- 検証済みcache-hit RelaySCN projection、または1つのescaped cache-miss instruction-evidence blockを注入する
-- `pass_through`、active tool transaction、現在のmultimodal parts、互換性に敏感なrequestを維持する
-- `PipelineContext`経由でpayload replacementを記録し、diagnosticsをcontent-freeに保つ
-
-### 🛠️ Phase 5-C4以降の計画
-
-- typed client-instruction artifact parsingと独立ゲート付きcache write
-- ストリームRelayCTX UnpackとTTS向け出力分割
-- 選択したnode resultの明示的なrouting/apply
-- 出力側RelayREF・RelaySCN
-- ノード横断RelayRUNオーケストレーション
-- 非同期RelaySLP永続化経路
-
-現在動くものを1ページで確認する場合は [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md) を参照してください。
+`docs/PROJECT_STATUS.md` を現在地の正本とし、このREADMEではPhase番号や短期間で変わる実装状況を重複管理しません。
 
 ## 🚀 クイックスタート
 
@@ -260,3 +221,7 @@ RelayREF = after response
 [RelayKV](https://github.com/rinsakamo/relay-kv) は、隣接するランタイム・KVキャッシュ研究リポジトリです。RelayLMは、その1層上で会話とコンテキストを扱うプロキシです。
 
 RelayLMは、RelayKVのworking-set選択、anchor/recent/retrieved分離、Persona Anchor KV、cache-aware layoutといった設計知見を活用しますが、初期製品では推論エンジンのKVキャッシュを直接変更しません。
+
+## 📄 ライセンス
+
+RelayLMは [Apache License 2.0](LICENSE) のもとで公開されています。
