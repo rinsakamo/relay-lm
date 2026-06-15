@@ -26,7 +26,7 @@ EXTERNAL_SCHEMES = {
 def _extract_target(raw_target: str) -> str:
     target = raw_target.strip()
     if target.startswith("<") and ">" in target:
-        return target[1 : target.index(">")].strip()
+        return target[1 : target.index(">")] .strip()
 
     # Markdown allows an optional quoted title after the destination.
     # RelayLM docs do not use unescaped spaces in local paths, so the first
@@ -85,7 +85,7 @@ def _iter_markdown_links(source: Path) -> list[tuple[int, str]]:
 
 def check_links(repo_root: Path) -> tuple[int, int, list[str]]:
     root = repo_root.resolve()
-    markdown_files = [root / "README.md"]
+    markdown_files = sorted(path for path in root.glob("README*.md") if path.is_file())
     markdown_files.extend(sorted((root / "docs").rglob("*.md")))
 
     checked_links = 0
@@ -121,7 +121,7 @@ def check_links(repo_root: Path) -> tuple[int, int, list[str]]:
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Check local Markdown links in README.md and docs/**/*.md."
+        description="Check local Markdown links in README*.md and docs/**/*.md."
     )
     parser.add_argument(
         "repo_root",
