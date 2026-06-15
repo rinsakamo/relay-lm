@@ -8,16 +8,18 @@
   <img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-blue">
   <img alt="OpenAI-compatible" src="https://img.shields.io/badge/API-OpenAI--compatible-6f42c1">
   <img alt="Status: active development" src="https://img.shields.io/badge/status-active%20development-orange">
+  <a href="./LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"></a>
 </p>
 
 <p align="center">
   <a href="./README_ja.md">日本語 README</a> ・
   <a href="./docs/PROJECT_STATUS.md">Project Status</a> ・
-  <a href="./docs/README.md">Documentation</a>
+  <a href="./docs/README.md">Documentation</a> ・
+  <a href="./LICENSE">License</a>
 </p>
 
 > [!WARNING]
-> RelayLM is under active MVP development. The OpenAI-compatible proxy and pass-through path are usable, while several managed-context, output-processing, and persistence features remain dry-run, runtime-private, read-only, default-off, or planned. See [Project Status](docs/PROJECT_STATUS.md) for the exact current boundary.
+> RelayLM is under active MVP development. See [Project Status](docs/PROJECT_STATUS.md) for the current phase, implemented boundaries, gated or default-off behavior, and immediate next work.
 
 ## 🌉 What is RelayLM?
 
@@ -67,52 +69,11 @@ Open-LLM-VTuber
 
 RelayLM owns conversation proxying and context/runtime boundaries. It does not own the frontend UI, ASR, TTS, or avatar runtime.
 
-## 📍 Current state
+## 📍 Development status
 
-RelayLM is currently in **Phase 5-C**. The immediate next boundary is **Phase 5-C4 managed-route apply**, as described in [Project Status](docs/PROJECT_STATUS.md).
+For the current phase, implemented boundaries, dry-run/read-only/default-off behavior, and immediate next work, see [Project Status](docs/PROJECT_STATUS.md).
 
-### ✅ Available foundations
-
-- OpenAI-compatible proxy and model-route handling
-- `pass_through` compatibility baseline
-- `PipelineContext` request-local coordination
-- main RelayCTX Repack separation
-- gated RelayMEM retrieval and context injection
-- RelayINT-facing reference-repair and diagnostics boundaries
-- ordered `PipelineNodeResult` collection
-- pure and gated non-stream RelayCTX Unpack
-- request-level RelayRUN artifacts, checkpoints, and typed content-free diagnostics
-
-### 🧪 Dry-run, runtime-private, read-only, or default-off boundaries
-
-| Boundary | Current posture |
-|---|---|
-| Client-message canonicalization | Dry-run / default-off; no payload mutation |
-| Client-instruction identity | Runtime-private; no visible effect |
-| Instruction-cache lookup | Read-only / default-off; no state injection or write |
-| Client-history exclusion | Diagnostics-only preflight / default-off |
-| RelayINT Fast Path | Diagnostics-only / default-off |
-| RelayINT quick clarification | Preflight/apply plan only; no completed short-circuit route |
-| Non-stream RelayCTX Unpack apply | Gated / default-off |
-| RelayCTX short-term injection | Gated / default-off apply |
-
-### 🚧 Next boundary: Phase 5-C4
-
-- replace managed-route client messages only from validated current-turn and instruction state
-- inject a validated cache-hit RelaySCN projection, or one escaped cache-miss instruction-evidence block
-- preserve `pass_through`, active tool transactions, current multimodal parts, and compatibility-sensitive requests
-- record payload replacement through `PipelineContext` while keeping diagnostics content-free
-
-### 🛠️ Planned after Phase 5-C4
-
-- typed client-instruction artifact parsing and independently gated cache writes
-- streaming RelayCTX Unpack and TTS-safe output segmentation
-- explicit routing/apply behavior for selected node results
-- output-side RelayREF and RelaySCN stages
-- cross-cutting per-node RelayRUN orchestration
-- asynchronous RelaySLP persistence path
-
-The concise, maintained source for what works now is [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md).
+`docs/PROJECT_STATUS.md` is the maintained current-state view. This README intentionally does not duplicate phase numbers or short-lived implementation status.
 
 ## 🚀 Quick start
 
@@ -260,3 +221,7 @@ For authoritative ownership and order, see the [Pipeline Responsibility Design](
 [RelayKV](https://github.com/rinsakamo/relay-kv) is the adjacent runtime/KV-cache research repository. RelayLM operates one layer above runtime APIs as a conversation and context proxy.
 
 RelayLM can benefit from RelayKV design lessons—working-set selection, anchor/recent/retrieved separation, Persona Anchor KV, and cache-aware layout—without directly mutating engine KV cache in the initial product.
+
+## 📄 License
+
+RelayLM is licensed under the [Apache License 2.0](LICENSE).
