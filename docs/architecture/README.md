@@ -33,7 +33,7 @@ Historical and superseded documents are collected under [`archive/`](archive/REA
 - [Client history authority contract](client_history_authority_contract.md)
 - [Client instruction authority contract](client_instruction_authority_contract.md)
 - [Runtime architecture](runtime_architecture.md)
-- [Product runtime hardening](product_runtime_hardening.md)
+- [Runtime operational requirements](runtime_operational_requirements.md)
 - [AI character product principles](ai_character_product_principles.md)
 
 The two client-authority contracts share one external boundary:
@@ -72,6 +72,7 @@ then reconstructs the backend payload from RelayLM-owned state.
 - [RelayREF / RelaySLP MVP Design](archive/relayref_relayslp_mvp_design.md) — pre-RelayINT RelayREF definition
 - [Persona-Specialized Proxy Design](archive/persona_specialized_proxy_design.md) — early product and persona-proxy direction
 - [RelayLM VTuber Memory Proxy Design](archive/vtuber_memory_proxy_design.md) — early VTuber product-target direction
+- [Product Runtime Hardening](archive/product_runtime_hardening.md) — early cross-cutting MVP/runtime planning
 
 ## Follow-up cleanup
 
