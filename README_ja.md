@@ -209,29 +209,16 @@ Out-of-band after-turn path:
 
 これは責務上の正規順序であり、すべての段階が現在有効という意味ではありません。実装状況は [Project Status](docs/PROJECT_STATUS.md) を参照してください。
 
-| Relayコンポーネント | 責務 |
-|---|---|
-| 🌬️ **RelaySCN** | シーン分類とシーン・永続化ポリシー |
-| 🙂 **RelayEMO** | 感情推定とシーン制御された表現 |
-| 🚦 **RelayINT** | 入力側の意図、曖昧性、確認、続行・停止ゲート |
-| 🧠 **RelayMEM** | 通常応答経路での読み取り専用記憶検索 |
-| 📦 **RelayCTX** | Repackによるバックエンド入力構築と、Unpackによる表示文・内部候補の分離 |
-| 🔎 **RelayREF** | 軽量な出力側観察と診断 |
-| 🎛️ **RelayRUN** | 実行制御、fallback/recovery、checkpoint、trace、node state |
-| 🌙 **RelaySLP** | 通常応答経路外でのMEM・SOULコンパイル |
-
-横断・transport境界:
-
-- `PipelineContext`: リクエスト単位の調整、payload replacement履歴、runtime-private state、node result、diagnostics handoff
-- Runtime Compile Gate: リクエスト単位のapply・互換性decision phase。独立した `RelayPLC` コンポーネントではない
-- OpenAI-compatible adapter: frontend/backend protocol境界。semantic pipeline stageではない
-
-重要なタイミング規則は次のとおりです。
-
-```text
-RelayINT = before action
-RelayREF = after response
-```
+| いつ動くか | Relayコンポーネント | 何をするか |
+|---|---|---|
+| 会話全体 | 🎛️ **RelayRUN** | 各処理の順序、復旧、checkpoint、traceを管理する |
+| 入力側 | 🌬️ **RelaySCN** | 会話の場面を判断し、記憶・表現・永続化の方針を決める |
+| 入力・出力 | 🙂 **RelayEMO** | 感情の手がかりを読み、場面に応じた表現を調整する |
+| 入力側 | 🚦 **RelayINT** | 入力の意図と曖昧性を判断し、続行・確認・停止を決める |
+| 入力側 | 🧠 **RelayMEM** | 現在の応答に必要な長期記憶を読み取る |
+| LLMの前後 | 📦 **RelayCTX** | LLMへ渡す文脈を組み立て、出力から表示文と内部情報を分ける |
+| 出力側 | 🔎 **RelayREF** | 生成された応答を観察し、診断情報を残す |
+| 応答後 | 🌙 **RelaySLP** | 通常応答とは別経路で、記憶・SOULの更新候補を整理する |
 
 責務と順序の正式な定義は [Pipeline Responsibility Design](docs/architecture/pipeline_responsibility_design.md) を参照してください。
 
