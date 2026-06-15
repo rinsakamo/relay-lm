@@ -26,7 +26,7 @@ EXTERNAL_SCHEMES = {
 def _extract_target(raw_target: str) -> str:
     target = raw_target.strip()
     if target.startswith("<") and ">" in target:
-        return target[1 : target.index(">")] .strip()
+        return target[1 : target.index(">")].strip()
 
     # Markdown allows an optional quoted title after the destination.
     # RelayLM docs do not use unescaped spaces in local paths, so the first
