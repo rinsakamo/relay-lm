@@ -49,6 +49,12 @@ RelayLM自体は**言語モデルではなく**、**メモリデータベース�
 > [!NOTE]
 > RelayLMはローカルファーストですが、ホスト型・リモート型バックエンドを設定した場合、選択されたコンパイル済みコンテキストはリクエストの一部としてそのバックエンドへ送信されます。
 
+## 🛠️ 作れるもの
+
+- 人格と会話文脈を安定させたローカルAIコンパニオン
+- OpenWebUIから使う、記憶付きローカル作業アシスタント
+- Open-LLM-VTuberとローカルLLMの間で文脈を管理するAI VTuber構成
+
 ## 🧭 利用経路
 
 ### 標準MVP構成
@@ -74,6 +80,16 @@ RelayLMが担当するのは会話プロキシ、コンテキスト境界、ラ�
 現在のPhase、実装済み境界、dry-run・read-only・default-offの挙動、直近の実装予定は [Project Status](docs/PROJECT_STATUS.md) を参照してください。
 
 `docs/PROJECT_STATUS.md` を現在地の正本とし、このREADMEではPhase番号や短期間で変わる実装状況を重複管理しません。
+
+## ✅ 動作要件
+
+| 項目 | 要件 |
+|---|---|
+| Python | 3.10以上 |
+| バックエンド | OpenAI互換Chat Completions対応 |
+| 標準構成 | OpenWebUI + RelayLM + LM Studio |
+| OpenWebUI | OpenAI互換接続を使い、Responses APIを無効化 |
+| RelayLM API | `/healthz`, `/v1/models`, `/v1/chat/completions` |
 
 ## 🚀 クイックスタート
 
@@ -145,6 +161,22 @@ OpenWebUI、Open-LLM-VTuber、または別のOpenAI互換フロントエンド�
 ```text
 http://127.0.0.1:8090/v1
 ```
+
+### 5. 動作を確認
+
+バックエンドモデルをロードした状態で、health、route、非ストリーム応答を確認します。
+
+```bash
+curl http://127.0.0.1:8090/healthz
+curl http://127.0.0.1:8090/v1/models
+curl http://127.0.0.1:8090/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{"model":"relaylm-work-assistant","messages":[{"role":"user","content":"hello"}],"stream":false}'
+```
+
+## 🧰 トラブルシューティング
+
+接続できない場合は [OpenWebUI + RelayLM + LM Studioトラブルシューティング](docs/smoke/openwebui_lmstudio_troubleshooting.md) を参照してください。
 
 ## 🏗️ アーキテクチャ
 
