@@ -17,7 +17,7 @@
 </p>
 
 > [!WARNING]
-> RelayLM はMVPを開発中です。OpenAI互換プロキシとパススルー経路は利用できますが、管理対象コンテキスト、出力処理、永続化の一部はゲート付き・デフォルト無効・未実装です。正確な現在地は [Project Status](docs/PROJECT_STATUS.md) を参照してください。
+> RelayLM はMVPを開発中です。OpenAI互換プロキシとパススルー経路は利用できますが、管理対象コンテキスト、出力処理、永続化の一部はdry-run、runtime-private、read-only、default-off、または未実装です。正確な現在地は [Project Status](docs/PROJECT_STATUS.md) を参照してください。
 
 ## 🌉 RelayLMとは？
 
@@ -41,8 +41,11 @@ RelayLM自体は**言語モデルではなく**、**メモリデータベース�
 - 🧠 **人格を優先したコンテキスト** — 動的な記憶や検索結果より上位に、人格と出力方針を保ちます。
 - 🧩 **責務を分けたパイプライン** — シーン、感情、意図、検索、コンテキスト、出力観察、実行制御、遅延永続化を分離します。
 - ⚡ **KV再利用を意識した配置** — prefix/KVキャッシュを再利用しやすい安定した順序を重視します。
-- 🛡️ **安全側のデフォルト** — 新しい書き換え処理や永続化処理は、明示的なゲートの後ろで導入します。
-- 💻 **ローカルファースト** — ローカルのフロントエンド、バックエンド、リポジトリで確認できる設定を前提にします。
+- 🛡️ **安全側のデフォルト** — リクエスト書き換えや永続化を、互換性・ポリシー・applyゲートの後ろで導入します。
+- 💻 **ローカルファースト** — ストレージを原則ローカルに置き、バックエンドURLを設定で明示し、隠れた外部テレメトリを持ちません。
+
+> [!NOTE]
+> RelayLMはローカルファーストですが、ホスト型・リモート型バックエンドを設定した場合、選択されたコンパイル済みコンテキストはリクエストの一部としてそのバックエンドへ送信されます。
 
 ## 🧭 利用経路
 
@@ -66,35 +69,45 @@ RelayLMが担当するのは会話プロキシ、コンテキスト境界、ラ�
 
 ## 📍 現在の実装状況
 
-現在のRelayLMは **Phase 5-C** です。直近の実装境界は [Project Status](docs/PROJECT_STATUS.md) に記載した managed-route apply です。
+現在のRelayLMは **Phase 5-C** です。直近の実装境界は [Project Status](docs/PROJECT_STATUS.md) に記載した **Phase 5-C4 managed-route apply** です。
 
 ### ✅ 利用可能な基盤
 
 - OpenAI互換プロキシとモデルルーティング
 - `pass_through` 互換性ベースライン
 - `PipelineContext` によるリクエスト単位の調整
-- RelayCTX Repack境界
+- RelayCTX Repackの主要分離
 - ゲート付きRelayMEM検索とコンテキスト注入
 - RelayINT向け参照修復・診断境界
 - 順序付き `PipelineNodeResult` 収集
 - 純粋パーサーとゲート付き非ストリームRelayCTX Unpack
 - リクエスト単位のRelayRUN artifact、checkpoint、型付きcontent-free診断
 
-### 🧪 ゲート付き・診断専用の境界
+### 🧪 Dry-run・runtime-private・read-only・default-offの境界
 
-- managed-route client-message canonicalization
-- client-instruction identity と read-only cache lookup
-- client-history exclusion preflight
-- RelayINT Fast Path と quick clarification plan
-- 非ストリームRelayCTX Unpack apply
-- 短期コンテキスト注入
+| 境界 | 現在の状態 |
+|---|---|
+| Client-message canonicalization | Dry-run / default-off。payload mutationなし |
+| Client-instruction identity | Runtime-private。ユーザー可視効果なし |
+| Instruction-cache lookup | Read-only / default-off。state injection・writeなし |
+| Client-history exclusion | Diagnostics-only preflight / default-off |
+| RelayINT Fast Path | Diagnostics-only / default-off |
+| RelayINT quick clarification | Preflight/apply planのみ。short-circuit routeは未完成 |
+| 非ストリームRelayCTX Unpack apply | Gated / default-off |
+| RelayCTX短期コンテキスト注入 | Gated / default-off apply |
 
-### 🛠️ 主な未実装・計画中の境界
+### 🚧 次の実装境界: Phase 5-C4
 
-- managed-route client-message replacement
-- cache-hit RelaySCN state injection と cache-miss instruction evidence
-- typed instruction artifact parsing と cache write
+- 検証済みのcurrent-turnとinstruction stateだけからmanaged-route client messagesを置き換える
+- 検証済みcache-hit RelaySCN projection、または1つのescaped cache-miss instruction-evidence blockを注入する
+- `pass_through`、active tool transaction、現在のmultimodal parts、互換性に敏感なrequestを維持する
+- `PipelineContext`経由でpayload replacementを記録し、diagnosticsをcontent-freeに保つ
+
+### 🛠️ Phase 5-C4以降の計画
+
+- typed client-instruction artifact parsingと独立ゲート付きcache write
 - ストリームRelayCTX UnpackとTTS向け出力分割
+- 選択したnode resultの明示的なrouting/apply
 - 出力側RelayREF・RelaySCN
 - ノード横断RelayRUNオーケストレーション
 - 非同期RelaySLP永続化経路
@@ -131,11 +144,19 @@ pip install -e . --no-build-isolation
 
 ### 2. 設定ファイルを作成
 
+標準のOpenWebUI + LM Studio構成では、次のcopy-ready設定を使います。
+
+```bash
+cp examples/config/openwebui_lmstudio.yaml config.yaml
+```
+
+汎用的な設定から始める場合は、代わりに次を使います。
+
 ```bash
 cp config.example.yaml config.yaml
 ```
 
-`config.yaml` でバックエンドURL、バックエンドモデル、RelayLMのルートを設定します。詳細は [設定スキーマ](docs/config_schema.md) と [OpenWebUI + LM Studioガイド](docs/openwebui_lmstudio_mvp.md) を参照してください。
+`config.yaml` でバックエンドURL、バックエンドモデル、RelayLMのルートを設定します。標準例ではLM Studioを `http://127.0.0.1:1234/v1`、RelayLMを `http://127.0.0.1:8090/v1` としています。詳細は [設定スキーマ](docs/config_schema.md) と [OpenWebUI + LM Studioガイド](docs/openwebui_lmstudio_mvp.md) を参照してください。
 
 ### 3. RelayLMを起動
 
@@ -183,10 +204,10 @@ User input
   -> RelayREF
   -> Return-side RelayEMO
   -> Output-side RelaySCN
-  -> RelayRUN artifact / trace / checkpoint summary
+  -> RelayRUN final artifact / trace / checkpoint summary
   -> User output
 
-Out-of-band:
+Out-of-band after-turn path:
   governed evidence
   -> RelaySLP
   -> MEM update candidates / SOUL proposals
@@ -195,7 +216,7 @@ Out-of-band:
 
 これは責務上の正規順序であり、すべての段階が現在有効という意味ではありません。実装状況は [Project Status](docs/PROJECT_STATUS.md) を参照してください。
 
-| コンポーネント | 責務 |
+| Relayコンポーネント | 責務 |
 |---|---|
 | 🌬️ **RelaySCN** | シーン分類とシーン・永続化ポリシー |
 | 🙂 **RelayEMO** | 感情推定とシーン制御された表現 |
@@ -205,6 +226,12 @@ Out-of-band:
 | 🔎 **RelayREF** | 軽量な出力側観察と診断 |
 | 🎛️ **RelayRUN** | 実行制御、fallback/recovery、checkpoint、trace、node state |
 | 🌙 **RelaySLP** | 通常応答経路外でのMEM・SOULコンパイル |
+
+横断・transport境界:
+
+- `PipelineContext`: リクエスト単位の調整、payload replacement履歴、runtime-private state、node result、diagnostics handoff
+- Runtime Compile Gate: リクエスト単位のapply・互換性decision phase。独立した `RelayPLC` コンポーネントではない
+- OpenAI-compatible adapter: frontend/backend protocol境界。semantic pipeline stageではない
 
 重要なタイミング規則は次のとおりです。
 
