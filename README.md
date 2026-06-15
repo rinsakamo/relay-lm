@@ -44,6 +44,7 @@ Cross-cutting and adjacent boundaries:
 
 ## Documentation
 
+- [Current project status](docs/PROJECT_STATUS.md)
 - [Documentation index](docs/README.md)
 - [Architecture docs](docs/architecture/README.md)
 - [MVP summaries and milestone notes](docs/mvp/README.md)
@@ -52,6 +53,8 @@ Cross-cutting and adjacent boundaries:
 - [RelaySOUL design and gate docs](docs/relaysoul/README.md)
 - [OpenWebUI + LM Studio MVP](docs/openwebui_lmstudio_mvp.md)
 - [Config schema](docs/config_schema.md)
+
+For a one-page view of the current phase, implemented boundaries, default-off/preflight-only features, and immediate next work, start with [Project Status](docs/PROJECT_STATUS.md).
 
 ## MVP direction
 

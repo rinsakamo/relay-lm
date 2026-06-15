@@ -4,6 +4,8 @@ This directory is the index for RelayLM MVP milestone summaries and MVP-focused 
 
 All MVP summary and MVP-focused implementation note files are now housed in this directory.
 
+> For the current phase, implemented boundaries, default-off/preflight-only behavior, and immediate next work, use [Project Status](../PROJECT_STATUS.md). The files in this directory are historical implementation snapshots rather than the current-state source of truth.
+
 ## Current pipeline milestones
 
 ### RelayCTX short-term context

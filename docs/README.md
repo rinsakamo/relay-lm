@@ -4,6 +4,7 @@ This page is the entry point for RelayLM documentation.
 
 ## Start here
 
+- [Current project status](PROJECT_STATUS.md) — one-page current phase, implemented boundaries, and next work
 - [Architecture docs](architecture/README.md)
 - [MVP summaries and milestone notes](mvp/README.md)
 - [Contract docs](contracts/README.md)
@@ -11,6 +12,18 @@ This page is the entry point for RelayLM documentation.
 - [RelaySOUL design and gate docs](relaysoul/README.md)
 - [Config schema](config_schema.md)
 - [OpenWebUI + LM Studio MVP](openwebui_lmstudio_mvp.md)
+
+## Current status
+
+Use [Project Status](PROJECT_STATUS.md) as the concise developer-facing view of:
+
+- the current phase,
+- implemented versus dry-run/preflight/read-only boundaries,
+- currently usable runtime paths,
+- major unimplemented components,
+- and the immediate next implementation slice.
+
+`PROJECT_STATUS.md` is a summary view. [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) remains authoritative for detailed phase status and sequencing.
 
 ## Architecture
 
@@ -39,7 +52,7 @@ MVP summaries and MVP-focused implementation notes are collected under `docs/mvp
 
 - [MVP summaries and milestone notes](mvp/README.md)
 
-MVP summaries are historical implementation snapshots. Later architecture and implementation-plan documents may supersede their terminology or current-status statements.
+MVP summaries are historical implementation snapshots. Later architecture, implementation-plan, and project-status documents may supersede their terminology or current-status statements.
 
 Future MVP summaries should be created directly under `docs/mvp/` and linked from the MVP index.
 
@@ -68,6 +81,7 @@ python scripts/relaylm_docs_link_check.py
 
 Placement rules:
 
+- one-page repository-wide current status -> `docs/PROJECT_STATUS.md`
 - cross-cutting architecture and pipeline docs -> `docs/architecture/`
 - historical architecture rationale -> `docs/architecture/archive/`
 - MVP summaries and milestone notes -> `docs/mvp/`
