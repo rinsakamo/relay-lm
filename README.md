@@ -209,29 +209,16 @@ Out-of-band after-turn path:
 
 This is the canonical responsibility order, not a claim that every stage is already active. Consult [Project Status](docs/PROJECT_STATUS.md) for implementation status.
 
-| Relay component | Responsibility |
-|---|---|
-| 🌬️ **RelaySCN** | Scene classification and scene/persistence policy |
-| 🙂 **RelayEMO** | Affect estimation and scene-gated expression control |
-| 🚦 **RelayINT** | Input-side intent, ambiguity, clarification, and proceed/block gate |
-| 🧠 **RelayMEM** | Read-only retrieval in the normal response path |
-| 📦 **RelayCTX** | Backend input construction through Repack and visible/internal separation through Unpack |
-| 🔎 **RelayREF** | Lightweight output-side observation and diagnostics |
-| 🎛️ **RelayRUN** | Runtime orchestration, fallback/recovery, checkpoints, trace, and node state |
-| 🌙 **RelaySLP** | Out-of-band memory and SOUL compilation path |
-
-Cross-cutting and transport boundaries:
-
-- `PipelineContext`: request-local coordination, payload replacement history, runtime-private state, node results, and diagnostics handoff
-- Runtime Compile Gate: request-local apply and compatibility decision phase; not a standalone `RelayPLC` component
-- OpenAI-compatible adapter: frontend/backend protocol boundary; not a semantic pipeline stage
-
-The short timing rule is:
-
-```text
-RelayINT = before action
-RelayREF = after response
-```
+| When | Relay component | What it does |
+|---|---|---|
+| Throughout the request | 🎛️ **RelayRUN** | Manages stage order, recovery, checkpoints, and trace |
+| Input | 🌬️ **RelaySCN** | Classifies the scene and resolves memory, expression, and persistence policy |
+| Input and output | 🙂 **RelayEMO** | Interprets affect cues and adjusts scene-appropriate expression |
+| Input | 🚦 **RelayINT** | Detects intent and ambiguity, then decides whether to continue, ask, or stop |
+| Input | 🧠 **RelayMEM** | Reads long-term memory relevant to the current response |
+| Before and after the LLM | 📦 **RelayCTX** | Packs LLM input and separates visible output from internal data |
+| Output | 🔎 **RelayREF** | Observes the generated response and records diagnostics |
+| After the response | 🌙 **RelaySLP** | Organizes memory and SOUL update candidates outside the response path |
 
 For authoritative ownership and order, see the [Pipeline Responsibility Design](docs/architecture/pipeline_responsibility_design.md).
 
