@@ -1,6 +1,6 @@
 # RelayLM Project Status
 
-Last reviewed: 2026-06-15 JST
+Last reviewed: 2026-06-16 JST
 
 ## Purpose and authority
 
@@ -26,7 +26,7 @@ When documents disagree:
 
 ```text
 Current phase: Phase 5-C — in progress
-Immediate next boundary: Phase 5-C4 managed-route apply
+Immediate next boundary: Phase 5-C4a managed-route history-exclusion apply
 ```
 
 Completed foundations:
@@ -45,9 +45,9 @@ Completed foundations:
 
 Not yet enabled:
 
-- managed-route client-message replacement,
+- managed-route client-history exclusion apply,
+- current-turn-only managed message replacement,
 - cache-hit RelaySCN state injection,
-- cache-miss first-pass instruction-evidence apply,
 - typed client-instruction response artifact parsing,
 - instruction-cache write,
 - streaming RelayCTX Unpack and TTS-safe output segmentation,
@@ -55,6 +55,32 @@ Not yet enabled:
 - output-side RelaySCN runtime transition handling,
 - cross-cutting per-node RelayRUN orchestration,
 - asynchronous RelaySLP persistence apply.
+
+## Revised near-term sequence
+
+The near-term roadmap now separates the client-authority correctness boundary from the instruction-cache optimization track.
+
+```text
+Phase 5-C4a
+  managed-route history-exclusion apply
+  + current-turn preservation
+  + optional escaped low-trust instruction evidence
+
+Phase 5-D
+  CJK-aware token estimation
+  + lazy RelayRUN recovery-detail construction
+
+Phase 5.5
+  Stream Unpack
+  + internal-marker-safe streaming
+  + TTS-safe output segmentation
+
+Deferred optimization track
+  Phase 5-C4b cache-hit RelaySCN projection
+  Phase 5-C5 typed instruction artifact and cache write
+```
+
+Phase 5-C4b and Phase 5-C5 remain valid long-term design work, but they no longer block Phase 5.5.
 
 ## Phase 5-C progress
 
@@ -64,8 +90,9 @@ Not yet enabled:
 | 5-C2 instruction extraction and identity | Complete as runtime-private boundary | Request-local identity preparation; no visible effect |
 | 5-C2 read-only cache lookup | Complete as read-only boundary | Hit/miss/blocked evidence only; no state injection |
 | 5-C3 history-exclusion preflight | Complete as diagnostics-only preflight | Proves readiness; `payload_mutation_applied=false` |
-| 5-C4 managed-route apply | Next | Will replace managed-route messages using validated current-turn and instruction state |
-| 5-C5 typed instruction artifact and cache write | Planned | Will validate first-pass output and independently gate cache writes |
+| 5-C4a managed-route history-exclusion apply | Next | Will replace managed-route client history with validated current-turn and RelayLM-owned context |
+| 5-C4b cache-hit RelaySCN projection | Deferred | Optional optimization; no longer gates Phase 5.5 |
+| 5-C5 typed instruction artifact and cache write | Deferred | Optional optimization; no longer gates Phase 5.5 |
 
 ## Component status
 
@@ -92,9 +119,9 @@ The status terms below are intentionally more precise than “implemented” or 
 | Runtime Compile Gate | Contracts/design | Partial decision artifacts | No unified apply gate | In progress |
 | RelayREF output observer | Design | No dedicated runtime stage | No | Planned |
 | Output-side RelaySCN | Design/contracts | Partial recovery artifacts | No complete stage | Planned |
-| RelayRUN | Yes | Request-level artifacts/checkpoints | Partial orchestration | Cross-cutting node control planned |
+| RelayRUN | Yes | Request-level artifacts/checkpoints | Partial orchestration | Recovery detail currently eager; lazy construction planned |
 | RelaySLP | Design/contracts | Partial dry-run/preflight foundations | No complete asynchronous apply path | Planned |
-| RelaySOUL apply/persistence | Contracts and gates | Dry-run/preflight/gate foundations | Explicit gated operations only | Never silent from normal chat |
+| RelaySOUL apply/persistence | Contracts and gates | Dry-run/preflight/gate foundations | Explicit gated operations only | Runtime expansion frozen until the core output path is stable |
 
 ## Usable runtime paths
 
@@ -118,6 +145,8 @@ Open-LLM-VTuber
 
 Open-LLM-VTuber remains an optional integration. RelayLM does not own its UI, ASR, TTS, or avatar runtime.
 
+RelayLM does own the safety boundary that separates user-visible stream segments from internal control data before an external TTS or avatar adapter consumes them.
+
 ### Current behavioral baseline
 
 - `pass_through` remains the compatibility baseline.
@@ -126,20 +155,20 @@ Open-LLM-VTuber remains an optional integration. RelayLM does not own its UI, AS
 - Streaming remains primarily backend-forwarding behavior; internal-marker-safe Stream Unpack is not implemented.
 - Client-message canonicalization and history exclusion do not yet mutate managed-route payloads.
 - Instruction-cache lookup does not yet inject cached scene state or write new entries.
+- Token budgeting still uses a single character-ratio heuristic that is not sufficiently conservative for Japanese/CJK text.
+- RelayRUN recovery features are default-off, but detailed recovery artifacts are still constructed eagerly on the request path.
 
 ## Immediate next implementation slice
 
-Phase 5-C4 should remain a narrow apply boundary:
+Phase 5-C4a must remain a narrow correctness boundary:
 
 ```text
 validated client-message canonicalization
-+ runtime-private instruction identity
-+ read-only cache lookup
 + history-exclusion preflight
   -> dedicated managed-route apply helper
   -> current-turn-only client message preservation
-  -> validated cache-hit scene projection
-     OR one escaped cache-miss instruction-evidence block
+  -> RelayLM-owned context preservation
+  -> at most one escaped low-trust current-instruction evidence block when required
   -> PipelineContext payload replacement reason
   -> content-free node result and smoke coverage
 ```
@@ -155,22 +184,34 @@ It must preserve:
 
 It must not include:
 
+- cache-hit RelaySCN projection,
+- typed client-instruction output parsing,
 - instruction-cache write,
 - RelaySOUL mutation,
 - Stream Unpack,
 - RelayREF implementation,
 - full RelayRUN route-table promotion.
 
+## Phase 5-D pre-stream hardening
+
+After Phase 5-C4a and before Phase 5.5 runtime apply work:
+
+1. Replace the single `chars_per_token=4` assumption with a bounded CJK-aware token-estimation policy and mixed Japanese/ASCII/code smoke coverage.
+2. Keep the minimal RelayRUN checkpoint summary on the normal path, but construct the detailed recovery chain only when recovery-related configuration, a recovery-relevant node result, checkpoint persistence, or explicit full trace diagnostics requires it.
+3. Preserve all existing fail-closed and content-free contracts while reducing normal-path allocation and serialization work.
+
 ## Main remaining roadmap
 
-After Phase 5-C:
-
-1. Phase 5.5 — Stream Unpack and TTS-safe output segmentation.
-2. Phase 6 — promote selected node results into explicit routing/apply behavior.
-3. Phase 7 — lightweight output-side RelayREF observer.
-4. Phase 8 — Output-side RelaySCN next-turn state handling.
-5. Phase 9 — cross-cutting RelayRUN per-node checkpoint/orchestration layer.
-6. Phase 10 — asynchronous RelaySLP separation and persistence path.
+1. Phase 5-C4a — managed-route history-exclusion apply.
+2. Phase 5-D — CJK-aware token estimation and RelayRUN recovery-detail lazy construction.
+3. Phase 5.5 — Stream Unpack and TTS-safe output segmentation.
+4. External end-to-end validation — frontend -> RelayLM stream -> backend -> safe visible segments -> external TTS/avatar stack.
+5. Phase 6 — promote selected node results into explicit routing/apply behavior.
+6. Phase 7 — lightweight output-side RelayREF observer.
+7. Phase 8 — Output-side RelaySCN next-turn state handling.
+8. Phase 9 — cross-cutting RelayRUN per-node checkpoint/orchestration layer.
+9. Phase 10 — asynchronous RelaySLP separation and persistence path.
+10. Deferred optimization track — Phase 5-C4b cache-hit projection and Phase 5-C5 typed parse/cache write after the core streaming path is validated.
 
 ## Where to read next
 
