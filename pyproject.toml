@@ -3,7 +3,11 @@ name = "relay-lm"
 version = "0.1.0"
 description = "Memory- and persona-aware OpenAI-compatible conversation proxy for local LLM frontends"
 readme = "README.md"
+license = {file = "LICENSE"}
 requires-python = ">=3.10"
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+]
 dependencies = [
   "fastapi>=0.110",
   "httpx>=0.27",
