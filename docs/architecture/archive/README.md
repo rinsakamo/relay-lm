@@ -102,13 +102,43 @@ Current replacements:
 - [Open-LLM-VTuber integration design](../open_llm_vtuber_integration.md)
 - [AI VTuber pipeline profile](../ai_vtuber_pipeline_profile.md)
 - [AI character product principles](../ai_character_product_principles.md)
-- [Product runtime hardening](../product_runtime_hardening.md)
+- [Runtime operational requirements](../runtime_operational_requirements.md)
+
+## Archived cross-cutting planning documents
+
+### [Product Runtime Hardening](product_runtime_hardening.md)
+
+Reason archived:
+
+- combines an obsolete MVP-0 through MVP-5 roadmap with durable runtime requirements,
+- duplicates current runtime, context, memory, integration, and product documents,
+- mixes current acceptance/operations ideas with early implementation assumptions.
+
+Useful principles migrated into current documents:
+
+- fallback is normal product behavior but must remain policy- and compatibility-gated -> [Runtime operational requirements](../runtime_operational_requirements.md),
+- audit/trace diagnostics should use typed content-free projections -> [Runtime operational requirements](../runtime_operational_requirements.md),
+- local-first storage, namespace isolation, visible backend configuration, and no hidden telemetry are explicit privacy requirements -> [Runtime operational requirements](../runtime_operational_requirements.md),
+- compatibility, persona/context, memory, latency, recovery, and idempotency need product-level acceptance criteria -> [Runtime operational requirements](../runtime_operational_requirements.md),
+- product experience hierarchy remains separate from operational requirements -> [AI character product principles](../ai_character_product_principles.md).
+
+Current replacements:
+
+- [Pipeline implementation plan](../pipeline_implementation_plan.md)
+- [Runtime architecture](../runtime_architecture.md)
+- [Runtime operational requirements](../runtime_operational_requirements.md)
+- [AI character product principles](../ai_character_product_principles.md)
+- [Context packing design](../context_packing_design.md)
+- [RelayMEM retrieval execution design](../relaymem_retrieval_execution_design.md)
+- [RelayMEM SLP execution design](../relaymem_slp_execution_design.md)
+- [Open-LLM-VTuber integration design](../open_llm_vtuber_integration.md)
 
 ## Reviewed and retained as active documents
 
 The following dated documents still contain a distinct current design contract and remain in the active architecture index:
 
 - `context_packing_design.md`
+- `runtime_operational_requirements.md`
 - `relaymem_mvp_design.md`
 - `relaymem_slp_execution_design.md`
 - `relaymem_retrieval_execution_design.md`
