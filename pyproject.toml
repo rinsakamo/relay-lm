@@ -1,7 +1,7 @@
 [project]
 name = "relay-lm"
 version = "0.1.0"
-description = "OpenAI-compatible Memory Context Proxy for Open-LLM-VTuber"
+description = "Memory- and persona-aware OpenAI-compatible conversation proxy for local LLM frontends"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
