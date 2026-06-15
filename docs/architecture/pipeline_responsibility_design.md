@@ -2,49 +2,54 @@
 
 ## Purpose
 
-This document describes the responsibility boundary of the RelayLM runtime pipeline.
+This document defines the stable responsibility boundaries of the RelayLM runtime pipeline.
 
-It complements `docs/pipeline_implementation_plan.md`:
+It does **not** define current implementation status, completed phases, or the next task. Those belong to [Pipeline Implementation Plan](pipeline_implementation_plan.md).
 
-- `pipeline_implementation_plan.md` defines implementation order.
-- This document defines pipeline responsibilities, current-vs-target differences, and INT / REF boundaries.
+When this document and an implementation-status note differ:
+
+- this document is authoritative for component ownership and pipeline order,
+- `pipeline_implementation_plan.md` is authoritative for phase status and sequencing,
+- dedicated module and contract documents are authoritative for schema details.
 
 ## Core rule
 
-RelayLM should keep semantic responsibilities separate from runtime orchestration responsibilities.
+RelayLM keeps semantic decisions separate from runtime orchestration.
 
 ```text
 SCN = scene and policy controller
 EMO = affect / expression controller
-INT = input-side gate
+INT = input-side intent and ambiguity gate
 MEM Retrieval = read-only memory retrieval
 CTX Repack = Main LLM input construction
 Main LLM = response generation
-CTX Unpack = response/output candidate separation
+CTX Unpack = visible-output and internal-candidate separation
 REF = output-side observer
-Output-side SCN = next-turn scene and persistence policy observation
-RUN = runtime orchestration and checkpointing
+Output-side SCN = next-turn scene and persistence observation
+RUN = runtime orchestration, fallback/recovery, checkpointing, and trace
 SLP = out-of-band memory / SOUL compilation path
+Adapter = OpenAI-compatible transport boundary
 ```
 
-The most important boundary is:
+The most important timing boundary is:
 
 ```text
 RelayINT = before action
 RelayREF = after response
 ```
 
-## Target runtime order
+## Canonical runtime order
 
 ```text
 User input
-  -> RelayRUN request start / request shell
+  -> RelayRUN request shell
   -> PipelineContext
   -> Input-side RelaySCN
   -> Input-side RelayEMO
   -> RelayINT
   -> RelayMEM Retrieval
   -> RelayCTX Repack
+  -> Runtime Compile Gate
   -> Main LLM / backend forward
   -> RelayCTX Unpack
   -> RelayREF
@@ -52,181 +57,147 @@ User input
   -> Output-side RelaySCN
   -> RelayRUN final artifact / trace / checkpoint summary
   -> User output
+
+Out-of-band after-turn path:
+  governed evidence
+  -> RelaySLP
+  -> MEM update candidates / SOUL proposals
+  -> persistence and approval gates
 ```
 
-## Current implementation caveats
+The Runtime Compile Gate is a request-local decision phase. It consumes route, compatibility preflight, scene policy, intent, retrieval, and budget outcomes. It is not a standalone semantic component and must not be named as a separate `RelayPLC` module.
 
-The target order above is the design direction, not a statement that every layer is fully implemented today.
+## Ownership invariants
 
-Current implementation status:
-
-- `PipelineContext` is now introduced as a request-local state holder.
-  - It keeps `original_payload` and the current backend-bound `forwarded_payload` separate.
-  - Payload replacement steps now record mutation reasons through `PipelineContext.replace_forwarded_payload(...)`.
-- `diagnostics_builder.py` now owns grouped `RequestDiagnostics` field mapping helpers.
-  - `app.py` still calls `build_base_request_diagnostics(...)`, but most grouped diagnostics kwargs are no longer mapped inline.
-  - Current grouped helpers cover compiled request state, token policy, request scope, memory adapter shadow state, RelayINT/runtime state, runtime artifacts, RelayCTX short-term artifacts, and RelayRUN artifact wiring.
-- `relayctx_repack.py` now owns the main CTX Repack payload mutation phases.
-  - RelayMEM snippet/runtime CTX injection is grouped as one Repack phase.
-  - Token budget truncation is grouped as one Repack phase.
-  - RelayCTX short-term runtime injection apply is grouped as one Repack phase.
-  - These phases still update `PipelineContext` with explicit payload replacement reasons.
-- `app.py` still carries orchestration and node execution order.
-  - Diagnostics mapping and CTX Repack payload mutation are thinner than before.
-  - Backend forwarding, response handling, and top-level runtime ordering are still mostly in `app.py`.
-- Current `RelayRUN` is mostly a request-end artifact writer.
-  - It is not yet a true cross-cutting node-state reporter.
-- Current `relayref.py` is named like REF, but its behavior is input-side unresolved reference / context repair diagnostics.
-  - In the target design this is closer to RelayINT.
-  - `app.py` now reaches this behavior through `build_relayint_reference_repair_dry_run(...)`.
-  - The historical `relayref.py` implementation remains as a compatibility backend until the schema and diagnostics names can be migrated safely.
-  - `scripts/relaylm_relayint_reference_repair_wrapper_smoke.py` protects this compatibility contract.
-  - RelayRUN recovery / waiting-user artifacts keep `source_node: "relayref"` for compatibility while exposing `source_node_alias: "relayint_reference_repair"`.
-- `RelayCTX Unpack` is not yet a real response separation layer.
-  - Main LLM output is mostly returned directly.
-- Early RelayREF should be lightweight and diagnostics-only.
-  - It should not require a second Main LLM call in the near term.
-
-## Next implementation boundary
-
-After the PipelineContext and diagnostics-builder cleanup, the next safe implementation boundary is not deeper semantic behavior yet.
-
-Recommended order:
-
-1. Keep `PipelineContext` and diagnostics output stable.
-2. Split CTX Repack boundaries from `app.py` without changing backend forwarding behavior.
-3. Rename or split the current input-side `relayref.py` behavior into RelayINT-facing code.
-4. Add a diagnostics-only pipeline node result scaffold that records what happened without changing runtime behavior.
-5. Add a minimal RelayCTX Unpack layer after Main LLM output.
-6. Promote node results into the failure route table / runtime behavior only after the scaffold and Unpack are stable.
-7. Add lightweight output-side REF diagnostics.
-8. Add Output-side SCN observation.
-9. Only after these are stable, evolve RelayRUN into a true cross-cutting checkpoint / node-state reporter.
-
-The pipeline node result scaffold is intentionally narrower than full failure routing: it should create a common record shape and let `PipelineContext` collect node results, but it should not decide fallback, retry, short-circuit, or recovery behavior yet.
+1. RelaySCN owns scene and policy, not prompt assembly.
+2. RelayINT owns pre-action proceed/block/clarification, not memory search or final wording.
+3. RelayMEM Retrieval reads approved memory; it never writes in the normal response path.
+4. RelayCTX owns selected context layout and token-budget degradation, not semantic policy.
+5. RelayREF observes generated output; it does not replace RelayINT or RelaySCN.
+6. RelayRUN owns execution state and recovery orchestration, not semantic meaning.
+7. RelaySLP prepares deferred memory and SOUL candidates; it does not answer the current turn.
+8. Adapters preserve protocol and transport semantics; they do not decide persona, scene, or memory policy.
+9. User-visible text must pass the normal output pipeline; RelayRUN and RelaySLP do not directly finalize character-facing text.
+10. Typed content-free projections are used for audit/trace surfaces; raw request, prompt, memory, and response bodies are not copied into generic diagnostics.
 
 ## Per-stage responsibilities
 
 ### 1. User input
 
-Raw user input enters the proxy.
+Raw request evidence enters the proxy.
 
-At this point, RelayLM has not yet committed to:
+No semantic conclusion has yet been committed about:
 
-- the scene,
-- the user's intent,
-- whether memory should be retrieved,
-- whether clarification is needed,
-- whether the Main LLM should be called,
-- or whether the request should short-circuit.
+- scene,
+- user intent,
+- reference resolution,
+- retrieval need,
+- clarification need,
+- Main LLM execution,
+- persistence,
+- or short-circuit behavior.
+
+Client-provided messages are request evidence, not automatically trusted backend context. Current-turn and current-instruction evidence are handled through the applicable client-authority contracts.
 
 ### 2. RelayRUN request shell
 
-RelayRUN owns runtime execution state, not semantic meaning.
-
-Current role:
-
-- request-end artifact writing,
-- trace / diagnostics artifact connection,
-- recovery-related artifact summaries,
-- request-level checkpoint-like records.
-
-Target role:
-
-- run_id / turn_id management,
-- per-node status reporting,
-- node started / completed / blocked / failed state,
-- runtime checkpoint persistence,
-- resume metadata,
-- transport/runtime failure handling,
-- recovery transition artifact creation.
-
-RelayRUN should remain semantic-neutral. It should not decide user intent, scene, memory meaning, or final response style.
-
-### 3. PipelineContext
-
-PipelineContext is the request-local coordination object.
+RelayRUN owns runtime execution state and lifecycle.
 
 Responsibilities:
 
-- keep the current forwarded payload,
-- record forwarded payload replacement reasons,
-- collect node results,
-- collect diagnostics,
-- provide a stable handoff point for RelayRUN artifacts,
-- avoid scattered mutation of `forwarded_payload` inside `app.py`.
+- create and propagate `run_id` / `turn_id`,
+- establish request and node execution state,
+- record started / completed / skipped / blocked / failed states,
+- maintain checkpoint and resume metadata,
+- connect trace, diagnostics, and artifact lineage,
+- apply retry, timeout, skip, fallback, and recovery orchestration,
+- preserve idempotency and duplicate-prevention rules,
+- aggregate request-end status,
+- expose waiting-user and recovery-transition state.
 
-Target behavior:
+RelayRUN remains semantic-neutral. It does not decide user intent, scene meaning, memory meaning, persona changes, or final response style.
 
-```text
-Any runtime step that replaces the backend-bound payload should do so through PipelineContext and provide a reason.
-```
+### 3. PipelineContext
 
-Near-term node-result behavior:
+`PipelineContext` is the request-local coordination object.
 
-```text
-Phase 4.5 records node results for diagnostics and future RelayRUN consumption.
-Phase 4.5 node results should not change runtime behavior yet.
-```
+Responsibilities:
+
+- preserve `original_payload`,
+- hold the current backend-bound `forwarded_payload`,
+- replace the forwarded payload only through explicit mutation methods,
+- record payload replacement reasons,
+- hold route and request-scope state,
+- hold runtime-private content-bearing intermediate results,
+- collect ordered `PipelineNodeResult` records,
+- collect detached Unpack/update candidates,
+- provide stable handoffs to diagnostics and RelayRUN,
+- prevent scattered untracked request mutation.
+
+Runtime-private content-bearing fields must not be copied directly into content-free diagnostics.
 
 ### 4. Input-side RelaySCN
 
-Input-side RelaySCN estimates the current scene and resolves scene policy for the current turn.
+Input-side RelaySCN estimates the current scene and resolves current-turn policy.
 
 Responsibilities:
 
 - classify scene type,
 - estimate safety sensitivity,
 - estimate formality,
-- choose memory scope,
-- choose expression allowance,
-- decide whether persistence should be blocked,
-- decide whether recovery mode is needed,
-- provide policy constraints to downstream modules.
+- select memory scope,
+- select expression allowance,
+- determine persistence blocking,
+- determine recovery mode,
+- determine whether user confirmation is required,
+- provide policy constraints to INT, MEM, CTX, EMO, RUN, and SLP.
 
-Example scene types:
+Representative scene types include:
 
-- casual_chat,
-- design_talk,
-- implementation_work,
-- review_work,
-- formal_document,
-- system_ops,
-- vtuber_roleplay,
-- recovery,
-- medical_or_safety.
+- `casual_chat`,
+- `design_talk`,
+- `implementation_work`,
+- `review_work`,
+- `formal_document`,
+- `system_ops`,
+- `vtuber_roleplay`,
+- `medical_or_safety`,
+- `recovery`.
 
-SCN answers: what kind of situation is this?
+SCN answers: **what situation and policy govern this turn?**
 
 ### 5. Input-side RelayEMO
 
-Input-side RelayEMO estimates affect and expression intent without claiming to know the user's true emotion.
+Input-side RelayEMO estimates affect and expression pressure without claiming to know the user's true emotion.
 
 Responsibilities:
 
-- emit `user_affect_estimate`,
-- initialize `assistant_emotion_state`,
-- emit `affect_intent_vector`,
-- respect scene policy,
-- keep expression hints gated by confidence, scene, and safety.
+- emit bounded `user_affect_estimate`,
+- initialize assistant expression/emotion state,
+- emit affect/style intent vectors or hints,
+- obey RelaySCN expression and safety gates,
+- keep confidence and uncertainty visible to downstream policy,
+- avoid turning inferred affect into durable user fact.
 
-RelayEMO should not own task routing, clarification decisions, memory writes, or final persistence decisions.
+RelayEMO does not own task routing, clarification decisions, memory writes, or persistence policy.
 
-EMO answers: what tone or expression pressure is appropriate?
+EMO answers: **what expression pressure is appropriate?**
 
 ### 6. RelayINT
 
-RelayINT is the input-side gate.
+RelayINT is the input-side semantic gate.
 
 Responsibilities:
 
 - classify user intent,
 - detect unresolved references,
+- resolve high-confidence references from current CTX working state,
 - detect missing slots,
-- decide whether the request can proceed,
-- decide whether clarification is needed,
-- decide whether a high-confidence short-circuit clarification should bypass the Main LLM,
-- emit blocked / short-circuit / continue decisions.
+- decide whether the request may proceed,
+- decide whether clarification is required,
+- decide whether memory retrieval is needed,
+- decide whether a safe high-confidence clarification may short-circuit the Main LLM,
+- emit continue / block / short-circuit decisions and reasons.
 
 RelayINT owns pre-action ambiguity handling.
 
@@ -234,16 +205,18 @@ Examples:
 
 ```text
 "次に進もう"
-  -> infer continuation intent from current project context when confidence is sufficient.
+  -> continue from the current grounded project state when confidence is sufficient.
 
 "それを直して"
-  -> unresolved target may require clarification.
+  -> ask clarification when the target cannot be resolved safely.
 
-"マージして"
-  -> task intent is repository operation, but target branch / PR must be grounded by current context or tool state.
+"前に決めた内容を思い出して"
+  -> request scoped RelayMEM retrieval when the requested memory scope is explicit or confirmed.
 ```
 
-RelayINT answers: what is being requested, and can RelayLM safely proceed?
+RelayINT must not silently use long-term memory to guess an ambiguous reference.
+
+INT answers: **what is being requested, and may RelayLM safely proceed?**
 
 ### 7. RelayMEM Retrieval
 
@@ -252,285 +225,310 @@ RelayMEM Retrieval is read-only in the normal response path.
 Responsibilities:
 
 - retrieve relevant compiled memory pages or snippets,
-- respect scene memory scope,
-- filter stale / contradictory / unsafe / unapproved memory,
-- emit token-budgeted retrieval blocks,
-- emit diagnostics when memory is blocked or empty.
+- obey RelaySCN memory scope,
+- obey RelayINT retrieval intent,
+- filter stale, contradictory, unsafe, blocked, or unapproved memory,
+- emit bounded retrieval candidates or blocks,
+- record empty, miss, and blocked reasons,
+- preserve source and confidence metadata for downstream selection.
 
-RelayMEM Retrieval should not mutate MEM or SOUL.
+RelayMEM Retrieval does not mutate MEM or SOUL. Writes and consolidation belong to RelaySLP and persistence gates.
 
-Memory writes belong to SLP / MEM compilation paths outside the normal response path.
-
-MEM Retrieval answers: what should RelayLM remember for this turn?
+MEM Retrieval answers: **what approved memory evidence is useful for this turn?**
 
 ### 8. RelayCTX Repack
 
-RelayCTX Repack builds the payload that will be sent to the Main LLM.
+RelayCTX Repack constructs the backend-bound context.
 
 Responsibilities:
 
-- combine system / developer / user / memory / recent context inputs,
-- stabilize prompt layout,
-- preserve persona-stable and KV-reuse-aware layout where possible,
-- inject approved memory or short-term CTX blocks,
-- apply token budget truncation,
-- record all payload mutation reasons,
-- produce the final backend-bound forwarded payload.
+- combine RelayLM-owned system/developer policy, current user evidence, approved memory, scene state, and selected recent context,
+- preserve stable persona and policy prefixes,
+- keep dynamic evidence after stable anchors,
+- select the smallest sufficient context rather than filling the token budget,
+- inject approved short-term CTX and memory blocks,
+- apply token-budget degradation,
+- preserve compatibility-sensitive request fields,
+- record every backend-bound payload replacement reason,
+- produce the final candidate `forwarded_payload` for compile-gate approval.
 
-Current overlap:
+RelayCTX Repack does not decide scene, intent, retrieval authority, persistence, or runtime fallback.
 
-- `request_compiler.py`,
-- memory injection,
-- short-term CTX injection,
-- token budget truncation,
-- forwarded payload stabilization.
+CTX Repack answers: **what exactly should the Main LLM see?**
 
-Because this stage is heavy, it should be hardened before adding more downstream behavior.
+### 9. Runtime Compile Gate
 
-CTX Repack answers: what exactly should the Main LLM see?
+The Runtime Compile Gate decides whether the prepared request may be forwarded in its current form.
 
-### 9. Main LLM / backend forward
+Inputs may include:
 
-The Main LLM generates the response.
+- route and mode,
+- client-authority preflights,
+- request compatibility,
+- RelaySCN policy,
+- RelayINT decision,
+- retrieval status,
+- CTX Repack result,
+- token-budget status,
+- active tool transaction state.
+
+Outputs include:
+
+- ready / blocked / skipped / degraded decision,
+- stable blocked or fallback reasons,
+- selected runtime route,
+- content-free decision artifact.
+
+It does not generate semantic content and does not replace RelayRUN orchestration.
+
+### 10. Main LLM / backend forward
+
+The Main LLM generates the response from the approved backend-bound request.
 
 Responsibilities:
 
 - answer the user's request,
-- produce user-visible response text,
-- optionally emit structured internal/update candidates only when a safe format exists,
-- avoid owning runtime checkpointing, persistence, or scene policy decisions.
+- produce user-visible response content,
+- optionally emit explicitly versioned internal candidates when a safe contract exists,
+- preserve tool/structured-output behavior when applicable,
+- avoid owning checkpointing, persistence, scene policy, or memory mutation.
 
-Transport and backend failures are not semantic failures. They should be normalized by proxy transport / RelayRUN handling.
+Transport and backend failures are runtime failures. They are normalized by adapters and RelayRUN rather than classified as INT or REF failures.
 
-Main LLM answers: what should be said?
+Main LLM answers: **what should be said or emitted?**
 
-### 10. RelayCTX Unpack
+### 11. RelayCTX Unpack
 
-RelayCTX Unpack separates the Main LLM output into user-visible text and internal candidates.
+RelayCTX Unpack separates visible output from internal candidates.
 
 Responsibilities:
 
-- extract user-visible response text,
-- strip or block internal markers,
-- parse optional `ctx_working_update`,
-- block unsafe or malformed update candidates,
-- prevent MEM / SOUL / SLP candidates from being accepted when unpacking fails.
+- extract user-visible response text or output parts,
+- suppress or block internal markers,
+- parse only explicitly supported versioned candidate envelopes,
+- validate shape, size, ordering, and allowed fields,
+- detach valid candidates from user-visible output,
+- block malformed or ambiguous candidates,
+- prevent MEM, SOUL, SLP, or CTX updates when Unpack validation fails,
+- emit content-free diagnostics and a node result.
 
-MVP fail-safe behavior:
+Fail-safe rule:
 
 ```text
-If user-visible text is available, return it.
-If internal candidate parsing fails, block internal updates and record diagnostics.
+When safely recoverable visible output exists, preserve it.
+When internal parsing fails, block internal candidates and record diagnostics.
 ```
 
-CTX Unpack answers: what is safe to show, and what is only an internal candidate?
+CTX Unpack answers: **what is safe to show, and what remains only a candidate?**
 
-### 11. RelayREF
+### 12. RelayREF
 
 RelayREF is the output-side observer.
 
 Responsibilities:
 
-- inspect response-level diagnostics after Main LLM output,
-- detect empty response,
-- detect internal marker leakage,
-- detect obviously unsafe diagnostic leakage,
-- detect likely scene / policy mismatch as warning only,
-- emit observations for Output-side RelaySCN, RelayRUN diagnostics, and future SLP.
+- inspect response-level diagnostics after generation,
+- detect empty or invalid output,
+- detect internal-marker or diagnostic leakage,
+- detect likely scene/policy mismatch as an observation,
+- emit observations for Output-side SCN, RelayRUN, and future SLP analysis.
 
-Early RelayREF should not:
+RelayREF does not own:
 
-- regenerate by default,
-- replace user-visible output by default,
-- own clarification decisions,
-- own scene transitions,
-- own memory writes,
-- require a second Main LLM call.
+- pre-action clarification,
+- normal-turn regeneration,
+- hidden meaning-changing rewrites,
+- scene transitions,
+- memory writes,
+- direct user-visible replacement by default.
 
-RelayREF answers: did anything concerning happen after generation?
+REF answers: **did anything concerning happen after generation?**
 
-### 12. Return-side RelayEMO
+### 13. Return-side RelayEMO
 
-Return-side RelayEMO adjusts expression after the main response is available.
+Return-side RelayEMO controls expression after visible response content is available.
 
 Responsibilities:
 
-- apply scene-gated tone adjustment,
-- add or suppress text markers,
-- provide TTS / avatar style hints when allowed,
+- apply scene-gated tone/style adjustments,
+- add or suppress allowed text markers,
+- provide TTS/avatar expression hints,
+- bound expression intensity,
 - avoid meaning-changing rewrites,
-- suppress expression in formal, safety, review, or recovery-sensitive scenes.
+- suppress expression where formality, review, safety, or recovery policy requires it.
 
-If meaning-changing repair is needed, it should be routed through REF / SCN / RUN policy rather than hidden inside EMO.
+Meaning-changing repair is routed through REF / SCN / RUN policy, not hidden inside EMO.
 
-Return-side EMO answers: how should this response be expressed?
+Return-side EMO answers: **how should the response be expressed?**
 
-### 13. Output-side RelaySCN
+### 14. Output-side RelaySCN
 
-Output-side RelaySCN observes the completed turn and prepares next-turn scene state.
+Output-side RelaySCN observes the completed turn and prepares next-turn policy.
 
 Responsibilities:
 
-- evaluate next-turn scene transition,
-- emit recovery hints,
-- emit persistence block reasons,
-- decide whether next turn should enter recovery mode,
-- consume REF observations and unpack diagnostics,
-- keep normal scene transition as next-turn state rather than rewriting the current response.
+- evaluate scene transition,
+- consume REF and Unpack observations,
+- emit next-turn recovery hints,
+- emit persistence-block reasons,
+- determine whether the next turn enters recovery,
+- keep ordinary scene transitions as next-turn state rather than rewriting the current response.
 
-Immediate current-response blocking should be limited to:
+Immediate current-response blocking is reserved for cases such as:
 
 - safety-critical mismatch,
 - internal leakage,
 - empty or invalid output,
-- recovery-critical cases.
+- recovery-critical invalid state.
 
-Output-side SCN answers: what scene should govern the next turn?
+Output-side SCN answers: **what scene and policy should govern the next turn?**
 
-### 14. User output
+### 15. User output
 
-The user receives the final response after output-side policy and expression gates.
+The user receives output only after the applicable visible-output, scene, expression, and transport gates.
 
-Normal responses should not expose internal diagnostics unless an explicit diagnostics mode is enabled.
+Normal responses must not expose internal diagnostics, prompt blocks, private memory content, runtime-private artifacts, or internal candidate envelopes.
 
-### 15. RelaySLP / memory write path
+### 16. RelaySLP / deferred persistence path
 
-RelaySLP is not part of the normal synchronous response path.
+RelaySLP is outside the latency-critical normal response path.
 
 Responsibilities:
 
-- compile memory candidates,
-- structure raw evidence,
-- prepare MEM update candidates,
-- prepare SOUL proposal candidates,
-- route candidates through persistence gates,
-- preserve lineage and approval state.
+- read governed raw evidence and runtime artifacts,
+- extract memory and SOUL candidates,
+- classify safety and target scope,
+- merge, hold, reject, or propose candidates,
+- maintain lineage and source references,
+- lint compiled memory,
+- update indexes/logs through explicit apply gates,
+- emit SOUL proposals rather than mutating SOUL directly.
 
-SLP should not block normal response latency unless the scene or user explicitly requests a synchronous review.
+SLP does not directly produce the current response or bypass waiting-user, scene, approval, and persistence gates.
 
-SLP answers: what should be organized or proposed for persistence later?
+SLP answers: **what should be organized or proposed for later persistence?**
+
+### 17. Adapter boundary
+
+Adapters preserve frontend/backend interoperability.
+
+Responsibilities:
+
+- preserve OpenAI-compatible request and response shape,
+- preserve streaming semantics,
+- map configured model names and headers,
+- normalize transport errors,
+- hide backend-specific transport details,
+- avoid semantic changes to persona, scene, intent, memory, or response meaning.
+
+Adapters answer: **how is the approved request transported compatibly?**
 
 ## INT and REF do not conflict
 
-RelayINT and RelayREF can both see ambiguity, but they act at different times and with different authority.
+RelayINT and RelayREF may both observe ambiguity, but they operate at different times and authority levels.
 
 | Module | Timing | Authority | Example |
 |---|---|---|---|
-| RelayINT | Before Main LLM | Gate / continue / short-circuit / block | "This request is ambiguous; ask clarification." |
-| RelayREF | After Main LLM | Observe / warn / diagnose | "The response may have answered an unresolved reference." |
-
-Boundary rule:
+| RelayINT | Before Main LLM | continue / short-circuit / block | “The target is unresolved; ask clarification.” |
+| RelayREF | After Main LLM | observe / warn / diagnose | “The response may have answered an unresolved target.” |
 
 ```text
 RelayINT decides whether to proceed.
 RelayREF reports what happened after proceeding.
 ```
 
-REF findings may inform future INT policy, Output-side SCN, RelayRUN diagnostics, or SLP candidates, but REF should not directly take over normal-turn control in the MVP.
+REF observations may inform future INT policy, Output-side SCN, RelayRUN diagnostics, or SLP candidates, but REF does not take over normal-turn control.
 
-## Failure routes
+## Failure and degradation routes
 
-### INT high-confidence clarification
+### INT clarification
 
 ```text
 RelayINT
-  -> SHORT_CIRCUIT_CLARIFICATION
-  -> quick clarification template
-  -> minimal output-side processing
-  -> RelayRUN artifact / diagnostics
+  -> clarification decision
+  -> compatibility and scene gates
+  -> normal output pipeline
+  -> RelayRUN artifact / checkpoint state
   -> user output
 ```
 
-The Main LLM should normally be bypassed for high-confidence clarification.
+The Main LLM may be bypassed only through an explicit safe short-circuit route.
 
 ### MEM retrieval blocked or empty
 
 ```text
 RelayMEM Retrieval
-  -> empty or blocked retrieval result
-  -> CTX Repack without retrieved memory
-  -> diagnostics records blocked reasons
-  -> Main LLM continues
+  -> empty / miss / blocked result
+  -> CTX Repack without the blocked memory block
+  -> diagnostics and node result
+  -> Main LLM continues when the request is not memory-dependent
 ```
 
-Only memory-dependent requests should surface this to the user.
+Memory-dependent requests may require clarification or a visible memory-unavailable response.
 
 ### CTX Repack token pressure
 
-Degrade in this order:
+Default degradation order:
 
-1. Remove diagnostics / trace-only context.
-2. Reduce retrieved memory.
-3. Reduce short-term CTX blocks.
-4. Shorten conversation history.
-5. Use a safe fallback response if no valid payload can be produced.
+1. remove diagnostics/trace-only context,
+2. reduce retrieved memory,
+3. reduce optional short-term CTX hints,
+4. shorten selected conversation context,
+5. block or use an explicitly approved safe fallback when no valid request can be produced.
 
-### Pipeline node result scaffold
+Required persona, safety, current-turn, and compatibility evidence must not be silently discarded.
 
-The early node result scaffold records observed runtime step results, but it does not define failure behavior by itself.
+### Pipeline node result
+
+`PipelineNodeResult` is the common content-free record of what a node observed or decided.
 
 ```text
-Pipeline step happens
+pipeline node executes
   -> PipelineNodeResult is recorded
-  -> PipelineContext collects the result
-  -> existing runtime behavior continues unchanged
+  -> PipelineContext preserves order
+  -> RelayRUN consumes status/reasons according to the active routing policy
 ```
 
-Full routing decisions remain part of the later failure route table / node result handling phase.
+A node result describes a node outcome; it does not by itself own semantic policy or transport behavior.
 
 ### Main LLM / backend failure
-
-Backend transport failures belong to proxy transport / RelayRUN handling.
 
 Examples:
 
 - timeout,
 - connection error,
 - invalid backend response,
-- stream failure before first token,
+- stream failure before first visible chunk,
 - stream failure after partial output.
 
-These should be recorded as runtime failures, not as RelayINT or RelayREF semantic failures.
+These are adapter / RelayRUN runtime failures. They are not INT or REF semantic failures.
 
 ### CTX Unpack failure
 
 ```text
-Return user-visible response text when available.
-Block ctx_working_update / MEM / SOUL / SLP candidates.
-Record unpack_failed diagnostics.
+preserve safely recoverable visible output
+block incomplete or invalid internal candidates
+record content-free Unpack diagnostics
+never expose internal markers
+```
+
+### Partial stream / output-adapter failure
+
+```text
+safe visible chunks already emitted
+  -> preserve emitted chunks
+  -> block incomplete candidates
+  -> record partial-stream state
+  -> avoid duplicate replay
+  -> prepare next-turn recovery when required
 ```
 
 ### REF warning
 
-Early RelayREF warnings should be diagnostics-only unless they detect:
+REF observations remain diagnostics/policy evidence unless an explicit output gate handles leakage, empty output, invalid output, or a safety-critical mismatch.
 
-- internal marker leakage,
-- forbidden diagnostic leakage,
-- empty response,
-- safety-critical mismatch.
+## Status and sequencing ownership
 
-## Near-term implementation stance
+Implementation status, compatibility aliases, current default gates, completed phases, and the next safe implementation boundary are maintained only in [Pipeline Implementation Plan](pipeline_implementation_plan.md).
 
-The near-term goal is not to implement every target stage fully.
-
-The safe order is:
-
-```text
-app.py lightweight separation
-  -> documentation consolidation
-  -> CTX Repack boundary hardening
-  -> RelayINT split / alias from current relayref.py behavior
-  -> pipeline node result scaffold
-  -> minimal RelayCTX Unpack
-  -> failure route table / node result handling
-  -> lightweight RelayREF diagnostics-only observer
-  -> Output-side SCN
-  -> RelayRUN cross-cutting checkpoint layer
-  -> RelaySLP separation
-```
-
-Do not make RelayREF smart before input and context boundaries are stable.
-
-Do not make RelayRUN semantic before node reporting and checkpoints are stable.
-
-Do not let Retrieval mutate memory in the normal response path.
+This responsibility document should change only when the intended ownership or canonical pipeline itself changes.
