@@ -35,6 +35,7 @@ def main() -> int:
                     "# Fixture",
                     "",
                     "- [Docs](docs/README.md)",
+                    "- [Japanese](README_ja.md)",
                     "- [External](https://example.com/docs)",
                     "- [Anchor](#fixture)",
                     "",
@@ -44,6 +45,10 @@ def main() -> int:
                 ]
             )
             + "\n",
+            encoding="utf-8",
+        )
+        (fixture_root / "README_ja.md").write_text(
+            "# Fixture JA\n\n- [English](README.md)\n- [Docs](docs/README.md)\n",
             encoding="utf-8",
         )
         (docs_dir / "README.md").write_text(
@@ -67,16 +72,18 @@ def main() -> int:
         success = run_checker(fixture_root)
         require(success.returncode == 0, success.stderr or success.stdout)
         require("ok documentation links" in success.stdout, success.stdout)
+        require("4 Markdown files" in success.stdout, success.stdout)
         print("ok docs link checker success fixture")
 
-        with (docs_dir / "README.md").open("a", encoding="utf-8") as handle:
-            handle.write("\n- [Broken](missing.md)\n")
+        with (fixture_root / "README_ja.md").open("a", encoding="utf-8") as handle:
+            handle.write("\n- [Broken](docs/missing.md)\n")
 
         failure = run_checker(fixture_root)
         require(failure.returncode == 1, failure.stdout)
-        require("missing target missing.md" in failure.stderr, failure.stderr)
+        require("README_ja.md" in failure.stderr, failure.stderr)
+        require("missing target docs/missing.md" in failure.stderr, failure.stderr)
         require("1 broken local Markdown link(s) found" in failure.stderr, failure.stderr)
-        print("ok docs link checker failure fixture")
+        print("ok docs link checker localized README failure fixture")
 
     return 0
 
