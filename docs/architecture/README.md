@@ -74,7 +74,8 @@ Current implementation includes a narrow default-off no-instruction apply slice.
 - [Context packing design](context_packing_design.md)
 - [Safe SOUL / Scene / CTX compile chain](safe_soul_scene_ctx_compile_chain.md)
 - [Scene lifecycle design](scene_lifecycle_design.md)
-- [Scene-aware memory scope design](scene_memory_scope_design.md)
+- [Scene-aware memory scope current / target boundary](scene_memory_scope_current_target.md)
+- [Scene-aware memory scope detailed design](scene_memory_scope_design.md)
 - [RelaySCN MVP scene policy](relayscn_mvp_scene_policy.md)
 
 General v1 scene examples are target schemas. Current RelaySCN uses v0 shapes and the current EMO-to-SCN compatibility order.
@@ -82,9 +83,10 @@ General v1 scene examples are target schemas. Current RelaySCN uses v0 shapes an
 ## Memory and interpretation modules
 
 - [RelayINT MVP design](relayint_mvp_design.md)
-- [RelayMEM MVP design](relaymem_mvp_design.md)
+- [RelayMEM / RelaySLP current / target boundary](relaymem_slp_current_target.md)
+- [RelayMEM MVP detailed design](relaymem_mvp_design.md)
 - [RelayMEM retrieval execution design](relaymem_retrieval_execution_design.md)
-- [RelayMEM SLP execution design](relaymem_slp_execution_design.md)
+- [RelayMEM SLP detailed execution design](relaymem_slp_execution_design.md)
 - [RelayEMO return-side expression design](relayemo_return_side_expression_design.md)
 
 Current Retrieval v0 and dry-run/preflight SLP foundations must not be read as complete target memory apply.
@@ -92,7 +94,8 @@ Current Retrieval v0 and dry-run/preflight SLP foundations must not be read as c
 ## Profile-specific architecture
 
 - [AI VTuber pipeline profile](ai_vtuber_pipeline_profile.md)
-- [Open-LLM-VTuber integration](open_llm_vtuber_integration.md)
+- [Open-LLM-VTuber current / target boundary](open_llm_vtuber_current_target.md)
+- [Open-LLM-VTuber detailed integration design](open_llm_vtuber_integration.md)
 
 Open-LLM-VTuber is optional. Current streaming is primarily backend forwarding; the target Stream Unpack/output pipeline is planned.
 
@@ -121,4 +124,5 @@ Current documents link directly to canonical files rather than through redirects
 - Label current, compatibility, target, and migration sections explicitly.
 - Name current schema and producer when a target schema is also shown.
 - Identify migration consumers and smoke coverage.
+- Preserve detailed target design when adding concise current/target boundary summaries.
 - Move superseded rationale to the archive only after unique intent is preserved.
