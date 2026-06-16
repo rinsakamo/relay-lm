@@ -1,8 +1,8 @@
 # RelayLM Architecture Docs
 
-This directory indexes RelayLM architecture and pipeline design documents.
+This page is the complete active index for RelayLM architecture and pipeline design documents.
 
-The main architecture, profile-specific architecture, context/scene architecture, and module-responsibility architecture documents are housed here.
+The main architecture, profile-specific architecture, context/scene architecture, and module-responsibility architecture documents are housed here. Historical or superseded design rationale is indexed separately under `archive/`.
 
 ## Canonical precedence
 
@@ -74,8 +74,10 @@ then reconstructs the backend payload from RelayLM-owned state.
 - [RelayLM VTuber Memory Proxy Design](archive/vtuber_memory_proxy_design.md) — early VTuber product-target direction
 - [Product Runtime Hardening](archive/product_runtime_hardening.md) — early cross-cutting MVP/runtime planning
 
-## Follow-up cleanup
+## Maintenance rule
 
-Architecture consolidation is still in progress for implementation-status notes and any future overlapping design documents. New current architecture docs should be created directly under `docs/architecture/`; superseded design rationale should move to `docs/architecture/archive/` only after unique principles are migrated.
-
-Contracts, smoke runbooks, and MVP summaries remain in their own directories. Historical MVP summaries should remain immutable snapshots unless a broken link or explicit factual correction requires an annotation.
+- Create new current architecture documents directly under `docs/architecture/` and link them from the appropriate section of this index.
+- Move superseded design rationale to `docs/architecture/archive/` only after its unique principles are migrated to current owner documents.
+- Keep implementation status in [Pipeline implementation plan](pipeline_implementation_plan.md) and the concise current-state summary in [Project Status](../PROJECT_STATUS.md), rather than duplicating transient status in stable responsibility documents.
+- Keep contracts, smoke runbooks, MVP summaries, and RelaySOUL-specific documents in their dedicated directories.
+- Treat archived architecture and historical MVP documents as immutable snapshots except for broken links or explicit factual corrections.
