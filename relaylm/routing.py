@@ -29,6 +29,8 @@ class ResolvedRoute:
     relayctx_unpack_max_update_chars: int = 4096
     client_message_canonicalization_dry_run_enabled: bool = False
     client_history_exclusion_preflight_enabled: bool = False
+    client_history_exclusion_apply_enabled: bool = False
+    client_history_exclusion_apply_dry_run_only: bool = True
     client_instruction_extraction_dry_run_enabled: bool = False
     client_instruction_cache_lookup_enabled: bool = False
     client_instruction_cache_root: str | None = None
@@ -81,6 +83,13 @@ def resolve_route(config: RelayLMConfig, model: str) -> ResolvedRoute:
         ),
         client_history_exclusion_preflight_enabled=(
             config.client_history_exclusion_preflight_enabled
+            or config.client_history_exclusion_apply_enabled
+        ),
+        client_history_exclusion_apply_enabled=(
+            config.client_history_exclusion_apply_enabled
+        ),
+        client_history_exclusion_apply_dry_run_only=(
+            config.client_history_exclusion_apply_dry_run_only
         ),
         client_instruction_extraction_dry_run_enabled=(
             config.client_instruction_extraction_dry_run_enabled
