@@ -9,11 +9,115 @@ Retrieval improves the current answer.
 RelaySLP improves future memory.
 ```
 
-Retrieval must not edit RelayMEM, mutate RelaySOUL, resolve ambiguous references silently, or own prompt layout.
+This document separates the **current implemented `relaymem_retrieval.v0` path** from the **target INT-driven retrieval and artifact boundary**.
 
-Current implementation status and sequencing remain in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md). This document defines the stable responsibility and artifact boundaries.
+Current implementation status and sequencing remain in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
 
-## Canonical runtime position
+## Current implemented path: `relaymem_retrieval.v0`
+
+The current implementation is centered on `build_relaymem_retrieval_dry_run_artifact()` in `relaylm/relaymem_retrieval.py`.
+
+### Current runtime order
+
+The current request path is approximately:
+
+```text
+request/profile compilation
+  -> Input-side RelayEMO
+  -> RelaySCN v0 scene-policy artifact
+  -> RelayINT compatibility reference-repair wrapper
+       historical RelayREF-shaped artifact
+  -> optional RelayINT fast-path dry-run artifact
+  -> RelayMEM Retrieval v0
+  -> later RelayCTX/runtime injection phases
+  -> backend forwarding
+```
+
+The variable and function boundary used by Retrieval still names the compatibility input `relayref_artifact`. Its producer is now the RelayINT compatibility wrapper around the historical input-side RelayREF implementation.
+
+Therefore, the current path is semantically moving toward RelayINT, but the Retrieval function does **not yet consume the independent `relayint_fast_path_dry_run.v0` decision as its primary typed input**.
+
+### Current inputs
+
+Current Retrieval v0 accepts inputs equivalent to:
+
+```text
+relayscn_scene_policy_artifact
+relayref_artifact
+messages
+token_budget
+store_diagnostics
+candidate/snippet/apply feature flags and limits
+```
+
+Current behavior:
+
+- unresolved-reference blocking is derived from the historical RelayREF-shaped compatibility artifact,
+- query terms are derived from the latest user text in `messages`,
+- RelaySCN v0 controls scene and retrieval scope,
+- file-store diagnostics and candidates feed selection/snippet planning,
+- the helper remains dry-run/diagnostics-oriented even though later gated runtime-injection phases may consume its candidates.
+
+### Current artifact shape
+
+The current helper returns one broad artifact:
+
+```yaml
+relaymem_retrieval_v0:
+  artifact_version: relaymem_retrieval.v0
+  diagnostics_only: true
+  apply_allowed: false
+  retrieval_scope: project_context
+  scene_type: design_talk
+  query_summary: {}
+  selected_mem_candidates: []
+  blocked: []
+  ctx_block: null
+  ctx_block_candidate: {}
+  ctx_block_snippet_candidate: {}
+  ctx_injection_plan: {}
+  snippet_runtime_injection_plan: {}
+  snippet_candidates: []
+  evidence_envelope: {}
+  fallback_reason: memory_store_not_configured
+  token_budget: {}
+  used_tokens: 0
+  persistence_block: false
+  persistence_block_reasons: []
+  apply_decision: blocked
+  apply_readiness_score: 0.0
+  apply_blocked_reasons: []
+  snippet_apply_decision: blocked
+  store_diagnostics: {}
+```
+
+This artifact may contain content-bearing or sensitive operational fields, including:
+
+- query summaries or term-derived metadata,
+- page and store metadata,
+- selected candidates,
+- snippet candidates/evidence,
+- root/path-related store diagnostics,
+- runtime-injection preview material.
+
+`diagnostics_only: true` does **not** make the whole artifact safe for generic persistence.
+
+The typed audit projector introduced by the content-free trace work must reduce this artifact to an allowlisted content-free subset before persisted trace/audit output. Unknown or content-bearing nested fields must be omitted.
+
+### Current limitations
+
+The current v0 path does not yet provide the target contract described below:
+
+- no dedicated `relayint.intent.v1` input,
+- no explicit confirmed-scope typed handoff,
+- no clean split between a runtime-private retrieval result and a public content-free projection at the producer boundary,
+- no replacement of the historical `relayref_artifact` parameter name/shape,
+- raw request messages still participate in query preparation,
+- one large artifact carries both runtime planning and diagnostic metadata.
+
+## Target canonical runtime position
+
+The target architecture is:
 
 ```text
 User input
@@ -30,58 +134,59 @@ User input
   -> User / TTS / Avatar output
 ```
 
-RelayREF is post-generation only. RelayMEM Retrieval must never depend on RelayREF observations for the same request.
+RelayREF is post-generation only. Target RelayMEM Retrieval must never depend on same-request output-side RelayREF observations.
 
 Reference and recall ownership:
 
-- RelayINT resolves current-turn references against RelayCTX working state.
-- RelayINT decides whether long-term retrieval is needed.
-- RelaySCN limits the allowed memory scope and safety posture.
-- RelayMEM performs the bounded read.
-- RelayCTX decides how selected evidence is packed.
+- RelayINT resolves current-turn references against RelayCTX working state,
+- RelayINT decides whether long-term retrieval is needed,
+- RelaySCN limits allowed memory scope and safety posture,
+- RelayMEM performs the bounded read,
+- RelayCTX decides final evidence packing.
 
-## Inputs
+## Target typed inputs
 
-RelayMEM Retrieval consumes only validated request-local inputs:
-
-```text
-- current user turn or a bounded retrieval query derived from it
-- RelayINT retrieval decision
-- resolved or confirmed reference scope
-- RelaySCN scene_policy and relaymem_retrieval_scope
-- character/user/project/session namespaces
-- RelayCTX memory token-budget hint
-- approved memory index and compiled MEM pages
-- runtime configuration and compatibility gates
-```
-
-A valid RelayINT input should expose at least:
+A future typed RelayINT handoff should expose fields equivalent to:
 
 ```yaml
-mem_query_needed: true
-mem_query_reason: explicit_recall_request
-reference_resolution_state: resolved
-confirmed_scope: current_project
+relayint_intent:
+  schema_version: relayint.intent.v1
+  mem_query_needed: true
+  mem_query_reason: explicit_recall_request
+  reference_resolution_state: resolved
+  confirmed_scope: current_project
 ```
 
-Retrieval must remain blocked when:
+Target Retrieval consumes only validated request-local inputs:
 
-- the reference is unresolved or requires confirmation,
+```text
+current user turn or a bounded derived retrieval query
+RelayINT retrieval decision
+resolved or confirmed reference scope
+RelaySCN scene_policy and retrieval scope
+validated namespaces
+RelayCTX memory-budget hint
+approved compiled-memory index/pages
+runtime compatibility gates
+```
+
+Target Retrieval remains blocked when:
+
+- the reference is unresolved or needs confirmation,
 - RelayINT did not authorize retrieval,
-- RelaySCN limits the request to current context only,
+- RelaySCN limits the request to current context,
 - the scene policy blocks external memory evidence,
-- required namespace or compatibility information is malformed.
+- namespace or compatibility information is malformed.
 
-## Outputs
-
-Retrieval produces two different representations.
+## Target output split
 
 ### Runtime-private retrieval result
 
-The request-local result may contain content needed by RelayCTX:
+The request-local result may contain content required by RelayCTX:
 
 ```yaml
 relaymem_retrieval_runtime:
+  schema_version: relaymem.retrieval_runtime.v1
   persistence: request_local
   retrieval_scope: project_context
   reference_resolution_state: resolved
@@ -102,11 +207,11 @@ relaymem_retrieval_runtime:
   fallback_reason: null
 ```
 
-This artifact is content-bearing. It must remain request-local or use an explicitly protected diagnostic surface with separate access control and retention.
+This artifact is content-bearing and remains request-local or in an explicitly protected diagnostic domain.
 
 ### Content-free retrieval projection
 
-Default trace and audit surfaces receive only an allowlisted projection:
+Default persisted trace/audit receives a typed allowlisted projection:
 
 ```yaml
 relaymem_retrieval_projection:
@@ -124,21 +229,22 @@ relaymem_retrieval_projection:
   budget_exhausted: false
   fallback_reason: none
   payload_mutation_applied: false
+  content_free: true
 ```
 
 Default projections must not contain:
 
-- raw or normalized user text,
-- query terms or `term_hints`,
-- MEM page paths, titles, summaries, or snippets,
-- root paths or local filesystem details,
+- raw/normalized user text,
+- query terms or term hints,
+- page paths/titles/summaries/snippets,
+- root paths or filesystem details,
 - prompt preview text,
 - backend message bodies,
 - arbitrary nested runtime artifacts.
 
-Use typed allowlisted projection code rather than generic recursive sanitization.
+Use typed projection code, not generic recursive sanitization.
 
-## Retrieval flow
+## Target retrieval flow
 
 ```text
 RelayINT retrieval decision
@@ -153,45 +259,15 @@ RelayINT retrieval decision
   -> RelayCTX handoff
 ```
 
-### Query preparation
-
-The query may combine:
-
-- explicit nouns from the current user turn,
-- RelayINT topic and action anchors,
-- confirmed recall scope,
-- RelaySCN scene type and task state,
-- approved project or concept hints.
-
-The runtime query is content-bearing and must not be copied into default trace records.
-
-### Candidate sources
-
-Preferred source order:
+Preferred candidate source order:
 
 1. approved compiled-memory index,
-2. selected project, concept, or session summaries,
+2. selected project/concept/session summaries,
 3. selected full MEM pages,
 4. supporting claim pages,
 5. raw evidence only under an explicit verification path.
 
 Normal retrieval should prefer compiled summaries over raw logs.
-
-### Ranking
-
-Ranking should remain bounded and explainable. Useful axes include:
-
-- semantic match,
-- current-task relevance,
-- scope match,
-- source approval level,
-- confidence,
-- stability,
-- recency,
-- contradiction state,
-- estimated token cost.
-
-Ranking scores are runtime-private. Default diagnostics should expose counts or bands, not source text.
 
 ## Safety and authority filter
 
@@ -200,116 +276,57 @@ Block from ordinary RelayCTX packing:
 - unapproved RelaySOUL candidates,
 - explicit-approval-required content,
 - unresolved contradictions,
-- stale or superseded project state when a current source exists,
-- raw affect estimates or sensitive attribute inference,
+- stale/superseded project state when a current source exists,
+- raw affect estimates or sensitive-attribute inference,
 - low-confidence personal inference,
-- recovery-generated memory that has not passed a later persistence review,
+- recovery-generated memory without later persistence review,
 - candidates outside the active namespace or scene scope.
 
-Retrieval must not convert blocked candidates into prompt hints merely because the token budget has space.
-
-## Token-budget boundary
-
-RelayCTX owns the overall prompt budget and supplies the memory budget or budget hint. RelayMEM Retrieval:
-
-- estimates candidate cost conservatively,
-- orders candidates by approved priority,
-- stops before exceeding the memory budget,
-- returns omitted and blocked counts,
-- does not attempt to fill unused budget,
-- does not mutate stable persona blocks to make room.
-
-Tokenizer-exact claims must not be made when only an estimate is available.
+Retrieval must not fill unused token budget with blocked or weak evidence.
 
 ## RelayCTX handoff
 
-RelayMEM returns evidence candidates or a `ctx_block_candidate`; RelayCTX owns final layout and rendering.
+RelayMEM returns candidates, provenance, and token estimates. RelayCTX owns final inclusion, layout, degradation, and backend message construction.
 
-```text
-RelayMEM
-  selected evidence + provenance + token estimates
-
-RelayCTX
-  final block selection
-  placement after stable persona sources
-  overall budget degradation
-  backend message construction
-```
-
-RelayMEM must not insert a backend `system` message directly as its semantic responsibility. Any existing compatibility helper that performs gated payload insertion is an implementation mechanism orchestrated through RelayCTX/PipelineContext and must preserve the same ownership boundary.
-
-## Reference ambiguity contract
-
-```text
-ambiguous reference
-  -> RelayINT asks or prepares clarification
-  -> no long-term retrieval
-
-resolved or explicitly confirmed recall scope
-  -> RelayINT may request retrieval
-  -> RelayMEM reads only the allowed scope
-```
-
-A retrieval miss is not permission to broaden the scope silently.
-
-## Fallback behavior
-
-Valid fallback reasons include:
-
-```text
-retrieval_not_requested
-reference_unresolved
-scene_policy_blocks_memory
-current_context_only
-no_relevant_memory
-all_candidates_blocked
-token_budget_exhausted
-index_missing
-memory_store_unavailable
-namespace_invalid
-```
-
-When memory is optional, RelayCTX proceeds without a RelayMEM block. When the user request is memory-dependent, RelayINT/RelayRUN may require clarification, a blocked state, or an approved recovery path.
-
-## Compatibility boundary
-
-Tool calls, structured output, multimodal content, and provider-specific message shapes must remain unchanged unless a dedicated compatibility gate allows managed repacking.
-
-Retrieval evidence must not be used to reconstruct or alter an active tool transaction.
+Any current compatibility helper that performs gated payload insertion is an implementation mechanism, not RelayMEM's semantic ownership.
 
 ## Persistence boundary
 
 Retrieval is read-only:
 
-- no page update,
-- no index update,
-- no raw-event append as a side effect of retrieval,
+- no page/index update,
+- no raw-event append as a retrieval side effect,
 - no RelaySOUL proposal,
-- no user-preference write,
-- no relationship update.
+- no preference or relationship write.
 
-Those actions belong to deferred RelaySLP and their applicable scene, approval, and persistence gates.
+Those actions belong to deferred RelaySLP and applicable scene/approval/persistence gates.
 
-## Non-goals
+## Required migration scope
 
-RelayMEM Retrieval does not:
+A future implementation migration should update together:
 
-- classify the scene,
-- resolve ambiguous references,
-- inspect the generated answer,
-- own prompt ordering,
-- produce user-visible clarification text,
-- write memory,
-- mutate RelaySOUL,
-- expose content-bearing retrieval artifacts through default trace/audit projections.
+1. rename/remove the historical `relayref_artifact` Retrieval input,
+2. define a typed RelayINT-to-Retrieval handoff,
+3. use canonicalized current-turn evidence instead of raw message arrays,
+4. split runtime-private Retrieval data from the content-free producer projection,
+5. update app/PipelineContext wiring,
+6. update runtime-injection consumers,
+7. update trace projectors,
+8. update Retrieval and integration smoke tests,
+9. preserve compatibility through explicit schema/version handling.
 
 ## Summary
 
 ```text
-RelaySCN policy
-  + RelayINT retrieval decision and confirmed scope
-  -> RelayMEM read-only selection
+current
+  relaymem_retrieval.v0
+  SCN v0 + historical RelayREF-shaped INT compatibility input
+  + raw messages + broad diagnostics/runtime artifact
+
+target
+  typed RelayINT decision + SCN policy
+  -> read-only Retrieval
   -> runtime-private evidence artifact
-  -> content-free diagnostic projection
+  -> content-free persisted projection
   -> RelayCTX final packing
 ```
