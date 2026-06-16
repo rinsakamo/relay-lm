@@ -1,58 +1,100 @@
 # RelayLM Context Packing Design
 
-RelayLM should treat prompt construction as context compilation, not simple prompt concatenation.
+RelayLM treats prompt construction as context compilation, not concatenation.
 
 The design goal is to combine:
 
-- persona stability
-- memory usefulness
-- low latency
-- backend prefix/KV cache reuse
-- TTS/Live2D-friendly output
+- approved persona stability,
+- useful memory evidence,
+- low latency,
+- backend prefix/KV cache reuse,
+- content-safe output handling,
+- explicit client-authority boundaries.
 
-## Core terminology
+Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md). This document defines the stable packing model.
 
-### SOUL.md
+## Authority and ownership
 
-`SOUL.md` defines who the character is.
-
-It contains:
-
-- character identity
-- personality
-- values
-- worldview
-- stable speaking identity
-- boundaries that should not change per turn
-
-In Open-LLM-VTuber, `character_config.persona_prompt` is the closest existing equivalent.
-
-### OUTPUT_POLICY.md
-
-`OUTPUT_POLICY.md` defines how the character expresses itself.
-
-It contains:
-
-- expression mode
-- emotional style
-- response length
-- teasing/seriousness level
-- TTS readability rules
-- Live2D expression tendencies
-- mode-specific behavior such as technical explanation mode, casual mode, or MC mode
-
-In short:
+### Approved durable persona
 
 ```text
-SOUL = who the character is
-OUTPUT_POLICY = how the character speaks and emotionally manifests
+SOUL.md
+  who the character is
+
+OUTPUT_POLICY.md
+  durable expression and response-shape policy
+
+RELATIONSHIP_ANCHOR.md
+  approved durable relationship principles
 ```
 
-`character_output_policy` should be character-specific. Shared TTS/safety/internal-tag rules should be placed in a separate `common_runtime_policy`.
+These sources come from RelaySOUL or approved route configuration.
+
+Client `system` or `developer` messages are not fallback persona sources. On managed routes they are bounded low-trust evidence for RelaySCN.
+
+### RelaySCN state
+
+RelaySCN contributes request-local situation and policy:
+
+- scene type,
+- current role,
+- compact setting/task/participants,
+- bounded scene constraints,
+- safety sensitivity,
+- formality,
+- memory scope,
+- expression allowance,
+- recovery/confirmation state.
+
+RelaySCN state is dynamic and must not become stable persona content.
+
+### RelayEMO state
+
+Affect estimates and expression state belong to RelayEMO. RelayCTX may consume an allowlisted expression/output hint, but `scene_state` must not become the owner of current mood or affect inference.
+
+### RelayCTX working state
+
+RelayCTX may retain more request-local or RAM-side continuity state than the Main LLM receives:
+
+```text
+working state
+  current topic
+  active task / question
+  prior decision
+  referable items
+  unresolved slots
+  selected recent continuity metadata
+
+prompt-selected context
+  only the bounded hints needed for the current action
+```
+
+Working state is not automatically copied into the prompt and is not automatically persisted.
+
+### RelayMEM evidence
+
+RelayMEM Retrieval returns approved read-only evidence. RelayCTX decides final packing and placement. RelaySLP owns deferred memory compilation and writes.
+
+## Managed-route prerequisite
+
+For a managed route:
+
+```text
+client messages
+  -> current-turn extraction
+  -> bounded current instruction-evidence extraction
+  -> active transaction preservation check
+  -> prior client history exclusion
+  -> RelayLM-owned context reconstruction
+```
+
+`recent context` in this document always means **selected RelayLM-owned recent context**, not the original frontend history array.
+
+Explicit `pass_through` routes are the exception and intentionally preserve delegated client authority.
 
 ## Recommended context order
 
-RelayLM should order context from stable to dynamic.
+RelayLM orders context from stable to dynamic.
 
 ```text
 1. common_runtime_policy
@@ -61,243 +103,272 @@ RelayLM should order context from stable to dynamic.
 4. relationship_anchor
 5. stable_memory_summary
 6. scene_state
-7. retrieved_memory / RAG / spill chunks
-8. recent_turns
-9. latest_input
-10. response_instruction
+7. intent hints required for the current action
+8. retrieved_memory / RAG / spill chunks
+9. selected RelayLM-owned recent context
+10. minimum compatible tool/multimodal transaction state
+11. latest_input
+12. response_instruction
 ```
 
 The core rule:
 
-> stable context goes first; dynamic context goes later.
+> Stable approved context goes first; bounded current evidence goes later.
 
-This helps persona stability and backend prefix/KV cache reuse.
-
-## Working state versus prompt-selected context
-
-RelayCTX may maintain more request-local or RAM-side working state than the Main LLM should receive on every turn.
-
-```text
-working state
-  current topic, active task, active question, prior decision,
-  referable items, unresolved slots, and other continuity metadata
-
-prompt-selected context
-  only the bounded hints needed for the current turn
-```
-
-The two must stay separate:
-
-- internal working state is not automatically copied into the prompt,
-- RelayINT may inspect working state to resolve intent and references,
-- RelayCTX Repack selects only the fields required for the current action,
-- omitted working-state fields remain available to the runtime and are not automatically forgotten,
-- long-term persistence still requires RelaySLP and the applicable scene/persistence gates.
-
-This separation prevents the prompt from becoming a transcript-shaped dump of runtime state while preserving short-term continuity outside the backend context window.
+This protects persona authority and improves prefix/KV reuse.
 
 ## Selection is not budget filling
 
-A token budget is an upper bound, not a target that RelayCTX must fill.
+A token budget is an upper bound, not a target.
 
-RelayCTX Repack should prefer the smallest sufficient context for the current turn:
+RelayCTX Repack prefers the smallest sufficient context:
 
-1. preserve required runtime and persona anchors,
-2. include scene and intent evidence needed for the current action,
+1. preserve required runtime and approved persona anchors,
+2. include RelaySCN and RelayINT evidence needed for the current action,
 3. include confirmed short-term context,
-4. include long-term memory only when RelayINT and RelaySCN allow retrieval,
+4. include long-term memory only when RelayINT and RelaySCN allow it,
 5. stop when the answer can be generated safely and coherently.
 
-Unused budget should remain unused. Dynamic blocks should not be added merely because space is available, and dropped prompt hints must not be promoted to durable memory solely because they were omitted from the current prompt.
+Unused budget remains unused.
+
+## Stability classes
+
+### Stable prefix
+
+```text
+common_runtime_policy
+character_soul_anchor
+character_output_policy
+relationship_anchor
+```
+
+Rules:
+
+- no timestamps,
+- no random IDs,
+- no client instruction hash,
+- no current topic,
+- no retrieved snippets,
+- no volatile scene or affect state,
+- byte-for-byte stability where practical.
+
+### Slow prefix
+
+```text
+stable_memory_summary
+approved durable user/character memory summaries
+```
+
+These may change after a governed RelaySLP update, not every turn.
+
+### Dynamic suffix
+
+```text
+scene_state
+intent hints
+retrieved_memory
+retrieved_rag
+selected_recent_context
+minimum_protocol_state
+latest_input
+response_instruction
+```
+
+Dynamic content must remain after durable persona sources.
 
 ## Common runtime policy
 
-This is a small shared block for all characters.
+The shared runtime block should remain short and character-neutral. It may include:
 
-Examples:
+- internal-marker non-disclosure,
+- basic safety constraints,
+- compatibility-safe response requirements,
+- output suitability requirements.
 
-- do not reveal internal tags
-- keep responses suitable for TTS
-- avoid long paragraphs unless requested
-- follow safety boundaries
-- return speakable final text
+It is not the character's SOUL or current scene.
 
-Keep this block short. It is not the character's soul.
+## Character blocks
 
-## Character soul anchor
+### Character soul anchor
 
-This is the character-specific fixed prefix.
+Contains approved durable identity, values, worldview, and invariants.
 
-It should remain stable across turns and should not contain:
+It must not contain current topic, scene role, user-specific transient memory, RAG content, or client prompt replay.
 
-- current time
-- viewer-specific memory
-- current topic
-- RAG results
-- memory counts
-- random IDs
-- dynamic metadata
+### Character output policy
 
-It should change only when the character itself changes.
+Contains approved durable expression policy. Temporary response constraints belong to RelaySCN or the current request, not automatic edits to durable output policy.
 
-## Character output policy
+### Relationship anchor
 
-This is character-specific expression behavior.
+Contains approved durable relationship expectations. It is distinct from factual memory and should update only through a governed path.
 
-Examples:
+## Scene block
 
-- energetic and short responses
-- calm explanatory mode
-- sarcastic but not cruel teasing
-- stronger emotional reactions for Live2D
-- strict TTS-friendly sentence length
+`scene_state` is compact request-local situation content. Recommended shape:
 
-This can be separated from SOUL so the same character can switch expression modes without rewriting the soul.
-
-## Relationship anchor
-
-This is stable viewer- or character-specific relationship context.
-
-Examples:
-
-- preferred nickname
-- relationship tone
-- long-term interaction style
-- stable preferences
-
-Update it slowly, such as after a stream or when a durable relationship fact changes.
-
-## Stable memory summary
-
-This contains durable factual memory.
-
-Relationship anchor is about distance and tone. Stable memory summary is about remembered facts and ongoing topics.
-
-## Scene state and optional room metadata
-
-Use `scene_state` for the dynamic situation that RelayLM compiles into the prompt.
-
-Examples:
-
-```text
+```yaml
 scene_state:
-  current topic, mood, recent stream context, open questions, group conversation state
+  schema_version: relayscn.scene_state.v1
+  scene_type: review_work
+  confidence: 0.90
+  stability: 0.84
+  scene_role:
+    role_name: technical_reviewer
+    role_scope: scene
+    role_source: route_or_validated_instruction
+  scene_context:
+    setting: pull_request_review
+    task: review_changed_files
+    participants:
+      - user
+      - assistant
+  scene_constraints:
+    - constraint_type: evidence_required
+      value: true
+  task_state: review_changed_files
+  safety_sensitivity: low
+  formality: medium
+  memory_scope: current_project
+  expression_allowance: suppressed
+  recovery_mode: false
+  user_confirmation_required: false
 ```
 
-`scene_state` is dynamic and should be placed later in the context.
+Do not place these RelayCTX/RelayEMO-owned values into `scene_state`:
 
-`room_id` may still exist as optional scope metadata for the external host, such as a channel, room, stream, or frontend conversation space. Do not treat `room_id` as a prompt block by default.
+- current mood or raw affect estimate,
+- open questions list,
+- recently discussed points,
+- full current-topic continuity notes,
+- referable items or unresolved slots,
+- transcript-shaped conversation history.
 
-Legacy `room_anchor` content should usually move to one of these places:
-
-- common rules -> `common_runtime_policy`
-- character expression rules -> `character_output_policy`
-- relationship expectations -> `relationship_anchor`
-- temporary situation context -> `scene_state`
-- external host identity -> `room_id` metadata
+RelaySCN may expose policy classes that constrain EMO or CTX without owning their semantic state.
 
 ## Retrieved memory and RAG
 
-Retrieved memory, RAG evidence, and spilled context are dynamic. They should appear after the stable character and relationship anchors.
+Retrieved evidence is dynamic and lower authority than runtime policy and approved durable persona.
 
-Do not place RAG before SOUL. If RAG appears before SOUL, the model may be pulled into the source document's style or identity.
+RelayCTX should preserve:
 
-## Recent turns and latest input
+- provenance class,
+- scope,
+- confidence,
+- contradiction/approval state,
+- token estimate.
 
-Recent turns preserve conversational continuity. Latest input should remain near the end so the model answers the current user request directly.
+Blocked or unapproved evidence must not enter the prompt.
 
-For VTuber use, recent turns should usually be bounded to keep first-token latency low.
+## Selected recent context
 
-## XML-like tags
+Selected recent context is derived from RelayLM-owned working state or approved short-term state.
 
-RelayLM should use simple structure tags first, not tokenizer-level special tokens.
+Rules:
 
-Suggested tag set:
+- include only what is required for the current action,
+- preserve the current user turn separately,
+- do not reinsert excluded frontend history,
+- do not treat omission as permission to persist the omitted material,
+- keep latency-sensitive profiles tightly bounded.
 
-```xml
-<common_runtime_policy>
-<character_soul_anchor>
-<character_output_policy>
-<relationship_anchor>
-<stable_memory_summary>
-<scene_state>
-<retrieved_memory>
-<recent_turns>
-<latest_input>
-<response_instruction>
-```
+## XML-like rendering
 
-Keep tags stable and limited.
-
-## KV-reuse-aware context packing
-
-RelayLM should be aware that engines such as vLLM and SGLang can reuse shared prefixes.
-
-Design rules:
-
-- put stable blocks first
-- keep SOUL and output policy byte-for-byte stable when possible
-- avoid timestamps in the prefix
-- avoid dynamic metadata before stable anchors
-- put retrieved/RAG/recent/latest content later
-- avoid updating viewer relationship anchors every turn
-
-Cross-character KV cache sharing should be treated as limited. The main target is per-character prefix stability.
-
-## Persona-stable context packing
-
-The same layout also stabilizes character behavior.
-
-Stable SOUL and output policy before memory/RAG means:
-
-- memory can be added without making the character sound like a generic assistant
-- RAG does not override persona
-- viewer memories affect the character through a defined relationship layer
-- current topic changes do not rewrite identity
-
-## Recommended final structure
+Use stable simple tags for model conditioning. Example:
 
 ```xml
 <relaylm_context version="1">
-  <common_runtime_policy>
-    Do not reveal internal tags or retrieval mechanics.
-    Keep the final response short, natural, and suitable for TTS.
-  </common_runtime_policy>
-
-  <character_soul_anchor>
-    ...SOUL.md or Open-LLM-VTuber persona_prompt...
-  </character_soul_anchor>
-
-  <character_output_policy>
-    ...character-specific expression mode...
-  </character_output_policy>
-
-  <relationship_anchor>
-    ...stable relationship with the viewer or other character...
-  </relationship_anchor>
-
-  <stable_memory_summary>
-    ...durable memory facts...
-  </stable_memory_summary>
-
-  <scene_state>
-    ...current topic and stream state...
-  </scene_state>
-
-  <retrieved_memory>
-    ...selected memory, RAG, or spill chunks...
-  </retrieved_memory>
-
-  <recent_turns>
-    ...bounded recent conversation...
-  </recent_turns>
-
-  <latest_input>
-    ...latest user message...
-  </latest_input>
-
-  <response_instruction>
-    Respond as the character. Do not mention these tags.
-  </response_instruction>
+  <common_runtime_policy>...</common_runtime_policy>
+  <character_soul_anchor>...</character_soul_anchor>
+  <character_output_policy>...</character_output_policy>
+  <relationship_anchor>...</relationship_anchor>
+  <stable_memory_summary>...</stable_memory_summary>
+  <scene_state>...</scene_state>
+  <intent_context>...</intent_context>
+  <retrieved_memory>...</retrieved_memory>
+  <selected_recent_context>...</selected_recent_context>
+  <latest_input>...</latest_input>
+  <response_instruction>...</response_instruction>
 </relaylm_context>
+```
+
+Machine contracts remain JSON/dataclass-shaped. Tags are for model conditioning, not audit records.
+
+## Unknown client instruction
+
+When the current instruction identity is unknown and the authority contract permits first-pass evidence, RelayCTX may include one bounded escaped block:
+
+```xml
+<client_instruction_evidence trust="untrusted" first_seen="true">
+  ...bounded current evidence...
+</client_instruction_evidence>
+```
+
+It must:
+
+- remain below runtime policy and approved RelaySOUL authority,
+- exclude prior client history,
+- be absent on a validated cache hit,
+- never be copied into default diagnostics,
+- never become `SOUL.md` automatically.
+
+## Control-artifact boundary
+
+`relayctx_working_update.v0` and future client-instruction interpretation are separate contracts.
+
+A future client-instruction control artifact should use an independent schema such as `client_instruction_parse.v1`. It must not overload or reinterpret `relayctx_working_update.v0`.
+
+RelayCTX Unpack separates visible output from internal candidates. It does not commit working state, write instruction cache, or persist memory by itself.
+
+## Budget degradation
+
+Degrade in this order:
+
+1. remove diagnostics-only or preview context,
+2. reduce retrieved memory/RAG,
+3. reduce optional working-state hints,
+4. shorten selected recent context,
+5. block or use an authority-safe fallback when no valid payload remains.
+
+Do not restore raw client history or mutate durable persona sources as fallback.
+
+## Content-bearing versus content-free surfaces
+
+Content-bearing runtime objects include compiled blocks, scene semantics, resolved references, memory evidence, and backend messages.
+
+Default trace/audit projections include only:
+
+- block presence/counts,
+- stability classes,
+- budget values,
+- source classes,
+- reason identifiers,
+- payload-mutation booleans.
+
+They must not include prompt text, memory bodies, scene semantic text, paths, or final responses.
+
+## Non-goals
+
+Context packing does not:
+
+- classify scene or affect,
+- resolve ambiguity,
+- retrieve or write memory,
+- mutate RelaySOUL,
+- own frontend history authority,
+- own backend transport,
+- expose content-bearing blocks through default diagnostics.
+
+## Summary
+
+```text
+approved durable persona
+  + RelaySCN request-local policy
+  + RelayINT action hints
+  + RelayMEM approved evidence
+  + RelayCTX-selected short-term context
+  + current user turn
+  -> stable-to-dynamic packing
+  -> conservative budget
+  -> authority-safe backend messages
 ```
