@@ -8,7 +8,7 @@ It complements:
 
 - [Pipeline Responsibility Design](pipeline_responsibility_design.md),
 - [Context Packing Design](context_packing_design.md),
-- [RelayEMO Return-side Expression Design](relayemo_return_side_style_adapter_design.md),
+- [RelayEMO Return-side Expression Design](relayemo_return_side_expression_design.md),
 - [Project Status](../PROJECT_STATUS.md).
 
 Implementation phase/status is not duplicated here.
