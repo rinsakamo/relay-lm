@@ -2,17 +2,19 @@
 
 ## Purpose
 
-This document is the source of truth for implementation status, phase sequencing, and the next safe boundary.
+This document is the source of truth for RelayLM pipeline implementation status, phase sequencing, dependency boundaries, and the next safe implementation slice.
 
-It does not redefine ownership. Use [Pipeline Responsibility Design](pipeline_responsibility_design.md) for component responsibilities and [Current / Target / Migration Guide](current_target_migration_guide.md) for schema/status interpretation.
+It does not redefine component ownership. Use [Pipeline Responsibility Design](pipeline_responsibility_design.md) for component responsibilities and canonical target order, and [Current / Target / Migration Guide](current_target_migration_guide.md) for schema/status interpretation.
+
+Detailed schemas and bounded behavior remain in dedicated module and contract documents.
 
 ## Status legend
 
 - **complete**: the bounded phase contract is implemented and covered by smoke tests.
-- **mostly complete**: the main boundary is implemented; bounded follow-up remains.
+- **mostly complete**: the main boundary is implemented; bounded compatibility or safety follow-up remains.
 - **in progress**: a named subset is implemented while required behavior remains absent.
 - **planned**: design direction exists without runtime implementation.
-- **deferred**: intentionally outside the near-term path.
+- **deferred**: intentionally outside the near-term path and not a gate for the active boundary.
 
 ## Current project position
 
@@ -35,7 +37,7 @@ Current active boundary:
 
 Near-term sequence:
   Phase 5-D pre-stream hardening
-  Phase 5.5 Stream Unpack and TTS-safe segmentation
+  Phase 5.5 Stream Unpack and TTS-safe output segmentation
 
 Deferred optimization:
   Phase 5-C4b cache-hit RelaySCN projection
@@ -44,61 +46,105 @@ Deferred optimization:
 
 The `5-C1a` label is a late bounded slice. It does not replace the broader `5-C4a` correctness criteria.
 
+Late fixes to an earlier phase do not roll the project back. Phase identifiers represent dependency and authority boundaries rather than a strict waterfall.
+
+Phase 5-C4b and Phase 5-C5 retain their identifiers for design continuity, but they do not block Phase 5-D or Phase 5.5 after the Phase 5-C correctness boundary is complete.
+
+## Correctness versus optimization dependency rule
+
+The client-authority work contains two separate concerns and must not treat them as one blocking phase.
+
+```text
+Correctness boundary:
+  exclude prior client history on managed routes
+  preserve the validated current turn
+  preserve RelayLM-owned context
+  carry current client instruction only as bounded low-trust evidence when required
+  preserve or explicitly block compatibility-sensitive transactions
+
+Optimization boundary:
+  avoid repeated instruction parsing through cache-hit RelaySCN projection
+  parse a typed first-pass instruction artifact
+  write validated instruction-cache entries
+```
+
+Only the correctness boundary is required before Stream Unpack work begins.
+
 ## Current caveats
 
 - Current profile compilation still runs before normalized target SCN/INT/Retrieval handoffs.
+- Current compile behavior has both the typed `CompileApplyDecision` and a separate content-free `mvp-ctx-apply-0` diagnostics artifact; the complete authority-aware v1 taxonomy is not implemented.
 - The no-instruction history-exclusion apply supports the current `memory_light` compiler layout only.
 - Client system/developer instruction evidence is not supported by that apply contract.
 - History-exclusion apply is default-off and dry-run by default.
 - Explicit actual apply fails closed before backend forwarding when no exact applied result exists.
-- Full target Runtime Compile Gate route-authority and managed fallback artifacts are not implemented.
-- RelayCTX Unpack is non-stream only; Stream Unpack remains planned.
-- RelayREF remains a planned output observer.
-- RelayRUN remains mostly request-level rather than complete per-node orchestration.
+- Full target Runtime Compile Gate route-authority, forwarded-payload-source, managed fallback, and complete blocked-state artifacts are not implemented.
+- RelayRUN still acts primarily through request-level artifacts, diagnostics, recovery summaries, and checkpoint-like records; full per-node cross-cutting orchestration remains later work.
+- Recovery-related settings are default-off, but the detailed recovery artifact chain is still constructed eagerly on the ordinary request path.
+- Historical `relayref.py` implementation and artifact names remain as compatibility surfaces for input-side reference repair exposed through RelayINT-facing wrappers.
+- RelayCTX Unpack supports a pure parser and a gated non-stream runtime boundary. Stream Unpack remains planned for Phase 5.5.
+- RelayCTX Repack owns the main backend-bound payload mutation phases, while top-level orchestration and backend-response handling remain distributed across `app.py` and runtime helpers.
+- Instruction-cache lookup is an optional optimization boundary; it is not required to establish managed-route history authority.
+- Token estimation still uses a single `chars_per_token` ratio whose default is not conservative enough for Japanese/CJK-heavy text.
+- RelayREF remains planned as a lightweight output-side observer; it is not an answer-grading second LLM.
+- RelayLM owns safe visible-text segmentation in the target architecture, but it does not own external TTS, ASR, avatar, or frontend execution.
 - RelaySLP and RelaySOUL actual persistence/apply paths remain absent.
-- Token estimation still uses a single character-ratio heuristic.
 
 ## Phase 1: `app.py` and PipelineContext — mostly complete
 
 Implemented:
 
-- `PipelineContext` preserves original and forwarded payloads.
-- payload replacements use explicit methods and reasons.
-- runtime-private candidates and ordered node results are request-local.
-- diagnostics and trace handoffs are separated from payload content.
+- `PipelineContext` is the shared request-local coordination object.
+- original and forwarded payloads are separated.
+- forwarded-payload replacements use explicit mutation methods and reasons.
+- runtime-private candidates and ordered node results remain request-local.
+- detached Unpack and client-authority candidates can be held without entering generic trace.
+- grouped diagnostics and trace handoffs are separated from payload content.
+- short-circuit and RelayRUN artifact behavior remain explicit.
 
-Rule:
+Remaining posture:
 
-- new semantic behavior belongs in dedicated modules, not in `app.py`.
+- allow only bounded safety or maintainability fixes in `app.py`,
+- do not add new semantic ownership to `app.py`,
+- place new semantic boundaries in dedicated modules/helpers.
 
 ## Phase 2: documentation consolidation — substantially complete
 
 Implemented:
 
 - canonical pipeline ownership and INT/REF timing,
+- implementation status separated from responsibility ownership,
 - client history and instruction authority contracts,
 - archive and compatibility redirect rules,
 - dedicated architecture, contract, smoke, MVP, and RelaySOUL indexes,
-- current-state summary and implementation plan.
+- current-state summary and implementation plan,
+- Current / Compatibility / Target / Migration interpretation rules.
 
-Ongoing:
+Ongoing maintenance:
 
 - keep current, compatibility, target, and migration material explicitly labeled,
-- keep active schemas aligned with implemented producers and consumers.
+- keep active schemas aligned with implemented producers and consumers,
+- update this plan when phases land or are resequenced,
+- archive only after unique design intent is migrated,
+- keep MVP summaries as historical snapshots.
 
 ## Phase 3: RelayCTX Repack — mostly complete
 
 Implemented:
 
 - main backend-bound payload mutation phases live under `relayctx_repack.py`,
-- RelayMEM and short-term CTX injection are grouped under Repack,
-- token-budget application is grouped under Repack,
+- RelayMEM snippet/runtime CTX injection is grouped under Repack,
+- token-budget truncation application is grouped under Repack,
+- RelayCTX short-term runtime injection apply is grouped under Repack,
 - payload replacement reasons remain visible through `PipelineContext`,
-- unsupported instruction parts are not blindly stringified.
+- current system/developer instruction extraction compatibility is preserved,
+- unsupported instruction parts are not blindly stringified,
+- low-trust instruction evidence can be escaped before XML-like rendering.
 
 Remaining rule:
 
-- no new general prompt mutation bypasses Repack or the managed-authority gates.
+- no new general prompt mutation bypasses Repack or managed-authority gates,
+- active tool transactions and compatibility-sensitive request shapes remain preserved or explicitly blocked.
 
 ## Phase 4: RelayINT compatibility boundary — complete
 
@@ -106,13 +152,16 @@ Implemented:
 
 - input-side reference repair is exposed through RelayINT-facing wrappers,
 - historical RelayREF names remain only where compatibility requires them,
-- Fast Path and quick-clarification planning/preflight artifacts are default-off.
+- RelayINT Fast Path and quick-clarification planning/preflight artifacts are default-off,
+- source-node aliases permit migration without breaking existing artifacts and smoke tests.
 
 Deferred:
 
-- user-visible quick-clarification short circuit,
-- Main LLM bypass through explicit routing,
-- full RelayRUN short-circuit lifecycle.
+- actual user-visible quick-clarification short circuit,
+- Main LLM/backend bypass through explicit node routing,
+- complete RelayRUN short-circuit lifecycle.
+
+Those belong to later routing/apply work.
 
 ## Phase 4.5: PipelineNodeResult — complete
 
@@ -121,47 +170,77 @@ Implemented:
 - common frozen node-result shape,
 - ordered request-local collection,
 - typed content-free projections,
-- direct input-side node ordering.
+- direct input-side node ordering,
+- best-effort trace metadata projection,
+- deterministic ordering for upstream and directly recorded downstream results.
 
 Current limitation:
 
-- most node results do not yet control routing, retry, fallback, or recovery.
+- most node results remain diagnostics-only,
+- node results do not yet universally control runtime routing, retry, fallback, or recovery.
 
 ## Phase 5-A: pure non-stream RelayCTX Unpack — complete
 
 Implemented:
 
 - pure parser in `relaylm/relayctx_unpack.py`,
-- fixed `relayctx_working_update.v0`,
-- one trailing supported candidate envelope,
-- bounded/fail-closed parsing,
-- safe visible-prefix preservation,
+- ordinary text pass-through when no marker exists,
+- exactly one trailing supported `<relayctx_working_update>` JSON envelope,
+- fixed `relayctx_working_update.v0` schema,
+- bounded fields, values, and size,
+- fail-closed handling for malformed, repeated, reversed, embedded, oversized, or non-trailing markers,
+- safe visible-prefix preservation where possible,
+- invalid/ambiguous internal candidates blocked,
 - detached candidate storage,
-- no CTX/MEM/SOUL persistence.
+- content-free diagnostics and PipelineNodeResult adapter,
+- no CTX, MEM, SOUL, or SLP persistence.
 
-## Phase 5-B: gated non-stream Unpack — complete
+Accepted shape:
+
+```text
+user-visible response
+<relayctx_working_update>
+{"schema_version":"relayctx_working_update.v0","ctx_working_update":{...}}
+</relayctx_working_update>
+```
+
+## Phase 5-B: gated non-stream RelayCTX Unpack — complete
 
 Implemented:
 
 - enable/apply/dry-run/max-size gates,
-- supported successful non-stream assistant-content mutation only,
-- unrelated provider fields preserved,
-- direct node-result recording,
-- no streaming mutation or persistence.
+- Unpack after successful non-stream backend JSON decode,
+- unsupported or disabled paths preserve the provider response,
+- apply changes only the supported assistant content field,
+- response IDs, model metadata, usage, finish reasons, and unrelated provider fields remain preserved,
+- accepted updates remain detached request-local candidates,
+- direct node-result recording at the execution boundary,
+- no persistence, RelayRUN route change, or streaming mutation.
+
+Supported runtime shape remains deliberately narrow:
+
+```text
+successful non-stream JSON
+  + exactly one choice
+  + assistant role
+  + string content
+```
 
 ## Phase 5-C: managed-route client authority — in progress
 
-Phase 5-C separates correctness from instruction-cache optimization.
+Phase 5-C closes when the managed-route history-authority correctness boundary is safely applied. Cache projection and write remain a deferred optimization track.
 
 ### Phase 5-C1: client-message canonicalization — complete as dry-run
 
 Implemented:
 
-- managed-route content-free inspection,
+- managed-route-only content-free inspection,
 - latest valid user-turn detection,
-- text/multimodal shape classification,
-- prior-history and instruction counts,
-- active tool-transaction preservation block,
+- text and multimodal shape classification,
+- system/developer instruction counts,
+- prior-history counts without copying message content,
+- active tool-transaction detection and preservation block,
+- `canonicalization_candidate_ready` decision,
 - content-free node result.
 
 No payload mutation occurs in this phase.
@@ -206,9 +285,11 @@ Backend-forward rule:
 
 ```text
 explicit actual apply + managed route
-  + missing / blocked / non-applied result
+  + missing / blocked / skipped / ready-only / otherwise non-applied result
   -> block backend forward
 ```
+
+Runtime exceptions are projected into a blocked result with a bounded reason. There is no separate current `failed` status in `client_history_exclusion_apply.v0`.
 
 This slice does not implement:
 
@@ -223,11 +304,14 @@ This slice does not implement:
 
 Implemented:
 
-- current instruction extraction,
+- current system/developer instruction extraction,
 - request-local identity/fingerprint preparation,
 - route/character-scoped cache identity,
+- runtime-private content-bearing identity storage in `PipelineContext`,
 - bounded file-backed read-only lookup,
-- content-free hit/miss/blocked evidence.
+- hit/miss/blocked/skipped outcomes,
+- dependency-aware identity preparation,
+- content-free evidence excluding hashes, paths, raw instructions, cache entries, and scene content.
 
 Not implemented:
 
@@ -238,14 +322,16 @@ Not implemented:
 
 Implemented:
 
-- typed request-local preflight,
+- typed request-local preflight over the original payload,
 - current-user message candidate,
-- history exclusion counts,
+- history-exclusion counts,
 - pass-through exemption,
 - active transaction block,
-- instruction-resolution mode classification,
+- cache-hit/cache-miss/no-instruction resolution classification,
+- raw-instruction exclusion candidate state,
 - ready/pending/blocked/skipped outcomes,
-- content-free projection.
+- content-free projection,
+- fixed `payload_mutation_applied=false`.
 
 Preflight does not itself mutate `messages`.
 
@@ -291,110 +377,251 @@ Cache projection, typed parsing, and cache write are not completion gates.
 
 ## Phase 5-D: pre-stream hardening — planned
 
-### 5-D1 CJK-aware token estimation
+### Phase 5-D1: CJK-aware token estimation
+
+Required work:
 
 - replace the single `chars_per_token=4` assumption with deterministic bounded estimation,
 - distinguish CJK-heavy and ASCII-heavy input,
 - use conservative rounding,
-- cover Japanese, ASCII, mixed text, emoji, Markdown, and code.
+- avoid claiming tokenizer-exact counts,
+- cover Japanese, ASCII, mixed-language text, emoji, punctuation, Markdown, and code,
+- protect token-budget truncation from underestimating CJK-heavy input.
 
-### 5-D2 lazy RelayRUN recovery detail
+A runtime-specific tokenizer may be added later but is not required for this phase.
 
-- keep a minimal ordinary-path summary,
-- build full recovery detail only when configuration, node state, persistence, or full diagnostics requires it,
-- preserve current fail-closed and content-free contracts,
-- avoid visible behavior changes.
+### Phase 5-D2: lazy RelayRUN recovery-detail construction
 
-## Phase 5.5: Stream Unpack and segmentation — planned
+Required work:
+
+- keep the minimal request/run/node/backend summary available on the ordinary path,
+- do not eagerly construct the full recovery artifact chain when every recovery feature is disabled and no recovery-relevant state exists,
+- construct recovery detail when any of these is true:
+  - a recovery-related config is enabled,
+  - a node is failed, blocked, or waiting for the user in a recovery-relevant way,
+  - checkpoint persistence requires the detail,
+  - explicit full trace diagnostics require the detail,
+- preserve existing fail-closed, content-free, and default-off contracts,
+- avoid visible response changes,
+- add smoke coverage for both the minimal ordinary path and expanded recovery path.
+
+## Phase 5.5: Stream Unpack and output segmentation — planned
+
+Start after Phase 5-C4a and Phase 5-D are stable. Phase 5-C4b and Phase 5-C5 are not prerequisites.
 
 Planned:
 
-- stream parser with non-stream-equivalent marker rules,
-- early safe visible chunk forwarding,
-- trailing marker buffering,
+- streaming token/chunk parsing with non-stream-equivalent semantics,
+- early forwarding of safe visible chunks,
+- trailing sentinel buffering to prevent partial internal-marker leakage,
+- fail-closed marker suppression,
+- terminal internal candidate collection,
 - incomplete candidate blocking,
-- cancellation/disconnect handling,
+- partial-stream cancellation and disconnect handling,
 - duplicate-emission prevention,
-- TTS-safe segmentation,
-- content-free stream diagnostics.
+- TTS-safe output segmentation,
+- chunk classification for code, URLs, JSON/YAML, tables, commands, paths, quotes, and parenthetical notes,
+- lightweight non-meaning-changing Return-side RelayEMO hints,
+- content-free stream diagnostics and node results.
 
-RelayLM owns safe visible segment boundaries. External TTS and avatar engines remain external consumers.
+RelayLM's output contract should expose safe visible segments and segment metadata. External TTS and avatar runtimes remain integration consumers rather than RelayLM-owned model runtimes.
 
-## External realtime validation — planned
+## External realtime validation — planned after Phase 5.5
 
-Validate:
+Validate the real-time path without moving frontend, TTS, or avatar ownership into RelayLM:
 
 ```text
 frontend
-  -> RelayLM stream
-  -> backend
+  -> RelayLM streaming endpoint
+  -> OpenAI-compatible backend
   -> safe visible segments
-  -> external TTS/avatar adapters
+  -> external TTS adapter
+  -> external avatar/runtime consumer
 ```
 
-Cover first-speech latency, marker non-leakage, ordering, cancellation, and fallback behavior.
+Validation should cover:
 
-## Phase 6: node-result routing — planned
+- first-token latency,
+- first-sentence latency,
+- first-TTS-enqueue latency,
+- marker non-leakage,
+- segment ordering,
+- cancellation/disconnect,
+- duplicate prevention,
+- ordinary fallback behavior.
 
-- promote selected node outcomes into continue/skip/short-circuit/fallback/blocked routes,
-- implement safe quick-clarification apply,
-- let RelayRUN consume results incrementally,
-- preserve idempotency and stream failure rules.
+## Phase 6: failure-route table and node-result handling — planned
 
-## Phase 7: RelayREF — planned
+- promote selected PipelineNodeResult outcomes into explicit runtime routes,
+- map reasons to continue/skip/short-circuit/fallback/blocked/failed orchestration states,
+- let RelayRUN consume node results incrementally,
+- implement safe RelayINT quick-clarification apply through response adapters,
+- preserve compatibility with per-node checkpoints,
+- include stream and output-adapter failure routes,
+- preserve idempotency and duplicate-prevention rules.
+
+## Phase 7: lightweight RelayREF observer — planned
 
 - diagnostics-only post-generation checks,
 - empty/invalid output detection,
-- internal marker and diagnostic leakage detection,
+- internal-marker and diagnostic leakage detection,
 - bounded scene/policy mismatch observations,
-- no default regeneration or output replacement.
+- observations for Output-side RelaySCN and RelayRUN,
+- no default regeneration or visible-output replacement.
 
-## Phase 8: output-side RelaySCN — planned
+## Phase 8: Output-side RelaySCN — planned
 
 - next-turn transition evaluation,
-- recovery and persistence-block observations,
-- immediate blocking only for invalid/leaking/safety-critical cases,
+- recovery hints and persistence-block reasons,
+- REF/Unpack observation consumption,
+- normal transitions as next-turn state,
+- immediate blocking limited to leakage, invalid output, safety-critical, or recovery-critical cases,
 - no general output rewriting.
 
 ## Phase 9: RelayRUN cross-cutting orchestration — planned
 
-- per-node lifecycle status,
+- per-node started/completed/skipped/blocked/failed reporting,
 - persistent checkpoints and resume metadata,
 - timeout/retry/skip/fallback policy,
-- stream partial-output state,
-- waiting-user contracts,
-- duplicate prevention,
-- normal output-pipeline routing for visible recovery text.
+- stream state and partial-output handling,
+- waiting-user action contracts,
+- idempotency and duplicate prevention,
+- semantic-neutral runtime orchestration,
+- visible recovery text routed through the normal output pipeline.
 
 ## Phase 10: RelaySLP separation — planned
 
-- governed source evidence,
-- deferred memory/SOUL candidate extraction,
-- safety and scope classification,
-- hold/reject/proposal states,
-- gated persistence,
+- memory/SOUL compilation outside the normal response path,
+- governed raw evidence and lineage,
+- retrieval reads separated from SLP writes,
+- safety classification and hold/reject/proposal states,
+- persistence and approval gates,
 - no direct normal-turn MEM or SOUL mutation.
 
 ## Deferred optimization track
 
-### Phase 5-C4b cache-hit RelaySCN projection
+### Phase 5-C4b: cache-hit RelaySCN projection — deferred
 
-- validate exact schema/policy/route/character/version scope,
-- inject only allowlisted scene-state projection,
-- never inject raw cached instructions or opaque bodies,
-- keep visible response independent from cache availability.
+Future work:
 
-### Phase 5-C5 typed instruction artifact and cache write
+- validate cache entries against exact schema, policy, route, character, and version scope,
+- inject only an allowlisted RelaySCN state projection,
+- never inject raw cached instructions or opaque cache bodies,
+- keep miss, invalid, stale, and unsupported entries fail closed,
+- keep visible response delivery independent from cache availability.
 
-- use a separate schema such as `client_instruction_parse.v1`,
+### Phase 5-C5: typed client-instruction artifact and cache write — deferred
+
+Future contract:
+
+```text
+cache miss
+  -> escaped low-trust instruction evidence
+  -> Main LLM visible response + separately versioned control artifact
+  -> RelayCTX visible/internal separation
+  -> strict client-instruction schema and policy validation
+  -> normalized RelaySCN cache candidate
+  -> independent cache-write gate
+```
+
+Constraints:
+
+- do not overload `relayctx_working_update.v0`,
+- use a separately versioned artifact such as `client_instruction_parse.v1`,
 - accept only allowlisted scene role/context/constraint fields,
-- block runtime, tool, safety, persistence, and persona overrides,
-- keep durable persona content proposal-only,
-- write only after schema/policy/scope/provenance validation,
+- block runtime-policy, tool-authority, safety, persistence, and persona-core override attempts,
+- keep durable persona fragments as proposals only,
+- keep visible-response delivery independent from cache-write success,
+- bound retries and avoid indefinite reparsing,
+- write cache only after schema, policy, scope, and provenance validation,
 - never mutate RelaySOUL from normal chat.
+
+## RelaySOUL posture during core-output phases
+
+Until Stream Unpack and the external realtime path are stable:
+
+- preserve existing RelaySOUL contracts, approval gates, revision rules, and rollback design,
+- allow bounded correctness and safety fixes,
+- keep current `mvp-soul-0` five-file behavior labeled as compatibility,
+- do not expand normal-chat runtime persona mutation,
+- do not enable actual apply, rollback, or persistence execution,
+- do not make new RelaySOUL governance work a dependency of Phase 5.5.
+
+## Failure-route principles
+
+### RelayINT clarification
+
+```text
+RelayINT clarification decision
+  -> compatibility / scene gates
+  -> explicit short-circuit route when enabled
+  -> RelayRUN state and artifact
+  -> normal output pipeline
+```
+
+A user-visible clarification must not bypass the ordinary output policy and adapter path.
+
+### RelayMEM retrieval blocked or empty
+
+```text
+retrieval miss / empty / blocked
+  -> CTX Repack without the blocked memory block
+  -> record bounded reasons
+  -> continue when the request is not memory-dependent
+```
+
+Retrieval remains read-only and does not repair itself by writing memory.
+
+### RelayCTX Repack token pressure
+
+Degrade in this order:
+
+1. remove diagnostics/trace-only context,
+2. reduce retrieved memory,
+3. reduce optional short-term CTX hints,
+4. shorten selected conversation context,
+5. block or use an approved authority-safe managed fallback when no valid payload remains.
+
+Raw client history is not the terminal fallback for a managed route.
+
+### RelayCTX Unpack failure
+
+```text
+preserve safely recoverable visible output
+block invalid internal candidates
+record content-free diagnostics
+never expose internal markers
+```
+
+### Partial stream/output-adapter failure
+
+```text
+preserve safe emitted chunks
+block incomplete candidates
+record partial-stream state
+avoid duplicate replay
+prepare recovery when required
+```
+
+### RelayREF warning
+
+RelayREF findings remain observations unless an explicit output gate handles invalid output, leakage, or a safety-critical mismatch.
 
 ## Immediate next boundary
 
-The next implementation slice is the instruction-bearing remainder of Phase 5-C4a.
+The next implementation slice is the instruction-bearing remainder of **Phase 5-C4a**.
 
-Keep it separate from cache optimization, Stream Unpack, RelayREF, RelaySOUL work, and full RelayRUN routing.
+Keep it small:
+
+```text
+validated client-message evidence
+  + history-exclusion preflight
+  -> dedicated managed-route apply helper
+  -> current-turn-only client message preservation
+  -> RelayLM-owned context preservation
+  -> at most one escaped low-trust current-instruction evidence block
+  -> PipelineContext payload replacement reason
+  -> content-free node result and smoke coverage
+```
+
+Do not combine Phase 5-C4a with cache-hit projection, typed instruction parsing, cache write, RelaySOUL proposals, Stream Unpack, RelayREF, or full RelayRUN routing.
