@@ -31,12 +31,14 @@ Use these docs to understand the RelayLM pipeline, responsibility boundaries, an
 
 Canonical precedence and legacy-term handling are defined in the [architecture docs index](architecture/README.md). When documents disagree, `pipeline_responsibility_design.md` is the source of truth for component names and ownership, while `pipeline_implementation_plan.md` is the source of truth for phase status.
 
-The list below highlights the primary architecture entry points. Use the [architecture docs index](architecture/README.md) as the complete catalog of active architecture documents and the archive boundary.
+The list below highlights the primary architecture entry points. Use the [architecture docs index](architecture/README.md) as the complete catalog of active architecture documents, runtime orchestration designs, compatibility redirects, and the archive boundary.
 
 - [Architecture docs index](architecture/README.md)
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — canonical naming and responsibility source
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — implementation order and phase status
 - [Runtime architecture](architecture/runtime_architecture.md)
+- [Runtime compile gate design](architecture/runtime_compile_gate_design.md)
+- [RelayRUN runtime checkpoint design](architecture/relayrun_runtime_checkpoint_design.md)
 - [Runtime operational requirements](architecture/runtime_operational_requirements.md)
 - [AI character product principles](architecture/ai_character_product_principles.md)
 - [AI VTuber pipeline profile](architecture/ai_vtuber_pipeline_profile.md)
@@ -45,7 +47,7 @@ The list below highlights the primary architecture entry points. Use the [archit
 - [RelayMEM MVP design](architecture/relaymem_mvp_design.md)
 - [RelayMEM SLP execution design](architecture/relaymem_slp_execution_design.md)
 - [RelayMEM retrieval execution design](architecture/relaymem_retrieval_execution_design.md)
-- [RelayEMO return-side style adapter design](architecture/relayemo_return_side_style_adapter_design.md)
+- [RelayEMO return-side expression design](architecture/relayemo_return_side_expression_design.md)
 - [Historical architecture design archive](architecture/archive/README.md)
 
 ## MVP summaries

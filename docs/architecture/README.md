@@ -2,7 +2,7 @@
 
 This page is the complete active index for RelayLM architecture and pipeline design documents.
 
-The main architecture, profile-specific architecture, context/scene architecture, and module-responsibility architecture documents are housed here. Historical or superseded design rationale is indexed separately under `archive/`.
+The main architecture, profile-specific architecture, context/scene architecture, runtime orchestration, and module-responsibility documents are housed here. Historical or superseded design rationale is indexed separately under `archive/`. Short files retained at old paths are compatibility redirects, not active specifications.
 
 ## Canonical precedence
 
@@ -33,6 +33,7 @@ Historical and superseded documents are collected under [`archive/`](archive/REA
 - [Client history authority contract](client_history_authority_contract.md)
 - [Client instruction authority contract](client_instruction_authority_contract.md)
 - [Runtime architecture](runtime_architecture.md)
+- [Runtime compile gate design](runtime_compile_gate_design.md)
 - [Runtime operational requirements](runtime_operational_requirements.md)
 - [AI character product principles](ai_character_product_principles.md)
 
@@ -43,6 +44,13 @@ Client-provided messages are request evidence, not backend context.
 RelayLM extracts the current turn and current instruction evidence,
 then reconstructs the backend payload from RelayLM-owned state.
 ```
+
+## Runtime orchestration
+
+- [RelayRUN runtime checkpoint design](relayrun_runtime_checkpoint_design.md) — checkpoints, node state, resume preflight, recovery transitions, waiting-user state, and content-free persistence
+- [Runtime compile gate design](runtime_compile_gate_design.md) — request-local compiled-context apply/shadow/fallback decision boundary
+
+RelayRUN orchestrates these paths but does not own scene, intent, memory, persona, or output semantics.
 
 ## Profile-specific architecture
 
@@ -63,7 +71,20 @@ then reconstructs the backend payload from RelayLM-owned state.
 - [RelayMEM MVP design](relaymem_mvp_design.md)
 - [RelayMEM SLP execution design](relaymem_slp_execution_design.md)
 - [RelayMEM retrieval execution design](relaymem_retrieval_execution_design.md)
-- [RelayEMO return-side style adapter design](relayemo_return_side_style_adapter_design.md)
+- [RelayEMO return-side expression design](relayemo_return_side_expression_design.md)
+
+## Legacy compatibility redirects
+
+The following files remain only to preserve historical or external links. They are not active architecture specifications, and current documents must link directly to the canonical replacements instead of chaining through these redirects.
+
+- `relayctx_wake_loop_design.md`
+- `relayref_relayslp_mvp_design.md`
+- `persona_specialized_proxy_design.md`
+- `vtuber_memory_proxy_design.md`
+- `product_runtime_hardening.md`
+- `relayemo_return_side_style_adapter_design.md`
+- `../relayrun_runtime_checkpoint_design.md`
+- `../runtime_compile_gate_design.md`
 
 ## Historical design archive
 
@@ -78,6 +99,7 @@ then reconstructs the backend payload from RelayLM-owned state.
 
 - Create new current architecture documents directly under `docs/architecture/` and link them from the appropriate section of this index.
 - Move superseded design rationale to `docs/architecture/archive/` only after its unique principles are migrated to current owner documents.
+- Keep a short redirect at an old path only when external or historical links justify compatibility; mark it explicitly and do not link to it from current documents.
 - Keep implementation status in [Pipeline implementation plan](pipeline_implementation_plan.md) and the concise current-state summary in [Project Status](../PROJECT_STATUS.md), rather than duplicating transient status in stable responsibility documents.
 - Keep contracts, smoke runbooks, MVP summaries, and RelaySOUL-specific documents in their dedicated directories.
 - Treat archived architecture and historical MVP documents as immutable snapshots except for broken links or explicit factual corrections.
