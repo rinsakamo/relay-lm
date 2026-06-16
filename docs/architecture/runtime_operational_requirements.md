@@ -112,8 +112,9 @@ The runtime baseline supports:
 
 Tool calls, structured output, vision/multimodal content, and other compatibility-sensitive request shapes must be preserved or explicitly blocked by preflight. They must not be casually repacked as ordinary text.
 
-The dedicated integration and authority documents define the detailed frontend boundary:
+The primary local setup and dedicated integration/authority documents define the detailed frontend boundary:
 
+- [OpenWebUI + LM Studio MVP](../openwebui_lmstudio_mvp.md),
 - [Open-LLM-VTuber Integration Design](open_llm_vtuber_integration.md),
 - [Client History Authority Contract](client_history_authority_contract.md),
 - [Client Instruction Authority Contract](client_instruction_authority_contract.md).
