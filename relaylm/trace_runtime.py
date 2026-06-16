@@ -284,7 +284,11 @@ def extract_response_text(body: Any) -> str | None:
         content = message.get("content")
         if isinstance(content, str):
             return content
-        if "content" in message:
+        if (
+            "content" in message
+            or "tool_calls" in message
+            or "function_call" in message
+        ):
             return ""
     text = first.get("text")
     return text if isinstance(text, str) else None
