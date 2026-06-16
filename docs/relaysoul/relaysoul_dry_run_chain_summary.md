@@ -2,102 +2,162 @@
 
 ## Scope
 
-This document summarizes the current RelaySOUL dry-run chain before real apply/rollback.
+This document summarizes the current RelaySOUL dry-run/preflight chain before real persona-source apply or rollback.
 
-- Focus: persona source calibration pipeline
-- Output: content-free artifacts and metadata-only safety gates
-- Boundary: dry-run and contract validation only
+The chain covers only approved durable persona sources:
+
+- `SOUL.md`,
+- `OUTPUT_POLICY.md`,
+- `RELATIONSHIP_ANCHOR.md`.
+
+Scene state, affect state, RelayCTX working state, and RelayMEM compiled memory are outside RelaySOUL revision ownership.
+
+Current runtime status remains defined by [Project Status](../PROJECT_STATUS.md).
 
 ## Pipeline
 
 ```text
-feedback/examples
+protected calibration evidence
+  -> target-source classification
   -> patch prompt dry-run
   -> patch candidate parser dry-run
-  -> temp revision compile dry-run
-  -> revision history store dry-run
+  -> temporary persona revision compile dry-run
+  -> revision history metadata dry-run
   -> approval package dry-run
   -> approval decision dry-run
   -> apply plan dry-run
   -> rollback plan dry-run
   -> persistence classification
-  -> storage envelope CLI dry-run
-  -> storage path planner dry-run
-  -> storage index dry-run
-  -> apply execution preflight dry-run
-  -> rollback execution preflight dry-run
-  -> storage writer preflight dry-run
-  -> persistence execution preflight dry-run
-  -> future actual persistence / apply / rollback
+  -> storage envelope/path/index dry-run
+  -> apply/rollback/storage-writer preflight
+  -> future explicit approved persona persistence
 ```
 
-## Implemented scripts and artifact support
+A candidate for scene, affect, short-term context, or memory is rerouted/rejected before the RelaySOUL patch chain.
 
-- `scripts/relaylm_relaysoul_patch_prompt_dry_run.py`
-- `scripts/relaylm_relaysoul_patch_candidate_dry_run.py`
-- `scripts/relaylm_relaysoul_temp_revision_compile_dry_run.py`
-- `scripts/relaylm_relaysoul_revision_history_store_dry_run.py`
-- `scripts/relaylm_relaysoul_approval_package_dry_run.py`
-- `scripts/relaylm_relaysoul_approval_decision_dry_run.py`
-- `scripts/relaylm_relaysoul_apply_plan_dry_run.py`
-- `scripts/relaylm_relaysoul_rollback_plan_dry_run.py`
-- `scripts/relaylm_relaysoul_storage_envelope_dry_run.py`
-- `scripts/relaylm_relaysoul_storage_path_plan_dry_run.py`
-- `scripts/relaylm_relaysoul_storage_index_dry_run.py`
-- `scripts/relaylm_relaysoul_apply_execution_preflight_dry_run.py`
-- `scripts/relaylm_relaysoul_rollback_execution_preflight_dry_run.py`
-- `scripts/relaylm_relaysoul_storage_writer_preflight_dry_run.py`
-- `scripts/relaylm_relaysoul_persistence_execution_preflight_dry_run.py`
-- `relaylm/relaysoul_persistence.py` (includes persistence classification + envelope helper support)
+## Artifact domains
+
+The chain does not make every artifact content-free.
+
+### Protected content-bearing inputs/intermediates
+
+May include:
+
+- preferred/rejected response samples,
+- freeform feedback,
+- current persona-source bodies,
+- patch prompt and patch text,
+- target-renderer sample output,
+- detailed patch rationale.
+
+These remain in an explicit protected calibration domain and must not be copied into generic runtime trace or content-free revision metadata.
+
+### Content-free operational artifacts
+
+May include:
+
+- evidence/candidate/revision IDs,
+- mode,
+- target source class,
+- evidence count,
+- approval state,
+- risk/budget classes,
+- stable-prefix changed boolean,
+- compile/apply/rollback readiness/status,
+- storage-plan classes,
+- blocking/warning reason IDs,
+- `content_free: true`.
 
 ## Safety invariants
 
-- no model API call inside these dry-runs
-- no real persona file mutation
-- no patch apply
-- no rollback execution
-- no actual persistence / DB write
-- no storage path creation
-- no storage index append
-- no runtime behavior change
-- no backend forwarding change
-- no persona body / memory body / patch_text / prompt_text in persisted metadata artifacts
-- `content_free: true` where applicable
+- no hidden model/runtime call unless the specific dry-run explicitly defines one,
+- no real persona file mutation,
+- no patch apply,
+- no rollback execution,
+- no persistence/index/path creation,
+- no runtime forwarding behavior change,
+- no normal-chat persona apply,
+- no `SCENE_STATE.md` or `STABLE_MEMORY_SUMMARY.md` persona target,
+- no persona/memory/patch/prompt/response/feedback body in content-free metadata,
+- no client system prompt copied into RelaySOUL.
 
-## RelaySOUL vs RelayLM roles
+## Mode posture
 
-- **RelaySOUL**
-  - persona calibration inputs
-  - patch proposal shaping and normalization
-  - temporary revision metadata
-  - approval package generation
-- **RelayLM**
-  - compiler and diagnostics surface
-  - persistence contract validation helpers
-  - runtime boundary enforcement
+```text
+character_creation
+  broad allowed persona targets
+  explicit approval / compile / rollback still required
 
-Current boundary remains dry-run and contract-only.
+calibration
+  prefer OUTPUT_POLICY / RELATIONSHIP_ANCHOR
+  SOUL requires durable-identity justification
+
+normal_chat
+  proposal-only
+  apply blocked for all persona sources
+```
+
+## Ownership
+
+### RelaySOUL
+
+- protected persona calibration evidence,
+- target-source classification,
+- persona patch candidate shaping,
+- temporary persona revision metadata,
+- approval/apply/rollback planning,
+- durable persona revision lineage.
+
+### RelayLM runtime/compiler
+
+- compile dry-run against the configured target renderer,
+- token/source-budget diagnostics,
+- stable-prefix impact calculation,
+- compatibility and runtime-boundary validation,
+- content-free node/trace projections.
+
+### Other component routing
+
+```text
+scene candidate       -> RelaySCN
+current affect        -> RelayEMO
+short-term continuity -> RelayCTX
+memory candidate      -> RelaySLP / RelayMEM
+```
+
+## Implemented dry-run/preflight support
+
+The repository contains scripts and helpers for patch prompting/parsing, temporary revision compilation, revision history, approval packages/decisions, apply/rollback planning, storage planning/indexing, and persistence/apply/rollback preflight.
+
+The exact current inventory and next implementation boundary should be read from [Project Status](../PROJECT_STATUS.md) and implementation history rather than maintained as a competing roadmap here.
 
 ## Why this matters
 
-- Supports fast persona/SOUL iteration with visible audit/rollback lineage.
-- Keeps a clear path for future explicit user approval UI.
-- Prevents hidden persona mutation during experimentation.
-- Exposes oversized SOUL/OUTPUT_POLICY changes via compile/budget/approval/persistence gates.
+- prevents hidden persona mutation,
+- keeps persona revisions attributable and reversible,
+- separates protected calibration content from content-free operational metadata,
+- blocks scene/memory/affect ownership drift,
+- exposes source-budget and renderer compatibility before approval,
+- preserves normal-chat stability.
 
 ## Current non-goals
 
-- real patch apply
-- automatic SOUL rewrite
-- rollback execution
-- DB-backed revision store
-- runtime attachment
-- model-call orchestration
-- unsafe/adult/persona body examples
+- real persona patch apply from this summary,
+- automatic SOUL/OUTPUT_POLICY/RELATIONSHIP mutation,
+- normal-chat apply,
+- scene or memory persistence through RelaySOUL,
+- rollback execution,
+- DB-backed calibration storage,
+- generic runtime trace containing protected evidence.
 
-## Next phase options
+## Summary
 
-- apply execution gate design
-- rollback execution gate design
-- storage writer gate design
-- later only: real persistence writer / real apply / real rollback with explicit approval and fail-closed checks
+```text
+protected explicit persona feedback
+  -> dry-run persona candidate/revision chain
+  -> content-free readiness projections
+  -> future explicit approved apply/rollback
+
+non-persona state
+  -> routed to its owning component
+```
