@@ -2,26 +2,31 @@
 
 ## Scope
 
-This document summarizes the current RelaySOUL dry-run/preflight chain before real persona-source apply or rollback.
-
-The chain covers only approved durable persona sources:
-
-- `SOUL.md`,
-- `OUTPUT_POLICY.md`,
-- `RELATIONSHIP_ANCHOR.md`.
-
-Scene state, affect state, RelayCTX working state, and RelayMEM compiled memory are outside RelaySOUL revision ownership.
+This document summarizes the current RelaySOUL dry-run/preflight chain and separates it from the target durable-persona ownership model.
 
 Current runtime status remains defined by [Project Status](../PROJECT_STATUS.md).
 
-## Pipeline
+## Current implemented chain: `mvp-soul-0`
+
+The current dry-run/tooling chain supports these canonical target files:
+
+```text
+SOUL.md
+OUTPUT_POLICY.md
+RELATIONSHIP_ANCHOR.md
+STABLE_MEMORY_SUMMARY.md
+SCENE_STATE.md
+```
+
+This 5-file allowlist is historical implementation compatibility. It does not represent the desired final ownership boundary.
+
+The current chain is:
 
 ```text
 protected calibration evidence
-  -> target-source classification
   -> patch prompt dry-run
   -> patch candidate parser dry-run
-  -> temporary persona revision compile dry-run
+  -> temporary revision compile dry-run
   -> revision history metadata dry-run
   -> approval package dry-run
   -> approval decision dry-run
@@ -30,10 +35,46 @@ protected calibration evidence
   -> persistence classification
   -> storage envelope/path/index dry-run
   -> apply/rollback/storage-writer preflight
-  -> future explicit approved persona persistence
+  -> no real apply in the current dry-run chain
 ```
 
-A candidate for scene, affect, short-term context, or memory is rerouted/rejected before the RelaySOUL patch chain.
+Current scripts may:
+
+- include scene and stable-memory sources in patch prompts,
+- generate/accept `SCENE_STATE.md` and `STABLE_MEMORY_SUMMARY.md` targets,
+- block only `SOUL.md` in `normal_chat` at the revision-validator stage,
+- use `mvp-soul-0` field names and artifact shapes.
+
+Do not interpret those compatibility behaviors as final component ownership.
+
+## Target ownership model
+
+The target RelaySOUL chain should cover only:
+
+```text
+SOUL.md
+OUTPUT_POLICY.md
+RELATIONSHIP_ANCHOR.md
+```
+
+Target routing for other state:
+
+```text
+scene candidate       -> RelaySCN
+current affect        -> RelayEMO
+short-term continuity -> RelayCTX
+memory candidate      -> RelaySLP / RelayMEM
+```
+
+Target normal-chat behavior:
+
+```text
+normal_chat
+  -> proposal only
+  -> no durable persona apply
+```
+
+The docs-only Phase 3 PR does not implement this migration.
 
 ## Artifact domains
 
@@ -57,7 +98,7 @@ These remain in an explicit protected calibration domain and must not be copied 
 May include:
 
 - evidence/candidate/revision IDs,
-- mode,
+- mode when the schema carries it,
 - target source class,
 - evidence count,
 - approval state,
@@ -68,25 +109,47 @@ May include:
 - blocking/warning reason IDs,
 - `content_free: true`.
 
-## Safety invariants
+Current `mvp-soul-0` artifacts may use older field names or nested shapes. Consumers must follow the implemented schema version.
 
-- no hidden model/runtime call unless the specific dry-run explicitly defines one,
+## Current safety invariants
+
+- no model/runtime call unless a specific dry-run explicitly defines one,
 - no real persona file mutation,
 - no patch apply,
 - no rollback execution,
 - no persistence/index/path creation,
 - no runtime forwarding behavior change,
-- no normal-chat persona apply,
-- no `SCENE_STATE.md` or `STABLE_MEMORY_SUMMARY.md` persona target,
-- no persona/memory/patch/prompt/response/feedback body in content-free metadata,
-- no client system prompt copied into RelaySOUL.
+- no protected content in generic content-free metadata,
+- no client system prompt copied into approved RelaySOUL automatically.
 
-## Mode posture
+## Target safety invariants
+
+After migration:
+
+- no `SCENE_STATE.md` or `STABLE_MEMORY_SUMMARY.md` RelaySOUL target,
+- no normal-chat persona apply for any durable persona file,
+- mode propagated through candidate/revision/approval/apply/rollback stages,
+- typed protected candidates separated from content-free projections,
+- all target-file allowlists updated atomically,
+- examples and smoke tests migrated with the implementation.
+
+## Current versus target mode posture
+
+### Current `mvp-soul-0`
 
 ```text
 character_creation
-  broad allowed persona targets
-  explicit approval / compile / rollback still required
+calibration
+normal_chat
+```
+
+Current enforcement is partial; only `normal_chat + SOUL.md` is blocked by the central revision validator.
+
+### Target posture
+
+```text
+character_creation
+  approved persona targets after explicit approval / compile / rollback gates
 
 calibration
   prefer OUTPUT_POLICY / RELATIONSHIP_ANCHOR
@@ -94,12 +157,12 @@ calibration
 
 normal_chat
   proposal-only
-  apply blocked for all persona sources
+  apply blocked for all durable persona sources
 ```
 
 ## Ownership
 
-### RelaySOUL
+### RelaySOUL target ownership
 
 - protected persona calibration evidence,
 - target-source classification,
@@ -125,39 +188,50 @@ short-term continuity -> RelayCTX
 memory candidate      -> RelaySLP / RelayMEM
 ```
 
-## Implemented dry-run/preflight support
+## Required migration sequence
 
-The repository contains scripts and helpers for patch prompting/parsing, temporary revision compilation, revision history, approval packages/decisions, apply/rollback planning, storage planning/indexing, and persistence/apply/rollback preflight.
+A future implementation PR should update:
 
-The exact current inventory and next implementation boundary should be read from [Project Status](../PROJECT_STATUS.md) and implementation history rather than maintained as a competing roadmap here.
+1. patch-prompt source list and target rules,
+2. patch-candidate allowlist and schema,
+3. temporary revision compile inputs,
+4. revision metadata and normal-chat gate,
+5. approval package and decision,
+6. apply/rollback plans,
+7. persistence/storage preflight,
+8. examples and smoke tests,
+9. content-free projections,
+10. compatibility/version handling.
+
+No single stage should adopt the 3-file boundary while later stages still accept the legacy 5-file contract without an explicit migration layer.
 
 ## Why this matters
 
+- prevents docs from describing unimplemented contracts as current,
 - prevents hidden persona mutation,
 - keeps persona revisions attributable and reversible,
 - separates protected calibration content from content-free operational metadata,
-- blocks scene/memory/affect ownership drift,
-- exposes source-budget and renderer compatibility before approval,
-- preserves normal-chat stability.
+- blocks scene/memory/affect ownership drift in the target design,
+- preserves current tooling compatibility until migration is implemented.
 
-## Current non-goals
+## Non-goals
 
-- real persona patch apply from this summary,
-- automatic SOUL/OUTPUT_POLICY/RELATIONSHIP mutation,
-- normal-chat apply,
-- scene or memory persistence through RelaySOUL,
-- rollback execution,
-- DB-backed calibration storage,
-- generic runtime trace containing protected evidence.
+- no claim that target v1 is already implemented,
+- no real persona patch apply from this summary,
+- no scene or memory persistence through target RelaySOUL ownership,
+- no rollback execution,
+- no DB-backed calibration storage,
+- no generic runtime trace containing protected evidence.
 
 ## Summary
 
 ```text
-protected explicit persona feedback
-  -> dry-run persona candidate/revision chain
+current
+  mvp-soul-0 dry-run chain with legacy 5-file compatibility
+
+target
+  protected explicit persona feedback
+  -> 3-file RelaySOUL candidate/revision chain
   -> content-free readiness projections
   -> future explicit approved apply/rollback
-
-non-persona state
-  -> routed to its owning component
 ```
