@@ -47,12 +47,7 @@ def trace_runtime_event(
     response_present: bool = False,
     metadata: dict[str, Any] | None = None,
 ) -> bool:
-    """Append one content-free audit record when tracing is enabled.
-
-    Runtime producers pass only request/response shape and explicitly supported
-    audit artifacts. Unsupported RequestDiagnostics fields never enter the
-    projection boundary. This write API is intentionally shape-only.
-    """
+    """Append one content-free audit record when tracing is enabled."""
 
     pipeline_node_results = _consume_pipeline_node_results(diagnostics)
     if not config.trace.enabled or not config.trace.path:
@@ -82,8 +77,6 @@ def trace_runtime_event(
 def _supported_diagnostics_metadata(
     diagnostics: RequestDiagnostics,
 ) -> dict[str, object]:
-    """Return only artifacts with registered top-level projectors."""
-
     output: dict[str, object] = {}
     supported = (
         ("memory_source", diagnostics.memory_source),
@@ -257,8 +250,6 @@ def _move_existing_node_after(
     node_name: str,
     after_node_name: str,
 ) -> None:
-    """Move one already-recorded runtime node behind its semantic predecessor."""
-
     moving_index = next(
         (index for index, result in enumerate(node_results) if result.node_name == node_name),
         None,
@@ -278,7 +269,7 @@ def _move_existing_node_after(
 
 
 def extract_response_text(body: Any) -> str | None:
-    """Extract compact text from common OpenAI-compatible responses."""
+    """Extract text or an empty shape marker from the first response choice."""
 
     if not isinstance(body, dict):
         return None
@@ -293,5 +284,7 @@ def extract_response_text(body: Any) -> str | None:
         content = message.get("content")
         if isinstance(content, str):
             return content
+        if "content" in message:
+            return ""
     text = first.get("text")
     return text if isinstance(text, str) else None
