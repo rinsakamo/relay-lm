@@ -167,7 +167,7 @@ http://127.0.0.1:8090/v1
 
 現在のRelayLMは `/v1/responses` を実装していないため、Open Responsesは選択しません。
 
-Open-LLM-VTuberや別の互換frontendでは、OpenAI互換Chat Completionsのbase URLを同じendpointへ設定します。
+Open-LLM-VTuberや別の互換フロントエンドでは、OpenAI互換Chat CompletionsのベースURLを同じエンドポイントへ設定します。
 
 ### 5. 動作を確認
 
@@ -239,15 +239,15 @@ Out-of-band after-turn path:
 - ⚙️ [設定スキーマ](docs/config_schema.md)
 - 📜 [契約文書](docs/contracts/README.md)
 - 🧪 [Smoke testと検証](docs/smoke/README.md)
-- 🧬 [RelaySOUL設計とgate](docs/relaysoul/README.md)
-- 🗃️ [MVP summaryとmilestone履歴](docs/mvp/README.md)
+- 🧬 [RelaySOUL設計とゲート](docs/relaysoul/README.md)
+- 🗃️ [MVP概要とマイルストーン履歴](docs/mvp/README.md)
 
 ## 🔗 RelayKVとの関係
 
-[RelayKV](https://github.com/rinsakamo/relay-kv) は、隣接するruntime/KV-cache研究リポジトリです。RelayLMはruntime APIの一段上で、会話とcontextを扱うproxyです。
+[RelayKV](https://github.com/rinsakamo/relay-kv) は、隣接するランタイム・KVキャッシュ研究リポジトリです。RelayLMは、その1層上で会話とコンテキストを扱うプロキシです。
 
-RelayLMは、working-set選択、anchor/recent/retrieved分離、Persona Anchor KV、cache-aware layoutといったRelayKVの設計知見を活用できますが、初期製品ではengineのKV cacheを直接変更しません。
+RelayLMは、RelayKVのworking-set選択、anchor/recent/retrieved分離、Persona Anchor KV、cache-aware layoutといった設計知見を活用しますが、初期製品では推論エンジンのKVキャッシュを直接変更しません。
 
 ## 📄 ライセンス
 
-RelayLMは [Apache License 2.0](LICENSE) で提供されます。
+RelayLMは [Apache License 2.0](LICENSE) のもとで公開されています。
