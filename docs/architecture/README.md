@@ -1,35 +1,48 @@
 # RelayLM Architecture Docs
 
-This page is the complete active index for RelayLM architecture and pipeline design documents.
-
-The main architecture, profile-specific architecture, context/scene architecture, runtime orchestration, and module-responsibility documents are housed here. Historical or superseded design rationale is indexed separately under `archive/`. Short files retained at old paths are compatibility redirects, not active specifications.
+This is the active architecture index.
 
 ## Canonical precedence
 
-When architecture documents disagree, use this order:
+When documents disagree:
 
-1. [Pipeline responsibility design](pipeline_responsibility_design.md) for canonical component names, pipeline order, and responsibility ownership.
-2. [Pipeline implementation plan](pipeline_implementation_plan.md) for current phase status and implementation sequencing.
-3. Dedicated current module or contract documents for schema and module-specific details.
-4. Dated MVP and archived design documents as historical rationale only.
+1. [Pipeline Responsibility Design](pipeline_responsibility_design.md) — component names, ownership, and canonical target order.
+2. [Pipeline Implementation Plan](pipeline_implementation_plan.md) — current phase status and sequencing.
+3. Dedicated current module/contract documents — implemented schemas and bounded behavior.
+4. [Current / Target / Migration Guide](current_target_migration_guide.md) — interpretation of compatibility and target material.
+5. Archived and dated MVP documents — historical rationale only.
 
-In particular, current terminology fixes these boundaries:
+Standard labels:
 
 ```text
-RelayINT = input-side intent / ambiguity / clarification gate
-RelayREF = output-side diagnostics-only observer
-RelaySCN = scene and persistence policy
-RelayCTX Repack = backend input construction and token-budget application
-RelayRUN = runtime orchestration, fallback/recovery, checkpoints, trace, and lineage
-RelaySLP = out-of-band memory / SOUL compilation path
+Current implemented
+Current compatibility
+Target architecture
+Required migration
+Historical only
 ```
 
-Historical and superseded documents are collected under [`archive/`](archive/README.md). They preserve design rationale but do not define current ownership or implementation status.
+A v1 example is not a current wire contract unless an implemented producer, consumer, runtime position, and schema are named.
+
+## Canonical terminology
+
+```text
+RelaySCN = scene and persistence policy
+RelayEMO = request/session-local affect and transient expression hints
+RelayINT = input-side intent, ambiguity, clarification, retrieval decision
+RelayMEM Retrieval = synchronous read-only memory evidence
+RelayCTX Repack = backend input construction and token-budget application
+RelayCTX Unpack = visible/internal output separation
+RelayREF = post-generation diagnostics-only observer
+RelayRUN = orchestration, fallback/recovery, checkpoint, trace, lineage
+RelaySLP = deferred memory/SOUL candidate compiler
+```
 
 ## Pipeline architecture
 
-- [Pipeline responsibility design](pipeline_responsibility_design.md) — canonical responsibility and naming source
-- [Pipeline implementation plan](pipeline_implementation_plan.md) — implementation order and current phase status
+- [Pipeline responsibility design](pipeline_responsibility_design.md)
+- [Pipeline implementation plan](pipeline_implementation_plan.md)
+- [Current / Target / Migration Guide](current_target_migration_guide.md)
 - [Client history authority contract](client_history_authority_contract.md)
 - [Client instruction authority contract](client_instruction_authority_contract.md)
 - [Runtime architecture](runtime_architecture.md)
@@ -37,45 +50,58 @@ Historical and superseded documents are collected under [`archive/`](archive/REA
 - [Runtime operational requirements](runtime_operational_requirements.md)
 - [AI character product principles](ai_character_product_principles.md)
 
-The two client-authority contracts share one external boundary:
+Managed-route authority target:
 
 ```text
-Client-provided messages are request evidence, not backend context.
-RelayLM extracts the current turn and current instruction evidence,
-then reconstructs the backend payload from RelayLM-owned state.
+client messages = request evidence
+validated current turn + bounded instruction evidence
+  -> RelayLM-owned backend context
 ```
+
+Current implementation includes a narrow default-off no-instruction apply slice. Instruction-bearing managed apply remains incomplete; see [Project Status](../PROJECT_STATUS.md).
 
 ## Runtime orchestration
 
-- [RelayRUN runtime checkpoint design](relayrun_runtime_checkpoint_design.md) — checkpoints, node state, resume preflight, recovery transitions, waiting-user state, and content-free persistence
-- [Runtime compile gate design](runtime_compile_gate_design.md) — request-local compiled-context apply/shadow/fallback decision boundary
+- [Client History Exclusion Apply Forward Gate](client_history_exclusion_apply_forward_gate.md)
+- [Managed-route fallback authority contract](managed_route_fallback_contract.md)
+- [RelayRUN runtime checkpoint design](relayrun_runtime_checkpoint_design.md)
+- [Runtime compile gate design](runtime_compile_gate_design.md)
 
-RelayRUN orchestrates these paths but does not own scene, intent, memory, persona, or output semantics.
+`pass_through` is an explicit delegated route, not the generic terminal fallback for managed compilation.
 
-## Profile-specific architecture
-
-- [AI VTuber pipeline profile](ai_vtuber_pipeline_profile.md)
-- [Open-LLM-VTuber integration](open_llm_vtuber_integration.md)
-
-## Context and scene architecture
+## Context and scene
 
 - [Context packing design](context_packing_design.md)
 - [Safe SOUL / Scene / CTX compile chain](safe_soul_scene_ctx_compile_chain.md)
 - [Scene lifecycle design](scene_lifecycle_design.md)
-- [Scene-aware memory scope design](scene_memory_scope_design.md)
+- [Scene-aware memory scope current / target boundary](scene_memory_scope_current_target.md)
+- [Scene-aware memory scope detailed design](scene_memory_scope_design.md)
 - [RelaySCN MVP scene policy](relayscn_mvp_scene_policy.md)
 
-## Module responsibility docs
+General v1 scene examples are target schemas. Current RelaySCN uses v0 shapes and the current EMO-to-SCN compatibility order.
+
+## Memory and interpretation modules
 
 - [RelayINT MVP design](relayint_mvp_design.md)
-- [RelayMEM MVP design](relaymem_mvp_design.md)
-- [RelayMEM SLP execution design](relaymem_slp_execution_design.md)
+- [RelayMEM / RelaySLP current / target boundary](relaymem_slp_current_target.md)
+- [RelayMEM MVP detailed design](relaymem_mvp_design.md)
 - [RelayMEM retrieval execution design](relaymem_retrieval_execution_design.md)
+- [RelayMEM SLP detailed execution design](relaymem_slp_execution_design.md)
 - [RelayEMO return-side expression design](relayemo_return_side_expression_design.md)
+
+Current Retrieval v0 and dry-run/preflight SLP foundations must not be read as complete target memory apply.
+
+## Profile-specific architecture
+
+- [AI VTuber pipeline profile](ai_vtuber_pipeline_profile.md)
+- [Open-LLM-VTuber current / target boundary](open_llm_vtuber_current_target.md)
+- [Open-LLM-VTuber detailed integration design](open_llm_vtuber_integration.md)
+
+Open-LLM-VTuber is optional. Current streaming is primarily backend forwarding; the target Stream Unpack/output pipeline is planned.
 
 ## Legacy compatibility redirects
 
-The following files remain only to preserve historical or external links. They are not active architecture specifications, and current documents must link directly to the canonical replacements instead of chaining through these redirects.
+These files preserve old links and are not active specifications:
 
 - `relayctx_wake_loop_design.md`
 - `relayref_relayslp_mvp_design.md`
@@ -86,20 +112,17 @@ The following files remain only to preserve historical or external links. They a
 - `../relayrun_runtime_checkpoint_design.md`
 - `../runtime_compile_gate_design.md`
 
-## Historical design archive
+Current documents link directly to canonical files rather than through redirects.
+
+## Historical archive
 
 - [Archive index](archive/README.md)
-- [RelayCTX Wake Loop Design](archive/relayctx_wake_loop_design.md) — pre-RelayINT responsibility split
-- [RelayREF / RelaySLP MVP Design](archive/relayref_relayslp_mvp_design.md) — pre-RelayINT RelayREF definition
-- [Persona-Specialized Proxy Design](archive/persona_specialized_proxy_design.md) — early product and persona-proxy direction
-- [RelayLM VTuber Memory Proxy Design](archive/vtuber_memory_proxy_design.md) — early VTuber product-target direction
-- [Product Runtime Hardening](archive/product_runtime_hardening.md) — early cross-cutting MVP/runtime planning
 
 ## Maintenance rule
 
-- Create new current architecture documents directly under `docs/architecture/` and link them from the appropriate section of this index.
-- Move superseded design rationale to `docs/architecture/archive/` only after its unique principles are migrated to current owner documents.
-- Keep a short redirect at an old path only when external or historical links justify compatibility; mark it explicitly and do not link to it from current documents.
-- Keep implementation status in [Pipeline implementation plan](pipeline_implementation_plan.md) and the concise current-state summary in [Project Status](../PROJECT_STATUS.md), rather than duplicating transient status in stable responsibility documents.
-- Keep contracts, smoke runbooks, MVP summaries, and RelaySOUL-specific documents in their dedicated directories.
-- Treat archived architecture and historical MVP documents as immutable snapshots except for broken links or explicit factual corrections.
+- Keep transient status in `PROJECT_STATUS.md` and the implementation plan.
+- Label current, compatibility, target, and migration sections explicitly.
+- Name current schema and producer when a target schema is also shown.
+- Identify migration consumers and smoke coverage.
+- Preserve detailed target design when adding concise current/target boundary summaries.
+- Move superseded rationale to the archive only after unique intent is preserved.
