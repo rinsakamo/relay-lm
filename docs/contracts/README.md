@@ -16,7 +16,12 @@ Before treating a proposed schema as the current wire contract, use the [Current
 - [RelayRUN recovery response generator contract](relayrun_recovery_response_generator_contract.md)
   - related design: [RelayRUN Runtime Checkpoint Design](../architecture/relayrun_runtime_checkpoint_design.md)
 
-The current compile decision is the small `CompileApplyDecision` contract; proposed v1 plan/result/decision projections are target forms. The diagnostics-only recovery-response artifact is implemented, but generator execution and visible recovery output are not.
+Current compile behavior has two implemented surfaces:
+
+1. `relaylm.compile_gate.CompileApplyDecision`, which decides whether the current profile-compiler result is applied.
+2. The content-free `mvp-ctx-apply-0` artifact built by `relaylm.diagnostics.build_compile_decision_dry_run`, which records the current request-path `COMPILE_APPLY` or `COMPILE_DRY_RUN` diagnostics state.
+
+Proposed v1 plan/result/decision projections, route-authority typing, forwarded-payload-source typing, managed fallback, and complete `BLOCKED` behavior remain target forms. The diagnostics-only recovery-response artifact is implemented, but generator execution and visible recovery output are not.
 
 ## RelaySOUL contracts
 
