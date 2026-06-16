@@ -1,156 +1,134 @@
 # RelayMEM SLP Execution Design
 
-Date basis: 2026-05-31 JST
-
 ## Purpose
 
-RelayMEM SLP execution is the memory compile path. It reads raw evidence, extracts memory candidates, classifies safety, merges or holds candidates, lints memory, updates indexes/logs, and emits SOUL promotion candidates when needed.
+RelaySLP is RelayLM's deferred memory and knowledge compilation path.
 
-SLP improves memory quality. It is not responsible for producing the current answer.
+It reads governed evidence, extracts memory candidates, classifies safety, merges or holds candidates, lints memory, updates indexes/logs through explicit gates, and emits RelaySOUL proposal candidates when needed.
+
+RelaySLP improves future memory. It does not produce the current answer.
+
+Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
 
 ## Core principle
 
 ```text
-SLP edits or proposes memory changes.
-Retrieval only reads memory.
+RelayMEM Retrieval
+  synchronous and read-only for the current answer
+
+RelaySLP
+  deferred and write-capable only through persistence gates
+
+RelayREF
+  separate post-generation output observer
 ```
 
-SLP must remain gated because it can affect future behavior.
+RelaySLP is not RelayREF and must not replace RelayINT clarification or RelaySCN recovery.
 
 ## Inputs
 
-```text
-SLP input:
-- recent conversation raw log
-- user-explicit memory requests
-- ctx_working_update artifacts
-- existing MEM pages
-- existing index/log
-- scene_state and memory_scope from RelaySCN
-- optional RelaySOUL constraints
-- optional user-approved memory records
-```
+RelaySLP consumes governed evidence rather than arbitrary runtime dumps:
+
+- approved raw event references,
+- explicit user memory requests,
+- detached RelayCTX Unpack/update candidates after validation,
+- RelayINT intent/clarification summaries,
+- RelaySCN state/policy summaries,
+- RelayRUN checkpoint and recovery metadata,
+- RelayMEM retrieval summaries,
+- existing MEM pages/index/log,
+- approved RelaySOUL constraints,
+- user-approved memory records.
+
+Content-bearing source material remains in the protected memory/source domain. Default runtime trace projections are not sufficient SLP source data by themselves.
 
 ## Outputs
 
-```text
-SLP output:
-- memory candidates
-- proposed page updates
-- created/updated page list
-- held candidates
-- rejected candidates
-- lint diagnostics
-- relation updates
-- index/log updates
-- SOUL promotion candidates
-```
+RelaySLP may produce:
+
+- memory candidates,
+- proposed page updates,
+- held or rejected candidates,
+- relation updates,
+- lint findings,
+- index/log update plans,
+- applied page/index/log updates when gates pass,
+- RelaySOUL proposal candidates,
+- content-free operation projections.
+
+RelaySLP never emits user-visible answer, sleep, recovery, or resume text directly.
 
 ## Execution flow
 
 ```text
-raw event append
-↓
-candidate extraction
-↓
-memory_kind classification
-↓
-safety_scope classification
-↓
-existing MEM lookup
-↓
-merge / update / hold / reject
-↓
-relation typing
-↓
-lint
-↓
-index rebuild or patch
-↓
-log append
-↓
-optional apply gate
+governed source append/reference
+  -> candidate extraction
+  -> memory_kind classification
+  -> safety_scope classification
+  -> existing MEM lookup
+  -> merge / update / hold / reject
+  -> relation typing
+  -> lint
+  -> persistence preflight
+  -> RelaySCN / approval / idempotency gates
+  -> page/index/log apply or held plan
+  -> optional RelaySOUL proposal candidate
 ```
 
-## Step details
-
-### 1. Raw event append
-
-Store primary evidence before summarizing it.
-
-Examples:
-
-```text
-memory/raw/conversations/session_20260531_001.jsonl
-memory/raw/events/relaymem_slp_run_20260531_001.jsonl
-```
-
-Raw sources must remain available for later audit and recompile.
-
-### 2. Candidate extraction
-
-Extract possible memory candidates from recent raw sources.
+## Candidate extraction
 
 Candidate examples:
 
-- project state update
-- concept definition
-- design decision
-- user workflow preference
-- relation between concepts
-- contradiction candidate
-- stale claim candidate
-- SOUL promotion candidate
+- project state update,
+- concept definition,
+- design decision,
+- user workflow preference,
+- claim or contradiction,
+- relation between concepts,
+- stale/superseded record,
+- RelaySOUL proposal candidate.
 
-### 3. memory_kind classification
+Extraction does not authorize persistence.
 
-Classify each candidate.
+## `memory_kind`
 
-```yaml
-memory_kind:
-  - raw_event
-  - session_summary
-  - project_state
-  - concept
-  - claim
-  - preference
-  - relation
-  - soul_candidate
-  - rejected_or_blocked_candidate
-```
-
-### 4. safety_scope classification
-
-Classify update safety.
-
-```yaml
-safety_scope:
-  free_to_update:
-    action: apply may be allowed when apply gate is enabled
-
-  review_required:
-    action: hold candidate and report diagnostics
-
-  explicit_approval_required:
-    action: convert to SOUL proposal or approval artifact
-
-  never_auto_promote:
-    action: reject or store only as blocked diagnostic, not durable fact
-```
-
-Important rule:
+Recommended initial kinds:
 
 ```text
-Do not persist raw user_affect_estimate as a long-term fact.
+raw_event
+session_summary
+project_state
+concept
+claim
+preference
+relation
+soul_candidate
+rejected_or_blocked_candidate
 ```
 
-If affect-related information is useful, store only aggregate policy diagnostics or scene-level outcomes, and only when allowed by scene policy.
+## `safety_scope`
 
-### 5. Existing MEM lookup
+### `free_to_update`
 
-Before creating a new page, SLP checks existing pages and index aliases.
+May be applied only when all other gates pass.
 
-Possible decisions:
+### `review_required`
+
+Held for user/operator review.
+
+### `explicit_approval_required`
+
+Converted into an approval artifact or RelaySOUL proposal candidate. Never auto-applied.
+
+### `never_auto_promote`
+
+Rejected, blocked, or retained only as protected source evidence.
+
+Raw affect estimates, transient emotional inference, sensitive-attribute inference, and low-confidence personal inference belong here.
+
+## Existing-page decision
+
+Possible outcomes:
 
 ```text
 create_page
@@ -162,24 +140,14 @@ add_relation
 hold_for_review
 propose_soul_update
 reject
+no_change
 ```
 
-### 6. Merge / update / hold / reject
+Every apply decision should be deterministic or idempotency-protected.
 
-SLP should use conservative defaults.
+## Relation typing
 
-```text
-free_to_update -> apply or proposed_apply
-review_required -> hold
-explicit_approval_required -> SOUL proposal
-never_auto_promote -> reject or blocked diagnostic
-```
-
-### 7. Relation typing
-
-SLP should attach typed relations where possible.
-
-Suggested relation types:
+Useful relation types:
 
 ```text
 supports
@@ -195,253 +163,203 @@ candidate_for_soul
 blocked_from_soul
 ```
 
-### 8. Lint
+## Lint
 
-SLP lint checks memory quality.
+RelaySLP lint checks:
 
-Checks:
-
-- duplicate concepts
-- identity/alias split
-- stale claims
-- contradictory claims
-- orphan pages
-- untyped relation overuse
-- missing source references
-- unsafe promotion candidates
-- low-confidence personal inference
-
-### 9. Index update
-
-Update `memory/mem/index.md` and optional relation graph.
-
-Index entries should include:
-
-- page id
-- title
-- memory kind
-- summary
-- tags
-- aliases
-- safety scope
-- source level
-- stability
-- last updated
-
-### 10. Log append
-
-Append every SLP run to `memory/mem/log.md` or JSONL audit log.
-
-Log should include:
-
-- run id
-- input refs
-- candidates count
-- updated pages
-- held candidates
-- rejected candidates
-- SOUL candidates
-- diagnostics
+- duplicate concepts,
+- alias/identity splits,
+- stale or superseded claims,
+- unresolved contradictions,
+- orphan pages,
+- missing source lineage,
+- untyped relation overuse,
+- unsafe promotion candidates,
+- low-confidence personal inference,
+- namespace leakage,
+- non-idempotent update plans.
 
 ## Trigger modes
 
-### Manual SLP
+### Explicit/manual SLP
 
-Triggered when the user explicitly asks to remember, organize, document, or consolidate.
+Triggered by an explicit request to remember, organize, consolidate, document, forget, or review memory.
 
-```text
-trigger:
-  user_explicit_memory_request = true
-```
+### Turn-end deferred SLP
 
-### Turn-end dry-run SLP
+Runs after the normal response path and produces candidates or diagnostics without delaying first response/streaming.
 
-Triggered after a response to generate diagnostics and candidates without applying them.
+### Scheduled/background SLP
 
-```text
-trigger:
-  relaymem_slp_dry_run_enabled = true
-```
+May run under an operator-defined schedule when the runtime supports it. Scheduling is an orchestration concern; RelaySLP responsibility remains the same.
 
-### Sleep / Reflection SLP
+### Forced SLP/reanchor preparation
 
-Triggered when context pressure is high, the conversation is tangled, or the user permits a sleep/reflection cycle.
+A rare deferred path used after repeated structured-update failure, repeated contradiction, critical context pressure, or repeated inability to determine a safe continuation.
 
-```text
-trigger:
-  context_pressure_high = true
-  or user_requested_sleep = true
-  or unresolved_context_confusion = true
-```
+A single ambiguous reference, one failed retrieval, or moderate token pressure is insufficient.
 
-If confusion remains unresolved, RelaySCN may switch to recovery scene and block persistence.
+Do not use `Wake`, `Sleep`, or `Reflection` as formal component names. User-facing metaphors may exist in product presentation, but the technical contracts are normal-turn execution, deferred SLP, recovery, waiting-user, and reanchor.
 
-## Clarification, recovery, and true Sleep boundary
-
-Ordinary ambiguity is not an SLP trigger.
+## Clarification and recovery boundary
 
 ```text
-ambiguous reference
+ordinary ambiguous reference
   -> RelayINT clarification
   -> optional user confirmation
-  -> RelayMEM Retrieval only when the scope is explicit or confirmed
-```
+  -> RelayMEM Retrieval only after explicit/confirmed scope
 
-Scene-level confusion and wrong-continuation risk are handled before SLP apply:
-
-```text
 confusion / contradiction / task loss
   -> RelaySCN recovery policy
-  -> RelayRUN waiting-user / recovery orchestration
+  -> RelayRUN waiting-user/recovery orchestration
   -> persistence blocked
 ```
 
-SLP may inspect the resulting artifacts later, but it must not replace clarification or recovery with an automatic memory write.
+RelaySLP may inspect the resulting governed artifacts later. It must not replace clarification or recovery with an automatic write.
 
-A true forced sleep/reset path should remain rare. It is appropriate only when normal Wake continuation is unsafe, for example after repeated structured-update parse failures, repeated contradictions, critical context pressure, or repeated inability to determine a safe next action. A single ambiguous reference, one failed retrieval, or moderate token pressure is insufficient.
+## Persistence preconditions
 
-SLP input should be reconstructed from existing governed evidence:
+Persistence must be blocked when:
 
-- RelaySCN state/policy summaries,
-- RelayINT intent and clarification artifacts,
-- RelayCTX Unpack/update candidates,
-- RelayRUN checkpoints and recovery-state metadata,
-- RelayMEM retrieval summaries,
-- existing raw conversation logs.
+- RelaySCN policy blocks persistence,
+- scene is recovery, medical/safety, or formal-document under the active policy,
+- user confirmation is required,
+- candidate confidence/stability is insufficient,
+- contradiction remains unresolved,
+- source lineage is absent,
+- namespace scope is invalid,
+- the candidate requires review or explicit approval,
+- idempotency/revision preconditions fail,
+- the proposed write would mutate RelaySOUL directly.
 
-RelayLM should not make an extra Wake-time Main LLM call solely to manufacture SLP input. SLP also does not emit user-visible sleep, reflection, or resume text directly. Any visible recovery/sleep metaphor belongs to the normal output pipeline and scene/EMO policy, while actual resume remains blocked until the required user confirmation or reanchor is received.
+Threshold values belong in configuration and tests rather than duplicated architecture defaults.
 
-## SLP artifact contract
+## RelaySOUL proposal boundary
 
-Suggested dataclass shape:
-
-```python
-@dataclass
-class RelayMemSlpCandidate:
-    candidate_id: str
-    memory_kind: str
-    title: str
-    summary: str
-    source_refs: list[str]
-    target_page: str | None
-    relation_hints: list[dict]
-    source_level: str
-    stability: str
-    safety_scope: str
-    confidence: float
-    proposed_action: str
-    blocked_reason: str | None
+```text
+RelaySLP durable-persona candidate
+  -> candidate classification
+  -> RelaySCN proposal eligibility
+  -> explicit user/operator approval
+  -> RelaySOUL patch candidate
+  -> RelaySOUL compile/budget/safety validation
+  -> approved revision/persistence/rollback path
 ```
 
-```python
-@dataclass
-class RelayMemSlpResult:
-    slp_run_id: str
-    mode: str
-    input_refs: list[str]
-    candidates: list[RelayMemSlpCandidate]
-    updated_pages: list[str]
-    created_pages: list[str]
-    held_candidates: list[str]
-    soul_candidates: list[str]
-    diagnostics: dict
-```
+RelaySLP never writes RelaySOUL files directly.
 
-## Example artifact
+## Runtime-private artifact
 
-```json
-{
-  "slp_run_id": "slp_20260531_001",
-  "mode": "dry_run",
-  "input_refs": [
-    "memory/raw/conversations/session_20260531_001.jsonl"
-  ],
-  "updated_pages": [
-    "memory/mem/projects/relaymem.md",
-    "memory/mem/concepts/slp.md"
-  ],
-  "created_pages": [
-    "memory/mem/concepts/llm_wiki.md"
-  ],
-  "index_updated": true,
-  "relations_added": [
-    {
-      "source": "llm_wiki",
-      "type": "refines",
-      "target": "relaymem"
-    }
-  ],
-  "held_candidates": [
-    {
-      "kind": "preference",
-      "reason": "review_required"
-    }
-  ],
-  "soul_candidates": [
-    {
-      "candidate_id": "soul_candidate_001",
-      "approval_required": true,
-      "reason": "long_term_identity_or_policy_change"
-    }
-  ],
-  "diagnostics": {
-    "duplicate_candidates": 1,
-    "contradiction_candidates": 0,
-    "stale_candidates": 0,
-    "orphan_pages": 0
-  }
-}
-```
-
-## Safety behavior
-
-SLP should fail closed when uncertain.
-
-Persistence should be blocked when:
-
-- scene_state is recovery
-- scene_state is medical_or_safety
-- scene_state is formal_document
-- user confirmation is required
-- confidence is low
-- stability is low
-- SLP confusion remains unresolved
-- contradiction is unresolved
-- source reference is missing
-- candidate requires explicit approval
-
-## MVP defaults
+A runtime/SLP-private artifact may contain content-bearing fields:
 
 ```yaml
-relaymem_slp:
-  dry_run_default: true
-  apply_enabled_default: false
-  auto_apply_scope:
-    - free_to_update
-  hold_scope:
-    - review_required
-  soul_proposal_scope:
-    - explicit_approval_required
-  reject_or_block_scope:
-    - never_auto_promote
+relaymem_slp_runtime:
+  mode: deferred_dry_run
+  source_refs:
+    - source:session:123
+  candidates:
+    - candidate_id: memcand:1
+      memory_kind: project_state
+      normalized_value: "..."
+      target_page: projects/relaylm
+      safety_scope: free_to_update
+      confidence: 0.91
+      proposed_action: update_page
+  held_candidates: []
+  proposed_page_updates:
+    - page_id: projects/relaylm
+      patch: "..."
+```
+
+This artifact belongs to the protected memory compiler domain. It must not be copied recursively into runtime trace/audit records.
+
+## Content-free SLP projection
+
+Default operational projections may contain only typed allowlisted fields:
+
+```yaml
+relaymem_slp_projection:
+  schema_version: relaymem.slp_projection.v1
+  mode: deferred_dry_run
+  source_count: 1
+  candidate_count: 1
+  create_count: 0
+  update_count: 1
+  hold_count: 0
+  reject_count: 0
+  soul_proposal_count: 0
+  contradiction_count: 0
+  persistence_attempted: false
+  persistence_applied: false
+  blocked_reason_ids:
+    - dry_run_only
+```
+
+Default projections must not contain:
+
+- raw messages,
+- candidate normalized values,
+- titles/summaries/snippets,
+- page bodies or patches,
+- filesystem paths,
+- scene/intent semantic text,
+- visible response text.
+
+Memory-specific audit logs may store approved page IDs and lineage references under separate access/retention policy, but they are not the default runtime trace.
+
+## Apply semantics
+
+When apply is enabled and all gates pass:
+
+- apply only allowed candidate scopes,
+- use revision/idempotency checks,
+- preserve original evidence and lineage,
+- update index/log consistently,
+- prevent duplicate writes on retry/resume,
+- emit a content-free apply projection,
+- keep visible response delivery independent from persistence success.
+
+## Failure behavior
+
+SLP failure must not invalidate an already valid visible response.
+
+```text
+candidate extraction failure
+  -> no apply
+  -> content-free blocked projection
+
+page/index/log apply failure
+  -> preserve previous durable state
+  -> record failed/partial state
+  -> retry only under idempotency rules
+
+RelaySOUL proposal failure
+  -> no SOUL mutation
+  -> hold/reject candidate
 ```
 
 ## Non-goals
 
-- Do not answer the current user request from SLP directly.
-- Do not mutate RelaySOUL.
-- Do not persist raw affect estimates as long-term facts.
-- Do not auto-apply review_required or explicit_approval_required candidates.
-- Do not run heavy memory compilation inside the latency-critical Retrieval path.
-- Do not use SLP as a substitute for RelayINT clarification or RelaySCN recovery.
-- Do not generate user-visible sleep/recovery text directly from SLP.
+RelaySLP does not:
+
+- answer the current request,
+- run inside latency-critical Retrieval,
+- replace RelayINT clarification,
+- replace RelaySCN recovery,
+- inspect output as RelayREF,
+- generate user-visible recovery/sleep text,
+- auto-apply review-required or approval-required candidates,
+- directly mutate RelaySOUL,
+- persist raw affect estimates as durable facts,
+- expose content-bearing candidates through default trace projections.
 
 ## Summary
 
-RelayMEM SLP is the memory compiler path:
-
 ```text
-raw events -> candidates -> safety classification -> merge/update/hold -> lint -> index/log -> SOUL candidates
+governed evidence
+  -> RelaySLP candidate extraction
+  -> safety/scope/lineage classification
+  -> merge / hold / reject / proposal
+  -> gated idempotent MEM apply
+  -> separate RelaySOUL proposal path when approved
 ```
-
-It makes future memory better while preserving auditability and preventing RelaySOUL pollution.
