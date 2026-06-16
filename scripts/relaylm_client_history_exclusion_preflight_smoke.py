@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """Smoke checks for client history exclusion preflight.
 
-The full historical privacy/fail-closed coverage remains in the dedicated
-preflight contract and apply smoke scripts. This file keeps the integrated
-runtime/trace checks concise while covering multimodal detachment, invalid
-sources, stale/active tool history, runtime failure, and typed node ordering.
+The integrated runtime/trace checks cover multimodal detachment, invalid
+sources, stale/active tool history, runtime failure, and typed apply ordering.
 """
 
 from __future__ import annotations
@@ -32,6 +30,7 @@ from relaylm.client_message_canonicalization import (
 from relaylm.config import load_config
 from relaylm.diagnostics import RequestDiagnostics
 from relaylm.pipeline_context import PipelineContext, consume_active_pipeline_context
+from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.routing import resolve_route
 from relaylm.trace_runtime import trace_runtime_event
 
@@ -82,12 +81,21 @@ def config_file(
 
 def context(config_path: Path, payload: dict[str, Any]) -> PipelineContext:
     config = load_config(str(config_path))
+    route = resolve_route(config, payload.get("model", "relaylm-default"))
+    forwarded_payload = copy.deepcopy(payload)
+    if route.mode_applied == "memory_light":
+        compiled = compile_chat_payload_if_enabled(
+            config=config,
+            route=route,
+            payload=payload,
+        )
+        forwarded_payload = copy.deepcopy(compiled.payload)
     return PipelineContext(
         request_id="r",
         run_id="u",
         original_payload=payload,
-        forwarded_payload=copy.deepcopy(payload),
-        route=resolve_route(config, payload.get("model", "relaylm-default")),
+        forwarded_payload=forwarded_payload,
+        route=route,
         stream_enabled=False,
     )
 
