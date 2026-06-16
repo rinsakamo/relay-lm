@@ -2,117 +2,247 @@
 
 ## Purpose
 
-This contract separates the current diagnostics-only recovery-response artifact from the future generator that may create user-visible recovery wording.
+This document defines the future RelayRUN recovery response generator contract that sits after `recovery_response_draft` and `visible_recovery_response_preflight`.
 
-## Current implemented artifact
+The contract describes how content-free recovery intent can be transformed into safe user-facing recovery text in a later phase. It is a design and contract document only for MVP-34 preparation: it does not execute a generator, does not produce visible output, and does not change runtime behavior.
 
-Current runtime can build a diagnostics-only `recovery_response_generator` artifact.
+The core purpose is to preserve the current boundary:
 
-Current fixed fields include:
+- RelayRUN may structure recovery intent, blocked state, and output-pipeline preflight diagnostics.
+- RelayRUN must not directly finalize character-facing text.
+- Any future visible recovery response must pass through the full output pipeline and output-side safety gates.
 
-```text
-generator_allowed = false
-generator_attempted = false
-generated_text_present = false
-output_pipeline_required = true
-```
+## Non-goals
 
-Current behavior:
+- No runtime generator implementation.
+- No user-visible recovery output.
+- No RelayRUN direct final text.
+- No backend payload mutation.
+- No response body mutation.
+- No actual resume.
+- No retry execution.
+- No recovery transition apply.
+- No stream recovery.
 
-- maps content-free source message kinds to content-free intent classes,
-- records reason IDs and required output-pipeline stages,
-- stores projected source metadata only,
-- omits draft prompt text and nested content-bearing artifacts,
-- does not invoke a text generator,
-- does not produce visible recovery text,
-- does not mutate backend payloads or response bodies.
+## Position in artifact chain
 
-Current downstream diagnostics-only artifacts may include `output_relayscn_recovery_gate`, `visible_recovery_apply_preflight`, and `user_action_contract`. They do not execute Output-side RelaySCN, apply visible output, parse user actions, resume, or retry.
+The future generator contract is downstream of the existing recovery diagnostics chain:
 
-## Stable ownership
-
-RelayRUN may structure recovery intent, blocked/waiting-user state, transition metadata, and output-pipeline prerequisites. It does not finalize character-facing wording.
-
-Any future visible recovery text must pass the normal output pipeline and output-side safety/scene gates.
+1. `recovery_transition_artifact`
+   - Proposes a future recovery transition such as context repair, ask-user confirmation, retry-safe node, or blocked-state explanation.
+2. `waiting_user_contract`
+   - Records whether user confirmation or clarification is required before recovery can continue.
+3. `recovery_apply_preflight`
+   - Records apply gates and blocked reasons without applying recovery.
+4. `recovery_response_draft`
+   - Records content-free recovery-output intent and draft instructions without generating final text.
+5. `visible_recovery_response_preflight`
+   - Records full output-pipeline requirements before any user-visible recovery text can be allowed.
+6. `recovery_response_generator`
+   - Defines whether a generator may be invoked and what content-free intent it may use.
+7. `output_relayscn_recovery_gate`
+   - Records projected source metadata for a future output-side scene/safety gate before any recovery text can become visible.
+8. `visible_recovery_apply_preflight`
+   - Records future apply readiness metadata after the output-side RelaySCN gate without permitting response body mutation or visible output.
+9. `user_action_contract`
+   - Records the future user confirmation / clarification / retry-choice contract without applying actions.
 
 ## Recovery reanchor principle
 
-Repaired or reconstructed context is not trusted merely because RelayLM produced it.
+A reconstructed or repaired context is never trusted merely because RelayLM produced it.
 
 ```text
 recovery evidence
-  -> bounded context/handoff candidate
-  -> ask the user to confirm, correct, or restate
-  -> confirmed scope may re-enter normal execution
+  -> context/handoff candidate
+  -> ask user to confirm, correct, or restate
+  -> only confirmed scope may re-enter the normal runtime path
 ```
 
-While confirmation is outstanding:
+Required behavior:
 
-- keep waiting-user state,
-- do not auto-resume guessed work,
-- do not persist guessed repair into MEM or SOUL,
-- use open clarification when the candidate is weak.
+- treat a repaired topic, task, reference, or handoff as a confirmation candidate,
+- keep `waiting_user_required=true` while confirmation or clarification is outstanding,
+- do not auto-resume the prior task from a guessed repair,
+- do not promote guessed repair content into RelayMEM or RelaySOUL,
+- use open clarification rather than a leading confirmation when the candidate itself is weak,
+- use candidate confirmation only when the evidence is bounded and sufficiently specific.
 
-## Current artifact inputs
+A normal context-repair path may ask the user whether the reconstructed scope is correct. A forced reset/sleep-style path should normally ask the user to reanchor the conversation openly rather than pretending the previous topic was recovered.
 
-Only content-free projected metadata from approved recovery-draft/preflight artifacts and route/scene classes may enter the current artifact.
+Character-facing wording, including sleep/reflection metaphors, remains presentation behavior. It must pass RelayCTX Unpack, output-side RelaySCN, RelayEMO, and the visible-response apply gates. RelayRUN records intent and state; it does not write the final line itself.
 
-It must not contain:
+## Required inputs
 
-- raw user messages,
-- backend payload/response text,
-- prompt text,
-- memory/snippet bodies,
-- prior generated wording,
-- full checkpoint bodies,
-- nested source-artifact trees.
+A future generator contract may use only metadata and content-free intent from approved upstream artifacts:
 
-## Current intent mapping
+- `recovery_response_draft`.
+- `visible_recovery_response_preflight`.
+- Scene policy / output-side RelaySCN policy.
+- Response mode, route, and `character_id` metadata only.
+- Safety/content policy.
+- Optional `user_action_confirmation` in a future phase.
 
-Current content-free intent classes may represent:
+## Forbidden inputs/content
 
-- no recovery message,
-- ask for clarification,
-- ask for context repair/restate,
-- explain a backend failure at a high level,
-- ask the user to choose a recovery action.
+The generator contract must not receive or embed raw content from runtime payloads, backend responses, memory bodies, or checkpoints.
 
-The artifact describes intent only; it does not store final wording.
+Forbidden inputs include:
 
-## Target generator
+- Raw user message.
+- Backend payload.
+- Backend response text.
+- Prompt text.
+- Snippet/page body text.
+- Final generated text from a prior attempt.
+- Unapproved memory body.
+- Full checkpoint payload body.
+- Full source artifact payloads that contain draft prompt text or nested
+  artifact trees.
 
-A future generator may run only after:
+Source artifacts in the generator artifact must be content-free projections only.
+They may include schema versions, booleans, source kinds, blocked reason names,
+pipeline preflight booleans, and required pipeline node names, but must not
+include `draft_prompt_for_output_pipeline` or nested `source_artifacts`.
 
-- explicit feature enablement,
-- a non-dry-run execution posture,
-- visible-response preflight,
-- Output-side RelaySCN approval,
-- applicable waiting-user confirmation,
-- content-policy verification,
-- normal output-pipeline availability.
+## Output contract
 
-Target visible output remains separate from RelayRUN's content-free runtime artifact.
+A future diagnostics-only generator contract artifact should use a shape like:
 
-## Required migration
+```yaml
+recovery_response_generator_contract:
+  schema_version: relayrun.recovery_response_generator_contract.v0
+  diagnostics_only: true
+  generator_allowed: false
+  generator_attempted: false
+  generated_text_present: false
+  output_pipeline_required: true
+  source_message_kind: none
+  allowed_message_intent: none
+  blocked_reasons:
+    - recovery_response_generator_not_implemented
+    - recovery_response_generator_disabled
+    - recovery_response_generator_dry_run_only
+  safety:
+    contains_user_content: false
+    contains_backend_payload: false
+    contains_response_text: false
+    contains_prompt_text: false
+    contains_snippet_text: false
+    contains_final_text: false
+    direct_user_output_allowed: false
+    run_direct_text_finalization_allowed: false
+```
 
-Update together:
+Required fields:
 
-1. generator execution and feature flags,
-2. output-pipeline integration,
-3. Output-side RelaySCN gate execution,
-4. waiting-user and user-action handling,
-5. response adapters,
-6. retry/resume state and idempotency,
-7. content-free projections,
-8. recovery and integration smoke tests.
+- `schema_version`:
+  - Identifies the artifact schema.
+- `diagnostics_only`:
+  - Must remain `true` while generator behavior is not implemented.
+- `generator_allowed=false`:
+  - The generator must not be allowed until all gates pass in a future apply phase.
+- `generator_attempted=false`:
+  - No runtime generator invocation occurs in the docs-only or diagnostics-only phase.
+- `generated_text_present=false`:
+  - The artifact must not contain generated final text.
+- `output_pipeline_required=true`:
+  - Any visible output must go through the full output pipeline.
+- `source_message_kind`:
+  - Mirrors the content-free kind from `recovery_response_draft` or `visible_recovery_response_preflight`.
+- `allowed_message_intent`:
+  - Records the allowed intent class without containing final text.
+- `blocked_reasons`:
+  - Records why generator execution remains blocked.
+- `safety`:
+  - Records content and output-surface invariants.
 
-## Safety constraints
+## Message intent mapping
 
-Until that migration:
+The generator contract maps source message kinds to content-free message intents:
 
-- no generator execution,
-- no user-visible recovery output,
-- no direct RelayRUN final text,
-- no backend/request/response mutation,
-- no actual resume, retry, or recovery-transition apply,
-- no stream recovery.
+- `none` -> no recovery message.
+- `ask_clarification` -> ask user to clarify unresolved reference.
+- `context_repair_prompt` -> ask user to confirm/restate current context.
+- `explain_backend_error` -> explain failure at high level and ask whether to retry.
+- `confirm_recovery` -> ask user how to proceed from blocked state.
+
+All wording must stay content-free and scene-gated. The contract may describe intent, but it must not store final user-facing wording until the output-side scene and safety gates are implemented.
+
+## Required gates
+
+A future implementation must fail closed unless all required gates pass:
+
+- Explicit config enabled.
+- `dry_run_only=false` in a future non-diagnostics phase.
+- `visible_recovery_response_preflight` present.
+- Output-pipeline preflight passed.
+- Output-side RelaySCN allows recovery output.
+- User confirmation when `waiting_user_required=true`.
+- Content-free contract passed.
+- Backend payload mutation blocked.
+- Response body mutation blocked until apply phase.
+
+## Failure / blocked reasons
+
+Recommended blocked reasons:
+
+- `recovery_response_generator_not_implemented`.
+- `recovery_response_generator_disabled`.
+- `recovery_response_generator_dry_run_only`.
+- `visible_recovery_preflight_missing`.
+- `output_pipeline_not_executed`.
+- `output_side_relayscn_gate_missing`.
+- `waiting_user_confirmation_required`.
+- `content_policy_not_verified`.
+
+## Future implementation notes
+
+The next implementation should add a diagnostics-only artifact first. That artifact should prove the generator contract can be built from existing recovery draft and visible recovery preflight artifacts without exposing raw content or mutating runtime behavior.
+
+After that, add smoke tests for:
+
+- Normal request.
+- Recovery scene.
+- Unresolved reference.
+- Backend error.
+
+No visible recovery output should be introduced until both the output-side RelaySCN gate and visible recovery response apply preflight exist. Runtime implementation must continue to preserve backend forwarding payloads, response bodies, RelayMEM ordering, and token truncation ordering.
+
+## MVP implementation note
+
+A diagnostics-only `recovery_response_generator` artifact now implements the first runtime form of this contract. The artifact is still fail-closed: `generator_allowed=false`, `generator_attempted=false`, and `generated_text_present=false` remain fixed while generator execution is not implemented.
+
+The implementation does not generate user-visible text, does not execute a recovery response generator, does not mutate backend payloads, and does not mutate response bodies. It only maps content-free `source_message_kind` values from `recovery_response_draft` to content-free `allowed_message_intent` values and records blocked reasons for future output-pipeline work. The runtime artifact stores source projections only and intentionally omits draft prompt text plus nested source artifact trees.
+
+## Next downstream gate
+
+The next downstream runtime artifact is `output_relayscn_recovery_gate`. It is
+also diagnostics-only and fail-closed. It receives only projected source
+metadata from `recovery_response_generator` and
+`visible_recovery_response_preflight`; it must not embed full source artifacts,
+nested `source_artifacts`, draft prompts, raw user/backend/response/snippet
+content, prompt text, or final generated text.
+
+This gate still does not execute the generator, does not generate user-visible
+text, does not run output-side RelaySCN, does not apply visible output, does not
+mutate backend payloads, and does not mutate response bodies. It exists only to
+record that future visible recovery must pass output-side RelaySCN and a later
+visible recovery apply preflight before any final user-visible response can be
+considered.
+
+The downstream `visible_recovery_apply_preflight` artifact is also
+diagnostics-only. It sits after `output_relayscn_recovery_gate` and records that
+response body mutation remains forbidden while visible recovery apply is not
+implemented. It still does not allow visible output, does not execute a
+generator, and does not generate final text.
+
+The downstream `user_action_contract` artifact sits after
+`visible_recovery_apply_preflight`. It records the future contract for receiving
+user confirmation, clarification, or retry choice, but it still does not parse
+or apply user actions, does not allow visible output, does not apply recovery,
+does not resume, and does not retry.
+
+Message-kind-driven actions are also required user actions. In particular,
+`confirm_recovery` maps to `choose_recovery_action`, which must make
+`user_action_required=true` and keep recovery blocked until a future user action
+API exists.
