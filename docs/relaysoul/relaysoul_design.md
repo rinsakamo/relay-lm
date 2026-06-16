@@ -2,7 +2,7 @@
 
 ## Purpose
 
-RelaySOUL is RelayLM's human-in-the-loop durable persona source calibration layer.
+RelaySOUL is RelayLM's human-in-the-loop durable persona-source calibration layer.
 
 It creates, calibrates, versions, approves, applies, and rolls back persona-source revisions. It does not train model weights and it does not own request-local scene state, current affect state, short-term context, or compiled memory.
 
@@ -16,15 +16,15 @@ RelayLM runtime
 
 Current implementation status and sequencing live in [Project Status](../PROJECT_STATUS.md) and [Pipeline Implementation Plan](../architecture/pipeline_implementation_plan.md).
 
-## Owned persona sources
+## Target owned persona sources
 
-RelaySOUL owns revisions for:
+The target RelaySOUL ownership boundary is:
 
 - `SOUL.md`: durable identity, values, worldview, and invariants,
 - `OUTPUT_POLICY.md`: durable character voice, expression rules, response shape, and memory-disclosure policy,
 - `RELATIONSHIP_ANCHOR.md`: approved slow-changing relationship expectations.
 
-RelaySOUL does **not** own revisions for:
+Target ownership excludes:
 
 - `scene_state` or `SCENE_STATE.md`,
 - current mood or affect state,
@@ -33,7 +33,32 @@ RelaySOUL does **not** own revisions for:
 - request-local retrieval evidence,
 - runtime checkpoints or trace artifacts.
 
-If an operator wants reusable scene presets, they belong to RelaySCN configuration and remain distinct from persona revisions. Stable memory summaries belong to RelayMEM storage and RelaySLP compilation.
+Reusable scene presets belong to RelaySCN configuration. Stable memory summaries belong to RelayMEM storage and RelaySLP compilation.
+
+## Current implementation compatibility
+
+The current `mvp-soul-0` dry-run/tooling chain predates this narrower boundary.
+
+It still accepts these legacy targets in several scripts and validators:
+
+```text
+STABLE_MEMORY_SUMMARY.md
+SCENE_STATE.md
+```
+
+It also currently blocks only `SOUL.md` in `normal_chat`, rather than blocking apply for every persona source.
+
+Therefore:
+
+- the 3-file boundary above is the target architecture,
+- current artifacts must be interpreted with the implemented `mvp-soul-0` contracts,
+- no consumer should assume the target v1 allowlist/schema already exists,
+- a future implementation migration must update patch, revision, approval, apply, rollback, examples, and smoke tests atomically.
+
+See:
+
+- [RelaySOUL Patch Schema](../contracts/relaysoul_patch_schema.md),
+- [RelaySOUL Revision Metadata / Rollback Contract](../contracts/relaysoul_revision_contract.md).
 
 ## Authority boundary
 
@@ -135,18 +160,14 @@ Requirements:
 
 ### `normal_chat`
 
-Purpose:
-
-- execute the approved persona consistently,
-- collect governed evidence or surface proposals without mutation.
-
-Rules:
+Target behavior:
 
 - proposal/candidate generation only,
 - no persona-source apply,
-- no `SOUL.md`, `OUTPUT_POLICY.md`, or `RELATIONSHIP_ANCHOR.md` revision application,
 - explicit correction may offer entry into calibration/character-creation mode,
 - RelaySLP may route durable-memory evidence to RelayMEM, not RelaySOUL.
+
+Current `mvp-soul-0` enforcement remains weaker until the migration described above is implemented.
 
 ## Patch generation
 
@@ -154,15 +175,17 @@ Patch generation receives only the persona sources relevant to the target plus p
 
 It should:
 
-- choose exactly the correct target source,
+- choose the correct target source,
 - propose minimal replace/consolidate operations,
-- explain the target classification,
+- explain target classification,
 - emit no change when current sources already explain the preference,
 - preserve source lineage,
-- avoid including unrelated memory, scene, or affect artifacts,
+- avoid unrelated memory, scene, or affect artifacts,
 - avoid full rewrites unless explicitly requested.
 
 The model-generated patch body is content-bearing and remains protected.
+
+Current patch tooling may still include legacy scene/memory sources for compatibility. That behavior is not the target ownership model.
 
 ## Persona source budgets
 
@@ -183,7 +206,7 @@ Rules:
 - do not crowd out the current request or required context,
 - budget values are policy/configuration, not immutable architecture truth.
 
-Memory and scene budgets are owned by RelayMEM/RelayCTX/RelaySCN and are not RelaySOUL persona-source budgets.
+Memory and scene budgets are owned by RelayMEM/RelayCTX/RelaySCN.
 
 ## Renderer validation
 
@@ -203,7 +226,7 @@ A teacher-model distillation step may help compress or reconcile sources, but it
 
 ## Revision, apply, and rollback
 
-Every applied persona revision must include:
+Every applied persona revision should include:
 
 - revision and parent identifiers,
 - mode,
@@ -214,6 +237,8 @@ Every applied persona revision must include:
 - stable-prefix-change status,
 - applied actor/time metadata,
 - rollback availability.
+
+The exact current field names are defined by `mvp-soul-0`; the proposed v1 names are documented separately in the revision contract.
 
 Apply remains fail-closed. A failed compile, approval, budget, invariant, lineage, or persistence check produces no persona mutation.
 
@@ -232,7 +257,7 @@ May contain:
 
 ### Content-free revision/audit projection
 
-May contain only typed allowlisted metadata:
+May contain typed allowlisted metadata such as:
 
 - revision/candidate/reference IDs,
 - mode,
@@ -240,7 +265,7 @@ May contain only typed allowlisted metadata:
 - changed-file classes,
 - evidence count,
 - approval requirement/status,
-- budget delta,
+- budget delta class,
 - stable-prefix changed boolean,
 - compile/apply/rollback status,
 - reason identifiers.
@@ -249,7 +274,7 @@ Default runtime trace must not contain generated response text, feedback text, p
 
 ## Interaction with RelaySLP
 
-RelaySLP may emit a RelaySOUL proposal candidate when governed evidence suggests a durable persona/relationship/output-policy change.
+RelaySLP may emit a RelaySOUL proposal candidate when governed evidence suggests a durable persona, relationship, or output-policy change.
 
 ```text
 RelaySLP proposal candidate
@@ -260,6 +285,17 @@ RelaySLP proposal candidate
 ```
 
 RelaySLP never writes RelaySOUL files directly.
+
+## Required migration follow-up
+
+A future implementation PR should:
+
+1. remove legacy scene/memory targets from every RelaySOUL allowlist,
+2. carry mode through candidate, revision, approval, apply, rollback, and storage artifacts,
+3. block every normal-chat persona apply,
+4. introduce typed protected candidates and content-free projections,
+5. update examples and smoke tests,
+6. preserve backward compatibility only through an explicit schema/version migration.
 
 ## Safety and product boundary
 
@@ -273,9 +309,9 @@ RelaySLP never writes RelaySOUL files directly.
 
 RelaySOUL does not:
 
+- claim the target v1 contract is already implemented,
 - own scene or affect state,
 - compile or store ordinary long-term memory,
-- mutate persona during normal chat,
 - treat client prompts as durable authority,
 - write from raw affect inference,
 - expose protected calibration content through generic diagnostics,
@@ -284,13 +320,13 @@ RelaySOUL does not:
 ## Summary
 
 ```text
-explicit protected persona feedback
-  -> minimal persona-source candidate
-  -> target renderer compile/sample validation
+current implementation
+  mvp-soul-0 legacy 5-file tooling contract
+
+target architecture
+  explicit protected persona feedback
+  -> 3-file durable persona candidate
+  -> target-renderer validation
   -> explicit review and approval
   -> versioned apply / rollback
-
-normal chat
-  -> execute approved sources
-  -> proposal only, no durable mutation
 ```
