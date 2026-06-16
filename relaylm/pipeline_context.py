@@ -82,10 +82,17 @@ class PipelineContext:
         from relaylm.client_history_exclusion_preflight import (
             prepare_client_history_exclusion_preflight_runtime_private,
         )
+        from relaylm.client_history_exclusion_apply_runtime import (
+            run_client_history_exclusion_apply_runtime,
+        )
 
         prepare_client_instruction_identity_runtime_private(pipeline_context=self)
         prepare_client_instruction_cache_lookup_runtime_private(pipeline_context=self)
         prepare_client_history_exclusion_preflight_runtime_private(pipeline_context=self)
+        run_client_history_exclusion_apply_runtime(
+            pipeline_context=self,
+            compiler_used=self.route.mode_applied == "memory_light",
+        )
 
     def replace_forwarded_payload(
         self,

@@ -89,6 +89,14 @@ def context(config_path: Path, payload: dict[str, Any]) -> PipelineContext:
     )
 
 
+def apply_nodes(pipeline_context: PipelineContext) -> list[Any]:
+    return [
+        node
+        for node in pipeline_context.node_results
+        if node.node_name == "client_history_exclusion_apply"
+    ]
+
+
 def test_all() -> None:
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as temp_dir:
         root = Path(temp_dir)
@@ -106,7 +114,8 @@ def test_all() -> None:
         require(
             pipeline_context.client_history_exclusion_apply_result is None
             and pipeline_context.forwarded_payload == before
-            and pipeline_context.last_mutating_step is None,
+            and pipeline_context.last_mutating_step is None
+            and apply_nodes(pipeline_context) == [],
             pipeline_context,
         )
         consume_active_pipeline_context()
@@ -135,6 +144,7 @@ def test_all() -> None:
             pipeline_context.client_history_exclusion_apply_result is result
             and pipeline_context.forwarded_payload == before
             and pipeline_context.last_mutating_step is None
+            and len(apply_nodes(pipeline_context)) == 1
             and not apply_runtime.client_history_exclusion_apply_blocks_backend(
                 pipeline_context.route,
                 result,
@@ -142,7 +152,7 @@ def test_all() -> None:
             pipeline_context,
         )
         consume_active_pipeline_context()
-        print("ok runtime dry-run is mutation-neutral")
+        print("ok runtime dry-run is automatic, idempotent, and mutation-neutral")
 
         apply_path = root / "apply.yaml"
         write_config(apply_path, enabled=True, dry_run_only=False)
@@ -162,6 +172,7 @@ def test_all() -> None:
             == "system"
             and pipeline_context.forwarded_payload["messages"][1]
             == payload["messages"][-1]
+            and len(apply_nodes(pipeline_context)) == 1
             and not apply_runtime.client_history_exclusion_apply_blocks_backend(
                 pipeline_context.route,
                 result,
@@ -169,7 +180,7 @@ def test_all() -> None:
             (result, pipeline_context.forwarded_payload),
         )
         consume_active_pipeline_context()
-        print("ok runtime apply replaces forwarded payload")
+        print("ok runtime apply automatically replaces forwarded payload once")
 
         blocked_payload = original_payload(with_instruction=True)
         pipeline_context = context(apply_path, blocked_payload)
@@ -184,6 +195,7 @@ def test_all() -> None:
             and result.forwarded_payload is None
             and pipeline_context.forwarded_payload == before
             and pipeline_context.last_mutating_step is None
+            and len(apply_nodes(pipeline_context)) == 1
             and apply_runtime.client_history_exclusion_apply_blocks_backend(
                 pipeline_context.route,
                 result,
@@ -212,6 +224,7 @@ def test_all() -> None:
             result
             and result.status == "skipped"
             and pipeline_context.forwarded_payload == before
+            and len(apply_nodes(pipeline_context)) == 1
             and not apply_runtime.client_history_exclusion_apply_blocks_backend(
                 pipeline_context.route,
                 result,
@@ -221,12 +234,12 @@ def test_all() -> None:
         consume_active_pipeline_context()
         print("ok pass-through remains client-owned")
 
-        pipeline_context = context(apply_path, payload)
         original_builder = apply_runtime.build_client_history_exclusion_apply
         apply_runtime.build_client_history_exclusion_apply = (
             lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("secret"))
         )
         try:
+            pipeline_context = context(apply_path, payload)
             result = apply_runtime.run_client_history_exclusion_apply_runtime(
                 pipeline_context=pipeline_context,
                 compiler_used=True,
@@ -236,6 +249,7 @@ def test_all() -> None:
         require(
             result
             and result.status == "blocked"
+            and len(apply_nodes(pipeline_context)) == 1
             and apply_runtime.client_history_exclusion_apply_blocks_backend(
                 pipeline_context.route,
                 result,

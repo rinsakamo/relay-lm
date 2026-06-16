@@ -9,7 +9,12 @@ from relaylm.pipeline_context import PipelineContext
 from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
 
 
-_INPUT_SIDE_DIRECT_NODE_NAMES = frozenset({"client_message_canonicalization"})
+_INPUT_SIDE_DIRECT_NODE_NAMES = frozenset(
+    {
+        "client_message_canonicalization",
+        "client_history_exclusion_apply",
+    }
+)
 
 
 def record_phase45_node_results(
