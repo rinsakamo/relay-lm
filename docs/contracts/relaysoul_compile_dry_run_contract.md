@@ -1,46 +1,72 @@
 # RelaySOUL Patch Compile Dry-Run Contract
 
-This contract defines a content-free dry-run check that compares a RelaySOUL patch candidate with RelayLM compile diagnostics.
+## Status
 
-## Goal
+This is the current `mvp-soul-0` diagnostics-only comparison between RelaySOUL patch-candidate metadata and RelayLM compile diagnostics.
 
-Before patch apply, RelaySOUL can validate whether patch targets are observable in compile artifacts and whether stability/budget signals indicate caution.
+Current producer:
 
-## Input artifacts
+```text
+relaylm.relaysoul_compile_dry_run.build_relaysoul_patch_compile_dry_run
+```
 
-- RelaySOUL patch dry-run artifact
-- RelayLM `CompiledRequest.to_log_dict()` output
+Current result type:
 
-## Target file to block mapping
+```text
+relaylm.relaysoul_compile_dry_run.RelaySOULPatchCompileDryRun
+```
 
-- `SOUL.md` -> `character_soul_anchor`
-- `OUTPUT_POLICY.md` -> `character_output_policy`
-- `RELATIONSHIP_ANCHOR.md` -> `relationship_anchor`
-- `STABLE_MEMORY_SUMMARY.md` -> `stable_memory_summary`
-- `SCENE_STATE.md` -> `scene_state`
+It consumes `CompiledRequest.to_log_dict()` output. It does not create/apply a temporary revision, change runtime compilation, write persona files, or call a model.
 
-## Interpretation
+## Current inputs
 
-- `stable_prefix_target_files` indicates patch targets that are in stable prefix blocks.
-- `dynamic_target_files` indicates patch targets that are dynamic suffix blocks.
-- `missing_target_block_ids` indicates mapped targets that were not observed in `context_block_summary.block_ids`.
-- when `context_block_summary.block_ids` is present as an empty list, it is treated as an observed empty result and mapped targets are considered missing.
+- RelaySOUL patch-candidate dry-run artifact,
+- RelayLM current compile log.
 
-## Warning and blocking rules
+## Current compatibility mapping
 
-- missing patch dry-run or compile log blocks the dry-run contract.
-- unsupported target files block the dry-run contract.
-- patch status `warning`/`blocked` is propagated.
-- target block missing from compile is warning.
-- persona source budget warning is propagated from compile diagnostics.
+```text
+SOUL.md                   -> character_soul_anchor
+OUTPUT_POLICY.md          -> character_output_policy
+RELATIONSHIP_ANCHOR.md    -> relationship_anchor
+STABLE_MEMORY_SUMMARY.md  -> stable_memory_summary
+SCENE_STATE.md            -> scene_state
+```
+
+The final two mappings are current five-file compatibility behavior, not target RelaySOUL ownership.
+
+## Current output fields
+
+- compile dry-run status,
+- warning/blocking reason IDs,
+- patch candidate ID,
+- target files/block IDs,
+- missing block IDs,
+- stable/dynamic target classes,
+- persona-budget warning,
+- stable-prefix hash presence,
+- `content_free`.
+
+## Current rules
+
+- missing patch dry run or compile log blocks,
+- `compiler_used != true` blocks,
+- unsupported target files block,
+- upstream warning/blocked state is propagated,
+- a missing observed target block warns,
+- persona-source budget warning is propagated.
+
+A successful result means only that this metadata comparison passed. It is not approval or apply permission.
+
+## Target migration
+
+The three-file RelaySOUL migration must update the target mapping, current compiler relationship, revision/approval/apply consumers, schema versions, and smoke fixtures together. Future target-renderer validation remains separate from this current metadata-only comparison.
 
 ## Safety constraints
 
-This MVP-15B contract is dry-run-only:
-
-- no patch generation
-- no patch apply
-- no persona source file write
-- no runtime compile behavior change
-- no model call
-- no persona/memory/patch body content
+- dry-run-only,
+- no patch generation/apply,
+- no persona source write,
+- no runtime compile behavior change,
+- no model call,
+- no persona/memory/feedback/prompt/response/patch body content.
