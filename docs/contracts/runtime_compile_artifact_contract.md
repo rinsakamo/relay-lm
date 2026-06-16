@@ -2,9 +2,13 @@
 
 ## Scope
 
-This document defines terminology boundaries for runtime compile artifacts in RelayLM.
+This contract defines the vocabulary and authority boundary for request-local runtime compilation artifacts.
 
-It separates these concepts:
+See the active [Runtime Compile Gate Design](../architecture/runtime_compile_gate_design.md) for the decision policy and the [Context Compiler Contract](context_compiler_contract.md) for current-versus-target compiler wiring.
+
+This is a docs-only contract. It does not introduce a new runtime schema, persistence path, or standalone `RelayPLC` component.
+
+## Object boundary
 
 ```text
 CompilePlan
@@ -16,39 +20,99 @@ RelaySOUL artifact
 Memory record
 ```
 
-This is a docs-only contract. It does not introduce runtime schema changes or persistence behavior.
+These objects have different ownership and must not be conflated.
 
-## Motivation
+## Authority prerequisite
 
-RelayLM now has design docs for the Safe SOUL / Scene / CTX compile chain and the Runtime Compile Gate. As implementation grows, words like plan, result, diagnostics, trace, artifact, and decision can become ambiguous.
+A `CompileDecision` is valid only after route authority is known.
 
-This document fixes the vocabulary before adding more runtime implementation.
+```text
+explicit delegated pass_through route
+  -> client messages may be forwarded as delegated context
 
-## Object definitions
+RelayLM-managed route
+  -> client messages are request evidence
+  -> backend payload must remain RelayLM-constructed
+  -> raw prior history/raw instructions are never emergency fallback context
+```
 
-### CompilePlan
+Therefore, `PASS_THROUGH` is not a generic synonym for compile failure. On a managed route, the decision must select an authority-safe managed payload, a reduced managed fallback, or a fail-closed state.
 
-A `CompilePlan` describes what RelayLM intends to compile before changing the outbound backend payload.
+## CompilePlan
 
-It should capture route, mode, character, scene, planned block IDs, memory candidate summary, token budget status, apply eligibility, and blocking reasons.
+A `CompilePlan` describes what RelayLM intends to compile before selecting the backend payload.
 
-A plan may be produced for dry-run, shadow-only, fallback, or apply paths. It does not mean compiled messages were sent to the backend.
+It may include:
 
-### CompileResult
+- plan ID,
+- route and authority class,
+- mode and backend class,
+- character/scene identifiers,
+- planned block IDs/classes,
+- memory/retrieval presence and counts,
+- token-budget status,
+- apply eligibility,
+- fallback availability,
+- blocking reason IDs.
 
-A `CompileResult` is the rendered result of a selected plan.
+A plan does not mean compiled messages were sent.
 
-It should capture rendered block IDs, omitted block IDs, message count, backend compatibility, and whether compiled messages are ready.
+Example content-free projection:
 
-A result can exist even when the Runtime Compile Gate chooses shadow-only or fallback.
+```yaml
+compile_plan_projection:
+  schema_version: relaylm.compile_plan_projection.v1
+  plan_id: compile_plan_001
+  route_class: managed
+  mode: memory_light
+  authority_class: relaylm_managed
+  planned_block_ids:
+    - common_runtime_policy
+    - character_soul_anchor
+    - current_user_turn
+  token_budget_status: within_budget
+  apply_eligible: true
+  safe_fallback_available: true
+  blocking_reason_ids: []
+  content_free: true
+```
 
-### CompileDecision
+## CompileResult
 
-A `CompileDecision` is the Runtime Compile Gate output for the current request.
+A `CompileResult` is the runtime-private rendering of a selected plan.
 
-It should capture decision state, whether compiled messages are applied, whether diagnostics-only mode is active, fallback reason, and blocking reasons.
+It may contain:
 
-Suggested states:
+- rendered backend messages,
+- rendered/omitted block IDs,
+- block content,
+- backend-compatibility details,
+- stable-prefix data,
+- token estimates,
+- candidate fallback payload.
+
+The runtime-private result is content-bearing and must not enter generic trace/audit storage directly.
+
+Content-free projection example:
+
+```yaml
+compile_result_projection:
+  schema_version: relaylm.compile_result_projection.v1
+  plan_id: compile_plan_001
+  rendered_block_count: 3
+  omitted_block_count: 0
+  message_count: 2
+  backend_compatible: true
+  compiled_messages_ready: true
+  safe_fallback_ready: true
+  content_free: true
+```
+
+## CompileDecision
+
+A `CompileDecision` is the Runtime Compile Gate output for one request.
+
+Allowed conceptual states:
 
 ```text
 PASS_THROUGH
@@ -56,222 +120,218 @@ COMPILE_DRY_RUN
 COMPILE_SHADOW_ONLY
 COMPILE_APPLY
 COMPILE_FALLBACK
+BLOCKED
 ```
 
-A compile decision is request-local. It is not a RelaySOUL approval decision.
+Semantics:
 
-### Diagnostics
+- `PASS_THROUGH`: only an explicit delegated/trusted route.
+- `COMPILE_DRY_RUN`: do not apply the candidate compile result; preserve an already-valid authority-safe payload.
+- `COMPILE_SHADOW_ONLY`: compare a candidate result while forwarding an already-valid authority-safe payload.
+- `COMPILE_APPLY`: forward the selected compiled payload.
+- `COMPILE_FALLBACK`: forward a reduced RelayLM-owned payload.
+- `BLOCKED`: no valid authority-safe payload exists.
 
-Diagnostics are human-readable explanations attached to a plan, result, or decision.
-
-They should explain selected route, mode, character, scene, block order, omitted blocks, fallback reasons, token budget status, profile loading status, and scene normalization status.
-
-Diagnostics must not be inserted into stable prompt prefixes by default.
-
-### TraceEvent
-
-A `TraceEvent` is a compact machine-readable runtime event for logs, aggregation, debugging, or future RelayTRC lineage.
-
-Trace events should prefer IDs, states, counters, hashes, and reason codes. They are not RelaySOUL artifacts unless explicitly promoted by a future audit workflow.
-
-### RelaySOUL artifact
-
-A RelaySOUL artifact is an audit object in persona-source patch, approval, revision, persistence, rollback, or apply workflows.
-
-Runtime compile plans, results, decisions, diagnostics, and trace events should not be called RelaySOUL artifacts by default.
-
-### Memory record
-
-A memory record is a durable or retrieved memory source item. RelayMEM owns memory sources and candidates. RelayCTX may pack selected memory content, but compiled context does not become a memory record by default.
-
-## Minimal field groups
-
-### CompilePlan
+Example projection:
 
 ```yaml
-plan_id: compile_plan_001
-route: relaylm-default
-mode: memory_light
-backend: local
-character_id: default
-scene_id: null
-room_id: null
-planned_block_ids:
-  - common_runtime_policy
-  - character_soul_anchor
-  - character_output_policy
-  - scene_state
-token_budget_status: within_budget
-apply_eligible: true
-blocking_reasons: []
+compile_decision_projection:
+  schema_version: relaylm.compile_decision_projection.v1
+  decision_id: compile_decision_001
+  plan_id: compile_plan_001
+  result_id: compile_result_001
+  decision_state: COMPILE_APPLY
+  route_authority: managed
+  apply_compiled_messages: true
+  diagnostics_only: false
+  forwarded_payload_source: relaylm_compiled
+  fallback_class: none
+  blocking_reason_ids: []
+  content_free: true
 ```
 
-### CompileResult
-
-```yaml
-result_id: compile_result_001
-plan_id: compile_plan_001
-rendered_block_ids:
-  - common_runtime_policy
-  - character_soul_anchor
-  - character_output_policy
-  - scene_state
-omitted_block_ids: []
-message_count: 2
-backend_compatible: true
-compiled_messages_ready: true
-```
-
-### CompileDecision
-
-```yaml
-decision_id: compile_decision_001
-plan_id: compile_plan_001
-result_id: compile_result_001
-decision_state: COMPILE_APPLY
-apply_compiled_messages: true
-diagnostics_only: false
-fallback_reason: null
-blocking_reasons: []
-```
-
-### Diagnostics
-
-```yaml
-selected_route: relaylm-default
-selected_mode: memory_light
-character_id: default
-scene_id: null
-room_id: null
-block_ids:
-  - common_runtime_policy
-  - character_soul_anchor
-  - character_output_policy
-  - scene_state
-omitted_block_ids: []
-fallback_reason: null
-token_budget_status: within_budget
-profile_source_status: ok
-scene_source_status: ok
-```
-
-### TraceEvent
-
-```yaml
-event_type: runtime_compile_decision
-request_id: req_001
-route: relaylm-default
-mode: memory_light
-decision_state: COMPILE_APPLY
-apply_compiled_messages: true
-block_count: 4
-omitted_block_count: 0
-fallback_reason: null
-```
+A decision is request-local and is not RelaySOUL approval.
 
 ## Lifecycle
 
-Normal apply lifecycle:
+### Explicit pass-through route
+
+```text
+route authority resolution
+  -> CompileDecision(PASS_THROUGH)
+  -> delegated client payload
+  -> Diagnostics / TraceEvent projection
+```
+
+### Managed apply
 
 ```text
 CompilePlan
   -> CompileResult
-  -> CompileDecision
-  -> outbound payload selection
-  -> Diagnostics / TraceEvent
+  -> CompileDecision(COMPILE_APPLY)
+  -> RelayLM-constructed forwarded payload
+  -> Diagnostics / TraceEvent projection
 ```
 
-Dry-run lifecycle:
+### Managed dry-run
 
 ```text
 CompilePlan
+  -> optional CompileResult candidate
   -> CompileDecision(COMPILE_DRY_RUN)
-  -> Diagnostics / TraceEvent
-  -> pass-through forwarding
+  -> previously validated RelayLM-managed payload
+  -> Diagnostics / TraceEvent projection
 ```
 
-Diagnostics-only dry-run paths should still emit `CompileDecision` with `decision_state = COMPILE_DRY_RUN` and `diagnostics_only = true` so decision logs and traces remain consistent with gate semantics.
+Dry-run must not mean raw client history is restored.
 
-Shadow-only lifecycle:
+### Managed shadow-only
 
 ```text
 CompilePlan
-  -> CompileResult
+  -> CompileResult candidate
   -> CompileDecision(COMPILE_SHADOW_ONLY)
-  -> pass-through or safer forwarding
-  -> Diagnostics / TraceEvent
+  -> validated RelayLM-managed payload or safe minimal managed fallback
+  -> Diagnostics / TraceEvent projection
 ```
+
+### Managed fallback
+
+```text
+full CompileResult unavailable/blocked
+  -> reduced authority-safe CompileResult
+  -> CompileDecision(COMPILE_FALLBACK)
+  -> reduced RelayLM-owned payload
+```
+
+### Managed fail-closed
+
+```text
+no authority-safe managed payload
+  -> CompileDecision(BLOCKED)
+  -> OpenAI-compatible error/recovery orchestration
+  -> never raw prior client history
+```
+
+## Diagnostics
+
+Diagnostics explain why a plan/result/decision was selected. They may include:
+
+- route/mode/authority classes,
+- decision state,
+- payload-source class,
+- block IDs and counts,
+- omission and fallback reason IDs,
+- token-budget class,
+- profile/scene source status,
+- stable-prefix hash when permitted.
+
+Diagnostics must not contain:
+
+- raw client or backend messages,
+- prompt block contents,
+- memory snippets/page bodies,
+- persona-source bodies,
+- final response text,
+- secret-bearing paths/URLs.
+
+## TraceEvent
+
+A `TraceEvent` is a compact content-free runtime projection for observability, RelayRUN linkage, and later aggregation.
+
+```yaml
+runtime_compile_event:
+  schema_version: relaylm.runtime_compile_event.v1
+  event_type: runtime_compile_decision
+  request_id_present: true
+  route_authority: managed
+  mode: memory_light
+  decision_state: COMPILE_FALLBACK
+  apply_compiled_messages: true
+  forwarded_payload_source: relaylm_minimal_fallback
+  block_count: 2
+  omitted_block_count: 3
+  fallback_reason_id: optional_blocks_over_budget
+  content_free: true
+```
+
+Trace events are not RelaySOUL artifacts and must not contain the runtime-private compile result.
+
+## RelaySOUL artifact
+
+RelaySOUL artifacts belong to persona-source proposal, approval, revision, persistence, rollback, and apply workflows.
+
+Runtime compile plans/results/decisions describe one request and must not be labeled RelaySOUL artifacts unless a separate governed audit workflow explicitly creates a typed projection.
+
+## Memory record
+
+RelayMEM owns memory sources and candidates. RelayCTX may pack selected memory evidence, but a compiled prompt or compile result does not become a memory record by default.
+
+## RelayRUN relationship
+
+RelayRUN orchestrates the selected compile path and may record content-free plan/result/decision references in checkpoints or trace projections.
+
+RelayRUN does not:
+
+- reconstruct compile semantics,
+- choose memory evidence,
+- rewrite a managed payload into raw pass-through,
+- turn runtime-private messages into checkpoint content.
+
+## Current implementation boundary
+
+Current runtime diagnostics include compile-decision dry-run/apply metadata and may mirror the actual current profile-compiler apply state.
+
+Current implementation does not necessarily emit every proposed v1 projection or the full target `BLOCKED`/authority-safe fallback taxonomy. Consumers must use the implemented schema/version and inspect the actual forwarded-payload source rather than infer authority solely from the decision-state name.
 
 ## State and content rules
 
-- Compile objects are request-local unless a future trace or audit layer persists them.
-- Trace events should avoid full prompt text by default.
-- RelaySOUL content-free artifacts must not embed runtime compiled prompt text.
-- Failed plans, results, or decisions should prefer pass-through or safe fallback over hard rejection.
-- IDs should be stable enough for logs and tests, but not durable storage IDs unless a future persistence layer defines them.
+- Compile artifacts are request-local unless an explicit typed content-free projection is persisted.
+- `PASS_THROUGH` is allowed only by explicit route authority.
+- Managed dry-run/shadow/fallback must preserve RelayLM-owned authority.
+- Failed managed compilation must prefer a safe managed fallback or fail closed, never raw client history.
+- Runtime-private prompt/messages must not enter RelaySOUL or checkpoint artifacts.
+- IDs should be stable for one request/logging domain but are not durable memory IDs by default.
 
-## Relationships
+## Required migration scope
 
-### Runtime Compile Gate
+A future implementation migration should update together:
 
-The Runtime Compile Gate consumes a plan/result and emits a decision.
+1. schema-versioned plan/result/decision projections,
+2. explicit route-authority class,
+3. forwarded-payload source tracking,
+4. authority-safe minimal fallback construction,
+5. `BLOCKED`/fail-closed behavior,
+6. PipelineContext mutation reasons,
+7. RelayRUN lineage/checkpoint projections,
+8. tests proving managed failures never restore raw client messages.
+
+## Required smoke coverage
+
+1. Explicit pass-through route produces `PASS_THROUGH`.
+2. Managed apply forwards only RelayLM-constructed messages.
+3. Managed dry-run/shadow preserves an authority-safe payload.
+4. Managed fallback is reduced but remains RelayLM-owned.
+5. No safe managed payload produces `BLOCKED`.
+6. Diagnostics/trace contain no prompt/message bodies.
+7. RelayRUN checkpoint projections contain IDs/states only.
+
+## Summary
 
 ```text
-CompilePlan + optional CompileResult + preflight status
-  -> Runtime Compile Gate
-  -> CompileDecision
+plan
+  intent to compile
+
+result
+  runtime-private rendered payload candidate
+
+decision
+  authority-aware request-local selection
+
+trace/checkpoint projection
+  content-free observability only
+
+managed failure
+  safe RelayLM fallback or fail closed
+  never raw client history
 ```
-
-### Safe SOUL / Scene / CTX Compile Chain
-
-The safe chain defines the process. This contract defines the object vocabulary.
-
-```text
-safe chain = process
-artifact contract = object vocabulary
-compile gate = runtime apply decision
-```
-
-### RelaySOUL
-
-RelaySOUL owns persona-source mutation workflows. Runtime compile artifacts describe request forwarding decisions and should remain separate.
-
-## Minimal MVP target
-
-A minimal runtime artifact contract should support:
-
-1. `CompilePlan` with planned block IDs and fallback reasons
-2. `CompileResult` with rendered/omitted block IDs and message count
-3. `CompileDecision` with decision state and apply flag
-4. diagnostics that explain mode, route, scene, block order, and fallback reasons
-5. trace events that avoid full prompt text by default
-
-## Future extensions
-
-Future work can add:
-
-- schema version fields
-- request lineage IDs
-- stable prefix hashes
-- token estimates per block
-- shadow compare summaries
-- risk scores
-- RelayTRC export format
-- operator-visible diagnostics endpoint
-
-## Initial diagnostics wiring status
-
-Initial implementation wires CompileDecision dry-run schema into runtime diagnostics and trace metadata only.
-
-- diagnostics field: `RequestDiagnostics.compile_decision_dry_run`
-- trace metadata key: `compile_decision_dry_run`
-- default dry-run state: `COMPILE_DRY_RUN`
-- apply flag: `apply_compiled_messages=false`
-- diagnostics mode: `diagnostics_only=true`
-
-This does not apply compiled messages and does not change backend forwarding payload behavior.
-
-
-- CompileDecision dry-run is now wired into request-local diagnostics and trace metadata on the normal request path (`/v1/chat/completions`) without applying compiled messages.
-
-- request-path compile decision diagnostics now mirror actual apply state, so trace metadata matches forwarded payload state without embedding prompt content.

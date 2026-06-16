@@ -4,6 +4,8 @@ This directory is the index for RelayLM MVP milestone summaries and MVP-focused 
 
 All MVP summary and MVP-focused implementation note files are now housed in this directory.
 
+> For the current phase, implemented boundaries, default-off/preflight-only behavior, and immediate next work, use [Project Status](../PROJECT_STATUS.md). The files in this directory are historical implementation snapshots rather than the current-state source of truth.
+
 ## Current pipeline milestones
 
 ### RelayCTX short-term context
@@ -85,6 +87,9 @@ These older summaries are kept indexed for discoverability while the documentati
 - [MVP-33 summary](mvp33_summary.md)
 - [MVP-37 summary](mvp37_summary.md)
 
-## Follow-up cleanup
+## Maintenance rule
 
-After this consolidation pass, top-level `docs/mvp*` files should no longer be needed. Future MVP summaries should be created directly under `docs/mvp/` and linked from this index.
+- Create future MVP summaries and focused implementation notes directly under `docs/mvp/`.
+- Link each new document from this index.
+- Treat existing MVP documents as historical snapshots; change them only to repair broken links or make an explicit factual correction.
+- Use [Project Status](../PROJECT_STATUS.md) for the current implementation state and immediate next boundary.

@@ -8,6 +8,10 @@ from typing import Any
 
 import httpx
 
+from relaylm.client_history_exclusion_apply_runtime import (
+    client_history_exclusion_apply_blocks_backend,
+    client_history_exclusion_apply_failure_reason,
+)
 from relaylm.pipeline_context import get_active_pipeline_context
 from relaylm.relayctx_unpack_runtime import apply_relayctx_unpack_runtime
 from relaylm.routing import ResolvedRoute
@@ -17,7 +21,7 @@ OPENAI_CHAT_COMPLETIONS_PATH = "/chat/completions"
 
 
 class BackendRequestError(RuntimeError):
-    """Raised when RelayLM cannot reach the configured backend."""
+    """Raised when RelayLM cannot safely forward to or reach the backend."""
 
 
 def _backend_url(route: ResolvedRoute, path: str) -> str:
@@ -49,10 +53,22 @@ def _decode_response_body(response: httpx.Response) -> Any:
         return response.text
 
 
+def _ensure_backend_forward_allowed(route: ResolvedRoute) -> None:
+    pipeline_context = get_active_pipeline_context()
+    if pipeline_context is None:
+        return
+    result = pipeline_context.client_history_exclusion_apply_result
+    if client_history_exclusion_apply_blocks_backend(route, result):
+        raise BackendRequestError(
+            client_history_exclusion_apply_failure_reason(result)
+        )
+
+
 async def forward_chat_completion_json(
     payload: Mapping[str, Any],
     route: ResolvedRoute,
 ) -> tuple[int, Any, dict[str, str]]:
+    _ensure_backend_forward_allowed(route)
     timeout = httpx.Timeout(route.backend.timeout_seconds)
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -95,6 +111,7 @@ async def open_chat_completion_stream(
     RelayLM generator exception.
     """
 
+    _ensure_backend_forward_allowed(route)
     timeout = httpx.Timeout(route.backend.timeout_seconds)
     client = httpx.AsyncClient(timeout=timeout)
     stream_context = client.stream(

@@ -2,94 +2,130 @@
 
 ## Goal
 
-This document defines the design target for a safe compile chain that turns persona source files, scene state, memory candidates, recent turns, and the latest user input into an OpenAI-compatible prompt payload.
-
-The goal is not to add a new runtime mutation path. The goal is to make the existing RelayLM context compiler direction explicit and safe:
+This document defines the safe compile chain that turns approved durable persona sources, request-local scene policy, selected memory evidence, RelayLM-owned short-term context, and the current user turn into an OpenAI-compatible backend payload.
 
 ```text
-SOUL / OUTPUT_POLICY / RELATIONSHIP_ANCHOR
-  -> SCENE_STATE
-  -> RelayCTX block assembly
-  -> token budget planning
-  -> preflight / diagnostics
-  -> gated runtime apply
-  -> backend OpenAI-compatible messages
+approved durable sources
+  + RelaySCN request-local state/policy
+  + RelayINT proceed/retrieval decision
+  + RelayMEM read-only evidence
+  + RelayCTX working-state selection
+  -> RelayCTX Repack
+  -> Runtime Compile Gate
+  -> RelayRUN orchestration
+  -> backend adapter
 ```
 
-## Non-goals
+The chain must preserve client-authority boundaries, component ownership, content-free observability, and safe fallback behavior.
 
-This design does not introduce:
+Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md). This document defines stable ownership and invariants.
 
-- model weight training
-- direct KV-cache mutation
-- backend scheduler changes
-- memory database writes
-- persona source mutation during normal chat forwarding
-- automatic rewriting of `room_anchor` into other fields
-- runtime persistence of user-visible content
-- hard rejection of normal chat requests
-
-## Terms
+## Ownership
 
 ### RelaySOUL
 
-RelaySOUL owns persona-source revision workflow and approval-oriented calibration. It produces or updates source artifacts such as `SOUL.md`, `OUTPUT_POLICY.md`, `RELATIONSHIP_ANCHOR.md`, `STABLE_MEMORY_SUMMARY.md`, and `SCENE_STATE.md` through dry-run, approval, revision, persistence, and rollback workflows.
+RelaySOUL owns approved durable persona-source revision and approval workflows:
 
-### Scene
+- `SOUL.md`,
+- durable `OUTPUT_POLICY.md`,
+- durable relationship principles or anchors,
+- revision, approval, persistence, and rollback artifacts.
 
-Scene is the current conversational situation. It is represented by `scene_id` metadata and `SCENE_STATE.md` / `scene_state` content.
+RelaySOUL does not own request-local scene state, current conversation continuity, compiled memory pages, or normal-turn prompt construction.
 
-Scene is the compile target. `room_id` is only optional external host metadata, such as a frontend room, stream, channel, or conversation space.
+### RelaySCN
+
+RelaySCN owns request-local semantic situation and policy:
+
+- scene type,
+- current role,
+- compact setting/task/participants,
+- bounded scene constraints,
+- safety sensitivity,
+- formality,
+- memory scope,
+- expression allowance,
+- recovery and confirmation policy,
+- persistence gates.
+
+RelaySCN does not own affect state, short-term conversation working state, durable persona revision, or memory writes.
+
+### RelayINT
+
+RelayINT owns pre-action interpretation:
+
+- reference resolution,
+- ambiguity and clarification decisions,
+- action intent,
+- proceed/block decision,
+- whether RelayMEM Retrieval is needed.
+
+RelayINT does not retrieve memory itself and does not write MEM or SOUL.
+
+### RelayMEM Retrieval
+
+RelayMEM Retrieval reads approved long-term memory evidence under RelaySCN and RelayINT constraints. It returns candidates and provenance to RelayCTX.
+
+It does not own prompt layout or memory mutation.
 
 ### RelayCTX
 
-RelayCTX owns effective context construction. It decides how selected persona, scene, memory, retrieved context, recent turns, and latest input are arranged into a token-budgeted prompt layout.
+RelayCTX owns:
 
-### Context compiler
+- selection from request-local working state,
+- context block assembly,
+- stable-to-dynamic ordering,
+- token-budget degradation,
+- backend message rendering,
+- visible/internal response separation through Unpack.
 
-The context compiler is the RelayCTX runtime component that renders selected blocks into OpenAI-compatible messages.
+RelayCTX does not decide scene policy, memory persistence, or persona revision.
 
-### RelayPLC
+### RelaySLP
 
-RelayPLC owns policy, routing, budget, fallback, and apply decisions. In this chain it decides whether to apply a compiled context, run shadow/dry-run diagnostics only, or preserve pass-through behavior.
+RelaySLP is out-of-band from the normal answer path. It compiles governed evidence into memory updates, held candidates, rejected candidates, or RelaySOUL proposals through explicit persistence and approval gates.
+
+### RelayRUN and adapters
+
+RelayRUN orchestrates node order, fallback/recovery, checkpoints, idempotency, and runtime state. Adapters preserve OpenAI-compatible request/response semantics.
+
+Neither owns semantic persona, scene, intent, memory, or prompt-policy decisions.
 
 ## Source classes
 
-The compile chain should classify inputs before rendering.
+### Stable persona sources
 
 ```text
-stable persona sources
-  common_runtime_policy
-  SOUL.md
-  OUTPUT_POLICY.md
-  RELATIONSHIP_ANCHOR.md
-
-slow memory/profile summaries
-  STABLE_MEMORY_SUMMARY.md
-  durable user memory summary
-  durable character memory summary
-
-dynamic scene and conversation state
-  SCENE_STATE.md / scene_state
-  retrieved memory candidates
-  RAG or spill chunks
-  recent turns
-  latest input
-  response instruction
-
-external host metadata
-  room_id
-  session_id
-  frontend route metadata
+common_runtime_policy
+approved SOUL.md
+approved OUTPUT_POLICY.md
+approved relationship anchor
 ```
 
-Only selected source content should enter the compiled prompt. External host metadata is available for scoping, routing, diagnostics, and memory boundaries, but should not become prompt text by default.
+These form the stable prefix and should remain byte-for-byte stable when possible.
 
-## Safe chain stages
+### Slow durable memory sources
 
-### 1. Scope resolution
+```text
+approved stable memory summary
+approved durable user/character memory summaries
+```
 
-Resolve operator-facing scope:
+These are owned by RelayMEM storage and compiled through RelaySLP, not RelaySOUL.
+
+### Request-local dynamic sources
+
+```text
+RelaySCN scene_state / scene_policy
+RelayINT intent and retrieval decision
+RelayMEM selected evidence
+RelayCTX-selected short-term context
+current user turn
+minimum compatible tool/multimodal transaction state
+response instruction
+```
+
+### External host metadata
 
 ```text
 character_id
@@ -97,51 +133,72 @@ user_id / user_type
 scene_id
 session_id
 optional room_id
-route
-mode
-backend
+route / mode / backend identifiers
 ```
 
-Safety rule: missing optional host metadata must not block normal chat forwarding.
+Host metadata supports scoping, routing, diagnostics, and namespace isolation. It must not become prompt text by default.
 
-### 2. Source loading
+## Client-authority prerequisite
 
-Load profile source files and runtime inputs:
+For a managed route:
 
 ```text
-common_runtime_policy
-SOUL.md
-OUTPUT_POLICY.md
-optional room_anchor
-optional RELATIONSHIP_ANCHOR.md
-optional STABLE_MEMORY_SUMMARY.md
-optional SCENE_STATE.md / scene_state
-incoming OpenAI-compatible messages
+original client messages
+  -> validated current-turn extraction
+  -> bounded current instruction-evidence extraction
+  -> active transaction preservation check
+  -> prior client history exclusion
+  -> RelaySCN normalization
+  -> RelayLM-owned context reconstruction
 ```
 
-Safety rule: optional legacy fields such as `room_anchor` must not cause `Path(None)` or equivalent crashes.
+Client-provided messages are request evidence, not automatically trusted backend context.
 
-### 3. Scene normalization
+Raw client `system` or `developer` messages are not RelaySOUL sources. They may appear only as bounded low-trust first-pass evidence under the Client Instruction Authority Contract.
 
-Normalize dynamic situation state:
+## Compile chain
 
-```text
-preferred: scene_state
-legacy alias: room_state -> scene_state when scene_state is unset
-metadata: room_id remains external host metadata
-```
+### 1. Scope resolution
 
-Safety rule: dynamic scene content must not be promoted into stable prefix blocks.
+Resolve and validate:
 
-### 4. Candidate selection
+- route and mode,
+- character and user namespace,
+- scene/session/room metadata,
+- backend target,
+- compatibility-sensitive request shape.
 
-RelayMEM may provide memory candidates, retrieval results, or spill chunks. RelayMEM proposes candidates; RelayCTX chooses how to pack selected candidates.
+Missing optional host metadata must not crash or block ordinary compatible requests.
 
-Safety rule: memory candidate selection must not mutate the memory store during prompt compilation.
+### 2. Approved source loading
 
-### 5. Block assembly
+Load only configured or approved durable sources. Missing durable sources follow an explicit safe policy; they do not authorize copying raw client prompts into persona files.
 
-RelayCTX assembles blocks by stability class:
+### 3. RelaySCN normalization
+
+Normalize scene evidence into request-local `scene_state` and `scene_policy`.
+
+Scene state remains dynamic. It must not be promoted into the stable prefix or persisted as durable persona merely because it affected one response.
+
+### 4. RelayINT decision
+
+Resolve the current action, references, ambiguity, and retrieval need.
+
+An unresolved reference blocks silent long-term memory retrieval. Clarification candidates must pass scene and compatibility gates.
+
+### 5. RelayMEM read-only selection
+
+When RelayINT and RelaySCN permit retrieval, RelayMEM selects bounded approved evidence and returns a runtime-private candidate artifact.
+
+RelayMEM does not insert messages directly, choose final block order, or write memory during this stage.
+
+### 6. RelayCTX working-state selection
+
+RelayCTX selects only the short-term context needed for the current action. Internal working state is not copied wholesale into the prompt.
+
+### 7. Block assembly
+
+Recommended order:
 
 ```text
 stable_prefix
@@ -152,135 +209,135 @@ stable_prefix
 
 slow_prefix
   stable_memory_summary
-  durable memory summaries
+  approved durable memory summaries
 
 dynamic_suffix
   scene_state
+  intent hints required for the current action
   retrieved_memory
   retrieved_rag
-  recent_turns
+  selected RelayLM-owned recent context
+  minimum protocol state
   latest_input
   response_instruction
 ```
 
-`room_anchor` may be emitted only when present, and should remain legacy compatibility content rather than a required block.
+Dynamic content appears after durable identity and output policy.
 
-Safety rule: dynamic content should appear after persona and output policy so RAG, memory, and scene state do not rewrite identity.
+### 8. Token-budget planning
 
-### 6. Token budget planning
+RelayCTX applies conservative degradation in this order:
 
-Plan approximate or tokenizer-aware budgets before rendering.
+1. remove diagnostics-only or preview context,
+2. reduce retrieved memory/RAG,
+3. reduce optional short-term hints,
+4. shorten selected recent context,
+5. block or use an authority-safe fallback when no valid payload remains.
 
-Minimum diagnostics should record:
+Stable persona sources must not be mutated to satisfy a request budget.
 
-- route
-- mode
-- character_id
-- scene_id when available
-- optional room_id when available
-- block IDs
-- stability classes
-- omitted blocks and reasons
-- approximate token or character budgets
-- whether compilation was applied, shadow-only, or skipped
+### 9. Preflight
 
-Safety rule: budget planning should omit or compress dynamic content before mutating stable persona sources.
+Preflight verifies:
 
-### 7. Preflight
+- client-authority prerequisites,
+- source approval and scope,
+- block order and stability class,
+- compatibility-sensitive request preservation,
+- token-budget feasibility,
+- content-bearing/runtime-private versus content-free projection separation.
 
-Preflight validates that the compiled context is structurally safe:
+Preflight validates structure and readiness. It does not itself authorize apply.
 
-- required stable persona sources are available or fallback policy is defined
-- optional legacy fields are handled safely
-- block order follows stability rules
-- dynamic content is not placed into stable prefix
-- token budget decision is recorded
-- pass-through fallback remains available
+### 10. Runtime Compile Gate
 
-Safety rule: preflight failure should produce diagnostics and fall back safely, not crash the normal request path.
-
-### 8. Gate
-
-RelayPLC makes the final apply decision:
+The gate consumes route/mode, RelaySCN, RelayINT, RelayMEM, RelayCTX, and compatibility outcomes.
 
 ```text
 APPLY
-  use compiled messages
+  use RelayLM-compiled messages
 
 SHADOW_ONLY
-  build diagnostics, but forward original or safer messages
+  compute plans/projections without changing the backend payload
 
 PASS_THROUGH
-  preserve incoming messages
+  allowed only for an explicit pass-through route or an explicitly compatible delegated-authority path
 
-FALLBACK
-  use a safe minimal context or backend-compatible fallback
+BLOCKED / RECOVERY / SAFE_FALLBACK
+  use authority-safe handling without restoring excluded client history or instructions
 ```
 
-Safety rule: approval and preflight are not the same as gate. Approval accepts a proposed change. Preflight validates structure. Gate decides current runtime application.
+For managed routes, compile failure must not fall back to raw client history or raw client system/developer messages.
 
-### 9. Render and forward
+### 11. RelayRUN orchestration and forwarding
 
-Render selected blocks into OpenAI-compatible messages and forward through the adapter.
+RelayRUN records node states and chooses the already-defined runtime route. The adapter forwards the final OpenAI-compatible payload without changing semantic decisions.
 
-Safety rule: backend adapters preserve OpenAI-compatible semantics and should not expose internal tags or diagnostics unless explicitly requested.
+## Artifact boundaries
 
-## Compile states
+### Content-bearing runtime artifacts
 
-Suggested state names:
+Examples:
+
+- normalized RelaySCN state,
+- RelayINT resolved reference text,
+- RelayMEM snippets or page content,
+- RelayCTX block content,
+- backend messages,
+- Unpack candidates.
+
+These remain request-local or use explicitly protected diagnostic storage.
+
+### Content-free projections
+
+Default trace/audit projections contain only typed allowlisted metadata:
+
+- presence flags,
+- counts,
+- enum/class values,
+- confidence bands,
+- budget numbers,
+- stable reason identifiers,
+- node status,
+- payload-mutation booleans.
+
+They must not contain raw messages, prompt blocks, memory bodies, scene semantic text, paths, or final response text.
+
+## Failure invariants
+
+- Explicit pass-through behavior remains unchanged.
+- Managed routes never restore excluded client authority as fallback.
+- Active tool transactions and unsupported structured/multimodal shapes fail closed or remain unchanged.
+- Retrieval misses do not broaden memory scope silently.
+- Malformed internal candidates never reach the user.
+- Visible recovery text goes through the normal output pipeline.
+- No normal-turn compile stage writes MEM or SOUL.
+
+## Non-goals
+
+This chain does not introduce:
+
+- direct KV-cache mutation,
+- backend scheduler changes,
+- memory writes in the synchronous compile path,
+- persona-source mutation during normal chat,
+- frontend UI, TTS, ASR, or avatar ownership,
+- generic recursive trace sanitization,
+- a standalone `RelayPLC` semantic component.
+
+## Summary
 
 ```text
-PASS_THROUGH
-COMPILE_DRY_RUN
-COMPILE_SHADOW_ONLY
-COMPILE_APPLY
-COMPILE_FALLBACK
+approved SOUL and durable policy
+  + RelaySCN request-local policy
+  + RelayINT action/retrieval decision
+  + RelayMEM read-only evidence
+  + RelayCTX-selected short-term context
+  -> RelayCTX Repack
+  -> authority-safe gate
+  -> RelayRUN
+  -> adapter
+
+Out-of-band:
+  governed evidence -> RelaySLP -> gated MEM updates / SOUL proposals
 ```
-
-These states should be diagnostic states first. Runtime behavior should remain conservative until smoke tests and manual checks show stable behavior.
-
-## Artifact boundary
-
-This chain should not confuse runtime compiled context with RelaySOUL persistence artifacts.
-
-```text
-RelaySOUL artifact
-  approval / patch / revision / persistence / rollback audit object
-
-Runtime compile plan
-  transient diagnostic and decision object for prompt compilation
-
-Memory record
-  durable memory source item or retrieved candidate
-
-Trace event
-  runtime diagnostic line, optionally promoted later to an audit artifact
-```
-
-Content-free RelaySOUL artifacts should remain content-free. Runtime compiled prompts may contain user-visible content, but they should not be persisted as RelaySOUL artifacts by default.
-
-## Minimal MVP target
-
-A useful MVP for this chain is:
-
-1. profile source loading handles optional legacy `room_anchor`
-2. `scene_state` is preferred and `room_state` remains a legacy alias
-3. context blocks are assembled by stability class
-4. token budget diagnostics are emitted
-5. preflight can explain omitted blocks and fallback reasons
-6. gate can choose pass-through, shadow-only, or apply
-7. smoke tests cover safe optional-field behavior and profile compile paths
-
-## Future extensions
-
-Future work can add:
-
-- scene-aware memory scope selection
-- scene transition diagnostics
-- approval-aware SOUL revision application
-- token-budget-aware scene compression
-- profile prefix hash diagnostics
-- per-character runtime instances for stronger prefix reuse
-- RelayTRC lineage for compile plans and runtime decisions
-
-These should be added after the minimal safe chain is stable.

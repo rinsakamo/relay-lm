@@ -12,6 +12,9 @@ from relaylm.pipeline_node_result import PipelineNodeResult
 from relaylm.routing import ResolvedRoute
 
 if TYPE_CHECKING:
+    from relaylm.client_history_exclusion_apply import (
+        ClientHistoryExclusionApplyResult,
+    )
     from relaylm.client_instruction_identity import ClientInstructionIdentityResult
     from relaylm.client_instruction_cache_lookup_runtime import (
         ClientInstructionCacheLookupRuntimeResult,
@@ -59,6 +62,14 @@ class PipelineContext:
         repr=False,
         compare=False,
     )
+    _client_history_exclusion_apply_result: (
+        ClientHistoryExclusionApplyResult | None
+    ) = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
 
     def __post_init__(self) -> None:
         _ACTIVE_PIPELINE_CONTEXT.set(self)
@@ -71,10 +82,17 @@ class PipelineContext:
         from relaylm.client_history_exclusion_preflight import (
             prepare_client_history_exclusion_preflight_runtime_private,
         )
+        from relaylm.client_history_exclusion_apply_runtime import (
+            run_client_history_exclusion_apply_runtime,
+        )
 
         prepare_client_instruction_identity_runtime_private(pipeline_context=self)
         prepare_client_instruction_cache_lookup_runtime_private(pipeline_context=self)
         prepare_client_history_exclusion_preflight_runtime_private(pipeline_context=self)
+        run_client_history_exclusion_apply_runtime(
+            pipeline_context=self,
+            compiler_used=self.route.mode_applied == "memory_light",
+        )
 
     def replace_forwarded_payload(
         self,
@@ -146,6 +164,22 @@ class PipelineContext:
         """Return request-local private preflight state without copying it."""
 
         return self._client_history_exclusion_preflight_result
+
+    def set_client_history_exclusion_apply_result(
+        self,
+        result: ClientHistoryExclusionApplyResult | None,
+    ) -> None:
+        """Store one content-bearing apply result without serialization."""
+
+        self._client_history_exclusion_apply_result = result
+
+    @property
+    def client_history_exclusion_apply_result(
+        self,
+    ) -> ClientHistoryExclusionApplyResult | None:
+        """Return request-local private apply state without copying it."""
+
+        return self._client_history_exclusion_apply_result
 
     def node_results_to_log_dicts(self) -> list[dict[str, Any]]:
         """Return detached log dictionaries for recorded node results."""

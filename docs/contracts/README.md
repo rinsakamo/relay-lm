@@ -2,13 +2,15 @@
 
 This directory collects RelayLM contract, artifact, schema, approval, and gate documentation.
 
-The contract files tracked by this index are housed in this directory.
+The contract files tracked by this index are housed in this directory. Related architecture documents remain under `docs/architecture/` and are linked where they define the runtime policy consumed by a contract.
 
 ## Runtime and compiler contracts
 
 - [Runtime compile artifact contract](runtime_compile_artifact_contract.md)
+  - related design: [Runtime Compile Gate Design](../architecture/runtime_compile_gate_design.md)
 - [Context compiler contract](context_compiler_contract.md)
 - [RelayRUN recovery response generator contract](relayrun_recovery_response_generator_contract.md)
+  - related design: [RelayRUN Runtime Checkpoint Design](../architecture/relayrun_runtime_checkpoint_design.md)
 
 ## RelaySOUL contracts
 

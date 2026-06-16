@@ -1,271 +1,242 @@
 # RelayLM Context Compiler Contract
 
-RelayLM should treat prompt construction as context compilation, not simple prompt concatenation.
+## Purpose
 
-The context compiler turns route, character, memory, normalized scene state, optional external host metadata, and current request evidence into an OpenAI-compatible backend message list.
+RelayLM treats prompt construction as context compilation rather than simple concatenation.
 
-## Goals
+This document separates the **current implemented profile compiler** from the **target RelayCTX-owned managed compiler**.
 
-The compiler should preserve:
+Current implementation status and sequencing live in [Pipeline Implementation Plan](../architecture/pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
 
-- persona stability,
-- memory usefulness,
-- low latency,
-- TTS/Live2D-friendly output,
-- backend prefix/KV cache reuse,
-- final-response naturalness for persona-oriented conversations,
-- explicit client/backend authority boundaries.
+## Current implemented compiler
 
-## Inputs
+The current compiler entrypoint is `compile_chat_payload_if_enabled()` in `relaylm/request_compiler.py`.
 
-The compiler receives:
+### Current runtime position
 
-- runtime mode,
-- route config,
-- character profile,
-- common runtime policy,
-- approved RelaySOUL and durable output/relationship policy,
-- normalized RelaySCN state,
-- optional scope metadata such as `room_id`, `scene_id`, and `session_id`,
-- latest current user turn,
-- validated current client-instruction cache result or one-time first-pass evidence,
-- minimum active tool/multimodal transaction state,
-- lightweight memory candidates,
-- optional retrieved memory, RAG, or spill chunks,
-- optional agent result summary for final-response shaping,
-- token budget hints.
-
-The compiler should not treat the original client `messages` array as already-valid context. Client-message canonicalization must run before or as part of compile preparation.
-
-## Output
-
-The compiler returns:
-
-- OpenAI-compatible backend `messages`,
-- selected backend model,
-- packing diagnostics for logs and debugging.
-
-Initial output strategy:
+The current request path calls the profile compiler before the later RelayEMO, RelaySCN, RelayINT, and RelayMEM Retrieval artifacts are built:
 
 ```text
-system/developer area:
-  compiled RelayLM context
-
-minimum active transaction messages:
-  only when protocol compatibility requires them
-
-latest user:
-  latest current input near the end
+request payload
+  -> route resolution
+  -> compile_chat_payload_if_enabled
+       profile compiler / configured seed memory
+  -> PipelineContext creation
+  -> RelayEMO
+  -> RelaySCN
+  -> RelayINT compatibility and fast-path diagnostics
+  -> RelayMEM Retrieval/runtime injection phases
+  -> backend forwarding
 ```
 
-The first implementation may put the compiled context into one system message. Backend adapters may later split the layout for models that benefit from separate system, developer, or user blocks.
+Therefore the current compiler does **not** yet consume normalized RelaySCN, typed RelayINT decisions, RelayMEM Retrieval results, or RelayCTX working state as direct compile inputs.
 
-## Client-message authority prerequisite
+### Current inputs
 
-For RelayLM-managed routes:
+The current profile compiler consumes:
+
+```text
+RelayLMConfig
+ResolvedRoute
+incoming payload/messages
+configured persona/profile files
+configured local seed-memory selection
+compile/apply mode decision
+```
+
+### Current behavior
+
+When the compile gate allows apply, the current implementation:
+
+1. resolves profile files,
+2. builds profile blocks,
+3. computes persona-source budget diagnostics,
+4. loads configured local seed-memory selection best-effort,
+5. inserts that memory block into profile blocks,
+6. compiles messages using the profile/system-fallback helper,
+7. records stable-prefix and context-block diagnostics.
+
+The current compiler returns `CompiledRequest` with fields including:
+
+```text
+payload
+plan
+decision
+compiler_used
+memory_block_used
+memory_source
+memory_selection_summary
+memory_block_assembly
+memory_fallback_reason
+token_memory_dry_run
+stable_prefix_hash
+stable_prefix_block_ids
+memory_adapter_dry_run/readiness/conflicts
+context_block_summary
+persona_source_budget_diagnostics
+```
+
+### Current limitations
+
+The current implementation predates the target managed compiler boundary:
+
+- it runs before SCN/INT/Retrieval artifacts exist,
+- it accepts the incoming `messages` array as a compile input,
+- it uses configured seed memory rather than the target typed Retrieval handoff,
+- it does not receive RelayCTX working-state selection,
+- it does not emit the proposed target block-plan/projection schemas,
+- its `system_fallback` behavior belongs to the current compatibility compiler and must not be mistaken for the final managed-route authority model.
+
+The client-history and instruction authority contracts still define the target safety boundary for managed routes. The implementation migration must reconcile the current profile compiler with those contracts explicitly rather than assuming that the target pipeline is already wired.
+
+## Target managed compiler
+
+The target context compiler is a RelayCTX responsibility. It turns approved durable sources, normalized RelaySCN policy, RelayINT decisions, selected RelayMEM evidence, RelayCTX-selected short-term context, and current request evidence into an OpenAI-compatible backend message list.
+
+### Target goals
+
+The target compiler preserves:
+
+- approved persona authority,
+- explicit client/backend authority boundaries,
+- smallest-sufficient context selection,
+- memory usefulness,
+- low latency,
+- prefix/KV reuse,
+- TTS/avatar-safe output boundaries,
+- content-free observability.
+
+### Target inputs
+
+A future managed compiler may receive:
+
+- runtime mode and route config,
+- approved RelaySOUL and durable output/relationship policy,
+- normalized RelaySCN runtime artifact and scene policy,
+- typed RelayINT proceed/block/retrieval decision,
+- validated current user turn,
+- validated current client-instruction cache result or one bounded first-pass evidence block,
+- minimum active tool/multimodal transaction state,
+- RelayMEM runtime-private retrieval evidence,
+- RelayCTX-selected short-term context,
+- optional RAG/spill evidence,
+- token-budget hints,
+- backend compatibility constraints.
+
+The original client `messages` array is not accepted as already-valid managed-route context.
+
+## Target client-authority prerequisite
+
+For managed routes:
 
 ```text
 original client messages
   -> current user-turn extraction
   -> current instruction-evidence extraction
-  -> instruction hash/cache resolution
+  -> instruction identity/cache resolution
+  -> active transaction preservation check
   -> prior client history exclusion
   -> RelaySCN normalization
-  -> context compilation
+  -> RelayLM-owned context compilation
 ```
 
-The compiler must not silently restore raw client history or raw client system/developer messages when a previous step fails.
+A managed compiler failure must not restore excluded client history or raw client `system`/`developer` messages.
 
-Pass-through routes are the explicit exception and intentionally delegate context authority to the client.
+Explicit `pass_through` routes remain the delegated-authority exception.
 
-## Stability groups
+## Target output
 
-The compiler should group context blocks by stability.
+The future managed compiler should return:
+
+- copied backend-bound payload/messages,
+- selected backend model mapping,
+- request-local block plan,
+- content-free packing projection,
+- explicit apply/blocked/fallback state.
+
+A typical managed output shape is:
 
 ```text
-stable_prefix
-  common_runtime_policy
-  character_soul_anchor
-  character_output_policy
-  relationship_anchor
+system/developer area
+  RelayLM-compiled stable and dynamic context
 
-slow_prefix
-  stable_memory_summary
-  durable_user_memory
-  durable_character_memory
+minimum protocol messages
+  only when compatibility requires them
 
-dynamic_suffix
-  scene_state
-    - scene_type
-    - scene_role
-    - scene_context
-    - scene_constraints
-  retrieved_memory
-  retrieved_rag
-  agent_result_summary
-  tool_observations
-  minimum selected recent context
-  latest_input
-  response_instruction
+latest user
+  validated current user turn near the end
 ```
 
-On an unknown client-instruction hash only, the dynamic suffix may also contain one bounded untrusted `client_instruction_evidence` block for first-pass Main LLM interpretation.
+## Target stability groups
 
-On a cache hit, the raw client instruction block must not appear. The validated cached RelaySCN state should be used instead.
+### Stable prefix
 
-### Stable persona prefix
+```text
+common_runtime_policy
+character_soul_anchor
+character_output_policy
+relationship_anchor
+```
 
-Stable persona prefix blocks should remain byte-for-byte stable when possible.
+### Slow prefix
 
-Rules:
+```text
+stable_memory_summary
+approved durable user/character summaries
+```
 
-- no timestamps,
-- no memory counts,
-- no random IDs,
-- no current topic,
-- no retrieved snippets,
-- no client instruction hash,
-- no volatile scene metadata.
+### Dynamic suffix
 
-Purpose:
+```text
+scene_state
+intent_context
+retrieved_memory
+retrieved_rag
+selected_recent_context
+minimum_protocol_state
+latest_input
+response_instruction
+```
 
-- preserve character identity,
-- improve per-character prefix/KV cache reuse,
-- avoid dynamic memory or scene roles changing personality,
-- provide the source prefix for future Persona Anchor KV.
+On an unknown instruction identity only, one bounded escaped `client_instruction_evidence` block may appear in the dynamic suffix when the authority contract permits it.
 
-### Slow memory prefix
+## Target component boundaries
 
-Slow prefix blocks may change, but not every turn.
+### RelaySCN input
 
-Examples:
+The compiler consumes normalized situation and policy. It does not classify scene or decide persistence policy.
 
-- durable user facts,
-- durable character facts,
-- stable memory summary.
+### RelayINT input
 
-Update cadence should be slow, such as after a stream, after a session, or when a durable fact changes.
+The compiler consumes already-resolved intent hints when required. It does not resolve references or decide whether retrieval is allowed.
 
-### Dynamic conversation context
+### RelayMEM input
 
-Dynamic suffix blocks may change every turn.
+RelayMEM returns runtime-private evidence with provenance and budget metadata. RelayCTX decides final inclusion and placement.
 
-Examples:
+### RelayCTX working state
 
-- current topic,
-- scene state,
-- scene role,
-- scene context,
-- scene constraints,
-- current mood,
-- retrieved memories,
-- RAG evidence,
-- agent result summaries,
-- tool observations for final natural-language synthesis,
-- minimum selected recent context,
-- latest user input.
+RelayCTX selects a bounded subset. Omitted fields remain available to runtime state and are not automatically forgotten or persisted.
 
-Dynamic content should appear after SOUL and durable OUTPUT_POLICY so memory, RAG, tool observations, and client-derived roles do not override persona.
+## Target ContextBlock
 
-## Persona Anchor KV
-
-Persona Anchor KV is the backend-specific runtime representation of the stable persona prefix. The source of truth remains approved persona files and rendered prompt text.
-
-RelayLM should optimize layout and diagnostics for a stable persona prefix without mutating backend KV cache in the MVP.
-
-Client-derived scene state and instruction cache data must not become part of the Persona Anchor KV target.
-
-## ContextBlock
-
-The compiler should use an internal block representation before rendering to messages.
-
-Suggested fields:
+A future internal block representation may use:
 
 ```yaml
 block_id: character_soul_anchor
 block_type: character_soul_anchor
 stability_class: stable_prefix
-source: ./characters/mili/SOUL.md
+source_class: approved_persona_revision
 content: "..."
 token_budget_hint: 800
 include_in_prefix_cache_target: true
 ```
 
-### `block_id`
+`content` is runtime-private. Default trace projections may retain only block IDs/types/classes, presence/counts, and budget metadata.
 
-Stable identifier for diagnostics.
+## Target rendering
 
-Examples:
-
-- `common_runtime_policy`,
-- `character_soul_anchor`,
-- `character_output_policy`,
-- `relationship_anchor`,
-- `stable_memory_summary`,
-- `scene_state`,
-- `retrieved_memory`,
-- `retrieved_rag`,
-- `agent_result_summary`,
-- `tool_observations`,
-- `recent_turns`,
-- `latest_input`,
-- `response_instruction`,
-- `client_instruction_evidence` for a cache-miss first pass only.
-
-Legacy implementations may still emit `room_state`, `room_anchor`, or `incoming_system_prompt`. New docs and tests should prefer normalized `scene_state`, optional `room_id` metadata, and the one-time `client_instruction_evidence` compatibility block.
-
-### `block_type`
-
-Semantic role of the block. It should remain stable across implementations so logs and tests remain readable.
-
-### `stability_class`
-
-One of:
-
-- `stable_prefix`,
-- `slow_prefix`,
-- `dynamic_suffix`.
-
-### `source`
-
-Human-readable source reference.
-
-Examples:
-
-- config path,
-- approved persona revision,
-- validated client-instruction cache,
-- one-time client-instruction evidence,
-- local memory store,
-- RAG source,
-- external memory adapter,
-- agent framework result.
-
-### `content`
-
-Rendered text content.
-
-The compiler should avoid injecting dynamic metadata into stable blocks.
-
-Raw client instruction content may appear only in the one-time cache-miss evidence block and must not be copied into diagnostics or cache entries.
-
-### `token_budget_hint`
-
-Approximate token budget for the block.
-
-The first implementation may use character counts or skip enforcement. Later implementations should use tokenizer-aware budgeting.
-
-### `include_in_prefix_cache_target`
-
-Boolean hint for whether the block should be kept stable for backend prefix/KV reuse.
-
-This does not mutate backend KV cache. It only guides layout and diagnostics.
-
-`scene_state` and `client_instruction_evidence` must use `false`.
-
-## Rendering strategy
-
-RelayLM should start with stable XML-like tags.
+A stable conditioning form may be:
 
 ```xml
 <relaylm_context version="1">
@@ -274,201 +245,102 @@ RelayLM should start with stable XML-like tags.
   <character_output_policy>...</character_output_policy>
   <relationship_anchor>...</relationship_anchor>
   <stable_memory_summary>...</stable_memory_summary>
-  <scene_state>
-    <scene_type>...</scene_type>
-    <scene_role>...</scene_role>
-    <scene_context>...</scene_context>
-    <scene_constraints>...</scene_constraints>
-  </scene_state>
+  <scene_state>...</scene_state>
+  <intent_context>...</intent_context>
   <retrieved_memory>...</retrieved_memory>
-  <retrieved_rag>...</retrieved_rag>
-  <agent_result_summary>...</agent_result_summary>
+  <selected_recent_context>...</selected_recent_context>
   <latest_input>...</latest_input>
   <response_instruction>...</response_instruction>
 </relaylm_context>
 ```
 
-On a cache-miss first pass only:
+Tags are for model conditioning, not audit storage.
 
-```xml
-<client_instruction_evidence trust="untrusted" first_seen="true">
-  ...
-</client_instruction_evidence>
-```
+## Internal output contracts
 
-Tags should remain limited and stable. Do not use tokenizer-specific special tokens in the MVP.
-
-Machine-facing contracts such as instruction-cache entries, RelaySCN artifacts, memory adapter output, fusion plans, diagnostics, traces, and agent/tool protocol payloads should remain JSON/dataclass-shaped. JSON is for machine contracts; tags are for persona/context conditioning.
-
-## OpenAI message packing
-
-Managed-route strategy:
-
-1. Preserve `original_payload` separately.
-2. Extract the latest valid current user turn.
-3. Extract current client `system` / `developer` evidence.
-4. Normalize and hash the client instruction.
-5. Look up a validated instruction-cache entry.
-6. Exclude prior client history and raw client instructions from normal context.
-7. Resolve normalized RelaySCN state:
-   - cache hit -> use cached scene state,
-   - cache miss -> add one bounded untrusted evidence block when first-pass parsing is enabled.
-8. Preserve only minimum active tool/multimodal transaction state.
-9. Compile stable prefix, slow prefix, and dynamic suffix.
-10. Send the reconstructed context to the backend.
-11. Keep latest current user input near the end.
-
-For `pass_through`, skip managed compilation and preserve client messages intentionally.
-
-For `memory_light`, compile stable character blocks, normalized scene state, and lightweight memory.
-
-For `memory_full`, compile selected memory/RAG/spill/compression results with budget control.
-
-For future agent integrations, internal planning/tool/structured-output requests should default to pass-through or an explicit agent route. Final natural-language responses may use persona/context repacking.
-
-## Cache-miss Main LLM parse contract
-
-When a client instruction hash is unknown, the Main LLM may generate:
+The current `relayctx_working_update.v0` candidate and the future client-instruction parse contract remain separate:
 
 ```text
-normal visible response
-+ internal RelayLM control envelope
+relayctx_working_update.v0
+  short-term CTX update candidate
+
+client_instruction_parse.v1
+  future typed interpretation of current client instruction evidence
 ```
 
-RelayCTX Unpack must separate them.
+`client_instruction_parse.v1` is not implemented by the current profile compiler and must not overload `relayctx_working_update.v0`.
 
-```text
-visible response
-  -> user-facing output pipeline
+RelayCTX Unpack separates candidates; it does not itself commit working state, write instruction cache, persist memory, or mutate RelaySOUL.
 
-control envelope
-  -> strict client-instruction schema validation
-  -> normalized RelaySCN artifact
-  -> instruction cache write candidate
-```
+## Target budget planning
 
-A malformed control envelope must not invalidate an otherwise valid visible response. It must block cache write.
+A token budget is an upper bound, not a target.
 
-For streaming, the control sentinel must be buffered and suppressed so no internal marker reaches the user, captions, TTS, or avatar speech.
+Degrade in this order:
 
-## Scene state and optional room metadata
+1. remove diagnostics-only/preview blocks,
+2. reduce RelayMEM/RAG evidence,
+3. reduce optional CTX working hints,
+4. shorten selected recent context,
+5. block or use an authority-safe fallback when no valid payload remains.
 
-`scene_state` is the normalized dynamic situation state compiled into the prompt.
+Do not restore excluded client authority or mutate stable persona sources to fit a request.
 
-It may include:
+## Runtime-private artifact versus projection
 
-- current topic,
-- current mood,
-- open questions,
-- recently discussed points,
-- active viewer or group state,
-- temporary scenario or mode,
-- `scene_role`,
-- compact `scene_context`,
-- bounded `scene_constraints`.
+### Runtime-private compiler artifact
 
-`scene_id` and `scene_state` identify the conversational situation or scenario.
+May contain:
 
-`room_id` is optional external host metadata. It identifies the channel, room, stream, or frontend conversation space where the conversation is hosted. It may be used by adapters, memory scoping, and diagnostics, but should not become a prompt block by default.
+- block content,
+- scene semantics,
+- selected short-term context,
+- resolved intent text,
+- memory evidence,
+- backend messages.
 
-Legacy `room_anchor` content should usually be reclassified:
+### Content-free compiler projection
 
-- fixed shared constraints -> `common_runtime_policy`,
-- character-specific expression constraints -> `character_output_policy`,
-- relationship expectations -> `relationship_anchor`,
-- temporary situation context -> `scene_state`,
-- current functional role -> `scene_role`,
-- external host identity -> `room_id` metadata.
+May contain only typed allowlisted fields:
 
-Do not place scene state or room metadata into stable prefix.
+- block IDs/types,
+- stability/source classes,
+- presence/counts,
+- estimated budget values,
+- omission reason IDs,
+- instruction-cache status,
+- apply state,
+- payload-mutation boolean.
 
-## Identity and scope boundaries
+It must not contain raw messages, prompt content, memory bodies, scene semantic text, paths, internal candidate bodies, or final response text.
 
-RelayLM should use simple operator-facing identity names:
+## Required migration scope
 
-- `character_id`: which durable persona is speaking,
-- `user_id`: the conversation counterpart identity,
-- `user_type`: identity class such as user, guest, viewer, operator, anonymous, or agent,
-- `scene_id`: current conversational situation,
-- `session_id`: current conversation/session run,
-- `room_id`: optional external host reference.
+A future implementation migration should update together:
 
-These fields should be available to memory adapters and diagnostics so memory does not leak across users, scenes, rooms, characters, or agent callers.
-
-`scene_role` is prompt state, not an identity key.
-
-## Character and cache boundaries
-
-Cross-character KV cache sharing should be treated as limited.
-
-The main target is per-character prefix stability:
-
-- stable character files,
-- stable cache namespace,
-- stable model route,
-- stable backend model mapping,
-- stable persona prefix hash.
-
-The client-instruction interpretation cache is separate from backend KV cache.
-
-```text
-instruction cache
-  maps normalized client instruction hash to validated RelaySCN state
-
-backend prefix/KV cache
-  accelerates stable compiled prompt prefixes
-```
-
-Per-character RelayLM instances may be used for speed-sensitive deployments. Single-proxy routing remains the onboarding default.
-
-## Diagnostics
-
-The compiler should eventually log:
-
-- selected route,
-- character ID,
-- user ID and user type when available,
-- scene ID, session ID, and optional room ID,
-- scene-role presence and source,
-- runtime mode,
-- block IDs,
-- stability classes,
-- approximate token or character budgets,
-- pass-through or compilation decision,
-- client-history policy,
-- client-instruction policy,
-- instruction hash presence,
-- instruction cache hit/miss/disabled status,
-- whether one-time instruction evidence was included,
-- omitted blocks and reasons,
-- stable prefix hash and prefix stability changes.
-
-Diagnostics must not contain raw client instruction text, raw ignored history, visible response text, or the full internal control envelope.
-
-## Failure boundary
-
-Managed compilation failures must fail closed with respect to client authority.
-
-```text
-instruction parse failure
-  -> do not write instruction cache
-  -> preserve valid visible response when possible
-  -> do not restore raw client messages
-
-RelayCTX Repack failure
-  -> do not forward original client history/system prompt as fallback
-  -> use explicit safe failure/recovery behavior
-```
+1. move managed compilation after canonicalization and required SCN/INT/Retrieval inputs,
+2. separate the existing profile compiler from the target RelayCTX managed compiler by explicit schema/version/name,
+3. remove raw client-history authority from managed compile inputs,
+4. define typed SCN/INT/MEM/CTX handoffs,
+5. preserve active tool/multimodal transactions,
+6. define runtime-private block plans and content-free projections,
+7. update compile/apply gates and fallback behavior,
+8. update PipelineContext and backend-forward wiring,
+9. update compiler, authority, and integration smoke tests.
 
 ## Final contract
 
 ```text
-Client messages are request evidence, not backend context.
+current
+  profile compiler + incoming messages + configured seed memory
+  before SCN/INT/Retrieval
 
-The context compiler receives the current user turn, approved durable state,
-normalized RelaySCN state, selected memory, and minimum protocol state.
-It reconstructs the backend payload from those sources.
-
-An unknown client instruction may appear once as bounded untrusted evidence.
-After validation and caching, only normalized RelaySCN state is compiled.
+target
+  canonicalized current evidence
+  + approved durable state
+  + normalized SCN
+  + typed INT decision
+  + Retrieval evidence
+  + selected CTX working state
+  -> authority-safe RelayCTX managed compilation
 ```

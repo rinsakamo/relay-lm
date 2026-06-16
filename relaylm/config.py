@@ -108,6 +108,8 @@ class RelayLMConfig(BaseModel):
     relayctx_unpack_max_update_chars: int = Field(default=4096, gt=0)
     client_message_canonicalization_dry_run_enabled: bool = False
     client_history_exclusion_preflight_enabled: bool = False
+    client_history_exclusion_apply_enabled: bool = False
+    client_history_exclusion_apply_dry_run_only: bool = True
     client_instruction_extraction_dry_run_enabled: bool = False
     client_instruction_cache_lookup_enabled: bool = False
     client_instruction_cache_root: str | None = None

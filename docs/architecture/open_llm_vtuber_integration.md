@@ -1,166 +1,190 @@
 # Open-LLM-VTuber Integration Design
 
-RelayLM should integrate with Open-LLM-VTuber as an OpenAI-compatible proxy.
+## Purpose
 
-The integration goal is simple:
-
-> Existing Open-LLM-VTuber users should be able to point the OpenAI-compatible API URL at RelayLM and keep using their character configuration.
-
-## Basic topology
+RelayLM integrates with Open-LLM-VTuber as an optional OpenAI-compatible frontend path.
 
 ```text
 Open-LLM-VTuber
   -> RelayLM /v1/chat/completions
-  -> LLM backend /v1/chat/completions
+  -> OpenAI-compatible backend
 ```
 
-RelayLM should initially support any OpenAI-compatible backend. vLLM and SGLang are the preferred long-term runtime targets because their prefix/KV cache behavior aligns with RelayKV and KV-reuse-aware packing.
+RelayLM does not own Open-LLM-VTuber's UI, display history, ASR, TTS engine, or avatar runtime. On managed routes, RelayLM does own the backend-bound context authority and the visible/internal output safety boundary.
+
+The primary local MVP path remains OpenWebUI -> RelayLM -> LM Studio. Open-LLM-VTuber is an optional realtime profile.
 
 ## Required API surface
 
-RelayLM should first implement:
+RelayLM exposes:
 
 ```text
 POST /v1/chat/completions
 GET  /v1/models
 ```
 
-The chat completions endpoint must support streaming because Open-LLM-VTuber expects streamed chunks for low-latency speech.
+Streaming must be preserved for realtime speech latency.
 
-RelayLM should preserve or forward:
+Common request fields such as `model`, `stream`, `temperature`, tools, structured-output settings, and current multimodal parts are preserved or explicitly blocked by compatibility preflight.
 
-- `model`
-- `messages`
-- `stream`
-- `temperature`
-- `tools` when present
+## Request authority boundary
 
-Tool handling can initially be transparent pass-through. Later versions may support tool-aware packing.
+Open-LLM-VTuber may send:
 
-## Open-LLM-VTuber request shape
+- a client `system` persona prompt,
+- previous user/assistant messages,
+- frontend summaries,
+- the current user turn,
+- tool or multimodal transaction state.
 
-Open-LLM-VTuber's OpenAI-compatible provider sends normal chat completion requests. RelayLM should expect requests like:
+For an explicit `pass_through` route, delegated client authority is preserved.
 
-```json
-{
-  "model": "relaylm-mili",
-  "messages": [
-    {"role": "system", "content": "persona prompt..."},
-    {"role": "user", "content": "past user message"},
-    {"role": "assistant", "content": "past assistant message"},
-    {"role": "user", "content": [{"type": "text", "text": "latest user input"}]}
-  ],
-  "stream": true,
-  "temperature": 1.0,
-  "tools": []
-}
+For a RelayLM-managed route:
+
+```text
+client messages
+  -> extract validated current user turn
+  -> extract bounded current system/developer evidence
+  -> preserve minimum active transaction state
+  -> exclude prior client history and raw instructions
+  -> RelaySCN normalization
+  -> RelayLM-owned context reconstruction
 ```
 
-RelayLM should handle text-only first. Vision content can be passed through or treated as non-repackable content until explicit support is added.
+The original message array is request evidence, not the backend context.
 
-## Minimal Open-LLM-VTuber config
+## Persona prompt handling
 
-Existing users should only need to change the OpenAI-compatible API settings.
+Open-LLM-VTuber's `persona_prompt` or equivalent incoming system prompt is not automatically RelaySOUL.
+
+```text
+incoming persona prompt
+  -> bounded low-trust client instruction evidence
+  -> RelaySCN scene_role / scene_context / scene_constraints
+  -> current request behavior
+
+optional explicit import path
+  -> RelaySOUL initialization candidate
+  -> target-source classification
+  -> review / approval
+  -> versioned approved SOUL.md / OUTPUT_POLICY.md / RELATIONSHIP_ANCHOR.md
+```
+
+Rules:
+
+- never copy the raw prompt wholesale into `SOUL.md`,
+- never place it directly in the stable persona prefix on a managed route,
+- do not use it as fallback durable persona authority,
+- durable import is an explicit migration/calibration workflow,
+- when approved RelaySOUL exists, it remains authoritative over conflicting client persona text.
+
+When no approved RelaySOUL exists, RelaySCN may create a safe temporary current-scene role and constraints. This does not create a durable persona revision.
+
+## History behavior
+
+Managed routes do not retain a bounded window of frontend-supplied history as canonical context.
+
+They use:
+
+- validated current turn,
+- RelayLM-owned selected recent context,
+- approved RelayMEM evidence,
+- approved RelaySOUL and durable policies,
+- normalized RelaySCN state,
+- minimum active transaction state.
+
+Frontend visible history may remain in the frontend UI/storage, but it is not backend-authoritative context.
+
+## Minimal frontend configuration
+
+Existing users should normally change only the OpenAI-compatible provider endpoint and route model.
 
 ```yaml
 character_config:
   agent_config:
     agent_settings:
       basic_memory_agent:
-        llm_provider: 'openai_compatible_llm'
+        llm_provider: openai_compatible_llm
     llm_configs:
       openai_compatible_llm:
-        base_url: 'http://localhost:8090/v1'
-        llm_api_key: 'relaylm'
-        organization_id: null
-        project_id: null
-        model: 'relaylm-mili'
+        base_url: http://localhost:8090/v1
+        llm_api_key: relaylm
+        model: relaylm-mili
         temperature: 1.0
-        interrupt_method: 'user'
+        interrupt_method: user
 ```
 
 ## Routing
 
-RelayLM should support routing by model name.
+Model-name routing selects approved RelayLM configuration.
 
 ```yaml
 model_routes:
   relaylm-mili:
     character_id: mili
-    backend: vllm_main
+    backend: local_main
     cache_namespace: mili
     soul: ./characters/mili/SOUL.md
     output_policy: ./characters/mili/OUTPUT_POLICY.md
-
-  relaylm-zero:
-    character_id: zero
-    backend: vllm_main
-    cache_namespace: zero
-    soul: ./characters/zero/SOUL.md
-    output_policy: ./characters/zero/OUTPUT_POLICY.md
+    relationship_anchor: ./characters/mili/RELATIONSHIP_ANCHOR.md
 ```
 
-This allows one RelayLM proxy to serve many characters.
+The route may point to approved persona sources. It must not infer durable identity from arbitrary system-prompt contents.
 
-For performance-sensitive setups, RelayLM should also support per-character instances:
-
-```text
-Mili -> http://localhost:8091/v1 -> backend A
-Zero -> http://localhost:8092/v1 -> backend B
-```
-
-## Mapping Open-LLM-VTuber persona to SOUL
-
-Open-LLM-VTuber already has `character_config.persona_prompt` in character YAML files. RelayLM should treat the incoming system prompt or configured persona file as the character SOUL.
-
-Optional future mapping:
-
-```text
-Open-LLM-VTuber characters/mili.yaml persona_prompt
-  <-> RelayLM characters/mili/SOUL.md
-```
-
-For the MVP, do not require users to create `SOUL.md` manually if the incoming persona prompt is sufficient.
-
-## Memory and context behavior
-
-Suggested initial behavior:
-
-1. Preserve the persona/system prompt as the character soul anchor.
-2. Detect character route from `model`.
-3. Keep a bounded recent turn window.
-4. Add optional lightweight viewer or character memory.
-5. Pack the context with stable XML-like blocks.
-6. Forward the packed request to the backend with streaming.
+Per-character instances remain an optional performance/isolation mode.
 
 ## Compatibility modes
 
-RelayLM should provide modes for safe onboarding.
+### `pass_through`
 
-```yaml
-mode: pass_through
+Connection testing or explicit delegated-authority integration. Messages remain unchanged except compatible model/header mapping.
+
+### managed lightweight/full modes
+
+RelayLM canonicalizes client evidence and reconstructs backend context according to the client history and instruction authority contracts.
+
+Mode names and current runtime behavior are defined in [Runtime Architecture](runtime_architecture.md) and [Project Status](../PROJECT_STATUS.md).
+
+## Streaming output boundary
+
+The optional realtime path is:
+
+```text
+backend stream
+  -> RelayCTX Stream Unpack
+  -> Output Segmenter
+  -> RelayREF
+  -> Return-side RelayEMO hints
+  -> Output-side RelaySCN current-response gate / next-turn observation
+  -> RelayRUN approved output
+  -> external TTS / Avatar adapters / captions
 ```
 
-For connection testing.
+Internal markers and malformed candidates must be blocked before external speech/avatar consumers receive them.
 
-```yaml
-mode: memory_light
-```
+## Adapter boundary
 
-For lightweight memory insertion.
+RelayLM emits engine-neutral hints only.
 
-```yaml
-mode: memory_full
-```
+- TTS adapter maps text chunks and style hints to the selected engine.
+- Avatar adapter maps expression/motion hints to the selected Live2D/runtime configuration.
+- RelayEMO does not call or control those engines directly.
 
-For full context repacking, retrieval, compression, and budget control.
+## Non-goals
 
-## Implementation notes
+This integration does not:
 
-- Do not require Open-LLM-VTuber code changes for the first integration.
-- Do not require users to change ASR/TTS/Live2D settings.
-- Preserve streaming behavior.
-- Keep tool calls transparent in the first implementation.
-- Avoid heavy synchronous retrieval in the default realtime profile.
-- Use model-name routing before system-prompt inference.
-- Treat per-character cache namespaces as a first-class concept.
+- make the incoming persona prompt durable authority,
+- preserve frontend history as managed backend context,
+- require Open-LLM-VTuber code changes for the basic proxy path,
+- take ownership of ASR/TTS/Live2D execution,
+- rewrite tool or structured protocol payloads as persona text,
+- enable heavy synchronous retrieval by default.
+
+## References
+
+- [Client History Authority Contract](client_history_authority_contract.md)
+- [Client Instruction Authority Contract](client_instruction_authority_contract.md)
+- [AI VTuber Pipeline Profile](ai_vtuber_pipeline_profile.md)
+- [Pipeline Responsibility Design](pipeline_responsibility_design.md)
+- [Project Status](../PROJECT_STATUS.md)

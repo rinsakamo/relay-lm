@@ -1,332 +1,343 @@
 # RelayINT MVP Design
 
-Date basis: 2026-06-07 JST
-
 ## Purpose
 
-RelayINT is the synchronous intent / interpretation layer of RelayLM.
+RelayINT is RelayLM's synchronous pre-action interpretation layer.
 
-It corresponds to the earlier small-cerebellum discussion: a lightweight runtime intelligence layer that improves perceived conversational intelligence by resolving what the user means before RelayMEM, RelayCTX, and the main LLM act.
+This document separates the **current implemented compatibility and fast-path artifacts** from the **target typed RelayINT intent/retrieval contract**.
 
-RelayINT is not a memory database, not a long-term learning layer, and not the final response generator.
+RelayINT is not a memory database, long-term learning layer, output observer, or final response generator.
 
-## Core positioning
+## Current implemented RelayINT paths
+
+The current implementation in `relaylm/relayint.py` contains two distinct paths.
+
+### Current reference-repair compatibility wrapper
+
+`build_relayint_reference_repair_dry_run()` is a compatibility wrapper around the historical input-side RelayREF dry-run helper.
+
+It currently:
+
+- calls the legacy `build_relayref_dry_run_artifact()`,
+- preserves the old artifact shape/behavior,
+- adds `relayint_alias: true`,
+- adds `source_compat_module: relayref`.
+
+This is semantically an input-side RelayINT responsibility, but it is not yet a clean typed RelayINT artifact.
+
+The current `app.py` still stores this compatibility result in a variable named `relayref_artifact` and passes it to RelayMEM Retrieval v0.
+
+### Current fast-path artifact
+
+`build_relayint_fast_path_dry_run()` returns:
 
 ```text
-RelaySCN = reads the scene / conversational frame
-RelayEMO = reads and expresses affect
-RelayINT = reads intent, references, topic anchors, and action intent
-RelayMEM = reads long-term memory
-RelayCTX = builds the current thinking context
-RelaySLP = asynchronously consolidates memory and concepts
-RelayRUN = orchestrates runtime execution and recovery
-RelaySOUL = preserves stable identity, relationship principles, and approval boundaries
+relayint_fast_path_dry_run.v0
 ```
 
-RelayINT exists because scene, affect, memory, and context packing do not fully cover user intent.
+Current properties:
 
-Without RelayINT, RelayLM may over-clarify short references such as `それ`, `続き`, `前のやつ`, or `この方向で`, creating an annoying user experience even when the current CTX working memory already contains enough information to continue.
+- deterministic heuristic path,
+- optional/default-off by configuration,
+- dry-run and content-free,
+- no LLM call,
+- no MEM lookup,
+- no backend payload mutation,
+- no response mutation.
 
-## Runtime position
+Current fields include:
 
-MVP runtime order with RelayINT:
+```yaml
+relayint_fast_path_dry_run:
+  schema_version: relayint_fast_path_dry_run.v0
+  enabled: true
+  dry_run_only: true
+  content_free: true
+  llm_called: false
+  mem_lookup_executed: false
+  detected_reference_kind: prior_memory_request
+  reference_terms_detected_count: 1
+  explicit_prior_memory_request_detected: true
+  candidate_action: recall_then_answer_candidate
+  mem_query_needed_candidate: true
+  confidence_bucket: high
+  ambiguity_detected: false
+  llm_path_would_call: false
+  decision_reasons: []
+  latest_user_message_present: true
+  latest_user_message_chars: 12
+  latest_user_message_is_short: true
+  ctx_working_metadata: {}
+  safety_gates:
+    content_free: true
+    llm_call_allowed: false
+    mem_lookup_allowed: false
+    backend_payload_mutation_allowed: false
+    response_mutation_allowed: false
+```
+
+This artifact is not the same as the proposed runtime-private `relayint.intent.v1` object.
+
+### Current Retrieval handoff limitation
+
+Current RelayMEM Retrieval does not yet consume `relayint_fast_path_dry_run.v0` as its primary typed decision.
+
+Instead, Retrieval v0 consumes the historical RelayREF-shaped compatibility artifact for unresolved-reference blocking and separately derives query terms from raw messages.
+
+Thus these statements are target architecture, not fully implemented current behavior:
+
+- RelayINT alone authorizes long-term retrieval,
+- Retrieval receives a typed confirmed scope,
+- Retrieval receives no raw message array,
+- RelayINT runtime-private intent and content-free projection are producer-separated.
+
+### Current quick-clarification artifacts
+
+The current module also contains content-free preflight/apply-plan helpers for quick clarification, including:
+
+```text
+relayint_quick_clarification_preflight.v0
+relayint_quick_clarification_apply_plan.v0
+```
+
+These helpers evaluate scene and request compatibility and preserve fail-closed/default-off behavior. Current runtime apply/short-circuit behavior must be read from the latest implementation status and app wiring; the design target remains that visible clarification follows the normal output safety contract and RelayRUN orchestration.
+
+## Current runtime position
+
+Current request-path ordering is approximately:
+
+```text
+request/profile compilation
+  -> RelayEMO
+  -> RelaySCN v0
+  -> RelayINT historical compatibility reference repair
+  -> RelayINT fast-path dry-run
+  -> RelayINT quick-clarification preflight/apply planning
+  -> RelayMEM Retrieval v0
+  -> later RelayCTX/backend phases
+```
+
+This differs from the target canonical ordering below.
+
+## Target canonical position
 
 ```text
 User input
-↓
-Input-side RelaySCN
-↓
-Input-side RelayEMO
-↓
+  -> Input-side RelaySCN
+  -> Input-side RelayEMO
+  -> RelayINT
+  -> RelayMEM Retrieval, only when needed and allowed
+  -> RelayCTX Repack
+  -> Main LLM
+  -> RelayCTX Unpack
+  -> RelayREF
+  -> Return-side RelayEMO
+  -> Output-side RelaySCN
+  -> User output
+```
+
+Target RelayINT runs before Retrieval so long-term memory is not used to guess ambiguous references silently.
+
+## Target component boundary
+
+```text
+RelaySCN
+  scene and policy
+
+RelayEMO
+  affect estimate and expression pressure
+
 RelayINT
-↓
-RelayMEM Retrieval, only when needed
-↓
-RelayCTX Repack
-↓
-Main LLM
-↓
-RelayCTX Unpack
-↓
-Return-side RelayEMO
-↓
-Output-side RelaySCN
-↓
-User output
+  intent, references, topic/action anchors, proceed/clarify/retrieve decision
+
+RelayMEM Retrieval
+  approved long-term memory read
+
+RelayCTX
+  short-term working state and prompt construction
+
+RelayREF
+  post-generation output observation
+
+RelaySLP
+  deferred memory/SOUL proposal compilation
 ```
 
-RelayINT should run after RelaySCN and input-side RelayEMO because intent resolution depends on scene policy, memory scope, formality, recovery state, and affect-sensitive clarification behavior.
+RelayINT may emit request-local interpretation artifacts. It never writes MEM or SOUL.
 
-RelayINT should run before RelayMEM Retrieval because MEM should not be used to silently guess ambiguous references.
+## Relation to RelayCTX working state
 
-## Sync INT vs async SLP
+RelayCTX working state may include:
+
+- current topic,
+- active task/question,
+- prior decision,
+- referable items,
+- unresolved slots,
+- next expected action.
+
+RelayINT reads this state when resolving short references and continuation intent.
+
+RelayCTX Unpack only detaches a `relayctx_working_update.v0` candidate. It does not automatically commit or persist it.
+
+## Target reference-resolution policy
+
+Recommended precedence:
 
 ```text
-RelayINT = understand this turn now
-RelaySLP = organize memory for future turns later
+1. explicit nouns and constraints in the current user turn
+2. RelayCTX request-local/RAM-side working state
+3. minimum user confirmation among plausible candidates
+4. RelayMEM Retrieval only after explicit or confirmed long-term scope
 ```
 
-RelayINT is synchronous and low-latency. It helps the current answer avoid avoidable misunderstandings.
+| State | Target RelayINT action | Target RelayMEM action |
+|---|---|---|
+| One clear active-CTX referent | resolve and continue | do not retrieve |
+| Multiple plausible active-CTX referents | ask candidate clarification | do not retrieve |
+| No active-CTX candidate | ask open clarification | do not retrieve |
+| Explicit memory request with clear scope | permit when scene allows | retrieve allowed scope |
+| Confirmed reference but CTX lacks facts | request retrieval | retrieve allowed scope |
+| Scene blocks external memory | continue/clarify within policy | do not retrieve |
 
-RelaySLP is asynchronous or deferred. It reads raw conversation evidence, INT artifacts, CTX unpack artifacts, and existing MEM pages later, then extracts candidates, classifies safety, merges, holds, rejects, or proposes memory updates.
+Ambiguous references must never trigger silent long-term recall.
 
-Important boundary:
+## Target runtime-private intent artifact
 
-```text
-RelayINT may emit runtime interpretation artifacts.
-RelayINT must not update MEM directly.
-RelayINT must not mutate SOUL.
-RelaySLP may later inspect INT artifacts as evidence, but persistence remains gated.
-```
-
-## Relation to short-term CTX working memory
-
-Return-side RelayCTX unpacks the main LLM output into:
-
-```text
-user_visible_response
-ctx_working_update
-```
-
-RelayCTX validates, compresses, and commits the safe parts of `ctx_working_update` into RAM-side working memory.
-
-On the next turn, RelayINT reads that CTX working memory first. It should prefer current RAM-side CTX over long-term MEM for short references and active-topic continuation.
-
-Example CTX working fields used by RelayINT:
+A future content-bearing request-local artifact may use:
 
 ```yaml
-ctx_working_memory:
-  current_topic: RelayINT throughput policy
-  active_question: MVP scope for RelayINT
-  last_decision:
-    text: RelayINT is a synchronous small-cerebellum intent layer
-    status: agreed
-    confidence: 0.91
-  referable_items:
-    - label: RelayINT Fast Path
-      kind: component
-      salience: 0.92
-    - label: Main LLM Short-INT
-      kind: option
-      salience: 0.84
-  unresolved_slots: []
-  next_expected_action: define MVP implementation scope
-```
-
-RelayINT converts the latest user input plus CTX state into a compact intent artifact.
-
-## MVP responsibilities
-
-RelayINT MVP should do the following:
-
-```text
-1. Detect pronoun-like and continuation references.
-2. Resolve references against CTX working memory when confidence is high.
-3. Identify topic anchors and user action intent.
-4. Decide whether MEM retrieval is needed.
-5. Avoid MEM lookup for ambiguous references.
-6. Emit clarification intent when confidence is low.
-7. Emit diagnostics for all decisions.
-```
-
-MVP should not attempt to solve deep semantic ambiguity, durable memory consolidation, or long-term personalization.
-
-## Intent artifact schema
-
-Initial artifact:
-
-```yaml
-relayint_intent:
-  schema_version: relayint.intent.v0
+relayint_runtime_intent:
+  schema_version: relayint.intent.v1
   path: fast_path
-
   source: current_turn
-  llm_called: false
-
   resolved_reference: true
-  resolved_reference_text: それ
-  resolved_to: RelayINT MVP scope
-
-  topic_anchor: RelayINT
+  resolved_reference_text: "それ"
+  resolved_to: relayint_mvp_scope
+  topic_anchor: relayint
   user_intent: continue_design
   action_intent: define_mvp_scope
-
   mem_query_needed: false
   mem_query_reason: null
-
+  reference_resolution_state: resolved
+  confirmed_scope: current_project
   ambiguity:
     has_ambiguity: false
     candidates: []
-
   confidence: 0.88
   action: continue_without_clarification
-
-  diagnostics:
-    fast_path_reason:
-      - single_high_salience_referable_item
-      - active_topic_matches_user_continuation
-    safety_notes: []
 ```
 
-When the reference is ambiguous:
+This artifact is target v1, not the current `relayint_fast_path_dry_run.v0` shape.
+
+## Target content-free projection
+
+Default persisted trace/audit should receive only:
 
 ```yaml
-relayint_intent:
-  schema_version: relayint.intent.v0
+relayint_projection:
+  schema_version: relayint.projection.v1
   path: fast_path
   llm_called: false
-
-  resolved_reference: false
-  resolved_reference_text: それ
-  resolved_to: null
-
-  topic_anchor: null
-  user_intent: continue_or_apply_unknown
-  action_intent: unknown
-
+  reference_present: true
+  reference_resolved: true
+  ambiguity_present: false
+  ambiguity_candidate_count: 0
   mem_query_needed: false
-  mem_query_reason: ambiguous_reference_blocked
-
-  ambiguity:
-    has_ambiguity: true
-    candidates:
-      - RelayINT Fast Path MVP
-      - Main LLM Short-INT extension
-      - small LLM INT runtime
-
-  confidence: 0.48
-  action: ask_clarification
+  confidence_band: high
+  action: continue_without_clarification
+  reason_ids:
+    - single_high_salience_referent
+    - active_topic_continuation
+  content_free: true
 ```
 
-## MEM retrieval decision
+Do not persist resolved-reference text, candidate labels, topic strings, or user message content in the projection.
 
-RelayINT decides whether MEM retrieval is needed, but RelayMEM performs the retrieval.
-
-MVP rules:
+## Target MEM decision
 
 ```text
-Short-term CTX resolves the reference clearly
-→ mem_query_needed=false
+clear short-term CTX resolution
+  -> mem_query_needed=false
 
-User explicitly asks for prior memory / previous thread / remembered design
-→ mem_query_needed=true
+explicit or confirmed long-term recall scope
+  -> mem_query_needed=true
 
-Reference is confirmed but CTX lacks enough evidence
-→ mem_query_needed=true
+ambiguous reference
+  -> mem_query_needed=false
+  -> clarification required
 
-Reference is ambiguous
-→ mem_query_needed=false and ask clarification
-
-Scene policy restricts retrieval
-→ mem_query_needed=false or current_context_only, depending on scene_policy
+scene policy blocks external memory
+  -> mem_query_needed=false
+  -> current-context-only handling
 ```
 
-MEM must not be used as a silent fallback for ambiguous references.
-
-## Quick clarification route
-
-RelayINT may produce a quick clarification intent when it should not continue automatically.
-
-The quick path is:
+## Target quick-clarification route
 
 ```text
-RelayINT
-↓
-Return/input-compatible RelayEMO clarification style adjustment
-↓
-RelaySCN scene/formality/recovery gate
-↓
-short user-visible clarification response
+RelayINT clarification candidate
+  -> compatibility and active-transaction gates
+  -> RelaySCN scene/formality/recovery gate
+  -> RelayRUN short-circuit/checkpoint route
+  -> normal visible/internal output safety boundary
+  -> Return-side RelayEMO bounded hint
+  -> Output-side RelaySCN observation/gate
+  -> user-visible clarification
 ```
 
-This route avoids a full normal answer when the correct next action is a small clarification.
+Target rules:
 
-MVP can start with templated clarification text, for example:
+- default-off until apply is explicitly enabled,
+- no incompatible tool/structured/multimodal short circuit,
+- no safety/recovery bypass,
+- no direct user-visible text finalized by RelayRUN,
+- templated text remains bounded,
+- generic diagnostics retain template IDs/classes, not rendered text.
+
+## Recovery interaction
+
+RelayINT may request recovery when context candidates remain contradictory, repeated correction indicates drift, scene stability is too low, or no safe next action can be determined.
+
+RelaySCN resolves policy; RelayRUN orchestrates waiting-user/recovery state. RelayINT does not emit recovery text directly.
+
+## Required migration scope
+
+A future implementation migration should update together:
+
+1. retire/rename the historical RelayREF-shaped compatibility artifact,
+2. define `relayint.intent.v1` runtime-private output,
+3. define `relayint.projection.v1` persisted projection,
+4. connect the typed decision to RelayMEM Retrieval,
+5. remove Retrieval dependence on raw messages for authorization/scope,
+6. preserve current fast-path safety gates and reason IDs,
+7. update quick-clarification consumers and RelayRUN wiring,
+8. update app/PipelineContext ordering,
+9. update INT/MEM/trace/integration smoke tests,
+10. preserve v0 compatibility through explicit schema/version handling.
+
+## Non-goals
+
+RelayINT does not:
+
+- claim target v1 is already implemented,
+- write MEM,
+- mutate RelaySOUL,
+- inspect generated output,
+- commit CTX candidates by itself,
+- silently retrieve for ambiguity,
+- expose semantic intent content through target generic trace records.
+
+## Summary
 
 ```text
-「それ」は RelayINT MVP の範囲の話？ それとも小型LLMを入れる話？
+current
+  historical RelayREF-shaped RelayINT compatibility artifact
+  + independent content-free fast-path dry-run v0
+  + quick-clarification preflight/apply artifacts
+
+target
+  SCN policy + CTX working state + current turn
+  -> typed RelayINT intent v1
+  -> typed retrieval decision/confirmed scope
+  -> RelayMEM Retrieval
 ```
-
-Return-side EMO may soften tone, reduce dominance, and keep the clarification from feeling like an interrogation. RelaySCN should enforce scene policy and recovery rules.
-
-## Throughput policy
-
-RelayINT is not defined as a small-LLM layer. It is a fast intent runtime with optional LLM paths.
-
-MVP execution paths:
-
-```text
-Fast Path:
-  deterministic rules and scoring over CTX working memory
-  default path
-  no LLM call
-
-Main LLM Short-INT:
-  optional, default-off, dry-run initially
-  short context and structured output only
-  useful when main LLM cache reuse is hot
-
-Small LLM INT:
-  future optimization
-  requires CPU/RAM runtime and conversation/session cache evaluation
-```
-
-MVP should implement Fast Path first and expose diagnostics showing when an LLM path would have been useful.
-
-Suggested path selection:
-
-```yaml
-relayint_execution_policy:
-  fast_path_confidence_gte: 0.80
-  ask_confirmation_range: [0.55, 0.80]
-  ask_open_clarification_lt: 0.55
-
-  llm_path_default_enabled: false
-  main_llm_short_int_default_enabled: false
-  small_llm_int_default_enabled: false
-```
-
-Main LLM Short-INT may be faster than a CPU small LLM when GPU KV/prefix cache reuse is hot and the INT context is short. Small LLM INT should not be assumed faster until measured with session/cache behavior.
-
-## MVP non-goals
-
-MVP should not include:
-
-```text
-- always-on LLM parsing
-- always-on small LLM runtime
-- CPU/RAM small LLM session cache
-- INT-specific KV cache management
-- direct MEM updates from INT
-- direct SOUL mutation from INT
-- cross-thread memory restore
-- response-body mutation without explicit quick clarification apply gate
-- silent MEM lookup for ambiguous references
-```
-
-## Suggested MVP sequence
-
-```text
-MVP-44: RelayINT design doc
-  Define component responsibility, runtime position, INT/SLP split, CTX/MEM relation, and throughput policy.
-
-MVP-45: RelayINT Fast Path dry-run
-  Add diagnostics-only resolver over current user input and CTX-style working memory metadata.
-
-MVP-46: RelayINT quick clarification preflight
-  Emit clarification candidate artifacts without mutating response bodies.
-
-MVP-47: RelayINT gated quick clarification apply
-  Default-off / dry-run-only apply path for low-risk clarification responses.
-
-MVP-48+: Main LLM Short-INT dry-run
-  Optional structured LLM path with latency and cache-reuse diagnostics.
-```
-
-## Core design statement
-
-RelayINT is the synchronous small-cerebellum layer of RelayLM.
-
-It improves perceived conversational intelligence by resolving references, topic anchors, user intent, action intent, and retrieval intent before MEM, CTX, and the main LLM act.
-
-RelayINT should reduce unnecessary clarification loops, but it must still ask or enter recovery when confidence, evidence, or scene stability is low.
