@@ -6,6 +6,14 @@ RelaySOUL artifact schemas and content-free contracts remain under `docs/contrac
 
 The RelaySOUL design, cadence, chain, persistence architecture, and execution-gate documents tracked by this index are housed in this directory.
 
+## Current and target boundary
+
+Use the [Current / Target / Migration Guide](../architecture/current_target_migration_guide.md) together with the documents below.
+
+Current compatibility behavior is the `mvp-soul-0` dry-run/preflight chain. It retains a five-file allowlist and does not perform actual apply, rollback, or persistence execution. The target architecture narrows durable RelaySOUL ownership to `SOUL.md`, `OUTPUT_POLICY.md`, and `RELATIONSHIP_ANCHOR.md`, and blocks persona-source apply during normal chat.
+
+The target migration must update patch, revision, approval, apply, rollback, storage, examples, and smoke tests atomically. A target three-file statement does not change the current wire contract by itself.
+
 ## Core design
 
 - [RelaySOUL persona source calibration design](relaysoul_design.md)
