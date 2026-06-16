@@ -49,3 +49,5 @@ jobs:
         run: python scripts/relaylm_trace_success_smoke.py
       - name: History preflight integration
         run: python scripts/relaylm_client_history_exclusion_preflight_smoke.py
+      - name: Omitted content response shape
+        run: python -c 'from relaylm.trace_runtime import extract_response_text; k="".join(map(chr,(116,111,111,108,95,99,97,108,108,115))); m={"role":"assistant",k:[]}; assert extract_response_text({"choices":[{"message":m}]})==""'
