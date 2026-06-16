@@ -139,9 +139,16 @@ Current replacements:
 - [RelayMEM SLP execution design](../relaymem_slp_execution_design.md)
 - [Open-LLM-VTuber integration design](../open_llm_vtuber_integration.md)
 
+## Archived implementation-history markers
+
+These markers record where append-only design histories were superseded by concise active contracts. The original long-form bodies remain available in Git history.
+
+- [RelayRUN Runtime Checkpoint Design History](relayrun_runtime_checkpoint_design_history.md) -> current [RelayRUN Runtime Checkpoint Design](../relayrun_runtime_checkpoint_design.md)
+- [Runtime Compile Gate Design History](runtime_compile_gate_design_history.md) -> current [Runtime Compile Gate Design](../runtime_compile_gate_design.md)
+
 ## Reviewed and retained as active documents
 
-The following dated documents still contain a distinct current design contract and remain in the active architecture index:
+The following documents contain distinct current contracts and remain in the active architecture index:
 
 - `context_packing_design.md`
 - `runtime_compile_gate_design.md`
