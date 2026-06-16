@@ -227,6 +227,11 @@ def _consume_pipeline_node_results(
                     else "client_message_canonicalization"
                 ),
             )
+            _move_existing_node_after(
+                pipeline_context.node_results,
+                node_name="client_history_exclusion_apply",
+                after_node_name="client_history_exclusion_preflight",
+            )
         return pipeline_context.node_results_to_log_dicts()
     except Exception:
         return None
@@ -244,6 +249,32 @@ def _insert_after_node_result(
             insert_index = index + 1
             break
     node_results.insert(insert_index, node_result)
+
+
+def _move_existing_node_after(
+    node_results: list[PipelineNodeResult],
+    *,
+    node_name: str,
+    after_node_name: str,
+) -> None:
+    """Move one already-recorded runtime node behind its semantic predecessor."""
+
+    moving_index = next(
+        (index for index, result in enumerate(node_results) if result.node_name == node_name),
+        None,
+    )
+    if moving_index is None:
+        return
+    moving = node_results.pop(moving_index)
+    target_index = next(
+        (
+            index + 1
+            for index, result in enumerate(node_results)
+            if result.node_name == after_node_name
+        ),
+        len(node_results),
+    )
+    node_results.insert(target_index, moving)
 
 
 def extract_response_text(body: Any) -> str | None:
