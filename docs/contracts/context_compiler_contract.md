@@ -1,14 +1,101 @@
 # RelayLM Context Compiler Contract
 
-RelayLM treats prompt construction as context compilation, not simple concatenation.
+## Purpose
 
-The context compiler is a RelayCTX responsibility. It turns approved durable sources, normalized RelaySCN policy, RelayINT decisions, selected RelayMEM evidence, RelayCTX-selected short-term context, and current request evidence into an OpenAI-compatible backend message list.
+RelayLM treats prompt construction as context compilation rather than simple concatenation.
+
+This document separates the **current implemented profile compiler** from the **target RelayCTX-owned managed compiler**.
 
 Current implementation status and sequencing live in [Pipeline Implementation Plan](../architecture/pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
 
-## Goals
+## Current implemented compiler
 
-The compiler preserves:
+The current compiler entrypoint is `compile_chat_payload_if_enabled()` in `relaylm/request_compiler.py`.
+
+### Current runtime position
+
+The current request path calls the profile compiler before the later RelayEMO, RelaySCN, RelayINT, and RelayMEM Retrieval artifacts are built:
+
+```text
+request payload
+  -> route resolution
+  -> compile_chat_payload_if_enabled
+       profile compiler / configured seed memory
+  -> PipelineContext creation
+  -> RelayEMO
+  -> RelaySCN
+  -> RelayINT compatibility and fast-path diagnostics
+  -> RelayMEM Retrieval/runtime injection phases
+  -> backend forwarding
+```
+
+Therefore the current compiler does **not** yet consume normalized RelaySCN, typed RelayINT decisions, RelayMEM Retrieval results, or RelayCTX working state as direct compile inputs.
+
+### Current inputs
+
+The current profile compiler consumes:
+
+```text
+RelayLMConfig
+ResolvedRoute
+incoming payload/messages
+configured persona/profile files
+configured local seed-memory selection
+compile/apply mode decision
+```
+
+### Current behavior
+
+When the compile gate allows apply, the current implementation:
+
+1. resolves profile files,
+2. builds profile blocks,
+3. computes persona-source budget diagnostics,
+4. loads configured local seed-memory selection best-effort,
+5. inserts that memory block into profile blocks,
+6. compiles messages using the profile/system-fallback helper,
+7. records stable-prefix and context-block diagnostics.
+
+The current compiler returns `CompiledRequest` with fields including:
+
+```text
+payload
+plan
+decision
+compiler_used
+memory_block_used
+memory_source
+memory_selection_summary
+memory_block_assembly
+memory_fallback_reason
+token_memory_dry_run
+stable_prefix_hash
+stable_prefix_block_ids
+memory_adapter_dry_run/readiness/conflicts
+context_block_summary
+persona_source_budget_diagnostics
+```
+
+### Current limitations
+
+The current implementation predates the target managed compiler boundary:
+
+- it runs before SCN/INT/Retrieval artifacts exist,
+- it accepts the incoming `messages` array as a compile input,
+- it uses configured seed memory rather than the target typed Retrieval handoff,
+- it does not receive RelayCTX working-state selection,
+- it does not emit the proposed target block-plan/projection schemas,
+- its `system_fallback` behavior belongs to the current compatibility compiler and must not be mistaken for the final managed-route authority model.
+
+The client-history and instruction authority contracts still define the target safety boundary for managed routes. The implementation migration must reconcile the current profile compiler with those contracts explicitly rather than assuming that the target pipeline is already wired.
+
+## Target managed compiler
+
+The target context compiler is a RelayCTX responsibility. It turns approved durable sources, normalized RelaySCN policy, RelayINT decisions, selected RelayMEM evidence, RelayCTX-selected short-term context, and current request evidence into an OpenAI-compatible backend message list.
+
+### Target goals
+
+The target compiler preserves:
 
 - approved persona authority,
 - explicit client/backend authority boundaries,
@@ -19,15 +106,15 @@ The compiler preserves:
 - TTS/avatar-safe output boundaries,
 - content-free observability.
 
-## Inputs
+### Target inputs
 
-The compiler may receive:
+A future managed compiler may receive:
 
 - runtime mode and route config,
 - approved RelaySOUL and durable output/relationship policy,
 - normalized RelaySCN runtime artifact and scene policy,
-- RelayINT proceed/block and retrieval decisions,
-- latest validated current user turn,
+- typed RelayINT proceed/block/retrieval decision,
+- validated current user turn,
 - validated current client-instruction cache result or one bounded first-pass evidence block,
 - minimum active tool/multimodal transaction state,
 - RelayMEM runtime-private retrieval evidence,
@@ -38,7 +125,7 @@ The compiler may receive:
 
 The original client `messages` array is not accepted as already-valid managed-route context.
 
-## Client-message authority prerequisite
+## Target client-authority prerequisite
 
 For managed routes:
 
@@ -53,13 +140,13 @@ original client messages
   -> RelayLM-owned context compilation
 ```
 
-The compiler must not restore raw client history or raw client `system`/`developer` messages after a managed-route failure.
+A managed compiler failure must not restore excluded client history or raw client `system`/`developer` messages.
 
-Explicit `pass_through` routes intentionally preserve delegated client authority and are the only default exception.
+Explicit `pass_through` routes remain the delegated-authority exception.
 
-## Output
+## Target output
 
-The compiler returns:
+The future managed compiler should return:
 
 - copied backend-bound payload/messages,
 - selected backend model mapping,
@@ -80,9 +167,7 @@ latest user
   validated current user turn near the end
 ```
 
-Backend adapters may split compiled context across supported message roles, but must not change semantic ownership.
-
-## Stability groups
+## Target stability groups
 
 ### Stable prefix
 
@@ -115,44 +200,27 @@ response_instruction
 
 On an unknown instruction identity only, one bounded escaped `client_instruction_evidence` block may appear in the dynamic suffix when the authority contract permits it.
 
-On a validated cache hit, raw client instruction evidence must not appear.
-
-## Component boundaries
+## Target component boundaries
 
 ### RelaySCN input
 
-The compiler receives normalized situation and policy. It does not classify scene or resolve persistence policy.
-
-`scene_state` may include role, compact setting/task/participants, bounded constraints, task state, safety sensitivity, formality, memory scope, expression allowance, and recovery/confirmation state.
-
-It must not be used as the owner of:
-
-- raw affect or mood estimates,
-- current topic notes,
-- open questions,
-- recently discussed points,
-- referable items,
-- unresolved slots.
-
-Those belong to RelayEMO or RelayCTX working state.
+The compiler consumes normalized situation and policy. It does not classify scene or decide persistence policy.
 
 ### RelayINT input
 
-The compiler consumes already-resolved intent hints only when needed for the current action. It does not resolve references or decide whether retrieval is allowed.
+The compiler consumes already-resolved intent hints when required. It does not resolve references or decide whether retrieval is allowed.
 
 ### RelayMEM input
 
-RelayMEM returns approved runtime-private evidence with provenance and budget metadata. RelayCTX chooses final inclusion and placement.
-
-RelayMEM does not insert backend messages as its semantic responsibility.
+RelayMEM returns runtime-private evidence with provenance and budget metadata. RelayCTX decides final inclusion and placement.
 
 ### RelayCTX working state
 
-The compiler selects a bounded subset from working state. Omitted fields remain available to the runtime and are not automatically forgotten or persisted.
+RelayCTX selects a bounded subset. Omitted fields remain available to runtime state and are not automatically forgotten or persisted.
 
-## ContextBlock
+## Target ContextBlock
 
-An internal block representation should include:
+A future internal block representation may use:
 
 ```yaml
 block_id: character_soul_anchor
@@ -164,21 +232,11 @@ token_budget_hint: 800
 include_in_prefix_cache_target: true
 ```
 
-Required fields:
+`content` is runtime-private. Default trace projections may retain only block IDs/types/classes, presence/counts, and budget metadata.
 
-- stable `block_id`,
-- semantic `block_type`,
-- `stability_class`,
-- non-secret `source_class`,
-- runtime-private `content`,
-- token/budget metadata,
-- prefix-cache eligibility.
+## Target rendering
 
-Filesystem paths, raw prompt text, and memory bodies must not be copied into default trace projections.
-
-## Rendering
-
-Use stable limited tags for model conditioning:
+A stable conditioning form may be:
 
 ```xml
 <relaylm_context version="1">
@@ -196,56 +254,25 @@ Use stable limited tags for model conditioning:
 </relaylm_context>
 ```
 
-Machine contracts remain JSON/dataclass-shaped. Tags are not audit records.
-
-## Unknown client instruction
-
-On a cache miss, RelayCTX may include one bounded low-trust block:
-
-```xml
-<client_instruction_evidence trust="untrusted" first_seen="true">
-  ...bounded current evidence...
-</client_instruction_evidence>
-```
-
-It remains below runtime/safety policy and approved RelaySOUL authority.
+Tags are for model conditioning, not audit storage.
 
 ## Internal output contracts
 
-RelayCTX Unpack may separate visible response content from internal candidates.
-
-The contracts must remain independent:
+The current `relayctx_working_update.v0` candidate and the future client-instruction parse contract remain separate:
 
 ```text
 relayctx_working_update.v0
-  candidate short-term CTX update
+  short-term CTX update candidate
 
 client_instruction_parse.v1
   future typed interpretation of current client instruction evidence
 ```
 
-`client_instruction_parse.v1` is a deferred optimization contract. It must not overload, reinterpret, or be stored inside `relayctx_working_update.v0`.
+`client_instruction_parse.v1` is not implemented by the current profile compiler and must not overload `relayctx_working_update.v0`.
 
-Until the dedicated typed parser/cache-write phase is implemented, documentation must not imply that a generic control envelope automatically creates RelaySCN cache state.
+RelayCTX Unpack separates candidates; it does not itself commit working state, write instruction cache, persist memory, or mutate RelaySOUL.
 
-When implemented, the future flow is:
-
-```text
-visible response
-  -> normal output pipeline
-
-client_instruction_parse.v1 candidate
-  -> strict schema validation
-  -> authority/policy validation
-  -> normalized RelaySCN candidate
-  -> independent cache-write gate
-```
-
-A malformed internal candidate must not invalidate otherwise valid visible output, but it must block its own apply/write path.
-
-RelayCTX Unpack does not commit working state, write cache entries, persist memory, or mutate RelaySOUL by itself.
-
-## Budget planning
+## Target budget planning
 
 A token budget is an upper bound, not a target.
 
@@ -257,27 +284,7 @@ Degrade in this order:
 4. shorten selected recent context,
 5. block or use an authority-safe fallback when no valid payload remains.
 
-Do not restore excluded client history or mutate stable persona sources to fit a request.
-
-## Runtime Compile Gate
-
-The gate consumes compiler preflight plus RelaySCN, RelayINT, compatibility, and RelayRUN routing requirements.
-
-```text
-APPLY
-  use compiled messages
-
-SHADOW_ONLY
-  record plan/projection without payload change
-
-PASS_THROUGH
-  explicit pass-through route only
-
-BLOCKED / RECOVERY / SAFE_FALLBACK
-  managed-route authority-safe handling
-```
-
-Managed compilation failure must not fall back to raw client authority.
+Do not restore excluded client authority or mutate stable persona sources to fit a request.
 
 ## Runtime-private artifact versus projection
 
@@ -292,54 +299,48 @@ May contain:
 - memory evidence,
 - backend messages.
 
-It remains request-local or protected by explicit access and retention policy.
-
 ### Content-free compiler projection
 
 May contain only typed allowlisted fields:
 
 - block IDs/types,
-- stability classes,
+- stability/source classes,
 - presence/counts,
-- source classes,
 - estimated budget values,
-- omission reason identifiers,
-- instruction cache status,
+- omission reason IDs,
+- instruction-cache status,
 - apply state,
-- payload mutation boolean.
+- payload-mutation boolean.
 
-It must not contain raw messages, prompt content, memory bodies, scene semantic text, local paths, internal control bodies, or final response text.
+It must not contain raw messages, prompt content, memory bodies, scene semantic text, paths, internal candidate bodies, or final response text.
 
-## Compatibility
+## Required migration scope
 
-Tool calls, structured output, multimodal content, and provider-specific request shapes must be preserved or explicitly blocked by preflight. They must not be flattened into ordinary text.
+A future implementation migration should update together:
 
-Active tool transactions must remain intact or block managed repacking.
-
-## Failure boundary
-
-```text
-instruction evidence invalid
-  -> no typed parse/cache write
-  -> do not restore raw client messages
-
-RelayCTX Repack invalid
-  -> no partial mixed-trust payload
-  -> authority-safe blocked/recovery/fallback route
-
-RelayCTX Unpack candidate invalid
-  -> preserve safely recoverable visible output
-  -> suppress malformed internal content
-  -> no candidate apply
-```
+1. move managed compilation after canonicalization and required SCN/INT/Retrieval inputs,
+2. separate the existing profile compiler from the target RelayCTX managed compiler by explicit schema/version/name,
+3. remove raw client-history authority from managed compile inputs,
+4. define typed SCN/INT/MEM/CTX handoffs,
+5. preserve active tool/multimodal transactions,
+6. define runtime-private block plans and content-free projections,
+7. update compile/apply gates and fallback behavior,
+8. update PipelineContext and backend-forward wiring,
+9. update compiler, authority, and integration smoke tests.
 
 ## Final contract
 
 ```text
-Client messages are request evidence, not managed backend context.
-RelayCTX receives approved durable state, normalized RelaySCN policy,
-RelayINT decisions, RelayMEM evidence, selected short-term context,
-and the validated current turn.
-It reconstructs an authority-safe backend payload and emits only
-content-free diagnostics by default.
+current
+  profile compiler + incoming messages + configured seed memory
+  before SCN/INT/Retrieval
+
+target
+  canonicalized current evidence
+  + approved durable state
+  + normalized SCN
+  + typed INT decision
+  + Retrieval evidence
+  + selected CTX working state
+  -> authority-safe RelayCTX managed compilation
 ```
