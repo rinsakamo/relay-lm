@@ -23,9 +23,9 @@ text-in / voice-and-avatar-out
 
 ASR remains outside RelayLM's MVP runtime. OS/device/browser speech input may provide text.
 
-RelayLM owns context, memory, visible/internal output separation, and expression hints. It does not own TTS engine execution or Live2D/avatar execution.
+RelayLM owns context, memory, visible/internal output separation, and engine-neutral expression hints. It does not own TTS engine execution or Live2D/avatar execution.
 
-## Canonical realtime pipeline
+## Request and generation path
 
 ```text
 Text input
@@ -38,31 +38,92 @@ Text input
   -> RelayCTX Repack
   -> Runtime Compile Gate
   -> Main LLM streaming response
+```
+
+After streaming starts, RelayLM uses two timing domains:
+
+1. per-chunk validation and emission,
+2. end-of-turn aggregation and next-turn state.
+
+Do not place end-of-turn work on the critical path for the first safe TTS chunk.
+
+## Per-chunk emission path
+
+```text
+backend stream delta
   -> RelayCTX Stream Unpack
   -> RelayCTX Output Segmenter
-  -> RelayREF
-  -> Return-side RelayEMO
-  -> Output-side RelaySCN
-       current-response gate + next-turn observation
-  -> RelayRUN approved output / trace / checkpoint summary
+  -> chunk-level RelayREF observation
+  -> Return-side RelayEMO hints
+  -> current-response safety gate
+       internal leakage / invalid chunk / safety-critical mismatch
+  -> RelayRUN chunk emission decision
   -> caption/text output
   -> TTS adapter queue
   -> Avatar adapter
 ```
 
-TTS and Avatar consumers must never receive chunks before internal-marker, REF, current-response SCN, and RelayRUN approval gates complete for that chunk/response.
+Every externally emitted chunk must pass the current-response gate and RelayRUN emission decision first.
+
+Chunk-level processing must not wait for:
+
+- next-turn scene classification,
+- full-response summary,
+- final checkpoint/index update,
+- deferred RelaySLP work.
+
+## End-of-turn finalization path
+
+```text
+stream complete / terminal event
+  -> response-level RelayREF aggregation
+  -> Output-side RelaySCN next-turn observation
+  -> RelayRUN final artifact / checkpoint summary
+  -> persistence-block and recovery-transition summaries
+  -> optional deferred RelaySLP scheduling
+```
+
+End-of-turn finalization must not replay already emitted chunks.
+
+## Output-side RelaySCN split
+
+Output-side RelaySCN has two timing-specific responsibilities.
+
+### Current-response safety gate
+
+This gate is used before each external emission and may block/suppress a chunk for:
+
+- internal marker/candidate leakage,
+- empty or malformed visible content,
+- safety-critical mismatch,
+- recovery-critical invalid state.
+
+It must remain lightweight enough for streaming.
+
+### Next-turn observation
+
+This runs after the response is complete and normally records:
+
+- next scene candidate,
+- recovery/context-repair state,
+- persistence block reasons,
+- user-confirmation requirement,
+- next-turn expression/memory policy.
+
+It does not retroactively rewrite or delay already approved chunks.
 
 ## Latency posture
 
 Priorities:
 
-1. preserve latest input and safe compatible streaming,
+1. preserve latest input and compatible streaming,
 2. produce the first safe speakable chunk quickly,
-3. keep retrieval bounded,
-4. keep expression hint generation deterministic/lightweight,
-5. never trade internal-marker or safety gating for lower latency.
+3. keep current-response gates lightweight and fail-closed,
+4. keep retrieval bounded,
+5. keep expression hint generation deterministic/lightweight,
+6. defer response-level observation and persistence work until turn end.
 
-A 12GB local profile should reserve headroom for the Main LLM, TTS, and avatar/display path. Exact model choices are deployment guidance, not architecture ownership.
+A 12GB local profile should reserve headroom for Main LLM, TTS, and avatar/display paths. Exact model choices are deployment guidance, not architecture ownership.
 
 ## Stream Unpack
 
@@ -73,7 +134,7 @@ Responsibilities:
 - collect supported terminal internal candidates,
 - preserve usable visible text when candidate parsing fails,
 - record content-free parse/leak/partial-stream projections,
-- prevent malformed candidates from reaching TTS/Avatar consumers.
+- prevent malformed candidates from reaching external consumers.
 
 ```text
 visible text valid + internal candidate invalid
@@ -126,7 +187,7 @@ code_block            -> caption_only or substitute
 inline_code           -> short/pronounceable only
 url                    -> caption_only or domain substitute
 json_yaml              -> caption_only
- table                 -> caption_only or summary substitute
+table                  -> caption_only or summary substitute
 command_or_file_path   -> caption_only unless explicitly useful
 internal_marker        -> blocked
 ```
@@ -148,6 +209,7 @@ segmented_chunk_projection:
   tts_policy: speak
   protected: false
   internal_marker_detected: false
+  emission_decision: emitted
   emitted_to_caption: true
   emitted_to_tts: true
   emitted_to_avatar: true
@@ -176,30 +238,11 @@ It does not:
 - alter semantic meaning,
 - rewrite protected segments,
 - override segmenter policy,
-- bypass Output-side SCN / RelayRUN gates.
-
-## Output-side RelaySCN split
-
-Output-side RelaySCN has two related roles.
-
-### Current-response gate
-
-May block/suppress current emission for:
-
-- internal leakage,
-- empty/invalid output,
-- safety-critical mismatch,
-- recovery-critical invalid state.
-
-This gate must run before external TTS/Avatar emission.
-
-### Next-turn observation
-
-Normally records next-turn scene/recovery/persistence state without rewriting the current response.
+- bypass the current-response safety gate or RelayRUN emission decision.
 
 ## TTS adapter
 
-Conceptual input:
+Conceptual per-chunk input:
 
 ```yaml
 tts_adapter_input:
@@ -211,11 +254,11 @@ tts_adapter_input:
   caption_text: "..."
 ```
 
-The adapter maps engine-neutral hints to Irodori-TTS or another configured engine.
+The external adapter maps engine-neutral hints to Irodori-TTS or another configured engine.
 
 ## Avatar adapter
 
-Conceptual input:
+Conceptual per-chunk input:
 
 ```yaml
 avatar_adapter_input:
@@ -228,13 +271,32 @@ avatar_adapter_input:
 
 The adapter maps classes to runtime-specific expression/motion names.
 
+## Streaming state and idempotency
+
+RelayRUN should track at least:
+
+- emitted chunk IDs,
+- pending chunk state,
+- stream completion/abort state,
+- current-response block state,
+- terminal candidate state,
+- finalization status.
+
+Recovery/resume must not enqueue the same TTS or avatar chunk twice.
+
 ## Failure behavior
 
 ### Segmentation failure
 
 - use conservative plain text only when safe,
-- otherwise caption-only,
+- otherwise use caption-only,
 - never pass suspected internal/structured content to TTS.
+
+### Chunk safety-gate failure
+
+- block the affected external emission,
+- retain content-free reason IDs,
+- escalate to response-level recovery when required.
 
 ### TTS failure
 
@@ -256,11 +318,15 @@ TTS failure
 - preserve already approved/emitted chunks,
 - block incomplete internal candidates,
 - prevent duplicate replay on recovery,
-- prepare next-turn recovery through SCN/RUN.
+- finalize response-level REF/SCN/RUN state once the abort is known.
 
 ## ASR and future audio
 
 ASR, speech-to-speech, audio affect, and alternate audio models remain optional adapter-level extensions unless later architecture explicitly changes ownership.
+
+## Current implementation status
+
+This document defines the target realtime timing contract. Stream Unpack, chunk-level gates, response-level aggregation, and external adapter integration may remain partially implemented or future work; current status belongs in [Project Status](../PROJECT_STATUS.md).
 
 ## Non-goals
 
@@ -270,5 +336,6 @@ This profile does not:
 - depend on archived Wake/Sleep designs,
 - make TTS/Avatar part of RelayEMO,
 - emit text-bearing chunks into generic trace,
-- send output to external consumers before current-response safety gates,
+- make next-turn observation block the first safe TTS chunk,
+- send output to external consumers before per-chunk safety approval,
 - make ASR a core dependency.
