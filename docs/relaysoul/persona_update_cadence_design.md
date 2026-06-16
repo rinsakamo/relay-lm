@@ -2,40 +2,42 @@
 
 ## Purpose
 
-This document defines how quickly different persona-source layers may change and how `persona_plasticity` may influence proposal frequency without bypassing RelaySOUL safety, approval, versioning, or rollback gates.
+This document defines how quickly approved durable persona-source layers may change and how `persona_plasticity` affects proposal frequency without bypassing ownership, approval, versioning, compile dry-run, or rollback.
 
-RelaySOUL remains a human-in-the-loop persona source calibration layer. RelayMEM/RelaySLP may emit evidence or promotion candidates, but they do not directly mutate RelaySOUL source artifacts.
+RelaySOUL owns only:
+
+- `SOUL.md`,
+- `OUTPUT_POLICY.md`,
+- `RELATIONSHIP_ANCHOR.md`.
+
+Scene, affect, short-term context, and compiled memory follow their own component contracts.
 
 ## Core principle
 
-Persona layers should not all change at the same speed.
-
 ```text
-fast state changes do not imply fast identity changes
+fast runtime state changes do not imply fast durable persona changes
 ```
 
-A temporary scene, one unusual conversation, or one inferred preference must not silently become a durable character trait.
+A temporary scene, one affect estimate, one retrieval result, or one unusual interaction must not silently become a durable trait.
 
-## Default update cadence
+## Cross-component cadence
 
-| Source layer | Typical cadence | Default mutation posture |
-|---|---|---|
-| `SCENE_STATE.md` / runtime scene overlay | per turn or session | automatic within RelaySCN/runtime policy; not a durable persona revision by itself |
-| working or retrieved memory | per request | read-only selection in Retrieval; persistence handled separately by RelaySLP |
-| `STABLE_MEMORY_SUMMARY.md` | medium | candidate-based, evidence-linked, conservative apply |
-| `RELATIONSHIP_ANCHOR.md` | medium-slow | rate-gated, user-specific, correction-aware |
-| `OUTPUT_POLICY.md` | slow | explicit feedback or repeated evidence; user review before apply |
-| `SOUL.md` | very slow | proposal-only by default; explicit approval and rollback required |
+| State/source | Owner | Typical cadence | Mutation posture |
+|---|---|---:|---|
+| request-local scene state/policy | RelaySCN | per request/turn | runtime-only, not a persona revision |
+| affect/expression state | RelayEMO | per request/session | local/decaying, not durable persona |
+| short-term topic/question/referents | RelayCTX | per turn/session | request/RAM-side candidate apply only |
+| selected long-term memory | RelayMEM Retrieval | per request | read-only |
+| compiled memory/summary/index | RelaySLP -> RelayMEM | deferred | evidence-linked gated apply |
+| `RELATIONSHIP_ANCHOR.md` | RelaySOUL | medium-slow | explicit evidence, review/approval |
+| `OUTPUT_POLICY.md` | RelaySOUL | slow | explicit style evidence, review/approval |
+| `SOUL.md` | RelaySOUL | very slow | explicit durable identity change, approval/rollback |
 
-The cadence describes how often a change may be considered. It does not grant authority to apply it.
+Cadence controls when a change may be considered. It never grants ownership or apply authority.
 
 ## Persona plasticity
 
-`persona_plasticity` is a bounded policy input that controls how readily RelaySOUL may surface change proposals for relationship, expression, or persona sources.
-
-It must not act as a direct mutation switch.
-
-Suggested conceptual shape:
+`persona_plasticity` controls how readily RelaySOUL surfaces proposals.
 
 ```yaml
 persona_plasticity:
@@ -46,146 +48,150 @@ persona_plasticity:
 
 Required invariants:
 
-- plasticity never bypasses source-specific approval requirements,
-- plasticity never permits RelayMEM or RelaySLP to write `SOUL.md`,
-- plasticity never converts low-confidence inference into durable fact,
-- plasticity never overrides persona invariants or safety policy,
-- plasticity changes proposal thresholds and cooldowns, not semantic ownership,
-- `persona_core` should remain `locked` or `very_low` during normal chat.
+- no direct mutation switch,
+- no ownership transfer from SCN/EMO/CTX/MEM,
+- no low-confidence inference promoted to durable state,
+- no runtime/safety/persona invariant override,
+- proposal threshold/cooldown only,
+- `persona_core` remains locked or very-low in normal chat,
+- normal chat remains proposal-only.
 
 ## Evidence requirements
 
-Different targets require different evidence strength.
-
-### Scene or runtime overlay
-
-May use current-turn evidence when RelaySCN confidence and stability are sufficient.
-
-### Stable memory summary
-
-Requires source references, confidence, scope checks, and contradiction handling. Explicit user statements are stronger than inferred traits.
-
 ### Relationship anchor
 
-Should require one or more of:
+Requires one or more of:
 
-- explicit user relationship preference,
+- explicit relationship preference/correction,
 - repeated consistent interaction evidence,
-- user confirmation of a proposed relationship change,
-- correction of an existing anchor.
+- user confirmation of a proposal,
+- approved calibration examples.
 
-One emotionally intense turn is insufficient by itself.
+One emotionally intense turn is insufficient.
 
 ### Output policy
 
-May use explicit style feedback or repeated preferred/rejected examples. The preferred target is usually `OUTPUT_POLICY.md`, not `SOUL.md`.
+May use explicit style feedback or repeated protected preferred/rejected samples.
+
+The candidate must describe durable character voice or response policy, not one temporary emotional expression.
 
 ### SOUL
 
-Requires a durable identity/value/worldview change that cannot be represented safely in output policy, relationship state, scene state, or memory. Explicit user approval is required before apply.
+Requires an explicit durable identity/value/worldview/invariant change that cannot be represented safely in output policy, relationship policy, RelaySCN state, RelayEMO state, or RelayMEM.
+
+Explicit approval and rollback are mandatory.
+
+### Faster-layer routing
+
+Evidence belongs elsewhere when it describes:
+
+```text
+current role/task/setting/constraint -> RelaySCN
+current affect/intensity            -> RelayEMO
+current topic/open question          -> RelayCTX
+factual/project/user memory          -> RelaySLP / RelayMEM
+```
+
+RelaySOUL should reject or reroute such candidates rather than patch persona files.
 
 ## Proposal and apply flow
 
 ```text
-runtime evidence / user feedback
-  -> RelaySLP or RelaySOUL candidate extraction
+protected explicit feedback / governed RelaySLP proposal
   -> target-source classification
+  -> ownership check
   -> confidence / contradiction / scope checks
   -> cadence and cooldown gate
   -> persona invariant and drift guard
-  -> compile dry-run against the target renderer
-  -> user review and approval when required
+  -> source-budget check
+  -> compile dry-run against target renderer
+  -> explicit review / approval
   -> versioned apply
   -> observation period
   -> keep or rollback
 ```
 
-Every applied persona-source change should remain attributable to evidence and a revision.
-
-## Cooldown and accumulation
-
-RelaySOUL should avoid repeated micro-patches that destabilize the stable prefix or make persona behavior difficult to understand.
-
-Recommended behavior:
-
-- accumulate compatible low-risk feedback before proposing a patch,
-- consolidate overlapping instructions instead of appending endlessly,
-- delay new relationship/output-policy proposals while a recent revision is still being evaluated,
-- reject or hold contradictory evidence until the conflict is resolved,
-- prefer one coherent revision over many small revisions,
-- preserve a rollback window after each apply.
-
-## Drift guards
-
-Before proposing or applying a durable change, check:
-
-- whether the change conflicts with persona invariants,
-- whether it belongs in a faster layer instead,
-- whether it overfits one scene or one user mood,
-- whether memory confusion produced the candidate,
-- whether the patch expands the persona-source budget unnecessarily,
-- whether it invalidates stable-prefix reuse without sufficient benefit,
-- whether it changes memory disclosure in a way that could feel invasive,
-- whether the user can understand and reverse the change.
-
-When uncertain, prefer a temporary scene/output overlay, a held candidate, or no change.
+Every applied change remains attributable to protected evidence and content-free revision metadata.
 
 ## Normal-chat boundary
 
 During normal chat:
 
-- RelaySOUL source files are execution inputs, not silently editable state,
-- RelaySCN may change runtime scene policy,
+- approved persona sources are execution inputs,
+- RelaySCN may change current scene policy,
 - RelayEMO may change bounded expression hints,
 - RelayMEM Retrieval may select approved memory,
-- RelaySLP may produce candidates asynchronously,
+- RelaySLP may produce deferred candidates,
 - RelaySOUL may surface a proposal,
-- no durable core-persona change is applied without the required review.
+- no persona-source apply occurs.
 
-Explicit character-creation or calibration mode may allow faster exploration, but revision snapshots and rollback remain mandatory.
+Explicit user feedback may offer entry into calibration or character creation. It does not mutate files inside the chat turn.
 
-## Relationship to growth feeling
+## Cooldown and accumulation
 
-A user may experience healthy character growth when approved memory, relationship, and expression changes accumulate coherently over time.
+- accumulate compatible low-risk feedback,
+- consolidate overlapping policy rather than append endlessly,
+- avoid new durable proposals while a recent revision is under observation,
+- hold contradictory evidence,
+- prefer one coherent revision over micro-patches,
+- preserve a rollback window,
+- consider stable-prefix invalidation cost.
 
-Growth must remain:
+## Drift guards
 
-- attributable rather than mysterious,
-- gradual rather than erratic,
-- reversible,
-- bounded by the user's chosen relationship and persona expectations,
-- distinct from silent core-identity mutation.
+Check whether the proposal:
 
-The goal is continuity the user can recognize and correct, not autonomous persona drift.
+- conflicts with persona invariants,
+- belongs in SCN/EMO/CTX/MEM instead,
+- overfits one scene or affect estimate,
+- originated from ambiguous/recovery context,
+- expands source budgets unnecessarily,
+- changes memory disclosure invasively,
+- destabilizes renderer behavior,
+- is understandable and reversible.
 
-## Diagnostics
+When uncertain, prefer a faster runtime layer, held candidate, or no change.
 
-Useful diagnostics include:
+## Protected evidence and diagnostics
 
-- target source layer,
-- evidence count and source references,
-- confidence and contradiction state,
-- current plasticity level,
+Protected evidence may contain response examples and feedback text.
+
+Content-free diagnostics may contain only:
+
+- target source class,
+- evidence count/source class,
+- confidence/contradiction bands,
+- plasticity level,
 - cooldown status,
-- blocked reasons,
-- persona invariant checks,
-- source-budget delta,
-- stable-prefix hash before/after,
-- approval requirement,
-- revision and rollback identifiers.
+- invariant check outcomes,
+- source-budget delta class,
+- stable-prefix changed boolean,
+- approval requirement/status,
+- revision/rollback IDs,
+- blocking/warning reason IDs.
 
-Diagnostics must not expose private conversation content unnecessarily.
+Generic runtime trace must not contain response samples, feedback text, patch text, persona bodies, or affect semantic content.
+
+## Growth feeling
+
+Healthy character growth is:
+
+- attributable,
+- gradual,
+- reversible,
+- bounded by chosen persona/relationship expectations,
+- distinct from silent core drift,
+- produced by approved memory/relationship/expression changes across the correct owners.
 
 ## Non-goals
 
-- No automatic SOUL mutation from normal chat.
-- No use of plasticity as an unrestricted learning rate.
-- No durable relationship inference from one ambiguous interaction.
-- No direct RelayMEM/RelaySLP write into persona source files.
-- No removal of approval, versioning, compile dry-run, or rollback gates.
+- No automatic persona mutation from normal chat.
+- No use of plasticity as unrestricted learning rate.
+- No durable relationship inference from one interaction.
+- No RelayMEM/RelaySLP direct write into persona files.
+- No SCN/EMO/CTX state stored as RelaySOUL revision.
+- No removal of approval, versioning, renderer dry-run, or rollback gates.
 
 ## Summary
 
-RelaySOUL should let temporary state change quickly while durable identity changes slowly.
-
-`persona_plasticity` may control when proposals are surfaced, but durable updates remain target-specific, evidence-based, drift-guarded, versioned, and reviewable.
+Temporary state may change quickly under SCN, EMO, CTX, and MEM contracts. Durable RelaySOUL sources change slowly, by proposal, explicit evidence, review, versioning, and rollback.
