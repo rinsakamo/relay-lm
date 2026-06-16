@@ -1,81 +1,314 @@
 # RelayEMO MVP Initial Design
 
-## 目的
-- text-only affect probe（推定のみ）を runtime diagnostics に追加する。
-- assistant_emotion_state（表現状態）を turn 単位で更新する。
-- scene-gated text marker を default off で preview/apply 可能にする。
+## Purpose
 
-## 非目的
-- SOUL/MEM/TTS への書き込み。
-- 外部 LLM API を使った感情推定の apply。
-- Voice affect / Irodori-TTS / feedback learning。
+This document distinguishes the **current implemented RelayEMO MVP artifact** from the **target component boundary**.
 
-## SOUL contamination guard
-- RelayEMO artifact は diagnostics/trace に限定する。
-- `applied_to_soul=false`, `applied_to_mem=false`, `applied_to_tts=false` を明示する。
-- `persisted_user_affect=false` を維持し、user_affect を保存しない。
+The current runtime still contains legacy scene and trace fields. The target sections describe the migration direction and must not be read as already-implemented behavior.
 
-## user_affect_estimate
-- 入力文から lightweight heuristic で生成する推定値。
-- 断定しないため `is_estimate=true` を常時付与する。
-- confidence が低い場合は neutral/unknown 側へ倒す。
-- 日本語 positive cue（例: 良い/いいね/最高/好き/楽しい/すごい/面白い/エモい）と全角 `！` を軽く拾う。
-- LLM structured affect probe は dry-run candidate として diagnostics に並記し、初期は apply しない。
-- fail-closed（parse失敗/validation失敗時は heuristic path 維持）を採用する。
-- user emotion は断定せず推定として扱う。
-- nested candidate fields (`user_affect_estimate_candidate`, `scene_state_candidate`) は object 必須で、non-object は fail-closed とする。
-- VAD/intensity/confidence (`valence`, `arousal`, `dominance`, `intensity`, `confidence`) は required numeric fields とし、missing/non-numeric は fail-closed とする。
-- numeric fields は finite number 必須で、NaN/Infinity/-Infinity は fail-closed とする。
-- `scene_state_candidate.confidence` も required finite numeric field とし、missing/non-finite は fail-closed とする。
+## Current implemented behavior
 
-## LLM structured affect probe runtime dry-run
-- runtime invocation は default off / dry-run only で開始する。
-- `relayemo_affect_probe_mode=llm_structured_dry_run` かつ `relayemo_llm_affect_probe_enabled=true` かつ `relayemo_llm_affect_probe_dry_run=true` のときだけ候補生成を試みる。
-- runtime candidate は diagnostics/trace にのみ出力し、active `user_affect_estimate`、`assistant_emotion_state`、text marker、session drift には適用しない。
-- probe failure / timeout / invalid JSON / validation error は main response を止めず fail-closed とし、heuristic path を維持する。
-- budget policy は `max_input_chars`, `timeout_ms`, `max_output_tokens`, `skip_when_busy`, `every_n_turns` で制御する。
-- recursive RelayLM call を避けるため、runtime invocation 実装では dedicated backend/route 未設定時は skip するか、internal probe guard を必須にする。
-- API key や token は diagnostics/trace/log に出さない。
-- candidate apply gate、outcome observer、feedback loop、Irodori-TTS/voice affect 連携は future scope とする。
+The current runtime helper is `relaylm/relayemo.py`.
 
-## assistant_emotion_state
-- user_affect_estimate と scene 文脈から、表現用の内部状態を更新する。
-- max_delta_per_turn / decay_per_turn / stability を持つ。
-- classifier 無効/低信頼度時は decay_only を適用する。
-- stateless MVP では initial request 時、confidence が十分な場合に user_affect_estimate から bootstrap する。
-- 将来の session-state runtime では turn 蓄積状態に対して smoothing/decay を適用する。
-- session-local emotion drift は process memory only で保持し、永続化しない。
-- session-local reuse は session_id がある場合のみ有効化し、session_id がない場合は stateless/fail-safe とする。
-- session key は resolved session_id を優先し、route-provided session_id も利用する。
+### Current heuristic path
 
-## scene-gated text marker
-- default false。
-- apply mode: `diagnostics_only`, `preview`, `apply`。
-- diagnostics 実行条件と marker 実行条件は分離し、`relayemo_enabled=true` で artifact を生成する。
-- scene gate:
-  - casual_chat / vtuber_roleplay / design_talk: allow 系
-  - implementation_work: preview_only
-  - review_work / formal_document / medical_or_safety: suppress
-  - unknown: suppress or preview_only
-- marker gate:
-  - `assistant_emotion_state.intensity` と open/close threshold で gate 判定（hysteresis 対応可能な設定形）。
-  - confidence 低値は suppress。
-- marker map:
-  - `light_positive_estimate -> ✨`
-  - `playful_positive_estimate -> ♪`
-  - `warm_positive_estimate -> ☺️`
-  - neutral/uncertain/unknown は marker なし
-- placement:
-  - `postfix_replace_punctuation`。
-  - 末尾が `。`, `！`, `!`, `.` の場合は marker 置換。
-  - `？`, `?` は preserve/append。
-  - 句読点なしは append。
+The runtime currently:
 
-## 今回やらないこと
-- Irodori-TTS 連携
-- voice affect
-- feedback learning
-- SOUL update
-- LLM structured classifier candidate apply
-- feedback loop learning
-- candidate apply gate / outcome observer
+- extracts the latest user text,
+- estimates VAD-like affect values,
+- infers a scene type inside RelayEMO,
+- updates a process/session-local assistant state,
+- optionally builds a structured LLM affect-probe candidate,
+- emits one combined runtime artifact.
+
+### Current runtime artifact
+
+The current artifact includes fields equivalent to:
+
+```yaml
+relayemo_artifact:
+  user_affect_estimate:
+    valence: 0.4
+    arousal: 0.6
+    dominance: 0.2
+    intensity: 0.7
+    confidence: 0.55
+    mode: light_positive_estimate
+    evidence_level: light_text_heuristic
+    is_estimate: true
+  affect_probe_mode: heuristic
+  heuristic_user_affect_estimate: "..."
+  llm_user_affect_estimate_candidate: null
+  llm_scene_state_candidate: null
+  llm_affect_probe_meta: "..."
+  llm_candidate_applied: false
+  assistant_emotion_state: "..."
+  scene_state:
+    scene_type: casual_chat
+  text_marker_preview:
+    gate_open: false
+    marker: ""
+    marker_count: 0
+    placement: postfix_replace_punctuation
+    applied_to_text: false
+    suppression_reason: relayemo_disabled_or_scene_gate
+  text_marker_apply:
+    applied_to_text: false
+    applied_to_soul: false
+    applied_to_mem: false
+    applied_to_tts: false
+    persisted_user_affect: false
+  user_affect_estimate_is_estimate: true
+```
+
+This is the current compatibility shape. It is broader than the target ownership and projection model.
+
+### Current structured affect probe
+
+The current probe prompt/parser expects:
+
+```text
+user_affect_estimate_candidate
+scene_state_candidate
+classifier_meta
+```
+
+The parser validates a `scene_type` and scene confidence in addition to affect fields. Synthetic dry-run output also includes `scene_state_candidate`.
+
+### Current session state
+
+The current implementation keeps assistant state in an in-process TTL-bounded dictionary keyed by session key when available.
+
+This is runtime-local state and is not RelayMEM or RelaySOUL persistence.
+
+## Target responsibility boundary
+
+RelayEMO should provide bounded request/session-local affect estimation and expression state.
+
+```text
+Input-side RelayEMO
+  affect estimate + expression pressure
+
+Return-side RelayEMO
+  bounded display / TTS / avatar hints after safe visible output exists
+```
+
+Target RelayEMO does not own:
+
+- normalized scene classification or `scene_state`,
+- task/intent/clarification decisions,
+- RelayMEM or RelaySOUL writes,
+- durable user-affect facts,
+- TTS or avatar execution,
+- meaning-changing output rewrite.
+
+## Target migration from current artifact
+
+The current compatibility fields should be migrated as follows:
+
+```text
+infer_scene_type / scene_state
+  -> RelaySCN input-side classification
+
+llm_scene_state_candidate
+  -> bounded scene_evidence_hint only
+
+full VAD and assistant state in generic trace
+  -> runtime-private artifact
+  -> typed content-free EMO projection for trace/audit
+
+postfix_replace_punctuation
+  -> preserve terminal punctuation
+  -> separate display_marker_hint with TTS omission policy
+```
+
+This migration requires implementation and smoke-test changes; this docs-only PR does not perform it.
+
+## Target runtime-private affect artifact
+
+A future request-local artifact may contain semantic affect content:
+
+```yaml
+relayemo_affect_runtime:
+  schema_version: relayemo.affect_runtime.v1
+  is_estimate: true
+  source: heuristic
+  affect_class: light_positive_estimate
+  valence: 0.42
+  arousal: 0.18
+  dominance: 0.05
+  intensity: 0.25
+  confidence: 0.68
+  scene_evidence_hint:
+    affect_pressure_present: true
+    safety_escalation_candidate: false
+```
+
+This artifact is content-bearing and remains request-local or process/session-local under an explicit protected state policy.
+
+RelayEMO may provide only low-authority scene evidence hints. RelaySCN alone creates normalized scene state and policy.
+
+## Target content-free EMO projection
+
+Default trace/audit should receive a typed allowlisted projection:
+
+```yaml
+relayemo_projection:
+  schema_version: relayemo.projection.v1
+  affect_estimate_present: true
+  source_class: heuristic
+  confidence_band: medium
+  intensity_band: low
+  expression_state_class: warm
+  expression_gate: allowed
+  text_adjustment_applied: false
+  display_marker_applied: false
+  tts_hint_emitted: false
+  avatar_hint_emitted: false
+  persisted_user_affect: false
+  applied_to_soul: false
+  applied_to_mem: false
+```
+
+The target projection must not contain:
+
+- user text,
+- numeric VAD vectors,
+- semantic affect candidate bodies,
+- scene candidate bodies,
+- visible response text,
+- display/TTS/caption text,
+- session-local assistant-state values.
+
+Use bands, booleans, counts, source classes, and stable reason IDs.
+
+## Affect-estimate rules
+
+Both current and target behavior should preserve these invariants:
+
+- always mark the result as an estimate,
+- preserve uncertainty/confidence,
+- default toward neutral/unknown when confidence is low,
+- avoid sensitive-attribute or mental-state diagnosis,
+- use only validated evidence allowed by policy,
+- do not persist as a durable user fact,
+- do not allow one estimate to trigger persona/relationship updates.
+
+## Target structured affect probe
+
+A future probe should return affect candidates and bounded scene evidence rather than normalized scene state:
+
+```yaml
+relayemo_affect_candidate:
+  schema_version: relayemo.affect_candidate.v1
+  user_affect_estimate_candidate:
+    valence: 0.2
+    arousal: 0.1
+    dominance: 0.0
+    intensity: 0.2
+    confidence: 0.55
+  scene_evidence_hint:
+    affect_pressure_present: true
+    recovery_escalation_candidate: false
+```
+
+Required target behavior:
+
+- dedicated backend/route or recursion guard,
+- strict input/output limits,
+- timeout and busy-skip policy,
+- finite-number validation,
+- invalid candidate does not stop the main response,
+- dry-run candidate does not replace the active state,
+- candidate content does not enter generic trace output.
+
+## Assistant expression state
+
+The assistant state is expression control, not a claim about consciousness or a durable persona trait.
+
+```yaml
+assistant_expression_state:
+  schema_version: relayemo.assistant_expression_state.v1
+  state_class: warm
+  intensity: 0.28
+  confidence: 0.64
+  max_delta_per_turn: 0.20
+  decay_per_turn: 0.05
+  stability: 0.70
+```
+
+Rules:
+
+- update slowly and bound per-turn delta,
+- use decay-only behavior for low-confidence input,
+- session-local reuse requires a resolved session ID,
+- without session ID, use stateless/fail-safe initialization,
+- keep process/session-local by default,
+- do not persist into RelayMEM/SOUL,
+- allow RelaySCN to suppress or clamp expression.
+
+## Display marker target
+
+Display markers are optional, default-off, and separate from semantic text.
+
+```yaml
+display_marker_hint:
+  marker: "✨"
+  position: after_terminal_punctuation
+  tts_policy: omit
+```
+
+Target behavior preserves `。`, `！`, `？`, and other punctuation. TTS text normally omits purely visual markers.
+
+The current `postfix_replace_punctuation` compatibility field remains an implementation gap until the marker path is migrated.
+
+## Return-side expression hints
+
+Return-side RelayEMO may emit engine-neutral hints only after RelayCTX Unpack/segmentation and RelayREF observation:
+
+```yaml
+return_expression_hints:
+  style_class: gentle
+  expression_intensity: 0.30
+  display_marker: null
+  tts_style_hint: gentle
+  tts_emoji_hint: "😊"
+  avatar_expression_hint: soft_smile
+  avatar_motion_hint: small_nod
+```
+
+External adapters map these classes after the current-response safety gate and RelayRUN emission decision.
+
+## Durable voice boundary
+
+Approved `OUTPUT_POLICY.md` plus the Main LLM owns ordinary durable character voice.
+
+RelayEMO should prefer hints and intensity modulation. Text changes remain optional/default-off and limited to meaning-preserving safe conversational surface adjustments.
+
+## Required implementation follow-up
+
+A future implementation PR should:
+
+1. remove scene classification ownership from `relaylm/relayemo.py`,
+2. replace `scene_state_candidate` with typed `scene_evidence_hint`,
+3. create a typed content-free EMO projection,
+4. prevent the full current artifact from entering generic trace surfaces,
+5. migrate marker placement away from punctuation replacement,
+6. update examples and RelayEMO smoke tests.
+
+## Failure behavior
+
+- affect-probe failure keeps the safe heuristic/neutral path,
+- Return-side EMO failure preserves approved visible text without hints,
+- no failure path writes MEM/SOUL,
+- only content-free failure/suppression reasons should enter generic diagnostics after projection migration.
+
+## Non-goals
+
+- no claim that target v1 artifacts are currently implemented,
+- no durable user-affect persistence,
+- no final RelaySCN state ownership,
+- no SOUL/MEM/relationship update,
+- no direct TTS/Live2D control,
+- no meaning-changing rewrite,
+- no content-bearing affect candidate in the target generic trace.

@@ -2,157 +2,198 @@
 
 ## Purpose
 
-This document preserves the product-level principles that distinguish RelayLM from a generic RAG proxy.
+This document preserves the product principles that distinguish RelayLM from a generic RAG proxy.
 
-RelayLM remains an OpenAI-compatible runtime proxy. Its product role is to improve persona stability, relationship continuity, memory usefulness, and conversational comfort while preserving frontend compatibility and low-latency generation.
+RelayLM remains an OpenAI-compatible runtime proxy. Its product role is to improve persona stability, relationship continuity, memory usefulness, expression appropriateness, and conversational comfort while preserving frontend compatibility and low-latency generation.
 
-Detailed runtime ownership remains defined by [Pipeline Responsibility Design](pipeline_responsibility_design.md). Context layout remains defined by [Context Packing Design](context_packing_design.md). Open-LLM-VTuber setup remains defined by [Open-LLM-VTuber Integration Design](open_llm_vtuber_integration.md).
+Detailed component ownership remains in [Pipeline Responsibility Design](pipeline_responsibility_design.md). Context layout remains in [Context Packing Design](context_packing_design.md). Current implementation state remains in [Project Status](../PROJECT_STATUS.md).
 
 ## Product invariant
 
-RelayLM should make an AI character feel continuous without pretending that the character has perfect memory or unrestricted knowledge.
+RelayLM should make an AI character feel continuous without pretending that the character has perfect memory, unrestricted knowledge, or autonomous permission to rewrite its identity.
 
-The first product contract is:
+The basic product contract is:
 
-> A user can replace the OpenAI-compatible API URL with RelayLM and experience better persona continuity and memory behavior without changing the frontend's conversation, TTS, ASR, or avatar ownership.
+> A user can point an OpenAI-compatible frontend at RelayLM and experience better persona continuity and memory behavior without RelayLM taking ownership of the frontend UI, input, display history, TTS engine, ASR engine, or avatar runtime.
 
-RelayLM is successful only when memory and context improvements preserve the character rather than turning it into a generic assistant.
+## Frontend ownership versus context authority
+
+These are separate boundaries.
+
+```text
+frontend
+  owns UI, user input, visible conversation display/storage,
+  interruption controls, TTS/avatar integration, and local presentation
+
+RelayLM managed route
+  owns backend-bound context construction,
+  client-history/instruction authority normalization,
+  visible/internal output separation,
+  and adapter-safe output approval
+```
+
+A frontend may display its full conversation history while RelayLM excludes that history from the managed backend payload and reconstructs context from RelayLM-owned state.
+
+Explicit `pass_through` routes remain the delegated-authority exception.
 
 ## Product value hierarchy
 
-When product goals conflict, prefer this order:
+When goals conflict, prefer this order:
 
-1. preserve safety and user control,
-2. preserve character identity and relationship boundaries,
-3. preserve the latest user request and conversational coherence,
-4. preserve first-response and first-speech latency,
-5. add useful memory and external context,
-6. add heavier retrieval or compression only when the earlier goals remain intact.
+1. safety and user control,
+2. character identity and relationship boundaries,
+3. latest user request and conversational coherence,
+4. visible/internal output integrity,
+5. first-response and first-speech latency,
+6. useful memory and external context,
+7. heavier retrieval/compression only when earlier goals remain intact.
 
-More retrieved context is not automatically a better product outcome.
+More retrieved or remembered content is not automatically better.
 
-## Conversation experience evaluation
+## Durable character voice and transient expression
 
-RelayLM should be evaluated on two separate axes.
+```text
+approved RelaySOUL / OUTPUT_POLICY
+  durable identity and character voice
 
-### Technical stability
+Main LLM
+  persona-consistent semantic response
 
-- URL-swap and OpenAI-compatible behavior,
-- latest-input preservation,
-- stable-prefix consistency,
-- route and namespace isolation,
-- memory leakage prevention,
-- fallback reliability,
-- first-token and first-speech latency,
-- streaming continuity.
+RelayEMO
+  bounded transient affect/expression hints
 
-### Character experience
+external adapters
+  TTS/avatar execution
+```
+
+Return-side expression must not become hidden meaning-changing rewriting or a second persona generator.
+
+## Character experience
+
+Evaluate separately from technical task success:
 
 - persona consistency,
 - relationship continuity,
 - memory warmth,
-- conversation stickiness,
+- conversation stickiness without manipulation,
 - non-creepiness,
-- growth feeling,
+- gradual/reversible growth feeling,
 - emotional appropriateness,
 - correction and forgetting behavior.
 
-These are product-quality signals, not permission to manipulate engagement.
+`conversation_stickiness` means the user wants to continue because the character is coherent, responsive, and comfortable—not because of pressure, dependency cues, guilt, false urgency, or concealed limitations.
 
-`conversation_stickiness` means that the user wants to continue because the character remains coherent, responsive, and comfortable to talk with. It must not be optimized through pressure, dependency cues, guilt, false urgency, or concealment of system limitations.
+`memory_warmth` means recalled information improves continuity without feeling like surveillance. Correct memory can still be inappropriate when disclosed with excessive specificity, wrong timing, or outside the allowed scene scope.
 
-`memory_warmth` means that recalled information improves continuity or care without feeling like surveillance. A memory can be factually correct and still fail this criterion when it is disclosed at the wrong time, with excessive specificity, or outside the current scene's allowed memory scope.
+`growth_feeling` means approved memory, relationship, and expression changes accumulate coherently. It does not permit silent RelaySOUL mutation.
 
-`growth_feeling` means that approved relationship, memory, and expression changes create understandable continuity over time. It must not imply silent SOUL mutation or irreversible personality drift.
+## Technical stability
+
+Evaluate:
+
+- URL-swap and OpenAI-compatible behavior,
+- latest-input preservation,
+- managed context reconstruction,
+- stable-prefix consistency,
+- route/namespace isolation,
+- memory and internal-data leakage prevention,
+- fallback/recovery reliability,
+- first-token/first-safe-speech latency,
+- streaming continuity,
+- duplicate-emission prevention.
 
 ## Evaluation method
 
-Product evaluation should combine deterministic checks with repeated conversation sessions.
+Use deterministic checks plus repeated conversation sessions:
 
-Recommended evidence:
+- fixed persona/memory regression suites,
+- paired responses with/without approved memory,
+- user correction and forgetting cases,
+- long-session continuity,
+- scene transitions and recovery,
+- renderer/model comparisons,
+- subjective ratings with short reason labels,
+- first-token, first-safe-segment, and first-TTS-enqueue timing.
 
-- fixed prompt suites for persona and memory regression,
-- paired responses with and without retrieved memory,
-- user correction and forgetting scenarios,
-- long-session continuity checks,
-- scene transitions and recovery scenarios,
-- subjective user ratings with short reason labels,
-- latency measurements for first token, first sentence, and first TTS enqueue.
+Protected response/feedback samples belong to explicit evaluation/calibration storage, not generic runtime trace.
 
-A single task-success score is insufficient. RelayLM may answer correctly while still damaging persona continuity, disclosing memory awkwardly, or responding too slowly for a realtime character.
-
-## Realtime VTuber latency posture
-
-AI VTuber use prioritizes fast first speech over maximum retrieval depth.
-
-The normal split is:
+## Realtime path
 
 ```text
-synchronous path:
-  scope / route / scene / intent
-  -> cheap approved retrieval
-  -> bounded RelayCTX Repack
-  -> streaming backend forward
+synchronous:
+  route / authority / scene / affect / intent
+  -> bounded approved retrieval
+  -> RelayCTX Repack
+  -> streaming backend
   -> Stream Unpack / segmentation
-  -> first TTS-safe chunk
+  -> REF / EMO / output SCN / RUN gates
+  -> first safe TTS chunk
 
-asynchronous or deferred path:
-  memory extraction and consolidation
-  -> embeddings / index maintenance
-  -> summary refresh
-  -> cache or retrieval warmup
-  -> RelaySLP candidates
+out-of-band:
+  governed evidence
+  -> RelaySLP candidate extraction/classification
+  -> persistence and approval gates
+  -> compiled memory/summary/index updates
+  -> optional retrieval-cache warmup
 ```
+
+RelaySLP owns candidate creation and governed memory compilation. Embeddings, index maintenance, summary refresh, and cache warmup are downstream maintenance/apply steps, not predecessors that create SLP candidates.
 
 The synchronous path should not run expensive rerankers, summarizers, multi-hop retrieval, or extra LLM scoring by default.
 
-## Prefetch and speculation rules
+## Prefetch and speculation
 
-Future optimizations may include:
+Future optimizations may include query-aware memory warmup, external ASR partial-transcript prefetch, speculative candidate loading, or context-plan preparation.
 
-- query-aware memory warmup,
-- ASR partial-transcript prefetch when an external adapter provides it,
-- speculative candidate loading,
-- speculative context-plan preparation.
+Rules:
 
-They remain optional optimizations and must obey these rules:
+- optional only,
+- untrusted until the confirmed input and current scene policy are available,
+- no MEM/SOUL/user-visible mutation,
+- discardable when superseded,
+- no first-speech delay when results are unavailable,
+- ordinary synchronous fallback remains valid.
 
-- prefetch must not become a core ASR dependency,
-- partial transcripts and speculative candidates are untrusted evidence,
-- speculative work must not mutate MEM, SOUL, or user-visible state,
-- final selection must use the confirmed current input and current scene policy,
-- cancelled or superseded speculation must be discardable,
-- prefetch failure must fall back to the ordinary synchronous path,
-- speculation must not delay first speech when its result is not ready.
+## Memory, relationship, and persona growth
 
-## Routing and cache posture
+- Retrieval reads only.
+- RelaySLP compiles memory candidates through gates.
+- Relationship/output-policy changes enter RelaySOUL calibration/revision workflows.
+- Normal chat may surface proposals but does not apply persona revisions.
+- Core identity changes require explicit approval and rollback.
+- Temporary scene/affect state never automatically becomes durable personality.
 
-RelayLM supports both deployment styles:
+## TTS and Avatar boundary
 
-- a single proxy routing multiple characters by model/route identity,
-- per-character instances with separate ports and cache namespaces.
+RelayLM owns safe output segmentation and engine-neutral expression hints before external consumers receive data.
 
-The first is onboarding-oriented. The second may improve cache isolation, diagnostics, and stable-prefix reuse. Neither deployment style changes semantic ownership: RelaySCN, RelayINT, RelayMEM, RelayCTX, RelayREF, RelayRUN, and RelaySLP retain the same responsibilities.
+It does not own:
+
+- speech synthesis execution,
+- Live2D expression/motion files,
+- avatar runtime scheduling,
+- ASR processing.
+
+Text/caption output remains available when TTS/Avatar adapters fail.
 
 ## Agent and tool boundary
 
-Agent planning, tool calls, tool observations, and structured-output phases should normally pass through unchanged. Persona/context conditioning should target ordinary chat turns or the final natural-language response after the agent result is stable.
+Agent planning, tool calls, observations, and structured-output phases normally pass through unchanged. Persona/context conditioning targets ordinary chat or an already-stable final natural-language result.
 
-RelayLM must not make tool protocol payloads look like persona prompt blocks, and persona styling must not alter the semantic content of an agent result.
+Persona or expression handling must not alter tool protocol payloads, code, commands, structured data, or the semantic result of an agent action.
 
 ## Product non-goals
 
-These principles do not make RelayLM:
+RelayLM is not:
 
-- an engagement-optimization system,
-- a replacement for the frontend UI, TTS, ASR, or avatar runtime,
+- an engagement-optimization or dependency system,
+- a replacement for frontend UI/TTS/ASR/avatar execution,
 - a general agent framework,
-- a vector database or memory product,
+- a vector database product,
 - a direct KV-cache controller,
-- an authority that silently rewrites character identity.
+- an authority that silently rewrites character identity,
+- a reason to forward untrusted frontend history as managed backend context.
 
 ## Summary
 
-RelayLM should improve the feeling of continuity by combining conservative memory use, stable persona conditioning, scene-aware expression, and realtime latency discipline.
-
-The target is not simply a character that remembers more. The target is a character that remembers appropriately, stays recognizably itself, responds soon enough to feel present, and remains easy for the user to correct or redirect.
+RelayLM should help a character remember appropriately, stay recognizably itself, express transient emotion safely, respond soon enough to feel present, and remain easy for the user to correct or redirect.

@@ -1,286 +1,295 @@
-# RelayEMO Return-side Style Adapter Design
-
-Date basis: 2026-05-31 JST
+# RelayEMO Return-side Expression Design
 
 ## Purpose
 
-This document defines the Return-side EMO design for text style, markers, Irodori-TTS hints, and Live2D hints.
+Return-side RelayEMO applies bounded transient expression after RelayCTX has separated visible output from internal candidates and after RelayREF has produced output observations.
 
-Core statement:
+It does not create the character's durable voice. Durable character wording, tone, response shape, and memory-disclosure behavior are primarily conditioned by approved `OUTPUT_POLICY.md` and rendered by the Main LLM.
 
-> The main LLM should generate accurate semantic content. Return-side EMO may then apply expression-level changes such as character tone, suffixes, markers, TTS hints, and avatar expressions.
+```text
+approved OUTPUT_POLICY + Main LLM
+  durable character voice and semantic answer
 
-This keeps strong character style from corrupting the main LLM's reasoning.
+Return-side RelayEMO
+  transient affect expression and engine-neutral hints
+```
 
-## Responsibility split
+## Canonical position
 
-### Main LLM
+```text
+Main LLM
+  -> RelayCTX Unpack / Stream Unpack
+  -> Output Segmenter
+  -> RelayREF
+  -> Return-side RelayEMO
+  -> Output-side RelaySCN current-response gate / next-turn observation
+  -> RelayRUN approved output
+  -> external TTS / Avatar adapters / captions
+```
 
-The main LLM handles:
+Return-side RelayEMO must not send output directly to a TTS engine or avatar runtime before Output-side RelaySCN and RelayRUN approve the current response.
 
-- meaning
-- reasoning
-- final answer content
-- clarification wording
-- `ctx_working_update`
+## Inputs
 
-The main LLM should not be overloaded with heavy character suffix constraints.
+Return-side RelayEMO may consume:
 
-### RelayCTX Prompt Unpack
+- validated visible output segments,
+- protected-segment classification,
+- approved durable `OUTPUT_POLICY.md`,
+- RelaySCN expression/formality/safety policy,
+- request/session-local `assistant_emotion_state`,
+- RelayREF content-free observations,
+- TTS/avatar profile capabilities.
 
-RelayCTX separates:
+It must not consume raw internal candidate bodies as style input.
 
-- `user_visible_response`
-- `ctx_working_update`
+## Ownership boundary
 
-Only `user_visible_response` goes to Return-side EMO.
+### Main LLM and durable output policy
+
+Own:
+
+- semantic answer,
+- persona-consistent wording,
+- durable character voice,
+- ordinary tone and response shape,
+- clarification wording,
+- factual/code/structured content.
 
 ### RelayCTX Output Segmenter
 
-Before Return-side EMO applies style, RelayCTX must segment the visible response.
+Owns:
 
-Segment kinds:
+- visible chunk boundaries,
+- protected-segment classification,
+- `speak` / `skip` / `caption_only` / `substitute` policy,
+- internal-marker blocking,
+- separation of display text, TTS text, and optional substitute text.
 
-- `conversational_text`
-- `quoted_text`
-- `inline_code`
-- `code_block`
-- `command_block`
-- `json`
-- `yaml`
-- `markdown_table`
-- `url`
-- `file_path`
-- `quote`
-- `formal_document`
-- `medical_or_safety`
-- `implementation_work_strict`
+### RelayREF
 
-Only `conversational_text` should be style-transformable by default.
+Owns post-generation observations such as empty/invalid output, marker leakage, and likely scene/policy mismatch. It does not rewrite output.
 
-### Return-side EMO
+### Return-side RelayEMO
 
-Return-side EMO may apply:
+May:
 
-- Text Style Adapter
-- Text Marker Adapter
-- Irodori-TTS Adapter
-- Live2D Adapter
+- select bounded expression intensity,
+- emit visual marker hints,
+- emit TTS prosody/style hints,
+- emit avatar expression/motion hints,
+- apply narrowly-scoped surface adjustments to safe conversational segments when explicitly allowed.
 
-It must preserve semantic meaning and never mutate protected segments.
+Must not:
 
-## Why style should be return-side
+- alter facts, reasoning, instructions, code, commands, quoted text, structured data, or safety meaning,
+- reconstruct the whole answer in a different persona voice,
+- override Output Segmenter TTS safety policy,
+- override RelaySCN formality/safety/recovery suppression,
+- modify internal candidates,
+- persist affect or relationship state,
+- control TTS/Live2D engines directly.
 
-Strong character tone such as a repeated suffix can damage model reasoning if placed too strongly in the main prompt.
+Meaning-changing repair is handled through REF / SCN / RUN policy, not hidden inside EMO.
 
-Example risk:
+## Safe segment classes
 
-```text
-python -m compileall relaylmなのだ
-```
+Only validated conversational segments are eligible for text-surface adjustment by default.
 
-To avoid this, the main LLM should output clean base text. Return-side EMO applies style only after CTX separates and protects structured content.
+Protected classes include:
 
-## Output Segmenter rules
+- quoted text,
+- inline/fenced code,
+- commands and file paths,
+- JSON/YAML and tables,
+- URLs,
+- formal-document passages,
+- medical/safety passages,
+- strict implementation/review output,
+- internal markers or candidate envelopes.
 
-MVP rules:
+For protected segments, RelayEMO may still emit an external delivery hint only when the segmenter's policy permits it.
 
-- protect `「...」` and `『...』` as `quoted_text`
-- protect inline backticks
-- protect fenced code blocks
-- protect indented command blocks
-- protect Markdown tables
-- protect JSON/YAML-like blocks
-- protect URLs
-- protect file paths
-- protect quoted lines
-- suppress style transform for formal/safety/medical/strict implementation scenes
+## Durable voice versus transient expression
 
-The main LLM should be instructed:
+Examples of durable `OUTPUT_POLICY.md` concerns:
 
-- quote user utterances and phrase examples with `「」` or `『』`
-- output code, commands, JSON, and YAML in protected blocks
-- keep `ctx_working_update` separate from visible text
+- usually warm but technically precise,
+- concise acknowledgement before analysis,
+- characteristic first-person/ending style,
+- typical verbosity and structure,
+- memory-disclosure restraint.
 
-## Text Style Adapter
+Examples of transient RelayEMO concerns:
 
-Text Style Adapter changes the surface expression of `conversational_text`.
+- slightly softer delivery for a worried user,
+- reduced intensity in formal/recovery scenes,
+- short visual marker on an informal positive response,
+- TTS prosody hint such as gentle/playful/low-energy,
+- avatar smile/nod hint.
 
-Possible operations:
+Return-side RelayEMO should prefer hints over text mutation.
 
-- suffix insertion
-- light colloquialization
-- character phrase insertion
-- sentence-ending adjustment
-- emotional intensity adjustment
+## Expression state
 
-It must not:
-
-- alter facts
-- alter code or commands
-- alter quoted text
-- alter JSON/YAML
-- alter markdown tables
-- change medical/safety/formal content
-- modify `ctx_working_update`
-
-## Japanese suffix transform
-
-Japanese LLM output often has clear punctuation such as `。`.
-
-MVP can split conversational text by `。` and transform sentence endings.
-
-Rules:
-
-```yaml
-text_style_adapter:
-  split_by: "。"
-  apply_to_sentence_end: true
-  max_suffix_ratio: 0.4
-  avoid_consecutive_suffix: true
-  skip_short_sentences: true
-  skip_protected_segments: true
-  preserve_meaning: true
-```
-
-Example:
-
-Base:
+Use terms such as:
 
 ```text
-これは良い設計だと思います。CTXとEMOの責務が分かれています。
+expression_state
+expression_intensity
+affect_intensity
+style_intensity
 ```
 
-Styled:
+Do not call this EMO `temperature`, because it is distinct from OpenAI sampling `temperature`.
 
-```text
-これは良い設計だと思うのだ。CTXとEMOの責務が分かれているのだ。
-```
-
-The style adapter should not apply this to protected content.
-
-## Temperature-based suffix control
-
-Character style can vary by EMO temperature.
-
-Example map:
+Conceptual state:
 
 ```yaml
-emo_style_map:
-  neutral:
-    suffix_ratio: 0.0-0.1
-    suffix: null
-
-  warm:
-    suffix_ratio: 0.2-0.3
-    suffix: "なのだね"
-
-  playful:
-    suffix_ratio: 0.35-0.45
-    suffix: "なのだ"
-
-  excited:
-    suffix_ratio: 0.45-0.55
-    suffix: "なのだ！"
-
-  sleepy:
-    suffix_ratio: 0.25-0.35
-    suffix: "なのだ……"
-
-  refreshed:
-    suffix_ratio: 0.25-0.35
-    suffix: "なのだ"
+expression_state:
+  class: warm
+  intensity: 0.30
+  confidence_band: medium
+  text_adjustment_allowed: false
+  visual_marker_allowed: true
+  tts_hint_allowed: true
+  avatar_hint_allowed: true
 ```
 
-Scene gates should suppress suffixes for:
+## Text adjustment
 
-- formal documents
-- code review
-- strict implementation work
-- medical or safety content
-- user confusion high
-- exact instructions
-- command output
-- structured data
+Text adjustment is optional, default-off, and narrower than general style rewriting.
 
-## Rule generation
+Allowed examples when all gates pass:
 
-Natural suffix replacement is difficult with pure hand-written rules.
+- preserving punctuation while appending a bounded display marker,
+- selecting among pre-approved equivalent short interjections,
+- minor punctuation/emphasis adjustment that does not change meaning.
 
-Preferred approach:
+Disallowed:
 
-1. Use the main LLM or offline design pass to generate style transform rules, examples, and exclusions.
-2. Store those rules as a character style policy.
-3. Apply them during Wake through Return-side EMO as deterministic or mostly deterministic rules.
-4. Do not call the main LLM every turn just to rewrite style.
+- systematic suffix replacement across every sentence,
+- converting formal/technical prose into colloquial character speech after generation,
+- changing certainty, negation, urgency, instruction steps, or quoted wording,
+- changing TTS text without a separately defined display/TTS split.
 
-This keeps Wake fast and avoids pulling reasoning into character tone.
+Durable suffix or character phrase behavior should be expressed in `OUTPUT_POLICY.md` and generated by the Main LLM. RelayEMO may only modulate its transient intensity.
 
-## Irodori-TTS Adapter
+## Marker boundary
 
-Return-side EMO may emit:
+Visual markers should be separate from semantic text when possible.
 
 ```yaml
-irodori_tts:
-  emoji: "😊"
-  style: "pleased"
+expression_output:
+  display_marker: "✨"
+  marker_position: after_terminal_punctuation
+  tts_marker_policy: omit
+```
+
+Do not replace terminal punctuation with an emoji/marker. Preserve punctuation for captions, text integrity, and TTS segmentation.
+
+## TTS hint projection
+
+Return-side RelayEMO emits engine-neutral hints:
+
+```yaml
+tts_expression_hint:
+  style_class: gentle
   intensity: 0.35
+  emoji_hint: "😊"
+  timing_hint: chunk
 ```
 
-This should follow the same scene and intensity gates as text style.
+This is not an Irodori-TTS adapter and contains no engine call. The external TTS adapter maps supported fields to the configured engine.
 
-## Live2D Adapter
-
-Return-side EMO may emit:
+## Avatar hint projection
 
 ```yaml
-live2d:
-  expression: "soft_smile"
-  motion: "small_nod"
+avatar_expression_hint:
+  expression_class: soft_smile
+  motion_class: small_nod
+  intensity: 0.35
+  timing_hint: during_audio
 ```
 
-MVP can keep this as dry-run metadata.
+This is not a Live2D adapter. Runtime-specific expression/motion names are mapped externally.
 
-## Sleep / Reflect expressions
+## Recovery and deferred-state boundary
 
-RelayREF and RelaySLP states can map to style and avatar hints.
-
-Examples:
-
-```yaml
-reflect_enter:
-  mode: thinking_soft
-  dominance: low
-  tts_emoji: "🤔"
-  live2d_expression: "thinking"
-
-forced_sleep_enter:
-  mode: tired_limit
-  dominance: very_low
-  tts_emoji: "😴"
-  live2d_expression: "tired_sleepy"
-
-resume_after_forced_sleep:
-  mode: refreshed_but_uncertain
-  response_mode: ask_open_clarification
-```
-
-Visible examples:
+RelayREF and RelaySLP do not directly create sleep/reflect/resume expressions or user-visible text.
 
 ```text
-一瞬ぼーっとしてた。今、○○の話で合ってる？
+REF observation / SLP outcome
+  -> Output-side RelaySCN or next-turn RelaySCN policy
+  -> RelayRUN recovery/waiting-user route
+  -> normal visible-output generation
+  -> Return-side RelayEMO bounded hints
 ```
+
+Formal component contracts should use:
+
+- deferred RelaySLP,
+- recovery,
+- waiting-user,
+- reanchor,
+- normal-turn continuation.
+
+Product-facing metaphors may be rendered only after the semantic recovery route has been approved.
+
+## Runtime-private artifact versus content-free projection
+
+### Runtime-private expression artifact
+
+May contain request-local expression labels, segment-level hints, display markers, and adapter hint values.
+
+### Default diagnostic projection
+
+May contain only:
+
+- expression state/intensity bands,
+- segment counts,
+- marker/text/TTS/avatar hint applied booleans,
+- suppressed reason IDs,
+- protected-segment counts,
+- output gate status.
+
+It must not contain visible response text, rewritten segment text, user affect labels/text, TTS caption bodies, or avatar implementation names when those are sensitive configuration values.
+
+## Scene suppression
+
+Text adjustment and expressive hints should be reduced or suppressed for:
+
+- formal documents,
+- review and strict implementation work,
+- medical/safety content,
+- recovery/waiting-user states,
+- exact commands/instructions,
+- structured data,
+- low-confidence affect estimates,
+- current-response block states.
+
+## Failure behavior
+
+- EMO failure does not invalidate an otherwise approved semantic response.
+- On failure, preserve approved visible/caption text without expression hints.
+- Never fall back to changing protected text.
+- Record only a content-free failed/suppressed projection.
+
+## Summary
 
 ```text
-ごめん、もう限界。ちょっと寝るね
+Main LLM + OUTPUT_POLICY
+  -> durable persona-consistent answer
+
+RelayCTX / REF
+  -> safe visible segments and observations
+
+Return-side RelayEMO
+  -> bounded transient expression hints
+
+SCN / RUN
+  -> approve current output
+
+external adapters
+  -> TTS / Avatar execution
 ```
-
-```text
-スッキリした。何の話してたっけ？
-```
-
-## Core design statement
-
-Character style is an output expression layer, not the main reasoning layer.
-
-The main LLM writes the answer. RelayCTX protects structured segments. Return-side EMO applies style only where safe.

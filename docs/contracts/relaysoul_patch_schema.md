@@ -1,99 +1,253 @@
-# RelaySOUL Patch Schema (MVP-SOUL-0)
+# RelaySOUL Patch Schema
 
-This document defines the first dry-run contract artifacts for RelaySOUL.
+## Purpose
 
-MVP-SOUL-0 is **schema-only**: RelaySOUL can collect feedback and generate patch candidates, but RelayLM runtime behavior must not change and no patch is auto-applied.
+This document separates the **current implemented `mvp-soul-0` patch-candidate contract** from the **target durable-persona ownership and projection model**.
 
-## Scope
+The target sections define architecture direction. They do not claim that current scripts already emit or validate the proposed v1 shapes.
 
-RelaySOUL is the human-in-the-loop persona source calibration layer. RelayLM remains the runtime/compiler/diagnostics layer.
+## Current implemented contract: `mvp-soul-0`
 
-This MVP introduces three JSON artifacts:
+The current parser is implemented by `scripts/relaylm_relaysoul_patch_candidate_dry_run.py`.
 
-1. `examples/relaysoul/feedback_examples.json`
-2. `examples/relaysoul/patch_candidates.json`
-3. `examples/relaysoul/persona_revision.json`
+### Current target-file allowlist
 
-These artifacts are documentation/examples for contract shape and dry-run integration planning.
+```text
+SOUL.md
+OUTPUT_POLICY.md
+RELATIONSHIP_ANCHOR.md
+STABLE_MEMORY_SUMMARY.md
+SCENE_STATE.md
+```
 
-## 1) feedback_examples.json
+This is historical compatibility behavior. It is broader than the target RelaySOUL ownership boundary.
 
-Purpose:
+### Current required candidate fields
 
-- Capture natural-language preferred/rejected response pairs.
-- Preserve calibration metadata (`calibration_id`, `prompt_kind`, `character_id`, `user_id`, `scene_id`).
-- Keep lightweight labels/notes as patch evidence.
+Each current candidate requires:
 
-Contract intent:
+```text
+target_file
+target_block
+operation
+reason
+patch_text
+source_feedback_ids
+risk_level
+requires_user_approval
+budget_effect
+stable_prefix_change_expected
+```
 
-- Feedback is evidence for patch proposal generation.
-- Feedback alone does not mutate persona files.
+Current allowed `risk_level` values:
 
-## 2) patch_candidates.json
+```text
+low
+medium
+high
+```
 
-Purpose:
+Current special validation for `SOUL.md`:
 
-- Represent model-generated patch candidates in dry-run form.
-- Store target, operation, rationale, patch text, provenance, and risk/approval gating fields.
+```text
+risk_level=high
+requires_user_approval=true
+```
 
-Required posture:
+The current parser does not yet enforce an all-persona-file `normal_chat` apply prohibition because mode is not part of this candidate wire shape.
 
-- Patch candidates are **never auto-applied** in MVP-SOUL-0.
-- `requires_user_approval` is explicit and can be `true` even in calibration mode.
-- `SOUL.md` candidates are expected to be higher risk and approval-gated by default.
+### Current artifact shape
 
-Contract fields support future gates:
+```yaml
+patch_candidates:
+  schema_version: mvp-soul-0
+  artifact_type: patch_candidates
+  source_model_response: examples/relaysoul/model_response_patch_candidates.json
+  items:
+    - target_file: OUTPUT_POLICY.md
+      target_block: tone
+      operation: replace
+      reason: "..."
+      patch_text: "..."
+      source_feedback_ids:
+        - feedback-1
+      risk_level: medium
+      requires_user_approval: true
+      budget_effect: neutral
+      stable_prefix_change_expected: true
+  candidate_count: 1
+  warnings: []
+```
 
-- `budget_effect`: expected impact against Persona Source Budget.
-- `stable_prefix_change_expected`: whether stable prefix hash changes are expected.
-- `source_feedback_ids`: traceability to user preference evidence.
+This artifact is content-bearing because it includes `reason` and `patch_text`. It must remain in the protected calibration/tooling domain.
 
-## 3) persona_revision.json
+### Current patch prompt
 
-Purpose:
+The current patch-prompt dry-run still accepts and renders:
 
-- Store metadata for a profile-level persona revision record.
-- Track lineage, dry-run compile result, hash transition, and rollback availability.
+- `SOUL.md`,
+- `OUTPUT_POLICY.md`,
+- `RELATIONSHIP_ANCHOR.md`,
+- `STABLE_MEMORY_SUMMARY.md`,
+- `SCENE_STATE.md`.
 
-Important:
+It may recommend `SCENE_STATE.md` for temporary mood/situation changes. That behavior is part of the current legacy toolchain and must be migrated before the target ownership boundary is enforceable.
 
-- This file is metadata only.
-- It is **not** a runtime mutation mechanism.
-- It does not execute apply/rollback operations.
+## Protected calibration evidence
 
-## MVP-SOUL-0 safety and gating model
+Current and future RelaySOUL tooling may use protected content-bearing evidence:
 
-RelaySOUL patch application is out of scope for this MVP. Later phases should gate apply decisions with RelayLM diagnostics and runtime safety checks, including:
+- preferred/rejected response samples,
+- freeform feedback and rationale,
+- explicit persona-creation text,
+- current persona-source bodies,
+- patch prompts and patch text,
+- renderer sample outputs.
 
-1. **Persona Source Budget checks**  
-   Ensure proposed edits do not unboundedly grow `SOUL.md`, `OUTPUT_POLICY.md`, `RELATIONSHIP_ANCHOR.md`, `STABLE_MEMORY_SUMMARY.md`, and `SCENE_STATE.md`.
+This domain is not `content_free` and must not be copied into generic runtime trace records.
 
-2. **Stable prefix hash checks**  
-   Use `stable_prefix_hash_before`/`stable_prefix_hash_after` and expected prefix impact to detect large identity-shifting deltas.
+A content-free evidence projection may expose only:
 
-3. **Compile dry-run and token diagnostics**  
-   Run compile dry-run before apply to confirm layout validity and token pressure impact.
+```yaml
+calibration_projection:
+  schema_version: relaysoul.calibration_projection.v1
+  calibration_id: calib_004
+  mode: calibration
+  prompt_kind_class: response_style
+  preferred_sample_present: true
+  rejected_sample_present: true
+  feedback_label_count: 2
+  evidence_source_class: explicit_user_feedback
+  content_free: true
+```
 
-4. **trace_runtime diagnostics**  
-   Use runtime trace evidence to verify that patch effects match observed user feedback without regressions.
+This projection is a target form, not the current patch-candidate artifact.
 
-5. **Memory adapter conflict diagnostics**  
-   Block or flag apply when memory adapter conflict diagnostics suggest contradictory or unsafe context interactions.
+## Target ownership boundary
 
-## Distillation policy
+The target RelaySOUL patch allowlist is:
 
-Persona Source Distillation should remain an **optional fallback only** for budget compression or consolidation.
+```text
+SOUL.md
+OUTPUT_POLICY.md
+RELATIONSHIP_ANCHOR.md
+```
 
-Default path:
+Target routing for excluded state:
 
-- user feedback -> patch candidate generation -> user review/approval -> revision metadata
+```text
+SCENE_STATE.md / temporary role, setting, task, constraint -> RelaySCN
+STABLE_MEMORY_SUMMARY.md / durable factual memory -> RelaySLP and RelayMEM
+current affect/expression state -> RelayEMO
+short-term topic/question/referents -> RelayCTX
+```
 
-Non-default fallback path:
+## Target patch candidate: proposed v1
 
-- distillation/compression step when explicit budget pressure or maintenance need exists
+A future protected candidate may use:
 
-## Terminology
+```yaml
+patch_candidate:
+  schema_version: relaysoul.patch_candidate.v1
+  patch_candidate_id: soulpatch_0017
+  mode: calibration
+  target_file: OUTPUT_POLICY.md
+  operation: replace_or_consolidate
+  rationale: "..."
+  patch_text: "..."
+  source_evidence_refs:
+    - calib_004
+  requires_user_approval: true
+  risk_class: medium
+  budget_effect:
+    token_delta_estimate: 24
+  stable_prefix_change_expected: true
+```
 
-Use `SCENE_STATE.md` / `scene_state` terminology for dynamic situation state.
+This is not the current `mvp-soul-0` field set.
 
-Do not introduce new `ROOM_STATE.md` terminology in RelaySOUL patch contracts.
+A future content-free projection may use:
+
+```yaml
+patch_candidate_projection:
+  schema_version: relaysoul.patch_candidate_projection.v1
+  patch_candidate_id: soulpatch_0017
+  mode: calibration
+  target_file_class: output_policy
+  operation_class: replace_or_consolidate
+  source_evidence_count: 1
+  requires_user_approval: true
+  risk_class: medium
+  budget_delta_class: small_increase
+  stable_prefix_change_expected: true
+  content_free: true
+```
+
+Generic diagnostics receive the projection, not the protected candidate body.
+
+## Target mode rules
+
+### `character_creation`
+
+Broad persona exploration is allowed, but every apply still requires explicit approval, versioning, compile dry-run, and rollback readiness.
+
+### `calibration`
+
+Prefer `OUTPUT_POLICY.md` and `RELATIONSHIP_ANCHOR.md`. `SOUL.md` requires explicit durable identity/value justification.
+
+### `normal_chat`
+
+Target behavior:
+
+```text
+candidate/proposal allowed
+apply prohibited for every durable persona source
+```
+
+Recommended target reason:
+
+```text
+persona_apply_not_allowed_in_normal_chat
+```
+
+This prohibition is not yet enforceable end-to-end because current patch/approval/apply artifacts do not consistently carry mode.
+
+## Required migration scope
+
+The target v1 migration must update together:
+
+1. patch prompt inputs and target rules,
+2. patch-candidate required fields and allowlist,
+3. examples and fixtures,
+4. temporary revision compiler,
+5. revision metadata,
+6. approval package and decision,
+7. apply/rollback plans,
+8. persistence/storage preflight,
+9. smoke tests,
+10. generic content-free projections.
+
+The migration must carry `mode` and typed evidence references through the whole chain.
+
+## Safety invariants
+
+Both current and target designs require:
+
+- no automatic patch apply,
+- protected storage for patch/evidence content,
+- `SOUL.md` high-risk approval gating,
+- source lineage,
+- budget and stable-prefix impact checks,
+- target-renderer compile dry-run,
+- rollback readiness,
+- fail-closed handling on malformed candidates.
+
+## Non-goals
+
+This document does not:
+
+- claim the target v1 shape is implemented,
+- execute apply or rollback,
+- make legacy scene/memory targets final RelaySOUL ownership,
+- mark content-bearing candidates as content-free,
+- expose protected calibration artifacts through generic diagnostics.
