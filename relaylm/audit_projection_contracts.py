@@ -36,6 +36,7 @@ def install_audit_projection_contracts(ap: Any) -> None:
             "backend": ap._bounded_token,
             "character_id": ap._optional(ap._opaque_id),
             "compiled_message_count": ap._non_negative_int,
+            "fallback_reason": ap._optional(ap._lower_token),
             "blocking_reasons": ap._REASON_LIST,
             "omitted_block_ids": ap._OPAQUE_ID_LIST,
             "token_budget_status": ap._bounded_token,
@@ -50,6 +51,19 @@ def install_audit_projection_contracts(ap: Any) -> None:
         decisions=frozenset({"none", "context_repair", "suggest_reflect"}),
         diagnostics=reference.diagnostics,
         artifact_names=reference.artifact_names,
+    )
+
+    ap.PIPELINE_NODE_PROJECTORS["client_history_exclusion_apply"] = ap.NodeProjector(
+        decisions=frozenset(
+            {
+                "pass_through_route_exempt",
+                "client_history_exclusion_apply_blocked",
+                "client_history_exclusion_applied",
+                "client_history_exclusion_apply_ready",
+            }
+        ),
+        diagnostics=_client_history_exclusion_apply_diagnostics(ap),
+        artifact_names=frozenset({"client_history_exclusion_apply_summary"}),
     )
 
     artifact_projectors = _artifact_projectors(ap)
@@ -101,6 +115,35 @@ def _scoped_uuid_id(ap: Any, suffix: str):
         return ap._drop()
 
     return validate
+
+
+def _client_history_exclusion_apply_diagnostics(ap: Any):
+    return ap._mapping(
+        {
+            "schema_version": ap._enum("client_history_exclusion_apply.v0"),
+            "enabled": ap._bool,
+            "status": ap._enum("ready", "applied", "blocked", "skipped"),
+            "dry_run_only": ap._bool,
+            "managed_route": ap._bool,
+            "compiler_used": ap._bool,
+            "relay_owned_prefix_message_count": ap._non_negative_int,
+            "original_compiled_message_count": ap._non_negative_int,
+            "forwarded_message_count": ap._non_negative_int,
+            "excluded_client_message_count": ap._non_negative_int,
+            "preserved_client_message_count": ap._non_negative_int,
+            "instruction_resolution_mode": ap._enum(
+                "none",
+                "cache_hit",
+                "cache_miss_first_pass",
+                "blocked",
+                "not_applicable",
+            ),
+            "payload_candidate_present": ap._bool,
+            "payload_mutation_applied": ap._bool,
+            "runtime_private_source": ap._bool,
+            "content_bearing_candidate_persisted": ap._bool,
+        }
+    )
 
 
 def _artifact_projectors(ap: Any) -> dict[str, Any]:
@@ -168,6 +211,19 @@ def _artifact_projectors(ap: Any) -> dict[str, Any]:
                 "runtime_private_source": ap._optional(ap._bool),
                 "payload_mutation_applied": ap._optional(ap._bool),
             },
+        ),
+        "client_history_exclusion_apply_summary": ap._mapping(
+            {
+                "artifact_name": ap._enum("client_history_exclusion_apply_summary"),
+                "schema_version": ap._enum("client_history_exclusion_apply.v0"),
+                "present": ap._bool,
+                "diagnostics_only": ap._bool,
+                "content_free": ap._bool,
+                "runtime_private_source": ap._bool,
+                "payload_candidate_present": ap._bool,
+                "payload_mutation_applied": ap._bool,
+                "content_bearing_candidate_persisted": ap._bool,
+            }
         ),
         "relayref_artifact": artifact(
             "relayref_artifact",
