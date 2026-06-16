@@ -5,6 +5,7 @@ on:
     paths:
       - relaylm/audit_projection_contracts.py
       - relaylm/trace_runtime.py
+      - scripts/relaylm_audit_projection_contract_smoke.py
       - scripts/relaylm_audit_projection_exact_contract_smoke.py
       - scripts/relaylm_client_history_exclusion_preflight_smoke.py
       - .github/workflows/audit-projection-smoke-diagnostic.yml
