@@ -1,10 +1,30 @@
-# RelayLM Config Schema
+# RelayLM Configuration Reference
 
-This document defines the initial YAML config shape for the RelayLM runtime MVP.
+## Status
 
-The schema should support URL-swap onboarding first, then grow into memory-aware context packing.
+This is the active current configuration reference for `relaylm.config.RelayLMConfig`.
 
-## Example
+- The runtime source of truth is `relaylm/config.py`.
+- `config.example.yaml` is the exhaustive commented example.
+- `examples/config/openwebui_lmstudio.yaml` is the copy-ready standard setup.
+- Target architecture documents do not create current config fields by themselves.
+
+## Important authority warning
+
+Client `system` and `developer` messages are not fallback RelaySOUL sources.
+
+```text
+client system/developer message
+  -> current low-trust instruction evidence
+  -> current compatibility compiler or future RelaySCN normalization
+  -> never direct durable SOUL authority
+```
+
+Current managed profiles require configured `soul` and `output_policy` files. Missing profile configuration raises `ProfileConfigurationError`; RelayLM does not silently promote a client system prompt into SOUL.
+
+See [Client Instruction Authority Contract](architecture/client_instruction_authority_contract.md).
+
+## Minimal pass-through example
 
 ```yaml
 mode: pass_through
@@ -13,66 +33,88 @@ listen:
   host: 127.0.0.1
   port: 8090
 
-common_runtime_policy: ./policies/common_runtime_policy.md
-
 backends:
-  vllm_main:
+  local_backend:
     type: openai_compatible
     base_url: http://127.0.0.1:8000/v1
     api_key: dummy
-    default_model: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
+    default_model: local-model
 
 model_routes:
-  relaylm-mili:
-    character_id: mili
-    backend: vllm_main
-    backend_model: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
-    mode: memory_light
-    cache_namespace: character/mili
-    memory_namespace: character/mili
-
-  relaylm-zero:
-    character_id: zero
-    backend: vllm_main
-    backend_model: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
+  relaylm-default:
+    backend: local_backend
+    backend_model: local-model
     mode: pass_through
-    cache_namespace: character/zero
-    memory_namespace: character/zero
+```
+
+A pass-through route does not require a character profile.
+
+## Minimal current `memory_light` example
+
+```yaml
+mode: memory_light
+common_runtime_policy: examples/profiles/default/common_runtime_policy.md
+
+backends:
+  local_backend:
+    type: openai_compatible
+    base_url: http://127.0.0.1:8000/v1
+    api_key: dummy
+    default_model: local-model
+
+model_routes:
+  relaylm-companion:
+    backend: local_backend
+    backend_model: local-model
+    character_id: companion
+    mode: memory_light
+    cache_namespace: character/companion
+    memory_namespace: character/companion
 
 characters:
-  mili:
-    soul: ./characters/mili/SOUL.md
-    output_policy: ./characters/mili/OUTPUT_POLICY.md
-    room_anchor: ./rooms/default/ROOM_ANCHOR.md
-    relationship_anchor: ./characters/mili/RELATIONSHIP_ANCHOR.md
-    stable_memory_summary: ./characters/mili/STABLE_MEMORY_SUMMARY.md
-    scene_state: ./scenes/default/SCENE_STATE.md
-
-memory:
-  default_store: local_jsonl
-  stores:
-    local_jsonl:
-      type: jsonl
-      path: ./memory
+  companion:
+    soul: examples/profiles/companion/SOUL.md
+    output_policy: examples/profiles/companion/OUTPUT_POLICY.md
+    scene_state: examples/profiles/default/SCENE_STATE.md
+    memory_seed_path: examples/memory/companion_memories.yaml
 ```
+
+## Current history-authority limitation
+
+The current default `memory_light` compatibility compiler may preserve prior client user/assistant history after the RelayLM-owned compiled system message.
+
+Current history-exclusion apply defaults:
+
+```yaml
+client_history_exclusion_apply_enabled: false
+client_history_exclusion_apply_dry_run_only: true
+```
+
+The implemented `client_history_exclusion_apply.v0` supports only managed `memory_light` requests with no client `system` or `developer` messages. Enabling actual apply before an unsupported request is supported causes a fail-closed backend-forward block rather than a raw-history fallback.
+
+Do not claim current-turn-only managed reconstruction unless the exact request shape and apply gates are verified. See [Project Status](PROJECT_STATUS.md).
 
 ## Top-level fields
 
-### mode
+### `mode`
 
-Default runtime mode.
+Type:
 
-Allowed initial values:
+```text
+pass_through | memory_light | memory_full
+```
 
-- `pass_through`
-- `memory_light`
-- `memory_full`
+Default: `pass_through`.
 
-A route-level mode may override this value.
+Current apply behavior:
 
-### listen
+- `pass_through`: delegated client-message authority; profile compiler diagnostics only.
+- `memory_light`: current profile compiler apply-capable.
+- `memory_full`: accepted by config/routing, but current profile compile apply is not enabled for this mode.
 
-Server bind settings.
+A route-level mode may override the top-level default.
+
+### `listen`
 
 ```yaml
 listen:
@@ -80,195 +122,220 @@ listen:
   port: 8090
 ```
 
-The default port should be easy to use as an Open-LLM-VTuber OpenAI-compatible API URL:
+Defaults are `127.0.0.1` and `8090`.
 
-```text
-http://localhost:8090/v1
+### `common_runtime_policy`
+
+Optional path to a shared RelayLM-owned runtime policy file. A managed character may override it with `characters.<id>.common_runtime_policy`.
+
+Current managed profile compilation requires either the character-level or top-level path.
+
+### `trace`
+
+```yaml
+trace:
+  enabled: false
+  path: traces/relaylm_trace.jsonl
 ```
 
-### common_runtime_policy
+Trace is default-off. Persisted trace must remain typed and content-free.
 
-Path to a short shared policy block used by all characters.
+## `backends`
 
-This should include shared constraints such as:
-
-- do not reveal internal tags
-- keep responses suitable for TTS
-- avoid overly long paragraphs unless requested
-- return speakable final text
-
-This is not a character identity file.
-
-### scene state and room metadata
-
-`scene_state` is the preferred dynamic situation file for context compilation.
-
-It may include:
-
-- current topic
-- current stream mood
-- open questions
-- recent stream state
-- current group conversation state
-- temporary scenario or mode
-
-Because it is dynamic, it should appear after stable prefix blocks in the compiled context.
-
-`room_id` may be used as optional scope metadata for an external host such as a channel, room, stream, or frontend conversation space. It is not a prompt block by default.
-
-Runtime compatibility note: `room_anchor` is now an optional legacy compatibility field in `CharacterConfig`. Runnable config examples may keep it for interoperability, but `scene_state` is the preferred dynamic situation field and `room_state` remains a legacy alias to `scene_state`. New designs should avoid putting dynamic topic, mood, viewer question, recent event, or volatile stream state into `room_anchor`.
-
-Legacy `room_anchor` content should usually move to `common_runtime_policy`, `character_output_policy`, `relationship_anchor`, `scene_state`, or optional `room_id` metadata depending on its role.
-
-## backends
-
-`backends` defines OpenAI-compatible upstream servers.
+Required mapping of backend IDs to OpenAI-compatible backend configuration.
 
 ```yaml
 backends:
-  vllm_main:
+  local_backend:
     type: openai_compatible
     base_url: http://127.0.0.1:8000/v1
     api_key: dummy
-    default_model: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
-```
-
-Initial backend type:
-
-- `openai_compatible`
-
-Future backend adapters may add backend-specific capabilities, but the MVP should only depend on normal OpenAI-compatible chat completion semantics.
-
-## model_routes
-
-`model_routes` maps incoming OpenAI-compatible `model` names to RelayLM runtime routes.
-
-```yaml
-model_routes:
-  relaylm-mili:
-    character_id: mili
-    backend: vllm_main
-    backend_model: Qwen/Qwen2.5-Coder-7B-Instruct-AWQ
-    mode: memory_light
-    cache_namespace: character/mili
-    memory_namespace: character/mili
+    default_model: local-model
+    timeout_seconds: 60.0
 ```
 
 Fields:
 
-- `character_id`: character profile key
-- `backend`: backend key
-- `backend_model`: model name sent to the backend
-- `mode`: optional route-level mode override
-- `cache_namespace`: namespace used for prefix/cache-aware layout and future metrics
-- `memory_namespace`: namespace used for character/viewer memory
+- `type`: currently only `openai_compatible`.
+- `base_url`: required OpenAI-compatible base URL.
+- `api_key`: optional.
+- `default_model`: optional backend model fallback.
+- `timeout_seconds`: default `60.0`.
 
-Model-name routing is the preferred MVP mechanism because it requires no Open-LLM-VTuber code changes.
+## `model_routes`
 
-## characters
+Required mapping from incoming `model` names to RelayLM routes.
 
-`characters` defines character profile files.
+```yaml
+model_routes:
+  relaylm-companion:
+    backend: local_backend
+    backend_model: local-model
+    character_id: companion
+    mode: memory_light
+    cache_namespace: character/companion
+    memory_namespace: character/companion
+    user_id:
+    user_type:
+    room_id:
+    scene_id:
+    session_id:
+```
+
+Fields:
+
+- `backend`: required backend ID.
+- `backend_model`: optional backend model override.
+- `character_id`: required for current managed profile compilation; optional for pass-through.
+- `mode`: optional route mode override.
+- `cache_namespace`: optional instruction/cache scope metadata.
+- `memory_namespace`: optional memory scope metadata.
+- `user_id`, `user_type`, `room_id`, `scene_id`, `session_id`: optional route-level scope metadata.
+
+Persona file paths do not belong under `model_routes`. They belong under `characters`.
+
+## `characters`
 
 ```yaml
 characters:
-  mili:
-    soul: ./characters/mili/SOUL.md
-    output_policy: ./characters/mili/OUTPUT_POLICY.md
-    room_anchor: ./rooms/default/ROOM_ANCHOR.md
-    relationship_anchor: ./characters/mili/RELATIONSHIP_ANCHOR.md
-    stable_memory_summary: ./characters/mili/STABLE_MEMORY_SUMMARY.md
-    scene_state: ./scenes/default/SCENE_STATE.md
+  companion:
+    common_runtime_policy:
+    soul: examples/profiles/companion/SOUL.md
+    output_policy: examples/profiles/companion/OUTPUT_POLICY.md
+    relationship_anchor:
+    stable_memory_summary:
+    scene_state: examples/profiles/default/SCENE_STATE.md
+    room_anchor:
+    room_state:
+    memory_seed_path: examples/memory/companion_memories.yaml
+    token_policy_shadow_enabled:
 ```
 
-### soul
+Current required fields for a configured character:
 
-`SOUL.md` defines the character identity, values, worldview, personality, and stable speaking identity.
+- `soul`
+- `output_policy`
 
-It should not contain volatile data such as timestamps, retrieved memory, memory counts, or current topics.
+Current optional fields:
 
-### output_policy
+- `common_runtime_policy`
+- `room_anchor`
+- `memory_seed_path`
+- `relationship_anchor`
+- `stable_memory_summary`
+- `scene_state`
+- `room_state`
+- `token_policy_shadow_enabled`
 
-`OUTPUT_POLICY.md` defines how the character expresses itself.
+`room_state` is a legacy alias used only when `scene_state` is unset.
 
-It may include:
+`room_anchor` is a legacy compatibility field for fixed, durable room constraints. New copy-ready profiles should normally omit it. Do not put current topic, current mood, open questions, recent turns, or other volatile state in `room_anchor`.
 
-- emotional style
-- response length
-- TTS-friendly style
-- Live2D expression tendencies
-- casual mode, technical mode, MC mode, or other expression modes
+### Scene/CTX/EMO ownership
 
-This is character-specific.
+`scene_state` describes semantic situation and policy inputs, such as scene type, active role, setting/task frame, participants, and scene constraints.
 
-### room_anchor
+Do not place these as RelaySCN-owned state:
 
-Optional legacy compatibility field for fixed room constraints.
+- current mood or raw affect estimate — RelayEMO,
+- current topic notes — RelayCTX working state,
+- open questions or unresolved slots — RelayCTX working state,
+- transcript-shaped recent turns — RelayCTX,
+- durable memory bodies — RelayMEM.
 
-Runnable examples may keep this field for compatibility, but new designs should prefer `scene_state` for dynamic situation context. `room_state` is kept as a legacy alias that maps to `scene_state` when `scene_state` is unset. `room_anchor` should not contain dynamic scene information such as current topic, mood, recent events, current viewer question, or volatile stream state.
+## `memory`
 
-### relationship_anchor
-
-Stable relationship context with the viewer, user, or relevant counterpart.
-
-It should change slowly and should not be rewritten every turn.
-
-### stable_memory_summary
-
-Durable memory facts and ongoing long-term context.
-
-This is separate from relationship tone.
-
-### scene_state
-
-Dynamic current scene state.
-
-This may include:
-
-- current topic
-- current stream mood
-- open questions
-- recent stream state
-- current group conversation state
-- temporary scenario or mode
-
-Because it is dynamic, it should appear after stable prefix blocks in the compiled context.
-
-## memory
-
-Initial memory config should allow a lightweight local store.
+Current fields and defaults:
 
 ```yaml
 memory:
-  default_store: local_jsonl
-  stores:
-    local_jsonl:
-      type: jsonl
-      path: ./memory
+  candidate_limit: 3
+  token_budget_hint: 800
+  character_budget:
+  token_budget:
+  chars_per_token: 4
+  token_policy_shadow_enabled: false
+  token_budget_truncation_enabled: false
+  root_path:
+  store_enabled: false
+  retrieval_dry_run_only: true
+  ctx_block_apply_enabled: false
+  snippet_extraction_enabled: false
+  snippet_dry_run_only: true
+  snippet_apply_enabled: false
+  snippet_runtime_injection_enabled: false
+  snippet_runtime_dry_run_only: true
+  snippet_budget: 512
+  max_snippet_chars: 512
+  max_snippet_candidates: 3
 ```
 
-The first runtime should support simple local memory or no memory. Embeddings, vector databases, rerankers, and summarizers should be later extensions behind the same memory interface.
+Notes:
 
-## Config design rules
+- Retrieval/store inspection is local-first and read-only by default.
+- Snippet extraction/injection is default-off and gated.
+- Retrieval does not mutate MEM or SOUL.
+- `chars_per_token=4` is a current compatibility heuristic, not a tokenizer-exact estimate and is not conservative enough for all CJK-heavy text.
 
-- Prefer explicit model routes over prompt inference.
-- Keep character profile paths stable.
-- Keep cache and memory namespaces first-class.
-- Allow per-route mode overrides.
-- Prefer `scene_state` for dynamic context and keep `room_id` as optional external host metadata.
-- `room_anchor` is optional legacy compatibility metadata; runnable examples may keep it.
-- Do not require SOUL files for pass-through compatibility.
-- Use incoming system prompts as a fallback SOUL source when character files are absent.
+The older `default_store` / `stores` example is not part of the current Pydantic config model.
 
-## RelayEMO MVP initial flags
+## Client-message and instruction flags
 
-RelayEMO is default-off and diagnostics/preview-first.
-When `relayemo_enabled: true`, RelayEMO diagnostics artifacts are produced even if `relayemo_text_marker_enabled: false`.
+```yaml
+client_message_canonicalization_dry_run_enabled: false
+client_history_exclusion_preflight_enabled: false
+client_history_exclusion_apply_enabled: false
+client_history_exclusion_apply_dry_run_only: true
+client_instruction_extraction_dry_run_enabled: false
+client_instruction_cache_lookup_enabled: false
+client_instruction_cache_root:
+client_instruction_cache_max_entry_bytes: 65536
+```
+
+- canonicalization and preflight are diagnostics/request-local planning boundaries.
+- history apply is default-off and dry-run-only by default.
+- cache lookup is bounded and read-only; it does not inject RelaySCN state or write cache files.
+
+## RelayCTX flags
+
+```yaml
+relayctx_short_term_source_diagnostics_enabled: false
+relayctx_short_term_extraction_dry_run_enabled: false
+relayctx_short_term_block_assembly_dry_run_enabled: false
+relayctx_short_term_runtime_injection_preflight_enabled: false
+relayctx_short_term_runtime_injection_apply_enabled: false
+relayctx_short_term_runtime_injection_dry_run_only: true
+relayctx_short_term_runtime_injection_token_budget: 400
+relayctx_unpack_enabled: false
+relayctx_unpack_apply_enabled: false
+relayctx_unpack_dry_run_only: true
+relayctx_unpack_max_update_chars: 4096
+```
+
+Short-term CTX and non-stream Unpack remain default-off. Unpack does not affect streaming responses.
+
+## RelayINT flags
+
+```yaml
+relayint_fast_path_dry_run_enabled: false
+relayint_fast_path_high_confidence_threshold: 0.80
+relayint_fast_path_low_confidence_threshold: 0.55
+relayint_quick_clarification_preflight_enabled: false
+relayint_quick_clarification_dry_run_only: true
+relayint_quick_clarification_apply_enabled: false
+relayint_quick_clarification_apply_dry_run_only: true
+relayint_quick_clarification_response_max_chars: 120
+```
+
+Quick-clarification apply remains plan/preflight-oriented; it does not currently provide a complete user-visible short-circuit route.
+
+## RelayEMO flags
 
 ```yaml
 relayemo_enabled: false
 relayemo_dry_run: true
 relayemo_text_marker_enabled: false
-relayemo_text_marker_apply_mode: diagnostics_only # diagnostics_only | preview | apply
+relayemo_text_marker_apply_mode: diagnostics_only
 relayemo_marker_open_threshold: 0.65
 relayemo_marker_close_threshold: 0.45
 relayemo_max_markers: 3
@@ -276,7 +343,7 @@ relayemo_scene_gate_enabled: true
 relayemo_session_state_enabled: false
 relayemo_session_state_ttl_seconds: 1800
 relayemo_session_state_max_entries: 256
-relayemo_affect_probe_mode: heuristic # heuristic | llm_structured_dry_run
+relayemo_affect_probe_mode: heuristic
 relayemo_llm_affect_probe_enabled: false
 relayemo_llm_affect_probe_dry_run: true
 relayemo_llm_affect_probe_max_input_chars: 2000
@@ -286,18 +353,49 @@ relayemo_llm_affect_probe_skip_when_busy: true
 relayemo_llm_affect_probe_every_n_turns: 1
 ```
 
-### RelayEMO LLM affect probe runtime dry-run notes
+The LLM affect probe remains default-off, dry-run, budgeted, and fail-closed. It must not mutate durable affect, MEM, SOUL, TTS, or visible output.
 
-`relayemo_affect_probe_mode: llm_structured_dry_run` is a diagnostics-only mode. The runtime LLM probe must remain default-off, dry-run-only, budgeted, and fail-closed.
+## RelayRUN flags
 
-The active path remains the heuristic `user_affect_estimate`. LLM probe candidates are recorded as diagnostics/trace candidates and must not update `assistant_emotion_state`, text marker decisions, session drift, SOUL, MEM, TTS, Irodori, or persisted user affect until a later candidate apply gate exists.
+```yaml
+relayrun_checkpoint_write_enabled: false
+relayrun_checkpoint_root: .relayrun/checkpoints
+relayrun_checkpoint_dry_run_only: true
+relayrun_resume_preflight_enabled: false
+relayrun_resume_dry_run_only: true
+relayrun_checkpoint_index_enabled: false
+relayrun_checkpoint_index_dry_run_only: true
+relayrun_checkpoint_index_max_files: 100
+relayrun_recovery_transition_enabled: false
+relayrun_recovery_transition_dry_run_only: true
+relayrun_waiting_user_contract_enabled: false
+relayrun_waiting_user_contract_dry_run_only: true
+relayrun_recovery_apply_preflight_enabled: false
+relayrun_recovery_apply_dry_run_only: true
+relayrun_recovery_response_draft_enabled: false
+relayrun_recovery_response_draft_dry_run_only: true
+relayrun_visible_recovery_preflight_enabled: false
+relayrun_visible_recovery_dry_run_only: true
+relayrun_recovery_response_generator_enabled: false
+relayrun_recovery_response_generator_dry_run_only: true
+relayrun_output_relayscn_recovery_gate_enabled: false
+relayrun_output_relayscn_recovery_gate_dry_run_only: true
+relayrun_visible_recovery_apply_preflight_enabled: false
+relayrun_visible_recovery_apply_preflight_dry_run_only: true
+relayrun_user_action_dry_run_enabled: false
+relayrun_user_action_dry_run_only: true
+```
 
-Runtime invocation should respect:
+These are default-off diagnostics/preflight contracts unless a dedicated current contract says otherwise. They do not imply actual resume, retry, visible recovery output, or response mutation.
 
-- `relayemo_llm_affect_probe_max_input_chars`
-- `relayemo_llm_affect_probe_timeout_ms`
-- `relayemo_llm_affect_probe_max_output_tokens`
-- `relayemo_llm_affect_probe_skip_when_busy`
-- `relayemo_llm_affect_probe_every_n_turns`
+## Config design rules
 
-If a probe backend/route is unavailable, busy, timed out, recursively invoked, malformed, or validation-failed, RelayEMO should record a skip/fail-closed reason and continue the main response with the heuristic path.
+- Prefer explicit model routes over prompt inference.
+- Keep persona file paths under `characters`, not `model_routes`.
+- Keep cache and memory namespaces explicit.
+- Do not require character files for pass-through routes.
+- Require configured approved profile sources for current managed compilation.
+- Never use incoming client instructions as fallback durable SOUL authority.
+- Treat client system/developer messages as low-trust current instruction evidence.
+- Keep current, compatibility, and target config examples labeled.
+- Do not enable mutation, persistence, or recovery apply merely because a helper/schema exists.

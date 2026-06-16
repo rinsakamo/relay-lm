@@ -2,8 +2,6 @@
 
 ## MVP topology
 
-RelayLM standard MVP UI/backend topology is:
-
 ```text
 OpenWebUI
   -> RelayLM /v1/chat/completions
@@ -17,81 +15,148 @@ OpenWebUI
 - RelayLM is the OpenAI-compatible persona/memory context proxy between them.
 - Open-LLM-VTuber remains an optional frontend and example integration path.
 
+## Current managed-history limitation
+
+The copy-ready routes use `memory_light`, but the current default compatibility path is not yet the target current-turn-only managed path.
+
+```text
+Current default memory_light compatibility path:
+  prior frontend user/assistant history may remain in backend-bound messages
+
+Current bounded history apply:
+  default-off
+  dry-run-only by default
+  supports no client system/developer messages only
+
+Target:
+  validated current turn + RelayLM-owned context reconstruction
+```
+
+When a remote backend is configured, assume all backend-bound messages may leave the local machine. Review [Project Status](PROJECT_STATUS.md) before enabling history-exclusion actual apply.
+
 ## OpenWebUI usage policy
 
-OpenWebUI model preset / avatar should be used as a character-card-like or use-case-card UI layer.
+OpenWebUI model preset/avatar should be used as a character-card-like or use-case-card UI layer.
 
-Recommended route-like model IDs (abstract names, no concrete character names):
+Recommended route-like model IDs:
 
 - `relaylm-companion`
 - `relaylm-work-assistant`
 - `relaylm-code-reviewer`
 
-OpenWebUI model selector/model preset should map these model IDs to RelayLM routes.
+OpenWebUI model selector/model preset maps these model IDs to RelayLM routes.
 
-## RelayLM responsibilities
+Keep heavy system prompt steering thin. Current instruction-bearing managed history exclusion is not complete, so a frontend system prompt may remain in the current compatibility compile path as escaped low-trust dynamic evidence.
 
-RelayLM owns context and routing control:
+## Responsibilities
 
-- route resolution
-- `character_id` or persona profile id resolution
-- `SOUL` / `OUTPUT_POLICY` persona anchors
-- `memory_light` context insertion
-- recent turns shaping
-- token budget safety
+### RelayLM
 
-## OpenWebUI responsibilities
+- route resolution,
+- `character_id` resolution,
+- configured SOUL/OUTPUT_POLICY anchors,
+- current `memory_light` profile compilation,
+- selected memory context insertion,
+- token-budget safety,
+- gated history-exclusion apply.
 
-OpenWebUI owns lightweight presentation and interaction scaffolding:
+### OpenWebUI
 
-- model card / avatar / display name
-- prompt suggestions and launch UX
-- model selector and preset switching
+- model card/avatar/display name,
+- prompt suggestions and launch UX,
+- model selector and preset switching,
+- frontend-visible conversation history.
 
-To avoid duplication/conflict, heavy system prompt steering should stay thin in OpenWebUI and not duplicate RelayLM persona policy blocks.
+### LM Studio
 
-## LM Studio responsibilities
+- local OpenAI-compatible server,
+- actual model inference execution.
 
-LM Studio owns backend inference runtime:
+## Quick setup
 
-- local OpenAI-compatible backend endpoint
-- actual model inference execution
+### 1. LM Studio
 
-## Open-LLM-VTuber position
+Start the OpenAI-compatible server and confirm:
 
-Open-LLM-VTuber is supported as an optional frontend / example integration.
+```text
+http://127.0.0.1:1234/v1
+```
 
-It is not the default MVP standard UI in this positioning update.
+Load a model and note its exact model ID. Replace `local-model` in RelayLM config when required.
 
-## Quick setup (config-first)
-
-- Manual smoke runbook: [OpenWebUI + LM Studio manual smoke](smoke/openwebui_lmstudio_manual_smoke.md)
-- Model preset/avatar checklist: [OpenWebUI model preset/avatar checklist](smoke/openwebui_model_preset_checklist.md)
-- Response differentiation checks: [OpenWebUI route response differentiation checks](smoke/openwebui_response_differentiation_checks.md)
-- Troubleshooting guide: [OpenWebUI + RelayLM + LM Studio troubleshooting](smoke/openwebui_lmstudio_troubleshooting.md)
-
-### 1) LM Studio
-
-Start LM Studio OpenAI-compatible server and ensure the endpoint is reachable:
-
-- `http://127.0.0.1:1234/v1`
-
-### 2) RelayLM
-
-Point RelayLM backend to LM Studio and expose RelayLM as OpenAI-compatible endpoint:
-
-Copy-ready config example:
+### 2. RelayLM
 
 ```bash
 cp examples/config/openwebui_lmstudio.yaml config.yaml
+relaylm --config config.yaml
 ```
 
-Then start RelayLM with that config.
+Default endpoints:
 
-- RelayLM listen URL example: `http://127.0.0.1:8090/v1`
-- LM Studio backend URL example: `http://127.0.0.1:1234/v1`
+- RelayLM: `http://127.0.0.1:8090/v1`
+- LM Studio: `http://127.0.0.1:1234/v1`
 
-Minimal route mapping example:
+The copy-ready config keeps history-exclusion apply disabled. This preserves current runtime defaults and makes the compatibility limitation explicit.
+
+### 3. OpenWebUI
+
+Configure an OpenAI-compatible Chat Completions connection:
+
+1. Open **Admin Settings**.
+2. Go to **Connections -> OpenAI**.
+3. Select **Add Connection**.
+4. Choose **Standard / Compatible** when that tab is available.
+5. Set API URL/Base URL to `http://127.0.0.1:8090/v1`.
+6. Set API key to `relaylm` or another dummy value.
+7. Save.
+
+Do not choose Open Responses for the current RelayLM runtime. RelayLM currently implements `/v1/models` and `/v1/chat/completions`, not `/v1/responses`.
+
+When OpenWebUI runs in Docker, use the reachable host/WSL address described in the manual smoke and troubleshooting docs instead of assuming container-local `127.0.0.1`.
+
+Create model preset/avatar cards and set Base Model/Model ID to one of:
+
+- `relaylm-companion`
+- `relaylm-work-assistant`
+- `relaylm-code-reviewer`
+
+### 4. Smoke checks
+
+```bash
+python scripts/relaylm_openwebui_lmstudio_config_smoke.py
+python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+curl http://127.0.0.1:8090/v1/models
+```
+
+Non-stream:
+
+```bash
+curl http://127.0.0.1:8090/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{
+    "model": "relaylm-companion",
+    "messages": [{"role": "user", "content": "hello"}],
+    "stream": false
+  }'
+```
+
+Stream:
+
+```bash
+curl -N http://127.0.0.1:8090/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -d '{
+    "model": "relaylm-companion",
+    "messages": [{"role": "user", "content": "hello"}],
+    "stream": true
+  }'
+```
+
+## Copy-ready config structure
+
+The actual file is [examples/config/openwebui_lmstudio.yaml](../examples/config/openwebui_lmstudio.yaml).
+
+Persona paths belong under `characters`, not `model_routes`:
 
 ```yaml
 backends:
@@ -110,114 +175,31 @@ model_routes:
     cache_namespace: character/companion
     memory_namespace: character/companion
 
-  relaylm-work-assistant:
-    backend: lmstudio_backend
-    backend_model: local-model
-    character_id: work_assistant
-    mode: memory_light
-    cache_namespace: character/work-assistant
-    memory_namespace: character/work-assistant
-
-  relaylm-code-reviewer:
-    backend: lmstudio_backend
-    backend_model: local-model
-    character_id: code_reviewer
-    mode: memory_light
-    cache_namespace: character/code-reviewer
-    memory_namespace: character/code-reviewer
-
 characters:
   companion:
     soul: examples/profiles/companion/SOUL.md
     output_policy: examples/profiles/companion/OUTPUT_POLICY.md
-    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
     scene_state: examples/profiles/default/SCENE_STATE.md
     memory_seed_path: examples/memory/companion_memories.yaml
-
-  work_assistant:
-    soul: examples/profiles/work_assistant/SOUL.md
-    output_policy: examples/profiles/work_assistant/OUTPUT_POLICY.md
-    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
-    scene_state: examples/profiles/default/SCENE_STATE.md
-    memory_seed_path: examples/memory/work_assistant_memories.yaml
-
-  code_reviewer:
-    soul: examples/profiles/code_reviewer/SOUL.md
-    output_policy: examples/profiles/code_reviewer/OUTPUT_POLICY.md
-    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
-    scene_state: examples/profiles/default/SCENE_STATE.md
-    memory_seed_path: examples/memory/code_reviewer_memories.yaml
 ```
 
-### 3) OpenWebUI
-
-Configure OpenAI-compatible connection in OpenWebUI:
-
-- Base URL: `http://127.0.0.1:8090/v1`
-- API key: `relaylm` (dummy is acceptable)
-
-Create model preset / avatar cards and set Base Model (Model ID) to one of:
-
-- `relaylm-companion`
-- `relaylm-work-assistant`
-- `relaylm-code-reviewer`
-
-### 4) Smoke checks
-
-Check route publication:
-
-```bash
-curl http://127.0.0.1:8090/v1/models
-```
-
-Non-streaming completion:
-
-```bash
-curl http://127.0.0.1:8090/v1/chat/completions   -H 'content-type: application/json'   -d '{
-    "model": "relaylm-companion",
-    "messages": [{"role": "user", "content": "hello"}],
-    "stream": false
-  }'
-```
-
-Streaming completion:
-
-```bash
-curl -N http://127.0.0.1:8090/v1/chat/completions   -H 'content-type: application/json'   -d '{
-    "model": "relaylm-companion",
-    "messages": [{"role": "user", "content": "hello"}],
-    "stream": true
-  }'
-```
-
-Config-only local smoke command:
-
-```bash
-python scripts/relaylm_openwebui_lmstudio_config_smoke.py
-python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
-```
+New copy-ready profiles omit legacy `room_anchor` unless a fixed durable room constraint is genuinely required.
 
 ## Prompt layering notes
 
-- OpenWebUI should focus on display name / avatar / prompt suggestions.
-- Avoid heavy system prompt duplication in OpenWebUI when RelayLM already provides `SOUL`/`OUTPUT_POLICY`.
-- RelayLM remains responsible for persona/memory/context/token-budget control.
+- OpenWebUI should focus on display name, avatar, and prompt suggestions.
+- Avoid heavy system prompt duplication.
+- Client system/developer messages are low-trust current instruction evidence, not fallback RelaySOUL sources.
+- RelayLM remains responsible for configured persona, memory, context, and token-budget control.
 
-## Example profiles and memory seeds
+## Current manual validation
 
-RelayLM repository includes abstract example profiles for the OpenWebUI route IDs:
+Use:
 
-- `examples/profiles/companion/SOUL.md`
-- `examples/profiles/companion/OUTPUT_POLICY.md`
-- `examples/profiles/work_assistant/SOUL.md`
-- `examples/profiles/work_assistant/OUTPUT_POLICY.md`
-- `examples/profiles/code_reviewer/SOUL.md`
-- `examples/profiles/code_reviewer/OUTPUT_POLICY.md`
+- [OpenWebUI + LM Studio manual smoke](smoke/openwebui_lmstudio_manual_smoke.md)
+- [Manual smoke results template](smoke/openwebui_lmstudio_manual_smoke_results_template.md)
+- [OpenWebUI model preset/avatar checklist](smoke/openwebui_model_preset_checklist.md)
+- [OpenWebUI route response differentiation checks](smoke/openwebui_response_differentiation_checks.md)
+- [Troubleshooting](smoke/openwebui_lmstudio_troubleshooting.md)
 
-Optional memory seed examples:
-
-- `examples/memory/companion_memories.yaml`
-- `examples/memory/work_assistant_memories.yaml`
-- `examples/memory/code_reviewer_memories.yaml`
-
-When mapping OpenWebUI preset model IDs to RelayLM routes, bind each route to its matching abstract `character_id` profile and seed file.
+The manual smoke includes a current history-exclusion matrix. It distinguishes the default compatibility path, dry-run candidate generation, no-instruction actual apply, unsupported instruction-bearing fail-closed behavior, and explicit pass-through exemption.
