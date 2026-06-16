@@ -2,59 +2,44 @@
 
 ## Scope
 
-This document defines how RelayLM should treat `scene_id`, `scene_state`, `scene_role`, `scene_context`, `scene_constraints`, `session_id`, and `room_id`.
+This document defines the lifecycle and ownership of:
 
-It is a docs-only design note. It does not introduce runtime behavior changes.
+- `scene_id`,
+- `scene_state`,
+- `scene_policy`,
+- `scene_role`,
+- `scene_context`,
+- `scene_constraints`,
+- `session_id`,
+- optional `room_id`.
 
-RelaySCN owns scene interpretation and scene-policy resolution. RelayRUN owns runtime transition/checkpoint/trace artifacts. This document does not define standalone `RelayPLC` or `RelayTRC` pipeline components.
+RelaySCN owns scene interpretation and scene-policy resolution. RelayRUN owns runtime transition/checkpoint orchestration. RelayCTX owns short-term conversation working state. RelayEMO owns affect state.
 
-## Goal
+This document does not define standalone `RelayPLC` or `RelayTRC` components.
 
-RelayLM treats Scene as the preferred dynamic situation concept. Room remains optional external host metadata.
+## Core boundary
 
 ```text
-scene_id
-  identifies the conversational situation or scenario
+RelaySCN
+  what situation is active and what policy follows
 
-scene_state
-  normalized dynamic prompt content for the current situation
+RelayCTX working state
+  what the conversation is currently discussing or waiting on
 
-scene_role
-  identifies what function the character is performing in this scene
+RelayEMO
+  current affect estimate and expression state
 
-scene_context
-  describes the current setting, task, participants, and situation
-
-scene_constraints
-  describes bounded response rules for this scene
-
-session_id
-  identifies a runtime conversation/session run
-
-room_id
-  optional external host metadata such as a room, stream, channel,
-  or frontend conversation space
+RelayRUN
+  how runtime transition/recovery is executed and recorded
 ```
 
-## Non-goals
-
-This design does not add:
-
-- automatic scene detection,
-- runtime client-instruction parsing,
-- instruction-cache persistence,
-- memory database writes,
-- persona-source mutation,
-- forced `room_id` prompt blocks,
-- hard request rejection when scene metadata is missing,
-- automatic rewriting of legacy `room_anchor`,
-- backend routing changes.
+Scene state must not become a catch-all container for affect, short-term conversation history, or durable memory.
 
 ## Definitions
 
 ### `scene_id`
 
-`scene_id` is a metadata identifier for the current conversational situation.
+A metadata identifier for the current semantic situation or scenario.
 
 Examples:
 
@@ -64,452 +49,308 @@ Examples:
 - `roleplay_cafe_scene`,
 - `technical_support_mode`.
 
-A scene may span multiple turns and may also span multiple sessions when the host or operator intentionally reuses it.
+A scene may span several turns and may be resumed across sessions when an operator or approved state explicitly reuses it.
 
 ### `scene_state`
 
-`scene_state` is normalized dynamic prompt content that describes the current situation.
+Request-local normalized scene semantics.
 
-It may include:
+Recommended fields:
 
-- current topic,
-- current mood,
+```yaml
+scene_state:
+  schema_version: relayscn.scene_state.v1
+  scene_type: implementation_work
+  confidence: 0.88
+  stability: 0.81
+  previous_scene_type: design_talk
+  transition_reason_class: user_requested_implementation
+  scene_role:
+    role_name: implementation_assistant
+    role_scope: scene
+    role_source: current_user_or_validated_instruction
+    confidence: 0.92
+  scene_context:
+    setting: relaylm_repository
+    task: implement_reviewed_change
+    participants:
+      - user
+      - assistant
+  scene_constraints:
+    - constraint_type: preserve_fail_closed_behavior
+      value: true
+  task_state: implementation_active
+  safety_sensitivity: low
+  formality: medium
+  memory_scope: current_project
+  expression_allowance: suppressed
+  recovery_mode: false
+  user_confirmation_required: false
+```
+
+RelaySCN-owned fields describe the situation and policy inputs.
+
+Do not store these in `scene_state` as owned semantic state:
+
+- current mood or raw affect estimate,
+- current topic notes,
 - open questions,
 - recently discussed points,
-- active viewer or group state,
-- temporary scenario or mode,
-- active role,
-- scene setting and participants,
-- scene-specific response constraints.
+- referable items,
+- unresolved slots,
+- transcript-shaped recent turns,
+- memory page bodies.
 
-`scene_state` belongs in the dynamic suffix, not the stable persona prefix.
+Those belong to RelayEMO, RelayCTX working state, or RelayMEM.
+
+### `scene_policy`
+
+A request-local downstream policy resolved from scene state.
+
+```yaml
+scene_policy:
+  schema_version: relayscn.scene_policy.v1
+  relayctx_mode: repo_task
+  relayemo_marker_policy: suppress
+  relayemo_expression_policy: light
+  relaymem_retrieval_scope: current_project
+  relaymem_update_gate: allowed_dry_run
+  relaysoul_update_gate: blocked
+  slp_mode: optional
+  persistence_block: false
+  user_confirmation_required: false
+  output_rewrite_allowed: false
+  diagnostics_required: true
+```
+
+Downstream components consume policy fields, not raw client instructions.
 
 ### `scene_role`
 
-`scene_role` identifies what the character is doing in the current scene.
-
-Examples:
-
-- `technical_reviewer`,
-- `stream_host`,
-- `technical_interviewer`,
-- `cafe_staff`,
-- `game_commentator`.
-
-A scene role is not durable identity.
+The function performed by the character in the current turn or scene.
 
 ```text
-RelaySOUL:
-  who the character is
+RelaySOUL
+  who the character is durably
 
-scene_role:
+scene_role
   what the character is doing now
 ```
 
-`scene_role` is also distinct from the OpenAI message `role` field.
+`scene_role` is not the OpenAI message `role` field and must not be silently promoted into RelaySOUL.
 
-Suggested internal runtime shape:
-
-```yaml
-scene_role:
-  role_name: technical_reviewer
-  role_scope: scene
-  role_source: client_instruction_cache
-  confidence: 0.94
-```
-
-`role_scope` should initially be limited to:
+Allowed initial scopes:
 
 ```text
 turn
 scene
 ```
 
-A role must not be silently promoted to durable persona state.
-
-The normalized `role_name` belongs to the internal scene artifact used for prompt compilation. It is not content-free telemetry and must not be copied into persisted diagnostics by default.
-
 ### `scene_context`
 
-`scene_context` describes the present semantic setting.
+Compact setting, task, participants, and active situation.
 
-Suggested internal runtime shape:
-
-```yaml
-scene_context:
-  setting: pull_request_review
-  task: review_changed_files
-  participants:
-    - reviewer
-    - repository_owner
-```
-
-Scene context may include:
-
-- setting,
-- current task,
-- participants,
-- event or stream segment,
-- active object or document,
-- current interaction mode.
-
-It should remain compact and must not become a second conversation transcript.
-
-Normalized setting, task, participant, and object values are derived semantic content. They should remain in request-local/runtime scene state and should not be emitted in content-free diagnostics.
+It must remain bounded and must not become a second conversation transcript or a copy of RelayCTX working memory.
 
 ### `scene_constraints`
 
-`scene_constraints` contains normalized, bounded rules that apply only to the current turn or scene.
-
-Example:
-
-```yaml
-scene_constraints:
-  - constraint_type: ask_at_most_one_question
-    value: true
-  - constraint_type: spoken_response_length
-    value: short
-```
-
-Typical sources include:
-
-- route/profile configuration,
-- operator-provided scene state,
-- validated cached interpretation of the current client system/developer prompt,
-- current scene-transition policy.
-
-Scene constraints are lower authority than RelayLM runtime/safety policy and approved durable persona policy.
-
-Constraint names and values derived from client instructions are semantic content. Diagnostics should record counts and policy outcomes rather than the derived values themselves.
-
-### `session_id`
-
-`session_id` identifies a runtime conversation/session run.
-
-A new session may start when:
-
-- the frontend starts a new chat,
-- the stream starts or restarts,
-- the user opens a new conversation thread,
-- the adapter or operator explicitly resets session scope.
-
-Session is operational. Scene is semantic.
-
-### `room_id`
-
-`room_id` is optional external host metadata.
+Bounded temporary rules for the current turn or scene.
 
 Examples:
 
-- frontend room ID,
-- livestream channel ID,
-- group chat ID,
-- OpenWebUI conversation ID,
-- Open-LLM-VTuber room or stage identity.
+- ask at most one clarification question,
+- keep spoken response short,
+- require evidence before asserting a project status,
+- suppress roleplay in a formal-document scene.
 
-`room_id` may support scoping, diagnostics, and future memory boundaries, but it should not become prompt text by default.
+They are lower authority than runtime/safety policy and approved durable persona policy.
 
-Deployments should still treat external IDs as potentially sensitive. Persisted diagnostics may hash, redact, or omit them according to operator policy.
+### `session_id`
 
-## Boundary summary
+Operational identifier for a runtime conversation/session run.
 
-```text
-character_id:
-  which durable persona is speaking
+Session is operational; Scene is semantic.
 
-user_id / user_type:
-  who the conversation counterpart is
+### `room_id`
 
-scene_id:
-  what semantic situation the conversation is in
+Optional external host metadata such as a frontend conversation, room, stream, stage, or channel identifier.
 
-scene_role:
-  what role the character performs in that situation
+It may support scoping and diagnostics but should not become prompt text by default. External IDs remain potentially sensitive and should be omitted, redacted, or transformed in persisted diagnostics according to operator policy.
 
-scene_context:
-  current setting, task, and participants
-
-scene_constraints:
-  temporary rules for the current situation
-
-session_id:
-  which runtime conversation run this is
-
-room_id:
-  where the conversation is hosted
-```
-
-## Scene-state source precedence
-
-RelaySCN may receive scene evidence from several sources.
+## Source precedence
 
 Recommended precedence:
 
 ```text
-1. explicit trusted route/operator scene configuration
-2. validated instruction-cache artifact for the current client instruction hash
-3. explicit request metadata allowed by route policy
+1. trusted route/operator scene configuration
+2. validated current client-instruction cache artifact
+3. route-approved request metadata
 4. previous approved scene-continuation state
-5. current-turn heuristic/estimate
-6. safe default or unknown scene
+5. current-turn heuristic or estimate
+6. safe default / unknown
 ```
 
-Raw client system/developer messages are not scene state by themselves. They must first pass the client-instruction authority flow:
+Raw client `system` or `developer` messages are evidence, not scene state. They must pass the Client Instruction Authority flow before affecting RelaySCN.
+
+## Canonical runtime order
 
 ```text
-client instruction
-  -> normalize / hash
-  -> cache hit: validated cached SCN artifact
-  -> cache miss: one-time Main LLM interpretation
-  -> schema and policy validation
-  -> normalized RelaySCN state
+Client payload canonicalization
+  -> current user turn
+  -> current client instruction evidence
+
+Input-side RelaySCN
+  -> scene_state
+  -> scene_policy
+
+Input-side RelayEMO
+RelayINT
+RelayMEM Retrieval, when allowed
+RelayCTX Repack
+Main LLM
+RelayCTX Unpack
+RelayREF
+Return-side RelayEMO
+Output-side RelaySCN
+User / TTS / Avatar output
 ```
 
-On a cache hit, the raw prompt is not compiled into backend context.
+RelayREF is post-generation only. It does not guide same-turn input-side scene classification or memory retrieval.
 
 ## Lifecycle
 
-### 1. Scene start
+### Scene start
 
-A scene starts when the host, route, adapter, operator, or validated client-instruction artifact establishes a situation.
+A scene starts when trusted configuration, approved metadata, a validated instruction artifact, or current-turn evidence establishes a situation.
 
-Initial MVP behavior may use:
+Missing scene metadata should not block ordinary compatible chat unless safe interpretation requires a specific role or context.
 
-```text
-scene_id: default
-scene_state: optional configured/cached state or none
-```
+### Scene update
 
-Missing scene metadata should not block ordinary chat forwarding unless the active task requires a role or context for safe interpretation.
+A scene may update when:
 
-### 2. Scene update
+- the task changes,
+- the setting or participants change,
+- a temporary role changes,
+- a validated client-instruction identity changes,
+- recovery or safety policy changes.
 
-`scene_state` may update when the current situation changes.
+Conversation-topic continuity alone does not require a new scene. RelayCTX may update its working state while RelaySCN remains stable.
 
-Examples:
+### Scene continuation
 
-- topic changes,
-- open questions change,
-- stream segment changes,
-- roleplay scenario advances,
-- temporary mode changes,
-- group conversation state changes,
-- client system/developer instruction hash changes,
-- a new validated instruction artifact changes `scene_role` or constraints.
+A scene continues while the semantic situation and applicable policy remain sufficiently stable.
 
-Scene updates are dynamic and must not rewrite stable persona files.
+Repeated identical client prompts may confirm a validated scene source but must not create repeated transitions or durable persona proposals.
 
-An unchanged instruction hash should reuse the cached SCN representation and should not create a new scene transition or RelaySOUL proposal by itself.
+### Scene transition
 
-### 3. Scene continuation
+A transition occurs when context, role, memory scope, safety posture, or required output policy materially changes.
 
-A scene continues while the semantic situation remains the same.
+A changed instruction hash is only evidence. The validated semantic interpretation determines whether a transition occurred.
 
-The session may continue under the same scene, or a new session may reuse it when the host intentionally resumes it.
+### Scene end
 
-Repeated frontend system prompts with the same normalized hash normally confirm the current scene; they do not create new durable persona evidence.
+A scene ends when the host/operator resets it, a new semantic situation starts, or recovery clears and a new approved state is established.
 
-### 4. Scene transition
-
-A scene transition occurs when the current situation should be treated as different for context, memory scope, role, or diagnostics.
-
-Examples:
-
-```text
-stream_qna -> technical_support_mode
-roleplay_cafe_scene -> normal_chat
-debugging_session -> release_planning
-technical_interviewer -> normal_companion_role
-```
-
-A changed client instruction hash may propose a transition, but the validated semantic result determines whether a transition actually occurred.
-
-Transition detection may be manual or host-provided in the MVP. Automatic transition detection remains future work.
-
-### 5. Scene end
-
-A scene ends when the host or operator closes the situation, resets scope, or starts a different semantic context.
-
-Ending a scene should not automatically:
+Ending a scene must not automatically:
 
 - delete memories,
+- persist temporary constraints,
 - mutate persona sources,
-- promote the prior scene role into RelaySOUL,
-- preserve temporary client-derived constraints as durable policy.
+- promote a scene role into RelaySOUL.
 
-## Client instruction and SOUL boundary
+## Output-side RelaySCN
 
-Client instruction content is SCN-first evidence.
+Output-side RelaySCN consumes validated observations after RelayCTX Unpack, RelayREF, and Return-side RelayEMO.
 
-```text
-current role / setting / task / temporary constraint
-  -> RelaySCN
+It normally emits next-turn transition state:
 
-durable name / identity / values / worldview candidate
-  -> candidate evidence only
-  -> explicit RelaySOUL proposal path when allowed
+```yaml
+output_scene_observation:
+  scene_changed: false
+  next_scene_candidate_present: true
+  confidence_band: medium
+  apply_timing: next_turn
+  transition_reason_class: assistant_suggested_next_task
 ```
 
-A client-derived scene role may guide current behavior even when SOUL is missing. This does not make the role a durable persona source.
+Immediate transition is limited to:
 
-Safety rule:
+- safety-critical escalation,
+- leakage/invalid-output handling,
+- recovery/context-repair escalation,
+- high wrong-continuation risk.
 
-```text
-Scene content may guide the current response,
-but it must not redefine durable character identity.
-```
+Output-side RelaySCN is not a general output rewriter.
 
-## Scene-state placement
+## Runtime artifact versus projection
 
-`scene_state` should be compiled after stable persona sources.
+### Runtime-private artifact
 
-```text
-stable_prefix
-  common_runtime_policy
-  SOUL.md
-  OUTPUT_POLICY.md
-  RELATIONSHIP_ANCHOR.md
+May contain normalized role names, setting/task/participants, constraint values, and other semantic content needed by RelayCTX.
 
-slow_prefix
-  STABLE_MEMORY_SUMMARY.md
+It remains request-local or protected by an explicit cache/storage contract.
 
-dynamic_suffix
-  normalized SCENE_STATE / scene_state
-    - scene_type
-    - scene_role
-    - scene_context
-    - scene_constraints
-  retrieved_memory
-  current user input
-```
+### Content-free diagnostic projection
 
-On an unknown client-instruction hash only, a one-time untrusted instruction-evidence block may also appear in the dynamic suffix for first-pass Main LLM interpretation. It must be absent on a cache hit.
+May contain:
+
+- scene-state source class,
+- scene type class,
+- presence flags,
+- confidence/stability bands,
+- role scope/source class,
+- constraint count,
+- cache status,
+- policy booleans,
+- persistence block reasons/counts.
+
+It must not contain role names, setting/task text, participant values, constraint values, transition-reason text, prompt fragments, or visible response text.
 
 ## Legacy Room compatibility
 
-### `room_state`
+`room_state` may remain a compatibility alias for `scene_state` only when `scene_state` is unset.
 
-`room_state` is a legacy alias for `scene_state`.
-
-If `scene_state` is unset and `room_state` exists, runtime may map `room_state` into `scene_state` for compatibility.
-
-### `room_anchor`
-
-`room_anchor` is optional legacy compatibility metadata. It may still appear in old configs, but it should not be required.
-
-New designs should reclassify legacy room content by role:
+Legacy `room_anchor` content should be reclassified:
 
 ```text
-fixed shared constraints -> common_runtime_policy
-character expression constraints -> OUTPUT_POLICY.md
-relationship expectations -> RELATIONSHIP_ANCHOR.md
-dynamic situation content -> SCENE_STATE.md / scene_state
-current functional role -> scene_role
+shared fixed rules -> common_runtime_policy
+character expression rules -> OUTPUT_POLICY.md
+relationship principles -> RELATIONSHIP_ANCHOR.md
+dynamic situation -> scene_state
+current function -> scene_role
 external host identity -> room_id metadata
 ```
 
-## Memory-scope implications
+## Memory implications
 
-Scene can inform future memory retrieval, but scene state itself is not a memory record.
+Scene policy may constrain retrieval and persistence, but scene state itself is not a memory record.
 
-Suggested future memory-scope dimensions:
+Retrieval only reads. RelaySLP may later inspect governed scene summaries when producing memory candidates. Scene transition or end does not itself authorize a memory write.
+
+## Non-goals
+
+Scene lifecycle does not own:
+
+- affect estimation,
+- current-topic/open-question working memory,
+- memory retrieval implementation,
+- memory writes,
+- durable persona mutation,
+- backend routing,
+- output rewriting,
+- trace storage of semantic scene content.
+
+## Summary
 
 ```text
-character_id
-user_id / user_type
-scene_id
-session_id
-room_id
-memory_namespace
+scene evidence
+  -> RelaySCN scene_state
+  -> RelaySCN scene_policy
+  -> downstream constraints
+
+conversation continuity -> RelayCTX
+current affect -> RelayEMO
+runtime transition/checkpoint -> RelayRUN
 ```
-
-MVP safety rule: scene-aware memory scope should be diagnostics or candidate-selection metadata first. It should not cause memory writes until the memory-write path has explicit gates.
-
-## Runtime compile implications
-
-The Runtime Compile Gate should treat scene metadata as optional but useful. It consumes RelaySCN policy and RelayCTX Repack preflight/budget outcomes; RelayRUN orchestrates the selected apply, pass-through, or fallback path.
-
-- missing `scene_id` -> continue with default or null scene metadata,
-- missing `scene_state` -> compile without a scene block,
-- present validated `scene_state` -> place it in the dynamic suffix,
-- cache-hit client instruction -> use cached normalized SCN state and exclude raw instruction,
-- cache-miss client instruction -> permit one bounded untrusted evidence block only when first-pass parsing is enabled,
-- present `room_id` -> keep it as metadata unless explicitly configured otherwise.
-
-Compile diagnostics should record scene presence, source class, scope, counts, and policy decisions without storing raw or normalized semantic scene content.
-
-## Diagnostics
-
-Persisted diagnostics and general telemetry should be content-free by default.
-
-Suggested fields:
-
-```yaml
-scene_id_present: true
-scene_state_source: client_instruction_cache
-scene_state_present: true
-scene_role_present: true
-scene_role_scope: scene
-scene_role_source: client_system
-scene_role_classification_id_present: true
-scene_context_present: true
-scene_constraints_count: 2
-client_instruction_hash_present: true
-client_instruction_cache_status: hit
-session_id_present: true
-room_id_present: true
-scene_transition_detected: false
-scene_fallback_reason: null
-```
-
-Do not emit the following client-derived values in persisted diagnostics by default:
-
-- `scene_role.role_name`,
-- scene setting or task text,
-- participant names,
-- constraint names or values,
-- normalized prompt fragments,
-- durable persona candidate values.
-
-When cross-request correlation is operationally necessary, diagnostics may include an opaque `scene_role_classification_id` generated by one of these methods:
-
-- random local identifier stored with the validated cache entry,
-- keyed HMAC over the normalized classification using an operator-controlled secret,
-- another non-reversible, deployment-local mapping.
-
-An unsalted hash of a small role vocabulary is not sufficient because it is dictionary-reversible.
-
-The opaque identifier must not be used as prompt content or as a durable persona identifier.
-
-Request-local debug tooling may expose normalized scene content only behind an explicit sensitive-debug mode with separate retention and access controls. That mode is not the default diagnostics contract.
-
-Diagnostics should not be inserted into stable prompt prefixes.
-
-## Minimal MVP target
-
-A minimal scene-lifecycle implementation should support:
-
-1. optional `scene_id` metadata,
-2. optional normalized `scene_state` prompt content,
-3. optional `scene_role`,
-4. optional compact `scene_context`,
-5. bounded `scene_constraints`,
-6. validated client-instruction cache as a scene source,
-7. legacy `room_state -> scene_state` alias,
-8. optional `room_id` external host metadata,
-9. content-free diagnostics for scene presence/source/scope/counts,
-10. no hard failure when optional scene metadata is missing.
-
-## Future extensions
-
-Future work can add:
-
-- explicit scene transition events,
-- scene-aware memory retrieval scope,
-- scene compression under token pressure,
-- scene summary generation,
-- operator-visible scene diagnostics,
-- scene handoff between frontends,
-- scene-specific compile-gate thresholds,
-- automatic role-transition detection,
-- RelayRUN trace/checkpoint lineage and typed audit projections for scene transitions.

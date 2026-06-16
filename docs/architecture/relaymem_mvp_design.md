@@ -1,64 +1,64 @@
 # RelayMEM MVP Design
 
-Date basis: 2026-05-31 JST
-
 ## Purpose
 
-RelayMEM is the long-term memory layer of RelayLM. It should not be treated as a simple RAG cache. Its MVP direction is a file-backed long-term memory compiler inspired by Karpathy-style LLM Wiki ideas.
+RelayMEM is RelayLM's long-term memory subsystem.
 
-RelayMEM preserves raw evidence, compiles stable memory pages, maintains retrieval indexes, and exposes only safe, token-budgeted memory blocks to RelayCTX at runtime.
-
-## Core positioning
-
-RelayMEM sits between raw conversation evidence and runtime context assembly.
+It is not a simple RAG cache and it is not the owner of all memory-related decisions. The subsystem is split into:
 
 ```text
-raw sources
-  -> RelaySLP / memory compile path
-  -> compiled MEM pages + index + log
-  -> Retrieval path
-  -> RelayCTX block
-  -> Main LLM
+RelayMEM storage/index
+  durable approved memory records and compiled pages
+
+RelayMEM Retrieval
+  synchronous read-only selection for the current answer
+
+RelaySLP
+  deferred compilation, update, hold, reject, and proposal workflow
 ```
 
-The key distinction is:
+Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
+
+## Core principle
 
 ```text
-SLP improves memory quality.
 Retrieval improves the current answer.
+RelaySLP improves future memory.
 ```
 
-SLP may edit or propose edits to memory. Retrieval must only read memory and pack a safe context block.
+Retrieval only reads. RelaySLP may produce or apply governed memory changes through explicit gates.
 
-## Relation to other RelayLM layers
+## Relation to other components
 
-```text
-RelaySOUL
-= Stable identity, long-term principles, relationship/approval layer.
-= Never directly mutated by RelayMEM.
+### RelaySOUL
 
-RelayEMO
-= Mutable affect/expression runtime.
-= user_affect_estimate is not persisted as a long-term fact.
+Owns durable identity, values, worldview, approved output/relationship policy, revision, approval, and rollback.
 
-RelayCTX
-= Runtime context packing and unpacking.
-= Receives token-budgeted RelayMEM context blocks.
+RelayMEM does not directly mutate RelaySOUL. RelaySLP may emit a proposal candidate that enters the separate RelaySOUL approval path.
 
-RelaySCN
-= Scene-state controller.
-= Resolves memory scope and persistence/update gates.
+### RelaySCN
 
-RelayREF / RelaySLP
-= Reflection, lint, consolidation, and memory compile cycle.
+Owns scene, memory-scope, recovery, and persistence policy. RelayMEM consumes the resolved policy.
 
-RelayMEM
-= Long-term memory compiler and retrieval source.
-```
+### RelayINT
+
+Owns whether long-term retrieval is needed and whether a reference scope is explicit or confirmed.
+
+### RelayCTX
+
+Owns final prompt packing and token-budget degradation. RelayMEM returns candidates/evidence; RelayCTX selects final placement.
+
+### RelayREF
+
+RelayREF is the post-generation output observer. It is not part of RelayMEM or RelaySLP and does not guide same-turn Retrieval.
+
+### RelaySLP
+
+Owns deferred candidate extraction, memory compilation, safety classification, merge/update/hold/reject decisions, lint, and proposal generation.
 
 ## Storage model
 
-MVP should begin with a file-backed layout using Markdown and JSONL rather than a database.
+The MVP remains local-first and file-backed.
 
 ```text
 memory/
@@ -70,162 +70,157 @@ memory/
   mem/
     index.md
     log.md
-
     projects/
-      relaylm.md
-      relaymem.md
-      relayemo.md
-
     concepts/
-      slp.md
-      retrieval.md
-      ctx_repack.md
-
     claims/
-      claim_*.md
-
     summaries/
-      session_*.md
-
     relations/
       graph.json
 ```
 
-## Four-part memory structure
+### `raw_sources`
 
-### raw_sources
-
-Primary evidence. These are original or near-original records.
+Primary governed evidence. Raw sources remain separate from compiled summaries and must not be silently overwritten.
 
 Examples:
 
-- user messages
-- assistant messages
-- uploaded document summaries
-- URL/source notes
-- runtime events
-- CTX snapshots
+- approved conversation/event records,
+- document evidence,
+- explicit user memory requests,
+- protected CTX/INT/SCN artifacts when policy allows,
+- source references and lineage.
 
-Raw sources should be preserved and not overwritten by compiled summaries.
+Raw evidence is not automatically eligible for runtime prompt packing.
 
-### mem_pages
+### `mem_pages`
 
-Compiled memory pages synthesized from raw evidence.
+Compiled memory pages used for normal retrieval:
 
-Examples:
+- project state,
+- concept definitions,
+- claims,
+- session summaries,
+- approved preferences,
+- relations.
 
-- project pages
-- concept pages
-- claim pages
-- session summaries
-- relationship or policy diagnostics, when allowed
+Compiled pages retain source references and approval/safety metadata.
 
-Runtime normally uses compiled summaries rather than raw evidence unless verification is needed.
+### `mem_index`
 
-### mem_index
+A bounded retrieval index containing:
 
-A lightweight retrieval index.
+- page IDs,
+- aliases/tags,
+- summaries,
+- relation hints,
+- scope and safety metadata,
+- update/version metadata.
 
-Examples:
+A vector database is optional future infrastructure, not the component definition.
 
-- `memory/mem/index.md`
-- aliases
-- tags
-- page summaries
-- relation hints
-- updated timestamps
+### `mem_log`
 
-The first MVP can use keyword/semantic-lite search over Markdown before adding a vector store.
+Append-only memory-operation evidence for RelaySLP decisions and store maintenance.
 
-### mem_log
-
-Append-only audit log for SLP operations.
-
-Examples:
-
-- candidate extraction runs
-- page updates
-- held candidates
-- rejected candidates
-- lint results
-- SOUL promotion proposals
+The memory log is distinct from the default runtime trace. It may contain approved page IDs and lineage references, but must not become a generic dump of raw user messages or runtime-private prompt artifacts.
 
 ## Memory kinds
 
-MVP should support a small set of memory kinds.
+Recommended initial kinds:
 
-```yaml
-memory_kind:
-  raw_event:
-    description: Primary event or source record. Not rewritten.
-
-  session_summary:
-    description: Summary of a recent conversation or session.
-
-  project_state:
-    description: Current state of a project such as RelayLM, RelayMEM, RelayEMO, or RelayKV.
-
-  concept:
-    description: Stable concept definition or design pattern.
-
-  claim:
-    description: Factual or design claim with evidence references.
-
-  preference:
-    description: User workflow preference or durable non-sensitive preference.
-
-  relation:
-    description: Typed relation between project, concept, and claim pages.
-
-  soul_candidate:
-    description: Candidate for RelaySOUL promotion. Must not directly mutate SOUL.
-
-  rejected_or_blocked_candidate:
-    description: Candidate that was blocked, rejected, stale, contradictory, or unsafe.
+```text
+raw_event
+session_summary
+project_state
+concept
+claim
+preference
+relation
+soul_candidate
+rejected_or_blocked_candidate
 ```
+
+A `soul_candidate` remains a candidate. It is not a RelaySOUL revision or approval.
 
 ## Safety scopes
 
-RelayMEM must classify memory candidates by update safety.
+### `free_to_update`
 
-```yaml
-safety_scope:
-  free_to_update:
-    description: Safe for RelayMEM to update automatically.
-    examples:
-      - project implementation notes
-      - design docs
-      - general concept pages
-      - non-sensitive task state
+May be applied by RelaySLP only when:
 
-  review_required:
-    description: Hold for review before applying.
-    examples:
-      - durable user workflow preferences
-      - major project direction changes
-      - potentially ambiguous long-term facts
+- the SLP apply gate is enabled,
+- RelaySCN persistence policy allows it,
+- source lineage is present,
+- confidence/stability requirements pass,
+- the update is idempotent.
 
-  explicit_approval_required:
-    description: Must become an approval artifact or SOUL proposal.
-    examples:
-      - RelaySOUL principle changes
-      - identity or relationship principles
-      - long-term approval-sensitive memory
+Examples may include non-sensitive project notes or concept-page maintenance.
 
-  never_auto_promote:
-    description: Must not become long-term memory automatically.
-    examples:
-      - raw user_affect_estimate
-      - transient emotion inference
-      - sensitive attribute inference
-      - low-confidence personal inference
+### `review_required`
+
+Held for user/operator review.
+
+Examples:
+
+- durable workflow preferences,
+- major project-direction changes,
+- ambiguous long-term facts.
+
+### `explicit_approval_required`
+
+Converted into an approval artifact or RelaySOUL proposal candidate. Never auto-applied.
+
+### `never_auto_promote`
+
+Rejected, held as blocked evidence, or retained only under a protected source policy.
+
+Examples:
+
+- raw affect estimates,
+- sensitive attribute inference,
+- transient emotional interpretation,
+- low-confidence personal inference.
+
+## Retrieval path
+
+```text
+RelaySCN memory scope
+  + RelayINT retrieval decision and confirmed scope
+  -> index search
+  -> approved candidate pages
+  -> safety/authority filter
+  -> bounded runtime-private evidence
+  -> RelayCTX final packing
 ```
+
+Retrieval must not:
+
+- write pages or index entries,
+- mutate RelaySOUL,
+- silently resolve ambiguous references,
+- broaden scope after a miss,
+- expose snippets/paths through default trace projections.
+
+## RelaySLP path
+
+```text
+governed source evidence
+  -> candidate extraction
+  -> memory_kind classification
+  -> safety_scope classification
+  -> existing-page lookup
+  -> merge / update / hold / reject
+  -> relation typing
+  -> lint
+  -> gated page/index/log update
+  -> optional RelaySOUL proposal candidate
+```
+
+RelaySLP runs outside the latency-critical normal response path and never produces the current answer directly.
 
 ## Relation model
 
-RelayMEM should avoid untyped “related” links as the only relation form. Typed relations make memory useful for reasoning and linting.
-
-Suggested relation types:
+Useful typed relations include:
 
 ```text
 supports
@@ -241,93 +236,82 @@ candidate_for_soul
 blocked_from_soul
 ```
 
-Example:
+Untyped `related` links should not be the only relation form.
 
-```yaml
-relations:
-  - source: relaymem
-    type: depends_on
-    target: relayctx
-    confidence: 0.86
+## Runtime-private versus content-free artifacts
 
-  - source: user_affect_estimate
-    type: blocked_from_soul
-    target: relaysoul
-    confidence: 0.95
-```
+### Runtime-private memory artifacts
 
-## Core rules
+May contain:
 
-1. SLP edits or proposes memory changes; Retrieval only reads memory.
-2. MEM can auto-update only `free_to_update` scope.
-3. `review_required` candidates are held.
-4. `explicit_approval_required` candidates become SOUL proposals or approval artifacts.
-5. RelaySOUL is never directly mutated by RelayMEM.
-6. Raw evidence is preserved.
-7. Runtime normally uses compiled summaries.
-8. Contradictory, stale, or unapproved memory is blocked from normal CTX packing.
-9. Retrieval is token-budgeted and diagnostics-visible.
-10. Raw `user_affect_estimate` is not persisted as a long-term fact.
+- candidate title/summary/snippet,
+- page/source references,
+- resolved query text,
+- proposed page updates,
+- relation values,
+- blocked candidate details.
 
-## MVP implementation order
+These remain request-local, SLP-local, or protected by the memory store's explicit access and retention policy.
 
-```text
-MVP-MEM-1: File-backed memory store
-- raw event append
-- mem page read/write
-- index.md generation
-- log.md append
+### Default runtime trace projections
 
-MVP-MEM-2: SLP dry-run
-- read recent raw log
-- extract memory candidates
-- classify memory_kind
-- classify safety_scope
-- emit proposed page updates
-- no apply by default
+Contain only typed allowlisted metadata:
 
-MVP-MEM-3: SLP apply gate
-- apply free_to_update only
-- hold review_required
-- convert explicit_approval_required to SOUL proposal
-- log every decision
+- candidate/selected/blocked counts,
+- source and scope classes,
+- confidence/stability bands,
+- budget values,
+- reason identifiers,
+- apply state,
+- page-update counts,
+- payload/persistence booleans.
 
-MVP-MEM-4: Retrieval runtime
-- build query from user input + scene/task
-- search index
-- load top candidate pages
-- safety filter
-- token-budget pack
-- pass context block to RelayCTX
+They must not contain raw messages, memory bodies, snippets, local paths, semantic scene/intent text, or final responses.
 
-MVP-MEM-5: Retrieval diagnostics
-- selected_mem
-- blocked_mem
-- token_budget
-- used_tokens
-- selection reasons
-- fallback reason
-```
+## Persistence rules
 
-## Non-goals for MVP
+1. Retrieval only reads.
+2. RelaySLP is the only memory compiler/apply owner.
+3. RelaySCN policy may block persistence regardless of candidate safety scope.
+4. `review_required` is held.
+5. `explicit_approval_required` becomes an approval/proposal artifact.
+6. RelaySOUL is never directly mutated by RelayMEM.
+7. Raw evidence is preserved separately from compiled pages.
+8. Contradictory, stale, blocked, or unapproved records stay out of normal CTX packing.
+9. Raw affect estimates are not persisted as durable user facts.
+10. Every apply path is idempotent and lineage-aware.
 
-- Do not implement a vector database first.
-- Do not mutate RelaySOUL directly.
-- Do not persist raw affect estimates as durable facts.
-- Do not let Retrieval update MEM.
-- Do not require background asynchronous execution for the first version.
-- Do not pack unapproved or contradictory memory into runtime context.
+## Namespace isolation
+
+Character, user/viewer, project, scene, session, room, memory, and cache namespaces must not be mixed merely because one RelayLM process serves them.
+
+External IDs should not be exposed in default trace projections.
+
+## Non-goals
+
+RelayMEM does not:
+
+- own scene classification,
+- own intent/reference resolution,
+- own final prompt layout,
+- inspect generated output,
+- directly mutate RelaySOUL,
+- persist raw affect inference as fact,
+- require vector infrastructure for the MVP,
+- expose content-bearing memory artifacts through default trace/audit surfaces.
 
 ## Summary
 
-RelayMEM MVP is a file-backed long-term memory compiler and runtime retriever.
-
 ```text
-SLP path:
-  raw events -> candidates -> safety classification -> compiled MEM pages -> index/log
+RelayMEM storage
+  approved durable memory substrate
 
-Retrieval path:
-  user input + scene/task -> safe selected MEM -> token-budgeted RelayCTX block
+RelayMEM Retrieval
+  read-only current-answer evidence
+
+RelaySLP
+  deferred governed memory compilation and proposal path
+
+RelayREF
+  separate post-generation observer
 ```
-
-This gives RelayLM a stable long-term memory layer without turning RelayMEM into uncontrolled RAG or allowing RelaySOUL pollution.
