@@ -26,6 +26,10 @@ def main() -> int:
     require(str(backend.base_url) == "http://127.0.0.1:1234/v1", backend)
     print("ok config load and backend")
 
+    require(config.client_history_exclusion_apply_enabled is False, config)
+    require(config.client_history_exclusion_apply_dry_run_only is True, config)
+    print("ok current history exclusion defaults")
+
     incoming_messages = [
         {"role": "system", "content": "Use concise answers."},
         {"role": "user", "content": "hello"},
@@ -47,11 +51,12 @@ def main() -> int:
         for path_value in [
             character.soul,
             character.output_policy,
-            character.room_anchor,
             character.scene_state,
             character.memory_seed_path,
         ]:
             require(isinstance(path_value, str) and Path(path_value).exists(), path_value)
+
+        require(character.room_anchor is None, character)
 
         plan = build_profile_compile_plan(
             config=config,
@@ -59,7 +64,7 @@ def main() -> int:
             incoming_messages=incoming_messages,
         )
         require(plan.enabled is True, plan)
-        require(plan.compiled_block_count == 5, plan)
+        require(plan.compiled_block_count == 4, plan)
         require(plan.compiled_message_count == 2, plan)
 
     print("ok openwebui lmstudio copy-ready config routes")
