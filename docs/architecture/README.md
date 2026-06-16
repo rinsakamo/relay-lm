@@ -63,6 +63,7 @@ Current implementation includes a narrow default-off no-instruction apply slice.
 ## Runtime orchestration
 
 - [Client History Exclusion Apply Forward Gate](client_history_exclusion_apply_forward_gate.md)
+- [Managed-route fallback authority contract](managed_route_fallback_contract.md)
 - [RelayRUN runtime checkpoint design](relayrun_runtime_checkpoint_design.md)
 - [Runtime compile gate design](runtime_compile_gate_design.md)
 
