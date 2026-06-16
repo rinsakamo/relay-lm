@@ -4,8 +4,9 @@ This page is the entry point for RelayLM documentation.
 
 ## Start here
 
-- [Current project status](PROJECT_STATUS.md) — one-page current phase, implemented boundaries, and next work
+- [Current project status](PROJECT_STATUS.md) — current phase, implemented boundaries, and next work
 - [Architecture docs](architecture/README.md)
+- [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [MVP summaries and milestone notes](mvp/README.md)
 - [Contract docs](contracts/README.md)
 - [Smoke and validation docs](smoke/README.md)
@@ -15,86 +16,52 @@ This page is the entry point for RelayLM documentation.
 
 ## Current status
 
-Use [Project Status](PROJECT_STATUS.md) as the concise developer-facing view of:
-
-- the current phase,
-- implemented versus dry-run/preflight/read-only boundaries,
-- currently usable runtime paths,
-- major unimplemented components,
-- and the immediate next implementation slice.
-
-`PROJECT_STATUS.md` is a summary view. [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) remains authoritative for detailed phase status and sequencing.
+Use [Project Status](PROJECT_STATUS.md) for the concise developer-facing view. [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md) is authoritative for detailed phase status and sequencing.
 
 ## Architecture
 
-Use these docs to understand the RelayLM pipeline, responsibility boundaries, and profile-specific runtime design.
+Use [Pipeline Responsibility Design](architecture/pipeline_responsibility_design.md) for canonical component ownership and target order.
 
-Canonical precedence and legacy-term handling are defined in the [architecture docs index](architecture/README.md). When documents disagree, `pipeline_responsibility_design.md` is the source of truth for component names and ownership, while `pipeline_implementation_plan.md` is the source of truth for phase status.
+Use [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) before treating a proposed v1 schema, target pipeline, or future execution gate as current behavior.
 
-The list below highlights the primary architecture entry points. Use the [architecture docs index](architecture/README.md) as the complete catalog of active architecture documents, runtime orchestration designs, compatibility redirects, and the archive boundary.
+Primary entry points:
 
 - [Architecture docs index](architecture/README.md)
-- [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — canonical naming and responsibility source
-- [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — implementation order and phase status
+- [Pipeline responsibility design](architecture/pipeline_responsibility_design.md)
+- [Pipeline implementation plan](architecture/pipeline_implementation_plan.md)
 - [Runtime architecture](architecture/runtime_architecture.md)
-- [Runtime compile gate design](architecture/runtime_compile_gate_design.md)
-- [RelayRUN runtime checkpoint design](architecture/relayrun_runtime_checkpoint_design.md)
 - [Runtime operational requirements](architecture/runtime_operational_requirements.md)
-- [AI character product principles](architecture/ai_character_product_principles.md)
-- [AI VTuber pipeline profile](architecture/ai_vtuber_pipeline_profile.md)
+- [Context packing design](architecture/context_packing_design.md)
+- [Runtime compile gate design](architecture/runtime_compile_gate_design.md)
+- [RelayRUN checkpoint design](architecture/relayrun_runtime_checkpoint_design.md)
 - [Open-LLM-VTuber integration](architecture/open_llm_vtuber_integration.md)
-- [RelayINT MVP design](architecture/relayint_mvp_design.md)
 - [RelayMEM MVP design](architecture/relaymem_mvp_design.md)
 - [RelayMEM SLP execution design](architecture/relaymem_slp_execution_design.md)
 - [RelayMEM retrieval execution design](architecture/relaymem_retrieval_execution_design.md)
-- [RelayEMO return-side expression design](architecture/relayemo_return_side_expression_design.md)
-- [Historical architecture design archive](architecture/archive/README.md)
 
-## MVP summaries
+## Historical material
 
-MVP summaries and MVP-focused implementation notes are collected under `docs/mvp/`.
-
-- [MVP summaries and milestone notes](mvp/README.md)
-
-MVP summaries are historical implementation snapshots. Later architecture, implementation-plan, and project-status documents may supersede their terminology or current-status statements.
-
-Future MVP summaries should be created directly under `docs/mvp/` and linked from the MVP index.
-
-## Contracts and safety gates
-
-Contract, artifact, schema, approval, and gate docs are collected under `docs/contracts/`.
-
-- [Contract docs](contracts/README.md)
-
-## Setup, smoke, and validation
-
-- [OpenWebUI + LM Studio MVP](openwebui_lmstudio_mvp.md)
-- [Smoke and validation docs](smoke/README.md)
-
-## RelaySOUL design and execution gates
-
-- [RelaySOUL design and gate docs](relaysoul/README.md)
+`docs/mvp/` and `docs/architecture/archive/` preserve implementation snapshots and historical rationale. They do not override current architecture, contracts, project status, or implementation sequencing.
 
 ## Documentation maintenance
 
-Run the local Markdown-link audit after moving or renaming documentation:
+Run after moving or renaming Markdown files:
 
 ```bash
 python scripts/relaylm_docs_link_check.py
 ```
 
-Placement rules:
+Placement:
 
-- one-page repository-wide current status -> `docs/PROJECT_STATUS.md`
-- cross-cutting architecture and pipeline docs -> `docs/architecture/`
+- current repository status -> `docs/PROJECT_STATUS.md`
+- architecture and pipeline design -> `docs/architecture/`
 - historical architecture rationale -> `docs/architecture/archive/`
-- MVP summaries and milestone notes -> `docs/mvp/`
-- artifact, schema, approval, and contract docs -> `docs/contracts/`
-- manual smoke, results, troubleshooting, and local evaluation docs -> `docs/smoke/`
-- RelaySOUL design, chain, persistence architecture, and execution-gate docs -> `docs/relaysoul/`
-- setup entry points and repository-wide indexes may remain directly under `docs/`
+- MVP snapshots -> `docs/mvp/`
+- schemas and contracts -> `docs/contracts/`
+- validation and manual smoke -> `docs/smoke/`
+- RelaySOUL design and execution gates -> `docs/relaysoul/`
 
 ## Examples
 
-- [OpenWebUI + LM Studio copy-ready config](../examples/config/openwebui_lmstudio.yaml)
+- [OpenWebUI + LM Studio config](../examples/config/openwebui_lmstudio.yaml)
 - [OpenWebUI example profiles](../examples/profiles/)
