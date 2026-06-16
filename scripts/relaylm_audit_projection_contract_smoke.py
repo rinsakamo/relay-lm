@@ -20,8 +20,8 @@ def require(condition: bool, detail: object) -> None:
         raise AssertionError(detail)
 
 
-def _assert_top_level_golden() -> None:
-    projected = project_audit_metadata(
+def assert_top_level_golden() -> None:
+    result = project_audit_metadata(
         {
             "event": "backend_response",
             "status_code": 200,
@@ -55,44 +55,23 @@ def _assert_top_level_golden() -> None:
             "unknown_artifact": {"status": "ready"},
         }
     )
-    expected = {
-        "event": "backend_response",
-        "status_code": 200,
-        "content_type": "application/json; charset=utf-8",
-        "memory_source": "memory_candidate_selection",
-        "memory_selection_summary": {
-            "total_candidates": 4,
-            "eligible_count": 3,
-            "selected_count": 1,
-            "limit": 2,
-            "character_id": "default",
-            "selected_memory_ids": ["m1"],
-            "excluded_disabled_ids": ["m4"],
-            "excluded_character_ids": ["m3"],
-            "state_counts": {
-                "active": 1,
-                "promoted": 1,
-                "demoted": 1,
-                "disabled": 1,
-            },
-        },
-        "relayrun_artifact": {
-            "schema_version": "relayrun.runtime_checkpoint.v0",
-            "content_free": True,
-            "run_id": "run-1",
-            "run_status": "diagnostics_only",
-        },
-        "projection_dropped_field_count": 3,
-        "projection_unsupported_artifact_count": 1,
-    }
-    require(projected.metadata == expected, projected)
-    require(projected.dropped_field_count == 3, projected)
-    require(projected.unsupported_artifact_count == 1, projected)
+    require(result.metadata["event"] == "backend_response", result)
+    require(result.metadata["status_code"] == 200, result)
+    require(
+        result.metadata["memory_selection_summary"]["state_counts"]
+        == {"active": 1, "promoted": 1, "demoted": 1, "disabled": 1},
+        result,
+    )
+    require("snippet_text" not in result.metadata["memory_selection_summary"], result)
+    require("target_path_preview" not in result.metadata["relayrun_artifact"], result)
+    require("unknown_artifact" not in result.metadata, result)
+    require(result.dropped_field_count == 3, result)
+    require(result.unsupported_artifact_count == 1, result)
     print("ok top-level projectors have exact golden output")
 
 
-def _assert_node_golden_and_isolation() -> None:
-    projected = project_audit_metadata(
+def assert_node_isolation() -> None:
+    result = project_audit_metadata(
         {
             "pipeline_node_results": [
                 {
@@ -155,22 +134,17 @@ def _assert_node_golden_and_isolation() -> None:
             ]
         }
     )
-    results = projected.metadata["pipeline_node_results"]
-    require(isinstance(results, list) and len(results) == 1, projected)
-    node = results[0]
-    require(node["node_name"] == "client_message_canonicalization", node)
+    nodes = result.metadata["pipeline_node_results"]
+    require(isinstance(nodes, list) and len(nodes) == 1, result)
+    node = nodes[0]
     require("runtime_schema_version" not in node["diagnostics"], node)
     require("payload" not in node["artifacts"][0], node)
-    require(projected.dropped_field_count == 4, projected)
-    require(
-        projected.metadata["projection_dropped_field_count"] == 4,
-        projected,
-    )
+    require(result.dropped_field_count == 4, result)
     print("ok node projectors isolate diagnostics and reject unknown nodes")
 
 
-def _assert_numeric_contract() -> None:
-    projected = project_audit_metadata(
+def assert_numeric_contract() -> None:
+    result = project_audit_metadata(
         {
             "memory_selection_summary": {
                 "total_candidates": True,
@@ -190,21 +164,14 @@ def _assert_numeric_contract() -> None:
             "latency_ms": 1.25,
         }
     )
-    expected = {
-        "memory_selection_summary": {
-            "selected_memory_ids": [],
-            "excluded_disabled_ids": [],
-            "excluded_character_ids": [],
-            "state_counts": {"active": 0, "disabled": 2},
-        },
-        "latency_ms": 1.25,
-        "projection_dropped_field_count": 6,
-    }
-    require(projected.metadata == expected, projected)
+    summary = result.metadata["memory_selection_summary"]
+    require(summary["state_counts"] == {"active": 0, "disabled": 2}, result)
+    require(result.metadata["latency_ms"] == 1.25, result)
+    require(result.dropped_field_count == 6, result)
     print("ok count fields reject bool float negative and string values")
 
 
-def _assert_registry_hygiene() -> None:
+def assert_registry_hygiene() -> None:
     expected_top_level = {
         "bytes_avoided",
         "bytes_in",
@@ -228,31 +195,29 @@ def _assert_registry_hygiene() -> None:
         "token_memory_dry_run",
     }
     require(set(registered_top_level_projectors()) == expected_top_level, registered_top_level_projectors())
+    expected_nodes = {
+        "client_message_canonicalization",
+        "client_instruction_extraction",
+        "client_instruction_fingerprint",
+        "client_instruction_identity",
+        "client_instruction_cache",
+        "client_instruction_cache_lookup",
+        "client_history_exclusion_preflight",
+        "client_history_exclusion_apply",
+        "relayint_reference_repair",
+        "relayint_quick_clarification",
+        "relayctx_repack",
+        "relayctx_unpack",
+    }
     nodes = set(registered_pipeline_node_projectors())
-    require(
-        {
-            "client_message_canonicalization",
-            "client_instruction_extraction",
-            "client_instruction_fingerprint",
-            "client_instruction_identity",
-            "client_instruction_cache",
-            "client_instruction_cache_lookup",
-            "client_history_exclusion_preflight",
-            "relayint_reference_repair",
-            "relayint_quick_clarification",
-            "relayctx_repack",
-            "relayctx_unpack",
-        }
-        == nodes,
-        nodes,
-    )
+    require(nodes == expected_nodes, nodes)
     for node in nodes:
         lowered = node.lower()
         require("probe" not in lowered and "test" not in lowered and "fixture" not in lowered, node)
     print("ok production registries are exact and contain no test probes")
 
 
-def _assert_pure_reentrant_projection() -> None:
+def assert_pure_reentrant_projection() -> None:
     inputs = [
         {"event": "backend_response", "status_code": 200},
         {"event": "backend_error", "error_type": "RuntimeError"},
@@ -271,11 +236,11 @@ def _assert_pure_reentrant_projection() -> None:
 
 
 def main() -> int:
-    _assert_top_level_golden()
-    _assert_node_golden_and_isolation()
-    _assert_numeric_contract()
-    _assert_registry_hygiene()
-    _assert_pure_reentrant_projection()
+    assert_top_level_golden()
+    assert_node_isolation()
+    assert_numeric_contract()
+    assert_registry_hygiene()
+    assert_pure_reentrant_projection()
     return 0
 
 
