@@ -12,7 +12,7 @@ if str(REPO_ROOT) not in sys.path:
 from relaylm.config import load_config
 from relaylm.diagnostics import RequestDiagnostics
 from relaylm.trace import AUDIT_TRACE_SCHEMA_VERSION, read_trace_records
-from relaylm.trace_runtime import trace_runtime_event
+from relaylm.trace_runtime import extract_response_text, trace_runtime_event
 
 
 def require(condition: bool, detail: object) -> None:
@@ -21,6 +21,26 @@ def require(condition: bool, detail: object) -> None:
 
 
 def main() -> int:
+    tool_call_body = {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": "call-1",
+                            "type": "function",
+                            "function": {"name": "lookup", "arguments": "private"},
+                        }
+                    ],
+                }
+            }
+        ]
+    }
+    require(extract_response_text(tool_call_body) == "", tool_call_body)
+    print("ok non-text assistant choice produces a shape-only presence marker")
+
     with tempfile.TemporaryDirectory() as tmpdir:
         config = load_config(REPO_ROOT / "config.example.yaml").model_copy(deep=True)
         config.trace.enabled = True
@@ -130,7 +150,10 @@ def main() -> int:
             json.loads(line)
             for line in stream_path.read_text(encoding="utf-8").splitlines()
         ]
-        require(stream_rows[0]["metadata"]["content_type"] == "text/event-stream", stream_rows)
+        require(
+            stream_rows[0]["metadata"]["content_type"] == "text/event-stream",
+            stream_rows,
+        )
         require(
             stream_rows[1]["metadata"]["content_type"]
             == "text/event-stream; charset=utf-8",
