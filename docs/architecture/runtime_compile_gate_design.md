@@ -1,307 +1,305 @@
 # Runtime Compile Gate Design
 
-## Scope
+## Status
 
-This document defines the runtime gate for deciding whether a compiled RelayLM context should be applied to an outbound backend request.
+This is the active request-local compile-decision contract.
 
-It focuses on runtime context application, not RelaySOUL persona-source mutation. RelaySOUL apply gates decide whether persona source artifacts may be mutated. The runtime compile gate decides whether already-loaded sources and runtime inputs may be compiled into the messages sent to the backend for the current request.
+It supersedes an earlier design that treated uncertain managed-route compilation as a reason to restore raw client pass-through. The historical posture is summarized in [Runtime Compile Gate Design History](archive/runtime_compile_gate_design_history.md).
 
-The Runtime Compile Gate is a request-local decision phase, not a standalone `RelayPLC` module. It consumes route/mode configuration, RelaySCN policy, RelayCTX Repack preflight and budget results, and any RelayINT proceed/block outcome. RelayRUN orchestrates the selected runtime path and records decision, checkpoint, and trace artifacts.
+Current implementation status remains authoritative in [Project Status](../PROJECT_STATUS.md), [Pipeline Implementation Plan](pipeline_implementation_plan.md), and [Context Compiler Contract](../contracts/context_compiler_contract.md).
 
-## Goal
+## Purpose
 
-After the Safe SOUL / Scene / CTX compile chain builds or plans a context, RelayLM needs an explicit decision point:
+The Runtime Compile Gate decides which already-prepared backend-bound payload may be forwarded for the current request.
 
-```text
-incoming OpenAI-compatible request
-  -> route / mode resolution
-  -> profile and scene source loading
-  -> compile plan / preflight
-  -> runtime compile gate
-  -> backend forwarding payload
-```
-
-The gate keeps the default proxy path safe while allowing controlled application of compiled persona/context messages.
-
-## Non-goals
-
-This design does not add:
-
-- persona source mutation
-- memory database writes
-- direct KV-cache mutation
-- backend scheduler changes
-- post-generation response rewriting
-- hard rejection of normal chat requests
-- automatic persistence of compiled prompts
-- automatic conversion of `room_anchor` content into other files
-
-## Relationship to existing gates
-
-### RelaySOUL apply execution gate
-
-The RelaySOUL apply execution gate is for actual persona-source apply. It deals with approval artifacts, patch/revision lineage, persistence preflight, rollback readiness, and content-free audit metadata.
-
-### Runtime compile gate
-
-The runtime compile gate is for the current chat request. It decides whether the runtime should use compiled context messages, run diagnostics only, preserve pass-through behavior, or fall back.
+It does not mutate RelaySOUL, write memory, classify scenes, resolve intent, construct prompt content, or own recovery wording.
 
 ```text
-RelaySOUL apply gate:
-  may persona source files be mutated?
-
-Runtime compile gate:
-  may compiled context be used for this request payload?
+validated request evidence
+  -> route and authority resolution
+  -> compile/preflight/budget result
+  -> Runtime Compile Gate
+  -> authority-safe forwarded payload or fail-closed result
 ```
 
-These gates are related but separate.
+The gate is a request-local decision phase, not a standalone `RelayPLC` component. RelayRUN orchestrates the selected path and records content-free decision/checkpoint metadata.
+
+## Authority prerequisite
+
+The gate must distinguish two route classes before considering fallback.
+
+### Explicit delegated `pass_through` route
+
+```text
+route authority = trust_client
+  -> incoming client messages may be forwarded as delegated context
+```
+
+This is an explicit route/configuration choice and must be visible in diagnostics.
+
+### RelayLM-managed route
+
+```text
+route authority = RelayLM managed
+  -> client messages are request evidence
+  -> raw prior history and raw client instructions are not fallback context
+  -> backend payload must remain RelayLM-constructed
+```
+
+A managed-route compile or preflight failure must never restore the original client message array.
 
 ## Inputs
 
-A runtime compile gate decision should receive:
+The gate may consume:
 
-- route
-- mode
-- backend model mapping
-- character_id
-- optional user_id / user_type
-- optional scene_id
-- optional room_id
-- incoming OpenAI-compatible messages
-- profile source loading result
-- scene normalization result
-- memory candidate summary
-- block assembly result or dry-run plan
-- token budget decision
-- preflight status
-- previous fallback or safety state when available
+- resolved route and route authority class,
+- selected runtime mode,
+- backend compatibility result,
+- current compiled-request/profile-compiler result,
+- future RelayCTX Repack result,
+- token-budget/degradation result,
+- RelaySCN policy,
+- RelayINT proceed/block state,
+- active tool/multimodal compatibility state,
+- prior fallback/safety state,
+- a verified authority-safe minimal fallback candidate.
 
-## Outputs
+The current implementation may not yet provide every target input as a typed artifact. Missing target inputs do not authorize raw pass-through on a managed route.
 
-The gate should produce a small decision object:
+## Decision object
+
+A content-free decision should expose fields equivalent to:
 
 ```yaml
-decision_state: COMPILE_APPLY
-apply_compiled_messages: true
-fallback_reason: null
-diagnostics_only: false
-selected_mode: memory_light
-selected_route: relaylm-default
-compiled_message_count: 2
-omitted_block_ids: []
-blocking_reasons: []
+compile_decision:
+  schema_version: relaylm.compile_decision.v1
+  decision_state: COMPILE_APPLY
+  route_authority: managed
+  apply_compiled_messages: true
+  diagnostics_only: false
+  selected_mode: memory_light
+  fallback_class: none
+  forwarded_payload_source: relaylm_compiled
+  omitted_block_count: 0
+  blocking_reason_ids: []
+  content_free: true
 ```
 
-The exact runtime schema may evolve, but the decision must be easy to log and safe to inspect.
+Default diagnostics must not contain message bodies, prompt blocks, memory snippets, persona bodies, or backend response text.
 
 ## Decision states
 
-### PASS_THROUGH
+### `PASS_THROUGH`
 
-Use the incoming request messages as-is, except for backend-compatible model mapping and normal adapter behavior.
-
-Use when:
-
-- route mode is `pass_through`
-- compilation is disabled
-- the request is an internal planning/tool/structured-output call that should not be persona-repacked
-- the gate cannot safely determine whether compilation should apply
-
-### COMPILE_DRY_RUN
-
-Build a compile plan and diagnostics, but do not alter outbound messages.
-
-Use when:
-
-- validating new compile behavior
-- collecting diagnostics for future apply readiness
-- investigating token budget or block ordering without runtime behavior change
-
-### COMPILE_SHADOW_ONLY
-
-Build compiled messages and diagnostics, but forward a safer payload, usually original messages or a minimal fallback.
-
-Use when:
-
-- preflight is structurally safe but apply readiness is not yet proven
-- comparing compiled context behavior against pass-through behavior
-- collecting diagnostics for future gating thresholds
-
-### COMPILE_APPLY
-
-Use compiled messages for the backend request.
-
-Use only when:
-
-- route/mode allows compile apply
-- profile and scene loading succeeded or explicit fallback sources were used
-- preflight passed
-- token budget decision is safe
-- no blocking reasons exist
-- the compiled payload preserves OpenAI-compatible semantics
-
-### COMPILE_FALLBACK
-
-Use a safe fallback payload instead of either full compiled context or naive pass-through.
-
-Use when:
-
-- compilation partially fails but the request should still be served
-- stable persona files are missing and fallback SOUL policy is enabled
-- dynamic blocks exceed budget and must be omitted
-- adapter constraints require a smaller or simpler message shape
-
-## Required gate checks
-
-The gate should check:
-
-- route is resolved
-- backend is resolved
-- mode is recognized
-- profile source loading did not crash
-- optional fields such as `room_anchor`, `scene_state`, and `room_state` are handled safely
-- block ordering follows stability rules
-- dynamic scene/retrieval content is not placed into stable prefix
-- token budget status is not blocking
-- fallback policy is available when required sources are missing
-- outbound message list remains OpenAI-compatible
-
-## Fail-safe behavior
-
-The runtime compile gate should prefer safe service continuity over hard failure.
+Use only for an explicitly delegated `pass_through` route or an equivalent trusted compatibility route.
 
 ```text
-invalid or unknown mode -> PASS_THROUGH or COMPILE_FALLBACK
-missing optional field -> continue without that block
-profile loading TypeError -> bug; should be covered by smoke tests
-preflight blocked -> COMPILE_FALLBACK or PASS_THROUGH
-budget blocked -> omit/compress dynamic blocks or fallback
-adapter incompatibility -> PASS_THROUGH
+PASS_THROUGH
+  does not mean managed compilation failed
+  means route policy explicitly delegates context authority to the client
 ```
 
-Hard rejection should be reserved for explicit future policy decisions, not for normal compile uncertainty.
+### `COMPILE_DRY_RUN`
 
-## Mode mapping
+Build diagnostics/plan data without changing the current managed backend payload.
 
-Initial mapping:
+For a managed route, the forwarded payload must still be an authority-safe RelayLM-owned payload. It must not be the raw original client history merely because apply is disabled.
+
+### `COMPILE_SHADOW_ONLY`
+
+Build a candidate compiled payload for comparison while forwarding an already-validated authority-safe payload.
+
+The forwarded payload may be:
+
+- the current RelayLM profile-compiler result,
+- a validated minimal managed payload,
+- another explicitly approved managed fallback.
+
+It must not be the raw original client message array on a managed route.
+
+### `COMPILE_APPLY`
+
+Forward the selected compiled payload when:
+
+- route/mode permits apply,
+- authority canonicalization succeeded,
+- profile/context source loading passed or used an approved fallback,
+- preflight and compatibility checks passed,
+- token budget is safe,
+- active transactions remain coherent,
+- no blocking reasons exist.
+
+### `COMPILE_FALLBACK`
+
+Forward an authority-safe reduced payload when full compilation cannot be used.
+
+Examples:
+
+- omit optional dynamic memory/retrieval blocks,
+- use approved stable persona/runtime blocks plus the current validated turn,
+- preserve only the minimum active tool/multimodal transaction,
+- use a route-approved minimal managed template.
+
+A fallback must identify its source and omissions through content-free metadata.
+
+### `BLOCKED`
+
+Use when a managed route has no valid authority-safe payload.
 
 ```text
-pass_through:
-  PASS_THROUGH
-
-memory_light:
-  COMPILE_APPLY when dry-run/preflight is ready
-  COMPILE_FALLBACK or PASS_THROUGH when blocked
-
-memory_full:
-  COMPILE_DRY_RUN or COMPILE_SHADOW_ONLY until retrieval/budget behavior is proven
-
-future persona_finalizer:
-  apply only to final natural-language responses, not planning/tool calls
+managed compile failure
+  + no safe minimal fallback
+  -> BLOCKED / fail closed
+  -> do not restore raw client history
 ```
 
-## Diagnostics
+Transport-level error behavior remains OpenAI-compatible and RelayRUN-orchestrated.
 
-The gate should log enough metadata to debug decisions without inserting diagnostics into the prompt.
+## Required checks
 
-Suggested fields:
+Before `COMPILE_APPLY` or `COMPILE_FALLBACK`, verify:
 
-- decision_state
-- apply_compiled_messages
-- diagnostics_only
-- fallback_reason
-- blocking_reasons
-- selected_route
-- selected_mode
-- backend
-- character_id
-- scene_id when available
-- optional room_id when available
-- block_ids
-- omitted_block_ids
-- token_budget_status
-- stable_prefix_hash when available
-- profile_source_status
-- scene_source_status
+- route and backend resolved,
+- route authority class known,
+- selected mode recognized,
+- canonical current user turn valid,
+- client-instruction handling completed or safely omitted by policy,
+- prior client history excluded for managed routes,
+- profile/context source load did not fail unsafely,
+- stable/dynamic block ordering valid,
+- no dynamic retrieval/scene content entered a stable prefix,
+- token budget and degradation result valid,
+- active tool/multimodal transaction preserved when required,
+- payload remains backend/OpenAI compatible,
+- fallback candidate was built from allowed RelayLM-owned sources.
 
-## Interaction with token budgets
-
-Token budget planning should happen before the final gate. RelayCTX Repack owns the budget/degradation outcome; the gate consumes that decision and determines whether the compiled payload is safe to apply.
-
-Budget outcomes may map to gate decisions:
+## Failure matrix
 
 ```text
-within_budget -> COMPILE_APPLY eligible
-trimmed_dynamic_blocks -> COMPILE_APPLY eligible with diagnostics
-blocked_required_prefix -> COMPILE_FALLBACK
-unknown_budget -> COMPILE_DRY_RUN or COMPILE_SHADOW_ONLY
+explicit pass_through route
+  -> PASS_THROUGH allowed
+
+managed route + compile apply ready
+  -> COMPILE_APPLY
+
+managed route + apply disabled but safe managed payload exists
+  -> COMPILE_DRY_RUN or COMPILE_SHADOW_ONLY
+
+managed route + optional blocks fail/budget overflow
+  -> COMPILE_FALLBACK with reduced managed payload
+
+managed route + no valid managed payload
+  -> BLOCKED / fail closed
+
+adapter or structured/tool incompatibility
+  -> preserve minimum compatible transaction state
+  -> use explicit compatibility route or BLOCKED
+  -> never silently restore unrelated raw history
 ```
 
-Stable persona sources should not be mutated or rewritten to satisfy a runtime budget. Runtime budget pressure should omit, compress, or defer dynamic content first.
+## Token-budget interaction
 
-## Interaction with Scene
+RelayCTX or the current compiler owns selection/degradation. The gate consumes the outcome.
 
-RelaySCN policy affects compile apply through:
+Preferred degradation order:
 
-- `scene_state` prompt content
-- `scene_id` diagnostics and memory scope
-- scene-aware token budget constraints
-- safety and persistence policy
-- scene transition diagnostics in future work
+1. remove diagnostics/preview-only blocks,
+2. reduce retrieval/RAG evidence,
+3. omit optional working-context hints,
+4. shorten RelayLM-selected recent context,
+5. preserve required runtime/persona/safety/current-turn blocks,
+6. use an authority-safe minimal fallback or block.
 
-`room_id` should remain optional host metadata. It may affect scoping and diagnostics, but it should not force a prompt block by default.
+Stable persona sources must not be mutated to satisfy a request budget.
 
-## Artifact boundary
+## Scene and intent interaction
 
-Runtime compile gate decisions are runtime diagnostics, not RelaySOUL persistence artifacts.
+RelaySCN may constrain:
+
+- memory scope,
+- expression/recovery posture,
+- persistence block,
+- confirmation requirements,
+- whether a managed fallback is permitted.
+
+RelayINT may indicate:
+
+- proceed,
+- clarification required,
+- retrieval needed/blocked,
+- unresolved reference,
+- active transaction incompatibility.
+
+The compile gate consumes these outcomes and does not recreate them.
+
+## Current implementation boundary
+
+Current runtime compilation still includes the profile compiler described in the [Context Compiler Contract](../contracts/context_compiler_contract.md).
+
+Current decision diagnostics may mirror whether that compiler's payload was applied. This does not mean the complete target RelayCTX-managed compiler, typed SCN/INT/MEM handoffs, or every fallback state in this document is implemented.
+
+Current behavior must be interpreted by schema/version and by actual `forwarded_payload` source, not only by a decision-state label.
+
+## Runtime-private result versus projection
+
+### Runtime-private data
+
+May contain:
+
+- candidate/selected message lists,
+- block contents,
+- compatibility details,
+- fallback payload contents.
+
+### Content-free projection
+
+May contain only:
+
+- decision state,
+- route authority class,
+- apply/diagnostics booleans,
+- payload-source class,
+- block/omission counts,
+- token-budget class,
+- stable-prefix hash when allowed,
+- fallback/block reason IDs.
+
+## Required migration scope
+
+A future implementation migration should update together:
+
+1. explicit route-authority typing,
+2. current profile compiler and target RelayCTX compiler naming/versioning,
+3. managed-route canonicalization prerequisite,
+4. authority-safe minimal fallback builder,
+5. `BLOCKED`/fail-closed handling,
+6. tool/multimodal compatibility paths,
+7. typed compile plan/result/decision projections,
+8. PipelineContext mutation-source tracking,
+9. smoke tests proving managed failure never restores raw client messages.
+
+## Required smoke coverage
+
+1. Explicit pass-through route preserves delegated client context.
+2. Managed apply uses only RelayLM-constructed messages.
+3. Managed dry-run/shadow forwards an authority-safe managed payload.
+4. Managed compile failure never restores prior client history or raw instructions.
+5. Optional-block failure degrades to a reduced managed payload.
+6. No safe managed payload produces `BLOCKED`/fail-closed behavior.
+7. Active tool/multimodal transactions remain coherent or are blocked.
+8. Diagnostics contain source classes/counts/reason IDs, not message bodies.
+
+## Summary
 
 ```text
-compile gate decision:
-  transient runtime decision about this request
+PASS_THROUGH
+  only explicit delegated authority
 
-RelaySOUL approval/apply artifact:
-  content-free audit object for persona-source mutation
+managed route
+  RelayLM-owned compiled payload
+  -> authority-safe reduced fallback
+  -> otherwise fail closed
 
-trace event:
-  machine-readable runtime event, optionally summarized through a typed audit projection
+raw client history
+  never an emergency fallback for managed compilation
 ```
-
-Compiled prompts may contain user-visible content and must not be stored as content-free RelaySOUL artifacts by default.
-
-## Minimal MVP target
-
-A minimal runtime compile gate should support:
-
-1. pass-through mode never mutates messages
-2. memory-light mode can apply compiled profile messages when preflight is ready
-3. blocked compile plans fall back safely
-4. optional `room_anchor` absence does not crash profile loading or gate logic
-5. `scene_state` and `room_state` alias behavior are covered by smoke tests
-6. decision payloads include decision state, fallback reason, mode, route, and omitted blocks
-
-## Future extensions
-
-Future work can add:
-
-- shadow compare between pass-through and compiled payloads
-- per-route apply thresholds
-- scene transition risk scoring
-- token budget risk scoring
-- user/operator-visible diagnostics endpoint
-- RelayRUN trace/checkpoint integration and typed audit projections
-- profile prefix hash stability checks
-- memory-full apply readiness gates
-
-## Initial implementation note (MVP)
-
-Current implementation is diagnostics/trace-only for compile decision dry-run:
-
-- emits a compile decision dry-run object into runtime diagnostics
-- propagates the object into trace metadata when trace is enabled
-- does not apply compiled messages
-- does not mutate outbound backend forwarding payload
-
-This keeps runtime behavior fail-safe while making gate decisions observable.
-
-- request path now emits compile decision dry-run diagnostics for normal `/v1/chat/completions` handling, while keeping outbound payload behavior unchanged.
-- request-path diagnostics now reflect actual compile apply state (`COMPILE_APPLY` vs dry-run) while keeping forwarding behavior unchanged.
