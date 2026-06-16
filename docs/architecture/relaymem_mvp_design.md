@@ -2,63 +2,50 @@
 
 ## Purpose
 
-RelayMEM is RelayLM's long-term memory subsystem.
+RelayMEM is RelayLM's long-term memory boundary. This document separates the current Retrieval/runtime-injection foundations from the target compiled-memory and RelaySLP architecture.
 
-It is not a simple RAG cache and it is not the owner of all memory-related decisions. The subsystem is split into:
+Current phase status remains in [Project Status](../PROJECT_STATUS.md) and [Pipeline Implementation Plan](pipeline_implementation_plan.md).
+
+## Current implemented boundary
+
+Current RelayMEM includes:
+
+- `relaymem_retrieval.v0` dry-run/diagnostics-oriented retrieval,
+- file-store diagnostics and bounded candidate/snippet planning,
+- gated RelayMEM snippet and runtime-CTX injection helpers,
+- typed content-free trace projection,
+- read-only behavior for durable memory.
+
+Current Retrieval still consumes a historical RelayREF-shaped compatibility input from the RelayINT-facing wrapper and may derive query terms from the current request messages.
+
+Current implementation does not provide:
+
+- a complete compiled `memory/mem/` page/index/log store,
+- an asynchronous RelaySLP worker,
+- page/index/log persistence apply,
+- a typed `relayint.intent.v1` handoff,
+- producer-owned `relaymem.retrieval_runtime.v1` and `relaymem.retrieval_projection.v1` artifacts.
+
+## Stable ownership
 
 ```text
 RelayMEM storage/index
-  durable approved memory records and compiled pages
+  approved durable memory substrate
 
 RelayMEM Retrieval
-  synchronous read-only selection for the current answer
+  synchronous read-only evidence for the current answer
 
 RelaySLP
-  deferred compilation, update, hold, reject, and proposal workflow
+  deferred candidate compilation and future gated writes
 ```
 
-Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
+Retrieval improves the current answer. RelaySLP improves future memory.
 
-## Core principle
+RelaySCN owns memory-scope and persistence policy. RelayINT decides whether retrieval is needed and whether reference scope is confirmed. RelayCTX owns final prompt inclusion and token-budget degradation. RelaySOUL owns durable persona revision rather than memory storage.
 
-```text
-Retrieval improves the current answer.
-RelaySLP improves future memory.
-```
+## Target storage model
 
-Retrieval only reads. RelaySLP may produce or apply governed memory changes through explicit gates.
-
-## Relation to other components
-
-### RelaySOUL
-
-Owns durable identity, values, worldview, approved output/relationship policy, revision, approval, and rollback.
-
-RelayMEM does not directly mutate RelaySOUL. RelaySLP may emit a proposal candidate that enters the separate RelaySOUL approval path.
-
-### RelaySCN
-
-Owns scene, memory-scope, recovery, and persistence policy. RelayMEM consumes the resolved policy.
-
-### RelayINT
-
-Owns whether long-term retrieval is needed and whether a reference scope is explicit or confirmed.
-
-### RelayCTX
-
-Owns final prompt packing and token-budget degradation. RelayMEM returns candidates/evidence; RelayCTX selects final placement.
-
-### RelayREF
-
-RelayREF is the post-generation output observer. It is not part of RelayMEM or RelaySLP and does not guide same-turn Retrieval.
-
-### RelaySLP
-
-Owns deferred candidate extraction, memory compilation, safety classification, merge/update/hold/reject decisions, lint, and proposal generation.
-
-## Storage model
-
-The MVP remains local-first and file-backed.
+The following is target architecture, not a claim that every directory or writer exists now:
 
 ```text
 memory/
@@ -66,7 +53,6 @@ memory/
     conversations/
     docs/
     events/
-
   mem/
     index.md
     log.md
@@ -74,244 +60,73 @@ memory/
     concepts/
     claims/
     summaries/
-    relations/
-      graph.json
+    relations/graph.json
 ```
 
-### `raw_sources`
+Target `raw_sources` preserve governed evidence separately from compiled pages. Target `mem_pages` contain approved project, concept, claim, preference, summary, and relation material. Target `mem_index` supports bounded retrieval. Target `mem_log` records governed memory operations and is distinct from generic runtime trace.
 
-Primary governed evidence. Raw sources remain separate from compiled summaries and must not be silently overwritten.
+## Target safety scopes
 
-Examples:
+- `free_to_update`: eligible only through an enabled, policy-allowed, lineage-aware, idempotent SLP apply gate.
+- `review_required`: held for review.
+- `explicit_approval_required`: routed to an approval/proposal artifact.
+- `never_auto_promote`: rejected or kept only as protected source evidence.
 
-- approved conversation/event records,
-- document evidence,
-- explicit user memory requests,
-- protected CTX/INT/SCN artifacts when policy allows,
-- source references and lineage.
-
-Raw evidence is not automatically eligible for runtime prompt packing.
-
-### `mem_pages`
-
-Compiled memory pages used for normal retrieval:
-
-- project state,
-- concept definitions,
-- claims,
-- session summaries,
-- approved preferences,
-- relations.
-
-Compiled pages retain source references and approval/safety metadata.
-
-### `mem_index`
-
-A bounded retrieval index containing:
-
-- page IDs,
-- aliases/tags,
-- summaries,
-- relation hints,
-- scope and safety metadata,
-- update/version metadata.
-
-A vector database is optional future infrastructure, not the component definition.
-
-### `mem_log`
-
-Append-only memory-operation evidence for RelaySLP decisions and store maintenance.
-
-The memory log is distinct from the default runtime trace. It may contain approved page IDs and lineage references, but must not become a generic dump of raw user messages or runtime-private prompt artifacts.
-
-## Memory kinds
-
-Recommended initial kinds:
-
-```text
-raw_event
-session_summary
-project_state
-concept
-claim
-preference
-relation
-soul_candidate
-rejected_or_blocked_candidate
-```
-
-A `soul_candidate` remains a candidate. It is not a RelaySOUL revision or approval.
-
-## Safety scopes
-
-### `free_to_update`
-
-May be applied by RelaySLP only when:
-
-- the SLP apply gate is enabled,
-- RelaySCN persistence policy allows it,
-- source lineage is present,
-- confidence/stability requirements pass,
-- the update is idempotent.
-
-Examples may include non-sensitive project notes or concept-page maintenance.
-
-### `review_required`
-
-Held for user/operator review.
-
-Examples:
-
-- durable workflow preferences,
-- major project-direction changes,
-- ambiguous long-term facts.
-
-### `explicit_approval_required`
-
-Converted into an approval artifact or RelaySOUL proposal candidate. Never auto-applied.
-
-### `never_auto_promote`
-
-Rejected, held as blocked evidence, or retained only under a protected source policy.
-
-Examples:
-
-- raw affect estimates,
-- sensitive attribute inference,
-- transient emotional interpretation,
-- low-confidence personal inference.
+Raw affect estimates, transient emotional interpretation, sensitive inference, and low-confidence personal inference are never durable facts by default.
 
 ## Retrieval path
 
 ```text
-RelaySCN memory scope
-  + RelayINT retrieval decision and confirmed scope
-  -> index search
-  -> approved candidate pages
-  -> safety/authority filter
+RelaySCN scope
+  + RelayINT retrieval decision / confirmed reference scope
+  -> approved candidate search
+  -> safety and authority filter
   -> bounded runtime-private evidence
   -> RelayCTX final packing
 ```
 
-Retrieval must not:
+Retrieval must not write memory, mutate RelaySOUL, silently resolve ambiguous references, broaden scope after a miss, or expose snippets/paths through default trace.
 
-- write pages or index entries,
-- mutate RelaySOUL,
-- silently resolve ambiguous references,
-- broaden scope after a miss,
-- expose snippets/paths through default trace projections.
-
-## RelaySLP path
+## Target RelaySLP path
 
 ```text
 governed source evidence
   -> candidate extraction
-  -> memory_kind classification
-  -> safety_scope classification
+  -> memory-kind and safety classification
   -> existing-page lookup
   -> merge / update / hold / reject
-  -> relation typing
-  -> lint
+  -> relation typing and lint
   -> gated page/index/log update
   -> optional RelaySOUL proposal candidate
 ```
 
-RelaySLP runs outside the latency-critical normal response path and never produces the current answer directly.
+This is target behavior. The complete asynchronous apply path is not current implementation.
 
-## Relation model
+## Content boundary
 
-Useful typed relations include:
+Runtime-private memory artifacts may contain query text, candidate summaries/snippets, page/source references, proposed updates, and relation values.
 
-```text
-supports
-contradicts
-refines
-supersedes
-depends_on
-part_of
-example_of
-risk_for
-derived_from
-candidate_for_soul
-blocked_from_soul
-```
-
-Untyped `related` links should not be the only relation form.
-
-## Runtime-private versus content-free artifacts
-
-### Runtime-private memory artifacts
-
-May contain:
-
-- candidate title/summary/snippet,
-- page/source references,
-- resolved query text,
-- proposed page updates,
-- relation values,
-- blocked candidate details.
-
-These remain request-local, SLP-local, or protected by the memory store's explicit access and retention policy.
-
-### Default runtime trace projections
-
-Contain only typed allowlisted metadata:
-
-- candidate/selected/blocked counts,
-- source and scope classes,
-- confidence/stability bands,
-- budget values,
-- reason identifiers,
-- apply state,
-- page-update counts,
-- payload/persistence booleans.
-
-They must not contain raw messages, memory bodies, snippets, local paths, semantic scene/intent text, or final responses.
+Default persisted projections may contain only typed counts, source/scope classes, confidence bands, budgets, reason IDs, and apply booleans. They must not include raw messages, memory bodies, snippets, local paths, semantic scene/intent text, or final responses.
 
 ## Persistence rules
 
 1. Retrieval only reads.
-2. RelaySLP is the only memory compiler/apply owner.
-3. RelaySCN policy may block persistence regardless of candidate safety scope.
-4. `review_required` is held.
-5. `explicit_approval_required` becomes an approval/proposal artifact.
-6. RelaySOUL is never directly mutated by RelayMEM.
-7. Raw evidence is preserved separately from compiled pages.
-8. Contradictory, stale, blocked, or unapproved records stay out of normal CTX packing.
-9. Raw affect estimates are not persisted as durable user facts.
-10. Every apply path is idempotent and lineage-aware.
+2. Target writes belong to RelaySLP and explicit persistence gates.
+3. RelaySCN may block persistence regardless of candidate class.
+4. review/approval-required candidates are held.
+5. RelayMEM never directly mutates RelaySOUL.
+6. raw evidence remains separate from compiled pages.
+7. apply paths must be lineage-aware and idempotent.
 
-## Namespace isolation
+## Required migration
 
-Character, user/viewer, project, scene, session, room, memory, and cache namespaces must not be mixed merely because one RelayLM process serves them.
+Update together:
 
-External IDs should not be exposed in default trace projections.
-
-## Non-goals
-
-RelayMEM does not:
-
-- own scene classification,
-- own intent/reference resolution,
-- own final prompt layout,
-- inspect generated output,
-- directly mutate RelaySOUL,
-- persist raw affect inference as fact,
-- require vector infrastructure for the MVP,
-- expose content-bearing memory artifacts through default trace/audit surfaces.
-
-## Summary
-
-```text
-RelayMEM storage
-  approved durable memory substrate
-
-RelayMEM Retrieval
-  read-only current-answer evidence
-
-RelaySLP
-  deferred governed memory compilation and proposal path
-
-RelayREF
-  separate post-generation observer
-```
+1. typed RelayINT-to-Retrieval handoff,
+2. canonicalized current-turn query evidence,
+3. runtime-private Retrieval result and typed projection split,
+4. RelayCTX/runtime-injection consumers,
+5. deferred RelaySLP worker/orchestration,
+6. memory storage writer, index/log, revision and idempotency gates,
+7. RelaySOUL proposal handoff,
+8. Retrieval, SLP, storage, trace, and integration smoke tests.
