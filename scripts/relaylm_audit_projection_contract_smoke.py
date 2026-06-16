@@ -171,6 +171,36 @@ def assert_numeric_contract() -> None:
     print("ok count fields reject bool float negative and string values")
 
 
+def assert_projection_counter_round_trip() -> None:
+    result = project_audit_metadata(
+        {
+            "projection_dropped_field_count": 3,
+            "projection_unsupported_artifact_count": 2,
+        }
+    )
+    require(
+        result.metadata
+        == {
+            "projection_dropped_field_count": 3,
+            "projection_unsupported_artifact_count": 2,
+        },
+        result,
+    )
+    require(result.dropped_field_count == 0, result)
+    require(result.unsupported_artifact_count == 0, result)
+
+    invalid = project_audit_metadata(
+        {
+            "projection_dropped_field_count": True,
+            "projection_unsupported_artifact_count": -1,
+        }
+    )
+    require("projection_dropped_field_count" not in invalid.metadata, invalid)
+    require("projection_unsupported_artifact_count" not in invalid.metadata, invalid)
+    require(invalid.dropped_field_count == 2, invalid)
+    print("ok projection counters survive reread and reject invalid values")
+
+
 def assert_registry_hygiene() -> None:
     expected_top_level = {
         "bytes_avoided",
@@ -186,6 +216,8 @@ def assert_registry_hygiene() -> None:
         "memory_selection_summary",
         "memory_source",
         "pipeline_node_results",
+        "projection_dropped_field_count",
+        "projection_unsupported_artifact_count",
         "relayrun_artifact",
         "runtime_ctx_injection_result",
         "runtime_snippet_injection_result",
@@ -194,7 +226,10 @@ def assert_registry_hygiene() -> None:
         "status_code",
         "token_memory_dry_run",
     }
-    require(set(registered_top_level_projectors()) == expected_top_level, registered_top_level_projectors())
+    require(
+        set(registered_top_level_projectors()) == expected_top_level,
+        registered_top_level_projectors(),
+    )
     expected_nodes = {
         "client_message_canonicalization",
         "client_instruction_extraction",
@@ -213,7 +248,10 @@ def assert_registry_hygiene() -> None:
     require(nodes == expected_nodes, nodes)
     for node in nodes:
         lowered = node.lower()
-        require("probe" not in lowered and "test" not in lowered and "fixture" not in lowered, node)
+        require(
+            "probe" not in lowered and "test" not in lowered and "fixture" not in lowered,
+            node,
+        )
     print("ok production registries are exact and contain no test probes")
 
 
@@ -239,6 +277,7 @@ def main() -> int:
     assert_top_level_golden()
     assert_node_isolation()
     assert_numeric_contract()
+    assert_projection_counter_round_trip()
     assert_registry_hygiene()
     assert_pure_reentrant_projection()
     return 0
