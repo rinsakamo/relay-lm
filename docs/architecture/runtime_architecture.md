@@ -199,9 +199,9 @@ Boundary-first safety:
 Core handoff rule:
 
 ```text
-RelayMEM Retrieval returns approved evidence
-  -> RelaySCN resolves scene and persistence policy
-  -> RelayINT decides whether to proceed
+RelaySCN resolves scene and persistence policy
+  -> RelayINT decides whether to proceed and whether retrieval is needed
+  -> RelayMEM Retrieval returns approved evidence
   -> RelayCTX packs selected context and applies token budgets
   -> RelayRUN orchestrates runtime fallback/recovery and records trace/checkpoint artifacts
   -> adapters preserve API/backend compatibility
