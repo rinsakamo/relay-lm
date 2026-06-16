@@ -31,6 +31,8 @@ Use these docs to understand the RelayLM pipeline, responsibility boundaries, an
 
 Canonical precedence and legacy-term handling are defined in the [architecture docs index](architecture/README.md). When documents disagree, `pipeline_responsibility_design.md` is the source of truth for component names and ownership, while `pipeline_implementation_plan.md` is the source of truth for phase status.
 
+The list below highlights the primary architecture entry points. Use the [architecture docs index](architecture/README.md) as the complete catalog of active architecture documents and the archive boundary.
+
 - [Architecture docs index](architecture/README.md)
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — canonical naming and responsibility source
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — implementation order and phase status
