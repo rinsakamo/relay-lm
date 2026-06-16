@@ -29,6 +29,7 @@ Current implementation includes:
 
 - OpenAI-compatible proxy and route handling,
 - current profile compiler and RelayCTX Repack phases,
+- `CompileApplyDecision` plus the current `mvp-ctx-apply-0` compile-decision diagnostics artifact,
 - RelaySCN v0 diagnostics-oriented policy artifact,
 - RelayINT compatibility/reference-repair boundary,
 - RelayMEM Retrieval v0 and selected gated context injection,
@@ -41,7 +42,8 @@ Current implementation does not yet include:
 
 - the complete instruction-bearing managed-route authority path,
 - target RelaySCN v1 runtime order and schemas,
-- the complete target Runtime Compile Gate taxonomy,
+- the complete route-authority-aware Runtime Compile Gate taxonomy,
+- explicit forwarded-payload-source typing and a managed fallback builder,
 - Stream Unpack and TTS-safe segmentation,
 - dedicated output-side RelayREF,
 - complete output-side RelaySCN,
@@ -56,7 +58,7 @@ Current implementation does not yet include:
 | RelaySCN | `relayscn.scene_state.v0`, `relayscn.scene_policy.v0`, diagnostics-oriented helper; current EMO-to-SCN compatibility order | typed v1 scene state/policy and SCN before EMO | `relayscn.py`, EMO fallback, app/PipelineContext ordering, downstream consumers, SCN/EMO smoke |
 | Context compiler | current profile compiler uses incoming messages and configured profile/seed memory before target SCN/INT/MEM handoffs | RelayCTX-owned managed compiler over canonicalized evidence | compiler/Repack ordering, typed handoffs, fallback, integration smoke |
 | Client history apply | `client_history_exclusion_apply.v0`, no-instruction only, default-off, dry-run by default | supported instruction-bearing managed requests with bounded low-trust evidence | apply contract/runtime, Repack, compatibility gates, smoke |
-| Runtime Compile Gate | current `CompileApplyDecision` with four fields plus the new narrow backend-forward gate | route-authority-aware plan/result/decision and managed fallback taxonomy | compile gate, fallback builder, PipelineContext source tracking, RelayRUN and authority smoke |
+| Runtime Compile Gate | typed `CompileApplyDecision`; content-free `mvp-ctx-apply-0` compile-decision diagnostics; narrow history-apply backend gate | route-authority-aware plan/result/decision projections, forwarded-payload source, managed fallback, complete state taxonomy | compile gate, fallback builder, PipelineContext source tracking, RelayRUN and authority smoke |
 | RelayMEM Retrieval | `relaymem_retrieval.v0`, compatibility INT/REF-shaped input, broad runtime-private artifact | typed INT handoff plus separate runtime-private result and content-free projection | Retrieval API, consumers, projectors, smoke |
 | RelaySLP | dry-run/preflight foundations only | deferred candidate compiler and gated page/index/log apply | worker/orchestration, storage, idempotency, persistence smoke |
 | Open-LLM-VTuber | optional OpenAI-compatible frontend; current streaming is primarily backend forwarding | managed context reconstruction plus safe Stream Unpack/output pipeline | instruction-aware history apply, streaming stages, external end-to-end smoke |
@@ -92,7 +94,7 @@ The runtime-private result may contain a rebuilt payload. The persisted projecti
 
 ### Runtime Compile Gate
 
-Current:
+Current typed apply decision:
 
 ```text
 relaylm.compile_gate.CompileApplyDecision
@@ -103,7 +105,34 @@ fields:
   reason
 ```
 
-Proposed `relaylm.compile_*_projection.v1` schemas are target forms.
+Current content-free diagnostics artifact:
+
+```text
+producer:
+  relaylm.diagnostics.build_compile_decision_dry_run
+schema_version:
+  mvp-ctx-apply-0
+current request-path states:
+  COMPILE_APPLY
+  COMPILE_DRY_RUN
+```
+
+The diagnostics artifact also carries request-local IDs, apply/diagnostics booleans, selected route/mode/backend metadata, counts, and bounded reason lists. It does not implement explicit route-authority or forwarded-payload-source fields.
+
+The following remain target forms:
+
+```text
+relaylm.compile_plan_projection.v1
+relaylm.compile_result_projection.v1
+relaylm.compile_decision_projection.v1
+explicit COMPILE_SHADOW_ONLY
+managed COMPILE_FALLBACK
+complete BLOCKED taxonomy
+route_authority
+forwarded_payload_source
+```
+
+Current use of `COMPILE_APPLY` or `COMPILE_DRY_RUN` in `mvp-ctx-apply-0` does not prove implementation of the complete target taxonomy.
 
 ### RelayMEM and RelaySLP
 
@@ -140,6 +169,22 @@ OUTPUT_POLICY.md
 RELATIONSHIP_ANCHOR.md
 ```
 
+## Default and execution posture
+
+Current documents should identify whether behavior is:
+
+- default-on or default-off,
+- diagnostics-only,
+- runtime-private,
+- dry-run-only,
+- preflight-only,
+- read-only,
+- shadow-only,
+- apply-capable,
+- actually applied on the current request path.
+
+A helper or schema existing in code does not by itself prove that its execution is enabled by default or that it mutates runtime state.
+
 ## Content boundary
 
 Runtime-private or protected objects may contain semantic content needed for execution, retrieval, compilation, or calibration.
@@ -162,10 +207,11 @@ Use typed allowlists rather than generic recursive copying.
 A target section should identify:
 
 1. current schema/artifact and producer,
-2. target schema/artifact,
-3. consumers that must migrate,
-4. runtime-order or authority changes,
-5. compatibility/version handling,
-6. default/dry-run/apply posture,
-7. runtime-private versus content-free boundaries,
-8. smoke and integration coverage.
+2. current consumer/runtime position,
+3. target schema/artifact,
+4. consumers that must migrate,
+5. runtime-order or authority changes,
+6. compatibility/version handling,
+7. default/dry-run/apply posture,
+8. runtime-private versus content-free boundaries,
+9. smoke and integration coverage.
