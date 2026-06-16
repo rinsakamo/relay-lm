@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from relaylm.client_history_exclusion_apply import (
     ClientHistoryExclusionApplyResult,
     build_client_history_exclusion_apply,
+    build_client_history_exclusion_apply_node_result,
 )
 from relaylm.pipeline_context import replace_pipeline_forwarded_payload
 
@@ -28,8 +29,14 @@ def run_client_history_exclusion_apply_runtime(
 
     The result and any rebuilt payload stay request-local. Actual mutation occurs
     only when both runtime gates request apply and the pure contract returns an
-    explicit ``applied`` result with a detached payload.
+    explicit ``applied`` result with a detached payload. The operation is
+    request-local and idempotent so repeated callers cannot rebuild an already
+    reduced payload or duplicate the pipeline node.
     """
+
+    existing = pipeline_context.client_history_exclusion_apply_result
+    if existing is not None:
+        return existing
 
     route = pipeline_context.route
     enabled = route.client_history_exclusion_apply_enabled is True
@@ -63,6 +70,10 @@ def run_client_history_exclusion_apply_runtime(
         )
 
     pipeline_context.set_client_history_exclusion_apply_result(result)
+    node_result = build_client_history_exclusion_apply_node_result(result)
+    if node_result is not None:
+        pipeline_context.record_node_result(node_result)
+
     if _result_is_applicable(result):
         assert isinstance(result.forwarded_payload, Mapping)
         replace_pipeline_forwarded_payload(
