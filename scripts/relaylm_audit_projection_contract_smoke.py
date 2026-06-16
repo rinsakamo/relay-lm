@@ -195,9 +195,9 @@ def assert_projection_counter_round_trip() -> None:
             "projection_unsupported_artifact_count": -1,
         }
     )
-    require("projection_dropped_field_count" not in invalid.metadata, invalid)
-    require("projection_unsupported_artifact_count" not in invalid.metadata, invalid)
+    require(invalid.metadata == {"projection_dropped_field_count": 2}, invalid)
     require(invalid.dropped_field_count == 2, invalid)
+    require(invalid.unsupported_artifact_count == 0, invalid)
     print("ok projection counters survive reread and reject invalid values")
 
 
