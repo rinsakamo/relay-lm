@@ -29,6 +29,7 @@ def compile_artifact(state: str) -> dict[str, object]:
         "backend": "local_backend",
         "character_id": "default",
         "compiled_message_count": 2,
+        "fallback_reason": "memory_disabled",
         "blocking_reasons": [],
         "omitted_block_ids": [],
         "token_budget_status": "within_budget",
@@ -47,18 +48,21 @@ def main() -> int:
         require(projected["decision_id"] == f"{UUID}:compile-decision-dry-run", projected)
         require(projected["plan_id"] == f"{UUID}:compile-plan", projected)
         require(projected["result_id"] == f"{UUID}:compile-result", projected)
-    print("ok compile apply and dry-run states retain scoped UUID identifiers")
+        require(projected["fallback_reason"] == "memory_disabled", projected)
+    print("ok compile states, scoped UUID identifiers, and fallback reason")
 
     invalid_compile = compile_artifact("COMPILE_APPLY")
     invalid_compile["decision_id"] = "https://example.invalid/private"
     invalid_compile["plan_id"] = f"{UUID}:compile-result"
+    invalid_compile["fallback_reason"] = "https://example.invalid/private"
     invalid = project_audit_metadata(
         {"compile_decision_dry_run": invalid_compile}
     ).metadata["compile_decision_dry_run"]
     require("decision_id" not in invalid, invalid)
     require("plan_id" not in invalid, invalid)
+    require("fallback_reason" not in invalid, invalid)
     require(invalid["result_id"] == f"{UUID}:compile-result", invalid)
-    print("ok compile identifiers require exact UUID scope and suffix")
+    print("ok compile identifiers and fallback reason reject URLs and wrong scopes")
 
     nodes = project_audit_metadata(
         {
@@ -166,6 +170,83 @@ def main() -> int:
     require(unpack["candidate_present"] is False, unpack)
     require("diagnostics_only" not in unpack, unpack)
     print("ok artifact summaries enforce artifact-specific fields")
+
+    apply_nodes = project_audit_metadata(
+        {
+            "pipeline_node_results": [
+                {
+                    "node_name": "client_history_exclusion_apply",
+                    "status": "diagnostic_only",
+                    "decision": "client_history_exclusion_apply_ready",
+                    "diagnostics": {
+                        "schema_version": "client_history_exclusion_apply.v0",
+                        "enabled": True,
+                        "status": "ready",
+                        "dry_run_only": True,
+                        "managed_route": True,
+                        "compiler_used": True,
+                        "relay_owned_prefix_message_count": 1,
+                        "original_compiled_message_count": 4,
+                        "forwarded_message_count": 2,
+                        "excluded_client_message_count": 2,
+                        "preserved_client_message_count": 1,
+                        "instruction_resolution_mode": "none",
+                        "payload_candidate_present": True,
+                        "payload_mutation_applied": False,
+                        "runtime_private_source": True,
+                        "content_bearing_candidate_persisted": False,
+                        "forwarded_payload": "private payload sentinel",
+                    },
+                    "artifacts": [
+                        {
+                            "artifact_name": "client_history_exclusion_apply_summary",
+                            "schema_version": "client_history_exclusion_apply.v0",
+                            "present": True,
+                            "diagnostics_only": True,
+                            "content_free": True,
+                            "runtime_private_source": True,
+                            "payload_candidate_present": True,
+                            "payload_mutation_applied": False,
+                            "content_bearing_candidate_persisted": False,
+                            "forwarded_payload": "private payload sentinel",
+                        }
+                    ],
+                },
+                {
+                    "node_name": "client_history_exclusion_apply",
+                    "status": "diagnostic_only",
+                    "decision": "future_apply_mode",
+                    "diagnostics": {
+                        "schema_version": "client_history_exclusion_apply.v0",
+                        "enabled": True,
+                        "status": "ready",
+                        "dry_run_only": True,
+                        "managed_route": True,
+                        "compiler_used": True,
+                        "relay_owned_prefix_message_count": 1,
+                        "original_compiled_message_count": 2,
+                        "forwarded_message_count": 2,
+                        "excluded_client_message_count": 0,
+                        "preserved_client_message_count": 1,
+                        "instruction_resolution_mode": "none",
+                        "payload_candidate_present": True,
+                        "payload_mutation_applied": False,
+                        "runtime_private_source": True,
+                        "content_bearing_candidate_persisted": False,
+                    },
+                },
+            ]
+        }
+    ).metadata["pipeline_node_results"]
+    apply_node = apply_nodes[0]
+    require(apply_node["decision"] == "client_history_exclusion_apply_ready", apply_node)
+    require(apply_node["diagnostics"]["payload_candidate_present"] is True, apply_node)
+    require("forwarded_payload" not in apply_node["diagnostics"], apply_node)
+    apply_artifact = apply_node["artifacts"][0]
+    require(apply_artifact["artifact_name"] == "client_history_exclusion_apply_summary", apply_artifact)
+    require("forwarded_payload" not in apply_artifact, apply_artifact)
+    require("decision" not in apply_nodes[1], apply_nodes[1])
+    print("ok history apply node and artifact use exact content-free projections")
     return 0
 
 
