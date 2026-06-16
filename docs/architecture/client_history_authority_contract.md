@@ -11,7 +11,8 @@ It is a cross-cutting companion to:
 - `pipeline_implementation_plan.md`,
 - `ai_vtuber_pipeline_profile.md`,
 - `context_packing_design.md`,
-- `relayctx_wake_loop_design.md`.
+- `relayint_mvp_design.md`,
+- `scene_lifecycle_design.md`.
 
 The contract fixes one source-of-truth rule:
 

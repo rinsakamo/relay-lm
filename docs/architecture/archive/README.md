@@ -14,6 +14,12 @@ Use these documents as the current sources of truth:
 
 Historical documents must not override those sources.
 
+## Compatibility redirect boundary
+
+Short redirect files may remain at former active paths to preserve historical or external links. Those redirects are not active architecture documents. Current documents must link directly to canonical current files rather than through a redirect chain.
+
+The active architecture index lists the retained redirect paths separately from current specifications.
+
 ## Archived responsibility-split designs
 
 ### [RelayCTX Wake Loop Design](relayctx_wake_loop_design.md)
@@ -133,17 +139,26 @@ Current replacements:
 - [RelayMEM SLP execution design](../relaymem_slp_execution_design.md)
 - [Open-LLM-VTuber integration design](../open_llm_vtuber_integration.md)
 
+## Archived implementation-history markers
+
+These markers record where append-only design histories were superseded by concise active contracts. The original long-form bodies remain available in Git history.
+
+- [RelayRUN Runtime Checkpoint Design History](relayrun_runtime_checkpoint_design_history.md) -> current [RelayRUN Runtime Checkpoint Design](../relayrun_runtime_checkpoint_design.md)
+- [Runtime Compile Gate Design History](runtime_compile_gate_design_history.md) -> current [Runtime Compile Gate Design](../runtime_compile_gate_design.md)
+
 ## Reviewed and retained as active documents
 
-The following dated documents still contain a distinct current design contract and remain in the active architecture index:
+The following documents contain distinct current contracts and remain in the active architecture index:
 
 - `context_packing_design.md`
+- `runtime_compile_gate_design.md`
+- `relayrun_runtime_checkpoint_design.md`
 - `runtime_operational_requirements.md`
 - `relaymem_mvp_design.md`
 - `relaymem_slp_execution_design.md`
 - `relaymem_retrieval_execution_design.md`
-- `relayemo_return_side_style_adapter_design.md`
+- `relayemo_return_side_expression_design.md`
 - `ai_vtuber_pipeline_profile.md`
 - `open_llm_vtuber_integration.md`
 
-No remaining archive candidates are declared by this index. Future candidates should be archived only after their unique principles are mapped to current owner documents.
+The previous consolidation pass did not declare additional archive candidates. Root-level compatibility redirects, newly revised documents, and future additions remain subject to later structure and current-versus-target audits before the archive boundary is considered final.
