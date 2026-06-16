@@ -19,5 +19,5 @@ Use these current documents instead:
 - [Pipeline implementation plan](pipeline_implementation_plan.md)
 - [RelayINT MVP design](relayint_mvp_design.md)
 - [RelaySCN MVP scene policy](relayscn_mvp_scene_policy.md)
-- [RelayRUN runtime checkpoint design](../relayrun_runtime_checkpoint_design.md)
+- [RelayRUN runtime checkpoint design](relayrun_runtime_checkpoint_design.md)
 - [RelayMEM SLP execution design](relaymem_slp_execution_design.md)
