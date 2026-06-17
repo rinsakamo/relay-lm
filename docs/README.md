@@ -4,7 +4,8 @@ This page is the entry point for RelayLM documentation.
 
 ## Start here
 
-- [Current project status](PROJECT_STATUS.md) — one-page current phase, implemented boundaries, and next work
+- [Current project status](PROJECT_STATUS.md) — concise current boundary and active work
+- [Phase 5-C4a implementation handoff](architecture/phase5c4a_instruction_bearing_managed_apply_handoff.md) — the one active runtime slice
 - [Architecture docs](architecture/README.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [MVP summaries and milestone notes](mvp/README.md)
@@ -16,16 +17,18 @@ This page is the entry point for RelayLM documentation.
 
 ## Current status
 
+The repository-wide documentation audit, audit Phases 1–8, is complete as of 2026-06-17 JST. That numbering is independent of runtime implementation phases.
+
 Use [Project Status](PROJECT_STATUS.md) as the concise developer-facing view of:
 
-- the current phase,
+- the current implementation phase,
 - implemented versus dry-run/preflight/read-only/runtime-private boundaries,
 - currently usable runtime paths,
 - major unimplemented components,
 - current defaults and apply posture,
-- and the immediate next implementation slice.
+- and the one active implementation slice.
 
-`PROJECT_STATUS.md` is a summary view. [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md) remains authoritative for detailed phase status, dependencies, and sequencing.
+`PROJECT_STATUS.md` is a summary view. [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md) remains authoritative for detailed status, dependencies, and later sequencing. The active slice's exact start conditions, non-goals, smoke matrix, and rollback rules are in the [Phase 5-C4a handoff](architecture/phase5c4a_instruction_bearing_managed_apply_handoff.md).
 
 Use [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) before treating a proposed v1 schema, target pipeline, future execution gate, or historical compatibility artifact as current behavior.
 
@@ -45,6 +48,7 @@ Primary architecture entry points:
 - [Architecture docs index](architecture/README.md)
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — canonical naming and responsibility source
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — implementation order, dependencies, and phase status
+- [Phase 5-C4a implementation handoff](architecture/phase5c4a_instruction_bearing_managed_apply_handoff.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Runtime architecture](architecture/runtime_architecture.md)
 - [Runtime operational requirements](architecture/runtime_operational_requirements.md)
@@ -102,7 +106,7 @@ The current `mvp-soul-0` five-file chain is compatibility behavior. The target d
 
 ## Historical material
 
-`docs/mvp/` and `docs/architecture/archive/` preserve implementation snapshots and historical rationale. They do not override current architecture, contracts, project status, or implementation sequencing.
+`docs/mvp/` and `docs/architecture/archive/` preserve implementation snapshots and historical rationale. They do not override current architecture, contracts, project status, implementation handoff, or implementation sequencing.
 
 Compatibility redirect files preserve old paths only. Current documents should link directly to canonical files rather than through redirects.
 
@@ -117,6 +121,7 @@ python scripts/relaylm_docs_link_check.py
 Placement rules:
 
 - one-page repository-wide current status -> `docs/PROJECT_STATUS.md`
+- one active implementation handoff -> `docs/architecture/`
 - cross-cutting architecture and pipeline docs -> `docs/architecture/`
 - historical architecture rationale -> `docs/architecture/archive/`
 - MVP summaries and milestone notes -> `docs/mvp/`
