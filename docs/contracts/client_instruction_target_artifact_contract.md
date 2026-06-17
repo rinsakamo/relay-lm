@@ -1,4 +1,4 @@
-# Client Instruction Target Artifact Contract
+# Client Instruction Artifact Current / Target Contract
 
 ## Status
 
