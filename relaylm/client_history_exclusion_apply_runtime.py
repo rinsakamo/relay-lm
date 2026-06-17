@@ -95,7 +95,7 @@ def client_history_exclusion_apply_blocks_backend(
     result: ClientHistoryExclusionApplyRuntimeResult | None,
     forwarded_payload: Mapping[str, object] | None = None,
 ) -> bool:
-    """Fail closed unless the backend receives the exact selected apply candidate."""
+    """Fail closed unless the backend receives the exact selected v1 candidate."""
 
     if route.client_history_exclusion_apply_enabled is not True:
         return False
@@ -130,6 +130,9 @@ def _result_is_applicable(
         and isinstance(result.forwarded_payload, Mapping)
     ):
         return False
-    if forwarded_payload is None:
+    if (
+        forwarded_payload is None
+        or result.schema_version != "client_history_exclusion_apply.v1"
+    ):
         return True
     return dict(forwarded_payload) == dict(result.forwarded_payload)
