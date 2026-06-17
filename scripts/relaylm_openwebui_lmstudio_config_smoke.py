@@ -29,9 +29,67 @@ def require(condition: bool, message: object) -> None:
         raise AssertionError(message)
 
 
-def _require_all_fields(raw: dict[str, Any], model: type[Any], label: str) -> None:
-    missing = sorted(set(model.model_fields) - set(raw))
+def _require_exact_fields(raw: dict[str, Any], model: type[Any], label: str) -> None:
+    expected = set(model.model_fields)
+    actual = set(raw)
+    missing = sorted(expected - actual)
+    unexpected = sorted(actual - expected)
     require(not missing, f"{label} missing fields: {missing}")
+    require(not unexpected, f"{label} unexpected fields: {unexpected}")
+
+
+def _check_safety_defaults(config: RelayLMConfig) -> None:
+    false_fields = [
+        "relayctx_short_term_runtime_injection_apply_enabled",
+        "relayctx_unpack_apply_enabled",
+        "client_history_exclusion_apply_enabled",
+        "relayint_quick_clarification_apply_enabled",
+        "relayrun_checkpoint_write_enabled",
+        "relayrun_resume_preflight_enabled",
+        "relayrun_checkpoint_index_enabled",
+        "relayrun_recovery_transition_enabled",
+        "relayrun_waiting_user_contract_enabled",
+        "relayrun_recovery_apply_preflight_enabled",
+        "relayrun_recovery_response_draft_enabled",
+        "relayrun_visible_recovery_preflight_enabled",
+        "relayrun_recovery_response_generator_enabled",
+        "relayrun_output_relayscn_recovery_gate_enabled",
+        "relayrun_visible_recovery_apply_preflight_enabled",
+        "relayrun_user_action_dry_run_enabled",
+    ]
+    true_fields = [
+        "relayctx_short_term_runtime_injection_dry_run_only",
+        "relayctx_unpack_dry_run_only",
+        "client_history_exclusion_apply_dry_run_only",
+        "relayint_quick_clarification_apply_dry_run_only",
+        "relayrun_checkpoint_dry_run_only",
+        "relayrun_resume_dry_run_only",
+        "relayrun_checkpoint_index_dry_run_only",
+        "relayrun_recovery_transition_dry_run_only",
+        "relayrun_waiting_user_contract_dry_run_only",
+        "relayrun_recovery_apply_dry_run_only",
+        "relayrun_recovery_response_draft_dry_run_only",
+        "relayrun_visible_recovery_dry_run_only",
+        "relayrun_recovery_response_generator_dry_run_only",
+        "relayrun_output_relayscn_recovery_gate_dry_run_only",
+        "relayrun_visible_recovery_apply_preflight_dry_run_only",
+        "relayrun_user_action_dry_run_only",
+    ]
+
+    for field in false_fields:
+        require(getattr(config, field) is False, f"unsafe enabled default: {field}")
+    for field in true_fields:
+        require(getattr(config, field) is True, f"unsafe dry-run default: {field}")
+
+    require(config.relayemo_text_marker_enabled is False, config.relayemo_text_marker_enabled)
+    require(
+        config.relayemo_text_marker_apply_mode == "diagnostics_only",
+        config.relayemo_text_marker_apply_mode,
+    )
+    require(config.memory.ctx_block_apply_enabled is False, config.memory)
+    require(config.memory.snippet_apply_enabled is False, config.memory)
+    require(config.memory.snippet_runtime_injection_enabled is False, config.memory)
+    require(config.memory.snippet_runtime_dry_run_only is True, config.memory)
 
 
 def _check_exhaustive_config_example() -> None:
@@ -39,20 +97,22 @@ def _check_exhaustive_config_example() -> None:
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     require(isinstance(raw, dict), type(raw))
 
-    _require_all_fields(raw, RelayLMConfig, "RelayLMConfig")
-    _require_all_fields(raw["listen"], ListenConfig, "listen")
-    _require_all_fields(raw["trace"], TraceConfig, "trace")
-    _require_all_fields(raw["memory"], MemorySelectionConfig, "memory")
+    _require_exact_fields(raw, RelayLMConfig, "RelayLMConfig")
+    _require_exact_fields(raw["listen"], ListenConfig, "listen")
+    _require_exact_fields(raw["trace"], TraceConfig, "trace")
+    _require_exact_fields(raw["memory"], MemorySelectionConfig, "memory")
 
     backend = next(iter(raw["backends"].values()))
     route = next(iter(raw["model_routes"].values()))
     character = next(iter(raw["characters"].values()))
-    _require_all_fields(backend, BackendConfig, "backend")
-    _require_all_fields(route, ModelRoute, "model route")
-    _require_all_fields(character, CharacterConfig, "character")
+    _require_exact_fields(backend, BackendConfig, "backend")
+    _require_exact_fields(route, ModelRoute, "model route")
+    _require_exact_fields(character, CharacterConfig, "character")
 
-    load_config(path)
+    config = load_config(path)
+    _check_safety_defaults(config)
     print("ok exhaustive config example matches current Pydantic fields")
+    print("ok config example preserves safe default posture")
 
 
 def main() -> int:
