@@ -27,7 +27,7 @@ one RelayLM-owned compiled system message containing:
 
 Exclude prior client user/assistant history, raw client system/developer message objects, frontend summaries or memory notes, unrelated old tool results, and cache-entry bodies. Preserve the complete current user message, including supported multimodal parts.
 
-Use normalized candidates from request-local `ClientInstructionIdentity`. Do not recover instruction text from the already rendered compiled payload. The renderer must preserve deterministic role/order, combine candidates into at most one block, escape control-sensitive delimiters, enforce a deterministic size bound, label the block as low-trust current-request evidence, and keep it below RelayLM runtime/safety and approved persona authority.
+Use normalized candidates from request-local `ClientInstructionIdentity`. Do not recover instruction text from the already rendered compiled payload. The renderer must preserve deterministic source order and explicit `system` / `developer` source-role labels, combine candidates into at most one block, escape control-sensitive delimiters, enforce a deterministic size bound, label the block as low-trust current-request evidence, and keep it below RelayLM runtime/safety and approved persona authority.
 
 Do not silently broaden `client_history_exclusion_apply.v0`. Add an explicitly versioned instruction-bearing contract, preferably `client_history_exclusion_apply.v1`, while preserving v0 behavior during migration.
 
@@ -99,7 +99,7 @@ Fix any regression in these foundations before expanding the slice.
 Add deterministic contract, runtime, and end-to-end coverage for:
 
 1. unchanged v0 no-instruction behavior,
-2. system-only, developer-only, and mixed deterministic instruction order,
+2. system-only, developer-only, and mixed deterministic instruction order with explicit source-role labels,
 3. escaping and oversize policy,
 4. exact text and multimodal current-message preservation,
 5. prior history exclusion and no raw instruction-message forwarding,
@@ -143,12 +143,12 @@ Do not include cache-hit RelaySCN projection, typed instruction-response parsing
 
 ## Rollback conditions
 
-Rollback the slice, or return it to dry-run-only, if prior client history reaches a managed backend; raw client instruction messages regain authority; legacy and identity-derived instruction evidence are duplicated; content appears in trace/node results/public errors; multimodal content is lost or reordered; pass-through changes; incomplete tool chains reach the backend; compatible top-level fields are unexpectedly changed; a non-applied actual-apply request reaches the backend; idempotency fails; or safe defaults change.
+Rollback the slice, or return it to dry-run-only, if prior client history reaches a managed backend; raw client instruction messages regain authority; legacy and identity-derived instruction evidence are duplicated; source-role attribution is lost; content appears in trace/node results/public errors; multimodal content is lost or reordered; pass-through changes; incomplete tool chains reach the backend; compatible top-level fields are unexpectedly changed; a non-applied explicit actual-apply request reaches the backend; idempotency fails; or safe defaults change.
 
 Rollback must preserve the v0 no-instruction path and its backend-forward fail-closed behavior.
 
 ## Completion criteria
 
-5-C4a completes only when supported no-instruction and instruction-bearing managed requests exclude prior client history by apply; the legacy instruction block is replaced rather than duplicated; instruction evidence is bounded, escaped, explicitly low-trust, and not represented as client-authoritative messages; current text/multimodal input remains intact; active transactions are preserved or explicitly blocked; all mutations use `PipelineContext`; explicit actual apply fails closed without an exact applied result; pass-through remains unchanged; and all required deterministic smokes and CI pass.
+5-C4a completes only when supported no-instruction and instruction-bearing managed requests exclude prior client history by apply; the legacy instruction block is replaced rather than duplicated; instruction evidence preserves deterministic source order and explicit role labels, remains bounded, escaped, explicitly low-trust, and is not represented as client-authoritative messages; current text/multimodal input remains intact; active transactions are preserved or explicitly blocked; all mutations use `PipelineContext`; explicit actual apply fails closed without an exact applied result; pass-through remains unchanged; and all required deterministic smokes and CI pass.
 
 After completion, update [Project Status](../PROJECT_STATUS.md) and the implementation plan before selecting another slice.
