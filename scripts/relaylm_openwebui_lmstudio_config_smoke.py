@@ -39,78 +39,91 @@ def _require_exact_fields(raw: dict[str, Any], model: type[Any], label: str) -> 
 
 
 def _check_safety_posture(config: RelayLMConfig, label: str) -> None:
-    false_fields = [
-        "relayctx_short_term_runtime_injection_apply_enabled",
-        "relayctx_unpack_apply_enabled",
-        "client_history_exclusion_apply_enabled",
-        "relayint_quick_clarification_apply_enabled",
-        "relayrun_checkpoint_write_enabled",
-        "relayrun_resume_preflight_enabled",
-        "relayrun_checkpoint_index_enabled",
-        "relayrun_recovery_transition_enabled",
-        "relayrun_waiting_user_contract_enabled",
-        "relayrun_recovery_apply_preflight_enabled",
-        "relayrun_recovery_response_draft_enabled",
-        "relayrun_visible_recovery_preflight_enabled",
-        "relayrun_recovery_response_generator_enabled",
-        "relayrun_output_relayscn_recovery_gate_enabled",
-        "relayrun_visible_recovery_apply_preflight_enabled",
-        "relayrun_user_action_dry_run_enabled",
-    ]
-    true_fields = [
-        "relayctx_short_term_runtime_injection_dry_run_only",
-        "relayctx_unpack_dry_run_only",
-        "client_history_exclusion_apply_dry_run_only",
-        "relayint_quick_clarification_apply_dry_run_only",
-        "relayrun_checkpoint_dry_run_only",
-        "relayrun_resume_dry_run_only",
-        "relayrun_checkpoint_index_dry_run_only",
-        "relayrun_recovery_transition_dry_run_only",
-        "relayrun_waiting_user_contract_dry_run_only",
-        "relayrun_recovery_apply_dry_run_only",
-        "relayrun_recovery_response_draft_dry_run_only",
-        "relayrun_visible_recovery_dry_run_only",
-        "relayrun_recovery_response_generator_dry_run_only",
-        "relayrun_output_relayscn_recovery_gate_dry_run_only",
-        "relayrun_visible_recovery_apply_preflight_dry_run_only",
-        "relayrun_user_action_dry_run_only",
-    ]
+    expected_top_level = {
+        "relayctx_short_term_source_diagnostics_enabled": False,
+        "relayctx_short_term_extraction_dry_run_enabled": False,
+        "relayctx_short_term_block_assembly_dry_run_enabled": False,
+        "relayctx_short_term_runtime_injection_preflight_enabled": False,
+        "relayctx_short_term_runtime_injection_apply_enabled": False,
+        "relayctx_short_term_runtime_injection_dry_run_only": True,
+        "relayctx_unpack_enabled": False,
+        "relayctx_unpack_apply_enabled": False,
+        "relayctx_unpack_dry_run_only": True,
+        "client_message_canonicalization_dry_run_enabled": False,
+        "client_history_exclusion_preflight_enabled": False,
+        "client_history_exclusion_apply_enabled": False,
+        "client_history_exclusion_apply_dry_run_only": True,
+        "client_instruction_extraction_dry_run_enabled": False,
+        "client_instruction_cache_lookup_enabled": False,
+        "relayint_fast_path_dry_run_enabled": False,
+        "relayint_quick_clarification_preflight_enabled": False,
+        "relayint_quick_clarification_dry_run_only": True,
+        "relayint_quick_clarification_apply_enabled": False,
+        "relayint_quick_clarification_apply_dry_run_only": True,
+        "relayemo_enabled": False,
+        "relayemo_dry_run": True,
+        "relayemo_text_marker_enabled": False,
+        "relayemo_scene_gate_enabled": True,
+        "relayemo_session_state_enabled": False,
+        "relayemo_llm_affect_probe_enabled": False,
+        "relayemo_llm_affect_probe_dry_run": True,
+        "relayemo_llm_affect_probe_skip_when_busy": True,
+        "relayrun_checkpoint_write_enabled": False,
+        "relayrun_checkpoint_dry_run_only": True,
+        "relayrun_resume_preflight_enabled": False,
+        "relayrun_resume_dry_run_only": True,
+        "relayrun_checkpoint_index_enabled": False,
+        "relayrun_checkpoint_index_dry_run_only": True,
+        "relayrun_recovery_transition_enabled": False,
+        "relayrun_recovery_transition_dry_run_only": True,
+        "relayrun_waiting_user_contract_enabled": False,
+        "relayrun_waiting_user_contract_dry_run_only": True,
+        "relayrun_recovery_apply_preflight_enabled": False,
+        "relayrun_recovery_apply_dry_run_only": True,
+        "relayrun_recovery_response_draft_enabled": False,
+        "relayrun_recovery_response_draft_dry_run_only": True,
+        "relayrun_visible_recovery_preflight_enabled": False,
+        "relayrun_visible_recovery_dry_run_only": True,
+        "relayrun_recovery_response_generator_enabled": False,
+        "relayrun_recovery_response_generator_dry_run_only": True,
+        "relayrun_output_relayscn_recovery_gate_enabled": False,
+        "relayrun_output_relayscn_recovery_gate_dry_run_only": True,
+        "relayrun_visible_recovery_apply_preflight_enabled": False,
+        "relayrun_visible_recovery_apply_preflight_dry_run_only": True,
+        "relayrun_user_action_dry_run_enabled": False,
+        "relayrun_user_action_dry_run_only": True,
+    }
+    expected_memory = {
+        "token_policy_shadow_enabled": False,
+        "token_budget_truncation_enabled": False,
+        "store_enabled": False,
+        "retrieval_dry_run_only": True,
+        "ctx_block_apply_enabled": False,
+        "snippet_extraction_enabled": False,
+        "snippet_dry_run_only": True,
+        "snippet_apply_enabled": False,
+        "snippet_runtime_injection_enabled": False,
+        "snippet_runtime_dry_run_only": True,
+    }
 
-    for field in false_fields:
-        require(
-            getattr(config, field) is False,
-            f"{label} unsafe enabled posture: {field}",
-        )
-    for field in true_fields:
-        require(
-            getattr(config, field) is True,
-            f"{label} unsafe dry-run posture: {field}",
-        )
+    require(config.mode == "pass_through", f"{label} mode={config.mode}")
+    require(config.trace.enabled is False, f"{label} trace.enabled")
 
-    require(
-        config.relayemo_text_marker_enabled is False,
-        f"{label} relayemo_text_marker_enabled",
-    )
+    for field, expected in expected_top_level.items():
+        actual = getattr(config, field)
+        require(actual is expected, f"{label} {field}={actual!r}; expected {expected!r}")
+
     require(
         config.relayemo_text_marker_apply_mode == "diagnostics_only",
         f"{label} relayemo_text_marker_apply_mode={config.relayemo_text_marker_apply_mode}",
     )
-    require(
-        config.memory.ctx_block_apply_enabled is False,
-        f"{label} memory.ctx_block_apply_enabled",
-    )
-    require(
-        config.memory.snippet_apply_enabled is False,
-        f"{label} memory.snippet_apply_enabled",
-    )
-    require(
-        config.memory.snippet_runtime_injection_enabled is False,
-        f"{label} memory.snippet_runtime_injection_enabled",
-    )
-    require(
-        config.memory.snippet_runtime_dry_run_only is True,
-        f"{label} memory.snippet_runtime_dry_run_only",
-    )
+
+    for field, expected in expected_memory.items():
+        actual = getattr(config.memory, field)
+        require(
+            actual is expected,
+            f"{label} memory.{field}={actual!r}; expected {expected!r}",
+        )
 
 
 def _build_runtime_default_config() -> RelayLMConfig:
@@ -160,11 +173,11 @@ def _check_exhaustive_config_example() -> None:
 
     runtime_defaults = _build_runtime_default_config()
     _check_safety_posture(runtime_defaults, "RelayLMConfig defaults")
-
     require(
         runtime_defaults.memory == MemorySelectionConfig(),
         "RelayLMConfig memory default diverges from MemorySelectionConfig defaults",
     )
+
     print("ok exhaustive config example matches all current Pydantic fields")
     print("ok every dynamic config entry has exact current fields")
     print("ok config example preserves safe posture")
