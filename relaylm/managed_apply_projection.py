@@ -9,7 +9,11 @@ from relaylm.client_history_exclusion_apply_v1_types import (
     safe_instruction_resolution_mode,
     safe_status,
 )
+from relaylm.managed_apply_audit import install_managed_apply_audit_contract
 from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
+
+
+install_managed_apply_audit_contract()
 
 
 def build_instruction_bearing_apply_node_result(
@@ -86,21 +90,4 @@ def build_instruction_bearing_apply_node_result(
         decision=decision,
         blocked_reasons=safe_blocked_reasons(result.blocked_reasons),
         diagnostics=diagnostics,
-        artifacts=[
-            {
-                "artifact_name": "client_history_exclusion_apply_summary",
-                "schema_version": SCHEMA_VERSION,
-                "present": True,
-                "diagnostics_only": projected_status != "applied",
-                "content_free": True,
-                "runtime_private_source": True,
-                "payload_candidate_present": diagnostics[
-                    "payload_candidate_present"
-                ],
-                "payload_mutation_applied": diagnostics[
-                    "payload_mutation_applied"
-                ],
-                "content_bearing_candidate_persisted": False,
-            }
-        ],
     )
