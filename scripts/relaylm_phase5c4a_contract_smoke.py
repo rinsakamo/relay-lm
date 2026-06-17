@@ -49,7 +49,14 @@ def main() -> int:
             <= content.index(candidates[-1].normalized_text),
             content,
         )
-    print("ok explicit role labels, source order, and one-copy evidence")
+
+    special = "ampersand & sentinel"
+    special_content = build_client_instruction_evidence_block(
+        [candidate("system", 0, special)]
+    ).block.content
+    require(special not in special_content, special_content)
+    require("&amp;" in special_content, special_content)
+    print("ok explicit roles, source order, one-copy evidence, and delimiter escaping")
     return 0
 
 
