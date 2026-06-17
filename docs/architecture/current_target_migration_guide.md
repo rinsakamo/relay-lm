@@ -8,8 +8,9 @@ Use:
 
 1. [Project Status](../PROJECT_STATUS.md) for the concise current capability view.
 2. [Pipeline Implementation Plan](pipeline_implementation_plan.md) for phase status and sequencing.
-3. [Pipeline Responsibility Design](pipeline_responsibility_design.md) for stable ownership and canonical target order.
-4. Dedicated contracts for exact current schemas and bounded behavior.
+3. [Phase 5-C4a Implementation Handoff](phase5c4a_instruction_bearing_managed_apply_handoff.md) for the one active runtime slice.
+4. [Pipeline Responsibility Design](pipeline_responsibility_design.md) for stable ownership and canonical target order.
+5. Dedicated contracts for exact current schemas and bounded behavior.
 
 ## Standard labels
 
@@ -51,13 +52,47 @@ Current implementation does not yet include:
 - asynchronous RelaySLP persistence apply,
 - actual RelaySOUL apply, rollback, or persistence execution.
 
+## Active migration boundary
+
+The next and only active slice is Phase 5-C4a instruction-bearing managed apply.
+
+It extends the current no-instruction correctness boundary so supported managed requests can exclude prior client history while carrying at most one bounded escaped low-trust current-instruction evidence block. It does not complete the target RelaySCN cache path or Runtime Compile Gate v1.
+
+No separate prerequisite phase is required:
+
+- existing request-local instruction identity is sufficient as the content source,
+- enabling apply must close its own extraction/identity dependency,
+- read-only cache lookup remains optional,
+- active tool transactions remain explicitly blocked until a minimum-chain preservation contract exists,
+- the existing backend-forward gate remains the fail-closed enforcement point.
+
+Temporary migration posture for 5-C4a:
+
+```text
+cache disabled / miss / hit
+  -> bounded normalized low-trust evidence may be used for correctness
+  -> no cache body injection
+  -> no cache write
+```
+
+Target optimization remains:
+
+```text
+validated cache hit
+  -> allowlisted RelaySCN projection
+  -> raw instruction evidence suppressed
+```
+
+The target optimization is Phase 5-C4b and must not be read as a prerequisite or as current behavior.
+
 ## Boundary matrix
 
 | Boundary | Current implemented or compatibility | Target architecture | Required migration |
 |---|---|---|---|
 | RelaySCN | `relayscn.scene_state.v0`, `relayscn.scene_policy.v0`, diagnostics-oriented helper; current EMO-to-SCN compatibility order | typed v1 scene state/policy and SCN before EMO | `relayscn.py`, EMO fallback, app/PipelineContext ordering, downstream consumers, SCN/EMO smoke |
 | Context compiler | current profile compiler uses incoming messages and configured profile/seed memory before target SCN/INT/MEM handoffs | RelayCTX-owned managed compiler over canonicalized evidence | compiler/Repack ordering, typed handoffs, fallback, integration smoke |
-| Client history apply | `client_history_exclusion_apply.v0`, no-instruction only, default-off, dry-run by default | supported instruction-bearing managed requests with bounded low-trust evidence | apply contract/runtime, Repack, compatibility gates, smoke |
+| Client history apply | `client_history_exclusion_apply.v0`, no-instruction only, default-off, dry-run by default | supported instruction-bearing managed requests with bounded low-trust evidence | new versioned apply contract/runtime, dependency closure, Repack/compatibility gates, smoke |
+| Instruction cache | runtime-private identity plus read-only hit/miss/blocked evidence; no projection apply or write | validated allowlisted RelaySCN projection and later typed parse/cache write | 5-C4b projection, then 5-C5 parse/write; never inject opaque cache entries |
 | Runtime Compile Gate | typed `CompileApplyDecision`; content-free `mvp-ctx-apply-0` compile-decision diagnostics; narrow history-apply backend gate | route-authority-aware plan/result/decision projections, forwarded-payload source, managed fallback, complete state taxonomy | compile gate, fallback builder, PipelineContext source tracking, RelayRUN and authority smoke |
 | RelayMEM Retrieval | `relaymem_retrieval.v0`, compatibility INT/REF-shaped input, broad runtime-private artifact | typed INT handoff plus separate runtime-private result and content-free projection | Retrieval API, consumers, projectors, smoke |
 | RelaySLP | dry-run/preflight foundations only | deferred candidate compiler and gated page/index/log apply | worker/orchestration, storage, idempotency, persistence smoke |
@@ -91,6 +126,8 @@ relaylm.client_history_exclusion_apply_runtime.run_client_history_exclusion_appl
 ```
 
 The runtime-private result may contain a rebuilt payload. The persisted projection contains only typed counts, booleans, status, and bounded reason IDs.
+
+The 5-C4a migration should add a separately versioned instruction-bearing contract rather than silently changing v0 semantics.
 
 ### Runtime Compile Gate
 
