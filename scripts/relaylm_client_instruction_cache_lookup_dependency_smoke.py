@@ -19,7 +19,6 @@ from relaylm.pipeline_context import PipelineContext
 from relaylm.routing import resolve_route
 from relaylm.trace_runtime import trace_runtime_event
 
-
 RAW_INSTRUCTION = "lookup dependency private instruction sentinel"
 
 
@@ -66,7 +65,7 @@ def main() -> int:
         require(route.client_instruction_extraction_dry_run_enabled is False, route)
         require(route.client_instruction_cache_lookup_enabled is True, route)
 
-        payload = {
+        request_data = {
             "model": "relaylm-default",
             "messages": [
                 {"role": "system", "content": RAW_INSTRUCTION},
@@ -77,30 +76,31 @@ def main() -> int:
         context = PipelineContext(
             request_id="lookup-dependency",
             run_id="lookup-dependency-run",
-            original_payload=payload,
-            forwarded_payload=dict(payload),
+            original_payload=request_data,
+            forwarded_payload=dict(request_data),
             route=route,
             stream_enabled=False,
         )
 
-        identity_result = context.client_instruction_identity_result
-        require(identity_result is not None and identity_result.ready is True, identity_result)
-        require(identity_result.identity is not None, identity_result)
+        identity = context.client_instruction_identity_result
+        require(identity is not None and identity.ready is True, identity)
+        require(identity.identity is not None, identity)
         private_hashes = (
-            identity_result.identity.instruction_fingerprint_sha256,
-            identity_result.identity.cache_key_sha256,
+            identity.identity.instruction_fingerprint_sha256,
+            identity.identity.cache_key_sha256,
         )
-
-        runtime_result = context.client_instruction_cache_lookup_runtime_result
-        require(runtime_result is not None, runtime_result)
-        require(runtime_result.status == "miss", runtime_result)
-        require(runtime_result.reader_result is not None, runtime_result)
+        lookup_runtime = context.client_instruction_cache_lookup_runtime_result
+        require(lookup_runtime is not None and lookup_runtime.status == "miss", lookup_runtime)
+        require(lookup_runtime.reader_result is not None, lookup_runtime)
         require(
-            runtime_result.reader_result.miss_reason == "cache_root_not_configured",
-            runtime_result,
+            lookup_runtime.reader_result.miss_reason == "cache_root_not_configured",
+            lookup_runtime,
         )
-        require(runtime_result.lookup_result is not None, runtime_result)
-        require(runtime_result.lookup_result.status == "miss", runtime_result)
+        require(
+            lookup_runtime.lookup_result is not None
+            and lookup_runtime.lookup_result.status == "miss",
+            lookup_runtime,
+        )
 
         wrote = trace_runtime_event(
             config=config,
@@ -115,12 +115,12 @@ def main() -> int:
                 stream_enabled=False,
                 trace_enabled=True,
             ),
-            messages=[],
-            response_text="ok",
+            message_count=2,
+            response_present=True,
         )
         require(wrote is True, wrote)
 
-        record = json.loads(trace_path.read_text(encoding="utf-8").strip())
+        record = json.loads(trace_path.read_text(encoding="utf-8"))
         results = record["metadata"]["pipeline_node_results"]
         names = [item.get("node_name") for item in results]
         ordered = [
@@ -138,20 +138,17 @@ def main() -> int:
 
         extraction = find(results, "client_instruction_extraction")
         require(extraction["diagnostics"].get("enabled") is True, extraction)
-        identity = find(results, "client_instruction_identity")
-        require(identity.get("decision") == "instruction_identity_ready", identity)
+        identity_node = find(results, "client_instruction_identity")
+        require(identity_node.get("decision") == "instruction_identity_ready", identity_node)
         cache_plan = find(results, "client_instruction_cache")
         require(cache_plan["diagnostics"].get("lookup_requested") is True, cache_plan)
+        require(cache_plan["diagnostics"].get("cache_operation_plan_ready") is True, cache_plan)
+        lookup_node = find(results, "client_instruction_cache_lookup")
+        require(lookup_node.get("decision") == "instruction_cache_miss", lookup_node)
         require(
-            cache_plan["diagnostics"].get("cache_operation_plan_ready") is True,
-            cache_plan,
-        )
-        lookup = find(results, "client_instruction_cache_lookup")
-        require(lookup.get("decision") == "instruction_cache_miss", lookup)
-        require(
-            lookup["diagnostics"].get("reader_miss_reason")
+            lookup_node["diagnostics"].get("reader_miss_reason")
             == "cache_root_not_configured",
-            lookup,
+            lookup_node,
         )
 
         rendered = json.dumps(results, ensure_ascii=False, sort_keys=True)
@@ -160,7 +157,7 @@ def main() -> int:
             require(private_hash not in rendered, private_hash)
         require(str(trace_path.parent) not in rendered, rendered)
 
-    print("ok lookup flag enables identity dependency")
+    print("ok lookup flag enables typed identity dependency projection")
     return 0
 
 

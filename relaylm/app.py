@@ -586,7 +586,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 trace_runtime_event(
                     config=config,
                     diagnostics=failed_diagnostics,
-                    messages=_extract_trace_messages(forwarded_payload),
+                    message_count=len(_extract_trace_messages(forwarded_payload)),
+                    response_present=False,
                     metadata={"event": "backend_error", "error_type": exc.__class__.__name__},
                 )
                 return openai_error(
@@ -618,7 +619,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
             trace_runtime_event(
                 config=config,
                 diagnostics=stream_diagnostics,
-                messages=_extract_trace_messages(forwarded_payload),
+                message_count=len(_extract_trace_messages(forwarded_payload)),
+                response_present=False,
                 metadata={
                     "event": "backend_stream_response",
                     "status_code": status_code,
@@ -661,7 +663,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
             trace_runtime_event(
                 config=config,
                 diagnostics=failed_diagnostics,
-                messages=_extract_trace_messages(forwarded_payload),
+                message_count=len(_extract_trace_messages(forwarded_payload)),
+                response_present=False,
                 metadata={"event": "backend_error", "error_type": exc.__class__.__name__},
             )
             return openai_error(
@@ -708,8 +711,8 @@ def create_app(config_path: str | None = None) -> FastAPI:
             trace_runtime_event(
                 config=config,
                 diagnostics=success_diagnostics,
-                messages=_extract_trace_messages(forwarded_payload),
-                response_text=extract_response_text(body),
+                message_count=len(_extract_trace_messages(forwarded_payload)),
+                response_present=isinstance(extract_response_text(body), str),
                 metadata={"event": "backend_response", "status_code": status_code},
             )
             headers.update(response_headers)

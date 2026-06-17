@@ -18,7 +18,7 @@ from relaylm.trace import append_trace_record, build_trace_record, read_trace_re
 from relaylm.trace_runtime import trace_runtime_event
 
 
-def require(condition: bool, message: str) -> None:
+def require(condition: bool, message: object) -> None:
     if not condition:
         raise AssertionError(message)
 
@@ -33,7 +33,8 @@ def main() -> int:
             route_model="relaylm-default",
             mode_applied="pass_through",
             compiler_used=False,
-            messages=[{"role": "user", "content": "hello"}],
+            message_count=1,
+            response_present=False,
         )
         append_trace_record(trace_path, record)
         raw = trace_path.read_text(encoding="utf-8")
@@ -56,7 +57,8 @@ def main() -> int:
     wrote = trace_runtime_event(
         config=config,
         diagnostics=diagnostics,
-        messages=[{"role": "user", "content": "hello"}],
+        message_count=1,
+        response_present=False,
         metadata={"event": "backend_error"},
     )
     require(wrote is False, wrote)
@@ -77,7 +79,10 @@ def main() -> int:
     )
     require(compiled.compiler_used is True, compiled)
     require(compiled.memory_block_used is False, compiled)
-    require(compiled.memory_fallback_reason == "memory_seed_load_error:FileNotFoundError", compiled)
+    require(
+        compiled.memory_fallback_reason == "memory_seed_load_error:FileNotFoundError",
+        compiled,
+    )
     require(compiled.payload["messages"][0]["role"] == "system", compiled.payload)
     require("<retrieved_memory>" not in compiled.payload["messages"][0]["content"], compiled.payload)
     print("ok memory seed failure fallback")
@@ -99,7 +104,11 @@ def main() -> int:
             },
         )
         require(malformed_compiled.memory_block_used is False, malformed_compiled)
-        require(malformed_compiled.memory_fallback_reason == "memory_seed_load_error:ValueError", malformed_compiled)
+        require(
+            malformed_compiled.memory_fallback_reason
+            == "memory_seed_load_error:ValueError",
+            malformed_compiled,
+        )
         print("ok malformed memory seed fallback")
 
     bad_config = load_config(REPO_ROOT / "config.example.yaml").model_copy(deep=True)

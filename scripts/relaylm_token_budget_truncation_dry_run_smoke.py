@@ -10,17 +10,17 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.relayctx_repack import _build_token_budget_truncation_dry_run
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.diagnostics import RequestDiagnostics
+from relaylm.relayctx_repack import _build_token_budget_truncation_dry_run
 from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.routing import resolve_route
 from relaylm.trace_runtime import trace_runtime_event
 
 
-def require(condition: bool, message: object) -> None:
+def require(condition: bool, detail: object) -> None:
     if not condition:
-        raise AssertionError(message)
+        raise AssertionError(detail)
 
 
 def main() -> int:
@@ -31,9 +31,8 @@ def main() -> int:
     cfg["memory"]["chars_per_token"] = 4
     cfg["memory"]["token_budget_truncation_enabled"] = False
     config = RelayLMConfig.model_validate(cfg)
-
     route = resolve_route(config, "relaylm-default")
-    payload = {
+    request_data = {
         "model": "relaylm-default",
         "messages": [
             {"role": "system", "content": "system"},
@@ -42,74 +41,70 @@ def main() -> int:
         ],
         "stream": False,
     }
-    compiled = compile_chat_payload_if_enabled(config=config, route=route, payload=payload)
-    baseline_messages = copy.deepcopy(compiled.payload.get("messages"))
-    original_messages = compiled.payload.get("messages")
-    require(isinstance(original_messages, list), compiled.payload)
+    compiled = compile_chat_payload_if_enabled(config=config, route=route, payload=request_data)
+    baseline = copy.deepcopy(compiled.payload.get("messages"))
+    messages = compiled.payload.get("messages")
+    require(isinstance(messages, list), compiled.payload)
     dry_run = _build_token_budget_truncation_dry_run(
         config=config,
-        forwarded_messages=[m for m in original_messages if isinstance(m, dict)],
+        forwarded_messages=[item for item in messages if isinstance(item, dict)],
     )
     require(isinstance(dry_run, dict), dry_run)
     require(dry_run.get("applied") is False, dry_run)
     require(dry_run.get("apply_mode") == "dry_run", dry_run)
     require(dry_run.get("enforcement_enabled") is False, dry_run)
-    require(dry_run.get("dropped_message_count", 0) >= 0, dry_run)
-    require(compiled.payload.get("messages") == baseline_messages, compiled.payload)
-    print("ok truncation dry run default disabled keeps forwarding payload unchanged")
+    require(compiled.payload.get("messages") == baseline, compiled.payload)
+    print("ok truncation dry run disabled is response-neutral")
 
-    cfg2 = base.model_dump()
-    cfg2["model_routes"]["relaylm-default"]["mode"] = "memory_light"
-    cfg2["memory"]["token_budget"] = 30
-    cfg2["memory"]["chars_per_token"] = 4
-    cfg2["memory"]["token_budget_truncation_enabled"] = True
-    config_enabled = RelayLMConfig.model_validate(cfg2)
-    route_enabled = resolve_route(config_enabled, "relaylm-default")
-    compiled_enabled = compile_chat_payload_if_enabled(config=config_enabled, route=route_enabled, payload=payload)
-    baseline_messages_enabled = copy.deepcopy(compiled_enabled.payload.get("messages"))
-    msgs_enabled = compiled_enabled.payload.get("messages")
-    require(isinstance(msgs_enabled, list), compiled_enabled.payload)
-    dry_run_enabled = _build_token_budget_truncation_dry_run(
-        config=config_enabled,
-        forwarded_messages=[m for m in msgs_enabled if isinstance(m, dict)],
+    cfg_enabled = base.model_dump()
+    cfg_enabled["model_routes"]["relaylm-default"]["mode"] = "memory_light"
+    cfg_enabled["memory"]["token_budget"] = 30
+    cfg_enabled["memory"]["chars_per_token"] = 4
+    cfg_enabled["memory"]["token_budget_truncation_enabled"] = True
+    enabled = RelayLMConfig.model_validate(cfg_enabled)
+    compiled_enabled = compile_chat_payload_if_enabled(
+        config=enabled,
+        route=resolve_route(enabled, "relaylm-default"),
+        payload=request_data,
     )
-    require(isinstance(dry_run_enabled, dict), dry_run_enabled)
-    require(dry_run_enabled.get("enforcement_enabled") is True, dry_run_enabled)
-    require(dry_run_enabled.get("applied") is False, dry_run_enabled)
-    require(dry_run_enabled.get("dropped_message_count", 0) > 0, dry_run_enabled)
-    require(dry_run_enabled.get("preserved_system") is True, dry_run_enabled)
-    require(dry_run_enabled.get("preserved_latest_user") is True, dry_run_enabled)
-    require(compiled_enabled.payload.get("messages") == baseline_messages_enabled, compiled_enabled.payload)
-    print("ok truncation dry run enabled still keeps forwarding payload unchanged")
+    enabled_baseline = copy.deepcopy(compiled_enabled.payload.get("messages"))
+    enabled_messages = compiled_enabled.payload.get("messages")
+    require(isinstance(enabled_messages, list), compiled_enabled.payload)
+    enabled_dry_run = _build_token_budget_truncation_dry_run(
+        config=enabled,
+        forwarded_messages=[item for item in enabled_messages if isinstance(item, dict)],
+    )
+    require(isinstance(enabled_dry_run, dict), enabled_dry_run)
+    require(enabled_dry_run.get("enforcement_enabled") is True, enabled_dry_run)
+    require(enabled_dry_run.get("applied") is False, enabled_dry_run)
+    require(enabled_dry_run.get("dropped_message_count", 0) > 0, enabled_dry_run)
+    require(enabled_dry_run.get("preserved_system") is True, enabled_dry_run)
+    require(enabled_dry_run.get("preserved_latest_user") is True, enabled_dry_run)
+    require(compiled_enabled.payload.get("messages") == enabled_baseline, compiled_enabled.payload)
+    print("ok truncation dry run enabled remains response-neutral")
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        trace_cfg = config_enabled.model_dump()
-        trace_cfg["trace"] = {"enabled": True, "path": str(Path(tmpdir) / "trace.jsonl")}
+        trace_cfg = enabled.model_dump()
+        trace_path = Path(tmpdir) / "trace.jsonl"
+        trace_cfg["trace"] = {"enabled": True, "path": str(trace_path)}
         trace_config = RelayLMConfig.model_validate(trace_cfg)
         diagnostics = RequestDiagnostics(
             request_id="req-trunc-dry-run",
-            token_budget_truncation=dry_run_enabled,
+            token_budget_truncation=enabled_dry_run,
         )
-        written = trace_runtime_event(
+        require(trace_runtime_event(
             config=trace_config,
             diagnostics=diagnostics,
-            messages=[{"role": "user", "content": "hello"}],
-        )
-        require(written, "trace not written")
-        trace_path = Path(tmpdir) / "trace.jsonl"
-        record = json.loads(trace_path.read_text(encoding="utf-8").strip().splitlines()[0])
-        metadata = record.get("metadata")
-        require(isinstance(metadata, dict), metadata)
-        require(isinstance(metadata.get("token_budget_truncation"), dict), metadata)
-        require(metadata["token_budget_truncation"].get("applied") is False, metadata)
-        print("ok truncation dry run diagnostics and trace metadata recorded")
+            message_count=1,
+            response_present=False,
+        ), "trace not written")
+        metadata = json.loads(trace_path.read_text(encoding="utf-8"))["metadata"]
+        require("token_budget_truncation" not in metadata, metadata)
+        print("ok truncation diagnostics stay outside audit metadata")
 
     blocked = _build_token_budget_truncation_dry_run(
         config=RelayLMConfig.model_validate(
-            {
-                **cfg2,
-                "memory": {**cfg2["memory"], "token_budget": 5},
-            }
+            {**cfg_enabled, "memory": {**cfg_enabled["memory"], "token_budget": 5}}
         ),
         forwarded_messages=[
             {"role": "system", "content": "S" * 200},
@@ -119,8 +114,7 @@ def main() -> int:
     require(isinstance(blocked, dict), blocked)
     require(blocked.get("over_budget_after") is True, blocked)
     require(blocked.get("blocked_reason") == "preserved_messages_exceed_budget", blocked)
-    print("ok truncation dry run blocked case does not alter request path")
-
+    print("ok truncation blocked case remains non-mutating")
     return 0
 
 

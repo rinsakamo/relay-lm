@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 from pathlib import Path
@@ -10,226 +11,156 @@ if str(REPO_ROOT) not in sys.path:
 
 from relaylm.config import load_config
 from relaylm.diagnostics import RequestDiagnostics
-from relaylm.trace import read_trace_records
+from relaylm.trace import AUDIT_TRACE_SCHEMA_VERSION, read_trace_records
 from relaylm.trace_runtime import extract_response_text, trace_runtime_event
 
 
-def require(condition: bool, message: str) -> None:
+def require(condition: bool, detail: object) -> None:
     if not condition:
-        raise AssertionError(message)
+        raise AssertionError(detail)
 
 
 def main() -> int:
-    body = {
+    tool_call_body = {
         "choices": [
-            {"message": {"role": "assistant", "content": "hello from backend"}}
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": "call-1",
+                            "type": "function",
+                            "function": {"name": "lookup", "arguments": "private"},
+                        }
+                    ],
+                }
+            }
         ]
     }
-    response_text = extract_response_text(body)
-    require(response_text == "hello from backend", response_text)
-    print("ok extract response text")
+    require(extract_response_text(tool_call_body) == "", tool_call_body)
+    print("ok non-text assistant choice produces a shape-only presence marker")
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        trace_path = Path(tmpdir) / "trace.jsonl"
         config = load_config(REPO_ROOT / "config.example.yaml").model_copy(deep=True)
         config.trace.enabled = True
+        trace_path = Path(tmpdir) / "trace.jsonl"
         config.trace.path = str(trace_path)
-        selection_summary = {
-            "selected_count": 3,
-            "selected_memory_ids": [
-                "default-relaylm-project",
-                "default-like-tea",
-                "shared-short-replies",
-            ],
-            "state_counts": {
-                "active": 3,
-                "promoted": 0,
-                "demoted": 0,
-                "disabled": 0,
-            },
-        }
-        block_assembly = {
-            "included_memory_ids": [
-                "default-relaylm-project",
-                "default-like-tea",
-                "shared-short-replies",
-            ],
-            "dropped_memory_ids": [],
-            "character_budget": 1200,
-            "rendered_characters": 300,
-        }
         diagnostics = RequestDiagnostics(
             request_id="trace-success-001",
             route_model="relaylm-default",
             character_id="default",
             mode_applied="memory_light",
             compiler_used=True,
-            memory_block_used=True,
             memory_source="memory_candidate_selection",
-            memory_selection_summary=selection_summary,
-            memory_block_assembly=block_assembly,
+            memory_selection_summary={
+                "total_candidates": 2,
+                "eligible_count": 1,
+                "selected_count": 1,
+                "limit": 1,
+                "character_id": "default",
+                "selected_memory_ids": ["memory-001"],
+                "excluded_disabled_ids": ["memory-002"],
+                "excluded_character_ids": [],
+                "state_counts": {
+                    "active": 1,
+                    "promoted": 0,
+                    "demoted": 0,
+                    "disabled": 1,
+                },
+            },
             relayrun_artifact={
                 "schema_version": "relayrun.runtime_checkpoint.v0",
-                "diagnostics_only": True,
-                "applied": False,
+                "content_free": True,
                 "run_id": "run-trace-001",
                 "run_status": "diagnostics_only",
-                "node_statuses": [
-                    {
-                        "node_name": "request_received",
-                        "node_status": "completed",
-                    }
-                ],
-                "resume_allowed": False,
-                "resume_mode": "none",
-                "resume_preflight": {
-                "schema_version": "relayrun.resume_preflight.v0",
-                "diagnostics_only": True,
-                "resume_allowed": False,
-                "resume_attempted": False,
-                "resume_applied": False,
-                "checkpoint_read_attempted": False,
-                "checkpoint_read_ok": False,
-                "checkpoint_schema_valid": False,
-                "content_free": None,
-                "source_checkpoint_path": None,
-                "blocked_reasons": [
-                    "resume_not_implemented",
-                    "resume_disabled",
-                    "resume_dry_run_only",
-                ],
-                "future_resume_required_gates": [
-                    "explicit_config_enabled",
-                    "valid_checkpoint_schema",
-                    "content_free_checkpoint",
-                    "safe_resume_mode",
-                    "user_or_policy_confirmation",
-                ],
-            },
-            "recovery_transition_artifact": {
-                "schema_version": "relayrun.recovery_transition.v0",
-                "diagnostics_only": True,
-                "user_visible": False,
-                "apply_allowed": False,
-                "applied": False,
-                "transition_created": False,
-                "proposed_transition_type": "none",
-                "source_node": None,
-                "next_node": None,
-                "resume_mode": "none",
-                "required_user_action": None,
-                "blocked_reasons": [
-                    "recovery_transition_not_implemented",
-                    "recovery_transition_disabled",
-                    "recovery_transition_dry_run_only",
-                ],
-                "safety": {
-                    "passes_through_output_pipeline": True,
-                    "direct_user_output_allowed": False,
-                    "contains_user_content": False,
-                    "contains_backend_payload": False,
-                    "contains_response_text": False,
-                },
-            },
-            "checkpoint_persisted": False,
-                "checkpoint_write_attempted": False,
-                "checkpoint_writer_failed": False,
-                "persisted_path": None,
-                "persisted_bytes": None,
-                "content_free": True,
-                "checkpoint_persistence_plan": {
-                    "schema_version": "relayrun.checkpoint_persistence_plan.v0",
-                    "diagnostics_only": True,
-                    "write_allowed": False,
-                    "checkpoint_persisted": False,
-                    "target_root": ".relayrun/checkpoints",
-                    "target_path_preview": ".relayrun/checkpoints/run-trace-001/trace-success-001.json",
-                    "run_id": "run-trace-001",
-                    "turn_id": "trace-success-001",
-                    "blocked_reasons": [
-                        "checkpoint_persistence_not_implemented",
-                        "checkpoint_write_disabled",
-                    ],
-                    "resume_allowed_after_persist": False,
-                },
-                "checkpoint_writer_preflight": {
-                    "schema_version": "relayrun.checkpoint_writer_preflight.v0",
-                    "diagnostics_only": True,
-                    "write_allowed": False,
-                    "preflight_passed": False,
-                    "checkpoint_write_attempted": False,
-                    "directory_creation_attempted": False,
-                    "target_root": ".relayrun/checkpoints",
-                    "target_path_preview": ".relayrun/checkpoints/run-trace-001/trace-success-001.json",
-                    "path_safety": {
-                        "root_relative": True,
-                        "path_traversal_detected": False,
-                        "absolute_path_detected": False,
-                    },
-                    "content_policy": {
-                        "content_free": True,
-                        "backend_payload_included": False,
-                        "response_text_included": False,
-                        "raw_user_message_included": False,
-                    },
-                    "blocked_reasons": [
-                        "checkpoint_writer_not_implemented",
-                        "checkpoint_write_disabled",
-                    ],
-                    "future_writer_required_gates": [
-                        "explicit_config_enabled",
-                        "safe_target_root",
-                        "content_free_payload",
-                        "atomic_write",
-                        "idempotent_run_turn_key",
-                    ],
-                },
-                "recovery_transition_created": False,
-                "blocked_reasons": [],
             },
             trace_enabled=True,
         )
-        written = trace_runtime_event(
-            config=config,
-            diagnostics=diagnostics,
-            messages=[{"role": "user", "content": "hello"}],
-            response_text=response_text,
-            metadata={"event": "backend_response", "status_code": 200},
+        require(
+            trace_runtime_event(
+                config=config,
+                diagnostics=diagnostics,
+                message_count=1,
+                response_present=True,
+                metadata={"event": "backend_response", "status_code": 200},
+            ),
+            "trace write failed",
         )
-        require(written is True, written)
-        records = read_trace_records(trace_path)
-        require(len(records) == 1, records)
-        require(records[0].trace_id == "trace-success-001", records[0])
-        require(records[0].response_text == "hello from backend", records[0])
-        require(records[0].metadata["event"] == "backend_response", records[0].metadata)
-        require(records[0].metadata["status_code"] == 200, records[0].metadata)
-        require(records[0].metadata["memory_source"] == "memory_candidate_selection", records[0].metadata)
-        require(records[0].metadata["memory_selection_summary"] == selection_summary, records[0].metadata)
-        require(records[0].metadata["memory_block_assembly"] == block_assembly, records[0].metadata)
-        require(isinstance(records[0].metadata["relayrun_artifact"], dict), records[0].metadata)
-        require(records[0].metadata["relayrun_artifact"]["run_id"] == "run-trace-001", records[0].metadata)
-        resume_preflight = records[0].metadata["relayrun_artifact"].get("resume_preflight")
-        require(isinstance(resume_preflight, dict), records[0].metadata)
-        require(resume_preflight.get("resume_allowed") is False, records[0].metadata)
-        transition = records[0].metadata["relayrun_artifact"].get("recovery_transition_artifact")
-        require(isinstance(transition, dict), records[0].metadata)
-        require(transition.get("applied") is False, records[0].metadata)
-        plan = records[0].metadata["relayrun_artifact"].get("checkpoint_persistence_plan")
-        require(isinstance(plan, dict), records[0].metadata)
-        require(plan.get("write_allowed") is False, records[0].metadata)
-        preflight = records[0].metadata["relayrun_artifact"].get("checkpoint_writer_preflight")
-        require(isinstance(preflight, dict), records[0].metadata)
-        require(preflight.get("write_allowed") is False, records[0].metadata)
-        require(preflight.get("checkpoint_write_attempted") is False, records[0].metadata)
-        require(preflight.get("directory_creation_attempted") is False, records[0].metadata)
-        require(records[0].metadata["relayrun_artifact"].get("content_free") is True, records[0].metadata)
-        print("ok trace backend response event")
-        print("ok trace response text captured")
-        print("ok trace memory source captured")
-        print("ok trace memory selection summary captured")
-        print("ok trace memory block assembly captured")
-        print("ok trace relayrun artifact captured")
+        payload = json.loads(trace_path.read_text(encoding="utf-8"))
+        require(payload["schema_version"] == AUDIT_TRACE_SCHEMA_VERSION, payload)
+        require(payload["message_count"] == 1, payload)
+        require(payload["response_present"] is True, payload)
+        metadata = payload["metadata"]
+        require(metadata["event"] == "backend_response", metadata)
+        require(metadata["status_code"] == 200, metadata)
+        require(metadata["memory_source"] == "memory_candidate_selection", metadata)
+        require(
+            metadata["memory_selection_summary"]["selected_memory_ids"]
+            == ["memory-001"],
+            metadata,
+        )
+        require(metadata["relayrun_artifact"]["run_id"] == "run-trace-001", metadata)
+        record = read_trace_records(trace_path)[0]
+        require(record.messages == [], record)
+        require(record.response_text is None, record)
+        print("ok successful response writes a typed audit record")
 
+        empty_path = Path(tmpdir) / "empty.jsonl"
+        config.trace.path = str(empty_path)
+        require(
+            trace_runtime_event(
+                config=config,
+                diagnostics=diagnostics,
+                message_count=1,
+                response_present=True,
+                metadata={"event": "backend_response", "status_code": 200},
+            ),
+            "empty response trace write failed",
+        )
+        require(
+            json.loads(empty_path.read_text(encoding="utf-8"))["response_present"]
+            is True,
+            empty_path,
+        )
+        print("ok empty string response shape remains present")
+
+        stream_path = Path(tmpdir) / "stream.jsonl"
+        config.trace.path = str(stream_path)
+        for content_type in (
+            "text/event-stream",
+            "text/event-stream; charset=utf-8",
+            "invalid-media-type",
+        ):
+            require(
+                trace_runtime_event(
+                    config=config,
+                    diagnostics=diagnostics,
+                    message_count=1,
+                    response_present=False,
+                    metadata={
+                        "event": "backend_stream_response",
+                        "status_code": 200,
+                        "content_type": content_type,
+                    },
+                ),
+                content_type,
+            )
+        stream_rows = [
+            json.loads(line)
+            for line in stream_path.read_text(encoding="utf-8").splitlines()
+        ]
+        require(
+            stream_rows[0]["metadata"]["content_type"] == "text/event-stream",
+            stream_rows,
+        )
+        require(
+            stream_rows[1]["metadata"]["content_type"]
+            == "text/event-stream; charset=utf-8",
+            stream_rows,
+        )
+        require("content_type" not in stream_rows[2]["metadata"], stream_rows)
+        print("ok stream response keeps only validated media types")
     return 0
 
 

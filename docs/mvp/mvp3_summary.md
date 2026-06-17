@@ -4,11 +4,13 @@ MVP-3 adds the first practical local memory layer for RelayLM.
 
 The scope stays intentionally small: manual memory seed files, local JSONL trace helpers, and memory-light context insertion. It does not add embeddings or vector search yet.
 
+> **Current trace contract:** P0-A1 hardening supersedes the original MVP-3 trace payload shape. The default JSONL trace is now a content-free audit trace backed by typed audit projections, not a recursive sanitizer. It does not persist message bodies, assistant response text, snippets, evidence, tool payloads, or local paths. See `docs/architecture/audit_trace_content_free_contract.md`.
+
 ## Completed scope
 
 MVP-3 covers:
 
-- local JSONL trace records
+- local JSONL audit trace records
 - append/read trace helpers
 - manual memory seed loading
 - example memory seed file
@@ -20,8 +22,8 @@ MVP-3 covers:
 - `memory_light` payload compilation with memory seed block
 - API diagnostics for memory block usage
 - trace config diagnostics
-- trace writing for backend error paths
-- trace writing for non-stream JSON backend responses
+- audit trace writing for backend error paths
+- audit trace writing for non-stream JSON backend responses
 
 ## Runtime behavior
 
@@ -57,10 +59,12 @@ trace:
   path: traces/relaylm_trace.jsonl
 ```
 
-When enabled, RelayLM can write JSONL trace records for:
+When enabled, RelayLM can write content-free JSONL audit records for:
 
 - backend error path
 - non-stream JSON backend response path
+
+The audit record retains request shape, event/status identifiers, and only content-free diagnostics explicitly copied by registered audit projectors. It does not retain conversation or retrieval content, and new metadata fields are not persisted automatically.
 
 Streaming success trace is not included yet.
 
@@ -69,6 +73,7 @@ Streaming success trace is not included yet.
 ```bash
 python -m compileall relaylm scripts/relaylm_jsonl_trace_smoke.py
 python scripts/relaylm_jsonl_trace_smoke.py
+python scripts/relaylm_trace_content_free_contract_smoke.py
 
 python -m compileall relaylm scripts/relaylm_memory_seed_smoke.py
 python scripts/relaylm_memory_seed_smoke.py
@@ -96,6 +101,7 @@ MVP-3 does not include:
 - automatic memory extraction
 - automatic memory write policy
 - trace summarization
+- sensitive debug trace sink
 - streaming success trace
 - token budget trimming
 
