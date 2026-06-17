@@ -215,10 +215,12 @@ Policy and runtime decision boundary:
 
 Boundary-first safety:
 
-- RelayLM should constrain risky answer shapes before final rendering rather than relying on post-generation disclaimers.
-- Safety-sensitive scenes should resolve a restrictive runtime `scene_policy`.
-- That policy should constrain context packing, allowed output shapes, blocked output shapes, persistence, and final output inspection.
-- Allowed outputs should stay within the scene's approved informational and escalation boundaries.
+- RelayLM should not rely on disclaimers as the primary safety mechanism.
+- For safety-sensitive scenes such as `medical_or_safety`, RelaySCN should first resolve a restrictive runtime `scene_policy`.
+- That policy should constrain context packing, allowed answer shapes, blocked answer shapes, persistence, and final output inspection before user-facing rendering.
+- The goal is not to generate a risky answer and append a disclaimer; the goal is to avoid unsafe answer shapes before final rendering.
+- Example blocked answer shapes include diagnosis claims, prescription or dosage instructions, emergency reassurance, and treatment plan overrides.
+- Example allowed answer shapes include general information, symptom triage questions, red flags or when to seek care, and preparation for consultation.
 
 Core handoff rule:
 
