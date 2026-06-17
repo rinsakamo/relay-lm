@@ -4,6 +4,11 @@
 
 Use this template for a real local OpenWebUI -> RelayLM -> LM Studio validation run.
 
+Detailed procedures:
+
+- [Client history exclusion manual smoke](client_history_exclusion_manual_smoke.md)
+- [RelayRUN recovery diagnostics manual smoke](relayrun_recovery_diagnostics_manual_smoke.md)
+
 Latest historical filled sample: [2026-05-26 result](openwebui_lmstudio_manual_smoke_result_2026_05_26.md).
 
 ## Environment
@@ -29,22 +34,35 @@ Latest historical filled sample: [2026-05-26 result](openwebui_lmstudio_manual_s
 - remote backend used? yes / no
 - intentional differences reviewed? yes / no
 
-### Current history-authority flags
+### Managed history controls
 
-- `client_message_canonicalization_dry_run_enabled`:
-- `client_history_exclusion_preflight_enabled`:
+Minimal apply controls:
+
 - `client_history_exclusion_apply_enabled`:
 - `client_history_exclusion_apply_dry_run_only`:
 
-## Local preflight
+Optional diagnostics controls:
+
+- `client_message_canonicalization_dry_run_enabled`:
+- `client_history_exclusion_preflight_enabled`:
+
+## Deterministic local smokes
 
 ```bash
 python scripts/relaylm_openwebui_lmstudio_config_smoke.py
 python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+python scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
+python scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
+python scripts/relaylm_profile_loading_smoke.py
+python scripts/relaylm_config_room_scene_compat_smoke.py
 ```
 
-- config smoke:
-- proxy smoke:
+- config coverage and copy-ready config:
+- fake-backend proxy:
+- history-exclusion runtime:
+- history-exclusion forward gate:
+- current profile ownership:
+- optional room/scene compatibility:
 - notes:
 
 ## LM Studio direct
@@ -75,7 +93,7 @@ python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
 
 ## Route response differentiation
 
-| prompt ID | route ID | response summary | persona fit | memory/context fit | fabricated memory? | too generic? | pass/fail |
+| prompt ID | route ID | response summary | persona fit | memory/context fit | invented past fact? | too generic? | pass/fail |
 |---|---|---|---|---|---|---|---|
 | P1 | relaylm-companion | | | | | | |
 | P1 | relaylm-work-assistant | | | | | | |
@@ -83,59 +101,83 @@ python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
 
 ## History-exclusion matrix
 
-Record backend role/count summaries only; do not paste sensitive message content into shared evidence.
+Observation method: `script_verified`, `manually_captured`, or `not_observable_in_environment`.
 
-| case | route mode | client instruction present? | apply enabled | dry-run-only | result status | payload mutation applied? | prior history backend-bound? | backend forwarded? | pass/fail |
-|---|---|---:|---:|---:|---|---:|---:|---:|---|
-| A default compatibility | memory_light | no | false | true | | | | | |
-| B dry-run candidate | memory_light | no | true | true | | | | | |
-| C actual no-instruction | memory_light | no | true | false | | | | | |
-| D unsupported instruction | memory_light | yes | true | false | | | | | |
-| E pass-through exemption | pass_through | any | true | false | | | | | |
+| case | route mode | client instruction? | apply enabled | dry-run-only | result status | payload changed? | prior history backend-bound? | backend forwarded? | observation method | pass/fail |
+|---|---|---:|---:|---:|---|---:|---:|---:|---|---|
+| A default compatibility | memory_light | no | false | true | | | | | | |
+| B dry-run candidate | memory_light | no | true | true | | | | | | |
+| C actual no-instruction | memory_light | no | true | false | | | | | | |
+| D unsupported instruction | memory_light | yes | true | false | | | | | | |
+| E pass-through exemption | pass_through | any | true | false | | | | | | |
 
 ### Backend payload summary
 
-- inspected with fake/local test backend? yes / no
+- exact payload captured? yes / no / unavailable
+- capture method:
 - compiled system/prefix message count:
 - preserved current user message count:
 - prior user/assistant history count:
-- raw system/developer message count:
+- client system/developer message count:
 - notes:
 
 ### Content-free diagnostics
 
-- raw user text absent:
-- backend response text absent:
-- memory/snippet/page text absent:
-- prompt/compiled block body absent:
-- local path/secret-bearing URL absent:
+- user message bodies absent:
+- backend response bodies absent:
+- memory/snippet/page bodies absent:
+- compiled prompt bodies absent:
+- generated final text absent:
+- local path or credential-bearing value absent:
 - pass/fail:
 
 ## RelayRUN recovery diagnostics
 
-- `relayrun_artifact` observed? yes / no
-- artifacts observed:
-  - `runtime_checkpoint`:
-  - `recovery_transition_artifact`:
-  - `waiting_user_contract`:
-  - `recovery_apply_preflight`:
-  - `recovery_response_draft`:
-  - `visible_recovery_response_preflight`:
-  - `recovery_response_generator`:
-  - `output_relayscn_recovery_gate`:
-  - `visible_recovery_apply_preflight`:
-  - `user_action_contract`:
-- diagnostics remained blocked/fail-closed where required? yes / no
+### Normal conversation baseline
+
+- prompt class:
+- backend response returned normally? yes / no
+- OpenWebUI error banner? yes / no
+- visible recovery text appeared? yes / no
+- pass/fail:
+
+### Artifacts observed
+
+- `runtime_checkpoint`:
+- `recovery_transition_artifact`:
+- `waiting_user_contract`:
+- `recovery_apply_preflight`:
+- `recovery_response_draft`:
+- `visible_recovery_response_preflight`:
+- `recovery_response_generator`:
+- `output_relayscn_recovery_gate`:
+- `visible_recovery_apply_preflight`:
+- `user_action_contract`:
+
+### Safety assertions
+
+- `diagnostics_only=true` or equivalent:
+- `user_visible_allowed=false` or equivalent:
+- `final_text_generated=false`:
+- `backend_payload_mutation_allowed=false` or equivalent:
+- `response_body_mutation_allowed=false` or equivalent:
+- `direct_user_output_allowed=false` or equivalent:
+- `run_direct_text_finalization_allowed=false` or equivalent:
+- recovery chain remained blocked/fail-closed where required:
+
+### Mutation checks
+
+- backend payload inspected? yes / no / unavailable
+- recovery artifacts absent from backend payload? yes / no / unavailable
+- backend response body returned unchanged? yes / no / unavailable
 - visible recovery output appeared? yes / no
-- backend payload changed by recovery diagnostics? yes / no
-- response body changed by recovery diagnostics? yes / no
 - pass/fail:
 
 ## Failure log
 
 | symptom | suspected layer | next action |
 |---|---|---|
-| | LM Studio / RelayLM config / RelayLM proxy / OpenWebUI / history authority / backend model | |
+| | LM Studio / RelayLM config / RelayLM proxy / OpenWebUI / history authority / recovery diagnostics / backend model | |
 
 ## Final verdict
 
