@@ -2,6 +2,7 @@
 """Phase 5-C4a fail-closed gate smoke."""
 from __future__ import annotations
 
+import copy
 import sys
 import tempfile
 from pathlib import Path
@@ -36,6 +37,7 @@ def main() -> int:
             assert client_history_exclusion_apply_blocks_backend(
                 context.route,
                 result,
+                forwarded_payload=context.forwarded_payload,
             )
             assert (
                 client_history_exclusion_apply_failure_reason(result)
@@ -67,6 +69,7 @@ def main() -> int:
         assert client_history_exclusion_apply_blocks_backend(
             tool_context.route,
             tool_result,
+            forwarded_payload=tool_context.forwarded_payload,
         )
         consume_active_pipeline_context()
 
@@ -77,6 +80,18 @@ def main() -> int:
         assert not client_history_exclusion_apply_blocks_backend(
             normal_context.route,
             normal_result,
+            forwarded_payload=normal_context.forwarded_payload,
+        )
+
+        drifted = copy.deepcopy(normal_context.forwarded_payload)
+        drifted["messages"].insert(
+            -1,
+            {"role": "system", "content": "downstream repack drift sentinel"},
+        )
+        assert client_history_exclusion_apply_blocks_backend(
+            normal_context.route,
+            normal_result,
+            forwarded_payload=drifted,
         )
         consume_active_pipeline_context()
 
