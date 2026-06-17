@@ -127,6 +127,8 @@ def _check_safety_posture(config: RelayLMConfig, label: str) -> None:
 
 
 def _build_runtime_default_config() -> RelayLMConfig:
+    """Instantiate Pydantic defaults without loading config.example.yaml."""
+
     return RelayLMConfig.model_validate(
         {
             "backends": {
@@ -168,9 +170,11 @@ def _check_exhaustive_config_example() -> None:
     _require_all_mapping_entries(raw["model_routes"], ModelRoute, "model_routes")
     _require_all_mapping_entries(raw["characters"], CharacterConfig, "characters")
 
+    # Check the example's explicitly documented posture.
     example_config = load_config(path)
     _check_safety_posture(example_config, "config.example.yaml")
 
+    # Check the actual Pydantic defaults independently of the example file.
     runtime_defaults = _build_runtime_default_config()
     _check_safety_posture(runtime_defaults, "RelayLMConfig defaults")
     require(
