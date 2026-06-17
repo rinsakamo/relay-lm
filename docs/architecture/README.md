@@ -24,6 +24,12 @@ Historical only
 
 A v1 example is not a current wire contract unless an implemented producer, consumer, runtime position, and schema are named.
 
+## Current implementation handoff
+
+The repository-wide documentation audit, audit Phases 1–8, is complete. Audit numbering is independent of runtime implementation Phase numbering.
+
+The next and only active runtime slice is [Phase 5-C4a Instruction-Bearing Managed Apply](phase5c4a_instruction_bearing_managed_apply_handoff.md). [Project Status](../PROJECT_STATUS.md) remains the concise current-state view, while the implementation plan remains authoritative for later sequencing.
+
 ## Canonical terminology
 
 ```text
@@ -42,9 +48,11 @@ RelaySLP = deferred memory/SOUL candidate compiler
 
 - [Pipeline responsibility design](pipeline_responsibility_design.md)
 - [Pipeline implementation plan](pipeline_implementation_plan.md)
+- [Phase 5-C4a implementation handoff](phase5c4a_instruction_bearing_managed_apply_handoff.md)
 - [Current / Target / Migration Guide](current_target_migration_guide.md)
 - [Client history authority contract](client_history_authority_contract.md)
 - [Client instruction authority contract](client_instruction_authority_contract.md)
+- [Client instruction artifact current / target contract](../contracts/client_instruction_target_artifact_contract.md) — current read-only cache-entry acceptance plus target parse/write/projection details
 - [Runtime architecture](runtime_architecture.md)
 - [Runtime compile gate design](runtime_compile_gate_design.md)
 - [Runtime operational requirements](runtime_operational_requirements.md)
@@ -58,7 +66,7 @@ validated current turn + bounded instruction evidence
   -> RelayLM-owned backend context
 ```
 
-Current implementation includes a narrow default-off no-instruction apply slice. Instruction-bearing managed apply remains incomplete; see [Project Status](../PROJECT_STATUS.md).
+Current implementation includes a narrow default-off no-instruction apply slice. Instruction-bearing managed apply is the active next slice; cache-hit RelaySCN projection and the complete Runtime Compile Gate taxonomy remain deferred target work.
 
 ## Runtime orchestration
 
@@ -121,6 +129,7 @@ Current documents link directly to canonical files rather than through redirects
 ## Maintenance rule
 
 - Keep transient status in `PROJECT_STATUS.md` and the implementation plan.
+- Keep exactly one active implementation handoff linked from this index.
 - Label current, compatibility, target, and migration sections explicitly.
 - Name current schema and producer when a target schema is also shown.
 - Identify migration consumers and smoke coverage.

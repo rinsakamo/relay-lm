@@ -12,6 +12,10 @@ Before treating a proposed schema as the current wire contract, use the [Current
 - [Runtime compile artifact contract](runtime_compile_artifact_contract.md)
   - related design: [Runtime Compile Gate Design](../architecture/runtime_compile_gate_design.md)
 - [Context compiler contract](context_compiler_contract.md)
+- [Client instruction artifact current / target contract](client_instruction_target_artifact_contract.md)
+  - current read-only `relaylm.client_instruction_cache.v0` acceptance shape
+  - target-only parse producer, cache writer, RelaySCN projection, retry, and Stream Unpack behavior
+  - related authority: [Client Instruction Authority Contract](../architecture/client_instruction_authority_contract.md)
 - [RelayRUN recovery response generator current / target boundary](relayrun_recovery_response_generator_current_target.md)
 - [RelayRUN recovery response generator contract](relayrun_recovery_response_generator_contract.md)
   - related design: [RelayRUN Runtime Checkpoint Design](../architecture/relayrun_runtime_checkpoint_design.md)
@@ -21,7 +25,7 @@ Current compile behavior has two implemented surfaces:
 1. `relaylm.compile_gate.CompileApplyDecision`, which decides whether the current profile-compiler result is applied.
 2. The content-free `mvp-ctx-apply-0` artifact built by `relaylm.diagnostics.build_compile_decision_dry_run`, which records the current request-path `COMPILE_APPLY` or `COMPILE_DRY_RUN` diagnostics state.
 
-Proposed v1 plan/result/decision projections, route-authority typing, forwarded-payload-source typing, managed fallback, and complete `BLOCKED` behavior remain target forms. The diagnostics-only recovery-response artifact is implemented, but generator execution and visible recovery output are not.
+Proposed v1 plan/result/decision projections, route-authority typing, forwarded-payload-source typing, managed fallback, and complete `BLOCKED` behavior remain target forms. Client-instruction cache-entry validation is implemented read-only, but no current producer/write or RelaySCN projection apply exists. The diagnostics-only recovery-response artifact is implemented, but generator execution and visible recovery output are not.
 
 ## RelaySOUL contracts
 
