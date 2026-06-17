@@ -52,6 +52,7 @@ RelaySLP = deferred memory/SOUL candidate compiler
 - [Current / Target / Migration Guide](current_target_migration_guide.md)
 - [Client history authority contract](client_history_authority_contract.md)
 - [Client instruction authority contract](client_instruction_authority_contract.md)
+- [Client instruction target artifact contract](../contracts/client_instruction_target_artifact_contract.md) — target-only parse/cache details
 - [Runtime architecture](runtime_architecture.md)
 - [Runtime compile gate design](runtime_compile_gate_design.md)
 - [Runtime operational requirements](runtime_operational_requirements.md)
