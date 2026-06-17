@@ -100,7 +100,8 @@ Runtime-private payload candidates may contain content. Persisted trace, audit, 
 The current runtime does not yet provide:
 
 - instruction-bearing managed-route history exclusion apply,
-- bounded low-trust current-instruction evidence apply,
+- identity-derived bounded low-trust instruction evidence apply,
+- replacement of the current legacy `incoming_system_prompt` compiler block on the managed authority path,
 - cache-hit RelaySCN projection,
 - typed client-instruction response parsing or cache write,
 - complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy,
@@ -116,22 +117,25 @@ These items are not all active work. Detailed later sequencing remains only in t
 
 The next slice is Phase 5-C4a. No separate authority, compile-gate, or tool-transaction-preservation slice must precede it.
 
-Existing request-local foundations are sufficient. The remaining dependency closure belongs inside 5-C4a:
+Existing request-local foundations are sufficient. The remaining dependency and compiler-path closure belongs inside 5-C4a:
 
 - instruction-bearing apply must automatically prepare its typed instruction identity dependency,
 - read-only cache lookup must remain optional for correctness,
+- the legacy compiler `incoming_system_prompt` block must be replaced rather than retained alongside identity-derived evidence,
 - active tool transactions must continue to fail closed until a dedicated minimum-chain preservation contract exists,
 - complete Runtime Compile Gate v1 and managed fallback remain later target work.
 
 The required backend payload for a supported instruction-bearing request is:
 
 ```text
-RelayLM-owned compiled prefix
-+ at most one bounded escaped low-trust instruction-evidence block
+one RelayLM-owned compiled system message containing:
+  approved runtime / profile / context blocks
+  + at most one bounded escaped low-trust instruction-evidence block
+
 + exact validated current user message
 ```
 
-Raw client instruction message objects and prior client history must not regain backend authority.
+Raw client instruction message objects, duplicate legacy evidence, and prior client history must not regain backend authority.
 
 ## Start conditions
 
@@ -141,6 +145,7 @@ Raw client instruction message objects and prior client history must not regain 
 - instruction-bearing actual apply blocks before backend forwarding,
 - instruction identity is request-local and content-bearing,
 - canonicalization and preflight detect active tool transactions,
+- the legacy instruction block is identifiable through typed compiler construction,
 - apply remains default-off and dry-run-only by default,
 - generic trace/audit surfaces remain content-free.
 
@@ -150,7 +155,7 @@ A regression in these foundations is repaired first without expanding the slice.
 
 5-C4a must not include cache-hit RelaySCN projection, typed response parsing, cache write, Runtime Compile Gate v1, managed fallback construction, active tool-chain reconstruction, RelaySOUL mutation, Stream Unpack, RelayREF, output-side RelaySCN, full RelayRUN route promotion, or new default-on behavior.
 
-Return the slice to dry-run-only or roll it back if it leaks prior history or instruction/user content, changes pass-through authority, loses current multimodal content, forwards an incomplete tool transaction, changes compatible top-level request fields unexpectedly, permits a non-applied actual-apply request to reach the backend, breaks idempotency, or changes safe defaults.
+Return the slice to dry-run-only or roll it back if it leaks prior history or instruction/user content, duplicates legacy and identity-derived evidence, changes pass-through authority, loses current multimodal content, forwards an incomplete tool transaction, changes compatible top-level request fields unexpectedly, permits a non-applied actual-apply request to reach the backend, breaks idempotency, or changes safe defaults.
 
 The complete smoke matrix and rollback contract are in the active handoff document.
 
