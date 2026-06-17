@@ -2,16 +2,21 @@
 
 ## Status
 
-This document preserves the detailed **target-only** artifact shapes for client-instruction interpretation, validation, and cache storage.
+This document preserves the detailed artifact shapes for client-instruction interpretation, validation, cache storage, and future RelaySCN projection.
 
-It is not a current wire contract. Current behavior and active sequencing remain authoritative in:
+The boundaries are mixed and must be read separately:
+
+- **Current implemented:** read-only validation of `relaylm.client_instruction_cache.v0` entries through `relaylm.client_instruction_cache_lookup.resolve_client_instruction_cache_lookup` and request-local runtime lookup wiring.
+- **Target only:** first-pass control-envelope production, typed parse validation, cache-entry write, allowlisted RelaySCN projection apply, retry execution, and Stream Unpack.
+
+Current behavior and active sequencing remain authoritative in:
 
 - [Client Instruction Authority Contract](../architecture/client_instruction_authority_contract.md)
 - [Phase 5-C4a Implementation Handoff](../architecture/phase5c4a_instruction_bearing_managed_apply_handoff.md)
 - [Current / Target / Migration Guide](../architecture/current_target_migration_guide.md)
 - [Pipeline Implementation Plan](../architecture/pipeline_implementation_plan.md)
 
-Phase 5-C4a does not implement the artifacts below. Cache-hit RelaySCN projection belongs to Phase 5-C4b, typed parse/cache write to Phase 5-C5, and streaming control suppression to Phase 5.5.
+Phase 5-C4a does not implement the target producer/apply artifacts below. Cache-hit RelaySCN projection belongs to Phase 5-C4b, typed parse/cache write to Phase 5-C5, and streaming control suppression to Phase 5.5.
 
 ## Authority invariant
 
@@ -60,7 +65,7 @@ A future cache-miss response may contain visible text plus an internal separatel
 </relaylm_control>
 ```
 
-This is a design example. The implemented producer must select and publish the exact schema/version before apply or cache write is enabled.
+This is a design example. The implemented producer must select and publish the exact schema/version before parse apply or cache write is enabled.
 
 ## Target parse schema
 
@@ -109,18 +114,44 @@ Validation must reject or strip:
 
 Durable persona entries remain candidates only. They are not RelaySOUL patches and cannot be applied by the parser or cache writer.
 
-## Target cache entry
+## Current read-only cache-entry acceptance schema
 
-A target cache entry may contain only validated normalized state and bounded metadata:
+Current code already validates the following entry schema without writing or applying it:
+
+```text
+schema_version:
+  relaylm.client_instruction_cache.v0
+
+validator/consumer:
+  relaylm.client_instruction_cache_lookup.resolve_client_instruction_cache_lookup
+
+runtime reader/wiring:
+  relaylm.client_instruction_cache_reader.read_client_instruction_cache_candidate
+  relaylm.client_instruction_cache_lookup_runtime
+
+current effects:
+  hit / miss / blocked request-local result
+  typed runtime-private parsed entry on hit
+  content-free diagnostics projection
+
+not current:
+  cache writer
+  RelaySCN projection apply
+  backend prompt injection
+```
+
+An entry accepted by the current validator has this exact top-level shape:
 
 ```json
 {
   "schema_version": "relaylm.client_instruction_cache.v0",
-  "instruction_hash": "sha256:...",
+  "cache_key_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "instruction_fingerprint_sha256": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
   "route_model": "relaylm-vtuber",
   "character_id": "rin",
-  "parser_schema_version": "relaylm.client_instruction_parse.v1",
-  "authority_policy_version": "relaylm.client_instruction_authority.v1",
+  "instruction_parse_schema_version": "client_instruction_parse.v1",
+  "authority_policy_version": "client_instruction_authority.v1",
+  "parser_version": null,
   "parse_status": "valid",
   "scene_state": {
     "scene_type": "vtuber_roleplay",
@@ -129,6 +160,11 @@ A target cache entry may contain only validated normalized state and bounded met
       "role_scope": "scene",
       "role_source": "client_system",
       "confidence": 0.96
+    },
+    "scene_context": {
+      "setting": "virtual_cafe",
+      "task": null,
+      "participants": ["character", "viewer"]
     },
     "scene_constraints": []
   },
@@ -139,16 +175,16 @@ A target cache entry may contain only validated normalized state and bounded met
 }
 ```
 
-The exact implemented cache schema may differ, but it must preserve these boundaries:
+The two SHA-256 fields are exactly 64 lowercase hexadecimal characters and remain runtime-private. The example values are placeholders with the required lexical shape, not real cache identities.
 
-- instruction identity and entry scope are deterministic,
-- route/character/schema/policy/parser changes invalidate scope,
-- only allowlisted normalized RelaySCN fields are stored,
-- raw instruction and raw backend response are not stored,
-- arbitrary nested runtime artifacts are not stored,
-- cache content does not become durable persona authority.
+A future Phase 5-C5 writer must either:
 
-The cache is an interpretation cache, not a transcript, prompt archive, memory store, or persona store.
+1. emit this exact v0 shape so the current validator accepts it, or
+2. introduce a new schema version and update reader, validator, runtime wiring, compatibility handling, and smoke coverage together.
+
+It must not change fields while retaining `relaylm.client_instruction_cache.v0`.
+
+The cache is an interpretation cache, not a transcript, prompt archive, memory store, or persona store. Only allowlisted normalized RelaySCN fields and bounded metadata may be present. Raw instruction, raw response, arbitrary nested runtime artifacts, and durable persona bodies are forbidden.
 
 ## Target validation and write sequence
 
@@ -191,7 +227,7 @@ A bounded retry policy should allow at most a small defined number of later firs
 A cache hit must not inject an opaque cache entry. It must first produce an allowlisted projection:
 
 ```text
-validated cache entry
+validated relaylm.client_instruction_cache.v0 entry
   -> schema/version/scope/provenance check
   -> allowlisted RelaySCN projection
   -> Input-side RelaySCN consumer
@@ -199,6 +235,8 @@ validated cache entry
 ```
 
 The projection should expose only the normalized fields consumed by RelaySCN. Cache metadata, hashes, paths, parser records, and durable candidates do not enter backend context.
+
+The current read-only lookup result does not itself implement this projection or apply it.
 
 ## Target non-stream and stream handling
 
@@ -250,24 +288,37 @@ Current operators must use only fields present in `relaylm/config.py`, `docs/con
 
 ## Required implementation smoke
 
-When the corresponding target phases are implemented, deterministic smoke must prove:
+Current read-only regressions must continue to prove:
 
-1. a cache miss emits at most one bounded evidence block,
-2. visible text and internal control content are separated,
-3. malformed artifacts do not block a valid visible response,
-4. malformed artifacts do not write cache,
-5. valid artifacts are allowlist validated before write,
-6. raw instruction and response text never enter cache,
-7. route/character/schema/policy/parser changes invalidate scope,
-8. cache hit injects only the allowlisted RelaySCN projection,
-9. cache hit suppresses repeated instruction evidence,
-10. durable candidates never mutate RelaySOUL,
-11. content-free diagnostics contain no prompt, response, scene values, hashes, or paths,
-12. streaming markers and internal content never reach user/TTS output.
+1. strict v0 entry shape and unknown-key rejection,
+2. exact hash, route, character, schema, policy, and parser scope matching,
+3. malformed, oversized, symlinked, or out-of-root entries fail closed,
+4. hit/miss/blocked diagnostics remain content-free,
+5. lookup does not write cache or apply scene state.
+
+When the corresponding target phases are implemented, deterministic smoke must additionally prove:
+
+6. a cache miss emits at most one bounded evidence block,
+7. visible text and internal control content are separated,
+8. malformed artifacts do not block a valid visible response,
+9. malformed artifacts do not write cache,
+10. valid artifacts are allowlist validated before write,
+11. raw instruction and response text never enter cache,
+12. route/character/schema/policy/parser changes invalidate scope,
+13. cache hit injects only the allowlisted RelaySCN projection,
+14. cache hit suppresses repeated instruction evidence,
+15. durable candidates never mutate RelaySOUL,
+16. content-free diagnostics contain no prompt, response, scene values, hashes, or paths,
+17. streaming markers and internal content never reach user/TTS output.
 
 ## Final boundary
 
 ```text
+Current
+  validate relaylm.client_instruction_cache.v0 entries read-only
+  no writer
+  no RelaySCN projection apply
+
 Phase 5-C4a
   bounded evidence for managed-request correctness
 
@@ -281,4 +332,4 @@ Phase 5.5
   streaming internal-control suppression
 ```
 
-No target artifact becomes current merely because an example exists in this document.
+No target producer or apply behavior becomes current merely because an example exists in this document.
