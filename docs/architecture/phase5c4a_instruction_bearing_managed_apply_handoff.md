@@ -1,185 +1,97 @@
 # Phase 5-C4a Instruction-Bearing Managed Apply Handoff
 
-## Status and authority
+## Authority and decision
 
-This is the active one-page implementation handoff for the next RelayLM runtime slice.
+This is the active implementation handoff for the next RelayLM runtime slice. Component ownership remains in [Pipeline Responsibility Design](pipeline_responsibility_design.md), sequencing in [Pipeline Implementation Plan](pipeline_implementation_plan.md), and authority rules in the [Client History Authority Contract](client_history_authority_contract.md) and [Client Instruction Authority Contract](client_instruction_authority_contract.md).
 
-It is subordinate to:
-
-1. [Pipeline Responsibility Design](pipeline_responsibility_design.md) for component ownership,
-2. [Pipeline Implementation Plan](pipeline_implementation_plan.md) for sequencing,
-3. [Client History Authority Contract](client_history_authority_contract.md) and [Client Instruction Authority Contract](client_instruction_authority_contract.md) for authority rules,
-4. dedicated current schemas and runtime code for exact implemented behavior.
-
-This handoff does not authorize work beyond the bounded slice below.
-
-## Decision
-
-The next and only active implementation slice is:
+The next and only active slice is:
 
 ```text
 Phase 5-C4a
 instruction-bearing managed-route history exclusion apply
 ```
 
-No separate authority, Runtime Compile Gate v1, cache projection, or active-tool-transaction preservation phase is required before starting this slice.
-
-The existing request-local foundations are sufficient:
-
-- `PipelineContext.original_payload` and `forwarded_payload`,
-- client-message canonicalization,
-- runtime-private client-instruction identity,
-- read-only instruction-cache lookup,
-- client-history exclusion preflight,
-- `client_history_exclusion_apply.v0` for the no-instruction compatibility path,
-- explicit payload replacement reasons,
-- the managed-route backend-forward fail-closed gate.
-
-Missing dependency closure belongs inside Phase 5-C4a rather than in a preceding phase.
+No separate authority, Runtime Compile Gate v1, cache-projection, or tool-transaction-preservation phase is required first. Existing `PipelineContext`, canonicalization, runtime-private instruction identity, read-only cache lookup, history-exclusion preflight, v0 no-instruction apply, and backend-forward fail-closed gate are sufficient foundations. Missing dependency closure belongs inside 5-C4a.
 
 ## Required result
 
-For a supported instruction-bearing managed `memory_light` request, construct a fresh backend-bound payload that contains only:
+For a supported instruction-bearing managed `memory_light` request, build a fresh backend payload containing only:
 
 ```text
 one RelayLM-owned compiled prefix
-+ at most one bounded escaped low-trust client-instruction evidence block
++ at most one bounded escaped low-trust instruction-evidence block
 + the exact validated current user message
 ```
 
-The payload must not contain:
+Exclude prior client user/assistant history, raw client system/developer message objects, frontend summaries or memory notes, unrelated old tool results, and cache-entry bodies. Preserve the complete current user message, including supported multimodal parts.
 
-- prior client `user` or `assistant` history,
-- raw client `system` or `developer` message objects,
-- frontend summaries or memory notes,
-- old tool results unrelated to an active transaction,
-- cache entry bodies or opaque cached scene content.
+Use normalized candidates from request-local `ClientInstructionIdentity`. Do not recover instruction text from the compiled payload. The renderer must preserve deterministic role/order, combine candidates into at most one block, escape control-sensitive delimiters, enforce a deterministic size bound, label the block as low-trust current-request evidence, and keep it below RelayLM runtime/safety and approved persona authority.
 
-The current user message must be preserved as a complete message object, including supported multimodal content parts.
+Do not silently broaden `client_history_exclusion_apply.v0`. Add an explicitly versioned instruction-bearing contract, preferably `client_history_exclusion_apply.v1`, while preserving v0 behavior during migration.
 
-## Instruction evidence policy
+## Dependency and cache posture
 
-Use the request-local normalized instruction candidates from `ClientInstructionIdentity`; do not re-read instruction text from the already-compiled backend payload.
+Enabling instruction-bearing apply must prepare its required instruction extraction/identity dependency automatically or through an apply-owned helper. Operators must not need unrelated diagnostic flags. Read-only cache lookup remains optional for correctness.
 
-The evidence renderer must:
+Cache-hit RelaySCN projection remains deferred to Phase 5-C4b. In 5-C4a, supported instruction-bearing requests may use the bounded normalized evidence block when lookup is disabled, misses, or reports a hit. Do not inject opaque cache content, write cache entries, or claim repeated-prompt optimization.
 
-- preserve deterministic source order and role labels,
-- combine all current `system` and `developer` candidates into at most one evidence block,
-- escape XML-like delimiters and other control-sensitive characters,
-- enforce a fixed deterministic size bound,
-- label the block explicitly as low-trust current-request evidence,
-- place it below RelayLM runtime/safety and approved persona authority,
-- remain request-local and content-bearing,
-- never enter generic trace, audit, node-result, or exception text.
+## Compatibility rules
 
-Do not silently broaden `client_history_exclusion_apply.v0`. Introduce a new explicitly versioned instruction-bearing schema, preferably `client_history_exclusion_apply.v1`, while preserving the current v0 no-instruction behavior during migration.
-
-## Cache posture for this slice
-
-Cache-hit RelaySCN projection remains deferred to Phase 5-C4b.
-
-Therefore Phase 5-C4a must not depend on applying a cache entry. A read-only cache hit does not authorize opaque cache injection and must not make instruction-bearing correctness unavailable.
-
-For this slice:
-
-- use the bounded normalized low-trust evidence block for supported instruction-bearing requests whether lookup is disabled, misses, or reports a hit,
-- record only a typed content-free lookup class in diagnostics,
-- do not deserialize or inject cached scene state,
-- do not write the cache,
-- do not claim that repeated instruction evidence has been optimized away.
-
-Phase 5-C4b may later replace repeated evidence with a validated allowlisted RelaySCN projection.
-
-## Dependency closure
-
-Enabling instruction-bearing actual apply must deterministically prepare every required request-local dependency.
-
-The implementation must either:
-
-- make history-exclusion apply imply client-instruction extraction and identity preparation, or
-- call a dedicated apply-owned preparation helper that produces the same typed identity result.
-
-It must not require operators to discover and enable unrelated diagnostic flags manually.
-
-Read-only cache lookup remains optional for correctness.
-
-## Compatibility and transaction rules
-
-### Explicit pass-through
-
-`pass_through` remains fully client-authority delegated and unchanged.
-
-### Active tool transaction
-
-The current slice does not implement minimum-chain reconstruction. Existing detection must continue to fail closed with `active_tool_transaction_requires_preservation` before backend forwarding.
-
-This explicit block satisfies the Phase 5-C4a requirement to preserve or block active transactions coherently. Tool-transaction preservation may be implemented later behind a dedicated contract.
-
-### Structured output and request-level options
-
-For requests without an active message-chain transaction, preserve compatible top-level request fields from the compiled payload, including supported `tools`, `tool_choice`, `response_format`, sampling fields, stream choice, and provider-specific options.
-
-The implementation should replace only the backend-bound `messages` list unless a dedicated compatibility contract requires another bounded mutation.
-
-### Streaming
-
-This slice changes backend-bound request construction only. It does not implement Stream Unpack or change SSE response handling.
-
-The backend-forward gate must block both streaming and non-streaming requests when explicit actual apply cannot produce an exact applied result.
+- `pass_through` remains client-authority delegated and unchanged.
+- Active tool transactions remain explicitly blocked with `active_tool_transaction_requires_preservation`; minimum-chain reconstruction is not part of this slice.
+- Preserve compatible top-level request fields, including supported `tools`, `tool_choice`, `response_format`, sampling, stream, and provider options. Replace only `messages` unless a dedicated contract requires another bounded mutation.
+- This slice changes backend-bound request construction only. It does not implement Stream Unpack or change SSE response handling.
+- Streaming and non-streaming requests must both stop before backend forwarding when explicit actual apply has no exact applied result.
 
 ## Runtime integration
 
 The apply path must:
 
-1. consume only typed request-local prerequisites,
+1. consume typed request-local prerequisites,
 2. build a detached candidate without mutating inputs,
 3. return `ready` in dry-run-only mode,
-4. return `applied` only when the exact candidate is selected,
+4. return `applied` only for the selected exact candidate,
 5. replace `PipelineContext.forwarded_payload` through the standard helper,
 6. record one stable mutation reason,
-7. remain idempotent within one request,
-8. emit a typed content-free `PipelineNodeResult`,
-9. let the existing backend-forward gate fail closed for every non-applied actual-apply result.
+7. remain request-local and idempotent,
+8. emit only a typed content-free `PipelineNodeResult`,
+9. preserve the existing fail-closed backend-forward gate for every non-applied actual-apply result.
 
-The complete target Runtime Compile Gate taxonomy, forwarded-payload-source typing, and managed fallback builder are not prerequisites. Do not implement them in this slice.
+The complete Runtime Compile Gate v1 taxonomy, explicit forwarded-payload-source typing, and a managed fallback builder are not prerequisites or goals of this slice.
 
 ## Start conditions
 
-Implementation may begin when all of these remain true on current `main`:
+Implementation may start while current `main` still proves:
 
-- the no-instruction v0 contract and runtime smoke pass,
-- the backend-forward gate blocks instruction-bearing actual apply before the backend,
-- instruction identity is request-local and content-bearing,
+- the v0 no-instruction contract/runtime path passes,
+- instruction-bearing actual apply is blocked before backend forwarding,
+- instruction identity remains request-local and content-bearing,
 - canonicalization and preflight detect active tool transactions,
-- default apply remains disabled and dry-run-only remains true,
+- apply is default-off and dry-run-only by default,
 - generic trace/audit projections remain content-free.
 
-If a start condition is no longer true, fix that regression first without expanding the slice.
+Fix any regression in these foundations before expanding the slice.
 
 ## Required smoke coverage
 
-Add deterministic smoke coverage for:
+Add deterministic contract, runtime, and end-to-end coverage for:
 
-1. v0 no-instruction behavior remains unchanged,
-2. `system` only, `developer` only, and mixed deterministic instruction order,
-3. bounded escaping and oversize rejection or truncation policy,
-4. exact current text-message preservation,
-5. exact current multimodal-message preservation,
-6. prior user/assistant history exclusion,
-7. no raw instruction message object reaches the backend,
-8. apply dependency closure when standalone extraction/cache flags are false,
-9. cache disabled, miss, and hit classes without cache entry injection or write,
-10. dry-run candidate without payload mutation,
-11. actual apply with one payload replacement and stable mutation reason,
-12. request-local idempotency,
-13. explicit `pass_through` preservation,
-14. active tool transaction block before backend forwarding,
-15. compatible top-level `tools`, `tool_choice`, `response_format`, sampling, stream, and provider fields remain unchanged,
-16. streaming and non-streaming blocked paths never reach the backend,
-17. node result, trace, and public error remain content-free,
-18. runtime exceptions produce only bounded stable reason IDs.
+1. unchanged v0 no-instruction behavior,
+2. system-only, developer-only, and mixed deterministic instruction order,
+3. escaping and oversize policy,
+4. exact text and multimodal current-message preservation,
+5. prior history exclusion and no raw instruction-message forwarding,
+6. dependency closure with standalone extraction/cache flags disabled,
+7. cache disabled/miss/hit classes without cache injection or write,
+8. dry-run mutation neutrality and exact actual-apply replacement,
+9. request-local idempotency and stable mutation reason,
+10. unchanged `pass_through`,
+11. active tool-transaction block before backend forwarding,
+12. preservation of compatible top-level request fields,
+13. streaming and non-streaming fail-closed paths,
+14. content-free node results, trace, public errors, and bounded exception reasons.
 
-At minimum, run the existing regression smokes:
+Run the existing regressions at minimum:
 
 ```bash
 python scripts/relaylm_client_message_canonicalization_smoke.py
@@ -195,53 +107,20 @@ python scripts/relaylm_jsonl_trace_smoke.py
 python scripts/relaylm_hardening_smoke.py
 ```
 
-Add the new instruction-bearing contract/runtime/end-to-end smokes to `.github/workflows/onboarding-config-smoke.yml` or a dedicated authority workflow with equivalent `pull_request` and `main` push coverage.
+Add the new instruction-bearing smokes to `onboarding-config-smoke.yml` or an equivalent authority workflow with pull-request and `main` push coverage.
 
 ## Non-goals
 
-Do not include:
-
-- cache-hit RelaySCN projection,
-- typed client-instruction response parsing,
-- instruction-cache write,
-- complete Runtime Compile Gate v1 taxonomy,
-- authority-safe managed fallback builder,
-- active tool-transaction reconstruction,
-- RelaySOUL mutation, proposal execution, rollback, or persistence,
-- Stream Unpack or TTS-safe segmentation,
-- RelayREF,
-- output-side RelaySCN,
-- full RelayRUN route-table or per-node orchestration promotion,
-- new default-on behavior.
+Do not include cache-hit RelaySCN projection, typed instruction-response parsing, cache write, Runtime Compile Gate v1, managed fallback construction, active tool-chain reconstruction, RelaySOUL mutation/persistence, Stream Unpack, RelayREF, output-side RelaySCN, full RelayRUN route promotion, or new default-on behavior.
 
 ## Rollback conditions
 
-Rollback the slice, or return it to dry-run-only, if any of these occurs:
+Rollback the slice, or return it to dry-run-only, if prior client history reaches a managed backend; raw client instruction messages regain authority; content appears in trace/node results/public errors; multimodal content is lost or reordered; pass-through changes; incomplete tool chains reach the backend; compatible top-level fields are unexpectedly changed; a non-applied actual-apply request reaches the backend; idempotency fails; or safe defaults change.
 
-- prior client history reaches a managed backend,
-- raw client instruction messages regain backend authority,
-- instruction or user content appears in trace, node results, public errors, or exception text,
-- current multimodal content is flattened, reordered, or lost,
-- pass-through behavior changes,
-- active tool transactions reach the backend with an incomplete chain,
-- compatible top-level request fields are dropped or rewritten unexpectedly,
-- a non-applied explicit actual-apply request reaches the backend,
-- the operation is not idempotent,
-- default-off or dry-run-by-default posture changes.
-
-Rollback must preserve the current v0 no-instruction path and backend-forward fail-closed behavior.
+Rollback must preserve the v0 no-instruction path and its backend-forward fail-closed behavior.
 
 ## Completion criteria
 
-Phase 5-C4a is complete only when:
+5-C4a completes only when supported no-instruction and instruction-bearing managed requests exclude prior client history by apply; instruction evidence is bounded, escaped, explicitly low-trust, and not represented as client-authoritative messages; current text/multimodal input remains intact; active transactions are preserved or explicitly blocked; all mutations use `PipelineContext`; explicit actual apply fails closed without an exact applied result; pass-through remains unchanged; and all required deterministic smokes and CI pass.
 
-- supported no-instruction and instruction-bearing managed requests exclude prior client history by apply,
-- instruction evidence is bounded, escaped, explicitly low-trust, and not represented as client-authoritative messages,
-- current text and multimodal user content remain intact,
-- active transactions are preserved by an implemented contract or explicitly blocked,
-- every mutation is recorded through `PipelineContext`,
-- explicit actual apply fails closed unless an exact applied result exists,
-- pass-through remains unchanged,
-- all required deterministic smokes and CI pass.
-
-After completion, update [Project Status](../PROJECT_STATUS.md) and [Pipeline Implementation Plan](pipeline_implementation_plan.md) before selecting the next implementation slice.
+After completion, update [Project Status](../PROJECT_STATUS.md) and the implementation plan before selecting another slice.
