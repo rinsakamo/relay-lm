@@ -22,7 +22,6 @@ def require(condition: bool, detail: object) -> None:
 
 def candidate(role: str, index: int, text: str) -> NormalizedInstructionCandidate:
     return NormalizedInstructionCandidate(
-        candidate_id=f"instruction_{index}",
         role=role,
         source_index=index,
         normalized_text=text,
