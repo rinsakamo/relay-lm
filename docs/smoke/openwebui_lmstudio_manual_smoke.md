@@ -6,6 +6,8 @@ This runbook verifies the real local connection path and current managed-history
 
 Related docs:
 
+- [Client history exclusion manual smoke](client_history_exclusion_manual_smoke.md)
+- [RelayRUN recovery diagnostics manual smoke](relayrun_recovery_diagnostics_manual_smoke.md)
 - [OpenWebUI model preset/avatar checklist](openwebui_model_preset_checklist.md)
 - [OpenWebUI route response differentiation checks](openwebui_response_differentiation_checks.md)
 - [Manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md)
@@ -30,11 +32,11 @@ With default settings:
 
 - prior frontend user/assistant history may remain in backend-bound messages,
 - history-exclusion apply is disabled,
-- no-instruction history-exclusion dry-run/apply is available only behind explicit gates,
+- no-instruction history-exclusion is available only behind explicit gates,
 - instruction-bearing managed apply is not implemented,
 - explicit `pass_through` remains delegated client authority.
 
-Do not use a remote backend unless this current message exposure is acceptable.
+A remote backend receives the backend-bound message list. Use one only when the current exposure is acceptable.
 
 ## Prerequisites
 
@@ -89,14 +91,24 @@ Fallback:
 python -m relaylm.app --config config.yaml
 ```
 
-Record intentional changes from the copy-ready example.
+Record intentional differences:
 
-## Step 3: local preflight smoke
+```bash
+git diff --no-index examples/config/openwebui_lmstudio.yaml config.yaml
+```
+
+## Step 3: deterministic local smokes
 
 ```bash
 python scripts/relaylm_openwebui_lmstudio_config_smoke.py
 python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+python scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
+python scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
+python scripts/relaylm_profile_loading_smoke.py
+python scripts/relaylm_config_room_scene_compat_smoke.py
 ```
+
+These scripts validate the copy-ready config, fake-backend proxy path, current profile ownership, exhaustive config-field coverage, managed history-exclusion matrix, forward gate, and optional legacy `room_anchor` compatibility.
 
 Check route publication:
 
@@ -141,7 +153,7 @@ Expected:
 - non-stream returns a normal JSON completion,
 - stream emits progressive SSE chunks,
 - current stream path is primarily backend forwarding,
-- no claim is made that Stream Unpack is active.
+- Stream Unpack is not claimed as active.
 
 ## Step 5: OpenWebUI connection
 
@@ -155,20 +167,20 @@ In OpenWebUI:
 6. Enter API key `relaylm` or a dummy value.
 7. Save.
 
-Do not choose Open Responses. Current RelayLM supports `/v1/models` and `/v1/chat/completions`, not `/v1/responses`.
+Current RelayLM supports `/v1/models` and `/v1/chat/completions`, not `/v1/responses`.
 
 ### Reachable Base URL
 
-- OpenWebUI runs directly on the same host: `http://127.0.0.1:8090/v1`
-- OpenWebUI runs in Docker: try `http://host.docker.internal:8090/v1`
-- Docker-to-WSL fallback: use `http://<WSL_IP>:8090/v1`
+- same host: `http://127.0.0.1:8090/v1`
+- OpenWebUI in Docker: try `http://host.docker.internal:8090/v1`
+- Docker-to-WSL fallback: `http://<WSL_IP>:8090/v1`
 
 ```bash
 hostname -I
 docker exec open-webui curl http://<WSL_IP>:8090/v1/models
 ```
 
-RelayLM may need `listen.host: 0.0.0.0` for container access. Binding to all interfaces increases exposure; use firewall/network controls and do not expose RelayLM publicly by accident.
+RelayLM may need `listen.host: 0.0.0.0` for container access. Use firewall/network controls and avoid accidental public exposure.
 
 ## Step 6: profile differentiation
 
@@ -183,168 +195,66 @@ Expected:
 
 Use the controlled prompts in [response differentiation checks](openwebui_response_differentiation_checks.md).
 
-## Step 7: current history-exclusion matrix
+## Step 7: managed history authority
 
-Run this section only after recording the baseline config and using a test-only local backend or inspectable fake backend. Do not enable actual apply blindly against production traffic.
+Run and record the dedicated [client history exclusion smoke](client_history_exclusion_manual_smoke.md).
 
-### Case A — default compatibility path
+It separates:
 
-Config:
+- minimal apply controls from optional diagnostics flags,
+- default compatibility from dry-run and actual apply,
+- managed routes from pass-through,
+- deterministic script evidence from optional manual payload capture.
 
-```yaml
-client_message_canonicalization_dry_run_enabled: false
-client_history_exclusion_preflight_enabled: false
-client_history_exclusion_apply_enabled: false
-client_history_exclusion_apply_dry_run_only: true
-```
-
-Send:
-
-```json
-{
-  "model": "relaylm-companion",
-  "messages": [
-    {"role": "user", "content": "old turn"},
-    {"role": "assistant", "content": "old reply"},
-    {"role": "user", "content": "current turn"}
-  ],
-  "stream": false
-}
-```
-
-Expected:
-
-- request completes,
-- no history-exclusion apply result is required,
-- prior client history may remain in the backend-bound message list,
-- this is compatibility behavior, not the target authority path.
-
-### Case B — dry-run candidate
-
-Config:
-
-```yaml
-client_message_canonicalization_dry_run_enabled: true
-client_history_exclusion_preflight_enabled: true
-client_history_exclusion_apply_enabled: true
-client_history_exclusion_apply_dry_run_only: true
-```
-
-Use the same no-instruction message list.
-
-Expected:
-
-- backend request remains the compatibility payload,
-- request-local history-exclusion candidate may be created,
-- `payload_mutation_applied=false`,
-- default persisted diagnostics remain content-free.
-
-### Case C — actual no-instruction apply
-
-Config:
-
-```yaml
-client_message_canonicalization_dry_run_enabled: true
-client_history_exclusion_preflight_enabled: true
-client_history_exclusion_apply_enabled: true
-client_history_exclusion_apply_dry_run_only: false
-```
-
-Use a managed `memory_light` route with no client system/developer message.
-
-Expected backend-bound message list:
-
-1. one RelayLM-owned compiled system/prefix message,
-2. the validated current user message.
-
-Expected:
-
-- prior user/assistant history is absent,
-- status is `applied`,
-- `payload_mutation_applied=true`,
-- request completes normally.
-
-### Case D — instruction-bearing unsupported actual apply
-
-Keep Case C config and add a client `system` or `developer` message.
-
-Expected:
-
-- current v0 apply does not rebuild the unsupported request,
-- backend forwarding is blocked fail-closed,
-- raw prior history/instruction payload is not used as fallback,
-- no fabricated successful assistant response.
-
-### Case E — explicit pass-through exemption
-
-Use an explicit `pass_through` route with actual-apply flags set.
-
-Expected:
-
-- route remains delegated client authority,
-- compatible client messages are forwarded,
-- managed history-exclusion forward gate does not block solely because no managed applied result exists.
+A successful LM Studio response alone does not establish the exact backend-bound message role/count list.
 
 ## Step 8: RelayRUN recovery diagnostics
 
-This section generalizes the historical MVP-38 checklist.
+Run and record the dedicated [RelayRUN recovery diagnostics smoke](relayrun_recovery_diagnostics_manual_smoke.md).
 
-Recovery diagnostics are inspected through trace/diagnostic metadata, not through visible output.
+It preserves:
 
-Expected artifact order when present:
+- config comparison and normal-chat baseline,
+- expected recovery artifact order,
+- explicit safety-field checks,
+- backend-payload and response-body mutation checks,
+- content-free evidence requirements.
 
-1. `runtime_checkpoint`
-2. `recovery_transition_artifact`
-3. `waiting_user_contract`
-4. `recovery_apply_preflight`
-5. `recovery_response_draft`
-6. `visible_recovery_response_preflight`
-7. `recovery_response_generator`
-8. `output_relayscn_recovery_gate`
-9. `visible_recovery_apply_preflight`
-10. `user_action_contract`
-
-Expected boundaries:
-
-- diagnostics-only,
-- no direct user-visible recovery text,
-- no backend-payload recovery artifact injection,
-- no response-body mutation,
-- no actual resume/retry/user-action apply,
-- content-free persisted projections.
-
-## Pass/fail criteria
+## Overall pass/fail criteria
 
 PASS requires:
 
+- deterministic local smokes pass,
 - direct LM Studio path works,
 - RelayLM model list and non-stream/stream paths work,
 - OpenWebUI uses Standard / Compatible and reaches RelayLM,
 - route/profile behavior is plausible,
-- each history-exclusion matrix case matches its documented authority behavior,
+- managed history authority matches the dedicated matrix,
 - recovery artifacts remain diagnostics-only and content-free,
 - no internal marker or recovery artifact leaks into backend/user-visible content.
 
 FAIL includes:
 
 - OpenWebUI sends `/v1/responses`,
-- managed actual apply restores raw prior history after a blocked result,
-- instruction-bearing unsupported actual apply reaches the backend as raw fallback,
-- pass-through is incorrectly blocked as a managed route,
-- raw user/backend/snippet/prompt/final text appears in persisted diagnostics,
+- managed actual apply restores previous history after a blocked result,
+- unsupported instruction-bearing apply reaches the backend as fallback,
+- pass-through is blocked as a managed route,
+- content-bearing request/response/prompt data appears in persisted diagnostics,
 - visible recovery text appears from the diagnostics-only chain,
-- backend or response body is mutated unexpectedly.
+- backend or response body changes unexpectedly.
 
 ## Evidence collection
 
 Collect only redacted, shareable evidence:
 
 - RelayLM commit SHA,
+- deterministic smoke results,
 - redacted config summary and intentional differences,
 - OpenWebUI connection type and reachable URL class,
 - LM Studio model ID,
 - route ID and mode,
-- history-exclusion flags and result status,
-- backend message-role/count summary rather than message text,
-- diagnostics artifact names and content-free assertion result,
+- managed-history result and observation method,
+- backend message role/count summary when captured,
+- recovery artifact names and safety assertions,
+- backend-payload and response-body mutation results,
 - non-stream/stream/recovery pass/fail summary.
