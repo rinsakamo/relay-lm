@@ -53,12 +53,19 @@ def _decode_response_body(response: httpx.Response) -> Any:
         return response.text
 
 
-def _ensure_backend_forward_allowed(route: ResolvedRoute) -> None:
+def _ensure_backend_forward_allowed(
+    route: ResolvedRoute,
+    payload: Mapping[str, Any],
+) -> None:
     pipeline_context = get_active_pipeline_context()
     if pipeline_context is None:
         return
     result = pipeline_context.client_history_exclusion_apply_result
-    if client_history_exclusion_apply_blocks_backend(route, result):
+    if client_history_exclusion_apply_blocks_backend(
+        route,
+        result,
+        forwarded_payload=payload,
+    ):
         raise BackendRequestError(
             client_history_exclusion_apply_failure_reason(result)
         )
@@ -68,7 +75,7 @@ async def forward_chat_completion_json(
     payload: Mapping[str, Any],
     route: ResolvedRoute,
 ) -> tuple[int, Any, dict[str, str]]:
-    _ensure_backend_forward_allowed(route)
+    _ensure_backend_forward_allowed(route, payload)
     timeout = httpx.Timeout(route.backend.timeout_seconds)
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -111,7 +118,7 @@ async def open_chat_completion_stream(
     RelayLM generator exception.
     """
 
-    _ensure_backend_forward_allowed(route)
+    _ensure_backend_forward_allowed(route, payload)
     timeout = httpx.Timeout(route.backend.timeout_seconds)
     client = httpx.AsyncClient(timeout=timeout)
     stream_context = client.stream(
