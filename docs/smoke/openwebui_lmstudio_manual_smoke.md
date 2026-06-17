@@ -2,17 +2,19 @@
 
 ## Scope
 
-This document is a manual smoke runbook for connection/path verification.
+This runbook verifies the real local connection path and current managed-history boundary.
 
-Related checklist: [OpenWebUI model preset/avatar checklist](openwebui_model_preset_checklist.md).
-Related differentiation checks: [OpenWebUI route response differentiation checks](openwebui_response_differentiation_checks.md).
-Results template: [OpenWebUI + LM Studio manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md).
-Troubleshooting guide: [OpenWebUI + RelayLM + LM Studio troubleshooting](openwebui_lmstudio_troubleshooting.md).
-- Latest real run result: [OpenWebUI + RelayLM + LM Studio manual smoke result (2026-05-26)](openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
+Related docs:
 
-- manual smoke only
-- no automated real backend integration test in this doc
-- no runtime behavior change
+- [Client history exclusion manual smoke](client_history_exclusion_manual_smoke.md)
+- [RelayRUN recovery diagnostics manual smoke](relayrun_recovery_diagnostics_manual_smoke.md)
+- [OpenWebUI model preset/avatar checklist](openwebui_model_preset_checklist.md)
+- [OpenWebUI route response differentiation checks](openwebui_response_differentiation_checks.md)
+- [Manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md)
+- [Troubleshooting guide](openwebui_lmstudio_troubleshooting.md)
+- [Latest filled result: 2026-05-26](openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
+
+This is manual validation only. It does not change runtime behavior.
 
 ## Topology
 
@@ -22,21 +24,33 @@ OpenWebUI
   -> LM Studio /v1/chat/completions
 ```
 
+## Current authority limitation
+
+The copy-ready `memory_light` routes do not imply current-turn-only backend context.
+
+With default settings:
+
+- prior frontend user/assistant history may remain in backend-bound messages,
+- history-exclusion apply is disabled,
+- no-instruction history-exclusion is available only behind explicit gates,
+- instruction-bearing managed apply is not implemented,
+- explicit `pass_through` remains delegated client authority.
+
+A remote backend receives the backend-bound message list. Use one only when the current exposure is acceptable.
+
 ## Prerequisites
 
 - LM Studio OpenAI-compatible server is running.
-- RelayLM is installed and a config file is prepared.
-- OpenWebUI OpenAI-compatible connection is configured.
+- RelayLM is installed and `config.yaml` is prepared.
+- OpenWebUI uses an OpenAI **Standard / Compatible** connection.
+- Open Responses is not selected for RelayLM.
+- The loaded LM Studio model ID matches RelayLM config.
 
 ## Step 1: LM Studio direct check
-
-Check models directly on LM Studio:
 
 ```bash
 curl http://127.0.0.1:1234/v1/models
 ```
-
-Check non-streaming completion directly on LM Studio:
 
 ```bash
 curl http://127.0.0.1:1234/v1/chat/completions \
@@ -48,73 +62,69 @@ curl http://127.0.0.1:1234/v1/chat/completions \
   }'
 ```
 
-If this fails, troubleshoot LM Studio first before RelayLM/OpenWebUI.
+If this fails, troubleshoot LM Studio before RelayLM/OpenWebUI.
 
-If RelayLM runs on WSL and LM Studio runs on Windows host, note:
+### WSL -> Windows LM Studio
 
-- `127.0.0.1` inside WSL points to WSL itself, not Windows host.
-- discover Windows host IP from WSL:
+First try `127.0.0.1`.
+
+- WSL mirrored networking: Windows and WSL can use `127.0.0.1` for each other.
+- Default WSL NAT networking: obtain the Windows host IP from WSL.
 
 ```bash
 WIN_HOST=$(ip route show default | awk '{print $3}')
-```
-
-- check LM Studio from WSL:
-
-```bash
 curl http://${WIN_HOST}:1234/v1/models
 ```
 
-For Windows Firewall and LM Studio local network serving checks, see the troubleshooting guide.
+When using the host IP, LM Studio must accept local-network connections and Windows Firewall must allow the port.
 
 ## Step 2: RelayLM startup
 
-Recommended quick start config:
-
 ```bash
 cp examples/config/openwebui_lmstudio.yaml config.yaml
+relaylm --config config.yaml
 ```
 
-Start RelayLM with your config:
+Fallback:
 
 ```bash
 python -m relaylm.app --config config.yaml
 ```
 
-or:
+Record intentional differences:
 
 ```bash
-relaylm --config config.yaml
+git diff --no-index examples/config/openwebui_lmstudio.yaml config.yaml
 ```
 
-## Step 3: RelayLM route check
-
-Config-only local smoke (no real backend connection):
+## Step 3: deterministic local smokes
 
 ```bash
 python scripts/relaylm_openwebui_lmstudio_config_smoke.py
 python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+python scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
+python scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
+python scripts/relaylm_profile_loading_smoke.py
+python scripts/relaylm_config_room_scene_compat_smoke.py
 ```
 
-Proxy-path local smoke (fake backend, no LM Studio connection):
+These scripts validate the copy-ready config, fake-backend proxy path, current profile ownership, exhaustive config-field coverage, managed history-exclusion matrix, forward gate, and optional legacy `room_anchor` compatibility.
 
-```bash
-python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
-```
-
-Check route model IDs exposed by RelayLM:
+Check route publication:
 
 ```bash
 curl http://127.0.0.1:8090/v1/models
 ```
 
-Expected route IDs (OpenWebUI preset side):
+Expected IDs:
 
 - `relaylm-companion`
 - `relaylm-work-assistant`
 - `relaylm-code-reviewer`
 
-## Step 4: RelayLM non-stream check
+## Step 4: RelayLM non-stream and stream checks
+
+Non-stream:
 
 ```bash
 curl http://127.0.0.1:8090/v1/chat/completions \
@@ -126,9 +136,7 @@ curl http://127.0.0.1:8090/v1/chat/completions \
   }'
 ```
 
-Expect a normal JSON completion response.
-
-## Step 5: RelayLM streaming check
+Stream:
 
 ```bash
 curl -N http://127.0.0.1:8090/v1/chat/completions \
@@ -140,248 +148,113 @@ curl -N http://127.0.0.1:8090/v1/chat/completions \
   }'
 ```
 
-Expect SSE chunks to stream progressively.
+Expected:
 
-## Step 6: OpenWebUI connection check
+- non-stream returns a normal JSON completion,
+- stream emits progressive SSE chunks,
+- current stream path is primarily backend forwarding,
+- Stream Unpack is not claimed as active.
 
-In OpenWebUI OpenAI-compatible connection settings, use the Base URL that matches your runtime placement.
+## Step 5: OpenWebUI connection
 
-- API key: `relaylm` (dummy is acceptable)
+In OpenWebUI:
 
-Decision tree:
+1. Open **Admin Settings**.
+2. Go to **Connections -> OpenAI**.
+3. Select **Add Connection**.
+4. Choose **Standard / Compatible** when available.
+5. Enter the RelayLM API URL.
+6. Enter API key `relaylm` or a dummy value.
+7. Save.
 
-- OpenWebUI runs directly on host:
-  - Base URL: `http://127.0.0.1:8090/v1`
+Current RelayLM supports `/v1/models` and `/v1/chat/completions`, not `/v1/responses`.
 
-- OpenWebUI runs in Docker container:
-  1. try `host.docker.internal` first
-  2. if it fails, use WSL IP
+### Reachable Base URL
 
-WSL IP check:
+- same host: `http://127.0.0.1:8090/v1`
+- OpenWebUI in Docker: try `http://host.docker.internal:8090/v1`
+- Docker-to-WSL fallback: `http://<WSL_IP>:8090/v1`
 
 ```bash
 hostname -I
-```
-
-Container-side connectivity check:
-
-```bash
 docker exec open-webui curl http://<WSL_IP>:8090/v1/models
 ```
 
-Docker/WSL fallback Base URL:
+RelayLM may need `listen.host: 0.0.0.0` for container access. Use firewall/network controls and avoid accidental public exposure.
 
-- `http://<WSL_IP>:8090/v1`
+## Step 6: profile differentiation
 
-Note:
+Use the same LM Studio model and switch only RelayLM route/model IDs.
 
-- RelayLM may need `listen.host: 0.0.0.0` so the container can reach it.
-- WSL IP values are environment-dependent and may change after restart.
+Expected:
 
-Create model preset / avatar entries and bind model IDs to:
+- route-specific SOUL/OUTPUT_POLICY influence,
+- route-specific configured memory-seed influence,
+- no dependency on heavy OpenWebUI system prompts,
+- no invented memory required for a pass.
 
-- `relaylm-companion`
-- `relaylm-work-assistant`
-- `relaylm-code-reviewer`
+Use the controlled prompts in [response differentiation checks](openwebui_response_differentiation_checks.md).
 
-## Step 7: Character/profile differentiation check
+## Step 7: managed history authority
 
-Use the same LM Studio backend model and switch only RelayLM route/model IDs.
+Run and record the dedicated [client history exclusion smoke](client_history_exclusion_manual_smoke.md).
 
-Expected behavior:
+It separates:
 
-- route-specific `SOUL` and `OUTPUT_POLICY` influence appears in responses
-- route-specific memory seed influence appears when memory path is configured
-- no dependency on concrete character names
+- minimal apply controls from optional diagnostics flags,
+- default compatibility from dry-run and actual apply,
+- managed routes from pass-through,
+- deterministic script evidence from optional manual payload capture.
 
-## Troubleshooting
+A successful LM Studio response alone does not establish the exact backend-bound message role/count list.
 
-- LM Studio not reachable:
-  - verify LM Studio server is running
-  - verify host/port/path (`/v1`) exactly
-- model ID mismatch:
-  - OpenWebUI preset model ID must match RelayLM `model_routes` key
-- missing characters block / `ProfileConfigurationError`:
-  - ensure each route `character_id` exists under `characters:`
-  - ensure `soul` and `output_policy` file paths exist
-- OpenWebUI system prompt duplication:
-  - keep OpenWebUI prompt layer thin to avoid conflict with RelayLM persona blocks
-- streaming stalls:
-  - test non-stream first
-  - test LM Studio direct stream to isolate backend vs proxy path
-- CORS/network/localhost issues:
-  - verify OpenWebUI process can access `127.0.0.1:8090`
-- wrong backend model name:
-  - verify `backend_model` or backend default model is valid on LM Studio
+## Step 8: RelayRUN recovery diagnostics
 
-## Safety boundaries
+Run and record the dedicated [RelayRUN recovery diagnostics smoke](relayrun_recovery_diagnostics_manual_smoke.md).
 
-This runbook does not add or require:
+It preserves:
 
-- actual persistence
-- RelaySOUL apply execution
-- persona file mutation
-- backend forwarding payload changes beyond configured compile behavior
+- config comparison and normal-chat baseline,
+- expected recovery artifact order,
+- explicit safety-field checks,
+- backend-payload and response-body mutation checks,
+- content-free evidence requirements.
 
-## MVP-38 preparation: RelayRUN recovery diagnostics manual smoke checklist
+## Overall pass/fail criteria
 
-### Scope
+PASS requires:
 
-This checklist prepares the MVP-38 real-environment smoke run. It is not an
-MVP-37 execution record.
+- deterministic local smokes pass,
+- direct LM Studio path works,
+- RelayLM model list and non-stream/stream paths work,
+- OpenWebUI uses Standard / Compatible and reaches RelayLM,
+- route/profile behavior is plausible,
+- managed history authority matches the dedicated matrix,
+- recovery artifacts remain diagnostics-only and content-free,
+- no internal marker or recovery artifact leaks into backend/user-visible content.
 
-Use it to prepare checks that:
+FAIL includes:
 
-- verify the normal OpenWebUI -> RelayLM -> LM Studio conversation path is still
-  working;
-- verify RelayRUN recovery-chain artifacts are visible only through diagnostics
-  and trace metadata;
-- verify recovery diagnostics remain preflight-only and fail-closed;
-- avoid testing or expecting actual user-visible recovery output.
+- OpenWebUI sends `/v1/responses`,
+- managed actual apply restores previous history after a blocked result,
+- unsupported instruction-bearing apply reaches the backend as fallback,
+- pass-through is blocked as a managed route,
+- content-bearing request/response/prompt data appears in persisted diagnostics,
+- visible recovery text appears from the diagnostics-only chain,
+- backend or response body changes unexpectedly.
 
-### Non-goals
-
-Do not use MVP-38 preparation to validate or enable:
-
-- visible recovery response apply;
-- response body mutation by RelayRUN recovery diagnostics;
-- backend payload mutation by RelayRUN recovery diagnostics;
-- actual resume;
-- retry execution;
-- user action parse or apply;
-- stream recovery.
-
-### Pre-test setup
-
-Before running MVP-38 manual smoke:
-
-1. Start LM Studio and confirm the OpenAI-compatible server is enabled.
-2. Start RelayLM with a local `config.yaml` that prioritizes the normal
-   conversation path.
-3. Point OpenWebUI's OpenAI-compatible Base URL at RelayLM, not directly at LM
-   Studio.
-4. Keep recovery-related config flags default-off unless a specific diagnostics
-   check explicitly requires enabling trace or diagnostics collection.
-5. If diagnostics or trace are enabled, confirm where outputs are written and
-   ensure no secrets are captured in shared evidence.
-6. Before execution, compare `config.example.yaml` with local `config.yaml` and
-   record intentional differences only.
-
-Suggested config review before testing:
-
-```bash
-git diff --no-index config.example.yaml config.yaml
-```
-
-Review these items before the run:
-
-- route/model mapping used by OpenWebUI;
-- RelayLM listen host and port;
-- LM Studio backend URL and model name;
-- diagnostics enabled/disabled state;
-- trace enabled/disabled state and trace path;
-- recovery config flags remain default-off unless intentionally overridden for
-  diagnostics visibility.
-
-### Normal conversation smoke
-
-Run normal chat first. Use a simple Japanese message such as:
-
-```text
-こんにちは。今日の作業を短く整理して。
-```
-
-Check at least one persona/profile route, for example `relaylm-companion`. If a
-memory-light route is available in the local config, also check that route.
-
-Expected normal-path result:
-
-- OpenWebUI completes the request without an error banner.
-- RelayLM returns the backend response body normally.
-- LM Studio receives the expected normal chat request.
-- RelayLM logs, diagnostics headers, and trace writing do not break the request.
-- Route/persona behavior is plausible for the selected preset.
-- No recovery text is injected into the user-visible response.
-
-### Recovery diagnostics smoke preparation
-
-Recovery diagnostics are checked through RelayLM diagnostics or trace metadata,
-not through visible output.
-
-For MVP-38, prepare to inspect that:
-
-- recovery-chain artifact names appear in diagnostics/trace when the request path
-  emits `relayrun_artifact`;
-- backend payloads sent to LM Studio do not contain recovery artifacts;
-- response bodies returned to OpenWebUI remain the backend response bodies;
-- user-visible recovery text is not produced;
-- `final_text_generated` remains `false` in recovery diagnostics artifacts;
-- diagnostics remain content-free.
-
-### Recovery chain expected artifact order
-
-When `relayrun_artifact` is present, the recovery diagnostics chain should be
-understood in this order:
-
-1. `runtime_checkpoint`
-2. `recovery_transition_artifact`
-3. `waiting_user_contract`
-4. `recovery_apply_preflight`
-5. `recovery_response_draft`
-6. `visible_recovery_response_preflight`
-7. `recovery_response_generator`
-8. `output_relayscn_recovery_gate`
-9. `visible_recovery_apply_preflight`
-10. `user_action_contract`
-
-### Expected safety flags
-
-For recovery diagnostics artifacts, expect fail-closed safety metadata such as:
-
-- `diagnostics_only=true`
-- `user_visible_allowed=false`
-- `final_text_generated=false`
-- `backend_payload_mutation_allowed=false`
-- `response_body_mutation_allowed=false`
-- `direct_user_output_allowed=false`
-- `run_direct_text_finalization_allowed=false`
-
-Some upstream artifacts may use older field names, but the expected operational
-boundary is the same: no direct user-visible recovery output and no payload or
-response mutation.
-
-### Manual pass/fail criteria
-
-PASS criteria:
-
-- normal chat works through OpenWebUI -> RelayLM -> LM Studio;
-- OpenWebUI receives a normal backend response;
-- no recovery artifact appears in the backend payload sent to LM Studio;
-- response body is not mutated by RelayRUN recovery diagnostics;
-- trace/diagnostics artifacts are content-free;
-- recovery chain remains blocked and fail-closed;
-- no user-visible recovery output appears.
-
-FAIL criteria:
-
-- visible recovery text appears;
-- response body changes unexpectedly;
-- backend payload contains recovery artifact data;
-- raw user/backend/snippet/prompt/final text appears inside a recovery artifact;
-- OpenWebUI cannot complete normal chat;
-- LM Studio receives unexpected recovery/system payload content.
-
-### Evidence to collect in MVP-38
+## Evidence collection
 
 Collect only redacted, shareable evidence:
 
-- redacted `config.yaml` summary;
-- RelayLM startup command;
-- OpenWebUI Base URL setting;
-- LM Studio model name;
-- normal chat prompt and result summary;
-- diagnostics header summary;
-- trace artifact names only;
-- backend payload mutation check result;
-- response body mutation check result;
-- optional screenshots, with secrets and local tokens hidden.
+- RelayLM commit SHA,
+- deterministic smoke results,
+- redacted config summary and intentional differences,
+- OpenWebUI connection type and reachable URL class,
+- LM Studio model ID,
+- route ID and mode,
+- managed-history result and observation method,
+- backend message role/count summary when captured,
+- recovery artifact names and safety assertions,
+- backend-payload and response-body mutation results,
+- non-stream/stream/recovery pass/fail summary.

@@ -10,6 +10,16 @@ trace:
   enabled: false
   path: traces/relaylm_trace.jsonl
 
+# Current managed history exclusion is intentionally default-off.
+# With these defaults, the memory_light compatibility compiler may preserve
+# prior frontend-supplied user/assistant history in the backend-bound messages.
+# The implemented v0 apply supports only requests with no client
+# system/developer messages. See docs/PROJECT_STATUS.md before enabling it.
+client_message_canonicalization_dry_run_enabled: false
+client_history_exclusion_preflight_enabled: false
+client_history_exclusion_apply_enabled: false
+client_history_exclusion_apply_dry_run_only: true
+
 memory:
   candidate_limit: 3
   token_budget_hint: 800
@@ -53,20 +63,17 @@ characters:
   companion:
     soul: examples/profiles/companion/SOUL.md
     output_policy: examples/profiles/companion/OUTPUT_POLICY.md
-    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
     scene_state: examples/profiles/default/SCENE_STATE.md
     memory_seed_path: examples/memory/companion_memories.yaml
 
   work_assistant:
     soul: examples/profiles/work_assistant/SOUL.md
     output_policy: examples/profiles/work_assistant/OUTPUT_POLICY.md
-    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
     scene_state: examples/profiles/default/SCENE_STATE.md
     memory_seed_path: examples/memory/work_assistant_memories.yaml
 
   code_reviewer:
     soul: examples/profiles/code_reviewer/SOUL.md
     output_policy: examples/profiles/code_reviewer/OUTPUT_POLICY.md
-    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
     scene_state: examples/profiles/default/SCENE_STATE.md
     memory_seed_path: examples/memory/code_reviewer_memories.yaml

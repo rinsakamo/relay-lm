@@ -1,3 +1,8 @@
+# Exhaustive RelayLMConfig example.
+# Every current Pydantic config field is listed at least once. Optional fields
+# may be left empty to resolve to null. Runtime defaults remain defined by
+# relaylm/config.py; comments below describe current behavior and safety gates.
+
 mode: pass_through
 
 listen:
@@ -64,6 +69,16 @@ client_message_canonicalization_dry_run_enabled: false
 # content-free diagnostics only. It does not mutate backend payloads.
 client_history_exclusion_preflight_enabled: false
 
+# Managed-route no-instruction history-exclusion apply is default-off and
+# dry-run-only by default. The current v0 apply supports managed memory_light
+# requests only when no client system/developer messages are present. Actual
+# apply requires enabled=true and dry_run_only=false. Unsupported managed
+# requests fail closed before backend forwarding; pass_through is exempt.
+# Enabling apply automatically enables its required preflight in routing;
+# canonicalization remains an optional diagnostics setting.
+client_history_exclusion_apply_enabled: false
+client_history_exclusion_apply_dry_run_only: true
+
 # Client instruction extraction dry-run is default-off, diagnostics-only, and
 # content-free. When enabled, RelayLM inspects PipelineContext.original_payload
 # for system/developer instruction candidate shape, records a pipeline node
@@ -104,10 +119,13 @@ memory:
   candidate_limit: 3
   token_budget_hint: 800
   character_budget: 1200
+  token_budget:
+  chars_per_token: 4
   # Global shadow policy switch for token-policy diagnostics.
   # false keeps policy_mode=disabled unless a character override enables shadow mode.
   token_policy_shadow_enabled: false
-  # Hard enforcement is not implemented yet. Token policy remains diagnostics/trace only.
+  # Hard token-budget truncation is default-off.
+  token_budget_truncation_enabled: false
   # RelayMEM file-backed store MVP is read-only and diagnostics-first.
   # Disabled by default; enabling it only inspects layout and does not inject CTX.
   root_path: .
@@ -136,6 +154,7 @@ backends:
     base_url: http://127.0.0.1:8000/v1
     api_key: dummy
     default_model: local-model
+    timeout_seconds: 60.0
 
 model_routes:
   relaylm-default:
@@ -145,34 +164,33 @@ model_routes:
     mode: pass_through
     cache_namespace: character/default
     memory_namespace: character/default
+    user_id:
+    user_type:
+    room_id:
+    scene_id:
+    session_id:
 
 characters:
   default:
+    common_runtime_policy:
     soul: examples/profiles/default/SOUL.md
     output_policy: examples/profiles/default/style.md
-    room_anchor: examples/profiles/default/ROOM_ANCHOR.md
-    scene_state: examples/profiles/default/SCENE_STATE.md
+    # Optional legacy compatibility field for fixed durable room constraints.
+    # The standard profile no longer uses a room-anchor file; its former content
+    # now belongs to common_runtime_policy.md and SCENE_STATE.md.
+    room_anchor:
     memory_seed_path: examples/memory/default_memories.yaml
+    relationship_anchor:
+    stable_memory_summary:
+    scene_state: examples/profiles/default/SCENE_STATE.md
+    # Legacy alias used only when scene_state is unset.
+    room_state:
     # unset -> falls back to memory.token_policy_shadow_enabled
-    # token_policy_shadow_enabled:
-  # Example override: enable shadow policy for one character even when global=false.
-  # vtuber_a:
-  #   soul: examples/profiles/default/SOUL.md
-  #   output_policy: examples/profiles/default/style.md
-  #   room_anchor: examples/profiles/default/ROOM_ANCHOR.md
-  #   memory_seed_path: examples/memory/default_memories.yaml
-  #   token_policy_shadow_enabled: true
-  # Example override: disable shadow policy for one character even when global=true.
-  # vtuber_b:
-  #   soul: examples/profiles/default/SOUL.md
-  #   output_policy: examples/profiles/default/style.md
-  #   room_anchor: examples/profiles/default/ROOM_ANCHOR.md
-  #   memory_seed_path: examples/memory/default_memories.yaml
-  #   token_policy_shadow_enabled: false
+    token_policy_shadow_enabled:
 
 # RelayEMO MVP initial (default off, diagnostics/preview first)
-# relayemo_enabled=true で diagnostics/trace artifact は出力される
-# relayemo_text_marker_enabled=true のときだけ marker preview/apply を有効化
+# relayemo_enabled=true emits diagnostics/trace artifacts.
+# relayemo_text_marker_enabled=true is still gated by apply mode.
 relayemo_enabled: false
 relayemo_dry_run: true
 relayemo_text_marker_enabled: false
@@ -264,7 +282,6 @@ relayrun_visible_recovery_apply_preflight_dry_run_only: true
 relayrun_user_action_dry_run_enabled: false
 relayrun_user_action_dry_run_only: true
 
-
 # Optional OpenWebUI + LM Studio MVP route example (docs-only reference).
 # This commented block does not change defaults unless you opt in.
 # backends:
@@ -273,6 +290,7 @@ relayrun_user_action_dry_run_only: true
 #     base_url: http://127.0.0.1:1234/v1
 #     api_key: relaylm
 #     default_model: local-model
+#     timeout_seconds: 60.0
 #
 # model_routes:
 #   relaylm-companion:
@@ -282,6 +300,11 @@ relayrun_user_action_dry_run_only: true
 #     mode: memory_light
 #     cache_namespace: character/companion
 #     memory_namespace: character/companion
+#     user_id:
+#     user_type:
+#     room_id:
+#     scene_id:
+#     session_id:
 #
 #   relaylm-work-assistant:
 #     backend: lmstudio_backend
@@ -298,25 +321,28 @@ relayrun_user_action_dry_run_only: true
 #     mode: memory_light
 #     cache_namespace: character/code-reviewer
 #     memory_namespace: character/code-reviewer
-
+#
 # characters:
 #   companion:
+#     common_runtime_policy:
 #     soul: examples/profiles/companion/SOUL.md
 #     output_policy: examples/profiles/companion/OUTPUT_POLICY.md
-#     room_anchor: examples/profiles/default/ROOM_ANCHOR.md
-#     scene_state: examples/profiles/default/SCENE_STATE.md
+#     room_anchor:
 #     memory_seed_path: examples/memory/companion_memories.yaml
+#     relationship_anchor:
+#     stable_memory_summary:
+#     scene_state: examples/profiles/default/SCENE_STATE.md
+#     room_state:
+#     token_policy_shadow_enabled:
 #
 #   work_assistant:
 #     soul: examples/profiles/work_assistant/SOUL.md
 #     output_policy: examples/profiles/work_assistant/OUTPUT_POLICY.md
-#     room_anchor: examples/profiles/default/ROOM_ANCHOR.md
-#     scene_state: examples/profiles/default/SCENE_STATE.md
 #     memory_seed_path: examples/memory/work_assistant_memories.yaml
+#     scene_state: examples/profiles/default/SCENE_STATE.md
 #
 #   code_reviewer:
 #     soul: examples/profiles/code_reviewer/SOUL.md
 #     output_policy: examples/profiles/code_reviewer/OUTPUT_POLICY.md
-#     room_anchor: examples/profiles/default/ROOM_ANCHOR.md
-#     scene_state: examples/profiles/default/SCENE_STATE.md
 #     memory_seed_path: examples/memory/code_reviewer_memories.yaml
+#     scene_state: examples/profiles/default/SCENE_STATE.md

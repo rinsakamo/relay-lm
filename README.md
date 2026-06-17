@@ -81,6 +81,9 @@ For the current phase, implemented boundaries, dry-run/read-only/default-off beh
 
 `docs/PROJECT_STATUS.md` is the maintained current-state view. This README intentionally does not duplicate phase numbers or short-lived implementation status.
 
+> [!IMPORTANT]
+> On the current default `memory_light` compatibility path, prior frontend-supplied user/assistant history may still remain in the backend-bound message list. The implemented history-exclusion apply is default-off and currently supports only managed requests with no client `system`/`developer` messages. The target current-turn-only managed reconstruction path is not complete yet. See [Project Status](docs/PROJECT_STATUS.md) and the [OpenWebUI + LM Studio guide](docs/openwebui_lmstudio_mvp.md).
+
 ## ✅ Requirements
 
 | Item | Requirement |
@@ -88,7 +91,7 @@ For the current phase, implemented boundaries, dry-run/read-only/default-off beh
 | Python | 3.10 or later |
 | Backend | OpenAI-compatible Chat Completions backend |
 | Standard setup | OpenWebUI + RelayLM + LM Studio |
-| OpenWebUI | Use an OpenAI-compatible connection and disable Responses API mode |
+| OpenWebUI | Use an OpenAI-compatible Standard / Compatible connection; do not select Open Responses for the current RelayLM runtime |
 | RelayLM endpoints | `/healthz`, `/v1/models`, `/v1/chat/completions` |
 
 ## 🚀 Quick start
@@ -156,11 +159,15 @@ RELAYLM_CONFIG=config.yaml \
 
 ### 4. Point the frontend to RelayLM
 
-Set the OpenAI-compatible base URL in OpenWebUI, Open-LLM-VTuber, or another compatible frontend to:
+In OpenWebUI, go to **Admin Settings -> Connections -> OpenAI -> Add Connection**, choose **Standard / Compatible** when that tab is available, and set the API URL to:
 
 ```text
 http://127.0.0.1:8090/v1
 ```
+
+Do not choose Open Responses for the current RelayLM runtime; `/v1/responses` is not implemented.
+
+For Open-LLM-VTuber or another compatible frontend, configure its OpenAI-compatible Chat Completions base URL to the same endpoint.
 
 ### 5. Verify the installation
 

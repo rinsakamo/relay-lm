@@ -4,11 +4,11 @@ This directory indexes manual smoke runbooks, recorded smoke results, troublesho
 
 MVP-specific implementation notes remain under `docs/mvp/`. Executable smoke scripts remain under `scripts/`.
 
-The smoke and validation documents tracked by this index are housed in this directory.
-
 ## OpenWebUI / LM Studio manual smoke
 
 - [OpenWebUI + LM Studio manual smoke runbook](openwebui_lmstudio_manual_smoke.md)
+- [Client history exclusion manual smoke](client_history_exclusion_manual_smoke.md)
+- [RelayRUN recovery diagnostics manual smoke](relayrun_recovery_diagnostics_manual_smoke.md)
 - [Manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md)
 - [Manual smoke result: 2026-05-26](openwebui_lmstudio_manual_smoke_result_2026_05_26.md)
 

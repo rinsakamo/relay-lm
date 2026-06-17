@@ -14,6 +14,18 @@ RelayLM does not own Open-LLM-VTuber's UI, display history, ASR, TTS engine, or 
 
 The primary local MVP path remains OpenWebUI -> RelayLM -> LM Studio. Open-LLM-VTuber is an optional realtime profile.
 
+## Current implementation boundary
+
+Current behavior:
+
+- streaming is primarily backend SSE forwarding,
+- current `memory_light` compatibility compilation may retain prior frontend user/assistant history,
+- the implemented `client_history_exclusion_apply.v0` is default-off and supports no client system/developer messages only,
+- Stream Unpack, output segmentation, RelayREF, and complete Output-side RelaySCN are not implemented,
+- incoming persona/system text is not durable RelaySOUL authority.
+
+The target current-turn-only managed reconstruction path described below is broader than current implementation. See [Open-LLM-VTuber Current / Target Boundary](open_llm_vtuber_current_target.md) and [Project Status](../PROJECT_STATUS.md).
+
 ## Required API surface
 
 RelayLM exposes:
@@ -27,6 +39,8 @@ Streaming must be preserved for realtime speech latency.
 
 Common request fields such as `model`, `stream`, `temperature`, tools, structured-output settings, and current multimodal parts are preserved or explicitly blocked by compatibility preflight.
 
+`/v1/responses` is not currently implemented.
+
 ## Request authority boundary
 
 Open-LLM-VTuber may send:
@@ -39,7 +53,7 @@ Open-LLM-VTuber may send:
 
 For an explicit `pass_through` route, delegated client authority is preserved.
 
-For a RelayLM-managed route:
+For a RelayLM-managed route, the target authority flow is:
 
 ```text
 client messages
@@ -51,7 +65,7 @@ client messages
   -> RelayLM-owned context reconstruction
 ```
 
-The original message array is request evidence, not the backend context.
+The complete target flow is not yet current runtime behavior. Current default `memory_light` compatibility compilation may still retain prior client history.
 
 ## Persona prompt handling
 
@@ -60,7 +74,7 @@ Open-LLM-VTuber's `persona_prompt` or equivalent incoming system prompt is not a
 ```text
 incoming persona prompt
   -> bounded low-trust client instruction evidence
-  -> RelaySCN scene_role / scene_context / scene_constraints
+  -> current compatibility block or future RelaySCN normalization
   -> current request behavior
 
 optional explicit import path
@@ -73,18 +87,16 @@ optional explicit import path
 Rules:
 
 - never copy the raw prompt wholesale into `SOUL.md`,
-- never place it directly in the stable persona prefix on a managed route,
-- do not use it as fallback durable persona authority,
+- never treat it as fallback durable persona authority,
+- never place it above RelayLM-owned durable policy on a managed route,
 - durable import is an explicit migration/calibration workflow,
 - when approved RelaySOUL exists, it remains authoritative over conflicting client persona text.
 
-When no approved RelaySOUL exists, RelaySCN may create a safe temporary current-scene role and constraints. This does not create a durable persona revision.
+Current managed profile compilation requires configured `soul` and `output_policy` files. A missing configured profile is an error, not permission to promote the client prompt into SOUL.
 
 ## History behavior
 
-Managed routes do not retain a bounded window of frontend-supplied history as canonical context.
-
-They use:
+Target managed routes use:
 
 - validated current turn,
 - RelayLM-owned selected recent context,
@@ -93,7 +105,19 @@ They use:
 - normalized RelaySCN state,
 - minimum active transaction state.
 
-Frontend visible history may remain in the frontend UI/storage, but it is not backend-authoritative context.
+Current limitation:
+
+```text
+current default memory_light compatibility path
+  -> prior frontend user/assistant history may remain backend-bound
+
+client_history_exclusion_apply.v0
+  -> default-off
+  -> dry-run-only by default
+  -> no client system/developer messages only
+```
+
+Frontend visible history may remain in the frontend UI/storage. Do not claim it has been excluded from backend context unless the exact current apply gates and request shape have been verified.
 
 ## Minimal frontend configuration
 
@@ -114,22 +138,38 @@ character_config:
         interrupt_method: user
 ```
 
-## Routing
+The exact Open-LLM-VTuber configuration structure is frontend-version-dependent. RelayLM requires an OpenAI-compatible Chat Completions connection to `/v1/chat/completions` and a route model ID published by `/v1/models`.
 
-Model-name routing selects approved RelayLM configuration.
+## RelayLM routing
+
+Persona paths belong under `characters`, not `model_routes`.
 
 ```yaml
+backends:
+  local_main:
+    type: openai_compatible
+    base_url: http://127.0.0.1:1234/v1
+    api_key: relaylm
+    default_model: local-model
+
 model_routes:
   relaylm-mili:
-    character_id: mili
     backend: local_main
-    cache_namespace: mili
+    backend_model: local-model
+    character_id: mili
+    mode: memory_light
+    cache_namespace: character/mili
+    memory_namespace: character/mili
+
+characters:
+  mili:
     soul: ./characters/mili/SOUL.md
     output_policy: ./characters/mili/OUTPUT_POLICY.md
     relationship_anchor: ./characters/mili/RELATIONSHIP_ANCHOR.md
+    scene_state: ./scenes/default/SCENE_STATE.md
 ```
 
-The route may point to approved persona sources. It must not infer durable identity from arbitrary system-prompt contents.
+The route selects approved character configuration. It must not infer durable identity from arbitrary system-prompt contents.
 
 Per-character instances remain an optional performance/isolation mode.
 
@@ -137,9 +177,13 @@ Per-character instances remain an optional performance/isolation mode.
 
 ### `pass_through`
 
-Connection testing or explicit delegated-authority integration. Messages remain unchanged except compatible model/header mapping.
+Connection testing or explicit delegated-authority integration. Compatible messages remain client-owned except for route/model/header mapping.
 
-### managed lightweight/full modes
+### Current `memory_light`
+
+Current profile compilation is apply-capable. History-exclusion actual apply is a separate default-off boundary and currently supports only no-instruction requests.
+
+### Target managed lightweight/full modes
 
 RelayLM canonicalizes client evidence and reconstructs backend context according to the client history and instruction authority contracts.
 
@@ -147,7 +191,7 @@ Mode names and current runtime behavior are defined in [Runtime Architecture](ru
 
 ## Streaming output boundary
 
-The optional realtime path is:
+The target realtime path is:
 
 ```text
 backend stream
@@ -160,7 +204,9 @@ backend stream
   -> external TTS / Avatar adapters / captions
 ```
 
-Internal markers and malformed candidates must be blocked before external speech/avatar consumers receive them.
+This path is not yet implemented. Current streaming is primarily backend SSE forwarding.
+
+Internal markers and malformed candidates must be blocked before external speech/avatar consumers receive them when Stream Unpack is introduced.
 
 ## Adapter boundary
 
@@ -175,16 +221,18 @@ RelayLM emits engine-neutral hints only.
 This integration does not:
 
 - make the incoming persona prompt durable authority,
-- preserve frontend history as managed backend context,
+- claim current prior-history exclusion when the apply gate is disabled,
 - require Open-LLM-VTuber code changes for the basic proxy path,
 - take ownership of ASR/TTS/Live2D execution,
 - rewrite tool or structured protocol payloads as persona text,
-- enable heavy synchronous retrieval by default.
+- enable heavy synchronous retrieval by default,
+- implement `/v1/responses`.
 
 ## References
 
 - [Client History Authority Contract](client_history_authority_contract.md)
 - [Client Instruction Authority Contract](client_instruction_authority_contract.md)
+- [Open-LLM-VTuber Current / Target Boundary](open_llm_vtuber_current_target.md)
 - [AI VTuber Pipeline Profile](ai_vtuber_pipeline_profile.md)
 - [Pipeline Responsibility Design](pipeline_responsibility_design.md)
 - [Project Status](../PROJECT_STATUS.md)

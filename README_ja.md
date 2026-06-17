@@ -81,6 +81,9 @@ RelayLMが担当するのは会話プロキシ、コンテキスト境界、ラ�
 
 `docs/PROJECT_STATUS.md` を現在地の正本とし、このREADMEではPhase番号や短期間で変わる実装状況を重複管理しません。
 
+> [!IMPORTANT]
+> 現在のデフォルト `memory_light` 互換経路では、フロントエンドが送った過去のuser/assistant履歴がバックエンド向けmessage listに残る場合があります。実装済みのhistory-exclusion applyはデフォルト無効で、現在はclient `system`/`developer` messageを含まないmanaged requestだけを対象とします。current turnだけを使うtarget managed reconstructionは未完成です。詳細は [Project Status](docs/PROJECT_STATUS.md) と [OpenWebUI + LM Studioガイド](docs/openwebui_lmstudio_mvp.md) を参照してください。
+
 ## ✅ 動作要件
 
 | 項目 | 要件 |
@@ -88,7 +91,7 @@ RelayLMが担当するのは会話プロキシ、コンテキスト境界、ラ�
 | Python | 3.10以上 |
 | バックエンド | OpenAI互換Chat Completions対応 |
 | 標準構成 | OpenWebUI + RelayLM + LM Studio |
-| OpenWebUI | OpenAI互換接続を使い、Responses APIを無効化 |
+| OpenWebUI | OpenAI接続の Standard / Compatible を使用し、現在のRelayLMではOpen Responsesを選択しない |
 | RelayLM API | `/healthz`, `/v1/models`, `/v1/chat/completions` |
 
 ## 🚀 クイックスタート
@@ -156,11 +159,15 @@ RELAYLM_CONFIG=config.yaml \
 
 ### 4. フロントエンドの接続先を変更
 
-OpenWebUI、Open-LLM-VTuber、または別のOpenAI互換フロントエンドで、base URLを次に設定します。
+OpenWebUIでは、**Admin Settings -> Connections -> OpenAI -> Add Connection** を開き、表示される場合は **Standard / Compatible** を選び、API URLを次に設定します。
 
 ```text
 http://127.0.0.1:8090/v1
 ```
+
+現在のRelayLMは `/v1/responses` を実装していないため、Open Responsesは選択しません。
+
+Open-LLM-VTuberや別の互換フロントエンドでは、OpenAI互換Chat CompletionsのベースURLを同じエンドポイントへ設定します。
 
 ### 5. 動作を確認
 

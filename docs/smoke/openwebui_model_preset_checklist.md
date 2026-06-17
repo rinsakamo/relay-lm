@@ -2,13 +2,7 @@
 
 ## Scope
 
-This document is a checklist for manual OpenWebUI preset/avatar setup verification in the RelayLM Runtime MVP flow.
-
-- manual verification only
-- no runtime code change
-- no automatic real-backend integration test
-
-## Target topology
+Manual OpenWebUI preset/avatar setup verification for the RelayLM MVP path.
 
 ```text
 OpenWebUI
@@ -16,93 +10,77 @@ OpenWebUI
   -> LM Studio /v1/chat/completions
 ```
 
-## Preset checklist by route
-
-Target route IDs:
+## Target route IDs
 
 - `relaylm-companion`
 - `relaylm-work-assistant`
 - `relaylm-code-reviewer`
 
-For each route ID, verify the same checklist items below.
+## OpenWebUI connection checklist
 
-## OpenWebUI checklist
+- Open **Admin Settings -> Connections -> OpenAI**.
+- Add a connection.
+- Select **Standard / Compatible** when available.
+- Do not select Open Responses for current RelayLM.
+- Set the reachable RelayLM API URL.
+- Set API key `relaylm` or another dummy value.
+- Confirm `/v1/models` loads the RelayLM route IDs.
 
-- OpenAI-compatible connection Base URL is set to `http://127.0.0.1:8090/v1`.
-- API key is set (`relaylm` or a dummy value).
-- Model preset and avatar can be created successfully.
-- Base Model / Model ID exactly matches one RelayLM route ID.
-- Display name / avatar / prompt suggestions can be customized.
-- Heavy system prompt layering is avoided to prevent duplication with RelayLM persona-policy context.
+Same-host example:
+
+```text
+http://127.0.0.1:8090/v1
+```
+
+Docker may require `host.docker.internal` or a reachable WSL address. Do not assume container-local `127.0.0.1` points to RelayLM.
+
+## Preset/avatar checklist
+
+For each route:
+
+- Base Model/Model ID exactly matches the RelayLM route ID.
+- Display name/avatar/prompt suggestions can be customized.
+- Heavy system prompt layering is avoided.
+- No client system prompt is treated as durable RelaySOUL authority.
+- The user understands that current default `memory_light` may retain prior frontend history backend-bound.
 
 ## RelayLM checklist
-
-Prepare config and run local smokes before manual UI checks:
 
 ```bash
 cp examples/config/openwebui_lmstudio.yaml config.yaml
 python scripts/relaylm_openwebui_lmstudio_config_smoke.py
 python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
-```
-
-Verify route publication:
-
-```bash
 curl http://127.0.0.1:8090/v1/models
 ```
 
-Expected route IDs:
+Verify:
 
-- `relaylm-companion`
-- `relaylm-work-assistant`
-- `relaylm-code-reviewer`
+- route IDs are published,
+- exact LM Studio model ID is configured,
+- each managed route has a valid character entry,
+- `soul` and `output_policy` files exist,
+- history-exclusion defaults remain understood:
+  - apply disabled,
+  - dry-run-only true,
+  - no-instruction requests only when explicitly enabled.
 
 ## LM Studio checklist
 
 - OpenAI-compatible server is running.
-- Direct backend model listing works:
+- Direct `/v1/models` works.
+- Direct `/v1/chat/completions` works.
+- If the loaded model ID differs from `local-model`, RelayLM config is updated.
 
-```bash
-curl http://127.0.0.1:1234/v1/models
-```
+## Response differentiation
 
-- If your loaded backend model name is not `local-model`, update config route/backend model mapping accordingly.
+- use the same backend model,
+- switch only RelayLM route/model ID,
+- use controlled prompts from [response differentiation checks](openwebui_response_differentiation_checks.md),
+- verify route/profile differences,
+- fail rather than reward fabricated prior memory.
 
-## Route-specific response differentiation check
+## Manual record
 
-- Use the same backend model in LM Studio.
-- Switch only the route/model ID at RelayLM/OpenWebUI.
-- Compare response tendencies between:
-  - `relaylm-companion`
-  - `relaylm-work-assistant`
-  - `relaylm-code-reviewer`
-- Verify behavior differences come from route/profile/memory configuration.
-- Do not rely on concrete character names.
+Use [OpenWebUI + LM Studio manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md).
 
-## Manual smoke result template
-
-Use this template for real-environment verification records.
-
-```markdown
-- date:
-- environment:
-- LM Studio model name:
-- RelayLM config used:
-- OpenWebUI version (if known):
-- route IDs tested:
-  - relaylm-companion
-  - relaylm-work-assistant
-  - relaylm-code-reviewer
-- /v1/models result:
-- non-stream result:
-- stream result:
-- OpenWebUI preset/avatar result:
-- response differentiation notes:
-- failures / suspected cause / next action:
-```
-
-## Troubleshooting references
-
-- [OpenWebUI + LM Studio manual smoke runbook](openwebui_lmstudio_manual_smoke.md)
-- [OpenWebUI route response differentiation checks](openwebui_response_differentiation_checks.md)
-- [OpenWebUI + LM Studio manual smoke results template](openwebui_lmstudio_manual_smoke_results_template.md)
+Record OpenWebUI version, connection protocol, route mode, history-exclusion flags, response differentiation, and any authority/fallback issue.

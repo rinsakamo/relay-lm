@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -41,9 +42,7 @@ def _base_config(character: dict[str, object]) -> dict[str, object]:
                 "character_id": "default",
             }
         },
-        "characters": {
-            "default": character,
-        },
+        "characters": {"default": character},
     }
 
 
@@ -53,7 +52,7 @@ def _verify_profile_compile(cfg: RelayLMConfig, expect_room_anchor_block: bool) 
     require((profile_files.room_anchor is not None) == expect_room_anchor_block, profile_files)
 
     blocks = build_profile_blocks(profile_files)
-    block_ids = [b.block_id for b in blocks]
+    block_ids = [block.block_id for block in blocks]
     require(("room_anchor" in block_ids) == expect_room_anchor_block, block_ids)
 
     plan = build_profile_compile_plan(
@@ -65,43 +64,48 @@ def _verify_profile_compile(cfg: RelayLMConfig, expect_room_anchor_block: bool) 
 
 
 def main() -> int:
-    case1 = _base_character()
-    case1["room_anchor"] = "examples/profiles/default/ROOM_ANCHOR.md"
-    case1["scene_state"] = "examples/profiles/default/SCENE_STATE.md"
-    cfg1 = RelayLMConfig.model_validate(_base_config(case1))
-    c1 = cfg1.characters["default"]
-    require(c1.room_anchor == "examples/profiles/default/ROOM_ANCHOR.md", c1)
-    require(c1.scene_state == "examples/profiles/default/SCENE_STATE.md", c1)
-    _verify_profile_compile(cfg1, expect_room_anchor_block=True)
-    print("ok room_anchor + scene_state")
+    with tempfile.TemporaryDirectory(dir=REPO_ROOT) as temp_dir:
+        compatibility_anchor = Path(temp_dir) / "ROOM_ANCHOR.md"
+        compatibility_anchor.write_text("Compatibility fixture.", encoding="utf-8")
 
-    case2 = _base_character()
-    case2["scene_state"] = "examples/profiles/default/SCENE_STATE.md"
-    cfg2 = RelayLMConfig.model_validate(_base_config(case2))
-    c2 = cfg2.characters["default"]
-    require(c2.room_anchor is None, c2)
-    require(c2.scene_state == "examples/profiles/default/SCENE_STATE.md", c2)
-    _verify_profile_compile(cfg2, expect_room_anchor_block=False)
-    print("ok scene_state without room_anchor")
+        case1 = _base_character()
+        case1["room_anchor"] = str(compatibility_anchor)
+        case1["scene_state"] = "examples/profiles/default/SCENE_STATE.md"
+        cfg1 = RelayLMConfig.model_validate(_base_config(case1))
+        c1 = cfg1.characters["default"]
+        require(c1.room_anchor == str(compatibility_anchor), c1)
+        require(c1.scene_state == "examples/profiles/default/SCENE_STATE.md", c1)
+        _verify_profile_compile(cfg1, expect_room_anchor_block=True)
+        print("ok optional room_anchor + scene_state compatibility")
 
-    case3 = _base_character()
-    case3["room_state"] = "examples/profiles/default/SCENE_STATE.md"
-    cfg3 = RelayLMConfig.model_validate(_base_config(case3))
-    c3 = cfg3.characters["default"]
-    require(c3.room_anchor is None, c3)
-    require(c3.scene_state == "examples/profiles/default/SCENE_STATE.md", c3)
-    require(c3.room_state == "examples/profiles/default/SCENE_STATE.md", c3)
-    _verify_profile_compile(cfg3, expect_room_anchor_block=False)
-    print("ok room_state legacy alias to scene_state")
+        case2 = _base_character()
+        case2["scene_state"] = "examples/profiles/default/SCENE_STATE.md"
+        cfg2 = RelayLMConfig.model_validate(_base_config(case2))
+        c2 = cfg2.characters["default"]
+        require(c2.room_anchor is None, c2)
+        require(c2.scene_state == "examples/profiles/default/SCENE_STATE.md", c2)
+        _verify_profile_compile(cfg2, expect_room_anchor_block=False)
+        print("ok current scene_state without room_anchor")
 
-    case4 = _base_character()
-    cfg4 = RelayLMConfig.model_validate(_base_config(case4))
-    c4 = cfg4.characters["default"]
-    require(c4.room_anchor is None, c4)
-    require(c4.scene_state is None, c4)
-    require(c4.room_state is None, c4)
-    _verify_profile_compile(cfg4, expect_room_anchor_block=False)
-    print("ok no room_anchor/scene_state for pass-through compatibility")
+        case3 = _base_character()
+        case3["room_state"] = "examples/profiles/default/SCENE_STATE.md"
+        cfg3 = RelayLMConfig.model_validate(_base_config(case3))
+        c3 = cfg3.characters["default"]
+        require(c3.room_anchor is None, c3)
+        require(c3.scene_state == "examples/profiles/default/SCENE_STATE.md", c3)
+        require(c3.room_state == "examples/profiles/default/SCENE_STATE.md", c3)
+        _verify_profile_compile(cfg3, expect_room_anchor_block=False)
+        print("ok room_state legacy alias to scene_state")
+
+        case4 = _base_character()
+        cfg4 = RelayLMConfig.model_validate(_base_config(case4))
+        c4 = cfg4.characters["default"]
+        require(c4.room_anchor is None, c4)
+        require(c4.scene_state is None, c4)
+        require(c4.room_state is None, c4)
+        _verify_profile_compile(cfg4, expect_room_anchor_block=False)
+        print("ok no room_anchor/scene_state for compatibility")
+
     print("ok no Path(None) TypeError in profile compile path")
     return 0
 
