@@ -9,32 +9,16 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from phase5c4a_block_order import build_blocks
 from relaylm.client_instruction_evidence import (
     build_client_instruction_evidence_block,
     replace_legacy_instruction_block,
 )
 from relaylm.client_instruction_identity import NormalizedInstructionCandidate
-from relaylm.compiler import BlockType, ContextBlock, StabilityClass
-
-
-def block(block_id: str, block_type: BlockType, stability: StabilityClass) -> ContextBlock:
-    return ContextBlock(
-        block_id=block_id,
-        block_type=block_type,
-        stability_class=stability,
-        source="smoke",
-        content=f"{block_id} sentinel",
-        token_budget_hint=100,
-        include_in_prefix_cache_target=stability is StabilityClass.STABLE_PREFIX,
-    )
 
 
 def main() -> int:
-    source = [
-        block("common_runtime_policy", BlockType.COMMON_RUNTIME_POLICY, StabilityClass.STABLE_PREFIX),
-        block("soul", BlockType.SOUL, StabilityClass.STABLE_PREFIX),
-        block("incoming_system_prompt", BlockType.INCOMING_SYSTEM_PROMPT, StabilityClass.DYNAMIC_SUFFIX),
-    ]
+    source = build_blocks()
     evidence = build_client_instruction_evidence_block(
         [
             NormalizedInstructionCandidate(
