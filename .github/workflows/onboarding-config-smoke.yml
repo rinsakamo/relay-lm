@@ -5,14 +5,40 @@ on:
   pull_request:
     paths:
       - config.example.yaml
+      - docs/architecture/runtime_architecture.md
       - examples/config/**
       - examples/profiles/default/**
+      # All runtime owners are included so transitive smoke dependencies cannot drift silently.
+      - relaylm/**
+      - pyproject.toml
       - scripts/relaylm_openwebui_lmstudio_config_smoke.py
       - scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
       - scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
       - scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
       - scripts/relaylm_profile_loading_smoke.py
       - scripts/relaylm_config_room_scene_compat_smoke.py
+      - scripts/relaylm_relaysoul_temp_revision_compile_dry_run.py
+      - scripts/relaylm_relaysoul_temp_revision_profile_smoke.py
+      - .github/workflows/onboarding-config-smoke.yml
+  push:
+    branches:
+      - main
+    paths:
+      - config.example.yaml
+      - docs/architecture/runtime_architecture.md
+      - examples/config/**
+      - examples/profiles/default/**
+      # Re-run after merge for every runtime-owner or packaging change.
+      - relaylm/**
+      - pyproject.toml
+      - scripts/relaylm_openwebui_lmstudio_config_smoke.py
+      - scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+      - scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
+      - scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
+      - scripts/relaylm_profile_loading_smoke.py
+      - scripts/relaylm_config_room_scene_compat_smoke.py
+      - scripts/relaylm_relaysoul_temp_revision_compile_dry_run.py
+      - scripts/relaylm_relaysoul_temp_revision_profile_smoke.py
       - .github/workflows/onboarding-config-smoke.yml
 
 permissions:
@@ -36,3 +62,4 @@ jobs:
           python scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
           python scripts/relaylm_profile_loading_smoke.py
           python scripts/relaylm_config_room_scene_compat_smoke.py
+          python scripts/relaylm_relaysoul_temp_revision_profile_smoke.py

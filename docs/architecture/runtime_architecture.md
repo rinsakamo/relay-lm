@@ -148,7 +148,33 @@ Responsibilities:
 - put dynamic evidence later in the prompt,
 - emit an OpenAI-compatible message list for the backend adapter.
 
-Client-provided message arrays are request evidence, not automatically trusted backend context. On managed routes, RelayLM extracts the validated current turn and applicable current instruction evidence, then reconstructs the backend-bound context from RelayLM-owned state according to the client-authority contracts.
+Client-provided message arrays are request evidence, not automatically trusted backend context.
+
+#### Current compatibility behavior
+
+- explicit `pass_through` routes preserve compatible client-owned messages,
+- the default `memory_light` compatibility path may retain prior client user/assistant history in the backend-bound message list,
+- current streaming remains primarily backend forwarding.
+
+#### Current bounded managed apply
+
+- `client_history_exclusion_apply.v0` is default-off,
+- actual apply requires `client_history_exclusion_apply_enabled=true` and `client_history_exclusion_apply_dry_run_only=false`,
+- the current apply supports managed `memory_light` requests only when client `system`/`developer` messages are absent,
+- unsupported managed requests fail closed rather than restoring raw client context,
+- `pass_through` remains an explicit exemption.
+
+#### Target managed reconstruction
+
+```text
+validated current user turn
++ bounded current instruction evidence
++ RelayLM-owned profile / scene / context / memory state
++ minimum active transaction state
+  -> newly constructed backend-bound message list
+```
+
+The complete target path extracts current request evidence and reconstructs backend context from RelayLM-owned state according to the client-authority contracts. It is broader than the current no-instruction apply slice.
 
 RelayLM treats prompt construction as context compilation rather than concatenation.
 

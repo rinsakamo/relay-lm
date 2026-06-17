@@ -179,7 +179,7 @@ def _build_profile_files_for_dir(profile_dir: Path) -> ProfileFiles:
     common_runtime_policy = profile_dir / "common_runtime_policy.md"
     soul = profile_dir / "SOUL.md"
     output_policy = _detect_optional_file(profile_dir, ["OUTPUT_POLICY.md", "style.md"])
-    room_anchor = profile_dir / "ROOM_ANCHOR.md"
+    room_anchor = _detect_optional_file(profile_dir, ["ROOM_ANCHOR.md"])
 
     if output_policy is None:
         raise DryRunShapeError("Missing output policy file: expected OUTPUT_POLICY.md or style.md")
@@ -187,11 +187,15 @@ def _build_profile_files_for_dir(profile_dir: Path) -> ProfileFiles:
         raise DryRunShapeError("Missing common_runtime_policy.md in profile dir")
     if not soul.exists():
         raise DryRunShapeError("Missing SOUL.md in profile dir")
-    if not room_anchor.exists():
-        raise DryRunShapeError("Missing ROOM_ANCHOR.md in profile dir")
 
-    relationship_anchor = _detect_optional_file(profile_dir, ["RELATIONSHIP_ANCHOR.md", "relationship_anchor.md"])
-    stable_memory_summary = _detect_optional_file(profile_dir, ["STABLE_MEMORY_SUMMARY.md", "stable_memory_summary.md"])
+    relationship_anchor = _detect_optional_file(
+        profile_dir,
+        ["RELATIONSHIP_ANCHOR.md", "relationship_anchor.md"],
+    )
+    stable_memory_summary = _detect_optional_file(
+        profile_dir,
+        ["STABLE_MEMORY_SUMMARY.md", "stable_memory_summary.md"],
+    )
     scene_state = _detect_optional_file(profile_dir, ["SCENE_STATE.md"])
 
     return ProfileFiles(
