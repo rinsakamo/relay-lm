@@ -125,7 +125,7 @@ def _payload(
     if with_instruction:
         messages.insert(
             0,
-            {"role": "system", "content": "raw instruction sentinel"},
+            {"role": "system", "content": "raw instruction sentinel" * 500},
         )
     return {
         "model": "relaylm-default",
@@ -335,7 +335,7 @@ def main() -> None:
                 require(
                     apply_node.get("status") == "blocked"
                     and apply_node.get("decision")
-                    == "client_history_exclusion_apply_blocked"
+                    == "client_history_exclusion_instruction_apply_blocked"
                     and "raw instruction sentinel" not in rendered_node
                     and "current user sentinel" not in rendered_node,
                     apply_node,
