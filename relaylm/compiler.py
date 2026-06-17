@@ -31,6 +31,7 @@ class BlockType(str, Enum):
     RETRIEVED_MEMORY = "retrieved_memory"
     RECENT_TURNS = "recent_turns"
     INCOMING_SYSTEM_PROMPT = "incoming_system_prompt"
+    CLIENT_INSTRUCTION_EVIDENCE = "client_instruction_evidence"
     LATEST_INPUT = "latest_input"
     RESPONSE_INSTRUCTION = "response_instruction"
 
@@ -148,12 +149,18 @@ def summarize_context_blocks(blocks: list[ContextBlock]) -> dict[str, object]:
         "stability_classes": stability_classes,
         "prefix_cache_target_block_ids": prefix_cache_target_block_ids,
         "dynamic_block_ids": dynamic_block_ids,
-        "scene_state_present": any(block.block_type == BlockType.SCENE_STATE for block in blocks),
-        "retrieved_memory_present": any(block.block_type == BlockType.RETRIEVED_MEMORY for block in blocks),
+        "scene_state_present": any(
+            block.block_type == BlockType.SCENE_STATE for block in blocks
+        ),
+        "retrieved_memory_present": any(
+            block.block_type == BlockType.RETRIEVED_MEMORY for block in blocks
+        ),
     }
 
 
-def build_persona_source_budget_diagnostics(blocks: list[ContextBlock]) -> dict[str, object]:
+def build_persona_source_budget_diagnostics(
+    blocks: list[ContextBlock],
+) -> dict[str, object]:
     """Build content-free character-source budget diagnostics from profile blocks."""
 
     source_budgets: dict[str, int] = {
@@ -182,7 +189,9 @@ def build_persona_source_budget_diagnostics(blocks: list[ContextBlock]) -> dict[
         char_count = len(block.content)
         budget = source_budgets[block.block_id]
         source_char_counts[block.block_id] = char_count
-        source_budget_ratios[block.block_id] = (char_count / budget) if budget > 0 else 0.0
+        source_budget_ratios[block.block_id] = (
+            char_count / budget if budget > 0 else 0.0
+        )
         if char_count > budget:
             over_budget_block_ids.append(block.block_id)
 
@@ -244,7 +253,10 @@ def extract_instruction_text(content: Any) -> str | None:
     for part in content:
         if isinstance(part, str):
             text_parts.append(part)
-        elif isinstance(part, dict) and part.get("type") in CLIENT_INSTRUCTION_TEXT_PART_TYPES:
+        elif (
+            isinstance(part, dict)
+            and part.get("type") in CLIENT_INSTRUCTION_TEXT_PART_TYPES
+        ):
             value = part.get("text")
             if isinstance(value, str):
                 text_parts.append(value)
@@ -314,9 +326,14 @@ def compile_profile_messages_with_system_fallback(
     blocks: list[ContextBlock],
     incoming_messages: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    system_messages, recent_messages = split_incoming_system_messages(incoming_messages)
+    system_messages, recent_messages = split_incoming_system_messages(
+        incoming_messages
+    )
     compiled_blocks = append_incoming_system_prompt_block(blocks, system_messages)
-    return compile_profile_messages(compiled_blocks, recent_messages=recent_messages)
+    return compile_profile_messages(
+        compiled_blocks,
+        recent_messages=recent_messages,
+    )
 
 
 def build_placeholder_persona_blocks(
