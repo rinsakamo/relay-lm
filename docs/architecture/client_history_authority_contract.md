@@ -9,6 +9,7 @@ It is a cross-cutting companion to:
 - `client_instruction_authority_contract.md`,
 - `pipeline_responsibility_design.md`,
 - `pipeline_implementation_plan.md`,
+- `phase5c4a_instruction_bearing_managed_apply_handoff.md`,
 - `ai_vtuber_pipeline_profile.md`,
 - `context_packing_design.md`,
 - `relayint_mvp_design.md`,
@@ -20,6 +21,14 @@ The contract fixes one source-of-truth rule:
 Client-provided messages are not authoritative backend context.
 RelayLM constructs the backend-bound context.
 ```
+
+## Status interpretation
+
+Current implementation provides content-free canonicalization, runtime-private instruction identity, read-only cache lookup, history-exclusion preflight, and the default-off no-instruction `client_history_exclusion_apply.v0` path.
+
+The active next slice is Phase 5-C4a instruction-bearing managed apply. Cache-hit RelaySCN projection is deferred to Phase 5-C4b, typed instruction parsing/cache write to Phase 5-C5, and Stream Unpack to Phase 5.5.
+
+Target cache behavior described below remains authoritative design intent, but it is not current apply behavior until an implemented producer, consumer, and smoke contract exist.
 
 ## Motivation
 
@@ -178,29 +187,37 @@ If no valid active user turn can be extracted, RelayINT or compatibility handlin
 
 Client `system` and `developer` messages cross the same canonicalization boundary as history, but they have one special pre-exclusion use.
 
-```text
-previous history
-  -> normally excluded and replaced by RelayCTX / RelayMEM state
+Current implemented preparation:
 
+```text
 current system/developer instruction
-  -> normalize and hash
-  -> cache hit: use cached normalized RelaySCN state
-  -> cache miss: permit one bounded first-pass interpretation
+  -> normalize and hash in request-local identity
+  -> optional read-only cache lookup
+  -> no current cache projection apply or cache write
 ```
 
-On a cache hit:
+Active Phase 5-C4a migration:
 
-- raw client system/developer messages are not forwarded,
-- the cached validated RelaySCN artifact is used.
+```text
+supported instruction-bearing request
+  -> at most one bounded escaped low-trust evidence block
+  -> prior history and raw instruction message objects excluded
+```
 
-On a cache miss:
+Target optimization after Phase 5-C4b:
 
-- the raw instruction may be wrapped once as low-trust evidence below RelayLM runtime/safety policy,
-- the Main LLM may return the normal response plus a structured RelaySCN control artifact,
-- only a validated normalized artifact may be cached,
-- the raw instruction is not persisted as scene state or SOUL.
+```text
+validated cache hit
+  -> use allowlisted normalized RelaySCN projection
+  -> suppress raw instruction evidence
 
-The canonical instruction behavior is defined in `client_instruction_authority_contract.md`.
+cache miss
+  -> permit one bounded first-pass interpretation
+  -> validate a separately versioned control artifact
+  -> write only through a later independent cache gate
+```
+
+The raw instruction is never persisted as scene state or SOUL. The canonical instruction behavior is defined in `client_instruction_authority_contract.md`.
 
 ## Default client-message policy
 
@@ -208,7 +225,7 @@ The canonical instruction behavior is defined in `client_instruction_authority_c
 
 - latest valid user message,
 - all current-turn multimodal content parts,
-- current system/developer instruction evidence for hash/cache resolution,
+- current system/developer instruction evidence for identity and resolution,
 - request-level generation and compatibility options,
 - explicitly approved current-turn metadata,
 - minimum active tool or multimodal transaction chain.
@@ -222,7 +239,7 @@ The canonical instruction behavior is defined in `client_instruction_authority_c
 - frontend-replayed persona blocks,
 - old tool results unrelated to the active transaction,
 - old internal markers or diagnostic text,
-- raw client system/developer messages after instruction resolution.
+- raw client system/developer message objects after instruction handling.
 
 A pass-through route is the explicit exception. A failed RelayCTX Repack or failed instruction parse must not implicitly restore raw client context.
 
@@ -241,6 +258,8 @@ assistant tool_calls
 ```
 
 RelayLM may preserve the minimum valid chain needed to keep the active transaction coherent. Unrelated earlier history remains excluded.
+
+Until that reconstruction contract is implemented, managed apply must explicitly block active tool transactions rather than forward an incomplete chain.
 
 ### Current multimodal turn
 
@@ -267,7 +286,9 @@ It should construct the backend request from:
 - current user input,
 - minimum active transaction state.
 
-On an unknown instruction hash only, RelayCTX may include one bounded `client_instruction_evidence` block for first-pass interpretation.
+During Phase 5-C4a, RelayCTX may include one bounded `client_instruction_evidence` block for supported instruction-bearing correctness whether cache lookup is disabled, misses, or reports a hit. This is a migration behavior, not the target cache optimization.
+
+After validated cache projection exists, raw evidence should appear only on an unknown instruction identity requiring first-pass interpretation.
 
 ```text
 UI display history != backend inference context
@@ -307,16 +328,17 @@ RelayLM should record replacement behavior without copying ignored content.
   "client_history_messages_excluded": 25,
   "active_turn_messages_preserved": 1,
   "client_instruction_messages_extracted": 1,
-  "client_instruction_hash_present": true,
+  "client_instruction_identity_present": true,
   "client_instruction_cache_status": "hit",
-  "raw_client_instruction_forwarded": false,
+  "raw_client_instruction_message_forwarded": false,
+  "low_trust_instruction_evidence_present": true,
   "active_tool_transaction_preserved": false,
   "active_multimodal_turn_preserved": false,
   "forwarded_context_source": "relayctx_repack"
 }
 ```
 
-Diagnostics should prefer counts, booleans, role distributions, hashes, and replacement reasons over raw message content.
+Diagnostics should prefer counts, booleans, role distributions, source classes, and replacement reasons over raw message content. Hash values and semantic instruction content remain runtime-private under the current content-free audit contract.
 
 ## Failure behavior
 
@@ -357,48 +379,70 @@ current request evidence extracted
 
 Raw client messages must never become an emergency fallback because that would bypass the authority boundary precisely when the pipeline is least reliable.
 
-## Implementation phase mapping
+## Implementation status and sequencing
 
-This contract is part of Phase 3 RelayCTX Repack boundary hardening.
+Current implemented foundations:
 
 ```text
-Phase 3
-  1. deterministic current-turn extraction
-  2. current instruction extraction and hashing
-  3. instruction-cache lookup
-  4. fresh backend message construction
-  5. prior history and raw instruction exclusion
-  6. minimum tool/multimodal preservation
-  7. replacement diagnostics
+Phase 5-C1 / 5-C2 / 5-C3
+  content-free canonicalization
+  runtime-private instruction identity
+  optional read-only cache lookup
+  history-exclusion preflight
 
-Phase 5
-  8. non-stream visible/control Unpack
-  9. instruction artifact validation/cache write
-
-Phase 5.5
-  10. streaming control-envelope suppression
+Phase 5-C1a compatibility slice
+  no-instruction client_history_exclusion_apply.v0
+  request-local runtime wiring
+  backend-forward fail-closed gate
 ```
 
-Phase 3 is not behaviorally complete until frontend-supplied messages are prevented from bypassing RelayCTX Repack.
+Active correctness slice:
+
+```text
+Phase 5-C4a
+  instruction-bearing managed apply
+  bounded escaped low-trust evidence
+  current text/multimodal turn preservation
+  active transaction preservation or explicit block
+```
+
+Deferred optimization and output work:
+
+```text
+Phase 5-C4b
+  validated cache-hit RelaySCN projection
+
+Phase 5-C5
+  typed instruction artifact validation and cache write
+
+Phase 5.5
+  streaming control-envelope suppression / Stream Unpack
+```
+
+Later phase identifiers do not make target behavior current. Detailed sequencing is authoritative only in `pipeline_implementation_plan.md`.
 
 ## Required smoke coverage
 
+Current and active correctness coverage must prove:
+
 1. OpenWebUI-style full history plus current user turn reaches the backend only through RelayLM-selected context.
-2. Client system/developer messages are extracted for instruction resolution but are not normally forwarded raw.
-3. Cache hit uses normalized RelaySCN state and suppresses raw instruction.
-4. Cache miss permits at most one bounded first-pass evidence block.
-5. Frontend summary and memory-note messages are excluded.
-6. Current multimodal user content remains intact.
-7. Minimum active tool transaction state is preserved.
-8. Unrelated old tool messages are excluded.
-9. Missing current user turn fails closed.
-10. Instruction parse or RelayCTX failure does not restore raw client messages.
-11. Diagnostics contain counts and policy state without ignored content.
-12. Pass-through routes remain explicit exceptions only.
+2. Client system/developer messages are extracted but not forwarded as authoritative message objects.
+3. Supported instruction-bearing requests use at most one bounded escaped low-trust evidence block.
+4. Frontend summary and memory-note messages are excluded.
+5. Current multimodal user content remains intact.
+6. Active tool transactions are preserved by an implemented contract or explicitly blocked.
+7. Unrelated old tool messages are excluded.
+8. Missing current user turn fails closed.
+9. Instruction handling or RelayCTX failure does not restore raw client messages.
+10. Diagnostics contain only typed content-free policy state.
+11. Pass-through routes remain explicit exceptions only.
+12. Cache disabled/miss/hit states do not inject opaque cache content before Phase 5-C4b.
+
+Target cache and output phases must additionally prove validated cache projection, typed artifact validation/write, and non-leaking Stream Unpack when those phases are implemented.
 
 ## Route policy and exceptions
 
-Default managed route:
+Default managed route target:
 
 ```text
 client_history_policy = replace_with_relayctx
@@ -412,7 +456,7 @@ client_history_policy = trust_client
 client_instruction_policy = trust_client
 ```
 
-Exceptions must be visible in route configuration and diagnostics. They must not arise implicitly because a managed pipeline step failed or was skipped.
+These policy names describe the authority model and are not necessarily current configuration fields. Exceptions must be visible in route configuration and diagnostics. They must not arise implicitly because a managed pipeline step failed or was skipped.
 
 ## Final boundary
 
