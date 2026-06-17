@@ -58,9 +58,11 @@ def _ensure_backend_forward_allowed(
     payload: Mapping[str, Any],
 ) -> None:
     pipeline_context = get_active_pipeline_context()
-    if pipeline_context is None:
-        return
-    result = pipeline_context.client_history_exclusion_apply_result
+    result = (
+        pipeline_context.client_history_exclusion_apply_result
+        if pipeline_context is not None
+        else None
+    )
     if client_history_exclusion_apply_blocks_backend(
         route,
         result,
