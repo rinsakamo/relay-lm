@@ -15,6 +15,9 @@ if TYPE_CHECKING:
     from relaylm.client_history_exclusion_apply import (
         ClientHistoryExclusionApplyResult,
     )
+    from relaylm.client_history_exclusion_apply_v1_types import (
+        ClientHistoryExclusionApplyV1Result,
+    )
     from relaylm.client_instruction_identity import ClientInstructionIdentityResult
     from relaylm.client_instruction_cache_lookup_runtime import (
         ClientInstructionCacheLookupRuntimeResult,
@@ -22,6 +25,7 @@ if TYPE_CHECKING:
     from relaylm.client_history_exclusion_preflight import (
         ClientHistoryExclusionPreflightResult,
     )
+    from relaylm.compiler import ContextBlock
 
 
 @dataclass
@@ -39,6 +43,12 @@ class PipelineContext:
     ctx_working_update_candidate: dict[str, Any] | None = field(
         default=None,
         repr=False,
+    )
+    _compiled_context_blocks: tuple[ContextBlock, ...] | None = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
     )
     _client_instruction_identity_result: ClientInstructionIdentityResult | None = field(
         default=None,
@@ -63,7 +73,9 @@ class PipelineContext:
         compare=False,
     )
     _client_history_exclusion_apply_result: (
-        ClientHistoryExclusionApplyResult | None
+        ClientHistoryExclusionApplyResult
+        | ClientHistoryExclusionApplyV1Result
+        | None
     ) = field(
         default=None,
         init=False,
@@ -72,6 +84,13 @@ class PipelineContext:
     )
 
     def __post_init__(self) -> None:
+        from relaylm.request_compiler import (
+            consume_compiled_context_blocks_runtime_private,
+        )
+
+        self._compiled_context_blocks = (
+            consume_compiled_context_blocks_runtime_private()
+        )
         _ACTIVE_PIPELINE_CONTEXT.set(self)
         from relaylm.client_instruction_identity_runtime import (
             prepare_client_instruction_identity_runtime_private,
@@ -93,6 +112,12 @@ class PipelineContext:
             pipeline_context=self,
             compiler_used=self.route.mode_applied == "memory_light",
         )
+
+    @property
+    def compiled_context_blocks(self) -> tuple[ContextBlock, ...] | None:
+        """Return request-local typed pre-render compiler blocks."""
+
+        return self._compiled_context_blocks
 
     def replace_forwarded_payload(
         self,
@@ -167,7 +192,11 @@ class PipelineContext:
 
     def set_client_history_exclusion_apply_result(
         self,
-        result: ClientHistoryExclusionApplyResult | None,
+        result: (
+            ClientHistoryExclusionApplyResult
+            | ClientHistoryExclusionApplyV1Result
+            | None
+        ),
     ) -> None:
         """Store one content-bearing apply result without serialization."""
 
@@ -176,7 +205,7 @@ class PipelineContext:
     @property
     def client_history_exclusion_apply_result(
         self,
-    ) -> ClientHistoryExclusionApplyResult | None:
+    ) -> ClientHistoryExclusionApplyResult | ClientHistoryExclusionApplyV1Result | None:
         """Return request-local private apply state without copying it."""
 
         return self._client_history_exclusion_apply_result
