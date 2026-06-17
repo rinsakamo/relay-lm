@@ -8,6 +8,7 @@ on:
       - docs/architecture/runtime_architecture.md
       - examples/config/**
       - examples/profiles/default/**
+      # All runtime owners are included so transitive smoke dependencies cannot drift silently.
       - relaylm/**
       - pyproject.toml
       - scripts/relaylm_openwebui_lmstudio_config_smoke.py
@@ -27,6 +28,7 @@ on:
       - docs/architecture/runtime_architecture.md
       - examples/config/**
       - examples/profiles/default/**
+      # Re-run after merge for every runtime-owner or packaging change.
       - relaylm/**
       - pyproject.toml
       - scripts/relaylm_openwebui_lmstudio_config_smoke.py
