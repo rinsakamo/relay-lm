@@ -94,7 +94,7 @@ Add deterministic contract, runtime, and end-to-end coverage for:
 Run the existing regressions at minimum:
 
 ```bash
-python scripts/relaylm_client_message_canonicalization_smoke.py
+python scripts/relaylm_client_msg_runtime_dry_run_smoke.py
 python scripts/relaylm_client_instruction_identity_smoke.py
 python scripts/relaylm_client_identity_runtime_private_smoke.py
 python scripts/relaylm_client_instruction_cache_lookup_runtime_smoke.py
