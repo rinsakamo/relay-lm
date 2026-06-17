@@ -38,7 +38,7 @@ def _require_exact_fields(raw: dict[str, Any], model: type[Any], label: str) -> 
     require(not unexpected, f"{label} unexpected fields: {unexpected}")
 
 
-def _check_safety_defaults(config: RelayLMConfig) -> None:
+def _check_safety_posture(config: RelayLMConfig, label: str) -> None:
     false_fields = [
         "relayctx_short_term_runtime_injection_apply_enabled",
         "relayctx_unpack_apply_enabled",
@@ -77,19 +77,69 @@ def _check_safety_defaults(config: RelayLMConfig) -> None:
     ]
 
     for field in false_fields:
-        require(getattr(config, field) is False, f"unsafe enabled default: {field}")
+        require(
+            getattr(config, field) is False,
+            f"{label} unsafe enabled posture: {field}",
+        )
     for field in true_fields:
-        require(getattr(config, field) is True, f"unsafe dry-run default: {field}")
+        require(
+            getattr(config, field) is True,
+            f"{label} unsafe dry-run posture: {field}",
+        )
 
-    require(config.relayemo_text_marker_enabled is False, config.relayemo_text_marker_enabled)
+    require(
+        config.relayemo_text_marker_enabled is False,
+        f"{label} relayemo_text_marker_enabled",
+    )
     require(
         config.relayemo_text_marker_apply_mode == "diagnostics_only",
-        config.relayemo_text_marker_apply_mode,
+        f"{label} relayemo_text_marker_apply_mode={config.relayemo_text_marker_apply_mode}",
     )
-    require(config.memory.ctx_block_apply_enabled is False, config.memory)
-    require(config.memory.snippet_apply_enabled is False, config.memory)
-    require(config.memory.snippet_runtime_injection_enabled is False, config.memory)
-    require(config.memory.snippet_runtime_dry_run_only is True, config.memory)
+    require(
+        config.memory.ctx_block_apply_enabled is False,
+        f"{label} memory.ctx_block_apply_enabled",
+    )
+    require(
+        config.memory.snippet_apply_enabled is False,
+        f"{label} memory.snippet_apply_enabled",
+    )
+    require(
+        config.memory.snippet_runtime_injection_enabled is False,
+        f"{label} memory.snippet_runtime_injection_enabled",
+    )
+    require(
+        config.memory.snippet_runtime_dry_run_only is True,
+        f"{label} memory.snippet_runtime_dry_run_only",
+    )
+
+
+def _build_runtime_default_config() -> RelayLMConfig:
+    return RelayLMConfig.model_validate(
+        {
+            "backends": {
+                "local": {
+                    "type": "openai_compatible",
+                    "base_url": "http://127.0.0.1:8000/v1",
+                }
+            },
+            "model_routes": {
+                "relaylm-default": {
+                    "backend": "local",
+                }
+            },
+        }
+    )
+
+
+def _require_all_mapping_entries(
+    raw: object,
+    model: type[Any],
+    label: str,
+) -> None:
+    require(isinstance(raw, dict) and bool(raw), f"{label} must be a non-empty mapping")
+    for entry_name, entry in raw.items():
+        require(isinstance(entry, dict), f"{label}.{entry_name} must be a mapping")
+        _require_exact_fields(entry, model, f"{label}.{entry_name}")
 
 
 def _check_exhaustive_config_example() -> None:
@@ -101,18 +151,24 @@ def _check_exhaustive_config_example() -> None:
     _require_exact_fields(raw["listen"], ListenConfig, "listen")
     _require_exact_fields(raw["trace"], TraceConfig, "trace")
     _require_exact_fields(raw["memory"], MemorySelectionConfig, "memory")
+    _require_all_mapping_entries(raw["backends"], BackendConfig, "backends")
+    _require_all_mapping_entries(raw["model_routes"], ModelRoute, "model_routes")
+    _require_all_mapping_entries(raw["characters"], CharacterConfig, "characters")
 
-    backend = next(iter(raw["backends"].values()))
-    route = next(iter(raw["model_routes"].values()))
-    character = next(iter(raw["characters"].values()))
-    _require_exact_fields(backend, BackendConfig, "backend")
-    _require_exact_fields(route, ModelRoute, "model route")
-    _require_exact_fields(character, CharacterConfig, "character")
+    example_config = load_config(path)
+    _check_safety_posture(example_config, "config.example.yaml")
 
-    config = load_config(path)
-    _check_safety_defaults(config)
-    print("ok exhaustive config example matches current Pydantic fields")
-    print("ok config example preserves safe default posture")
+    runtime_defaults = _build_runtime_default_config()
+    _check_safety_posture(runtime_defaults, "RelayLMConfig defaults")
+
+    require(
+        runtime_defaults.memory == MemorySelectionConfig(),
+        "RelayLMConfig memory default diverges from MemorySelectionConfig defaults",
+    )
+    print("ok exhaustive config example matches all current Pydantic fields")
+    print("ok every dynamic config entry has exact current fields")
+    print("ok config example preserves safe posture")
+    print("ok Pydantic runtime defaults preserve safe posture")
 
 
 def main() -> int:
