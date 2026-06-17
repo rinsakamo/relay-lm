@@ -38,7 +38,6 @@ def main() -> int:
     evidence = build_client_instruction_evidence_block(
         [
             NormalizedInstructionCandidate(
-                candidate_id="instruction_0",
                 role="system",
                 source_index=0,
                 normalized_text="normalized sentinel",
