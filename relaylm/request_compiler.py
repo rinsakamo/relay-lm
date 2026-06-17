@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 import yaml
 
@@ -99,6 +99,19 @@ def consume_compiled_context_blocks_runtime_private() -> tuple[ContextBlock, ...
     blocks = _COMPILED_CONTEXT_BLOCKS.get()
     _COMPILED_CONTEXT_BLOCKS.set(None)
     return blocks
+
+
+def render_compiled_context_blocks_runtime_private(
+    *,
+    blocks: Sequence[ContextBlock],
+    recent_messages: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Render an explicit typed block list with detached recent messages."""
+
+    return compile_profile_messages(
+        list(blocks),
+        recent_messages=list(recent_messages),
+    )
 
 
 def compile_chat_payload_if_enabled(
