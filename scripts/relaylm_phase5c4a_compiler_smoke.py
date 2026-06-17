@@ -15,6 +15,7 @@ from relaylm.client_instruction_evidence import (
     replace_legacy_instruction_block,
 )
 from relaylm.client_instruction_identity import NormalizedInstructionCandidate
+from relaylm.compiler import BlockType
 
 
 def main() -> int:
@@ -28,6 +29,7 @@ def main() -> int:
             )
         ]
     )
+    assert evidence.block.block_type is BlockType.CLIENT_INSTRUCTION_EVIDENCE
     replaced, reasons = replace_legacy_instruction_block(source, evidence.block)
     assert replaced is not None and reasons == []
     assert [item.block_id for item in replaced] == [
