@@ -82,6 +82,11 @@ def main() -> int:
             normal_result,
             forwarded_payload=normal_context.forwarded_payload,
         )
+        assert client_history_exclusion_apply_blocks_backend(
+            normal_context.route,
+            None,
+            forwarded_payload=normal_context.forwarded_payload,
+        )
 
         drifted = copy.deepcopy(normal_context.forwarded_payload)
         drifted["messages"].insert(
