@@ -11,23 +11,43 @@ Phase 5-C4a
 instruction-bearing managed-route history exclusion apply
 ```
 
-No separate authority, Runtime Compile Gate v1, cache-projection, or tool-transaction-preservation phase is required first. Existing `PipelineContext`, canonicalization, runtime-private instruction identity, read-only cache lookup, history-exclusion preflight, v0 no-instruction apply, and backend-forward fail-closed gate are sufficient foundations. Missing dependency closure belongs inside 5-C4a.
+No separate authority, Runtime Compile Gate v1, cache-projection, or tool-transaction-preservation phase is required first. Existing `PipelineContext`, canonicalization, runtime-private instruction identity, read-only cache lookup, history-exclusion preflight, v0 no-instruction apply, and backend-forward fail-closed gate are sufficient foundations. Missing dependency and compiler-path closure belongs inside 5-C4a.
 
 ## Required result
 
 For a supported instruction-bearing managed `memory_light` request, build a fresh backend payload containing only:
 
 ```text
-one RelayLM-owned compiled prefix
-+ at most one bounded escaped low-trust instruction-evidence block
+one RelayLM-owned compiled system message containing:
+  approved runtime / profile / context blocks
+  + at most one bounded escaped low-trust instruction-evidence block
+
 + the exact validated current user message
 ```
 
 Exclude prior client user/assistant history, raw client system/developer message objects, frontend summaries or memory notes, unrelated old tool results, and cache-entry bodies. Preserve the complete current user message, including supported multimodal parts.
 
-Use normalized candidates from request-local `ClientInstructionIdentity`. Do not recover instruction text from the compiled payload. The renderer must preserve deterministic role/order, combine candidates into at most one block, escape control-sensitive delimiters, enforce a deterministic size bound, label the block as low-trust current-request evidence, and keep it below RelayLM runtime/safety and approved persona authority.
+Use normalized candidates from request-local `ClientInstructionIdentity`. Do not recover instruction text from the already rendered compiled payload. The renderer must preserve deterministic role/order, combine candidates into at most one block, escape control-sensitive delimiters, enforce a deterministic size bound, label the block as low-trust current-request evidence, and keep it below RelayLM runtime/safety and approved persona authority.
 
 Do not silently broaden `client_history_exclusion_apply.v0`. Add an explicitly versioned instruction-bearing contract, preferably `client_history_exclusion_apply.v1`, while preserving v0 behavior during migration.
+
+## Legacy compiler replacement rule
+
+The current compatibility compiler path calls `compile_profile_messages_with_system_fallback(...)`, which may already render client system/developer content into an `incoming_system_prompt` block inside the first compiled system message.
+
+Phase 5-C4a must not:
+
+- preserve that instruction-bearing compiled prefix unchanged and append another evidence block,
+- treat the rendered `incoming_system_prompt` text as a trusted source,
+- search or edit the final rendered string to recover authority boundaries,
+- allow both the legacy block and the new identity-derived block to reach the backend.
+
+The implementation must instead do one of these through typed compiler inputs:
+
+1. build the RelayLM-owned prefix from instruction-free approved blocks and add exactly one identity-derived bounded evidence block, or
+2. deterministically replace the legacy `incoming_system_prompt` block before final rendering.
+
+The selected payload must contain at most one client-instruction evidence block and one occurrence of each accepted normalized candidate. Stable runtime/persona block order must remain unchanged.
 
 ## Dependency and cache posture
 
@@ -48,14 +68,15 @@ Cache-hit RelaySCN projection remains deferred to Phase 5-C4b. In 5-C4a, support
 The apply path must:
 
 1. consume typed request-local prerequisites,
-2. build a detached candidate without mutating inputs,
-3. return `ready` in dry-run-only mode,
-4. return `applied` only for the selected exact candidate,
-5. replace `PipelineContext.forwarded_payload` through the standard helper,
-6. record one stable mutation reason,
-7. remain request-local and idempotent,
-8. emit only a typed content-free `PipelineNodeResult`,
-9. preserve the existing fail-closed backend-forward gate for every non-applied actual-apply result.
+2. consume typed compiler blocks or an equivalent pre-render representation rather than parsing the rendered prefix,
+3. build a detached candidate without mutating inputs,
+4. return `ready` in dry-run-only mode,
+5. return `applied` only for the selected exact candidate,
+6. replace `PipelineContext.forwarded_payload` through the standard helper,
+7. record one stable mutation reason,
+8. remain request-local and idempotent,
+9. emit only a typed content-free `PipelineNodeResult`,
+10. preserve the existing fail-closed backend-forward gate for every non-applied actual-apply result.
 
 The complete Runtime Compile Gate v1 taxonomy, explicit forwarded-payload-source typing, and a managed fallback builder are not prerequisites or goals of this slice.
 
@@ -67,6 +88,7 @@ Implementation may start while current `main` still proves:
 - instruction-bearing actual apply is blocked before backend forwarding,
 - instruction identity remains request-local and content-bearing,
 - canonicalization and preflight detect active tool transactions,
+- the legacy compiler evidence path is identifiable through typed block construction,
 - apply is default-off and dry-run-only by default,
 - generic trace/audit projections remain content-free.
 
@@ -81,15 +103,17 @@ Add deterministic contract, runtime, and end-to-end coverage for:
 3. escaping and oversize policy,
 4. exact text and multimodal current-message preservation,
 5. prior history exclusion and no raw instruction-message forwarding,
-6. dependency closure with standalone extraction/cache flags disabled,
-7. cache disabled/miss/hit classes without cache injection or write,
-8. dry-run mutation neutrality and exact actual-apply replacement,
-9. request-local idempotency and stable mutation reason,
-10. unchanged `pass_through`,
-11. active tool-transaction block before backend forwarding,
-12. preservation of compatible top-level request fields,
-13. streaming and non-streaming fail-closed paths,
-14. content-free node results, trace, public errors, and bounded exception reasons.
+6. legacy `incoming_system_prompt` replacement with no duplicate instruction evidence,
+7. exactly one accepted occurrence of each normalized instruction candidate,
+8. dependency closure with standalone extraction/cache flags disabled,
+9. cache disabled/miss/hit classes without cache injection or write,
+10. dry-run mutation neutrality and exact actual-apply replacement,
+11. request-local idempotency and stable mutation reason,
+12. unchanged `pass_through`,
+13. active tool-transaction block before backend forwarding,
+14. preservation of compatible top-level request fields,
+15. streaming and non-streaming fail-closed paths,
+16. content-free node results, trace, public errors, and bounded exception reasons.
 
 Run the existing regressions at minimum:
 
@@ -105,6 +129,7 @@ python scripts/relaylm_client_history_exclusion_preflight_smoke.py
 python scripts/relaylm_client_history_exclusion_apply_contract_smoke.py
 python scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
 python scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
+python scripts/relaylm_system_fallback_smoke.py
 python scripts/relaylm_trace_content_free_contract_smoke.py
 python scripts/relaylm_jsonl_trace_smoke.py
 python scripts/relaylm_hardening_smoke.py
@@ -118,12 +143,12 @@ Do not include cache-hit RelaySCN projection, typed instruction-response parsing
 
 ## Rollback conditions
 
-Rollback the slice, or return it to dry-run-only, if prior client history reaches a managed backend; raw client instruction messages regain authority; content appears in trace/node results/public errors; multimodal content is lost or reordered; pass-through changes; incomplete tool chains reach the backend; compatible top-level fields are unexpectedly changed; a non-applied actual-apply request reaches the backend; idempotency fails; or safe defaults change.
+Rollback the slice, or return it to dry-run-only, if prior client history reaches a managed backend; raw client instruction messages regain authority; legacy and identity-derived instruction evidence are duplicated; content appears in trace/node results/public errors; multimodal content is lost or reordered; pass-through changes; incomplete tool chains reach the backend; compatible top-level fields are unexpectedly changed; a non-applied actual-apply request reaches the backend; idempotency fails; or safe defaults change.
 
 Rollback must preserve the v0 no-instruction path and its backend-forward fail-closed behavior.
 
 ## Completion criteria
 
-5-C4a completes only when supported no-instruction and instruction-bearing managed requests exclude prior client history by apply; instruction evidence is bounded, escaped, explicitly low-trust, and not represented as client-authoritative messages; current text/multimodal input remains intact; active transactions are preserved or explicitly blocked; all mutations use `PipelineContext`; explicit actual apply fails closed without an exact applied result; pass-through remains unchanged; and all required deterministic smokes and CI pass.
+5-C4a completes only when supported no-instruction and instruction-bearing managed requests exclude prior client history by apply; the legacy instruction block is replaced rather than duplicated; instruction evidence is bounded, escaped, explicitly low-trust, and not represented as client-authoritative messages; current text/multimodal input remains intact; active transactions are preserved or explicitly blocked; all mutations use `PipelineContext`; explicit actual apply fails closed without an exact applied result; pass-through remains unchanged; and all required deterministic smokes and CI pass.
 
 After completion, update [Project Status](../PROJECT_STATUS.md) and the implementation plan before selecting another slice.
