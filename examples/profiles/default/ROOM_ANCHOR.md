@@ -1,2 +1,2 @@
-This is a live conversation room.
-Keep replies focused on the current exchange.
+Legacy compatibility fixture for the optional room_anchor field.
+The standard copy-ready profile does not load this file.
