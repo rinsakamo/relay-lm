@@ -12,6 +12,9 @@ Before treating a proposed schema as the current wire contract, use the [Current
 - [Runtime compile artifact contract](runtime_compile_artifact_contract.md)
   - related design: [Runtime Compile Gate Design](../architecture/runtime_compile_gate_design.md)
 - [Context compiler contract](context_compiler_contract.md)
+- [Client instruction target artifact contract](client_instruction_target_artifact_contract.md)
+  - target-only parse, cache-entry, projection, retry, and Stream Unpack examples
+  - related authority: [Client Instruction Authority Contract](../architecture/client_instruction_authority_contract.md)
 - [RelayRUN recovery response generator current / target boundary](relayrun_recovery_response_generator_current_target.md)
 - [RelayRUN recovery response generator contract](relayrun_recovery_response_generator_contract.md)
   - related design: [RelayRUN Runtime Checkpoint Design](../architecture/relayrun_runtime_checkpoint_design.md)
@@ -21,7 +24,7 @@ Current compile behavior has two implemented surfaces:
 1. `relaylm.compile_gate.CompileApplyDecision`, which decides whether the current profile-compiler result is applied.
 2. The content-free `mvp-ctx-apply-0` artifact built by `relaylm.diagnostics.build_compile_decision_dry_run`, which records the current request-path `COMPILE_APPLY` or `COMPILE_DRY_RUN` diagnostics state.
 
-Proposed v1 plan/result/decision projections, route-authority typing, forwarded-payload-source typing, managed fallback, and complete `BLOCKED` behavior remain target forms. The diagnostics-only recovery-response artifact is implemented, but generator execution and visible recovery output are not.
+Proposed v1 plan/result/decision projections, route-authority typing, forwarded-payload-source typing, managed fallback, and complete `BLOCKED` behavior remain target forms. The client-instruction target artifact contract is also target-only: current runtime has request-local identity and read-only lookup but no cache projection apply, typed parse, or cache write. The diagnostics-only recovery-response artifact is implemented, but generator execution and visible recovery output are not.
 
 ## RelaySOUL contracts
 
