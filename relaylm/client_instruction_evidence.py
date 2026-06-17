@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from enum import Enum
 from html import escape as escape_html
 import json
 
@@ -12,12 +11,6 @@ from relaylm.compiler import BlockType, ContextBlock, StabilityClass
 
 
 CLIENT_INSTRUCTION_EVIDENCE_MAX_RENDERED_CHARS = 4096
-
-
-class ClientInstructionEvidenceBlockType(str, Enum):
-    """Dedicated typed block below RelayLM runtime and persona authority."""
-
-    CLIENT_INSTRUCTION_EVIDENCE = "client_instruction_evidence"
 
 
 @dataclass(frozen=True)
@@ -54,8 +47,8 @@ def build_client_instruction_evidence_block(
         raise ValueError("instruction_evidence_oversize")
 
     block = ContextBlock(
-        block_id=ClientInstructionEvidenceBlockType.CLIENT_INSTRUCTION_EVIDENCE.value,
-        block_type=ClientInstructionEvidenceBlockType.CLIENT_INSTRUCTION_EVIDENCE,  # type: ignore[arg-type]
+        block_id=BlockType.CLIENT_INSTRUCTION_EVIDENCE.value,
+        block_type=BlockType.CLIENT_INSTRUCTION_EVIDENCE,
         stability_class=StabilityClass.DYNAMIC_SUFFIX,
         source="request_local/client_instruction_identity",
         content=escaped_content,
@@ -82,8 +75,7 @@ def replace_legacy_instruction_block(
     evidence_indices = [
         index
         for index, block in enumerate(blocks)
-        if getattr(block.block_type, "value", None)
-        == ClientInstructionEvidenceBlockType.CLIENT_INSTRUCTION_EVIDENCE.value
+        if block.block_type == BlockType.CLIENT_INSTRUCTION_EVIDENCE
     ]
     reasons: list[str] = []
     if evidence_indices:
