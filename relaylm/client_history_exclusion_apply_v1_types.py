@@ -56,6 +56,7 @@ ALLOWED_BLOCKED_REASONS = frozenset(
         "instruction_evidence_oversize",
         "instruction_evidence_render_failed",
         "dry_run_only_invalid",
+        "client_history_exclusion_apply_preparation_failed",
     }
 )
 
