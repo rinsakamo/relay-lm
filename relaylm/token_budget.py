@@ -163,9 +163,9 @@ def _ceil_div(value: int, divisor: int) -> int:
 
 
 def _classify_character(character: str) -> str:
-    if character.isspace():
-        return "whitespace"
     if character.isascii():
+        if character.isspace():
+            return "whitespace"
         if character.isalnum() or character == "_":
             return "ascii_word"
         return "ascii_punctuation"
@@ -177,6 +177,8 @@ def _classify_character(character: str) -> str:
         return "symbol"
     if _is_cjk_or_fullwidth(character):
         return "cjk"
+    if character.isspace():
+        return "whitespace"
     return "other_non_ascii"
 
 
