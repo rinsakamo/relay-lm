@@ -36,11 +36,18 @@ def install_managed_apply_audit_contract() -> None:
         "instruction_resolution_mode": ap._enum(
             "none", "cache_hit", "cache_miss_first_pass", "blocked", "not_applicable"
         ),
+        "instruction_source_mode": ap._optional(
+            ap._enum("explicit", "not_applicable")
+        ),
+        "instruction_source_provenance_present": ap._optional(ap._bool),
         "instruction_candidate_count": ap._optional(ap._non_negative_int),
+        "selected_instruction_candidate_count": ap._optional(ap._non_negative_int),
+        "excluded_instruction_candidate_count": ap._optional(ap._non_negative_int),
         "instruction_evidence_block_present": ap._optional(ap._bool),
         "instruction_evidence_rendered_char_count": ap._optional(ap._non_negative_int),
         "legacy_incoming_system_prompt_replaced": ap._optional(ap._bool),
         "raw_instruction_message_forwarded": ap._optional(ap._bool),
+        "relaylm_control_forwarded": ap._optional(ap._bool),
         "cache_entry_content_injected": ap._optional(ap._bool),
         "cache_projection_applied": ap._optional(ap._bool),
         "payload_candidate_present": ap._bool,
