@@ -1,5 +1,4 @@
 """Request-local runtime-private wiring for client instruction identity."""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -23,11 +22,12 @@ _RUNTIME_FAILURE_REASON = "identity_runtime_preparation_failed"
 
 
 def client_instruction_identity_dependency_enabled(route: Any) -> bool:
-    """Return whether identity preparation is required by extraction or lookup."""
+    """Return whether identity preparation is required by a runtime consumer."""
 
     return bool(
         getattr(route, "client_instruction_extraction_dry_run_enabled", False)
         or getattr(route, "client_instruction_cache_lookup_enabled", False)
+        or getattr(route, "client_history_exclusion_apply_enabled", False)
     )
 
 

@@ -1,18 +1,26 @@
 """Request payload compilation helpers for RelayLM MVP-2."""
-
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
-from typing import Any, Mapping
+from contextvars import ContextVar
+from dataclasses import dataclass, replace
+from html import escape as escape_html
+from typing import Any, Mapping, Sequence
 
 import yaml
 
+from relaylm.client_instruction_evidence import (
+    CLIENT_INSTRUCTION_EVIDENCE_MAX_RENDERED_CHARS,
+)
 from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply
 from relaylm.compiler import (
+    BlockType,
+    ContextBlock,
+    append_incoming_system_prompt_block,
     build_persona_source_budget_diagnostics,
     build_stable_prefix_hash_diagnostics,
-    compile_profile_messages_with_system_fallback,
+    compile_profile_messages,
+    split_incoming_system_messages,
     summarize_context_blocks,
 )
 from relaylm.config import RelayLMConfig
@@ -28,6 +36,12 @@ from relaylm.memory_token_dry_run import ConfiguredTokenMemoryDryRun, build_toke
 from relaylm.profile import build_profile_blocks, resolve_profile_files
 from relaylm.profile_plan import ProfileCompilePlan, build_profile_compile_plan
 from relaylm.routing import ResolvedRoute
+
+
+_COMPILED_CONTEXT_BLOCKS: ContextVar[tuple[ContextBlock, ...] | None] = ContextVar(
+    "relaylm_compiled_context_blocks",
+    default=None,
+)
 
 
 @dataclass(frozen=True)
@@ -79,6 +93,56 @@ class CompiledRequest:
         }
 
 
+def consume_compiled_context_blocks_runtime_private() -> tuple[ContextBlock, ...] | None:
+    """Consume the typed pre-render compiler blocks for the current request.
+
+    The handoff is request-local through ``ContextVar`` and is intentionally absent
+    from ``CompiledRequest.to_log_dict`` and generic diagnostics because block
+    content is semantic and may contain client instruction evidence.
+    """
+
+    blocks = _COMPILED_CONTEXT_BLOCKS.get()
+    _COMPILED_CONTEXT_BLOCKS.set(None)
+    return blocks
+
+
+def render_compiled_context_block_content_runtime_private(
+    block: ContextBlock,
+) -> str:
+    """Render one request-local block under the managed compiler policy."""
+
+    if block.block_type == BlockType.CLIENT_INSTRUCTION_EVIDENCE:
+        rendered = escape_html(block.content, quote=False)
+        if len(rendered) > CLIENT_INSTRUCTION_EVIDENCE_MAX_RENDERED_CHARS:
+            raise ValueError("instruction_evidence_oversize")
+        return rendered
+    return block.content
+
+
+def render_compiled_context_blocks_runtime_private(
+    *,
+    blocks: Sequence[ContextBlock],
+    recent_messages: Sequence[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Render an explicit typed block list with detached recent messages.
+
+    Client instruction evidence remains raw in the typed builder and is escaped
+    exactly here, immediately before the final compiler render.
+    """
+
+    rendered_blocks = [
+        replace(
+            block,
+            content=render_compiled_context_block_content_runtime_private(block),
+        )
+        for block in blocks
+    ]
+    return compile_profile_messages(
+        rendered_blocks,
+        recent_messages=list(recent_messages),
+    )
+
+
 def compile_chat_payload_if_enabled(
     *,
     config: RelayLMConfig,
@@ -87,6 +151,7 @@ def compile_chat_payload_if_enabled(
 ) -> CompiledRequest:
     """Compile chat payload messages only when the route mode gate allows it."""
 
+    _COMPILED_CONTEXT_BLOCKS.set(None)
     incoming_messages = _extract_messages(payload)
     plan = build_profile_compile_plan(
         config=config,
@@ -129,10 +194,18 @@ def compile_chat_payload_if_enabled(
         profile_blocks=profile_blocks,
         memory_block=memory_block,
     )
-    payload_dict["messages"] = compile_profile_messages_with_system_fallback(
-        blocks,
-        incoming_messages,
+    instruction_messages, recent_messages = split_incoming_system_messages(
+        incoming_messages
     )
+    compiled_blocks = append_incoming_system_prompt_block(
+        blocks,
+        instruction_messages,
+    )
+    payload_dict["messages"] = compile_profile_messages(
+        compiled_blocks,
+        recent_messages=recent_messages,
+    )
+    _COMPILED_CONTEXT_BLOCKS.set(tuple(compiled_blocks))
     stable_prefix_hash, stable_prefix_block_ids = build_stable_prefix_hash_diagnostics(blocks)
     context_block_summary = summarize_context_blocks(blocks)
     return CompiledRequest(
@@ -174,8 +247,6 @@ def _resolve_memory_selection_best_effort(
         raise
     except (FileNotFoundError, OSError, ValueError, TypeError, yaml.YAMLError, json.JSONDecodeError) as exc:
         return ConfiguredMemorySelection(block=None, summary=None), f"memory_seed_load_error:{exc.__class__.__name__}"
-
-
 
 
 def _resolve_token_memory_dry_run_best_effort(

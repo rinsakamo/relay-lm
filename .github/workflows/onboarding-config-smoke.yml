@@ -11,10 +11,26 @@ on:
       # All runtime owners are included so transitive smoke dependencies cannot drift silently.
       - relaylm/**
       - pyproject.toml
+      - scripts/phase5c4a_cache_fixture.py
+      - scripts/phase5c4a_smoke_support.py
+      - scripts/relaylm_phase5c4a_*_smoke.py
       - scripts/relaylm_openwebui_lmstudio_config_smoke.py
       - scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+      - scripts/relaylm_client_msg_runtime_dry_run_smoke.py
+      - scripts/relaylm_client_instruction_identity_smoke.py
+      - scripts/relaylm_client_identity_runtime_private_smoke.py
+      - scripts/relaylm_client_instruction_cache_reader_smoke.py
+      - scripts/relaylm_client_instruction_cache_lookup_smoke.py
+      - scripts/relaylm_client_instruction_cache_lookup_dependency_smoke.py
+      - scripts/relaylm_client_instruction_cache_lookup_runtime_smoke.py
+      - scripts/relaylm_client_history_exclusion_preflight_smoke.py
+      - scripts/relaylm_client_history_exclusion_apply_contract_smoke.py
       - scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
       - scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
+      - scripts/relaylm_system_fallback_smoke.py
+      - scripts/relaylm_trace_content_free_contract_smoke.py
+      - scripts/relaylm_jsonl_trace_smoke.py
+      - scripts/relaylm_hardening_smoke.py
       - scripts/relaylm_profile_loading_smoke.py
       - scripts/relaylm_config_room_scene_compat_smoke.py
       - scripts/relaylm_relaysoul_temp_revision_compile_dry_run.py
@@ -31,10 +47,26 @@ on:
       # Re-run after merge for every runtime-owner or packaging change.
       - relaylm/**
       - pyproject.toml
+      - scripts/phase5c4a_cache_fixture.py
+      - scripts/phase5c4a_smoke_support.py
+      - scripts/relaylm_phase5c4a_*_smoke.py
       - scripts/relaylm_openwebui_lmstudio_config_smoke.py
       - scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+      - scripts/relaylm_client_msg_runtime_dry_run_smoke.py
+      - scripts/relaylm_client_instruction_identity_smoke.py
+      - scripts/relaylm_client_identity_runtime_private_smoke.py
+      - scripts/relaylm_client_instruction_cache_reader_smoke.py
+      - scripts/relaylm_client_instruction_cache_lookup_smoke.py
+      - scripts/relaylm_client_instruction_cache_lookup_dependency_smoke.py
+      - scripts/relaylm_client_instruction_cache_lookup_runtime_smoke.py
+      - scripts/relaylm_client_history_exclusion_preflight_smoke.py
+      - scripts/relaylm_client_history_exclusion_apply_contract_smoke.py
       - scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
       - scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
+      - scripts/relaylm_system_fallback_smoke.py
+      - scripts/relaylm_trace_content_free_contract_smoke.py
+      - scripts/relaylm_jsonl_trace_smoke.py
+      - scripts/relaylm_hardening_smoke.py
       - scripts/relaylm_profile_loading_smoke.py
       - scripts/relaylm_config_room_scene_compat_smoke.py
       - scripts/relaylm_relaysoul_temp_revision_compile_dry_run.py
@@ -54,12 +86,42 @@ jobs:
           python-version: "3.12"
       - name: Install package
         run: python -m pip install -e .
-      - name: Run onboarding and authority smokes
+      - name: Compile package and smoke scripts
+        run: |
+          python -m compileall relaylm scripts
+      - name: Run Phase 5-C4a authority smokes
+        run: |
+          python scripts/relaylm_phase5c4a_contract_smoke.py
+          python scripts/relaylm_phase5c4a_compiler_smoke.py
+          python scripts/relaylm_phase5c4a_runtime_smoke.py
+          python scripts/relaylm_phase5c4a_fields_smoke.py
+          python scripts/relaylm_phase5c4a_cache_smoke.py
+          python scripts/relaylm_phase5c4a_optional_smoke.py
+          python scripts/relaylm_phase5c4a_gate_smoke.py
+          python scripts/relaylm_phase5c4a_projection_smoke.py
+          python scripts/relaylm_phase5c4a_audit_smoke.py
+          python scripts/relaylm_phase5c4a_error_smoke.py
+      - name: Run required authority regressions
+        run: |
+          python scripts/relaylm_client_msg_runtime_dry_run_smoke.py
+          python scripts/relaylm_client_instruction_identity_smoke.py
+          python scripts/relaylm_client_identity_runtime_private_smoke.py
+          python scripts/relaylm_client_instruction_cache_reader_smoke.py
+          python scripts/relaylm_client_instruction_cache_lookup_smoke.py
+          python scripts/relaylm_client_instruction_cache_lookup_dependency_smoke.py
+          python scripts/relaylm_client_instruction_cache_lookup_runtime_smoke.py
+          python scripts/relaylm_client_history_exclusion_preflight_smoke.py
+          python scripts/relaylm_client_history_exclusion_apply_contract_smoke.py
+          python scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
+          python scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
+          python scripts/relaylm_system_fallback_smoke.py
+          python scripts/relaylm_trace_content_free_contract_smoke.py
+          python scripts/relaylm_jsonl_trace_smoke.py
+          python scripts/relaylm_hardening_smoke.py
+      - name: Run onboarding compatibility smokes
         run: |
           python scripts/relaylm_openwebui_lmstudio_config_smoke.py
           python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
-          python scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
-          python scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
           python scripts/relaylm_profile_loading_smoke.py
           python scripts/relaylm_config_room_scene_compat_smoke.py
           python scripts/relaylm_relaysoul_temp_revision_profile_smoke.py

@@ -2,466 +2,183 @@
 
 ## Purpose
 
-This document defines how RelayLM treats conversation history and message arrays supplied by frontends such as OpenWebUI, AI VTuber applications, browser chat UIs, and other OpenAI-compatible clients.
+This document defines how RelayLM treats message arrays supplied by OpenAI-compatible frontends.
 
-It is a cross-cutting companion to:
-
-- `client_instruction_authority_contract.md`,
-- `pipeline_responsibility_design.md`,
-- `pipeline_implementation_plan.md`,
-- `phase5c4a_instruction_bearing_managed_apply_handoff.md`,
-- `ai_vtuber_pipeline_profile.md`,
-- `context_packing_design.md`,
-- `relayint_mvp_design.md`,
-- `scene_lifecycle_design.md`.
-
-The contract fixes one source-of-truth rule:
+The source-of-truth rule is:
 
 ```text
-Client-provided messages are not authoritative backend context.
-RelayLM constructs the backend-bound context.
+Client-provided messages are request evidence and compatibility data.
+They are not authoritative backend context.
+RelayLM constructs the backend-bound context on managed routes.
 ```
 
-## Status interpretation
+## Current status
 
-Current implementation provides content-free canonicalization, runtime-private instruction identity, read-only cache lookup, history-exclusion preflight, and the default-off no-instruction `client_history_exclusion_apply.v0` path.
+Current implementation includes:
 
-The active next slice is Phase 5-C4a instruction-bearing managed apply. Cache-hit RelaySCN projection is deferred to Phase 5-C4b, typed instruction parsing/cache write to Phase 5-C5, and Stream Unpack to Phase 5.5.
+- content-free client-message canonicalization dry-run,
+- runtime-private client-instruction identity,
+- read-only instruction-cache lookup,
+- history-exclusion preflight,
+- `client_history_exclusion_apply.v0` for supported no-instruction requests,
+- `client_history_exclusion_apply.v1` for supported instruction-bearing requests.
 
-Target cache behavior described below remains authoritative design intent, but it is not current apply behavior until an implemented producer, consumer, and smoke contract exist.
+Cache-hit RelaySCN projection, typed instruction parsing/cache write, active tool-chain reconstruction, and Stream Unpack remain later work.
 
-## Motivation
+## Client-message authority boundary
 
-Most OpenAI-compatible frontends resend their visible conversation history and system prompt on every request.
+Typical frontend payloads may include:
 
-Typical client payloads contain:
-
-- client `system` and `developer` messages,
-- previous `user` messages,
-- previous `assistant` messages,
+- client system/developer messages,
+- previous user/assistant history,
 - frontend summaries or memory notes,
+- replayed persona blocks,
 - old tool results,
 - the current user turn.
 
-If RelayLM forwards that array unchanged while also injecting RelayCTX, RelayMEM, RelaySOUL, and RelaySCN state, the backend may receive duplicate, stale, or contradictory context.
-
-Failure modes include:
-
-- duplicate recent turns,
-- frontend-generated summaries conflicting with RelayCTX state,
-- stale assistant messages being treated as current truth,
-- deleted or superseded information reappearing,
-- replayed client prompts competing with RelaySOUL or RelaySCN,
-- repeated memory blocks consuming token budget,
-- old prompt-injection content surviving in history,
-- unstable KV-prefix layout across frontends.
-
-Therefore, the client message array is request evidence and compatibility data, not the canonical backend context.
-
-## Shared client-message canonicalization boundary
-
-RelayLM-managed routes should canonicalize the full client message array before RelayCTX Repack.
-
-```text
-client messages
-  - system / developer
-  - previous user / assistant history
-  - frontend summary / memory
-  - old tool results
-  - current user turn
-
-  -> client message canonicalization
-  -> extract current request evidence
-  -> exclude client-owned context
-  -> reconstruct backend messages
-```
-
-The canonicalizer preserves only what is needed for the current request:
-
-- latest valid user turn,
-- all content parts belonging to that turn,
-- current client system/developer instruction evidence,
-- request-level options and approved metadata,
-- minimum active tool or multimodal transaction state.
-
-The canonicalizer does not treat preserved evidence as already-valid backend context. Each preserved element is routed to the subsystem that owns its meaning.
-
-```text
-current user turn
-  -> RelayINT / RelayCTX
-
-current client instruction evidence
-  -> normalize / hash / cache lookup
-  -> RelaySCN
-
-active tool/multimodal chain
-  -> compatibility transaction handling
-```
-
-## Core authority rule
-
-For normal RelayLM-managed conversation requests, RelayLM should:
-
-1. preserve the exact client payload as `original_payload` for request-local inspection,
-2. extract the active user turn,
-3. extract current system/developer instruction evidence,
-4. resolve instruction evidence through the client-instruction hash/cache flow,
-5. preserve only the minimum active transaction state,
-6. exclude prior client history and raw client instructions from the normal backend-bound message list,
-7. construct a new message list from RelayLM-owned state,
-8. send only that reconstructed payload to the Main LLM backend.
-
-Conceptually:
-
-```text
-Client payload
-  -> current turn extraction
-  -> instruction evidence extraction
-  -> history exclusion
-  -> instruction hash/cache resolution
-  -> RelaySCN
-  -> RelayCTX Repack
-
-Backend payload
-  - RelayLM runtime / safety policy
-  - approved RelaySOUL and durable policies
-  - normalized RelaySCN state
-  - selected RelayCTX working context
-  - selected RelayMEM blocks
-  - minimum active transaction state
-  - current user turn
-```
-
-The backend-bound payload must be reconstructed. It must not be produced by copying the client message list and deleting a few known fields.
+Managed routes must not treat this array as canonical backend context. RelayLM extracts bounded current evidence, applies subsystem-owned validation, and reconstructs the backend payload.
 
 ## PipelineContext boundary
 
-`PipelineContext.original_payload` and `PipelineContext.forwarded_payload` have different authority.
-
 ```text
 original_payload
-  = exact client request retained for request-local inspection,
-    compatibility checks, and content-free diagnostics derivation
+  = exact client request retained request-locally for validation
 
 forwarded_payload
   = RelayLM-constructed backend request and the only payload
-    permitted to reach the Main LLM backend
+    permitted to reach the managed Main LLM backend
 ```
 
-Any step that replaces the backend-bound payload should use `PipelineContext.replace_forwarded_payload(...)` with an explicit mutation reason.
+Every backend-bound replacement uses `PipelineContext.replace_forwarded_payload(...)` with an explicit reason.
 
-Suggested reasons:
+## Current user turn
+
+For ordinary chat, the active turn is the latest valid `user` message. RelayLM preserves the entire message object, not merely extracted text, so supported multimodal parts remain together.
+
+If no valid current user turn exists, managed apply fails closed.
+
+## Client instruction identity
+
+All supported client `system` and `developer` messages may participate in request-local normalization and identity. This identity is content-bearing and runtime-private. It is not itself permission to forward every candidate.
+
+Identity and provenance are separate:
 
 ```text
-client_current_turn_extracted
-client_instruction_extracted
-client_instruction_cache_hit
-client_instruction_first_pass_added
-client_history_excluded
-relayctx_context_repacked
-active_tool_transaction_preserved
-active_multimodal_turn_preserved
+identity
+  = which normalized system/developer candidates exist
+
+provenance
+  = which identity candidates the frontend explicitly identifies
+    as current instruction evidence for this request
 ```
 
-## Current user-turn extraction
+Role, content, and message position do not establish provenance.
 
-For ordinary text chat, the active turn is normally the latest valid `user` message.
+## Explicit instruction provenance
 
-RelayLM should preserve the whole current message object, not only its text string, because a current message may contain structured content parts.
+Instruction-bearing `client_history_exclusion_apply.v1` accepts only explicit provenance through the reserved request-local control envelope:
 
 ```json
 {
-  "role": "user",
-  "content": [
-    {"type": "text", "text": "この画像を見て"},
-    {"type": "image_url", "image_url": {"url": "..."}}
-  ]
+  "relaylm": {
+    "instruction_evidence": {
+      "schema_version": "client_instruction_source.v1",
+      "message_indices": [0]
+    }
+  }
 }
 ```
 
-The text and image parts belong to one active turn and should remain together.
+Selected indices must:
 
-If no valid active user turn can be extracted, RelayINT or compatibility handling should block, clarify, or fail closed instead of forwarding arbitrary old history.
+- be non-empty, bounded, strictly increasing, and non-duplicated,
+- be in range,
+- point to `system` or `developer` messages,
+- occur before the latest current user turn,
+- exactly match request-local instruction identity candidates.
 
-## Current instruction evidence
+Missing or invalid provenance blocks v1 actual apply.
 
-Client `system` and `developer` messages cross the same canonicalization boundary as history, but they have one special pre-exclusion use.
+Unselected system/developer candidates are excluded from the v1 evidence block. This is the required boundary for frontend summaries, frontend memory notes, replayed persona blocks, and other system-role compatibility material that is not explicitly identified as current instruction evidence.
 
-Current implemented preparation:
+The reserved top-level `relaylm` envelope is RelayLM control-plane input and is removed before managed backend forwarding. Explicit pass-through routes remain client-owned and unchanged.
 
-```text
-current system/developer instruction
-  -> normalize and hash in request-local identity
-  -> optional read-only cache lookup
-  -> no current cache projection apply or cache write
-```
+## Managed backend construction
 
-Active Phase 5-C4a migration:
+### No-instruction v0
 
-```text
-supported instruction-bearing request
-  -> at most one bounded escaped low-trust evidence block
-  -> prior history and raw instruction message objects excluded
-```
-
-Target optimization after Phase 5-C4b:
+A supported v0 candidate contains:
 
 ```text
-validated cache hit
-  -> use allowlisted normalized RelaySCN projection
-  -> suppress raw instruction evidence
-
-cache miss
-  -> permit one bounded first-pass interpretation
-  -> validate a separately versioned control artifact
-  -> write only through a later independent cache gate
+one RelayLM-owned compiled prefix
++ exact validated current user message
 ```
 
-The raw instruction is never persisted as scene state or SOUL. The canonical instruction behavior is defined in `client_instruction_authority_contract.md`.
+It requires zero client system/developer messages.
 
-## Default client-message policy
+### Instruction-bearing v1
 
-### Preserve for current-request processing
-
-- latest valid user message,
-- all current-turn multimodal content parts,
-- current system/developer instruction evidence for identity and resolution,
-- request-level generation and compatibility options,
-- explicitly approved current-turn metadata,
-- minimum active tool or multimodal transaction chain.
-
-### Do not forward by default
-
-- previous client `user` messages,
-- previous client `assistant` messages,
-- frontend-generated summaries,
-- frontend-generated memory notes,
-- frontend-replayed persona blocks,
-- old tool results unrelated to the active transaction,
-- old internal markers or diagnostic text,
-- raw client system/developer message objects after instruction handling.
-
-A pass-through route is the explicit exception. A failed RelayCTX Repack or failed instruction parse must not implicitly restore raw client context.
-
-## Minimum transaction exceptions
-
-The default policy is not equivalent to keeping only one message array element.
-
-### Active tool transaction
-
-A current tool loop may require:
+A supported v1 candidate contains:
 
 ```text
-assistant tool_calls
-  -> tool result
-  -> current user or runtime continuation
+one RelayLM-owned compiled system message containing:
+  approved runtime/profile/context blocks
+  + one bounded escaped low-trust instruction-evidence block
+
++ exact validated current user message
 ```
 
-RelayLM may preserve the minimum valid chain needed to keep the active transaction coherent. Unrelated earlier history remains excluded.
+The v1 candidate excludes:
 
-Until that reconstruction contract is implemented, managed apply must explicitly block active tool transactions rather than forward an incomplete chain.
+- prior client user/assistant messages,
+- raw client instruction message objects,
+- unselected instruction candidates,
+- frontend summaries and memory notes not explicitly selected,
+- old unrelated tool results,
+- opaque instruction-cache entry content,
+- the reserved RelayLM control envelope.
 
-### Current multimodal turn
+## Evidence rendering and authority
 
-All content parts of the current user turn should remain together.
+The evidence builder emits canonical raw typed JSON with explicit source-role labels. The managed compiler renderer escapes the evidence and enforces the rendered-size bound immediately before final render.
 
-Previous images or attachments should not be forwarded unless RelayCTX explicitly selects them and the backend/request contract supports them.
+Client instruction evidence is always below RelayLM runtime/safety policy and approved persona authority. It cannot directly mutate RelaySOUL, persistence, tools, runtime policy, or safety policy.
 
-### Protocol compatibility
+## Active transaction exceptions
 
-JSON mode, tool calling, or provider-specific structures may require bounded protocol state. Compatibility preservation is separate from semantic history authority.
+An active tool transaction may require assistant tool-call and tool-result continuity. Phase 5-C4a does not reconstruct that minimum chain, so such requests remain blocked rather than partially forwarded.
 
-## RelayCTX Repack responsibility
+Compatible current multimodal user content is preserved as one current turn.
 
-RelayCTX Repack is responsible for the final context seen by the Main LLM.
+## Backend-forward rule
 
-It should construct the backend request from:
+History-exclusion apply remains default-off and dry-run-only by default.
 
-- stable runtime/safety prefix,
-- approved persona and durable policy state,
-- normalized current scene state,
-- selected working-memory blocks,
-- selected long-term memory retrieval,
-- minimum recent context chosen by RelayLM,
-- current user input,
-- minimum active transaction state.
+For explicit actual apply on a managed route:
 
-During Phase 5-C4a, RelayCTX may include one bounded `client_instruction_evidence` block for supported instruction-bearing correctness whether cache lookup is disabled, misses, or reports a hit. This is a migration behavior, not the target cache optimization.
+- only an exact typed `applied` result may reach the backend,
+- v1 additionally requires that the adapter receive the exact selected candidate,
+- downstream payload mutation causes backend blocking,
+- failure never restores raw client history as fallback.
 
-After validated cache projection exists, raw evidence should appear only on an unknown instruction identity requiring first-pass interpretation.
+## Diagnostics and persistence
+
+Runtime-private identity, provenance selection, and payload candidates may contain content. Persisted audit, trace, public errors, and node results contain only bounded status values, counts, booleans, source mode, and reason IDs.
+
+They do not contain:
+
+- instruction or user text,
+- source index values,
+- hashes or cache keys,
+- raw messages or payload candidates,
+- cache bodies,
+- paths or URLs derived from private runtime state.
+
+## Safe defaults
 
 ```text
-UI display history != backend inference context
+client_history_exclusion_apply_enabled=false
+client_history_exclusion_apply_dry_run_only=true
 ```
 
-## Context source of truth
-
-```text
-Frontend
-  owns display history, input widgets, avatars, and UX state
-
-RelayLM
-  owns instruction resolution, scene state, context selection,
-  memory retrieval, persona continuity, and backend payload construction
-
-Main LLM backend
-  receives only RelayLM-repacked context
-```
-
-Frontend memory or summarization should be disabled where possible. When it cannot be disabled, RelayLM should neutralize it at the proxy boundary instead of requiring frontend-specific patches.
-
-This applies directly to OpenWebUI, AITuber OnAir, Open-LLM-VTuber, and other OpenAI-compatible frontends.
-
-## Diagnostics contract
-
-RelayLM should record replacement behavior without copying ignored content.
-
-```json
-{
-  "client_history_policy": "replace_with_relayctx",
-  "client_message_count": 27,
-  "client_role_counts": {
-    "system": 1,
-    "user": 13,
-    "assistant": 13
-  },
-  "client_history_messages_excluded": 25,
-  "active_turn_messages_preserved": 1,
-  "client_instruction_messages_extracted": 1,
-  "client_instruction_identity_present": true,
-  "client_instruction_cache_status": "hit",
-  "raw_client_instruction_message_forwarded": false,
-  "low_trust_instruction_evidence_present": true,
-  "active_tool_transaction_preserved": false,
-  "active_multimodal_turn_preserved": false,
-  "forwarded_context_source": "relayctx_repack"
-}
-```
-
-Diagnostics should prefer counts, booleans, role distributions, source classes, and replacement reasons over raw message content. Hash values and semantic instruction content remain runtime-private under the current content-free audit contract.
-
-## Failure behavior
-
-### No active turn
-
-```text
-no valid current user turn
-  -> do not use old history as a substitute
-  -> emit blocked / invalid-request diagnostics
-  -> clarify or fail closed
-```
-
-### Instruction parse failure
-
-```text
-valid visible response + invalid instruction artifact
-  -> preserve visible response
-  -> do not write instruction cache
-  -> do not restore raw client history/system context
-```
-
-### Active transaction cannot be reconstructed
-
-```text
-required tool/multimodal chain cannot be determined
-  -> do not create a malformed backend payload
-  -> block or use an explicit compatibility route
-```
-
-### RelayCTX Repack failure
-
-```text
-current request evidence extracted
-  -> RelayCTX cannot produce a valid backend payload
-  -> do not fall back to raw client messages
-  -> use defined safe failure/recovery behavior
-```
-
-Raw client messages must never become an emergency fallback because that would bypass the authority boundary precisely when the pipeline is least reliable.
-
-## Implementation status and sequencing
-
-Current implemented foundations:
-
-```text
-Phase 5-C1 / 5-C2 / 5-C3
-  content-free canonicalization
-  runtime-private instruction identity
-  optional read-only cache lookup
-  history-exclusion preflight
-
-Phase 5-C1a compatibility slice
-  no-instruction client_history_exclusion_apply.v0
-  request-local runtime wiring
-  backend-forward fail-closed gate
-```
-
-Active correctness slice:
-
-```text
-Phase 5-C4a
-  instruction-bearing managed apply
-  bounded escaped low-trust evidence
-  current text/multimodal turn preservation
-  active transaction preservation or explicit block
-```
-
-Deferred optimization and output work:
-
-```text
-Phase 5-C4b
-  validated cache-hit RelaySCN projection
-
-Phase 5-C5
-  typed instruction artifact validation and cache write
-
-Phase 5.5
-  streaming control-envelope suppression / Stream Unpack
-```
-
-Later phase identifiers do not make target behavior current. Detailed sequencing is authoritative only in `pipeline_implementation_plan.md`.
-
-## Required smoke coverage
-
-Current and active correctness coverage must prove:
-
-1. OpenWebUI-style full history plus current user turn reaches the backend only through RelayLM-selected context.
-2. Client system/developer messages are extracted but not forwarded as authoritative message objects.
-3. Supported instruction-bearing requests use at most one bounded escaped low-trust evidence block.
-4. Frontend summary and memory-note messages are excluded.
-5. Current multimodal user content remains intact.
-6. Active tool transactions are preserved by an implemented contract or explicitly blocked.
-7. Unrelated old tool messages are excluded.
-8. Missing current user turn fails closed.
-9. Instruction handling or RelayCTX failure does not restore raw client messages.
-10. Diagnostics contain only typed content-free policy state.
-11. Pass-through routes remain explicit exceptions only.
-12. Cache disabled/miss/hit states do not inject opaque cache content before Phase 5-C4b.
-
-Target cache and output phases must additionally prove validated cache projection, typed artifact validation/write, and non-leaking Stream Unpack when those phases are implemented.
-
-## Route policy and exceptions
-
-Default managed route target:
-
-```text
-client_history_policy = replace_with_relayctx
-client_instruction_policy = relay_scn_first
-```
-
-Explicit pass-through route:
-
-```text
-client_history_policy = trust_client
-client_instruction_policy = trust_client
-```
-
-These policy names describe the authority model and are not necessarily current configuration fields. Exceptions must be visible in route configuration and diagnostics. They must not arise implicitly because a managed pipeline step failed or was skipped.
-
-## Final boundary
-
-```text
-The frontend may remember what it displayed and resend any message array.
-RelayLM decides which current evidence is accepted and reconstructs
-what the Main LLM is allowed to see for the current turn.
-```
+No client-authority migration may silently enable actual apply, infer provenance from message wording, restore prior history after failure, or promote instruction evidence into durable persona authority.

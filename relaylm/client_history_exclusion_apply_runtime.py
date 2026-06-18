@@ -1,14 +1,16 @@
 """Runtime wiring for managed-route client history exclusion apply."""
-
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 from relaylm.client_history_exclusion_apply import (
     ClientHistoryExclusionApplyResult,
     build_client_history_exclusion_apply,
     build_client_history_exclusion_apply_node_result,
+)
+from relaylm.client_history_exclusion_apply_v1_types import (
+    ClientHistoryExclusionApplyV1Result,
 )
 from relaylm.pipeline_context import replace_pipeline_forwarded_payload
 
@@ -16,6 +18,10 @@ if TYPE_CHECKING:
     from relaylm.pipeline_context import PipelineContext
     from relaylm.routing import ResolvedRoute
 
+
+ClientHistoryExclusionApplyRuntimeResult: TypeAlias = (
+    ClientHistoryExclusionApplyResult | ClientHistoryExclusionApplyV1Result
+)
 _RUNTIME_FAILURE_REASON = "client_history_exclusion_apply_preparation_failed"
 _MUTATING_STEP = "client_history_exclusion_apply"
 
@@ -24,7 +30,7 @@ def run_client_history_exclusion_apply_runtime(
     *,
     pipeline_context: PipelineContext,
     compiler_used: bool,
-) -> ClientHistoryExclusionApplyResult | None:
+) -> ClientHistoryExclusionApplyRuntimeResult | None:
     """Prepare and optionally apply the no-instruction history-exclusion slice.
 
     The result and any rebuilt payload stay request-local. Actual mutation occurs
@@ -86,9 +92,10 @@ def run_client_history_exclusion_apply_runtime(
 
 def client_history_exclusion_apply_blocks_backend(
     route: ResolvedRoute,
-    result: ClientHistoryExclusionApplyResult | None,
+    result: ClientHistoryExclusionApplyRuntimeResult | None,
+    forwarded_payload: Mapping[str, object] | None = None,
 ) -> bool:
-    """Return whether an explicit managed-route apply request must fail closed."""
+    """Fail closed unless the backend receives the exact selected v1 candidate."""
 
     if route.client_history_exclusion_apply_enabled is not True:
         return False
@@ -96,11 +103,11 @@ def client_history_exclusion_apply_blocks_backend(
         return False
     if route.mode_applied == "pass_through":
         return False
-    return not _result_is_applicable(result)
+    return not _result_is_applicable(result, forwarded_payload=forwarded_payload)
 
 
 def client_history_exclusion_apply_failure_reason(
-    result: ClientHistoryExclusionApplyResult | None,
+    result: ClientHistoryExclusionApplyRuntimeResult | None,
 ) -> str:
     """Return one bounded public reason for headers and request diagnostics."""
 
@@ -112,11 +119,20 @@ def client_history_exclusion_apply_failure_reason(
 
 
 def _result_is_applicable(
-    result: ClientHistoryExclusionApplyResult | None,
+    result: ClientHistoryExclusionApplyRuntimeResult | None,
+    *,
+    forwarded_payload: Mapping[str, object] | None = None,
 ) -> bool:
-    return bool(
+    if not (
         result is not None
         and result.status == "applied"
         and result.payload_mutation_applied is True
         and isinstance(result.forwarded_payload, Mapping)
-    )
+    ):
+        return False
+    if (
+        forwarded_payload is None
+        or result.schema_version != "client_history_exclusion_apply.v1"
+    ):
+        return True
+    return dict(forwarded_payload) == dict(result.forwarded_payload)
