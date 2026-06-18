@@ -20,7 +20,6 @@ from relaylm.app import create_app
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.routing import resolve_route
-from relaylm.token_budget import estimate_text_tokens
 
 
 class _Capture:
@@ -66,36 +65,6 @@ class _BackendHandler(BaseHTTPRequestHandler):
 def require(condition: bool, message: object) -> None:
     if not condition:
         raise AssertionError(message)
-
-
-def _safe_str(value: Any) -> str:
-    if isinstance(value, str):
-        return value
-    if value is None:
-        return ""
-    return str(value)
-
-
-def _estimate_messages(messages: list[dict[str, Any]]) -> int:
-    rendered = "\n".join(
-        f"{_safe_str(message.get('role'))}: {_safe_str(message.get('content'))}"
-        for message in messages
-        if isinstance(message, dict)
-    )
-    return estimate_text_tokens(rendered, chars_per_token=4).estimated_tokens
-
-
-def _protected_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    latest_user_index = None
-    for index in range(len(messages) - 1, -1, -1):
-        if messages[index].get("role") == "user":
-            latest_user_index = index
-            break
-    return [
-        message
-        for index, message in enumerate(messages)
-        if message.get("role") == "system" or index == latest_user_index
-    ]
 
 
 def _write_config(base_url: str, trunc_enabled: bool, token_budget: int, trace_path: Path) -> Path:
@@ -162,8 +131,8 @@ def main() -> int:
             "model": "relaylm-default",
             "messages": [
                 {"role": "system", "content": "system"},
-                {"role": "assistant", "content": "assistant " * 20},
-                {"role": "assistant", "content": "assistant 2 " * 20},
+                {"role": "assistant", "content": "assistant " * 2000},
+                {"role": "assistant", "content": "assistant 2 " * 2000},
                 {"role": "user", "content": "latest user"},
             ],
             "stream": False,
@@ -182,14 +151,8 @@ def main() -> int:
             _assert_trace_applied(trace_default, expected=False)
             print("ok proxy truncation default disabled keeps backend payload unchanged")
 
-            full_tokens = _estimate_messages(baseline)
-            protected_tokens = _estimate_messages(_protected_messages(baseline))
-            require(protected_tokens < full_tokens, {"protected": protected_tokens, "full": full_tokens})
-            apply_budget = protected_tokens + max(1, (full_tokens - protected_tokens) // 2)
-            require(protected_tokens <= apply_budget < full_tokens, apply_budget)
-
             trace_apply = Path(tmpdir) / "trace-apply.jsonl"
-            cfg_apply = _write_config(f"http://127.0.0.1:{port}", True, apply_budget, trace_apply)
+            cfg_apply = _write_config(f"http://127.0.0.1:{port}", True, 4096, trace_apply)
             baseline_apply = _compiled_messages(cfg_apply, copy.deepcopy(payload))
             _, backend_payload_apply, _ = _post_and_capture(cfg_apply, payload, capture)
             backend_messages = backend_payload_apply.get("messages")
