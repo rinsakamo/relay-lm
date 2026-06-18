@@ -89,8 +89,8 @@ OUTPUT_POLICY = how the character speaks and emotionally manifests
 Authority boundary:
 
 ```text
-RelayLM runtime / safety policy
-  -> highest execution and safety authority
+RelayLM runtime / capability policy
+  -> highest execution and side-effect authority
 
 approved RelaySOUL / route-configured SOUL.md
   -> durable persona authority
@@ -207,20 +207,38 @@ Relay Adapter boundary:
 
 Policy and runtime decision boundary:
 
-- RelaySCN resolves scene, safety-sensitivity, expression, memory-scope, and persistence policy.
-- RelayINT owns pre-action intent, ambiguity, clarification, and semantic proceed/block decisions.
+- RelaySCN resolves scene, expression, memory-scope, persistence policy, and optional pre-generation model/profile selection.
+- RelayINT owns pre-action intent, ambiguity, clarification, and semantic proceed/block decisions before an action is authorized.
 - RelayCTX Repack owns prompt construction and token-budget degradation.
 - RelayRUN owns runtime orchestration, transport/runtime fallback and recovery routing, checkpoints, trace artifacts, and node-state reporting.
 - The Runtime Compile Gate is a request-local decision phase that consumes route, mode, preflight, scene-policy, and budget outcomes; it is not a standalone `RelayPLC` component.
 
-Boundary-first safety:
+## Conversation content and capability boundary
 
-- RelayLM should not rely on disclaimers as the primary safety mechanism.
-- For safety-sensitive scenes such as `medical_or_safety`, RelaySCN should first resolve a restrictive runtime `scene_policy`.
-- That policy should constrain context packing, allowed answer shapes, blocked answer shapes, persistence, and final output inspection before user-facing rendering.
-- The goal is not to generate a risky answer and append a disclaimer; the goal is to avoid unsafe answer shapes before final rendering.
-- Example blocked answer shapes include diagnosis claims, prescription or dosage instructions, emergency reassurance, and treatment plan overrides.
-- Example allowed answer shapes include general information, symptom triage questions, red flags or when to seek care, and preparation for consultation.
+RelayLM does not treat ordinary natural-language conversation as an executable capability.
+
+```text
+ordinary generated text
+  -> model / RelaySOUL / OUTPUT_POLICY responsibility
+  -> no mandatory RelayLM semantic censorship or rewrite
+
+requested side effect
+  -> typed capability contract
+  -> explicit authority and bounded inputs
+  -> fail-closed runtime gate
+```
+
+The core runtime does not add a universal post-generation classifier, secondary moderation LLM, or meaning-changing rewrite step for teasing, insults, arguments, adult-oriented tone, politics, or other open-ended conversation judgments. Generated conversation depends on the selected model, approved character profile, context, and user configuration. A recommended model profile verifies compatibility and expected default behavior; it does not certify or guarantee content.
+
+RelayLM governs tool calls, code or command execution, filesystem and protected-data access, credentials, network actions, persistence, configuration changes, MEM mutation, RelaySOUL mutation, and other externally observable or irreversible side effects. These capabilities do not inherit authority from natural-language output.
+
+Text that contains code, a command, or a request to perform an action remains text unless RelayLM or an attached adapter attempts to interpret it as an executable capability. At that point, the typed capability gate applies. Malformed structured output may be rejected as a protocol error, but RelayLM must not silently replace it with a semantically rewritten answer.
+
+Safety-sensitive routes may select a more suitable model, prompt profile, tool policy, retrieval scope, or capability set before generation. They must not imply that RelayLM universally inspects and guarantees the semantic acceptability of every final conversational response.
+
+Optional content or presentation filters required by a frontend, broadcast platform, age profile, or deployment policy belong in explicit client or adapter layers rather than the canonical RelayLM conversation path.
+
+The canonical product principle is defined in [AI Character Product Principles](ai_character_product_principles.md#conversation-content-and-capability-authority).
 
 Core handoff rule:
 
@@ -318,6 +336,7 @@ RelayLM does not own:
 - Live2D control,
 - ASR or TTS model runtimes,
 - heavy RAG in the default synchronous path,
-- general agent tool-workflow orchestration beyond compatibility-preserving pass-through.
+- general agent tool-workflow orchestration beyond compatibility-preserving pass-through,
+- universal semantic censorship or content guarantees for ordinary model-generated conversation.
 
-RelayLM does own safe context construction, visible/internal output separation, and output-segmentation contracts before external TTS or avatar consumers receive data. Current implementation status and sequencing for those boundaries live only in [Pipeline Implementation Plan](pipeline_implementation_plan.md).
+RelayLM does own authority-bounded context construction, visible/internal output separation, protocol-valid output segmentation, and typed capability gates before external tools, TTS, avatar, network, persistence, or other side-effect consumers receive data. Current implementation status and sequencing for those boundaries live only in [Pipeline Implementation Plan](pipeline_implementation_plan.md).
