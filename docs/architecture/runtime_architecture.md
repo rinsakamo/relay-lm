@@ -180,10 +180,13 @@ RelayLM treats prompt construction as context compilation rather than concatenat
 
 RelayCTX boundary:
 
-- RelayCTX packs selected context into the compiled runtime prompt shape,
-- RelayCTX consumes policy and memory selections but does not own scene or persistence policy decisions,
+- RelayCTX Repack packs selected context into the compiled runtime prompt shape,
+- RelayCTX Repack consumes policy and memory selections but does not own scene or persistence policy decisions,
 - RelayCTX Repack owns prompt-layout and token-budget application decisions,
-- RelayCTX output is runtime compiled context, not a RelaySOUL artifact.
+- RelayCTX output is runtime compiled context, not a RelaySOUL artifact,
+- RelayCTX Unpack separates explicit internal update blocks from user-visible text and does not judge visible content by meaning.
+
+On managed routes, RelayCTX Repack and RelayCTX Unpack are target default-on core protocol-boundary operations. They attach RelayLM-owned internal context before backend generation and separate explicit internal updates after backend generation. They are not optional semantic moderation layers. `pass_through` routes remain the compatibility exemption.
 
 The compiled prompt should use tags for persona and conversation context. Machine contracts such as adapter results, diagnostics, traces, and tool protocols should remain JSON/dataclass-shaped. In short: JSON is for machine contracts; tags are for persona/context conditioning.
 
@@ -235,6 +238,10 @@ RelayLM governs tool calls, code or command execution, filesystem and protected-
 Text that contains code, a command, or a request to perform an action remains text unless RelayLM or an attached adapter attempts to interpret it as an executable capability. At that point, the typed capability gate applies. Malformed structured output may be rejected as a protocol error, but RelayLM must not silently replace it with a semantically rewritten answer.
 
 These gates define the required RelayLM-owned authority path, not an absolute guarantee for arbitrary external clients, backends, plugins, or future adapters. Any integration that executes a side effect without routing it through the typed capability gate is outside RelayLM's governed execution boundary.
+
+RelayCTX Repack/Unpack may add or remove RelayLM-owned protocol blocks on managed routes. This is required visible/internal context separation, not content censorship. Unpack must be marker/schema-bounded and must not classify ordinary visible text as acceptable or unacceptable.
+
+RelayEMO text markers are optional presentation decoration. They should remain disabled or adapter-controlled unless explicitly configured, and they must not become the mechanism for content safety or canonical response correction.
 
 Safety-sensitive routes may select a more suitable model, prompt profile, tool policy, retrieval scope, or capability set before generation. They must not imply that RelayLM universally inspects and guarantees the semantic acceptability of every final conversational response.
 

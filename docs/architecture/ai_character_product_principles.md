@@ -98,6 +98,10 @@ Capability requests require typed contracts, explicit authority, bounded inputs,
 
 Capability gates define RelayLM's required authority boundary and fail-closed behavior; they are not a mathematical proof that every backend, frontend, or future adapter is bug-free or impossible to bypass. An integration that executes tools, code, network actions, persistence, or other side effects outside RelayLM-owned typed gates is outside the RelayLM core guarantee.
 
+RelayCTX Repack and RelayCTX Unpack are core protocol-boundary operations, not semantic censorship. On managed routes, Repack may attach RelayLM-owned SOUL, MEM, RelaySCN, and CTX context to the backend-bound payload. Unpack may separate explicit internal update blocks from user-visible text. These operations maintain the boundary between user-visible conversation and RelayLM-owned internal state; they must not judge, suppress, or rewrite ordinary conversation content based on meaning.
+
+RelayEMO expression markers are optional presentation decoration. They must remain separable from the canonical conversation/capability boundary and must not be treated as required content safety, censorship, or protocol separation.
+
 Optional presentation filters for a specific frontend, broadcast platform, age profile, or deployment policy belong outside the RelayLM core conversation path. They must be explicit adapters or client features rather than concealed mutation of the canonical character response.
 
 ## Character experience
