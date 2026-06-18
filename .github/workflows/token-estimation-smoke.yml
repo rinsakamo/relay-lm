@@ -11,6 +11,7 @@ on:
       - scripts/relaylm_cjk_token_estimation_smoke.py
       - scripts/relaylm_token_memory_dry_run_smoke.py
       - scripts/relaylm_token_budget_truncation*_smoke.py
+      - docs/PROJECT_STATUS.md
       - docs/architecture/phase5d1_cjk_token_estimation_handoff.md
       - docs/architecture/pipeline_implementation_plan.md
       - docs/config_schema.md
@@ -25,6 +26,7 @@ on:
       - scripts/relaylm_cjk_token_estimation_smoke.py
       - scripts/relaylm_token_memory_dry_run_smoke.py
       - scripts/relaylm_token_budget_truncation*_smoke.py
+      - docs/PROJECT_STATUS.md
       - docs/architecture/phase5d1_cjk_token_estimation_handoff.md
       - docs/architecture/pipeline_implementation_plan.md
       - docs/config_schema.md
@@ -59,18 +61,5 @@ jobs:
         run: python scripts/relaylm_token_budget_truncation_dry_run_smoke.py
       - name: Run truncation apply regression
         run: python scripts/relaylm_token_budget_truncation_apply_smoke.py
-      - name: Capture truncation proxy regression
-        id: proxy
-        continue-on-error: true
-        run: python scripts/relaylm_token_budget_truncation_proxy_smoke.py > proxy-regression.log 2>&1
-      - name: Upload proxy regression log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: token-proxy-regression-log
-          path: proxy-regression.log
-      - name: Assert truncation proxy regression
-        if: steps.proxy.outcome == 'failure'
-        run: |
-          cat proxy-regression.log
-          exit 1
+      - name: Run truncation proxy regression
+        run: python scripts/relaylm_token_budget_truncation_proxy_smoke.py
