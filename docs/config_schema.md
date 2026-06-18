@@ -275,7 +275,7 @@ Notes:
 - Retrieval/store inspection is local-first and read-only by default.
 - Snippet extraction/injection is default-off and gated.
 - Retrieval does not mutate MEM or SOUL.
-- `chars_per_token=4` is a current compatibility heuristic, not a tokenizer-exact estimate and is not conservative enough for all CJK-heavy text.
+- `chars_per_token=4` is the ASCII-word compatibility ratio used by the deterministic tokenizer-free estimator. CJK/Kana/Hangul/full-width text, punctuation, symbols/emoji, combining/format characters, and other non-ASCII characters are accounted for separately. The result remains model-agnostic and is not tokenizer-exact.
 
 The older `default_store` / `stores` example is not part of the current Pydantic config model.
 
