@@ -7,6 +7,7 @@ from relaylm.client_history_exclusion_apply_v1_types import (
     non_negative_int,
     safe_blocked_reasons,
     safe_instruction_resolution_mode,
+    safe_instruction_source_mode,
     safe_status,
 )
 from relaylm.managed_apply_audit import install_managed_apply_audit_contract
@@ -60,8 +61,20 @@ def build_instruction_bearing_apply_node_result(
         "instruction_resolution_mode": safe_instruction_resolution_mode(
             result.instruction_resolution_mode
         ),
+        "instruction_source_mode": safe_instruction_source_mode(
+            result.instruction_source_mode
+        ),
+        "instruction_source_provenance_present": (
+            result.instruction_source_provenance_present is True
+        ),
         "instruction_candidate_count": non_negative_int(
             result.instruction_candidate_count
+        ),
+        "selected_instruction_candidate_count": non_negative_int(
+            result.selected_instruction_candidate_count
+        ),
+        "excluded_instruction_candidate_count": non_negative_int(
+            result.excluded_instruction_candidate_count
         ),
         "instruction_evidence_block_present": (
             result.instruction_evidence_block_present is True
@@ -73,6 +86,7 @@ def build_instruction_bearing_apply_node_result(
             result.legacy_incoming_system_prompt_replaced is True
         ),
         "raw_instruction_message_forwarded": False,
+        "relaylm_control_forwarded": False,
         "cache_entry_content_injected": False,
         "cache_projection_applied": False,
         "payload_candidate_present": result.forwarded_payload is not None,
