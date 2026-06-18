@@ -11,6 +11,7 @@ ALLOWED_STATUSES = frozenset({"ready", "applied", "blocked", "skipped"})
 ALLOWED_INSTRUCTION_RESOLUTION_MODES = frozenset(
     {"cache_hit", "cache_miss_first_pass", "blocked"}
 )
+ALLOWED_INSTRUCTION_SOURCE_MODES = frozenset({"explicit", "not_applicable"})
 ALLOWED_BLOCKED_REASONS = frozenset(
     {
         "pass_through_route_exempt",
@@ -49,6 +50,13 @@ ALLOWED_BLOCKED_REASONS = frozenset(
         "identity_candidate_count_mismatch",
         "identity_candidate_source_mismatch",
         "identity_candidate_invalid",
+        "instruction_source_provenance_missing",
+        "instruction_source_control_invalid",
+        "instruction_source_schema_unsupported",
+        "instruction_source_indices_invalid",
+        "instruction_source_role_mismatch",
+        "instruction_source_identity_mismatch",
+        "instruction_source_after_current_user",
         "active_tool_transaction_requires_preservation",
         "current_user_turn_missing",
         "current_user_content_invalid",
@@ -82,11 +90,16 @@ class ClientHistoryExclusionApplyV1Result:
     excluded_client_message_count: int = 0
     preserved_client_message_count: int = 0
     instruction_resolution_mode: str = "blocked"
+    instruction_source_mode: str = "not_applicable"
+    instruction_source_provenance_present: bool = False
     instruction_candidate_count: int = 0
+    selected_instruction_candidate_count: int = 0
+    excluded_instruction_candidate_count: int = 0
     instruction_evidence_block_present: bool = False
     instruction_evidence_rendered_char_count: int = 0
     legacy_incoming_system_prompt_replaced: bool = False
     raw_instruction_message_forwarded: bool = False
+    relaylm_control_forwarded: bool = False
     cache_entry_content_injected: bool = False
     cache_projection_applied: bool = False
     payload_candidate_present: bool = False
@@ -109,7 +122,11 @@ def build_client_history_exclusion_apply_v1_result(
     excluded_client_message_count: int = 0,
     preserved_client_message_count: int = 0,
     instruction_resolution_mode: str = "blocked",
+    instruction_source_mode: str = "not_applicable",
+    instruction_source_provenance_present: bool = False,
     instruction_candidate_count: int = 0,
+    selected_instruction_candidate_count: int = 0,
+    excluded_instruction_candidate_count: int = 0,
     instruction_evidence_block_present: bool = False,
     instruction_evidence_rendered_char_count: int = 0,
     legacy_incoming_system_prompt_replaced: bool = False,
@@ -132,7 +149,15 @@ def build_client_history_exclusion_apply_v1_result(
         instruction_resolution_mode=safe_instruction_resolution_mode(
             instruction_resolution_mode
         ),
+        instruction_source_mode=safe_instruction_source_mode(
+            instruction_source_mode
+        ),
+        instruction_source_provenance_present=(
+            instruction_source_provenance_present is True
+        ),
         instruction_candidate_count=instruction_candidate_count,
+        selected_instruction_candidate_count=selected_instruction_candidate_count,
+        excluded_instruction_candidate_count=excluded_instruction_candidate_count,
         instruction_evidence_block_present=instruction_evidence_block_present,
         instruction_evidence_rendered_char_count=(
             instruction_evidence_rendered_char_count
@@ -141,6 +166,7 @@ def build_client_history_exclusion_apply_v1_result(
             legacy_incoming_system_prompt_replaced
         ),
         raw_instruction_message_forwarded=False,
+        relaylm_control_forwarded=False,
         cache_entry_content_injected=False,
         cache_projection_applied=False,
         payload_candidate_present=payload_candidate_present,
@@ -160,6 +186,12 @@ def safe_instruction_resolution_mode(value: Any) -> str:
     ):
         return value
     return "blocked"
+
+
+def safe_instruction_source_mode(value: Any) -> str:
+    if isinstance(value, str) and value in ALLOWED_INSTRUCTION_SOURCE_MODES:
+        return value
+    return "not_applicable"
 
 
 def safe_blocked_reasons(values: Any) -> list[str]:
