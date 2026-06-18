@@ -234,6 +234,8 @@ RelayLM governs tool calls, code or command execution, filesystem and protected-
 
 Text that contains code, a command, or a request to perform an action remains text unless RelayLM or an attached adapter attempts to interpret it as an executable capability. At that point, the typed capability gate applies. Malformed structured output may be rejected as a protocol error, but RelayLM must not silently replace it with a semantically rewritten answer.
 
+These gates define the required RelayLM-owned authority path, not an absolute guarantee for arbitrary external clients, backends, plugins, or future adapters. Any integration that executes a side effect without routing it through the typed capability gate is outside RelayLM's governed execution boundary.
+
 Safety-sensitive routes may select a more suitable model, prompt profile, tool policy, retrieval scope, or capability set before generation. They must not imply that RelayLM universally inspects and guarantees the semantic acceptability of every final conversational response.
 
 Optional content or presentation filters required by a frontend, broadcast platform, age profile, or deployment policy belong in explicit client or adapter layers rather than the canonical RelayLM conversation path.
