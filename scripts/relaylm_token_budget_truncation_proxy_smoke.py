@@ -101,10 +101,14 @@ def _protected_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _write_config(base_url: str, trunc_enabled: bool, token_budget: int, trace_path: Path) -> Path:
     base = load_config(REPO_ROOT / "config.example.yaml").model_dump()
     backend_name = next(iter(base["backends"].keys()))
+    route = base["model_routes"]["relaylm-default"]
+    route["backend"] = backend_name
+    route["mode"] = "memory_light"
+    character_id = route.get("character_id")
+    if isinstance(character_id, str) and character_id in base["characters"]:
+        base["characters"][character_id]["memory_seed_path"] = None
     base["backends"][backend_name]["base_url"] = f"{base_url}/v1"
     base["backends"][backend_name]["api_key"] = None
-    base["model_routes"]["relaylm-default"]["backend"] = backend_name
-    base["model_routes"]["relaylm-default"]["mode"] = "memory_light"
     base["memory"]["token_budget_truncation_enabled"] = trunc_enabled
     base["memory"]["token_budget"] = token_budget
     base["memory"]["chars_per_token"] = 4
@@ -173,7 +177,7 @@ def main() -> int:
             _, backend_payload_default, headers_default = _post_and_capture(cfg_default, payload, capture)
             require(backend_payload_default.get("messages") == baseline, backend_payload_default)
             require(headers_default.get("x-relaylm-mode") == "memory_light", headers_default)
-            require(headers_default.get("x-relaylm-memory-block-used") == "true", headers_default)
+            require(headers_default.get("x-relaylm-memory-block-used") == "false", headers_default)
             require(headers_default.get("x-relaylm-compiler-used") == "true", headers_default)
             _assert_trace_applied(trace_default, expected=False)
             print("ok proxy truncation default disabled keeps backend payload unchanged")
