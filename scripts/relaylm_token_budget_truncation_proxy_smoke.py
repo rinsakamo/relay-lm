@@ -124,14 +124,32 @@ def _post_and_capture(
     return capture.last(), dict(response.headers)
 
 
-def _trace_truncation(trace_path: Path) -> dict[str, Any]:
+def _trace_truncation(
+    trace_path: Path,
+) -> tuple[dict[str, Any], list[str]]:
     lines = trace_path.read_text(encoding="utf-8").strip().splitlines()
     require(bool(lines), "trace lines empty")
     metadata = json.loads(lines[-1]).get("metadata")
     require(isinstance(metadata, dict), metadata)
-    truncation = metadata.get("token_budget_truncation")
-    require(isinstance(truncation, dict), metadata)
-    return truncation
+    node_results = metadata.get("pipeline_node_results")
+    require(isinstance(node_results, list), metadata)
+    for row in node_results:
+        if not isinstance(row, dict) or row.get("node_name") != "relayctx_repack":
+            continue
+        artifacts = row.get("artifacts")
+        require(isinstance(artifacts, list), row)
+        for artifact in artifacts:
+            if (
+                isinstance(artifact, dict)
+                and artifact.get("artifact_name") == "token_budget_truncation"
+            ):
+                reasons = row.get("blocked_reasons")
+                return artifact, (
+                    [reason for reason in reasons if isinstance(reason, str)]
+                    if isinstance(reasons, list)
+                    else []
+                )
+    raise AssertionError("token_budget_truncation projection missing")
 
 
 def main() -> int:
@@ -170,7 +188,8 @@ def main() -> int:
             require(headers.get("x-relaylm-mode") == "memory_light", headers)
             require(headers.get("x-relaylm-memory-block-used") == "false", headers)
             require(headers.get("x-relaylm-compiler-used") == "true", headers)
-            require(_trace_truncation(trace_default).get("applied") is False, trace_default)
+            default_artifact, _ = _trace_truncation(trace_default)
+            require(default_artifact.get("applied") is False, default_artifact)
             print("ok proxy truncation default disabled keeps backend payload unchanged")
 
             trace_apply = root / "trace-apply.jsonl"
@@ -190,7 +209,8 @@ def main() -> int:
             require(backend_apply.get("model") == "local-model", backend_apply)
             require(backend_apply.get("stream") is False, backend_apply)
             require(backend_apply.get("temperature") == 0.2, backend_apply)
-            require(_trace_truncation(trace_apply).get("applied") is True, trace_apply)
+            apply_artifact, apply_reasons = _trace_truncation(trace_apply)
+            require(apply_artifact.get("applied") is True, {"artifact": apply_artifact, "reasons": apply_reasons})
             print("ok proxy truncation enabled sends bounded backend payload")
 
             blocked_payload = {
@@ -218,9 +238,9 @@ def main() -> int:
                 capture,
             )
             require(backend_blocked.get("messages") == blocked_baseline, backend_blocked)
-            blocked = _trace_truncation(trace_blocked)
-            require(blocked.get("applied") is False, blocked)
-            require(blocked.get("blocked_reason") == "preserved_messages_exceed_budget", blocked)
+            blocked_artifact, blocked_reasons = _trace_truncation(trace_blocked)
+            require(blocked_artifact.get("applied") is False, blocked_artifact)
+            require("preserved_messages_exceed_budget" in blocked_reasons, blocked_reasons)
             print("ok proxy truncation blocked keeps backend payload unchanged")
     finally:
         server.shutdown()
