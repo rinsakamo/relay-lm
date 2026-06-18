@@ -12,6 +12,7 @@ from relaylm.client_history_exclusion_apply_runtime import (
     client_history_exclusion_apply_blocks_backend,
     client_history_exclusion_apply_failure_reason,
 )
+from relaylm.client_instruction_source import strip_relaylm_control
 from relaylm.pipeline_context import get_active_pipeline_context
 from relaylm.relayctx_unpack_runtime import apply_relayctx_unpack_runtime
 from relaylm.routing import ResolvedRoute
@@ -37,7 +38,11 @@ def _headers(route: ResolvedRoute) -> dict[str, str]:
 
 
 def build_backend_payload(payload: Mapping[str, Any], route: ResolvedRoute) -> dict[str, Any]:
-    backend_payload = dict(payload)
+    backend_payload = (
+        dict(payload)
+        if route.mode_applied == "pass_through"
+        else strip_relaylm_control(payload)
+    )
     backend_payload["model"] = route.backend_model
     return backend_payload
 
