@@ -3,13 +3,18 @@ from __future__ import annotations
 
 import json
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from html import escape as escape_html
 from typing import Any, Mapping, Sequence
 
 import yaml
 
+from relaylm.client_instruction_evidence import (
+    CLIENT_INSTRUCTION_EVIDENCE_MAX_RENDERED_CHARS,
+)
 from relaylm.compile_gate import CompileApplyDecision, decide_compile_apply
 from relaylm.compiler import (
+    BlockType,
     ContextBlock,
     append_incoming_system_prompt_block,
     build_persona_source_budget_diagnostics,
@@ -101,15 +106,39 @@ def consume_compiled_context_blocks_runtime_private() -> tuple[ContextBlock, ...
     return blocks
 
 
+def render_compiled_context_block_content_runtime_private(
+    block: ContextBlock,
+) -> str:
+    """Render one request-local block under the managed compiler policy."""
+
+    if block.block_type == BlockType.CLIENT_INSTRUCTION_EVIDENCE:
+        rendered = escape_html(block.content, quote=False)
+        if len(rendered) > CLIENT_INSTRUCTION_EVIDENCE_MAX_RENDERED_CHARS:
+            raise ValueError("instruction_evidence_oversize")
+        return rendered
+    return block.content
+
+
 def render_compiled_context_blocks_runtime_private(
     *,
     blocks: Sequence[ContextBlock],
     recent_messages: Sequence[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Render an explicit typed block list with detached recent messages."""
+    """Render an explicit typed block list with detached recent messages.
 
+    Client instruction evidence remains raw in the typed builder and is escaped
+    exactly here, immediately before the final compiler render.
+    """
+
+    rendered_blocks = [
+        replace(
+            block,
+            content=render_compiled_context_block_content_runtime_private(block),
+        )
+        for block in blocks
+    ]
     return compile_profile_messages(
-        list(blocks),
+        rendered_blocks,
         recent_messages=list(recent_messages),
     )
 
@@ -218,7 +247,6 @@ def _resolve_memory_selection_best_effort(
         raise
     except (FileNotFoundError, OSError, ValueError, TypeError, yaml.YAMLError, json.JSONDecodeError) as exc:
         return ConfiguredMemorySelection(block=None, summary=None), f"memory_seed_load_error:{exc.__class__.__name__}"
-
 
 
 def _resolve_token_memory_dry_run_best_effort(
