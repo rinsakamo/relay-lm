@@ -5,7 +5,10 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from relaylm.client_instruction_identity import ClientInstructionIdentityResult
+from relaylm.client_instruction_identity import (
+    ClientInstructionIdentityResult,
+    NormalizedInstructionCandidate,
+)
 
 
 SCHEMA_VERSION = "client_instruction_source.v1"
@@ -19,6 +22,7 @@ _MAX_SELECTED_INDICES = 64
 class ClientInstructionEvidenceSelection:
     schema_version: str
     source_mode: Literal["explicit"]
+    provenance_present: bool
     ready: bool
     selected_source_indices: tuple[int, ...]
     excluded_source_indices: tuple[int, ...]
@@ -104,6 +108,7 @@ def select_client_instruction_evidence(
     return ClientInstructionEvidenceSelection(
         schema_version=SCHEMA_VERSION,
         source_mode="explicit",
+        provenance_present=envelope is not None,
         ready=not reasons,
         selected_source_indices=selected_indices if not reasons else (),
         excluded_source_indices=excluded_indices,
@@ -114,7 +119,7 @@ def select_client_instruction_evidence(
 def selected_candidates(
     identity_result: ClientInstructionIdentityResult,
     selection: ClientInstructionEvidenceSelection,
-) -> tuple[Any, ...]:
+) -> tuple[NormalizedInstructionCandidate, ...]:
     """Return selected candidates in the explicit provenance order."""
 
     identity = identity_result.identity
