@@ -21,6 +21,17 @@ def check(backend, request, included, excluded) -> None:
     for value in excluded:
         assert value not in prefix
     assert "relaylm" not in backend
+    for key in (
+        "stream",
+        "temperature",
+        "top_p",
+        "max_tokens",
+        "tools",
+        "tool_choice",
+        "response_format",
+        "provider_options",
+    ):
+        assert backend[key] == request[key]
 
 
 def main() -> int:
