@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 5-D1 is the next bounded implementation slice after Phase 5-C4a.
+Phase 5-D1 is implemented in PR #289.
 
 ## Goal
 
