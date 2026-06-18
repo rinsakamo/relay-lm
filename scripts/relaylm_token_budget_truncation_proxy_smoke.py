@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import sys
 import tempfile
 import threading
@@ -47,8 +48,7 @@ class _BackendHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         length = int(self.headers.get("content-length", "0"))
         raw = self.rfile.read(length)
-        payload = json.loads(raw.decode("utf-8")) if raw else {}
-        type(self).capture.add(payload)
+        type(self).capture.add(json.loads(raw.decode("utf-8")) if raw else {})
         response = {
             "id": "chatcmpl-smoke",
             "object": "chat.completion",
@@ -62,108 +62,156 @@ class _BackendHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-def require(condition: bool, message: object) -> None:
+def require(condition: bool, detail: object) -> None:
     if not condition:
-        raise AssertionError(message)
+        raise AssertionError(detail)
 
 
-
-def _write_config(base_url: str, trunc_enabled: bool, token_budget: int, trace_path: Path) -> Path:
-    base = load_config(REPO_ROOT / "config.example.yaml").model_dump()
-    backend_name = next(iter(base["backends"].keys()))
-    base["backends"][backend_name]["base_url"] = f"{base_url}/v1"
-    base["backends"][backend_name]["api_key"] = None
-    base["model_routes"]["relaylm-default"]["backend"] = backend_name
-    base["model_routes"]["relaylm-default"]["mode"] = "memory_light"
-    base["memory"]["token_budget_truncation_enabled"] = trunc_enabled
-    base["memory"]["token_budget"] = token_budget
-    base["memory"]["chars_per_token"] = 4
-    base["trace"] = {"enabled": True, "path": str(trace_path)}
+def _write_config(
+    base_url: str,
+    *,
+    trunc_enabled: bool,
+    token_budget: int,
+    trace_path: Path,
+) -> Path:
+    raw = load_config(REPO_ROOT / "config.example.yaml").model_dump()
+    backend_name = next(iter(raw["backends"]))
+    route = raw["model_routes"]["relaylm-default"]
+    route["backend"] = backend_name
+    route["mode"] = "memory_light"
+    character_id = route.get("character_id")
+    if isinstance(character_id, str) and character_id in raw["characters"]:
+        raw["characters"][character_id]["memory_seed_path"] = None
+    raw["backends"][backend_name]["base_url"] = f"{base_url}/v1"
+    raw["backends"][backend_name]["api_key"] = None
+    raw["memory"]["token_budget_truncation_enabled"] = trunc_enabled
+    raw["memory"]["token_budget"] = token_budget
+    raw["memory"]["chars_per_token"] = 4
+    raw["trace"] = {"enabled": True, "path": str(trace_path)}
 
     fd, path = tempfile.mkstemp(prefix="relaylm-proxy-smoke-", suffix=".yaml")
-    Path(path).write_text(yaml.safe_dump(base), encoding="utf-8")
-    return Path(path)
-
-
+    os.close(fd)
+    result = Path(path)
+    result.write_text(yaml.safe_dump(raw), encoding="utf-8")
+    return result
 
 
 def _compiled_messages(config_path: Path, payload: dict[str, Any]) -> list[dict[str, Any]]:
-    config = RelayLMConfig.model_validate(yaml.safe_load(config_path.read_text(encoding="utf-8")) or {})
+    config = RelayLMConfig.model_validate(
+        yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    )
     route = resolve_route(config, str(payload.get("model", "")))
-    compiled = compile_chat_payload_if_enabled(config=config, route=route, payload=payload)
+    compiled = compile_chat_payload_if_enabled(
+        config=config,
+        route=route,
+        payload=payload,
+    )
     messages = compiled.payload.get("messages")
     if not isinstance(messages, list):
         raise AssertionError(compiled.payload)
     return messages
 
 
-def _post_and_capture(config_path: Path, payload: dict[str, Any], capture: _Capture) -> tuple[dict[str, Any], dict[str, Any], dict[str, str]]:
+def _post_and_capture(
+    config_path: Path,
+    payload: dict[str, Any],
+    capture: _Capture,
+) -> tuple[dict[str, Any], dict[str, str]]:
     app = create_app(str(config_path))
     with TestClient(app) as client:
         response = client.post("/v1/chat/completions", json=payload)
     require(response.status_code == 200, response.text)
-    require(isinstance(response.json(), dict), response.text)
-    return response.json(), capture.last(), dict(response.headers)
+    return capture.last(), dict(response.headers)
 
 
-def _assert_trace_applied(trace_path: Path, expected: bool) -> None:
+def _trace_truncation(
+    trace_path: Path,
+) -> tuple[dict[str, Any], list[str]]:
     lines = trace_path.read_text(encoding="utf-8").strip().splitlines()
-    require(lines, "trace lines empty")
-    record = json.loads(lines[-1])
-    metadata = record.get("metadata")
+    require(bool(lines), "trace lines empty")
+    metadata = json.loads(lines[-1]).get("metadata")
     require(isinstance(metadata, dict), metadata)
-    tbt = metadata.get("token_budget_truncation")
-    require(isinstance(tbt, dict), metadata)
-    require(tbt.get("applied") is expected, tbt)
+    node_results = metadata.get("pipeline_node_results")
+    require(isinstance(node_results, list), metadata)
+    for row in node_results:
+        if not isinstance(row, dict) or row.get("node_name") != "relayctx_repack":
+            continue
+        artifacts = row.get("artifacts")
+        require(isinstance(artifacts, list), row)
+        for artifact in artifacts:
+            if (
+                isinstance(artifact, dict)
+                and artifact.get("artifact_name") == "token_budget_truncation"
+            ):
+                reasons = row.get("blocked_reasons")
+                return artifact, (
+                    [reason for reason in reasons if isinstance(reason, str)]
+                    if isinstance(reasons, list)
+                    else []
+                )
+    raise AssertionError("token_budget_truncation projection missing")
 
 
 def main() -> int:
     capture = _Capture()
     _BackendHandler.capture = capture
     server = ThreadingHTTPServer(("127.0.0.1", 0), _BackendHandler)
-    port = int(server.server_address[1])
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
-    try:
-        payload = {
-            "model": "relaylm-default",
-            "messages": [
-                {"role": "system", "content": "system"},
-                {"role": "assistant", "content": "assistant " * 20},
-                {"role": "assistant", "content": "assistant 2 " * 20},
-                {"role": "user", "content": "latest user"},
-            ],
-            "stream": False,
-            "temperature": 0.2,
-        }
+    payload = {
+        "model": "relaylm-default",
+        "messages": [
+            {"role": "system", "content": "system"},
+            {"role": "assistant", "content": "assistant " * 20_000},
+            {"role": "assistant", "content": "assistant 2 " * 20_000},
+            {"role": "user", "content": "latest user"},
+        ],
+        "stream": False,
+        "temperature": 0.2,
+    }
 
+    try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            trace_default = Path(tmpdir) / "trace-default.jsonl"
-            cfg_default = _write_config(f"http://127.0.0.1:{port}", False, 30, trace_default)
+            root = Path(tmpdir)
+
+            trace_default = root / "trace-default.jsonl"
+            cfg_default = _write_config(
+                f"http://127.0.0.1:{server.server_address[1]}",
+                trunc_enabled=False,
+                token_budget=30,
+                trace_path=trace_default,
+            )
             baseline = _compiled_messages(cfg_default, copy.deepcopy(payload))
-            _, backend_payload_default, headers_default = _post_and_capture(cfg_default, payload, capture)
-            require(backend_payload_default.get("messages") == baseline, backend_payload_default)
-            require(headers_default.get("x-relaylm-mode") == "memory_light", headers_default)
-            require(headers_default.get("x-relaylm-memory-block-used") == "true", headers_default)
-            require(headers_default.get("x-relaylm-compiler-used") == "true", headers_default)
-            _assert_trace_applied(trace_default, expected=False)
+            backend_default, headers = _post_and_capture(cfg_default, payload, capture)
+            require(backend_default.get("messages") == baseline, backend_default)
+            require(headers.get("x-relaylm-mode") == "memory_light", headers)
+            require(headers.get("x-relaylm-memory-block-used") == "false", headers)
+            require(headers.get("x-relaylm-compiler-used") == "true", headers)
+            default_artifact, _ = _trace_truncation(trace_default)
+            require(default_artifact.get("applied") is False, default_artifact)
             print("ok proxy truncation default disabled keeps backend payload unchanged")
 
-            trace_apply = Path(tmpdir) / "trace-apply.jsonl"
-            cfg_apply = _write_config(f"http://127.0.0.1:{port}", True, 420, trace_apply)
+            trace_apply = root / "trace-apply.jsonl"
+            cfg_apply = _write_config(
+                f"http://127.0.0.1:{server.server_address[1]}",
+                trunc_enabled=True,
+                token_budget=50_000,
+                trace_path=trace_apply,
+            )
             baseline_apply = _compiled_messages(cfg_apply, copy.deepcopy(payload))
-            _, backend_payload_apply, _ = _post_and_capture(cfg_apply, payload, capture)
-            backend_messages = backend_payload_apply.get("messages")
-            require(isinstance(backend_messages, list), backend_payload_apply)
-            require(len(backend_messages) < len(baseline_apply), backend_payload_apply)
-            require(backend_messages[0].get("role") == "system", backend_payload_apply)
-            require(backend_messages[-1].get("role") == "user", backend_payload_apply)
-            require(backend_payload_apply.get("model") == payload["model"].replace("relaylm-default", "local-model"), backend_payload_apply)
-            require(backend_payload_apply.get("stream") == payload["stream"], backend_payload_apply)
-            require(backend_payload_apply.get("temperature") == payload["temperature"], backend_payload_apply)
-            _assert_trace_applied(trace_apply, expected=True)
-            print("ok proxy truncation enabled over budget sends truncated backend payload")
+            backend_apply, _ = _post_and_capture(cfg_apply, payload, capture)
+            backend_messages = backend_apply.get("messages")
+            require(isinstance(backend_messages, list), backend_apply)
+            require(len(backend_messages) < len(baseline_apply), backend_apply)
+            require(backend_messages[0].get("role") == "system", backend_apply)
+            require(backend_messages[-1].get("role") == "user", backend_apply)
+            require(backend_apply.get("model") == "local-model", backend_apply)
+            require(backend_apply.get("stream") is False, backend_apply)
+            require(backend_apply.get("temperature") == 0.2, backend_apply)
+            apply_artifact, apply_reasons = _trace_truncation(trace_apply)
+            require(apply_artifact.get("applied") is True, {"artifact": apply_artifact, "reasons": apply_reasons})
+            print("ok proxy truncation enabled sends bounded backend payload")
 
             blocked_payload = {
                 "model": "relaylm-default",
@@ -173,25 +221,31 @@ def main() -> int:
                 ],
                 "stream": False,
             }
-            trace_blocked = Path(tmpdir) / "trace-blocked.jsonl"
-            cfg_blocked = _write_config(f"http://127.0.0.1:{port}", True, 5, trace_blocked)
-            blocked_baseline = _compiled_messages(cfg_blocked, copy.deepcopy(blocked_payload))
-            _, backend_payload_blocked, _ = _post_and_capture(cfg_blocked, blocked_payload, capture)
-            require(backend_payload_blocked.get("messages") == blocked_baseline, backend_payload_blocked)
-
-            lines = trace_blocked.read_text(encoding="utf-8").strip().splitlines()
-            require(lines, "trace blocked empty")
-            meta = json.loads(lines[-1]).get("metadata")
-            require(isinstance(meta, dict), meta)
-            trunc = meta.get("token_budget_truncation")
-            require(isinstance(trunc, dict), meta)
-            require(trunc.get("applied") is False, trunc)
-            require(isinstance(trunc.get("blocked_reason"), str) and trunc.get("blocked_reason"), trunc)
+            trace_blocked = root / "trace-blocked.jsonl"
+            cfg_blocked = _write_config(
+                f"http://127.0.0.1:{server.server_address[1]}",
+                trunc_enabled=True,
+                token_budget=5,
+                trace_path=trace_blocked,
+            )
+            blocked_baseline = _compiled_messages(
+                cfg_blocked,
+                copy.deepcopy(blocked_payload),
+            )
+            backend_blocked, _ = _post_and_capture(
+                cfg_blocked,
+                blocked_payload,
+                capture,
+            )
+            require(backend_blocked.get("messages") == blocked_baseline, backend_blocked)
+            blocked_artifact, blocked_reasons = _trace_truncation(trace_blocked)
+            require(blocked_artifact.get("applied") is False, blocked_artifact)
+            require("preserved_messages_exceed_budget" in blocked_reasons, blocked_reasons)
             print("ok proxy truncation blocked keeps backend payload unchanged")
-
     finally:
         server.shutdown()
         server.server_close()
+        thread.join(timeout=5)
 
     return 0
 

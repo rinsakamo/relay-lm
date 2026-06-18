@@ -97,7 +97,10 @@ def maybe_apply_relaymem_runtime_ctx_injection(
             "attempted": True,
             "applied": True,
             "inserted_chars": len(inserted_content),
-            "estimated_tokens": _estimate_tokens(inserted_content),
+            "estimated_tokens": estimate_text_tokens(
+                inserted_content,
+                chars_per_token=max(1, int(chars_per_token)),
+            ).estimated_tokens,
             "blocked_reasons": [],
             "payload_mutation_applied": True,
             "forwarded_message_count": len(forwarded_messages),
@@ -204,7 +207,10 @@ def maybe_apply_relaymem_snippet_runtime_injection(
             "attempted": True,
             "applied": True,
             "inserted_chars": len(inserted_content),
-            "estimated_tokens": _estimate_tokens(inserted_content),
+            "estimated_tokens": estimate_text_tokens(
+                inserted_content,
+                chars_per_token=max(1, int(chars_per_token)),
+            ).estimated_tokens,
             "blocked_reasons": [],
             "payload_mutation_applied": True,
             "forwarded_message_count": len(forwarded_messages),
@@ -494,10 +500,6 @@ def _before_latest_user_index(messages: Sequence[Any]) -> int | None:
         if isinstance(message, Mapping) and message.get("role") == "user":
             return index
     return None
-
-
-def _estimate_tokens(text: str) -> int:
-    return max(1, len(text) // 4) if text else 0
 
 
 def _dedupe(reasons: Sequence[str]) -> list[str]:

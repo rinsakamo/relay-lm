@@ -15,6 +15,7 @@ This document owns implementation status, phase sequencing, and dependency bound
 
 ```text
 Phase 5-C managed-route correctness: complete
+Phase 5-D1 CJK-aware token estimation: complete
 
 Completed bounded slices:
   Phase 1 PipelineContext/app stabilization
@@ -27,9 +28,10 @@ Completed bounded slices:
   Phase 5-C1 through C3 authority foundations
   Phase 5-C1a no-instruction managed apply
   Phase 5-C4a instruction-bearing managed apply
+  Phase 5-D1 CJK-aware conservative token estimation
 
 Next candidates:
-  Phase 5-D pre-stream hardening
+  Phase 5-D2 lazy RelayRUN recovery-detail construction
   Phase 5-C4b cache-hit RelaySCN projection
 
 Later:
@@ -38,7 +40,7 @@ Later:
   Phase 6 asynchronous RelaySLP
 ```
 
-Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary.
+Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites.
 
 ## Current caveats
 
@@ -48,7 +50,7 @@ Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5
 - Active tool transactions remain blocked because minimum-chain reconstruction is absent.
 - Instruction-cache lookup is read-only; projection and writing are absent.
 - RelayCTX Unpack is non-stream only.
-- Token estimation still needs CJK-aware hardening.
+- Token estimation is deterministic and CJK-aware but remains tokenizer-free and model-agnostic rather than exact.
 - RelayREF output observation, RelaySLP persistence, and RelaySOUL actual apply remain later work.
 
 ## Phase 1: PipelineContext/app — mostly complete
@@ -135,11 +137,31 @@ Planned work is strict cache-entry validation followed by an allowlisted RelaySC
 
 Planned work includes a separately versioned typed parse artifact, authority validation, independent cache-write gate, bounded failures/retries, and no raw prompt/response persistence.
 
-## Phase 5-D: pre-stream hardening — planned
+## Phase 5-D: pre-stream hardening — in progress
 
-- CJK-aware conservative token estimation,
-- lazy RelayRUN recovery-detail construction,
-- ordinary-path cost reduction without visible behavior changes.
+### Phase 5-D1: CJK-aware conservative token estimation — complete
+
+Implemented:
+
+- tokenizer-free deterministic character classification,
+- ASCII compatibility ratio retention,
+- conservative CJK/Kana/Hangul/full-width, punctuation, symbol/emoji, combining/format, and other non-ASCII accounting,
+- final estimates that never fall below the historical whole-string estimate,
+- content-free detailed count diagnostics,
+- shared use by memory assembly and message truncation,
+- unchanged feature defaults, ownership, candidate/drop order, and protected-message behavior,
+- dedicated Japanese/mixed/code/emoji/memory/truncation regression coverage.
+
+See [Phase 5-D1 CJK-Aware Token Estimation Handoff](phase5d1_cjk_token_estimation_handoff.md).
+
+### Phase 5-D2: lazy RelayRUN recovery detail — planned
+
+Planned work:
+
+- keep ordinary-path RelayRUN summaries minimal,
+- construct full recovery detail only when blocked/recovery/checkpoint diagnostics require it,
+- preserve fail-closed and content-free contracts,
+- avoid visible behavior changes.
 
 ## Phase 5.5: Stream Unpack — planned
 
