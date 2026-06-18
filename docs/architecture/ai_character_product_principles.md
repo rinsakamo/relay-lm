@@ -68,6 +68,38 @@ external adapters
 
 Return-side expression must not become hidden meaning-changing rewriting or a second persona generator.
 
+## Conversation content and capability authority
+
+RelayLM separates ordinary conversation content from executable capability authority.
+
+> Conversation content is model-owned. Capability execution is RelayLM-governed.
+
+Ordinary natural-language output is determined by the selected model, approved RelaySOUL and OUTPUT_POLICY, current context, and user-controlled configuration. RelayLM does not add a mandatory semantic censorship layer that classifies, suppresses, rewrites, regenerates, or guarantees conversation based on offensiveness, provocation, adult tone, political viewpoint, or similar open-ended content judgments.
+
+This means:
+
+- teasing, insults, arguments, coarse language, adult-oriented tone, and other ordinary conversational expression remain model/SOUL behavior,
+- a recommended model profile is a tested compatibility and default-behavior profile, not a guarantee or certification of generated content,
+- RelayREF, RelayEMO, RelaySCN, RelaySLP, and output adapters must not become hidden second-pass content moderators or persona-normalization models,
+- the synchronous path must not spend latency or compute on a universal secondary LLM or semantic classifier for ordinary conversation,
+- malformed protocol output may fail technically, but RelayLM must not replace it with a semantically rewritten answer.
+
+RelayLM does govern capabilities and side effects:
+
+- tool invocation and tool-transaction preservation,
+- code or command execution,
+- filesystem and protected-data access,
+- credential and secret access,
+- network access and external API actions,
+- persistence, configuration, MEM, and RelaySOUL mutation,
+- other externally observable or irreversible side effects.
+
+Capability requests require typed contracts, explicit authority, bounded inputs, and fail-closed gates. A text response that merely contains code, a command, or a request to perform an action remains conversation content. The capability boundary applies only when RelayLM or an attached adapter would interpret that output as an executable action.
+
+Capability gates define RelayLM's required authority boundary and fail-closed behavior; they are not a mathematical proof that every backend, frontend, or future adapter is bug-free or impossible to bypass. An integration that executes tools, code, network actions, persistence, or other side effects outside RelayLM-owned typed gates is outside the RelayLM core guarantee.
+
+Optional presentation filters for a specific frontend, broadcast platform, age profile, or deployment policy belong outside the RelayLM core conversation path. They must be explicit adapters or client features rather than concealed mutation of the canonical character response.
+
 ## Character experience
 
 Evaluate separately from technical task success:
@@ -98,7 +130,7 @@ Evaluate:
 - route/namespace isolation,
 - memory and internal-data leakage prevention,
 - fallback/recovery reliability,
-- first-token/first-safe-speech latency,
+- first-token/first-adapter-ready-speech latency,
 - streaming continuity,
 - duplicate-emission prevention.
 
@@ -113,7 +145,7 @@ Use deterministic checks plus repeated conversation sessions:
 - scene transitions and recovery,
 - renderer/model comparisons,
 - subjective ratings with short reason labels,
-- first-token, first-safe-segment, and first-TTS-enqueue timing.
+- first-token, first-adapter-ready-segment, and first-TTS-enqueue timing.
 
 Protected response/feedback samples belong to explicit evaluation/calibration storage, not generic runtime trace.
 
@@ -127,7 +159,7 @@ synchronous:
   -> streaming backend
   -> Stream Unpack / segmentation
   -> REF / EMO / output SCN / RUN gates
-  -> first safe TTS chunk
+  -> first adapter-ready TTS chunk
 
 out-of-band:
   governed evidence
@@ -139,7 +171,7 @@ out-of-band:
 
 RelaySLP owns candidate creation and governed memory compilation. Embeddings, index maintenance, summary refresh, and cache warmup are downstream maintenance/apply steps, not predecessors that create SLP candidates.
 
-The synchronous path should not run expensive rerankers, summarizers, multi-hop retrieval, or extra LLM scoring by default.
+The synchronous path should not run expensive rerankers, summarizers, multi-hop retrieval, extra LLM scoring, or universal semantic moderation by default.
 
 ## Prefetch and speculation
 
@@ -165,7 +197,7 @@ Rules:
 
 ## TTS and Avatar boundary
 
-RelayLM owns safe output segmentation and engine-neutral expression hints before external consumers receive data.
+RelayLM owns protocol-valid output segmentation and engine-neutral expression hints before external consumers receive data.
 
 It does not own:
 
@@ -182,6 +214,8 @@ Agent planning, tool calls, observations, and structured-output phases normally 
 
 Persona or expression handling must not alter tool protocol payloads, code, commands, structured data, or the semantic result of an agent action.
 
+Tool calls, code execution, commands, protected-data access, network actions, and mutations remain capability requests even when proposed by ordinary conversation. They do not inherit authority from natural-language output and must pass their own typed runtime gates.
+
 ## Product non-goals
 
 RelayLM is not:
@@ -192,8 +226,9 @@ RelayLM is not:
 - a vector database product,
 - a direct KV-cache controller,
 - an authority that silently rewrites character identity,
+- a universal semantic censor or guarantor of model-generated conversation,
 - a reason to forward untrusted frontend history as managed backend context.
 
 ## Summary
 
-RelayLM should help a character remember appropriately, stay recognizably itself, express transient emotion safely, respond soon enough to feel present, and remain easy for the user to correct or redirect.
+RelayLM should help a character remember appropriately, stay recognizably itself, express transient emotion coherently, respond soon enough to feel present, and remain easy for the user to correct or redirect. It governs what the character can execute, access, or mutate without silently governing what the character is allowed to say.
