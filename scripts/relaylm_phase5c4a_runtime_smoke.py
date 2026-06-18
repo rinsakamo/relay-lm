@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from phase5c4a_smoke_support import build_context, payload, write_config
+from phase5c4a_explicit_smoke_support import build_context, payload, write_config
 from relaylm.client_history_exclusion_apply_runtime import run_client_history_exclusion_apply_runtime
 from relaylm.pipeline_context import consume_active_pipeline_context
 
@@ -28,11 +28,16 @@ def main() -> int:
         assert dry_result is not None
         assert dry_result.schema_version == "client_history_exclusion_apply.v1"
         assert dry_result.status == "ready"
+        assert dry_result.instruction_source_mode == "explicit"
+        assert dry_result.instruction_source_provenance_present is True
+        assert dry_result.selected_instruction_candidate_count == 1
+        assert dry_result.excluded_instruction_candidate_count == 0
         assert dry_result.payload_mutation_applied is False
         assert dry_context.forwarded_payload == compiled
         assert dry_context.last_mutating_step is None
         assert dry_context.client_instruction_identity_result is not None
         assert len(dry_result.forwarded_payload["messages"]) == 2
+        assert "relaylm" not in dry_result.forwarded_payload
         assert dry_result.forwarded_payload["messages"][-1] == request["messages"][-1]
         consume_active_pipeline_context()
 
@@ -43,6 +48,7 @@ def main() -> int:
         assert result is not None and result.status == "applied"
         assert context.last_mutating_step == "client_history_exclusion_apply"
         assert len(context.forwarded_payload["messages"]) == 2
+        assert "relaylm" not in context.forwarded_payload
         assert context.forwarded_payload["messages"][-1] == request["messages"][-1]
         prefix = context.forwarded_payload["messages"][0]["content"]
         assert "prior user sentinel" not in prefix
