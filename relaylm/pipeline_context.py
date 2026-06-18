@@ -160,7 +160,7 @@ class PipelineContext:
             else:
                 preflight = self.client_history_exclusion_preflight_result
                 identity = self.client_instruction_identity_result
-                prepared, prepare_reasons, evidence_char_count = (
+                prepared, prepare_reasons, selection, evidence_char_count = (
                     prepare_client_history_exclusion_apply_v1(
                         self.original_payload,
                         self.forwarded_payload,
@@ -191,10 +191,30 @@ class PipelineContext:
                             "instruction_resolution_mode",
                             "blocked",
                         ),
+                        instruction_source_mode=(
+                            selection.source_mode
+                            if selection is not None
+                            else "not_applicable"
+                        ),
+                        instruction_source_provenance_present=(
+                            selection.provenance_present
+                            if selection is not None
+                            else False
+                        ),
                         instruction_candidate_count=(
                             len(identity.identity.candidates)
                             if identity is not None
                             and identity.identity is not None
+                            else 0
+                        ),
+                        selected_instruction_candidate_count=(
+                            len(selection.selected_source_indices)
+                            if selection is not None
+                            else 0
+                        ),
+                        excluded_instruction_candidate_count=(
+                            len(selection.excluded_source_indices)
+                            if selection is not None
                             else 0
                         ),
                         instruction_evidence_rendered_char_count=(
