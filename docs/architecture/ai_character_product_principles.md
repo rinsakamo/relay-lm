@@ -96,6 +96,8 @@ RelayLM does govern capabilities and side effects:
 
 Capability requests require typed contracts, explicit authority, bounded inputs, and fail-closed gates. A text response that merely contains code, a command, or a request to perform an action remains conversation content. The capability boundary applies only when RelayLM or an attached adapter would interpret that output as an executable action.
 
+Capability gates define RelayLM's required authority boundary and fail-closed behavior; they are not a mathematical proof that every backend, frontend, or future adapter is bug-free or impossible to bypass. An integration that executes tools, code, network actions, persistence, or other side effects outside RelayLM-owned typed gates is outside the RelayLM core guarantee.
+
 Optional presentation filters for a specific frontend, broadcast platform, age profile, or deployment policy belong outside the RelayLM core conversation path. They must be explicit adapters or client features rather than concealed mutation of the canonical character response.
 
 ## Character experience
