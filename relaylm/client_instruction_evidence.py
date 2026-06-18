@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from html import escape as escape_html
 import json
 
 from relaylm.client_instruction_identity import NormalizedInstructionCandidate
@@ -14,15 +13,18 @@ CLIENT_INSTRUCTION_EVIDENCE_MAX_RENDERED_CHARS = 4096
 
 
 @dataclass(frozen=True)
-class ClientInstructionEvidenceRenderResult:
+class ClientInstructionEvidenceBuildResult:
     block: ContextBlock
-    rendered_char_count: int
 
 
 def build_client_instruction_evidence_block(
     candidates: Sequence[NormalizedInstructionCandidate],
-) -> ClientInstructionEvidenceRenderResult:
-    """Render normalized candidates once, in source order, under a fixed bound."""
+) -> ClientInstructionEvidenceBuildResult:
+    """Build one raw typed evidence block in selected source order.
+
+    Escaping and rendered-size enforcement belong to the compiler renderer, not
+    to this builder, so every supported rendering path applies one policy.
+    """
 
     evidence = {
         "authority": "below_relaylm_runtime_safety_and_approved_persona",
@@ -41,24 +43,16 @@ def build_client_instruction_evidence_block(
         sort_keys=True,
         separators=(",", ":"),
     )
-    escaped_content = escape_html(raw_content, quote=False)
-    rendered_char_count = len(escaped_content)
-    if rendered_char_count > CLIENT_INSTRUCTION_EVIDENCE_MAX_RENDERED_CHARS:
-        raise ValueError("instruction_evidence_oversize")
-
     block = ContextBlock(
         block_id=BlockType.CLIENT_INSTRUCTION_EVIDENCE.value,
         block_type=BlockType.CLIENT_INSTRUCTION_EVIDENCE,
         stability_class=StabilityClass.DYNAMIC_SUFFIX,
-        source="request_local/client_instruction_identity",
-        content=escaped_content,
+        source="request_local/client_instruction_identity_selection",
+        content=raw_content,
         token_budget_hint=1024,
         include_in_prefix_cache_target=False,
     )
-    return ClientInstructionEvidenceRenderResult(
-        block=block,
-        rendered_char_count=rendered_char_count,
-    )
+    return ClientInstructionEvidenceBuildResult(block=block)
 
 
 def replace_legacy_instruction_block(
