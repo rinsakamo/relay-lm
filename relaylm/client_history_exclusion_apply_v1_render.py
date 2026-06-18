@@ -8,6 +8,7 @@ from typing import Any
 from relaylm.client_history_exclusion_apply_v1_prepare import (
     PreparedClientHistoryExclusionApplyV1,
 )
+from relaylm.client_instruction_source import strip_relaylm_control
 from relaylm.request_compiler import (
     render_compiled_context_blocks_runtime_private,
 )
@@ -33,7 +34,9 @@ def render_client_history_exclusion_apply_v1(
         )
     except Exception:
         return None
-    payload = deepcopy(dict(prepared.validated.compiled_payload))
+    payload = deepcopy(
+        strip_relaylm_control(prepared.validated.compiled_payload)
+    )
     payload["messages"] = messages
     return RenderedClientHistoryExclusionApplyV1(
         payload=payload,
