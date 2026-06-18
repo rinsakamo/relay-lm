@@ -10,6 +10,7 @@ on:
       - relaylm/token_budget_truncation.py
       - relaylm/relaymem_runtime_ctx.py
       - scripts/relaylm_cjk_token_estimation_smoke.py
+      - scripts/relaylm_fullwidth_space_token_smoke.py
       - scripts/relaylm_relaymem_cjk_runtime_estimation_smoke.py
       - scripts/relaylm_token_memory_dry_run_smoke.py
       - scripts/relaylm_token_budget_truncation*_smoke.py
@@ -27,6 +28,7 @@ on:
       - relaylm/token_budget_truncation.py
       - relaylm/relaymem_runtime_ctx.py
       - scripts/relaylm_cjk_token_estimation_smoke.py
+      - scripts/relaylm_fullwidth_space_token_smoke.py
       - scripts/relaylm_relaymem_cjk_runtime_estimation_smoke.py
       - scripts/relaylm_token_memory_dry_run_smoke.py
       - scripts/relaylm_token_budget_truncation*_smoke.py
@@ -57,6 +59,8 @@ jobs:
         run: python -m compileall relaylm scripts
       - name: Run CJK estimator contract
         run: python scripts/relaylm_cjk_token_estimation_smoke.py
+      - name: Run full-width space regression
+        run: python scripts/relaylm_fullwidth_space_token_smoke.py
       - name: Run RelayMEM CJK runtime estimate contract
         run: python scripts/relaylm_relaymem_cjk_runtime_estimation_smoke.py
       - name: Run token memory regression
