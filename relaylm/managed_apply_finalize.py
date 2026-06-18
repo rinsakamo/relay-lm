@@ -22,6 +22,9 @@ def finalize_instruction_bearing_apply(
     """Render the detached candidate and project one typed v1 result."""
 
     rendered = render_client_history_exclusion_apply_v1(prepared)
+    selected_count = len(prepared.selection.selected_source_indices)
+    excluded_count = len(prepared.selection.excluded_source_indices)
+    candidate_count = len(prepared.validated.candidates)
     if rendered is None:
         return build_client_history_exclusion_apply_v1_result(
             status="blocked",
@@ -32,7 +35,11 @@ def finalize_instruction_bearing_apply(
                 prepared.validated.compiled_messages
             ),
             instruction_resolution_mode=instruction_resolution_mode,
-            instruction_candidate_count=len(prepared.validated.candidates),
+            instruction_source_mode=prepared.selection.source_mode,
+            instruction_source_provenance_present=True,
+            instruction_candidate_count=candidate_count,
+            selected_instruction_candidate_count=selected_count,
+            excluded_instruction_candidate_count=excluded_count,
             instruction_evidence_rendered_char_count=(
                 prepared.evidence_rendered_char_count
             ),
@@ -57,7 +64,11 @@ def finalize_instruction_bearing_apply(
         ),
         preserved_client_message_count=1,
         instruction_resolution_mode=instruction_resolution_mode,
-        instruction_candidate_count=len(prepared.validated.candidates),
+        instruction_source_mode=prepared.selection.source_mode,
+        instruction_source_provenance_present=True,
+        instruction_candidate_count=candidate_count,
+        selected_instruction_candidate_count=selected_count,
+        excluded_instruction_candidate_count=excluded_count,
         instruction_evidence_block_present=True,
         instruction_evidence_rendered_char_count=(
             prepared.evidence_rendered_char_count
