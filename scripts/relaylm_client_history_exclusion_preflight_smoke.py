@@ -437,9 +437,10 @@ def main() -> int:
             "client_instruction_identity",
             "client_instruction_cache",
             "client_instruction_cache_lookup",
+            "client_instruction_relayscn_projection",
             "client_history_exclusion_preflight",
         ]
-        require(names[:7] == expected, names)
+        require(names[:8] == expected, names)
         print("ok node ordering")
 
     print("client_history_exclusion_preflight_smoke passed")

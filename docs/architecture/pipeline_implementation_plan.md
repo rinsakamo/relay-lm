@@ -29,12 +29,12 @@ Completed bounded slices:
   Phase 5-C1 through C3 authority foundations
   Phase 5-C1a no-instruction managed apply
   Phase 5-C4a instruction-bearing managed apply
+  Phase 5-C4b cache-hit RelaySCN projection
   Phase 5-D1 CJK-aware conservative token estimation
   Phase 5-D2a lazy RelayRUN recovery-detail helper
   Phase 5-D2b lazy RelayRUN recovery-detail runtime wiring
 
 Next candidates:
-  Phase 5-C4b cache-hit RelaySCN projection
   Phase 5-C5 typed parse/cache write
 
 Later:
@@ -42,7 +42,7 @@ Later:
   Phase 6 asynchronous RelaySLP
 ```
 
-Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring.
+Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection; Phase 5-C5 remains the typed parse/cache-write boundary. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring.
 
 ## Current caveats
 
@@ -50,7 +50,7 @@ Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5
 - Current profile compilation still precedes normalized target SCN/INT/Retrieval handoffs.
 - Complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy is not implemented.
 - Active tool transactions remain blocked because minimum-chain reconstruction is absent.
-- Instruction-cache lookup is read-only; projection and writing are absent.
+- Instruction-cache lookup and RelaySCN projection are read-only; cache writing is absent.
 - RelayCTX Unpack is non-stream only.
 - Token estimation is deterministic and CJK-aware but remains tokenizer-free and model-agnostic rather than exact.
 - RelayRUN lazy recovery detail is wired into the request-runtime checkpoint builder, but cross-cutting per-node orchestration remains later work.
@@ -92,7 +92,7 @@ Content-free inspection identifies the current user turn, instruction/history co
 
 ### C2 instruction identity and read-only cache lookup — complete
 
-Deterministic normalized instruction identity, route/character-scoped hashes, request-local content-bearing state, bounded read-only lookup, and content-free diagnostics are implemented. Cache projection and writing are not.
+Deterministic normalized instruction identity, route/character-scoped hashes, request-local content-bearing state, bounded read-only lookup, and content-free diagnostics are implemented. Cache writing is not.
 
 ### C3 history-exclusion preflight — complete
 
@@ -132,9 +132,20 @@ client_history_exclusion_apply_enabled=false
 client_history_exclusion_apply_dry_run_only=true
 ```
 
-## Phase 5-C4b: cache-hit RelaySCN projection — deferred optimization
+### Phase 5-C4b: cache-hit RelaySCN projection — complete
 
-Planned work is strict cache-entry validation followed by an allowlisted RelaySCN projection. Raw instructions, cache metadata, and opaque cache bodies must not enter backend context.
+Implemented:
+
+- `client_instruction_relayscn_projection.v0`,
+- a read-only helper that consumes only the request-local runtime-private validated cache lookup result,
+- a `client_instruction_relayscn_projection` PipelineNodeResult inserted after `client_instruction_cache_lookup`,
+- allowlisted enum/count/boolean projection fields for scene type, role scope/source, confidence bucket, context/participant/constraint counts, status, and reason IDs,
+- explicit blocking/miss/skipped projection states,
+- no raw cache/instruction/role/context/constraint values, cache hashes, paths, backend payloads, or response text in persisted diagnostics,
+- no backend forwarding, request payload, RelaySCN policy, or cache write mutation,
+- focused direct/runtime smoke and cache lookup regression coverage.
+
+See [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](phase5c4b_cache_hit_relayscn_projection_handoff.md).
 
 ## Phase 5-C5: typed parse and cache write — deferred
 

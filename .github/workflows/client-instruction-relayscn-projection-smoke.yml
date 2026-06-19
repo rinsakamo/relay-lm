@@ -1,0 +1,51 @@
+name: Client instruction RelaySCN projection smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - relaylm/audit_projection.py
+      - relaylm/client_instruction_relayscn_projection.py
+      - relaylm/client_instruction_cache_lookup.py
+      - relaylm/client_instruction_cache_lookup_runtime.py
+      - relaylm/trace_runtime.py
+      - scripts/relaylm_client_instruction_relayscn_projection_smoke.py
+      - .github/workflows/client-instruction-relayscn-projection-smoke.yml
+      - docs/PROJECT_STATUS.md
+      - docs/architecture/pipeline_implementation_plan.md
+      - docs/architecture/phase5c4b_cache_hit_relayscn_projection_handoff.md
+  push:
+    branches: [main]
+    paths:
+      - relaylm/audit_projection.py
+      - relaylm/client_instruction_relayscn_projection.py
+      - relaylm/client_instruction_cache_lookup.py
+      - relaylm/client_instruction_cache_lookup_runtime.py
+      - relaylm/trace_runtime.py
+      - scripts/relaylm_client_instruction_relayscn_projection_smoke.py
+      - .github/workflows/client-instruction-relayscn-projection-smoke.yml
+      - docs/PROJECT_STATUS.md
+      - docs/architecture/pipeline_implementation_plan.md
+      - docs/architecture/phase5c4b_cache_hit_relayscn_projection_handoff.md
+
+permissions:
+  contents: read
+
+jobs:
+  projection-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Compile
+        run: python -m compileall relaylm scripts
+      - name: Run projection smoke
+        run: python scripts/relaylm_client_instruction_relayscn_projection_smoke.py
+      - name: Run cache lookup runtime regression
+        run: python scripts/relaylm_client_instruction_cache_lookup_runtime_smoke.py

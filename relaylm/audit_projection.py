@@ -581,6 +581,34 @@ _LOOKUP_DIAGNOSTICS = _mapping(
     }
 )
 
+_RELAYSCN_PROJECTION_DIAGNOSTICS = _mapping(
+    {
+        "schema_version": _enum("client_instruction_relayscn_projection.v0"),
+        "status": _enum("projected", "miss", "blocked", "skipped"),
+        "cache_hit": _bool,
+        "projection_ready": _bool,
+        "projected_scene_type": _optional(_bounded_token),
+        "projected_scene_role_present": _bool,
+        "projected_scene_role_scope": _optional(_lower_token),
+        "projected_scene_role_source": _optional(_lower_token),
+        "projected_scene_role_confidence_bucket": _optional(
+            _enum("very_high", "high", "medium", "low", "unknown")
+        ),
+        "projected_scene_context_present": _bool,
+        "projected_scene_context_field_count": _non_negative_int,
+        "projected_scene_context_participant_count": _non_negative_int,
+        "projected_scene_constraint_count": _non_negative_int,
+        "durable_candidate_count": _non_negative_int,
+        "blocked_instruction_kind_count": _non_negative_int,
+        "miss_reason": _optional(_lower_token),
+        "diagnostics_only": _bool,
+        "content_free": _bool,
+        "read_only": _bool,
+        "applied": _bool,
+    }
+)
+
+
 _HISTORY_DIAGNOSTICS = _mapping(
     {
         "schema_version": _enum("client_history_exclusion_preflight.v0"),
@@ -729,6 +757,16 @@ PIPELINE_NODE_PROJECTORS: dict[str, NodeProjector] = {
         }),
         diagnostics=_LOOKUP_DIAGNOSTICS,
         artifact_names=frozenset({"client_instruction_cache_lookup_runtime_summary"}),
+    ),
+    "client_instruction_relayscn_projection": NodeProjector(
+        decisions=frozenset({
+            "cache_hit_relayscn_projection_ready",
+            "cache_hit_relayscn_projection_miss",
+            "cache_hit_relayscn_projection_blocked",
+            "cache_hit_relayscn_projection_skipped",
+        }),
+        diagnostics=_RELAYSCN_PROJECTION_DIAGNOSTICS,
+        artifact_names=frozenset({"client_instruction_relayscn_projection_summary"}),
     ),
     "client_history_exclusion_preflight": NodeProjector(
         decisions=frozenset({

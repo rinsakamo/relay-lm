@@ -25,19 +25,18 @@ Managed-route correctness boundary: Phase 5-C complete
 Pre-stream hardening: Phase 5-D in progress
 
 Latest completed bounded slice:
-  Phase 5-D2 lazy RelayRUN recovery-detail runtime wiring
-  + additive lazy runtime-checkpoint helper
-  + /v1/chat/completions runtime checkpoint wiring
-  + ordinary-path minimal content-free summary
-  + full-detail fallback for blocked/failed/checkpoint/recovery diagnostics
-  + direct helper smoke and runtime wiring smoke coverage
+  Phase 5-C4b validated cache-hit RelaySCN projection
+  + read-only cache-hit projection helper
+  + content-free RelaySCN projection PipelineNodeResult
+  + no backend/RelaySCN apply
+  + no raw cache/instruction/role/context/constraint leakage
+  + direct and runtime trace smoke coverage
 ```
 
-Phase 5-D2 now provides both the side-effect-free helper and request-runtime wiring. Ordinary completed request paths can use the lazy content-free recovery-detail summary; blocked, failed, checkpoint, and recovery diagnostics paths still build full RelayRUN recovery detail.
+Phase 5-C4b exposes a content-free, diagnostics-only RelaySCN projection from validated instruction-cache hits. The projection is read-only and does not change backend forwarding, request payloads, RelaySCN runtime policy, or cache contents.
 
 Next candidates remain independently sequenced:
 
-- Phase 5-C4b: validated cache-hit RelaySCN projection,
 - Phase 5-C5: typed parse and cache write,
 - Phase 5.5: Stream Unpack and output segmentation.
 
@@ -54,6 +53,7 @@ Current `main` includes:
 - managed-route client-message canonicalization dry-run,
 - runtime-private client-instruction identity,
 - read-only instruction-cache lookup,
+- read-only cache-hit RelaySCN projection diagnostics,
 - client-history exclusion preflight,
 - `client_history_exclusion_apply.v0` for supported no-instruction requests,
 - `client_history_exclusion_apply.v1` for supported instruction-bearing requests,
@@ -102,6 +102,16 @@ Role, content, and position alone are not accepted as provenance. Missing or inv
 
 A successful managed candidate contains one RelayLM-owned compiled system message plus the exact validated current user message. Prior client history, raw instruction objects, unselected instruction candidates, opaque cache content, and the reserved `relaylm` control envelope are excluded.
 
+## Cache-hit RelaySCN projection boundary
+
+`relaylm.client_instruction_relayscn_projection` consumes the request-local runtime-private cache lookup result and emits a detached `client_instruction_relayscn_projection` PipelineNodeResult.
+
+The projection exposes only enum/count/boolean-style values such as projected scene type, role scope/source, confidence bucket, context/participant/constraint counts, status, and reason IDs.
+
+It must not expose cache hashes, raw instruction text, raw cache JSON, role names, scene setting/task text, participant names, constraint type/value text, filesystem paths, backend payloads, or response text.
+
+The projection is diagnostics-only and read-only. It does not apply RelaySCN policy, mutate backend payloads, or write cache entries.
+
 ## RelayRUN lazy recovery-detail boundary
 
 `relaylm.relayrun_lazy_recovery` provides an additive helper that can construct a minimal content-free runtime checkpoint artifact on ordinary completed paths without constructing the full recovery diagnostic chain.
@@ -124,7 +134,6 @@ Runtime-private candidates may contain content. Persisted trace, audit, public e
 
 The runtime does not yet provide:
 
-- cache-hit RelaySCN projection,
 - typed client-instruction response parsing or cache write,
 - complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy,
 - active tool-chain reconstruction,
@@ -158,6 +167,7 @@ RelayLM does not own frontend UI, ASR, TTS execution, or avatar execution. Curre
 ## Where to read next
 
 - [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md)
+- [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](architecture/phase5c4b_cache_hit_relayscn_projection_handoff.md)
 - [Phase 5-D2 Lazy RelayRUN Recovery Detail Handoff](architecture/phase5d2_lazy_relayrun_recovery_detail_handoff.md)
 - [Phase 5-D1 CJK-Aware Token Estimation Handoff](architecture/phase5d1_cjk_token_estimation_handoff.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
