@@ -17,6 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from relaylm.app import create_app
 from relaylm.app import _relayrun_relayscn_node
+from relaylm.relayrun_lazy_recovery import RECOVERY_DETAIL_ARTIFACT_KEYS
 
 
 class _Capture:
@@ -193,19 +194,6 @@ def _assert_artifact_common(artifact: dict[str, Any], headers: dict[str, str]) -
     require(isinstance(artifact.get("run_id"), str) and artifact.get("run_id"), artifact)
     require(artifact.get("resume_allowed") is False, artifact)
     require(artifact.get("resume_mode") == "none", artifact)
-    resume_preflight = artifact.get("resume_preflight")
-    require(isinstance(resume_preflight, dict), artifact)
-    require(resume_preflight.get("schema_version") == "relayrun.resume_preflight.v0", resume_preflight)
-    require(resume_preflight.get("diagnostics_only") is True, resume_preflight)
-    require(resume_preflight.get("resume_allowed") is False, resume_preflight)
-    require(resume_preflight.get("resume_attempted") is False, resume_preflight)
-    require(resume_preflight.get("resume_applied") is False, resume_preflight)
-    require(resume_preflight.get("checkpoint_read_attempted") is False, resume_preflight)
-    resume_blocked_reasons = resume_preflight.get("blocked_reasons")
-    require(isinstance(resume_blocked_reasons, list), resume_preflight)
-    require("resume_not_implemented" in resume_blocked_reasons, resume_preflight)
-    require("resume_disabled" in resume_blocked_reasons, resume_preflight)
-    require("resume_dry_run_only" in resume_blocked_reasons, resume_preflight)
     require(artifact.get("checkpoint_persisted") is False, artifact)
     require(artifact.get("checkpoint_write_attempted") is False, artifact)
     require(artifact.get("checkpoint_writer_failed") is False, artifact)
@@ -261,19 +249,6 @@ def _assert_artifact_common(artifact: dict[str, Any], headers: dict[str, str]) -
     require("content_free_payload" in future_writer_required_gates, preflight)
     require("atomic_write" in future_writer_required_gates, preflight)
     require("idempotent_run_turn_key" in future_writer_required_gates, preflight)
-    transition = artifact.get("recovery_transition_artifact")
-    require(isinstance(transition, dict), artifact)
-    require(transition.get("schema_version") == "relayrun.recovery_transition.v0", transition)
-    require(transition.get("diagnostics_only") is True, transition)
-    require(transition.get("user_visible") is False, transition)
-    require(transition.get("apply_allowed") is False, transition)
-    require(transition.get("applied") is False, transition)
-    safety = transition.get("safety")
-    require(isinstance(safety, dict), transition)
-    require(safety.get("direct_user_output_allowed") is False, transition)
-    require(safety.get("contains_backend_payload") is False, transition)
-    require(safety.get("contains_response_text") is False, transition)
-    require(artifact.get("recovery_transition_created") is False, artifact)
     require(artifact.get("stream_started") is False, artifact)
     require(artifact.get("first_token_sent") is False, artifact)
     require(headers.get("x-relaylm-run-id") == artifact.get("run_id"), headers)
@@ -289,6 +264,61 @@ def _assert_artifact_common(artifact: dict[str, Any], headers: dict[str, str]) -
         "backend_forward",
     ):
         require(isinstance(_find_node(artifact, node_name), dict), artifact)
+
+
+def _assert_lazy_recovery_detail(artifact: dict[str, Any]) -> None:
+    recovery_detail = artifact.get("recovery_detail")
+    require(isinstance(recovery_detail, dict), artifact)
+    require(recovery_detail.get("schema_version") == "relayrun.recovery_detail.lazy.v0", recovery_detail)
+    require(recovery_detail.get("constructed") is False, recovery_detail)
+    require(
+        recovery_detail.get("reason") == "ordinary_path_no_blocked_or_checkpoint_need",
+        recovery_detail,
+    )
+    require(recovery_detail.get("required_reasons") == [], recovery_detail)
+    require(recovery_detail.get("content_free") is True, recovery_detail)
+    require(recovery_detail.get("contains_user_content") is False, recovery_detail)
+    require(recovery_detail.get("contains_backend_payload") is False, recovery_detail)
+    require(recovery_detail.get("contains_response_text") is False, recovery_detail)
+    require(recovery_detail.get("diagnostics_only") is True, recovery_detail)
+    for key in RECOVERY_DETAIL_ARTIFACT_KEYS:
+        require(artifact.get(key) is None, (key, artifact.get(key)))
+
+
+def _assert_full_recovery_detail(artifact: dict[str, Any]) -> None:
+    recovery_detail = artifact.get("recovery_detail")
+    require(isinstance(recovery_detail, dict), artifact)
+    require(recovery_detail.get("schema_version") == "relayrun.recovery_detail.lazy.v0", recovery_detail)
+    require(recovery_detail.get("constructed") is True, recovery_detail)
+    require(recovery_detail.get("content_free") is True, recovery_detail)
+    required_reasons = recovery_detail.get("required_reasons")
+    require(isinstance(required_reasons, list) and required_reasons, recovery_detail)
+    resume_preflight = artifact.get("resume_preflight")
+    require(isinstance(resume_preflight, dict), artifact)
+    require(resume_preflight.get("schema_version") == "relayrun.resume_preflight.v0", resume_preflight)
+    require(resume_preflight.get("diagnostics_only") is True, resume_preflight)
+    require(resume_preflight.get("resume_allowed") is False, resume_preflight)
+    require(resume_preflight.get("resume_attempted") is False, resume_preflight)
+    require(resume_preflight.get("resume_applied") is False, resume_preflight)
+    require(resume_preflight.get("checkpoint_read_attempted") is False, resume_preflight)
+    resume_blocked_reasons = resume_preflight.get("blocked_reasons")
+    require(isinstance(resume_blocked_reasons, list), resume_preflight)
+    require("resume_not_implemented" in resume_blocked_reasons, resume_preflight)
+    require("resume_disabled" in resume_blocked_reasons, resume_preflight)
+    require("resume_dry_run_only" in resume_blocked_reasons, resume_preflight)
+    transition = artifact.get("recovery_transition_artifact")
+    require(isinstance(transition, dict), artifact)
+    require(transition.get("schema_version") == "relayrun.recovery_transition.v0", transition)
+    require(transition.get("diagnostics_only") is True, transition)
+    require(transition.get("user_visible") is False, transition)
+    require(transition.get("apply_allowed") is False, transition)
+    require(transition.get("applied") is False, transition)
+    safety = transition.get("safety")
+    require(isinstance(safety, dict), transition)
+    require(safety.get("direct_user_output_allowed") is False, transition)
+    require(safety.get("contains_backend_payload") is False, transition)
+    require(safety.get("contains_response_text") is False, transition)
+    require(artifact.get("recovery_transition_created") is False, artifact)
 
 
 def _assert_backend_payload_not_polluted(backend_payload: dict[str, Any]) -> None:
@@ -318,6 +348,7 @@ def _assert_normal_case(root: Path, capture: _Capture, port: int) -> None:
     )
     artifact = _relayrun_artifact(metadata)
     _assert_artifact_common(artifact, headers)
+    _assert_lazy_recovery_detail(artifact)
     _assert_backend_payload_not_polluted(backend_payload)
     require(_find_node(artifact, "request_received")["node_status"] == "completed", artifact)
     require(_find_node(artifact, "relayscn")["node_status"] == "completed", artifact)
@@ -327,6 +358,7 @@ def _assert_normal_case(root: Path, capture: _Capture, port: int) -> None:
     require(_find_node(artifact, "token_budget_truncation")["node_status"] == "skipped", artifact)
     require(_find_node(artifact, "backend_forward")["node_status"] == "completed", artifact)
     print("ok normal request emits relayrun_artifact")
+    print("ok normal request uses lazy recovery detail")
     print("ok normal request emits checkpoint_persistence_plan")
     print("ok normal request emits checkpoint_writer_preflight")
     print("ok backend payload not polluted by relayrun diagnostics")
@@ -346,10 +378,12 @@ def _assert_recovery_case(root: Path, capture: _Capture, port: int) -> None:
     )
     artifact = _relayrun_artifact(metadata)
     _assert_artifact_common(artifact, headers)
+    _assert_full_recovery_detail(artifact)
     _assert_backend_payload_not_polluted(backend_payload)
     require(_find_node(artifact, "relayscn")["node_status"] == "blocked", artifact)
     require(_find_node(artifact, "relaymem_runtime_ctx")["node_status"] == "blocked", artifact)
     print("ok recovery scene still emits relayrun_artifact")
+    print("ok recovery scene keeps full recovery detail")
     print("ok recovery scene still emits checkpoint_persistence_plan")
     print("ok recovery scene still emits checkpoint_writer_preflight")
 
@@ -368,10 +402,12 @@ def _assert_unresolved_reference_case(root: Path, capture: _Capture, port: int) 
     )
     artifact = _relayrun_artifact(metadata)
     _assert_artifact_common(artifact, headers)
+    _assert_full_recovery_detail(artifact)
     _assert_backend_payload_not_polluted(backend_payload)
     require(_find_node(artifact, "relayref")["node_status"] == "blocked", artifact)
     require(_find_node(artifact, "relaymem_runtime_ctx")["node_status"] == "blocked", artifact)
     print("ok unresolved reference still emits relayrun_artifact")
+    print("ok unresolved reference keeps full recovery detail")
     print("ok unresolved reference still emits checkpoint_persistence_plan")
     print("ok unresolved reference still emits checkpoint_writer_preflight")
 
@@ -390,6 +426,7 @@ def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> No
     )
     artifact = _relayrun_artifact(metadata)
     _assert_artifact_common(artifact, headers)
+    _assert_lazy_recovery_detail(artifact)
     _assert_backend_payload_not_polluted(backend_payload)
     require(
         metadata.get("runtime_snippet_injection_result", {}).get("applied") is True,
@@ -397,11 +434,10 @@ def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> No
     )
     require(_find_node(artifact, "relaymem_runtime_ctx")["node_status"] == "completed", artifact)
     print("ok snippet-bearing path keeps relayrun node statuses intact")
+    print("ok snippet-bearing path uses lazy recovery detail")
     print("ok trace metadata includes relayrun_artifact")
     print("ok trace metadata includes checkpoint_persistence_plan")
     print("ok trace metadata includes checkpoint_writer_preflight")
-    print("ok trace metadata includes resume_preflight")
-    print("ok trace metadata includes recovery_transition_artifact")
 
 
 def _assert_relayscn_persistence_block_design_talk_case() -> None:
