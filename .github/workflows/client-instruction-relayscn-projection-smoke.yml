@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - relaylm/audit_projection.py
       - relaylm/client_instruction_relayscn_projection.py
       - relaylm/client_instruction_cache_lookup.py
       - relaylm/client_instruction_cache_lookup_runtime.py
@@ -16,6 +17,7 @@ on:
   push:
     branches: [main]
     paths:
+      - relaylm/audit_projection.py
       - relaylm/client_instruction_relayscn_projection.py
       - relaylm/client_instruction_cache_lookup.py
       - relaylm/client_instruction_cache_lookup_runtime.py
@@ -44,17 +46,6 @@ jobs:
       - name: Compile
         run: python -m compileall relaylm scripts
       - name: Run projection smoke
-        run: |
-          set +e
-          python scripts/relaylm_client_instruction_relayscn_projection_smoke.py > relayscn-projection-smoke.log 2>&1
-          status=$?
-          cat relayscn-projection-smoke.log
-          exit "$status"
-      - name: Upload projection smoke log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: relayscn-projection-smoke-log
-          path: relayscn-projection-smoke.log
+        run: python scripts/relaylm_client_instruction_relayscn_projection_smoke.py
       - name: Run cache lookup runtime regression
         run: python scripts/relaylm_client_instruction_cache_lookup_runtime_smoke.py
