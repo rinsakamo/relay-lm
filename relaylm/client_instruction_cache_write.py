@@ -160,7 +160,10 @@ def build_client_instruction_cache_write_preflight(
         "character_id": character_id,
         "instruction_parse_schema_version": artifact.schema_version,
         "authority_policy_version": "client_instruction_authority.v1",
-        "parser_version": parse_result.parser_version,
+        # Runtime cache lookup currently validates entries with parser_version=None.
+        # Keep C5b writer output aligned until a later runtime wiring slice carries
+        # parser-version expectations through lookup.
+        "parser_version": None,
         "parse_status": "valid",
         "scene_state": {
             "scene_type": artifact.scene_type,
@@ -181,7 +184,7 @@ def build_client_instruction_cache_write_preflight(
         identity_result,
         route_model=route_model,
         character_id=character_id,
-        parser_version=parse_result.parser_version,
+        parser_version=None,
     )
     if reader_reasons:
         return ClientInstructionCacheWriteResult(
