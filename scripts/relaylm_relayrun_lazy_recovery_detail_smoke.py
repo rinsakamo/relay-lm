@@ -82,7 +82,11 @@ def assert_lazy_ordinary_path() -> None:
 def assert_blocked_path_builds_full_detail() -> None:
     kwargs = _base_kwargs()
     kwargs["node_statuses"] = [
-        build_relayrun_node(node_name="relayref", node_status="blocked", blocked_reasons=["unresolved_reference_detected"]),
+        build_relayrun_node(
+            node_name="relayref",
+            node_status="blocked",
+            blocked_reasons=["unresolved_reference_detected"],
+        ),
         build_relayrun_node(node_name="backend_forward", node_status="pending"),
     ]
     kwargs["blocked_reasons"] = ["relayref:unresolved_reference_detected"]
@@ -102,7 +106,11 @@ def assert_blocked_path_builds_full_detail() -> None:
 def assert_backend_failed_path_builds_full_detail() -> None:
     kwargs = _base_kwargs()
     kwargs["node_statuses"] = [
-        build_relayrun_node(node_name="backend_forward", node_status="failed", blocked_reasons=["BackendRequestError"]),
+        build_relayrun_node(
+            node_name="backend_forward",
+            node_status="failed",
+            blocked_reasons=["BackendRequestError"],
+        ),
     ]
     artifact = build_runtime_checkpoint_lazy_recovery_artifact(
         backend_forward_status="failed",
@@ -138,12 +146,31 @@ def assert_explicit_override_is_respected() -> None:
 def assert_checkpoint_and_recovery_flags_require_detail() -> None:
     required, reasons = relayrun_recovery_detail_required(
         checkpoint_write_enabled=True,
+        checkpoint_dry_run_only=True,
+        backend_forward_status="completed",
+        **_base_kwargs(),
+    )
+    assert required is True
+    assert "checkpoint_write_dry_run_requested" in reasons
+
+    required, reasons = relayrun_recovery_detail_required(
+        checkpoint_write_enabled=True,
         checkpoint_dry_run_only=False,
         backend_forward_status="completed",
         **_base_kwargs(),
     )
     assert required is True
     assert "checkpoint_write_requested" in reasons
+
+    kwargs = _base_kwargs()
+    kwargs["checkpoint_index_enabled"] = True
+    kwargs["checkpoint_index_dry_run_only"] = True
+    required, reasons = relayrun_recovery_detail_required(
+        backend_forward_status="completed",
+        **kwargs,
+    )
+    assert required is True
+    assert "checkpoint_index_dry_run_requested" in reasons
 
     kwargs = _base_kwargs()
     kwargs["recovery_transition_enabled"] = True
