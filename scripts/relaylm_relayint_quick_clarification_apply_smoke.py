@@ -52,6 +52,10 @@ def _write_config(
     store_root: Path,
     apply_enabled: bool,
     apply_dry_run_only: bool,
+    memory_store_enabled: bool = False,
+    memory_retrieval_dry_run_only: bool = True,
+    relayrun_checkpoint_write_enabled: bool = False,
+    relayrun_checkpoint_dry_run_only: bool = True,
 ) -> None:
     cfg = yaml.safe_load((REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8"))
     cfg["backends"]["local_backend"]["base_url"] = f"http://127.0.0.1:{port}/v1"
@@ -66,13 +70,13 @@ def _write_config(
     cfg["relayrun_checkpoint_root"] = (
         store_root / "relayrun-checkpoints"
     ).relative_to(REPO_ROOT).as_posix()
-    cfg["relayrun_checkpoint_write_enabled"] = False
-    cfg["relayrun_checkpoint_dry_run_only"] = True
+    cfg["relayrun_checkpoint_write_enabled"] = relayrun_checkpoint_write_enabled
+    cfg["relayrun_checkpoint_dry_run_only"] = relayrun_checkpoint_dry_run_only
     cfg["memory"].update(
         {
             "root_path": str(store_root),
-            "store_enabled": False,
-            "retrieval_dry_run_only": True,
+            "store_enabled": memory_store_enabled,
+            "retrieval_dry_run_only": memory_retrieval_dry_run_only,
             "ctx_block_apply_enabled": False,
             "snippet_extraction_enabled": False,
             "snippet_dry_run_only": True,
@@ -130,6 +134,10 @@ def _post(
     capture: _Capture,
     apply_enabled: bool,
     apply_dry_run_only: bool,
+    memory_store_enabled: bool = False,
+    memory_retrieval_dry_run_only: bool = True,
+    relayrun_checkpoint_write_enabled: bool = False,
+    relayrun_checkpoint_dry_run_only: bool = True,
 ) -> tuple[dict[str, Any], dict[str, Any], Any]:
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as td:
         trace_path = Path(td) / "trace.jsonl"
@@ -141,6 +149,10 @@ def _post(
             store_root=store_root,
             apply_enabled=apply_enabled,
             apply_dry_run_only=apply_dry_run_only,
+            memory_store_enabled=memory_store_enabled,
+            memory_retrieval_dry_run_only=memory_retrieval_dry_run_only,
+            relayrun_checkpoint_write_enabled=relayrun_checkpoint_write_enabled,
+            relayrun_checkpoint_dry_run_only=relayrun_checkpoint_dry_run_only,
         )
         app = create_app(str(cfg_path))
         original = json.loads(json.dumps(payload, ensure_ascii=False))
@@ -336,6 +348,39 @@ def _assert_plan_only_even_when_apply_flag_enabled(root: Path, capture: _Capture
     print("ok apply flag remains Phase 4 plan-only without response mutation")
 
 
+def _assert_plan_only_with_memory_and_relayrun_projection(
+    root: Path, capture: _Capture, port: int
+) -> None:
+    payload = _ambiguous_payload()
+    backend_payload, metadata, response_body = _post(
+        port=port,
+        store_root=root,
+        payload=payload,
+        capture=capture,
+        apply_enabled=True,
+        apply_dry_run_only=False,
+        memory_store_enabled=True,
+        memory_retrieval_dry_run_only=False,
+        relayrun_checkpoint_write_enabled=True,
+        relayrun_checkpoint_dry_run_only=True,
+    )
+    plan = _apply_plan(metadata)
+    reasons = plan.get("apply_block_reasons", [])
+    require(plan.get("apply_allowed") is False, plan)
+    require("phase4_plan_only" in reasons, plan)
+    require(backend_payload.get("messages") == payload["messages"], backend_payload)
+    relayrun = metadata.get("relayrun_artifact")
+    require(isinstance(relayrun, dict), metadata)
+    require(relayrun.get("schema_version") == "relayrun.runtime_checkpoint.v0", relayrun)
+    require(relayrun.get("content_free") is True, relayrun)
+    require(relayrun.get("diagnostics_only") is True, relayrun)
+    require(relayrun.get("run_status") == "diagnostics_only", relayrun)
+    require(isinstance(relayrun.get("run_id"), str) and relayrun.get("run_id"), relayrun)
+    _assert_backend_response(response_body)
+    _assert_no_raw_content(plan)
+    print("ok quick clarification remains backend-forwarded with memory and RelayRUN projection")
+
+
 def _assert_gate_blocks(
     root: Path,
     capture: _Capture,
@@ -401,6 +446,7 @@ def main() -> int:
             _assert_default_off(store_root, capture, port)
             _assert_dry_run_plan_only(store_root, capture, port)
             _assert_plan_only_even_when_apply_flag_enabled(store_root, capture, port)
+            _assert_plan_only_with_memory_and_relayrun_projection(store_root, capture, port)
             _assert_gate_blocks(
                 store_root,
                 capture,
