@@ -1,0 +1,30 @@
+name: Phase 5-C4b sync main
+
+on:
+  push:
+    branches: [phase5c4b-cache-hit-relayscn-projection]
+    paths:
+      - .github/workflows/phase5c4b-sync-main.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase5c4b-cache-hit-relayscn-projection
+          fetch-depth: 0
+      - name: Merge main and remove sync workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git merge --no-edit origin/main
+          rm .github/workflows/phase5c4b-sync-main.yml
+          git add -A
+          git commit -m 'chore: remove Phase 5-C4b sync workflow'
+          git push
