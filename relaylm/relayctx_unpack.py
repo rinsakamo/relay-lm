@@ -171,7 +171,9 @@ def unpack_relayctx_response_text(
             reasons=("closing_marker_missing",),
         )
 
-    payload_text = response_text[payload_start:closing_after_open].strip()
+    raw_payload_text = response_text[payload_start:closing_after_open]
+    payload_text = raw_payload_text.strip()
+    raw_update_chars = len(raw_payload_text)
     suffix = response_text[closing_after_open + len(RELAYCTX_UPDATE_CLOSE) :]
     reasons: list[str] = []
 
@@ -187,12 +189,12 @@ def unpack_relayctx_response_text(
     )
     if not payload_text:
         reasons.append("update_payload_empty")
-    if not max_chars_valid or len(payload_text) > max_update_chars:
+    if not max_chars_valid or raw_update_chars > max_update_chars:
         reasons.append("update_payload_too_large")
 
     envelope: Any = None
     payload_json_valid = False
-    if payload_text and max_chars_valid and len(payload_text) <= max_update_chars:
+    if payload_text and max_chars_valid and raw_update_chars <= max_update_chars:
         try:
             envelope = json.loads(payload_text)
             payload_json_valid = True
@@ -218,7 +220,7 @@ def unpack_relayctx_response_text(
         return _blocked_result(
             visible=visible,
             input_chars=input_chars,
-            update_chars=len(payload_text),
+            update_chars=raw_update_chars,
             reasons=tuple(_dedupe(reasons)),
         )
 
@@ -227,7 +229,7 @@ def unpack_relayctx_response_text(
         return _blocked_result(
             visible=visible,
             input_chars=input_chars,
-            update_chars=len(payload_text),
+            update_chars=raw_update_chars,
             reasons=tuple(validation_reasons),
         )
 
@@ -241,7 +243,7 @@ def unpack_relayctx_response_text(
         update_accepted=True,
         blocked_reasons=(),
         input_chars=input_chars,
-        update_chars=len(payload_text),
+        update_chars=raw_update_chars,
         accepted_field_names=tuple(sorted(update)),
     )
 

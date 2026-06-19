@@ -23,6 +23,19 @@ _FORBIDDEN_CONTENT_KEYS = frozenset(
         "body",
     }
 )
+_CONTENT_SHAPE_COUNT_KEY = "content_shape_counts"
+_CONTENT_SHAPE_LABELS = frozenset(
+    {
+        "string",
+        "empty_string",
+        "missing",
+        "unknown",
+        "empty_parts",
+        "multimodal_parts",
+        "text",
+        "text_parts",
+    }
+)
 
 
 def build_client_instruction_extraction_dry_run(
@@ -196,18 +209,41 @@ def build_client_instruction_extraction_node_result(
 def assert_client_instruction_extraction_content_free(value: Any) -> None:
     """Fail if a dry-run artifact or node result exposes content-bearing keys."""
 
+    _assert_client_instruction_extraction_content_free(value, parent_key=None)
+
+
+def _assert_client_instruction_extraction_content_free(
+    value: Any,
+    *,
+    parent_key: str | None,
+) -> None:
     if isinstance(value, PipelineNodeResult):
-        assert_client_instruction_extraction_content_free(value.to_log_dict())
+        _assert_client_instruction_extraction_content_free(
+            value.to_log_dict(),
+            parent_key=parent_key,
+        )
         return
 
     if isinstance(value, Mapping):
         for key, nested in value.items():
-            if str(key) in _FORBIDDEN_CONTENT_KEYS:
+            key_text = str(key)
+            if parent_key == _CONTENT_SHAPE_COUNT_KEY:
+                if key_text not in _CONTENT_SHAPE_LABELS:
+                    raise ValueError(
+                        f"unknown instruction content-shape label is not allowed: {key}"
+                    )
+            elif key_text in _FORBIDDEN_CONTENT_KEYS:
                 raise ValueError(f"content-bearing key is not allowed: {key}")
-            assert_client_instruction_extraction_content_free(nested)
+            _assert_client_instruction_extraction_content_free(
+                nested,
+                parent_key=key_text,
+            )
     elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         for nested in value:
-            assert_client_instruction_extraction_content_free(nested)
+            _assert_client_instruction_extraction_content_free(
+                nested,
+                parent_key=parent_key,
+            )
 
 
 def _classify_instruction_candidate_content(content: Any) -> dict[str, Any]:
