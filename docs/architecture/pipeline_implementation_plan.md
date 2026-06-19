@@ -16,6 +16,7 @@ This document owns implementation status, phase sequencing, and dependency bound
 ```text
 Phase 5-C managed-route correctness: complete
 Phase 5-D1 CJK-aware token estimation: complete
+Phase 5-D2 lazy RelayRUN recovery detail: in progress
 
 Completed bounded slices:
   Phase 1 PipelineContext/app stabilization
@@ -29,9 +30,10 @@ Completed bounded slices:
   Phase 5-C1a no-instruction managed apply
   Phase 5-C4a instruction-bearing managed apply
   Phase 5-D1 CJK-aware conservative token estimation
+  Phase 5-D2a lazy RelayRUN recovery-detail helper
 
 Next candidates:
-  Phase 5-D2 lazy RelayRUN recovery-detail construction
+  Phase 5-D2b runtime wiring for ordinary completed request paths
   Phase 5-C4b cache-hit RelaySCN projection
 
 Later:
@@ -40,7 +42,7 @@ Later:
   Phase 6 asynchronous RelaySLP
 ```
 
-Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites.
+Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is split so the lazy RelayRUN detail helper can land before request-runtime wiring.
 
 ## Current caveats
 
@@ -51,6 +53,7 @@ Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5
 - Instruction-cache lookup is read-only; projection and writing are absent.
 - RelayCTX Unpack is non-stream only.
 - Token estimation is deterministic and CJK-aware but remains tokenizer-free and model-agnostic rather than exact.
+- RelayRUN lazy recovery detail has an additive helper and direct smoke coverage; `/v1/chat/completions` ordinary-path wiring remains a follow-up.
 - RelayREF output observation, RelaySLP persistence, and RelaySOUL actual apply remain later work.
 
 ## Phase 1: PipelineContext/app — mostly complete
@@ -154,12 +157,27 @@ Implemented:
 
 See [Phase 5-D1 CJK-Aware Token Estimation Handoff](phase5d1_cjk_token_estimation_handoff.md).
 
-### Phase 5-D2: lazy RelayRUN recovery detail — planned
+### Phase 5-D2a: lazy RelayRUN recovery detail helper — complete
+
+Implemented:
+
+- additive `relaylm.relayrun_lazy_recovery` helper module,
+- content-free `relayrun.recovery_detail.lazy.v0` summary,
+- ordinary completed-path minimal runtime checkpoint artifact construction,
+- full-detail fallback for blocked, failed, waiting-user, checkpoint-write, checkpoint-index, resume, recovery, visible recovery, output RelaySCN recovery gate, visible apply, and user-action diagnostics paths,
+- explicit include/skip override for tests and later runtime wiring,
+- direct smoke coverage and a dedicated CI workflow.
+
+Existing `build_runtime_checkpoint_dry_run_artifact(...)` behavior remains unchanged for direct callers and existing smoke coverage.
+
+See [Phase 5-D2 Lazy RelayRUN Recovery Detail Handoff](phase5d2_lazy_relayrun_recovery_detail_handoff.md).
+
+### Phase 5-D2b: lazy RelayRUN recovery detail runtime wiring — planned
 
 Planned work:
 
-- keep ordinary-path RelayRUN summaries minimal,
-- construct full recovery detail only when blocked/recovery/checkpoint diagnostics require it,
+- use the lazy helper from the `/v1/chat/completions` ordinary completed path,
+- keep full detail on blocked/recovery/checkpoint diagnostics paths,
 - preserve fail-closed and content-free contracts,
 - avoid visible behavior changes.
 
