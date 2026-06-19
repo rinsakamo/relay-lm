@@ -44,15 +44,4 @@ jobs:
       - name: Run runtime wiring smoke
         run: python scripts/relaylm_relayrun_lazy_recovery_runtime_wiring_smoke.py
       - name: Run runtime checkpoint smoke
-        run: |
-          set +e
-          python scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py > relayrun-runtime-checkpoint-smoke.log 2>&1
-          status=$?
-          cat relayrun-runtime-checkpoint-smoke.log
-          exit "$status"
-      - name: Upload runtime checkpoint smoke log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: relayrun-runtime-checkpoint-smoke-log
-          path: relayrun-runtime-checkpoint-smoke.log
+        run: python scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
