@@ -1,6 +1,6 @@
 # RelayLM Project Status
 
-Last reviewed: 2026-06-18 JST
+Last reviewed: 2026-06-19 JST
 
 ## Purpose and authority
 
@@ -25,19 +25,18 @@ Managed-route correctness boundary: Phase 5-C complete
 Pre-stream hardening: Phase 5-D in progress
 
 Latest completed bounded slice:
-  Phase 5-D1 CJK-aware conservative token estimation
-  + tokenizer-free deterministic classification
-  + legacy-compatible ASCII ratio
-  + conservative Japanese/CJK/full-width accounting
-  + shared memory/truncation estimator
-  + content-free count diagnostics
+  Phase 5-D2 lazy RelayRUN recovery-detail helper
+  + additive lazy runtime-checkpoint helper
+  + ordinary-path minimal content-free summary
+  + full-detail fallback for blocked/failed/checkpoint/recovery diagnostics
+  + direct smoke coverage
 ```
 
-Phase 5-D1 preserves existing public token-budget helpers and feature defaults. It changes the estimate used by current memory assembly and message truncation, not their ownership, ordering, or apply gates.
+Phase 5-D2 currently provides the side-effect-free helper and direct contract coverage. Wiring the helper into the `/v1/chat/completions` ordinary completed runtime path remains a follow-up bounded slice.
 
 Next candidates remain independently sequenced:
 
-- Phase 5-D2: lazy RelayRUN recovery-detail construction,
+- Phase 5-D2 runtime wiring: use lazy RelayRUN recovery-detail helper on ordinary completed request paths,
 - Phase 5-C4b: validated cache-hit RelaySCN projection,
 - Phase 5-C5: typed parse and cache write,
 - Phase 5.5: Stream Unpack and output segmentation.
@@ -59,6 +58,7 @@ Current `main` includes:
 - `client_history_exclusion_apply.v0` for supported no-instruction requests,
 - `client_history_exclusion_apply.v1` for supported instruction-bearing requests,
 - deterministic tokenizer-free CJK-aware token estimation,
+- additive lazy RelayRUN recovery-detail helper,
 - request-level RelayRUN diagnostics/checkpoint/recovery foundations,
 - RelaySOUL dry-run/preflight governance foundations.
 
@@ -101,6 +101,14 @@ Role, content, and position alone are not accepted as provenance. Missing or inv
 
 A successful managed candidate contains one RelayLM-owned compiled system message plus the exact validated current user message. Prior client history, raw instruction objects, unselected instruction candidates, opaque cache content, and the reserved `relaylm` control envelope are excluded.
 
+## RelayRUN lazy recovery-detail boundary
+
+`relaylm.relayrun_lazy_recovery` provides an additive helper that can construct a minimal content-free runtime checkpoint artifact on ordinary completed paths without constructing the full recovery diagnostic chain.
+
+The helper constructs full detail when blocked, failed, waiting-user, checkpoint-write, checkpoint-index, resume, recovery, visible recovery, output RelaySCN recovery gate, visible apply, or user-action diagnostics require it.
+
+The lazy summary exposes only schema/status/reason IDs and safety booleans. It must not expose raw user/model text, backend payloads, prompt text, response text, snippets, instruction bodies, cache bodies, hashes, or runtime-private candidates.
+
 ## Fail-closed and diagnostics posture
 
 Actual managed apply requires an exact typed `applied` result. For v1, the adapter input must exactly equal the selected request-local candidate; downstream mutation causes backend blocking.
@@ -117,7 +125,7 @@ The runtime does not yet provide:
 - typed client-instruction response parsing or cache write,
 - complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy,
 - active tool-chain reconstruction,
-- lazy ordinary-path RelayRUN recovery-detail construction,
+- `/v1/chat/completions` runtime wiring for lazy ordinary-path RelayRUN recovery-detail construction,
 - Stream Unpack and TTS-safe segmentation,
 - dedicated output-side RelayREF and complete output-side RelaySCN,
 - cross-cutting per-node RelayRUN orchestration,
@@ -148,6 +156,7 @@ RelayLM does not own frontend UI, ASR, TTS execution, or avatar execution. Curre
 ## Where to read next
 
 - [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md)
+- [Phase 5-D2 Lazy RelayRUN Recovery Detail Handoff](architecture/phase5d2_lazy_relayrun_recovery_detail_handoff.md)
 - [Phase 5-D1 CJK-Aware Token Estimation Handoff](architecture/phase5d1_cjk_token_estimation_handoff.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Client History Authority Contract](architecture/client_history_authority_contract.md)
