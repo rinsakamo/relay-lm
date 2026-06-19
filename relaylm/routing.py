@@ -35,6 +35,9 @@ class ResolvedRoute:
     client_instruction_cache_lookup_enabled: bool = False
     client_instruction_cache_root: str | None = None
     client_instruction_cache_max_entry_bytes: int = 65536
+    client_instruction_typed_parse_enabled: bool = False
+    client_instruction_cache_write_enabled: bool = False
+    client_instruction_cache_write_dry_run_only: bool = True
 
 
 class RouteNotFoundError(ValueError):
@@ -100,6 +103,15 @@ def resolve_route(config: RelayLMConfig, model: str) -> ResolvedRoute:
         client_instruction_cache_root=config.client_instruction_cache_root,
         client_instruction_cache_max_entry_bytes=(
             config.client_instruction_cache_max_entry_bytes
+        ),
+        client_instruction_typed_parse_enabled=(
+            config.client_instruction_typed_parse_enabled
+        ),
+        client_instruction_cache_write_enabled=(
+            config.client_instruction_cache_write_enabled
+        ),
+        client_instruction_cache_write_dry_run_only=(
+            config.client_instruction_cache_write_dry_run_only
         ),
     )
 
