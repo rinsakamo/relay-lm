@@ -1,0 +1,274 @@
+"""Lazy RelayRUN recovery-detail construction helpers.
+
+This module is side-effect free. It keeps the ordinary runtime path able to
+produce a small content-free checkpoint summary without eagerly constructing the
+full recovery diagnostic chain. Callers can still force full detail construction
+for blocked, failed, checkpoint, or recovery-diagnostics paths.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Mapping
+
+from relaylm.relayrun import (
+    RUNTIME_CHECKPOINT_NODE_SEQUENCE,
+    ResumeMode,
+    build_relayrun_checkpoint_persistence_plan,
+    build_relayrun_checkpoint_writer_preflight,
+    build_runtime_checkpoint_dry_run_artifact,
+    new_run_id,
+)
+
+RECOVERY_DETAIL_SCHEMA_VERSION = "relayrun.recovery_detail.lazy.v0"
+
+RECOVERY_DETAIL_ARTIFACT_KEYS: tuple[str, ...] = (
+    "resume_preflight",
+    "checkpoint_index",
+    "recovery_transition_artifact",
+    "waiting_user_contract",
+    "recovery_apply_preflight",
+    "recovery_response_draft",
+    "visible_recovery_response_preflight",
+    "recovery_response_generator",
+    "output_relayscn_recovery_gate",
+    "visible_recovery_apply_preflight",
+    "user_action_contract",
+)
+
+_RECOVERY_ENABLED_FLAGS: tuple[str, ...] = (
+    "resume_preflight_enabled",
+    "recovery_transition_enabled",
+    "waiting_user_contract_enabled",
+    "recovery_apply_preflight_enabled",
+    "recovery_response_draft_enabled",
+    "visible_recovery_preflight_enabled",
+    "recovery_response_generator_enabled",
+    "output_relayscn_recovery_gate_enabled",
+    "visible_recovery_apply_preflight_enabled",
+    "user_action_dry_run_enabled",
+)
+
+
+def build_runtime_checkpoint_lazy_recovery_artifact(
+    *,
+    include_recovery_details: bool | None = None,
+    checkpoint_write_enabled: bool = False,
+    checkpoint_dry_run_only: bool = True,
+    backend_forward_status: str | None = None,
+    recovery_detail_reason: str | None = None,
+    **checkpoint_kwargs: Any,
+) -> dict[str, Any]:
+    """Build a RelayRUN runtime checkpoint artifact with lazy recovery detail.
+
+    The helper preserves the existing full-detail helper when detail is required.
+    On the ordinary completed path, it constructs only the content-free summary
+    fields needed by runtime diagnostics and leaves heavyweight recovery-chain
+    artifacts unconstructed as ``None``.
+    """
+
+    required, required_reasons = relayrun_recovery_detail_required(
+        include_recovery_details=include_recovery_details,
+        checkpoint_write_enabled=checkpoint_write_enabled,
+        checkpoint_dry_run_only=checkpoint_dry_run_only,
+        backend_forward_status=backend_forward_status,
+        **checkpoint_kwargs,
+    )
+    reason = recovery_detail_reason or _recovery_detail_reason(
+        required=required,
+        required_reasons=required_reasons,
+        include_recovery_details=include_recovery_details,
+    )
+
+    if required:
+        artifact = build_runtime_checkpoint_dry_run_artifact(**checkpoint_kwargs)
+        artifact["recovery_detail"] = _recovery_detail_summary(
+            constructed=True,
+            reason=reason,
+            required_reasons=required_reasons,
+        )
+        return artifact
+
+    artifact = _build_minimal_runtime_checkpoint_artifact(**checkpoint_kwargs)
+    artifact["recovery_detail"] = _recovery_detail_summary(
+        constructed=False,
+        reason=reason,
+        required_reasons=required_reasons,
+    )
+    return artifact
+
+
+def relayrun_recovery_detail_required(
+    *,
+    include_recovery_details: bool | None = None,
+    checkpoint_write_enabled: bool = False,
+    checkpoint_dry_run_only: bool = True,
+    backend_forward_status: str | None = None,
+    **checkpoint_kwargs: Any,
+) -> tuple[bool, tuple[str, ...]]:
+    """Return whether full recovery detail must be constructed.
+
+    The decision is content-free and based only on status values, reason IDs, and
+    explicit diagnostics/checkpoint gates.
+    """
+
+    if include_recovery_details is True:
+        return True, ("explicit_include_recovery_details",)
+    if include_recovery_details is False:
+        return False, ("explicit_skip_recovery_details",)
+
+    reasons: list[str] = []
+    if backend_forward_status in {"failed", "blocked"}:
+        reasons.append(f"backend_forward_status:{backend_forward_status}")
+
+    blocked_reasons = _string_tuple(checkpoint_kwargs.get("blocked_reasons"))
+    if blocked_reasons:
+        reasons.append("blocked_reasons_present")
+
+    node_statuses = checkpoint_kwargs.get("node_statuses")
+    if isinstance(node_statuses, list | tuple):
+        for node in node_statuses:
+            if not isinstance(node, Mapping):
+                continue
+            status = node.get("node_status")
+            if status in {"failed", "blocked", "waiting_user"}:
+                node_name = node.get("node_name")
+                if isinstance(node_name, str) and node_name:
+                    reasons.append(f"node_status:{node_name}:{status}")
+                else:
+                    reasons.append(f"node_status:{status}")
+
+    if checkpoint_write_enabled and not checkpoint_dry_run_only:
+        reasons.append("checkpoint_write_requested")
+
+    if (
+        checkpoint_kwargs.get("checkpoint_index_enabled") is True
+        and checkpoint_kwargs.get("checkpoint_index_dry_run_only") is False
+    ):
+        reasons.append("checkpoint_index_requested")
+
+    for flag_name in _RECOVERY_ENABLED_FLAGS:
+        if checkpoint_kwargs.get(flag_name) is True:
+            reasons.append(flag_name)
+
+    if checkpoint_kwargs.get("recovery_transition_created") is True:
+        reasons.append("recovery_transition_created")
+    if checkpoint_kwargs.get("applied") is True:
+        reasons.append("runtime_apply_state_present")
+
+    unique_reasons = _unique_string_tuple(reasons)
+    return bool(unique_reasons), unique_reasons
+
+
+def _build_minimal_runtime_checkpoint_artifact(**checkpoint_kwargs: Any) -> dict[str, Any]:
+    request_id = str(checkpoint_kwargs["request_id"])
+    safe_run_id = checkpoint_kwargs.get("run_id") or new_run_id()
+    turn_id = checkpoint_kwargs.get("turn_id")
+    checkpoint_target_root = str(
+        checkpoint_kwargs.get("checkpoint_target_root") or ".relayrun/checkpoints"
+    )
+    checkpoint_persisted = checkpoint_kwargs.get("checkpoint_persisted") is True
+    checkpoint_persistence_plan = build_relayrun_checkpoint_persistence_plan(
+        run_id=safe_run_id,
+        turn_id=turn_id if isinstance(turn_id, str) else None,
+        request_id=request_id,
+        target_root=checkpoint_target_root,
+        checkpoint_persisted=checkpoint_persisted,
+    )
+    checkpoint_writer_preflight = build_relayrun_checkpoint_writer_preflight(
+        target_root=str(checkpoint_persistence_plan["target_root"]),
+        target_path_preview=str(checkpoint_persistence_plan["target_path_preview"]),
+    )
+
+    safe_nodes = []
+    node_statuses = checkpoint_kwargs.get("node_statuses")
+    if isinstance(node_statuses, list | tuple):
+        for node in node_statuses:
+            if isinstance(node, dict):
+                safe_nodes.append(dict(node))
+
+    safe_blocked_reasons = list(_string_tuple(checkpoint_kwargs.get("blocked_reasons")))
+    resume_mode = checkpoint_kwargs.get("resume_mode")
+    if not isinstance(resume_mode, str) or not resume_mode:
+        resume_mode = "none"
+
+    artifact: dict[str, Any] = {
+        "schema_version": "relayrun.runtime_checkpoint.v0",
+        "diagnostics_only": True,
+        "applied": checkpoint_kwargs.get("applied") is True,
+        "run_id": safe_run_id,
+        "request_id": request_id,
+        "turn_id": turn_id,
+        "route_model": checkpoint_kwargs.get("route_model"),
+        "backend_name": checkpoint_kwargs.get("backend_name"),
+        "character_id": checkpoint_kwargs.get("character_id"),
+        "stream_enabled": checkpoint_kwargs.get("stream_enabled"),
+        "run_status": "diagnostics_only",
+        "node_sequence": list(RUNTIME_CHECKPOINT_NODE_SEQUENCE),
+        "node_statuses": safe_nodes,
+        "stream_started": checkpoint_kwargs.get("stream_started"),
+        "first_token_sent": checkpoint_kwargs.get("first_token_sent"),
+        "resume_allowed": checkpoint_kwargs.get("resume_allowed") is True,
+        "resume_mode": resume_mode,
+        "checkpoint_persisted": checkpoint_persisted,
+        "checkpoint_write_attempted": False,
+        "checkpoint_writer_failed": False,
+        "persisted_path": None,
+        "persisted_bytes": None,
+        "content_free": True,
+        "checkpoint_persistence_plan": checkpoint_persistence_plan,
+        "checkpoint_writer_preflight": checkpoint_writer_preflight,
+        "recovery_transition_created": checkpoint_kwargs.get("recovery_transition_created")
+        is True,
+        "blocked_reasons": safe_blocked_reasons,
+    }
+    for key in RECOVERY_DETAIL_ARTIFACT_KEYS:
+        artifact[key] = None
+    return artifact
+
+
+def _recovery_detail_summary(
+    *,
+    constructed: bool,
+    reason: str,
+    required_reasons: tuple[str, ...],
+) -> dict[str, Any]:
+    return {
+        "schema_version": RECOVERY_DETAIL_SCHEMA_VERSION,
+        "constructed": bool(constructed),
+        "reason": reason,
+        "required_reasons": list(required_reasons),
+        "content_free": True,
+        "contains_user_content": False,
+        "contains_backend_payload": False,
+        "contains_response_text": False,
+        "diagnostics_only": True,
+    }
+
+
+def _recovery_detail_reason(
+    *,
+    required: bool,
+    required_reasons: tuple[str, ...],
+    include_recovery_details: bool | None,
+) -> str:
+    if include_recovery_details is True:
+        return "explicit_include_recovery_details"
+    if include_recovery_details is False:
+        return "explicit_skip_recovery_details"
+    if required:
+        return required_reasons[0] if required_reasons else "recovery_detail_required"
+    return "ordinary_path_no_blocked_or_checkpoint_need"
+
+
+def _string_tuple(value: Any) -> tuple[str, ...]:
+    if not isinstance(value, list | tuple):
+        return ()
+    return tuple(str(item) for item in value if isinstance(item, str) and item)
+
+
+def _unique_string_tuple(values: list[str]) -> tuple[str, ...]:
+    output: list[str] = []
+    for value in values:
+        if value and value not in output:
+            output.append(value)
+    return tuple(output)
