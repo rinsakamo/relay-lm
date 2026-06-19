@@ -7,6 +7,7 @@ import copy
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +23,9 @@ from relaylm.client_instruction_cache_write import (
 from relaylm.client_instruction_extraction import build_client_instruction_extraction_dry_run
 from relaylm.client_instruction_fingerprint import build_client_instruction_fingerprint_dry_run
 from relaylm.client_instruction_identity import build_client_instruction_identity
+from relaylm.client_instruction_identity_runtime import (
+    client_instruction_identity_dependency_enabled,
+)
 from relaylm.client_instruction_typed_parse import (
     assert_client_instruction_typed_parse_diagnostics_content_free,
     build_client_instruction_typed_parse_diagnostics,
@@ -262,11 +266,25 @@ def test_cache_plan_save_requested() -> None:
     print("ok cache dry-run save request remains no-op")
 
 
+def test_cache_write_dependency_gate() -> None:
+    route = SimpleNamespace(
+        client_instruction_extraction_dry_run_enabled=False,
+        client_instruction_cache_lookup_enabled=False,
+        client_instruction_cache_write_enabled=True,
+        client_history_exclusion_apply_enabled=False,
+    )
+    require(client_instruction_identity_dependency_enabled(route) is True, route)
+    route.client_instruction_cache_write_enabled = False
+    require(client_instruction_identity_dependency_enabled(route) is False, route)
+    print("ok cache write flag enables instruction dependency gate")
+
+
 def main() -> int:
     parse_result = test_typed_parse_contract()
     test_typed_parse_malformed()
     test_cache_write_preflight(parse_result)
     test_cache_plan_save_requested()
+    test_cache_write_dependency_gate()
     print("client_instruction_typed_parse_cache_write_smoke passed")
     return 0
 
