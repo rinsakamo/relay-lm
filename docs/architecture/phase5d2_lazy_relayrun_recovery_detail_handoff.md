@@ -53,6 +53,12 @@ The existing `build_runtime_checkpoint_dry_run_artifact(...)` helper is not chan
 
 The request-runtime path does not pass `include_recovery_details=False`. It relies on automatic status/gate detection so failed, blocked, checkpoint, and recovery diagnostics paths cannot be accidentally forced into the lazy ordinary path.
 
+## Trace projection split
+
+Endpoint trace metadata exposes a content-free RelayRUN projection, not the internal runtime checkpoint artifact body. The projection must remain small and must not include recovery-detail artifacts such as `resume_preflight`, `recovery_transition_artifact`, or waiting-user / visible-recovery contracts.
+
+Internal lazy/full recovery-detail behavior is validated by the direct runtime smoke. Endpoint trace projection behavior is validated by the runtime checkpoint smoke.
+
 ## Content-free contract
 
 The lazy summary exposes only:
@@ -92,12 +98,19 @@ Request-runtime wiring smoke:
 python scripts/relaylm_relayrun_lazy_recovery_runtime_wiring_smoke.py
 ```
 
+Endpoint trace projection smoke:
+
+```bash
+python scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
+```
+
 Recommended focused regression set:
 
 ```bash
 python -m compileall relaylm scripts
 python scripts/relaylm_relayrun_lazy_recovery_detail_smoke.py
 python scripts/relaylm_relayrun_lazy_recovery_runtime_wiring_smoke.py
+python scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
 python scripts/relaylm_trace_content_free_contract_smoke.py
 ```
 
