@@ -93,6 +93,14 @@ client_instruction_cache_lookup_enabled: false
 client_instruction_cache_root:
 client_instruction_cache_max_entry_bytes: 65536
 
+# Client instruction typed parse and cache-write preflight are default-off.
+# C5a validates request-local parse candidates and can plan a cache save, but it
+# does not parse backend responses, write cache files, mutate backend payloads,
+# or apply RelaySCN state. Actual cache writes remain unavailable.
+client_instruction_typed_parse_enabled: false
+client_instruction_cache_write_enabled: false
+client_instruction_cache_write_dry_run_only: true
+
 # RelayINT fast path dry-run is default-off, diagnostics-only, and content-free.
 # It uses deterministic heuristics only: no LLM call, no MEM lookup, and no
 # backend payload or response mutation.
