@@ -12,7 +12,6 @@ from typing import Any, Mapping
 
 from relaylm.relayrun import (
     RUNTIME_CHECKPOINT_NODE_SEQUENCE,
-    ResumeMode,
     build_relayrun_checkpoint_persistence_plan,
     build_relayrun_checkpoint_writer_preflight,
     build_runtime_checkpoint_dry_run_artifact,
@@ -137,14 +136,19 @@ def relayrun_recovery_detail_required(
                 else:
                     reasons.append(f"node_status:{status}")
 
-    if checkpoint_write_enabled and not checkpoint_dry_run_only:
-        reasons.append("checkpoint_write_requested")
+    if checkpoint_write_enabled:
+        reasons.append(
+            "checkpoint_write_requested"
+            if not checkpoint_dry_run_only
+            else "checkpoint_write_dry_run_requested"
+        )
 
-    if (
-        checkpoint_kwargs.get("checkpoint_index_enabled") is True
-        and checkpoint_kwargs.get("checkpoint_index_dry_run_only") is False
-    ):
-        reasons.append("checkpoint_index_requested")
+    if checkpoint_kwargs.get("checkpoint_index_enabled") is True:
+        reasons.append(
+            "checkpoint_index_requested"
+            if checkpoint_kwargs.get("checkpoint_index_dry_run_only") is False
+            else "checkpoint_index_dry_run_requested"
+        )
 
     for flag_name in _RECOVERY_ENABLED_FLAGS:
         if checkpoint_kwargs.get(flag_name) is True:
