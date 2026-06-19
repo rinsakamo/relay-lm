@@ -5,14 +5,11 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 import re
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 from relaylm.client_instruction_identity import ClientInstructionIdentityResult
 from relaylm.client_instruction_typed_parse import ClientInstructionTypedParseResult
 from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
-
-if TYPE_CHECKING:
-    from relaylm.pipeline_context import PipelineContext
 
 SCHEMA_VERSION = "client_instruction_cache_write_preflight.v0"
 _ENTRY_SCHEMA_VERSION = "relaylm.client_instruction_cache.v0"
@@ -72,28 +69,6 @@ class ClientInstructionCacheWriteResult:
     content_bearing: bool = True
     diagnostics_only: bool = True
     applied: bool = False
-
-
-def prepare_client_instruction_cache_write_runtime_private(
-    *,
-    pipeline_context: PipelineContext,
-) -> None:
-    """Prepare a request-local no-op cache-write preflight result."""
-
-    route = pipeline_context.route
-    if not route.client_instruction_cache_write_enabled:
-        pipeline_context.set_client_instruction_cache_write_result(None)
-        return
-    result = build_client_instruction_cache_write_preflight(
-        parse_result=pipeline_context.client_instruction_typed_parse_result,
-        identity_result=pipeline_context.client_instruction_identity_result,
-        enabled=True,
-        dry_run_only=route.client_instruction_cache_write_dry_run_only,
-        managed_route=route.mode_applied != "pass_through",
-        route_model=route.route_model,
-        character_id=route.character_id,
-    )
-    pipeline_context.set_client_instruction_cache_write_result(result)
 
 
 def build_client_instruction_cache_write_preflight(
