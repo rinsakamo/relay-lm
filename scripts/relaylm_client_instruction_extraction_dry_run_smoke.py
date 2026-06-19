@@ -14,6 +14,7 @@ from relaylm.client_instruction_extraction import (
     build_client_instruction_extraction_dry_run,
     build_client_instruction_extraction_node_result,
 )
+from relaylm.pipeline_node_result import build_pipeline_node_result
 
 
 RAW_VALUES = (
@@ -215,6 +216,26 @@ def _assert_invalid_messages_block() -> None:
     print("ok non-object message items block")
 
 
+def _assert_content_free_assertion_shape_labels_and_node_results() -> None:
+    assert_client_instruction_extraction_content_free(
+        {"content_shape_counts": {"text": 1, "text_parts": 1, "string": 1}}
+    )
+
+    bad_result = build_pipeline_node_result(
+        node_name="client_instruction_extraction",
+        status="diagnostic_only",
+        decision="probe",
+        diagnostics={"content": "system secret instruction"},
+    )
+    try:
+        assert_client_instruction_extraction_content_free(bad_result)
+    except ValueError as exc:
+        require("content-bearing key is not allowed" in str(exc), exc)
+    else:
+        raise AssertionError("PipelineNodeResult content-free assertion missed diagnostics")
+    print("ok content-free assertion handles shape labels and node results")
+
+
 def main() -> None:
     _assert_default_off()
     _assert_instruction_candidates_ready()
@@ -223,6 +244,7 @@ def main() -> None:
     _assert_multimodal_instruction_candidate_blocks()
     _assert_active_tool_transaction_blocks()
     _assert_invalid_messages_block()
+    _assert_content_free_assertion_shape_labels_and_node_results()
     print("client_instruction_extraction_dry_run_smoke passed")
 
 

@@ -101,8 +101,24 @@ def main() -> None:
     require(result.user_visible_text == "本文。", result)
     require(escaped_secret not in result.user_visible_text, result)
 
+    padded_envelope = {
+        "schema_version": "relayctx_working_update.v0",
+        "ctx_working_update": {"current_topic": "x"},
+    }
+    padded_payload = json.dumps(padded_envelope, ensure_ascii=False)
+    result = unpack_relayctx_response_text(
+        f"本文。\n{RELAYCTX_UPDATE_OPEN}\n"
+        f"{' ' * 96}{padded_payload}{' ' * 96}\n"
+        f"{RELAYCTX_UPDATE_CLOSE}",
+        max_update_chars=len(padded_payload) + 8,
+    )
+    require(result.status == "update_blocked", result)
+    require("update_payload_too_large" in result.blocked_reasons, result)
+    require(result.update_chars > len(padded_payload) + 8, result)
+    require(result.user_visible_text == "本文。", result)
+
     print(
-        "ok RelayCTX Unpack suppresses repeated, reversed, embedded, and decoded markers"
+        "ok RelayCTX Unpack suppresses repeated, reversed, embedded, decoded, and padded markers"
     )
 
 
