@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import stat
 import tempfile
 from typing import Any, Literal
 
@@ -356,8 +357,10 @@ def _write_cache_entry(
         return _WriteOutcome(False, False, byte_count, ("cache_entry_too_large",))
 
     root = Path(cache_root)
+    if _has_symlink_component(root):
+        return _WriteOutcome(False, False, byte_count, ("cache_root_symlink_blocked",))
     if root.exists() and root.is_symlink():
-        return _WriteOutcome(False, False, byte_count, ("cache_root_symlink_rejected",))
+        return _WriteOutcome(False, False, byte_count, ("cache_root_symlink_blocked",))
 
     attempted = False
     tmp_name: str | None = None
@@ -415,6 +418,29 @@ def _fsync_directory(path: Path) -> None:
         pass
     finally:
         os.close(dir_fd)
+
+
+def _has_symlink_component(path: Path) -> bool:
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        candidate = Path.cwd() / candidate
+    parts = candidate.parts
+    if not parts:
+        return False
+
+    current = Path(parts[0])
+    start_index = 1
+    if current == Path("."):
+        current = Path.cwd()
+        start_index = 0
+    for part in parts[start_index:]:
+        current = current / part
+        try:
+            if stat.S_ISLNK(current.lstat().st_mode):
+                return True
+        except OSError:
+            return False
+    return False
 
 
 def _entry_role(role: Any) -> dict[str, Any] | None:
