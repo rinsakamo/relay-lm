@@ -44,6 +44,17 @@ jobs:
       - name: Compile
         run: python -m compileall relaylm scripts
       - name: Run projection smoke
-        run: python scripts/relaylm_client_instruction_relayscn_projection_smoke.py
+        run: |
+          set +e
+          python scripts/relaylm_client_instruction_relayscn_projection_smoke.py > relayscn-projection-smoke.log 2>&1
+          status=$?
+          cat relayscn-projection-smoke.log
+          exit "$status"
+      - name: Upload projection smoke log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relayscn-projection-smoke-log
+          path: relayscn-projection-smoke.log
       - name: Run cache lookup runtime regression
         run: python scripts/relaylm_client_instruction_cache_lookup_runtime_smoke.py
