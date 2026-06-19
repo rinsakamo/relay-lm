@@ -113,8 +113,11 @@ On first launch, the user should not land in an empty configuration form.
 A built-in `Lab Assistant` character should greet the user and guide them into either:
 
 - creating a new character,
-- adopting an existing `SOUL.md`,
+- adopting an existing RelaySOUL persona source set,
+- importing an existing `SOUL.md` and creating the required companion persona sources,
 - asking questions about SOUL Lab and RelayLM.
+
+A usable managed-profile character is not only `SOUL.md`. Adoption must import or create the companion durable persona sources needed by the current runtime profile, including `OUTPUT_POLICY.md` and `RELATIONSHIP_ANCHOR.md`. If the user provides only `SOUL.md`, the UI should create safe default companion sources and show that they were initialized rather than treating the `SOUL.md` alone as a complete character.
 
 The Lab Assistant is a normal RelayLM character instance, not a privileged administrator.
 
@@ -140,7 +143,8 @@ No Character state remains valid and should be explicit:
 NO ACTIVE CHARACTER
 
 [New character]
-[Adopt existing SOUL]
+[Adopt RelaySOUL source set]
+[Import SOUL.md]
 [Talk to Lab Assistant]
 ```
 
@@ -161,7 +165,8 @@ Characters
   Lab Assistant
 ----------------
   New character...
-  Adopt existing SOUL...
+  Adopt RelaySOUL source set...
+  Import SOUL.md...
   No character
 ```
 
@@ -171,7 +176,8 @@ MVP requirements:
 - one active character per UI instance,
 - character switching,
 - new SOUL Initialization,
-- existing SOUL Adoption,
+- existing RelaySOUL Adoption,
+- `SOUL.md` import with companion `OUTPUT_POLICY.md` and `RELATIONSHIP_ANCHOR.md` import or default creation,
 - per-character SOUL, MEM, relationship history, and rollback history separation,
 - restored active character after restart.
 
@@ -432,27 +438,35 @@ Security defaults:
 
 The UI should use dedicated management APIs instead of overloading `/v1/chat/completions`.
 
+Stateful or mutating Lab APIs must be explicitly scoped. The browser may keep an active character per UI session, but the server must not rely on a single global active character for chat, communication, memory, or SOUL actions. Requests that affect runtime state should carry the relevant `character_id` and either a `ui_session_id`, `communication_session_id`, or `proposal_id`; route/model scope should also be explicit when the action can depend on a managed route profile.
+
 ```text
 GET  /lab/api/characters
 POST /lab/api/characters
-POST /lab/api/characters/{id}/activate
+POST /lab/api/ui-sessions/{ui_session_id}/active-character
 
-POST /lab/api/chat
-POST /lab/api/communication/start
-POST /lab/api/communication/stop
+POST /lab/api/characters/{character_id}/chat
+POST /lab/api/characters/{character_id}/communication-sessions
+POST /lab/api/characters/{character_id}/communication-sessions/{communication_session_id}/stop
 
-GET  /lab/api/lab/last-run
-GET  /lab/api/memory/candidates
-POST /lab/api/memory/candidates/{id}/adopt
-POST /lab/api/memory/candidates/{id}/hold
+GET  /lab/api/ui-sessions/{ui_session_id}/lab/last-run
+GET  /lab/api/characters/{character_id}/memory/candidates
+POST /lab/api/characters/{character_id}/memory/candidates/{candidate_id}/adopt
+POST /lab/api/characters/{character_id}/memory/candidates/{candidate_id}/hold
 
-POST /lab/api/soul/propose
-POST /lab/api/soul/apply
-POST /lab/api/soul/rollback
+POST /lab/api/characters/{character_id}/soul/proposals
+POST /lab/api/characters/{character_id}/soul/proposals/{proposal_id}/compare
+POST /lab/api/characters/{character_id}/soul/proposals/{proposal_id}/hold
+POST /lab/api/characters/{character_id}/soul/proposals/{proposal_id}/discard
+POST /lab/api/characters/{character_id}/soul/proposals/{proposal_id}/apply
+POST /lab/api/characters/{character_id}/soul/rollback
 
-GET  /lab/api/settings
-POST /lab/api/settings/backend/test
+GET   /lab/api/settings
+PATCH /lab/api/settings/backend
+POST  /lab/api/settings/backend/test
 ```
+
+The `compare`, `hold`, `discard`, and `apply` proposal operations should be server-side decisions or recorded server-side state transitions so that Pod candidates do not dangle only in browser memory and the RelaySOUL decision trail remains auditable.
 
 These APIs should enforce RelayLM authority boundaries server-side. The browser is presentation and interaction, not the owner of SOUL, MEM, RUN, SLP, or backend credentials.
 
@@ -512,19 +526,20 @@ The UI MVP is complete when:
 
 1. first launch is guided by Lab Assistant,
 2. a new character can be initialized,
-3. an existing `SOUL.md` can be adopted,
-4. multiple characters can be selected and switched,
-5. Home supports normal text conversation,
-6. an external OpenAI-compatible API peer can be contacted,
-7. a RelayLM peer can be contacted,
-8. communication runs with user start/stop rather than per-message approval,
-9. communication creates memory candidates after SLP,
-10. RelayLM-to-RelayLM communication can show different memories on both sides,
-11. Lab Observation can inspect the latest experience and memory candidates,
-12. Pod can propose, compare, apply, hold, discard, and rollback a SOUL candidate,
-13. CTX Repack / Unpack status is observable and treated as protocol separation, not censorship,
-14. EMO markers remain optional presentation decoration,
-15. character, SOUL, MEM, relationship history, and rollback state survive restart.
+3. an existing RelaySOUL persona source set can be adopted,
+4. a standalone `SOUL.md` can be imported only when companion `OUTPUT_POLICY.md` and `RELATIONSHIP_ANCHOR.md` sources are imported or initialized,
+5. multiple characters can be selected and switched,
+6. Home supports normal text conversation,
+7. an external OpenAI-compatible API peer can be contacted,
+8. a RelayLM peer can be contacted,
+9. communication runs with user start/stop rather than per-message approval,
+10. communication creates memory candidates after SLP,
+11. RelayLM-to-RelayLM communication can show different memories on both sides,
+12. Lab Observation can inspect the latest experience and memory candidates,
+13. Pod can propose, compare, apply, hold, discard, and rollback a SOUL candidate,
+14. CTX Repack / Unpack status is observable and treated as protocol separation, not censorship,
+15. EMO markers remain optional presentation decoration,
+16. character, SOUL, MEM, relationship history, and rollback state survive restart.
 
 ## Summary
 
