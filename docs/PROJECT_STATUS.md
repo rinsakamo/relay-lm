@@ -25,18 +25,18 @@ Managed-route correctness boundary: Phase 5-C complete
 Pre-stream hardening: Phase 5-D in progress
 
 Latest completed bounded slice:
-  Phase 5-D2 lazy RelayRUN recovery-detail helper
+  Phase 5-D2 lazy RelayRUN recovery-detail runtime wiring
   + additive lazy runtime-checkpoint helper
+  + /v1/chat/completions runtime checkpoint wiring
   + ordinary-path minimal content-free summary
   + full-detail fallback for blocked/failed/checkpoint/recovery diagnostics
-  + direct smoke coverage
+  + direct helper smoke and runtime wiring smoke coverage
 ```
 
-Phase 5-D2 currently provides the side-effect-free helper and direct contract coverage. Wiring the helper into the `/v1/chat/completions` ordinary completed runtime path remains a follow-up bounded slice.
+Phase 5-D2 now provides both the side-effect-free helper and request-runtime wiring. Ordinary completed request paths can use the lazy content-free recovery-detail summary; blocked, failed, checkpoint, and recovery diagnostics paths still build full RelayRUN recovery detail.
 
 Next candidates remain independently sequenced:
 
-- Phase 5-D2 runtime wiring: use lazy RelayRUN recovery-detail helper on ordinary completed request paths,
 - Phase 5-C4b: validated cache-hit RelaySCN projection,
 - Phase 5-C5: typed parse and cache write,
 - Phase 5.5: Stream Unpack and output segmentation.
@@ -59,6 +59,7 @@ Current `main` includes:
 - `client_history_exclusion_apply.v1` for supported instruction-bearing requests,
 - deterministic tokenizer-free CJK-aware token estimation,
 - additive lazy RelayRUN recovery-detail helper,
+- request-runtime lazy RelayRUN recovery-detail wiring,
 - request-level RelayRUN diagnostics/checkpoint/recovery foundations,
 - RelaySOUL dry-run/preflight governance foundations.
 
@@ -105,6 +106,8 @@ A successful managed candidate contains one RelayLM-owned compiled system messag
 
 `relaylm.relayrun_lazy_recovery` provides an additive helper that can construct a minimal content-free runtime checkpoint artifact on ordinary completed paths without constructing the full recovery diagnostic chain.
 
+The `/v1/chat/completions` request-runtime RelayRUN checkpoint builder now calls the lazy helper and lets automatic status/gate detection decide whether full detail is required. It does not force `include_recovery_details=False` from the request runtime.
+
 The helper constructs full detail when blocked, failed, waiting-user, checkpoint-write, checkpoint-index, resume, recovery, visible recovery, output RelaySCN recovery gate, visible apply, or user-action diagnostics require it.
 
 The lazy summary exposes only schema/status/reason IDs and safety booleans. It must not expose raw user/model text, backend payloads, prompt text, response text, snippets, instruction bodies, cache bodies, hashes, or runtime-private candidates.
@@ -125,7 +128,6 @@ The runtime does not yet provide:
 - typed client-instruction response parsing or cache write,
 - complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy,
 - active tool-chain reconstruction,
-- `/v1/chat/completions` runtime wiring for lazy ordinary-path RelayRUN recovery-detail construction,
 - Stream Unpack and TTS-safe segmentation,
 - dedicated output-side RelayREF and complete output-side RelaySCN,
 - cross-cutting per-node RelayRUN orchestration,
