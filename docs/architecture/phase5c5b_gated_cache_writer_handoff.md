@@ -37,7 +37,7 @@ The target file name is derived from the validated `cache_key_sha256`:
 <client_instruction_cache_root>/<cache_key_sha256>.json
 ```
 
-The writer rejects missing roots, invalid byte budgets, entries larger than the configured max, symlink roots, symlink targets, and target paths outside the resolved root.
+The writer rejects missing roots, invalid byte budgets, entries larger than the configured max, symlink roots, symlink root components, symlink targets, and target paths outside the resolved root. The root-component symlink check mirrors the reader-side `cache_root_symlink_blocked` boundary so the writer does not create entries under a root that the runtime reader will reject.
 
 ## Write semantics
 
@@ -63,6 +63,7 @@ Diagnostics remain content-free. They can report booleans, status, byte counts, 
 - cache-write dry-run no-op behavior,
 - missing root blocking,
 - max-entry-size blocking before write attempts,
+- symlinked root-component blocking,
 - atomic writer success,
 - persisted entry validation through the lookup resolver,
 - content-free diagnostics for both dry-run and applied writer results,
