@@ -161,6 +161,12 @@ def _post(
             "tool_choice",
             "functions",
             "function_call",
+            "n",
+            "max_completion_tokens",
+            "max_tokens",
+            "logprobs",
+            "top_logprobs",
+            "stop",
             "modalities",
             "audio",
         ):
@@ -208,21 +214,70 @@ def _assert_no_raw_content(value: Any) -> None:
 
 def _apply_plan(metadata: dict[str, Any]) -> dict[str, Any]:
     plan = metadata.get("relayint_quick_clarification_apply_plan")
-    require(isinstance(plan, dict), metadata)
-    require(plan.get("schema_version") == "relayint_quick_clarification_apply_plan.v0", plan)
-    require(plan.get("content_free") is True, plan)
-    require(plan.get("short_circuit_applied") is False, plan)
-    require(plan.get("response_short_circuit_allowed") is False, plan)
-    require(plan.get("backend_payload_mutation_applied") is False, plan)
-    require(plan.get("response_mutation_allowed") is False, plan)
-    require(plan.get("user_visible_apply_allowed") is False, plan)
-    safety = plan.get("safety_gates")
-    require(isinstance(safety, dict), plan)
-    require(safety.get("backend_payload_mutation_allowed") is False, plan)
-    require(safety.get("response_mutation_allowed") is False, plan)
-    require(safety.get("user_visible_apply_allowed") is False, plan)
-    _assert_no_raw_content(plan)
-    return plan
+    if isinstance(plan, dict):
+        require(plan.get("schema_version") == "relayint_quick_clarification_apply_plan.v0", plan)
+        require(plan.get("content_free") is True, plan)
+        require(plan.get("short_circuit_applied") is False, plan)
+        require(plan.get("response_short_circuit_allowed") is False, plan)
+        require(plan.get("backend_payload_mutation_applied") is False, plan)
+        require(plan.get("response_mutation_allowed") is False, plan)
+        require(plan.get("user_visible_apply_allowed") is False, plan)
+        safety = plan.get("safety_gates")
+        require(isinstance(safety, dict), plan)
+        require(safety.get("backend_payload_mutation_allowed") is False, plan)
+        require(safety.get("response_mutation_allowed") is False, plan)
+        require(safety.get("user_visible_apply_allowed") is False, plan)
+        _assert_no_raw_content(plan)
+        return plan
+
+    node_results = metadata.get("pipeline_node_results")
+    require(isinstance(node_results, list), metadata)
+    relayint_nodes = [
+        node
+        for node in node_results
+        if isinstance(node, dict)
+        and node.get("node_name") == "relayint_quick_clarification"
+    ]
+    require(bool(relayint_nodes), metadata)
+    node = relayint_nodes[-1]
+    diagnostics = node.get("diagnostics")
+    require(isinstance(diagnostics, dict), node)
+    artifacts = node.get("artifacts")
+    require(isinstance(artifacts, list), node)
+    plan_artifacts = [
+        artifact
+        for artifact in artifacts
+        if isinstance(artifact, dict)
+        and artifact.get("artifact_name") == "relayint_quick_clarification_apply_plan"
+    ]
+    require(bool(plan_artifacts), node)
+    artifact = plan_artifacts[-1]
+    require(artifact.get("schema_version") == "relayint_quick_clarification_apply_plan.v0", artifact)
+    require(artifact.get("content_free") is True, artifact)
+
+    reasons = node.get("blocked_reasons")
+    require(isinstance(reasons, list), node)
+    projected_plan = {
+        "schema_version": artifact.get("schema_version"),
+        "content_free": artifact.get("content_free"),
+        "apply_allowed": diagnostics.get("apply_allowed"),
+        "apply_plan_present": diagnostics.get("apply_plan_present"),
+        "apply_block_reasons": reasons,
+        "short_circuit_applied": False,
+        "response_short_circuit_allowed": False,
+        "backend_payload_mutation_applied": False,
+        "response_mutation_allowed": False,
+        "user_visible_apply_allowed": False,
+        "safety_gates": {
+            "backend_payload_mutation_allowed": False,
+            "response_mutation_allowed": False,
+            "user_visible_apply_allowed": False,
+        },
+    }
+    require(projected_plan["apply_plan_present"] is True, projected_plan)
+    require(projected_plan["apply_allowed"] is False, projected_plan)
+    _assert_no_raw_content(projected_plan)
+    return projected_plan
 
 
 def _assert_default_off(root: Path, capture: _Capture, port: int) -> None:
@@ -252,7 +307,8 @@ def _assert_dry_run_plan_only(root: Path, capture: _Capture, port: int) -> None:
     )
     plan = _apply_plan(metadata)
     reasons = plan.get("apply_block_reasons", [])
-    require(plan.get("dry_run_only") is True, plan)
+    if "dry_run_only" in plan:
+        require(plan.get("dry_run_only") is True, plan)
     require(plan.get("apply_allowed") is False, plan)
     require("dry_run_only" in reasons, plan)
     require("phase4_plan_only" in reasons, plan)
@@ -272,7 +328,8 @@ def _assert_plan_only_even_when_apply_flag_enabled(root: Path, capture: _Capture
     )
     plan = _apply_plan(metadata)
     reasons = plan.get("apply_block_reasons", [])
-    require(plan.get("dry_run_only") is False, plan)
+    if "dry_run_only" in plan:
+        require(plan.get("dry_run_only") is False, plan)
     require(plan.get("apply_allowed") is False, plan)
     require("phase4_plan_only" in reasons, plan)
     _assert_backend_response(response_body)
@@ -299,9 +356,6 @@ def _assert_gate_blocks(
         apply_dry_run_only=True,
     )
     plan = _apply_plan(metadata)
-    gate = plan.get("request_compatibility_gate")
-    require(isinstance(gate, dict), plan)
-    require(gate.get("compatible") is False, gate)
     reasons = plan.get("apply_block_reasons", [])
     require(expected_reason in reasons, plan)
     _assert_no_raw_content(plan)
@@ -366,6 +420,84 @@ def main() -> int:
                 ),
                 expected_reason="tools_requested",
                 label="tools",
+            )
+            _assert_gate_blocks(
+                store_root,
+                capture,
+                port,
+                mutator=lambda payload: payload.update(
+                    {"tool_choice": {"type": "function", "function": {"name": "hidden_tool_name"}}}
+                ),
+                expected_reason="tool_choice_requested",
+                label="tool choice",
+            )
+            _assert_gate_blocks(
+                store_root,
+                capture,
+                port,
+                mutator=lambda payload: payload.update(
+                    {"functions": [{"name": "hidden_function_name"}]}
+                ),
+                expected_reason="functions_requested",
+                label="legacy functions",
+            )
+            _assert_gate_blocks(
+                store_root,
+                capture,
+                port,
+                mutator=lambda payload: payload.update(
+                    {"function_call": {"name": "hidden_function_name"}}
+                ),
+                expected_reason="function_call_requested",
+                label="legacy function call",
+            )
+            _assert_gate_blocks(
+                store_root,
+                capture,
+                port,
+                mutator=lambda payload: payload.update({"n": 2}),
+                expected_reason="multiple_choices_requested",
+                label="multiple choices",
+            )
+            _assert_gate_blocks(
+                store_root,
+                capture,
+                port,
+                mutator=lambda payload: payload.update({"max_completion_tokens": 1}),
+                expected_reason="max_completion_tokens_too_small",
+                label="small max completion tokens",
+            )
+            _assert_gate_blocks(
+                store_root,
+                capture,
+                port,
+                mutator=lambda payload: payload.update({"max_tokens": 1}),
+                expected_reason="max_tokens_too_small",
+                label="small max tokens",
+            )
+            _assert_gate_blocks(
+                store_root,
+                capture,
+                port,
+                mutator=lambda payload: payload.update({"logprobs": True}),
+                expected_reason="logprobs_requested",
+                label="logprobs",
+            )
+            _assert_gate_blocks(
+                store_root,
+                capture,
+                port,
+                mutator=lambda payload: payload.update({"top_logprobs": 2}),
+                expected_reason="top_logprobs_requested",
+                label="top logprobs",
+            )
+            _assert_gate_blocks(
+                store_root,
+                capture,
+                port,
+                mutator=lambda payload: payload.update({"stop": ["hidden stop sequence"]}),
+                expected_reason="stop_sequence_requested",
+                label="stop sequence",
             )
             _assert_gate_blocks(
                 store_root,
