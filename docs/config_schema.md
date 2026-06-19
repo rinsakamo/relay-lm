@@ -290,11 +290,15 @@ client_instruction_extraction_dry_run_enabled: false
 client_instruction_cache_lookup_enabled: false
 client_instruction_cache_root:
 client_instruction_cache_max_entry_bytes: 65536
+client_instruction_typed_parse_enabled: false
+client_instruction_cache_write_enabled: false
+client_instruction_cache_write_dry_run_only: true
 ```
 
 - canonicalization and preflight are diagnostics/request-local planning boundaries.
 - history apply is default-off and dry-run-only by default.
 - cache lookup is bounded and read-only; it does not inject RelaySCN state or write cache files.
+- typed parse and cache-write preflight are default-off. C5a can validate request-local parse candidates and plan a cache save, but it does not parse backend responses, write cache files, mutate backend payloads, or apply RelaySCN state.
 
 ## RelayCTX flags
 
