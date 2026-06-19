@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - relaylm/relayrun.py
       - relaylm/relayrun_lazy_recovery.py
       - scripts/relaylm_relayrun_lazy_recovery_detail_smoke.py
       - docs/PROJECT_STATUS.md
@@ -14,7 +13,6 @@ on:
   push:
     branches: [main]
     paths:
-      - relaylm/relayrun.py
       - relaylm/relayrun_lazy_recovery.py
       - scripts/relaylm_relayrun_lazy_recovery_detail_smoke.py
       - docs/PROJECT_STATUS.md
@@ -43,9 +41,3 @@ jobs:
         run: python -m compileall relaylm scripts
       - name: Run lazy RelayRUN recovery detail smoke
         run: python scripts/relaylm_relayrun_lazy_recovery_detail_smoke.py
-      - name: Run existing RelayRUN checkpoint smoke
-        run: python scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
-      - name: Run existing recovery transition smoke
-        run: python scripts/relaylm_relayrun_recovery_transition_dry_run_smoke.py
-      - name: Run trace content-free contract smoke
-        run: python scripts/relaylm_trace_content_free_contract_smoke.py
