@@ -159,6 +159,12 @@ def _consume_pipeline_node_results(
         projection_node = build_client_instruction_relayscn_projection_node_result(
             cache_lookup_runtime_result
         )
+        print(
+            "relayscn_projection_trace_debug "
+            f"lookup_present={cache_lookup_runtime_result is not None} "
+            f"lookup_status={getattr(cache_lookup_runtime_result, 'status', None)} "
+            f"projection_present={projection_node is not None}"
+        )
         history_node = build_client_history_exclusion_preflight_node_result(
             pipeline_context.client_history_exclusion_preflight_result
         )
