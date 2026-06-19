@@ -27,6 +27,9 @@ from relaylm.client_instruction_identity_runtime import (
     build_client_instruction_identity_runtime_node_result,
     client_instruction_identity_dependency_enabled,
 )
+from relaylm.client_instruction_relayscn_projection import (
+    build_client_instruction_relayscn_projection_node_result,
+)
 from relaylm.client_message_canonicalization import (
     build_client_message_canonicalization_dry_run,
     build_client_message_canonicalization_node_result,
@@ -150,6 +153,9 @@ def _consume_pipeline_node_results(
         lookup_node = build_client_instruction_cache_lookup_runtime_node_result(
             pipeline_context.client_instruction_cache_lookup_runtime_result
         )
+        projection_node = build_client_instruction_relayscn_projection_node_result(
+            pipeline_context.client_instruction_cache_lookup_runtime_result
+        )
         history_node = build_client_history_exclusion_preflight_node_result(
             pipeline_context.client_history_exclusion_preflight_result
         )
@@ -208,12 +214,24 @@ def _consume_pipeline_node_results(
                 lookup_node,
                 after_node_name="client_instruction_cache",
             )
+        if projection_node is not None:
+            _insert_after_node_result(
+                pipeline_context.node_results,
+                projection_node,
+                after_node_name=(
+                    "client_instruction_cache_lookup"
+                    if lookup_node is not None
+                    else "client_instruction_cache"
+                ),
+            )
         if history_node is not None:
             _insert_after_node_result(
                 pipeline_context.node_results,
                 history_node,
                 after_node_name=(
-                    "client_instruction_cache_lookup"
+                    "client_instruction_relayscn_projection"
+                    if projection_node is not None
+                    else "client_instruction_cache_lookup"
                     if lookup_node is not None
                     else "client_instruction_cache"
                     if cache_node is not None
