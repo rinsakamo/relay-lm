@@ -60,9 +60,11 @@ from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relayrun import (
     build_relayrun_node,
-    build_runtime_checkpoint_dry_run_artifact,
     new_run_id,
     write_relayrun_checkpoint_if_enabled,
+)
+from relaylm.relayrun_lazy_recovery import (
+    build_runtime_checkpoint_lazy_recovery_artifact,
 )
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.relayemo import (
@@ -925,7 +927,10 @@ def _build_relayrun_runtime_artifact(
         ),
     ]
     blocked_reasons = _relayrun_collect_blocked_reasons(node_statuses)
-    artifact = build_runtime_checkpoint_dry_run_artifact(
+    artifact = build_runtime_checkpoint_lazy_recovery_artifact(
+        backend_forward_status=backend_forward_status,
+        checkpoint_write_enabled=config.relayrun_checkpoint_write_enabled,
+        checkpoint_dry_run_only=config.relayrun_checkpoint_dry_run_only,
         request_id=request_id,
         run_id=run_id,
         turn_id=None,
