@@ -7,6 +7,7 @@ on:
       - relaylm/app.py
       - relaylm/relayrun_lazy_recovery.py
       - scripts/relaylm_relayrun_lazy_recovery_runtime_wiring_smoke.py
+      - scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
       - .github/workflows/relayrun-lazy-recovery-runtime-smoke.yml
       - docs/architecture/phase5d2_lazy_relayrun_recovery_detail_handoff.md
       - docs/architecture/pipeline_implementation_plan.md
@@ -17,6 +18,7 @@ on:
       - relaylm/app.py
       - relaylm/relayrun_lazy_recovery.py
       - scripts/relaylm_relayrun_lazy_recovery_runtime_wiring_smoke.py
+      - scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
       - .github/workflows/relayrun-lazy-recovery-runtime-smoke.yml
       - docs/architecture/phase5d2_lazy_relayrun_recovery_detail_handoff.md
       - docs/architecture/pipeline_implementation_plan.md
@@ -41,3 +43,5 @@ jobs:
         run: python -m compileall relaylm scripts
       - name: Run runtime wiring smoke
         run: python scripts/relaylm_relayrun_lazy_recovery_runtime_wiring_smoke.py
+      - name: Run runtime checkpoint smoke
+        run: python scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
