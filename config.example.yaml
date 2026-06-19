@@ -95,11 +95,10 @@ client_instruction_cache_max_entry_bytes: 65536
 
 # Client instruction typed parse and cache-write remain default-off.
 # With dry_run_only=true, RelayLM validates request-local parse candidates and
-# plans cache writes only. Actual cache writes require enabled=true,
-# dry_run_only=false, and client_instruction_cache_root set. The C5b writer only
-# persists reader-validated relaylm.client_instruction_cache.v0 entries via
-# atomic replace; raw instruction/response are never persisted. It still does
-# not parse backend responses, mutate backend payloads, or apply RelaySCN state.
+# plans cache writes only. C5b adds a direct helper for gated atomic writes when
+# an explicit caller supplies dry_run_only=false and client_instruction_cache_root.
+# The current runtime still does not parse backend responses, mutate backend
+# payloads, apply RelaySCN state, or invoke cache writes automatically.
 client_instruction_typed_parse_enabled: false
 client_instruction_cache_write_enabled: false
 client_instruction_cache_write_dry_run_only: true
