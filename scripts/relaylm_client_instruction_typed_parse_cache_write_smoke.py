@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -306,6 +307,39 @@ def test_cache_write_apply(parse_result: Any) -> None:
     print("ok cache write applies atomically and reader validates persisted entry")
 
 
+def test_cache_write_symlink_root_component(parse_result: Any) -> None:
+    if not hasattr(os, "symlink"):
+        print("skip cache writer symlink component smoke: os.symlink unavailable")
+        return
+    identity = identity_result()
+    with tempfile.TemporaryDirectory(prefix="relaylm-c5b-cache-link-") as tmp:
+        tmp_path = Path(tmp)
+        real_parent = tmp_path / "real-parent"
+        link_parent = tmp_path / "link-parent"
+        real_parent.mkdir()
+        try:
+            os.symlink(real_parent, link_parent, target_is_directory=True)
+        except OSError:
+            print("skip cache writer symlink component smoke: symlink creation failed")
+            return
+        blocked = build_client_instruction_cache_write_preflight(
+            parse_result=parse_result,
+            identity_result=identity,
+            enabled=True,
+            dry_run_only=False,
+            managed_route=True,
+            route_model=ROUTE,
+            character_id=CHARACTER,
+            cache_root=link_parent / "cache",
+            max_entry_bytes=65536,
+        )
+        require(blocked is not None and blocked.status == "blocked", blocked)
+        require("cache_root_symlink_blocked" in blocked.blocked_reasons, blocked)
+        require(blocked.cache_write_attempted is False, blocked)
+        require(not (real_parent / "cache").exists(), real_parent)
+    print("ok cache writer rejects symlinked root components")
+
+
 def test_cache_plan_save_requested() -> None:
     payload = {
         "messages": [
@@ -354,6 +388,7 @@ def main() -> int:
     test_typed_parse_malformed()
     test_cache_write_preflight(parse_result)
     test_cache_write_apply(parse_result)
+    test_cache_write_symlink_root_component(parse_result)
     test_cache_plan_save_requested()
     test_cache_write_dependency_gate()
     print("client_instruction_typed_parse_cache_write_smoke passed")
