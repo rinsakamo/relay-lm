@@ -16,7 +16,7 @@ This document owns implementation status, phase sequencing, and dependency bound
 ```text
 Phase 5-C managed-route correctness: complete
 Phase 5-D1 CJK-aware token estimation: complete
-Phase 5-D2 lazy RelayRUN recovery detail: in progress
+Phase 5-D2 lazy RelayRUN recovery detail: complete
 
 Completed bounded slices:
   Phase 1 PipelineContext/app stabilization
@@ -31,18 +31,18 @@ Completed bounded slices:
   Phase 5-C4a instruction-bearing managed apply
   Phase 5-D1 CJK-aware conservative token estimation
   Phase 5-D2a lazy RelayRUN recovery-detail helper
+  Phase 5-D2b lazy RelayRUN recovery-detail runtime wiring
 
 Next candidates:
-  Phase 5-D2b runtime wiring for ordinary completed request paths
   Phase 5-C4b cache-hit RelaySCN projection
+  Phase 5-C5 typed parse/cache write
 
 Later:
-  Phase 5-C5 typed parse/cache write
   Phase 5.5 Stream Unpack
   Phase 6 asynchronous RelaySLP
 ```
 
-Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is split so the lazy RelayRUN detail helper can land before request-runtime wiring.
+Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring.
 
 ## Current caveats
 
@@ -53,7 +53,7 @@ Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5
 - Instruction-cache lookup is read-only; projection and writing are absent.
 - RelayCTX Unpack is non-stream only.
 - Token estimation is deterministic and CJK-aware but remains tokenizer-free and model-agnostic rather than exact.
-- RelayRUN lazy recovery detail has an additive helper and direct smoke coverage; `/v1/chat/completions` ordinary-path wiring remains a follow-up.
+- RelayRUN lazy recovery detail is wired into the request-runtime checkpoint builder, but cross-cutting per-node orchestration remains later work.
 - RelayREF output observation, RelaySLP persistence, and RelaySOUL actual apply remain later work.
 
 ## Phase 1: PipelineContext/app — mostly complete
@@ -165,21 +165,23 @@ Implemented:
 - content-free `relayrun.recovery_detail.lazy.v0` summary,
 - ordinary completed-path minimal runtime checkpoint artifact construction,
 - full-detail fallback for blocked, failed, waiting-user, checkpoint-write, checkpoint-index, resume, recovery, visible recovery, output RelaySCN recovery gate, visible apply, and user-action diagnostics paths,
-- explicit include/skip override for tests and later runtime wiring,
+- explicit include/skip override for tests and narrowly bounded future callers,
 - direct smoke coverage and a dedicated CI workflow.
 
 Existing `build_runtime_checkpoint_dry_run_artifact(...)` behavior remains unchanged for direct callers and existing smoke coverage.
 
+### Phase 5-D2b: lazy RelayRUN recovery detail runtime wiring — complete
+
+Implemented:
+
+- `/v1/chat/completions` request-runtime RelayRUN checkpoint construction now calls the lazy helper,
+- request runtime passes `backend_forward_status`, `relayrun_checkpoint_write_enabled`, and `relayrun_checkpoint_dry_run_only` into the helper,
+- ordinary completed request paths can emit `recovery_detail.constructed=false`,
+- failed, blocked, checkpoint, and recovery diagnostics paths still build full recovery detail through automatic status/gate detection,
+- request runtime does not force `include_recovery_details=False`,
+- dedicated runtime wiring smoke coverage and CI workflow.
+
 See [Phase 5-D2 Lazy RelayRUN Recovery Detail Handoff](phase5d2_lazy_relayrun_recovery_detail_handoff.md).
-
-### Phase 5-D2b: lazy RelayRUN recovery detail runtime wiring — planned
-
-Planned work:
-
-- use the lazy helper from the `/v1/chat/completions` ordinary completed path,
-- keep full detail on blocked/recovery/checkpoint diagnostics paths,
-- preserve fail-closed and content-free contracts,
-- avoid visible behavior changes.
 
 ## Phase 5.5: Stream Unpack — planned
 
