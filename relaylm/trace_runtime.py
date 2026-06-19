@@ -150,11 +150,14 @@ def _consume_pipeline_node_results(
             save_requested=False,
         )
         cache_node = build_client_instruction_cache_node_result(cache)
-        lookup_node = build_client_instruction_cache_lookup_runtime_node_result(
+        cache_lookup_runtime_result = (
             pipeline_context.client_instruction_cache_lookup_runtime_result
         )
+        lookup_node = build_client_instruction_cache_lookup_runtime_node_result(
+            cache_lookup_runtime_result
+        )
         projection_node = build_client_instruction_relayscn_projection_node_result(
-            pipeline_context.client_instruction_cache_lookup_runtime_result
+            cache_lookup_runtime_result
         )
         history_node = build_client_history_exclusion_preflight_node_result(
             pipeline_context.client_history_exclusion_preflight_result
