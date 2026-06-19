@@ -27,6 +27,7 @@ def client_instruction_identity_dependency_enabled(route: Any) -> bool:
     return bool(
         getattr(route, "client_instruction_extraction_dry_run_enabled", False)
         or getattr(route, "client_instruction_cache_lookup_enabled", False)
+        or getattr(route, "client_instruction_cache_write_enabled", False)
         or getattr(route, "client_history_exclusion_apply_enabled", False)
     )
 

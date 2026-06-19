@@ -118,6 +118,9 @@ class RelayLMConfig(BaseModel):
         ge=1,
         le=1048576,
     )
+    client_instruction_typed_parse_enabled: bool = False
+    client_instruction_cache_write_enabled: bool = False
+    client_instruction_cache_write_dry_run_only: bool = True
     relayint_fast_path_dry_run_enabled: bool = False
     relayint_fast_path_high_confidence_threshold: float = Field(default=0.80, ge=0.0, le=1.0)
     relayint_fast_path_low_confidence_threshold: float = Field(default=0.55, ge=0.0, le=1.0)

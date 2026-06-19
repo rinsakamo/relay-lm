@@ -111,8 +111,9 @@ def _consume_pipeline_node_results(
 
     try:
         managed_route = pipeline_context.route.mode_applied != "pass_through"
-        instruction_dependency_enabled = client_instruction_identity_dependency_enabled(
-            pipeline_context.route
+        instruction_dependency_enabled = bool(
+            client_instruction_identity_dependency_enabled(pipeline_context.route)
+            or pipeline_context.route.client_instruction_cache_write_enabled
         )
         canonicalization = build_client_message_canonicalization_dry_run(
             pipeline_context.original_payload,
@@ -147,7 +148,9 @@ def _consume_pipeline_node_results(
             lookup_requested=(
                 pipeline_context.route.client_instruction_cache_lookup_enabled
             ),
-            save_requested=False,
+            save_requested=(
+                pipeline_context.route.client_instruction_cache_write_enabled
+            ),
         )
         cache_node = build_client_instruction_cache_node_result(cache)
         cache_lookup_runtime_result = (
