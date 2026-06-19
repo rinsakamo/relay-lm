@@ -1,0 +1,69 @@
+name: Phase 5-D2b auto patch
+
+on:
+  push:
+    branches: [phase5d2b-wire-lazy-relayrun-recovery]
+    paths:
+      - .github/workflows/phase5d2b-auto-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch app runtime wiring
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          app_path = Path("relaylm/app.py")
+          text = app_path.read_text(encoding="utf-8")
+
+          old_import = '''from relaylm.relayrun import (
+              build_relayrun_node,
+              build_runtime_checkpoint_dry_run_artifact,
+              new_run_id,
+              write_relayrun_checkpoint_if_enabled,
+          )'''
+          new_import = '''from relaylm.relayrun import (
+              build_relayrun_node,
+              new_run_id,
+              write_relayrun_checkpoint_if_enabled,
+          )
+          from relaylm.relayrun_lazy_recovery import (
+              build_runtime_checkpoint_lazy_recovery_artifact,
+          )'''
+          if old_import not in text:
+              raise SystemExit("relayrun import block not found")
+          text = text.replace(old_import, new_import, 1)
+
+          old_call = "    artifact = build_runtime_checkpoint_dry_run_artifact(\n"
+          new_call = (
+              "    artifact = build_runtime_checkpoint_lazy_recovery_artifact(\n"
+              "        backend_forward_status=backend_forward_status,\n"
+              "        checkpoint_write_enabled=config.relayrun_checkpoint_write_enabled,\n"
+              "        checkpoint_dry_run_only=config.relayrun_checkpoint_dry_run_only,\n"
+          )
+          if old_call not in text:
+              raise SystemExit("runtime checkpoint builder call not found")
+          text = text.replace(old_call, new_call, 1)
+
+          app_path.write_text(text, encoding="utf-8")
+          Path(".github/workflows/phase5d2b-auto-patch.yml").unlink()
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add relaylm/app.py .github/workflows/phase5d2b-auto-patch.yml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "feat: wire lazy RelayRUN recovery detail in app runtime"
+          git push
