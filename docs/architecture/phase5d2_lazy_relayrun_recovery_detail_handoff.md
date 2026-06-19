@@ -49,7 +49,7 @@ The lazy summary exposes only:
 - required-reason IDs,
 - diagnostics/content-free safety booleans.
 
-It must not include raw user text, backend payloads, response text, prompt text, snippet text, instruction text, hashes, cache bodies, or runtime-private payload candidates.
+It must not include conversation text, backend bodies, prompt text, snippet text, instruction bodies, hashes, cache bodies, or runtime-private payload candidates.
 
 ## Full-detail triggers
 
@@ -59,8 +59,8 @@ The helper constructs full recovery detail when any of the following content-fre
 - backend forward status is `failed` or `blocked`,
 - any node is `failed`, `blocked`, or `waiting_user`,
 - top-level blocked reasons are present,
-- checkpoint write is explicitly enabled outside dry-run,
-- checkpoint index scan is explicitly enabled outside dry-run,
+- checkpoint write diagnostics are explicitly requested, including dry-run write diagnostics,
+- checkpoint index diagnostics are explicitly requested, including dry-run index diagnostics,
 - resume, recovery transition, waiting-user, apply preflight, recovery response, visible recovery, output RelaySCN recovery gate, visible apply, or user-action diagnostics are explicitly enabled,
 - recovery transition creation or runtime apply state is already present.
 
