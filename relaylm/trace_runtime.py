@@ -147,7 +147,9 @@ def _consume_pipeline_node_results(
             lookup_requested=(
                 pipeline_context.route.client_instruction_cache_lookup_enabled
             ),
-            save_requested=False,
+            save_requested=(
+                pipeline_context.route.client_instruction_cache_write_enabled
+            ),
         )
         cache_node = build_client_instruction_cache_node_result(cache)
         cache_lookup_runtime_result = (
