@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Smoke checks for Phase 5-C5a typed parse and cache-write preflight."""
+"""Smoke checks for typed parse and gated cache-write behavior."""
 
 from __future__ import annotations
 
 import copy
 import json
 import sys
+import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -15,9 +16,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from relaylm.client_instruction_cache import build_client_instruction_cache_dry_run
+from relaylm.client_instruction_cache_lookup import resolve_client_instruction_cache_lookup
 from relaylm.client_instruction_cache_write import (
     assert_client_instruction_cache_write_diagnostics_content_free,
     build_client_instruction_cache_write_diagnostics,
+    build_client_instruction_cache_write_node_result,
     build_client_instruction_cache_write_preflight,
 )
 from relaylm.client_instruction_extraction import build_client_instruction_extraction_dry_run
@@ -210,7 +213,7 @@ def test_cache_write_preflight(parse_result: Any) -> None:
     assert_not_leaked(diagnostics)
     assert_client_instruction_cache_write_diagnostics_content_free(diagnostics)
 
-    actual_apply = build_client_instruction_cache_write_preflight(
+    missing_root = build_client_instruction_cache_write_preflight(
         parse_result=parse_result,
         identity_result=identity,
         enabled=True,
@@ -219,8 +222,9 @@ def test_cache_write_preflight(parse_result: Any) -> None:
         route_model=ROUTE,
         character_id=CHARACTER,
     )
-    require(actual_apply is not None and actual_apply.status == "blocked", actual_apply)
-    require("cache_writer_not_implemented" in actual_apply.blocked_reasons, actual_apply)
+    require(missing_root is not None and missing_root.status == "blocked", missing_root)
+    require("cache_root_missing" in missing_root.blocked_reasons, missing_root)
+    require(missing_root.cache_write_attempted is False, missing_root)
 
     blocked = build_client_instruction_cache_write_preflight(
         parse_result=None,
@@ -233,7 +237,73 @@ def test_cache_write_preflight(parse_result: Any) -> None:
     )
     require(blocked is not None and blocked.status == "blocked", blocked)
     require("source_typed_parse_not_ready" in blocked.blocked_reasons, blocked)
-    print("ok cache write preflight is gated no-op and content-free")
+    print("ok cache write preflight is gated and content-free")
+
+
+def test_cache_write_apply(parse_result: Any) -> None:
+    identity = identity_result()
+    assert identity.identity is not None
+    with tempfile.TemporaryDirectory(prefix="relaylm-c5b-cache-") as cache_root:
+        too_large = build_client_instruction_cache_write_preflight(
+            parse_result=parse_result,
+            identity_result=identity,
+            enabled=True,
+            dry_run_only=False,
+            managed_route=True,
+            route_model=ROUTE,
+            character_id=CHARACTER,
+            cache_root=cache_root,
+            max_entry_bytes=1,
+        )
+        require(too_large is not None and too_large.status == "blocked", too_large)
+        require("cache_entry_too_large" in too_large.blocked_reasons, too_large)
+        require(too_large.cache_write_attempted is False, too_large)
+        require(not list(Path(cache_root).glob("*.json")), list(Path(cache_root).glob("*.json")))
+
+        applied = build_client_instruction_cache_write_preflight(
+            parse_result=parse_result,
+            identity_result=identity,
+            enabled=True,
+            dry_run_only=False,
+            managed_route=True,
+            route_model=ROUTE,
+            character_id=CHARACTER,
+            cache_root=cache_root,
+            max_entry_bytes=65536,
+        )
+        require(applied is not None and applied.status == "written", applied)
+        require(applied.cache_write_attempted is True, applied)
+        require(applied.cache_entry_written is True, applied)
+        require(applied.atomic_write_used is True, applied)
+        require(applied.applied is True and applied.diagnostics_only is False, applied)
+        require(applied.cache_entry_bytes is not None and applied.cache_entry_bytes > 0, applied)
+
+        diagnostics = build_client_instruction_cache_write_diagnostics(applied)
+        require(diagnostics is not None and diagnostics["cache_entry_written"] is True, diagnostics)
+        require(diagnostics["atomic_write_used"] is True, diagnostics)
+        assert_not_leaked(diagnostics)
+        assert_client_instruction_cache_write_diagnostics_content_free(diagnostics)
+
+        node = build_client_instruction_cache_write_node_result(applied)
+        require(node is not None and node.status == "applied", node)
+        require(node.decision == "client_instruction_cache_write_written", node)
+        require(node.artifacts and node.artifacts[0]["applied"] is True, node)
+
+        target = Path(cache_root) / f"{identity.identity.cache_key_sha256}.json"
+        require(target.exists() and target.is_file(), target)
+        persisted = json.loads(target.read_text(encoding="utf-8"))
+        require(persisted["raw_instruction_persisted"] is False, persisted)
+        require(persisted["raw_response_persisted"] is False, persisted)
+        lookup = resolve_client_instruction_cache_lookup(
+            identity,
+            persisted,
+            enabled=True,
+            route_model=ROUTE,
+            character_id=CHARACTER,
+            parser_version=parse_result.parser_version,
+        )
+        require(lookup is not None and lookup.status == "hit" and lookup.hit is True, lookup)
+    print("ok cache write applies atomically and reader validates persisted entry")
 
 
 def test_cache_plan_save_requested() -> None:
@@ -283,6 +353,7 @@ def main() -> int:
     parse_result = test_typed_parse_contract()
     test_typed_parse_malformed()
     test_cache_write_preflight(parse_result)
+    test_cache_write_apply(parse_result)
     test_cache_plan_save_requested()
     test_cache_write_dependency_gate()
     print("client_instruction_typed_parse_cache_write_smoke passed")
