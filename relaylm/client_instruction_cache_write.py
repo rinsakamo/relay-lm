@@ -1,18 +1,28 @@
-"""Diagnostics-only cache-write preflight for typed client instruction parses."""
+"""Gated cache-write helper for typed client instruction parses."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+import hashlib
+import json
+import os
+from pathlib import Path
 import re
+import secrets
+import stat
 from typing import Any, Literal
 
+from relaylm.client_instruction_cache_lookup import resolve_client_instruction_cache_lookup
 from relaylm.client_instruction_identity import ClientInstructionIdentityResult
 from relaylm.client_instruction_typed_parse import ClientInstructionTypedParseResult
 from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
 
 SCHEMA_VERSION = "client_instruction_cache_write_preflight.v0"
 _ENTRY_SCHEMA_VERSION = "relaylm.client_instruction_cache.v0"
+_CACHE_KEY_SCHEMA_VERSION = "client_instruction_cache_key.v0"
+_AUTHORITY_POLICY_VERSION = "client_instruction_authority.v1"
+_DEFAULT_MAX_ENTRY_BYTES = 65536
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _FORBIDDEN_DIAGNOSTIC_KEYS = frozenset(
     {
@@ -53,7 +63,7 @@ _FORBIDDEN_DIAGNOSTIC_KEYS = frozenset(
 @dataclass(frozen=True)
 class ClientInstructionCacheWriteResult:
     schema_version: str
-    status: Literal["ready", "dry_run", "blocked", "skipped"]
+    status: Literal["ready", "dry_run", "blocked", "skipped", "written"]
     write_preflight_ready: bool
     dry_run_only: bool
     cache_entry_candidate: Mapping[str, Any] | None = field(
@@ -65,10 +75,20 @@ class ClientInstructionCacheWriteResult:
     cache_entry_candidate_built: bool = False
     cache_write_attempted: bool = False
     cache_entry_written: bool = False
+    cache_entry_bytes: int | None = None
+    atomic_write_used: bool = False
     runtime_private: bool = True
     content_bearing: bool = True
     diagnostics_only: bool = True
     applied: bool = False
+
+
+@dataclass(frozen=True)
+class _WriteOutcome:
+    written: bool
+    attempted: bool
+    byte_count: int | None
+    blocked_reasons: tuple[str, ...] = ()
 
 
 def build_client_instruction_cache_write_preflight(
@@ -80,8 +100,16 @@ def build_client_instruction_cache_write_preflight(
     managed_route: bool,
     route_model: str,
     character_id: str | None,
+    cache_root: str | Path | None = None,
+    max_entry_bytes: int = _DEFAULT_MAX_ENTRY_BYTES,
 ) -> ClientInstructionCacheWriteResult | None:
-    """Plan a future cache write without performing any filesystem mutation."""
+    """Plan or apply a gated client-instruction cache write.
+
+    The default/dry-run path performs no filesystem mutation. When
+    ``dry_run_only`` is false, the helper validates the candidate entry through
+    the cache lookup contract and writes one JSON file under ``cache_root`` via
+    temp-file + fsync + atomic replace.
+    """
 
     if not enabled:
         return None
@@ -127,6 +155,21 @@ def build_client_instruction_cache_write_preflight(
 
     assert identity is not None and parse_result is not None and parse_result.artifact is not None
     artifact = parse_result.artifact
+    runtime_cache_key_sha256 = _runtime_cache_key_sha256(
+        instruction_fingerprint_sha256=identity.instruction_fingerprint_sha256,
+        route_model=route_model,
+        character_id=character_id,
+        instruction_parse_schema_version=artifact.schema_version,
+    )
+    if identity.cache_key_sha256 != runtime_cache_key_sha256:
+        return ClientInstructionCacheWriteResult(
+            schema_version=SCHEMA_VERSION,
+            status="blocked",
+            write_preflight_ready=False,
+            dry_run_only=dry_run_only,
+            blocked_reasons=("source_identity_parser_version_not_runtime_compatible",),
+        )
+
     entry = {
         "schema_version": _ENTRY_SCHEMA_VERSION,
         "cache_key_sha256": identity.cache_key_sha256,
@@ -134,8 +177,11 @@ def build_client_instruction_cache_write_preflight(
         "route_model": route_model,
         "character_id": character_id,
         "instruction_parse_schema_version": artifact.schema_version,
-        "authority_policy_version": "client_instruction_authority.v1",
-        "parser_version": parse_result.parser_version,
+        "authority_policy_version": _AUTHORITY_POLICY_VERSION,
+        # Runtime cache lookup currently validates entries with parser_version=None.
+        # Keep C5b writer output aligned until a later runtime wiring slice carries
+        # parser-version expectations through lookup.
+        "parser_version": None,
         "parse_status": "valid",
         "scene_state": {
             "scene_type": artifact.scene_type,
@@ -151,7 +197,41 @@ def build_client_instruction_cache_write_preflight(
         "raw_instruction_persisted": False,
         "raw_response_persisted": False,
     }
-    if not dry_run_only:
+    reader_reasons = _reader_validation_reasons(
+        entry,
+        identity_result,
+        route_model=route_model,
+        character_id=character_id,
+        parser_version=None,
+    )
+    if reader_reasons:
+        return ClientInstructionCacheWriteResult(
+            schema_version=SCHEMA_VERSION,
+            status="blocked",
+            write_preflight_ready=False,
+            dry_run_only=dry_run_only,
+            cache_entry_candidate=entry,
+            cache_entry_candidate_built=True,
+            blocked_reasons=tuple(_unique(reader_reasons)),
+        )
+
+    if dry_run_only:
+        return ClientInstructionCacheWriteResult(
+            schema_version=SCHEMA_VERSION,
+            status="dry_run",
+            write_preflight_ready=True,
+            dry_run_only=True,
+            cache_entry_candidate=entry,
+            cache_entry_candidate_built=True,
+        )
+
+    outcome = _write_cache_entry(
+        entry,
+        cache_key_sha256=identity.cache_key_sha256,
+        cache_root=cache_root,
+        max_entry_bytes=max_entry_bytes,
+    )
+    if not outcome.written:
         return ClientInstructionCacheWriteResult(
             schema_version=SCHEMA_VERSION,
             status="blocked",
@@ -159,15 +239,25 @@ def build_client_instruction_cache_write_preflight(
             dry_run_only=False,
             cache_entry_candidate=entry,
             cache_entry_candidate_built=True,
-            blocked_reasons=("cache_writer_not_implemented",),
+            cache_write_attempted=outcome.attempted,
+            cache_entry_written=False,
+            cache_entry_bytes=outcome.byte_count,
+            blocked_reasons=outcome.blocked_reasons,
         )
+
     return ClientInstructionCacheWriteResult(
         schema_version=SCHEMA_VERSION,
-        status="dry_run",
+        status="written",
         write_preflight_ready=True,
-        dry_run_only=True,
+        dry_run_only=False,
         cache_entry_candidate=entry,
         cache_entry_candidate_built=True,
+        cache_write_attempted=True,
+        cache_entry_written=True,
+        cache_entry_bytes=outcome.byte_count,
+        atomic_write_used=True,
+        diagnostics_only=False,
+        applied=True,
     )
 
 
@@ -185,6 +275,8 @@ def build_client_instruction_cache_write_diagnostics(
         "cache_entry_candidate_built": result.cache_entry_candidate_built,
         "cache_write_attempted": result.cache_write_attempted,
         "cache_entry_written": result.cache_entry_written,
+        "cache_entry_bytes": result.cache_entry_bytes,
+        "atomic_write_used": result.atomic_write_used,
         "raw_instruction_persisted": False,
         "raw_response_persisted": False,
         "blocked_reasons": tuple(result.blocked_reasons),
@@ -205,19 +297,19 @@ def build_client_instruction_cache_write_node_result(
         return None
     return build_pipeline_node_result(
         node_name="client_instruction_cache_write",
-        status="diagnostic_only",
+        status="applied" if result.applied else "diagnostic_only",
         decision=_decision(result),
         blocked_reasons=list(result.blocked_reasons),
         diagnostics={key: value for key, value in diagnostics.items() if key != "blocked_reasons"},
         artifacts=[
             {
-                "artifact_name": "client_instruction_cache_write_preflight_summary",
+                "artifact_name": "client_instruction_cache_write_summary",
                 "schema_version": SCHEMA_VERSION,
                 "present": True,
-                "diagnostics_only": True,
+                "diagnostics_only": result.diagnostics_only,
                 "content_free": True,
                 "runtime_private_source": True,
-                "applied": False,
+                "applied": result.applied,
             }
         ],
     )
@@ -236,6 +328,162 @@ def assert_client_instruction_cache_write_diagnostics_content_free(value: Any) -
         return
     if isinstance(value, str) and _SHA256_RE.fullmatch(value):
         raise ValueError("hash value is not allowed in diagnostics")
+
+
+def _reader_validation_reasons(
+    entry: Mapping[str, Any],
+    identity_result: ClientInstructionIdentityResult,
+    *,
+    route_model: str,
+    character_id: str | None,
+    parser_version: str | None,
+) -> list[str]:
+    lookup = resolve_client_instruction_cache_lookup(
+        identity_result,
+        entry,
+        enabled=True,
+        route_model=route_model,
+        character_id=character_id,
+        parser_version=parser_version,
+    )
+    if lookup is not None and lookup.status == "hit" and lookup.hit is True:
+        return []
+    reasons = ["cache_entry_reader_validation_failed"]
+    if lookup is not None:
+        reasons.extend(lookup.blocked_reasons)
+        if lookup.miss_reason:
+            reasons.append(lookup.miss_reason)
+    return _unique(reasons)
+
+
+def _write_cache_entry(
+    entry: Mapping[str, Any],
+    *,
+    cache_key_sha256: str,
+    cache_root: str | Path | None,
+    max_entry_bytes: int,
+) -> _WriteOutcome:
+    if not _is_sha256(cache_key_sha256):
+        return _WriteOutcome(False, False, None, ("cache_key_invalid",))
+    if cache_root is None or not str(cache_root).strip():
+        return _WriteOutcome(False, False, None, ("cache_root_missing",))
+    if not _bounded_int(max_entry_bytes, 1048576) or int(max_entry_bytes) <= 0:
+        return _WriteOutcome(False, False, None, ("cache_entry_size_limit_invalid",))
+
+    encoded = (
+        json.dumps(entry, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode("utf-8")
+    byte_count = len(encoded)
+    if byte_count > int(max_entry_bytes):
+        return _WriteOutcome(False, False, byte_count, ("cache_entry_too_large",))
+
+    root = Path(cache_root)
+    if _has_symlink_component(root):
+        return _WriteOutcome(False, False, byte_count, ("cache_root_symlink_blocked",))
+    try:
+        root_stat = root.lstat()
+    except FileNotFoundError:
+        return _WriteOutcome(False, False, byte_count, ("cache_root_missing",))
+    except OSError:
+        return _WriteOutcome(False, False, byte_count, ("cache_write_failed",))
+    if stat.S_ISLNK(root_stat.st_mode):
+        return _WriteOutcome(False, False, byte_count, ("cache_root_symlink_blocked",))
+    if not stat.S_ISDIR(root_stat.st_mode):
+        return _WriteOutcome(False, False, byte_count, ("cache_root_not_directory",))
+
+    attempted = False
+    tmp_name: str | None = None
+    tmp_fd: int | None = None
+    root_fd: int | None = None
+    try:
+        root_fd = _open_validated_directory_fd(root, root_stat)
+        target_name = f"{cache_key_sha256}.json"
+        try:
+            target_stat = os.stat(target_name, dir_fd=root_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            target_stat = None
+        if target_stat is not None and stat.S_ISLNK(target_stat.st_mode):
+            return _WriteOutcome(False, False, byte_count, ("cache_target_symlink_rejected",))
+
+        tmp_name = f".{cache_key_sha256}.{secrets.token_hex(8)}.tmp"
+        temp_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+        attempted = True
+        tmp_fd = os.open(tmp_name, temp_flags, 0o600, dir_fd=root_fd)
+        with os.fdopen(tmp_fd, "wb") as handle:
+            tmp_fd = None
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_name, target_name, src_dir_fd=root_fd, dst_dir_fd=root_fd)
+        tmp_name = None
+        _fsync_directory_fd(root_fd)
+    except OSError:
+        if tmp_fd is not None:
+            try:
+                os.close(tmp_fd)
+            except OSError:
+                pass
+        if tmp_name and root_fd is not None:
+            try:
+                os.unlink(tmp_name, dir_fd=root_fd)
+            except OSError:
+                pass
+        return _WriteOutcome(False, attempted, byte_count, ("cache_write_failed",))
+    finally:
+        if root_fd is not None:
+            try:
+                os.close(root_fd)
+            except OSError:
+                pass
+    return _WriteOutcome(True, attempted, byte_count, ())
+
+
+def _open_validated_directory_fd(path: Path, expected_stat: os.stat_result) -> int:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags)
+    try:
+        actual_stat = os.fstat(fd)
+        if not stat.S_ISDIR(actual_stat.st_mode):
+            raise OSError("cache root is not a directory")
+        if (actual_stat.st_dev, actual_stat.st_ino) != (
+            expected_stat.st_dev,
+            expected_stat.st_ino,
+        ):
+            raise OSError("cache root changed during validation")
+    except Exception:
+        os.close(fd)
+        raise
+    return fd
+
+
+def _fsync_directory_fd(dir_fd: int) -> None:
+    try:
+        os.fsync(dir_fd)
+    except OSError:
+        pass
+
+
+def _has_symlink_component(path: Path) -> bool:
+    candidate = Path(path)
+    if not candidate.is_absolute():
+        candidate = Path.cwd() / candidate
+    parts = candidate.parts
+    if not parts:
+        return False
+
+    current = Path(parts[0])
+    start_index = 1
+    if current == Path("."):
+        current = Path.cwd()
+        start_index = 0
+    for part in parts[start_index:]:
+        current = current / part
+        try:
+            if stat.S_ISLNK(current.lstat().st_mode):
+                return True
+        except OSError:
+            return False
+    return False
 
 
 def _entry_role(role: Any) -> dict[str, Any] | None:
@@ -257,9 +505,41 @@ def _entry_context(context: Any) -> dict[str, Any]:
     }
 
 
+def _runtime_cache_key_sha256(
+    *,
+    instruction_fingerprint_sha256: str,
+    route_model: str,
+    character_id: str | None,
+    instruction_parse_schema_version: str,
+) -> str:
+    return _sha256_json(
+        {
+            "schema_version": _CACHE_KEY_SCHEMA_VERSION,
+            "instruction_fingerprint_sha256": instruction_fingerprint_sha256,
+            "route_model": route_model,
+            "character_id": character_id,
+            "instruction_parse_schema_version": instruction_parse_schema_version,
+            "authority_policy_version": _AUTHORITY_POLICY_VERSION,
+            "parser_version": None,
+        }
+    )
+
+
+def _sha256_json(value: Mapping[str, Any]) -> str:
+    canonical_json = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
+
+
 def _decision(result: ClientInstructionCacheWriteResult) -> str:
     if result.status == "dry_run":
         return "client_instruction_cache_write_dry_run"
+    if result.status == "written":
+        return "client_instruction_cache_write_written"
     if result.status == "ready":
         return "client_instruction_cache_write_ready"
     if result.status == "skipped":
@@ -273,6 +553,14 @@ def _is_sha256(value: Any) -> bool:
 
 def _bounded_text(value: Any, maximum: int) -> bool:
     return isinstance(value, str) and bool(value.strip()) and len(value) <= maximum
+
+
+def _bounded_int(value: Any, maximum: int) -> bool:
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and 0 <= value <= maximum
+    )
 
 
 def _unique(values: Sequence[str]) -> list[str]:

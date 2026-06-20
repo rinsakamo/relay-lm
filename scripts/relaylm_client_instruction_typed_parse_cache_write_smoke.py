@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Smoke checks for Phase 5-C5a typed parse and cache-write preflight."""
+"""Smoke checks for typed parse and gated cache-write behavior."""
 
 from __future__ import annotations
 
 import copy
 import json
+import os
 import sys
+import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -15,9 +17,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from relaylm.client_instruction_cache import build_client_instruction_cache_dry_run
+from relaylm.client_instruction_cache_lookup import resolve_client_instruction_cache_lookup
 from relaylm.client_instruction_cache_write import (
     assert_client_instruction_cache_write_diagnostics_content_free,
     build_client_instruction_cache_write_diagnostics,
+    build_client_instruction_cache_write_node_result,
     build_client_instruction_cache_write_preflight,
 )
 from relaylm.client_instruction_extraction import build_client_instruction_extraction_dry_run
@@ -49,7 +53,7 @@ def require(condition: bool, detail: object) -> None:
         raise AssertionError(detail)
 
 
-def identity_result() -> Any:
+def identity_result(*, parser_version: str | None = None) -> Any:
     payload = {
         "messages": [
             {"role": "system", "content": "c5a system instruction"},
@@ -66,6 +70,7 @@ def identity_result() -> Any:
         enabled=True,
         route_model=ROUTE,
         character_id=CHARACTER,
+        parser_version=parser_version,
     )
     require(result is not None and result.ready and result.identity is not None, result)
     return result
@@ -203,6 +208,7 @@ def test_cache_write_preflight(parse_result: Any) -> None:
     require(result.cache_write_attempted is False, result)
     require(result.cache_entry_written is False, result)
     require(result.cache_entry_candidate is not None, result)
+    require(result.cache_entry_candidate["parser_version"] is None, result)
     require(result.cache_entry_candidate["raw_instruction_persisted"] is False, result)
     require(result.cache_entry_candidate["raw_response_persisted"] is False, result)
     diagnostics = build_client_instruction_cache_write_diagnostics(result)
@@ -210,7 +216,25 @@ def test_cache_write_preflight(parse_result: Any) -> None:
     assert_not_leaked(diagnostics)
     assert_client_instruction_cache_write_diagnostics_content_free(diagnostics)
 
-    actual_apply = build_client_instruction_cache_write_preflight(
+    versioned_identity = identity_result(parser_version="typed-parser-v1")
+    versioned = build_client_instruction_cache_write_preflight(
+        parse_result=parse_result,
+        identity_result=versioned_identity,
+        enabled=True,
+        dry_run_only=True,
+        managed_route=True,
+        route_model=ROUTE,
+        character_id=CHARACTER,
+    )
+    require(versioned is not None and versioned.status == "blocked", versioned)
+    require(
+        "source_identity_parser_version_not_runtime_compatible"
+        in versioned.blocked_reasons,
+        versioned,
+    )
+    require(versioned.cache_entry_candidate_built is False, versioned)
+
+    missing_root = build_client_instruction_cache_write_preflight(
         parse_result=parse_result,
         identity_result=identity,
         enabled=True,
@@ -219,8 +243,29 @@ def test_cache_write_preflight(parse_result: Any) -> None:
         route_model=ROUTE,
         character_id=CHARACTER,
     )
-    require(actual_apply is not None and actual_apply.status == "blocked", actual_apply)
-    require("cache_writer_not_implemented" in actual_apply.blocked_reasons, actual_apply)
+    require(missing_root is not None and missing_root.status == "blocked", missing_root)
+    require("cache_root_missing" in missing_root.blocked_reasons, missing_root)
+    require(missing_root.cache_write_attempted is False, missing_root)
+
+    with tempfile.TemporaryDirectory(prefix="relaylm-c5b-missing-root-") as tmp:
+        absent_root = Path(tmp) / "missing" / "cache"
+        absent_root_result = build_client_instruction_cache_write_preflight(
+            parse_result=parse_result,
+            identity_result=identity,
+            enabled=True,
+            dry_run_only=False,
+            managed_route=True,
+            route_model=ROUTE,
+            character_id=CHARACTER,
+            cache_root=absent_root,
+        )
+        require(
+            absent_root_result is not None and absent_root_result.status == "blocked",
+            absent_root_result,
+        )
+        require("cache_root_missing" in absent_root_result.blocked_reasons, absent_root_result)
+        require(absent_root_result.cache_write_attempted is False, absent_root_result)
+        require(absent_root.exists() is False, absent_root)
 
     blocked = build_client_instruction_cache_write_preflight(
         parse_result=None,
@@ -233,7 +278,106 @@ def test_cache_write_preflight(parse_result: Any) -> None:
     )
     require(blocked is not None and blocked.status == "blocked", blocked)
     require("source_typed_parse_not_ready" in blocked.blocked_reasons, blocked)
-    print("ok cache write preflight is gated no-op and content-free")
+    print("ok cache write preflight is gated and content-free")
+
+
+def test_cache_write_apply(parse_result: Any) -> None:
+    identity = identity_result()
+    assert identity.identity is not None
+    with tempfile.TemporaryDirectory(prefix="relaylm-c5b-cache-") as cache_root:
+        too_large = build_client_instruction_cache_write_preflight(
+            parse_result=parse_result,
+            identity_result=identity,
+            enabled=True,
+            dry_run_only=False,
+            managed_route=True,
+            route_model=ROUTE,
+            character_id=CHARACTER,
+            cache_root=cache_root,
+            max_entry_bytes=1,
+        )
+        require(too_large is not None and too_large.status == "blocked", too_large)
+        require("cache_entry_too_large" in too_large.blocked_reasons, too_large)
+        require(too_large.cache_write_attempted is False, too_large)
+        require(not list(Path(cache_root).glob("*.json")), list(Path(cache_root).glob("*.json")))
+
+        applied = build_client_instruction_cache_write_preflight(
+            parse_result=parse_result,
+            identity_result=identity,
+            enabled=True,
+            dry_run_only=False,
+            managed_route=True,
+            route_model=ROUTE,
+            character_id=CHARACTER,
+            cache_root=cache_root,
+            max_entry_bytes=65536,
+        )
+        require(applied is not None and applied.status == "written", applied)
+        require(applied.cache_write_attempted is True, applied)
+        require(applied.cache_entry_written is True, applied)
+        require(applied.atomic_write_used is True, applied)
+        require(applied.applied is True and applied.diagnostics_only is False, applied)
+        require(applied.cache_entry_bytes is not None and applied.cache_entry_bytes > 0, applied)
+
+        diagnostics = build_client_instruction_cache_write_diagnostics(applied)
+        require(diagnostics is not None and diagnostics["cache_entry_written"] is True, diagnostics)
+        require(diagnostics["atomic_write_used"] is True, diagnostics)
+        assert_not_leaked(diagnostics)
+        assert_client_instruction_cache_write_diagnostics_content_free(diagnostics)
+
+        node = build_client_instruction_cache_write_node_result(applied)
+        require(node is not None and node.status == "applied", node)
+        require(node.decision == "client_instruction_cache_write_written", node)
+        require(node.artifacts and node.artifacts[0]["applied"] is True, node)
+
+        target = Path(cache_root) / f"{identity.identity.cache_key_sha256}.json"
+        require(target.exists() and target.is_file(), target)
+        persisted = json.loads(target.read_text(encoding="utf-8"))
+        require(persisted["parser_version"] is None, persisted)
+        require(persisted["raw_instruction_persisted"] is False, persisted)
+        require(persisted["raw_response_persisted"] is False, persisted)
+        lookup = resolve_client_instruction_cache_lookup(
+            identity,
+            persisted,
+            enabled=True,
+            route_model=ROUTE,
+            character_id=CHARACTER,
+        )
+        require(lookup is not None and lookup.status == "hit" and lookup.hit is True, lookup)
+    print("ok cache write applies atomically and runtime lookup validates persisted entry")
+
+
+def test_cache_write_symlink_root_component(parse_result: Any) -> None:
+    if not hasattr(os, "symlink"):
+        print("skip cache writer symlink component smoke: os.symlink unavailable")
+        return
+    identity = identity_result()
+    with tempfile.TemporaryDirectory(prefix="relaylm-c5b-cache-link-") as tmp:
+        tmp_path = Path(tmp)
+        real_parent = tmp_path / "real-parent"
+        link_parent = tmp_path / "link-parent"
+        real_parent.mkdir()
+        try:
+            os.symlink(real_parent, link_parent, target_is_directory=True)
+        except OSError:
+            print("skip cache writer symlink component smoke: symlink creation failed")
+            return
+        blocked = build_client_instruction_cache_write_preflight(
+            parse_result=parse_result,
+            identity_result=identity,
+            enabled=True,
+            dry_run_only=False,
+            managed_route=True,
+            route_model=ROUTE,
+            character_id=CHARACTER,
+            cache_root=link_parent / "cache",
+            max_entry_bytes=65536,
+        )
+        require(blocked is not None and blocked.status == "blocked", blocked)
+        require("cache_root_symlink_blocked" in blocked.blocked_reasons, blocked)
+        require(blocked.cache_write_attempted is False, blocked)
+        require(not (real_parent / "cache").exists(), real_parent)
+    print("ok cache writer rejects symlinked root components")
 
 
 def test_cache_plan_save_requested() -> None:
@@ -283,6 +427,8 @@ def main() -> int:
     parse_result = test_typed_parse_contract()
     test_typed_parse_malformed()
     test_cache_write_preflight(parse_result)
+    test_cache_write_apply(parse_result)
+    test_cache_write_symlink_root_component(parse_result)
     test_cache_plan_save_requested()
     test_cache_write_dependency_gate()
     print("client_instruction_typed_parse_cache_write_smoke passed")

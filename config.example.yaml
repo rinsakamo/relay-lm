@@ -93,10 +93,12 @@ client_instruction_cache_lookup_enabled: false
 client_instruction_cache_root:
 client_instruction_cache_max_entry_bytes: 65536
 
-# Client instruction typed parse and cache-write preflight are default-off.
-# C5a validates request-local parse candidates and can plan a cache save, but it
-# does not parse backend responses, write cache files, mutate backend payloads,
-# or apply RelaySCN state. Actual cache writes remain unavailable.
+# Client instruction typed parse and cache-write remain default-off.
+# With dry_run_only=true, RelayLM validates request-local parse candidates and
+# plans cache writes only. C5b adds a direct helper for gated atomic writes when
+# an explicit caller supplies dry_run_only=false and client_instruction_cache_root.
+# The current runtime still does not parse backend responses, mutate backend
+# payloads, apply RelaySCN state, or invoke cache writes automatically.
 client_instruction_typed_parse_enabled: false
 client_instruction_cache_write_enabled: false
 client_instruction_cache_write_dry_run_only: true
