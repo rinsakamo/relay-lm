@@ -220,6 +220,35 @@ def main() -> int:
             require(primary_only["layout_compatibility"]["migration_required"] is True, primary_only)
             print("ok primary-only partial migration still requires secondary MEM layout")
 
+        with tempfile.TemporaryDirectory() as symlink_td, tempfile.TemporaryDirectory() as outside_td:
+            symlink_root = Path(symlink_td)
+            outside_root = Path(outside_td)
+            outside_sessions = outside_root / "sessions"
+            outside_sessions.mkdir(parents=True)
+            (outside_sessions / "outside.md").write_text("# Outside\nleak\n", encoding="utf-8")
+            symlink_mem = symlink_root / "memory" / "mem"
+            (symlink_mem / "primary").mkdir(parents=True)
+            (symlink_mem / "secondary").mkdir(parents=True)
+            (symlink_mem / "index.md").write_text("# Index\n", encoding="utf-8")
+            (symlink_mem / "log.md").write_text("# Log\n", encoding="utf-8")
+            link_path = symlink_mem / "primary" / "sessions"
+            try:
+                link_path.symlink_to(outside_sessions, target_is_directory=True)
+            except (OSError, NotImplementedError):
+                print("ok symlink candidate directory smoke skipped on unsupported platform")
+            else:
+                symlink_candidates = discover_relaymem_page_candidates(
+                    root_path=str(symlink_root),
+                    query_terms=["outside"],
+                )
+                require(symlink_candidates["candidates"] == [], symlink_candidates)
+                require(
+                    symlink_candidates["fallback_reason"]
+                    == "memory_store_no_candidate_pages",
+                    symlink_candidates,
+                )
+                print("ok symlinked target MEM candidate directory is not scanned")
+
         with tempfile.TemporaryDirectory() as target_td:
             target_root = Path(target_td)
             target_mem = target_root / "memory" / "mem"
