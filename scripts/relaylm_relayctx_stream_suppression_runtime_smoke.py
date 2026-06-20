@@ -42,6 +42,18 @@ def sse_content(content: str) -> bytes:
     return ("data: " + json.dumps(body, ensure_ascii=False) + "\n\n").encode("utf-8")
 
 
+def sse_multi_content(first: str, second: str) -> bytes:
+    body = {
+        "id": "chatcmpl-smoke",
+        "object": "chat.completion.chunk",
+        "choices": [
+            {"index": 0, "delta": {"content": first}},
+            {"index": 1, "delta": {"content": second}},
+        ],
+    }
+    return ("data: " + json.dumps(body, ensure_ascii=False) + "\n\n").encode("utf-8")
+
+
 def sse_done() -> bytes:
     return b"data: [DONE]\n\n"
 
@@ -229,6 +241,25 @@ async def assert_invalid_decode_fails_closed() -> None:
     print("ok runtime stream wrapper invalid decode fails closed")
 
 
+async def assert_multi_content_field_fails_closed() -> None:
+    ctx = DummyPipelineContext()
+    output = await collect(
+        wrap_stream_with_relayctx_suppression(
+            iter_bytes([sse_multi_content(VISIBLE_PREFIX, RELAYCTX_UPDATE_OPEN + INTERNAL_BODY), sse_done()]),
+            enabled=True,
+            dry_run_only=False,
+            pipeline_context=ctx,
+        )
+    )
+    require(output == b"", output)
+    log = node_log(ctx)
+    require(log["status"] == "failed", log)
+    require(log["decision"] == "invalid_input", log)
+    require("multiple_stream_content_fields" in log["blocked_reasons"], log)
+    assert_content_free(log)
+    print("ok runtime stream wrapper ambiguous multi-content frame fails closed")
+
+
 async def assert_backend_iterator_error_has_no_duplicate_replay() -> None:
     chunks = [sse_content(VISIBLE_PREFIX)]
     ctx = DummyPipelineContext()
@@ -257,6 +288,7 @@ async def main_async() -> None:
     await assert_apply_detects_marker_split_across_bytes()
     await assert_terminal_partial_marker_blocked()
     await assert_invalid_decode_fails_closed()
+    await assert_multi_content_field_fails_closed()
     await assert_backend_iterator_error_has_no_duplicate_replay()
 
 
