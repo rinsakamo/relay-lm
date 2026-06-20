@@ -1,11 +1,3 @@
-"""RelayMEM retrieval priority runtime dry-run wiring.
-
-This module keeps MEM-M2b bounded to runtime selection ordering and a
-content-free projection. It does not read memory directly outside the existing
-store discovery helper, write memory, mutate RelaySOUL, or inject MEM snippets
-into backend prompts.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -14,21 +6,12 @@ from typing import Any
 from relaylm.relaymem_retrieval_priority import prioritize_relaymem_candidates
 
 _SCHEMA_VERSION = "relaymem.retrieval_priority_runtime.v0"
-_MIN_PRIORITY_DISCOVERY_CAP = 8
-_DISCOVERY_CAP_MULTIPLIER = 4
+_MAX_PRIORITY_DISCOVERY_CANDIDATES = 128
 
 
 def install_relaymem_retrieval_priority_runtime(
     retrieval_module: Any | None = None,
 ) -> None:
-    """Install dry-run priority wiring on ``relaymem_retrieval``.
-
-    The existing retrieval artifact builder keeps owning scene gates, recovery
-    gates, snippet evidence, and apply readiness. This installer only replaces
-    candidate selection with priority-ordered selection and annotates the returned
-    artifact with a content-free priority projection.
-    """
-
     if retrieval_module is None:
         from relaylm import relaymem_retrieval as retrieval_module
 
@@ -52,10 +35,13 @@ def install_relaymem_retrieval_priority_runtime(
         if not isinstance(root_path, str) or not root_path:
             return [], []
 
+        final_limit = max(0, int(max_candidates))
+        discovery_cap = _priority_discovery_cap(final_limit)
         discovery = retrieval_module.discover_relaymem_page_candidates(
             root_path=root_path,
             query_terms=query_terms,
-            max_candidates=_priority_discovery_cap(max_candidates),
+            max_candidates=discovery_cap,
+            max_scan=discovery_cap,
         )
         candidates: list[dict[str, Any]] = []
         for candidate in discovery.get("candidates", []):
@@ -73,7 +59,7 @@ def install_relaymem_retrieval_priority_runtime(
 
         prioritized = prioritize_relaymem_candidates(
             candidates,
-            max_candidates=max(0, int(max_candidates)),
+            max_candidates=final_limit,
         )
         blocked = [
             {"path": str(item.get("path")), "reason": str(item.get("reason"))}
@@ -112,7 +98,7 @@ def _priority_discovery_cap(max_candidates: int) -> int:
     normalized = max(0, int(max_candidates))
     if normalized == 0:
         return 0
-    return max(_MIN_PRIORITY_DISCOVERY_CAP, normalized * _DISCOVERY_CAP_MULTIPLIER)
+    return _MAX_PRIORITY_DISCOVERY_CANDIDATES
 
 
 def _runtime_priority_projection(
