@@ -146,6 +146,29 @@ def main() -> int:
     require("malformed_relayscn_artifact" in malformed["blocked_reasons"], malformed)
     print("ok malformed RelaySCN policy fails closed")
 
+    non_finite = _scene("design_talk")
+    non_finite["scene_state"]["confidence"] = float("nan")
+    non_finite["scene_state"]["stability"] = float("inf")
+    non_finite_result = build_relaymem_primary_formation_dry_run(
+        relayscn_scene_policy_artifact=non_finite,
+        relayemo_artifact={
+            "assistant_emotion_state": {"intensity": float("nan")},
+            "user_affect_estimate": {"confidence": float("inf")},
+        },
+        messages=_messages(),
+        enabled=True,
+    )
+    require(non_finite_result["candidate_count"] == 1, non_finite_result)
+    require(
+        non_finite_result["candidates"][0]["salience_band"] == "unknown",
+        non_finite_result,
+    )
+    require(
+        non_finite_result["candidates"][0]["stability_band"] == "unknown",
+        non_finite_result,
+    )
+    print("ok non-finite salience and stability inputs are ignored")
+
     return 0
 
 
