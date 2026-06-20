@@ -36,6 +36,7 @@ Phase 5.5 starts with stream sentinel buffer dry-run and safe streaming diagnost
 Memory lifecycle:
 
 - [Memory Lifecycle Design](memory_lifecycle_design.md) — short-term CTX, governed experience evidence, autonomous ordinary MEM formation, RelaySLP, and SOUL Lab memory operations.
+- [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — independent MEM-M bounded implementation track for store contracts, retrieval usability, primary memory formation, secondary consolidation, and Lab-ready operations.
 
 SOUL Lab product layers:
 
