@@ -53,7 +53,7 @@ def require(condition: bool, detail: object) -> None:
         raise AssertionError(detail)
 
 
-def identity_result() -> Any:
+def identity_result(*, parser_version: str | None = None) -> Any:
     payload = {
         "messages": [
             {"role": "system", "content": "c5a system instruction"},
@@ -70,6 +70,7 @@ def identity_result() -> Any:
         enabled=True,
         route_model=ROUTE,
         character_id=CHARACTER,
+        parser_version=parser_version,
     )
     require(result is not None and result.ready and result.identity is not None, result)
     return result
@@ -214,6 +215,24 @@ def test_cache_write_preflight(parse_result: Any) -> None:
     require(diagnostics is not None and diagnostics["cache_entry_written"] is False, diagnostics)
     assert_not_leaked(diagnostics)
     assert_client_instruction_cache_write_diagnostics_content_free(diagnostics)
+
+    versioned_identity = identity_result(parser_version="typed-parser-v1")
+    versioned = build_client_instruction_cache_write_preflight(
+        parse_result=parse_result,
+        identity_result=versioned_identity,
+        enabled=True,
+        dry_run_only=True,
+        managed_route=True,
+        route_model=ROUTE,
+        character_id=CHARACTER,
+    )
+    require(versioned is not None and versioned.status == "blocked", versioned)
+    require(
+        "source_identity_parser_version_not_runtime_compatible"
+        in versioned.blocked_reasons,
+        versioned,
+    )
+    require(versioned.cache_entry_candidate_built is False, versioned)
 
     missing_root = build_client_instruction_cache_write_preflight(
         parse_result=parse_result,
