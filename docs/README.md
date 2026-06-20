@@ -25,7 +25,7 @@ RelayLM documentation is AI-first: documents should be understandable when retri
 - [Current project status](PROJECT_STATUS.md) — concise current boundary and next choices
 - [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing
-- [Phase 5-C4a completed handoff](architecture/phase5c4a_instruction_bearing_managed_apply_handoff.md)
+- [Phase 5.5 Stream Unpack bounded slice](architecture/phase5_5_stream_unpack_bounded_slice.md) — next product-critical streaming boundary
 - [Architecture docs](architecture/README.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Contract docs](contracts/README.md)
@@ -39,9 +39,9 @@ RelayLM documentation is AI-first: documents should be understandable when retri
 
 The repository-wide documentation audit, audit Phases 1–8, is complete as of 2026-06-17 JST. That numbering is independent of runtime implementation phases.
 
-Phase 5-C4a instruction-bearing managed apply is implemented. Current instruction evidence for v1 actual apply is selected through explicit `client_instruction_source.v1` provenance; frontend summaries and memory notes are not inferred as instruction merely from role or position.
+Use [Project Status](PROJECT_STATUS.md) for the current developer-facing view and [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md) for later sequencing.
 
-Use [Project Status](PROJECT_STATUS.md) for the current developer-facing view and [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md) for later sequencing. The Phase 5-C4a handoff is now a completed implementation record, not the one active slice.
+Phase 5.5 Stream Unpack is the next product-critical streaming boundary. The bounded slice design starts with Phase 5.5-A stream sentinel buffer dry-run and freezes new RelaySOUL execution-gate design expansion until Phase 5.5-A and 5.5-B are complete, except for runtime-safety unblockers.
 
 Use [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) before treating proposed schemas, future execution gates, or historical compatibility artifacts as current behavior.
 
@@ -64,7 +64,7 @@ When documents disagree:
 - [Architecture docs index](architecture/README.md)
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md)
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md)
-- [Phase 5-C4a completed handoff](architecture/phase5c4a_instruction_bearing_managed_apply_handoff.md)
+- [Phase 5.5 Stream Unpack bounded slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Client history authority contract](architecture/client_history_authority_contract.md)
 - [Client instruction authority contract](architecture/client_instruction_authority_contract.md)
