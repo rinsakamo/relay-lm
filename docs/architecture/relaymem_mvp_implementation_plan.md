@@ -113,7 +113,7 @@ This slice is docs-only and does not claim runtime implementation.
 
 ## Slice MEM-M1: primary/secondary store contract
 
-Goal: make the local file-backed memory store layout ready for primary and secondary MEM without enabling broad writes.
+Goal: make the local file-backed memory store layout ready for primary and secondary MEM without enabling broad writes, while explicitly defining the migration from the current `memory/raw` plus flat `memory/mem/*` layout.
 
 Scope:
 
@@ -122,9 +122,10 @@ Scope:
 - define page metadata fields for memory layer, scope, source lineage, confidence/stability band, salience band, safety scope, and idempotency key,
 - define index/log expectations for primary and secondary MEM,
 - update read-only diagnostics to recognize primary/secondary layout,
+- preserve read-only compatibility with the current flat layout until the migration slice lands,
 - keep all writes disabled or dry-run-only by default.
 
-Suggested layout:
+Target layout:
 
 ```text
 memory/
@@ -149,6 +150,26 @@ memory/
     log.md
 ```
 
+Migration note:
+
+```text
+Current documented/current-runtime layout:
+  memory/raw/
+  memory/mem/projects/
+  memory/mem/concepts/
+  memory/mem/summaries/
+  memory/mem/relations/
+  memory/mem/index.md
+  memory/mem/log.md
+
+Target MEM-M1 layout:
+  memory/sources/
+  memory/mem/primary/
+  memory/mem/secondary/
+```
+
+MEM-M1 must either support the current flat layout as a read-only compatibility source or migrate it explicitly under dry-run/apply gates before MEM-M2 treats the new layout as canonical for retrieval.
+
 Required safety:
 
 - no symlink traversal,
@@ -160,7 +181,8 @@ Required safety:
 
 Smoke coverage:
 
-- valid layout discovery,
+- valid target layout discovery,
+- current flat layout compatibility discovery,
 - missing layout fallback,
 - symlink block,
 - unsupported file block,
@@ -308,7 +330,7 @@ Scope:
 
 - list recently formed memories,
 - list held/blocked memories,
-- list memories used in latest response,
+- list memories used in a concrete latest response/run,
 - correct memory,
 - forget/hide memory,
 - pin/unpin memory,
@@ -316,14 +338,14 @@ Scope:
 - review/correct/apply/discard held memory items,
 - expose content-free operation status for UI.
 
-API shape is target-only until implemented, but should be scoped explicitly by character/user/session/memory namespace.
+API shape is target-only until implemented, but should be scoped explicitly by character/user/session/memory namespace. Used-memory reads must be scoped to a concrete UI session, communication session, run ID, or last-run identifier; a character-only used-memory route is ambiguous when multiple tabs or sessions share one character.
 
 Suggested route families:
 
 ```text
 GET  /lab/api/characters/{character_id}/memory/recent
 GET  /lab/api/characters/{character_id}/memory/held
-GET  /lab/api/characters/{character_id}/memory/used
+GET  /lab/api/ui-sessions/{ui_session_id}/lab/last-run/memory/used
 POST /lab/api/characters/{character_id}/memory/{memory_id}/correct
 POST /lab/api/characters/{character_id}/memory/{memory_id}/forget
 POST /lab/api/characters/{character_id}/memory/{memory_id}/pin
@@ -335,7 +357,7 @@ POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/apply
 POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/discard
 ```
 
-`memory_id` refers to already-formed memory. `held_memory_id` refers to a held `review_required` item that is not yet a formed durable memory.
+`memory_id` refers to already-formed memory. `held_memory_id` refers to a held `review_required` item that is not yet a formed durable memory. `GET /lab/api/ui-sessions/{ui_session_id}/lab/last-run/memory/used` returns the memories used by the latest response within that concrete UI session.
 
 Required safety:
 
@@ -349,7 +371,7 @@ Required safety:
 Smoke coverage:
 
 - scoped list operations,
-- used-memory list operation,
+- session-scoped used-memory list operation,
 - correction dry-run/apply gate,
 - forget dry-run/apply gate,
 - pin/unpin operation,
