@@ -46,21 +46,22 @@ Managed-route correctness boundary: Phase 5-C complete
 Pre-stream hardening: Phase 5-D complete through D2
 
 Latest completed bounded slice:
-  Phase 5-C5a typed parse / cache-write preflight
-  + runtime-private client_instruction_parse.v1 validation helper
-  + dry-run/no-op cache-write preflight helper
-  + default-off typed parse and cache-write gates
-  + diagnostics-only cache save planning
+  Phase 5-C5b gated client-instruction cache writer
+  + direct gated atomic cache writer helper
+  + reader-compatible persisted cache entry validation
+  + missing-root / symlink-root / symlink-target / byte-budget fail-closed gates
+  + parser-versioned identity blocking for current runtime compatibility
+  + default-off and dry-run-only by default
   + no response/control-envelope extraction
+  + no runtime auto-write wiring
   + no backend/RelaySCN/user-visible mutation
-  + no filesystem cache write
 ```
 
-Phase 5-C5a starts the typed parse and cache-write boundary without enabling actual cache writes. The typed parse artifact remains request-local/runtime-private, and the cache-write helper remains diagnostics-only/no-op unless a later writer slice implements the filesystem mutation boundary.
+Phase 5-C5b completes the direct filesystem writer safety boundary for validated typed parse artifacts. The helper can write only when an explicit caller disables dry-run-only and supplies a valid existing cache root. Runtime request handling still does not extract typed parse candidates from backend responses or invoke cache writes automatically.
 
 Next candidates remain independently sequenced:
 
-- Phase 5-C5b: actual cache writer safety boundary,
+- Phase 5-C5c: typed parse source / runtime writer wiring boundary,
 - Phase 5.5: Stream Unpack and output segmentation.
 
 ## Current implemented boundary
@@ -78,7 +79,7 @@ Current `main` includes:
 - read-only instruction-cache lookup,
 - read-only cache-hit RelaySCN projection diagnostics,
 - runtime-private typed client-instruction parse validation,
-- cache-write preflight and diagnostics-only cache-save planning,
+- gated direct cache-write helper for validated typed parse artifacts,
 - client-history exclusion preflight,
 - `client_history_exclusion_apply.v0` for supported no-instruction requests,
 - `client_history_exclusion_apply.v1` for supported instruction-bearing requests,
@@ -94,9 +95,12 @@ The safe defaults remain unchanged:
 client_history_exclusion_apply_enabled = false
 client_history_exclusion_apply_dry_run_only = true
 memory.token_budget_truncation_enabled = false
+client_instruction_typed_parse_enabled = false
+client_instruction_cache_write_enabled = false
+client_instruction_cache_write_dry_run_only = true
 ```
 
-Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in.
+Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate.
 
 ## Token estimation boundary
 
@@ -137,13 +141,15 @@ It must not expose cache hashes, raw instruction text, raw cache JSON, role name
 
 The projection is diagnostics-only and read-only. It does not apply RelaySCN policy, mutate backend payloads, or write cache entries.
 
-## Typed parse and cache-write preflight boundary
+## Typed parse and gated cache-write boundary
 
 `relaylm.client_instruction_typed_parse` validates `client_instruction_parse.v1` runtime-private candidates and emits only content-free diagnostics to persisted surfaces.
 
-`relaylm.client_instruction_cache_write` consumes typed parse and instruction identity results to build a runtime-private cache-entry candidate in dry-run mode. It keeps `cache_write_attempted=false` and `cache_entry_written=false`; when dry-run-only is disabled it blocks with `cache_writer_not_implemented`.
+`relaylm.client_instruction_cache_write` consumes typed parse and instruction identity results to build a runtime-private cache-entry candidate in dry-run mode. With dry-run-only disabled and an explicit existing cache root, it validates reader compatibility and writes one cache entry through a gated atomic writer.
 
-This boundary does not extract typed parse candidates from model responses or control envelopes, apply RelaySCN policy, mutate backend payloads, mutate user-visible responses, or write cache files.
+The direct writer blocks missing roots, invalid byte budgets, oversized entries, symlink roots/components/targets, parser-versioned identity keys that do not match current runtime lookup, and reader-incompatible entries. Runtime request handling still does not extract typed parse candidates from model responses or invoke this writer automatically.
+
+This boundary does not extract typed parse candidates from model responses or control envelopes, apply RelaySCN policy, mutate backend payloads, or mutate user-visible responses.
 
 ## RelayRUN lazy recovery-detail boundary
 
@@ -168,7 +174,7 @@ Runtime-private candidates may contain content. Persisted trace, audit, public e
 The runtime does not yet provide:
 
 - response/control-envelope extraction for typed client-instruction parse candidates,
-- actual instruction-cache filesystem write,
+- runtime invocation of the gated instruction-cache writer,
 - complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy,
 - active tool-chain reconstruction,
 - Stream Unpack and TTS-safe segmentation,
@@ -201,6 +207,7 @@ RelayLM does not own frontend UI, ASR, TTS execution, or avatar execution. Curre
 ## Where to read next
 
 - [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md)
+- [Phase 5-C5b Gated Client-Instruction Cache Writer Handoff](architecture/phase5c5b_gated_cache_writer_handoff.md)
 - [Phase 5-C5a Typed Parse and Cache-Write Preflight Handoff](architecture/phase5c5a_typed_parse_cache_write_preflight_handoff.md)
 - [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](architecture/phase5c4b_cache_hit_relayscn_projection_handoff.md)
 - [Phase 5-D2 Lazy RelayRUN Recovery Detail Handoff](architecture/phase5d2_lazy_relayrun_recovery_detail_handoff.md)
