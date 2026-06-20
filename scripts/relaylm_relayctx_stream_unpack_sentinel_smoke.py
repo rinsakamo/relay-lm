@@ -19,6 +19,7 @@ from relaylm.relayctx_unpack import RELAYCTX_UPDATE_OPEN  # noqa: E402
 
 VISIBLE_PREFIX = "安全な表示テキスト。"
 INTERNAL_BODY = '{"ctx_working_update":"private"}'
+RAW_INVALID_BYTES_TEXT = "raw-bytes-payload"
 
 
 def require(condition: bool, detail: object) -> None:
@@ -203,7 +204,7 @@ def _assert_suppression_gate_blocks_terminal_partial_marker() -> None:
 
 def _assert_suppression_gate_invalid_input_fails_closed() -> None:
     result = apply_stream_internal_suppression_gate(
-        [VISIBLE_PREFIX, b"invalid"],
+        [VISIBLE_PREFIX, RAW_INVALID_BYTES_TEXT.encode("utf-8")],
         enabled=True,
         dry_run_only=False,
     )
@@ -214,7 +215,7 @@ def _assert_suppression_gate_invalid_input_fails_closed() -> None:
     require(node_result.status == "failed", node_result)
     encoded = json.dumps(node_result.to_log_dict(), ensure_ascii=False)
     require(VISIBLE_PREFIX not in encoded, node_result)
-    require("invalid" not in encoded, node_result)
+    require(RAW_INVALID_BYTES_TEXT not in encoded, node_result)
     print("ok stream suppression gate invalid input fails closed")
 
 
