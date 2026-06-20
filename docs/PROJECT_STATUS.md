@@ -21,7 +21,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Status
 
-Last reviewed: 2026-06-19 JST
+Last reviewed: 2026-06-20 JST
 
 ## Purpose and authority
 
@@ -43,22 +43,24 @@ The repository-wide documentation audit, audit Phases 1–8, is complete as of 2
 
 ```text
 Managed-route correctness boundary: Phase 5-C complete
-Pre-stream hardening: Phase 5-D in progress
+Pre-stream hardening: Phase 5-D complete through D2
 
 Latest completed bounded slice:
-  Phase 5-C4b validated cache-hit RelaySCN projection
-  + read-only cache-hit projection helper
-  + content-free RelaySCN projection PipelineNodeResult
-  + no backend/RelaySCN apply
-  + no raw cache/instruction/role/context/constraint leakage
-  + direct and runtime trace smoke coverage
+  Phase 5-C5a typed parse / cache-write preflight
+  + runtime-private client_instruction_parse.v1 validation helper
+  + dry-run/no-op cache-write preflight helper
+  + default-off typed parse and cache-write gates
+  + diagnostics-only cache save planning
+  + no response/control-envelope extraction
+  + no backend/RelaySCN/user-visible mutation
+  + no filesystem cache write
 ```
 
-Phase 5-C4b exposes a content-free, diagnostics-only RelaySCN projection from validated instruction-cache hits. The projection is read-only and does not change backend forwarding, request payloads, RelaySCN runtime policy, or cache contents.
+Phase 5-C5a starts the typed parse and cache-write boundary without enabling actual cache writes. The typed parse artifact remains request-local/runtime-private, and the cache-write helper remains diagnostics-only/no-op unless a later writer slice implements the filesystem mutation boundary.
 
 Next candidates remain independently sequenced:
 
-- Phase 5-C5: typed parse and cache write,
+- Phase 5-C5b: actual cache writer safety boundary,
 - Phase 5.5: Stream Unpack and output segmentation.
 
 ## Current implemented boundary
@@ -75,6 +77,8 @@ Current `main` includes:
 - runtime-private client-instruction identity,
 - read-only instruction-cache lookup,
 - read-only cache-hit RelaySCN projection diagnostics,
+- runtime-private typed client-instruction parse validation,
+- cache-write preflight and diagnostics-only cache-save planning,
 - client-history exclusion preflight,
 - `client_history_exclusion_apply.v0` for supported no-instruction requests,
 - `client_history_exclusion_apply.v1` for supported instruction-bearing requests,
@@ -133,6 +137,14 @@ It must not expose cache hashes, raw instruction text, raw cache JSON, role name
 
 The projection is diagnostics-only and read-only. It does not apply RelaySCN policy, mutate backend payloads, or write cache entries.
 
+## Typed parse and cache-write preflight boundary
+
+`relaylm.client_instruction_typed_parse` validates `client_instruction_parse.v1` runtime-private candidates and emits only content-free diagnostics to persisted surfaces.
+
+`relaylm.client_instruction_cache_write` consumes typed parse and instruction identity results to build a runtime-private cache-entry candidate in dry-run mode. It keeps `cache_write_attempted=false` and `cache_entry_written=false`; when dry-run-only is disabled it blocks with `cache_writer_not_implemented`.
+
+This boundary does not extract typed parse candidates from model responses or control envelopes, apply RelaySCN policy, mutate backend payloads, mutate user-visible responses, or write cache files.
+
 ## RelayRUN lazy recovery-detail boundary
 
 `relaylm.relayrun_lazy_recovery` provides an additive helper that can construct a minimal content-free runtime checkpoint artifact on ordinary completed paths without constructing the full recovery diagnostic chain.
@@ -155,7 +167,8 @@ Runtime-private candidates may contain content. Persisted trace, audit, public e
 
 The runtime does not yet provide:
 
-- typed client-instruction response parsing or cache write,
+- response/control-envelope extraction for typed client-instruction parse candidates,
+- actual instruction-cache filesystem write,
 - complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy,
 - active tool-chain reconstruction,
 - Stream Unpack and TTS-safe segmentation,
@@ -188,13 +201,13 @@ RelayLM does not own frontend UI, ASR, TTS execution, or avatar execution. Curre
 ## Where to read next
 
 - [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md)
+- [Phase 5-C5a Typed Parse and Cache-Write Preflight Handoff](architecture/phase5c5a_typed_parse_cache_write_preflight_handoff.md)
 - [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](architecture/phase5c4b_cache_hit_relayscn_projection_handoff.md)
 - [Phase 5-D2 Lazy RelayRUN Recovery Detail Handoff](architecture/phase5d2_lazy_relayrun_recovery_detail_handoff.md)
 - [Phase 5-D1 CJK-Aware Token Estimation Handoff](architecture/phase5d1_cjk_token_estimation_handoff.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Client History Authority Contract](architecture/client_history_authority_contract.md)
 - [Client Instruction Authority Contract](architecture/client_instruction_authority_contract.md)
-- [Phase 5-C4a implementation handoff](architecture/phase5c4a_instruction_bearing_managed_apply_handoff.md)
 - [Runtime Compile Current / Target Boundary](contracts/runtime_compile_current_target.md)
 - [Smoke and validation docs](smoke/README.md)
 
