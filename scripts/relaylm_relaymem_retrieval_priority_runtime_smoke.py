@@ -38,7 +38,10 @@ def _write_page(root: Path, relative: str, text: str) -> None:
 
 
 def _assert_priority_projection_is_content_free(projection: dict[str, Any]) -> None:
-    require(projection["schema_version"] == "relaymem.retrieval_priority_runtime.v0", projection)
+    require(
+        projection["schema_version"] == "relaymem.retrieval_priority_runtime.v0",
+        projection,
+    )
     require(projection["diagnostics_only"] is True, projection)
     require(projection["read_only"] is True, projection)
     require(projection["runtime_wiring"] == "dry_run_only", projection)
@@ -66,10 +69,26 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         _write_page(root, "memory/mem/index.md", "# MEM index\n")
-        _write_page(root, "memory/mem/projects/legacy_project.md", "legacy project memory body\n")
-        _write_page(root, "memory/mem/summaries/legacy_summary.md", "legacy summary memory body\n")
-        _write_page(root, "memory/mem/primary/sessions/session.md", "recent session memory body\n")
-        _write_page(root, "memory/mem/primary/scenes/scene.md", "recent scene memory body\n")
+        _write_page(
+            root,
+            "memory/mem/projects/legacy_project.md",
+            "legacy project memory body\n",
+        )
+        _write_page(
+            root,
+            "memory/mem/summaries/legacy_summary.md",
+            "legacy summary memory body\n",
+        )
+        _write_page(
+            root,
+            "memory/mem/primary/sessions/session.md",
+            "recent session memory body\n",
+        )
+        _write_page(
+            root,
+            "memory/mem/primary/scenes/scene.md",
+            "recent scene memory body\n",
+        )
         _write_page(
             root,
             "memory/mem/secondary/summaries/summary.md",
@@ -131,7 +150,10 @@ def main() -> int:
             artifact["selected_mem_candidates"],
         )
         require(
-            [item["retrieval_priority_tier"] for item in artifact["selected_mem_candidates"]]
+            [
+                item["retrieval_priority_tier"]
+                for item in artifact["selected_mem_candidates"]
+            ]
             == ["secondary_summary", "primary_scene", "primary_session"],
             artifact["selected_mem_candidates"],
         )
@@ -143,7 +165,10 @@ def main() -> int:
         require(projection["candidate_count"] == 3, projection)
         require(projection["selected_count"] == 3, projection)
         require(
-            [item["priority_tier"] for item in projection["selection_projection"]["selected"]]
+            [
+                item["priority_tier"]
+                for item in projection["selection_projection"]["selected"]
+            ]
             == ["secondary_summary", "primary_scene", "primary_session"],
             projection,
         )
