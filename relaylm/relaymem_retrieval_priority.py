@@ -11,34 +11,35 @@ from typing import Any
 
 _SCHEMA_VERSION = "relaymem.retrieval_priority.v0"
 
-# Higher scores win. Scores intentionally keep wide gaps between memory layers so
-# bounded tie-breakers cannot accidentally make raw/legacy evidence outrank
-# stable secondary MEM.
-_LAYER_BASE_SCORES = {
-    "secondary": 900,
-    "primary": 700,
-    "legacy_flat": 400,
-    "unknown": 0,
-}
-
+# Higher scores win. Scores follow the MEM-M2 retrieval priority order:
+# secondary summaries/relations first, then recent scene/session primary MEM,
+# then project/concept secondary MEM. The small keyword bonus is only an
+# intra-tier tie-breaker and must not invert this tier order.
 _PATH_TIER_SCORES = (
-    ("memory/mem/secondary/summaries/", "secondary_summary", 120),
-    ("memory/mem/secondary/relations/", "secondary_relation", 110),
-    ("memory/mem/secondary/projects/", "secondary_project", 100),
-    ("memory/mem/secondary/concepts/", "secondary_concept", 90),
-    ("memory/mem/secondary/claims/", "secondary_claim", 80),
-    ("memory/mem/primary/relationships/", "primary_relationship", 60),
-    ("memory/mem/primary/projects/", "primary_project", 50),
-    ("memory/mem/primary/scenes/", "primary_scene", 40),
-    ("memory/mem/primary/sessions/", "primary_session", 30),
-    ("memory/mem/summaries/", "legacy_summary", 20),
-    ("memory/mem/relations/", "legacy_relation", 15),
-    ("memory/mem/projects/", "legacy_project", 10),
-    ("memory/mem/concepts/", "legacy_concept", 5),
+    ("memory/mem/secondary/summaries/", "secondary_summary", 1000),
+    ("memory/mem/secondary/relations/", "secondary_relation", 900),
+    ("memory/mem/primary/scenes/", "primary_scene", 820),
+    ("memory/mem/primary/sessions/", "primary_session", 810),
+    ("memory/mem/primary/relationships/", "primary_relationship", 805),
+    ("memory/mem/secondary/projects/", "secondary_project", 700),
+    ("memory/mem/secondary/concepts/", "secondary_concept", 690),
+    ("memory/mem/secondary/claims/", "secondary_claim", 680),
+    ("memory/mem/primary/projects/", "primary_project", 600),
+    ("memory/mem/summaries/", "legacy_summary", 500),
+    ("memory/mem/relations/", "legacy_relation", 490),
+    ("memory/mem/projects/", "legacy_project", 480),
+    ("memory/mem/concepts/", "legacy_concept", 470),
 )
 
+_GENERIC_TIER_SCORES = {
+    "secondary": ("secondary_generic", 650),
+    "primary": ("primary_generic", 580),
+    "legacy_flat": ("legacy_generic", 450),
+    "unknown": ("unknown_generic", 0),
+}
+
 _REASON_SCORES = {
-    "keyword_match": 50,
+    "keyword_match": 1,
     "store_page_available": 0,
 }
 
@@ -76,10 +77,25 @@ def prioritize_relaymem_candidates(
         "candidate_count": len(raw_candidates),
         "selected_count": len(selected),
         "selection_policy": {
-            "layer_order": ["secondary", "primary", "legacy_flat", "unknown"],
+            "tier_order": [
+                "secondary_summary",
+                "secondary_relation",
+                "primary_scene",
+                "primary_session",
+                "primary_relationship",
+                "secondary_project",
+                "secondary_concept",
+                "secondary_claim",
+                "primary_project",
+                "legacy_summary",
+                "legacy_relation",
+                "legacy_project",
+                "legacy_concept",
+            ],
             "tie_breaker": "original_candidate_order",
             "path_tiers_enabled": True,
             "keyword_match_bonus_enabled": True,
+            "keyword_match_is_intra_tier_only": True,
         },
         "layer_counts": _layer_counts(annotated),
         "selected_layer_counts": _layer_counts(selected),
@@ -103,9 +119,8 @@ def _priority_for_candidate(
     path = str(candidate.get("path", ""))
     tier, tier_score = _path_tier(path, memory_layer)
     reason = str(candidate.get("reason", "store_page_available"))
-    layer_score = _LAYER_BASE_SCORES.get(memory_layer, _LAYER_BASE_SCORES["unknown"])
     reason_score = _REASON_SCORES.get(reason, 0)
-    score = layer_score + tier_score + reason_score
+    score = tier_score + reason_score
     return {
         "candidate_fields": {
             "retrieval_rank": None,
@@ -139,7 +154,10 @@ def _path_tier(path: str, memory_layer: str) -> tuple[str, int]:
     for prefix, tier, score in _PATH_TIER_SCORES:
         if path.startswith(prefix):
             return tier, score
-    return f"{memory_layer}_generic", 0
+    return _GENERIC_TIER_SCORES.get(
+        memory_layer,
+        _GENERIC_TIER_SCORES["unknown"],
+    )
 
 
 def _priority_reasons(*, memory_layer: str, tier: str, reason: str) -> list[str]:
