@@ -172,12 +172,13 @@ def _content_free_projection(candidates: Sequence[dict[str, Any]]) -> dict[str, 
     selected: list[dict[str, Any]] = []
     for rank, candidate in enumerate(candidates):
         candidate["retrieval_rank"] = rank
+        priority_tier = str(candidate.get("retrieval_priority_tier", "unknown"))
         selected.append(
             {
                 "rank": rank,
                 "memory_layer": _memory_layer(candidate),
                 "layout_profile": str(candidate.get("layout_profile", "unknown")),
-                "priority_tier": str(candidate.get("retrieval_priority_tier", "unknown")),
+                "priority_tier": priority_tier,
                 "priority_score": int(candidate.get("retrieval_priority_score", 0)),
                 "reason_ids": [
                     str(item)
