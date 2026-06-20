@@ -43,6 +43,7 @@ Use plain scalar or list values only. Do not encode source text, prompts, traces
 |---|---|---|---|
 | `status` | Current developer-facing project state | `docs/PROJECT_STATUS.md` | current implemented boundary, active caveats, next candidates |
 | `stable_architecture` | Durable responsibility, component, and target-order design | `docs/architecture/*_design.md` | stable architecture and ownership |
+| `current_target_migration` | Current, compatibility, target, and migration interpretation | `docs/architecture/current_target_migration_guide.md` | current-vs-target interpretation and migration caveats |
 | `implementation_plan` | Phase sequencing and implementation status | `docs/architecture/pipeline_implementation_plan.md` currently; future home may be `docs/implementation/` | implementation sequence and phase status |
 | `implementation_handoff` | Bounded implementation slice record | `docs/architecture/phase*_handoff.md` currently; future home may be `docs/implementation/handoffs/` | completed or active slice record only |
 | `contract` | Exact schema, gate, artifact, and runtime contract | `docs/contracts/` or dedicated architecture contract docs | exact implemented or planned contract behavior |
