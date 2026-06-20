@@ -96,7 +96,6 @@ Allowed diagnostics are limited to:
 
 Phase 5.5-B2 still does not implement:
 
-- TTS-safe segmentation hints,
 - TTS execution,
 - Live2D/avatar control,
 - CTX/MEM/SOUL/SLP persistence,
@@ -105,6 +104,8 @@ Phase 5.5-B2 still does not implement:
 - backend payload mutation,
 - meaning-changing rewrite,
 - non-stream Unpack behavior changes.
+
+Phase 5.5-C0 and C1 now provide helper-only TTS segmentation and adapter handoff contracts, but B2 still does not connect those helpers to runtime safe visible stream output.
 
 ## Smoke coverage
 
@@ -122,6 +123,6 @@ Runtime smoke covers:
 
 ## Next slice
 
-The next bounded slice should be Phase 5.5-C: TTS-safe segmentation hints.
+The next bounded slice should be Phase 5.5-C2 runtime TTS adapter handoff wiring.
 
-Phase 5.5-C should derive hints only from safe visible output and should remain default-off. It must not execute TTS, call avatar adapters, persist state, or expose internal RelayCTX candidates.
+Phase 5.5-C2 should connect B2 safe visible runtime output to the existing C0 segmentation helper and C1 adapter handoff contract. It must remain default-off, emit content-free diagnostics, and still must not execute TTS, call avatar adapters, persist state, or expose internal RelayCTX candidates.
