@@ -57,6 +57,14 @@ relayctx_unpack_apply_enabled: false
 relayctx_unpack_dry_run_only: true
 relayctx_unpack_max_update_chars: 4096
 
+# RelayCTX Stream Unpack sentinel observation is default-off and diagnostics-only.
+# Phase 5.5-A observes streamed text fragments for internal RelayCTX sentinels
+# across chunk boundaries but never mutates SSE output, emits TTS hints, or
+# persists CTX/MEM/SOUL/SLP state. Dry-run-only remains true by default.
+relayctx_stream_unpack_dry_run_enabled: false
+relayctx_stream_unpack_dry_run_only: true
+relayctx_stream_unpack_max_buffer_chars: 256
+
 # Client message canonicalization dry-run is default-off, diagnostics-only, and
 # content-free. When enabled, RelayLM inspects PipelineContext.original_payload
 # for current-request message shape, records a pipeline node result, and never
@@ -318,41 +326,3 @@ relayrun_user_action_dry_run_only: true
 #
 #   relaylm-work-assistant:
 #     backend: lmstudio_backend
-#     backend_model: local-model
-#     character_id: work_assistant
-#     mode: memory_light
-#     cache_namespace: character/work-assistant
-#     memory_namespace: character/work-assistant
-#
-#   relaylm-code-reviewer:
-#     backend: lmstudio_backend
-#     backend_model: local-model
-#     character_id: code_reviewer
-#     mode: memory_light
-#     cache_namespace: character/code-reviewer
-#     memory_namespace: character/code-reviewer
-#
-# characters:
-#   companion:
-#     common_runtime_policy:
-#     soul: examples/profiles/companion/SOUL.md
-#     output_policy: examples/profiles/companion/OUTPUT_POLICY.md
-#     room_anchor:
-#     memory_seed_path: examples/memory/companion_memories.yaml
-#     relationship_anchor:
-#     stable_memory_summary:
-#     scene_state: examples/profiles/default/SCENE_STATE.md
-#     room_state:
-#     token_policy_shadow_enabled:
-#
-#   work_assistant:
-#     soul: examples/profiles/work_assistant/SOUL.md
-#     output_policy: examples/profiles/work_assistant/OUTPUT_POLICY.md
-#     memory_seed_path: examples/memory/work_assistant_memories.yaml
-#     scene_state: examples/profiles/default/SCENE_STATE.md
-#
-#   code_reviewer:
-#     soul: examples/profiles/code_reviewer/SOUL.md
-#     output_policy: examples/profiles/code_reviewer/OUTPUT_POLICY.md
-#     memory_seed_path: examples/memory/code_reviewer_memories.yaml
-#     scene_state: examples/profiles/default/SCENE_STATE.md
