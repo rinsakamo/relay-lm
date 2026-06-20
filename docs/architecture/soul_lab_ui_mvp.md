@@ -469,10 +469,16 @@ POST /lab/api/characters/{character_id}/communication-sessions/{communication_se
 GET  /lab/api/ui-sessions/{ui_session_id}/lab/last-run
 GET  /lab/api/characters/{character_id}/memory/recent
 GET  /lab/api/characters/{character_id}/memory/held
+GET  /lab/api/characters/{character_id}/memory/used
 POST /lab/api/characters/{character_id}/memory/{memory_id}/correct
 POST /lab/api/characters/{character_id}/memory/{memory_id}/forget
 POST /lab/api/characters/{character_id}/memory/{memory_id}/pin
+POST /lab/api/characters/{character_id}/memory/{memory_id}/unpin
 POST /lab/api/characters/{character_id}/memory/{memory_id}/merge
+POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/review
+POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/correct
+POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/apply
+POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/discard
 
 POST /lab/api/characters/{character_id}/soul/proposals
 POST /lab/api/characters/{character_id}/soul/proposals/{proposal_id}/compare
@@ -488,7 +494,11 @@ POST  /lab/api/settings/backend/test
 
 The `compare`, `hold`, `discard`, and `apply` proposal operations should be server-side decisions or recorded server-side state transitions so that Pod candidates do not dangle only in browser memory and the RelaySOUL decision trail remains auditable.
 
-Memory correction, forgetting, pinning, and merging are user-initiated memory operations. They are not the normal path for every ordinary memory formation event.
+Memory correction, forgetting, pinning, unpinning, and merging are user-initiated memory operations. They are not the normal path for every ordinary memory formation event. Pinning must be reversible because it changes retrieval priority.
+
+Held memories are not already-formed durable memories. The `held_memory_id` endpoints resolve `review_required` items by reviewing, correcting, applying, or discarding the held item without forcing it through formed-memory endpoints.
+
+`GET /memory/used` is the supported Lab Observation source for the “memories used in the latest response” panel when `last-run` does not already include the same content-free summary.
 
 These APIs should enforce RelayLM authority boundaries server-side. The browser is presentation and interaction, not the owner of SOUL, MEM, RUN, SLP, or backend credentials.
 
