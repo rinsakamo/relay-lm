@@ -1,3 +1,24 @@
+---
+relaylm_doc_type: status
+relaylm_authority: current_project_state
+relaylm_status: current
+relaylm_volatility: high
+relaylm_owner: project_status
+relaylm_update_trigger:
+  - boundary moves between design dry-run read-only and apply
+  - default behavior changes
+  - supported request shape changes
+  - current schema producer or consumer changes
+relaylm_not_authoritative_for:
+  - component responsibility and canonical target order
+  - exact schema details
+  - historical implementation evidence
+relaylm_related_authority:
+  - docs/DOCUMENTATION_MODEL.md
+  - docs/architecture/pipeline_responsibility_design.md
+  - docs/architecture/pipeline_implementation_plan.md
+  - docs/architecture/current_target_migration_guide.md
+---
 # RelayLM Project Status
 
 Last reviewed: 2026-06-19 JST
