@@ -1,3 +1,23 @@
+---
+relaylm_doc_type: implementation_plan
+relaylm_authority: implementation_status_and_phase_sequencing
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: implementation
+relaylm_update_trigger:
+  - phase lands
+  - sequencing changes
+  - target-only schema gains producer consumer apply skip block contract projection and smoke coverage
+relaylm_not_authoritative_for:
+  - component responsibility and canonical target order
+  - exact schema details
+  - historical MVP authority
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../DOCUMENTATION_MODEL.md
+  - pipeline_responsibility_design.md
+  - current_target_migration_guide.md
+---
 # RelayLM Pipeline Implementation Plan
 
 ## Purpose
@@ -30,19 +50,20 @@ Completed bounded slices:
   Phase 5-C1a no-instruction managed apply
   Phase 5-C4a instruction-bearing managed apply
   Phase 5-C4b cache-hit RelaySCN projection
+  Phase 5-C5a typed parse/cache-write preflight
   Phase 5-D1 CJK-aware conservative token estimation
   Phase 5-D2a lazy RelayRUN recovery-detail helper
   Phase 5-D2b lazy RelayRUN recovery-detail runtime wiring
 
 Next candidates:
-  Phase 5-C5 typed parse/cache write
+  Phase 5-C5b actual cache writer safety boundary
+  Phase 5.5 Stream Unpack
 
 Later:
-  Phase 5.5 Stream Unpack
   Phase 6 asynchronous RelaySLP
 ```
 
-Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection; Phase 5-C5 remains the typed parse/cache-write boundary. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring.
+Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight only; actual filesystem cache writing remains Phase 5-C5b or later. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring.
 
 ## Current caveats
 
@@ -50,7 +71,8 @@ Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5
 - Current profile compilation still precedes normalized target SCN/INT/Retrieval handoffs.
 - Complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy is not implemented.
 - Active tool transactions remain blocked because minimum-chain reconstruction is absent.
-- Instruction-cache lookup and RelaySCN projection are read-only; cache writing is absent.
+- Instruction-cache lookup and RelaySCN projection are read-only.
+- Phase 5-C5a adds typed parse validation and cache-write preflight only; response/control-envelope extraction and actual cache filesystem writes remain absent.
 - RelayCTX Unpack is non-stream only.
 - Token estimation is deterministic and CJK-aware but remains tokenizer-free and model-agnostic rather than exact.
 - RelayRUN lazy recovery detail is wired into the request-runtime checkpoint builder, but cross-cutting per-node orchestration remains later work.
@@ -147,11 +169,28 @@ Implemented:
 
 See [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](phase5c4b_cache_hit_relayscn_projection_handoff.md).
 
-## Phase 5-C5: typed parse and cache write — deferred
+### Phase 5-C5a: typed parse and cache-write preflight — complete
 
-Planned work includes a separately versioned typed parse artifact, authority validation, independent cache-write gate, bounded failures/retries, and no raw prompt/response persistence.
+Implemented:
 
-## Phase 5-D: pre-stream hardening — in progress
+- `client_instruction_parse.v1` runtime-private typed parse validation helper,
+- strict fail-closed parse validation for unknown keys, forbidden content-bearing key names, invalid scene/scope/confidence values, path/URL-like content, malformed durable candidates, malformed constraints, and duplicate blocked instruction kinds,
+- `client_instruction_cache_write` dry-run/no-op preflight helper,
+- default-off `client_instruction_typed_parse_enabled` and `client_instruction_cache_write_enabled` gates,
+- default-on `client_instruction_cache_write_dry_run_only`,
+- diagnostics-only cache save planning through the existing instruction-cache dry-run `save_requested` plan,
+- content-free diagnostics for typed parse and cache-write preflight,
+- focused smoke coverage.
+
+Phase 5-C5a does not implement response/control-envelope extraction, RelaySCN apply, backend payload mutation, user-visible response mutation, or filesystem cache writes. Disabling dry-run-only blocks with `cache_writer_not_implemented`.
+
+See [Phase 5-C5a Typed Parse and Cache-Write Preflight Handoff](phase5c5a_typed_parse_cache_write_preflight_handoff.md).
+
+### Phase 5-C5b: actual cache writer — planned
+
+Planned work should add the actual writer only after a separate review of atomic write safety, symlink/out-of-root checks, temp-file replacement, fsync behavior, max entry bytes, and reader compatibility.
+
+## Phase 5-D: pre-stream hardening — complete through D2
 
 ### Phase 5-D1: CJK-aware conservative token estimation — complete
 
