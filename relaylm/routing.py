@@ -30,6 +30,10 @@ class ResolvedRoute:
     relayctx_stream_unpack_dry_run_enabled: bool = False
     relayctx_stream_unpack_dry_run_only: bool = True
     relayctx_stream_unpack_max_buffer_chars: int = 256
+    relayctx_tts_adapter_handoff_runtime_enabled: bool = False
+    relayctx_tts_adapter_handoff_runtime_dry_run_only: bool = True
+    relayctx_tts_adapter_handoff_max_segment_chars: int = 120
+    relayctx_tts_adapter_handoff_min_segment_chars: int = 8
     client_message_canonicalization_dry_run_enabled: bool = False
     client_history_exclusion_preflight_enabled: bool = False
     client_history_exclusion_apply_enabled: bool = False
@@ -90,6 +94,18 @@ def resolve_route(config: RelayLMConfig, model: str) -> ResolvedRoute:
         relayctx_stream_unpack_dry_run_only=config.relayctx_stream_unpack_dry_run_only,
         relayctx_stream_unpack_max_buffer_chars=(
             config.relayctx_stream_unpack_max_buffer_chars
+        ),
+        relayctx_tts_adapter_handoff_runtime_enabled=(
+            config.relayctx_tts_adapter_handoff_runtime_enabled
+        ),
+        relayctx_tts_adapter_handoff_runtime_dry_run_only=(
+            config.relayctx_tts_adapter_handoff_runtime_dry_run_only
+        ),
+        relayctx_tts_adapter_handoff_max_segment_chars=(
+            config.relayctx_tts_adapter_handoff_max_segment_chars
+        ),
+        relayctx_tts_adapter_handoff_min_segment_chars=(
+            config.relayctx_tts_adapter_handoff_min_segment_chars
         ),
         client_message_canonicalization_dry_run_enabled=(
             config.client_message_canonicalization_dry_run_enabled
