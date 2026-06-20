@@ -7,39 +7,62 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-_LAYOUT_DIRS = (
+_CURRENT_LAYOUT_DIRS = (
     "memory/raw",
     "memory/mem/projects",
     "memory/mem/concepts",
     "memory/mem/summaries",
     "memory/mem/relations",
 )
+_TARGET_SOURCE_DIRS = (
+    "memory/sources/conversations",
+    "memory/sources/communications",
+    "memory/sources/corrections",
+)
+_TARGET_MEM_LAYOUT_DIRS = (
+    "memory/mem/primary/sessions",
+    "memory/mem/primary/scenes",
+    "memory/mem/primary/relationships",
+    "memory/mem/primary/projects",
+    "memory/mem/secondary/projects",
+    "memory/mem/secondary/concepts",
+    "memory/mem/secondary/claims",
+    "memory/mem/secondary/summaries",
+    "memory/mem/secondary/relations",
+)
+_TARGET_LAYOUT_DIRS = _TARGET_SOURCE_DIRS + _TARGET_MEM_LAYOUT_DIRS
+_LAYOUT_DIRS = _CURRENT_LAYOUT_DIRS + _TARGET_LAYOUT_DIRS
 _LAYOUT_FILES = (
     "memory/mem/index.md",
     "memory/mem/log.md",
 )
 _ALLOWED_SUFFIXES = {
     "memory/raw": {".jsonl", ".md"},
+    "memory/sources": {".jsonl", ".md"},
     "memory/mem": {".md"},
 }
 _MAX_FILES_TO_VALIDATE = 64
 _MAX_FILES_TO_SCAN = 128
 _MAX_SAMPLE_BYTES = 4096
 
-
 _CANDIDATE_DIRS = (
     "memory/mem/projects",
     "memory/mem/concepts",
     "memory/mem/summaries",
+    "memory/mem/primary/sessions",
+    "memory/mem/primary/scenes",
+    "memory/mem/primary/relationships",
+    "memory/mem/primary/projects",
+    "memory/mem/secondary/projects",
+    "memory/mem/secondary/concepts",
+    "memory/mem/secondary/claims",
+    "memory/mem/secondary/summaries",
+    "memory/mem/secondary/relations",
 )
 _DEFAULT_MAX_CANDIDATES = 8
 _DEFAULT_MAX_CANDIDATE_READ_BYTES = 4096
 _DEFAULT_MAX_CANDIDATE_SCAN = 128
-_SNIPPET_DIRS = (
-    "memory/mem/projects",
-    "memory/mem/concepts",
-    "memory/mem/summaries",
-)
+_SNIPPET_DIRS = _CANDIDATE_DIRS
 _DEFAULT_MAX_SNIPPET_CHARS = 512
 _DEFAULT_MAX_SNIPPET_CANDIDATES = 3
 _DEFAULT_MAX_SNIPPET_READ_BYTES = 4096
@@ -53,11 +76,7 @@ def discover_relaymem_page_candidates(
     max_read_bytes: int = _DEFAULT_MAX_CANDIDATE_READ_BYTES,
     max_scan: int = _DEFAULT_MAX_CANDIDATE_SCAN,
 ) -> dict[str, Any]:
-    """Discover MEM page candidates without writing or building ctx blocks.
-
-    Candidate discovery is bounded because this can run from the request path
-    when the store is enabled.
-    """
+    """Discover MEM page candidates without writing or building ctx blocks."""
 
     max_candidates = max(0, int(max_candidates))
     max_read_bytes = max(1, int(max_read_bytes))
@@ -117,13 +136,14 @@ def discover_relaymem_page_candidates(
         if len(candidates) >= max_candidates:
             candidate_cap_reached = True
             continue
-        reason = _selection_reason(relative, sample, query_terms)
         candidates.append(
             {
                 "path": relative,
                 "source": "mem_page",
-                "reason": reason,
+                "reason": _selection_reason(relative, sample, query_terms),
                 "estimated_chars": len(sample),
+                "memory_layer": _memory_layer_for_path(relative),
+                "layout_profile": _layout_profile_for_path(relative),
                 "applied_to_ctx": False,
             }
         )
@@ -257,6 +277,8 @@ def build_relaymem_snippet_evidence_dry_run(
             "snippet_text": snippet,
             "snippet_chars": len(snippet),
             "estimated_tokens": estimated_tokens,
+            "memory_layer": _memory_layer_for_path(relative),
+            "layout_profile": _layout_profile_for_path(relative),
             "applied_to_ctx": False,
             "safe_for_prompt_preview": False,
             "blocked_reasons": [],
@@ -270,6 +292,8 @@ def build_relaymem_snippet_evidence_dry_run(
                 "evidence_kind": "bounded_page_snippet",
                 "snippet_chars": len(snippet),
                 "estimated_tokens": estimated_tokens,
+                "memory_layer": _memory_layer_for_path(relative),
+                "layout_profile": _layout_profile_for_path(relative),
                 "content_included_in_runtime_prompt": False,
             }
         )
@@ -284,11 +308,7 @@ def build_relaymem_store_diagnostics(
     store_enabled: bool,
     retrieval_dry_run_only: bool,
 ) -> dict[str, Any]:
-    """Inspect the RelayMEM file-backed store layout without writing to it.
-
-    The runtime dry-run path intentionally streams only a bounded sample of the
-    store. It must not materialize or read the full memory tree on every request.
-    """
+    """Inspect the RelayMEM file-backed store layout without writing to it."""
 
     diagnostics: dict[str, Any] = {
         "schema_version": "relaymem.store_diagnostics.v0",
@@ -299,6 +319,7 @@ def build_relaymem_store_diagnostics(
         "root_path": root_path,
         "root_present": False,
         "layout": _layout(root_path),
+        "layout_compatibility": _empty_layout_compatibility(),
         "index_present": False,
         "log_present": False,
         "pages_discovered": 0,
@@ -332,10 +353,9 @@ def build_relaymem_store_diagnostics(
         return diagnostics
 
     diagnostics["root_present"] = True
-    index_path = root / "memory" / "mem" / "index.md"
-    log_path = root / "memory" / "mem" / "log.md"
-    diagnostics["index_present"] = index_path.is_file()
-    diagnostics["log_present"] = log_path.is_file()
+    diagnostics["layout_compatibility"] = _layout_compatibility(root)
+    diagnostics["index_present"] = (root / "memory" / "mem" / "index.md").is_file()
+    diagnostics["log_present"] = (root / "memory" / "mem" / "log.md").is_file()
 
     page_paths: list[str] = []
     blocked_files: list[dict[str, str]] = []
@@ -391,11 +411,53 @@ def build_relaymem_store_diagnostics(
     return diagnostics
 
 
-def _layout(root_path: str | None) -> dict[str, list[str]]:
+def _layout(root_path: str | None) -> dict[str, Any]:
     root = Path(root_path) if root_path else Path(".")
     return {
         "directories": [(root / item).as_posix() for item in _LAYOUT_DIRS],
         "files": [(root / item).as_posix() for item in _LAYOUT_FILES],
+        "profiles": {
+            "current_flat": {
+                "directories": [(root / item).as_posix() for item in _CURRENT_LAYOUT_DIRS],
+                "files": [(root / item).as_posix() for item in _LAYOUT_FILES],
+            },
+            "target_primary_secondary": {
+                "directories": [(root / item).as_posix() for item in _TARGET_LAYOUT_DIRS],
+                "files": [(root / item).as_posix() for item in _LAYOUT_FILES],
+            },
+        },
+    }
+
+
+def _empty_layout_compatibility() -> dict[str, Any]:
+    return {
+        "current_flat_present": False,
+        "target_primary_secondary_present": False,
+        "sources_present": False,
+        "migration_required": False,
+        "read_only_compatibility_mode": True,
+    }
+
+
+def _safe_layout_dir_present(root: Path, relative_path: str) -> bool:
+    candidate = root / relative_path
+    return candidate.is_dir() and not _path_contains_symlink(root, candidate)
+
+
+def _layout_compatibility(root: Path) -> dict[str, Any]:
+    current_flat_present = any((root / item).is_dir() for item in _CURRENT_LAYOUT_DIRS)
+    primary_present = _safe_layout_dir_present(root, "memory/mem/primary")
+    secondary_present = _safe_layout_dir_present(root, "memory/mem/secondary")
+    target_primary_secondary_present = primary_present and secondary_present
+    sources_present = (root / "memory" / "sources").is_dir() or any(
+        (root / item).is_dir() for item in _TARGET_SOURCE_DIRS
+    )
+    return {
+        "current_flat_present": current_flat_present,
+        "target_primary_secondary_present": target_primary_secondary_present,
+        "sources_present": sources_present,
+        "migration_required": current_flat_present and not target_primary_secondary_present,
+        "read_only_compatibility_mode": True,
     }
 
 
@@ -403,14 +465,29 @@ def _iter_store_files(root: Path) -> Iterator[Path]:
     memory_root = root / "memory"
     if not memory_root.exists() or not memory_root.is_dir():
         return
-    for path in memory_root.rglob("*"):
-        if path.is_file():
-            yield path
+    pending = [memory_root]
+    while pending:
+        current = pending.pop()
+        try:
+            children = list(current.iterdir())
+        except OSError:
+            continue
+        for path in children:
+            if path.is_symlink():
+                if path.is_file():
+                    yield path
+                continue
+            if path.is_dir():
+                pending.append(path)
+            elif path.is_file():
+                yield path
 
 
 def _is_supported_file(relative_path: str, suffix: str) -> bool:
     if relative_path.startswith("memory/raw/"):
         return suffix in _ALLOWED_SUFFIXES["memory/raw"]
+    if relative_path.startswith("memory/sources/"):
+        return suffix in _ALLOWED_SUFFIXES["memory/sources"]
     if relative_path.startswith("memory/mem/"):
         return suffix in _ALLOWED_SUFFIXES["memory/mem"]
     return False
@@ -427,12 +504,9 @@ def _validate_file_sample(file_path: Path) -> str | None:
                 extra = handle.read(1)
                 reached_limit = bool(extra)
         _decode_utf8_sample(sample, allow_truncated_final_sequence=reached_limit)
-    except UnicodeDecodeError:
-        return "malformed_or_unreadable_file"
-    except OSError:
+    except (UnicodeDecodeError, OSError):
         return "malformed_or_unreadable_file"
     return None
-
 
 
 def _snippet_path_block_reason(root: Path, relative_path: str) -> str | None:
@@ -481,8 +555,7 @@ def _read_bounded_snippet(
         sample = handle.read(max_read_bytes + 1)
     if len(sample) > max_read_bytes:
         raise ValueError("read_limit_exceeded")
-    text = sample.decode("utf-8")
-    return text[:max_snippet_chars]
+    return sample.decode("utf-8")[:max_snippet_chars]
 
 
 def _read_index_summary(root: Path, max_read_bytes: int) -> dict[str, Any] | None:
@@ -493,17 +566,15 @@ def _read_index_summary(root: Path, max_read_bytes: int) -> dict[str, Any] | Non
         sample = _read_text_sample(index_path, max_read_bytes)
     except (UnicodeDecodeError, OSError):
         return {"path": "memory/mem/index.md", "readable": False}
-    return {
-        "path": "memory/mem/index.md",
-        "readable": True,
-        "estimated_chars": len(sample),
-    }
+    return {"path": "memory/mem/index.md", "readable": True, "estimated_chars": len(sample)}
 
 
 def _iter_candidate_page_files(root: Path) -> Iterator[Path]:
     for relative_dir in _CANDIDATE_DIRS:
         page_dir = root / relative_dir
         if not page_dir.exists() or not page_dir.is_dir():
+            continue
+        if _path_contains_symlink(root, page_dir):
             continue
         for path in page_dir.glob("*.md"):
             if path.is_file():
@@ -515,8 +586,7 @@ def _read_text_sample(file_path: Path, max_read_bytes: int) -> str:
         sample = handle.read(max(1, max_read_bytes))
         reached_limit = len(sample) == max(1, max_read_bytes)
         if reached_limit:
-            extra = handle.read(1)
-            reached_limit = bool(extra)
+            reached_limit = bool(handle.read(1))
     return _decode_utf8_sample(sample, allow_truncated_final_sequence=reached_limit)
 
 
@@ -527,6 +597,24 @@ def _decode_utf8_sample(
 ) -> str:
     decoder = codecs.getincrementaldecoder("utf-8")()
     return decoder.decode(sample, final=not allow_truncated_final_sequence)
+
+
+def _memory_layer_for_path(relative_path: str) -> str:
+    if relative_path.startswith("memory/mem/primary/"):
+        return "primary"
+    if relative_path.startswith("memory/mem/secondary/"):
+        return "secondary"
+    if relative_path.startswith("memory/mem/"):
+        return "legacy_flat"
+    return "unknown"
+
+
+def _layout_profile_for_path(relative_path: str) -> str:
+    if relative_path.startswith("memory/mem/primary/") or relative_path.startswith("memory/mem/secondary/"):
+        return "target_primary_secondary"
+    if relative_path.startswith("memory/mem/"):
+        return "current_flat"
+    return "unknown"
 
 
 def _selection_reason(relative_path: str, sample: str, query_terms: list[str]) -> str:
