@@ -58,6 +58,135 @@ SOUL Lab
 
 Short-term memory helps the current interaction. Long-term MEM crystallizes experience for future interactions.
 
+## Memory layers
+
+RelayLM memory should be read as four related layers:
+
+```text
+0. Short-term CTX
+   Working memory for the current turn, session, or scene.
+
+1. Primary MEM / Experience MEM
+   EMO- and SCN-influenced experiential memory.
+
+2. Secondary MEM / Crystallized MEM
+   SLP-consolidated memory organized against SOUL, existing MEM, lineage, and retrieval needs.
+
+3. SOUL anchor
+   Durable identity, values, worldview, output policy, and relationship anchors.
+```
+
+SOUL is not just another memory page. It is the durable identity/value anchor used to decide whether an experience remains ordinary MEM, becomes stable relationship/project/concept memory, or must be escalated as a SOUL proposal.
+
+### Short-term CTX
+
+Short-term CTX is working memory.
+
+It includes:
+
+- current topic,
+- active task,
+- prior decision,
+- referable items,
+- unresolved slots,
+- selected recent continuity,
+- current-session summary.
+
+It is request/session/scene local, latency-sensitive, and not automatically durable. It may become source evidence for RelaySLP, but it is not itself long-term MEM.
+
+### Primary MEM: experience memory
+
+Primary MEM is EMO- and SCN-influenced experiential memory.
+
+It captures what the character experienced, noticed, or found salient. It may include:
+
+- session episodes,
+- communication episodes,
+- subjective impressions,
+- relationship moments,
+- recent project events,
+- unresolved but salient experiences,
+- emotional salience markers,
+- scene-bound memories.
+
+Primary MEM is stronger than short-term CTX because it may survive the current session, but it is still closer to lived experience than to stable knowledge.
+
+RelayEMO influences salience and temperature. RelaySCN influences scope, scene, persistence policy, and whether the experience is eligible to be remembered. Neither EMO nor SCN may turn raw affect estimates into durable facts by itself.
+
+Example boundary:
+
+```text
+Allowed primary MEM:
+  In the previous communication session, Mica seemed anxious in the latter half.
+
+Disallowed durable fact:
+  Mica is an anxious person.
+```
+
+### Secondary MEM: crystallized memory
+
+Secondary MEM is SLP-consolidated memory.
+
+It is formed when RelaySLP organizes primary MEM or other governed evidence against:
+
+- SOUL constraints,
+- existing MEM pages,
+- source lineage,
+- contradiction checks,
+- namespace boundaries,
+- long-term retrieval needs,
+- relation typing and summaries.
+
+Secondary MEM may become:
+
+- stable project state,
+- concept pages,
+- relationship summaries,
+- durable preferences,
+- recurring patterns,
+- contradiction-resolved claims,
+- relation graph entries,
+- stable memory summaries.
+
+Secondary MEM is less emotionally raw than primary MEM. It preserves EMO/SCN as provenance, salience, or scope when useful, but it should not preserve transient affect as a durable claim.
+
+Example transformation:
+
+```text
+Primary MEM:
+  The user reacted strongly against requiring manual approval for every MEM candidate.
+
+Secondary MEM:
+  RelayLM MEM design should treat ordinary memory formation as autonomous, while SOUL Lab provides observation, correction, forgetting, pinning, and merging after the fact.
+```
+
+### SOUL anchor boundary
+
+SOUL is the character's durable identity and value anchor.
+
+SOUL affects secondary MEM formation by answering questions like:
+
+- Is this ordinary memory or identity-level change?
+- Does this experience conflict with protected values or relationship anchors?
+- Should this become a stable relationship/project/concept memory?
+- Should this be escalated as a RelaySOUL proposal?
+
+A memory may produce a SOUL candidate, but it must not directly mutate SOUL.
+
+```text
+Primary MEM
+  -> what happened or felt salient
+
+Secondary MEM
+  -> what this means for future continuity
+
+SOUL proposal
+  -> whether identity, values, or relationship anchors should change
+
+SOUL revision
+  -> explicit intervention path only
+```
+
 ## Component ownership
 
 ### RelayCTX short-term memory
@@ -149,6 +278,62 @@ Long-term MEM
 ```
 
 Scene memory and session memory sit between the two. They may begin as short-term continuity and later become long-term MEM only when RelaySLP policy allows promotion.
+
+## Primary-to-secondary consolidation
+
+Primary MEM and secondary MEM should not collapse into one bucket.
+
+```text
+Short-term CTX
+  -> turn/session working state
+  -> source evidence for SLP when policy allows
+
+Primary MEM
+  -> scene-aware and EMO-influenced experience memory
+  -> useful for recent continuity and subjective relationship memory
+
+Secondary MEM
+  -> SOUL-aligned, contradiction-checked, lineage-backed memory
+  -> useful for durable retrieval and stable summaries
+```
+
+RelaySLP may create primary MEM quickly at turn/session end, then consolidate it later into secondary MEM. Consolidation may merge several primary memories, mark older ones as superseded, or extract a stable relation/summary while preserving source lineage.
+
+## Retrieval authority and prompt placement
+
+Retrieval should preserve authority order.
+
+```text
+Highest authority:
+  SOUL / OUTPUT_POLICY / RELATIONSHIP_ANCHOR
+
+Stable memory:
+  Secondary MEM / Crystallized MEM
+
+Dynamic context:
+  RelaySCN scene state
+  Primary MEM / Experience MEM
+  Short-term CTX
+  latest user input
+```
+
+Prompt placement should keep stable, approved context before dynamic evidence:
+
+```text
+stable prefix:
+  SOUL
+  OUTPUT_POLICY
+  RELATIONSHIP_ANCHOR
+  selected secondary MEM summary
+
+dynamic suffix:
+  SCN
+  selected primary MEM
+  selected short-term CTX
+  latest input
+```
+
+Primary MEM can help a reply feel continuous and emotionally aware, but it must not override SOUL or secondary MEM. Secondary MEM can guide durable continuity, but it still remains lower authority than SOUL.
 
 ## Autonomous memory formation
 
@@ -277,8 +462,9 @@ This lifecycle does not make RelayLM:
 
 ```text
 RelayCTX keeps short-term continuity.
-RelaySLP turns governed experience into memory after the response path.
-RelayMEM stores and retrieves formed memory.
+Primary MEM captures EMO- and SCN-influenced experience.
+RelaySLP consolidates primary MEM into secondary MEM when gates pass.
+Secondary MEM stores SOUL-aligned crystallized memory for durable retrieval.
 SOUL Lab lets the user observe, correct, forget, pin, merge, and escalate.
 SOUL Intervention remains explicit.
 ```
