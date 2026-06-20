@@ -313,6 +313,7 @@ Scope:
 - forget/hide memory,
 - pin/unpin memory,
 - merge memories,
+- review/correct/apply/discard held memory items,
 - expose content-free operation status for UI.
 
 API shape is target-only until implemented, but should be scoped explicitly by character/user/session/memory namespace.
@@ -326,13 +327,21 @@ GET  /lab/api/characters/{character_id}/memory/used
 POST /lab/api/characters/{character_id}/memory/{memory_id}/correct
 POST /lab/api/characters/{character_id}/memory/{memory_id}/forget
 POST /lab/api/characters/{character_id}/memory/{memory_id}/pin
+POST /lab/api/characters/{character_id}/memory/{memory_id}/unpin
 POST /lab/api/characters/{character_id}/memory/{memory_id}/merge
+POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/review
+POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/correct
+POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/apply
+POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/discard
 ```
+
+`memory_id` refers to already-formed memory. `held_memory_id` refers to a held `review_required` item that is not yet a formed durable memory.
 
 Required safety:
 
 - destructive forget/delete requires explicit user action,
 - pin/unpin may require explicit action because it changes retrieval priority,
+- held-memory apply must re-run persistence and namespace gates,
 - correction preserves lineage,
 - cross-namespace operations are blocked by default,
 - browser never directly reads/writes raw MEM files.
@@ -340,9 +349,11 @@ Required safety:
 Smoke coverage:
 
 - scoped list operations,
+- used-memory list operation,
 - correction dry-run/apply gate,
 - forget dry-run/apply gate,
 - pin/unpin operation,
+- held-memory review/correct/apply/discard operation,
 - merge operation,
 - namespace mismatch block,
 - content-free UI status projection.
@@ -379,4 +390,4 @@ RelayMEM MVP is strong enough when:
 3. primary memories can later consolidate into secondary memories,
 4. trace/audit remains content-free by default,
 5. SOUL is never directly mutated by MEM,
-6. Lab can later observe, correct, forget, pin, and merge memory without becoming a per-turn approval queue.
+6. Lab can later observe, correct, forget, pin/unpin, review held items, and merge memory without becoming a per-turn approval queue.
