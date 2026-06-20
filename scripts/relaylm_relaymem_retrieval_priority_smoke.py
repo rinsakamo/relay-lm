@@ -79,7 +79,10 @@ def main() -> int:
         ],
         selected,
     )
-    require([item["retrieval_rank"] for item in selected] == [0, 1, 2, 3], selected)
+    require(
+        [item["retrieval_rank"] for item in selected] == [0, 1, 2, 3],
+        selected,
+    )
     print("ok secondary MEM outranks primary and legacy candidates")
 
     projection = prioritized["selection_projection"]
