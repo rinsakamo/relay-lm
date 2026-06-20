@@ -18,7 +18,9 @@ _MIN_PRIORITY_DISCOVERY_CAP = 8
 _DISCOVERY_CAP_MULTIPLIER = 4
 
 
-def install_relaymem_retrieval_priority_runtime(retrieval_module: Any | None = None) -> None:
+def install_relaymem_retrieval_priority_runtime(
+    retrieval_module: Any | None = None,
+) -> None:
     """Install dry-run priority wiring on ``relaymem_retrieval``.
 
     The existing retrieval artifact builder keeps owning scene gates, recovery
@@ -85,7 +87,10 @@ def install_relaymem_retrieval_priority_runtime(retrieval_module: Any | None = N
             blocked.append({"reason": discovery_reason})
         return list(prioritized["selected_candidates"]), blocked
 
-    def build_relaymem_retrieval_dry_run_artifact(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    def build_relaymem_retrieval_dry_run_artifact(
+        *args: Any,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
         artifact = original_build(*args, **kwargs)
         selected_mem_candidates = artifact.get("selected_mem_candidates")
         artifact["retrieval_priority"] = _runtime_priority_projection(
