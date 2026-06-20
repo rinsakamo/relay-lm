@@ -57,14 +57,14 @@ Completed bounded slices:
   Phase 5-D2b lazy RelayRUN recovery-detail runtime wiring
 
 Next candidates:
+  Phase 5.5-A stream sentinel buffer dry-run
   Phase 5-C5c typed parse source / runtime writer wiring boundary
-  Phase 5.5 Stream Unpack
 
 Later:
   Phase 6 asynchronous RelaySLP
 ```
 
-Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight. Phase 5-C5b is complete as a direct, explicit, gated filesystem writer helper; runtime response/control-envelope extraction and automatic writer invocation remain later work. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring.
+Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight. Phase 5-C5b is complete as a direct, explicit, gated filesystem writer helper; runtime response/control-envelope extraction and automatic writer invocation remain later work. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring. Phase 5.5 is now the product-critical streaming boundary and should start with the sentinel-buffer dry-run slice before additional RelaySOUL execution-gate design expansion.
 
 ## Current caveats
 
@@ -75,6 +75,8 @@ Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5
 - Instruction-cache lookup and RelaySCN projection are read-only.
 - Phase 5-C5b adds a direct gated cache writer helper, but response/control-envelope extraction and runtime auto-write invocation remain absent.
 - RelayCTX Unpack is non-stream only.
+- Safe Stream Unpack and TTS-safe segmentation are not implemented; Phase 5.5-A should begin with dry-run stream sentinel buffering.
+- New RelaySOUL execution-gate design documents are frozen until Phase 5.5-A and Phase 5.5-B are complete, unless a new RelaySOUL document directly unblocks a current runtime safety issue.
 - Token estimation is deterministic and CJK-aware but remains tokenizer-free and model-agnostic rather than exact.
 - RelayRUN lazy recovery detail is wired into the request-runtime checkpoint builder, but cross-cutting per-node orchestration remains later work.
 - RelayREF output observation, RelaySLP persistence, and RelaySOUL actual apply remain later work.
@@ -253,13 +255,25 @@ Implemented:
 
 See [Phase 5-D2 Lazy RelayRUN Recovery Detail Handoff](phase5d2_lazy_relayrun_recovery_detail_handoff.md).
 
-## Phase 5.5: Stream Unpack — planned
+## Phase 5.5: Stream Unpack — planned, bounded slice defined
 
-Planned work includes safe visible chunk forwarding, sentinel buffering, internal-envelope suppression, incomplete-candidate blocking, cancellation handling, and TTS-safe segmentation. C4b and C5 are not prerequisites.
+See [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md).
+
+Phase 5.5 is the product-critical streaming boundary. It should preserve default backend SSE forwarding while adding safe stream-level visible/internal separation in bounded, default-off slices.
+
+Planned slices:
+
+1. **Phase 5.5-A: stream sentinel buffer dry-run** — pure/dry-run stream buffer state, sentinel detection across chunk boundaries, content-free diagnostics, unchanged emitted SSE chunks.
+2. **Phase 5.5-B: visible chunk preservation and internal suppression gate** — gated suppression/blocking of internal candidates while preserving safe visible chunks, partial-stream failure summary, duplicate replay prevention.
+3. **Phase 5.5-C: TTS-safe segmentation hints** — optional/default-off segmentation hints derived only from safe visible output; no TTS or avatar execution.
+
+C4b, C5, and RelaySOUL execution gates are not prerequisites for Phase 5.5-A.
 
 ## Phase 6: asynchronous RelaySLP — planned
 
 Deferred candidate processing, gated MEM page/index/log updates, idempotency, retry policy, and persistence safety classification belong here. RelaySLP must not directly mutate SOUL.
+
+New RelaySOUL execution-gate design documents should not be added before Phase 5.5-A and Phase 5.5-B are complete unless they directly unblock a current runtime safety issue. Existing RelaySOUL governance documents remain valid; this sequencing rule only freezes further design expansion.
 
 ## Update rule
 
