@@ -24,13 +24,13 @@ relaylm_related_authority:
 
 ## Status
 
-Phase 5.5 is the product-critical streaming boundary. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate. Phase 5.5-C0 is complete as a helper-only TTS segmentation foundation. Phase 5.5-C1 is complete as a helper-only TTS adapter handoff contract. Phase 5.5-B2 remains the next streaming runtime boundary.
+Phase 5.5 is the product-critical streaming boundary. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate. Phase 5.5-B2 is complete as gated request-runtime SSE suppression wiring. Phase 5.5-C0 is complete as a helper-only TTS segmentation foundation. Phase 5.5-C1 is complete as a helper-only TTS adapter handoff contract. Phase 5.5-C2 remains the next runtime adapter-handoff wiring boundary.
 
 This document tracks the bounded Stream Unpack implementation sequence.
 
 ## Purpose
 
-Current streaming primarily preserves backend SSE forwarding. Non-stream RelayCTX Unpack already separates visible output from bounded internal candidates, but safe streaming requires additional chunk-level behavior.
+Current streaming preserves backend SSE forwarding by default. Non-stream RelayCTX Unpack already separates visible output from bounded internal candidates, but safe streaming requires additional chunk-level behavior.
 
 Phase 5.5 exists to support:
 
@@ -66,9 +66,9 @@ stream_tts_segmentation_hints_enabled = false  # target, not a current config fi
 
 Default behavior must preserve ordinary backend SSE forwarding.
 
-Phase 5.5-A, B1, C0, and C1 currently provide direct-helper behavior only. They do not intercept request-runtime SSE.
+Phase 5.5-A, B1, C0, and C1 provide direct-helper behavior. Phase 5.5-B2 adds request-runtime SSE suppression wiring, but it is gated by `relayctx_stream_unpack_dry_run_enabled` and remains disabled by default.
 
-When Stream Unpack is enabled for a future bounded runtime slice:
+When Stream Unpack is explicitly enabled for the bounded runtime slice:
 
 - visible chunks are preserved when safely recoverable,
 - internal candidate markers are never exposed after detection,
@@ -147,6 +147,47 @@ Exit criteria met:
 
 See [Phase 5.5-B1 Stream Suppression Gate Handoff](phase55b1_stream_suppression_gate_handoff.md).
 
+### Phase 5.5-B2: request-runtime SSE suppression wiring — complete
+
+Implemented:
+
+- `relaylm.relayctx_stream_suppression_runtime.wrap_stream_with_relayctx_suppression(...)`,
+- request-runtime wrapping of backend SSE bytes behind `relayctx_stream_unpack_dry_run_enabled`,
+- byte-for-byte pass-through when disabled or dry-run-only,
+- OpenAI-compatible SSE `data:` frame handling for streamed content fields,
+- visible-prefix preservation in apply mode,
+- complete and split internal sentinel suppression in apply mode,
+- terminal partial sentinel blocking,
+- invalid UTF-8, invalid SSE JSON, ambiguous content fields, and backend iterator errors fail-closed,
+- no duplicate replay after visible chunks are emitted,
+- content-free `relayctx_stream_suppression_gate` PipelineNodeResult projection,
+- runtime smoke coverage.
+
+Not implemented in 5.5-B2:
+
+- C0/C1 runtime TTS adapter handoff wiring,
+- TTS execution,
+- audio generation,
+- Live2D/avatar control,
+- CTX/MEM/SOUL/SLP persistence,
+- RelaySOUL apply/rollback/storage,
+- response/control-envelope extraction,
+- backend payload mutation,
+- meaning-changing rewrite,
+- non-stream Unpack behavior changes.
+
+Exit criteria met:
+
+- default streaming remains ordinary backend forwarding,
+- dry-run-only mode forwards bytes unchanged while recording content-free diagnostics,
+- visible text preceding a blocked internal candidate remains preserved when safe,
+- internal markers are not exposed after detection in apply mode,
+- malformed internal candidates do not trigger MEM/SOUL/SLP updates,
+- partial/backend failure paths are fail-closed and content-free,
+- no duplicate replay occurs after visible chunks are emitted.
+
+See [Phase 5.5-B2 Stream Suppression Runtime Wiring Handoff](phase55b2_stream_suppression_runtime_handoff.md).
+
 ### Phase 5.5-C0: TTS-safe segmentation helper — complete independently
 
 Implemented:
@@ -169,7 +210,6 @@ Not implemented in 5.5-C0:
 
 - request-runtime SSE interception,
 - wrapping `StreamingResponse` output,
-- Phase 5.5-B2 suppression runtime wiring,
 - runtime TTS adapter handoff,
 - TTS execution,
 - avatar control,
@@ -204,7 +244,6 @@ Not implemented in 5.5-C1:
 
 - request-runtime SSE interception,
 - wrapping `StreamingResponse` output,
-- Phase 5.5-B2 suppression runtime wiring,
 - actual downstream adapter transport,
 - TTS execution,
 - audio generation,
@@ -223,37 +262,33 @@ Exit criteria met:
 
 See [Phase 5.5-C1 TTS Adapter Handoff Contract](phase55c1_tts_adapter_handoff_contract.md).
 
-### Phase 5.5-B2: request-runtime SSE suppression wiring — planned next
+### Phase 5.5-C2: runtime TTS adapter handoff wiring — planned next
 
-Goal: safely wire the suppression helper into request-runtime streaming behind explicit gates while preserving default backend SSE forwarding.
+Goal: connect B2 safe visible runtime output to C0 segmentation and C1 adapter handoff planning without executing TTS.
 
 Implemented behavior should include:
 
-- route/config ownership for runtime Stream Unpack apply,
-- unchanged ordinary SSE compatibility by default,
-- runtime wrapping of backend bytes only when explicitly enabled,
-- visible chunk preservation after safe emission,
-- internal envelope suppression after detection,
-- malformed candidate blocking,
-- partial-stream failure summary,
-- cancellation handling,
-- duplicate replay prevention,
-- content-free PipelineNodeResult projection.
+- route/config ownership for runtime C0/C1 handoff planning,
+- default-off behavior with unchanged stream forwarding,
+- dry-run-only behavior that records candidate counts but emits no handoff items,
+- safe visible output as the only source for C0 segmentation,
+- C1 adapter handoff plan as runtime-private state only,
+- content-free PipelineNodeResult projection for both C0 and C1,
+- no TTS execution, audio generation, avatar control, or persistence.
 
 Exit criteria:
 
-- default streaming remains byte-for-byte backend forwarding,
-- visible text preceding a blocked internal candidate remains preserved when safe,
-- internal markers are not exposed after detection,
-- malformed internal candidates do not trigger MEM/SOUL/SLP updates,
-- cancellation produces a bounded content-free artifact,
-- no duplicate replay occurs after visible chunks are emitted.
+- C0/C1 are invoked only after B2 safe visible output is available,
+- internal marker/candidate material never becomes a hint or handoff source,
+- diagnostics contain only counts, booleans, status values, and reason IDs,
+- runtime stream bytes remain compatible by default,
+- TTS/audio/avatar execution flags remain false.
 
 ### Phase 5.5-C: TTS-safe segmentation and adapter handoff
 
 Goal: emit bounded segmentation hints and runtime-private handoff plans for downstream TTS/adapters without owning audio generation.
 
-Phase 5.5-C0 provides the pure segmentation helper foundation. Phase 5.5-C1 provides the pure adapter handoff contract helper. A later runtime slice must consume only safe visible output from the Phase 5.5-B runtime boundary and pass C0/C1 results across an adapter boundary without executing TTS.
+Phase 5.5-C0 provides the pure segmentation helper foundation. Phase 5.5-C1 provides the pure adapter handoff contract helper. Phase 5.5-C2 should consume only safe visible output from the Phase 5.5-B runtime boundary and pass C0/C1 results across an adapter boundary without executing TTS.
 
 Implemented behavior includes:
 
@@ -296,7 +331,7 @@ Minimum smoke coverage should include:
 | TTS adapter handoff dry-run | candidates counted, emitted handoff count remains zero |
 | TTS adapter handoff ready | runtime-private content-free handoff items emitted, logs omit arrays |
 
-Phase 5.5-A covers the first four applicable dry-run/helper cases plus invalid chunk content-free failure. Phase 5.5-B1 covers direct-helper visible-prefix preservation, suppression, terminal partial blocking, invalid chunk fail-closed behavior, and content-free suppression node results. Phase 5.5-C0 covers helper-only TTS disabled, dry-run, enabled, length-fallback, internal-block, and content-free node-result cases. Phase 5.5-C1 covers helper-only adapter handoff disabled, dry-run, ready, blocked, invalid, empty, and content-free node-result cases. Runtime cases belong to Phase 5.5-B2.
+Phase 5.5-A covers the first four applicable dry-run/helper cases plus invalid chunk content-free failure. Phase 5.5-B1 covers direct-helper visible-prefix preservation, suppression, terminal partial blocking, invalid chunk fail-closed behavior, and content-free suppression node results. Phase 5.5-B2 covers gated runtime SSE pass-through, visible-prefix preservation, internal suppression, invalid stream fail-closed behavior, backend iterator error, and no-duplicate-replay coverage. Phase 5.5-C0 covers helper-only TTS disabled, dry-run, enabled, length-fallback, internal-block, and content-free node-result cases. Phase 5.5-C1 covers helper-only adapter handoff disabled, dry-run, ready, blocked, invalid, empty, and content-free node-result cases. Runtime C0/C1 handoff wiring belongs to Phase 5.5-C2.
 
 ## Safety invariants
 
@@ -313,25 +348,24 @@ Phase 5.5 must preserve these invariants:
 
 ## RelaySOUL design freeze
 
-Until Phase 5.5-B runtime wiring is complete, new RelaySOUL execution-gate design documents should not be added unless they directly unblock a current runtime safety issue.
+The Phase 5.5-B runtime wiring boundary is now closed for the bounded SSE suppression slice. New RelaySOUL execution-gate design documents should still be avoided unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary.
 
-Existing RelaySOUL gate documents remain valid historical/current governance references. The freeze is about avoiding additional design expansion while the streaming product-critical path still lacks request-runtime visible-chunk preservation and internal suppression.
+Existing RelaySOUL gate documents remain valid historical/current governance references. The freeze is about avoiding additional design expansion while C0/C1 runtime adapter handoff wiring still lacks request-runtime integration.
 
 ## Next implementation handoff
 
 The next implementation handoff should be:
 
 ```text
-Phase 5.5-B2 request-runtime SSE suppression wiring
+Phase 5.5-C2 runtime TTS adapter handoff wiring
 ```
 
 The handoff should include:
 
-- runtime stream gate and config field ownership,
+- route/config ownership for C0/C1 runtime handoff planning,
 - unchanged ordinary SSE compatibility check,
-- safe visible chunk preservation rules,
-- internal marker/candidate suppression behavior,
-- partial stream/cancellation behavior,
-- no duplicate replay invariant,
+- B2 safe visible output as the only hint source,
+- C0 segmentation invocation rules,
+- C1 adapter handoff invocation rules,
 - content-free diagnostic schema,
-- explicit non-goals for TTS execution, RelaySOUL persistence, and response rewriting.
+- explicit non-goals for TTS execution, audio generation, avatar control, RelaySOUL persistence, and response rewriting.
