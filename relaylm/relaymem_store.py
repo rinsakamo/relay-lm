@@ -7,19 +7,35 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-_LAYOUT_DIRS = (
+_CURRENT_LAYOUT_DIRS = (
     "memory/raw",
     "memory/mem/projects",
     "memory/mem/concepts",
     "memory/mem/summaries",
     "memory/mem/relations",
 )
+_TARGET_LAYOUT_DIRS = (
+    "memory/sources/conversations",
+    "memory/sources/communications",
+    "memory/sources/corrections",
+    "memory/mem/primary/sessions",
+    "memory/mem/primary/scenes",
+    "memory/mem/primary/relationships",
+    "memory/mem/primary/projects",
+    "memory/mem/secondary/projects",
+    "memory/mem/secondary/concepts",
+    "memory/mem/secondary/claims",
+    "memory/mem/secondary/summaries",
+    "memory/mem/secondary/relations",
+)
+_LAYOUT_DIRS = _CURRENT_LAYOUT_DIRS + _TARGET_LAYOUT_DIRS
 _LAYOUT_FILES = (
     "memory/mem/index.md",
     "memory/mem/log.md",
 )
 _ALLOWED_SUFFIXES = {
     "memory/raw": {".jsonl", ".md"},
+    "memory/sources": {".jsonl", ".md"},
     "memory/mem": {".md"},
 }
 _MAX_FILES_TO_VALIDATE = 64
@@ -31,6 +47,14 @@ _CANDIDATE_DIRS = (
     "memory/mem/projects",
     "memory/mem/concepts",
     "memory/mem/summaries",
+    "memory/mem/primary/sessions",
+    "memory/mem/primary/scenes",
+    "memory/mem/primary/relationships",
+    "memory/mem/primary/projects",
+    "memory/mem/secondary/projects",
+    "memory/mem/secondary/concepts",
+    "memory/mem/secondary/claims",
+    "memory/mem/secondary/summaries",
 )
 _DEFAULT_MAX_CANDIDATES = 8
 _DEFAULT_MAX_CANDIDATE_READ_BYTES = 4096
@@ -39,6 +63,14 @@ _SNIPPET_DIRS = (
     "memory/mem/projects",
     "memory/mem/concepts",
     "memory/mem/summaries",
+    "memory/mem/primary/sessions",
+    "memory/mem/primary/scenes",
+    "memory/mem/primary/relationships",
+    "memory/mem/primary/projects",
+    "memory/mem/secondary/projects",
+    "memory/mem/secondary/concepts",
+    "memory/mem/secondary/claims",
+    "memory/mem/secondary/summaries",
 )
 _DEFAULT_MAX_SNIPPET_CHARS = 512
 _DEFAULT_MAX_SNIPPET_CANDIDATES = 3
@@ -124,6 +156,8 @@ def discover_relaymem_page_candidates(
                 "source": "mem_page",
                 "reason": reason,
                 "estimated_chars": len(sample),
+                "memory_layer": _memory_layer_for_path(relative),
+                "layout_profile": _layout_profile_for_path(relative),
                 "applied_to_ctx": False,
             }
         )
@@ -257,6 +291,8 @@ def build_relaymem_snippet_evidence_dry_run(
             "snippet_text": snippet,
             "snippet_chars": len(snippet),
             "estimated_tokens": estimated_tokens,
+            "memory_layer": _memory_layer_for_path(relative),
+            "layout_profile": _layout_profile_for_path(relative),
             "applied_to_ctx": False,
             "safe_for_prompt_preview": False,
             "blocked_reasons": [],
@@ -270,6 +306,8 @@ def build_relaymem_snippet_evidence_dry_run(
                 "evidence_kind": "bounded_page_snippet",
                 "snippet_chars": len(snippet),
                 "estimated_tokens": estimated_tokens,
+                "memory_layer": _memory_layer_for_path(relative),
+                "layout_profile": _layout_profile_for_path(relative),
                 "content_included_in_runtime_prompt": False,
             }
         )
@@ -299,6 +337,7 @@ def build_relaymem_store_diagnostics(
         "root_path": root_path,
         "root_present": False,
         "layout": _layout(root_path),
+        "layout_compatibility": _empty_layout_compatibility(),
         "index_present": False,
         "log_present": False,
         "pages_discovered": 0,
@@ -332,6 +371,7 @@ def build_relaymem_store_diagnostics(
         return diagnostics
 
     diagnostics["root_present"] = True
+    diagnostics["layout_compatibility"] = _layout_compatibility(root)
     index_path = root / "memory" / "mem" / "index.md"
     log_path = root / "memory" / "mem" / "log.md"
     diagnostics["index_present"] = index_path.is_file()
@@ -391,11 +431,46 @@ def build_relaymem_store_diagnostics(
     return diagnostics
 
 
-def _layout(root_path: str | None) -> dict[str, list[str]]:
+def _layout(root_path: str | None) -> dict[str, Any]:
     root = Path(root_path) if root_path else Path(".")
     return {
         "directories": [(root / item).as_posix() for item in _LAYOUT_DIRS],
         "files": [(root / item).as_posix() for item in _LAYOUT_FILES],
+        "profiles": {
+            "current_flat": {
+                "directories": [(root / item).as_posix() for item in _CURRENT_LAYOUT_DIRS],
+                "files": [(root / item).as_posix() for item in _LAYOUT_FILES],
+            },
+            "target_primary_secondary": {
+                "directories": [(root / item).as_posix() for item in _TARGET_LAYOUT_DIRS],
+                "files": [(root / item).as_posix() for item in _LAYOUT_FILES],
+            },
+        },
+    }
+
+
+def _empty_layout_compatibility() -> dict[str, Any]:
+    return {
+        "current_flat_present": False,
+        "target_primary_secondary_present": False,
+        "sources_present": False,
+        "migration_required": False,
+        "read_only_compatibility_mode": True,
+    }
+
+
+def _layout_compatibility(root: Path) -> dict[str, Any]:
+    current_flat_present = any((root / item).is_dir() for item in _CURRENT_LAYOUT_DIRS)
+    target_primary_secondary_present = any(
+        (root / item).is_dir() for item in _TARGET_LAYOUT_DIRS
+    )
+    sources_present = (root / "memory" / "sources").is_dir()
+    return {
+        "current_flat_present": current_flat_present,
+        "target_primary_secondary_present": target_primary_secondary_present,
+        "sources_present": sources_present,
+        "migration_required": current_flat_present and not target_primary_secondary_present,
+        "read_only_compatibility_mode": True,
     }
 
 
@@ -411,6 +486,8 @@ def _iter_store_files(root: Path) -> Iterator[Path]:
 def _is_supported_file(relative_path: str, suffix: str) -> bool:
     if relative_path.startswith("memory/raw/"):
         return suffix in _ALLOWED_SUFFIXES["memory/raw"]
+    if relative_path.startswith("memory/sources/"):
+        return suffix in _ALLOWED_SUFFIXES["memory/sources"]
     if relative_path.startswith("memory/mem/"):
         return suffix in _ALLOWED_SUFFIXES["memory/mem"]
     return False
@@ -527,6 +604,26 @@ def _decode_utf8_sample(
 ) -> str:
     decoder = codecs.getincrementaldecoder("utf-8")()
     return decoder.decode(sample, final=not allow_truncated_final_sequence)
+
+
+def _memory_layer_for_path(relative_path: str) -> str:
+    if relative_path.startswith("memory/mem/primary/"):
+        return "primary"
+    if relative_path.startswith("memory/mem/secondary/"):
+        return "secondary"
+    if relative_path.startswith("memory/mem/"):
+        return "legacy_flat"
+    return "unknown"
+
+
+def _layout_profile_for_path(relative_path: str) -> str:
+    if relative_path.startswith("memory/mem/primary/") or relative_path.startswith(
+        "memory/mem/secondary/"
+    ):
+        return "target_primary_secondary"
+    if relative_path.startswith("memory/mem/"):
+        return "current_flat"
+    return "unknown"
 
 
 def _selection_reason(relative_path: str, sample: str, query_terms: list[str]) -> str:
