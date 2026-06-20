@@ -197,10 +197,8 @@ def _observe_frame_for_dry_run(state: "_RuntimeSuppressionState", frame: bytes) 
         state.invalid_chunk_count += 1
         state.reasons.append("sse_data_json_invalid")
         return
-    content, path = _extract_first_content(data)
-    if path is None:
-        return
-    state.observe_content(content)
+    for content, _path in _extract_content_fields(data):
+        state.observe_content(content)
 
 
 def _process_frame_for_apply(
@@ -229,11 +227,16 @@ def _process_frame_for_apply(
         state.reasons.append("sse_data_json_invalid")
         return []
 
-    content, path = _extract_first_content(data)
-    if path is None:
+    content_fields = _extract_content_fields(data)
+    if not content_fields:
         if state.suppression_started:
             return []
         return state.flush_pending_at_boundary() + [frame]
+    if len(content_fields) != 1:
+        state.invalid_chunk_count += 1
+        state.reasons.append("multiple_stream_content_fields")
+        return []
+    content, path = content_fields[0]
     if state.suppression_started:
         state.observe_content(content)
         return []
@@ -438,21 +441,24 @@ def _extract_sse_data_payload(event_text: str) -> str | None:
     return "\n".join(data_lines)
 
 
-def _extract_first_content(data: Any) -> tuple[str, tuple[Any, ...] | None]:
+def _extract_content_fields(data: Any) -> list[tuple[str, tuple[Any, ...]]]:
     if not isinstance(data, dict):
-        return "", None
+        return []
     choices = data.get("choices")
     if not isinstance(choices, list):
-        return "", None
+        return []
+    fields: list[tuple[str, tuple[Any, ...]]] = []
     for choice_index, choice in enumerate(choices):
         if not isinstance(choice, dict):
             continue
         delta = choice.get("delta")
         if isinstance(delta, dict) and isinstance(delta.get("content"), str):
-            return delta["content"], ("choices", choice_index, "delta", "content")
+            fields.append(
+                (delta["content"], ("choices", choice_index, "delta", "content"))
+            )
         if isinstance(choice.get("text"), str):
-            return choice["text"], ("choices", choice_index, "text")
-    return "", None
+            fields.append((choice["text"], ("choices", choice_index, "text")))
+    return fields
 
 
 def _set_path(data: Any, path: tuple[Any, ...], value: str) -> None:
