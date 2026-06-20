@@ -16,7 +16,11 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.app import create_app
-from relaylm.relaymem_store import build_relaymem_store_diagnostics
+from relaylm.relaymem_store import (
+    build_relaymem_snippet_evidence_dry_run,
+    build_relaymem_store_diagnostics,
+    discover_relaymem_page_candidates,
+)
 
 
 class _Capture:
@@ -154,6 +158,8 @@ def main() -> int:
         )
         require(store["index_present"] is True, store)
         require(store["pages_discovered"] > 0, store)
+        require(store["layout_compatibility"]["current_flat_present"] is True, store)
+        require(store["layout_compatibility"]["migration_required"] is True, store)
         blocked_reasons = {item["reason"] for item in store["blocked_files"]}
         require("unsupported_file_type" in blocked_reasons, store)
         require("malformed_or_unreadable_file" in blocked_reasons, store)
@@ -161,7 +167,79 @@ def main() -> int:
         require(validation["full_file_reads"] is False, store)
         require(validation["full_tree_materialized"] is False, store)
         require(validation["max_sample_bytes"] == 4096, store)
-        print("ok minimal store discovers pages and blocks malformed files")
+        print("ok minimal store discovers legacy pages and blocks malformed files")
+
+        legacy_candidates = discover_relaymem_page_candidates(
+            root_path=str(store_root),
+            query_terms=["relaymem"],
+        )
+        require(legacy_candidates["candidates"], legacy_candidates)
+        first_legacy = legacy_candidates["candidates"][0]
+        require(first_legacy["layout_profile"] == "current_flat", legacy_candidates)
+        require(first_legacy["memory_layer"] == "legacy_flat", legacy_candidates)
+        print("ok legacy flat candidates remain read-only compatible")
+
+        with tempfile.TemporaryDirectory() as target_td:
+            target_root = Path(target_td)
+            target_mem = target_root / "memory" / "mem"
+            (target_root / "memory" / "sources" / "conversations").mkdir(parents=True)
+            (target_mem / "primary" / "sessions").mkdir(parents=True)
+            (target_mem / "secondary" / "projects").mkdir(parents=True)
+            (target_mem / "index.md").write_text("# Index\n", encoding="utf-8")
+            (target_mem / "log.md").write_text("# Log\n", encoding="utf-8")
+            (target_root / "memory" / "sources" / "conversations" / "turn.jsonl").write_text(
+                "{}\n",
+                encoding="utf-8",
+            )
+            (target_mem / "primary" / "sessions" / "session.md").write_text(
+                "# Session\nTarget primary memory\n",
+                encoding="utf-8",
+            )
+            (target_mem / "secondary" / "projects" / "project.md").write_text(
+                "# Project\nTarget secondary memory\n",
+                encoding="utf-8",
+            )
+            target = build_relaymem_store_diagnostics(
+                root_path=str(target_root),
+                store_enabled=True,
+                retrieval_dry_run_only=True,
+            )
+            require(target["layout_compatibility"]["current_flat_present"] is False, target)
+            require(target["layout_compatibility"]["target_primary_secondary_present"] is True, target)
+            require(target["layout_compatibility"]["sources_present"] is True, target)
+            require(target["layout_compatibility"]["migration_required"] is False, target)
+            require(target["blocked_files"] == [], target)
+            require(
+                "memory/mem/primary/sessions/session.md" in target["page_paths"],
+                target,
+            )
+            require(
+                "memory/mem/secondary/projects/project.md" in target["page_paths"],
+                target,
+            )
+
+            target_candidates = discover_relaymem_page_candidates(
+                root_path=str(target_root),
+                query_terms=["target"],
+                max_candidates=8,
+            )
+            target_paths = {item["path"] for item in target_candidates["candidates"]}
+            require("memory/mem/primary/sessions/session.md" in target_paths, target_candidates)
+            require("memory/mem/secondary/projects/project.md" in target_paths, target_candidates)
+            target_layers = {item["memory_layer"] for item in target_candidates["candidates"]}
+            require({"primary", "secondary"}.issubset(target_layers), target_candidates)
+
+            snippets = build_relaymem_snippet_evidence_dry_run(
+                root_path=str(target_root),
+                selected_mem_candidates=target_candidates["candidates"],
+                snippet_extraction_enabled=True,
+                snippet_dry_run_only=True,
+            )
+            require(snippets["snippet_candidates"], snippets)
+            snippet_layers = {item["memory_layer"] for item in snippets["snippet_candidates"]}
+            require(snippet_layers.issubset({"primary", "secondary"}), snippets)
+            require(snippets["evidence_envelope"]["blocked"] == [], snippets)
+            print("ok target primary/secondary layout is read-only discoverable")
 
         with tempfile.TemporaryDirectory() as capped_td:
             capped_root = Path(capped_td)
