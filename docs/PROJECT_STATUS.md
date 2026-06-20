@@ -46,25 +46,27 @@ Managed-route correctness boundary: Phase 5-C complete
 Pre-stream hardening: Phase 5-D complete through D2
 
 Latest completed bounded slice:
-  Phase 5-C5b gated client-instruction cache writer
-  + direct gated atomic cache writer helper
-  + reader-compatible persisted cache entry validation
-  + missing-root / symlink-root / symlink-target / byte-budget fail-closed gates
-  + parser-versioned identity blocking for current runtime compatibility
-  + default-off and dry-run-only by default
-  + no response/control-envelope extraction
-  + no runtime auto-write wiring
-  + no backend/RelaySCN/user-visible mutation
+  Phase 5.5-A stream sentinel buffer dry-run
+  + pure content-free stream sentinel observer helper
+  + complete marker detection in one chunk
+  + split marker detection across chunk boundaries
+  + terminal partial marker prefix blocking
+  + content-free PipelineNodeResult projection
+  + default-off and dry-run-only config fields
+  + direct smoke and dedicated CI workflow
+  + no runtime SSE interception
+  + no visible output mutation or suppression
+  + no TTS hints, TTS execution, avatar control, or persistence
 ```
 
-Phase 5-C5b completes the direct filesystem writer safety boundary for validated typed parse artifacts. The helper can write only when an explicit caller disables dry-run-only and supplies a valid existing cache root. Runtime request handling still does not extract typed parse candidates from backend responses or invoke cache writes automatically.
+Phase 5.5-A starts the Stream Unpack implementation path without changing runtime streaming behavior. It observes chunk fragments for RelayCTX internal sentinels in direct-helper smoke only. The request runtime still preserves ordinary backend SSE forwarding and does not invoke Stream Unpack.
 
-Next candidates remain independently sequenced, with Phase 5.5-A as the next product-critical implementation boundary:
+Next candidates remain independently sequenced, with Phase 5.5-B as the next product-critical implementation boundary:
 
-- Phase 5.5-A: stream sentinel buffer dry-run,
+- Phase 5.5-B: visible chunk preservation and internal suppression gate,
 - Phase 5-C5c: typed parse source / runtime writer wiring boundary.
 
-New RelaySOUL execution-gate design documents are frozen until Phase 5.5-A and 5.5-B are complete, unless a new RelaySOUL document directly unblocks a current runtime safety issue.
+New RelaySOUL execution-gate design documents remain frozen until Phase 5.5-B is complete, unless a new RelaySOUL document directly unblocks a current runtime safety issue.
 
 ## Current implemented boundary
 
@@ -76,6 +78,7 @@ Current `main` includes:
 - RelayINT-facing reference-repair compatibility boundary,
 - selected RelayMEM retrieval and gated CTX injection,
 - pure and gated non-stream RelayCTX Unpack,
+- stream sentinel buffer dry-run helper for RelayCTX internal markers,
 - managed-route client-message canonicalization dry-run,
 - runtime-private client-instruction identity,
 - read-only instruction-cache lookup,
@@ -100,9 +103,11 @@ memory.token_budget_truncation_enabled = false
 client_instruction_typed_parse_enabled = false
 client_instruction_cache_write_enabled = false
 client_instruction_cache_write_dry_run_only = true
+relayctx_stream_unpack_dry_run_enabled = false
+relayctx_stream_unpack_dry_run_only = true
 ```
 
-Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate.
+Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate. Stream Unpack is not wired into runtime streaming yet.
 
 ## Token estimation boundary
 
@@ -131,7 +136,7 @@ Memory candidate assembly and message truncation share this estimator. Existing 
 
 Role, content, and position alone are not accepted as provenance. Missing or invalid provenance blocks actual apply. Unselected frontend summaries, memory notes, and replayed persona blocks are excluded from bounded evidence.
 
-A successful managed candidate contains one RelayLM-owned compiled system message plus the exact validated current user message. Prior client history, raw instruction objects, unselected instruction candidates, opaque cache content, and the reserved `relaylm` control envelope are excluded.
+A successful managed candidate contains one RelayLM-owned compiled system message plus the exact validated current user message. Prior client history, raw instruction objects, unselected candidates, opaque cache content, and the reserved `relaylm` control envelope are excluded.
 
 ## Cache-hit RelaySCN projection boundary
 
@@ -152,6 +157,12 @@ The projection is diagnostics-only and read-only. It does not apply RelaySCN pol
 The direct writer blocks missing roots, invalid byte budgets, oversized entries, symlink roots/components/targets, parser-versioned identity keys that do not match current runtime lookup, and reader-incompatible entries. Runtime request handling still does not extract typed parse candidates from model responses or invoke this writer automatically.
 
 This boundary does not extract typed parse candidates from model responses or control envelopes, apply RelaySCN policy, mutate backend payloads, or mutate user-visible responses.
+
+## Stream sentinel dry-run boundary
+
+`relaylm.relayctx_stream_unpack` provides a pure Phase 5.5-A helper that observes streamed text fragments for RelayCTX internal sentinels across chunk boundaries.
+
+The helper emits only content-free diagnostics and a direct-helper `relayctx_stream_unpack` node result. It does not mutate SSE output, suppress visible chunks, emit TTS hints, call TTS/avatar adapters, persist CTX/MEM/SOUL/SLP state, or run in request runtime by default.
 
 ## RelayRUN lazy recovery-detail boundary
 
@@ -179,7 +190,8 @@ The runtime does not yet provide:
 - runtime invocation of the gated instruction-cache writer,
 - complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy,
 - active tool-chain reconstruction,
-- Stream Unpack and TTS-safe segmentation,
+- runtime Stream Unpack SSE interception, visible chunk preservation, and internal suppression,
+- TTS-safe segmentation hints,
 - dedicated output-side RelayREF and complete output-side RelaySCN,
 - cross-cutting per-node RelayRUN orchestration,
 - asynchronous RelaySLP persistence apply,
@@ -204,12 +216,13 @@ Open-LLM-VTuber
   -> OpenAI-compatible backend
 ```
 
-RelayLM does not own frontend UI, ASR, TTS execution, or avatar execution. Current streaming remains primarily backend SSE forwarding; safe Stream Unpack is not implemented.
+RelayLM does not own frontend UI, ASR, TTS execution, or avatar execution. Current streaming remains primarily backend SSE forwarding; safe runtime Stream Unpack is not implemented.
 
 ## Where to read next
 
 - [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md)
 - [Phase 5.5 Stream Unpack Bounded Slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
+- [Phase 5.5-A Stream Sentinel Buffer Dry-Run Handoff](architecture/phase55a_stream_sentinel_buffer_dry_run_handoff.md)
 - [Phase 5-C5b Gated Client-Instruction Cache Writer Handoff](architecture/phase5c5b_gated_cache_writer_handoff.md)
 - [Phase 5-C5a Typed Parse and Cache-Write Preflight Handoff](architecture/phase5c5a_typed_parse_cache_write_preflight_handoff.md)
 - [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](architecture/phase5c4b_cache_hit_relayscn_projection_handoff.md)
