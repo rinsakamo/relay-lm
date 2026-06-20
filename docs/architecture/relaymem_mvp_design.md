@@ -8,16 +8,16 @@ It is not a simple RAG cache and it is not the owner of all memory-related decis
 
 ```text
 RelayMEM storage/index
-  durable approved memory records and compiled pages
+  durable formed memory records and compiled pages
 
 RelayMEM Retrieval
   synchronous read-only selection for the current answer
 
 RelaySLP
-  deferred compilation, update, hold, reject, and proposal workflow
+  deferred autonomous ordinary memory formation, update, hold, reject, and proposal workflow
 ```
 
-Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
+Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md). Memory lifecycle semantics live in [Memory Lifecycle Design](memory_lifecycle_design.md).
 
 ## Core principle
 
@@ -27,6 +27,10 @@ RelaySLP improves future memory.
 ```
 
 Retrieval only reads. RelaySLP may produce or apply governed memory changes through explicit gates.
+
+Ordinary MEM formation is autonomous by default. User approval is not required for every ordinary memory update. Review and approval scopes are exception paths for sensitive, destructive, identity-level, low-confidence, contradictory, cross-namespace, or SOUL-affecting changes.
+
+RelayMEM should represent formed experience, not a per-turn user approval queue.
 
 ## Relation to other components
 
@@ -144,6 +148,8 @@ A `soul_candidate` remains a candidate. It is not a RelaySOUL revision or approv
 
 ## Safety scopes
 
+Safety scopes classify memory-operation risk. They must not be interpreted as a universal requirement that the user approve every memory candidate.
+
 ### `free_to_update`
 
 May be applied by RelaySLP only when:
@@ -154,21 +160,31 @@ May be applied by RelaySLP only when:
 - confidence/stability requirements pass,
 - the update is idempotent.
 
-Examples may include non-sensitive project notes or concept-page maintenance.
+Examples may include non-sensitive project notes, concept-page maintenance, ordinary session summaries, and low-risk relationship continuity details.
 
 ### `review_required`
 
-Held for user/operator review.
+Held for later user/operator review or Lab correction. This is an exception path, not the normal memory path.
 
 Examples:
 
 - durable workflow preferences,
 - major project-direction changes,
-- ambiguous long-term facts.
+- ambiguous long-term facts,
+- user-disputed memories,
+- unresolved contradictions.
 
 ### `explicit_approval_required`
 
 Converted into an approval artifact or RelaySOUL proposal candidate. Never auto-applied.
+
+Examples:
+
+- SOUL-level identity/value/relationship-anchor changes,
+- sensitive personal facts,
+- destructive memory deletion,
+- cross-namespace memory movement,
+- pin/unpin operations that materially change retrieval priority.
 
 ### `never_auto_promote`
 
@@ -217,6 +233,8 @@ governed source evidence
 ```
 
 RelaySLP runs outside the latency-critical normal response path and never produces the current answer directly.
+
+For ordinary safe memory, `merge` or `update` may be autonomous when all gates pass. `hold`, `reject`, and `proposal` paths preserve operator control for uncertain, sensitive, contradictory, or identity-affecting changes.
 
 ## Relation model
 
@@ -272,8 +290,8 @@ They must not contain raw messages, memory bodies, snippets, local paths, semant
 
 1. Retrieval only reads.
 2. RelaySLP is the only memory compiler/apply owner.
-3. RelaySCN policy may block persistence regardless of candidate safety scope.
-4. `review_required` is held.
+3. Ordinary `free_to_update` MEM formation may apply autonomously only when all SLP, RelaySCN, lineage, confidence, namespace, and idempotency gates pass.
+4. `review_required` is held for later Lab/operator review or correction.
 5. `explicit_approval_required` becomes an approval/proposal artifact.
 6. RelaySOUL is never directly mutated by RelayMEM.
 7. Raw evidence is preserved separately from compiled pages.
@@ -296,6 +314,7 @@ RelayMEM does not:
 - own final prompt layout,
 - inspect generated output,
 - directly mutate RelaySOUL,
+- require per-turn user approval for ordinary memory formation,
 - persist raw affect inference as fact,
 - require vector infrastructure for the MVP,
 - expose content-bearing memory artifacts through default trace/audit surfaces.
@@ -304,13 +323,13 @@ RelayMEM does not:
 
 ```text
 RelayMEM storage
-  approved durable memory substrate
+  formed durable memory substrate
 
 RelayMEM Retrieval
   read-only current-answer evidence
 
 RelaySLP
-  deferred governed memory compilation and proposal path
+  deferred governed memory formation and proposal path
 
 RelayREF
   separate post-generation observer
