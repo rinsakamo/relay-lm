@@ -58,17 +58,18 @@ Completed bounded slices:
   Phase 5-D2b lazy RelayRUN recovery-detail runtime wiring
   Phase 5.5-A stream sentinel buffer dry-run
   Phase 5.5-B1 stream suppression gate helper
+  Phase 5.5-B2 request-runtime SSE suppression wiring
   Phase 5.5-C0 TTS segmentation helper
   Phase 5.5-C1 TTS adapter handoff contract
 
 Next candidates:
-  Phase 5.5-B2 request-runtime SSE suppression wiring
+  Phase 5.5-C2 runtime TTS adapter handoff wiring
 
 Later:
   Phase 6 asynchronous RelaySLP
 ```
 
-Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight. Phase 5-C5b is complete as a direct, explicit, gated filesystem writer helper. Phase 5-C5c is complete as request-local runtime wiring for trusted in-process typed parse sources; runtime response/control-envelope extraction, frontend metadata trust, and parser-versioned lookup/write compatibility remain later work. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate that preserves safe visible prefixes and suppresses internal markers when explicitly enabled and not dry-run-only. Phase 5.5-C0 is complete as a helper-only TTS segmentation foundation that emits content-free character-range hints from already-safe visible chunks. Phase 5.5-C1 is complete as a helper-only TTS adapter handoff contract that converts C0 hint results into runtime-private downstream adapter handoff plans. Runtime SSE interception, cancellation handling, and partial-stream recovery remain Phase 5.5-B2 or later.
+Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight. Phase 5-C5b is complete as a direct, explicit, gated filesystem writer helper. Phase 5-C5c is complete as request-local runtime wiring for trusted in-process typed parse sources; runtime response/control-envelope extraction, frontend metadata trust, and parser-versioned lookup/write compatibility remain later work. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate that preserves safe visible prefixes and suppresses internal markers when explicitly enabled and not dry-run-only. Phase 5.5-B2 is complete as gated request-runtime SSE suppression wiring. Phase 5.5-C0 is complete as a helper-only TTS segmentation foundation that emits content-free character-range hints from already-safe visible chunks. Phase 5.5-C1 is complete as a helper-only TTS adapter handoff contract that converts C0 hint results into runtime-private downstream adapter handoff plans. Runtime C0/C1 adapter handoff wiring remains Phase 5.5-C2 or later.
 
 ## Current caveats
 
@@ -79,8 +80,8 @@ Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5
 - Instruction-cache lookup and RelaySCN projection are read-only.
 - Phase 5-C5c wires a trusted in-process typed parse source to the gated writer, but response/control-envelope extraction, frontend metadata trust, and parser-versioned lookup/write compatibility remain absent.
 - RelayCTX Unpack is non-stream only.
-- Phase 5.5-A adds dry-run stream sentinel observation only; Phase 5.5-B1 adds a direct suppression helper only; Phase 5.5-C0 adds a direct TTS segmentation helper only; Phase 5.5-C1 adds a direct adapter handoff contract helper only. Runtime SSE interception, cancellation handling, duplicate replay prevention, and runtime TTS adapter handoff wiring remain absent.
-- New RelaySOUL execution-gate design documents are frozen until Phase 5.5-B runtime wiring is complete, unless a new RelaySOUL document directly unblocks a current runtime safety issue.
+- Phase 5.5-A adds dry-run stream sentinel observation only; Phase 5.5-B1 adds a direct suppression helper only; Phase 5.5-B2 adds gated request-runtime SSE suppression wiring; Phase 5.5-C0 adds a direct TTS segmentation helper only; Phase 5.5-C1 adds a direct adapter handoff contract helper only. Runtime C0/C1 TTS adapter handoff wiring, TTS execution, audio generation, and avatar control remain absent.
+- New RelaySOUL execution-gate design documents should still be avoided unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary.
 - Token estimation is deterministic and CJK-aware but remains tokenizer-free and model-agnostic rather than exact.
 - RelayRUN lazy recovery detail is wired into the request-runtime checkpoint builder, but cross-cutting per-node orchestration remains later work.
 - RelayREF output observation, RelaySLP persistence, and RelaySOUL actual apply remain later work.
@@ -275,35 +276,35 @@ Implemented:
 
 See [Phase 5-D2 Lazy RelayRUN Recovery Detail Handoff](phase5d2_lazy_relayrun_recovery_detail_handoff.md).
 
-## Phase 5.5: Stream Unpack — complete through 5.5-C1 helper
+## Phase 5.5: Stream Unpack — complete through 5.5-C1 helper and B2 runtime wiring
 
 See [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md).
 
-Phase 5.5 is the product-critical streaming boundary. It should preserve default backend SSE forwarding while adding safe stream-level visible/internal separation in bounded, default-off slices.
+Phase 5.5 is the product-critical streaming boundary. It preserves default backend SSE forwarding while adding safe stream-level visible/internal separation in bounded, default-off slices.
 
 Completed:
 
 1. **Phase 5.5-A: stream sentinel buffer dry-run** — pure/dry-run stream buffer state, sentinel detection across chunk boundaries, content-free diagnostics, unchanged emitted chunks, direct smoke, and dedicated CI workflow.
 2. **Phase 5.5-B1: stream suppression gate helper** — explicit enabled/dry-run gate, safe visible prefix preservation, complete/split internal sentinel suppression, terminal partial sentinel blocking, invalid chunk fail-closed behavior, content-free node result, and direct smoke coverage.
-3. **Phase 5.5-C0: TTS segmentation helper** — explicit enabled/dry-run gate, content-free character-range hints, sentence/newline/length/stream-end boundaries, internal sentinel blocking, invalid chunk fail-closed behavior, and direct smoke coverage.
-4. **Phase 5.5-C1: TTS adapter handoff contract** — explicit enabled/dry-run gate, runtime-private downstream handoff plan, candidate/emitted count separation, conservative C0 status propagation, content-free node result, and direct smoke coverage.
+3. **Phase 5.5-B2: request-runtime SSE suppression wiring** — gated wrapping of runtime stream bytes, unchanged default forwarding, dry-run pass-through diagnostics, apply-mode internal suppression, partial/backend failure summary, and duplicate replay prevention.
+4. **Phase 5.5-C0: TTS segmentation helper** — explicit enabled/dry-run gate, content-free character-range hints, sentence/newline/length/stream-end boundaries, internal sentinel blocking, invalid chunk fail-closed behavior, and direct smoke coverage.
+5. **Phase 5.5-C1: TTS adapter handoff contract** — explicit enabled/dry-run gate, runtime-private downstream handoff plan, candidate/emitted count separation, conservative C0 status propagation, content-free node result, and direct smoke coverage.
 
 Planned next:
 
-5. **Phase 5.5-B2: request-runtime SSE suppression wiring** — gated wrapping of runtime stream bytes, unchanged default forwarding, partial-stream failure summary, cancellation handling, and duplicate replay prevention.
+6. **Phase 5.5-C2: runtime TTS adapter handoff wiring** — optional/default-off B2 safe visible output -> C0 segmentation -> C1 handoff planning; no TTS, audio, avatar, or persistence execution.
 
 Later:
 
-6. **Phase 5.5-C runtime TTS adapter handoff wiring** — optional/default-off C0->C1 consumption only from safe visible output; no TTS or avatar execution.
 7. **Phase 6 asynchronous RelaySLP**.
 
-C4b, C5, C0/C1, and RelaySOUL execution gates are not prerequisites for Phase 5.5-B2.
+C4b, C5, C0/C1, and RelaySOUL execution gates are not prerequisites for Phase 5.5-C2.
 
 ## Phase 6: asynchronous RelaySLP — planned
 
 Deferred candidate processing, gated MEM page/index/log updates, idempotency, retry policy, and persistence safety classification belong here. RelaySLP must not directly mutate SOUL.
 
-New RelaySOUL execution-gate design documents should not be added before Phase 5.5-B runtime wiring is complete unless they directly unblock a current runtime safety issue. Existing RelaySOUL governance documents remain valid; this sequencing rule only freezes further design expansion.
+New RelaySOUL execution-gate design documents should not be added before C2 runtime adapter handoff wiring unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary. Existing RelaySOUL governance documents remain valid; this sequencing rule only freezes further design expansion around unrelated RelaySOUL execution gates.
 
 ## Update rule
 
