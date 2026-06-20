@@ -17,6 +17,7 @@ def main() -> None:
     _assert_disabled_gate_emits_no_hints()
     _assert_dry_run_plans_hints_without_emission()
     _assert_enabled_helper_emits_content_free_offsets()
+    _assert_crlf_newline_boundary_is_atomic()
     _assert_length_limit_fallback()
     _assert_internal_candidate_blocks_hints()
     _assert_terminal_partial_marker_blocks_hints()
@@ -80,6 +81,27 @@ def _assert_enabled_helper_emits_content_free_offsets() -> None:
     projected = node_result.to_log_dict()
     _assert_absent(projected, text, "今日は晴れ", "よろしくお願いします")
     assert projected["diagnostics"]["emitted_hint_count"] == len(result.hints)
+
+
+def _assert_crlf_newline_boundary_is_atomic() -> None:
+    newline = chr(13) + chr(10)
+    text = f"前の文です{newline}次の文です"
+    result = build_tts_safe_segmentation_hints(
+        [text],
+        enabled=True,
+        dry_run_only=False,
+        max_segment_chars=80,
+        min_segment_chars=3,
+    )
+    crlf_end = text.index(newline) + len(newline)
+    assert result.status == "ready"
+    assert len(result.hints) >= 2
+    assert result.hints[0].boundary_kind == "newline"
+    assert result.hints[0].end_char == crlf_end
+    assert result.hints[1].start_char == crlf_end
+    assert result.hints[1].start_char != text.index(chr(10))
+    assert result.hints[0].reason_ids == ("crlf_newline_boundary_detected",)
+    _assert_absent(result.to_log_dict(), text, "前の文", "次の文")
 
 
 def _assert_length_limit_fallback() -> None:
