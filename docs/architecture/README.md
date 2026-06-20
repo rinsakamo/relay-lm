@@ -2,6 +2,8 @@
 
 Use [Documentation index](../README.md) for the complete active document map.
 
+Architecture documents follow the [AI-first documentation model](../DOCUMENTATION_MODEL.md). Treat document front matter as the first signal for type, authority, status, volatility, and non-authoritative scope when reading a file through partial search.
+
 Canonical authority:
 
 1. [Pipeline Responsibility Design](pipeline_responsibility_design.md)
@@ -14,3 +16,5 @@ Phase 5-C4a instruction-bearing managed apply is complete. See the [completed ha
 Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1` with explicit `client_instruction_source.v1` provenance. Role, wording, and message position alone are not provenance.
 
 Historical and MVP documents do not override these current owners.
+
+Implementation handoffs under this directory are bounded slice records. After merge, they are historical implementation evidence unless a current status page, implementation plan, or contract explicitly references their behavior as current.
