@@ -6,14 +6,17 @@ on:
     paths:
       - relaylm/client_instruction_typed_parse.py
       - relaylm/client_instruction_cache_write.py
+      - relaylm/client_instruction_cache_write_runtime.py
       - relaylm/client_instruction_cache.py
       - relaylm/client_instruction_extraction.py
       - relaylm/client_instruction_fingerprint.py
       - relaylm/client_instruction_identity.py
       - relaylm/config.py
+      - relaylm/pipeline_context.py
       - relaylm/routing.py
       - relaylm/trace_runtime.py
       - scripts/relaylm_client_instruction_typed_parse_cache_write_smoke.py
+      - scripts/relaylm_client_instruction_cache_write_runtime_smoke.py
       - .github/workflows/client-instruction-typed-parse-cache-write-smoke.yml
   push:
     branches:
@@ -21,14 +24,17 @@ on:
     paths:
       - relaylm/client_instruction_typed_parse.py
       - relaylm/client_instruction_cache_write.py
+      - relaylm/client_instruction_cache_write_runtime.py
       - relaylm/client_instruction_cache.py
       - relaylm/client_instruction_extraction.py
       - relaylm/client_instruction_fingerprint.py
       - relaylm/client_instruction_identity.py
       - relaylm/config.py
+      - relaylm/pipeline_context.py
       - relaylm/routing.py
       - relaylm/trace_runtime.py
       - scripts/relaylm_client_instruction_typed_parse_cache_write_smoke.py
+      - scripts/relaylm_client_instruction_cache_write_runtime_smoke.py
       - .github/workflows/client-instruction-typed-parse-cache-write-smoke.yml
 
 permissions:
@@ -48,3 +54,5 @@ jobs:
         run: python -m compileall relaylm scripts
       - name: Run typed parse cache write smoke
         run: python scripts/relaylm_client_instruction_typed_parse_cache_write_smoke.py
+      - name: Run runtime cache writer smoke
+        run: python scripts/relaylm_client_instruction_cache_write_runtime_smoke.py

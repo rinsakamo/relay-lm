@@ -46,25 +46,27 @@ Managed-route correctness boundary: Phase 5-C complete
 Pre-stream hardening: Phase 5-D complete through D2
 
 Latest completed bounded slice:
-  Phase 5.5-A stream sentinel buffer dry-run
-  + pure content-free stream sentinel observer helper
-  + complete marker detection in one chunk
-  + split marker detection across chunk boundaries
-  + terminal partial marker prefix blocking
-  + content-free PipelineNodeResult projection
-  + default-off and dry-run-only config fields
-  + direct smoke and dedicated CI workflow
-  + no runtime SSE interception
-  + no visible output mutation or suppression
-  + no TTS hints, TTS execution, avatar control, or persistence
+  Phase 5-C5c runtime cache-writer boundary
+  + runtime-private typed parse source gate
+  + PipelineContext typed parse/cache writer state
+  + gated runtime call into the C5b writer helper
+  + cache writer node ordering after lookup/projection
+  + disabled-gate one-shot source clearing
+  + parser-versioned runtime parse write blocking
+  + default-off and dry-run-only by default
+  + no frontend metadata trust
+  + no backend response/control-envelope parsing
+  + no backend/RelaySCN/user-visible mutation
 ```
 
-Phase 5.5-A starts the Stream Unpack implementation path without changing runtime streaming behavior. It observes chunk fragments for RelayCTX internal sentinels in direct-helper smoke only. The request runtime still preserves ordinary backend SSE forwarding and does not invoke Stream Unpack.
+Phase 5-C5c wires the direct C5b writer into request-local runtime state only when an in-process trusted producer supplies a runtime-private typed parse candidate. Runtime request handling still does not parse backend responses, trust frontend metadata as typed parse source, or mutate backend/user-visible payloads. Non-null typed parse `parser_version` values are blocked before writer invocation until parser-versioned lookup/write compatibility exists.
+
+Phase 5.5-A is also complete as a pure direct-helper dry-run stream sentinel observer. It observes chunk fragments for RelayCTX internal sentinels in direct-helper smoke only. The request runtime still preserves ordinary backend SSE forwarding and does not invoke Stream Unpack.
 
 Next candidates remain independently sequenced, with Phase 5.5-B as the next product-critical implementation boundary:
 
 - Phase 5.5-B: visible chunk preservation and internal suppression gate,
-- Phase 5-C5c: typed parse source / runtime writer wiring boundary.
+- Phase 6: asynchronous RelaySLP.
 
 New RelaySOUL execution-gate design documents remain frozen until Phase 5.5-B is complete, unless a new RelaySOUL document directly unblocks a current runtime safety issue.
 
@@ -85,6 +87,7 @@ Current `main` includes:
 - read-only cache-hit RelaySCN projection diagnostics,
 - runtime-private typed client-instruction parse validation,
 - gated direct cache-write helper for validated typed parse artifacts,
+- runtime-private typed parse source gate and cache-writer node wiring,
 - client-history exclusion preflight,
 - `client_history_exclusion_apply.v0` for supported no-instruction requests,
 - `client_history_exclusion_apply.v1` for supported instruction-bearing requests,
@@ -107,7 +110,7 @@ relayctx_stream_unpack_dry_run_enabled = false
 relayctx_stream_unpack_dry_run_only = true
 ```
 
-Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate. Stream Unpack is not wired into runtime streaming yet.
+Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate and a trusted in-process producer supplies a runtime-private typed parse source. Stream Unpack is not wired into runtime streaming yet.
 
 ## Token estimation boundary
 
@@ -136,7 +139,7 @@ Memory candidate assembly and message truncation share this estimator. Existing 
 
 Role, content, and position alone are not accepted as provenance. Missing or invalid provenance blocks actual apply. Unselected frontend summaries, memory notes, and replayed persona blocks are excluded from bounded evidence.
 
-A successful managed candidate contains one RelayLM-owned compiled system message plus the exact validated current user message. Prior client history, raw instruction objects, unselected candidates, opaque cache content, and the reserved `relaylm` control envelope are excluded.
+A successful managed candidate contains one RelayLM-owned compiled system message plus the exact validated current user message. Prior client history, raw instruction objects, unselected instruction candidates, opaque cache content, and the reserved `relaylm` control envelope are excluded.
 
 ## Cache-hit RelaySCN projection boundary
 
@@ -154,9 +157,9 @@ The projection is diagnostics-only and read-only. It does not apply RelaySCN pol
 
 `relaylm.client_instruction_cache_write` consumes typed parse and instruction identity results to build a runtime-private cache-entry candidate in dry-run mode. With dry-run-only disabled and an explicit existing cache root, it validates reader compatibility and writes one cache entry through a gated atomic writer.
 
-The direct writer blocks missing roots, invalid byte budgets, oversized entries, symlink roots/components/targets, parser-versioned identity keys that do not match current runtime lookup, and reader-incompatible entries. Runtime request handling still does not extract typed parse candidates from model responses or invoke this writer automatically.
+`relaylm.client_instruction_cache_write_runtime` wires the typed parse and writer path into `PipelineContext` using an in-process runtime-private source gate. Missing source blocks writing; disabled typed-parse/cache-write gates clear any pending source; non-null typed parse `parser_version` values are blocked before writer invocation. External request metadata and backend visible response text are not trusted as sources.
 
-This boundary does not extract typed parse candidates from model responses or control envelopes, apply RelaySCN policy, mutate backend payloads, or mutate user-visible responses.
+This boundary does not parse backend responses or control envelopes, trust frontend metadata as typed parse source, apply RelaySCN policy, mutate backend payloads, or mutate user-visible responses.
 
 ## Stream sentinel dry-run boundary
 
@@ -187,7 +190,8 @@ Runtime-private candidates may contain content. Persisted trace, audit, public e
 The runtime does not yet provide:
 
 - response/control-envelope extraction for typed client-instruction parse candidates,
-- runtime invocation of the gated instruction-cache writer,
+- frontend metadata trust as typed parse source,
+- parser-versioned runtime lookup/write compatibility,
 - complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy,
 - active tool-chain reconstruction,
 - runtime Stream Unpack SSE interception, visible chunk preservation, and internal suppression,
@@ -221,6 +225,7 @@ RelayLM does not own frontend UI, ASR, TTS execution, or avatar execution. Curre
 ## Where to read next
 
 - [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md)
+- [Phase 5-C5c Runtime Cache-Writer Boundary Handoff](architecture/phase5c5c_runtime_cache_writer_boundary_handoff.md)
 - [Phase 5.5 Stream Unpack Bounded Slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
 - [Phase 5.5-A Stream Sentinel Buffer Dry-Run Handoff](architecture/phase55a_stream_sentinel_buffer_dry_run_handoff.md)
 - [Phase 5-C5b Gated Client-Instruction Cache Writer Handoff](architecture/phase5c5b_gated_cache_writer_handoff.md)

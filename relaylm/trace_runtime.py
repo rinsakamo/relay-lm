@@ -230,12 +230,51 @@ def _consume_pipeline_node_results(
                     else "client_instruction_cache"
                 ),
             )
+        typed_parse_anchor = (
+            "client_instruction_relayscn_projection"
+            if projection_node is not None
+            else "client_instruction_cache_lookup"
+            if lookup_node is not None
+            else "client_instruction_cache"
+            if cache_node is not None
+            else "client_instruction_identity"
+            if identity_node is not None
+            else "client_instruction_fingerprint"
+        )
+        _move_existing_node_after(
+            pipeline_context.node_results,
+            node_name="client_instruction_typed_parse",
+            after_node_name=typed_parse_anchor,
+        )
+        cache_write_anchor = (
+            "client_instruction_typed_parse"
+            if _node_result_exists(
+                pipeline_context.node_results,
+                "client_instruction_typed_parse",
+            )
+            else typed_parse_anchor
+        )
+        _move_existing_node_after(
+            pipeline_context.node_results,
+            node_name="client_instruction_cache_write",
+            after_node_name=cache_write_anchor,
+        )
         if history_node is not None:
             _insert_after_node_result(
                 pipeline_context.node_results,
                 history_node,
                 after_node_name=(
-                    "client_instruction_relayscn_projection"
+                    "client_instruction_cache_write"
+                    if _node_result_exists(
+                        pipeline_context.node_results,
+                        "client_instruction_cache_write",
+                    )
+                    else "client_instruction_typed_parse"
+                    if _node_result_exists(
+                        pipeline_context.node_results,
+                        "client_instruction_typed_parse",
+                    )
+                    else "client_instruction_relayscn_projection"
                     if projection_node is not None
                     else "client_instruction_cache_lookup"
                     if lookup_node is not None
@@ -290,6 +329,10 @@ def _move_existing_node_after(
         len(node_results),
     )
     node_results.insert(target_index, moving)
+
+
+def _node_result_exists(node_results: list[PipelineNodeResult], node_name: str) -> bool:
+    return any(result.node_name == node_name for result in node_results)
 
 
 def extract_response_text(body: Any) -> str | None:

@@ -18,10 +18,12 @@ if TYPE_CHECKING:
     from relaylm.client_history_exclusion_apply_v1_types import (
         ClientHistoryExclusionApplyV1Result,
     )
-    from relaylm.client_instruction_identity import ClientInstructionIdentityResult
     from relaylm.client_instruction_cache_lookup_runtime import (
         ClientInstructionCacheLookupRuntimeResult,
     )
+    from relaylm.client_instruction_cache_write import ClientInstructionCacheWriteResult
+    from relaylm.client_instruction_identity import ClientInstructionIdentityResult
+    from relaylm.client_instruction_typed_parse import ClientInstructionTypedParseResult
     from relaylm.client_history_exclusion_preflight import (
         ClientHistoryExclusionPreflightResult,
     )
@@ -64,6 +66,18 @@ class PipelineContext:
         repr=False,
         compare=False,
     )
+    _client_instruction_typed_parse_result: ClientInstructionTypedParseResult | None = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
+    _client_instruction_cache_write_result: ClientInstructionCacheWriteResult | None = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
     _client_history_exclusion_preflight_result: (
         ClientHistoryExclusionPreflightResult | None
     ) = field(
@@ -98,6 +112,9 @@ class PipelineContext:
         from relaylm.client_instruction_cache_lookup_runtime import (
             prepare_client_instruction_cache_lookup_runtime_private,
         )
+        from relaylm.client_instruction_cache_write_runtime import (
+            prepare_client_instruction_cache_write_runtime_private,
+        )
         from relaylm.client_history_exclusion_preflight import (
             prepare_client_history_exclusion_preflight_runtime_private,
         )
@@ -107,6 +124,7 @@ class PipelineContext:
 
         prepare_client_instruction_identity_runtime_private(pipeline_context=self)
         prepare_client_instruction_cache_lookup_runtime_private(pipeline_context=self)
+        prepare_client_instruction_cache_write_runtime_private(pipeline_context=self)
         prepare_client_history_exclusion_preflight_runtime_private(pipeline_context=self)
         compiler_used = self.route.mode_applied == "memory_light"
         self._run_instruction_bearing_apply_if_selected(
@@ -318,6 +336,38 @@ class PipelineContext:
         """Return request-local private cache lookup state without copying it."""
 
         return self._client_instruction_cache_lookup_runtime_result
+
+    def set_client_instruction_typed_parse_result(
+        self,
+        result: ClientInstructionTypedParseResult | None,
+    ) -> None:
+        """Store one content-bearing typed parse result without serialization."""
+
+        self._client_instruction_typed_parse_result = result
+
+    @property
+    def client_instruction_typed_parse_result(
+        self,
+    ) -> ClientInstructionTypedParseResult | None:
+        """Return request-local private typed parse state without copying it."""
+
+        return self._client_instruction_typed_parse_result
+
+    def set_client_instruction_cache_write_result(
+        self,
+        result: ClientInstructionCacheWriteResult | None,
+    ) -> None:
+        """Store one content-bearing cache writer result without serialization."""
+
+        self._client_instruction_cache_write_result = result
+
+    @property
+    def client_instruction_cache_write_result(
+        self,
+    ) -> ClientInstructionCacheWriteResult | None:
+        """Return request-local private cache writer state without copying it."""
+
+        return self._client_instruction_cache_write_result
 
     def set_client_history_exclusion_preflight_result(
         self,
