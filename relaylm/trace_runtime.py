@@ -94,6 +94,7 @@ def trace_runtime_event(
             explicit_pipeline_node_results
             and _is_stream_final_tts_node_results(resolved_pipeline_node_results)
         ):
+            record.metadata["event"] = "backend_stream_finalize"
             record.metadata["pipeline_node_results"] = resolved_pipeline_node_results or []
         append_trace_record(config.trace.path, record)
         if trace_metadata.get("event") == "backend_stream_response":
