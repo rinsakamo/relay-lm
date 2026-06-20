@@ -4,11 +4,11 @@
 
 RelaySLP is RelayLM's deferred memory and knowledge compilation path.
 
-It reads governed evidence, extracts memory candidates, classifies safety, merges or holds candidates, lints memory, updates indexes/logs through explicit gates, and emits RelaySOUL proposal candidates when needed.
+It reads governed evidence, extracts memory candidates, classifies safety, autonomously applies ordinary safe memory updates when gates pass, holds or rejects unsafe/uncertain candidates, lints memory, updates indexes/logs through explicit gates, and emits RelaySOUL proposal candidates when needed.
 
 RelaySLP improves future memory. It does not produce the current answer.
 
-Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
+Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md). Memory lifecycle semantics live in [Memory Lifecycle Design](memory_lifecycle_design.md).
 
 ## Core principle
 
@@ -25,6 +25,8 @@ RelayREF
 
 RelaySLP is not RelayREF and must not replace RelayINT clarification or RelaySCN recovery.
 
+Ordinary MEM formation is autonomous by default. User approval is not required for every ordinary memory candidate. User/operator review is reserved for exception paths such as sensitive, destructive, low-confidence, contradictory, cross-namespace, or SOUL-affecting changes.
+
 ## Inputs
 
 RelaySLP consumes governed evidence rather than arbitrary runtime dumps:
@@ -34,11 +36,12 @@ RelaySLP consumes governed evidence rather than arbitrary runtime dumps:
 - detached RelayCTX Unpack/update candidates after validation,
 - RelayINT intent/clarification summaries,
 - RelaySCN state/policy summaries,
+- RelayEMO salience/expression evidence in bounded form,
 - RelayRUN checkpoint and recovery metadata,
 - RelayMEM retrieval summaries,
 - existing MEM pages/index/log,
 - approved RelaySOUL constraints,
-- user-approved memory records.
+- user corrections or memory operation requests.
 
 Content-bearing source material remains in the protected memory/source domain. Default runtime trace projections are not sufficient SLP source data by themselves.
 
@@ -75,6 +78,8 @@ governed source append/reference
   -> optional RelaySOUL proposal candidate
 ```
 
+`approval` in this flow means the relevant policy/authority gate, not a requirement that the user approve every memory candidate. Ordinary `free_to_update` memory may apply autonomously when all gates pass.
+
 ## Candidate extraction
 
 Candidate examples:
@@ -86,6 +91,8 @@ Candidate examples:
 - claim or contradiction,
 - relation between concepts,
 - stale/superseded record,
+- session summary,
+- relationship continuity detail,
 - RelaySOUL proposal candidate.
 
 Extraction does not authorize persistence.
@@ -110,11 +117,13 @@ rejected_or_blocked_candidate
 
 ### `free_to_update`
 
-May be applied only when all other gates pass.
+May be applied autonomously when all other gates pass.
+
+Examples include ordinary low-risk project notes, concept refinements, session summaries, non-sensitive preference refinements, and relationship continuity details that have source lineage and sufficient confidence.
 
 ### `review_required`
 
-Held for user/operator review.
+Held for later user/operator review or Lab correction. This is an exception path, not the normal memory path.
 
 ### `explicit_approval_required`
 
@@ -187,7 +196,9 @@ Triggered by an explicit request to remember, organize, consolidate, document, f
 
 ### Turn-end deferred SLP
 
-Runs after the normal response path and produces candidates or diagnostics without delaying first response/streaming.
+Runs after the normal response path and may produce diagnostics, held candidates, or autonomous ordinary memory updates without delaying first response/streaming.
+
+Turn-end SLP should not ask the user to approve every normal memory. It should write only what policy classifies as safe, source-backed, scoped, and idempotent. Held or blocked memory remains visible later in Lab.
 
 ### Scheduled/background SLP
 
@@ -247,6 +258,21 @@ RelaySLP durable-persona candidate
 ```
 
 RelaySLP never writes RelaySOUL files directly.
+
+## Lab operation boundary
+
+SOUL Lab is not a mandatory approval queue for ordinary memory formation.
+
+Lab should expose:
+
+- newly formed memories,
+- held or uncertain memories,
+- blocked memory operations,
+- memories used in the latest response,
+- correction / forget / pin / merge controls,
+- escalation to Pod / SOUL Intervention for identity-level changes.
+
+A user correction, forget request, or pin/unpin action is an explicit memory operation and may trigger SLP. It does not imply that all ordinary SLP writes require prior approval.
 
 ## Runtime-private artifact
 
@@ -312,6 +338,7 @@ Memory-specific audit logs may store approved page IDs and lineage references un
 When apply is enabled and all gates pass:
 
 - apply only allowed candidate scopes,
+- apply ordinary `free_to_update` memory without requiring per-candidate user approval,
 - use revision/idempotency checks,
 - preserve original evidence and lineage,
 - update index/log consistently,
@@ -348,6 +375,7 @@ RelaySLP does not:
 - replace RelaySCN recovery,
 - inspect output as RelayREF,
 - generate user-visible recovery/sleep text,
+- require per-turn approval for ordinary memory formation,
 - auto-apply review-required or approval-required candidates,
 - directly mutate RelaySOUL,
 - persist raw affect estimates as durable facts,
@@ -359,7 +387,7 @@ RelaySLP does not:
 governed evidence
   -> RelaySLP candidate extraction
   -> safety/scope/lineage classification
-  -> merge / hold / reject / proposal
+  -> autonomous ordinary merge/update or held/rejected/proposal path
   -> gated idempotent MEM apply
-  -> separate RelaySOUL proposal path when approved
+  -> separate RelaySOUL proposal path when explicitly approved
 ```

@@ -9,7 +9,7 @@ It is not a generic settings panel. Its MVP must let a user see a character:
 1. be initialized or adopted,
 2. live in a Home space,
 3. communicate with an external API or another RelayLM character,
-4. bring that experience back as memory candidates,
+4. bring that experience back as formed, held, or blocked memory outcomes,
 5. inspect the result in Lab Observation,
 6. enter Pod / SOUL Intervention only when the user intentionally changes the character core.
 
@@ -20,7 +20,7 @@ create or adopt
   -> live in Home
   -> communicate
   -> return with experience
-  -> observe in Lab
+  -> observe memory formation in Lab
   -> intervene in Pod only when needed
   -> live in Home again
 ```
@@ -82,7 +82,7 @@ Home
   daily conversation and character presence
 
 Lab Observation
-  observe runtime state, memory candidates, communication results, SLP, and CTX status
+  observe runtime state, memory formation, communication results, SLP, and CTX status
 
 Pod / SOUL Intervention
   propose, compare, apply, hold, discard, and rollback SOUL-level changes
@@ -277,13 +277,18 @@ user requests stop
 
 Lab Observation is not a raw debugger. It is the place where the user sees how the latest experience was processed.
 
+Lab Observation is also not a mandatory approval queue for ordinary memory formation. Ordinary MEM should form autonomously when RelaySLP gates allow it. The Lab lets the user observe, correct, forget, pin, merge, or escalate memory outcomes after the fact.
+
 MVP panels:
 
 - current scene,
 - latest experience summary,
 - communication session metadata,
 - MEM used count,
-- memory candidates,
+- newly formed memories,
+- held or uncertain memories,
+- blocked memory operations,
+- memories used in the latest response,
 - SLP status,
 - RelayRUN status,
 - observation note,
@@ -291,22 +296,34 @@ MVP panels:
 - blocked or recovery reasons when present,
 - timing summary.
 
-The most important Lab value is showing actual memory candidates in user-readable form.
+The most important Lab value is showing how experience became memory without turning normal memory formation into user labor.
 
 Example:
 
 ```text
-Memory candidate
+Memory Formation
 
-Mica seemed a little anxious after the second half of the previous stream.
+Newly formed memory:
+  Mica seemed a little anxious after the second half of the previous stream.
 
 Source: communication session
 Confidence: medium
 Scope: relationship memory
-Status: candidate
+Status: formed
+Actions: correct / forget / pin
 ```
 
-For a RelayLM-to-RelayLM communication demo, the UI should let the user compare each side's memory candidate. The point is not shared logs. The point is different subjective memory formation from the same interaction.
+Held or blocked examples should be visible as review items, but they are exception paths:
+
+```text
+Held memory
+
+Candidate: durable workflow preference
+Reason: ambiguous long-term fact
+Actions: review / correct / discard
+```
+
+For a RelayLM-to-RelayLM communication demo, the UI should let the user compare each side's formed or held memory. The point is not shared logs. The point is different subjective memory formation from the same interaction.
 
 ```text
 Rina's memory
@@ -438,7 +455,7 @@ Security defaults:
 
 The UI should use dedicated management APIs instead of overloading `/v1/chat/completions`.
 
-Stateful or mutating Lab APIs must be explicitly scoped. The browser may keep an active character per UI session, but the server must not rely on a single global active character for chat, communication, memory, or SOUL actions. Requests that affect runtime state should carry the relevant `character_id` and either a `ui_session_id`, `communication_session_id`, or `proposal_id`; route/model scope should also be explicit when the action can depend on a managed route profile.
+Stateful or mutating Lab APIs must be explicitly scoped. The browser may keep an active character per UI session, but the server must not rely on a single global active character for chat, communication, memory, or SOUL actions. Requests that affect runtime state should carry the relevant `character_id` and either a `ui_session_id`, `communication_session_id`, `memory_id`, or `proposal_id`; route/model scope should also be explicit when the action can depend on a managed route profile.
 
 ```text
 GET  /lab/api/characters
@@ -450,9 +467,18 @@ POST /lab/api/characters/{character_id}/communication-sessions
 POST /lab/api/characters/{character_id}/communication-sessions/{communication_session_id}/stop
 
 GET  /lab/api/ui-sessions/{ui_session_id}/lab/last-run
-GET  /lab/api/characters/{character_id}/memory/candidates
-POST /lab/api/characters/{character_id}/memory/candidates/{candidate_id}/adopt
-POST /lab/api/characters/{character_id}/memory/candidates/{candidate_id}/hold
+GET  /lab/api/characters/{character_id}/memory/recent
+GET  /lab/api/characters/{character_id}/memory/held
+GET  /lab/api/ui-sessions/{ui_session_id}/lab/last-run/memory/used
+POST /lab/api/characters/{character_id}/memory/{memory_id}/correct
+POST /lab/api/characters/{character_id}/memory/{memory_id}/forget
+POST /lab/api/characters/{character_id}/memory/{memory_id}/pin
+POST /lab/api/characters/{character_id}/memory/{memory_id}/unpin
+POST /lab/api/characters/{character_id}/memory/{memory_id}/merge
+POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/review
+POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/correct
+POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/apply
+POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/discard
 
 POST /lab/api/characters/{character_id}/soul/proposals
 POST /lab/api/characters/{character_id}/soul/proposals/{proposal_id}/compare
@@ -467,6 +493,12 @@ POST  /lab/api/settings/backend/test
 ```
 
 The `compare`, `hold`, `discard`, and `apply` proposal operations should be server-side decisions or recorded server-side state transitions so that Pod candidates do not dangle only in browser memory and the RelaySOUL decision trail remains auditable.
+
+Memory correction, forgetting, pinning, unpinning, and merging are user-initiated memory operations. They are not the normal path for every ordinary memory formation event. Pinning must be reversible because it changes retrieval priority.
+
+Held memories are not already-formed durable memories. The `held_memory_id` endpoints resolve `review_required` items by reviewing, correcting, applying, or discarding the held item without forcing it through formed-memory endpoints.
+
+`GET /memory/used` is the supported Lab Observation source for the “memories used in the latest response” panel when `last-run` does not already include the same content-free summary.
 
 These APIs should enforce RelayLM authority boundaries server-side. The browser is presentation and interaction, not the owner of SOUL, MEM, RUN, SLP, or backend credentials.
 
@@ -533,16 +565,17 @@ The UI MVP is complete when:
 7. an external OpenAI-compatible API peer can be contacted,
 8. a RelayLM peer can be contacted,
 9. communication runs with user start/stop rather than per-message approval,
-10. communication creates memory candidates after SLP,
-11. RelayLM-to-RelayLM communication can show different memories on both sides,
-12. Lab Observation can inspect the latest experience and memory candidates,
-13. Pod can propose, compare, apply, hold, discard, and rollback a SOUL candidate,
-14. CTX Repack / Unpack status is observable and treated as protocol separation, not censorship,
-15. EMO markers remain optional presentation decoration,
-16. character, SOUL, MEM, relationship history, and rollback state survive restart.
+10. communication produces autonomous memory formation outcomes through SLP,
+11. RelayLM-to-RelayLM communication can show different formed or held memories on both sides,
+12. Lab Observation can inspect the latest experience, newly formed memories, held memories, and used memories,
+13. Lab Observation supports correction, forgetting, pinning, or merging as explicit memory operations,
+14. Pod can propose, compare, apply, hold, discard, and rollback a SOUL candidate,
+15. CTX Repack / Unpack status is observable and treated as protocol separation, not censorship,
+16. EMO markers remain optional presentation decoration,
+17. character, SOUL, MEM, relationship history, and rollback state survive restart.
 
 ## Summary
 
 AITuber SOUL Lab UI MVP is a small local research room for artificial character continuity.
 
-It should not try to be a full VTuber studio yet. It should prove that a character can be created, live in Home, communicate, return with experience, form memory candidates, and be safely observed or intentionally changed.
+It should not try to be a full VTuber studio yet. It should prove that a character can be created, live in Home, communicate, return with experience, form memory autonomously, and be safely observed or intentionally changed.

@@ -74,6 +74,7 @@ When documents disagree:
 - [Managed-route fallback authority contract](architecture/managed_route_fallback_contract.md)
 - [RelayRUN runtime checkpoint design](architecture/relayrun_runtime_checkpoint_design.md)
 - [Context packing design](architecture/context_packing_design.md)
+- [Memory lifecycle design](architecture/memory_lifecycle_design.md)
 - [Scene lifecycle design](architecture/scene_lifecycle_design.md)
 - [AI VTuber pipeline profile](architecture/ai_vtuber_pipeline_profile.md)
 - [SOUL Lab UI MVP](architecture/soul_lab_ui_mvp.md)

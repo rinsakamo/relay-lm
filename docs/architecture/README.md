@@ -33,6 +33,11 @@ Product-critical next slice:
 
 Phase 5.5 starts with stream sentinel buffer dry-run and safe streaming diagnostics before TTS-safe segmentation hints. RelaySOUL execution-gate design expansion is frozen until Phase 5.5-A and 5.5-B are complete unless a new document directly unblocks a current runtime safety issue.
 
+Memory lifecycle:
+
+- [Memory Lifecycle Design](memory_lifecycle_design.md) — short-term CTX, governed experience evidence, autonomous ordinary MEM formation, RelaySLP, and SOUL Lab memory operations.
+- [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — independent MEM-M bounded implementation track for store contracts, retrieval usability, primary memory formation, secondary consolidation, and Lab-ready operations.
+
 SOUL Lab product layers:
 
 - [SOUL Lab UI MVP](soul_lab_ui_mvp.md) — text-first Lab UI for character creation/adoption, Home, Communication, Lab Observation, and Pod / SOUL Intervention.
