@@ -228,6 +228,26 @@ def test_cache_write_preflight(parse_result: Any) -> None:
     require("cache_root_missing" in missing_root.blocked_reasons, missing_root)
     require(missing_root.cache_write_attempted is False, missing_root)
 
+    with tempfile.TemporaryDirectory(prefix="relaylm-c5b-missing-root-") as tmp:
+        absent_root = Path(tmp) / "missing" / "cache"
+        absent_root_result = build_client_instruction_cache_write_preflight(
+            parse_result=parse_result,
+            identity_result=identity,
+            enabled=True,
+            dry_run_only=False,
+            managed_route=True,
+            route_model=ROUTE,
+            character_id=CHARACTER,
+            cache_root=absent_root,
+        )
+        require(
+            absent_root_result is not None and absent_root_result.status == "blocked",
+            absent_root_result,
+        )
+        require("cache_root_missing" in absent_root_result.blocked_reasons, absent_root_result)
+        require(absent_root_result.cache_write_attempted is False, absent_root_result)
+        require(absent_root.exists() is False, absent_root)
+
     blocked = build_client_instruction_cache_write_preflight(
         parse_result=None,
         identity_result=identity,
