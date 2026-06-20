@@ -39,6 +39,8 @@ The target file name is derived from the validated `cache_key_sha256`:
 
 The writer rejects missing roots, invalid byte budgets, entries larger than the configured max, symlink roots, symlink root components, symlink targets, and target paths outside the resolved root. The root-component symlink check mirrors the reader-side `cache_root_symlink_blocked` boundary so the writer does not create entries under a root that the runtime reader will reject.
 
+C5b also keeps persisted `parser_version` set to `null` because the current runtime cache lookup path validates entries without a parser-version expectation. A later runtime-wiring slice may pass a parser version through lookup; until then, writer output must remain compatible with the runtime reader path.
+
 ## Write semantics
 
 The write path uses:
@@ -64,6 +66,7 @@ Diagnostics remain content-free. They can report booleans, status, byte counts, 
 - missing root blocking,
 - max-entry-size blocking before write attempts,
 - symlinked root-component blocking,
+- parser-version compatibility with current runtime lookup,
 - atomic writer success,
 - persisted entry validation through the lookup resolver,
 - content-free diagnostics for both dry-run and applied writer results,
