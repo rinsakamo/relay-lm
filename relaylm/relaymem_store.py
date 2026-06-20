@@ -589,6 +589,8 @@ def _iter_candidate_page_files(root: Path) -> Iterator[Path]:
         page_dir = root / relative_dir
         if not page_dir.exists() or not page_dir.is_dir():
             continue
+        if _path_contains_symlink(root, page_dir):
+            continue
         for path in page_dir.glob("*.md"):
             if path.is_file():
                 yield path
