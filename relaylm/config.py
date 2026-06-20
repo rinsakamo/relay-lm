@@ -106,6 +106,9 @@ class RelayLMConfig(BaseModel):
     relayctx_unpack_apply_enabled: bool = False
     relayctx_unpack_dry_run_only: bool = True
     relayctx_unpack_max_update_chars: int = Field(default=4096, gt=0)
+    relayctx_stream_unpack_dry_run_enabled: bool = False
+    relayctx_stream_unpack_dry_run_only: bool = True
+    relayctx_stream_unpack_max_buffer_chars: int = Field(default=256, ge=32, le=4096)
     client_message_canonicalization_dry_run_enabled: bool = False
     client_history_exclusion_preflight_enabled: bool = False
     client_history_exclusion_apply_enabled: bool = False
