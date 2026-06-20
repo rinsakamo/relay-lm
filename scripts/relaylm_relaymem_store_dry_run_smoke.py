@@ -179,6 +179,27 @@ def main() -> int:
         require(first_legacy["memory_layer"] == "legacy_flat", legacy_candidates)
         print("ok legacy flat candidates remain read-only compatible")
 
+        with tempfile.TemporaryDirectory() as partial_td:
+            partial_root = Path(partial_td)
+            partial_mem = partial_root / "memory" / "mem"
+            (partial_mem / "projects").mkdir(parents=True)
+            (partial_root / "memory" / "sources" / "conversations").mkdir(parents=True)
+            (partial_mem / "index.md").write_text("# Index\n", encoding="utf-8")
+            (partial_mem / "log.md").write_text("# Log\n", encoding="utf-8")
+            partial = build_relaymem_store_diagnostics(
+                root_path=str(partial_root),
+                store_enabled=True,
+                retrieval_dry_run_only=True,
+            )
+            require(partial["layout_compatibility"]["current_flat_present"] is True, partial)
+            require(
+                partial["layout_compatibility"]["target_primary_secondary_present"] is False,
+                partial,
+            )
+            require(partial["layout_compatibility"]["sources_present"] is True, partial)
+            require(partial["layout_compatibility"]["migration_required"] is True, partial)
+            print("ok sources-only partial migration still requires MEM layout migration")
+
         with tempfile.TemporaryDirectory() as target_td:
             target_root = Path(target_td)
             target_mem = target_root / "memory" / "mem"
