@@ -24,7 +24,7 @@ relaylm_related_authority:
 
 ## Status
 
-Phase 5.5 is the product-critical streaming boundary. Phase 5.5-A, B1, B2, C0, C1, and C2 are complete as bounded, default-off slices.
+Phase 5.5 is the product-critical streaming boundary. Phase 5.5-A, B1, B2, C0, C1, C2, and C3 are complete as bounded, default-off slices.
 
 Implemented through this document:
 
@@ -33,9 +33,10 @@ Implemented through this document:
 - Phase 5.5-B2: gated request-runtime SSE suppression wiring,
 - Phase 5.5-C0: helper-only TTS-safe segmentation hints,
 - Phase 5.5-C1: helper-only TTS adapter handoff contract,
-- Phase 5.5-C2: default-off runtime wiring from B2 safe visible output into C0/C1 content-free node results.
+- Phase 5.5-C2: default-off runtime wiring from B2 safe visible output into C0/C1 content-free node results,
+- Phase 5.5-C3: helper-only adapter-facing TTS transport envelope contract.
 
-RelayLM still does not execute TTS, generate audio, control avatars, or persist CTX/MEM/SOUL/SLP state from the stream path.
+RelayLM still does not execute TTS, generate audio, control avatars, send adapter transport I/O, or persist CTX/MEM/SOUL/SLP state from the stream path.
 
 ## Purpose
 
@@ -47,7 +48,7 @@ Phase 5.5 exists to support:
 - buffering across chunk boundaries for internal sentinels or envelopes,
 - incomplete internal-candidate blocking,
 - cancellation and partial-stream failure diagnostics,
-- TTS-safe segmentation hints and adapter handoff metadata without owning TTS execution.
+- TTS-safe segmentation hints, adapter handoff metadata, and adapter-facing transport metadata without owning TTS execution.
 
 ## Non-goals
 
@@ -56,6 +57,7 @@ Phase 5.5 does not:
 - execute TTS,
 - generate audio,
 - control Live2D or avatar adapters,
+- send adapter transport I/O,
 - persist MEM, SOUL, CTX, or SLP state,
 - perform RelaySOUL apply, rollback, or storage writes,
 - implement response/control-envelope extraction for client-instruction cache writing,
@@ -77,7 +79,7 @@ relayctx_tts_adapter_handoff_max_segment_chars = 120
 relayctx_tts_adapter_handoff_min_segment_chars = 8
 ```
 
-Default behavior preserves ordinary backend SSE forwarding. B2 can wrap request-runtime streaming only when the stream gate is explicitly enabled. C2 can observe runtime bytes only after B2 apply mode has produced safe visible output.
+Default behavior preserves ordinary backend SSE forwarding. B2 can wrap request-runtime streaming only when the stream gate is explicitly enabled. C2 can observe runtime bytes only after B2 apply mode has produced safe visible output. C3 is helper-only and is not invoked by request-runtime streaming.
 
 ## Slice sequence
 
@@ -176,6 +178,24 @@ Implemented:
 
 See [Phase 5.5-C2 Runtime TTS Adapter Handoff Wiring](phase55c2_runtime_tts_adapter_handoff_wiring.md).
 
+### Phase 5.5-C3: TTS adapter transport contract — complete
+
+Implemented:
+
+- `relaylm.relayctx_tts_adapter_transport.build_tts_adapter_transport_envelope(...)`,
+- runtime-private `RelayCTXTTSAdapterTransportEnvelope`,
+- runtime-private content-free adapter transport items for a future external adapter bridge,
+- content-free `relayctx_tts_adapter_transport` node result,
+- explicit enabled/dry-run gate,
+- candidate/emitted count separation,
+- conservative C1 status propagation,
+- diagnostics omitting visible text, handoff items, and transport item arrays,
+- no request-runtime invocation,
+- no transport delivery, TTS execution, audio generation, avatar control, or persistence,
+- direct smoke coverage and dedicated CI workflow.
+
+See [Phase 5.5-C3 TTS Adapter Transport Contract](phase55c3_tts_adapter_transport_contract.md).
+
 ## Smoke matrix
 
 Minimum smoke coverage includes:
@@ -195,6 +215,8 @@ Minimum smoke coverage includes:
 | C2 with B2 safe output | C0/C1 runtime node results recorded |
 | C2 without B2 safe output | C0/C1 are not invoked |
 | C2 invalid observation | handoff is blocked content-free |
+| C3 transport disabled/dry-run/ready | content-free C3 projection only, no transport delivery |
+| C3 invalid or blocked source handoff | transport is blocked or failed closed |
 
 ## Safety invariants
 
@@ -206,13 +228,14 @@ Phase 5.5 preserves these invariants:
 - runtime-private content is not persisted in generic diagnostics,
 - no MEM/SOUL/SLP mutation is triggered by malformed or incomplete candidates,
 - no TTS/audio/avatar execution is owned by RelayLM,
+- no adapter transport I/O is performed by helper-only C3,
 - RelayRUN handles runtime failures, cancellation, and checkpoint summaries,
 - RelayCTX Unpack owns visible/internal separation; RelayREF and output-side RelaySCN remain observation/policy consumers.
 
 ## RelaySOUL design freeze
 
-The Phase 5.5-B runtime wiring boundary is closed for bounded SSE suppression, and C2 closes runtime C0/C1 handoff planning. New RelaySOUL execution-gate design documents should still be avoided unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary.
+The Phase 5.5-B runtime wiring boundary is closed for bounded SSE suppression, C2 closes runtime C0/C1 handoff planning, and C3 closes helper-only adapter-facing transport envelope construction. New RelaySOUL execution-gate design documents should still be avoided unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary.
 
 ## Next implementation handoff
 
-The next implementation handoff should not move TTS execution into RelayLM core. A future adapter-facing slice may define a default-off downstream transport contract for handing runtime-private C1 metadata to an external TTS/avatar adapter layer.
+The next implementation handoff should not move TTS execution into RelayLM core. A future runtime-facing slice may optionally wire C3 envelope construction after C2 stream-final handoff planning, still default-off and still preserving RelayLM's ownership boundary: RelayLM may produce runtime-private transport metadata, while delivery, TTS/audio generation, and avatar execution remain outside RelayLM core.
