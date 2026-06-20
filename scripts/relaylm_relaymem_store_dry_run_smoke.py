@@ -200,12 +200,33 @@ def main() -> int:
             require(partial["layout_compatibility"]["migration_required"] is True, partial)
             print("ok sources-only partial migration still requires MEM layout migration")
 
+        with tempfile.TemporaryDirectory() as primary_only_td:
+            primary_only_root = Path(primary_only_td)
+            primary_only_mem = primary_only_root / "memory" / "mem"
+            (primary_only_mem / "projects").mkdir(parents=True)
+            (primary_only_mem / "primary" / "sessions").mkdir(parents=True)
+            (primary_only_mem / "index.md").write_text("# Index\n", encoding="utf-8")
+            (primary_only_mem / "log.md").write_text("# Log\n", encoding="utf-8")
+            primary_only = build_relaymem_store_diagnostics(
+                root_path=str(primary_only_root),
+                store_enabled=True,
+                retrieval_dry_run_only=True,
+            )
+            require(primary_only["layout_compatibility"]["current_flat_present"] is True, primary_only)
+            require(
+                primary_only["layout_compatibility"]["target_primary_secondary_present"] is False,
+                primary_only,
+            )
+            require(primary_only["layout_compatibility"]["migration_required"] is True, primary_only)
+            print("ok primary-only partial migration still requires secondary MEM layout")
+
         with tempfile.TemporaryDirectory() as target_td:
             target_root = Path(target_td)
             target_mem = target_root / "memory" / "mem"
             (target_root / "memory" / "sources" / "conversations").mkdir(parents=True)
             (target_mem / "primary" / "sessions").mkdir(parents=True)
             (target_mem / "secondary" / "projects").mkdir(parents=True)
+            (target_mem / "secondary" / "relations").mkdir(parents=True)
             (target_mem / "index.md").write_text("# Index\n", encoding="utf-8")
             (target_mem / "log.md").write_text("# Log\n", encoding="utf-8")
             (target_root / "memory" / "sources" / "conversations" / "turn.jsonl").write_text(
@@ -218,6 +239,10 @@ def main() -> int:
             )
             (target_mem / "secondary" / "projects" / "project.md").write_text(
                 "# Project\nTarget secondary memory\n",
+                encoding="utf-8",
+            )
+            (target_mem / "secondary" / "relations" / "relation.md").write_text(
+                "# Relation\nTarget relation memory\n",
                 encoding="utf-8",
             )
             target = build_relaymem_store_diagnostics(
@@ -247,6 +272,7 @@ def main() -> int:
             target_paths = {item["path"] for item in target_candidates["candidates"]}
             require("memory/mem/primary/sessions/session.md" in target_paths, target_candidates)
             require("memory/mem/secondary/projects/project.md" in target_paths, target_candidates)
+            require("memory/mem/secondary/relations/relation.md" in target_paths, target_candidates)
             target_layers = {item["memory_layer"] for item in target_candidates["candidates"]}
             require({"primary", "secondary"}.issubset(target_layers), target_candidates)
 
