@@ -8,6 +8,7 @@ or expose raw message text in its public projection.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from math import isfinite
 from typing import Any
 
 _SCHEMA_VERSION = "relaymem.primary_formation_dry_run.v0"
@@ -40,12 +41,7 @@ def build_relaymem_primary_formation_dry_run(
     apply_enabled: bool = False,
     source_event_kind: str = "turn",
 ) -> dict[str, Any]:
-    """Build Primary MEM formation candidates without applying them.
-
-    Runtime-private candidate entries are intentionally metadata-only in M3a.
-    Future M3 slices may attach governed source bodies behind apply gates, but
-    this helper only proves autonomous ordinary-memory classification boundaries.
-    """
+    """Build Primary MEM formation candidates without applying them."""
 
     parsed_scn = _parse_relayscn(relayscn_scene_policy_artifact)
     safe_messages = [message for message in messages or [] if isinstance(message, Mapping)]
@@ -101,31 +97,16 @@ def build_relaymem_primary_formation_dry_run(
 
 def _parse_relayscn(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
     if not isinstance(artifact, Mapping):
-        return {
-            "malformed": True,
-            "scene_type": "unknown",
-            "persistence_block": True,
-            "persistence_block_reasons": ["malformed_relayscn_artifact"],
-            "confidence": None,
-            "stability": None,
-        }
+        return _malformed_scene_policy()
     scene_state = artifact.get("scene_state")
     scene_policy = artifact.get("scene_policy")
     if not isinstance(scene_state, Mapping) or not isinstance(scene_policy, Mapping):
-        return {
-            "malformed": True,
-            "scene_type": "unknown",
-            "persistence_block": True,
-            "persistence_block_reasons": ["malformed_relayscn_artifact"],
-            "confidence": None,
-            "stability": None,
-        }
+        return _malformed_scene_policy()
     scene_type = scene_state.get("scene_type")
     if not isinstance(scene_type, str) or scene_type not in _KNOWN_SCENE_TYPES:
         scene_type = "unknown"
     persistence_reasons = _string_list(artifact.get("persistence_block_reasons"))
-    policy_reasons = _string_list(scene_policy.get("persistence_block_reasons"))
-    for reason in policy_reasons:
+    for reason in _string_list(scene_policy.get("persistence_block_reasons")):
         if reason not in persistence_reasons:
             persistence_reasons.append(reason)
     persistence_block = artifact.get("persistence_block") is True
@@ -138,6 +119,17 @@ def _parse_relayscn(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
         "persistence_block_reasons": persistence_reasons,
         "confidence": scene_state.get("confidence"),
         "stability": scene_state.get("stability"),
+    }
+
+
+def _malformed_scene_policy() -> dict[str, Any]:
+    return {
+        "malformed": True,
+        "scene_type": "unknown",
+        "persistence_block": True,
+        "persistence_block_reasons": ["malformed_relayscn_artifact"],
+        "confidence": None,
+        "stability": None,
     }
 
 
@@ -204,10 +196,7 @@ def _blocked_reasons(
         reasons.append("scene_policy_blocks_memory")
     if parsed_scn.get("persistence_block") is True:
         persistence_reasons = _string_list(parsed_scn.get("persistence_block_reasons"))
-        if persistence_reasons:
-            reasons.extend(persistence_reasons)
-        else:
-            reasons.append("relayscn_persistence_block")
+        reasons.extend(persistence_reasons or ["relayscn_persistence_block"])
     if scene_type in _SCENE_BLOCK_REASONS:
         reasons.append(_SCENE_BLOCK_REASONS[scene_type])
     if source_summary.get("latest_user_message_present") is not True:
@@ -293,10 +282,10 @@ def _salience_band(relayemo_artifact: Mapping[str, Any] | None) -> str:
         return "unknown"
     assistant_state = relayemo_artifact.get("assistant_emotion_state")
     affect_estimate = relayemo_artifact.get("user_affect_estimate")
-    intensity = _float_value(
+    intensity = _finite_float(
         assistant_state.get("intensity") if isinstance(assistant_state, Mapping) else None
     )
-    confidence = _float_value(
+    confidence = _finite_float(
         affect_estimate.get("confidence") if isinstance(affect_estimate, Mapping) else None
     )
     score = max(intensity or 0.0, confidence or 0.0)
@@ -310,13 +299,12 @@ def _salience_band(relayemo_artifact: Mapping[str, Any] | None) -> str:
 
 
 def _stability_band(parsed_scn: Mapping[str, Any]) -> str:
-    stability = _float_value(parsed_scn.get("stability"))
-    confidence = _float_value(parsed_scn.get("confidence"))
-    score = min(
-        item for item in [stability, confidence] if item is not None
-    ) if stability is not None or confidence is not None else None
-    if score is None:
+    stability = _finite_float(parsed_scn.get("stability"))
+    confidence = _finite_float(parsed_scn.get("confidence"))
+    numeric_values = [item for item in (stability, confidence) if item is not None]
+    if not numeric_values:
         return "unknown"
+    score = min(numeric_values)
     if score >= 0.8:
         return "high"
     if score >= 0.5:
@@ -359,11 +347,14 @@ def _dedupe(reasons: Sequence[str]) -> list[str]:
     return output
 
 
-def _float_value(value: object) -> float | None:
+def _finite_float(value: object) -> float | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, int | float):
-        return max(0.0, min(1.0, float(value)))
+        number = float(value)
+        if not isfinite(number):
+            return None
+        return max(0.0, min(1.0, number))
     return None
 
 
