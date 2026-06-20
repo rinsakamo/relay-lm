@@ -4,29 +4,39 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - relaylm/adapter.py
+      - relaylm/routing.py
+      - relaylm/relayctx_stream_suppression_runtime.py
       - relaylm/relayctx_stream_unpack.py
       - relaylm/relayctx_unpack.py
       - relaylm/config.py
       - config.example.yaml
       - scripts/relaylm_relayctx_stream_unpack_sentinel_smoke.py
+      - scripts/relaylm_relayctx_stream_suppression_runtime_smoke.py
       - docs/PROJECT_STATUS.md
       - docs/architecture/phase5_5_stream_unpack_bounded_slice.md
       - docs/architecture/phase55a_stream_sentinel_buffer_dry_run_handoff.md
       - docs/architecture/phase55b1_stream_suppression_gate_handoff.md
+      - docs/architecture/phase55b2_stream_suppression_runtime_handoff.md
       - docs/architecture/pipeline_implementation_plan.md
       - .github/workflows/relayctx-stream-unpack-sentinel-smoke.yml
   push:
     branches: [main]
     paths:
+      - relaylm/adapter.py
+      - relaylm/routing.py
+      - relaylm/relayctx_stream_suppression_runtime.py
       - relaylm/relayctx_stream_unpack.py
       - relaylm/relayctx_unpack.py
       - relaylm/config.py
       - config.example.yaml
       - scripts/relaylm_relayctx_stream_unpack_sentinel_smoke.py
+      - scripts/relaylm_relayctx_stream_suppression_runtime_smoke.py
       - docs/PROJECT_STATUS.md
       - docs/architecture/phase5_5_stream_unpack_bounded_slice.md
       - docs/architecture/phase55a_stream_sentinel_buffer_dry_run_handoff.md
       - docs/architecture/phase55b1_stream_suppression_gate_handoff.md
+      - docs/architecture/phase55b2_stream_suppression_runtime_handoff.md
       - docs/architecture/pipeline_implementation_plan.md
       - .github/workflows/relayctx-stream-unpack-sentinel-smoke.yml
 
@@ -51,3 +61,5 @@ jobs:
         run: python -m compileall relaylm scripts
       - name: Run stream sentinel smoke
         run: python scripts/relaylm_relayctx_stream_unpack_sentinel_smoke.py
+      - name: Run runtime stream suppression smoke
+        run: python scripts/relaylm_relayctx_stream_suppression_runtime_smoke.py
