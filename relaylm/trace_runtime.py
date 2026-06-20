@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from relaylm.client_history_exclusion_preflight import (
@@ -42,6 +44,17 @@ from relaylm.pipeline_node_result import PipelineNodeResult
 from relaylm.trace import append_trace_record, build_trace_record
 
 
+@dataclass(frozen=True)
+class _StreamFinalTraceState:
+    config: RelayLMConfig
+    diagnostics: RequestDiagnostics
+    message_count: int
+    response_present: bool
+
+
+_STREAM_FINAL_TRACE_STATES: dict[str, _StreamFinalTraceState] = {}
+
+
 def trace_runtime_event(
     *,
     config: RelayLMConfig,
@@ -49,17 +62,23 @@ def trace_runtime_event(
     message_count: int = 0,
     response_present: bool = False,
     metadata: dict[str, Any] | None = None,
+    pipeline_node_results: Sequence[PipelineNodeResult] | None = None,
 ) -> bool:
     """Append one content-free audit record when tracing is enabled."""
 
-    pipeline_node_results = _consume_pipeline_node_results(diagnostics)
+    resolved_pipeline_node_results = (
+        _pipeline_node_results_to_log_dicts(pipeline_node_results)
+        if pipeline_node_results is not None
+        else _consume_pipeline_node_results(diagnostics)
+    )
     if not config.trace.enabled or not config.trace.path:
         return False
 
     try:
         trace_metadata = dict(metadata or {})
-        if pipeline_node_results is not None:
-            trace_metadata["pipeline_node_results"] = pipeline_node_results
+        explicit_pipeline_node_results = pipeline_node_results is not None
+        if resolved_pipeline_node_results is not None and not explicit_pipeline_node_results:
+            trace_metadata["pipeline_node_results"] = resolved_pipeline_node_results
         trace_metadata.update(_supported_diagnostics_metadata(diagnostics))
         record = build_trace_record(
             trace_id=diagnostics.request_id,
@@ -71,10 +90,65 @@ def trace_runtime_event(
             response_present=response_present,
             metadata=trace_metadata,
         )
+        if (
+            explicit_pipeline_node_results
+            and _is_stream_final_tts_node_results(resolved_pipeline_node_results)
+        ):
+            record.metadata["pipeline_node_results"] = resolved_pipeline_node_results or []
         append_trace_record(config.trace.path, record)
+        if trace_metadata.get("event") == "backend_stream_response":
+            _STREAM_FINAL_TRACE_STATES[diagnostics.request_id] = _StreamFinalTraceState(
+                config=config,
+                diagnostics=diagnostics,
+                message_count=message_count,
+                response_present=response_present,
+            )
     except Exception:
         return False
     return True
+
+
+def trace_runtime_stream_final_pipeline_node_results(
+    *,
+    pipeline_context: Any,
+    node_results: Sequence[PipelineNodeResult],
+) -> bool:
+    """Append stream-final node results after the initial context was consumed."""
+
+    request_id = getattr(pipeline_context, "request_id", None)
+    if not isinstance(request_id, str) or not request_id:
+        return False
+    if not node_results:
+        return False
+    state = _STREAM_FINAL_TRACE_STATES.pop(request_id, None)
+    if state is None:
+        return False
+    return trace_runtime_event(
+        config=state.config,
+        diagnostics=state.diagnostics,
+        message_count=state.message_count,
+        response_present=state.response_present,
+        metadata={"event": "backend_stream_finalize"},
+        pipeline_node_results=node_results,
+    )
+
+
+def _pipeline_node_results_to_log_dicts(
+    node_results: Sequence[PipelineNodeResult],
+) -> list[dict[str, Any]]:
+    return [result.to_log_dict() for result in node_results]
+
+
+def _is_stream_final_tts_node_results(
+    node_results: list[dict[str, Any]] | None,
+) -> bool:
+    if not node_results:
+        return False
+    allowed = {
+        "relayctx_tts_segmentation_hints",
+        "relayctx_tts_adapter_handoff",
+    }
+    return all(result.get("node_name") in allowed for result in node_results)
 
 
 def _supported_diagnostics_metadata(
