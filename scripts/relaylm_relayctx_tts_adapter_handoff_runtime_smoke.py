@@ -110,6 +110,25 @@ def assert_c2_nodes_only(ctx: DummyPipelineContext) -> None:
     assert_c2_node_names(node_names(ctx.node_results))
 
 
+def make_trace_config(trace_path: Path) -> RelayLMConfig:
+    return RelayLMConfig(
+        trace={"enabled": True, "path": str(trace_path)},
+        backends={"default": {"base_url": "http://127.0.0.1:1234/v1"}},
+        model_routes={"relaylm-companion": {"backend": "default"}},
+    )
+
+
+def make_diagnostics(request_id: str) -> RequestDiagnostics:
+    return RequestDiagnostics(
+        request_id=request_id,
+        route_model="relaylm-companion",
+        mode_applied="memory_light",
+        character_id="trace-smoke-character",
+        stream_enabled=True,
+        trace_enabled=True,
+    )
+
+
 async def assert_runtime_handoff_dry_run_from_safe_visible_output() -> None:
     chunks = [sse_content(VISIBLE_PREFIX), sse_content(VISIBLE_SECOND), sse_done()]
     ctx = DummyPipelineContext()
@@ -176,19 +195,58 @@ async def assert_stream_final_trace_records_c2_node_results() -> None:
     chunks = [sse_content(VISIBLE_PREFIX), sse_done()]
     with TemporaryDirectory() as tmp_dir:
         trace_path = Path(tmp_dir) / "trace.jsonl"
-        config = RelayLMConfig(
-            trace={"enabled": True, "path": str(trace_path)},
-            backends={"default": {"base_url": "http://127.0.0.1:1234/v1"}},
-            model_routes={"relaylm-companion": {"backend": "default"}},
+        config = make_trace_config(trace_path)
+        diagnostics = make_diagnostics(request_id)
+        require(
+            trace_runtime_event(
+                config=config,
+                diagnostics=diagnostics,
+                message_count=1,
+                response_present=False,
+                metadata={
+                    "event": "backend_stream_response",
+                    "status_code": 200,
+                    "content_type": "text/event-stream",
+                    "stream_final_pipeline_node_results_expected": True,
+                },
+            ),
+            "failed to seed stream response trace",
         )
-        diagnostics = RequestDiagnostics(
-            request_id=request_id,
-            route_model="relaylm-companion",
-            mode_applied="memory_light",
-            character_id="trace-smoke-character",
-            stream_enabled=True,
-            trace_enabled=True,
+        ctx = DummyPipelineContext(request_id=request_id)
+        output = await collect(
+            wrap_stream_with_tts_adapter_handoff(
+                iter_bytes(chunks),
+                enabled=True,
+                dry_run_only=False,
+                b2_safe_visible_output_available=True,
+                pipeline_context=ctx,
+            )
         )
+        require(output == b"".join(chunks), output)
+        records = [
+            json.loads(line)
+            for line in trace_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        require(len(records) == 2, records)
+        events = [record.get("metadata", {}).get("event") for record in records]
+        require(events == ["backend_stream_response", "backend_stream_response"], events)
+        final_nodes = records[1].get("metadata", {}).get("pipeline_node_results")
+        require(isinstance(final_nodes, list), records[1])
+        assert_c2_node_names([str(node.get("node_name")) for node in final_nodes])
+        for node in final_nodes:
+            require(isinstance(node, dict), node)
+            assert_content_free(node)
+        print("ok stream-final trace records C2 node results content-free")
+
+
+async def assert_stream_final_trace_state_is_not_cached_by_default() -> None:
+    request_id = "relayctx-tts-runtime-no-final-state-smoke"
+    chunks = [sse_content(VISIBLE_PREFIX), sse_done()]
+    with TemporaryDirectory() as tmp_dir:
+        trace_path = Path(tmp_dir) / "trace.jsonl"
+        config = make_trace_config(trace_path)
+        diagnostics = make_diagnostics(request_id)
         require(
             trace_runtime_event(
                 config=config,
@@ -219,16 +277,8 @@ async def assert_stream_final_trace_records_c2_node_results() -> None:
             for line in trace_path.read_text(encoding="utf-8").splitlines()
             if line.strip()
         ]
-        require(len(records) == 2, records)
-        events = [record.get("metadata", {}).get("event") for record in records]
-        require(events == ["backend_stream_response", "backend_stream_finalize"], events)
-        final_nodes = records[1].get("metadata", {}).get("pipeline_node_results")
-        require(isinstance(final_nodes, list), records[1])
-        assert_c2_node_names([str(node.get("node_name")) for node in final_nodes])
-        for node in final_nodes:
-            require(isinstance(node, dict), node)
-            assert_content_free(node)
-        print("ok stream-final trace records C2 node results content-free")
+        require(len(records) == 1, records)
+        print("ok stream-final trace state is not cached by default")
 
 
 async def assert_no_handoff_without_b2_safe_output() -> None:
@@ -295,6 +345,7 @@ async def main_async() -> None:
     await assert_runtime_handoff_dry_run_from_safe_visible_output()
     await assert_runtime_handoff_ready_without_tts_execution()
     await assert_stream_final_trace_records_c2_node_results()
+    await assert_stream_final_trace_state_is_not_cached_by_default()
     await assert_no_handoff_without_b2_safe_output()
     await assert_no_handoff_when_disabled()
     await assert_invalid_safe_output_observation_blocks_handoff()
