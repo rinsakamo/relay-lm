@@ -241,7 +241,7 @@ Implemented:
 - tokenizer-free deterministic character classification,
 - ASCII compatibility ratio retention,
 - conservative CJK/Kana/Hangul/full-width, punctuation, symbol/emoji, combining/format, and other non-ASCII accounting,
-- final estimates that never falls below the historical whole-string estimate,
+- final estimates that never fall below the historical whole-string estimate,
 - content-free detailed count diagnostics,
 - shared use by memory assembly and message truncation,
 - unchanged feature defaults, ownership, candidate/drop order, and protected-message behavior,
