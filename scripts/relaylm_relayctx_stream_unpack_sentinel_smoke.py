@@ -42,6 +42,14 @@ def _assert_plain_stream_is_unchanged_dry_run() -> None:
     print("ok stream sentinel observer preserves ordinary stream as dry-run")
 
 
+def _assert_short_less_than_prefix_does_not_false_positive() -> None:
+    observation = observe_stream_sentinel_buffer(["x < y and z <"])
+    require(observation.status == "clean", observation)
+    require(observation.update_candidate_present is False, observation)
+    require(observation.terminal_partial_sentinel is False, observation)
+    print("ok stream sentinel observer avoids short less-than false positive")
+
+
 def _assert_complete_sentinel_in_one_chunk_is_detected() -> None:
     observation = observe_stream_sentinel_buffer(["visible", RELAYCTX_UPDATE_OPEN])
     require(observation.status == "sentinel_detected", observation)
@@ -97,6 +105,7 @@ def _assert_invalid_chunks_are_content_free_fail_closed() -> None:
 
 def main() -> None:
     _assert_plain_stream_is_unchanged_dry_run()
+    _assert_short_less_than_prefix_does_not_false_positive()
     _assert_complete_sentinel_in_one_chunk_is_detected()
     _assert_split_sentinel_across_chunks_is_detected()
     _assert_terminal_partial_sentinel_is_blocked()
