@@ -57,9 +57,17 @@ def main() -> int:
     require(prioritized["mutates_soul"] is False, prioritized)
     require(prioritized["candidate_count"] == 6, prioritized)
     require(prioritized["selected_count"] == 4, prioritized)
-    require(prioritized["layer_counts"] == {"secondary": 3, "primary": 2, "legacy_flat": 1, "unknown": 0}, prioritized)
+    require(
+        prioritized["layer_counts"]
+        == {"secondary": 3, "primary": 2, "legacy_flat": 1, "unknown": 0},
+        prioritized,
+    )
     selected = prioritized["selected_candidates"]
-    require([item["memory_layer"] for item in selected] == ["secondary", "secondary", "secondary", "primary"], selected)
+    require(
+        [item["memory_layer"] for item in selected]
+        == ["secondary", "secondary", "secondary", "primary"],
+        selected,
+    )
     require(selected[0]["path"] == "memory/mem/secondary/summaries/summary.md", selected)
     require(selected[1]["path"] == "memory/mem/secondary/relations/relation.md", selected)
     require(selected[2]["path"] == "memory/mem/secondary/concepts/concept.md", selected)
@@ -88,10 +96,14 @@ def main() -> int:
             _candidate("memory/mem/secondary/projects/b.md"),
         ]
     )
-    require([item["path"] for item in tie["selected_candidates"]] == [
-        "memory/mem/secondary/projects/a.md",
-        "memory/mem/secondary/projects/b.md",
-    ], tie)
+    require(
+        [item["path"] for item in tie["selected_candidates"]]
+        == [
+            "memory/mem/secondary/projects/a.md",
+            "memory/mem/secondary/projects/b.md",
+        ],
+        tie,
+    )
     print("ok original order is stable tie-breaker")
 
     empty = prioritize_relaymem_candidates([], max_candidates=3)
