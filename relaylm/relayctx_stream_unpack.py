@@ -24,6 +24,7 @@ RelayCTXStreamUnpackStatus = Literal[
 
 _INTERNAL_SENTINELS = (RELAYCTX_UPDATE_OPEN, RELAYCTX_UPDATE_CLOSE)
 _MAX_SENTINEL_CHARS = max(len(marker) for marker in _INTERNAL_SENTINELS)
+_MIN_PARTIAL_SENTINEL_PREFIX_CHARS = 5
 _DEFAULT_MAX_BUFFER_CHARS = 256
 
 
@@ -206,7 +207,8 @@ def _ends_with_sentinel_prefix(text: str) -> bool:
         return False
     max_prefix_len = min(len(text), _MAX_SENTINEL_CHARS - 1)
     for marker in _INTERNAL_SENTINELS:
-        for prefix_len in range(1, min(max_prefix_len, len(marker) - 1) + 1):
+        upper = min(max_prefix_len, len(marker) - 1)
+        for prefix_len in range(_MIN_PARTIAL_SENTINEL_PREFIX_CHARS, upper + 1):
             if text.endswith(marker[:prefix_len]):
                 return True
     return False
