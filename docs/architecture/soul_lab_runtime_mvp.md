@@ -1,0 +1,213 @@
+---
+relaylm_doc_type: architecture
+relaylm_authority: soul_lab_post_mvp_runtime_boundary
+relaylm_status: target
+relaylm_volatility: medium
+relaylm_owner: soul_lab
+relaylm_update_trigger:
+  - SOUL Lab post-MVP sequencing changes
+  - VTuber runtime adapter ownership changes
+  - TTS or avatar adapter contract changes
+relaylm_not_authoritative_for:
+  - RelayLM Core current implementation status
+  - RelayEMO exact hint schema
+  - Phase 5.5 Stream Unpack implementation status
+  - concrete TTS engine or Live2D runtime configuration
+relaylm_related_authority:
+  - soul_lab_ui_mvp.md
+  - ai_vtuber_pipeline_profile.md
+  - relayemo_return_side_expression_design.md
+  - ai_character_product_principles.md
+  - ../PROJECT_STATUS.md
+---
+# SOUL Lab Runtime MVP
+
+## Purpose
+
+SOUL Lab Runtime MVP is the post-SOUL-Lab-UI runtime adapter layer for voice and avatar execution.
+
+It consumes RelayLM-approved safe output, segmentation hints, and engine-neutral expression hints, then maps them to concrete TTS, audio queue, Live2D/avatar expression, motion, and timing behavior.
+
+This document defines product and ownership boundaries. It does not make TTS, Live2D, or avatar execution part of the RelayLM Core MVP.
+
+## Sequencing
+
+```text
+RelayLM Core MVP
+  -> safe LLM runtime, memory, SOUL, RUN, and stream boundaries
+
+Post-MVP Phase 1: SOUL Lab UI MVP
+  -> observe, review, edit, compare, apply, rollback, and audit character state
+
+Post-MVP Phase 2: SOUL Lab Runtime MVP
+  -> execute voice/avatar behavior through adapters using RelayLM hints
+```
+
+SOUL Lab UI MVP remains text-first. Runtime MVP starts only after the UI MVP proves character creation/adoption, Home conversation, communication, Lab Observation, and Pod / SOUL Intervention.
+
+## Ownership boundary
+
+RelayLM Core owns:
+
+- safe visible stream approval,
+- visible/internal output separation,
+- TTS-safe segmentation hints,
+- Return-side RelayEMO engine-neutral hints,
+- RelayRUN emission decisions, recovery state, and duplicate-emission prevention metadata,
+- content-free diagnostics and adapter telemetry projections.
+
+SOUL Lab Runtime MVP owns:
+
+- concrete TTS adapter mapping,
+- TTS execution,
+- audio queueing,
+- speech interruption and cancellation,
+- caption / voice timing coordination,
+- Live2D or avatar expression mapping,
+- avatar motion scheduling,
+- lip-sync timing when supported,
+- runtime preview, calibration, and mapping UI,
+- adapter failure handling and user-facing runtime status.
+
+RelayLM Core must not directly call TTS engines, Live2D runtimes, avatar motion systems, audio playback queues, or OBS/streaming integrations.
+
+## Runtime adapter inputs
+
+The Runtime MVP should consume request-local runtime-private artifacts from RelayLM or SOUL Lab-managed APIs. Conceptual input shape:
+
+```yaml
+runtime_adapter_event:
+  chunk_id: chunk_001
+  emission_decision: emitted
+  tts_policy: speak
+  segmentation_hint:
+    boundary_kind: sentence
+    flush_recommended: true
+  expression_hints:
+    style_class: gentle
+    tts_emoji_hint: "😊"
+    avatar_expression_class: soft_smile
+    avatar_motion_class: small_nod
+    expression_intensity: 0.35
+  safety:
+    internal_marker_detected: false
+    protected: false
+    blocked_reason_ids: []
+```
+
+Concrete segment text may be present only in runtime-private adapter input. Generic trace, audit, public errors, or long-lived diagnostics must use content-free projections.
+
+## Adapter responsibilities
+
+### TTS adapter
+
+The TTS adapter maps safe visible text and engine-neutral style hints to the configured speech engine.
+
+It owns:
+
+- engine selection and capability probing,
+- style/prosody mapping,
+- pronunciation or caption-only fallback policy,
+- request cancellation,
+- audio buffer construction,
+- TTS failure recovery that preserves caption/text output when safe.
+
+It must not reinterpret internal RelayCTX candidates, bypass RelayRUN emission decisions, or treat RelayEMO hints as permission to override TTS safety policy.
+
+### Avatar adapter
+
+The avatar adapter maps expression and motion classes to runtime-specific names.
+
+It owns:
+
+- Live2D / avatar runtime connection,
+- expression preset mapping,
+- motion preset mapping,
+- intensity-to-parameter mapping,
+- timing relative to audio playback,
+- lip-sync coordination when supported,
+- avatar failure fallback that preserves text/TTS output when safe.
+
+It must not call privileged RelayLM mutation APIs or infer SOUL changes from transient expression hints.
+
+### Audio and timing runtime
+
+The runtime owns:
+
+- first-speakable-chunk enqueue timing,
+- queue order and cancellation,
+- interruption behavior,
+- duplicate replay prevention,
+- stop response handling,
+- partial-stream failure behavior after already-approved chunks.
+
+Recovery or resume must not enqueue the same chunk twice.
+
+## UI requirements
+
+SOUL Lab Runtime MVP should expose a bounded control surface:
+
+- adapter connection status,
+- TTS engine status,
+- avatar runtime status,
+- current queued chunk count,
+- current speaking chunk id,
+- current expression/motion class,
+- interruption/cancel controls,
+- mapping preview for style, expression, and motion classes,
+- content-free adapter error reasons.
+
+The UI may preview hint mappings without executing speech or avatar motion. Preview mode must be explicit.
+
+## Failure behavior
+
+TTS failure:
+
+```text
+TTS failure
+  -> keep caption/text output when safe
+  -> stop or skip affected audio item
+  -> record content-free adapter failure
+  -> continue only when queue state remains valid
+```
+
+Avatar failure:
+
+```text
+Avatar failure
+  -> preserve approved text/TTS path
+  -> omit expression or motion
+  -> record content-free adapter failure
+```
+
+RelayLM stream or safety failure:
+
+```text
+stream/safety failure
+  -> do not execute new adapter output for blocked chunks
+  -> preserve already approved/emitted chunks
+  -> prevent duplicate replay during recovery
+```
+
+## Non-goals
+
+SOUL Lab Runtime MVP does not implement:
+
+- new RelayLM Core semantic rewriting,
+- RelaySOUL automatic mutation,
+- universal content moderation,
+- ASR ownership,
+- OBS or public streaming integration,
+- multi-avatar rendering,
+- cloud sync,
+- frontend-independent always-on background communication,
+- engine-specific config as RelayLM architecture authority.
+
+## Relationship to existing documents
+
+- [SOUL Lab UI MVP](soul_lab_ui_mvp.md) owns the text-first Lab product loop and intentionally defers TTS/Live2D/runtime execution.
+- [AI VTuber Pipeline Profile](ai_vtuber_pipeline_profile.md) defines the RelayLM realtime profile and per-chunk conceptual path.
+- [RelayEMO Return-side Expression Design](relayemo_return_side_expression_design.md) owns engine-neutral expression hint boundaries.
+- [AI Character Product Principles](ai_character_product_principles.md) owns the broad product invariant that RelayLM is not the frontend, TTS, ASR, or avatar runtime.
+
+This document provides the post-UI-MVP adapter ownership target and should avoid restating exact RelayEMO schemas or Phase 5.5 implementation status.
