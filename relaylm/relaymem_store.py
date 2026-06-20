@@ -14,10 +14,12 @@ _CURRENT_LAYOUT_DIRS = (
     "memory/mem/summaries",
     "memory/mem/relations",
 )
-_TARGET_LAYOUT_DIRS = (
+_TARGET_SOURCE_DIRS = (
     "memory/sources/conversations",
     "memory/sources/communications",
     "memory/sources/corrections",
+)
+_TARGET_MEM_LAYOUT_DIRS = (
     "memory/mem/primary/sessions",
     "memory/mem/primary/scenes",
     "memory/mem/primary/relationships",
@@ -28,6 +30,7 @@ _TARGET_LAYOUT_DIRS = (
     "memory/mem/secondary/summaries",
     "memory/mem/secondary/relations",
 )
+_TARGET_LAYOUT_DIRS = _TARGET_SOURCE_DIRS + _TARGET_MEM_LAYOUT_DIRS
 _LAYOUT_DIRS = _CURRENT_LAYOUT_DIRS + _TARGET_LAYOUT_DIRS
 _LAYOUT_FILES = (
     "memory/mem/index.md",
@@ -462,9 +465,11 @@ def _empty_layout_compatibility() -> dict[str, Any]:
 def _layout_compatibility(root: Path) -> dict[str, Any]:
     current_flat_present = any((root / item).is_dir() for item in _CURRENT_LAYOUT_DIRS)
     target_primary_secondary_present = any(
-        (root / item).is_dir() for item in _TARGET_LAYOUT_DIRS
+        (root / item).is_dir() for item in _TARGET_MEM_LAYOUT_DIRS
     )
-    sources_present = (root / "memory" / "sources").is_dir()
+    sources_present = (root / "memory" / "sources").is_dir() or any(
+        (root / item).is_dir() for item in _TARGET_SOURCE_DIRS
+    )
     return {
         "current_flat_present": current_flat_present,
         "target_primary_secondary_present": target_primary_secondary_present,
