@@ -59,10 +59,12 @@ Latest completed bounded slice:
 
 Phase 5-C5b completes the direct filesystem writer safety boundary for validated typed parse artifacts. The helper can write only when an explicit caller disables dry-run-only and supplies a valid existing cache root. Runtime request handling still does not extract typed parse candidates from backend responses or invoke cache writes automatically.
 
-Next candidates remain independently sequenced:
+Next candidates remain independently sequenced, with Phase 5.5-A as the next product-critical implementation boundary:
 
-- Phase 5-C5c: typed parse source / runtime writer wiring boundary,
-- Phase 5.5: Stream Unpack and output segmentation.
+- Phase 5.5-A: stream sentinel buffer dry-run,
+- Phase 5-C5c: typed parse source / runtime writer wiring boundary.
+
+New RelaySOUL execution-gate design documents are frozen until Phase 5.5-A and 5.5-B are complete, unless a new RelaySOUL document directly unblocks a current runtime safety issue.
 
 ## Current implemented boundary
 
@@ -207,6 +209,7 @@ RelayLM does not own frontend UI, ASR, TTS execution, or avatar execution. Curre
 ## Where to read next
 
 - [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md)
+- [Phase 5.5 Stream Unpack Bounded Slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
 - [Phase 5-C5b Gated Client-Instruction Cache Writer Handoff](architecture/phase5c5b_gated_cache_writer_handoff.md)
 - [Phase 5-C5a Typed Parse and Cache-Write Preflight Handoff](architecture/phase5c5a_typed_parse_cache_write_preflight_handoff.md)
 - [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](architecture/phase5c4b_cache_hit_relayscn_projection_handoff.md)
