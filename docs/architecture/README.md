@@ -27,7 +27,11 @@ Canonical authority:
 3. Dedicated current contracts
 4. [Current / Target / Migration Guide](current_target_migration_guide.md)
 
-Phase 5-C4a instruction-bearing managed apply is complete. See the [completed handoff](phase5c4a_instruction_bearing_managed_apply_handoff.md), [Project Status](../PROJECT_STATUS.md), and [Client History Authority Contract](client_history_authority_contract.md).
+Product-critical next slice:
+
+- [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md)
+
+Phase 5.5 starts with stream sentinel buffer dry-run and safe streaming diagnostics before TTS-safe segmentation hints. RelaySOUL execution-gate design expansion is frozen until Phase 5.5-A and 5.5-B are complete unless a new document directly unblocks a current runtime safety issue.
 
 Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1` with explicit `client_instruction_source.v1` provenance. Role, wording, and message position alone are not provenance.
 
