@@ -68,10 +68,17 @@ def main() -> int:
         == ["secondary", "secondary", "secondary", "primary"],
         selected,
     )
-    require(selected[0]["path"] == "memory/mem/secondary/summaries/summary.md", selected)
-    require(selected[1]["path"] == "memory/mem/secondary/relations/relation.md", selected)
-    require(selected[2]["path"] == "memory/mem/secondary/concepts/concept.md", selected)
-    require(selected[3]["path"] == "memory/mem/primary/sessions/session.md", selected)
+    selected_paths = [item["path"] for item in selected]
+    require(
+        selected_paths
+        == [
+            "memory/mem/secondary/summaries/summary.md",
+            "memory/mem/secondary/relations/relation.md",
+            "memory/mem/secondary/concepts/concept.md",
+            "memory/mem/primary/sessions/session.md",
+        ],
+        selected,
+    )
     require([item["retrieval_rank"] for item in selected] == [0, 1, 2, 3], selected)
     print("ok secondary MEM outranks primary and legacy candidates")
 
