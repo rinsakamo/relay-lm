@@ -364,16 +364,16 @@ def _write_cache_entry(
         return _WriteOutcome(False, False, byte_count, ("cache_root_symlink_blocked",))
     if root.exists() and root.is_symlink():
         return _WriteOutcome(False, False, byte_count, ("cache_root_symlink_blocked",))
+    if not root.exists():
+        return _WriteOutcome(False, False, byte_count, ("cache_root_missing",))
+    if not root.is_dir():
+        return _WriteOutcome(False, False, byte_count, ("cache_root_not_directory",))
 
     attempted = False
     tmp_name: str | None = None
     tmp_fd: int | None = None
     try:
-        root.mkdir(parents=True, exist_ok=True)
         root_resolved = root.resolve(strict=True)
-        if not root_resolved.is_dir():
-            return _WriteOutcome(False, False, byte_count, ("cache_root_not_directory",))
-
         target = root_resolved / f"{cache_key_sha256}.json"
         if target.is_symlink():
             return _WriteOutcome(False, False, byte_count, ("cache_target_symlink_rejected",))
