@@ -52,6 +52,7 @@ Completed bounded slices:
   Phase 5-C4b cache-hit RelaySCN projection
   Phase 5-C5a typed parse/cache-write preflight
   Phase 5-C5b gated cache writer helper
+  Phase 5-C5c runtime cache-writer boundary
   Phase 5-D1 CJK-aware conservative token estimation
   Phase 5-D2a lazy RelayRUN recovery-detail helper
   Phase 5-D2b lazy RelayRUN recovery-detail runtime wiring
@@ -59,13 +60,12 @@ Completed bounded slices:
 
 Next candidates:
   Phase 5.5-B visible chunk preservation and internal suppression gate
-  Phase 5-C5c typed parse source / runtime writer wiring boundary
 
 Later:
   Phase 6 asynchronous RelaySLP
 ```
 
-Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight. Phase 5-C5b is complete as a direct, explicit, gated filesystem writer helper; runtime response/control-envelope extraction and automatic writer invocation remain later work. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer; runtime SSE interception and suppression remain Phase 5.5-B or later.
+Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight. Phase 5-C5b is complete as a direct, explicit, gated filesystem writer helper. Phase 5-C5c is complete as request-local runtime wiring for trusted in-process typed parse sources; runtime response/control-envelope extraction, frontend metadata trust, and parser-versioned lookup/write compatibility remain later work. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer; runtime SSE interception and suppression remain Phase 5.5-B or later.
 
 ## Current caveats
 
@@ -74,7 +74,7 @@ Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5
 - Complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy is not implemented.
 - Active tool transactions remain blocked because minimum-chain reconstruction is absent.
 - Instruction-cache lookup and RelaySCN projection are read-only.
-- Phase 5-C5b adds a direct gated cache writer helper, but response/control-envelope extraction and runtime auto-write invocation remain absent.
+- Phase 5-C5c wires a trusted in-process typed parse source to the gated writer, but response/control-envelope extraction, frontend metadata trust, and parser-versioned lookup/write compatibility remain absent.
 - RelayCTX Unpack is non-stream only.
 - Phase 5.5-A adds dry-run stream sentinel observation only; runtime SSE interception, visible chunk suppression, duplicate replay prevention, and TTS-safe segmentation remain absent.
 - New RelaySOUL execution-gate design documents are frozen until Phase 5.5-B is complete, unless a new RelaySOUL document directly unblocks a current runtime safety issue.
@@ -209,9 +209,25 @@ Phase 5-C5b does not extract typed parse candidates from backend responses or co
 
 See [Phase 5-C5b Gated Client-Instruction Cache Writer Handoff](phase5c5b_gated_cache_writer_handoff.md).
 
-### Phase 5-C5c: typed parse source / runtime writer wiring — planned
+### Phase 5-C5c: runtime cache-writer boundary — complete
 
-Planned work should define the trusted typed-parse source and the runtime invocation boundary before any automatic cache write. The slice should keep default-off/dry-run defaults, avoid parsing arbitrary backend text, preserve content-free diagnostics, and only call the C5b writer after a validated runtime-private parse artifact exists.
+Implemented:
+
+- `client_instruction_cache_write_runtime` request-local runtime helper,
+- in-process runtime-private typed parse source handoff via `ContextVar`,
+- one-shot source consumption and clearing,
+- missing-source skip/block behavior without filesystem write,
+- disabled typed-parse/cache-write gate source clearing,
+- parser-versioned runtime parse blocking before writer invocation,
+- `PipelineContext` storage for typed parse and cache writer results,
+- runtime call into the C5b writer helper only after typed parse validation and identity preparation,
+- trace node ordering after cache lookup/projection and before client-history preflight,
+- no frontend metadata or backend visible text accepted as typed parse source,
+- focused smoke coverage for missing source, disabled-source clearing, versioned parse blocking, dry-run writer, direct writer invocation, node ordering, and content-free diagnostics.
+
+Phase 5-C5c does not parse backend responses or control envelopes, trust frontend metadata, implement parser-versioned lookup/write compatibility, apply RelaySCN state, mutate backend payloads, or mutate user-visible responses.
+
+See [Phase 5-C5c Runtime Cache-Writer Boundary Handoff](phase5c5c_runtime_cache_writer_boundary_handoff.md).
 
 ## Phase 5-D: pre-stream hardening — complete through D2
 
