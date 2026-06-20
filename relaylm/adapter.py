@@ -14,6 +14,9 @@ from relaylm.client_history_exclusion_apply_runtime import (
 )
 from relaylm.client_instruction_source import strip_relaylm_control
 from relaylm.pipeline_context import get_active_pipeline_context
+from relaylm.relayctx_stream_suppression_runtime import (
+    wrap_stream_with_relayctx_suppression,
+)
 from relaylm.relayctx_unpack_runtime import apply_relayctx_unpack_runtime
 from relaylm.routing import ResolvedRoute
 
@@ -151,4 +154,14 @@ async def open_chat_completion_stream(
             await stream_context.__aexit__(None, None, None)
             await client.aclose()
 
-    return response.status_code, content_type, iter_bytes()
+    body_iter: AsyncIterator[bytes] = iter_bytes()
+    if route.relayctx_stream_unpack_dry_run_enabled:
+        body_iter = wrap_stream_with_relayctx_suppression(
+            body_iter,
+            enabled=True,
+            dry_run_only=route.relayctx_stream_unpack_dry_run_only,
+            max_buffer_chars=route.relayctx_stream_unpack_max_buffer_chars,
+            pipeline_context=get_active_pipeline_context(),
+        )
+
+    return response.status_code, content_type, body_iter
