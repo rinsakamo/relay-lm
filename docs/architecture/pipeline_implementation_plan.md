@@ -51,19 +51,20 @@ Completed bounded slices:
   Phase 5-C4a instruction-bearing managed apply
   Phase 5-C4b cache-hit RelaySCN projection
   Phase 5-C5a typed parse/cache-write preflight
+  Phase 5-C5b gated cache writer helper
   Phase 5-D1 CJK-aware conservative token estimation
   Phase 5-D2a lazy RelayRUN recovery-detail helper
   Phase 5-D2b lazy RelayRUN recovery-detail runtime wiring
 
 Next candidates:
-  Phase 5-C5b actual cache writer safety boundary
+  Phase 5-C5c typed parse source / runtime writer wiring boundary
   Phase 5.5 Stream Unpack
 
 Later:
   Phase 6 asynchronous RelaySLP
 ```
 
-Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight only; actual filesystem cache writing remains Phase 5-C5b or later. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring.
+Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight. Phase 5-C5b is complete as a direct, explicit, gated filesystem writer helper; runtime response/control-envelope extraction and automatic writer invocation remain later work. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring.
 
 ## Current caveats
 
@@ -72,7 +73,7 @@ Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5
 - Complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy is not implemented.
 - Active tool transactions remain blocked because minimum-chain reconstruction is absent.
 - Instruction-cache lookup and RelaySCN projection are read-only.
-- Phase 5-C5a adds typed parse validation and cache-write preflight only; response/control-envelope extraction and actual cache filesystem writes remain absent.
+- Phase 5-C5b adds a direct gated cache writer helper, but response/control-envelope extraction and runtime auto-write invocation remain absent.
 - RelayCTX Unpack is non-stream only.
 - Token estimation is deterministic and CJK-aware but remains tokenizer-free and model-agnostic rather than exact.
 - RelayRUN lazy recovery detail is wired into the request-runtime checkpoint builder, but cross-cutting per-node orchestration remains later work.
@@ -114,7 +115,7 @@ Content-free inspection identifies the current user turn, instruction/history co
 
 ### C2 instruction identity and read-only cache lookup — complete
 
-Deterministic normalized instruction identity, route/character-scoped hashes, request-local content-bearing state, bounded read-only lookup, and content-free diagnostics are implemented. Cache writing is not.
+Deterministic normalized instruction identity, route/character-scoped hashes, request-local content-bearing state, bounded read-only lookup, and content-free diagnostics are implemented. Cache writing is not part of the C2 boundary.
 
 ### C3 history-exclusion preflight — complete
 
@@ -182,13 +183,32 @@ Implemented:
 - content-free diagnostics for typed parse and cache-write preflight,
 - focused smoke coverage.
 
-Phase 5-C5a does not implement response/control-envelope extraction, RelaySCN apply, backend payload mutation, user-visible response mutation, or filesystem cache writes. Disabling dry-run-only blocks with `cache_writer_not_implemented`.
+Phase 5-C5a does not implement response/control-envelope extraction, RelaySCN apply, backend payload mutation, user-visible response mutation, or filesystem cache writes. Disabling dry-run-only remains a later bounded writer concern.
 
 See [Phase 5-C5a Typed Parse and Cache-Write Preflight Handoff](phase5c5a_typed_parse_cache_write_preflight_handoff.md).
 
-### Phase 5-C5b: actual cache writer — planned
+### Phase 5-C5b: gated cache writer helper — complete
 
-Planned work should add the actual writer only after a separate review of atomic write safety, symlink/out-of-root checks, temp-file replacement, fsync behavior, max entry bytes, and reader compatibility.
+Implemented:
+
+- direct helper support for writing validated `relaylm.client_instruction_cache.v0` entries,
+- default-off and dry-run-only-by-default cache-write gates,
+- reader-compatible cache entry validation before persistence,
+- runtime-compatible parser-version handling for current lookup behavior,
+- parser-versioned identity blocking when the supplied key does not match current runtime lookup,
+- existing-root requirement without implicit directory creation,
+- missing-root, invalid-budget, oversized-entry, symlink-root, symlink-component, symlink-target, and write-failure blocking,
+- validated directory handle write path with temp-file creation, file `fsync`, atomic replace, and best-effort directory `fsync`,
+- content-free diagnostics and applied node-result status for direct helper writes,
+- focused smoke coverage for dry-run, block, and direct writer success paths.
+
+Phase 5-C5b does not extract typed parse candidates from backend responses or control envelopes, invoke cache writes from request runtime, apply RelaySCN state, mutate backend payloads, or mutate user-visible responses.
+
+See [Phase 5-C5b Gated Client-Instruction Cache Writer Handoff](phase5c5b_gated_cache_writer_handoff.md).
+
+### Phase 5-C5c: typed parse source / runtime writer wiring — planned
+
+Planned work should define the trusted typed-parse source and the runtime invocation boundary before any automatic cache write. The slice should keep default-off/dry-run defaults, avoid parsing arbitrary backend text, preserve content-free diagnostics, and only call the C5b writer after a validated runtime-private parse artifact exists.
 
 ## Phase 5-D: pre-stream hardening — complete through D2
 
