@@ -1,3 +1,23 @@
+---
+relaylm_doc_type: stable_architecture
+relaylm_authority: component_responsibility_and_canonical_target_order
+relaylm_status: current
+relaylm_volatility: low
+relaylm_owner: architecture
+relaylm_update_trigger:
+  - component responsibility changes
+  - canonical runtime order changes
+  - stable ownership invariant changes
+relaylm_not_authoritative_for:
+  - current implementation phase status
+  - exact schema details
+  - smoke procedures
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../DOCUMENTATION_MODEL.md
+  - pipeline_implementation_plan.md
+  - current_target_migration_guide.md
+---
 # RelayLM Pipeline Responsibility Design
 
 ## Purpose
