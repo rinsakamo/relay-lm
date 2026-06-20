@@ -58,6 +58,7 @@ _CANDIDATE_DIRS = (
     "memory/mem/secondary/concepts",
     "memory/mem/secondary/claims",
     "memory/mem/secondary/summaries",
+    "memory/mem/secondary/relations",
 )
 _DEFAULT_MAX_CANDIDATES = 8
 _DEFAULT_MAX_CANDIDATE_READ_BYTES = 4096
@@ -74,6 +75,7 @@ _SNIPPET_DIRS = (
     "memory/mem/secondary/concepts",
     "memory/mem/secondary/claims",
     "memory/mem/secondary/summaries",
+    "memory/mem/secondary/relations",
 )
 _DEFAULT_MAX_SNIPPET_CHARS = 512
 _DEFAULT_MAX_SNIPPET_CANDIDATES = 3
@@ -464,9 +466,9 @@ def _empty_layout_compatibility() -> dict[str, Any]:
 
 def _layout_compatibility(root: Path) -> dict[str, Any]:
     current_flat_present = any((root / item).is_dir() for item in _CURRENT_LAYOUT_DIRS)
-    target_primary_secondary_present = any(
-        (root / item).is_dir() for item in _TARGET_MEM_LAYOUT_DIRS
-    )
+    primary_present = (root / "memory" / "mem" / "primary").is_dir()
+    secondary_present = (root / "memory" / "mem" / "secondary").is_dir()
+    target_primary_secondary_present = primary_present and secondary_present
     sources_present = (root / "memory" / "sources").is_dir() or any(
         (root / item).is_dir() for item in _TARGET_SOURCE_DIRS
     )
