@@ -46,16 +46,18 @@ Managed-route correctness boundary: Phase 5-C complete
 Pre-stream hardening: Phase 5-D complete through D2
 
 Latest completed bounded slice:
-  Phase 5.5-C0 TTS segmentation helper
-  + content-free character-range segmentation hints
-  + explicit enabled / dry-run-only helper gate
-  + sentence, newline, length-limit, and stream-end boundaries
-  + complete and terminal-partial RelayCTX sentinel blocking
-  + invalid chunk fail-closed behavior
-  + content-free node-result projection
+  Phase 5.5-C1 TTS adapter handoff contract
+  + consumes Phase 5.5-C0 RelayCTXTTSHintResult values
+  + runtime-private downstream adapter handoff plan
+  + explicit enabled / dry-run-only handoff gate
+  + candidate and emitted handoff counts separated
+  + diagnostics omit visible text, hint arrays, and handoff item arrays
+  + TTS/audio/avatar execution flags always false
   + no request-runtime SSE interception yet
-  + no TTS execution, avatar control, or persistence
+  + no TTS execution, avatar control, audio generation, or persistence
 ```
+
+Phase 5.5-C1 adds a pure helper for deriving a runtime-private downstream adapter handoff plan from C0 content-free TTS segmentation hints. Runtime request handling still preserves ordinary backend SSE forwarding, does not wrap `StreamingResponse`, and does not call TTS/avatar adapters.
 
 Phase 5.5-C0 adds a pure helper for deriving TTS-safe character-range hints from already-safe visible text. Runtime request handling still preserves ordinary backend SSE forwarding, does not wrap `StreamingResponse`, and does not call TTS/avatar adapters.
 
@@ -83,6 +85,7 @@ Current `main` includes:
 - stream sentinel buffer dry-run helper for RelayCTX internal markers,
 - stream suppression gate helper for visible prefix preservation and internal marker suppression,
 - TTS-safe segmentation helper for safe visible output range hints,
+- TTS adapter handoff contract helper for runtime-private downstream plans,
 - managed-route client-message canonicalization dry-run,
 - runtime-private client-instruction identity,
 - read-only instruction-cache lookup,
@@ -112,7 +115,7 @@ relayctx_stream_unpack_dry_run_enabled = false
 relayctx_stream_unpack_dry_run_only = true
 ```
 
-Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate and a trusted in-process producer supplies a runtime-private typed parse source. Stream suppression and TTS segmentation are helper-only and not wired into runtime streaming yet.
+Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate and a trusted in-process producer supplies a runtime-private typed parse source. Stream suppression, TTS segmentation, and TTS adapter handoff are helper-only and not wired into runtime streaming yet.
 
 ## Token estimation boundary
 
@@ -171,6 +174,8 @@ The Phase 5.5-B1 suppression helper returns runtime-private visible `output_chun
 
 `relaylm.relayctx_tts_segmentation` provides a pure Phase 5.5-C0 helper that derives content-free character-range segmentation hints from already-safe visible chunks. It blocks complete and terminal-partial RelayCTX sentinels and never stores visible text in diagnostics.
 
+`relaylm.relayctx_tts_adapter_handoff` provides a pure Phase 5.5-C1 helper that converts C0 hint results into runtime-private downstream adapter handoff plans. Diagnostics expose only counts, booleans, status values, and reason IDs; visible text, raw hint arrays, and handoff item arrays are omitted.
+
 These helpers emit only content-free diagnostics and direct-helper node results. They do not wrap request-runtime SSE, call TTS/avatar adapters, persist CTX/MEM/SOUL/SLP state, or run in request runtime by default.
 
 ## RelayRUN lazy recovery-detail boundary
@@ -189,7 +194,7 @@ Actual managed apply requires an exact typed `applied` result. For v1, the adapt
 
 Active tool transactions remain blocked because minimum-chain reconstruction is not implemented.
 
-Runtime-private candidates may contain content. Persisted trace, audit, public errors, estimator breakdowns, and node-result projections expose only bounded counts, booleans, status values, source mode, and reason IDs. Source indices, instruction text, token-estimated text, hashes, cache bodies, payload candidates, stream output chunks, TTS segment hints, and internal marker text are not persisted.
+Runtime-private candidates may contain content. Persisted trace, audit, public errors, estimator breakdowns, and node-result projections expose only bounded counts, booleans, status values, source mode, and reason IDs. Source indices, instruction text, token-estimated text, hashes, cache bodies, payload candidates, stream output chunks, TTS segment hints, TTS adapter handoff items, and internal marker text are not persisted.
 
 ## Not yet implemented
 
@@ -202,7 +207,7 @@ The runtime does not yet provide:
 - active tool-chain reconstruction,
 - request-runtime Stream Unpack SSE interception,
 - cancellation / partial-stream runtime recovery for Stream Unpack,
-- runtime TTS adapter handoff for segmentation hints,
+- runtime TTS adapter handoff wiring for segmentation hints,
 - dedicated output-side RelayREF and complete output-side RelaySCN,
 - cross-cutting per-node RelayRUN orchestration,
 - asynchronous RelaySLP persistence apply,
@@ -233,6 +238,7 @@ RelayLM does not own frontend UI, ASR, TTS execution, or avatar execution. Curre
 
 - [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md)
 - [Phase 5.5 Stream Unpack Bounded Slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
+- [Phase 5.5-C1 TTS Adapter Handoff Contract](architecture/phase55c1_tts_adapter_handoff_contract.md)
 - [Phase 5.5-C0 TTS Segmentation Helper Handoff](architecture/phase55c0_tts_segmentation_helper_handoff.md)
 - [Phase 5.5-B1 Stream Suppression Gate Handoff](architecture/phase55b1_stream_suppression_gate_handoff.md)
 - [Phase 5.5-A Stream Sentinel Buffer Dry-Run Handoff](architecture/phase55a_stream_sentinel_buffer_dry_run_handoff.md)

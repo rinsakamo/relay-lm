@@ -24,7 +24,7 @@ relaylm_related_authority:
 
 ## Status
 
-Phase 5.5 is the product-critical streaming boundary. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate. Phase 5.5-C0 is complete as a helper-only TTS segmentation foundation. Phase 5.5-B2 remains the next streaming runtime boundary.
+Phase 5.5 is the product-critical streaming boundary. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate. Phase 5.5-C0 is complete as a helper-only TTS segmentation foundation. Phase 5.5-C1 is complete as a helper-only TTS adapter handoff contract. Phase 5.5-B2 remains the next streaming runtime boundary.
 
 This document tracks the bounded Stream Unpack implementation sequence.
 
@@ -66,7 +66,7 @@ stream_tts_segmentation_hints_enabled = false  # target, not a current config fi
 
 Default behavior must preserve ordinary backend SSE forwarding.
 
-Phase 5.5-A, B1, and C0 currently provide direct-helper behavior only. They do not intercept request-runtime SSE.
+Phase 5.5-A, B1, C0, and C1 currently provide direct-helper behavior only. They do not intercept request-runtime SSE.
 
 When Stream Unpack is enabled for a future bounded runtime slice:
 
@@ -186,6 +186,43 @@ Exit criteria met:
 
 See [Phase 5.5-C0 TTS Segmentation Helper Handoff](phase55c0_tts_segmentation_helper_handoff.md).
 
+### Phase 5.5-C1: TTS adapter handoff contract — complete independently
+
+Implemented:
+
+- `relaylm.relayctx_tts_adapter_handoff.build_tts_adapter_handoff_plan(...)`,
+- runtime-private `RelayCTXTTSAdapterHandoffPlan`,
+- runtime-private content-free handoff items for future downstream adapter wiring,
+- content-free `relayctx_tts_adapter_handoff` PipelineNodeResult helper,
+- explicit `enabled` and `dry_run_only` gate,
+- handoff candidate count and emitted handoff count separation,
+- conservative propagation of C0 disabled, blocked, invalid, empty, dry-run, and ready states,
+- diagnostics omitting visible text, hint arrays, and handoff item arrays,
+- direct smoke coverage.
+
+Not implemented in 5.5-C1:
+
+- request-runtime SSE interception,
+- wrapping `StreamingResponse` output,
+- Phase 5.5-B2 suppression runtime wiring,
+- actual downstream adapter transport,
+- TTS execution,
+- audio generation,
+- avatar control,
+- CTX/MEM/SOUL/SLP persistence.
+
+Exit criteria met:
+
+- C1 consumes C0 `RelayCTXTTSHintResult` values only,
+- disabled and dry-run gates emit no handoff items,
+- ready emits runtime-private content-free handoff items only when C0 is ready,
+- C0 dry-run cannot become a C1 emitted handoff,
+- blocked and invalid inputs fail closed,
+- diagnostics and node results contain no raw visible text, raw hints, or handoff arrays,
+- TTS/audio/avatar execution flags are always false.
+
+See [Phase 5.5-C1 TTS Adapter Handoff Contract](phase55c1_tts_adapter_handoff_contract.md).
+
 ### Phase 5.5-B2: request-runtime SSE suppression wiring — planned next
 
 Goal: safely wire the suppression helper into request-runtime streaming behind explicit gates while preserving default backend SSE forwarding.
@@ -212,17 +249,19 @@ Exit criteria:
 - cancellation produces a bounded content-free artifact,
 - no duplicate replay occurs after visible chunks are emitted.
 
-### Phase 5.5-C: TTS-safe segmentation hints
+### Phase 5.5-C: TTS-safe segmentation and adapter handoff
 
-Goal: emit bounded segmentation hints for downstream TTS/adapters without owning audio generation.
+Goal: emit bounded segmentation hints and runtime-private handoff plans for downstream TTS/adapters without owning audio generation.
 
-Phase 5.5-C0 provides the pure helper foundation. A later runtime slice must consume only safe visible output from the Phase 5.5-B runtime boundary and pass hints across an adapter boundary without executing TTS.
+Phase 5.5-C0 provides the pure segmentation helper foundation. Phase 5.5-C1 provides the pure adapter handoff contract helper. A later runtime slice must consume only safe visible output from the Phase 5.5-B runtime boundary and pass C0/C1 results across an adapter boundary without executing TTS.
 
-Implemented behavior should include:
+Implemented behavior includes:
 
 - punctuation and sentence-boundary hinting,
 - conservative Japanese/Kana/CJK handling,
 - bounded segment length hints,
+- adapter handoff candidate/emitted count separation,
+- runtime-private handoff plan shape,
 - no TTS execution,
 - no avatar control,
 - no meaning-changing rewrite,
@@ -233,6 +272,7 @@ Exit criteria:
 - TTS hints are optional and default-off,
 - hints are derived from safe visible output only,
 - hints contain no internal candidate text,
+- adapter handoff logs omit raw hint arrays and handoff item arrays,
 - fallback preserves raw visible text when segmentation is uncertain.
 
 ## Smoke matrix
@@ -253,8 +293,10 @@ Minimum smoke coverage should include:
 | backend stream failure after visible output | emitted chunks preserved, recovery hint recorded |
 | TTS hint disabled | no segmentation hint emitted |
 | TTS hint enabled | hints derived only from safe visible text |
+| TTS adapter handoff dry-run | candidates counted, emitted handoff count remains zero |
+| TTS adapter handoff ready | runtime-private content-free handoff items emitted, logs omit arrays |
 
-Phase 5.5-A covers the first four applicable dry-run/helper cases plus invalid chunk content-free failure. Phase 5.5-B1 covers direct-helper visible-prefix preservation, suppression, terminal partial blocking, invalid chunk fail-closed behavior, and content-free suppression node results. Phase 5.5-C0 covers helper-only TTS disabled, dry-run, enabled, length-fallback, internal-block, and content-free node-result cases. Runtime cases belong to Phase 5.5-B2.
+Phase 5.5-A covers the first four applicable dry-run/helper cases plus invalid chunk content-free failure. Phase 5.5-B1 covers direct-helper visible-prefix preservation, suppression, terminal partial blocking, invalid chunk fail-closed behavior, and content-free suppression node results. Phase 5.5-C0 covers helper-only TTS disabled, dry-run, enabled, length-fallback, internal-block, and content-free node-result cases. Phase 5.5-C1 covers helper-only adapter handoff disabled, dry-run, ready, blocked, invalid, empty, and content-free node-result cases. Runtime cases belong to Phase 5.5-B2.
 
 ## Safety invariants
 
