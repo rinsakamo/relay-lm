@@ -2,9 +2,12 @@
 
 This page is the entry point for RelayLM documentation.
 
+RelayLM documentation is AI-first: documents should be understandable when retrieved partially by ChatGPT, Codex, or another assistant. Use [Documentation Model](DOCUMENTATION_MODEL.md) for document types, metadata, status labels, and authority rules.
+
 ## Start here
 
 - [Current project status](PROJECT_STATUS.md) — concise current boundary and next choices
+- [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing
 - [Phase 5-C4a completed handoff](architecture/phase5c4a_instruction_bearing_managed_apply_handoff.md)
 - [Architecture docs](architecture/README.md)
@@ -26,6 +29,8 @@ Use [Project Status](PROJECT_STATUS.md) for the current developer-facing view an
 
 Use [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) before treating proposed schemas, future execution gates, or historical compatibility artifacts as current behavior.
 
+Use [Documentation Model](DOCUMENTATION_MODEL.md) before adding new docs or deciding whether a document is status, stable architecture, implementation planning, contract, smoke/how-to, handoff, ADR, or historical evidence.
+
 ## Canonical precedence
 
 When documents disagree:
@@ -35,6 +40,8 @@ When documents disagree:
 3. Dedicated current contracts own implemented schemas and bounded behavior.
 4. `current_target_migration_guide.md` owns compatibility/target interpretation.
 5. `docs/mvp/` and `docs/architecture/archive/` are historical evidence.
+
+`DOCUMENTATION_MODEL.md` owns document type metadata and AI reading rules; it does not override the content authority list above.
 
 ## Primary architecture entry points
 
@@ -79,6 +86,13 @@ Run the Markdown-link audit after moving, renaming, or adding links:
 ```bash
 python scripts/relaylm_docs_link_check.py
 ```
+
+AI-first maintenance rules:
+
+- add front matter to active current/architecture/plan/contract docs when practical,
+- include document type, authority, status, volatility, owner, update trigger, and non-authority fields,
+- keep current/target/compatibility/historical/frozen status explicit,
+- do not encode source text, prompts, traces, cache bodies, or runtime-private data in metadata.
 
 Placement rules:
 

@@ -1,3 +1,24 @@
+---
+relaylm_doc_type: current_target_migration
+relaylm_authority: current_target_compatibility_interpretation
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: architecture
+relaylm_update_trigger:
+  - current implemented boundary changes
+  - compatibility behavior changes
+  - target interpretation changes
+  - migration requirement changes
+relaylm_not_authoritative_for:
+  - phase sequencing
+  - component responsibility and canonical target order
+  - exact schema details
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../DOCUMENTATION_MODEL.md
+  - pipeline_responsibility_design.md
+  - pipeline_implementation_plan.md
+---
 # RelayLM Current / Target / Migration Guide
 
 ## Purpose
