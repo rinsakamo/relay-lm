@@ -45,7 +45,15 @@ The repository-wide documentation audit, audit Phases 1–8, is complete as of 2
 Managed-route correctness boundary: Phase 5-C complete
 Pre-stream hardening: Phase 5-D complete through D2
 
-Latest completed bounded slice:
+Latest completed bounded slices:
+  Phase 5.5-B2 request-runtime SSE suppression wiring
+  + gated runtime wrapper for backend SSE bytes
+  + default-off ordinary backend forwarding preserved
+  + dry-run-only byte-for-byte pass-through diagnostics
+  + apply-mode internal marker/candidate suppression
+  + visible prefix preservation when safe
+  + content-free relayctx_stream_suppression_gate node result
+
   Phase 5.5-C1 TTS adapter handoff contract
   + consumes Phase 5.5-C0 RelayCTXTTSHintResult values
   + runtime-private downstream adapter handoff plan
@@ -53,24 +61,25 @@ Latest completed bounded slice:
   + candidate and emitted handoff counts separated
   + diagnostics omit visible text, hint arrays, and handoff item arrays
   + TTS/audio/avatar execution flags always false
-  + no request-runtime SSE interception yet
   + no TTS execution, avatar control, audio generation, or persistence
 ```
 
-Phase 5.5-C1 adds a pure helper for deriving a runtime-private downstream adapter handoff plan from C0 content-free TTS segmentation hints. Runtime request handling still preserves ordinary backend SSE forwarding, does not wrap `StreamingResponse`, and does not call TTS/avatar adapters.
+Phase 5.5-B2 is complete as gated request-runtime SSE suppression wiring. Runtime request handling still preserves ordinary backend SSE forwarding by default. The wrapper is used only when `relayctx_stream_unpack_dry_run_enabled=true`; dry-run-only mode remains byte-for-byte pass-through, and apply mode suppresses RelayCTX internal marker/candidate material from user-visible SSE output.
 
-Phase 5.5-C0 adds a pure helper for deriving TTS-safe character-range hints from already-safe visible text. Runtime request handling still preserves ordinary backend SSE forwarding, does not wrap `StreamingResponse`, and does not call TTS/avatar adapters.
+Phase 5.5-C1 adds a pure helper for deriving a runtime-private downstream adapter handoff plan from C0 content-free TTS segmentation hints. Runtime request handling does not yet connect B2 safe visible runtime output to C0/C1, and it does not call TTS/avatar adapters.
 
-Phase 5.5-B1 adds a pure helper for preserving safe visible stream text while suppressing or blocking RelayCTX internal candidate material. Runtime request handling still preserves ordinary backend SSE forwarding and does not wrap `StreamingResponse` output yet.
+Phase 5.5-C0 adds a pure helper for deriving TTS-safe character-range hints from already-safe visible text.
+
+Phase 5.5-B1 adds a pure helper for preserving safe visible stream text while suppressing or blocking RelayCTX internal candidate material.
 
 Phase 5-C5c is complete as request-local cache-writer wiring for trusted in-process typed parse sources. Runtime request handling still does not parse backend responses, trust frontend metadata as typed parse source, or mutate backend/user-visible payloads. Non-null typed parse `parser_version` values are blocked before writer invocation until parser-versioned lookup/write compatibility exists.
 
-Next candidates remain independently sequenced, with Phase 5.5-B2 as the next product-critical implementation boundary:
+Next candidates remain independently sequenced:
 
-- Phase 5.5-B2: request-runtime SSE suppression wiring,
+- Phase 5.5-C2: runtime TTS adapter handoff wiring from B2 safe visible output into C0/C1,
 - Phase 6: asynchronous RelaySLP.
 
-New RelaySOUL execution-gate design documents remain frozen until Phase 5.5-B runtime wiring is complete, unless a new RelaySOUL document directly unblocks a current runtime safety issue.
+New RelaySOUL execution-gate design documents should still be avoided unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary.
 
 ## Current implemented boundary
 
@@ -84,6 +93,7 @@ Current `main` includes:
 - pure and gated non-stream RelayCTX Unpack,
 - stream sentinel buffer dry-run helper for RelayCTX internal markers,
 - stream suppression gate helper for visible prefix preservation and internal marker suppression,
+- gated request-runtime stream suppression wrapper for backend SSE bytes,
 - TTS-safe segmentation helper for safe visible output range hints,
 - TTS adapter handoff contract helper for runtime-private downstream plans,
 - managed-route client-message canonicalization dry-run,
@@ -115,7 +125,7 @@ relayctx_stream_unpack_dry_run_enabled = false
 relayctx_stream_unpack_dry_run_only = true
 ```
 
-Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate and a trusted in-process producer supplies a runtime-private typed parse source. Stream suppression, TTS segmentation, and TTS adapter handoff are helper-only and not wired into runtime streaming yet.
+Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate and a trusted in-process producer supplies a runtime-private typed parse source. Runtime stream suppression is default-off; TTS segmentation and TTS adapter handoff remain helper-only and are not yet wired into runtime streaming.
 
 ## Token estimation boundary
 
@@ -172,11 +182,13 @@ This boundary does not parse backend responses or control envelopes, trust front
 
 The Phase 5.5-B1 suppression helper returns runtime-private visible `output_chunks` behind explicit `enabled` and `dry_run_only` gates. It preserves safe visible text before the first internal sentinel and suppresses or blocks internal candidate material when dry-run-only is disabled.
 
+`relaylm.relayctx_stream_suppression_runtime` provides Phase 5.5-B2 gated request-runtime SSE suppression wiring. It wraps backend stream bytes only when stream unpack is explicitly enabled on the route, preserves byte-for-byte forwarding when disabled or dry-run-only, and records content-free suppression diagnostics.
+
 `relaylm.relayctx_tts_segmentation` provides a pure Phase 5.5-C0 helper that derives content-free character-range segmentation hints from already-safe visible chunks. It blocks complete and terminal-partial RelayCTX sentinels and never stores visible text in diagnostics.
 
 `relaylm.relayctx_tts_adapter_handoff` provides a pure Phase 5.5-C1 helper that converts C0 hint results into runtime-private downstream adapter handoff plans. Diagnostics expose only counts, booleans, status values, and reason IDs; visible text, raw hint arrays, and handoff item arrays are omitted.
 
-These helpers emit only content-free diagnostics and direct-helper node results. They do not wrap request-runtime SSE, call TTS/avatar adapters, persist CTX/MEM/SOUL/SLP state, or run in request runtime by default.
+The B2 runtime wrapper does not yet invoke C0/C1. C0/C1 remain helper-only until Phase 5.5-C2 runtime TTS adapter handoff wiring.
 
 ## RelayRUN lazy recovery-detail boundary
 
@@ -205,8 +217,7 @@ The runtime does not yet provide:
 - parser-versioned runtime lookup/write compatibility,
 - complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy,
 - active tool-chain reconstruction,
-- request-runtime Stream Unpack SSE interception,
-- cancellation / partial-stream runtime recovery for Stream Unpack,
+- cancellation-specific partial-stream recovery beyond the bounded B2 fail-closed stream summary,
 - runtime TTS adapter handoff wiring for segmentation hints,
 - dedicated output-side RelayREF and complete output-side RelaySCN,
 - cross-cutting per-node RelayRUN orchestration,
@@ -232,12 +243,13 @@ Open-LLM-VTuber
   -> OpenAI-compatible backend
 ```
 
-RelayLM does not own frontend UI, ASR, TTS execution, or avatar execution. Current streaming remains primarily backend SSE forwarding; safe runtime Stream Unpack is not implemented.
+RelayLM does not own frontend UI, ASR, TTS execution, or avatar execution. Current streaming remains backend SSE forwarding by default; gated runtime Stream Unpack suppression exists only when the stream gate is explicitly enabled.
 
 ## Where to read next
 
 - [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md)
 - [Phase 5.5 Stream Unpack Bounded Slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
+- [Phase 5.5-B2 Stream Suppression Runtime Wiring Handoff](architecture/phase55b2_stream_suppression_runtime_handoff.md)
 - [Phase 5.5-C1 TTS Adapter Handoff Contract](architecture/phase55c1_tts_adapter_handoff_contract.md)
 - [Phase 5.5-C0 TTS Segmentation Helper Handoff](architecture/phase55c0_tts_segmentation_helper_handoff.md)
 - [Phase 5.5-B1 Stream Suppression Gate Handoff](architecture/phase55b1_stream_suppression_gate_handoff.md)
