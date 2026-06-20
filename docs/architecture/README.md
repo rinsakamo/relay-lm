@@ -1,3 +1,19 @@
+---
+relaylm_doc_type: documentation_index
+relaylm_authority: architecture_documentation_entrypoint
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: architecture
+relaylm_update_trigger:
+  - architecture entry points change
+  - canonical architecture authority changes
+  - local handoff interpretation changes
+relaylm_not_authoritative_for:
+  - current runtime behavior
+  - phase sequencing details
+  - exact schema details
+relaylm_current_status_source: ../PROJECT_STATUS.md
+---
 # RelayLM Architecture Docs
 
 Use [Documentation index](../README.md) for the complete active document map.

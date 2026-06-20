@@ -1,3 +1,19 @@
+---
+relaylm_doc_type: documentation_model
+relaylm_authority: document_type_metadata_and_ai_reading_rules
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: documentation
+relaylm_update_trigger:
+  - document type changes
+  - metadata field changes
+  - AI reading instruction changes
+  - placement rule changes
+relaylm_not_authoritative_for:
+  - current runtime behavior
+  - implementation phase status
+  - component responsibility and canonical target order
+---
 # RelayLM Documentation Model
 
 ## Purpose
@@ -41,6 +57,8 @@ Use plain scalar or list values only. Do not encode source text, prompts, traces
 
 | Type | Purpose | Typical location | Authority |
 |---|---|---|---|
+| `documentation_model` | AI-first documentation rules and metadata vocabulary | `docs/DOCUMENTATION_MODEL.md` | document type metadata and AI reading rules |
+| `documentation_index` | Entry point or local map for documentation areas | `docs/README.md`, `docs/architecture/README.md` | navigation and local documentation map |
 | `status` | Current developer-facing project state | `docs/PROJECT_STATUS.md` | current implemented boundary, active caveats, next candidates |
 | `stable_architecture` | Durable responsibility, component, and target-order design | `docs/architecture/*_design.md` | stable architecture and ownership |
 | `current_target_migration` | Current, compatibility, target, and migration interpretation | `docs/architecture/current_target_migration_guide.md` | current-vs-target interpretation and migration caveats |

@@ -1,3 +1,19 @@
+---
+relaylm_doc_type: documentation_index
+relaylm_authority: repository_documentation_entrypoint
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: documentation
+relaylm_update_trigger:
+  - documentation entry points change
+  - canonical authority ordering changes
+  - placement rules change
+relaylm_not_authoritative_for:
+  - current runtime behavior
+  - exact schema details
+  - implementation phase completion claims
+relaylm_current_status_source: PROJECT_STATUS.md
+---
 # RelayLM Documentation
 
 This page is the entry point for RelayLM documentation.
