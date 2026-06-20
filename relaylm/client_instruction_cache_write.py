@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+import hashlib
 import json
 import os
 from pathlib import Path
 import re
+import secrets
 import stat
-import tempfile
 from typing import Any, Literal
 
 from relaylm.client_instruction_cache_lookup import resolve_client_instruction_cache_lookup
@@ -19,6 +20,8 @@ from relaylm.pipeline_node_result import PipelineNodeResult, build_pipeline_node
 
 SCHEMA_VERSION = "client_instruction_cache_write_preflight.v0"
 _ENTRY_SCHEMA_VERSION = "relaylm.client_instruction_cache.v0"
+_CACHE_KEY_SCHEMA_VERSION = "client_instruction_cache_key.v0"
+_AUTHORITY_POLICY_VERSION = "client_instruction_authority.v1"
 _DEFAULT_MAX_ENTRY_BYTES = 65536
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _FORBIDDEN_DIAGNOSTIC_KEYS = frozenset(
@@ -152,6 +155,21 @@ def build_client_instruction_cache_write_preflight(
 
     assert identity is not None and parse_result is not None and parse_result.artifact is not None
     artifact = parse_result.artifact
+    runtime_cache_key_sha256 = _runtime_cache_key_sha256(
+        instruction_fingerprint_sha256=identity.instruction_fingerprint_sha256,
+        route_model=route_model,
+        character_id=character_id,
+        instruction_parse_schema_version=artifact.schema_version,
+    )
+    if identity.cache_key_sha256 != runtime_cache_key_sha256:
+        return ClientInstructionCacheWriteResult(
+            schema_version=SCHEMA_VERSION,
+            status="blocked",
+            write_preflight_ready=False,
+            dry_run_only=dry_run_only,
+            blocked_reasons=("source_identity_parser_version_not_runtime_compatible",),
+        )
+
     entry = {
         "schema_version": _ENTRY_SCHEMA_VERSION,
         "cache_key_sha256": identity.cache_key_sha256,
@@ -159,7 +177,7 @@ def build_client_instruction_cache_write_preflight(
         "route_model": route_model,
         "character_id": character_id,
         "instruction_parse_schema_version": artifact.schema_version,
-        "authority_policy_version": "client_instruction_authority.v1",
+        "authority_policy_version": _AUTHORITY_POLICY_VERSION,
         # Runtime cache lookup currently validates entries with parser_version=None.
         # Keep C5b writer output aligned until a later runtime wiring slice carries
         # parser-version expectations through lookup.
@@ -362,65 +380,87 @@ def _write_cache_entry(
     root = Path(cache_root)
     if _has_symlink_component(root):
         return _WriteOutcome(False, False, byte_count, ("cache_root_symlink_blocked",))
-    if root.exists() and root.is_symlink():
-        return _WriteOutcome(False, False, byte_count, ("cache_root_symlink_blocked",))
-    if not root.exists():
+    try:
+        root_stat = root.lstat()
+    except FileNotFoundError:
         return _WriteOutcome(False, False, byte_count, ("cache_root_missing",))
-    if not root.is_dir():
+    except OSError:
+        return _WriteOutcome(False, False, byte_count, ("cache_write_failed",))
+    if stat.S_ISLNK(root_stat.st_mode):
+        return _WriteOutcome(False, False, byte_count, ("cache_root_symlink_blocked",))
+    if not stat.S_ISDIR(root_stat.st_mode):
         return _WriteOutcome(False, False, byte_count, ("cache_root_not_directory",))
 
     attempted = False
     tmp_name: str | None = None
     tmp_fd: int | None = None
+    root_fd: int | None = None
     try:
-        root_resolved = root.resolve(strict=True)
-        target = root_resolved / f"{cache_key_sha256}.json"
-        if target.is_symlink():
+        root_fd = _open_validated_directory_fd(root, root_stat)
+        target_name = f"{cache_key_sha256}.json"
+        try:
+            target_stat = os.stat(target_name, dir_fd=root_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            target_stat = None
+        if target_stat is not None and stat.S_ISLNK(target_stat.st_mode):
             return _WriteOutcome(False, False, byte_count, ("cache_target_symlink_rejected",))
-        if target.parent.resolve(strict=True) != root_resolved:
-            return _WriteOutcome(False, False, byte_count, ("cache_target_outside_root",))
 
-        tmp_fd, tmp_name = tempfile.mkstemp(
-            prefix=f".{cache_key_sha256}.",
-            suffix=".tmp",
-            dir=root_resolved,
-        )
+        tmp_name = f".{cache_key_sha256}.{secrets.token_hex(8)}.tmp"
+        temp_flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
         attempted = True
+        tmp_fd = os.open(tmp_name, temp_flags, 0o600, dir_fd=root_fd)
         with os.fdopen(tmp_fd, "wb") as handle:
             tmp_fd = None
             handle.write(encoded)
             handle.flush()
             os.fsync(handle.fileno())
-        assert tmp_name is not None
-        os.replace(tmp_name, target)
+        os.replace(tmp_name, target_name, src_dir_fd=root_fd, dst_dir_fd=root_fd)
         tmp_name = None
-        _fsync_directory(root_resolved)
-    except Exception:
+        _fsync_directory_fd(root_fd)
+    except OSError:
         if tmp_fd is not None:
             try:
                 os.close(tmp_fd)
             except OSError:
                 pass
-        if tmp_name:
+        if tmp_name and root_fd is not None:
             try:
-                Path(tmp_name).unlink(missing_ok=True)
+                os.unlink(tmp_name, dir_fd=root_fd)
             except OSError:
                 pass
         return _WriteOutcome(False, attempted, byte_count, ("cache_write_failed",))
+    finally:
+        if root_fd is not None:
+            try:
+                os.close(root_fd)
+            except OSError:
+                pass
     return _WriteOutcome(True, attempted, byte_count, ())
 
 
-def _fsync_directory(path: Path) -> None:
+def _open_validated_directory_fd(path: Path, expected_stat: os.stat_result) -> int:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags)
     try:
-        dir_fd = os.open(path, os.O_RDONLY)
-    except OSError:
-        return
+        actual_stat = os.fstat(fd)
+        if not stat.S_ISDIR(actual_stat.st_mode):
+            raise OSError("cache root is not a directory")
+        if (actual_stat.st_dev, actual_stat.st_ino) != (
+            expected_stat.st_dev,
+            expected_stat.st_ino,
+        ):
+            raise OSError("cache root changed during validation")
+    except Exception:
+        os.close(fd)
+        raise
+    return fd
+
+
+def _fsync_directory_fd(dir_fd: int) -> None:
     try:
         os.fsync(dir_fd)
     except OSError:
         pass
-    finally:
-        os.close(dir_fd)
 
 
 def _has_symlink_component(path: Path) -> bool:
@@ -463,6 +503,36 @@ def _entry_context(context: Any) -> dict[str, Any]:
         "task": context.task,
         "participants": list(context.participants),
     }
+
+
+def _runtime_cache_key_sha256(
+    *,
+    instruction_fingerprint_sha256: str,
+    route_model: str,
+    character_id: str | None,
+    instruction_parse_schema_version: str,
+) -> str:
+    return _sha256_json(
+        {
+            "schema_version": _CACHE_KEY_SCHEMA_VERSION,
+            "instruction_fingerprint_sha256": instruction_fingerprint_sha256,
+            "route_model": route_model,
+            "character_id": character_id,
+            "instruction_parse_schema_version": instruction_parse_schema_version,
+            "authority_policy_version": _AUTHORITY_POLICY_VERSION,
+            "parser_version": None,
+        }
+    )
+
+
+def _sha256_json(value: Mapping[str, Any]) -> str:
+    canonical_json = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
 
 
 def _decision(result: ClientInstructionCacheWriteResult) -> str:
