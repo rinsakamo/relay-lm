@@ -53,6 +53,7 @@ class _StreamFinalTraceState:
 
 
 _STREAM_FINAL_TRACE_STATES: dict[str, _StreamFinalTraceState] = {}
+_LAST_CONSUMED_CONTEXT_EXPECTS_STREAM_FINAL_TRACE = False
 
 
 def trace_runtime_event(
@@ -66,17 +67,26 @@ def trace_runtime_event(
 ) -> bool:
     """Append one content-free audit record when tracing is enabled."""
 
+    global _LAST_CONSUMED_CONTEXT_EXPECTS_STREAM_FINAL_TRACE
+    _LAST_CONSUMED_CONTEXT_EXPECTS_STREAM_FINAL_TRACE = False
+    explicit_pipeline_node_results = pipeline_node_results is not None
     resolved_pipeline_node_results = (
         _pipeline_node_results_to_log_dicts(pipeline_node_results)
-        if pipeline_node_results is not None
+        if explicit_pipeline_node_results
         else _consume_pipeline_node_results(diagnostics)
     )
+    context_expects_stream_final_trace = (
+        _LAST_CONSUMED_CONTEXT_EXPECTS_STREAM_FINAL_TRACE
+    )
+    _LAST_CONSUMED_CONTEXT_EXPECTS_STREAM_FINAL_TRACE = False
     if not config.trace.enabled or not config.trace.path:
         return False
 
     try:
         trace_metadata = dict(metadata or {})
-        explicit_pipeline_node_results = pipeline_node_results is not None
+        metadata_expects_stream_final_trace = bool(
+            trace_metadata.pop("stream_final_pipeline_node_results_expected", False)
+        )
         if resolved_pipeline_node_results is not None and not explicit_pipeline_node_results:
             trace_metadata["pipeline_node_results"] = resolved_pipeline_node_results
         trace_metadata.update(_supported_diagnostics_metadata(diagnostics))
@@ -94,10 +104,13 @@ def trace_runtime_event(
             explicit_pipeline_node_results
             and _is_stream_final_tts_node_results(resolved_pipeline_node_results)
         ):
-            record.metadata["event"] = "backend_stream_finalize"
+            record.metadata["event"] = "backend_stream_response"
             record.metadata["pipeline_node_results"] = resolved_pipeline_node_results or []
         append_trace_record(config.trace.path, record)
-        if trace_metadata.get("event") == "backend_stream_response":
+        if trace_metadata.get("event") == "backend_stream_response" and (
+            metadata_expects_stream_final_trace
+            or context_expects_stream_final_trace
+        ):
             _STREAM_FINAL_TRACE_STATES[diagnostics.request_id] = _StreamFinalTraceState(
                 config=config,
                 diagnostics=diagnostics,
@@ -129,7 +142,7 @@ def trace_runtime_stream_final_pipeline_node_results(
         diagnostics=state.diagnostics,
         message_count=state.message_count,
         response_present=state.response_present,
-        metadata={"event": "backend_stream_finalize"},
+        metadata={"event": "backend_stream_response"},
         pipeline_node_results=node_results,
     )
 
@@ -150,6 +163,27 @@ def _is_stream_final_tts_node_results(
         "relayctx_tts_adapter_handoff",
     }
     return all(result.get("node_name") in allowed for result in node_results)
+
+
+def _route_expects_stream_final_trace(route: Any) -> bool:
+    """Return true only for C2 streams where the finalizer can emit node results."""
+
+    route_values = vars(route) if hasattr(route, "__dict__") else {}
+    c2_enabled = any(
+        "tts" in name
+        and "handoff" in name
+        and "runtime" in name
+        and bool(value)
+        for name, value in route_values.items()
+    )
+    b2_apply_available = any(
+        "stream" in name
+        and "suppression" in name
+        and ("apply" in name or "runtime" in name)
+        and bool(value)
+        for name, value in route_values.items()
+    )
+    return c2_enabled and b2_apply_available
 
 
 def _supported_diagnostics_metadata(
@@ -180,11 +214,15 @@ def _supported_diagnostics_metadata(
 def _consume_pipeline_node_results(
     diagnostics: RequestDiagnostics,
 ) -> list[dict[str, Any]] | None:
+    global _LAST_CONSUMED_CONTEXT_EXPECTS_STREAM_FINAL_TRACE
     pipeline_context = consume_active_pipeline_context()
     if pipeline_context is None:
         return None
 
     try:
+        _LAST_CONSUMED_CONTEXT_EXPECTS_STREAM_FINAL_TRACE = (
+            _route_expects_stream_final_trace(pipeline_context.route)
+        )
         managed_route = pipeline_context.route.mode_applied != "pass_through"
         instruction_dependency_enabled = bool(
             client_instruction_identity_dependency_enabled(pipeline_context.route)
@@ -365,6 +403,7 @@ def _consume_pipeline_node_results(
             )
         return pipeline_context.node_results_to_log_dicts()
     except Exception:
+        _LAST_CONSUMED_CONTEXT_EXPECTS_STREAM_FINAL_TRACE = False
         return None
 
 
