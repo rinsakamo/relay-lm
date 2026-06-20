@@ -469,7 +469,7 @@ POST /lab/api/characters/{character_id}/communication-sessions/{communication_se
 GET  /lab/api/ui-sessions/{ui_session_id}/lab/last-run
 GET  /lab/api/characters/{character_id}/memory/recent
 GET  /lab/api/characters/{character_id}/memory/held
-GET  /lab/api/characters/{character_id}/memory/used
+GET  /lab/api/ui-sessions/{ui_session_id}/lab/last-run/memory/used
 POST /lab/api/characters/{character_id}/memory/{memory_id}/correct
 POST /lab/api/characters/{character_id}/memory/{memory_id}/forget
 POST /lab/api/characters/{character_id}/memory/{memory_id}/pin
