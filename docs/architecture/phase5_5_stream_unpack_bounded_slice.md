@@ -24,7 +24,7 @@ relaylm_related_authority:
 
 ## Status
 
-Phase 5.5 is the product-critical streaming boundary. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate. Phase 5.5-B2 is the next streaming runtime boundary.
+Phase 5.5 is the product-critical streaming boundary. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate. Phase 5.5-C0 is complete as a helper-only TTS segmentation foundation. Phase 5.5-B2 remains the next streaming runtime boundary.
 
 This document tracks the bounded Stream Unpack implementation sequence.
 
@@ -66,7 +66,7 @@ stream_tts_segmentation_hints_enabled = false  # target, not a current config fi
 
 Default behavior must preserve ordinary backend SSE forwarding.
 
-Phase 5.5-A and B1 currently provide direct-helper behavior only. They do not intercept request-runtime SSE.
+Phase 5.5-A, B1, and C0 currently provide direct-helper behavior only. They do not intercept request-runtime SSE.
 
 When Stream Unpack is enabled for a future bounded runtime slice:
 
@@ -147,6 +147,45 @@ Exit criteria met:
 
 See [Phase 5.5-B1 Stream Suppression Gate Handoff](phase55b1_stream_suppression_gate_handoff.md).
 
+### Phase 5.5-C0: TTS-safe segmentation helper — complete independently
+
+Implemented:
+
+- `relaylm.relayctx_tts_segmentation.build_tts_safe_segmentation_hints(...)`,
+- content-free character-range `RelayCTXTTSHint` values,
+- content-free `RelayCTXTTSHintResult` diagnostics,
+- content-free `relayctx_tts_segmentation_hints` PipelineNodeResult helper,
+- disabled-gate no-hint behavior,
+- dry-run candidate hint counts without hint emission,
+- Japanese/ASCII sentence punctuation boundaries,
+- newline boundaries,
+- bounded length-limit fallback,
+- stream-end remainder boundary,
+- complete and terminal-partial RelayCTX sentinel blocking,
+- invalid non-string chunk fail-closed behavior,
+- direct smoke coverage.
+
+Not implemented in 5.5-C0:
+
+- request-runtime SSE interception,
+- wrapping `StreamingResponse` output,
+- Phase 5.5-B2 suppression runtime wiring,
+- runtime TTS adapter handoff,
+- TTS execution,
+- avatar control,
+- cancellation handling or backend stream failure recovery.
+
+Exit criteria met:
+
+- hints are optional and default-off at helper level,
+- dry-run computes only counts and emits no hints,
+- enabled helper emits only content-free offsets and counts,
+- hints are derived only from already-safe visible chunks,
+- internal candidate material blocks hint emission,
+- diagnostics and node results contain no raw visible or internal stream text.
+
+See [Phase 5.5-C0 TTS Segmentation Helper Handoff](phase55c0_tts_segmentation_helper_handoff.md).
+
 ### Phase 5.5-B2: request-runtime SSE suppression wiring — planned next
 
 Goal: safely wire the suppression helper into request-runtime streaming behind explicit gates while preserving default backend SSE forwarding.
@@ -176,6 +215,8 @@ Exit criteria:
 ### Phase 5.5-C: TTS-safe segmentation hints
 
 Goal: emit bounded segmentation hints for downstream TTS/adapters without owning audio generation.
+
+Phase 5.5-C0 provides the pure helper foundation. A later runtime slice must consume only safe visible output from the Phase 5.5-B runtime boundary and pass hints across an adapter boundary without executing TTS.
 
 Implemented behavior should include:
 
@@ -213,7 +254,7 @@ Minimum smoke coverage should include:
 | TTS hint disabled | no segmentation hint emitted |
 | TTS hint enabled | hints derived only from safe visible text |
 
-Phase 5.5-A covers the first four applicable dry-run/helper cases plus invalid chunk content-free failure. Phase 5.5-B1 covers direct-helper visible-prefix preservation, suppression, terminal partial blocking, invalid chunk fail-closed behavior, and content-free suppression node results. Runtime cases belong to Phase 5.5-B2.
+Phase 5.5-A covers the first four applicable dry-run/helper cases plus invalid chunk content-free failure. Phase 5.5-B1 covers direct-helper visible-prefix preservation, suppression, terminal partial blocking, invalid chunk fail-closed behavior, and content-free suppression node results. Phase 5.5-C0 covers helper-only TTS disabled, dry-run, enabled, length-fallback, internal-block, and content-free node-result cases. Runtime cases belong to Phase 5.5-B2.
 
 ## Safety invariants
 
