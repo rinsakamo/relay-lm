@@ -76,6 +76,8 @@ When documents disagree:
 - [Context packing design](architecture/context_packing_design.md)
 - [Scene lifecycle design](architecture/scene_lifecycle_design.md)
 - [AI VTuber pipeline profile](architecture/ai_vtuber_pipeline_profile.md)
+- [SOUL Lab UI MVP](architecture/soul_lab_ui_mvp.md)
+- [SOUL Lab Runtime MVP](architecture/soul_lab_runtime_mvp.md)
 - [RelayINT MVP design](architecture/relayint_mvp_design.md)
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
 

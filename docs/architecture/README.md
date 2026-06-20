@@ -33,6 +33,11 @@ Product-critical next slice:
 
 Phase 5.5 starts with stream sentinel buffer dry-run and safe streaming diagnostics before TTS-safe segmentation hints. RelaySOUL execution-gate design expansion is frozen until Phase 5.5-A and 5.5-B are complete unless a new document directly unblocks a current runtime safety issue.
 
+SOUL Lab product layers:
+
+- [SOUL Lab UI MVP](soul_lab_ui_mvp.md) — text-first Lab UI for character creation/adoption, Home, Communication, Lab Observation, and Pod / SOUL Intervention.
+- [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md) — post-UI-MVP runtime adapter layer for TTS, audio queue, Live2D/avatar mapping, timing, preview, and adapter telemetry.
+
 Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1` with explicit `client_instruction_source.v1` provenance. Role, wording, and message position alone are not provenance.
 
 Historical and MVP documents do not override these current owners.
