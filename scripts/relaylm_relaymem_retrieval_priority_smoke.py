@@ -44,46 +44,44 @@ def main() -> int:
     mixed = [
         _candidate("memory/mem/primary/sessions/session.md", reason="keyword_match"),
         _candidate("memory/mem/projects/legacy.md", reason="keyword_match"),
-        _candidate("memory/mem/secondary/concepts/concept.md"),
+        _candidate("memory/mem/secondary/concepts/concept.md", reason="keyword_match"),
         _candidate("memory/mem/secondary/summaries/summary.md"),
-        _candidate("memory/mem/primary/relationships/relation.md"),
+        _candidate("memory/mem/primary/scenes/scene.md"),
         _candidate("memory/mem/secondary/relations/relation.md"),
+        _candidate("memory/mem/secondary/projects/project.md", reason="keyword_match"),
+        _candidate("memory/mem/secondary/claims/claim.md", reason="keyword_match"),
     ]
-    prioritized = prioritize_relaymem_candidates(mixed, max_candidates=4)
+    prioritized = prioritize_relaymem_candidates(mixed, max_candidates=5)
     require(prioritized["schema_version"] == "relaymem.retrieval_priority.v0", prioritized)
     require(prioritized["diagnostics_only"] is True, prioritized)
     require(prioritized["read_only"] is True, prioritized)
     require(prioritized["writes_memory"] is False, prioritized)
     require(prioritized["mutates_soul"] is False, prioritized)
-    require(prioritized["candidate_count"] == 6, prioritized)
-    require(prioritized["selected_count"] == 4, prioritized)
+    require(prioritized["candidate_count"] == 8, prioritized)
+    require(prioritized["selected_count"] == 5, prioritized)
     require(
         prioritized["layer_counts"]
-        == {"secondary": 3, "primary": 2, "legacy_flat": 1, "unknown": 0},
+        == {"secondary": 5, "primary": 2, "legacy_flat": 1, "unknown": 0},
         prioritized,
     )
     selected = prioritized["selected_candidates"]
-    require(
-        [item["memory_layer"] for item in selected]
-        == ["secondary", "secondary", "secondary", "primary"],
-        selected,
-    )
     selected_paths = [item["path"] for item in selected]
     require(
         selected_paths
         == [
             "memory/mem/secondary/summaries/summary.md",
             "memory/mem/secondary/relations/relation.md",
-            "memory/mem/secondary/concepts/concept.md",
+            "memory/mem/primary/scenes/scene.md",
             "memory/mem/primary/sessions/session.md",
+            "memory/mem/secondary/projects/project.md",
         ],
         selected,
     )
     require(
-        [item["retrieval_rank"] for item in selected] == [0, 1, 2, 3],
+        [item["retrieval_rank"] for item in selected] == [0, 1, 2, 3, 4],
         selected,
     )
-    print("ok secondary MEM outranks primary and legacy candidates")
+    print("ok MEM-M2 tier order preserves scene/session before projects")
 
     projection = prioritized["selection_projection"]
     require(projection["content_included"] is False, projection)
@@ -94,11 +92,35 @@ def main() -> int:
     require("session.md" not in projection_text, projection)
     require("legacy.md" not in projection_text, projection)
     require(
-        [item["memory_layer"] for item in projection["selected"]]
-        == ["secondary", "secondary", "secondary", "primary"],
+        [item["priority_tier"] for item in projection["selected"]]
+        == [
+            "secondary_summary",
+            "secondary_relation",
+            "primary_scene",
+            "primary_session",
+            "secondary_project",
+        ],
         projection,
     )
     print("ok content-free projection omits paths and snippets")
+
+    keyword_tier = prioritize_relaymem_candidates(
+        [
+            _candidate("memory/mem/secondary/summaries/summary.md"),
+            _candidate("memory/mem/secondary/projects/project.md", reason="keyword_match"),
+            _candidate("memory/mem/secondary/claims/claim.md", reason="keyword_match"),
+        ]
+    )
+    require(
+        [item["path"] for item in keyword_tier["selected_candidates"]]
+        == [
+            "memory/mem/secondary/summaries/summary.md",
+            "memory/mem/secondary/projects/project.md",
+            "memory/mem/secondary/claims/claim.md",
+        ],
+        keyword_tier,
+    )
+    print("ok keyword bonus cannot override higher MEM-M2 tiers")
 
     tie = prioritize_relaymem_candidates(
         [
