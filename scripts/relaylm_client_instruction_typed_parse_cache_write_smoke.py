@@ -207,6 +207,7 @@ def test_cache_write_preflight(parse_result: Any) -> None:
     require(result.cache_write_attempted is False, result)
     require(result.cache_entry_written is False, result)
     require(result.cache_entry_candidate is not None, result)
+    require(result.cache_entry_candidate["parser_version"] is None, result)
     require(result.cache_entry_candidate["raw_instruction_persisted"] is False, result)
     require(result.cache_entry_candidate["raw_response_persisted"] is False, result)
     diagnostics = build_client_instruction_cache_write_diagnostics(result)
@@ -293,6 +294,7 @@ def test_cache_write_apply(parse_result: Any) -> None:
         target = Path(cache_root) / f"{identity.identity.cache_key_sha256}.json"
         require(target.exists() and target.is_file(), target)
         persisted = json.loads(target.read_text(encoding="utf-8"))
+        require(persisted["parser_version"] is None, persisted)
         require(persisted["raw_instruction_persisted"] is False, persisted)
         require(persisted["raw_response_persisted"] is False, persisted)
         lookup = resolve_client_instruction_cache_lookup(
@@ -301,10 +303,9 @@ def test_cache_write_apply(parse_result: Any) -> None:
             enabled=True,
             route_model=ROUTE,
             character_id=CHARACTER,
-            parser_version=parse_result.parser_version,
         )
         require(lookup is not None and lookup.status == "hit" and lookup.hit is True, lookup)
-    print("ok cache write applies atomically and reader validates persisted entry")
+    print("ok cache write applies atomically and runtime lookup validates persisted entry")
 
 
 def test_cache_write_symlink_root_component(parse_result: Any) -> None:
