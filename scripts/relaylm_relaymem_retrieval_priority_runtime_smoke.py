@@ -186,6 +186,44 @@ def main() -> int:
         require(zero["ctx_block_candidate"]["entries"] == [], zero)
         print("ok zero candidate cap remains bounded and empty")
 
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        _write_page(root, "memory/mem/index.md", "# MEM index\n")
+        for index in range(8):
+            _write_page(
+                root,
+                f"memory/mem/projects/legacy_project_{index}.md",
+                f"legacy project {index}\n",
+            )
+        _write_page(
+            root,
+            "memory/mem/secondary/summaries/late_summary.md",
+            "late stable summary\n",
+        )
+        store = build_relaymem_store_diagnostics(
+            root_path=str(root),
+            store_enabled=True,
+            retrieval_dry_run_only=True,
+        )
+        artifact = build_relaymem_retrieval_dry_run_artifact(
+            relayscn_scene_policy_artifact=_scene_policy(),
+            relayref_artifact=None,
+            messages=[{"role": "user", "content": "RelayMEM late summary"}],
+            store_diagnostics=store,
+            max_candidates=1,
+        )
+        require(
+            [item["path"] for item in artifact["selected_mem_candidates"]]
+            == ["memory/mem/secondary/summaries/late_summary.md"],
+            artifact["selected_mem_candidates"],
+        )
+        require(
+            artifact["selected_mem_candidates"][0]["retrieval_priority_tier"]
+            == "secondary_summary",
+            artifact["selected_mem_candidates"],
+        )
+        print("ok priority ranking happens before final selection cap")
+
     return 0
 
 
