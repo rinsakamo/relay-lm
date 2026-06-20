@@ -9,7 +9,7 @@ persist CTX/MEM/SOUL/SLP state.
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from typing import TYPE_CHECKING, Any
 
 from relaylm.relayctx_tts_adapter_handoff import (
@@ -20,13 +20,19 @@ from relaylm.relayctx_tts_segmentation import (
     build_relayctx_tts_segmentation_node_result,
     build_tts_safe_segmentation_hints,
 )
+from relaylm.trace_runtime import trace_runtime_stream_final_pipeline_node_results
 
 if TYPE_CHECKING:
     from relaylm.pipeline_context import PipelineContext
+    from relaylm.pipeline_node_result import PipelineNodeResult
 
 _SSE_SEPARATORS = (b"\r\n\r\n", b"\n\n")
 _DEFAULT_MAX_SEGMENT_CHARS = 120
 _DEFAULT_MIN_SEGMENT_CHARS = 8
+TTSAdapterHandoffFinalizeCallback = Callable[
+    [tuple["PipelineNodeResult", ...]],
+    None,
+]
 
 
 def wrap_stream_with_tts_adapter_handoff(
@@ -38,6 +44,7 @@ def wrap_stream_with_tts_adapter_handoff(
     max_segment_chars: int = _DEFAULT_MAX_SEGMENT_CHARS,
     min_segment_chars: int = _DEFAULT_MIN_SEGMENT_CHARS,
     pipeline_context: "PipelineContext | None" = None,
+    on_finalize: TTSAdapterHandoffFinalizeCallback | None = None,
 ) -> AsyncIterator[bytes]:
     """Pass through SSE bytes while planning runtime-private TTS handoff.
 
@@ -55,6 +62,7 @@ def wrap_stream_with_tts_adapter_handoff(
         max_segment_chars=max_segment_chars,
         min_segment_chars=min_segment_chars,
         pipeline_context=pipeline_context,
+        on_finalize=on_finalize,
     )
 
 
@@ -70,6 +78,7 @@ async def _observe_safe_visible_output_stream(
     max_segment_chars: int,
     min_segment_chars: int,
     pipeline_context: "PipelineContext | None",
+    on_finalize: TTSAdapterHandoffFinalizeCallback | None,
 ) -> AsyncIterator[bytes]:
     frame_buffer = b""
     visible_chunks: list[str] = []
@@ -97,13 +106,19 @@ async def _observe_safe_visible_output_stream(
                 invalid_observation = True
             elif isinstance(extracted, str):
                 visible_chunks.append(extracted)
-        _record_tts_adapter_handoff_results(
+        node_results = _record_tts_adapter_handoff_results(
             pipeline_context,
             visible_chunks=visible_chunks,
             invalid_observation=invalid_observation,
             dry_run_only=dry_run_only,
             max_segment_chars=max_segment_chars,
             min_segment_chars=min_segment_chars,
+        )
+        if on_finalize is not None:
+            on_finalize(node_results)
+        trace_runtime_stream_final_pipeline_node_results(
+            pipeline_context=pipeline_context,
+            node_results=node_results,
         )
 
 
@@ -115,9 +130,7 @@ def _record_tts_adapter_handoff_results(
     dry_run_only: bool,
     max_segment_chars: int,
     min_segment_chars: int,
-) -> None:
-    if pipeline_context is None:
-        return
+) -> tuple["PipelineNodeResult", ...]:
     hint_input: tuple[object, ...]
     if invalid_observation:
         hint_input = (object(),)
@@ -130,17 +143,18 @@ def _record_tts_adapter_handoff_results(
         max_segment_chars=max_segment_chars,
         min_segment_chars=min_segment_chars,
     )
-    pipeline_context.record_node_result(
-        build_relayctx_tts_segmentation_node_result(hint_result)
-    )
+    hint_node = build_relayctx_tts_segmentation_node_result(hint_result)
     handoff_plan = build_tts_adapter_handoff_plan(
         hint_result,
         enabled=True,
         dry_run_only=dry_run_only,
     )
-    pipeline_context.record_node_result(
-        build_relayctx_tts_adapter_handoff_node_result(handoff_plan)
-    )
+    handoff_node = build_relayctx_tts_adapter_handoff_node_result(handoff_plan)
+    node_results = (hint_node, handoff_node)
+    if pipeline_context is not None:
+        for node_result in node_results:
+            pipeline_context.record_node_result(node_result)
+    return node_results
 
 
 def _split_sse_frames(buffer: bytes) -> tuple[list[bytes], bytes]:
