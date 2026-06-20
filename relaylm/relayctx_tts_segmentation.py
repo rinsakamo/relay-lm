@@ -35,7 +35,7 @@ _MIN_PARTIAL_SENTINEL_PREFIX_CHARS = 5
 _DEFAULT_MAX_SEGMENT_CHARS = 120
 _DEFAULT_MIN_SEGMENT_CHARS = 8
 _HARD_SENTENCE_BOUNDARY_CHARS = frozenset("。．.!！?？")
-_NEWLINE_BOUNDARY_CHARS = frozenset("\r\n")
+_NEWLINE_BOUNDARY_CHARS = frozenset((chr(13), chr(10)))
 
 
 @dataclass(frozen=True)
@@ -269,7 +269,24 @@ def _segment_text_by_boundaries(
     index = 0
     while index < len(text):
         current_char = text[index]
-        segment_len = index + 1 - segment_start
+        crlf_boundary = (
+            current_char == chr(13)
+            and index + 1 < len(text)
+            and text[index + 1] == chr(10)
+        )
+        boundary_end = index + 2 if crlf_boundary else index + 1
+        segment_len = boundary_end - segment_start
+        if crlf_boundary and segment_len >= min_segment_chars:
+            yield _build_hint(
+                segment_start,
+                boundary_end,
+                boundary_kind="newline",
+                recommended_flush=True,
+                reason_id="crlf_newline_boundary_detected",
+            )
+            segment_start = boundary_end
+            index = boundary_end
+            continue
         if current_char in _NEWLINE_BOUNDARY_CHARS and segment_len >= min_segment_chars:
             yield _build_hint(
                 segment_start,
