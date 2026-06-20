@@ -24,9 +24,9 @@ relaylm_related_authority:
 
 ## Status
 
-Phase 5.5 is the next product-critical streaming boundary. It is planned and should be implemented in bounded slices before additional RelaySOUL execution-gate design expansion.
+Phase 5.5 is the product-critical streaming boundary. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B is the next streaming runtime boundary.
 
-This document turns Stream Unpack from a broad target into an implementation-ready sequence.
+This document tracks the bounded Stream Unpack implementation sequence.
 
 ## Purpose
 
@@ -58,14 +58,17 @@ Phase 5.5 does not:
 All apply-like behavior must remain gated.
 
 ```text
-stream_unpack_enabled = false
-stream_unpack_dry_run_only = true
-stream_tts_segmentation_hints_enabled = false
+relayctx_stream_unpack_dry_run_enabled = false
+relayctx_stream_unpack_dry_run_only = true
+relayctx_stream_unpack_max_buffer_chars = 256
+stream_tts_segmentation_hints_enabled = false  # target, not a current config field
 ```
 
 Default behavior must preserve ordinary backend SSE forwarding.
 
-When Stream Unpack is enabled for a bounded slice:
+Phase 5.5-A currently provides direct-helper observation only. It does not intercept request-runtime SSE.
+
+When Stream Unpack is enabled for a future bounded runtime slice:
 
 - visible chunks are preserved when safely recoverable,
 - internal candidate markers are never exposed after detection,
@@ -76,28 +79,40 @@ When Stream Unpack is enabled for a bounded slice:
 
 ## Slice sequence
 
-### Phase 5.5-A: stream sentinel buffer dry-run
+### Phase 5.5-A: stream sentinel buffer dry-run — complete
 
-Goal: add a pure/dry-run helper that can observe streamed text fragments and detect internal sentinel risk across chunk boundaries without changing emitted chunks.
+Implemented:
 
-Implemented behavior should include:
-
-- per-request stream buffer state,
-- bounded lookbehind/lookahead window,
+- `relaylm.relayctx_stream_unpack.observe_stream_sentinel_buffer(...)`,
+- per-helper stream buffer state,
+- bounded retained buffer window,
 - detection of complete internal sentinels,
-- detection of partial sentinel prefixes across chunks,
-- content-free diagnostics only,
-- no mutation to outgoing SSE events,
-- no TTS hints.
+- detection of split internal sentinels across chunks,
+- detection of terminal partial sentinel prefixes,
+- content-free `RelayCTXStreamUnpackObservation`,
+- content-free `relayctx_stream_unpack` PipelineNodeResult helper,
+- default-off/dry-run-only config fields,
+- direct smoke and dedicated CI workflow.
 
-Exit criteria:
+Not implemented in 5.5-A:
 
-- ordinary SSE stream is unchanged,
+- runtime SSE interception,
+- output suppression,
+- visible chunk preservation after internal candidate detection,
+- cancellation handling,
+- duplicate replay prevention,
+- TTS hints.
+
+Exit criteria met:
+
+- ordinary stream chunks are unchanged by helper design,
 - internal marker split across chunks is detected in diagnostics,
 - incomplete candidate at stream end is blocked as internal evidence,
 - emitted diagnostics contain no raw streamed text.
 
-### Phase 5.5-B: visible chunk preservation and internal suppression gate
+See [Phase 5.5-A Stream Sentinel Buffer Dry-Run Handoff](phase55a_stream_sentinel_buffer_dry_run_handoff.md).
+
+### Phase 5.5-B: visible chunk preservation and internal suppression gate — planned next
 
 Goal: safely suppress or block internal candidate material while preserving already-safe visible chunks.
 
@@ -149,6 +164,7 @@ Minimum smoke coverage should include:
 | ordinary SSE chunks | unchanged forwarding in default mode |
 | internal sentinel in one chunk | detected, content-free diagnostic emitted |
 | internal sentinel split across chunks | detected by buffer state |
+| terminal partial sentinel at stream end | blocked as internal evidence |
 | visible text followed by internal candidate | safe visible text preserved, internal candidate blocked/suppressed |
 | malformed internal candidate | candidate blocked, visible text preserved when safe |
 | incomplete candidate at stream end | candidate blocked, no persistence update |
@@ -157,6 +173,8 @@ Minimum smoke coverage should include:
 | backend stream failure after visible output | emitted chunks preserved, recovery hint recorded |
 | TTS hint disabled | no segmentation hint emitted |
 | TTS hint enabled | hints derived only from safe visible text |
+
+Phase 5.5-A covers the first four applicable dry-run/helper cases plus invalid chunk content-free failure. Runtime cases belong to Phase 5.5-B.
 
 ## Safety invariants
 
@@ -173,23 +191,25 @@ Phase 5.5 must preserve these invariants:
 
 ## RelaySOUL design freeze
 
-Until Phase 5.5-A and 5.5-B are complete, new RelaySOUL execution-gate design documents should not be added unless they directly unblock a current runtime safety issue.
+Until Phase 5.5-B is complete, new RelaySOUL execution-gate design documents should not be added unless they directly unblock a current runtime safety issue.
 
-Existing RelaySOUL gate documents remain valid historical/current governance references. The freeze is about avoiding additional design expansion while the streaming product-critical path is still planned.
+Existing RelaySOUL gate documents remain valid historical/current governance references. The freeze is about avoiding additional design expansion while the streaming product-critical path still lacks runtime visible-chunk preservation and internal suppression.
 
 ## Next implementation handoff
 
 The next implementation handoff should be:
 
 ```text
-Phase 5.5-A stream sentinel buffer dry-run
+Phase 5.5-B visible chunk preservation and internal suppression gate
 ```
 
 The handoff should include:
 
-- target helper/module name,
-- default-off config fields,
-- content-free diagnostic schema,
-- direct smoke script,
+- runtime stream gate and config field ownership,
 - unchanged ordinary SSE compatibility check,
+- safe visible chunk preservation rules,
+- internal marker/candidate suppression behavior,
+- partial stream/cancellation behavior,
+- no duplicate replay invariant,
+- content-free diagnostic schema,
 - explicit non-goals for TTS execution, RelaySOUL persistence, and response rewriting.
