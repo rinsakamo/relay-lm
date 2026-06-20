@@ -24,7 +24,7 @@ relaylm_related_authority:
 
 ## Status
 
-Phase 5.5 is the product-critical streaming boundary. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B is the next streaming runtime boundary.
+Phase 5.5 is the product-critical streaming boundary. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate. Phase 5.5-B2 is the next streaming runtime boundary.
 
 This document tracks the bounded Stream Unpack implementation sequence.
 
@@ -66,7 +66,7 @@ stream_tts_segmentation_hints_enabled = false  # target, not a current config fi
 
 Default behavior must preserve ordinary backend SSE forwarding.
 
-Phase 5.5-A currently provides direct-helper observation only. It does not intercept request-runtime SSE.
+Phase 5.5-A and B1 currently provide direct-helper behavior only. They do not intercept request-runtime SSE.
 
 When Stream Unpack is enabled for a future bounded runtime slice:
 
@@ -112,27 +112,66 @@ Exit criteria met:
 
 See [Phase 5.5-A Stream Sentinel Buffer Dry-Run Handoff](phase55a_stream_sentinel_buffer_dry_run_handoff.md).
 
-### Phase 5.5-B: visible chunk preservation and internal suppression gate — planned next
+### Phase 5.5-B1: stream suppression gate helper — complete
 
-Goal: safely suppress or block internal candidate material while preserving already-safe visible chunks.
+Implemented:
+
+- `relaylm.relayctx_stream_unpack.apply_stream_internal_suppression_gate(...)`,
+- explicit `enabled` and `dry_run_only` gates,
+- runtime-private `output_chunks`,
+- content-free `RelayCTXStreamSuppressionResult`,
+- content-free `relayctx_stream_suppression_gate` PipelineNodeResult helper,
+- disabled-gate unchanged valid chunks,
+- dry-run detection without output mutation,
+- preservation of safe visible text before the first complete internal sentinel,
+- suppression of complete and split internal sentinels when dry-run-only is disabled,
+- terminal partial sentinel blocking,
+- invalid non-string chunk fail-closed behavior,
+- direct smoke coverage.
+
+Not implemented in 5.5-B1:
+
+- request-runtime SSE interception,
+- wrapping `StreamingResponse` output,
+- cancellation handling in runtime,
+- backend stream failure recovery,
+- duplicate replay prevention after runtime emission,
+- TTS hints.
+
+Exit criteria met:
+
+- normal helper output remains unchanged when disabled or dry-run-only,
+- visible text preceding a blocked internal candidate is preserved in helper apply mode,
+- internal markers are not included in helper output after detection,
+- diagnostics and node results contain no raw visible or internal stream text.
+
+See [Phase 5.5-B1 Stream Suppression Gate Handoff](phase55b1_stream_suppression_gate_handoff.md).
+
+### Phase 5.5-B2: request-runtime SSE suppression wiring — planned next
+
+Goal: safely wire the suppression helper into request-runtime streaming behind explicit gates while preserving default backend SSE forwarding.
 
 Implemented behavior should include:
 
-- explicit gate for stream unpack apply,
-- safe visible chunk forwarding,
+- route/config ownership for runtime Stream Unpack apply,
+- unchanged ordinary SSE compatibility by default,
+- runtime wrapping of backend bytes only when explicitly enabled,
+- visible chunk preservation after safe emission,
 - internal envelope suppression after detection,
 - malformed candidate blocking,
 - partial-stream failure summary,
+- cancellation handling,
 - duplicate replay prevention,
 - content-free PipelineNodeResult projection.
 
 Exit criteria:
 
-- normal streaming remains compatible,
+- default streaming remains byte-for-byte backend forwarding,
 - visible text preceding a blocked internal candidate remains preserved when safe,
 - internal markers are not exposed after detection,
 - malformed internal candidates do not trigger MEM/SOUL/SLP updates,
-- cancellation produces a bounded content-free artifact.
+- cancellation produces a bounded content-free artifact,
+- no duplicate replay occurs after visible chunks are emitted.
 
 ### Phase 5.5-C: TTS-safe segmentation hints
 
@@ -174,7 +213,7 @@ Minimum smoke coverage should include:
 | TTS hint disabled | no segmentation hint emitted |
 | TTS hint enabled | hints derived only from safe visible text |
 
-Phase 5.5-A covers the first four applicable dry-run/helper cases plus invalid chunk content-free failure. Runtime cases belong to Phase 5.5-B.
+Phase 5.5-A covers the first four applicable dry-run/helper cases plus invalid chunk content-free failure. Phase 5.5-B1 covers direct-helper visible-prefix preservation, suppression, terminal partial blocking, invalid chunk fail-closed behavior, and content-free suppression node results. Runtime cases belong to Phase 5.5-B2.
 
 ## Safety invariants
 
@@ -191,16 +230,16 @@ Phase 5.5 must preserve these invariants:
 
 ## RelaySOUL design freeze
 
-Until Phase 5.5-B is complete, new RelaySOUL execution-gate design documents should not be added unless they directly unblock a current runtime safety issue.
+Until Phase 5.5-B runtime wiring is complete, new RelaySOUL execution-gate design documents should not be added unless they directly unblock a current runtime safety issue.
 
-Existing RelaySOUL gate documents remain valid historical/current governance references. The freeze is about avoiding additional design expansion while the streaming product-critical path still lacks runtime visible-chunk preservation and internal suppression.
+Existing RelaySOUL gate documents remain valid historical/current governance references. The freeze is about avoiding additional design expansion while the streaming product-critical path still lacks request-runtime visible-chunk preservation and internal suppression.
 
 ## Next implementation handoff
 
 The next implementation handoff should be:
 
 ```text
-Phase 5.5-B visible chunk preservation and internal suppression gate
+Phase 5.5-B2 request-runtime SSE suppression wiring
 ```
 
 The handoff should include:

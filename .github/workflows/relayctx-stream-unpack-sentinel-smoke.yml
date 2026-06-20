@@ -12,6 +12,7 @@ on:
       - docs/PROJECT_STATUS.md
       - docs/architecture/phase5_5_stream_unpack_bounded_slice.md
       - docs/architecture/phase55a_stream_sentinel_buffer_dry_run_handoff.md
+      - docs/architecture/phase55b1_stream_suppression_gate_handoff.md
       - docs/architecture/pipeline_implementation_plan.md
       - .github/workflows/relayctx-stream-unpack-sentinel-smoke.yml
   push:
@@ -25,6 +26,7 @@ on:
       - docs/PROJECT_STATUS.md
       - docs/architecture/phase5_5_stream_unpack_bounded_slice.md
       - docs/architecture/phase55a_stream_sentinel_buffer_dry_run_handoff.md
+      - docs/architecture/phase55b1_stream_suppression_gate_handoff.md
       - docs/architecture/pipeline_implementation_plan.md
       - .github/workflows/relayctx-stream-unpack-sentinel-smoke.yml
 
