@@ -109,6 +109,10 @@ class RelayLMConfig(BaseModel):
     relayctx_stream_unpack_dry_run_enabled: bool = False
     relayctx_stream_unpack_dry_run_only: bool = True
     relayctx_stream_unpack_max_buffer_chars: int = Field(default=256, ge=32, le=4096)
+    relayctx_tts_adapter_handoff_runtime_enabled: bool = False
+    relayctx_tts_adapter_handoff_runtime_dry_run_only: bool = True
+    relayctx_tts_adapter_handoff_max_segment_chars: int = Field(default=120, gt=0)
+    relayctx_tts_adapter_handoff_min_segment_chars: int = Field(default=8, gt=0)
     client_message_canonicalization_dry_run_enabled: bool = False
     client_history_exclusion_preflight_enabled: bool = False
     client_history_exclusion_apply_enabled: bool = False

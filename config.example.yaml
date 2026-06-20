@@ -57,13 +57,22 @@ relayctx_unpack_apply_enabled: false
 relayctx_unpack_dry_run_only: true
 relayctx_unpack_max_update_chars: 4096
 
-# RelayCTX Stream Unpack sentinel observation is default-off and diagnostics-only.
-# Phase 5.5-A observes streamed text fragments for internal RelayCTX sentinels
-# across chunk boundaries but never mutates SSE output, emits TTS hints, or
-# persists CTX/MEM/SOUL/SLP state. Dry-run-only remains true by default.
+# RelayCTX Stream Unpack sentinel/suppression is default-off. Phase 5.5-B2 wraps
+# backend SSE bytes only when relayctx_stream_unpack_dry_run_enabled=true. With
+# dry_run_only=true, bytes remain pass-through; with dry_run_only=false, safe
+# visible output is preserved while internal RelayCTX material is suppressed.
 relayctx_stream_unpack_dry_run_enabled: false
 relayctx_stream_unpack_dry_run_only: true
 relayctx_stream_unpack_max_buffer_chars: 256
+
+# RelayCTX runtime TTS adapter handoff is default-off and depends on B2 apply
+# mode. When enabled, RelayLM observes only B2 safe visible output and records
+# C0/C1 content-free node results. It never mutates stream bytes, executes TTS,
+# generates audio, controls avatars, or persists CTX/MEM/SOUL/SLP state.
+relayctx_tts_adapter_handoff_runtime_enabled: false
+relayctx_tts_adapter_handoff_runtime_dry_run_only: true
+relayctx_tts_adapter_handoff_max_segment_chars: 120
+relayctx_tts_adapter_handoff_min_segment_chars: 8
 
 # Client message canonicalization dry-run is default-off, diagnostics-only, and
 # content-free. When enabled, RelayLM inspects PipelineContext.original_payload

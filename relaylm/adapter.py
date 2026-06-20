@@ -17,6 +17,9 @@ from relaylm.pipeline_context import get_active_pipeline_context
 from relaylm.relayctx_stream_suppression_runtime import (
     wrap_stream_with_relayctx_suppression,
 )
+from relaylm.relayctx_tts_adapter_handoff_runtime import (
+    wrap_stream_with_tts_adapter_handoff,
+)
 from relaylm.relayctx_unpack_runtime import apply_relayctx_unpack_runtime
 from relaylm.routing import ResolvedRoute
 
@@ -155,13 +158,27 @@ async def open_chat_completion_stream(
             await client.aclose()
 
     body_iter: AsyncIterator[bytes] = iter_bytes()
+    pipeline_context = get_active_pipeline_context()
     if route.relayctx_stream_unpack_dry_run_enabled:
         body_iter = wrap_stream_with_relayctx_suppression(
             body_iter,
             enabled=True,
             dry_run_only=route.relayctx_stream_unpack_dry_run_only,
             max_buffer_chars=route.relayctx_stream_unpack_max_buffer_chars,
-            pipeline_context=get_active_pipeline_context(),
+            pipeline_context=pipeline_context,
+        )
+    if route.relayctx_tts_adapter_handoff_runtime_enabled:
+        body_iter = wrap_stream_with_tts_adapter_handoff(
+            body_iter,
+            enabled=True,
+            dry_run_only=route.relayctx_tts_adapter_handoff_runtime_dry_run_only,
+            b2_safe_visible_output_available=(
+                route.relayctx_stream_unpack_dry_run_enabled
+                and not route.relayctx_stream_unpack_dry_run_only
+            ),
+            max_segment_chars=route.relayctx_tts_adapter_handoff_max_segment_chars,
+            min_segment_chars=route.relayctx_tts_adapter_handoff_min_segment_chars,
+            pipeline_context=pipeline_context,
         )
 
     return response.status_code, content_type, body_iter
