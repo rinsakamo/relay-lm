@@ -22,7 +22,7 @@ A write can occur only when the caller supplies all of the following:
 - `client_instruction_cache_write_dry_run_only=false`,
 - a ready client-instruction identity result,
 - a ready `client_instruction_parse.v1` typed parse result,
-- a valid `client_instruction_cache_root`,
+- an existing valid `client_instruction_cache_root`,
 - a `client_instruction_cache_max_entry_bytes` budget large enough for the entry.
 
 With `client_instruction_cache_write_dry_run_only=true`, the helper remains planning-only and performs no filesystem mutation.
@@ -37,7 +37,7 @@ The target file name is derived from the validated `cache_key_sha256`:
 <client_instruction_cache_root>/<cache_key_sha256>.json
 ```
 
-The writer rejects missing roots, invalid byte budgets, entries larger than the configured max, symlink roots, symlink root components, symlink targets, and target paths outside the resolved root. The root-component symlink check mirrors the reader-side `cache_root_symlink_blocked` boundary so the writer does not create entries under a root that the runtime reader will reject.
+The writer rejects missing roots, invalid byte budgets, entries larger than the configured max, symlink roots, symlink root components, symlink targets, and target paths outside the resolved root. The root-component symlink check mirrors the reader-side `cache_root_symlink_blocked` boundary so the writer does not create entries under a root that the runtime reader will reject. Missing cache roots are blocked with `cache_root_missing`; the writer does not create the root tree.
 
 C5b also keeps persisted `parser_version` set to `null` because the current runtime cache lookup path validates entries without a parser-version expectation. A later runtime-wiring slice may pass a parser version through lookup; until then, writer output must remain compatible with the runtime reader path.
 
@@ -63,7 +63,7 @@ Diagnostics remain content-free. They can report booleans, status, byte counts, 
 
 - typed parse default-off and malformed candidate blocking,
 - cache-write dry-run no-op behavior,
-- missing root blocking,
+- missing root blocking without root creation,
 - max-entry-size blocking before write attempts,
 - symlinked root-component blocking,
 - parser-version compatibility with current runtime lookup,
