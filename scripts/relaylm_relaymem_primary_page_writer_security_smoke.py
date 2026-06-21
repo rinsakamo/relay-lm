@@ -94,6 +94,23 @@ def main() -> None:
             "blocked_reasons"
         ]
 
+        numeric_projection = _artifact()
+        numeric_projection["projection"]["writer_apply_eligible_count"] = True
+        numeric_projection["projection"]["status_counts"] = {"ready": True}
+        numeric_projection["projection"]["handoffs"][0]["operation_index"] = False
+        result = _apply(numeric_projection, root)
+        assert (
+            "primary_writer_handoff_projection_writer_apply_eligible_count_invalid"
+            in result["blocked_reasons"]
+        )
+        assert "primary_writer_handoff_projection_status_counts_invalid" in result[
+            "blocked_reasons"
+        ]
+        assert (
+            "primary_writer_handoff_projection_item_operation_index_invalid"
+            in result["blocked_reasons"]
+        )
+
         symlink_root = root / "symlink-root"
         real_root = root / "real-root"
         (real_root / "memory/mem/primary/projects").mkdir(parents=True)
