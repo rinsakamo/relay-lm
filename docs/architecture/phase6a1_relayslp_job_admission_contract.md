@@ -62,6 +62,8 @@ eligible_for_enqueue
 
 The helper is default-off, dry-run-first, and fail-closed. It validates correlation, namespace, source count, source event kind, runtime terminal state, visible-response finalization for `turn_end`, persistence-policy status, and the upstream lineage schema.
 
+The lineage parser accepts only the fixed top-level v0 field set, the exact bounded `lineage_shape` keys, strict boolean values, and an empty-list upstream `blocked_reasons` field. It applies RelayMEM-M3b-compatible source identity rules and does not recursively traverse caller-controlled metadata. Numeric `1` and `0` are not accepted as boolean substitutes.
+
 The public projection excludes runtime-private identifiers, lineage fingerprints, dispatch idempotency keys, memory-write idempotency keys, raw text, prompts, messages, snippets, page content, patches, candidate arrays, filesystem paths, and RelaySOUL content.
 
 Phase 6-A1 does not create either idempotency layer:
