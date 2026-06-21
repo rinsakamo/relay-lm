@@ -1,0 +1,51 @@
+name: RelayMEM RelaySLP dispatch preflight smoke
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/relaymem_slp_job_admission.py"
+      - "relaylm/relaymem_slp_response_handoff.py"
+      - "relaylm/relaymem_slp_dispatch_preflight.py"
+      - "scripts/relaylm_phase6b1_dispatch_preflight_smoke.py"
+      - "scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py"
+      - "docs/architecture/phase6b0_relayslp_durable_queue_contract.md"
+      - "docs/architecture/phase6b1_relayslp_dispatch_preflight.md"
+      - ".github/workflows/relaymem-slp-dispatch-preflight-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/relaymem_slp_job_admission.py"
+      - "relaylm/relaymem_slp_response_handoff.py"
+      - "relaylm/relaymem_slp_dispatch_preflight.py"
+      - "scripts/relaylm_phase6b1_dispatch_preflight_smoke.py"
+      - "scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py"
+      - "docs/architecture/phase6b0_relayslp_durable_queue_contract.md"
+      - "docs/architecture/phase6b1_relayslp_dispatch_preflight.md"
+      - ".github/workflows/relaymem-slp-dispatch-preflight-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Phase 6-B1 helper and smokes
+        run: >-
+          python -m compileall -q
+          relaylm/relaymem_slp_dispatch_preflight.py
+          scripts/relaylm_phase6b1_dispatch_preflight_smoke.py
+          scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py
+      - name: Run Phase 6-B1 dispatch preflight smoke
+        run: >-
+          PYTHONPATH=. python
+          scripts/relaylm_phase6b1_dispatch_preflight_smoke.py
+      - name: Run Phase 6-B1 dispatch preflight security smoke
+        run: >-
+          PYTHONPATH=. python
+          scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py
