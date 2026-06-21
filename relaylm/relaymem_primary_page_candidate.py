@@ -1,9 +1,4 @@
-"""RelayMEM Primary MEM page-candidate helpers.
-
-MEM-M3c joins an M3b preflight operation with a runtime-private governed
-experience summary. It builds a deterministic page candidate only; it never
-writes files or mutates RelaySOUL/RelaySLP/runtime-visible output.
-"""
+"""Build runtime-private RelayMEM Primary MEM page candidates without writing."""
 
 from __future__ import annotations
 
@@ -21,7 +16,14 @@ CANDIDATE_SCHEMA = "relaymem.primary_page_candidate.v0"
 PROJECTION_SCHEMA = "relaymem.primary_page_candidate_projection.v0"
 
 EVENT_KINDS = {"turn", "session", "communication", "manual_import"}
-TARGET_DIRS = {
+KIND_TO_TARGET = {
+    "recent_project_event": "primary_projects",
+    "relationship_moment": "primary_relationships",
+    "session_episode": "primary_sessions",
+    "scene_bound_memory": "primary_scenes",
+    "experience_event": "primary_scenes",
+}
+TARGET_TO_DIR = {
     "primary_projects": "memory/mem/primary/projects",
     "primary_relationships": "memory/mem/primary/relationships",
     "primary_sessions": "memory/mem/primary/sessions",
@@ -42,24 +44,14 @@ def build_relaymem_governed_experience_summary(
     summary_text: str,
     title: str | None = None,
 ) -> dict[str, Any]:
-    """Build a bounded content-bearing artifact for a trusted in-process summary."""
-
     candidate_id, reasons = _token(candidate_id, "governed_experience_candidate_id_invalid")
     event_kind, event_reasons = _event_kind(source_event_kind)
-    namespace, namespace_reasons = _token(
-        namespace, "governed_experience_namespace_invalid"
+    namespace, namespace_reasons = _token(namespace, "governed_experience_namespace_invalid")
+    summary, summary_reasons = _text(
+        summary_text, MAX_SUMMARY, "governed_experience_summary_invalid", multiline=True
     )
-    summary_text, summary_reasons = _text(
-        summary_text,
-        MAX_SUMMARY,
-        "governed_experience_summary_invalid",
-        multiline=True,
-    )
-    title, title_reasons = _optional_text(
-        title,
-        MAX_TITLE,
-        "governed_experience_title_invalid",
-        multiline=False,
+    safe_title, title_reasons = _optional_text(
+        title, MAX_TITLE, "governed_experience_title_invalid", multiline=False
     )
     reasons = _dedupe(
         reasons + event_reasons + namespace_reasons + summary_reasons + title_reasons
@@ -75,9 +67,9 @@ def build_relaymem_governed_experience_summary(
         "candidate_id": candidate_id,
         "source_event_kind": event_kind,
         "namespace": namespace,
-        "title": title,
-        "summary_text": summary_text,
-        "summary_chars": len(summary_text),
+        "title": safe_title,
+        "summary_text": summary,
+        "summary_chars": len(summary),
         "valid": not reasons,
         "blocked_reasons": reasons,
     }
@@ -92,72 +84,34 @@ def build_relaymem_primary_page_candidate_dry_run(
     dry_run_only: bool = True,
     apply_enabled: bool = False,
 ) -> dict[str, Any]:
-    """Build one deterministic Primary MEM page candidate without writing it."""
-
     lineage = _parse_lineage(source_lineage_artifact)
     experience = _parse_experience(governed_experience_artifact)
     preflight = _parse_preflight(
-        preflight_artifact,
-        str(experience.get("candidate_id", "")),
+        preflight_artifact, str(experience.get("candidate_id", ""))
     )
     reasons = [] if enabled else ["primary_page_candidate_disabled"]
-    for parsed in (lineage, experience, preflight):
-        if parsed.get("valid") is not True:
-            reasons.extend(_strings(parsed.get("blocked_reasons")))
+    for artifact in (lineage, experience, preflight):
+        if artifact.get("valid") is not True:
+            reasons.extend(_strings(artifact.get("blocked_reasons")))
     if not reasons:
         reasons.extend(_cross_check(lineage, experience, preflight))
     reasons = _dedupe(reasons)
 
-    candidates: list[dict[str, Any]] = []
+    page_candidates: list[dict[str, Any]] = []
     if not reasons:
-        candidate = _page_candidate(
+        page = _build_page(
             lineage=lineage,
             experience=experience,
             preflight=preflight,
             dry_run_only=dry_run_only,
             apply_enabled=apply_enabled,
         )
-        if candidate["blocked_reasons"]:
-            reasons = list(candidate["blocked_reasons"])
+        if page["blocked_reasons"]:
+            reasons = list(page["blocked_reasons"])
         else:
-            candidates.append(candidate)
+            page_candidates.append(page)
 
-    projection = {
-        "schema_version": PROJECTION_SCHEMA,
-        "diagnostics_only": True,
-        "content_free": True,
-        "content_included": False,
-        "candidate_id_included": False,
-        "target_path_included": False,
-        "lineage_fingerprint_included": False,
-        "idempotency_key_included": False,
-        "page_markdown_included": False,
-        "page_digest_included": False,
-        "raw_source_text_included": False,
-        "raw_message_history_included": False,
-        "raw_affect_estimates_included": False,
-        "writes_memory": False,
-        "page_candidate_count": len(candidates),
-        "status_counts": _counts(candidates, "status"),
-        "target_category_counts": _counts(candidates, "target_category"),
-        "blocked_reasons": reasons,
-        "page_candidates": [
-            {
-                "operation_index": index,
-                "source_event_kind": item["source_event_kind"],
-                "memory_layer": "primary",
-                "memory_kind": item["memory_kind"],
-                "promotion_policy": item["promotion_policy"],
-                "safety_scope": item["safety_scope"],
-                "target_category": item["target_category"],
-                "status": item["status"],
-                "writer_handoff_eligible": item["writer_handoff_eligible"],
-                "summary_chars": item["summary_chars"],
-                "page_bytes": item["page_bytes"],
-            }
-            for index, item in enumerate(candidates)
-        ],
-    }
+    projection = _projection(page_candidates, reasons)
     return {
         "schema_version": RESULT_SCHEMA,
         "diagnostics_only": True,
@@ -173,8 +127,8 @@ def build_relaymem_primary_page_candidate_dry_run(
         "mutates_soul": False,
         "invokes_slp": False,
         "lab_api_exposed": False,
-        "page_candidate_count": len(candidates),
-        "page_candidates": candidates,
+        "page_candidate_count": len(page_candidates),
+        "page_candidates": page_candidates,
         "blocked_reasons": reasons,
         "projection": projection,
     }
@@ -187,12 +141,23 @@ def _parse_lineage(value: Mapping[str, Any] | None) -> dict[str, Any]:
         return _invalid("source_lineage_schema_mismatch")
     if value.get("valid") is not True:
         return _invalid(*(_strings(value.get("blocked_reasons")) or ["source_lineage_invalid"]))
-    fingerprint = value.get("lineage_fingerprint")
+
+    reasons: list[str] = []
+    for key, expected in {
+        "content_free": True,
+        "content_included": False,
+        "raw_text_included": False,
+    }.items():
+        if value.get(key) != expected:
+            reasons.append(f"source_lineage_{key}_invalid")
+    if _strings(value.get("blocked_reasons")):
+        reasons.append("source_lineage_blocked")
     event_kind, event_reasons = _event_kind(value.get("source_event_kind"))
     namespace, namespace_reasons = _token(
         value.get("namespace"), "source_lineage_namespace_invalid"
     )
-    reasons = event_reasons + namespace_reasons
+    reasons.extend(event_reasons + namespace_reasons)
+    fingerprint = value.get("lineage_fingerprint")
     if not _sha256_hex(fingerprint):
         reasons.append("source_lineage_fingerprint_invalid")
     if reasons:
@@ -213,18 +178,20 @@ def _parse_experience(value: Mapping[str, Any] | None) -> dict[str, Any]:
         return _invalid("governed_experience_schema_mismatch")
     if value.get("valid") is not True:
         return _invalid(*(_strings(value.get("blocked_reasons")) or ["governed_experience_invalid"]))
-    invariant_reasons: list[str] = []
-    expected = {
+
+    reasons: list[str] = []
+    for key, expected in {
         "runtime_private": True,
         "content_included": True,
         "raw_source_text_included": False,
         "raw_message_history_included": False,
         "raw_affect_estimates_included": False,
         "summary_origin": "trusted_in_process_summary",
-    }
-    for key, expected_value in expected.items():
-        if value.get(key) != expected_value:
-            invariant_reasons.append(f"governed_experience_{key}_invalid")
+    }.items():
+        if value.get(key) != expected:
+            reasons.append(f"governed_experience_{key}_invalid")
+    if _strings(value.get("blocked_reasons")):
+        reasons.append("governed_experience_blocked")
 
     candidate_id, candidate_reasons = _token(
         value.get("candidate_id"), "governed_experience_candidate_id_invalid"
@@ -245,10 +212,15 @@ def _parse_experience(value: Mapping[str, Any] | None) -> dict[str, Any]:
         "governed_experience_title_invalid",
         multiline=False,
     )
-    if value.get("summary_chars") != len(summary):
+    summary_chars = value.get("summary_chars")
+    if (
+        isinstance(summary_chars, bool)
+        or not isinstance(summary_chars, int)
+        or summary_chars != len(summary)
+    ):
         summary_reasons.append("governed_experience_summary_chars_mismatch")
     reasons = _dedupe(
-        invariant_reasons
+        reasons
         + candidate_reasons
         + event_reasons
         + namespace_reasons
@@ -271,8 +243,7 @@ def _parse_experience(value: Mapping[str, Any] | None) -> dict[str, Any]:
 
 
 def _parse_preflight(
-    value: Mapping[str, Any] | None,
-    candidate_id: str,
+    value: Mapping[str, Any] | None, candidate_id: str
 ) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         return _invalid("primary_write_preflight_missing")
@@ -280,7 +251,7 @@ def _parse_preflight(
         return _invalid("primary_write_preflight_schema_mismatch")
 
     reasons: list[str] = []
-    exact = {
+    for key, expected in {
         "enabled": True,
         "diagnostics_only": True,
         "helper_only": True,
@@ -290,8 +261,7 @@ def _parse_preflight(
         "apply_allowed": False,
         "source_lineage_valid": True,
         "candidate_limit_exceeded": False,
-    }
-    for key, expected in exact.items():
+    }.items():
         if value.get(key) != expected:
             reasons.append(f"primary_write_preflight_{key}_invalid")
     if _strings(value.get("blocked_reasons")):
@@ -330,11 +300,11 @@ def _parse_preflight(
         reasons.extend(field_reasons)
     event_kind, event_reasons = _event_kind(operation.get("source_event_kind"))
     reasons.extend(event_reasons)
-
     idempotency_key = operation.get("idempotency_key")
     if not _sha256_hex(idempotency_key):
         reasons.append("primary_write_preflight_idempotency_key_invalid")
-    required = {
+
+    for key, expected in {
         "preflight_status": "eligible",
         "promotion_policy": "free_to_update",
         "safety_scope": "ordinary_memory",
@@ -344,17 +314,20 @@ def _parse_preflight(
         "raw_affect_estimates_included": False,
         "writes_memory": False,
         "applied": False,
-    }
-    for key, expected in required.items():
+    }.items():
         if operation.get(key) != expected:
             reasons.append(f"primary_write_preflight_{key}_invalid")
-    if fields.get("target_category") not in TARGET_DIRS:
+    expected_target = KIND_TO_TARGET.get(fields.get("memory_kind", ""))
+    if expected_target is None:
+        reasons.append("primary_write_preflight_memory_kind_unsupported")
+    elif fields.get("target_category") != expected_target:
+        reasons.append("primary_write_preflight_memory_kind_target_category_mismatch")
+    if fields.get("target_category") not in TARGET_TO_DIR:
         reasons.append("primary_write_preflight_target_category_unsupported")
     if _strings(operation.get("blocked_reasons")):
         reasons.append("primary_write_preflight_operation_blocked")
-    reasons = _dedupe(reasons)
     if reasons:
-        return _invalid(*reasons)
+        return _invalid(*_dedupe(reasons))
     return {
         "valid": True,
         **fields,
@@ -398,7 +371,7 @@ def _cross_check(
     return reasons
 
 
-def _page_candidate(
+def _build_page(
     *,
     lineage: Mapping[str, Any],
     experience: Mapping[str, Any],
@@ -406,9 +379,11 @@ def _page_candidate(
     dry_run_only: bool,
     apply_enabled: bool,
 ) -> dict[str, Any]:
-    target_dir = TARGET_DIRS[preflight["target_category"]]
-    target_path = f"{target_dir}/{preflight['idempotency_key']}.md"
-    fields = {
+    target_path = (
+        f"{TARGET_TO_DIR[preflight['target_category']]}/"
+        f"{preflight['idempotency_key']}.md"
+    )
+    front_matter_fields = {
         "schema_version": "relaymem.primary_page.v0",
         "memory_layer": "primary",
         "memory_kind": preflight["memory_kind"],
@@ -424,7 +399,7 @@ def _page_candidate(
     }
     front_matter = "\n".join(
         f"{key}: {json.dumps(str(value), ensure_ascii=False)}"
-        for key, value in fields.items()
+        for key, value in front_matter_fields.items()
     )
     markdown = (
         f"---\n{front_matter}\n---\n"
@@ -433,17 +408,16 @@ def _page_candidate(
         f"{experience['summary_text'].strip()}\n"
     )
     try:
-        encoded_page = markdown.encode("utf-8")
+        encoded = markdown.encode("utf-8")
     except UnicodeEncodeError:
-        encoded_page = b""
+        encoded = b""
         reasons = ["primary_page_candidate_utf8_invalid"]
     else:
         reasons = (
             ["primary_page_candidate_page_size_exceeded"]
-            if len(encoded_page) > MAX_PAGE_BYTES
+            if len(encoded) > MAX_PAGE_BYTES
             else []
         )
-    page_bytes = len(encoded_page)
     status = "blocked" if reasons else "ready"
     return {
         "schema_version": CANDIDATE_SCHEMA,
@@ -466,8 +440,8 @@ def _page_candidate(
         "summary_origin": experience["summary_origin"],
         "summary_chars": experience["summary_chars"],
         "page_markdown": markdown,
-        "page_bytes": page_bytes,
-        "page_digest": sha256(encoded_page).hexdigest() if encoded_page else "",
+        "page_bytes": len(encoded),
+        "page_digest": sha256(encoded).hexdigest() if encoded else "",
         "status": status,
         "writer_handoff_eligible": (
             status == "ready" and bool(apply_enabled) and not bool(dry_run_only)
@@ -478,8 +452,49 @@ def _page_candidate(
     }
 
 
+def _projection(
+    pages: Sequence[Mapping[str, Any]], reasons: Sequence[str]
+) -> dict[str, Any]:
+    return {
+        "schema_version": PROJECTION_SCHEMA,
+        "diagnostics_only": True,
+        "content_free": True,
+        "content_included": False,
+        "candidate_id_included": False,
+        "target_path_included": False,
+        "lineage_fingerprint_included": False,
+        "idempotency_key_included": False,
+        "page_markdown_included": False,
+        "page_digest_included": False,
+        "raw_source_text_included": False,
+        "raw_message_history_included": False,
+        "raw_affect_estimates_included": False,
+        "writes_memory": False,
+        "page_candidate_count": len(pages),
+        "status_counts": _counts(pages, "status"),
+        "target_category_counts": _counts(pages, "target_category"),
+        "blocked_reasons": list(reasons),
+        "page_candidates": [
+            {
+                "operation_index": index,
+                "source_event_kind": page["source_event_kind"],
+                "memory_layer": "primary",
+                "memory_kind": page["memory_kind"],
+                "promotion_policy": page["promotion_policy"],
+                "safety_scope": page["safety_scope"],
+                "target_category": page["target_category"],
+                "status": page["status"],
+                "writer_handoff_eligible": page["writer_handoff_eligible"],
+                "summary_chars": page["summary_chars"],
+                "page_bytes": page["page_bytes"],
+            }
+            for index, page in enumerate(pages)
+        ],
+    }
+
+
 def _invalid(*reasons: str) -> dict[str, Any]:
-    return {"valid": False, "blocked_reasons": _dedupe(list(reasons))}
+    return {"valid": False, "blocked_reasons": _dedupe(reasons)}
 
 
 def _token(value: object, reason: str) -> tuple[str, list[str]]:
@@ -504,11 +519,7 @@ def _event_kind(value: object) -> tuple[str, list[str]]:
 
 
 def _text(
-    value: object,
-    limit: int,
-    reason: str,
-    *,
-    multiline: bool,
+    value: object, limit: int, reason: str, *, multiline: bool
 ) -> tuple[str, list[str]]:
     if not isinstance(value, str):
         return "", [reason]
@@ -525,11 +536,7 @@ def _text(
 
 
 def _optional_text(
-    value: object,
-    limit: int,
-    reason: str,
-    *,
-    multiline: bool,
+    value: object, limit: int, reason: str, *, multiline: bool
 ) -> tuple[str | None, list[str]]:
     if value is None:
         return None, []
@@ -576,8 +583,8 @@ def _dedupe(reasons: Sequence[str]) -> list[str]:
 
 
 def _counts(items: Sequence[Mapping[str, Any]], key: str) -> dict[str, int]:
-    result: dict[str, int] = {}
+    counts: dict[str, int] = {}
     for item in items:
         value = str(item.get(key, "unknown"))
-        result[value] = result.get(value, 0) + 1
-    return result
+        counts[value] = counts.get(value, 0) + 1
+    return counts
