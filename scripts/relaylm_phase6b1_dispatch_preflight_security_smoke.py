@@ -62,11 +62,7 @@ def _handoff():
     )
 
 
-def _assert_rejected(handoff: object, expected_reason: str) -> None:
-    result = build_relaymem_slp_dispatch_preflight(handoff, enabled=True)
-    assert result.status in {"invalid_input", "blocked"}, result
-    assert result.durable_job_created is False
-    assert expected_reason in result.blocked_reasons, result.blocked_reasons
+def _assert_no_side_effects(result: object) -> None:
     runtime = result.to_runtime_dict()
     assert runtime["queue_io_performed"] is False
     assert runtime["enqueue_attempted"] is False
@@ -74,6 +70,22 @@ def _assert_rejected(handoff: object, expected_reason: str) -> None:
     assert runtime["writes_memory"] is False
     assert runtime["mutates_soul"] is False
     assert runtime["changes_visible_response"] is False
+
+
+def _assert_rejected(handoff: object, expected_reason: str) -> None:
+    result = build_relaymem_slp_dispatch_preflight(handoff, enabled=True)
+    assert result.status in {"invalid_input", "blocked"}, result
+    assert result.durable_job_created is False
+    assert expected_reason in result.blocked_reasons, result.blocked_reasons
+    _assert_no_side_effects(result)
+
+
+def _assert_consistency_rejected(handoff: object) -> None:
+    result = build_relaymem_slp_dispatch_preflight(handoff, enabled=True)
+    assert result.status in {"invalid_input", "blocked"}, result
+    assert result.durable_job_created is False
+    assert result.blocked_reasons
+    _assert_no_side_effects(result)
 
 
 def _with_candidate(handoff, **changes: Any):
@@ -112,33 +124,23 @@ def main() -> None:
     _assert_rejected(disabled_a2, "exact_a2_enqueue_candidate_required")
 
     assert handoff.source_projection is not None
-    projection_count_mismatch = replace(
-        handoff,
-        source_projection=replace(handoff.source_projection, source_count=2),
+    _assert_consistency_rejected(
+        replace(
+            handoff,
+            source_projection=replace(handoff.source_projection, source_count=2),
+        )
     )
-    _assert_rejected(
-        projection_count_mismatch,
-        "a2_candidate_source_projection_mismatch",
+    _assert_consistency_rejected(
+        replace(
+            handoff,
+            source_projection=replace(
+                handoff.source_projection,
+                session_id_present=False,
+            ),
+        )
     )
-    projection_session_mismatch = replace(
-        handoff,
-        source_projection=replace(
-            handoff.source_projection,
-            session_id_present=False,
-        ),
-    )
-    _assert_rejected(
-        projection_session_mismatch,
-        "a2_candidate_source_projection_mismatch",
-    )
-    assert handoff.candidate is not None
-    admission_mismatch = replace(
-        handoff,
-        source_admission_status="eligible_for_enqueue",
-    )
-    _assert_rejected(
-        admission_mismatch,
-        "a2_candidate_admission_status_mismatch",
+    _assert_consistency_rejected(
+        replace(handoff, source_admission_status="eligible_for_enqueue")
     )
 
     _assert_rejected(
