@@ -16,6 +16,8 @@ from ._relaymem_primary_index_log_reconciliation_plan import (
 from ._relaymem_primary_page_writer_common import (
     KIND_TARGET,
     MAX_PAGE_BYTES,
+    MAX_SUMMARY,
+    MAX_TITLE,
     PAGE_SCHEMA,
     TARGET_DIR,
     bad_text,
@@ -187,11 +189,19 @@ def parse_m3f_reconciliation_plan(value: Mapping[str, Any] | None) -> dict[str, 
     return {
         "valid": True,
         "plan": dict(value),
+        "index_entry": dict(index_entry),
+        "log_entry": dict(log_entry),
         "blocked_reasons": [],
     }
 
 
-def verify_m3g_page(plan_page: Mapping[str, Any], content: bytes) -> list[str]:
+def verify_m3g_page(
+    plan_page: Mapping[str, Any],
+    content: bytes,
+    *,
+    index_entry: Mapping[str, Any],
+    log_entry: Mapping[str, Any],
+) -> list[str]:
     reasons: list[str] = []
     if len(content) != plan_page["page_bytes"]:
         reasons.append("primary_reconciliation_apply_page_bytes_mismatch")
@@ -209,13 +219,37 @@ def verify_m3g_page(plan_page: Mapping[str, Any], content: bytes) -> list[str]:
         "schema_version": PAGE_SCHEMA,
         "memory_layer": "primary",
         "memory_kind": plan_page["memory_kind"],
+        "source_event_kind": index_entry["source_event_kind"],
         "promotion_policy": "free_to_update",
         "safety_scope": "ordinary_memory",
+        "namespace": index_entry["namespace"],
+        "lineage_fingerprint": log_entry["lineage_fingerprint"],
         "idempotency_key": plan_page["idempotency_key"],
+        "summary_origin": "trusted_in_process_summary",
+        "content_role": "evidence",
     }
     for field, wanted in expected.items():
         if metadata.get(field) != wanted:
             reasons.append(f"primary_reconciliation_apply_page_{field}_mismatch")
+    summary = metadata.get("summary")
+    title = metadata.get("title")
+    if (
+        not isinstance(summary, str)
+        or not summary
+        or summary != summary.strip()
+        or len(summary) > MAX_SUMMARY
+    ):
+        reasons.append("primary_reconciliation_apply_page_summary_invalid")
+    elif parsed["body"] != f"# Primary memory\n\n## Summary\n\n{summary}\n":
+        reasons.append("primary_reconciliation_apply_page_body_mismatch")
+    if (
+        not isinstance(title, str)
+        or title != title.strip()
+        or len(title) > MAX_TITLE
+        or bad_text(title)
+        or any(char in title for char in "\n\r\t")
+    ):
+        reasons.append("primary_reconciliation_apply_page_title_invalid")
     return dedupe(reasons)
 
 

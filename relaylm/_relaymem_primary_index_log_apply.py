@@ -68,7 +68,12 @@ def apply_relaymem_primary_index_log_reconciliation(
         elif page.get("valid") is not True:
             reasons.extend(_strings(page.get("blocked_reasons")))
         else:
-            page_reasons = verify_m3g_page(page_plan, page["content"])
+            page_reasons = verify_m3g_page(
+                page_plan,
+                page["content"],
+                index_entry=parsed["index_entry"],
+                log_entry=parsed["log_entry"],
+            )
             if page_reasons:
                 reasons.extend(page_reasons)
             else:

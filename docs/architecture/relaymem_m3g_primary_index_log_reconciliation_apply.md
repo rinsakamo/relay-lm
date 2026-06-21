@@ -113,7 +113,10 @@ M3g does not treat the M3f plan as proof that the source page still exists. Befo
 - memory kind,
 - free-to-update promotion policy,
 - ordinary-memory safety scope,
-- memory-write idempotency key.
+- memory-write idempotency key,
+- namespace and source-event correspondence with both control entries,
+- lineage correspondence with the log entry,
+- summary/title bounds and deterministic page body.
 
 A missing or mismatching page blocks the whole apply before any control-file mutation.
 
@@ -181,7 +184,7 @@ create private unique temp file with mode 0600
   -> fsync directory
 ```
 
-The current file is never modified in place. Readers observe either the prior complete file or the proposed complete file.
+The current file is never modified in place. Readers observe either the prior complete file or the proposed complete file. M3g also reconstructs the proposed transition and requires it to equal the exact current bytes, an optional terminating newline, and exactly one canonical target marker. A plan cannot remove or rewrite existing control-file bytes while presenting a matching current digest.
 
 Before replacement, the current file must equal either:
 

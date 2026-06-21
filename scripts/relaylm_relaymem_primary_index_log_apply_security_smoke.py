@@ -13,6 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from relaylm._relaymem_primary_index_log_apply_contract import verify_m3g_page
 from relaylm.relaymem_primary_index_log_apply import (
     apply_relaymem_primary_index_log_reconciliation,
 )
@@ -91,6 +92,65 @@ def main() -> int:
             )
         require(index_path.read_text(encoding="utf-8") == "# Index\n", index_path)
         print("ok exact nested plan contract fails closed without mutation")
+
+        append_violation = copy.deepcopy(plan)
+        original = append_violation["index_plan"]["proposed_next_content"]
+        changed = original.replace("# Index\n", "# Index\nrewritten content\n", 1)
+        changed_bytes = changed.encode("utf-8")
+        changed_digest = hashlib.sha256(changed_bytes).hexdigest()
+        append_violation["index_plan"]["proposed_next_content"] = changed
+        append_violation["index_plan"]["proposed_next_bytes"] = len(changed_bytes)
+        append_violation["index_plan"]["proposed_next_digest"] = changed_digest
+        append_violation["ordered_operations"][0]["proposed_next_content"] = changed
+        append_violation["ordered_operations"][0]["proposed_next_bytes"] = len(changed_bytes)
+        append_violation["ordered_operations"][0]["proposed_next_digest"] = changed_digest
+        append_result = apply_plan(root, append_violation)
+        require(append_result["status"] == "blocked", append_result)
+        require(append_result["writes_memory"] is False, append_result)
+        require(
+            "primary_reconciliation_apply_index_append_transition_invalid"
+            in append_result["blocked_reasons"],
+            append_result,
+        )
+        require(index_path.read_text(encoding="utf-8") == "# Index\n", index_path)
+        print("ok proposed control content must be an exact append transition")
+
+        page_bytes = (root / receipt["target_relative_path"]).read_bytes()
+        page_plan = dict(plan["page"])
+        index_content = plan["index_plan"]["proposed_next_content"]
+        log_content = plan["log_plan"]["proposed_next_content"]
+        index_line = next(
+            line for line in index_content.splitlines()
+            if "relaymem-primary-index-entry-v0" in line
+        )
+        log_line = next(
+            line for line in log_content.splitlines()
+            if "relaymem-primary-log-entry-v0" in line
+        )
+        index_entry = json.loads(
+            index_line[len("<!-- relaymem-primary-index-entry-v0 ") : -4]
+        )
+        log_entry = json.loads(
+            log_line[len("<!-- relaymem-primary-log-entry-v0 ") : -4]
+        )
+        mismatched_page = page_bytes.decode("utf-8").replace(
+            'namespace: "character-main"',
+            'namespace: "different-character"',
+            1,
+        ).encode("utf-8")
+        page_plan["page_bytes"] = len(mismatched_page)
+        page_plan["page_digest"] = hashlib.sha256(mismatched_page).hexdigest()
+        page_reasons = verify_m3g_page(
+            page_plan,
+            mismatched_page,
+            index_entry=index_entry,
+            log_entry=log_entry,
+        )
+        require(
+            "primary_reconciliation_apply_page_namespace_mismatch" in page_reasons,
+            page_reasons,
+        )
+        print("ok page namespace and lineage remain bound to control entries")
 
         mem_dir = root / "memory/mem"
         lock_fd = os.open(mem_dir, os.O_RDONLY | os.O_DIRECTORY)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import errno
+import json
 import os
 import secrets
 from collections.abc import Mapping
@@ -18,7 +19,11 @@ from ._relaymem_primary_index_log_reconciliation_io import (
     _open_root_directory,
     _read_regular_file,
 )
-from ._relaymem_primary_index_log_reconciliation_plan import MAX_INDEX_LOG_BYTES
+from ._relaymem_primary_index_log_reconciliation_plan import (
+    MAX_INDEX_LOG_BYTES,
+    _parse_markers,
+    _valid_existing_entry,
+)
 
 
 def apply_or_inspect_reconciliation(
@@ -194,8 +199,50 @@ def _inspect_control(
         len(content) == control_plan["expected_current_bytes"]
         and sha256(content).hexdigest() == control_plan["expected_current_digest"]
     ):
+        transition_reasons = _append_transition_reasons(
+            current=content, control_plan=control_plan, role=role
+        )
+        if transition_reasons:
+            return {"status": "invalid", "blocked_reasons": transition_reasons}
         return {"status": "expected", "blocked_reasons": []}
     return {"status": "conflict", "blocked_reasons": []}
+
+
+def _append_transition_reasons(
+    *, current: bytes, control_plan: Mapping[str, Any], role: str
+) -> list[str]:
+    if control_plan["idempotent_noop"] is True:
+        return [f"primary_reconciliation_apply_{role}_noop_current_mismatch"]
+    marker = f"relaymem-primary-{role}-entry-v0"
+    header = "# Index" if role == "index" else "# Log"
+    current_parsed = _parse_markers(current, marker, header)
+    if current_parsed.get("valid") is not True or any(
+        not _valid_existing_entry(marker, entry)
+        for entry in current_parsed.get("entries", [])
+    ):
+        return [f"primary_reconciliation_apply_{role}_current_contract_invalid"]
+    proposed = str(control_plan["proposed_next_content"]).encode("utf-8")
+    proposed_parsed = _parse_markers(proposed, marker, header)
+    if proposed_parsed.get("valid") is not True:
+        return [f"primary_reconciliation_apply_{role}_append_transition_invalid"]
+    matches = [
+        entry
+        for entry in proposed_parsed["entries"]
+        if entry.get("entry_id") == control_plan["entry_identity"]
+    ]
+    if len(matches) != 1:
+        return [f"primary_reconciliation_apply_{role}_append_transition_invalid"]
+    serialized = json.dumps(
+        matches[0], ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    suffix = f"<!-- {marker} {serialized} -->\n".encode("utf-8")
+    expected = current
+    if expected and not expected.endswith(b"\n"):
+        expected += b"\n"
+    expected += suffix
+    if proposed != expected:
+        return [f"primary_reconciliation_apply_{role}_append_transition_invalid"]
+    return []
 
 
 def _atomic_replace_control(
