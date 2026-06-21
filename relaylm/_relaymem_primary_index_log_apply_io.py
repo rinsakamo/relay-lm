@@ -369,6 +369,7 @@ def _atomic_replace_control(
         if temp_created:
             try:
                 os.unlink(temp_name, dir_fd=parent_fd)
+                os.fsync(parent_fd)
             except OSError:
                 result["cleanup_complete"] = False
                 if not result["blocked_reasons"]:

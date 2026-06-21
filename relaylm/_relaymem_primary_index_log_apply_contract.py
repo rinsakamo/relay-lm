@@ -326,7 +326,11 @@ def _parse_control_plan(
     if not isinstance(content, str):
         reasons.append(f"primary_reconciliation_apply_{role}_content_invalid")
     else:
-        encoded = content.encode("utf-8")
+        try:
+            encoded = content.encode("utf-8")
+        except UnicodeEncodeError:
+            reasons.append(f"primary_reconciliation_apply_{role}_content_utf8_invalid")
+            encoded = b""
         if len(encoded) > MAX_INDEX_LOG_BYTES:
             reasons.append(f"primary_reconciliation_apply_{role}_content_size_exceeded")
         if len(encoded) != value.get("proposed_next_bytes"):
@@ -354,6 +358,13 @@ def _parse_control_plan(
         if parsed.get("valid") is not True:
             reasons.append(f"primary_reconciliation_apply_{role}_content_contract_invalid")
         else:
+            if any(
+                not _valid_existing_entry(marker, entry)
+                for entry in parsed["entries"]
+            ):
+                reasons.append(
+                    f"primary_reconciliation_apply_{role}_content_entry_invalid"
+                )
             matches = [
                 entry
                 for entry in parsed["entries"]

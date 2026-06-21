@@ -233,9 +233,11 @@ def _result_status(
     state: Mapping[str, Any],
     reasons: Sequence[str],
 ) -> str:
+    if not gates_valid:
+        return "blocked"
     if not enabled:
         return "disabled"
-    if not gates_valid or not plan_valid or not page_verified:
+    if not plan_valid or not page_verified:
         return "blocked"
     if state["receipt_status"]:
         return str(state["receipt_status"])

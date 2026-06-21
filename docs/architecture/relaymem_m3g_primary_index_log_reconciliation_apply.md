@@ -191,7 +191,7 @@ Before replacement, the current file must equal either:
 - the exact expected byte count and digest, or
 - the exact proposed content, byte count, and digest.
 
-The latter is treated as an idempotent no-op. Any other state is a conflict and is not overwritten.
+The latter is treated as an idempotent no-op. Every marker in a no-op file is still revalidated; an unrelated malformed or forged entry cannot be hidden beside the target entry. Any other state is a conflict and is not overwritten.
 
 ## Two-file ordering and atomicity boundary
 
@@ -335,7 +335,10 @@ Coverage includes:
 - canonical marker and digest validation,
 - projection leakage checks,
 - advisory writer-lock contention,
-- page/control-file symlink rejection.
+- page/control-file symlink rejection,
+- invalid UTF-8 surrogate plan content,
+- forged unrelated entries in no-op plans,
+- durable temp-cleanup confirmation.
 
 ## Next bounded slice
 
