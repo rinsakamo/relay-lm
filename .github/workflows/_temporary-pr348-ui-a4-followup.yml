@@ -1,0 +1,23 @@
+name: Temporary PR348 UI-A4 status follow-up
+
+on:
+  push:
+    branches:
+      - docs-align-current-implementation-status-20260621
+    paths:
+      - ".github/workflows/_temporary-pr348-ui-a4-followup.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/_temporary_pr348_ui_a4_followup.py
