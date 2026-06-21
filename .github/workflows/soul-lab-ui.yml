@@ -1,0 +1,34 @@
+name: SOUL Lab UI
+
+on:
+  pull_request:
+    paths:
+      - "apps/soul-lab/**"
+      - ".github/workflows/soul-lab-ui.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/soul-lab/**"
+      - ".github/workflows/soul-lab-ui.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/soul-lab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install SOUL Lab dependencies
+        run: npm install --no-audit --no-fund
+      - name: Type-check SOUL Lab
+        run: npm run typecheck
+      - name: Build SOUL Lab
+        run: npm run build
