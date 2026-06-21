@@ -1,9 +1,4 @@
-"""Deferred RelaySLP job-admission preflight helpers.
-
-Phase 6-A1 is helper-only. It validates bounded deferred-job metadata and a
-content-free RelayMEM source-lineage artifact. It never enqueues work, invokes a
-worker, writes memory, mutates RelaySOUL, or changes visible response delivery.
-"""
+"""Phase 6-A1 helper-only RelaySLP deferred-job admission preflight."""
 
 from __future__ import annotations
 
@@ -13,8 +8,7 @@ from typing import Any
 _SCHEMA_VERSION = "relaymem.slp_job_admission_preflight.v0"
 _PROJECTION_SCHEMA_VERSION = "relaymem.slp_job_admission_projection.v0"
 _SOURCE_LINEAGE_SCHEMA_VERSION = "relaymem.primary_source_lineage.v0"
-
-_KNOWN_TRIGGER_MODES = {
+_TRIGGERS = {
     "turn_end",
     "explicit_memory_request",
     "session_end",
@@ -23,17 +17,17 @@ _KNOWN_TRIGGER_MODES = {
     "recovery_followup",
     "lab_memory_operation",
 }
-_SUPPORTED_TRIGGER_MODES = {"turn_end", "explicit_memory_request"}
-_KNOWN_PROCESSING_STAGES = {
+_SUPPORTED_TRIGGERS = {"turn_end", "explicit_memory_request"}
+_STAGES = {
     "primary_formation",
     "primary_write_preflight",
     "secondary_consolidation",
     "memory_operation",
     "lint",
 }
-_SUPPORTED_PROCESSING_STAGES = {"primary_formation", "primary_write_preflight"}
-_KNOWN_SOURCE_EVENT_KINDS = {"turn", "session", "communication", "manual_import"}
-_KNOWN_RUNTIME_TERMINAL_STATUSES = {
+_SUPPORTED_STAGES = {"primary_formation", "primary_write_preflight"}
+_EVENT_KINDS = {"turn", "session", "communication", "manual_import"}
+_RUNTIME_STATUSES = {
     "completed",
     "succeeded",
     "idle",
@@ -43,15 +37,14 @@ _KNOWN_RUNTIME_TERMINAL_STATUSES = {
     "recovery_pending",
     "unresolved_recovery",
 }
-_ALLOWED_RUNTIME_TERMINAL_STATUSES = {"completed", "succeeded", "idle"}
-_BLOCKED_RUNTIME_TERMINAL_STATUSES = {
+_BLOCKED_RUNTIME = {
     "blocked",
     "failed",
     "waiting_user",
     "recovery_pending",
     "unresolved_recovery",
 }
-_KNOWN_PERSISTENCE_POLICY_STATUSES = {
+_POLICIES = {
     "allowed",
     "free_to_update",
     "review_required",
@@ -59,14 +52,12 @@ _KNOWN_PERSISTENCE_POLICY_STATUSES = {
     "blocked",
     "never_auto_promote",
 }
-_ALLOWED_PERSISTENCE_POLICY_STATUSES = {"allowed", "free_to_update"}
-_HELD_PERSISTENCE_POLICY_STATUSES = {"review_required"}
-_BLOCKED_PERSISTENCE_POLICY_STATUSES = {
+_BLOCKED_POLICIES = {
     "explicit_approval_required",
     "blocked",
     "never_auto_promote",
 }
-_ALLOWED_LINEAGE_FIELDS = {
+_LINEAGE_FIELDS = {
     "schema_version",
     "content_free",
     "content_included",
@@ -78,15 +69,15 @@ _ALLOWED_LINEAGE_FIELDS = {
     "lineage_shape",
     "blocked_reasons",
 }
-_ALLOWED_LINEAGE_SHAPE_FIELDS = {
+_SHAPE_FIELDS = {
     "source_event_id_present",
     "run_id_present",
     "session_id_present",
     "turn_index_present",
 }
-_MAX_TOKEN_LENGTH = 128
-_MAX_SOURCE_COUNT = 32
-_MAX_BLOCKED_REASONS = 32
+_MAX_TOKEN = 128
+_MAX_SOURCES = 32
+_MAX_REASONS = 32
 
 
 def build_relaymem_slp_job_admission_preflight(
@@ -107,140 +98,97 @@ def build_relaymem_slp_job_admission_preflight(
     runtime_terminal_status: str = "completed",
     persistence_policy_status: str = "allowed",
 ) -> dict[str, Any]:
-    """Build a bounded RelaySLP deferred-job admission decision.
+    """Validate bounded metadata without queue I/O, workers, or persistence."""
 
-    The returned private artifact may contain bounded runtime correlation tokens.
-    Its nested ``projection`` is the only public diagnostics shape and never
-    includes those tokens, lineage fingerprints, or idempotency material.
-    """
-
-    safe_enabled, enabled_reasons = _required_bool(enabled, "enabled_invalid")
-    safe_dry_run_only, dry_run_reasons = _required_bool(
-        dry_run_only, "dry_run_only_invalid"
-    )
-    safe_enqueue_enabled, enqueue_reasons = _required_bool(
-        enqueue_enabled, "enqueue_enabled_invalid"
-    )
-    safe_visible_finalized, visible_reasons = _required_bool(
+    enabled, reasons = _bool(enabled, "enabled_invalid")
+    dry_run_only, extra = _bool(dry_run_only, "dry_run_only_invalid")
+    reasons += extra
+    enqueue_enabled, extra = _bool(enqueue_enabled, "enqueue_enabled_invalid")
+    reasons += extra
+    visible_response_finalized, extra = _bool(
         visible_response_finalized, "visible_response_finalized_invalid"
     )
+    reasons += extra
 
-    safe_trigger, trigger_reasons = _validated_enum(
+    trigger_mode, extra = _enum(
         trigger_mode,
-        known=_KNOWN_TRIGGER_MODES,
-        supported=_SUPPORTED_TRIGGER_MODES,
-        invalid_reason="trigger_mode_invalid",
-        unsupported_reason="trigger_mode_unsupported",
+        _TRIGGERS,
+        _SUPPORTED_TRIGGERS,
+        "trigger_mode_invalid",
+        "trigger_mode_unsupported",
     )
-    safe_stage, stage_reasons = _validated_enum(
+    reasons += extra
+    processing_stage, extra = _enum(
         processing_stage,
-        known=_KNOWN_PROCESSING_STAGES,
-        supported=_SUPPORTED_PROCESSING_STAGES,
-        invalid_reason="processing_stage_invalid",
-        unsupported_reason="processing_stage_unsupported",
+        _STAGES,
+        _SUPPORTED_STAGES,
+        "processing_stage_invalid",
+        "processing_stage_unsupported",
     )
-    safe_run_id, run_id_reasons = _required_token(run_id, "run_id_invalid")
-    safe_session_id, session_id_reasons = _optional_token(
-        session_id, "session_id_invalid"
+    reasons += extra
+    run_id, extra = _token(run_id, "run_id_invalid")
+    reasons += extra
+    session_id, extra = _optional_token(session_id, "session_id_invalid")
+    reasons += extra
+    namespace, extra = _token(namespace, "namespace_invalid")
+    reasons += extra
+    turn_index, extra = _index(turn_index, "turn_index_invalid")
+    reasons += extra
+    source_count, extra = _source_count(source_count)
+    reasons += extra
+    source_event_kind, extra = _known_token(
+        source_event_kind, _EVENT_KINDS, "source_event_kind_invalid"
     )
-    safe_namespace, namespace_reasons = _required_token(
-        namespace, "namespace_invalid"
+    reasons += extra
+    runtime_terminal_status, extra = _known_token(
+        runtime_terminal_status, _RUNTIME_STATUSES, "runtime_terminal_status_invalid"
     )
-    safe_turn_index, turn_index_reasons = _optional_non_negative_int(
-        turn_index, "turn_index_invalid"
+    reasons += extra
+    persistence_policy_status, extra = _known_token(
+        persistence_policy_status, _POLICIES, "persistence_policy_status_invalid"
     )
-    safe_source_count, source_count_reasons = _bounded_source_count(source_count)
-    safe_source_event_kind, source_event_reasons = _validated_source_event_kind(
-        source_event_kind
-    )
-    safe_runtime_status, runtime_status_reasons = _validated_runtime_status(
-        runtime_terminal_status
-    )
-    safe_policy_status, policy_status_reasons = _validated_policy_status(
-        persistence_policy_status
-    )
+    reasons += extra
 
-    structural_reasons = _dedupe(
-        enabled_reasons
-        + dry_run_reasons
-        + enqueue_reasons
-        + visible_reasons
-        + trigger_reasons
-        + stage_reasons
-        + run_id_reasons
-        + session_id_reasons
-        + namespace_reasons
-        + turn_index_reasons
-        + source_count_reasons
-        + source_event_reasons
-        + runtime_status_reasons
-        + policy_status_reasons
-    )
-
-    if safe_enabled is False:
-        structural_reasons.append("feature_disabled")
-
-    if safe_trigger == "turn_end" and safe_turn_index is None:
-        structural_reasons.append("turn_index_required_for_turn_end")
-    if safe_trigger == "turn_end" and safe_source_event_kind != "turn":
-        structural_reasons.append("turn_end_source_event_kind_mismatch")
-    if safe_trigger == "explicit_memory_request" and safe_source_event_kind not in {
-        "turn",
-        "manual_import",
-    }:
-        structural_reasons.append("explicit_request_source_event_kind_unsupported")
-
-    if safe_runtime_status in _BLOCKED_RUNTIME_TERMINAL_STATUSES:
-        structural_reasons.append(
-            f"runtime_status_blocks_admission:{safe_runtime_status}"
-        )
-    elif (
-        safe_runtime_status
-        and safe_runtime_status not in _ALLOWED_RUNTIME_TERMINAL_STATUSES
+    if not enabled:
+        reasons.append("feature_disabled")
+    if trigger_mode == "turn_end":
+        if turn_index is None:
+            reasons.append("turn_index_required_for_turn_end")
+        if source_event_kind != "turn":
+            reasons.append("turn_end_source_event_kind_mismatch")
+        if not visible_response_finalized:
+            reasons.append("visible_response_not_finalized")
+    if (
+        trigger_mode == "explicit_memory_request"
+        and source_event_kind not in {"turn", "manual_import"}
     ):
-        structural_reasons.append("runtime_status_not_admissible")
+        reasons.append("explicit_request_source_event_kind_unsupported")
+    if runtime_terminal_status in _BLOCKED_RUNTIME:
+        reasons.append(f"runtime_status_blocks_admission:{runtime_terminal_status}")
 
-    if safe_trigger == "turn_end" and safe_visible_finalized is not True:
-        structural_reasons.append("visible_response_not_finalized")
-
-    parsed_lineage = _parse_source_lineage(
+    lineage = _parse_lineage(
         source_lineage_artifact,
-        expected_namespace=safe_namespace,
-        expected_source_event_kind=safe_source_event_kind,
-        required=safe_source_count > 0,
+        namespace,
+        source_event_kind,
+        required=source_count > 0,
     )
-    structural_reasons.extend(parsed_lineage["blocked_reasons"])
+    reasons += lineage["blocked_reasons"]
 
     hold_reasons: list[str] = []
-    if safe_policy_status in _HELD_PERSISTENCE_POLICY_STATUSES:
+    if persistence_policy_status == "review_required":
         hold_reasons.append("persistence_policy_requires_review")
-    elif safe_policy_status in _BLOCKED_PERSISTENCE_POLICY_STATUSES:
-        structural_reasons.append(
-            f"persistence_policy_blocks_admission:{safe_policy_status}"
+    elif persistence_policy_status in _BLOCKED_POLICIES:
+        reasons.append(
+            f"persistence_policy_blocks_admission:{persistence_policy_status}"
         )
-    elif (
-        safe_policy_status
-        and safe_policy_status not in _ALLOWED_PERSISTENCE_POLICY_STATUSES
-    ):
-        structural_reasons.append("persistence_policy_not_admissible")
+    if not dry_run_only and not enqueue_enabled:
+        reasons.append("enqueue_gate_disabled")
 
-    if safe_dry_run_only is False and safe_enqueue_enabled is False:
-        structural_reasons.append("enqueue_gate_disabled")
-
-    structural_reasons = _dedupe(structural_reasons)[:_MAX_BLOCKED_REASONS]
-    hold_reasons = _dedupe(hold_reasons)[:_MAX_BLOCKED_REASONS]
-
-    status = _admission_status(
-        structural_reasons=structural_reasons,
-        hold_reasons=hold_reasons,
-        source_count=safe_source_count,
-        dry_run_only=safe_dry_run_only,
-        enqueue_enabled=safe_enqueue_enabled,
-    )
-    retry_class = _retry_class(status, structural_reasons)
-    blocked_reasons = _dedupe(structural_reasons + hold_reasons)[
-        :_MAX_BLOCKED_REASONS
-    ]
+    reasons = _dedupe(reasons)[:_MAX_REASONS]
+    hold_reasons = _dedupe(hold_reasons)[:_MAX_REASONS]
+    status = _status(reasons, hold_reasons, source_count, dry_run_only, enqueue_enabled)
+    blocked_reasons = _dedupe(reasons + hold_reasons)[:_MAX_REASONS]
+    retry_class = _retry_class(status, reasons)
 
     projection = {
         "schema_version": _PROJECTION_SCHEMA_VERSION,
@@ -248,25 +196,25 @@ def build_relaymem_slp_job_admission_preflight(
         "content_free": True,
         "content_included": False,
         "raw_text_included": False,
-        "enabled": safe_enabled,
-        "dry_run_only": safe_dry_run_only,
-        "enqueue_enabled": safe_enqueue_enabled,
+        "enabled": enabled,
+        "dry_run_only": dry_run_only,
+        "enqueue_enabled": enqueue_enabled,
         "admission_status": status,
-        "trigger_mode": safe_trigger or "unknown",
-        "processing_stage": safe_stage or "unknown",
-        "source_event_kind": safe_source_event_kind or "unknown",
-        "source_count": safe_source_count,
-        "source_count_limit": _MAX_SOURCE_COUNT,
+        "trigger_mode": trigger_mode or "unknown",
+        "processing_stage": processing_stage or "unknown",
+        "source_event_kind": source_event_kind or "unknown",
+        "source_count": source_count,
+        "source_count_limit": _MAX_SOURCES,
         "correlation": {
-            "run_id_present": safe_run_id is not None,
-            "turn_index_present": safe_turn_index is not None,
-            "session_id_present": safe_session_id is not None,
-            "namespace_present": safe_namespace is not None,
+            "run_id_present": run_id is not None,
+            "turn_index_present": turn_index is not None,
+            "session_id_present": session_id is not None,
+            "namespace_present": namespace is not None,
         },
-        "source_reference_valid": parsed_lineage["valid"],
-        "visible_response_finalized": safe_visible_finalized,
-        "runtime_terminal_status": safe_runtime_status or "unknown",
-        "persistence_policy_status": safe_policy_status or "unknown",
+        "source_reference_valid": lineage["valid"],
+        "visible_response_finalized": visible_response_finalized,
+        "runtime_terminal_status": runtime_terminal_status or "unknown",
+        "persistence_policy_status": persistence_policy_status or "unknown",
         "retry_class": retry_class,
         "blocked_reasons": blocked_reasons,
         "runtime_private_reference_included": False,
@@ -274,29 +222,28 @@ def build_relaymem_slp_job_admission_preflight(
         "dispatch_idempotency_key_included": False,
         "memory_write_idempotency_key_included": False,
     }
-
     return {
         "schema_version": _SCHEMA_VERSION,
         "helper_only": True,
         "diagnostics_only": True,
         "read_only": True,
-        "enabled": safe_enabled,
-        "dry_run_only": safe_dry_run_only,
-        "enqueue_enabled": safe_enqueue_enabled,
+        "enabled": enabled,
+        "dry_run_only": dry_run_only,
+        "enqueue_enabled": enqueue_enabled,
         "admission_status": status,
-        "trigger_mode": safe_trigger or "unknown",
-        "processing_stage": safe_stage or "unknown",
-        "source_event_kind": safe_source_event_kind or "unknown",
-        "run_id": safe_run_id,
-        "turn_index": safe_turn_index,
-        "session_id": safe_session_id,
-        "namespace": safe_namespace,
-        "source_count": safe_source_count,
-        "source_reference_valid": parsed_lineage["valid"],
-        "source_lineage_fingerprint": parsed_lineage["lineage_fingerprint"],
-        "visible_response_finalized": safe_visible_finalized,
-        "runtime_terminal_status": safe_runtime_status or "unknown",
-        "persistence_policy_status": safe_policy_status or "unknown",
+        "trigger_mode": trigger_mode or "unknown",
+        "processing_stage": processing_stage or "unknown",
+        "source_event_kind": source_event_kind or "unknown",
+        "run_id": run_id,
+        "turn_index": turn_index,
+        "session_id": session_id,
+        "namespace": namespace,
+        "source_count": source_count,
+        "source_reference_valid": lineage["valid"],
+        "source_lineage_fingerprint": lineage["lineage_fingerprint"],
+        "visible_response_finalized": visible_response_finalized,
+        "runtime_terminal_status": runtime_terminal_status or "unknown",
+        "persistence_policy_status": persistence_policy_status or "unknown",
         "retry_class": retry_class,
         "blocked_reasons": blocked_reasons,
         "enqueue_eligible": status == "eligible_for_enqueue",
@@ -313,78 +260,59 @@ def build_relaymem_slp_job_admission_preflight(
     }
 
 
-def _parse_source_lineage(
+def _parse_lineage(
     artifact: Mapping[str, Any] | None,
+    namespace: str | None,
+    event_kind: str | None,
     *,
-    expected_namespace: str | None,
-    expected_source_event_kind: str | None,
     required: bool,
 ) -> dict[str, Any]:
     if artifact is None and not required:
-        return {
-            "valid": False,
-            "lineage_fingerprint": "",
-            "blocked_reasons": [],
-        }
+        return _invalid_lineage(None)
     if not isinstance(artifact, Mapping):
         return _invalid_lineage("source_lineage_missing")
-
-    unexpected_fields = sorted(set(artifact) - _ALLOWED_LINEAGE_FIELDS)
-    if unexpected_fields:
+    if set(artifact) - _LINEAGE_FIELDS:
         return _invalid_lineage("source_lineage_unexpected_field")
-    if _contains_forbidden_content_key(artifact):
-        return _invalid_lineage("source_lineage_content_field_forbidden")
-    if artifact.get("schema_version") != _SOURCE_LINEAGE_SCHEMA_VERSION:
-        return _invalid_lineage("source_lineage_schema_mismatch")
-    if artifact.get("content_free") is not True:
-        return _invalid_lineage("source_lineage_not_content_free")
-    if artifact.get("content_included") is not False:
-        return _invalid_lineage("source_lineage_content_included")
-    if artifact.get("raw_text_included") is not False:
-        return _invalid_lineage("source_lineage_raw_text_included")
-    if artifact.get("valid") is not True:
-        return _invalid_lineage("source_lineage_invalid")
+    checks = (
+        ("schema_version", _SOURCE_LINEAGE_SCHEMA_VERSION, "source_lineage_schema_mismatch"),
+        ("content_free", True, "source_lineage_not_content_free"),
+        ("content_included", False, "source_lineage_content_included"),
+        ("raw_text_included", False, "source_lineage_raw_text_included"),
+        ("valid", True, "source_lineage_invalid"),
+    )
+    for field, expected, reason in checks:
+        if artifact.get(field) != expected:
+            return _invalid_lineage(reason)
 
+    # Validate fixed containers before values; never recursively walk caller metadata.
     shape = artifact.get("lineage_shape")
     if not isinstance(shape, Mapping):
         return _invalid_lineage("source_lineage_shape_invalid")
-    if set(shape) != _ALLOWED_LINEAGE_SHAPE_FIELDS:
+    if set(shape) != _SHAPE_FIELDS:
         return _invalid_lineage("source_lineage_shape_unexpected_field")
-    if any(not isinstance(value, bool) for value in shape.values()):
+    if any(type(value) is not bool for value in shape.values()):
         return _invalid_lineage("source_lineage_shape_invalid")
-
-    lineage_reasons = artifact.get("blocked_reasons")
-    if not isinstance(lineage_reasons, list) or lineage_reasons:
+    upstream_reasons = artifact.get("blocked_reasons")
+    if type(upstream_reasons) is not list or upstream_reasons:
         return _invalid_lineage("source_lineage_blocked_reasons_invalid")
 
     fingerprint = artifact.get("lineage_fingerprint")
-    if not _is_sha256_hex(fingerprint):
+    if not _sha256(fingerprint):
         return _invalid_lineage("source_lineage_fingerprint_invalid")
-
-    lineage_namespace, namespace_reasons = _required_token(
+    upstream_namespace, reasons = _token(
         artifact.get("namespace"), "source_lineage_namespace_invalid"
     )
-    lineage_event_kind, source_event_reasons = _validated_source_event_kind(
+    upstream_kind, extra = _known_token(
         artifact.get("source_event_kind"),
-        invalid_reason="source_lineage_event_kind_invalid",
+        _EVENT_KINDS,
+        "source_lineage_event_kind_invalid",
     )
-    reasons = _dedupe(namespace_reasons + source_event_reasons)
-    if lineage_event_kind and not _lineage_shape_has_identity(
-        source_event_kind=lineage_event_kind,
-        shape=shape,
-    ):
+    reasons += extra
+    if upstream_kind and not _shape_has_identity(upstream_kind, shape):
         reasons.append("source_lineage_missing")
-    if (
-        lineage_namespace
-        and expected_namespace
-        and lineage_namespace != expected_namespace
-    ):
+    if upstream_namespace and namespace and upstream_namespace != namespace:
         reasons.append("source_lineage_namespace_mismatch")
-    if (
-        lineage_event_kind
-        and expected_source_event_kind
-        and lineage_event_kind != expected_source_event_kind
-    ):
+    if upstream_kind and event_kind and upstream_kind != event_kind:
         reasons.append("source_lineage_event_kind_mismatch")
     if reasons:
         return {
@@ -399,143 +327,96 @@ def _parse_source_lineage(
     }
 
 
-def _lineage_shape_has_identity(
-    *,
-    source_event_kind: str,
-    shape: Mapping[str, Any],
-) -> bool:
-    """Mirror RelayMEM-M3b source-lineage identity requirements."""
-
+def _shape_has_identity(kind: str, shape: Mapping[str, Any]) -> bool:
     if shape.get("source_event_id_present") is True:
         return True
-    run_or_session_present = (
+    run_or_session = (
         shape.get("run_id_present") is True
         or shape.get("session_id_present") is True
     )
-    if source_event_kind == "turn":
-        return shape.get("turn_index_present") is True and run_or_session_present
-    if source_event_kind == "session":
-        return run_or_session_present
+    if kind == "turn":
+        return shape.get("turn_index_present") is True and run_or_session
+    if kind == "session":
+        return run_or_session
     return False
 
 
-def _invalid_lineage(reason: str) -> dict[str, Any]:
+def _invalid_lineage(reason: str | None) -> dict[str, Any]:
     return {
         "valid": False,
         "lineage_fingerprint": "",
-        "blocked_reasons": [reason],
+        "blocked_reasons": [] if reason is None else [reason],
     }
 
 
-def _required_bool(value: Any, reason: str) -> tuple[bool, list[str]]:
-    if isinstance(value, bool):
-        return value, []
-    return False, [reason]
+def _bool(value: Any, reason: str) -> tuple[bool, list[str]]:
+    return (value, []) if type(value) is bool else (False, [reason])
 
 
-def _required_token(value: Any, reason: str) -> tuple[str | None, list[str]]:
+def _token(value: Any, reason: str) -> tuple[str | None, list[str]]:
     if not isinstance(value, str):
         return None, [reason]
-    token = value.strip()
-    if not token or len(token) > _MAX_TOKEN_LENGTH or not _is_safe_token(token):
-        return None, [reason]
-    return token, []
+    value = value.strip()
+    safe = value and len(value) <= _MAX_TOKEN and all(
+        char.isascii() and (char.isalnum() or char in "-_.:/") for char in value
+    )
+    return (value, []) if safe else (None, [reason])
 
 
 def _optional_token(value: Any, reason: str) -> tuple[str | None, list[str]]:
-    if value is None:
-        return None, []
-    return _required_token(value, reason)
+    return (None, []) if value is None else _token(value, reason)
 
 
-def _optional_non_negative_int(
-    value: Any, reason: str
-) -> tuple[int | None, list[str]]:
-    if value is None:
-        return None, []
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+def _known_token(
+    value: Any, known: set[str], reason: str
+) -> tuple[str | None, list[str]]:
+    value, reasons = _token(value, reason)
+    if reasons or value not in known:
         return None, [reason]
     return value, []
 
 
-def _bounded_source_count(value: Any) -> tuple[int, list[str]]:
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+def _enum(
+    value: Any,
+    known: set[str],
+    supported: set[str],
+    invalid: str,
+    unsupported: str,
+) -> tuple[str | None, list[str]]:
+    value, reasons = _known_token(value, known, invalid)
+    if reasons:
+        return None, reasons
+    return (value, []) if value in supported else (value, [unsupported])
+
+
+def _index(value: Any, reason: str) -> tuple[int | None, list[str]]:
+    if value is None:
+        return None, []
+    return (value, []) if type(value) is int and value >= 0 else (None, [reason])
+
+
+def _source_count(value: Any) -> tuple[int, list[str]]:
+    if type(value) is not int or value < 0:
         return 0, ["source_count_invalid"]
-    if value > _MAX_SOURCE_COUNT:
-        return _MAX_SOURCE_COUNT, ["source_count_limit_exceeded"]
+    if value > _MAX_SOURCES:
+        return _MAX_SOURCES, ["source_count_limit_exceeded"]
     return value, []
 
 
-def _validated_enum(
-    value: Any,
-    *,
-    known: set[str],
-    supported: set[str],
-    invalid_reason: str,
-    unsupported_reason: str,
-) -> tuple[str | None, list[str]]:
-    token, reasons = _required_token(value, invalid_reason)
-    if reasons:
-        return None, reasons
-    assert token is not None
-    if token not in known:
-        return None, [invalid_reason]
-    if token not in supported:
-        return token, [unsupported_reason]
-    return token, []
-
-
-def _validated_source_event_kind(
-    value: Any,
-    *,
-    invalid_reason: str = "source_event_kind_invalid",
-) -> tuple[str | None, list[str]]:
-    token, reasons = _required_token(value, invalid_reason)
-    if reasons:
-        return None, reasons
-    assert token is not None
-    if token not in _KNOWN_SOURCE_EVENT_KINDS:
-        return None, [invalid_reason]
-    return token, []
-
-
-def _validated_runtime_status(value: Any) -> tuple[str | None, list[str]]:
-    token, reasons = _required_token(value, "runtime_terminal_status_invalid")
-    if reasons:
-        return None, reasons
-    assert token is not None
-    if token not in _KNOWN_RUNTIME_TERMINAL_STATUSES:
-        return None, ["runtime_terminal_status_invalid"]
-    return token, []
-
-
-def _validated_policy_status(value: Any) -> tuple[str | None, list[str]]:
-    token, reasons = _required_token(value, "persistence_policy_status_invalid")
-    if reasons:
-        return None, reasons
-    assert token is not None
-    if token not in _KNOWN_PERSISTENCE_POLICY_STATUSES:
-        return None, ["persistence_policy_status_invalid"]
-    return token, []
-
-
-def _admission_status(
-    *,
-    structural_reasons: Sequence[str],
-    hold_reasons: Sequence[str],
-    source_count: int,
-    dry_run_only: bool,
-    enqueue_enabled: bool,
+def _status(
+    reasons: Sequence[str],
+    holds: Sequence[str],
+    count: int,
+    dry_run: bool,
+    enqueue: bool,
 ) -> str:
-    if structural_reasons:
+    if reasons:
         return "blocked"
-    if hold_reasons:
+    if holds:
         return "held"
-    if source_count == 0:
+    if count == 0:
         return "skipped"
-    if dry_run_only or not enqueue_enabled:
-        return "admitted_dry_run"
-    return "eligible_for_enqueue"
+    return "admitted_dry_run" if dry_run or not enqueue else "eligible_for_enqueue"
 
 
 def _retry_class(status: str, reasons: Sequence[str]) -> str:
@@ -554,51 +435,11 @@ def _retry_class(status: str, reasons: Sequence[str]) -> str:
     return "non_retryable"
 
 
-def _contains_forbidden_content_key(value: Any) -> bool:
-    forbidden_fragments = {
-        "text",
-        "content",
-        "prompt",
-        "message",
-        "snippet",
-        "summary",
-        "page",
-        "patch",
-        "soul",
-        "payload",
-        "candidate",
-        "path",
-        "idempotency",
-    }
-    if isinstance(value, Mapping):
-        for key, item in value.items():
-            normalized = str(key).strip().lower()
-            if normalized not in {
-                "content_free",
-                "content_included",
-                "raw_text_included",
-            } and any(fragment in normalized for fragment in forbidden_fragments):
-                return True
-            if _contains_forbidden_content_key(item):
-                return True
-    elif isinstance(value, Sequence) and not isinstance(
-        value, (str, bytes, bytearray)
-    ):
-        return any(_contains_forbidden_content_key(item) for item in value)
-    return False
-
-
-def _is_sha256_hex(value: Any) -> bool:
-    if not isinstance(value, str) or len(value) != 64:
-        return False
-    return all(char in "0123456789abcdef" for char in value)
-
-
-def _is_safe_token(value: str) -> bool:
-    return all(
-        char.isascii()
-        and (char.isalnum() or char in {"-", "_", ".", ":", "/"})
-        for char in value
+def _sha256(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
     )
 
 
