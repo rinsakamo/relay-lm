@@ -61,9 +61,23 @@ function operationKey(operation: MemoryOperation): MemoryInspectorMessageKey {
 function effectKey(operation: MemoryOperation): MemoryInspectorMessageKey {
   if (operation === "correct") return "correctEffect";
   if (operation === "forget") return "forgetEffect";
+  if (operation === "discard") return "discardEffect";
   if (operation === "pin") return "pinEffect";
   if (operation === "unpin") return "unpinEffect";
   return "mergeEffect";
+}
+
+function operationAllowed(record: InspectorMemoryRecord, operation: MemoryOperation): boolean {
+  if (record.state === "blocked") return false;
+
+  if (record.state === "held") {
+    return operation === "correct" || operation === "discard" || operation === "merge";
+  }
+
+  if (operation === "discard") return false;
+  if (operation === "pin") return !record.pinned;
+  if (operation === "unpin") return record.pinned;
+  return true;
 }
 
 export function MemoryInspectorPage({
@@ -138,8 +152,7 @@ export function MemoryInspectorPage({
   }
 
   function openOperation(operation: MemoryOperation) {
-    if (activeOperation || !selectedMemory || selectedMemory.state === "blocked") return;
-    if ((operation === "pin" || operation === "unpin") && selectedMemory.state !== "formed") {
+    if (activeOperation || !selectedMemory || !operationAllowed(selectedMemory, operation)) {
       return;
     }
 
@@ -170,7 +183,9 @@ export function MemoryInspectorPage({
   }
 
   function confirmOperation() {
-    if (!activeOperation || !selectedMemory) return;
+    if (!activeOperation || !selectedMemory || !operationAllowed(selectedMemory, activeOperation)) {
+      return;
+    }
 
     if (
       activeOperation === "correct" &&
@@ -181,11 +196,15 @@ export function MemoryInspectorPage({
       return;
     }
 
-    if (activeOperation === "merge" && !mergeOptions.some((record) => record.memoryId === mergeTargetId)) {
+    if (
+      activeOperation === "merge" &&
+      !mergeOptions.some((record) => record.memoryId === mergeTargetId)
+    ) {
       setError(memoryInspectorMessage(language, "mergeValidation"));
       return;
     }
 
+    const destructive = activeOperation === "forget";
     appendEvent(
       "eventPreviewConfirmed",
       [
@@ -193,12 +212,12 @@ export function MemoryInspectorPage({
         `operation=${activeOperation}`,
         activeOperation === "merge" ? `merge_target=${mergeTargetId}` : null,
         activeOperation === "correct" ? "correction_content=omitted" : null,
-        activeOperation === "forget" ? "destructive=true" : "destructive=false",
+        `destructive=${destructive}`,
         "persisted=false",
       ]
         .filter(Boolean)
         .join("; "),
-      activeOperation === "forget" ? "warning" : "info",
+      destructive ? "warning" : "info",
     );
     setResult({ operation: activeOperation, memoryId: selectedMemory.memoryId });
     setActiveOperation(null);
@@ -206,6 +225,19 @@ export function MemoryInspectorPage({
     setMergeTargetId("");
     setError("");
     onInspectorLockChange(false);
+  }
+
+  function actionButton(operation: MemoryOperation, className = "button button-secondary") {
+    return (
+      <button
+        className={className}
+        type="button"
+        disabled={Boolean(activeOperation)}
+        onClick={() => openOperation(operation)}
+      >
+        {memoryInspectorMessage(language, operationKey(operation))}
+      </button>
+    );
   }
 
   function actionButtons(record: InspectorMemoryRecord) {
@@ -217,51 +249,28 @@ export function MemoryInspectorPage({
       );
     }
 
-    const operationOpen = Boolean(activeOperation);
-    return (
-      <>
-        <div className="memory-inspector-actions">
-          <button
-            className="button button-secondary"
-            type="button"
-            disabled={operationOpen}
-            onClick={() => openOperation("correct")}
-          >
-            {memoryInspectorMessage(language, "correct")}
-          </button>
-          <button
-            className="button memory-inspector-danger-button"
-            type="button"
-            disabled={operationOpen}
-            onClick={() => openOperation("forget")}
-          >
-            {memoryInspectorMessage(language, "forget")}
-          </button>
-          {record.state === "formed" && (
-            <button
-              className="button button-secondary"
-              type="button"
-              disabled={operationOpen}
-              onClick={() => openOperation(record.pinned ? "unpin" : "pin")}
-            >
-              {memoryInspectorMessage(language, record.pinned ? "unpin" : "pin")}
-            </button>
-          )}
-          <button
-            className="button button-secondary"
-            type="button"
-            disabled={operationOpen}
-            onClick={() => openOperation("merge")}
-          >
-            {memoryInspectorMessage(language, "merge")}
-          </button>
-        </div>
-        {record.state === "held" && (
+    if (record.state === "held") {
+      return (
+        <>
+          <div className="memory-inspector-actions">
+            {actionButton("correct")}
+            {actionButton("discard")}
+            {actionButton("merge")}
+          </div>
           <p className="memory-inspector-boundary-note">
-            {memoryInspectorMessage(language, "heldPinUnavailable")}
+            {memoryInspectorMessage(language, "heldOperationBoundary")}
           </p>
-        )}
-      </>
+        </>
+      );
+    }
+
+    return (
+      <div className="memory-inspector-actions">
+        {actionButton("correct")}
+        {actionButton("forget", "button memory-inspector-danger-button")}
+        {actionButton(record.pinned ? "unpin" : "pin")}
+        {actionButton("merge")}
+      </div>
     );
   }
 
@@ -297,14 +306,20 @@ export function MemoryInspectorPage({
       </section>
 
       <div className="memory-inspector-workspace">
-        <section className="memory-inspector-list-panel surface-panel" aria-labelledby="memory-outcomes-title">
+        <section
+          className="memory-inspector-list-panel surface-panel"
+          aria-labelledby="memory-outcomes-title"
+        >
           <div className="section-heading compact-heading">
             <div>
               <p className="eyebrow">LATEST EXPERIENCE</p>
               <h2 id="memory-outcomes-title">{memoryInspectorMessage(language, "outcomes")}</h2>
             </div>
           </div>
-          <div className="memory-inspector-filters" aria-label={memoryInspectorMessage(language, "outcomes")}>
+          <div
+            className="memory-inspector-filters"
+            aria-label={memoryInspectorMessage(language, "outcomes")}
+          >
             {filters.map((item) => (
               <button
                 className={filter === item ? "memory-filter-active" : ""}
@@ -320,14 +335,19 @@ export function MemoryInspectorPage({
           <div className="memory-inspector-record-list">
             {filteredRecords.map((record) => (
               <button
-                className={`memory-inspector-record memory-record-${record.state} ${selectedMemory?.memoryId === record.memoryId ? "memory-record-selected" : ""}`}
+                className={`memory-inspector-record memory-record-${record.state} ${
+                  selectedMemory?.memoryId === record.memoryId ? "memory-record-selected" : ""
+                }`}
                 type="button"
                 key={record.memoryId}
                 disabled={Boolean(activeOperation)}
                 aria-pressed={selectedMemory?.memoryId === record.memoryId}
                 onClick={() => selectMemory(record.memoryId)}
               >
-                <span className={`memory-inspector-count-dot memory-dot-${record.state}`} aria-hidden="true" />
+                <span
+                  className={`memory-inspector-count-dot memory-dot-${record.state}`}
+                  aria-hidden="true"
+                />
                 <span>
                   <span className="memory-inspector-record-heading">
                     <strong>{stateLabel(language, record.state)}</strong>
@@ -343,9 +363,14 @@ export function MemoryInspectorPage({
           </div>
         </section>
 
-        <section className="memory-inspector-detail-panel surface-panel" aria-labelledby="selected-memory-title">
+        <section
+          className="memory-inspector-detail-panel surface-panel"
+          aria-labelledby="selected-memory-title"
+        >
           {!selectedMemory ? (
-            <p className="memory-inspector-empty">{memoryInspectorMessage(language, "selectPrompt")}</p>
+            <p className="memory-inspector-empty">
+              {memoryInspectorMessage(language, "selectPrompt")}
+            </p>
           ) : (
             <>
               <div className="section-heading">
@@ -360,15 +385,47 @@ export function MemoryInspectorPage({
 
               <p className="memory-inspector-summary">{selectedMemory.summary}</p>
               <dl className="memory-inspector-facts">
-                <div><dt>{memoryInspectorMessage(language, "memoryId")}</dt><dd><code>{selectedMemory.memoryId}</code></dd></div>
-                <div><dt>{memoryInspectorMessage(language, "layer")}</dt><dd>{memoryInspectorMessage(language, layerKey(selectedMemory))}</dd></div>
-                <div><dt>{memoryInspectorMessage(language, "scope")}</dt><dd>{memoryInspectorMessage(language, selectedMemory.scope)}</dd></div>
-                <div><dt>{memoryInspectorMessage(language, "source")}</dt><dd>{selectedMemory.sourceLabel}</dd></div>
-                <div><dt>{memoryInspectorMessage(language, "sourceSession")}</dt><dd><code>{selectedMemory.sourceSessionId}</code></dd></div>
-                <div><dt>{memoryInspectorMessage(language, "confidence")}</dt><dd>{memoryInspectorMessage(language, selectedMemory.confidence)}</dd></div>
-                <div><dt>{memoryInspectorMessage(language, "formedAt")}</dt><dd>{selectedMemory.formedAtLabel}</dd></div>
-                <div><dt>{memoryInspectorMessage(language, "pinned")}</dt><dd>{memoryInspectorMessage(language, selectedMemory.pinned ? "yes" : "no")}</dd></div>
-                <div><dt>{memoryInspectorMessage(language, "usedLatest")}</dt><dd>{memoryInspectorMessage(language, selectedMemory.usedInLatestResponse ? "yes" : "no")}</dd></div>
+                <div>
+                  <dt>{memoryInspectorMessage(language, "memoryId")}</dt>
+                  <dd><code>{selectedMemory.memoryId}</code></dd>
+                </div>
+                <div>
+                  <dt>{memoryInspectorMessage(language, "layer")}</dt>
+                  <dd>{memoryInspectorMessage(language, layerKey(selectedMemory))}</dd>
+                </div>
+                <div>
+                  <dt>{memoryInspectorMessage(language, "scope")}</dt>
+                  <dd>{memoryInspectorMessage(language, selectedMemory.scope)}</dd>
+                </div>
+                <div>
+                  <dt>{memoryInspectorMessage(language, "source")}</dt>
+                  <dd>{selectedMemory.sourceLabel}</dd>
+                </div>
+                <div>
+                  <dt>{memoryInspectorMessage(language, "sourceSession")}</dt>
+                  <dd><code>{selectedMemory.sourceSessionId}</code></dd>
+                </div>
+                <div>
+                  <dt>{memoryInspectorMessage(language, "confidence")}</dt>
+                  <dd>{memoryInspectorMessage(language, selectedMemory.confidence)}</dd>
+                </div>
+                <div>
+                  <dt>{memoryInspectorMessage(language, "formedAt")}</dt>
+                  <dd>{selectedMemory.formedAtLabel}</dd>
+                </div>
+                <div>
+                  <dt>{memoryInspectorMessage(language, "pinned")}</dt>
+                  <dd>{memoryInspectorMessage(language, selectedMemory.pinned ? "yes" : "no")}</dd>
+                </div>
+                <div>
+                  <dt>{memoryInspectorMessage(language, "usedLatest")}</dt>
+                  <dd>
+                    {memoryInspectorMessage(
+                      language,
+                      selectedMemory.usedInLatestResponse ? "yes" : "no",
+                    )}
+                  </dd>
+                </div>
               </dl>
 
               {selectedMemory.reason && (
@@ -393,7 +450,10 @@ export function MemoryInspectorPage({
                   {selectedMemory.provenance.map((step) => (
                     <li key={step.stepId}>
                       <span aria-hidden="true" />
-                      <div><strong>{step.label}</strong><small>{step.detail}</small></div>
+                      <div>
+                        <strong>{step.label}</strong>
+                        <small>{step.detail}</small>
+                      </div>
                     </li>
                   ))}
                 </ol>
@@ -406,13 +466,20 @@ export function MemoryInspectorPage({
               </div>
 
               {activeOperation && (
-                <div className={`memory-inspector-preview ${activeOperation === "forget" ? "memory-preview-destructive" : ""}`} role="dialog" aria-modal="false">
+                <div
+                  className={`memory-inspector-preview ${
+                    activeOperation === "forget" ? "memory-preview-destructive" : ""
+                  }`}
+                  role="dialog"
+                  aria-modal="false"
+                >
                   <div className="section-heading compact-heading">
                     <div>
                       <p className="eyebrow">CANDIDATE ONLY</p>
                       <h3>{memoryInspectorMessage(language, "previewTitle")}</h3>
                     </div>
                   </div>
+
                   {activeOperation === "correct" && (
                     <label>
                       <span>{memoryInspectorMessage(language, "correctionLabel")}</span>
@@ -420,33 +487,80 @@ export function MemoryInspectorPage({
                         rows={4}
                         value={correctionDraft}
                         placeholder={memoryInspectorMessage(language, "correctionPlaceholder")}
-                        onChange={(event) => { setCorrectionDraft(event.target.value); setError(""); }}
+                        onChange={(event) => {
+                          setCorrectionDraft(event.target.value);
+                          setError("");
+                        }}
                       />
                     </label>
                   )}
+
                   {activeOperation === "merge" && (
                     <label>
                       <span>{memoryInspectorMessage(language, "mergeTarget")}</span>
-                      <select value={mergeTargetId} onChange={(event) => { setMergeTargetId(event.target.value); setError(""); }}>
+                      <select
+                        value={mergeTargetId}
+                        onChange={(event) => {
+                          setMergeTargetId(event.target.value);
+                          setError("");
+                        }}
+                      >
                         <option value="">{memoryInspectorMessage(language, "mergeSelect")}</option>
                         {mergeOptions.map((record) => (
-                          <option value={record.memoryId} key={record.memoryId}>{record.memoryId} · {record.summary}</option>
+                          <option value={record.memoryId} key={record.memoryId}>
+                            {record.memoryId} · {record.summary}
+                          </option>
                         ))}
                       </select>
                     </label>
                   )}
+
                   <dl className="memory-inspector-preview-facts">
-                    <div><dt>{memoryInspectorMessage(language, "previewOperation")}</dt><dd>{memoryInspectorMessage(language, operationKey(activeOperation))}</dd></div>
-                    <div><dt>{memoryInspectorMessage(language, "previewTarget")}</dt><dd><code>{selectedMemory.memoryId}</code></dd></div>
-                    <div><dt>{memoryInspectorMessage(language, "previewEffect")}</dt><dd>{memoryInspectorMessage(language, effectKey(activeOperation))}</dd></div>
-                    <div><dt>{memoryInspectorMessage(language, "previewBoundary")}</dt><dd>{memoryInspectorMessage(language, "noExecution")}</dd></div>
+                    <div>
+                      <dt>{memoryInspectorMessage(language, "previewOperation")}</dt>
+                      <dd>{memoryInspectorMessage(language, operationKey(activeOperation))}</dd>
+                    </div>
+                    <div>
+                      <dt>{memoryInspectorMessage(language, "previewTarget")}</dt>
+                      <dd><code>{selectedMemory.memoryId}</code></dd>
+                    </div>
+                    <div>
+                      <dt>{memoryInspectorMessage(language, "previewEffect")}</dt>
+                      <dd>{memoryInspectorMessage(language, effectKey(activeOperation))}</dd>
+                    </div>
+                    <div>
+                      <dt>{memoryInspectorMessage(language, "previewBoundary")}</dt>
+                      <dd>{memoryInspectorMessage(language, "noExecution")}</dd>
+                    </div>
                   </dl>
-                  {activeOperation === "forget" && <p className="memory-inspector-forget-warning">{memoryInspectorMessage(language, "forgetWarning")}</p>}
-                  {error && <p className="memory-inspector-error" role="alert">{error}</p>}
+
+                  {activeOperation === "forget" && (
+                    <p className="memory-inspector-forget-warning">
+                      {memoryInspectorMessage(language, "forgetWarning")}
+                    </p>
+                  )}
+                  {error && (
+                    <p className="memory-inspector-error" role="alert">
+                      {error}
+                    </p>
+                  )}
                   <div className="memory-inspector-preview-actions">
-                    <button className="button button-secondary" type="button" onClick={cancelOperation}>{memoryInspectorMessage(language, "cancelPreview")}</button>
-                    <button className={`button ${activeOperation === "forget" ? "memory-inspector-danger-button" : "button-primary"}`} type="button" onClick={confirmOperation}>
-                      {memoryInspectorMessage(language, activeOperation === "forget" ? "confirmForget" : "confirmPreview")}
+                    <button className="button button-secondary" type="button" onClick={cancelOperation}>
+                      {memoryInspectorMessage(language, "cancelPreview")}
+                    </button>
+                    <button
+                      className={`button ${
+                        activeOperation === "forget"
+                          ? "memory-inspector-danger-button"
+                          : "button-primary"
+                      }`}
+                      type="button"
+                      onClick={confirmOperation}
+                    >
+                      {memoryInspectorMessage(
+                        language,
+                        activeOperation === "forget" ? "confirmForget" : "confirmPreview",
+                      )}
                     </button>
                   </div>
                 </div>
@@ -454,14 +568,23 @@ export function MemoryInspectorPage({
 
               {result && result.memoryId === selectedMemory.memoryId && (
                 <div className="memory-inspector-result" role="status">
-                  <span className="mock-pill">{memoryInspectorMessage(language, "resultBadge")}</span>
+                  <span className="mock-pill">
+                    {memoryInspectorMessage(language, "resultBadge")}
+                  </span>
                   <div>
                     <strong>
-                      {memoryInspectorMessage(language, "resultTitle")} · {memoryInspectorMessage(language, operationKey(result.operation))}
+                      {memoryInspectorMessage(language, "resultTitle")} ·{" "}
+                      {memoryInspectorMessage(language, operationKey(result.operation))}
                     </strong>
                     <p>{memoryInspectorMessage(language, "resultBody")}</p>
                   </div>
-                  <button className="button button-secondary" type="button" onClick={() => setResult(null)}>{memoryInspectorMessage(language, "clearResult")}</button>
+                  <button
+                    className="button button-secondary"
+                    type="button"
+                    onClick={() => setResult(null)}
+                  >
+                    {memoryInspectorMessage(language, "clearResult")}
+                  </button>
                 </div>
               )}
             </>
@@ -470,25 +593,70 @@ export function MemoryInspectorPage({
       </div>
 
       <div className="memory-inspector-lower-grid">
-        <section className="surface-panel memory-inspector-protocol" aria-labelledby="memory-protocol-title">
-          <div className="section-heading compact-heading"><div><p className="eyebrow">LATEST RUN SUMMARY</p><h2 id="memory-protocol-title">{memoryInspectorMessage(language, "protocolTitle")}</h2></div></div>
+        <section
+          className="surface-panel memory-inspector-protocol"
+          aria-labelledby="memory-protocol-title"
+        >
+          <div className="section-heading compact-heading">
+            <div>
+              <p className="eyebrow">LATEST RUN SUMMARY</p>
+              <h2 id="memory-protocol-title">
+                {memoryInspectorMessage(language, "protocolTitle")}
+              </h2>
+            </div>
+          </div>
           <dl>
-            <div><dt>{memoryInspectorMessage(language, "ctxRepack")}</dt><dd>{memoryInspectorMessage(language, "applied")}</dd></div>
-            <div><dt>{memoryInspectorMessage(language, "ctxUnpack")}</dt><dd>{memoryInspectorMessage(language, "applied")}</dd></div>
-            <div><dt>{memoryInspectorMessage(language, "slp")}</dt><dd>{memoryInspectorMessage(language, "observed")}</dd></div>
-            <div><dt>{memoryInspectorMessage(language, "relayrun")}</dt><dd>{memoryInspectorMessage(language, "completed")}</dd></div>
+            <div>
+              <dt>{memoryInspectorMessage(language, "ctxRepack")}</dt>
+              <dd>{memoryInspectorMessage(language, "applied")}</dd>
+            </div>
+            <div>
+              <dt>{memoryInspectorMessage(language, "ctxUnpack")}</dt>
+              <dd>{memoryInspectorMessage(language, "applied")}</dd>
+            </div>
+            <div>
+              <dt>{memoryInspectorMessage(language, "slp")}</dt>
+              <dd>{memoryInspectorMessage(language, "observed")}</dd>
+            </div>
+            <div>
+              <dt>{memoryInspectorMessage(language, "relayrun")}</dt>
+              <dd>{memoryInspectorMessage(language, "completed")}</dd>
+            </div>
           </dl>
         </section>
 
-        <section className="surface-panel memory-inspector-timeline" aria-labelledby="memory-timeline-title">
-          <div className="section-heading compact-heading"><div><p className="eyebrow">CONTENT-FREE EVENTS</p><h2 id="memory-timeline-title">{memoryInspectorMessage(language, "timelineTitle")}</h2></div></div>
-          <p className="panel-description">{memoryInspectorMessage(language, "timelineDescription")}</p>
+        <section
+          className="surface-panel memory-inspector-timeline"
+          aria-labelledby="memory-timeline-title"
+        >
+          <div className="section-heading compact-heading">
+            <div>
+              <p className="eyebrow">CONTENT-FREE EVENTS</p>
+              <h2 id="memory-timeline-title">
+                {memoryInspectorMessage(language, "timelineTitle")}
+              </h2>
+            </div>
+          </div>
+          <p className="panel-description">
+            {memoryInspectorMessage(language, "timelineDescription")}
+          </p>
           <div className="memory-inspector-event-list" aria-live="polite">
-            {timeline.length === 0 && <p className="memory-inspector-empty">{memoryInspectorMessage(language, "timelineEmpty")}</p>}
+            {timeline.length === 0 && (
+              <p className="memory-inspector-empty">
+                {memoryInspectorMessage(language, "timelineEmpty")}
+              </p>
+            )}
             {timeline.map((event) => (
-              <article className={`memory-inspector-event memory-event-${event.level}`} key={event.eventId}>
+              <article
+                className={`memory-inspector-event memory-event-${event.level}`}
+                key={event.eventId}
+              >
                 <span aria-hidden="true" />
-                <div><strong>{memoryInspectorMessage(language, event.code)}</strong><code>{event.metadata}</code><time>{event.occurredAt}</time></div>
+                <div>
+                  <strong>{memoryInspectorMessage(language, event.code)}</strong>
+                  <code>{event.metadata}</code>
+                  <time>{event.occurredAt}</time>
+                </div>
               </article>
             ))}
           </div>
