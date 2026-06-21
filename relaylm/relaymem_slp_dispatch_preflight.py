@@ -344,7 +344,11 @@ def _validate_handoff_result(
         return None, ("a2_blocked_reasons_not_empty",)
     if source.candidate_count != 1 or source.candidate_created is not True:
         return None, ("a2_candidate_cardinality_invalid",)
-    if runtime.get("candidate_count") != 1 or runtime.get("candidate_created") is not True:
+    if (
+        type(runtime.get("candidate_count")) is not int
+        or runtime.get("candidate_count") != 1
+        or runtime.get("candidate_created") is not True
+    ):
         return None, ("a2_runtime_candidate_cardinality_invalid",)
     if runtime.get("source_projection") != source_projection:
         return None, ("a2_source_projection_mismatch",)
@@ -463,13 +467,6 @@ def _validate_candidate(
         return None, ("a2_candidate_schema_mismatch",)
     if runtime.get("candidate_kind") != "relayslp_deferred_job":
         return None, ("a2_candidate_kind_invalid",)
-    if type(runtime.get("turn_index")) is not int or runtime.get("turn_index") < 0:
-        return None, ("a2_candidate_runtime_turn_index_invalid",)
-    if (
-        type(runtime.get("source_count")) is not int
-        or not 1 <= runtime.get("source_count") <= _MAX_SOURCES
-    ):
-        return None, ("a2_candidate_runtime_source_count_invalid",)
     if candidate.trigger_mode != "turn_end":
         return None, ("a2_trigger_mode_invalid",)
     if candidate.processing_stage not in _ALLOWED_STAGES:
@@ -491,6 +488,13 @@ def _validate_candidate(
         return None, ("a2_turn_index_invalid",)
     if type(candidate.source_count) is not int or not 1 <= candidate.source_count <= _MAX_SOURCES:
         return None, ("a2_source_count_invalid",)
+    if type(runtime.get("turn_index")) is not int or runtime.get("turn_index") < 0:
+        return None, ("a2_candidate_runtime_turn_index_invalid",)
+    if (
+        type(runtime.get("source_count")) is not int
+        or not 1 <= runtime.get("source_count") <= _MAX_SOURCES
+    ):
+        return None, ("a2_candidate_runtime_source_count_invalid",)
     if not _is_sha256(candidate.source_lineage_fingerprint):
         return None, ("a2_source_lineage_fingerprint_invalid",)
     if candidate.source_admission_status not in _ACCEPTED_ADMISSION_STATUSES:
