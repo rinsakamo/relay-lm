@@ -126,9 +126,7 @@ export function MemoryInspectorPage({
     const nextRecord = records.find(
       (record) => nextFilter === "all" || record.state === nextFilter,
     );
-    if (nextRecord) {
-      setSelectedMemoryId(nextRecord.memoryId);
-    }
+    if (nextRecord) setSelectedMemoryId(nextRecord.memoryId);
     setResult(null);
   }
 
@@ -140,7 +138,7 @@ export function MemoryInspectorPage({
   }
 
   function openOperation(operation: MemoryOperation) {
-    if (!selectedMemory || selectedMemory.state === "blocked") return;
+    if (activeOperation || !selectedMemory || selectedMemory.state === "blocked") return;
     if ((operation === "pin" || operation === "unpin") && selectedMemory.state !== "formed") {
       return;
     }
@@ -212,33 +210,56 @@ export function MemoryInspectorPage({
 
   function actionButtons(record: InspectorMemoryRecord) {
     if (record.state === "blocked") {
-      return <p className="memory-inspector-boundary-note">{memoryInspectorMessage(language, "blockedReadOnly")}</p>;
+      return (
+        <p className="memory-inspector-boundary-note">
+          {memoryInspectorMessage(language, "blockedReadOnly")}
+        </p>
+      );
     }
 
+    const operationOpen = Boolean(activeOperation);
     return (
       <>
         <div className="memory-inspector-actions">
-          <button className="button button-secondary" type="button" onClick={() => openOperation("correct")}>
+          <button
+            className="button button-secondary"
+            type="button"
+            disabled={operationOpen}
+            onClick={() => openOperation("correct")}
+          >
             {memoryInspectorMessage(language, "correct")}
           </button>
-          <button className="button memory-inspector-danger-button" type="button" onClick={() => openOperation("forget")}>
+          <button
+            className="button memory-inspector-danger-button"
+            type="button"
+            disabled={operationOpen}
+            onClick={() => openOperation("forget")}
+          >
             {memoryInspectorMessage(language, "forget")}
           </button>
           {record.state === "formed" && (
             <button
               className="button button-secondary"
               type="button"
+              disabled={operationOpen}
               onClick={() => openOperation(record.pinned ? "unpin" : "pin")}
             >
               {memoryInspectorMessage(language, record.pinned ? "unpin" : "pin")}
             </button>
           )}
-          <button className="button button-secondary" type="button" onClick={() => openOperation("merge")}>
+          <button
+            className="button button-secondary"
+            type="button"
+            disabled={operationOpen}
+            onClick={() => openOperation("merge")}
+          >
             {memoryInspectorMessage(language, "merge")}
           </button>
         </div>
         {record.state === "held" && (
-          <p className="memory-inspector-boundary-note">{memoryInspectorMessage(language, "heldPinUnavailable")}</p>
+          <p className="memory-inspector-boundary-note">
+            {memoryInspectorMessage(language, "heldPinUnavailable")}
+          </p>
         )}
       </>
     );
@@ -435,7 +456,9 @@ export function MemoryInspectorPage({
                 <div className="memory-inspector-result" role="status">
                   <span className="mock-pill">{memoryInspectorMessage(language, "resultBadge")}</span>
                   <div>
-                    <strong>{memoryInspectorMessage(language, "resultTitle")}</strong>
+                    <strong>
+                      {memoryInspectorMessage(language, "resultTitle")} · {memoryInspectorMessage(language, operationKey(result.operation))}
+                    </strong>
                     <p>{memoryInspectorMessage(language, "resultBody")}</p>
                   </div>
                   <button className="button button-secondary" type="button" onClick={() => setResult(null)}>{memoryInspectorMessage(language, "clearResult")}</button>
