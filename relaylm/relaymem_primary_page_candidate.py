@@ -339,6 +339,9 @@ def _parse_preflight(
         "promotion_policy": "free_to_update",
         "safety_scope": "ordinary_memory",
         "memory_layer": "primary",
+        "content_included": False,
+        "raw_text_included": False,
+        "raw_affect_estimates_included": False,
         "writes_memory": False,
         "applied": False,
     }
@@ -429,12 +432,18 @@ def _page_candidate(
         "## Summary\n\n"
         f"{experience['summary_text'].strip()}\n"
     )
-    page_bytes = len(markdown.encode("utf-8"))
-    reasons = (
-        ["primary_page_candidate_page_size_exceeded"]
-        if page_bytes > MAX_PAGE_BYTES
-        else []
-    )
+    try:
+        encoded_page = markdown.encode("utf-8")
+    except UnicodeEncodeError:
+        encoded_page = b""
+        reasons = ["primary_page_candidate_utf8_invalid"]
+    else:
+        reasons = (
+            ["primary_page_candidate_page_size_exceeded"]
+            if len(encoded_page) > MAX_PAGE_BYTES
+            else []
+        )
+    page_bytes = len(encoded_page)
     status = "blocked" if reasons else "ready"
     return {
         "schema_version": CANDIDATE_SCHEMA,
@@ -458,7 +467,7 @@ def _page_candidate(
         "summary_chars": experience["summary_chars"],
         "page_markdown": markdown,
         "page_bytes": page_bytes,
-        "page_digest": sha256(markdown.encode("utf-8", "surrogatepass")).hexdigest(),
+        "page_digest": sha256(encoded_page).hexdigest() if encoded_page else "",
         "status": status,
         "writer_handoff_eligible": (
             status == "ready" and bool(apply_enabled) and not bool(dry_run_only)
@@ -477,7 +486,13 @@ def _token(value: object, reason: str) -> tuple[str, list[str]]:
     if not isinstance(value, str):
         return "", [reason]
     value = value.strip()
-    if not value or len(value) > MAX_TOKEN or _control(value):
+    if (
+        not value
+        or len(value) > MAX_TOKEN
+        or _control(value)
+        or _surrogate(value)
+        or any(char in value for char in ("\n", "\r", "\t"))
+    ):
         return "", [reason]
     return value, []
 
@@ -502,7 +517,8 @@ def _text(
         not value
         or len(value) > limit
         or _control(value)
-        or (not multiline and ("\n" in value or "\r" in value))
+        or _surrogate(value)
+        or (not multiline and any(char in value for char in ("\n", "\r", "\t")))
     ):
         return "", [reason]
     return value, []
@@ -525,6 +541,10 @@ def _control(value: str) -> bool:
     return any(ord(char) < 32 and char not in {"\n", "\t"} for char in value)
 
 
+def _surrogate(value: str) -> bool:
+    return any(0xD800 <= ord(char) <= 0xDFFF for char in value)
+
+
 def _sha256_hex(value: object) -> bool:
     return (
         isinstance(value, str)
@@ -536,7 +556,7 @@ def _sha256_hex(value: object) -> bool:
 def _stable_hash(parts: Sequence[str]) -> str:
     digest = sha256()
     for part in parts:
-        digest.update(part.encode("utf-8", "surrogatepass"))
+        digest.update(part.encode("utf-8"))
         digest.update(b"\0")
     return digest.hexdigest()
 
