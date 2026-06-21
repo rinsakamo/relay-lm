@@ -37,6 +37,7 @@ _EXPECTED_SAFETY_SCOPES = {
 }
 _AUTONOMOUS_PROMOTION_POLICY = "free_to_update"
 _MAX_TOKEN_LENGTH = 128
+_MAX_CANDIDATES = 32
 
 
 def build_relaymem_primary_source_lineage(
@@ -87,6 +88,7 @@ def build_relaymem_primary_source_lineage(
     blocked_reasons.extend(
         reason
         for reason in _lineage_identity_reasons(
+            source_event_kind=event_kind,
             source_event_id=safe_source_event_id,
             run_id=safe_run_id,
             session_id=safe_session_id,
@@ -138,11 +140,14 @@ def build_relaymem_primary_write_preflight_dry_run(
 ) -> dict[str, Any]:
     """Build Primary MEM write-preflight operations without writing memory."""
 
-    safe_candidates = [item for item in candidates or [] if isinstance(item, Mapping)]
+    candidate_items = [item for item in candidates or [] if isinstance(item, Mapping)]
+    candidate_limit_exceeded = len(candidate_items) > _MAX_CANDIDATES
+    safe_candidates = candidate_items[:_MAX_CANDIDATES]
     parsed_lineage = _parse_source_lineage(source_lineage_artifact)
     global_blocked_reasons = _global_blocked_reasons(
         enabled=enabled,
         parsed_lineage=parsed_lineage,
+        candidate_limit_exceeded=candidate_limit_exceeded,
     )
     operations = [
         _operation(
@@ -177,6 +182,8 @@ def build_relaymem_primary_write_preflight_dry_run(
         "lab_api_exposed": False,
         "source_lineage_valid": parsed_lineage["valid"],
         "candidate_count": len(safe_candidates),
+        "candidate_limit": _MAX_CANDIDATES,
+        "candidate_limit_exceeded": candidate_limit_exceeded,
         "operation_count": len(operations),
         "operations": operations,
         "blocked_reasons": global_blocked_reasons,
@@ -305,7 +312,8 @@ def _operation(
     idempotency_key = ""
     if (
         parsed_lineage.get("valid") is True
-        and not candidate_blocked_reasons
+        and not structural_blocked_reasons
+        and promotion_policy in {"free_to_update", "review_required"}
         and candidate_id
     ):
         idempotency_key = _stable_hash(
@@ -368,6 +376,7 @@ def _projection(
         "raw_affect_estimates_included": False,
         "lineage_fingerprint_included": False,
         "idempotency_key_included": False,
+        "candidate_id_included": False,
         "writes_memory": False,
         "mutates_soul": False,
         "invokes_slp": False,
@@ -386,7 +395,7 @@ def _projection(
         ),
         "operations": [
             {
-                "candidate_id": str(operation.get("candidate_id", "")),
+                "operation_index": index,
                 "source_event_kind": str(
                     operation.get("source_event_kind", "unknown")
                 ),
@@ -397,7 +406,7 @@ def _projection(
                 "preflight_status": str(operation.get("preflight_status", "blocked")),
                 "preflight_apply_eligible": operation.get("preflight_apply_eligible") is True,
             }
-            for operation in operations
+            for index, operation in enumerate(operations)
         ],
     }
 
@@ -406,17 +415,21 @@ def _global_blocked_reasons(
     *,
     enabled: bool,
     parsed_lineage: Mapping[str, Any],
+    candidate_limit_exceeded: bool,
 ) -> list[str]:
     reasons: list[str] = []
     if not enabled:
         reasons.append("primary_write_preflight_disabled")
     if parsed_lineage.get("valid") is not True:
         reasons.extend(_string_list(parsed_lineage.get("blocked_reasons")))
+    if candidate_limit_exceeded:
+        reasons.append("primary_write_preflight_candidate_limit_exceeded")
     return _dedupe(reasons)
 
 
 def _lineage_identity_reasons(
     *,
+    source_event_kind: str,
     source_event_id: str | None,
     run_id: str | None,
     session_id: str | None,
@@ -424,9 +437,11 @@ def _lineage_identity_reasons(
 ) -> list[str]:
     if source_event_id:
         return []
-    if run_id:
-        return []
-    if session_id and turn_index is not None:
+    if source_event_kind == "turn":
+        if turn_index is not None and (run_id or session_id):
+            return []
+        return ["source_lineage_missing"]
+    if source_event_kind == "session" and (run_id or session_id):
         return []
     return ["source_lineage_missing"]
 
