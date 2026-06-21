@@ -1,0 +1,29 @@
+name: Sync Phase 6-B1 with current main
+
+on:
+  push:
+    branches:
+      - phase6b1-relayslp-dispatch-preflight
+    paths:
+      - "scripts/phase6b1_merge_main_trigger.txt"
+      - ".github/workflows/phase6b1-merge-main.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: phase6b1-relayslp-dispatch-preflight
+      - name: Merge current main while retaining the reconciled architecture index
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge -X ours --no-edit origin/main
+          git push origin HEAD:phase6b1-relayslp-dispatch-preflight
