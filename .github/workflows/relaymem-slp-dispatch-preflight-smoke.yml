@@ -62,7 +62,7 @@ jobs:
         run: >-
           PYTHONPATH=. python
           scripts/relaylm_phase6b1_dispatch_preflight_smoke.py
-      - name: Run Phase 6-B1 dispatch preflight security smoke
+      - name: Run strict Phase 6-B1 dispatch preflight security smoke
         run: >-
           PYTHONPATH=. python
           scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py
