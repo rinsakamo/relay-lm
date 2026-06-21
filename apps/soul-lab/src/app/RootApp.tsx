@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { LabRoute, Language, Theme } from "../domain/lab";
 import { AdoptionPage } from "../features/adoption/AdoptionPage";
 import { CommunicationPage } from "../features/communication/CommunicationPage";
+import { MemoryInspectorPage } from "../features/memory-inspector/MemoryInspectorPage";
 import { PodPage } from "../features/pod/PodPage";
 import { translate, type MessageKey } from "../locales/messages";
 import { mockCharacters } from "../mocks/lab";
@@ -43,6 +44,7 @@ export function RootApp() {
   });
   const [communicationLocked, setCommunicationLocked] = useState(false);
   const [interventionLocked, setInterventionLocked] = useState(false);
+  const [inspectorLocked, setInspectorLocked] = useState(false);
 
   const activeCharacter = useMemo(
     () => mockCharacters.find((character) => character.characterId === activeCharacterId) ?? firstCharacter,
@@ -52,7 +54,9 @@ export function RootApp() {
     ? "communication"
     : interventionLocked
       ? "pod"
-      : null;
+      : inspectorLocked
+        ? "observation"
+        : null;
   const interactionLocked = lockedRoute !== null;
 
   useEffect(() => {
@@ -87,11 +91,17 @@ export function RootApp() {
     window.location.hash = nextHash;
   }
 
-  if (route !== "adoption" && route !== "communication" && route !== "pod") {
+  if (
+    route !== "adoption" &&
+    route !== "communication" &&
+    route !== "pod" &&
+    route !== "observation"
+  ) {
     return <App />;
   }
 
   const adoptionRoute = route === "adoption";
+  const observationRoute = route === "observation";
   const communicationRoute = route === "communication";
   const podRoute = route === "pod";
 
@@ -200,6 +210,14 @@ export function RootApp() {
           {adoptionRoute && (
             <AdoptionPage language={language} onBackHome={() => navigate("home")} />
           )}
+          {observationRoute && (
+            <MemoryInspectorPage
+              key={activeCharacter.characterId}
+              language={language}
+              activeCharacter={activeCharacter}
+              onInspectorLockChange={setInspectorLocked}
+            />
+          )}
           {communicationRoute && (
             <CommunicationPage
               language={language}
@@ -223,9 +241,11 @@ export function RootApp() {
           <span>
             {adoptionRoute
               ? "UI-A2 · Adoption / First Launch"
-              : communicationRoute
-                ? "UI-A3 · Character Communication"
-                : "UI-A4 · Pod / SOUL Intervention"}
+              : observationRoute
+                ? "UI-A5 · Memory Inspector"
+                : communicationRoute
+                  ? "UI-A3 · Character Communication"
+                  : "UI-A4 · Pod / SOUL Intervention"}
           </span>
         </footer>
       </div>
