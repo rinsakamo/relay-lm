@@ -18,6 +18,7 @@ relaylm_related_authority:
   - ai_vtuber_pipeline_profile.md
   - relayemo_return_side_expression_design.md
   - ai_character_product_principles.md
+  - phase5_5_stream_unpack_bounded_slice.md
   - ../PROJECT_STATUS.md
 ---
 # SOUL Lab Runtime MVP
@@ -26,7 +27,7 @@ relaylm_related_authority:
 
 SOUL Lab Runtime MVP is the post-SOUL-Lab-UI runtime adapter layer for voice and avatar execution.
 
-It consumes RelayLM-approved safe output, segmentation hints, and engine-neutral expression hints, then maps them to concrete TTS, audio queue, Live2D/avatar expression, motion, and timing behavior.
+It consumes RelayLM-approved safe output, Phase 5.5 stream/TTS handoff metadata, and engine-neutral expression hints, then maps them to concrete TTS, audio queue, Live2D/avatar expression, motion, and timing behavior.
 
 This document defines product and ownership boundaries. It does not make TTS, Live2D, or avatar execution part of the RelayLM Core MVP.
 
@@ -34,16 +35,18 @@ This document defines product and ownership boundaries. It does not make TTS, Li
 
 ```text
 RelayLM Core MVP
-  -> safe LLM runtime, memory, SOUL, RUN, and stream boundaries
+  -> safe LLM runtime, memory, SOUL, RUN, stream boundaries, and content-free TTS handoff metadata
 
 Post-MVP Phase 1: SOUL Lab UI MVP
   -> observe, review, edit, compare, apply, rollback, and audit character state
 
 Post-MVP Phase 2: SOUL Lab Runtime MVP
-  -> execute voice/avatar behavior through adapters using RelayLM hints
+  -> execute voice/avatar behavior through adapters using RelayLM hints and handoff metadata
 ```
 
 SOUL Lab UI MVP remains text-first. Runtime MVP starts only after the UI MVP proves character creation/adoption, Home conversation, communication, Lab Observation, and Pod / SOUL Intervention.
+
+Phase 5.5 closes the RelayLM Core side of stream safety and TTS handoff preparation. It may provide runtime-private segmentation, handoff, and adapter-facing transport metadata. SOUL Lab Runtime MVP owns any delivery or execution of that metadata.
 
 ## Ownership boundary
 
@@ -52,12 +55,15 @@ RelayLM Core owns:
 - safe visible stream approval,
 - visible/internal output separation,
 - TTS-safe segmentation hints,
+- runtime-private TTS adapter handoff plans,
+- runtime-private adapter-facing transport envelopes,
 - Return-side RelayEMO engine-neutral hints,
 - RelayRUN emission decisions, recovery state, and duplicate-emission prevention metadata,
 - content-free diagnostics and adapter telemetry projections.
 
 SOUL Lab Runtime MVP owns:
 
+- adapter bridge consumption of RelayLM runtime-private handoff metadata,
 - concrete TTS adapter mapping,
 - TTS execution,
 - audio queueing,
@@ -95,7 +101,7 @@ runtime_adapter_event:
     blocked_reason_ids: []
 ```
 
-Concrete segment text may be present only in runtime-private adapter input. Generic trace, audit, public errors, or long-lived diagnostics must use content-free projections.
+Phase 5.5 transport-envelope metadata is content-free and offset/count based inside RelayLM Core. Concrete segment text may be present only in runtime-private adapter input owned by the Runtime MVP bridge. Generic trace, audit, public errors, or long-lived diagnostics must use content-free projections.
 
 ## Adapter responsibilities
 
@@ -206,6 +212,7 @@ SOUL Lab Runtime MVP does not implement:
 ## Relationship to existing documents
 
 - [SOUL Lab UI MVP](soul_lab_ui_mvp.md) owns the text-first Lab product loop and intentionally defers TTS/Live2D/runtime execution.
+- [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md) owns RelayLM Core stream safety and TTS handoff metadata preparation through C4, without adapter delivery or execution.
 - [AI VTuber Pipeline Profile](ai_vtuber_pipeline_profile.md) defines the RelayLM realtime profile and per-chunk conceptual path.
 - [RelayEMO Return-side Expression Design](relayemo_return_side_expression_design.md) owns engine-neutral expression hint boundaries.
 - [AI Character Product Principles](ai_character_product_principles.md) owns the broad product invariant that RelayLM is not the frontend, TTS, ASR, or avatar runtime.

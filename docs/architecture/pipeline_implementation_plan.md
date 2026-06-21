@@ -17,6 +17,8 @@ relaylm_related_authority:
   - ../DOCUMENTATION_MODEL.md
   - pipeline_responsibility_design.md
   - current_target_migration_guide.md
+  - phase5_5_stream_unpack_bounded_slice.md
+  - soul_lab_runtime_mvp.md
 ---
 # RelayLM Pipeline Implementation Plan
 
@@ -37,6 +39,7 @@ This document owns implementation status, phase sequencing, and dependency bound
 Phase 5-C managed-route correctness: complete
 Phase 5-D1 CJK-aware token estimation: complete
 Phase 5-D2 lazy RelayRUN recovery detail: complete
+Phase 5.5 Stream Unpack / TTS handoff preparation: complete for RelayLM Core
 
 Completed bounded slices:
   Phase 1 PipelineContext/app stabilization
@@ -63,15 +66,16 @@ Completed bounded slices:
   Phase 5.5-C1 TTS adapter handoff contract
   Phase 5.5-C2 runtime TTS adapter handoff wiring
   Phase 5.5-C3 TTS adapter transport contract
+  Phase 5.5-C4 runtime TTS adapter transport-envelope construction
 
-Next candidates:
-  Optional default-off runtime C3 transport-envelope construction after C2 stream-final handoff planning
-
-Later:
+Next RelayLM Core candidate:
   Phase 6 asynchronous RelaySLP
+
+Later product/runtime candidate:
+  SOUL Lab Runtime MVP adapter bridge and TTS/audio/Live2D execution
 ```
 
-Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight. Phase 5-C5b is complete as a direct, explicit, gated filesystem writer helper. Phase 5-C5c is complete as request-local runtime wiring for trusted in-process typed parse sources; runtime response/control-envelope extraction, frontend metadata trust, and parser-versioned lookup/write compatibility remain later work. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate that preserves safe visible prefixes and suppresses internal markers when explicitly enabled and not dry-run-only. Phase 5.5-B2 is complete as gated request-runtime SSE suppression wiring. Phase 5.5-C0 is complete as a helper-only TTS segmentation foundation that emits content-free character-range hints from already-safe visible chunks. Phase 5.5-C1 is complete as a helper-only TTS adapter handoff contract that converts C0 hint results into runtime-private downstream adapter handoff plans. Phase 5.5-C2 is complete as default-off runtime wiring from B2 safe visible output into C0/C1 content-free node results without TTS/audio/avatar execution. Phase 5.5-C3 is complete as helper-only adapter-facing transport envelope construction from C1 handoff plans without request-runtime invocation, adapter delivery, TTS/audio/avatar execution, or persistence.
+Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight. Phase 5-C5b is complete as a direct, explicit, gated filesystem writer helper. Phase 5-C5c is complete as request-local runtime wiring for trusted in-process typed parse sources; runtime response/control-envelope extraction, frontend metadata trust, and parser-versioned lookup/write compatibility remain later work. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate that preserves safe visible prefixes and suppresses internal markers when explicitly enabled and not dry-run-only. Phase 5.5-B2 is complete as gated request-runtime SSE suppression wiring. Phase 5.5-C0 is complete as a helper-only TTS segmentation foundation that emits content-free character-range hints from already-safe visible chunks. Phase 5.5-C1 is complete as a helper-only TTS adapter handoff contract that converts C0 hint results into runtime-private downstream adapter handoff plans. Phase 5.5-C2 is complete as default-off runtime wiring from B2 safe visible output into C0/C1 content-free node results without TTS/audio/avatar execution. Phase 5.5-C3 is complete as helper-only adapter-facing transport envelope construction from C1 handoff plans without adapter delivery, TTS/audio/avatar execution, or persistence. Phase 5.5-C4 is complete as default-off runtime construction of C3 envelopes after C2 stream-final handoff planning, including content-free C0/C1/C3 stream-final trace projection. Phase 5.5 is therefore closed for RelayLM Core; concrete adapter delivery, TTS/audio execution, and Live2D/avatar behavior belong to SOUL Lab Runtime MVP.
 
 ## Current caveats
 
@@ -81,8 +85,8 @@ Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5
 - Active tool transactions remain blocked because minimum-chain reconstruction is absent.
 - Instruction-cache lookup and RelaySCN projection are read-only.
 - Phase 5-C5c wires a trusted in-process typed parse source to the gated writer, but response/control-envelope extraction, frontend metadata trust, and parser-versioned lookup/write compatibility remain absent.
-- RelayCTX Unpack is non-stream only.
-- Phase 5.5-C2 still only produces runtime-private handoff metadata at stream end. Phase 5.5-C3 adds helper-only transport envelopes, but request-runtime C3 invocation, adapter delivery, TTS execution, audio generation, downstream adapter transport I/O, and avatar control remain outside RelayLM core.
+- RelayCTX Unpack is non-stream only outside the bounded Phase 5.5 stream safety path.
+- Phase 5.5 produces stream-final content-free handoff/transport metadata only; adapter delivery, TTS execution, audio generation, downstream adapter transport I/O, and avatar control remain outside RelayLM Core.
 - New RelaySOUL execution-gate design documents should still be avoided unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary.
 - Token estimation is deterministic and CJK-aware but remains tokenizer-free and model-agnostic rather than exact.
 - RelayRUN lazy recovery detail is wired into the request-runtime checkpoint builder, but cross-cutting per-node orchestration remains later work.
@@ -278,7 +282,7 @@ Implemented:
 
 See [Phase 5-D2 Lazy RelayRUN Recovery Detail Handoff](phase5d2_lazy_relayrun_recovery_detail_handoff.md).
 
-## Phase 5.5: Stream Unpack — complete through 5.5-C3 adapter transport contract
+## Phase 5.5: Stream Unpack / TTS handoff preparation — complete for RelayLM Core
 
 See [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md).
 
@@ -292,23 +296,24 @@ Completed:
 4. **Phase 5.5-C0: TTS segmentation helper** — explicit enabled/dry-run gate, content-free character-range hints, sentence/newline/length/stream-end boundaries, internal sentinel blocking, invalid chunk fail-closed behavior, and direct smoke coverage.
 5. **Phase 5.5-C1: TTS adapter handoff contract** — explicit enabled/dry-run gate, runtime-private downstream handoff plan, candidate/emitted count separation, conservative C0 status propagation, content-free node result, and direct smoke coverage.
 6. **Phase 5.5-C2: runtime TTS adapter handoff wiring** — default-off pass-through observer for B2 safe visible output, C0/C1 runtime node result recording, no TTS/audio/avatar execution, and direct smoke coverage.
-7. **Phase 5.5-C3: TTS adapter transport contract** — helper-only adapter-facing transport envelope construction from C1 handoff plans, content-free node result, no request-runtime invocation, no adapter delivery, no TTS/audio/avatar execution, and direct smoke coverage.
+7. **Phase 5.5-C3: TTS adapter transport contract** — helper-only adapter-facing transport envelope construction from C1 handoff plans, content-free node result, no adapter delivery, no TTS/audio/avatar execution, and direct smoke coverage.
+8. **Phase 5.5-C4: runtime TTS transport-envelope construction** — default-off runtime construction of C3 envelopes after C2 stream-final handoff planning, C0/C1/C3 stream-final trace projection, no adapter delivery, no TTS/audio/avatar execution, and direct smoke coverage.
 
-Planned next:
-
-8. **Optional runtime C3 transport-envelope construction** — default-off runtime construction of C3 envelopes after C2 stream-final handoff planning, still without adapter delivery, TTS/audio/avatar execution, or persistence.
-
-Later:
-
-9. **Phase 6 asynchronous RelaySLP**.
-
-C4b, C5, and RelaySOUL execution gates are not prerequisites for optional runtime C3 envelope construction.
+C4b, C5, and RelaySOUL execution gates are not prerequisites for Phase 6 asynchronous RelaySLP or later SOUL Lab Runtime MVP work.
 
 ## Phase 6: asynchronous RelaySLP — planned
 
 Deferred candidate processing, gated MEM page/index/log updates, idempotency, retry policy, and persistence safety classification belong here. RelaySLP must not directly mutate SOUL.
 
-New RelaySOUL execution-gate design documents should not be added before optional runtime C3 envelope construction unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary. Existing RelaySOUL governance documents remain valid; this sequencing rule only freezes further design expansion around unrelated RelaySOUL execution gates.
+Phase 6 should preserve the Phase 5.5 boundary: stream/TTS handoff metadata may inform later runtime behavior, but TTS execution, audio generation, Live2D/avatar control, and transport delivery remain SOUL Lab Runtime MVP concerns.
+
+## SOUL Lab Runtime MVP relationship — planned later
+
+SOUL Lab Runtime MVP owns the concrete runtime execution layer after RelayLM Core produces safe output and runtime-private metadata. It owns concrete TTS adapter mapping, TTS execution, audio queueing, caption/voice timing coordination, Live2D/avatar expression mapping, avatar motion scheduling, lip-sync timing when supported, runtime preview/calibration/mapping UI, and adapter failure handling.
+
+RelayLM Core must not directly call TTS engines, Live2D runtimes, avatar motion systems, audio playback queues, or OBS/streaming integrations.
+
+New RelaySOUL execution-gate design documents should not be added unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary. Existing RelaySOUL governance documents remain valid; this sequencing rule only freezes further design expansion around unrelated RelaySOUL execution gates.
 
 ## Update rule
 
