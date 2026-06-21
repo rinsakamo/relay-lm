@@ -55,6 +55,28 @@ def main() -> None:
         assert not target.exists()
         assert not list(parent.glob(".relaymem-*.tmp"))
 
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        parent = root / "memory/mem/primary/projects"
+        parent.mkdir(parents=True)
+        artifact = _artifact()
+        target = root / artifact["handoffs"][0]["target_relative_path"]
+
+        with patch(
+            "relaylm._relaymem_primary_page_writer_io._published_target_matches",
+            return_value=False,
+        ):
+            result = _apply(artifact, root)
+        assert result["status"] == "applied_state_uncertain"
+        assert result["blocked_reasons"] == [
+            "primary_page_writer_published_target_changed"
+        ]
+        assert result["writes_memory"] is True
+        assert result["page_applied"] is True
+        assert result["durability_confirmed"] is False
+        assert target.exists()
+        assert not list(parent.glob(".relaymem-*.tmp"))
+
     print("RelayMEM Primary page writer atomicity smoke passed")
 
 
