@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { LabRoute, Language, Theme } from "../domain/lab";
 import { AdoptionPage } from "../features/adoption/AdoptionPage";
+import { CommunicationPage } from "../features/communication/CommunicationPage";
 import { translate, type MessageKey } from "../locales/messages";
+import { mockCharacters } from "../mocks/lab";
 import { App } from "./App";
 
-const adoptionNavigation: Array<{ route: LabRoute; label: MessageKey; marker: string }> = [
+const rootNavigation: Array<{ route: LabRoute; label: MessageKey; marker: string }> = [
   { route: "home", label: "nav.home", marker: "⌂" },
   { route: "observation", label: "nav.observation", marker: "◉" },
   { route: "communication", label: "nav.communication", marker: "⇄" },
@@ -14,10 +16,15 @@ const adoptionNavigation: Array<{ route: LabRoute; label: MessageKey; marker: st
 
 function hashRoute(): LabRoute {
   const value = window.location.hash.replace(/^#\/?/, "");
-  return adoptionNavigation.some((item) => item.route === value) ? (value as LabRoute) : "home";
+  return rootNavigation.some((item) => item.route === value) ? (value as LabRoute) : "home";
 }
 
 export function RootApp() {
+  const firstCharacter = mockCharacters[0];
+  if (!firstCharacter) {
+    throw new Error("SOUL Lab mock data requires at least one character");
+  }
+
   const [route, setRoute] = useState<LabRoute>(hashRoute);
   const [theme, setTheme] = useState<Theme>(() => {
     const storedTheme = window.localStorage.getItem("soul-lab-theme");
@@ -27,6 +34,18 @@ export function RootApp() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
   const [language, setLanguage] = useState<Language>("ja");
+  const [activeCharacterId, setActiveCharacterId] = useState(() => {
+    const storedCharacterId = window.localStorage.getItem("soul-lab-active-character");
+    return mockCharacters.some((character) => character.characterId === storedCharacterId)
+      ? (storedCharacterId as string)
+      : firstCharacter.characterId;
+  });
+  const [communicationLocked, setCommunicationLocked] = useState(false);
+
+  const activeCharacter = useMemo(
+    () => mockCharacters.find((character) => character.characterId === activeCharacterId) ?? firstCharacter,
+    [activeCharacterId, firstCharacter],
+  );
 
   useEffect(() => {
     const syncRoute = () => setRoute(hashRoute());
@@ -43,7 +62,15 @@ export function RootApp() {
     document.documentElement.lang = language;
   }, [language]);
 
+  useEffect(() => {
+    window.localStorage.setItem("soul-lab-active-character", activeCharacterId);
+  }, [activeCharacterId]);
+
   function navigate(nextRoute: LabRoute) {
+    if (communicationLocked && nextRoute !== "communication") {
+      return;
+    }
+
     const nextHash = `#/${nextRoute}`;
     if (window.location.hash === nextHash) {
       setRoute(nextRoute);
@@ -52,9 +79,11 @@ export function RootApp() {
     window.location.hash = nextHash;
   }
 
-  if (route !== "adoption") {
+  if (route !== "adoption" && route !== "communication") {
     return <App />;
   }
+
+  const adoptionRoute = route === "adoption";
 
   return (
     <div className="app-shell">
@@ -70,12 +99,13 @@ export function RootApp() {
         </div>
 
         <nav className="primary-navigation" aria-label="SOUL Lab">
-          {adoptionNavigation.map((item) => (
+          {rootNavigation.map((item) => (
             <button
-              className={`nav-item ${item.route === "adoption" ? "nav-item-active" : ""}`}
+              className={`nav-item ${item.route === route ? "nav-item-active" : ""}`}
               type="button"
               key={item.route}
-              aria-current={item.route === "adoption" ? "page" : undefined}
+              aria-current={item.route === route ? "page" : undefined}
+              disabled={communicationLocked && item.route !== "communication"}
               onClick={() => navigate(item.route)}
             >
               <span className="nav-marker" aria-hidden="true">
@@ -94,14 +124,46 @@ export function RootApp() {
 
       <div className="workspace">
         <header className="topbar">
-          <div className="character-selector">
-            <span>{translate(language, "header.activeCharacter")}</span>
-            <strong>NO ACTIVE CHARACTER</strong>
-          </div>
+          {adoptionRoute ? (
+            <div className="character-selector">
+              <span>{translate(language, "header.activeCharacter")}</span>
+              <strong>NO ACTIVE CHARACTER</strong>
+            </div>
+          ) : (
+            <label className="character-selector">
+              <span>{translate(language, "header.activeCharacter")}</span>
+              <select
+                value={activeCharacter.characterId}
+                disabled={communicationLocked}
+                onChange={(event) => setActiveCharacterId(event.target.value)}
+              >
+                {mockCharacters.map((character) => (
+                  <option value={character.characterId} key={character.characterId}>
+                    {character.displayName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
           <div className="topbar-status">
-            <span className="status-badge status-unconfigured">First launch</span>
-            <span className="soul-version">SOUL · not initialized</span>
+            {adoptionRoute ? (
+              <>
+                <span className="status-badge status-unconfigured">First launch</span>
+                <span className="soul-version">SOUL · not initialized</span>
+              </>
+            ) : (
+              <>
+                <span className={`status-badge status-${activeCharacter.status}`}>
+                  {translate(language, `status.${activeCharacter.status}`)}
+                </span>
+                <span className="soul-version">
+                  SOUL {activeCharacter.soulVersion} · {activeCharacter.stabilityLabel}
+                </span>
+              </>
+            )}
           </div>
+
           <div className="topbar-actions">
             <button
               className="icon-button"
@@ -125,12 +187,25 @@ export function RootApp() {
         </header>
 
         <main className="main-content">
-          <AdoptionPage language={language} onBackHome={() => navigate("home")} />
+          {adoptionRoute ? (
+            <AdoptionPage language={language} onBackHome={() => navigate("home")} />
+          ) : (
+            <CommunicationPage
+              language={language}
+              activeCharacter={activeCharacter}
+              characters={mockCharacters}
+              onSessionLockChange={setCommunicationLocked}
+            />
+          )}
         </main>
 
         <footer className="footer-bar">
           <span>{translate(language, "footer.boundary")}</span>
-          <span>UI-A2 · Adoption / First Launch</span>
+          <span>
+            {adoptionRoute
+              ? "UI-A2 · Adoption / First Launch"
+              : "UI-A3 · Character Communication"}
+          </span>
         </footer>
       </div>
     </div>
