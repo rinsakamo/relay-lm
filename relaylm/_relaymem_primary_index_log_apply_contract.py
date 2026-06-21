@@ -184,6 +184,8 @@ def parse_m3f_reconciliation_plan(value: Mapping[str, Any] | None) -> dict[str, 
                 )
                 reasons.extend(operation_reasons)
 
+    if not isinstance(index_entry, Mapping) or not isinstance(log_entry, Mapping):
+        reasons.append("primary_reconciliation_apply_plan_entries_missing")
     if reasons:
         return invalid(*reasons)
     return {
@@ -323,11 +325,13 @@ def _parse_control_plan(
         reasons.append(f"primary_reconciliation_apply_{role}_conflict_not_eligible")
     content = value.get("proposed_next_content")
     encoded = b""
+    encoded_valid = False
     if not isinstance(content, str):
         reasons.append(f"primary_reconciliation_apply_{role}_content_invalid")
     else:
         try:
             encoded = content.encode("utf-8")
+            encoded_valid = True
         except UnicodeEncodeError:
             reasons.append(f"primary_reconciliation_apply_{role}_content_utf8_invalid")
             encoded = b""
@@ -353,7 +357,7 @@ def _parse_control_plan(
         ):
             reasons.append(f"primary_reconciliation_apply_{role}_append_size_invalid")
     target_entry: Mapping[str, Any] | None = None
-    if encoded:
+    if encoded_valid:
         parsed = _parse_markers(encoded, marker, header)
         if parsed.get("valid") is not True:
             reasons.append(f"primary_reconciliation_apply_{role}_content_contract_invalid")

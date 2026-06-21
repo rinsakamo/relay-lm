@@ -337,6 +337,7 @@ Coverage includes:
 - advisory writer-lock contention,
 - page/control-file symlink rejection,
 - invalid UTF-8 surrogate plan content,
+- empty proposed content in zero-operation no-op plans,
 - forged unrelated entries in no-op plans,
 - durable temp-cleanup confirmation.
 

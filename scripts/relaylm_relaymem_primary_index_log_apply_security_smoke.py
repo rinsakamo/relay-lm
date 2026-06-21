@@ -92,6 +92,21 @@ def main() -> int:
         surrogate["ordered_operations"][0]["proposed_next_content"] = "\ud800"
         cases.append(("UTF-8 surrogate", surrogate, "content_utf8_invalid"))
 
+        empty_noop = copy.deepcopy(plan)
+        empty_noop["reconciliation_state"] = "already_reconciled"
+        empty_noop["ordered_operations"] = []
+        empty_noop["operation_count"] = 0
+        empty_digest = hashlib.sha256(b"").hexdigest()
+        for role in ("index", "log"):
+            control = empty_noop[f"{role}_plan"]
+            control["proposed_next_content"] = ""
+            control["proposed_next_bytes"] = 0
+            control["proposed_next_digest"] = empty_digest
+            control["expected_current_bytes"] = 0
+            control["expected_current_digest"] = empty_digest
+            control["idempotent_noop"] = True
+        cases.append(("empty no-op content", empty_noop, "content_contract_invalid"))
+
         for label, candidate, reason_fragment in cases:
             result = apply_plan(root, candidate)
             require(result["status"] == "blocked", (label, result))
