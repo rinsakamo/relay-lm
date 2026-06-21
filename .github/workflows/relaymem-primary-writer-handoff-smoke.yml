@@ -1,0 +1,54 @@
+name: RelayMEM Primary writer handoff smoke
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/relaymem_primary_writer_handoff.py"
+      - "relaylm/_relaymem_primary_writer_handoff_impl.py"
+      - "scripts/relaylm_relaymem_primary_writer_handoff_smoke.py"
+      - "scripts/relaylm_relaymem_primary_writer_handoff_review_smoke.py"
+      - "scripts/relaylm_relaymem_primary_writer_handoff_security_smoke.py"
+      - "scripts/relaylm_relaymem_primary_writer_handoff_idempotency_smoke.py"
+      - ".github/workflows/relaymem-primary-writer-handoff-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/relaymem_primary_writer_handoff.py"
+      - "relaylm/_relaymem_primary_writer_handoff_impl.py"
+      - "scripts/relaylm_relaymem_primary_writer_handoff_smoke.py"
+      - "scripts/relaylm_relaymem_primary_writer_handoff_review_smoke.py"
+      - "scripts/relaylm_relaymem_primary_writer_handoff_security_smoke.py"
+      - "scripts/relaylm_relaymem_primary_writer_handoff_idempotency_smoke.py"
+      - ".github/workflows/relaymem-primary-writer-handoff-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile RelayMEM M3d helper and smokes
+        run: >-
+          python -m compileall -q
+          relaylm/relaymem_primary_writer_handoff.py
+          relaylm/_relaymem_primary_writer_handoff_impl.py
+          scripts/relaylm_relaymem_primary_writer_handoff_smoke.py
+          scripts/relaylm_relaymem_primary_writer_handoff_review_smoke.py
+          scripts/relaylm_relaymem_primary_writer_handoff_security_smoke.py
+          scripts/relaylm_relaymem_primary_writer_handoff_idempotency_smoke.py
+      - name: Run RelayMEM M3d writer handoff smoke
+        run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_smoke.py
+      - name: Run RelayMEM M3d review smoke
+        run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_review_smoke.py
+      - name: Run RelayMEM M3d security smoke
+        run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_security_smoke.py
+      - name: Run RelayMEM M3d idempotency smoke
+        run: >-
+          PYTHONPATH=. python
+          scripts/relaylm_relaymem_primary_writer_handoff_idempotency_smoke.py
