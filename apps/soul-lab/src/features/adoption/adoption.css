@@ -1,0 +1,505 @@
+.adoption-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.adoption-hero {
+  min-height: 23rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(18rem, 0.7fr);
+  gap: 2rem;
+  align-items: center;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+.adoption-hero > div:first-child > p:last-child {
+  max-width: 54rem;
+  color: var(--text-muted);
+  line-height: 1.75;
+}
+
+.adoption-no-character {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: center;
+  padding: 1.2rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--surface-solid) 82%, transparent);
+}
+
+.adoption-no-character strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--text);
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+}
+
+.adoption-no-character p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.adoption-empty-orbit {
+  width: 4.5rem;
+  height: 4.5rem;
+  display: grid;
+  place-items: center;
+  border: 1px dashed color-mix(in srgb, var(--primary) 45%, var(--border));
+  border-radius: 50%;
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-size: 1.35rem;
+}
+
+.adoption-assistant,
+.adoption-choice-section,
+.adoption-form-panel,
+.adoption-review {
+  padding: 1.35rem;
+}
+
+.adoption-assistant {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.adoption-assistant-avatar {
+  width: 4.2rem;
+  height: 4.2rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--primary) 48%, var(--border));
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 850;
+}
+
+.adoption-assistant h2 {
+  margin-bottom: 0.25rem;
+}
+
+.adoption-assistant span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.adoption-assistant p:last-child {
+  margin: 0.65rem 0 0;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.adoption-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.adoption-choice-card {
+  min-height: 8.5rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.9rem;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: var(--surface-muted);
+  color: var(--text);
+  text-align: left;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.adoption-choice-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary) 52%, var(--border));
+  background: color-mix(in srgb, var(--primary-soft) 48%, var(--surface-muted));
+}
+
+.adoption-choice-card strong,
+.adoption-choice-card small {
+  display: block;
+}
+
+.adoption-choice-card strong {
+  margin-bottom: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.adoption-choice-card small {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.adoption-choice-marker {
+  width: 2.8rem;
+  height: 2.8rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--primary) 42%, var(--border));
+  border-radius: 0.75rem;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.adoption-choice-arrow {
+  color: var(--primary);
+  font-size: 1.1rem;
+}
+
+.adoption-form-panel h2,
+.adoption-review h2 {
+  margin-bottom: 1.2rem;
+  font-size: 1.35rem;
+}
+
+.adoption-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.adoption-form-grid label,
+.adoption-import-name {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.adoption-form-grid input,
+.adoption-form-grid textarea,
+.adoption-import-name input {
+  width: 100%;
+  padding: 0.76rem 0.85rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.7rem;
+  background: var(--surface-solid);
+  color: var(--text);
+}
+
+.adoption-form-grid textarea {
+  resize: vertical;
+}
+
+.adoption-wide-field {
+  grid-column: 1 / -1;
+}
+
+.adoption-field-label {
+  color: var(--text-muted);
+  font-size: 0.69rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.adoption-id-preview {
+  display: grid;
+  align-content: start;
+  gap: 0.45rem;
+}
+
+.adoption-id-preview code,
+.adoption-review code,
+.adoption-complete code {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.48rem 0.62rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface-muted);
+  color: var(--primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+}
+
+.adoption-source-preview,
+.adoption-checklist {
+  display: grid;
+  gap: 0.65rem;
+  margin: 1rem 0 0;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-muted);
+}
+
+.adoption-source-preview legend,
+.adoption-checklist legend {
+  padding: 0 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.adoption-source-preview span {
+  color: var(--success);
+  font-size: 0.79rem;
+}
+
+.adoption-checklist label,
+.adoption-default-options label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.adoption-checklist input,
+.adoption-default-options input {
+  margin-top: 0.12rem;
+  accent-color: var(--primary);
+}
+
+.adoption-advice-list {
+  display: grid;
+  gap: 0.7rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.adoption-advice-list p {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border-left: 3px solid var(--primary);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.adoption-file-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+
+.adoption-file-picker {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-muted);
+}
+
+.adoption-file-picker input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.adoption-file-control {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.adoption-file-control .button {
+  width: fit-content;
+}
+
+.adoption-file-name {
+  min-height: 1.2rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.adoption-import-name {
+  max-width: 32rem;
+}
+
+.adoption-default-options {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-muted);
+}
+
+.adoption-default-options label:has(input:disabled) {
+  opacity: 0.5;
+}
+
+.adoption-error {
+  margin: 0.9rem 0 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border));
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--danger) 9%, var(--surface));
+  color: var(--danger);
+  font-size: 0.79rem;
+}
+
+.adoption-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  margin-top: 1.2rem;
+}
+
+.adoption-review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin: 0;
+}
+
+.adoption-review-grid > div {
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-muted);
+}
+
+.adoption-review-grid dt {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.adoption-review-grid dd {
+  margin: 0.45rem 0 0;
+  font-size: 0.83rem;
+  line-height: 1.55;
+}
+
+.adoption-review-sources,
+.adoption-review-boundary {
+  grid-column: 1 / -1;
+}
+
+.adoption-review-sources ul {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.adoption-review-boundary {
+  border-color: color-mix(in srgb, var(--warning) 42%, var(--border)) !important;
+}
+
+.adoption-review-boundary dd {
+  color: var(--warning);
+}
+
+.adoption-complete {
+  min-height: 28rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.adoption-complete .mock-pill {
+  margin-bottom: 1rem;
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+
+.adoption-complete h2 {
+  margin-bottom: 1.1rem;
+  font-size: clamp(1.55rem, 3vw, 2.4rem);
+}
+
+.adoption-complete-avatar {
+  width: 6.5rem;
+  height: 6.5rem;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--primary) 52%, var(--border));
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 1.4rem;
+  font-weight: 850;
+  box-shadow: 0 0 2.8rem var(--primary-soft);
+}
+
+.adoption-complete > strong {
+  margin-bottom: 0.4rem;
+  font-size: 1.2rem;
+}
+
+.adoption-complete > p {
+  max-width: 47rem;
+  margin: 1rem 0 0;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+@media (max-width: 900px) {
+  .adoption-hero,
+  .adoption-form-grid,
+  .adoption-choice-grid,
+  .adoption-file-grid,
+  .adoption-review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .adoption-wide-field,
+  .adoption-review-sources,
+  .adoption-review-boundary {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 620px) {
+  .adoption-hero {
+    min-height: auto;
+    padding: 1.25rem;
+  }
+
+  .adoption-no-character,
+  .adoption-assistant {
+    grid-template-columns: 1fr;
+  }
+
+  .adoption-choice-card {
+    grid-template-columns: auto 1fr;
+  }
+
+  .adoption-choice-arrow {
+    display: none;
+  }
+
+  .adoption-form-actions {
+    justify-content: stretch;
+  }
+
+  .adoption-form-actions .button {
+    flex: 1;
+  }
+}

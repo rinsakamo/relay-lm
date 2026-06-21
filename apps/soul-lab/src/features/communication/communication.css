@@ -1,0 +1,505 @@
+.communication-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.communication-hero {
+  min-height: 21rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(18rem, 0.65fr);
+  gap: 2rem;
+  align-items: center;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+.communication-hero > div:first-child > p:last-child,
+.communication-boundary-card p,
+.communication-autonomy p,
+.communication-stop-notes p,
+.communication-emergency-confirm p {
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.communication-boundary-card {
+  padding: 1.2rem;
+  border: 1px solid color-mix(in srgb, var(--warning) 38%, var(--border));
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--warning) 7%, var(--surface-solid));
+}
+
+.communication-boundary-card .mock-pill {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 13%, transparent);
+}
+
+.communication-boundary-card p {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+}
+
+.communication-peer-panel,
+.communication-session-panel,
+.communication-autonomy,
+.communication-timeline {
+  padding: 1.3rem;
+}
+
+.communication-peer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.communication-peer-card {
+  min-height: 9.5rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.85rem;
+  align-items: start;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  background: var(--surface-muted);
+  color: var(--text);
+  text-align: left;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.communication-peer-card:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary) 52%, var(--border));
+}
+
+.communication-peer-selected {
+  border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
+  background: color-mix(in srgb, var(--primary-soft) 54%, var(--surface-muted));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.communication-peer-avatar,
+.communication-participant-avatar {
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 850;
+}
+
+.communication-peer-avatar {
+  width: 3.2rem;
+  height: 3.2rem;
+}
+
+.communication-peer-copy,
+.communication-peer-heading,
+.communication-peer-copy small,
+.communication-peer-copy > span:last-child {
+  display: block;
+}
+
+.communication-peer-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.communication-peer-copy strong {
+  font-size: 0.9rem;
+}
+
+.communication-peer-copy small {
+  margin-top: 0.25rem;
+  color: var(--primary);
+  font-size: 0.67rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.communication-peer-copy > span:last-child {
+  margin-top: 0.65rem;
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  line-height: 1.5;
+}
+
+.communication-peer-state,
+.communication-phase {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.55rem;
+  padding: 0.2rem 0.48rem;
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.peer-state-ready,
+.phase-active {
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.peer-state-degraded,
+.phase-closing {
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+
+.peer-state-unconfigured,
+.phase-idle,
+.phase-ended {
+  color: var(--text-muted);
+  background: var(--surface-muted);
+}
+
+.phase-emergency {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.communication-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(20rem, 0.7fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.communication-side-column {
+  display: grid;
+  gap: 1rem;
+}
+
+.communication-participants {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.communication-participants article {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-muted);
+}
+
+.communication-participant-avatar {
+  width: 3rem;
+  height: 3rem;
+}
+
+.communication-participants small,
+.communication-participants strong,
+.communication-participants span {
+  display: block;
+}
+
+.communication-participants small {
+  color: var(--text-muted);
+  font-size: 0.63rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.communication-participants strong {
+  margin-top: 0.2rem;
+  font-size: 0.85rem;
+}
+
+.communication-participants article div > span {
+  max-width: 19rem;
+  margin-top: 0.25rem;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.66rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.communication-link {
+  color: var(--primary);
+  font-size: 1.2rem;
+}
+
+.communication-setup-grid,
+.communication-peer-details,
+.communication-session-facts {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.communication-setup-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-bottom: 0.9rem;
+}
+
+.communication-setup-grid label {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.communication-setup-grid label > span,
+.communication-peer-details dt,
+.communication-session-facts dt {
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  font-weight: 750;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.communication-setup-grid select {
+  width: 100%;
+  padding: 0.72rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.65rem;
+  background: var(--surface-solid);
+  color: var(--text);
+}
+
+.communication-peer-details {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 0 0.9rem;
+}
+
+.communication-peer-details > div,
+.communication-session-facts > div {
+  min-width: 0;
+  padding: 0.78rem;
+  border: 1px solid var(--border);
+  border-radius: 0.68rem;
+  background: var(--surface-muted);
+}
+
+.communication-peer-details dd,
+.communication-session-facts dd {
+  margin: 0.35rem 0 0;
+  overflow-wrap: anywhere;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.communication-peer-details dd,
+.communication-session-facts code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.communication-session-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.communication-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.communication-danger-button {
+  border-color: color-mix(in srgb, var(--danger) 46%, var(--border));
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface-solid));
+  color: var(--danger);
+}
+
+.communication-danger-button:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 14%, var(--surface-solid));
+}
+
+.communication-warning {
+  margin: 0.85rem 0 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--warning) 42%, var(--border));
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--warning) 8%, var(--surface));
+  color: var(--warning);
+  font-size: 0.75rem;
+}
+
+.communication-stop-notes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.communication-stop-notes article {
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 0.68rem;
+  background: var(--surface-muted);
+}
+
+.communication-stop-notes strong {
+  font-size: 0.78rem;
+}
+
+.communication-stop-notes p {
+  margin: 0.45rem 0 0;
+  font-size: 0.72rem;
+}
+
+.communication-emergency-confirm {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 48%, var(--border));
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+}
+
+.communication-emergency-confirm > strong {
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
+.communication-emergency-confirm p {
+  margin: 0.55rem 0 0;
+  font-size: 0.76rem;
+}
+
+.communication-emergency-confirm > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
+.communication-autonomy {
+  border-color: color-mix(in srgb, var(--primary) 32%, var(--border));
+}
+
+.communication-autonomy h2 {
+  margin-bottom: 0.55rem;
+}
+
+.communication-autonomy p:last-child {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.communication-event-list {
+  max-height: 34rem;
+  display: grid;
+  gap: 0.65rem;
+  overflow: auto;
+  padding-right: 0.25rem;
+}
+
+.communication-empty-event {
+  margin: 0;
+  padding: 1rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 0.7rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.communication-event {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.68rem;
+  background: var(--surface-muted);
+}
+
+.communication-event-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.28rem;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.event-warning .communication-event-dot {
+  background: var(--warning);
+}
+
+.event-error .communication-event-dot {
+  background: var(--danger);
+}
+
+.communication-event strong,
+.communication-event code,
+.communication-event time {
+  display: block;
+}
+
+.communication-event strong {
+  overflow-wrap: anywhere;
+  font-size: 0.72rem;
+}
+
+.communication-event code {
+  margin-top: 0.35rem;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: 0.64rem;
+  line-height: 1.45;
+}
+
+.communication-event time {
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.61rem;
+}
+
+@media (max-width: 1060px) {
+  .communication-hero,
+  .communication-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .communication-peer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .communication-hero,
+  .communication-peer-grid,
+  .communication-setup-grid,
+  .communication-peer-details,
+  .communication-session-facts,
+  .communication-stop-notes {
+    grid-template-columns: 1fr;
+  }
+
+  .communication-hero {
+    min-height: auto;
+    padding: 1.25rem;
+  }
+
+  .communication-participants {
+    grid-template-columns: 1fr;
+  }
+
+  .communication-link {
+    justify-self: center;
+    transform: rotate(90deg);
+  }
+
+  .communication-actions .button,
+  .communication-emergency-confirm .button {
+    flex: 1;
+  }
+}
