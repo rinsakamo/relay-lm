@@ -218,6 +218,7 @@ def main() -> None:
         assert repeated["status"] == "already_applied"
         assert repeated["writes_memory"] is False
         assert repeated["idempotent_noop"] is True
+        assert repeated["durability_confirmed"] is False
         assert repeated["receipt"]["page_digest"] == artifact["handoffs"][0]["page_digest"]
 
         projection = applied["projection"]
