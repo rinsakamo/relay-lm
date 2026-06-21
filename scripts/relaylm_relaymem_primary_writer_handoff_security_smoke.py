@@ -86,6 +86,13 @@ def main() -> None:
         result = _run(_artifact(), symlink_store_root)
         assert result["blocked_reasons"] == ["memory_store_target_symlink_blocked"]
 
+        real_parent = root / "real-parent"
+        (real_parent / "store/memory/mem/primary/projects").mkdir(parents=True)
+        linked_parent = root / "linked-parent"
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+        result = _run(_artifact(), linked_parent / "store")
+        assert result["blocked_reasons"] == ["memory_store_root_symlink_blocked"]
+
         missing_dir_root = root / "missing-layout"
         missing_dir_root.mkdir()
         result = _run(_artifact(), missing_dir_root)
