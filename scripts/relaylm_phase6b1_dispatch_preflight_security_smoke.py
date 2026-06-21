@@ -111,6 +111,36 @@ def main() -> None:
     )
     _assert_rejected(disabled_a2, "exact_a2_enqueue_candidate_required")
 
+    assert handoff.source_projection is not None
+    projection_count_mismatch = replace(
+        handoff,
+        source_projection=replace(handoff.source_projection, source_count=2),
+    )
+    _assert_rejected(
+        projection_count_mismatch,
+        "a2_candidate_source_projection_mismatch",
+    )
+    projection_session_mismatch = replace(
+        handoff,
+        source_projection=replace(
+            handoff.source_projection,
+            session_id_present=False,
+        ),
+    )
+    _assert_rejected(
+        projection_session_mismatch,
+        "a2_candidate_source_projection_mismatch",
+    )
+    assert handoff.candidate is not None
+    admission_mismatch = replace(
+        handoff,
+        source_admission_status="eligible_for_enqueue",
+    )
+    _assert_rejected(
+        admission_mismatch,
+        "a2_candidate_admission_status_mismatch",
+    )
+
     _assert_rejected(
         _with_candidate(handoff, run_id=" run-1"),
         "a2_run_id_invalid",
