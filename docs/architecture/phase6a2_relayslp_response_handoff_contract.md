@@ -17,6 +17,7 @@ relaylm_not_authoritative_for:
 relaylm_related_authority:
   - phase6_async_relayslp_bounded_slice.md
   - phase6a1_relayslp_job_admission_contract.md
+  - phase6b0_relayslp_durable_queue_contract.md
   - pipeline_implementation_plan.md
   - relaymem_slp_current_target.md
 ---
@@ -117,4 +118,6 @@ The public projection includes only status, bounded counts/enums, validated sour
 
 ## Next boundary
 
-The next Phase 6 boundary is Phase 6-B: a separately designed bounded durable queue with dispatch idempotency and enqueue/claim/lease/terminal-state semantics. Phase 6-A2 must not be interpreted as implementing that queue.
+[Phase 6-B0 RelaySLP Durable Queue Contract](phase6b0_relayslp_durable_queue_contract.md) defines the durable job record, safe private-candidate consumption, dispatch-idempotency derivation inputs, atomic enqueue and duplicate behavior, claim/lease/terminal states, restart/corruption handling, and content-free queue projection. B0 is design-only and does not make the A2 candidate durable.
+
+The next implementation slice is Phase 6-B1: a default-off, dry-run-only job-record and dispatch-idempotency preflight helper with no queue I/O. Phase 6-A2 must not be interpreted as implementing B0, B1, or a durable queue.
