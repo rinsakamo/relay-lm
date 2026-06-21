@@ -243,7 +243,7 @@ def _valid_existing_entry(marker: str, entry: Mapping[str, Any]) -> bool:
             and entry.get("entry_id") == expected_log_id
             and entry.get("index_entry_id") == expected_index_id
             and entry.get("operation") == "primary_page_published"
-            and is_sha256(lineae)
+            and is_sha256(lineage)
         )
     return False
 
