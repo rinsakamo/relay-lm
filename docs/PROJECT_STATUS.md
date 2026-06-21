@@ -22,10 +22,19 @@ relaylm_related_authority:
   - docs/architecture/phase6a1_relayslp_job_admission_contract.md
   - docs/architecture/phase6a2_relayslp_response_handoff_contract.md
   - docs/architecture/phase6b0_relayslp_durable_queue_contract.md
+  - docs/architecture/relaymem_mvp_implementation_plan.md
+  - docs/architecture/relaymem_slp_current_target.md
+  - docs/architecture/relaymem_m3e_atomic_primary_page_writer.md
+  - docs/architecture/relaymem_m3f_primary_index_log_reconciliation_preflight.md
+  - docs/architecture/soul_lab_ui_a0_a1_handoff.md
+  - docs/architecture/soul_lab_ui_a2_adoption_handoff.md
+  - docs/architecture/soul_lab_ui_a3_communication_handoff.md
 ---
 # RelayLM Project Status
 
 Last reviewed: 2026-06-21 JST
+
+Status baseline commit: `263708d39763c3d4e290928ea635f8c201836837`
 
 ## Purpose and authority
 
@@ -50,6 +59,8 @@ Managed-route correctness boundary: Phase 5-C complete
 Pre-stream hardening: Phase 5-D complete through D2
 Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
 Asynchronous RelaySLP orchestration: helper implementation complete through A2; B0 design contract complete
+RelayMEM independent track: M1/M2 foundations complete; Primary MEM path implemented through M3f preflight
+SOUL Lab UI independent track: UI-A0 through UI-A3 implemented as browser-local mock/presentation slices
 
 Latest completed bounded slices:
   Phase 5.5-B2 request-runtime SSE suppression wiring
@@ -97,6 +108,19 @@ Latest completed bounded slices:
   + dispatch-idempotency ownership and deterministic derivation inputs
   + atomic enqueue, duplicate/collision, state, claim/lease, restart/corruption, retry-release, and terminal invariants
   + design-only; no generated key, queue I/O, claim, lease, worker, memory write, or SOUL mutation
+
+  RelayMEM-M3c through M3f Primary MEM persistence preparation
+  + M3c deterministic Primary page candidate
+  + M3d exact writer-handoff and store-target preflight
+  + M3e default-off atomic no-clobber Primary page writer
+  + M3f read-only index/log reconciliation preflight and deterministic ordered plan
+  + no request-runtime wiring, RelaySLP worker, Secondary MEM consolidation, or index/log apply
+
+  SOUL Lab UI-A0 through UI-A3
+  + TypeScript/React/Vite shell, mock Home, and read-only Lab Observation preview
+  + browser-local first-launch and character-adoption draft flow
+  + mock Communication with peer classification, autonomous exchange, Soft Stop, and content-free timeline
+  + no peer network request, credentials, RelayRUN/RelaySLP mutation, transcript persistence, TTS, audio, or avatar execution
 ```
 
 Phase 5.5-B2 is complete as gated request-runtime SSE suppression wiring. Runtime request handling still preserves ordinary backend SSE forwarding by default. The wrapper is used only when `relayctx_stream_unpack_dry_run_enabled=true`; dry-run-only mode remains byte-for-byte pass-through, and apply mode suppresses RelayCTX internal marker/candidate material from user-visible SSE output.
@@ -121,9 +145,15 @@ Phase 6-A1 is complete as a default-off, dry-run-first helper-only deferred job-
 
 Phase 6-B0 is complete as a design/contract slice. It fixes the future durable record, dispatch identity, atomic enqueue, duplicate/collision handling, queue state machine, claim/lease fencing, restart/corruption behavior, retry-release boundary, terminal-state immutability, content-free projection, and visible-response independence. It does not implement a producer, generated dispatch key, queue I/O, worker, memory apply, or SOUL mutation.
 
-Next candidates remain independently sequenced:
+RelayMEM-M3c through M3f are complete as independent bounded slices. M3e is the first current helper that can durably publish a Primary MEM page when all direct-call gates pass. M3f reopens and revalidates that page plus the current index/log and emits a deterministic reconciliation plan, but remains read-only and never applies the index/log changes.
+
+SOUL Lab UI-A0 through UI-A3 are complete as presentation-only browser slices. They provide the UI foundation, mock Home/Observation surfaces, first-launch/adoption drafts, and a browser-local autonomous Communication session surface without reading persona source contents, registering a character, sending peer network requests, calling `/lab/api/*`, or mutating RelayRUN, RelaySLP, SOUL, or MEM state.
+
+Next boundaries remain independently sequenced:
 
 - Phase 6-B1: default-off, dry-run-only job-record and dispatch-idempotency preflight helper with no queue I/O,
+- RelayMEM-M3g: gated index/log reconciliation apply consuming the exact M3f plan,
+- SOUL Lab UI-A4: read-only-to-candidate Pod / SOUL Intervention mock workflow with no mutation API,
 - later SOUL Lab Runtime MVP adapter bridge/runtime work for TTS/audio/avatar execution.
 
 New RelaySOUL execution-gate design documents should still be avoided unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary.
@@ -163,6 +193,13 @@ Current `main` includes:
 - RelaySOUL dry-run/preflight governance foundations,
 - RelayMEM-M3a Primary MEM formation candidate helper,
 - RelayMEM-M3b Primary MEM source-lineage/write-preflight helper,
+- RelayMEM-M3c deterministic Primary MEM page-candidate helper,
+- RelayMEM-M3d Primary writer-handoff preflight,
+- RelayMEM-M3e default-off atomic Primary page writer,
+- RelayMEM-M3f read-only Primary index/log reconciliation preflight,
+- SOUL Lab UI-A0/A1 shell, mock Home, and read-only Lab Observation preview,
+- SOUL Lab UI-A2 browser-local first-launch and adoption draft flow,
+- SOUL Lab UI-A3 browser-local mock Communication session surface,
 - Phase 6-A1 RelaySLP job-admission preflight helper,
 - Phase 6-A2 RelaySLP response-finalization handoff helper,
 - Phase 6-B0 durable RelaySLP queue contract and contract smoke.
@@ -184,7 +221,7 @@ relayctx_tts_adapter_handoff_runtime_dry_run_only = true
 
 Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate and a trusted in-process producer supplies a runtime-private typed parse source. Runtime stream suppression and runtime TTS adapter handoff/transport planning are default-off. RelayLM still does not execute TTS, generate audio, control avatars, or deliver adapter transport.
 
-Phase 6-A1 and A2 are direct helper gates rather than route configuration fields. Their call defaults are disabled and dry-run-only. No request runtime invokes them automatically. Phase 6-B0 is design-only and adds no runtime gate or configuration field.
+Phase 6-A1 and A2 are direct helper gates rather than route configuration fields. Their call defaults are disabled and dry-run-only. No request runtime invokes them automatically. Phase 6-B0 is design-only and adds no runtime gate or configuration field. RelayMEM-M3e is also a direct-helper boundary: its call defaults are `enabled=false`, `apply_enabled=false`, and `dry_run_only=true`. M3f accepts only read-only dry-run operation and cannot apply index/log changes.
 
 ## Token estimation boundary
 
@@ -301,7 +338,7 @@ The runtime does not yet provide:
 - scheduler/background worker, claim, lease, retry, or terminal execution,
 - RelaySLP worker invocation,
 - Secondary MEM consolidation runtime,
-- Phase 6 page/index/log persistence apply,
+- RelayMEM-M3g index/log reconciliation apply and broader Phase 6 persistence apply,
 - actual RelaySOUL apply, rollback, or persistence execution,
 - model-specific exact tokenizer integration.
 
@@ -325,7 +362,7 @@ Open-LLM-VTuber
   -> OpenAI-compatible backend
 ```
 
-RelayLM does not own frontend UI, ASR, TTS execution, transport delivery, or avatar execution. Current streaming remains backend SSE forwarding by default; gated runtime Stream Unpack suppression and runtime TTS adapter handoff/transport planning exist only when their gates are explicitly enabled.
+RelayLM Core request runtime does not own frontend rendering, ASR, TTS execution, transport delivery, or avatar execution. The repository does include the presentation-only SOUL Lab UI-A0 through UI-A3 under `apps/soul-lab`; it remains mock/browser-local and is not a Core authority surface. Current streaming remains backend SSE forwarding by default; gated runtime Stream Unpack suppression and runtime TTS adapter handoff/transport planning exist only when their gates are explicitly enabled.
 
 ## Where to read next
 
@@ -334,6 +371,13 @@ RelayLM does not own frontend UI, ASR, TTS execution, transport delivery, or ava
 - [Phase 6-A1 RelaySLP Job Admission Contract](architecture/phase6a1_relayslp_job_admission_contract.md)
 - [Phase 6-A2 RelaySLP Response-Finalization Handoff Contract](architecture/phase6a2_relayslp_response_handoff_contract.md)
 - [Phase 6-B0 RelaySLP Durable Queue Contract](architecture/phase6b0_relayslp_durable_queue_contract.md)
+- [RelayMEM MVP Implementation Plan](architecture/relaymem_mvp_implementation_plan.md)
+- [RelayMEM / RelaySLP Current / Target Boundary](architecture/relaymem_slp_current_target.md)
+- [RelayMEM-M3e Atomic Primary MEM Page Writer](architecture/relaymem_m3e_atomic_primary_page_writer.md)
+- [RelayMEM-M3f Primary Index/Log Reconciliation Preflight](architecture/relaymem_m3f_primary_index_log_reconciliation_preflight.md)
+- [SOUL Lab UI-A0 / UI-A1 Handoff](architecture/soul_lab_ui_a0_a1_handoff.md)
+- [SOUL Lab UI-A2 Adoption Handoff](architecture/soul_lab_ui_a2_adoption_handoff.md)
+- [SOUL Lab UI-A3 Communication Handoff](architecture/soul_lab_ui_a3_communication_handoff.md)
 - [Phase 5.5 Stream Unpack Bounded Slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
 - [Phase 5.5-C4 Runtime TTS Transport Envelope Wiring](architecture/phase55c4_runtime_tts_transport_envelope_wiring.md)
 - [Phase 5.5-C3 TTS Adapter Transport Contract](architecture/phase55c3_tts_adapter_transport_contract.md)

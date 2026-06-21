@@ -25,7 +25,9 @@ RelayLM documentation is AI-first: documents should be understandable when retri
 - [Current project status](PROJECT_STATUS.md) — concise current boundary and next choices
 - [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing
-- [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md) — next RelayLM Core boundary for deferred job admission and later asynchronous persistence orchestration
+- [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md) — current Core orchestration track, complete through A2 helpers and B0 design
+- [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md) — independent memory track, complete through M3f preflight
+- [SOUL Lab UI-A3 Communication handoff](architecture/soul_lab_ui_a3_communication_handoff.md) — current UI track through browser-local mock Communication
 - [Architecture docs](architecture/README.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Contract docs](contracts/README.md)
@@ -43,7 +45,7 @@ Use [Project Status](PROJECT_STATUS.md) for the current developer-facing view an
 
 Phase 5.5 Stream Unpack / TTS handoff preparation is complete for RelayLM Core. Concrete TTS execution, audio queueing, adapter delivery, Live2D/avatar mapping, motion, and lip-sync remain SOUL Lab Runtime MVP responsibilities.
 
-The next RelayLM Core boundary is Phase 6 asynchronous RelaySLP. It begins with a docs-only ownership split and a helper-only deferred job-admission preflight before queue, worker, retry, or persistence apply work. The boundary keeps RelayMEM-M3b/M4 memory semantics separate from Phase 6 dispatch orchestration and keeps visible response delivery independent from persistence I/O.
+Current work is split across independent tracks. RelayLM Core is complete through Phase 6-A2 helpers and the Phase 6-B0 durable-queue design; B1 is next. RelayMEM has implemented its Primary MEM path through M3f read-only index/log reconciliation planning; M3g apply is next. SOUL Lab UI is implemented through UI-A3; UI-A4 Pod / SOUL Intervention is next. Concrete TTS/audio/avatar execution remains SOUL Lab Runtime work.
 
 Use [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) before treating proposed schemas, future execution gates, or historical compatibility artifacts as current behavior.
 
@@ -81,9 +83,15 @@ When documents disagree:
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
 - [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md)
 - [RelayMEM SLP execution design](architecture/relaymem_slp_execution_design.md)
+- [RelayMEM-M3d Primary writer handoff](architecture/relaymem_m3d_primary_writer_handoff.md)
+- [RelayMEM-M3e Atomic Primary page writer](architecture/relaymem_m3e_atomic_primary_page_writer.md)
+- [RelayMEM-M3f Index/log reconciliation preflight](architecture/relaymem_m3f_primary_index_log_reconciliation_preflight.md)
 - [Scene lifecycle design](architecture/scene_lifecycle_design.md)
 - [AI VTuber pipeline profile](architecture/ai_vtuber_pipeline_profile.md)
 - [SOUL Lab UI MVP](architecture/soul_lab_ui_mvp.md)
+- [SOUL Lab UI-A0 / UI-A1 handoff](architecture/soul_lab_ui_a0_a1_handoff.md)
+- [SOUL Lab UI-A2 Adoption handoff](architecture/soul_lab_ui_a2_adoption_handoff.md)
+- [SOUL Lab UI-A3 Communication handoff](architecture/soul_lab_ui_a3_communication_handoff.md)
 - [SOUL Lab Runtime MVP](architecture/soul_lab_runtime_mvp.md)
 - [RelayINT MVP design](architecture/relayint_mvp_design.md)
 
