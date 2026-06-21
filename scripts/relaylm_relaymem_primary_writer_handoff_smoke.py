@@ -10,13 +10,33 @@ from relaylm.relaymem_primary_writer_handoff import (
 )
 
 
+def _stable(parts: list[str]) -> str:
+    digest = sha256()
+    for part in parts:
+        digest.update(part.encode("utf-8"))
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
 def _artifact(
     *,
     upstream_eligible: bool = False,
     summary: str = "A bounded project event was remembered.",
 ) -> dict:
-    idempotency_key = sha256(b"m3d-idempotency").hexdigest()
     lineage_fingerprint = sha256(b"m3d-lineage").hexdigest()
+    idempotency_key = _stable(
+        [
+            "relaymem-primary-write-preflight-v0",
+            "character:test",
+            "turn",
+            lineage_fingerprint,
+            "primary:test",
+            "turn",
+            "primary",
+            "recent_project_event",
+            "free_to_update",
+        ]
+    )
     metadata = {
         "summary": summary,
         "schema_version": "relaymem.primary_page.v0",
