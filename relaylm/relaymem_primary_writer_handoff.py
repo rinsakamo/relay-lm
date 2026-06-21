@@ -360,6 +360,8 @@ def _parse_candidate(value: Mapping[str, Any]) -> dict[str, Any]:
             not isinstance(title, str)
             or title != title.strip()
             or len(title) > _MAX_TITLE
+            or _bad(title)
+            or any(char in title for char in "\n\r\t")
         ):
             reasons.append("primary_page_candidate_page_title_invalid")
         expected_body = f"# Primary memory\n\n## Summary\n\n{summary.strip()}\n"
@@ -433,7 +435,8 @@ def _inspect_store_target(
         return state
     safe_root = root_path.strip()
     if (
-        not safe_root
+        safe_root != root_path
+        or not safe_root
         or _bad(safe_root)
         or any(char in safe_root for char in "\n\r\t")
     ):
@@ -441,7 +444,7 @@ def _inspect_store_target(
         return state
 
     root = Path(safe_root)
-    if root.is_symlink():
+    if _path_has_symlink_component(root):
         state["blocked_reasons"] = ["memory_store_root_symlink_blocked"]
         return state
     if not root.exists() or not root.is_dir():
@@ -634,6 +637,16 @@ def _path_reasons(value: object, expected_path: str) -> list[str]:
     if not any(value.startswith(f"{directory}/") for directory in _TARGET_DIR.values()):
         return ["primary_page_candidate_target_path_outside_primary_scope"]
     return []
+
+
+def _path_has_symlink_component(path: Path) -> bool:
+    absolute = path if path.is_absolute() else Path.cwd() / path
+    current = Path(absolute.anchor)
+    for part in absolute.parts[1:]:
+        current = current / part
+        if current.is_symlink():
+            return True
+    return False
 
 
 def _path_contains_symlink(root: Path, candidate: Path) -> bool:
