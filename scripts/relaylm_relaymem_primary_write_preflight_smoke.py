@@ -66,6 +66,8 @@ def _assert_projection_content_free(value: object) -> None:
         "turn-0002",
         "session-abc",
         "run-abc",
+        "character-alpha",
+        "memory/mem/primary",
     }
     for token in forbidden:
         require(token not in text, text)
@@ -105,7 +107,7 @@ def main() -> int:
     require(eligible["operation_count"] == 1, eligible)
     operation = eligible["operations"][0]
     require(operation["preflight_status"] == "eligible", operation)
-    require(operation["target_category"] == "memory/mem/primary/projects", operation)
+    require(operation["target_category"] == "primary_projects", operation)
     require(operation["preflight_apply_eligible"] is False, operation)
     require(len(operation["idempotency_key"]) == 64, operation)
     require(operation["writes_memory"] is False, operation)
@@ -140,6 +142,28 @@ def main() -> int:
     )
     print("ok idempotency key is stable and lineage-sensitive")
 
+    long_prefix = "x" * 128
+    long_a = build_relaymem_primary_source_lineage(
+        source_event_id=f"{long_prefix}a",
+    )
+    long_b = build_relaymem_primary_source_lineage(
+        source_event_id=f"{long_prefix}b",
+    )
+    require(long_a["valid"] is False, long_a)
+    require(long_b["valid"] is False, long_b)
+    require("source_event_id_invalid" in long_a["blocked_reasons"], long_a)
+    require(long_a["lineage_fingerprint"] == "", long_a)
+    require(long_b["lineage_fingerprint"] == "", long_b)
+    print("ok overlong lineage IDs are blocked instead of truncated")
+
+    invalid_kind = build_relaymem_primary_source_lineage(
+        source_event_kind="unknown_event",
+        source_event_id="turn-0001",
+    )
+    require(invalid_kind["valid"] is False, invalid_kind)
+    require("source_event_kind_invalid" in invalid_kind["blocked_reasons"], invalid_kind)
+    print("ok unknown source event kinds fail closed")
+
     missing_lineage = build_relaymem_primary_write_preflight_dry_run(
         candidates=[candidate],
         source_lineage_artifact=None,
@@ -150,6 +174,21 @@ def main() -> int:
     require(missing_lineage["operations"][0]["preflight_status"] == "blocked", missing_lineage)
     require(missing_lineage["operations"][0]["idempotency_key"] == "", missing_lineage)
     print("ok missing source lineage blocks preflight keys")
+
+    forged_lineage = dict(lineage)
+    forged_lineage["lineage_fingerprint"] = "not-a-sha256"
+    forged = build_relaymem_primary_write_preflight_dry_run(
+        candidates=[candidate],
+        source_lineage_artifact=forged_lineage,
+        enabled=True,
+    )
+    require(forged["source_lineage_valid"] is False, forged)
+    require(
+        "source_lineage_fingerprint_invalid" in forged["blocked_reasons"],
+        forged,
+    )
+    require(forged["operations"][0]["idempotency_key"] == "", forged)
+    print("ok malformed lineage fingerprints fail closed")
 
     held_candidate = _candidate("system_ops")
     held = build_relaymem_primary_write_preflight_dry_run(
@@ -165,6 +204,17 @@ def main() -> int:
     )
     print("ok review-required candidates are held")
 
+    held_without_lineage = build_relaymem_primary_write_preflight_dry_run(
+        candidates=[held_candidate],
+        source_lineage_artifact=None,
+        enabled=True,
+    )
+    require(
+        held_without_lineage["operations"][0]["preflight_status"] == "blocked",
+        held_without_lineage,
+    )
+    print("ok missing lineage blocks review-required candidates before hold")
+
     never_auto = dict(candidate)
     never_auto["promotion_policy"] = "never_auto_promote"
     blocked = build_relaymem_primary_write_preflight_dry_run(
@@ -179,6 +229,23 @@ def main() -> int:
         blocked,
     )
     print("ok never-auto-promote candidates are blocked")
+
+    unknown_memory_kind = dict(candidate)
+    unknown_memory_kind["memory_kind"] = "unregistered_kind"
+    unknown_kind = build_relaymem_primary_write_preflight_dry_run(
+        candidates=[unknown_memory_kind],
+        source_lineage_artifact=lineage,
+        enabled=True,
+    )
+    require(unknown_kind["operations"][0]["preflight_status"] == "blocked", unknown_kind)
+    require(
+        "unsupported_memory_kind"
+        in unknown_kind["operations"][0]["blocked_reasons"],
+        unknown_kind,
+    )
+    require(unknown_kind["operations"][0]["target_category"] == "unknown", unknown_kind)
+    require(unknown_kind["operations"][0]["idempotency_key"] == "", unknown_kind)
+    print("ok unknown memory kinds do not inherit a default target category")
 
     disabled = build_relaymem_primary_write_preflight_dry_run(
         candidates=[candidate],

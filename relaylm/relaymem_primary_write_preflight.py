@@ -16,7 +16,21 @@ _LINEAGE_SCHEMA_VERSION = "relaymem.primary_source_lineage.v0"
 _SCHEMA_VERSION = "relaymem.primary_write_preflight_dry_run.v0"
 _PROJECTION_SCHEMA_VERSION = "relaymem.primary_write_preflight_projection.v0"
 _KNOWN_SOURCE_EVENT_KINDS = {"turn", "session", "communication", "manual_import"}
+_KNOWN_PROMOTION_POLICIES = {
+    "free_to_update",
+    "review_required",
+    "explicit_approval_required",
+    "never_auto_promote",
+}
+_TARGET_CATEGORIES = {
+    "recent_project_event": "primary_projects",
+    "relationship_moment": "primary_relationships",
+    "session_episode": "primary_sessions",
+    "scene_bound_memory": "primary_scenes",
+    "experience_event": "primary_scenes",
+}
 _AUTONOMOUS_PROMOTION_POLICY = "free_to_update"
+_MAX_TOKEN_LENGTH = 128
 
 
 def build_relaymem_primary_source_lineage(
@@ -35,18 +49,46 @@ def build_relaymem_primary_source_lineage(
     Raw source text is never accepted or returned.
     """
 
-    event_kind = _safe_event_kind(source_event_kind)
-    safe_namespace = _safe_token(namespace, default="default")
-    safe_source_event_id = _safe_optional_token(source_event_id)
-    safe_run_id = _safe_optional_token(run_id)
-    safe_session_id = _safe_optional_token(session_id)
-    safe_turn_index = _non_negative_int_or_none(turn_index)
-    blocked_reasons = _lineage_blocked_reasons(
-        source_event_id=safe_source_event_id,
-        run_id=safe_run_id,
-        session_id=safe_session_id,
-        turn_index=safe_turn_index,
+    event_kind, event_kind_reasons = _validated_event_kind(source_event_kind)
+    safe_namespace, namespace_reasons = _required_token(
+        namespace,
+        reason="source_namespace_invalid",
     )
+    safe_source_event_id, source_event_id_reasons = _optional_token(
+        source_event_id,
+        reason="source_event_id_invalid",
+    )
+    safe_run_id, run_id_reasons = _optional_token(
+        run_id,
+        reason="run_id_invalid",
+    )
+    safe_session_id, session_id_reasons = _optional_token(
+        session_id,
+        reason="session_id_invalid",
+    )
+    safe_turn_index, turn_index_reasons = _optional_non_negative_int(
+        turn_index,
+        reason="turn_index_invalid",
+    )
+    blocked_reasons = _dedupe(
+        event_kind_reasons
+        + namespace_reasons
+        + source_event_id_reasons
+        + run_id_reasons
+        + session_id_reasons
+        + turn_index_reasons
+    )
+    blocked_reasons.extend(
+        reason
+        for reason in _lineage_identity_reasons(
+            source_event_id=safe_source_event_id,
+            run_id=safe_run_id,
+            session_id=safe_session_id,
+            turn_index=safe_turn_index,
+        )
+        if reason not in blocked_reasons
+    )
+
     fingerprint = ""
     if not blocked_reasons:
         fingerprint = _stable_hash(
@@ -141,15 +183,30 @@ def _parse_source_lineage(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
         return _malformed_lineage(["source_lineage_missing"])
     if artifact.get("schema_version") != _LINEAGE_SCHEMA_VERSION:
         return _malformed_lineage(["source_lineage_schema_mismatch"])
-    fingerprint = artifact.get("lineage_fingerprint")
-    if artifact.get("valid") is not True or not isinstance(fingerprint, str) or not fingerprint:
+    if artifact.get("valid") is not True:
         reasons = _string_list(artifact.get("blocked_reasons"))
         return _malformed_lineage(reasons or ["source_lineage_invalid"])
+
+    fingerprint = artifact.get("lineage_fingerprint")
+    if not _is_sha256_hex(fingerprint):
+        return _malformed_lineage(["source_lineage_fingerprint_invalid"])
+
+    event_kind, event_kind_reasons = _validated_event_kind(
+        artifact.get("source_event_kind")
+    )
+    namespace, namespace_reasons = _required_token(
+        artifact.get("namespace"),
+        reason="source_namespace_invalid",
+    )
+    reasons = _dedupe(event_kind_reasons + namespace_reasons)
+    if reasons:
+        return _malformed_lineage(reasons)
+
     return {
         "valid": True,
         "lineage_fingerprint": fingerprint,
-        "source_event_kind": _safe_event_kind(artifact.get("source_event_kind")),
-        "namespace": _safe_token(artifact.get("namespace"), default="default"),
+        "source_event_kind": event_kind,
+        "namespace": namespace,
         "blocked_reasons": [],
     }
 
@@ -158,8 +215,8 @@ def _malformed_lineage(reasons: Sequence[str]) -> dict[str, Any]:
     return {
         "valid": False,
         "lineage_fingerprint": "",
-        "source_event_kind": "turn",
-        "namespace": "default",
+        "source_event_kind": "unknown",
+        "namespace": "unknown",
         "blocked_reasons": _dedupe(reasons),
     }
 
@@ -173,26 +230,69 @@ def _operation(
     dry_run_only: bool,
     apply_enabled: bool,
 ) -> dict[str, Any]:
-    candidate_id = _safe_token(candidate.get("candidate_id"), default="")
-    promotion_policy = _safe_token(candidate.get("promotion_policy"), default="unknown")
-    memory_layer = _safe_token(candidate.get("memory_layer"), default="unknown")
-    memory_kind = _safe_token(candidate.get("memory_kind"), default="experience_event")
-    blocked_reasons = list(global_blocked_reasons)
-    if not candidate_id:
-        blocked_reasons.append("candidate_id_missing")
-    if memory_layer != "primary":
-        blocked_reasons.append("unsupported_memory_layer")
-    if promotion_policy != _AUTONOMOUS_PROMOTION_POLICY:
-        blocked_reasons.append(f"promotion_policy_blocks_autonomous_apply:{promotion_policy}")
+    candidate_id, candidate_id_reasons = _required_token(
+        candidate.get("candidate_id"),
+        reason="candidate_id_invalid",
+    )
+    memory_layer, memory_layer_reasons = _required_token(
+        candidate.get("memory_layer"),
+        reason="memory_layer_invalid",
+    )
+    memory_kind, memory_kind_reasons = _required_token(
+        candidate.get("memory_kind"),
+        reason="memory_kind_invalid",
+    )
+    promotion_policy, promotion_policy_reasons = _required_token(
+        candidate.get("promotion_policy"),
+        reason="promotion_policy_invalid",
+    )
+    safety_scope, _ = _required_token(
+        candidate.get("safety_scope"),
+        reason="safety_scope_invalid",
+    )
 
-    status = _status_for_reasons(blocked_reasons, promotion_policy)
+    candidate_blocked_reasons = _dedupe(
+        candidate_id_reasons
+        + memory_layer_reasons
+        + memory_kind_reasons
+        + promotion_policy_reasons
+    )
+    if memory_layer and memory_layer != "primary":
+        candidate_blocked_reasons.append("unsupported_memory_layer")
+    if memory_kind and memory_kind not in _TARGET_CATEGORIES:
+        candidate_blocked_reasons.append("unsupported_memory_kind")
+    if promotion_policy and promotion_policy not in _KNOWN_PROMOTION_POLICIES:
+        candidate_blocked_reasons.append("unsupported_promotion_policy")
+
+    promotion_reasons: list[str] = []
+    if (
+        promotion_policy in _KNOWN_PROMOTION_POLICIES
+        and promotion_policy != _AUTONOMOUS_PROMOTION_POLICY
+    ):
+        promotion_reasons.append(
+            f"promotion_policy_blocks_autonomous_apply:{promotion_policy}"
+        )
+
+    structural_blocked_reasons = _dedupe(
+        list(global_blocked_reasons) + candidate_blocked_reasons
+    )
+    blocked_reasons = _dedupe(structural_blocked_reasons + promotion_reasons)
+    status = _status_for_reasons(
+        structural_reasons=structural_blocked_reasons,
+        promotion_policy=promotion_policy,
+    )
+
     idempotency_key = ""
-    if parsed_lineage.get("valid") is True and candidate_id:
+    if (
+        parsed_lineage.get("valid") is True
+        and not candidate_blocked_reasons
+        and candidate_id
+    ):
         idempotency_key = _stable_hash(
             [
                 "relaymem-primary-write-preflight-v0",
-                str(parsed_lineage.get("namespace", "default")),
-                str(parsed_lineage.get("source_event_kind", "turn")),
+                str(parsed_lineage.get("namespace", "unknown")),
+                str(parsed_lineage.get("source_event_kind", "unknown")),
                 str(parsed_lineage.get("lineage_fingerprint", "")),
                 candidate_id,
                 memory_layer,
@@ -200,6 +300,7 @@ def _operation(
                 promotion_policy,
             ]
         )
+
     preflight_apply_eligible = (
         status == "eligible"
         and bool(enabled)
@@ -209,16 +310,16 @@ def _operation(
     return {
         "schema_version": "relaymem.primary_write_preflight_operation.v0",
         "candidate_id": candidate_id,
-        "memory_layer": memory_layer,
-        "memory_kind": memory_kind,
-        "promotion_policy": promotion_policy,
-        "safety_scope": _safe_token(candidate.get("safety_scope"), default="unknown"),
+        "memory_layer": memory_layer or "unknown",
+        "memory_kind": memory_kind or "unknown",
+        "promotion_policy": promotion_policy or "unknown",
+        "safety_scope": safety_scope or "unknown",
         "target_category": _target_category(memory_kind),
         "preflight_status": status,
         "preflight_apply_eligible": preflight_apply_eligible,
         "idempotency_key": idempotency_key,
         "idempotency_key_included_in_projection": False,
-        "blocked_reasons": _dedupe(blocked_reasons),
+        "blocked_reasons": blocked_reasons,
         "content_included": False,
         "raw_text_included": False,
         "raw_affect_estimates_included": False,
@@ -289,7 +390,7 @@ def _global_blocked_reasons(
     return _dedupe(reasons)
 
 
-def _lineage_blocked_reasons(
+def _lineage_identity_reasons(
     *,
     source_event_id: str | None,
     run_id: str | None,
@@ -305,24 +406,24 @@ def _lineage_blocked_reasons(
     return ["source_lineage_missing"]
 
 
-def _status_for_reasons(reasons: Sequence[str], promotion_policy: str) -> str:
-    if not reasons:
-        return "eligible"
+def _status_for_reasons(
+    *,
+    structural_reasons: Sequence[str],
+    promotion_policy: str,
+) -> str:
+    if structural_reasons:
+        return "blocked"
     if promotion_policy == "review_required":
         return "held"
+    if promotion_policy == _AUTONOMOUS_PROMOTION_POLICY:
+        return "eligible"
     return "blocked"
 
 
-def _target_category(memory_kind: str) -> str:
-    if memory_kind == "recent_project_event":
-        return "memory/mem/primary/projects"
-    if memory_kind == "relationship_moment":
-        return "memory/mem/primary/relationships"
-    if memory_kind == "session_episode":
-        return "memory/mem/primary/sessions"
-    if memory_kind == "scene_bound_memory":
-        return "memory/mem/primary/scenes"
-    return "memory/mem/primary/scenes"
+def _target_category(memory_kind: str | None) -> str:
+    if not memory_kind:
+        return "unknown"
+    return _TARGET_CATEGORIES.get(memory_kind, "unknown")
 
 
 def _stable_hash(parts: Sequence[str]) -> str:
@@ -331,6 +432,12 @@ def _stable_hash(parts: Sequence[str]) -> str:
         digest.update(part.encode("utf-8", "surrogatepass"))
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def _is_sha256_hex(value: object) -> bool:
+    if not isinstance(value, str) or len(value) != 64:
+        return False
+    return all(character in "0123456789abcdef" for character in value)
 
 
 def _count_by_key(items: Sequence[Mapping[str, Any]], key: str) -> dict[str, int]:
@@ -356,29 +463,37 @@ def _dedupe(reasons: Sequence[str]) -> list[str]:
     return output
 
 
-def _safe_event_kind(value: object) -> str:
+def _validated_event_kind(value: object) -> tuple[str, list[str]]:
     if isinstance(value, str) and value in _KNOWN_SOURCE_EVENT_KINDS:
-        return value
-    return "turn"
+        return value, []
+    return "unknown", ["source_event_kind_invalid"]
 
 
-def _safe_optional_token(value: object) -> str | None:
-    token = _safe_token(value, default="")
-    return token or None
-
-
-def _safe_token(value: object, *, default: str) -> str:
+def _required_token(value: object, *, reason: str) -> tuple[str, list[str]]:
     if not isinstance(value, str):
-        return default
+        return "", [reason]
     token = value.strip()
-    if not token:
-        return default
-    return token[:128]
+    if not token or len(token) > _MAX_TOKEN_LENGTH:
+        return "", [reason]
+    return token, []
 
 
-def _non_negative_int_or_none(value: object) -> int | None:
+def _optional_token(value: object, *, reason: str) -> tuple[str | None, list[str]]:
+    if value is None:
+        return None, []
+    token, reasons = _required_token(value, reason=reason)
+    return (token or None), reasons
+
+
+def _optional_non_negative_int(
+    value: object,
+    *,
+    reason: str,
+) -> tuple[int | None, list[str]]:
+    if value is None:
+        return None, []
     if isinstance(value, bool):
-        return None
+        return None, [reason]
     if isinstance(value, int) and value >= 0:
-        return value
-    return None
+        return value, []
+    return None, [reason]
