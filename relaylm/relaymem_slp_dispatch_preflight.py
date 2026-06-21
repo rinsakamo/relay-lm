@@ -32,64 +32,25 @@ _ALLOWED_RUNTIME_STATUSES = ("completed", "succeeded", "idle")
 _ALLOWED_POLICY_STATUSES = ("allowed", "free_to_update")
 
 _A2_RESULT_FIELDS = {
-    "schema_version",
-    "helper_only",
-    "diagnostics_only",
-    "read_only",
-    "enabled",
-    "dry_run_only",
-    "response_finalized",
-    "status",
-    "source_admission_status",
-    "source_projection",
-    "candidate_count",
-    "candidate_created",
-    "candidate",
-    "queue_io_performed",
-    "enqueued",
-    "worker_invoked",
-    "invokes_slp",
-    "writes_memory",
-    "mutates_soul",
-    "changes_visible_response",
-    "blocked_reasons",
+    "schema_version", "helper_only", "diagnostics_only", "read_only", "enabled",
+    "dry_run_only", "response_finalized", "status", "source_admission_status",
+    "source_projection", "candidate_count", "candidate_created", "candidate",
+    "queue_io_performed", "enqueued", "worker_invoked", "invokes_slp",
+    "writes_memory", "mutates_soul", "changes_visible_response", "blocked_reasons",
 }
 _A2_CANDIDATE_FIELDS = {
-    "schema_version",
-    "candidate_kind",
-    "trigger_mode",
-    "processing_stage",
-    "source_event_kind",
-    "run_id",
-    "turn_index",
-    "session_id",
-    "namespace",
-    "source_count",
-    "source_lineage_fingerprint",
-    "source_admission_status",
-    "runtime_terminal_status",
-    "persistence_policy_status",
-    "response_finalized",
-    "dry_run_only",
-    "enqueue_requested",
-    "queue_io_performed",
-    "enqueued",
-    "worker_invoked",
-    "invokes_slp",
-    "writes_memory",
-    "mutates_soul",
-    "changes_visible_response",
-    "dispatch_idempotency_key",
-    "memory_write_idempotency_key",
-    "content_free",
-    "runtime_private",
+    "schema_version", "candidate_kind", "trigger_mode", "processing_stage",
+    "source_event_kind", "run_id", "turn_index", "session_id", "namespace",
+    "source_count", "source_lineage_fingerprint", "source_admission_status",
+    "runtime_terminal_status", "persistence_policy_status", "response_finalized",
+    "dry_run_only", "enqueue_requested", "queue_io_performed", "enqueued",
+    "worker_invoked", "invokes_slp", "writes_memory", "mutates_soul",
+    "changes_visible_response", "dispatch_idempotency_key",
+    "memory_write_idempotency_key", "content_free", "runtime_private",
 }
 
 RelayMEMSLPDispatchPreflightStatus = Literal[
-    "disabled",
-    "invalid_input",
-    "blocked",
-    "dry_run_ready",
+    "disabled", "invalid_input", "blocked", "dry_run_ready"
 ]
 
 
@@ -182,11 +143,7 @@ class RelayMEMSLPDispatchPreflightResult:
             "response_finalized": self.response_finalized,
             "durable_job_count": self.durable_job_count,
             "durable_job_created": self.durable_job_created,
-            "durable_job": (
-                self.durable_job.to_runtime_dict()
-                if self.durable_job is not None
-                else None
-            ),
+            "durable_job": self.durable_job.to_runtime_dict() if self.durable_job else None,
             "queue_io_performed": False,
             "enqueue_attempted": False,
             "enqueue_applied": False,
@@ -204,13 +161,13 @@ class RelayMEMSLPDispatchPreflightResult:
         return {
             "schema_version": _PROJECTION_SCHEMA,
             "status": self.status,
-            "state": "queued" if job is not None else None,
-            "trigger_mode": job.trigger_mode if job is not None else None,
-            "processing_stage": job.processing_stage if job is not None else None,
-            "source_event_kind": job.source_event_kind if job is not None else None,
-            "source_count": job.source_count if job is not None else 0,
+            "state": "queued" if job else None,
+            "trigger_mode": job.trigger_mode if job else None,
+            "processing_stage": job.processing_stage if job else None,
+            "source_event_kind": job.source_event_kind if job else None,
+            "source_count": job.source_count if job else 0,
             "attempt_count": 0,
-            "retry_class": "unclassified" if job is not None else None,
+            "retry_class": "unclassified" if job else None,
             "response_finalized": self.response_finalized,
             "enqueue_attempted": False,
             "enqueue_applied": False,
@@ -232,67 +189,33 @@ def build_relaymem_slp_dispatch_preflight(
     """Derive a deterministic dispatch identity and dry-run job candidate."""
 
     enabled, enabled_errors = _strict_bool(enabled, "enabled_invalid")
-    dry_run_only, dry_run_errors = _strict_bool(
-        dry_run_only,
-        "dry_run_only_invalid",
-    )
+    dry_run_only, dry_run_errors = _strict_bool(dry_run_only, "dry_run_only_invalid")
     gate_errors = _dedupe((*enabled_errors, *dry_run_errors))
     if gate_errors:
-        return _result(
-            "invalid_input",
-            enabled,
-            dry_run_only,
-            False,
-            False,
-            None,
-            gate_errors,
-        )
+        return _result("invalid_input", enabled, dry_run_only, False, False, None, gate_errors)
     if not enabled:
         return _result("disabled", False, dry_run_only, False, False, None, ())
     if not dry_run_only:
         return _result(
-            "blocked",
-            True,
-            False,
-            False,
-            False,
-            None,
+            "blocked", True, False, False, False, None,
             ("non_dry_run_not_supported",),
         )
 
     source, source_errors = _validate_handoff_result(handoff_result)
     if source is None:
-        return _result(
-            "invalid_input",
-            True,
-            True,
-            False,
-            False,
-            None,
-            source_errors,
-        )
+        return _result("invalid_input", True, True, False, False, None, source_errors)
 
     candidate, candidate_errors = _validate_candidate(source.candidate)
     if candidate is None:
         return _result(
-            "blocked",
-            True,
-            True,
-            False,
-            source.response_finalized,
-            None,
+            "blocked", True, True, False, source.response_finalized, None,
             candidate_errors,
         )
 
     consistency_errors = _validate_source_candidate_consistency(source, candidate)
     if consistency_errors:
         return _result(
-            "blocked",
-            True,
-            True,
-            False,
-            source.response_finalized,
-            None,
+            "blocked", True, True, False, source.response_finalized, None,
             consistency_errors,
         )
 
@@ -324,34 +247,32 @@ def build_relaymem_slp_dispatch_preflight_node_result(
 ) -> PipelineNodeResult:
     """Build the content-free B1 diagnostics projection."""
 
-    node_status = {
+    status = {
         "invalid_input": "failed",
         "blocked": "blocked",
         "disabled": "skipped",
     }.get(result.status, "diagnostic_only")
     return build_pipeline_node_result(
         node_name="relaymem_slp_dispatch_preflight",
-        status=node_status,
+        status=status,
         decision=result.status,
         blocked_reasons=result.blocked_reasons,
         diagnostics=result.to_log_dict(),
-        artifacts=[
-            {
-                "artifact_name": "relaymem_slp_durable_job_candidate",
-                "schema_version": _DURABLE_JOB_SCHEMA,
-                "present": result.durable_job_created,
-                "content_free": True,
-                "runtime_private": True,
-                "candidate_omitted": True,
-                "dispatch_idempotency_key_included": False,
-                "job_id_included": False,
-                "queue_io_performed": False,
-                "enqueue_attempted": False,
-                "enqueue_applied": False,
-                "worker_invoked": False,
-                "writes_memory": False,
-            }
-        ],
+        artifacts=[{
+            "artifact_name": "relaymem_slp_durable_job_candidate",
+            "schema_version": _DURABLE_JOB_SCHEMA,
+            "present": result.durable_job_created,
+            "content_free": True,
+            "runtime_private": True,
+            "candidate_omitted": True,
+            "dispatch_idempotency_key_included": False,
+            "job_id_included": False,
+            "queue_io_performed": False,
+            "enqueue_attempted": False,
+            "enqueue_applied": False,
+            "worker_invoked": False,
+            "writes_memory": False,
+        }],
     )
 
 
@@ -383,13 +304,8 @@ def _validate_handoff_result(
         if runtime.get(field) is not True:
             return None, (f"a2_handoff_{field}_invalid",)
     for field in (
-        "queue_io_performed",
-        "enqueued",
-        "worker_invoked",
-        "invokes_slp",
-        "writes_memory",
-        "mutates_soul",
-        "changes_visible_response",
+        "queue_io_performed", "enqueued", "worker_invoked", "invokes_slp",
+        "writes_memory", "mutates_soul", "changes_visible_response",
     ):
         if runtime.get(field) is not False:
             return None, (f"a2_handoff_{field}_invalid",)
@@ -399,10 +315,7 @@ def _validate_handoff_result(
         return None, ("a2_handoff_disabled",)
     if source.dry_run_only is not True or runtime.get("dry_run_only") is not True:
         return None, ("a2_handoff_not_dry_run",)
-    if (
-        source.response_finalized is not True
-        or runtime.get("response_finalized") is not True
-    ):
+    if source.response_finalized is not True or runtime.get("response_finalized") is not True:
         return None, ("a2_response_not_finalized",)
     if source.source_admission_status not in _ACCEPTED_ADMISSION_STATUSES:
         return None, ("a2_source_admission_status_invalid",)
@@ -412,10 +325,7 @@ def _validate_handoff_result(
         return None, ("a2_blocked_reasons_not_empty",)
     if source.candidate_count != 1 or source.candidate_created is not True:
         return None, ("a2_candidate_cardinality_invalid",)
-    if (
-        runtime.get("candidate_count") != 1
-        or runtime.get("candidate_created") is not True
-    ):
+    if runtime.get("candidate_count") != 1 or runtime.get("candidate_created") is not True:
         return None, ("a2_runtime_candidate_cardinality_invalid",)
     if runtime.get("source_projection") != source_projection:
         return None, ("a2_source_projection_mismatch",)
@@ -431,6 +341,27 @@ def _validate_source_candidate_consistency(
     projection = source.source_projection
     if type(projection) is not RelayMEMSLPSourceProjection:
         return ("exact_a2_source_projection_required",)
+    if (
+        type(projection.trigger_mode) is not str
+        or type(projection.processing_stage) is not str
+        or type(projection.source_event_kind) is not str
+    ):
+        return ("a2_source_projection_enum_invalid",)
+    if (
+        type(projection.source_count) is not int
+        or not 1 <= projection.source_count <= _MAX_SOURCES
+    ):
+        return ("a2_source_projection_source_count_invalid",)
+    if any(
+        type(value) is not bool
+        for value in (
+            projection.run_id_present,
+            projection.turn_index_present,
+            projection.session_id_present,
+            projection.namespace_present,
+        )
+    ):
+        return ("a2_source_projection_presence_invalid",)
     reasons: list[str] = []
     if not (
         projection.trigger_mode == candidate.trigger_mode
@@ -460,10 +391,7 @@ def _validate_candidate(
         return None, ("a2_candidate_runtime_shape_invalid",)
     if not isinstance(runtime, Mapping):
         return None, ("a2_candidate_runtime_shape_invalid",)
-    if (
-        len(runtime) != len(_A2_CANDIDATE_FIELDS)
-        or set(runtime) != _A2_CANDIDATE_FIELDS
-    ):
+    if len(runtime) != len(_A2_CANDIDATE_FIELDS) or set(runtime) != _A2_CANDIDATE_FIELDS:
         return None, ("a2_candidate_shape_mismatch",)
     if runtime.get("schema_version") != _SOURCE_CANDIDATE_SCHEMA:
         return None, ("a2_candidate_schema_mismatch",)
@@ -488,10 +416,7 @@ def _validate_candidate(
         return None, ("a2_session_id_invalid",)
     if type(candidate.turn_index) is not int or candidate.turn_index < 0:
         return None, ("a2_turn_index_invalid",)
-    if (
-        type(candidate.source_count) is not int
-        or not 1 <= candidate.source_count <= _MAX_SOURCES
-    ):
+    if type(candidate.source_count) is not int or not 1 <= candidate.source_count <= _MAX_SOURCES:
         return None, ("a2_source_count_invalid",)
     if not _is_sha256(candidate.source_lineage_fingerprint):
         return None, ("a2_source_lineage_fingerprint_invalid",)
@@ -501,7 +426,6 @@ def _validate_candidate(
         return None, ("a2_runtime_terminal_status_invalid",)
     if candidate.persistence_policy_status not in _ALLOWED_POLICY_STATUSES:
         return None, ("a2_persistence_policy_status_invalid",)
-
     expected_flags = {
         "response_finalized": True,
         "dry_run_only": True,
@@ -523,18 +447,10 @@ def _validate_candidate(
         if type(runtime.get(field)) is not str or runtime.get(field) != "":
             return None, (f"a2_candidate_{field}_not_empty",)
     for field in (
-        "trigger_mode",
-        "processing_stage",
-        "source_event_kind",
-        "run_id",
-        "turn_index",
-        "session_id",
-        "namespace",
-        "source_count",
-        "source_lineage_fingerprint",
-        "source_admission_status",
-        "runtime_terminal_status",
-        "persistence_policy_status",
+        "trigger_mode", "processing_stage", "source_event_kind", "run_id",
+        "turn_index", "session_id", "namespace", "source_count",
+        "source_lineage_fingerprint", "source_admission_status",
+        "runtime_terminal_status", "persistence_policy_status",
     ):
         if runtime.get(field) != getattr(candidate, field):
             return None, (f"a2_candidate_{field}_mismatch",)
@@ -559,9 +475,7 @@ def _derive_dispatch_key(candidate: Mapping[str, Any]) -> str:
         ["source_lineage_fingerprint", candidate["source_lineage_fingerprint"]],
     ]
     encoded = json.dumps(
-        canonical_input,
-        ensure_ascii=True,
-        separators=(",", ":"),
+        canonical_input, ensure_ascii=True, separators=(",", ":")
     ).encode("utf-8")
     return _DISPATCH_KEY_PREFIX + hashlib.sha256(encoded).hexdigest()
 
@@ -600,10 +514,7 @@ def _is_token(value: Any) -> bool:
         type(value) is str
         and value == value.strip()
         and 0 < len(value) <= _MAX_TOKEN
-        and all(
-            char.isascii() and (char.isalnum() or char in "-_.:/")
-            for char in value
-        )
+        and all(char.isascii() and (char.isalnum() or char in "-_.:/") for char in value)
     )
 
 
