@@ -15,6 +15,15 @@ _M3C_CANDIDATE_SCHEMA = "relaymem.primary_page_candidate.v0"
 _SCHEMA_REJECTION = "relaymem.primary_page_candidate_dry_run.rejected.v0"
 _SCHEMA_REASON = "primary_page_candidate_artifact_schema_mismatch"
 _IDEMPOTENCY_REASON = "primary_page_candidate_idempotency_key_mismatch"
+_EVENT_KINDS = {"turn", "session", "communication", "manual_import"}
+_MEMORY_KINDS = {
+    "recent_project_event",
+    "relationship_moment",
+    "session_episode",
+    "scene_bound_memory",
+    "experience_event",
+}
+_MAX_TOKEN = 128
 
 
 def build_relaymem_primary_writer_handoff_preflight(
@@ -60,17 +69,24 @@ def _has_idempotency_mismatch(value: object) -> bool:
     if candidate.get("schema_version") != _M3C_CANDIDATE_SCHEMA:
         return False
 
-    fields = (
-        candidate.get("namespace"),
-        candidate.get("source_event_kind"),
-        candidate.get("lineage_fingerprint"),
-        candidate.get("candidate_id"),
-        candidate.get("memory_kind"),
-        candidate.get("idempotency_key"),
-    )
-    if not all(isinstance(field, str) for field in fields):
+    namespace = candidate.get("namespace")
+    source_event_kind = candidate.get("source_event_kind")
+    lineage_fingerprint = candidate.get("lineage_fingerprint")
+    candidate_id = candidate.get("candidate_id")
+    memory_kind = candidate.get("memory_kind")
+    key = candidate.get("idempotency_key")
+    if (
+        not _token(namespace)
+        or source_event_kind not in _EVENT_KINDS
+        or not _sha(lineage_fingerprint)
+        or not _token(candidate_id)
+        or memory_kind not in _MEMORY_KINDS
+        or not _sha(key)
+        or candidate.get("memory_layer") != "primary"
+        or candidate.get("promotion_policy") != "free_to_update"
+    ):
         return False
-    namespace, source_event_kind, lineage_fingerprint, candidate_id, memory_kind, key = fields
+
     expected = _stable(
         (
             "relaymem-primary-write-preflight-v0",
@@ -97,6 +113,24 @@ def _replace_reason(result: dict[str, Any], old: str, new: str) -> None:
             new if reason == old else reason
             for reason in projection.get("blocked_reasons", [])
         ]
+
+
+def _token(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and value == value.strip()
+        and 0 < len(value) <= _MAX_TOKEN
+        and not any(char in value for char in "\n\r\t")
+        and not any(ord(char) < 32 or 0xD800 <= ord(char) <= 0xDFFF for char in value)
+    )
+
+
+def _sha(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
+    )
 
 
 def _stable(parts: Sequence[str]) -> str:
