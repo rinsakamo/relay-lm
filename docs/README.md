@@ -25,7 +25,7 @@ RelayLM documentation is AI-first: documents should be understandable when retri
 - [Current project status](PROJECT_STATUS.md) — concise current boundary and next choices
 - [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing
-- [Phase 5.5 Stream Unpack bounded slice](architecture/phase5_5_stream_unpack_bounded_slice.md) — next product-critical streaming boundary
+- [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md) — next RelayLM Core boundary for deferred job admission and later asynchronous persistence orchestration
 - [Architecture docs](architecture/README.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Contract docs](contracts/README.md)
@@ -41,7 +41,9 @@ The repository-wide documentation audit, audit Phases 1–8, is complete as of 2
 
 Use [Project Status](PROJECT_STATUS.md) for the current developer-facing view and [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md) for later sequencing.
 
-Phase 5.5 Stream Unpack is the next product-critical streaming boundary. The bounded slice design starts with Phase 5.5-A stream sentinel buffer dry-run and freezes new RelaySOUL execution-gate design expansion until Phase 5.5-A and 5.5-B are complete, except for runtime-safety unblockers.
+Phase 5.5 Stream Unpack / TTS handoff preparation is complete for RelayLM Core. Concrete TTS execution, audio queueing, adapter delivery, Live2D/avatar mapping, motion, and lip-sync remain SOUL Lab Runtime MVP responsibilities.
+
+The next RelayLM Core boundary is Phase 6 asynchronous RelaySLP. It begins with a docs-only ownership split and a helper-only deferred job-admission preflight before queue, worker, retry, or persistence apply work. The boundary keeps RelayMEM-M3b/M4 memory semantics separate from Phase 6 dispatch orchestration and keeps visible response delivery independent from persistence I/O.
 
 Use [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) before treating proposed schemas, future execution gates, or historical compatibility artifacts as current behavior.
 
@@ -64,7 +66,8 @@ When documents disagree:
 - [Architecture docs index](architecture/README.md)
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md)
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md)
-- [Phase 5.5 Stream Unpack bounded slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
+- [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md)
+- [Completed Phase 5.5 Stream Unpack bounded slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Client history authority contract](architecture/client_history_authority_contract.md)
 - [Client instruction authority contract](architecture/client_instruction_authority_contract.md)
@@ -75,12 +78,14 @@ When documents disagree:
 - [RelayRUN runtime checkpoint design](architecture/relayrun_runtime_checkpoint_design.md)
 - [Context packing design](architecture/context_packing_design.md)
 - [Memory lifecycle design](architecture/memory_lifecycle_design.md)
+- [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
+- [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md)
+- [RelayMEM SLP execution design](architecture/relaymem_slp_execution_design.md)
 - [Scene lifecycle design](architecture/scene_lifecycle_design.md)
 - [AI VTuber pipeline profile](architecture/ai_vtuber_pipeline_profile.md)
 - [SOUL Lab UI MVP](architecture/soul_lab_ui_mvp.md)
 - [SOUL Lab Runtime MVP](architecture/soul_lab_runtime_mvp.md)
 - [RelayINT MVP design](architecture/relayint_mvp_design.md)
-- [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
 
 ## Contracts and safety gates
 
