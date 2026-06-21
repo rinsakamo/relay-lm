@@ -111,7 +111,7 @@ marker count per control file: 256
 marker line: 4 KiB
 ```
 
-All three files must be regular UTF-8 files. OS exception strings and absolute root paths are not copied into diagnostics.
+All three files must be regular UTF-8 files. The control files must retain their exact first-line base headings, `# Index` and `# Log`; a missing or substituted heading is a conflict. OS exception strings and absolute root paths are not copied into diagnostics.
 
 ## Page revalidation
 
@@ -150,7 +150,7 @@ The private entry contains:
 
 The operation includes the expected current byte count/digest and the proposed next content, byte count, and digest. This gives M3g a compare-and-swap input without allowing M3f to mutate the file.
 
-An exact existing entry is an idempotent no-op. Every recognized marker, including unrelated entries, must use canonical compact JSON and pass exact field-set, scope, path, digest, and recomputed deterministic entry-ID validation. Duplicate identities, a reused page path or idempotency key with different content, malformed or non-canonical markers, unknown marker fields, or schema/value mismatches are `index_conflict`.
+An exact existing entry is an idempotent no-op. Every recognized marker, including unrelated entries, must use canonical compact JSON and pass exact field-set, scope, path, digest, and recomputed deterministic entry-ID validation. Duplicate identities, a reused page path or idempotency key with different content, malformed or non-canonical markers, markers from another control-file family, unknown marker versions or fields, or schema/value mismatches are `index_conflict`.
 
 ## Deterministic log plan
 

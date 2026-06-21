@@ -52,6 +52,7 @@ def build_index_plan(receipt: Mapping[str, Any], current: bytes) -> dict[str, An
         operation_kind="append_index_entry",
         target_relative_path=INDEX_PATH,
         marker="relaymem-primary-index-entry-v0",
+        expected_header="# Index",
         entry=entry,
         current=current,
         identity_fields=("entry_id", "page_relative_path", "idempotency_key"),
@@ -90,6 +91,7 @@ def build_log_plan(
         operation_kind="append_log_entry",
         target_relative_path=LOG_PATH,
         marker="relaymem-primary-log-entry-v0",
+        expected_header="# Log",
         entry=entry,
         current=current,
         identity_fields=("entry_id", "page_relative_path", "idempotency_key"),
@@ -115,11 +117,12 @@ def _mutation_plan(
     operation_kind: str,
     target_relative_path: str,
     marker: str,
+    expected_header: str,
     entry: Mapping[str, Any],
     current: bytes,
     identity_fields: Sequence[str],
 ) -> dict[str, Any]:
-    parsed = _parse_markers(current, marker)
+    parsed = _parse_markers(current, marker, expected_header)
     conflict = parsed.get("valid") is not True
     exact_present = False
     exact_count = 0
@@ -165,15 +168,22 @@ def _mutation_plan(
     }
 
 
-def _parse_markers(content: bytes, marker: str) -> dict[str, Any]:
+def _parse_markers(
+    content: bytes, marker: str, expected_header: str
+) -> dict[str, Any]:
     try:
         text = content.decode("utf-8")
     except UnicodeDecodeError:
         return _invalid("primary_reconciliation_control_file_utf8_invalid")
+    lines = text.splitlines()
+    if not lines or lines[0] != expected_header:
+        return _invalid("primary_reconciliation_control_file_header_mismatch")
     entries: list[dict[str, Any]] = []
     prefix = f"<!-- {marker} "
     suffix = " -->"
-    for line in text.splitlines():
+    for line in lines[1:]:
+        if line.lstrip().startswith("<!-- relaymem-primary-") and marker not in line:
+            return _invalid("primary_reconciliation_marker_schema_unsupported")
         if len(line.encode("utf-8")) > MAX_MARKER_LINE_BYTES and marker in line:
             return _invalid("primary_reconciliation_marker_line_too_large")
         if marker not in line:

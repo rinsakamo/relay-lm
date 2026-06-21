@@ -62,6 +62,31 @@ def main() -> int:
         require(noncanonical_result["status"] == "index_conflict", noncanonical_result)
         print("ok noncanonical marker JSON fails closed")
 
+        fixture(root)
+        index_path.write_text("not-an-index\n", encoding="utf-8")
+        bad_index_header = preflight(root, receipt)
+        require(bad_index_header["status"] == "index_conflict", bad_index_header)
+
+        receipt, _, index_path, log_path = fixture(root)
+        first = preflight(root, receipt)
+        index_path.write_text(
+            first["plan"]["index_plan"]["proposed_next_content"],
+            encoding="utf-8",
+        )
+        log_path.write_text("not-a-log\n", encoding="utf-8")
+        bad_log_header = preflight(root, receipt)
+        require(bad_log_header["status"] == "log_conflict", bad_log_header)
+        print("ok exact index and log base headings are required")
+
+        receipt, _, index_path, _ = fixture(root)
+        index_path.write_text(
+            "# Index\n<!-- relaymem-primary-index-entry-v1 {} -->\n",
+            encoding="utf-8",
+        )
+        unknown_marker = preflight(root, receipt)
+        require(unknown_marker["status"] == "index_conflict", unknown_marker)
+        print("ok unknown reconciliation marker versions fail closed")
+
         for unsafe_namespace in ("character-->rendered", "character\u2028rendered"):
             unsafe = copy.deepcopy(receipt)
             unsafe["namespace"] = unsafe_namespace
