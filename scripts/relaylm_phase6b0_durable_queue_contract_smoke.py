@@ -80,8 +80,10 @@ def main() -> None:
             "trace or audit records",
             "frontend metadata",
             "visible response text",
+            "the original A1 public projection",
             "caller-supplied dictionaries that merely resemble the candidate",
             "Unknown fields, missing fields, wrong types, nested substitutions",
+            "B2 must consume that validated B1 artifact",
         ),
         label="private A2 candidate consumption",
     )
@@ -119,10 +121,24 @@ def main() -> None:
             "record revision",
             "attempt count",
             "claim or lease metadata",
+            "retry class or retry outcome",
             "memory-write idempotency keys",
             "raw content",
         ),
         label="dispatch identity exclusions",
+    )
+
+    _require_all(
+        contract,
+        (
+            "The A2 candidate does not contain a retry classification.",
+            "retry_class = unclassified",
+            "failure_class = none",
+            "B1 must not recover `retry_class` from the A1 projection",
+            "attempt_count = 0",
+            "claim_generation = 0",
+        ),
+        label="retry metadata provenance",
     )
 
     _require_all(
@@ -139,11 +155,26 @@ def main() -> None:
             "claimed -> succeeded",
             "claimed -> failed",
             "claimed -> queued",
+            "validated retry release or stale-lease recovery",
+            "No transition is allowed out of `succeeded`, `failed`, `cancelled`, or `dead_letter`.",
             "compare-and-swap semantics",
             "claim_generation",
             "lease_token",
         ),
         label="queue state machine",
+    )
+
+    _require_all(
+        contract,
+        (
+            "increment `attempt_count`",
+            "increment `claim_generation`",
+            "Lease renewal must compare-and-swap",
+            "A retry-release transition is structurally distinct from terminal failure.",
+            "preserve the dispatch identity and attempt count",
+            "terminal-state immutability",
+        ),
+        label="claim retry and terminal invariants",
     )
 
     _require_all(
@@ -155,7 +186,7 @@ def main() -> None:
             "blocked_collision",
             "blocked_corrupt",
             "write_failed",
-            "Same key plus different identity is not a duplicate",
+            "Same key plus different key-input fields is not a duplicate",
             "must not be silently repaired",
             "expired `claimed` records are not automatically executed",
         ),
@@ -235,6 +266,14 @@ def main() -> None:
             '"runtime_private": True',
         ),
         label="A2 candidate compatibility",
+    )
+    a2_candidate_class = _section(
+        a2_helper,
+        "class RelayMEMSLPEnqueueCandidate:",
+        "class RelayMEMSLPSourceProjection:",
+    )
+    assert "retry_class" not in a2_candidate_class, (
+        "B0 retry initialization must be revisited if A2 begins carrying retry_class"
     )
 
     tracked_paths = (
