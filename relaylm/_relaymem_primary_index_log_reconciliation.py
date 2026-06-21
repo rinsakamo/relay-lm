@@ -32,11 +32,14 @@ def build_relaymem_primary_index_log_reconciliation_preflight(
     dry_run_only: bool = True,
 ) -> dict[str, Any]:
     reasons: list[str] = []
+    gates_valid = True
     if type(enabled) is not bool:
         reasons.append("primary_reconciliation_enabled_invalid")
+        gates_valid = False
         enabled = False
     if type(dry_run_only) is not bool:
         reasons.append("primary_reconciliation_dry_run_only_invalid")
+        gates_valid = False
         dry_run_only = True
     if not enabled:
         reasons.append("primary_reconciliation_disabled")
@@ -55,7 +58,7 @@ def build_relaymem_primary_index_log_reconciliation_preflight(
     plan: dict[str, Any] | None = None
     state = "blocked"
 
-    if enabled and dry_run_only and parsed.get("valid") is True:
+    if gates_valid and enabled and dry_run_only and parsed.get("valid") is True:
         receipt_value = parsed["receipt"]
         page = read_store_file(
             root_path=root_path,

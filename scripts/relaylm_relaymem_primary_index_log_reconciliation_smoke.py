@@ -120,6 +120,34 @@ def main() -> int:
         root = Path(td)
         receipt, page_path, index_path, log_path = fixture(root)
 
+        invalid_dry_run_gate = build_relaymem_primary_index_log_reconciliation_preflight(
+            receipt=receipt,
+            root_path=str(root),
+            enabled=True,
+            dry_run_only=1,
+        )
+        require(invalid_dry_run_gate["status"] == "blocked", invalid_dry_run_gate)
+        require(invalid_dry_run_gate["plan"] is None, invalid_dry_run_gate)
+        require(
+            "primary_reconciliation_dry_run_only_invalid"
+            in invalid_dry_run_gate["blocked_reasons"],
+            invalid_dry_run_gate,
+        )
+        invalid_enabled_gate = build_relaymem_primary_index_log_reconciliation_preflight(
+            receipt=receipt,
+            root_path=str(root),
+            enabled=1,
+            dry_run_only=True,
+        )
+        require(invalid_enabled_gate["status"] == "blocked", invalid_enabled_gate)
+        require(invalid_enabled_gate["plan"] is None, invalid_enabled_gate)
+        require(
+            "primary_reconciliation_enabled_invalid"
+            in invalid_enabled_gate["blocked_reasons"],
+            invalid_enabled_gate,
+        )
+        print("ok non-boolean gates cannot produce a reconciliation plan")
+
         initial_index = index_path.read_bytes()
         initial_log = log_path.read_bytes()
         first = preflight(root, receipt)
