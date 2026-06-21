@@ -32,6 +32,29 @@ const componentLabels = {
   avatar: "Avatar Adapter",
 } as const;
 
+function isLabRoute(value: string): value is LabRoute {
+  return navigation.some((item) => item.route === value);
+}
+
+function routeFromHash(): LabRoute {
+  const value = window.location.hash.replace(/^#\/?/, "");
+  return isLabRoute(value) ? value : "home";
+}
+
+function relativeTimeLabel(language: Language, seconds: number): string {
+  if (seconds < 60) {
+    return language === "ja" ? `${seconds}秒前` : `${seconds}s ago`;
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return language === "ja" ? `${minutes}分前` : `${minutes}m ago`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  return language === "ja" ? `${hours}時間前` : `${hours}h ago`;
+}
+
 function currentTimeLabel(language: Language): string {
   return new Intl.DateTimeFormat(language === "ja" ? "ja-JP" : "en-US", {
     hour: "2-digit",
@@ -96,7 +119,7 @@ export function App() {
     throw new Error("SOUL Lab mock data requires at least one character");
   }
 
-  const [route, setRoute] = useState<LabRoute>("home");
+  const [route, setRoute] = useState<LabRoute>(routeFromHash);
   const [theme, setTheme] = useState<Theme>(() => {
     const storedTheme = window.localStorage.getItem("soul-lab-theme");
     if (storedTheme === "light" || storedTheme === "dark") {
@@ -105,7 +128,12 @@ export function App() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
   const [language, setLanguage] = useState<Language>("ja");
-  const [activeCharacterId, setActiveCharacterId] = useState(firstCharacter.characterId);
+  const [activeCharacterId, setActiveCharacterId] = useState(() => {
+    const storedCharacterId = window.localStorage.getItem("soul-lab-active-character");
+    return mockCharacters.some((character) => character.characterId === storedCharacterId)
+      ? (storedCharacterId as string)
+      : firstCharacter.characterId;
+  });
   const [chatEntries, setChatEntries] = useState<ChatEntry[]>(initialChatEntries);
   const [draft, setDraft] = useState("");
 
@@ -123,8 +151,22 @@ export function App() {
     document.documentElement.lang = language;
   }, [language]);
 
+  useEffect(() => {
+    window.localStorage.setItem("soul-lab-active-character", activeCharacterId);
+  }, [activeCharacterId]);
+
+  useEffect(() => {
+    const syncRoute = () => setRoute(routeFromHash());
+    window.addEventListener("hashchange", syncRoute);
+    return () => window.removeEventListener("hashchange", syncRoute);
+  }, []);
+
   function navigate(nextRoute: LabRoute) {
     setRoute(nextRoute);
+    const nextHash = `#/${nextRoute}`;
+    if (window.location.hash !== nextHash) {
+      window.location.hash = nextHash;
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -295,7 +337,7 @@ export function App() {
                   </div>
                   <div>
                     <dt>{translate(language, "home.lastActive")}</dt>
-                    <dd>{activeCharacter.lastActiveLabel}</dd>
+                    <dd>{relativeTimeLabel(language, activeCharacter.lastActiveSeconds)}</dd>
                   </div>
                 </dl>
               </section>
