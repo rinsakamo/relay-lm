@@ -5,6 +5,7 @@ on:
     paths:
       - "relaylm/relaymem_slp_job_admission.py"
       - "scripts/relaylm_relaymem_slp_job_admission_smoke.py"
+      - "scripts/relaylm_relaymem_slp_job_admission_bounded_metadata_smoke.py"
       - ".github/workflows/relaymem-slp-job-admission-smoke.yml"
   push:
     branches:
@@ -12,6 +13,7 @@ on:
     paths:
       - "relaylm/relaymem_slp_job_admission.py"
       - "scripts/relaylm_relaymem_slp_job_admission_smoke.py"
+      - "scripts/relaylm_relaymem_slp_job_admission_bounded_metadata_smoke.py"
       - ".github/workflows/relaymem-slp-job-admission-smoke.yml"
 
 permissions:
@@ -25,7 +27,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Compile Phase 6-A1 helper
-        run: python -m compileall -q relaylm/relaymem_slp_job_admission.py scripts/relaylm_relaymem_slp_job_admission_smoke.py
-      - name: Run Phase 6-A1 smoke
+      - name: Compile Phase 6-A1 helpers and smokes
+        run: >-
+          python -m compileall -q
+          relaylm/relaymem_slp_job_admission.py
+          scripts/relaylm_relaymem_slp_job_admission_smoke.py
+          scripts/relaylm_relaymem_slp_job_admission_bounded_metadata_smoke.py
+      - name: Run Phase 6-A1 admission smoke
         run: PYTHONPATH=. python scripts/relaylm_relaymem_slp_job_admission_smoke.py
+      - name: Run Phase 6-A1 bounded metadata smoke
+        run: >-
+          PYTHONPATH=. python
+          scripts/relaylm_relaymem_slp_job_admission_bounded_metadata_smoke.py
