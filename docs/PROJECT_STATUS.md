@@ -84,6 +84,12 @@ Phase 5.5-C3 is complete as a helper-only adapter-facing TTS transport contract.
 
 Phase 5.5-C4 is complete as default-off runtime TTS adapter transport-envelope construction. It reuses the existing C2 runtime gate, runs only after B2 safe visible output is available, and records the C3 transport node result after C0/C1 while leaving stream bytes unchanged and performing no adapter delivery or TTS/audio/avatar execution.
 
+Phase 5.5-C1 adds a pure helper for deriving a runtime-private downstream adapter handoff plan from C0 content-free TTS segmentation hints.
+
+Phase 5.5-C0 adds a pure helper for deriving TTS-safe character-range hints from already-safe visible text.
+
+Phase 5.5-B1 adds a pure helper for preserving safe visible stream text while suppressing or blocking RelayCTX internal candidate material.
+
 Phase 5.5 is now closed for RelayLM Core. Concrete TTS execution, audio queueing, Live2D/avatar mapping, motion scheduling, lip-sync, runtime preview, calibration, and adapter failure handling belong to [SOUL Lab Runtime MVP](architecture/soul_lab_runtime_mvp.md), not to Phase 5.5.
 
 Phase 5-C5c is complete as request-local cache-writer wiring for trusted in-process typed parse sources. Runtime request handling still does not parse backend responses, trust frontend metadata as typed parse source, or mutate backend/user-visible payloads. Non-null typed parse `parser_version` values are blocked before writer invocation until parser-versioned lookup/write compatibility exists.
@@ -144,9 +150,84 @@ relayctx_tts_adapter_handoff_runtime_enabled = false
 relayctx_tts_adapter_handoff_runtime_dry_run_only = true
 ```
 
-Default `memory_light` compatibility compilation may still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate and a trusted in-process producer supplies a runtime-private typed parse source. Runtime stream suppression and runtime TTS adapter handoff/transport planning are default-off. RelayLM Core still does not execute TTS, generate audio, control avatars, or deliver adapter transport.
+Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate and a trusted in-process producer supplies a runtime-private typed parse source. Runtime stream suppression and runtime TTS adapter handoff/transport planning are default-off. RelayLM still does not execute TTS, generate audio, control avatars, or deliver adapter transport.
 
-## Core safety and diagnostics posture
+## Token estimation boundary
+
+The current estimator is deterministic and model-agnostic. It does not load a backend tokenizer or claim exact model token counts.
+
+`chars_per_token` remains the compatibility ratio for ASCII word characters. The estimator separately counts:
+
+- ASCII punctuation,
+- whitespace,
+- CJK, Kana, Hangul, and full-width characters,
+- symbols and emoji,
+- combining and format characters,
+- other non-ASCII characters.
+
+The final estimate never falls below the historical whole-string estimate for the same positive `chars_per_token` value. Empty text remains zero.
+
+`estimate_text_tokens_detailed` exposes only character counts and derived totals. It does not expose or persist source text.
+
+Memory candidate assembly and message truncation share this estimator. Existing candidate order, message drop order, protected system/latest-user behavior, fail-closed preserved-message blocking, and feature defaults are unchanged.
+
+## Managed client-history authority
+
+`client_history_exclusion_apply.v0` supports a managed `memory_light` compiled payload with no client `system` or `developer` messages.
+
+`client_history_exclusion_apply.v1` supports bounded instruction-bearing managed requests only when explicit `client_instruction_source.v1` provenance is present.
+
+Role, content, and position alone are not accepted as provenance. Missing or invalid provenance blocks actual apply. Unselected frontend summaries, memory notes, and replayed persona blocks are excluded from bounded evidence.
+
+A successful managed candidate contains one RelayLM-owned compiled system message plus the exact validated current user message. Prior client history, raw instruction objects, unselected instruction candidates, opaque cache content, and the reserved `relaylm` control envelope are excluded.
+
+## Cache-hit RelaySCN projection boundary
+
+`relaylm.client_instruction_relayscn_projection` consumes the request-local runtime-private cache lookup result and emits a detached `client_instruction_relayscn_projection` PipelineNodeResult.
+
+The projection exposes only enum/count/boolean-style values such as projected scene type, role scope/source, confidence bucket, context/participant/constraint counts, status, and reason IDs.
+
+It must not expose cache hashes, raw instruction text, raw cache JSON, role names, scene setting/task text, participant names, constraint type/value text, filesystem paths, backend payloads, or response text.
+
+The projection is diagnostics-only and read-only. It does not apply RelaySCN policy, mutate backend payloads, or write cache entries.
+
+## Typed parse and gated cache-write boundary
+
+`relaylm.client_instruction_typed_parse` validates `client_instruction_parse.v1` runtime-private candidates and emits only content-free diagnostics to persisted surfaces.
+
+`relaylm.client_instruction_cache_write` consumes typed parse and instruction identity results to build a runtime-private cache-entry candidate in dry-run mode. With dry-run-only disabled and an explicit existing cache root, it validates reader compatibility and writes one cache entry through a gated atomic writer.
+
+`relaylm.client_instruction_cache_write_runtime` wires the typed parse and writer path into `PipelineContext` using an in-process runtime-private source gate. Missing source blocks writing; disabled typed-parse/cache-write gates clear any pending source; non-null typed parse `parser_version` values are blocked before writer invocation. External request metadata and backend visible response text are not trusted as sources.
+
+This boundary does not parse backend responses or control envelopes, trust frontend metadata as typed parse source, apply RelaySCN policy, mutate backend payloads, or mutate user-visible responses.
+
+## Stream sentinel, suppression, and TTS segmentation boundary
+
+`relaylm.relayctx_stream_unpack` provides a pure Phase 5.5-A helper that observes streamed text fragments for RelayCTX internal sentinels across chunk boundaries.
+
+The Phase 5.5-B1 suppression helper returns runtime-private visible `output_chunks` behind explicit `enabled` and `dry_run_only` gates. It preserves safe visible text before the first internal sentinel and suppresses or blocks internal candidate material when dry-run-only is disabled.
+
+`relaylm.relayctx_stream_suppression_runtime` provides Phase 5.5-B2 gated request-runtime SSE suppression wiring. It wraps backend stream bytes only when stream unpack is explicitly enabled on the route, preserves byte-for-byte forwarding when disabled or dry-run-only, and records content-free suppression diagnostics.
+
+`relaylm.relayctx_tts_segmentation` provides a pure Phase 5.5-C0 helper that derives content-free character-range segmentation hints from already-safe visible chunks. It blocks complete and terminal-partial RelayCTX sentinels and never stores visible text in diagnostics.
+
+`relaylm.relayctx_tts_adapter_handoff` provides a pure Phase 5.5-C1 helper that converts C0 hint results into runtime-private downstream adapter handoff plans. Diagnostics expose only counts, booleans, status values, and reason IDs; visible text, raw hint arrays, and handoff item arrays are omitted.
+
+`relaylm.relayctx_tts_adapter_handoff_runtime` provides Phase 5.5-C2/C4 default-off runtime wiring. It observes only B2 apply-mode safe visible output, invokes C0/C1/C3 at stream end, and records content-free node results while leaving SSE bytes unchanged and performing no adapter delivery.
+
+`relaylm.relayctx_tts_adapter_transport` provides Phase 5.5-C3 adapter-facing transport envelope construction. It consumes only C1 runtime-private handoff plans and records content-free transport diagnostics without adapter delivery, TTS/audio/avatar execution, or persistence. C4 wires this helper into the existing stream-final runtime observer.
+
+## RelayRUN lazy recovery-detail boundary
+
+`relaylm.relayrun_lazy_recovery` provides an additive helper that can construct a minimal content-free runtime checkpoint artifact on ordinary completed paths without constructing the full recovery diagnostic chain.
+
+The `/v1/chat/completions` request-runtime RelayRUN checkpoint builder now calls the lazy helper and lets automatic status/gate detection decide whether full detail is required. It does not force `include_recovery_details=False` from the request runtime.
+
+The helper constructs full detail when blocked, failed, waiting-user, checkpoint-write, checkpoint-index, resume, recovery, visible recovery, output RelaySCN recovery gate, visible apply, or user-action diagnostics require it.
+
+The lazy summary exposes only schema/status/reason IDs and safety booleans. It must not expose raw user/model text, backend payloads, prompt text, response text, snippets, instruction bodies, cache bodies, hashes, or runtime-private candidates.
+
+## Fail-closed and diagnostics posture
 
 Actual managed apply requires an exact typed `applied` result. For v1, the adapter input must exactly equal the selected request-local candidate; downstream mutation causes backend blocking.
 
@@ -207,6 +288,12 @@ RelayLM does not own frontend UI, ASR, TTS execution, transport delivery, or ava
 - [Phase 5.5-C0 TTS Segmentation Helper Handoff](architecture/phase55c0_tts_segmentation_helper_handoff.md)
 - [Phase 5.5-B1 Stream Suppression Gate Handoff](architecture/phase55b1_stream_suppression_gate_handoff.md)
 - [Phase 5.5-A Stream Sentinel Buffer Dry-Run Handoff](architecture/phase55a_stream_sentinel_buffer_dry_run_handoff.md)
+- [Phase 5-C5c Runtime Cache-Writer Boundary Handoff](architecture/phase5c5c_runtime_cache_writer_boundary_handoff.md)
+- [Phase 5-C5b Gated Client-Instruction Cache Writer Handoff](architecture/phase5c5b_gated_cache_writer_handoff.md)
+- [Phase 5-C5a Typed Parse and Cache-Write Preflight Handoff](architecture/phase5c5a_typed_parse_cache_write_preflight_handoff.md)
+- [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](architecture/phase5c4b_cache_hit_relayscn_projection_handoff.md)
+- [Phase 5-D2 Lazy RelayRUN Recovery Detail Handoff](architecture/phase5d2_lazy_relayrun_recovery_detail_handoff.md)
+- [Phase 5-D1 CJK-Aware Token Estimation Handoff](architecture/phase5d1_cjk_token_estimation_handoff.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Client History Authority Contract](architecture/client_history_authority_contract.md)
 - [Client Instruction Authority Contract](architecture/client_instruction_authority_contract.md)
