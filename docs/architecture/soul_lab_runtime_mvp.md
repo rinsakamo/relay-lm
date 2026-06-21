@@ -69,9 +69,12 @@ SOUL Lab Runtime MVP owns:
 - audio queueing,
 - speech interruption and cancellation,
 - caption / voice timing coordination,
+- runtime-private audio-feature or viseme extraction when used for lip-sync,
 - Live2D or avatar expression mapping,
 - avatar motion scheduling,
 - lip-sync timing when supported,
+- mouth-state smoothing and audio/avatar clock synchronization,
+- blink, gaze, idle-motion, and render-frame scheduling,
 - runtime preview, calibration, and mapping UI,
 - adapter failure handling and user-facing runtime status.
 
@@ -119,6 +122,26 @@ It owns:
 - TTS failure recovery that preserves caption/text output when safe.
 
 It must not reinterpret internal RelayCTX candidates, bypass RelayRUN emission decisions, or treat RelayEMO hints as permission to override TTS safety policy.
+
+### Audio-driven avatar handoff
+
+Generated TTS audio may drive lip-sync through a runtime-private bridge between the audio runtime and avatar adapter. This bridge is owned entirely by SOUL Lab Runtime MVP, not RelayLM Core.
+
+The runtime may derive bounded transient signals such as:
+
+- amplitude or envelope values,
+- coarse frequency-band energy,
+- optional phoneme or viseme classes when supported,
+- playback-clock position and chunk correlation,
+- cancellation, end-of-audio, and interruption events.
+
+These signals are execution inputs, not RelayLM semantic hints or durable character state. They must remain request-local or adapter-local unless a separate protected runtime requirement explicitly justifies retention. They must not be copied into generic RelayLM trace, audit, prompt, MEM, SOUL, or SLP artifacts.
+
+The audio-feature extractor may be a dedicated runtime component or an internal part of the TTS, audio-player, or avatar bridge. The avatar side owns mapping these signals to mouth parameters or discrete mouth states, including smoothing, hysteresis, interpolation, and frame timing.
+
+When audio analysis or lip-sync support is absent or fails, the runtime should degrade to text/TTS without avatar mouth motion. It must not block already-approved text merely because lip-sync is unavailable.
+
+The common boundary intentionally does not define avatar assets, sprite sheets, mouth-position files, model paths, video preparation, or engine-specific authoring formats. Those are implementation details of a selected avatar runtime and are outside the SOUL Lab Runtime MVP contract.
 
 ### Avatar adapter
 
@@ -207,6 +230,9 @@ SOUL Lab Runtime MVP does not implement:
 - multi-avatar rendering,
 - cloud sync,
 - frontend-independent always-on background communication,
+- avatar asset creation, alignment, sprite-sheet/video generation, or model-authoring workflows,
+- a common asset manifest or engine-specific mouth-tracking file format,
+- RelayLM-side audio analysis or viseme extraction,
 - engine-specific config as RelayLM architecture authority.
 
 ## Relationship to existing documents
