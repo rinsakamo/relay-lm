@@ -8,6 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "docs/architecture/phase6b0_relayslp_durable_queue_contract.md"
 B1_HANDOFF_PATH = ROOT / "docs/architecture/phase6b1_relayslp_dispatch_preflight.md"
 CURRENT_TARGET_PATH = ROOT / "docs/architecture/relaymem_slp_current_target.md"
+PIPELINE_PLAN_PATH = ROOT / "docs/architecture/pipeline_implementation_plan.md"
+PROJECT_STATUS_PATH = ROOT / "docs/PROJECT_STATUS.md"
 ARCHITECTURE_INDEX_PATH = ROOT / "docs/architecture/README.md"
 A2_HELPER_PATH = ROOT / "relaylm/relaymem_slp_response_handoff.py"
 B1_HELPER_PATH = ROOT / "relaylm/relaymem_slp_dispatch_preflight.py"
@@ -36,6 +38,8 @@ def main() -> None:
     contract = _read(CONTRACT_PATH)
     b1_handoff = _read(B1_HANDOFF_PATH)
     current_target = _read(CURRENT_TARGET_PATH)
+    pipeline_plan = _read(PIPELINE_PLAN_PATH)
+    project_status = _read(PROJECT_STATUS_PATH)
     architecture_index = _read(ARCHITECTURE_INDEX_PATH)
     a2_helper = _read(A2_HELPER_PATH)
     b1_helper = _read(B1_HELPER_PATH)
@@ -239,6 +243,26 @@ def main() -> None:
         label="current-target alignment",
     )
 
+    _require_all(
+        pipeline_plan,
+        (
+            "Phase 6-B1 dry-run job-record and dispatch-idempotency preflight helper: complete",
+            "Phase 6-B1: job-record and dispatch-idempotency preflight — complete",
+            "The next implementation boundary is Phase 6-B2 atomic durable enqueue",
+        ),
+        label="pipeline-plan alignment",
+    )
+
+    _require_all(
+        project_status,
+        (
+            "Asynchronous RelaySLP orchestration: helper implementation complete through Phase 6-B1",
+            "Phase 6-B1 RelaySLP dispatch preflight",
+            "Phase 6-B2: gated atomic create-if-absent durable enqueue",
+        ),
+        label="project-status alignment",
+    )
+
     for link in (
         "phase6b0_relayslp_durable_queue_contract.md",
         "phase6b1_relayslp_dispatch_preflight.md",
@@ -265,6 +289,7 @@ def main() -> None:
             '_DISPATCH_KEY_VERSION = "relaymem.slp_dispatch_key.v0"',
             '_JOB_ID_VERSION = "relaymem.slp_job_id.v0"',
             "exact_a2_handoff_result_required",
+            "_validate_source_candidate_consistency",
             '"retry_class": "unclassified"',
             '"queue_io_performed": False',
         ),
