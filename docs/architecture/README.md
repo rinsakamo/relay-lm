@@ -29,13 +29,20 @@ Canonical authority:
 
 Product-critical next slice:
 
+- [Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md)
+
+Phase 6 starts with a docs-only ownership boundary, followed by a helper-only deferred RelaySLP job-admission preflight. It separates dispatch idempotency and RelayRUN orchestration from RelayMEM-M3b/M4 memory semantics, keeps request runtime independent from persistence I/O, and preserves default-off, dry-run-first, fail-closed, and content-free diagnostics behavior.
+
+Completed Core streaming boundary:
+
 - [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md)
 
-Phase 5.5 starts with stream sentinel buffer dry-run and safe streaming diagnostics before TTS-safe segmentation hints. RelaySOUL execution-gate design expansion is frozen until Phase 5.5-A and 5.5-B are complete unless a new document directly unblocks a current runtime safety issue.
+Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, adapter delivery, Live2D/avatar mapping, motion, and lip-sync remain SOUL Lab Runtime MVP responsibilities.
 
 Memory lifecycle:
 
 - [Memory Lifecycle Design](memory_lifecycle_design.md) — short-term CTX, governed experience evidence, autonomous ordinary MEM formation, RelaySLP, and SOUL Lab memory operations.
+- [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md) — current read-only/helper state and the migration into deferred Phase 6 orchestration.
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — independent MEM-M bounded implementation track for store contracts, retrieval usability, primary memory formation, secondary consolidation, and Lab-ready operations.
 
 SOUL Lab product layers:
