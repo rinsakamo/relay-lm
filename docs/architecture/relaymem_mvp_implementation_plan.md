@@ -1,7 +1,7 @@
 ---
 relaylm_doc_type: implementation_plan
 relaylm_authority: relaymem_mvp_independent_track
-relaylm_status: target
+relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: relaymem
 relaylm_update_trigger:
@@ -21,6 +21,10 @@ relaylm_related_authority:
   - relaymem_mvp_design.md
   - relaymem_slp_execution_design.md
   - relaymem_slp_current_target.md
+  - relaymem_m3a_primary_formation_handoff.md
+  - relaymem_m3d_primary_writer_handoff.md
+  - relaymem_m3e_atomic_primary_page_writer.md
+  - relaymem_m3f_primary_index_log_reconciliation_preflight.md
   - context_packing_design.md
 ---
 # RelayMEM MVP Implementation Plan
@@ -54,6 +58,26 @@ Short-term CTX
   -> Secondary MEM / Crystallized MEM
   -> SOUL Lab observation/correction
 ```
+
+## Current implementation position
+
+```text
+MEM-M0 lifecycle and terminology: complete
+MEM-M1 bounded store-layout compatibility/read-only diagnostics: complete
+MEM-M2 bounded retrieval priority/snippet/injection foundations: complete
+MEM-M3 autonomous Primary MEM path: complete through M3f
+  M3a formation candidate
+  M3b source lineage and write preflight
+  M3c deterministic page candidate
+  M3d writer-handoff preflight
+  M3e atomic Primary page writer
+  M3f index/log reconciliation preflight
+MEM-M3g index/log reconciliation apply: next
+MEM-M4 Secondary MEM consolidation: planned
+MEM-M5 Lab-ready memory operations API: planned
+```
+
+M3e is a direct-helper persistence boundary and is disabled/dry-run by default. M3f is read-only and dry-run-only. Neither slice is request-runtime or RelaySLP-worker wired.
 
 ## Independence assumptions
 
@@ -90,7 +114,7 @@ RelayMEM MVP must not introduce:
 - synchronous latency-critical full SLP consolidation,
 - unbounded filesystem scanning or unbounded memory page reads.
 
-## Slice MEM-M0: lifecycle and terminology docs — planned/partial
+## Slice MEM-M0: lifecycle and terminology docs — complete
 
 Goal: establish the target memory layer model before runtime changes.
 
@@ -109,9 +133,9 @@ Completion criteria:
 - RelayMEM and RelaySLP docs reference autonomous ordinary memory formation,
 - SOUL Lab UI docs use memory formation / correction terminology.
 
-This slice is docs-only and does not claim runtime implementation.
+This docs-only slice is complete and does not itself claim runtime behavior.
 
-## Slice MEM-M1: primary/secondary store contract
+## Slice MEM-M1: primary/secondary store contract — complete for bounded read-only compatibility
 
 Goal: make the local file-backed memory store layout ready for primary and secondary MEM without enabling broad writes, while explicitly defining the migration from the current `memory/raw` plus flat `memory/mem/*` layout.
 
@@ -190,7 +214,7 @@ Smoke coverage:
 - bounded scan behavior,
 - content-free diagnostics.
 
-## Slice MEM-M2: retrieval usable MVP
+## Slice MEM-M2: retrieval usable MVP — complete for bounded retrieval foundations
 
 Goal: make existing formed memory useful for current answers through safe retrieval and gated RelayCTX packing.
 
@@ -244,9 +268,21 @@ Smoke coverage:
 - gated RelayCTX injection default-off,
 - gated RelayCTX injection apply path.
 
-## Slice MEM-M3: autonomous primary MEM formation
+## Slice MEM-M3: autonomous primary MEM formation — complete through M3f
 
 Goal: turn governed experience evidence into Primary MEM / Experience MEM after a turn, session, or communication event without requiring per-turn user approval.
+
+Implemented bounded sub-slices:
+
+- **M3a — complete:** Primary MEM formation candidate helper.
+- **M3b — complete:** source-lineage and write-preflight helper with memory-write idempotency.
+- **M3c — complete:** deterministic governed Primary page candidate.
+- **M3d — complete:** exact writer-handoff/store-target preflight.
+- **M3e — complete:** default-off atomic no-clobber Primary page writer.
+- **M3f — complete:** read-only deterministic index/log reconciliation preflight.
+- **M3g — next:** gated compare-and-swap-style index/log reconciliation apply.
+
+M3e may durably write only the selected page. M3f writes nothing. Request-runtime wiring, durable RelaySLP dispatch, Secondary consolidation, and page/index/log transaction recovery remain outside M3a-M3f.
 
 Scope:
 
@@ -383,14 +419,15 @@ Smoke coverage:
 ## Recommended implementation order
 
 ```text
-MEM-M1 store contract
-  -> MEM-M2 retrieval usable MVP
-  -> MEM-M3 autonomous primary MEM formation
-  -> MEM-M4 secondary consolidation
-  -> MEM-M5 Lab-ready memory operations API
+MEM-M1 store compatibility: complete
+  -> MEM-M2 retrieval foundations: complete
+  -> MEM-M3a-M3f Primary MEM path: complete
+  -> MEM-M3g index/log reconciliation apply: next
+  -> MEM-M4 Secondary consolidation: planned
+  -> MEM-M5 Lab-ready memory operations API: planned
 ```
 
-MEM-M2 can deliver near-term product value by making existing memory influence answers safely. MEM-M3 makes the system feel like experience accumulates. MEM-M4 makes memory stable and SOUL-aligned. MEM-M5 prepares SOUL Lab without blocking core memory work.
+MEM-M1/M2 foundations and M3a-M3f are now implemented. M3g is the next independent persistence slice. MEM-M4 remains the step that makes memory stable and SOUL-aligned through Secondary consolidation, while MEM-M5 prepares the management API without blocking Core or UI work.
 
 ## Relationship to Phase 6 RelaySLP
 
@@ -402,6 +439,10 @@ The MEM-M track can start before full Phase 6 completion if each slice remains b
 - turn-end or explicit invocation is enough for MEM-M3 dry-run/apply gates,
 - scheduled/background consolidation can remain later for MEM-M4,
 - Lab UI can remain later while MEM-M5 exposes backend contracts.
+
+## Next bounded slice
+
+RelayMEM-M3g should consume only one exact ready M3f reconciliation plan and apply index-before-log changes under explicit gates. It must use compare-and-swap validation against the expected current byte count/digest, remain idempotent, report partial/uncertain durability without claiming success, and avoid request-runtime, Phase 6 queue, worker, Secondary MEM, RelaySOUL, and visible-response behavior.
 
 ## Completion target for MEM MVP
 
