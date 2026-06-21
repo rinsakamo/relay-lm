@@ -115,6 +115,15 @@ def main() -> int:
     require(eligible["projection"]["idempotency_key_included"] is False, eligible)
     require(eligible["projection"]["lineage_fingerprint_included"] is False, eligible)
     _assert_projection_content_free(eligible["projection"])
+    require(eligible["projection"]["candidate_id_included"] is False, eligible)
+    secret_candidate = dict(candidate)
+    secret_candidate["candidate_id"] = "secret-candidate-identifier"
+    secret_projection = build_relaymem_primary_write_preflight_dry_run(
+        candidates=[secret_candidate],
+        source_lineage_artifact=lineage,
+        enabled=True,
+    )["projection"]
+    require("secret-candidate-identifier" not in repr(secret_projection), secret_projection)
     print("ok eligible primary write preflight is content-free and dry-run-only")
 
     same = build_relaymem_primary_write_preflight_dry_run(
@@ -163,6 +172,28 @@ def main() -> int:
     require(invalid_kind["valid"] is False, invalid_kind)
     require("source_event_kind_invalid" in invalid_kind["blocked_reasons"], invalid_kind)
     print("ok unknown source event kinds fail closed")
+
+    turn_with_run_only = build_relaymem_primary_source_lineage(
+        source_event_kind="turn",
+        run_id="run-abc",
+    )
+    require(turn_with_run_only["valid"] is False, turn_with_run_only)
+    require(
+        "source_lineage_missing" in turn_with_run_only["blocked_reasons"],
+        turn_with_run_only,
+    )
+    turn_with_run_and_index = build_relaymem_primary_source_lineage(
+        source_event_kind="turn",
+        run_id="run-abc",
+        turn_index=1,
+    )
+    require(turn_with_run_and_index["valid"] is True, turn_with_run_and_index)
+    session_lineage = build_relaymem_primary_source_lineage(
+        source_event_kind="session",
+        session_id="session-abc",
+    )
+    require(session_lineage["valid"] is True, session_lineage)
+    print("ok lineage identity requirements follow the source event kind")
 
     missing_lineage = build_relaymem_primary_write_preflight_dry_run(
         candidates=[candidate],
@@ -228,6 +259,7 @@ def main() -> int:
         in blocked["operations"][0]["blocked_reasons"],
         blocked,
     )
+    require(blocked["operations"][0]["idempotency_key"] == "", blocked)
     print("ok never-auto-promote candidates are blocked")
 
     unknown_memory_kind = dict(candidate)
@@ -297,7 +329,31 @@ def main() -> int:
         disabled,
     )
     require(disabled["operations"][0]["preflight_status"] == "blocked", disabled)
+    require(disabled["operations"][0]["idempotency_key"] == "", disabled)
     print("ok disabled write preflight blocks operations")
+
+    candidate_limit = build_relaymem_primary_write_preflight_dry_run(
+        candidates=[candidate] * 33,
+        source_lineage_artifact=lineage,
+        enabled=True,
+    )
+    require(candidate_limit["candidate_limit"] == 32, candidate_limit)
+    require(candidate_limit["candidate_limit_exceeded"] is True, candidate_limit)
+    require(candidate_limit["operation_count"] == 32, candidate_limit)
+    require(
+        "primary_write_preflight_candidate_limit_exceeded"
+        in candidate_limit["blocked_reasons"],
+        candidate_limit,
+    )
+    require(
+        all(
+            operation["preflight_status"] == "blocked"
+            and operation["idempotency_key"] == ""
+            for operation in candidate_limit["operations"]
+        ),
+        candidate_limit,
+    )
+    print("ok candidate preflight work is bounded and fails closed")
 
     apply_gated = build_relaymem_primary_write_preflight_dry_run(
         candidates=[candidate],
