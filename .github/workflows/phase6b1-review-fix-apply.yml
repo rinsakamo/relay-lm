@@ -1,0 +1,37 @@
+name: Apply Phase 6-B1 review fixes
+
+on:
+  push:
+    branches:
+      - phase6b1-relayslp-dispatch-preflight
+    paths:
+      - "scripts/patch_phase6b1_review_fixes.py"
+      - ".github/workflows/phase6b1-review-fix-apply.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: phase6b1-relayslp-dispatch-preflight
+      - name: Merge current main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+      - name: Apply review patch
+        run: python scripts/patch_phase6b1_review_fixes.py
+      - name: Commit and push review fixes
+        run: |
+          git add relaylm/relaymem_slp_dispatch_preflight.py \
+            scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py
+          git diff --cached --check
+          git commit -m "fix: address Phase 6-B1 review findings"
+          git push origin HEAD:phase6b1-relayslp-dispatch-preflight
