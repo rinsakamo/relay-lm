@@ -29,6 +29,12 @@ _TARGET_CATEGORIES = {
     "scene_bound_memory": "primary_scenes",
     "experience_event": "primary_scenes",
 }
+_EXPECTED_SAFETY_SCOPES = {
+    "free_to_update": "ordinary_memory",
+    "review_required": "held_for_review",
+    "explicit_approval_required": "approval_required",
+    "never_auto_promote": "blocked",
+}
 _AUTONOMOUS_PROMOTION_POLICY = "free_to_update"
 _MAX_TOKEN_LENGTH = 128
 
@@ -246,9 +252,12 @@ def _operation(
         candidate.get("promotion_policy"),
         reason="promotion_policy_invalid",
     )
-    safety_scope, _ = _required_token(
+    safety_scope, safety_scope_reasons = _required_token(
         candidate.get("safety_scope"),
         reason="safety_scope_invalid",
+    )
+    candidate_source_event_kind, candidate_event_kind_reasons = _validated_event_kind(
+        candidate.get("source_event_kind")
     )
 
     candidate_blocked_reasons = _dedupe(
@@ -256,6 +265,8 @@ def _operation(
         + memory_layer_reasons
         + memory_kind_reasons
         + promotion_policy_reasons
+        + safety_scope_reasons
+        + candidate_event_kind_reasons
     )
     if memory_layer and memory_layer != "primary":
         candidate_blocked_reasons.append("unsupported_memory_layer")
@@ -263,6 +274,15 @@ def _operation(
         candidate_blocked_reasons.append("unsupported_memory_kind")
     if promotion_policy and promotion_policy not in _KNOWN_PROMOTION_POLICIES:
         candidate_blocked_reasons.append("unsupported_promotion_policy")
+    expected_safety_scope = _EXPECTED_SAFETY_SCOPES.get(promotion_policy)
+    if expected_safety_scope and safety_scope != expected_safety_scope:
+        candidate_blocked_reasons.append("promotion_policy_safety_scope_mismatch")
+    if (
+        parsed_lineage.get("valid") is True
+        and candidate_source_event_kind
+        != str(parsed_lineage.get("source_event_kind", "unknown"))
+    ):
+        candidate_blocked_reasons.append("source_event_kind_mismatch")
 
     promotion_reasons: list[str] = []
     if (
@@ -295,6 +315,7 @@ def _operation(
                 str(parsed_lineage.get("source_event_kind", "unknown")),
                 str(parsed_lineage.get("lineage_fingerprint", "")),
                 candidate_id,
+                candidate_source_event_kind,
                 memory_layer,
                 memory_kind,
                 promotion_policy,
@@ -310,6 +331,7 @@ def _operation(
     return {
         "schema_version": "relaymem.primary_write_preflight_operation.v0",
         "candidate_id": candidate_id,
+        "source_event_kind": candidate_source_event_kind,
         "memory_layer": memory_layer or "unknown",
         "memory_kind": memory_kind or "unknown",
         "promotion_policy": promotion_policy or "unknown",
@@ -365,6 +387,9 @@ def _projection(
         "operations": [
             {
                 "candidate_id": str(operation.get("candidate_id", "")),
+                "source_event_kind": str(
+                    operation.get("source_event_kind", "unknown")
+                ),
                 "memory_layer": str(operation.get("memory_layer", "unknown")),
                 "memory_kind": str(operation.get("memory_kind", "unknown")),
                 "promotion_policy": str(operation.get("promotion_policy", "unknown")),
