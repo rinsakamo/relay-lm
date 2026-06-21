@@ -46,7 +46,7 @@ def write_or_inspect_primary_page(
             state.update(
                 receipt_status="already_applied",
                 idempotent_noop=True,
-                durability_confirmed=True,
+                durability_confirmed=False,
             )
             return state
         if existing["status"] == "conflict":
@@ -284,6 +284,20 @@ def _atomic_publish(
                 follow_symlinks=False,
             )
             linked = True
+            if not _published_target_matches(
+                parent_fd=parent_fd,
+                filename=filename,
+                temp_info=info,
+            ):
+                state.update(
+                    receipt_status="applied_state_uncertain",
+                    writes_memory=True,
+                    page_applied=True,
+                    durability_confirmed=False,
+                    cleanup_complete=False,
+                    blocked_reasons=["primary_page_writer_published_target_changed"],
+                )
+                return state
         except FileExistsError:
             existing = _inspect_existing(
                 parent_fd=parent_fd,
@@ -295,7 +309,7 @@ def _atomic_publish(
                 state.update(
                     receipt_status="already_applied",
                     idempotent_noop=True,
-                    durability_confirmed=True,
+                    durability_confirmed=False,
                 )
                 return state
             state["blocked_reasons"] = ["primary_page_writer_target_conflict"]
@@ -303,6 +317,20 @@ def _atomic_publish(
 
         try:
             os.fsync(parent_fd)
+            if not _published_target_matches(
+                parent_fd=parent_fd,
+                filename=filename,
+                temp_info=info,
+            ):
+                state.update(
+                    receipt_status="applied_state_uncertain",
+                    writes_memory=True,
+                    page_applied=True,
+                    durability_confirmed=False,
+                    cleanup_complete=False,
+                    blocked_reasons=["primary_page_writer_published_target_changed"],
+                )
+                return state
         except OSError:
             state.update(
                 receipt_status="applied_durability_unconfirmed",
@@ -354,6 +382,24 @@ def _atomic_publish(
                 os.unlink(temp_name, dir_fd=parent_fd)
             except OSError:
                 state["cleanup_complete"] = False
+
+
+def _published_target_matches(
+    *,
+    parent_fd: int,
+    filename: str,
+    temp_info: os.stat_result,
+) -> bool:
+    try:
+        published = os.stat(filename, dir_fd=parent_fd, follow_symlinks=False)
+    except OSError:
+        return False
+    return (
+        stat.S_ISREG(published.st_mode)
+        and not stat.S_ISLNK(published.st_mode)
+        and (published.st_dev, published.st_ino)
+        == (temp_info.st_dev, temp_info.st_ino)
+    )
 
 
 def _supports_secure_dirfd() -> bool:
