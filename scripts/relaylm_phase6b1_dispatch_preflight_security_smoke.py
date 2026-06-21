@@ -130,6 +130,20 @@ def main() -> None:
             source_projection=replace(handoff.source_projection, source_count=2),
         )
     )
+    _assert_rejected(
+        replace(
+            handoff,
+            source_projection=replace(handoff.source_projection, source_count=True),
+        ),
+        "a2_source_projection_source_count_invalid",
+    )
+    _assert_rejected(
+        replace(
+            handoff,
+            source_projection=replace(handoff.source_projection, run_id_present=1),
+        ),
+        "a2_source_projection_presence_invalid",
+    )
     _assert_consistency_rejected(
         replace(
             handoff,
