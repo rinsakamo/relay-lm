@@ -77,7 +77,7 @@ M3d revalidates:
 - candidate cardinality and status,
 - strict boolean fields,
 - Primary memory layer, memory kind, target category, promotion policy, and safety scope,
-- namespace, lineage fingerprint, and idempotency key shape,
+- namespace, lineage fingerprint, and deterministic M3b idempotency-key recomputation,
 - deterministic Primary MEM target path,
 - UTF-8 page encoding and bounded page size,
 - page byte count and SHA-256 digest,
@@ -165,16 +165,19 @@ M3d does not:
 ```bash
 python -m compileall -q \
   relaylm/relaymem_primary_writer_handoff.py \
+  relaylm/_relaymem_primary_writer_handoff_impl.py \
   scripts/relaylm_relaymem_primary_writer_handoff_smoke.py \
   scripts/relaylm_relaymem_primary_writer_handoff_review_smoke.py \
-  scripts/relaylm_relaymem_primary_writer_handoff_security_smoke.py
+  scripts/relaylm_relaymem_primary_writer_handoff_security_smoke.py \
+  scripts/relaylm_relaymem_primary_writer_handoff_idempotency_smoke.py
 
 PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_smoke.py
 PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_review_smoke.py
 PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_security_smoke.py
+PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_idempotency_smoke.py
 ```
 
-Coverage includes default-off behavior, dry-run readiness, apply-preflight eligibility, idempotent existing-page detection, conflicting existing pages, malformed or tampered page metadata, non-canonical tokens, path traversal, Secondary-path substitution, symlink components, missing target directories, malformed UTF-8, strict booleans, forbidden raw-content fields, and content-free projection behavior.
+Coverage includes default-off behavior, dry-run readiness, apply-preflight eligibility, deterministic M3b idempotency-key recomputation, idempotent existing-page detection, conflicting existing pages, malformed or tampered page metadata, non-canonical tokens, path traversal, Secondary-path substitution, symlink components, missing target directories, malformed UTF-8, strict booleans, forbidden raw-content fields, and content-free projection behavior.
 
 ## Next bounded slice
 
