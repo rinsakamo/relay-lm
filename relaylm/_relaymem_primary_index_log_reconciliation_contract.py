@@ -99,9 +99,10 @@ def parse_m3e_receipt(value: Mapping[str, Any] | None) -> dict[str, Any]:
         if type(actual) is not bool or actual is not expected:
             reasons.append(f"primary_reconciliation_receipt_{field}_invalid")
 
-    for field in ("candidate_id", "namespace"):
-        if not token(value.get(field)):
-            reasons.append(f"primary_reconciliation_receipt_{field}_invalid")
+    if not token(value.get("candidate_id")):
+        reasons.append("primary_reconciliation_receipt_candidate_id_invalid")
+    if not marker_token(value.get("namespace")):
+        reasons.append("primary_reconciliation_receipt_namespace_invalid")
     event_kind = value.get("source_event_kind")
     event_kind_valid = isinstance(event_kind, str) and event_kind in EVENT_KINDS
     if not event_kind_valid:
@@ -128,7 +129,7 @@ def parse_m3e_receipt(value: Mapping[str, Any] | None) -> dict[str, Any]:
 
     if (
         token(value.get("candidate_id"))
-        and token(value.get("namespace"))
+        and marker_token(value.get("namespace"))
         and event_kind_valid
         and memory_kind_valid
         and is_sha256(value.get("lineage_fingerprint"))
@@ -238,6 +239,15 @@ def token(value: object) -> bool:
         and len(value) <= 128
         and not bad_text(value)
         and not any(char in value for char in "\n\r\t")
+    )
+
+
+def marker_token(value: object) -> bool:
+    return (
+        token(value)
+        and isinstance(value, str)
+        and "--" not in value
+        and len(value.splitlines()) == 1
     )
 
 

@@ -62,6 +62,17 @@ def main() -> int:
         require(noncanonical_result["status"] == "index_conflict", noncanonical_result)
         print("ok noncanonical marker JSON fails closed")
 
+        for unsafe_namespace in ("character-->rendered", "character\u2028rendered"):
+            unsafe = copy.deepcopy(receipt)
+            unsafe["namespace"] = unsafe_namespace
+            unsafe_result = preflight(root, unsafe)
+            require(
+                "primary_reconciliation_receipt_namespace_invalid"
+                in unsafe_result["blocked_reasons"],
+                unsafe_result,
+            )
+        print("ok marker-unsafe namespace values fail closed")
+
     print("all RelayMEM M3f marker hardening smoke checks passed")
     return 0
 

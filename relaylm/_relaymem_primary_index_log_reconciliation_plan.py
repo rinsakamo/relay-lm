@@ -214,7 +214,7 @@ def _valid_existing_entry(marker: str, entry: Mapping[str, Any]) -> bool:
     namespace = entry.get("namespace")
     if memory_kind not in KIND_TARGET or target_category != KIND_TARGET[memory_kind]:
         return False
-    if source_event_kind not in EVENT_KINDS or not _token(namespace):
+    if source_event_kind not in EVENT_KINDS or not _marker_token(namespace):
         return False
 
     key = entry.get("idempotency_key")
@@ -243,7 +243,7 @@ def _valid_existing_entry(marker: str, entry: Mapping[str, Any]) -> bool:
             and entry.get("entry_id") == expected_log_id
             and entry.get("index_entry_id") == expected_index_id
             and entry.get("operation") == "primary_page_published"
-            and is_sha256(lineage)
+            and is_sha256(lineae)
         )
     return False
 
@@ -272,6 +272,15 @@ def _token(value: object) -> bool:
         and len(value) <= 128
         and not bad_text(value)
         and not any(char in value for char in "\n\r\t")
+    )
+
+
+def _marker_token(value: object) -> bool:
+    return (
+        _token(value)
+        and isinstance(value, str)
+        and "--" not in value
+        and len(value.splitlines()) == 1
     )
 
 
