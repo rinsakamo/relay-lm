@@ -22,7 +22,7 @@ const ja = {
   intentPlaceholder:
     "例: 安全性を変えずに、明確な状況では確認質問を繰り返さず一歩進めるようにしたい。",
   intentBoundary:
-    "入力内容はcandidate説明にだけ使用され、SOUL.mdやbackendへ送信されません。",
+    "入力内容はこのブラウザ内draftにのみ保持され、SOUL.mdやbackendへ送信されません。",
   protectedTitle: "保護対象",
   protectedDescription: "このsliceでは変更不可です。candidateは以下を維持する前提で生成されます。",
   protectedIdentity: "Identity continuity",
@@ -147,7 +147,8 @@ const en: Record<PodMessageKey, string> = {
   intentTitle: "Intervention intent and reason",
   intentPlaceholder:
     "Example: Without changing safety, move forward in clear situations instead of repeating confirmation questions.",
-  intentBoundary: "The text is used only for candidate explanation and is not sent to SOUL.md or a backend.",
+  intentBoundary:
+    "The text remains in this browser-local draft and is not sent to SOUL.md or a backend.",
   protectedTitle: "Protected traits",
   protectedDescription: "These are immutable in this slice. Candidates assume all of them remain unchanged.",
   protectedIdentity: "Identity continuity",
