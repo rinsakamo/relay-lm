@@ -28,4 +28,4 @@ jobs:
       - name: Compile Phase 6-A1 helper
         run: python -m compileall -q relaylm/relaymem_slp_job_admission.py scripts/relaylm_relaymem_slp_job_admission_smoke.py
       - name: Run Phase 6-A1 smoke
-        run: python scripts/relaylm_relaymem_slp_job_admission_smoke.py
+        run: PYTHONPATH=. python scripts/relaylm_relaymem_slp_job_admission_smoke.py
