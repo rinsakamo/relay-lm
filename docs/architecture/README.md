@@ -63,6 +63,7 @@ SOUL Lab product layers:
 - [SOUL Lab UI-A2 Adoption Handoff](soul_lab_ui_a2_adoption_handoff.md) — first-launch No Active Character state, Lab Assistant guidance, and browser-local new/adopt/import draft flows.
 - [SOUL Lab UI-A3 Communication Handoff](soul_lab_ui_a3_communication_handoff.md) — browser-local peer classification, autonomous mock exchange loop, Soft Stop, emergency stop, and content-free timeline.
 - [SOUL Lab UI-A4 Pod Handoff](soul_lab_ui_a4_pod_handoff.md) — bounded intervention targets, locked protected traits, candidate diff, browser-local comparison, Hold/Discard, and non-executing Apply/Rollback previews.
+- [SOUL Lab UI-A5 Memory Inspector Handoff](soul_lab_ui_a5_memory_inspector_handoff.md) — formed/held/blocked outcomes, bounded provenance, subjective perspective, formed-memory Forget/Pin/Unpin, held-candidate Discard, and shared Correct/Merge previews.
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md) — post-UI-MVP runtime adapter layer for TTS, audio queue, Live2D/avatar mapping, timing, preview, and adapter telemetry.
 
 The current UI implementation is complete through UI-A4. UI-A5 Memory Inspector is the next independent UI slice; peer transport, server-side management APIs, RelaySOUL apply/rollback, memory mutation, and Runtime adapter execution remain separate.
