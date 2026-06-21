@@ -19,3 +19,8 @@ dist/
 .ruff_cache/
 .coverage
 htmlcov/
+
+# Node / frontend tooling
+node_modules/
+.vite/
+*.tsbuildinfo
