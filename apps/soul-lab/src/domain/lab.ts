@@ -20,7 +20,7 @@ export interface CharacterSummary {
   soulVersion: string;
   stabilityLabel: string;
   interventionState: InterventionState;
-  lastActiveLabel: string;
+  lastActiveSeconds: number;
 }
 
 export interface RuntimeComponentStatus {
