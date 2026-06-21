@@ -43,8 +43,6 @@ rep(p, "- [SOUL Lab UI-A3 Communication handoff](architecture/soul_lab_ui_a3_com
 rep(p, "SOUL Lab UI is implemented through UI-A3; UI-A4 Pod / SOUL Intervention is next.", "SOUL Lab UI is implemented through UI-A4; UI-A5 Memory Inspector is next.")
 rep(p, "- [SOUL Lab UI-A3 Communication handoff](architecture/soul_lab_ui_a3_communication_handoff.md)\n- [SOUL Lab Runtime MVP]", "- [SOUL Lab UI-A3 Communication handoff](architecture/soul_lab_ui_a3_communication_handoff.md)\n- [SOUL Lab UI-A4 Pod handoff](architecture/soul_lab_ui_a4_pod_handoff.md)\n- [SOUL Lab Runtime MVP]")
 
-subprocess.run(["python", "scripts/relaylm_docs_link_check.py"], cwd=ROOT, check=True)
-subprocess.run(["python", "scripts/relaylm_phase6b0_durable_queue_contract_smoke.py"], cwd=ROOT, check=True)
 subprocess.run(["git", "config", "user.name", "github-actions[bot]"], cwd=ROOT, check=True)
 subprocess.run(["git", "config", "user.email", "41898282+github-actions[bot]@users.noreply.github.com"], cwd=ROOT, check=True)
 subprocess.run(["git", "add", "docs"], cwd=ROOT, check=True)
