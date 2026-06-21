@@ -1,71 +1,13 @@
-name: Temporary M3g empty content fix
+name: Temporary M3g cleanup placeholder
 
 on:
-  push:
-    branches:
-      - relaymem-m3g-primary-index-log-reconciliation-apply
-    paths:
-      - ".github/workflows/temp-m3g-empty-content-fix.yml"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  fix:
+  noop:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: relaymem-m3g-primary-index-log-reconciliation-apply
-      - name: Reject empty proposed control content
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          contract = Path("relaylm/_relaymem_primary_index_log_apply_contract.py")
-          text = contract.read_text(encoding="utf-8")
-          old = '''    content = value.get("proposed_next_content")\n    encoded = b""\n    if not isinstance(content, str):\n'''
-          new = '''    content = value.get("proposed_next_content")\n    encoded = b""\n    encoded_valid = False\n    if not isinstance(content, str):\n'''
-          if text.count(old) != 1:
-              raise SystemExit("encoded_valid declaration mismatch")
-          text = text.replace(old, new)
-          old = '''        try:\n            encoded = content.encode("utf-8")\n        except UnicodeEncodeError:\n'''
-          new = '''        try:\n            encoded = content.encode("utf-8")\n            encoded_valid = True\n        except UnicodeEncodeError:\n'''
-          if text.count(old) != 1:
-              raise SystemExit("encoded_valid assignment mismatch")
-          text = text.replace(old, new)
-          old = '''    target_entry: Mapping[str, Any] | None = None\n    if encoded:\n        parsed = _parse_markers(encoded, marker, header)\n'''
-          new = '''    target_entry: Mapping[str, Any] | None = None\n    if encoded_valid:\n        parsed = _parse_markers(encoded, marker, header)\n'''
-          if text.count(old) != 1:
-              raise SystemExit("empty parse guard mismatch")
-          text = text.replace(old, new)
-          old = '''    if reasons:\n        return invalid(*reasons)\n    return {\n        "valid": True,\n        "plan": dict(value),\n        "index_entry": dict(index_entry),\n        "log_entry": dict(log_entry),\n'''
-          new = '''    if not isinstance(index_entry, Mapping) or not isinstance(log_entry, Mapping):\n        reasons.append("primary_reconciliation_apply_plan_entries_missing")\n    if reasons:\n        return invalid(*reasons)\n    return {\n        "valid": True,\n        "plan": dict(value),\n        "index_entry": dict(index_entry),\n        "log_entry": dict(log_entry),\n'''
-          if text.count(old) != 1:
-              raise SystemExit("top-level entry guard mismatch")
-          contract.write_text(text.replace(old, new), encoding="utf-8")
-
-          security = Path("scripts/relaylm_relaymem_primary_index_log_apply_security_smoke.py")
-          text = security.read_text(encoding="utf-8")
-          old = '''        surrogate = copy.deepcopy(plan)\n        surrogate["index_plan"]["proposed_next_content"] = "\\ud800"\n        surrogate["ordered_operations"][0]["proposed_next_content"] = "\\ud800"\n        cases.append(("UTF-8 surrogate", surrogate, "content_utf8_invalid"))\n\n'''
-          new = '''        surrogate = copy.deepcopy(plan)\n        surrogate["index_plan"]["proposed_next_content"] = "\\ud800"\n        surrogate["ordered_operations"][0]["proposed_next_content"] = "\\ud800"\n        cases.append(("UTF-8 surrogate", surrogate, "content_utf8_invalid"))\n\n        empty_noop = copy.deepcopy(plan)\n        empty_noop["reconciliation_state"] = "already_reconciled"\n        empty_noop["ordered_operations"] = []\n        empty_noop["operation_count"] = 0\n        empty_digest = hashlib.sha256(b"").hexdigest()\n        for role in ("index", "log"):\n            control = empty_noop[f"{role}_plan"]\n            control["proposed_next_content"] = ""\n            control["proposed_next_bytes"] = 0\n            control["proposed_next_digest"] = empty_digest\n            control["expected_current_bytes"] = 0\n            control["expected_current_digest"] = empty_digest\n            control["idempotent_noop"] = True\n        cases.append(("empty no-op content", empty_noop, "content_contract_invalid"))\n\n'''
-          if text.count(old) != 1:
-              raise SystemExit("empty smoke insertion mismatch")
-          security.write_text(text.replace(old, new), encoding="utf-8")
-
-          doc = Path("docs/architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md")
-          text = doc.read_text(encoding="utf-8")
-          old = '''- invalid UTF-8 surrogate plan content,\n- forged unrelated entries in no-op plans,\n'''
-          new = '''- invalid UTF-8 surrogate plan content,\n- empty proposed content in zero-operation no-op plans,\n- forged unrelated entries in no-op plans,\n'''
-          if text.count(old) != 1:
-              raise SystemExit("documentation coverage mismatch")
-          doc.write_text(text.replace(old, new), encoding="utf-8")
-          PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            relaylm/_relaymem_primary_index_log_apply_contract.py \
-            scripts/relaylm_relaymem_primary_index_log_apply_security_smoke.py \
-            docs/architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md
-          git commit -m "fix: reject empty M3g proposed content"
-          git push origin HEAD:relaymem-m3g-primary-index-log-reconciliation-apply
+      - run: echo cleanup-placeholder
