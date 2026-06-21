@@ -1,0 +1,95 @@
+name: Temporary M3g edge hardening
+
+on:
+  push:
+    branches:
+      - relaymem-m3g-primary-index-log-reconciliation-apply
+    paths:
+      - ".github/workflows/temp-m3g-edge-hardening.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: relaymem-m3g-primary-index-log-reconciliation-apply
+      - name: Harden no-op markers UTF-8 and cleanup durability
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          contract = Path("relaylm/_relaymem_primary_index_log_apply_contract.py")
+          text = contract.read_text(encoding="utf-8")
+          old = '''    else:\n        encoded = content.encode("utf-8")\n        if len(encoded) > MAX_INDEX_LOG_BYTES:\n'''
+          new = '''    else:\n        try:\n            encoded = content.encode("utf-8")\n        except UnicodeEncodeError:\n            reasons.append(f"primary_reconciliation_apply_{role}_content_utf8_invalid")\n            encoded = b""\n        if len(encoded) > MAX_INDEX_LOG_BYTES:\n'''
+          if text.count(old) != 1:
+              raise SystemExit("UTF-8 replacement mismatch")
+          text = text.replace(old, new)
+          old = '''        else:\n            matches = [\n                entry\n                for entry in parsed["entries"]\n                if entry.get("entry_id") == value.get("entry_identity")\n            ]\n'''
+          new = '''        else:\n            if any(\n                not _valid_existing_entry(marker, entry)\n                for entry in parsed["entries"]\n            ):\n                reasons.append(\n                    f"primary_reconciliation_apply_{role}_content_entry_invalid"\n                )\n            matches = [\n                entry\n                for entry in parsed["entries"]\n                if entry.get("entry_id") == value.get("entry_identity")\n            ]\n'''
+          if text.count(old) != 1:
+              raise SystemExit("all-entry validation insertion mismatch")
+          contract.write_text(text.replace(old, new), encoding="utf-8")
+
+          helper = Path("relaylm/_relaymem_primary_index_log_apply.py")
+          text = helper.read_text(encoding="utf-8")
+          old = '''    if not enabled:\n        return "disabled"\n    if not gates_valid or not plan_valid or not page_verified:\n        return "blocked"\n'''
+          new = '''    if not gates_valid:\n        return "blocked"\n    if not enabled:\n        return "disabled"\n    if not plan_valid or not page_verified:\n        return "blocked"\n'''
+          if text.count(old) != 1:
+              raise SystemExit("status ordering replacement mismatch")
+          helper.write_text(text.replace(old, new), encoding="utf-8")
+
+          io = Path("relaylm/_relaymem_primary_index_log_apply_io.py")
+          text = io.read_text(encoding="utf-8")
+          old = '''        if temp_created:\n            try:\n                os.unlink(temp_name, dir_fd=parent_fd)\n            except OSError:\n                result["cleanup_complete"] = False\n'''
+          new = '''        if temp_created:\n            try:\n                os.unlink(temp_name, dir_fd=parent_fd)\n                os.fsync(parent_fd)\n            except OSError:\n                result["cleanup_complete"] = False\n'''
+          if text.count(old) != 1:
+              raise SystemExit("cleanup fsync replacement mismatch")
+          io.write_text(text.replace(old, new), encoding="utf-8")
+
+          security = Path("scripts/relaylm_relaymem_primary_index_log_apply_security_smoke.py")
+          text = security.read_text(encoding="utf-8")
+          text = text.replace("import os\n", "import os\nimport stat\n", 1)
+          old = '''from relaylm._relaymem_primary_index_log_apply_contract import verify_m3g_page\n'''
+          new = '''from relaylm import _relaymem_primary_index_log_apply_io as apply_io\nfrom relaylm._relaymem_primary_index_log_apply_contract import (\n    parse_m3f_reconciliation_plan,\n    verify_m3g_page,\n)\n'''
+          if text.count(old) != 1:
+              raise SystemExit("security imports replacement mismatch")
+          text = text.replace(old, new)
+          old = '''        cases.append(("canonical marker", noncanonical, "content_contract_invalid"))\n\n'''
+          new = '''        cases.append(("canonical marker", noncanonical, "content_contract_invalid"))\n\n        surrogate = copy.deepcopy(plan)\n        surrogate["index_plan"]["proposed_next_content"] = "\\ud800"\n        surrogate["ordered_operations"][0]["proposed_next_content"] = "\\ud800"\n        cases.append(("UTF-8 surrogate", surrogate, "content_utf8_invalid"))\n\n'''
+          if text.count(old) != 1:
+              raise SystemExit("surrogate case insertion mismatch")
+          text = text.replace(old, new)
+          old = '''        print("ok page namespace and lineage remain bound to control entries")\n\n        mem_dir = root / "memory/mem"\n'''
+          new = '''        print("ok page namespace and lineage remain bound to control entries")\n\n        no_op_with_invalid_unrelated = copy.deepcopy(plan)\n        no_op_with_invalid_unrelated["reconciliation_state"] = "already_reconciled"\n        no_op_with_invalid_unrelated["ordered_operations"] = []\n        no_op_with_invalid_unrelated["operation_count"] = 0\n        for role in ("index", "log"):\n            control = no_op_with_invalid_unrelated[f"{role}_plan"]\n            control["expected_current_bytes"] = control["proposed_next_bytes"]\n            control["expected_current_digest"] = control["proposed_next_digest"]\n            control["idempotent_noop"] = True\n        unrelated = copy.deepcopy(index_entry)\n        unrelated["idempotency_key"] = "2" * 64\n        unrelated["page_digest"] = "3" * 64\n        unrelated["page_relative_path"] = (\n            f"memory/mem/primary/projects/{'2' * 64}.md"\n        )\n        unrelated["entry_id"] = "4" * 64\n        unrelated_line = (\n            "<!-- relaymem-primary-index-entry-v0 "\n            + json.dumps(\n                unrelated,\n                ensure_ascii=False,\n                sort_keys=True,\n                separators=(",", ":"),\n            )\n            + " -->\\n"\n        )\n        control = no_op_with_invalid_unrelated["index_plan"]\n        malformed_content = control["proposed_next_content"] + unrelated_line\n        malformed_bytes = malformed_content.encode("utf-8")\n        malformed_digest = hashlib.sha256(malformed_bytes).hexdigest()\n        control["proposed_next_content"] = malformed_content\n        control["proposed_next_bytes"] = len(malformed_bytes)\n        control["proposed_next_digest"] = malformed_digest\n        control["expected_current_bytes"] = len(malformed_bytes)\n        control["expected_current_digest"] = malformed_digest\n        invalid_noop = parse_m3f_reconciliation_plan(no_op_with_invalid_unrelated)\n        require(invalid_noop["valid"] is False, invalid_noop)\n        require(\n            "primary_reconciliation_apply_index_content_entry_invalid"\n            in invalid_noop["blocked_reasons"],\n            invalid_noop,\n        )\n        print("ok no-op plans validate every existing marker entry")\n\n        invalid_enabled = apply_relaymem_primary_index_log_reconciliation(\n            plan_artifact=plan,\n            root_path=str(root),\n            enabled=1,\n            dry_run_only=False,\n            apply_enabled=True,\n        )\n        require(invalid_enabled["status"] == "blocked", invalid_enabled)\n        require(invalid_enabled["writes_memory"] is False, invalid_enabled)\n        print("ok invalid enabled gate is blocked rather than treated as disabled")\n\n        original_replace = apply_io.os.replace\n        original_fsync = apply_io.os.fsync\n\n        def fail_replace(*args: object, **kwargs: object) -> None:\n            raise OSError("injected replace failure")\n\n        def fail_directory_fsync(fd: int) -> None:\n            if stat.S_ISDIR(os.fstat(fd).st_mode):\n                raise OSError("injected cleanup directory fsync failure")\n            original_fsync(fd)\n\n        apply_io.os.replace = fail_replace\n        apply_io.os.fsync = fail_directory_fsync\n        try:\n            cleanup_failure = apply_plan(root, plan)\n        finally:\n            apply_io.os.replace = original_replace\n            apply_io.os.fsync = original_fsync\n        require(cleanup_failure["status"] == "blocked", cleanup_failure)\n        require(cleanup_failure["cleanup_complete"] is False, cleanup_failure)\n        require(cleanup_failure["writes_memory"] is False, cleanup_failure)\n        require(\n            not any(\n                path.name.startswith(".relaymem-reconcile-")\n                for path in (root / "memory/mem").iterdir()\n            ),\n            cleanup_failure,\n        )\n        print("ok temp cleanup requires directory fsync confirmation")\n\n        mem_dir = root / "memory/mem"\n'''
+          if text.count(old) != 1:
+              raise SystemExit("edge security insertion mismatch")
+          security.write_text(text.replace(old, new), encoding="utf-8")
+
+          doc = Path("docs/architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md")
+          text = doc.read_text(encoding="utf-8")
+          old = '''The latter is treated as an idempotent no-op. Any other state is a conflict and is not overwritten.\n'''
+          new = '''The latter is treated as an idempotent no-op. Every marker in a no-op file is still revalidated; an unrelated malformed or forged entry cannot be hidden beside the target entry. Any other state is a conflict and is not overwritten.\n'''
+          if text.count(old) != 1:
+              raise SystemExit("no-op documentation replacement mismatch")
+          text = text.replace(old, new)
+          old = '''- page/control-file symlink rejection.\n'''
+          new = '''- page/control-file symlink rejection,\n- invalid UTF-8 surrogate plan content,\n- forged unrelated entries in no-op plans,\n- durable temp-cleanup confirmation.\n'''
+          if text.count(old) != 1:
+              raise SystemExit("coverage documentation replacement mismatch")
+          doc.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            relaylm/_relaymem_primary_index_log_apply_contract.py \
+            relaylm/_relaymem_primary_index_log_apply.py \
+            relaylm/_relaymem_primary_index_log_apply_io.py \
+            scripts/relaylm_relaymem_primary_index_log_apply_security_smoke.py \
+            docs/architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md
+          git commit -m "fix: harden M3g no-op validation and cleanup durability"
+          git push origin HEAD:relaymem-m3g-primary-index-log-reconciliation-apply
