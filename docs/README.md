@@ -27,7 +27,7 @@ RelayLM documentation is AI-first: documents should be understandable when retri
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing
 - [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md) — current Core orchestration track, complete through A2 helpers and B0 design
 - [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md) — independent memory track, complete through M3f preflight
-- [SOUL Lab UI-A3 Communication handoff](architecture/soul_lab_ui_a3_communication_handoff.md) — current UI track through browser-local mock Communication
+- [SOUL Lab UI-A4 Pod handoff](architecture/soul_lab_ui_a4_pod_handoff.md) — current UI track through browser-local mock intervention
 - [Architecture docs](architecture/README.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Contract docs](contracts/README.md)
@@ -45,7 +45,7 @@ Use [Project Status](PROJECT_STATUS.md) for the current developer-facing view an
 
 Phase 5.5 Stream Unpack / TTS handoff preparation is complete for RelayLM Core. Concrete TTS execution, audio queueing, adapter delivery, Live2D/avatar mapping, motion, and lip-sync remain SOUL Lab Runtime MVP responsibilities.
 
-Current work is split across independent tracks. RelayLM Core is complete through Phase 6-A2 helpers and the Phase 6-B0 durable-queue design; B1 is next. RelayMEM has implemented its Primary MEM path through M3f read-only index/log reconciliation planning; M3g apply is next. SOUL Lab UI is implemented through UI-A3; UI-A4 Pod / SOUL Intervention is next. Concrete TTS/audio/avatar execution remains SOUL Lab Runtime work.
+Current work is split across independent tracks. RelayLM Core is complete through Phase 6-A2 helpers and the Phase 6-B0 durable-queue design; B1 is next. RelayMEM has implemented its Primary MEM path through M3f read-only index/log reconciliation planning; M3g apply is next. SOUL Lab UI is implemented through UI-A4; UI-A5 Memory Inspector is next. Concrete TTS/audio/avatar execution remains SOUL Lab Runtime work.
 
 Use [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) before treating proposed schemas, future execution gates, or historical compatibility artifacts as current behavior.
 
@@ -92,6 +92,7 @@ When documents disagree:
 - [SOUL Lab UI-A0 / UI-A1 handoff](architecture/soul_lab_ui_a0_a1_handoff.md)
 - [SOUL Lab UI-A2 Adoption handoff](architecture/soul_lab_ui_a2_adoption_handoff.md)
 - [SOUL Lab UI-A3 Communication handoff](architecture/soul_lab_ui_a3_communication_handoff.md)
+- [SOUL Lab UI-A4 Pod handoff](architecture/soul_lab_ui_a4_pod_handoff.md)
 - [SOUL Lab Runtime MVP](architecture/soul_lab_runtime_mvp.md)
 - [RelayINT MVP design](architecture/relayint_mvp_design.md)
 
