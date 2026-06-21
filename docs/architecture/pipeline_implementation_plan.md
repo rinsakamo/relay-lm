@@ -22,6 +22,7 @@ relaylm_related_authority:
   - phase6a1_relayslp_job_admission_contract.md
   - phase6a2_relayslp_response_handoff_contract.md
   - phase6b0_relayslp_durable_queue_contract.md
+  - phase6b1_relayslp_dispatch_preflight.md
   - soul_lab_runtime_mvp.md
 ---
 # RelayLM Pipeline Implementation Plan
@@ -48,6 +49,7 @@ Phase 6-A0 asynchronous RelaySLP ownership and sequencing: complete
 Phase 6-A1 helper-only deferred RelaySLP job admission: complete
 Phase 6-A2 helper-only response-finalization handoff: complete
 Phase 6-B0 durable queue contract and state-machine design: complete
+Phase 6-B1 dry-run job-record and dispatch-idempotency preflight helper: complete
 
 Completed bounded slices:
   Phase 1 PipelineContext/app stabilization
@@ -79,9 +81,10 @@ Completed bounded slices:
   Phase 6-A1 RelaySLP job-admission preflight helper
   Phase 6-A2 RelaySLP response-finalization handoff helper
   Phase 6-B0 RelaySLP durable queue contract
+  Phase 6-B1 RelaySLP dispatch/job-record preflight helper
 
 Next RelayLM Core implementation candidate:
-  Phase 6-B1 dry-run job-record and dispatch-idempotency preflight helper
+  Phase 6-B2 atomic create-if-absent durable enqueue and duplicate/collision/corruption handling
 
 Later product/runtime candidate:
   SOUL Lab Runtime MVP adapter bridge and TTS/audio/Live2D execution
@@ -89,7 +92,7 @@ Later product/runtime candidate:
 
 Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight. Phase 5-C5b is complete as a direct, explicit, gated filesystem writer helper. Phase 5-C5c is complete as request-local runtime wiring for trusted in-process typed parse sources; runtime response/control-envelope extraction, frontend metadata trust, and parser-versioned lookup/write compatibility remain later work. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate that preserves safe visible prefixes and suppresses internal markers when explicitly enabled and not dry-run-only. Phase 5.5-B2 is complete as gated request-runtime SSE suppression wiring. Phase 5.5-C0 is complete as a helper-only TTS segmentation foundation that emits content-free character-range hints from already-safe visible chunks. Phase 5.5-C1 is complete as a helper-only TTS adapter handoff contract that converts C0 hint results into runtime-private downstream adapter handoff plans. Phase 5.5-C2 is complete as default-off runtime wiring from B2 safe visible output into C0/C1 content-free node results without TTS/audio/avatar execution. Phase 5.5-C3 is complete as helper-only adapter-facing transport envelope construction from C1 handoff plans without adapter delivery, TTS/audio/avatar execution, or persistence. Phase 5.5-C4 is complete as default-off runtime construction of C3 envelopes after C2 stream-final handoff planning, including content-free C0/C1/C3 stream-final trace projection. Phase 5.5 is therefore closed for RelayLM Core; concrete adapter delivery, TTS/audio execution, and Live2D/avatar behavior belong to SOUL Lab Runtime MVP.
 
-Phase 6-A0 defines the asynchronous RelaySLP ownership and sequencing boundary. Phase 6-A1 implements helper-only deferred job admission. Phase 6-A2 consumes exact A1 private/public artifacts for finalized `turn_end` responses and may construct one runtime-private dry-run enqueue candidate without queue I/O. Phase 6-B0 now defines the durable record, dispatch-idempotency, atomic enqueue, duplicate/collision, queue state, claim/lease, restart/corruption, retry-release, terminal-state, public-projection, and visible-response-independence contract. B0 remains design-only. The next implementation boundary is Phase 6-B1 dry-run job-record and dispatch-idempotency preflight with no queue I/O.
+Phase 6-A0 defines the asynchronous RelaySLP ownership and sequencing boundary. Phase 6-A1 implements helper-only deferred job admission. Phase 6-A2 consumes exact A1 private/public artifacts for finalized `turn_end` responses and may construct one runtime-private dry-run enqueue candidate without queue I/O. Phase 6-B0 defines the durable record, dispatch-idempotency, atomic enqueue, duplicate/collision, queue state, claim/lease, restart/corruption, retry-release, terminal-state, public-projection, and visible-response-independence contract. Phase 6-B1 now implements exact direct A2 consumption, deterministic versioned dispatch identity, separately domain-separated deterministic job identity, fixed initial queued/retry metadata, one runtime-private durable-job candidate, and a content-free status projection. B1 performs no queue I/O. The next implementation boundary is Phase 6-B2 atomic durable enqueue with no worker invocation.
 
 ## Current caveats
 
@@ -104,7 +107,7 @@ Phase 6-A0 defines the asynchronous RelaySLP ownership and sequencing boundary. 
 - New RelaySOUL execution-gate design documents should still be avoided unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary.
 - Token estimation is deterministic and CJK-aware but remains tokenizer-free and model-agnostic rather than exact.
 - RelayRUN lazy recovery detail is wired into the request-runtime checkpoint builder, but cross-cutting per-node orchestration remains later work.
-- Phase 6-A1/A2 are helper-only and Phase 6-B0 is design-only; no request-runtime finalization wiring, durable queue, generated dispatch key, worker, Secondary consolidation runtime, or page/index/log apply is implemented yet.
+- Phase 6-A1/A2/B1 are helper-only; no request-runtime finalization wiring, durable queue, worker, Secondary consolidation runtime, or Primary MEM index/log reconciliation apply is implemented yet.
 - RelayREF output observation, RelaySLP persistence, and RelaySOUL actual apply remain later work.
 
 ## Phase 1: PipelineContext/app — mostly complete
@@ -316,11 +319,11 @@ Completed:
 
 C4b, C5, and RelaySOUL execution gates are not prerequisites for Phase 6 asynchronous RelaySLP or later SOUL Lab Runtime MVP work.
 
-## Phase 6: asynchronous RelaySLP — complete through B0 design contract
+## Phase 6: asynchronous RelaySLP — complete through B1 preflight
 
 See [Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md).
 
-Phase 6 owns deferred execution orchestration around RelaySLP: job admission, response-finalization handoff, later enqueue/claim/lease/retry state, dispatch idempotency, content-free operation projections, and later RelayRUN checkpoint/restart integration. It does not own RelayMEM candidate meaning, Primary MEM write eligibility, memory-write idempotency, Secondary MEM consolidation meaning, or durable page formats.
+Phase 6 owns deferred execution orchestration around RelaySLP: job admission, response-finalization handoff, enqueue/claim/lease/retry state, dispatch idempotency, content-free operation projections, and later RelayRUN checkpoint/restart integration. It does not own RelayMEM candidate meaning, Primary MEM write eligibility, memory-write idempotency, Secondary MEM consolidation meaning, or durable page formats.
 
 ### Phase 6-A0: ownership and sequencing — complete
 
@@ -377,7 +380,7 @@ See [Phase 6-A2 RelaySLP Response-Finalization Handoff Contract](phase6a2_relays
 
 B0 defines:
 
-- the reserved `relaymem.slp_durable_job.v0` durable-record schema,
+- the `relaymem.slp_durable_job.v0` durable-record schema,
 - direct typed consumption of the runtime-private A2 result,
 - deterministic Phase 6-owned dispatch-idempotency inputs and excluded mutable/content-bearing inputs,
 - fixed initialization of retry metadata absent from the A2 candidate,
@@ -386,25 +389,45 @@ B0 defines:
 - revision, attempt-count, claim-generation, and lease-token fencing,
 - retry-release versus terminal-failure separation,
 - stale-lease, restart, corruption, and terminal-state invariants,
-- the reserved content-free `relaymem.slp_queue_status_projection.v0`,
+- the content-free `relaymem.slp_queue_status_projection.v0`,
 - visible-response independence.
 
-B0 is design-only. It does not implement a queue helper, generate a dispatch key, perform queue I/O, claim or lease work, execute retries, invoke a worker or RelaySLP, write memory, mutate RelaySOUL, or affect the visible response.
+B0 is the authoritative design/state-machine contract. It does not itself perform queue I/O or worker execution.
 
 See [Phase 6-B0 RelaySLP Durable Queue Contract](phase6b0_relayslp_durable_queue_contract.md).
 
-### Phase 6-B1: job-record and dispatch-idempotency preflight — next
+### Phase 6-B1: job-record and dispatch-idempotency preflight — complete
 
-B1 must consume the exact runtime-private A2 result and produce one runtime-private dry-run durable-record candidate. It must be default-off, dry-run-only, deterministic, fail closed on schema or lineage drift, initialize queue/retry metadata without inventing memory semantics, and emit only a content-free projection. It must not perform queue I/O or invoke workers.
+B1 implements:
+
+- exact direct `RelayMEMSLPResponseHandoffResult` consumption,
+- exact A2 result, source projection, and enqueue-candidate revalidation,
+- candidate semantic validation before cross-artifact consistency validation,
+- `relaymem.slp_dispatch_key.v0` canonical ordered identity input and SHA-256 derivation,
+- exclusion of operational status, timestamps, random values, queue paths, claim/lease/retry metadata, raw content, and memory-write identity from dispatch identity,
+- separately domain-separated deterministic `relaymem.slp_job_id.v0` job identity,
+- one runtime-private initial `relaymem.slp_durable_job.v0` candidate,
+- fixed `queued`/revision/attempt/claim/lease/retry/failure initialization,
+- `relaymem.slp_queue_status_projection.v0` content-free diagnostics,
+- a content-free `relaymem_slp_dispatch_preflight` PipelineNodeResult,
+- dedicated behavior, deterministic identity, fail-closed, leakage, and contract smokes.
+
+B1 is default-off, read-only, and dry-run-only. It does not perform queue I/O, duplicate lookup, timestamp assignment, durable enqueue, claim/lease mutation, worker or RelaySLP invocation, memory write, SOUL mutation, request-runtime wiring, or visible-response mutation.
+
+See [Phase 6-B1 RelaySLP Dispatch Preflight](phase6b1_relayslp_dispatch_preflight.md).
 
 Later B slices remain:
 
 ```text
 Phase 6-B2
-  gated atomic durable enqueue, duplicate/collision/corruption handling, no worker invocation
+  gated atomic durable enqueue
+  duplicate/collision/corruption handling
+  durable timestamp assignment
+  no worker invocation
 
 Phase 6-B3
-  claim, lease, retry-release, stale-lease recovery, and terminal-state helpers, no worker execution
+  claim, lease, retry-release, stale-lease recovery, and terminal-state helpers
+  no worker execution
 ```
 
 Phase 6-B must not apply memory, reuse the RelayMEM memory-write idempotency key as its dispatch key, decide memory meaning, mutate RelaySOUL, or make visible response success depend on queue persistence.
