@@ -269,6 +269,24 @@ export function CommunicationPage({
     resetSessionProjection();
   }
 
+  function selectScene(nextScene: string) {
+    if (sessionLocked || nextScene === scene) {
+      return;
+    }
+
+    setScene(nextScene);
+    resetSessionProjection();
+  }
+
+  function selectMaxTurns(nextMaxTurns: number) {
+    if (sessionLocked || nextMaxTurns === maxTurns) {
+      return;
+    }
+
+    setMaxTurns(nextMaxTurns);
+    resetSessionProjection();
+  }
+
   function startSession() {
     if (!selectedPeer || !canStart) {
       return;
@@ -391,7 +409,9 @@ export function CommunicationPage({
               <span className="communication-peer-copy">
                 <span className="communication-peer-heading">
                   <strong>{peer.displayName}</strong>
-                  <span className={`communication-peer-state peer-state-${peer.state}`}>
+                  <span
+                    className={`communication-peer-state peer-state-${peer.state === "offline" ? "unconfigured" : peer.state}`}
+                  >
                     {peerStateLabel(language, peer.state)}
                   </span>
                 </span>
@@ -436,7 +456,7 @@ export function CommunicationPage({
           <div className="communication-setup-grid">
             <label>
               <span>{communicationMessage(language, "scene")}</span>
-              <select value={scene} disabled={sessionLocked} onChange={(event) => setScene(event.target.value)}>
+              <select value={scene} disabled={sessionLocked} onChange={(event) => selectScene(event.target.value)}>
                 <option value="quiet_room">{communicationMessage(language, "sceneQuiet")}</option>
                 <option value="after_stream">{communicationMessage(language, "sceneAfterStream")}</option>
                 <option value="first_meeting">{communicationMessage(language, "sceneFirstMeeting")}</option>
@@ -447,7 +467,7 @@ export function CommunicationPage({
               <select
                 value={maxTurns}
                 disabled={sessionLocked}
-                onChange={(event) => setMaxTurns(Number(event.target.value))}
+                onChange={(event) => selectMaxTurns(Number(event.target.value))}
               >
                 <option value={4}>4</option>
                 <option value={6}>6</option>
