@@ -1,0 +1,43 @@
+name: RelayMEM RelaySLP durable queue contract smoke
+
+on:
+  pull_request:
+    paths:
+      - "docs/architecture/phase6b0_relayslp_durable_queue_contract.md"
+      - "docs/architecture/phase6a2_relayslp_response_handoff_contract.md"
+      - "docs/architecture/relaymem_slp_current_target.md"
+      - "docs/architecture/README.md"
+      - "relaylm/relaymem_slp_response_handoff.py"
+      - "scripts/relaylm_phase6b0_durable_queue_contract_smoke.py"
+      - ".github/workflows/relaymem-slp-durable-queue-contract-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/architecture/phase6b0_relayslp_durable_queue_contract.md"
+      - "docs/architecture/phase6a2_relayslp_response_handoff_contract.md"
+      - "docs/architecture/relaymem_slp_current_target.md"
+      - "docs/architecture/README.md"
+      - "relaylm/relaymem_slp_response_handoff.py"
+      - "scripts/relaylm_phase6b0_durable_queue_contract_smoke.py"
+      - ".github/workflows/relaymem-slp-durable-queue-contract-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Phase 6-B0 contract smoke
+        run: >-
+          python -m compileall -q
+          scripts/relaylm_phase6b0_durable_queue_contract_smoke.py
+      - name: Run Phase 6-B0 contract smoke
+        run: >-
+          PYTHONPATH=. python
+          scripts/relaylm_phase6b0_durable_queue_contract_smoke.py
