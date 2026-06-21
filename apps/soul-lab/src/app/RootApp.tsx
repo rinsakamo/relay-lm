@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { LabRoute, Language, Theme } from "../domain/lab";
 import { AdoptionPage } from "../features/adoption/AdoptionPage";
 import { CommunicationPage } from "../features/communication/CommunicationPage";
+import { PodPage } from "../features/pod/PodPage";
 import { translate, type MessageKey } from "../locales/messages";
 import { mockCharacters } from "../mocks/lab";
 import { App } from "./App";
@@ -33,7 +34,10 @@ export function RootApp() {
     }
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
-  const [language, setLanguage] = useState<Language>("ja");
+  const [language, setLanguage] = useState<Language>(() => {
+    const storedLanguage = window.localStorage.getItem("soul-lab-language");
+    return storedLanguage === "en" ? "en" : "ja";
+  });
   const [activeCharacterId, setActiveCharacterId] = useState(() => {
     const storedCharacterId = window.localStorage.getItem("soul-lab-active-character");
     return mockCharacters.some((character) => character.characterId === storedCharacterId)
@@ -41,11 +45,18 @@ export function RootApp() {
       : firstCharacter.characterId;
   });
   const [communicationLocked, setCommunicationLocked] = useState(false);
+  const [interventionLocked, setInterventionLocked] = useState(false);
 
   const activeCharacter = useMemo(
     () => mockCharacters.find((character) => character.characterId === activeCharacterId) ?? firstCharacter,
     [activeCharacterId, firstCharacter],
   );
+  const lockedRoute: LabRoute | null = communicationLocked
+    ? "communication"
+    : interventionLocked
+      ? "pod"
+      : null;
+  const interactionLocked = lockedRoute !== null;
 
   useEffect(() => {
     const syncRoute = () => setRoute(hashRoute());
@@ -60,6 +71,7 @@ export function RootApp() {
 
   useEffect(() => {
     document.documentElement.lang = language;
+    window.localStorage.setItem("soul-lab-language", language);
   }, [language]);
 
   useEffect(() => {
@@ -67,7 +79,7 @@ export function RootApp() {
   }, [activeCharacterId]);
 
   function navigate(nextRoute: LabRoute) {
-    if (communicationLocked && nextRoute !== "communication") {
+    if (lockedRoute && nextRoute !== lockedRoute) {
       return;
     }
 
@@ -79,11 +91,13 @@ export function RootApp() {
     window.location.hash = nextHash;
   }
 
-  if (route !== "adoption" && route !== "communication") {
+  if (route !== "adoption" && route !== "communication" && route !== "pod") {
     return <App />;
   }
 
   const adoptionRoute = route === "adoption";
+  const communicationRoute = route === "communication";
+  const podRoute = route === "pod";
 
   return (
     <div className="app-shell">
@@ -105,7 +119,7 @@ export function RootApp() {
               type="button"
               key={item.route}
               aria-current={item.route === route ? "page" : undefined}
-              disabled={communicationLocked && item.route !== "communication"}
+              disabled={Boolean(lockedRoute && item.route !== lockedRoute)}
               onClick={() => navigate(item.route)}
             >
               <span className="nav-marker" aria-hidden="true">
@@ -134,7 +148,7 @@ export function RootApp() {
               <span>{translate(language, "header.activeCharacter")}</span>
               <select
                 value={activeCharacter.characterId}
-                disabled={communicationLocked}
+                disabled={interactionLocked}
                 onChange={(event) => setActiveCharacterId(event.target.value)}
               >
                 {mockCharacters.map((character) => (
@@ -187,14 +201,22 @@ export function RootApp() {
         </header>
 
         <main className="main-content">
-          {adoptionRoute ? (
+          {adoptionRoute && (
             <AdoptionPage language={language} onBackHome={() => navigate("home")} />
-          ) : (
+          )}
+          {communicationRoute && (
             <CommunicationPage
               language={language}
               activeCharacter={activeCharacter}
               characters={mockCharacters}
               onSessionLockChange={setCommunicationLocked}
+            />
+          )}
+          {podRoute && (
+            <PodPage
+              language={language}
+              activeCharacter={activeCharacter}
+              onInterventionLockChange={setInterventionLocked}
             />
           )}
         </main>
@@ -204,7 +226,9 @@ export function RootApp() {
           <span>
             {adoptionRoute
               ? "UI-A2 · Adoption / First Launch"
-              : "UI-A3 · Character Communication"}
+              : communicationRoute
+                ? "UI-A3 · Character Communication"
+                : "UI-A4 · Pod / SOUL Intervention"}
           </span>
         </footer>
       </div>
