@@ -134,11 +134,23 @@ def contains_key(value: object, keys: set[str]) -> bool:
     return False
 
 
-def exact(value: Mapping[str, Any], expected: Mapping[str, Any], prefix: str) -> list[str]:
+def exact_fields(
+    value: Mapping[str, Any], expected: set[str], reason: str
+) -> list[str]:
+    return [] if set(value.keys()) == expected else [reason]
+
+
+def exact(
+    value: Mapping[str, Any], expected: Mapping[str, Any], prefix: str
+) -> list[str]:
     reasons: list[str] = []
     for key, wanted in expected.items():
         actual = value.get(key)
-        matches = type(actual) is bool and actual is wanted if isinstance(wanted, bool) else actual == wanted
+        matches = (
+            type(actual) is bool and actual is wanted
+            if isinstance(wanted, bool)
+            else actual == wanted
+        )
         if not matches:
             reasons.append(f"{prefix}{key}_invalid")
     return reasons

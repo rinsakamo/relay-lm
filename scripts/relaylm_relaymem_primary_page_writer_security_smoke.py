@@ -40,7 +40,8 @@ def main() -> None:
         handoff["idempotency_key"] = forged_key
         handoff["target_relative_path"] = f"memory/mem/primary/projects/{forged_key}.md"
         old_line = next(
-            line for line in handoff["page_markdown"].splitlines()
+            line
+            for line in handoff["page_markdown"].splitlines()
             if line.startswith("idempotency_key: ")
         )
         handoff["page_markdown"] = handoff["page_markdown"].replace(
@@ -51,7 +52,9 @@ def main() -> None:
         handoff["page_digest"] = sha256(encoded).hexdigest()
         forged["projection"]["handoffs"][0]["page_bytes"] = len(encoded)
         result = _apply(forged, root)
-        assert "primary_writer_handoff_idempotency_key_mismatch" in result["blocked_reasons"]
+        assert "primary_writer_handoff_idempotency_key_mismatch" in result[
+            "blocked_reasons"
+        ]
         assert not (parent / f"{forged_key}.md").exists()
 
         traversal = _artifact()
@@ -60,24 +63,36 @@ def main() -> None:
         assert "primary_writer_handoff_target_path_invalid" in result["blocked_reasons"]
         assert not (root.parent / "escape.md").exists()
 
+        unknown = _artifact()
+        unknown["handoffs"][0]["secret_payload"] = "secret"
+        result = _apply(unknown, root)
+        assert result["blocked_reasons"] == ["primary_writer_handoff_fields_mismatch"]
+        assert "secret" not in str(result["projection"])
+
         raw = _artifact()
         raw["handoffs"][0]["raw_source_text"] = "secret"
         result = _apply(raw, root)
         assert result["blocked_reasons"] == [
-            "primary_writer_handoff_artifact_forbidden_content_field"
+            "primary_writer_handoff_artifact_forbidden_content_field",
+            "primary_writer_handoff_fields_mismatch",
         ]
         assert "secret" not in str(result["projection"])
 
         projection_leak = _artifact()
         projection_leak["projection"]["page_markdown"] = "secret"
         result = _apply(projection_leak, root)
-        assert "primary_writer_handoff_projection_content_field_present" in result["blocked_reasons"]
+        assert result["blocked_reasons"] == [
+            "primary_writer_handoff_projection_fields_mismatch",
+            "primary_writer_handoff_projection_content_field_present",
+        ]
         assert "secret" not in str(result["projection"])
 
         numeric_bool = _artifact()
         numeric_bool["handoffs"][0]["writer_apply_eligible"] = 1
         result = _apply(numeric_bool, root)
-        assert "primary_writer_handoff_writer_apply_eligible_invalid" in result["blocked_reasons"]
+        assert "primary_writer_handoff_writer_apply_eligible_invalid" in result[
+            "blocked_reasons"
+        ]
 
         symlink_root = root / "symlink-root"
         real_root = root / "real-root"
@@ -97,7 +112,9 @@ def main() -> None:
         assert result["blocked_reasons"] == ["memory_store_target_symlink_blocked"]
 
         target_symlink_artifact = _artifact()
-        symlink_target = root / target_symlink_artifact["handoffs"][0]["target_relative_path"]
+        symlink_target = (
+            root / target_symlink_artifact["handoffs"][0]["target_relative_path"]
+        )
         external_file = root / "outside.md"
         external_file.write_text("outside", encoding="utf-8")
         symlink_target.symlink_to(external_file)
@@ -109,7 +126,9 @@ def main() -> None:
         missing = root / "missing-root"
         missing.mkdir()
         result = _apply(_artifact(), missing)
-        assert result["blocked_reasons"] == ["memory_store_primary_target_directory_missing"]
+        assert result["blocked_reasons"] == [
+            "memory_store_primary_target_directory_missing"
+        ]
 
     print("RelayMEM Primary page writer security smoke passed")
 
