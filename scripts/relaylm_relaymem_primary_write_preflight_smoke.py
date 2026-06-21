@@ -247,6 +247,46 @@ def main() -> int:
     require(unknown_kind["operations"][0]["idempotency_key"] == "", unknown_kind)
     print("ok unknown memory kinds do not inherit a default target category")
 
+    safety_mismatch_candidate = dict(candidate)
+    safety_mismatch_candidate["safety_scope"] = "held_for_review"
+    safety_mismatch = build_relaymem_primary_write_preflight_dry_run(
+        candidates=[safety_mismatch_candidate],
+        source_lineage_artifact=lineage,
+        enabled=True,
+    )
+    require(
+        safety_mismatch["operations"][0]["preflight_status"] == "blocked",
+        safety_mismatch,
+    )
+    require(
+        "promotion_policy_safety_scope_mismatch"
+        in safety_mismatch["operations"][0]["blocked_reasons"],
+        safety_mismatch,
+    )
+    print("ok promotion policy and safety scope must agree")
+
+    event_kind_mismatch_candidate = dict(candidate)
+    event_kind_mismatch_candidate["source_event_kind"] = "communication"
+    event_kind_mismatch = build_relaymem_primary_write_preflight_dry_run(
+        candidates=[event_kind_mismatch_candidate],
+        source_lineage_artifact=lineage,
+        enabled=True,
+    )
+    require(
+        event_kind_mismatch["operations"][0]["preflight_status"] == "blocked",
+        event_kind_mismatch,
+    )
+    require(
+        "source_event_kind_mismatch"
+        in event_kind_mismatch["operations"][0]["blocked_reasons"],
+        event_kind_mismatch,
+    )
+    require(
+        event_kind_mismatch["operations"][0]["idempotency_key"] == "",
+        event_kind_mismatch,
+    )
+    print("ok candidate and lineage event kinds must agree")
+
     disabled = build_relaymem_primary_write_preflight_dry_run(
         candidates=[candidate],
         source_lineage_artifact=lineage,
