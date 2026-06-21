@@ -6,7 +6,7 @@ relaylm_volatility: medium
 relaylm_owner: implementation
 relaylm_update_trigger:
   - Phase 6-A1 helper schema or status vocabulary changes
-  - Phase 6-A2 response-finalization handoff lands
+  - Phase 6-A2 response-finalization handoff changes
 relaylm_not_authoritative_for:
   - RelayMEM memory candidate semantics
   - durable queue or worker execution
@@ -14,6 +14,7 @@ relaylm_not_authoritative_for:
   - RelaySOUL mutation
 relaylm_related_authority:
   - phase6_async_relayslp_bounded_slice.md
+  - phase6a2_relayslp_response_handoff_contract.md
   - relaymem_slp_current_target.md
   - relaymem_mvp_implementation_plan.md
 ---
@@ -71,6 +72,6 @@ Phase 6-A1 does not create either idempotency layer:
 - dispatch idempotency remains a later Phase 6 queue/orchestration responsibility;
 - memory-write idempotency remains RelayMEM write-preflight/persistence responsibility.
 
-## Next boundary
+## Downstream boundary
 
-Phase 6-A2 may add a default-off, dry-run-only response-finalization handoff that consumes the A1 decision and creates a bounded enqueue candidate without queue I/O. A2 must not be inferred as implemented by this contract.
+Phase 6-A2 now consumes the exact A1 private-result schema for finalized `turn_end` responses and may create one runtime-private dry-run enqueue candidate without queue I/O. A1 itself remains helper-only and does not claim A2, queue, worker, or persistence behavior.
