@@ -4,7 +4,7 @@ import { communicationMessage } from "../../locales/communication";
 import "./communication.css";
 
 type PeerKind = "relaylm" | "external" | "assistant";
-type PeerState = "ready" | "degraded" | "unconfigured";
+type PeerState = "ready" | "degraded" | "offline" | "unconfigured";
 type SessionPhase = "idle" | "active" | "closing" | "ended" | "emergency";
 type TimelineLevel = "info" | "warning" | "error";
 
@@ -62,6 +62,7 @@ function peerKindLabel(language: Language, kind: PeerKind): string {
 function peerStateLabel(language: Language, state: PeerState): string {
   if (state === "ready") return communicationMessage(language, "ready");
   if (state === "degraded") return communicationMessage(language, "degraded");
+  if (state === "offline") return communicationMessage(language, "offline");
   return communicationMessage(language, "unconfigured");
 }
 
@@ -88,7 +89,12 @@ export function CommunicationPage({
       ? {
           peerId: `relaylm:${otherCharacter.characterId}`,
           kind: "relaylm",
-          state: otherCharacter.status === "degraded" ? "degraded" : "ready",
+          state:
+            otherCharacter.status === "offline"
+              ? "offline"
+              : otherCharacter.status === "degraded"
+                ? "degraded"
+                : "ready",
           displayName: otherCharacter.displayName,
           initials: otherCharacter.initials,
           endpoint: `relaylm://character/${otherCharacter.characterId}`,
@@ -143,7 +149,10 @@ export function CommunicationPage({
 
   const selectedPeer = peers.find((peer) => peer.peerId === selectedPeerId) ?? peers[0];
   const sessionLocked = phase === "active" || phase === "closing";
-  const canStart = Boolean(selectedPeer) && selectedPeer?.state !== "unconfigured" && !sessionLocked;
+  const canStart =
+    Boolean(selectedPeer) &&
+    (selectedPeer?.state === "ready" || selectedPeer?.state === "degraded") &&
+    !sessionLocked;
 
   useEffect(() => {
     setSelectedPeerId(defaultPeerId);
@@ -242,6 +251,23 @@ export function CommunicationPage({
 
     return () => window.clearTimeout(timer);
   }, [language, onSessionLockChange, phase]);
+
+  function resetSessionProjection() {
+    setPhase("idle");
+    setSessionId("—");
+    setTurnCount(0);
+    setTimeline([]);
+    setEmergencyConfirm(false);
+  }
+
+  function selectPeer(peerId: string) {
+    if (sessionLocked || peerId === selectedPeerId) {
+      return;
+    }
+
+    setSelectedPeerId(peerId);
+    resetSessionProjection();
+  }
 
   function startSession() {
     if (!selectedPeer || !canStart) {
@@ -356,7 +382,7 @@ export function CommunicationPage({
               type="button"
               key={peer.peerId}
               disabled={sessionLocked}
-              onClick={() => setSelectedPeerId(peer.peerId)}
+              onClick={() => selectPeer(peer.peerId)}
               aria-pressed={selectedPeer?.peerId === peer.peerId}
             >
               <span className="communication-peer-avatar" aria-hidden="true">
@@ -486,7 +512,7 @@ export function CommunicationPage({
             </button>
           </div>
 
-          {selectedPeer?.state === "unconfigured" && (
+          {selectedPeer && (selectedPeer.state === "unconfigured" || selectedPeer.state === "offline") && (
             <p className="communication-warning">{communicationMessage(language, "unavailable")}</p>
           )}
 
