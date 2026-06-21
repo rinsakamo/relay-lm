@@ -37,7 +37,11 @@ def build_relaymem_primary_page_candidate_dry_run(
     ):
         return result
 
-    candidate_id = governed_experience_artifact.get("candidate_id")
+    raw_candidate_id = governed_experience_artifact.get("candidate_id")
+    if not isinstance(raw_candidate_id, str):
+        return result
+    candidate_id = raw_candidate_id.strip()
+
     operations = preflight_artifact.get("operations")
     if not isinstance(operations, Sequence) or isinstance(operations, (str, bytes)):
         return result
