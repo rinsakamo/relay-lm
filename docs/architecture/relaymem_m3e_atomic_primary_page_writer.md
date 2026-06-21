@@ -71,7 +71,8 @@ It additionally requires one exact M3d handoff with `preflight_status=ready` and
 
 M3e repeats the safety checks that matter at mutation time:
 
-- exact M3d result, handoff, and content-free projection schemas,
+- exact M3d result, handoff, content-free projection, and projection-item schemas and field sets,
+- rejection of unknown additive fields rather than silently accepting possible content-bearing extensions,
 - helper/read-only/no-prior-side-effect flags,
 - strict booleans and one-handoff cardinality,
 - Primary memory kind/category correspondence,
@@ -104,15 +105,18 @@ M3e never writes directly to the final page name.
 1. Create a random private temp file in the already-open target directory with exclusive create and mode `0600`.
 2. Write the complete UTF-8 page and `fsync` the temp file.
 3. Publish with an exclusive hard link from the temp inode to the final deterministic filename.
-4. `fsync` the target directory.
-5. Remove the temp link and `fsync` the directory again.
+4. Verify that the final directory entry is a regular file referring to the exact temp inode.
+5. `fsync` the target directory and repeat the final-entry inode verification.
+6. Remove the temp link and `fsync` the directory again.
 
-Because the final name is linked only after the complete temp file is durable, readers do not observe a partially written final page. Hard-link publication does not replace an existing target.
+Because the final name is linked only after the complete temp file is durable, readers do not observe a partially written final page. Hard-link publication does not replace an existing target. If the final entry no longer refers to the published temp inode, M3e returns `applied_state_uncertain` with a bounded reason rather than claiming success.
 
 If another writer wins the same idempotency race:
 
 - an exact existing page becomes `already_applied`,
 - any differing page becomes `primary_page_writer_target_conflict`.
+
+Recognizing an already-existing exact page is a read-only idempotency check. That path sets `durability_confirmed=false` because the current invocation did not perform and verify the original publication sequence.
 
 ## Result and failure states
 
@@ -196,7 +200,7 @@ PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_security_smoke.
 PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_atomicity_smoke.py
 ```
 
-Coverage includes default-off behavior, dry-run, successful publication, repeat no-op, existing-page conflict, forged idempotency, path traversal, raw-content rejection, strict booleans, projection leakage, root/parent/target symlinks, missing directories, concurrent same-key writers, no partial final page, and temp cleanup after pre-publication failure.
+Coverage includes default-off behavior, dry-run, successful publication, repeat no-op, existing-page conflict, forged idempotency, path traversal, exact field-set rejection, raw-content rejection, strict booleans, projection leakage, root/parent/target symlinks, missing directories, concurrent same-key writers, final-entry inode verification, no partial final page, and temp cleanup after pre-publication failure.
 
 ## Next bounded slice
 
