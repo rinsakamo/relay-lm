@@ -90,6 +90,18 @@ def main() -> None:
         "blocked_reasons"
     ]
 
+    numeric_flags = (
+        ("content_free", 1, "source_lineage_not_content_free"),
+        ("content_included", 0, "source_lineage_content_included"),
+        ("raw_text_included", 0, "source_lineage_raw_text_included"),
+        ("valid", 1, "source_lineage_invalid"),
+    )
+    for field, value, expected_reason in numeric_flags:
+        result = _admit(_lineage(**{field: value}))
+        assert result["admission_status"] == "blocked"
+        assert result["source_reference_valid"] is False
+        assert expected_reason in result["blocked_reasons"]
+
     print("RelayMEM RelaySLP bounded-metadata smoke passed")
 
 
