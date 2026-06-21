@@ -7,12 +7,12 @@ relaylm_owner: soul_lab_ui
 relaylm_update_trigger:
   - Memory Inspector UI state machine changes
   - RelayMEM inspection API integration begins
-  - memory correction, forgetting, pinning, or merge integration begins
+  - memory correction, forgetting, held-candidate discard, pinning, or merge integration begins
 relaylm_not_authoritative_for:
   - RelayMEM durable mutation semantics
   - autonomous memory-formation gates
   - RelaySLP execution or persistence
-  - memory correction or forgetting authorization
+  - memory correction, forgetting, or held-candidate discard authorization
   - SOUL promotion semantics
   - repository-wide implementation status
 relaylm_related_authority:
@@ -31,7 +31,7 @@ SOUL Lab UI-A5 is implemented as a browser-local Memory Inspector under `apps/so
 select character
   -> inspect formed / held / blocked outcome
   -> read bounded provenance projection
-  -> open operation candidate preview
+  -> open outcome-appropriate operation candidate preview
   -> explicitly confirm or cancel preview
   -> stop before RelayMEM mutation
 ```
@@ -67,10 +67,11 @@ UI-A5 provides:
 - optional related-perspective projection for RelayLM peer communication,
 - held and blocked reasons,
 - read-only blocked outcomes,
-- browser-local Correct preview,
-- browser-local Forget preview with explicit destructive confirmation,
+- browser-local Correct preview for formed or held outcomes,
+- browser-local Forget preview with explicit destructive confirmation for formed memory,
+- browser-local Discard preview for an unpromoted held candidate,
 - browser-local Pin / Unpin preview for formed memory,
-- browser-local Merge preview for formed or held memory,
+- browser-local Merge preview for formed or held outcomes,
 - content-free operation timeline,
 - character and visible navigation lock while an operation preview is open,
 - Japanese-default and English-preview copy,
@@ -89,17 +90,19 @@ Available previews:
 - Pin or Unpin,
 - Merge.
 
+Forget is the destructive path because the source is projected as formed memory that may be retrievable or used.
+
 ### Held
 
-A held record represents an uncertain candidate that was not promoted.
+A held record represents an uncertain candidate that was not promoted into formed memory.
 
 Available previews:
 
 - Correct,
-- Forget,
+- Discard,
 - Merge.
 
-Pin and Unpin are unavailable because the record is not projected as formed memory.
+Forget, Pin, and Unpin are unavailable because a held outcome is an unpromoted candidate rather than formed memory. Discard removes the candidate from further consideration; it does not pretend that durable memory already exists.
 
 ### Blocked
 
@@ -132,18 +135,18 @@ For peer communication, a related perspective may be displayed as a human-readab
 
 ```text
 idle
-  -> operation preview open
+  -> one operation preview open
   -> confirmed preview | cancelled preview
   -> idle
 ```
 
-The operation preview locks visible character switching and sidebar navigation to avoid relabeling a draft as another character's memory operation.
+The operation preview locks visible character switching, outcome selection, filters, and sidebar navigation. A second operation cannot replace the open preview; the user must confirm or cancel first.
 
 Browser history manipulation or page reload can still discard the mock state because there is no durable operation session.
 
 ## Correct preview
 
-Correct requires a replacement summary that:
+Correct is available for formed and held outcomes. It requires a replacement summary that:
 
 - contains at least 12 characters,
 - differs from the current summary.
@@ -159,7 +162,7 @@ mutation=false
 
 ## Forget preview
 
-Forget is treated as destructive even though UI-A5 does not execute it.
+Forget is available only for formed memory and is treated as destructive even though UI-A5 does not execute it.
 
 The user must:
 
@@ -171,6 +174,22 @@ The confirmed event records `destructive=true` and `persisted=false` without cha
 
 A future implementation must perform server-side ownership, dependency, retention, and recovery checks before any real forgetting action.
 
+## Discard preview
+
+Discard is available only for a held candidate.
+
+It projects removal of an unpromoted candidate from further review or promotion. It is not labeled as Forget and does not claim that a formed memory is being removed.
+
+The confirmed event records:
+
+```text
+operation=discard
+destructive=false
+persisted=false
+```
+
+A future API must still validate character ownership, candidate identity, current held state, and idempotency before durable discard.
+
 ## Pin / Unpin preview
 
 Pin and Unpin are available only for formed records.
@@ -179,16 +198,16 @@ The preview describes the intended retention change but does not change the disp
 
 ## Merge preview
 
-Merge requires another formed or held record from the same active character.
+Merge requires another formed or held outcome from the same active character.
 
-The timeline records only source and target memory identifiers. It does not include either memory summary.
+The timeline records only source and target identifiers. It does not include either summary.
 
 A future merge API must validate:
 
 - character ownership,
 - scope compatibility,
 - provenance retention,
-- source-memory disposition,
+- source-outcome disposition,
 - idempotency and recovery behavior.
 
 ## Content-free timeline
@@ -196,7 +215,7 @@ A future merge API must validate:
 The timeline contains only:
 
 - event code,
-- memory identifier,
+- outcome identifier,
 - operation type,
 - merge target identifier when relevant,
 - destructive boolean,
@@ -205,7 +224,7 @@ The timeline contains only:
 
 It does not contain:
 
-- memory summary text,
+- memory or candidate summary text,
 - correction text,
 - merge result text,
 - conversation content.
@@ -237,4 +256,4 @@ UI-A6 Shared Shell / Settings
   -> no network test or configuration persistence
 ```
 
-Real RelayMEM inspection, correction, forgetting, pinning, merge, RelaySLP persistence, and `/lab/api/*` integration remain separate bounded slices.
+Real RelayMEM inspection, correction, forgetting, held-candidate discard, pinning, merge, RelaySLP persistence, and `/lab/api/*` integration remain separate bounded slices.
