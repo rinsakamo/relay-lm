@@ -10,10 +10,10 @@ import type {
 } from "../domain/lab";
 import { translate, type MessageKey } from "../locales/messages";
 import {
-  initialChatEntries,
+  initialChatEntriesByCharacter,
   mockCharacters,
   mockEvents,
-  mockMemoryOutcomes,
+  mockMemoryOutcomesByCharacter,
   mockRuntimeComponents,
 } from "../mocks/lab";
 
@@ -134,13 +134,24 @@ export function App() {
       ? (storedCharacterId as string)
       : firstCharacter.characterId;
   });
-  const [chatEntries, setChatEntries] = useState<ChatEntry[]>(initialChatEntries);
+  const [chatEntriesByCharacter, setChatEntriesByCharacter] = useState<
+    Record<string, ChatEntry[]>
+  >(() =>
+    Object.fromEntries(
+      Object.entries(initialChatEntriesByCharacter).map(([characterId, entries]) => [
+        characterId,
+        [...entries],
+      ]),
+    ),
+  );
   const [draft, setDraft] = useState("");
 
   const activeCharacter = useMemo(
     () => mockCharacters.find((character) => character.characterId === activeCharacterId) ?? firstCharacter,
     [activeCharacterId, firstCharacter],
   );
+  const chatEntries = chatEntriesByCharacter[activeCharacter.characterId] ?? [];
+  const memoryOutcomes = mockMemoryOutcomesByCharacter[activeCharacter.characterId] ?? [];
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -170,6 +181,11 @@ export function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function selectCharacter(characterId: string) {
+    setActiveCharacterId(characterId);
+    setDraft("");
+  }
+
   function submitMockMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const body = draft.trim();
@@ -194,7 +210,14 @@ export function App() {
       occurredAtLabel,
     };
 
-    setChatEntries((entries) => [...entries, userEntry, characterEntry]);
+    setChatEntriesByCharacter((sessions) => ({
+      ...sessions,
+      [activeCharacter.characterId]: [
+        ...(sessions[activeCharacter.characterId] ?? []),
+        userEntry,
+        characterEntry,
+      ],
+    }));
     setDraft("");
   }
 
@@ -244,9 +267,7 @@ export function App() {
             <span>{translate(language, "header.activeCharacter")}</span>
             <select
               value={activeCharacter.characterId}
-              onChange={(event: ChangeEvent<HTMLSelectElement>) =>
-                setActiveCharacterId(event.target.value)
-              }
+              onChange={(event: ChangeEvent<HTMLSelectElement>) => selectCharacter(event.target.value)}
             >
               {mockCharacters.map((character) => (
                 <option value={character.characterId} key={character.characterId}>
@@ -452,7 +473,7 @@ export function App() {
                   </div>
                 </div>
                 <div className="memory-grid">
-                  {mockMemoryOutcomes.map((memory) => (
+                  {memoryOutcomes.map((memory) => (
                     <article className={`memory-card memory-${memory.state}`} key={memory.memoryId}>
                       <div className="memory-card-header">
                         <span>{translate(language, `memory.${memory.state}`)}</span>
