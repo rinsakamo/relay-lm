@@ -19,6 +19,8 @@ relaylm_related_authority:
   - current_target_migration_guide.md
   - phase5_5_stream_unpack_bounded_slice.md
   - phase6_async_relayslp_bounded_slice.md
+  - phase6a1_relayslp_job_admission_contract.md
+  - phase6a2_relayslp_response_handoff_contract.md
   - soul_lab_runtime_mvp.md
 ---
 # RelayLM Pipeline Implementation Plan
@@ -29,7 +31,7 @@ This document owns implementation status, phase sequencing, and dependency bound
 
 ## Status legend
 
-- **complete**: bounded contract, runtime wiring, and smoke coverage exist.
+- **complete**: the intended bounded contract and helper/runtime wiring exist with smoke coverage.
 - **mostly complete**: the main boundary exists with bounded follow-up remaining.
 - **planned**: design exists without a complete runtime producer/consumer/apply path.
 - **deferred**: intentionally not a gate for the active boundary.
@@ -41,7 +43,9 @@ Phase 5-C managed-route correctness: complete
 Phase 5-D1 CJK-aware token estimation: complete
 Phase 5-D2 lazy RelayRUN recovery detail: complete
 Phase 5.5 Stream Unpack / TTS handoff preparation: complete for RelayLM Core
-Phase 6-A0 asynchronous RelaySLP ownership and sequencing: documentation boundary defined
+Phase 6-A0 asynchronous RelaySLP ownership and sequencing: complete
+Phase 6-A1 helper-only deferred RelaySLP job admission: complete
+Phase 6-A2 helper-only response-finalization handoff: complete
 
 Completed bounded slices:
   Phase 1 PipelineContext/app stabilization
@@ -69,9 +73,12 @@ Completed bounded slices:
   Phase 5.5-C2 runtime TTS adapter handoff wiring
   Phase 5.5-C3 TTS adapter transport contract
   Phase 5.5-C4 runtime TTS adapter transport-envelope construction
+  Phase 6-A0 RelaySLP ownership and sequencing boundary
+  Phase 6-A1 RelaySLP job-admission preflight helper
+  Phase 6-A2 RelaySLP response-finalization handoff helper
 
 Next RelayLM Core implementation candidate:
-  Phase 6-A1 helper-only deferred RelaySLP job-admission preflight
+  Phase 6-B bounded durable RelaySLP queue and dispatch idempotency design
 
 Later product/runtime candidate:
   SOUL Lab Runtime MVP adapter bridge and TTS/audio/Live2D execution
@@ -79,7 +86,7 @@ Later product/runtime candidate:
 
 Phase 5-C4b and C5 are optimizations and do not invalidate the completed Phase 5-C correctness boundary. Phase 5-C4b is complete as a read-only diagnostics projection. Phase 5-C5a is complete as typed parse validation plus cache-write preflight. Phase 5-C5b is complete as a direct, explicit, gated filesystem writer helper. Phase 5-C5c is complete as request-local runtime wiring for trusted in-process typed parse sources; runtime response/control-envelope extraction, frontend metadata trust, and parser-versioned lookup/write compatibility remain later work. Phase 5-D1 hardens the shared budget estimator before streaming work without making C4b/C5 prerequisites. Phase 5-D2 is complete as a bounded pre-stream hardening step: helper plus request-runtime wiring. Phase 5.5-A is complete as a pure direct-helper dry-run sentinel observer. Phase 5.5-B1 is complete as a direct-helper suppression gate that preserves safe visible prefixes and suppresses internal markers when explicitly enabled and not dry-run-only. Phase 5.5-B2 is complete as gated request-runtime SSE suppression wiring. Phase 5.5-C0 is complete as a helper-only TTS segmentation foundation that emits content-free character-range hints from already-safe visible chunks. Phase 5.5-C1 is complete as a helper-only TTS adapter handoff contract that converts C0 hint results into runtime-private downstream adapter handoff plans. Phase 5.5-C2 is complete as default-off runtime wiring from B2 safe visible output into C0/C1 content-free node results without TTS/audio/avatar execution. Phase 5.5-C3 is complete as helper-only adapter-facing transport envelope construction from C1 handoff plans without adapter delivery, TTS/audio/avatar execution, or persistence. Phase 5.5-C4 is complete as default-off runtime construction of C3 envelopes after C2 stream-final handoff planning, including content-free C0/C1/C3 stream-final trace projection. Phase 5.5 is therefore closed for RelayLM Core; concrete adapter delivery, TTS/audio execution, and Live2D/avatar behavior belong to SOUL Lab Runtime MVP.
 
-Phase 6-A0 defines the asynchronous RelaySLP ownership and sequencing boundary. The next implementation slice is Phase 6-A1, a helper-only job-admission preflight that validates trigger mode, processing stage, correlation, namespace, governed evidence/source-lineage reference shape, terminal response state, and upstream policy status without queue I/O, worker execution, request-runtime wiring, or memory persistence.
+Phase 6-A0 defines the asynchronous RelaySLP ownership and sequencing boundary. Phase 6-A1 implements helper-only deferred job admission. Phase 6-A2 consumes exact A1 private/public artifacts for finalized `turn_end` responses and may construct one runtime-private dry-run enqueue candidate without queue I/O. The next boundary is Phase 6-B durable queue and dispatch-idempotency design.
 
 ## Current caveats
 
@@ -94,7 +101,7 @@ Phase 6-A0 defines the asynchronous RelaySLP ownership and sequencing boundary. 
 - New RelaySOUL execution-gate design documents should still be avoided unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary.
 - Token estimation is deterministic and CJK-aware but remains tokenizer-free and model-agnostic rather than exact.
 - RelayRUN lazy recovery detail is wired into the request-runtime checkpoint builder, but cross-cutting per-node orchestration remains later work.
-- Phase 6-A0 defines the RelaySLP admission boundary only; no job-admission helper, enqueue candidate, queue, worker, Secondary consolidation runtime, or page/index/log apply is implemented yet.
+- Phase 6-A1/A2 are helper-only; no request-runtime finalization wiring, durable queue, dispatch key, worker, Secondary consolidation runtime, or page/index/log apply is implemented yet.
 - RelayREF output observation, RelaySLP persistence, and RelaySOUL actual apply remain later work.
 
 ## Phase 1: PipelineContext/app — mostly complete
@@ -306,13 +313,13 @@ Completed:
 
 C4b, C5, and RelaySOUL execution gates are not prerequisites for Phase 6 asynchronous RelaySLP or later SOUL Lab Runtime MVP work.
 
-## Phase 6: asynchronous RelaySLP — planned
+## Phase 6: asynchronous RelaySLP — complete through helper-only A2
 
 See [Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md).
 
-Phase 6 owns deferred execution orchestration around RelaySLP: job admission, later enqueue/claim/lease/retry state, dispatch idempotency, content-free operation projections, and later RelayRUN checkpoint/restart integration. It does not own RelayMEM candidate meaning, Primary MEM write eligibility, memory-write idempotency, Secondary MEM consolidation meaning, or durable page formats.
+Phase 6 owns deferred execution orchestration around RelaySLP: job admission, response-finalization handoff, later enqueue/claim/lease/retry state, dispatch idempotency, content-free operation projections, and later RelayRUN checkpoint/restart integration. It does not own RelayMEM candidate meaning, Primary MEM write eligibility, memory-write idempotency, Secondary MEM consolidation meaning, or durable page formats.
 
-### Phase 6-A0: ownership and sequencing — documentation boundary defined
+### Phase 6-A0: ownership and sequencing — complete
 
 A0 separates:
 
@@ -321,36 +328,57 @@ RelayMEM-M3a/M3b/M4
   memory candidate, source-lineage, write-preflight, consolidation, and memory-write semantics
 
 Phase 6 / RelayRUN orchestration
-  deferred job admission, dispatch correlation, dispatch idempotency, queue/worker/retry control
+  deferred job admission, response handoff, dispatch correlation, dispatch idempotency, queue/worker/retry control
 ```
 
 Dispatch idempotency and memory-write idempotency must remain distinct. A deferred job may be retried while an already-applied memory update must remain deduplicated.
 
-### Phase 6-A1: deferred job-admission preflight — next
+### Phase 6-A1: deferred job-admission preflight — complete
 
-A1 should add a pure helper that:
+A1 implements a default-off, dry-run-first helper that validates trigger mode, processing stage, run/turn/session correlation, namespace, bounded M3b-compatible source lineage, source count, terminal response state, and persistence-policy status.
 
-- is default-off and dry-run-first,
-- validates a small allowlist of trigger modes and processing stages,
-- validates run/turn/session correlation and namespace shape,
-- requires a governed evidence or source-lineage reference without exposing it publicly,
-- validates upstream schema/version and bounded source counts,
-- requires a safe visible-response terminal state for turn-end admission,
-- blocks waiting-user, unresolved recovery, malformed policy, missing lineage, unsupported schema, and unknown enum states,
-- emits only a content-free admission projection,
-- does not enqueue, execute, persist, mutate SOUL, or change visible response delivery.
+Implemented schemas and outcomes:
 
-A1 must not add request-runtime wiring, queue I/O, worker processes, Primary MEM writes, Secondary consolidation, page/index/log apply, or general RelayRUN retry execution.
+```text
+relaymem.slp_job_admission_preflight.v0
+relaymem.slp_job_admission_projection.v0
+
+skipped
+blocked
+held
+admitted_dry_run
+eligible_for_enqueue
+```
+
+A1 does not enqueue, execute, persist, mutate SOUL, or change visible response delivery.
+
+See [Phase 6-A1 RelaySLP Job Admission Contract](phase6a1_relayslp_job_admission_contract.md).
+
+### Phase 6-A2: response-finalization handoff — complete
+
+A2 consumes the exact A1 private result and matching public projection for finalized `turn_end` results. It validates exact field sets, strict booleans, correlation presence, private/projection equality, terminal and policy gates, and absence of prior side effects or idempotency keys.
+
+Implemented schemas:
+
+```text
+relaymem.slp_response_handoff.v0
+relaymem.slp_enqueue_candidate.v0
+relaymem.slp_response_handoff_projection.v0
+```
+
+When explicitly enabled and dry-run-only, A2 may create one runtime-private metadata candidate. It performs no queue I/O, durable enqueue, dispatch-key allocation, worker or RelaySLP invocation, memory write, SOUL mutation, or visible-response mutation. It is not request-runtime wired.
+
+See [Phase 6-A2 RelaySLP Response-Finalization Handoff Contract](phase6a2_relayslp_response_handoff_contract.md).
+
+### Phase 6-B: bounded durable queue — next
+
+B must define a durable job-record schema, private A2 candidate consumption, dispatch-idempotency ownership, atomic enqueue, duplicate handling, claim/lease/terminal-state transitions, stale-lease and restart behavior, and content-free status projection.
+
+B must not invoke workers or apply memory, reuse the RelayMEM memory-write idempotency key as its dispatch key, decide memory meaning, mutate RelaySOUL, or make visible response success depend on queue persistence.
 
 ### Later Phase 6 sequence
 
 ```text
-Phase 6-A2
-  response-finalization handoff and enqueue-candidate construction
-
-Phase 6-B
-  bounded durable queue, dispatch idempotency, claim/lease/terminal state
-
 Phase 6-C
   worker execution consuming RelayMEM-owned bounded artifacts
 

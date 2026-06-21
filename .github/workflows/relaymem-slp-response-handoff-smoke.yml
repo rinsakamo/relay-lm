@@ -1,0 +1,45 @@
+name: RelayMEM RelaySLP response handoff smoke
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/relaymem_slp_job_admission.py"
+      - "relaylm/relaymem_slp_response_handoff.py"
+      - "scripts/relaylm_relaymem_slp_response_handoff_smoke.py"
+      - "scripts/relaylm_relaymem_slp_response_handoff_status_smoke.py"
+      - ".github/workflows/relaymem-slp-response-handoff-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/relaymem_slp_job_admission.py"
+      - "relaylm/relaymem_slp_response_handoff.py"
+      - "scripts/relaylm_relaymem_slp_response_handoff_smoke.py"
+      - "scripts/relaylm_relaymem_slp_response_handoff_status_smoke.py"
+      - ".github/workflows/relaymem-slp-response-handoff-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Phase 6-A2 helpers and smokes
+        run: >-
+          python -m compileall -q
+          relaylm/relaymem_slp_response_handoff.py
+          scripts/relaylm_relaymem_slp_response_handoff_smoke.py
+          scripts/relaylm_relaymem_slp_response_handoff_status_smoke.py
+      - name: Run Phase 6-A2 smoke
+        run: >-
+          PYTHONPATH=. python
+          scripts/relaylm_relaymem_slp_response_handoff_smoke.py
+      - name: Run Phase 6-A2 status smoke
+        run: >-
+          PYTHONPATH=. python
+          scripts/relaylm_relaymem_slp_response_handoff_status_smoke.py

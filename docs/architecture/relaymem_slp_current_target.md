@@ -14,6 +14,8 @@ relaylm_not_authoritative_for:
   - RelaySOUL approval contracts
 relaylm_related_authority:
   - phase6_async_relayslp_bounded_slice.md
+  - phase6a1_relayslp_job_admission_contract.md
+  - phase6a2_relayslp_response_handoff_contract.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_execution_design.md
   - memory_lifecycle_design.md
@@ -28,7 +30,11 @@ Current RelayMEM provides `relaymem_retrieval.v0`, bounded candidate/snippet pla
 
 RelayMEM-M3b validates content-free source lineage, derives bounded Primary MEM write-preflight operations and memory-write idempotency keys, and blocks unsupported or non-autonomous apply classes. It does not write memory, invoke RelaySLP, expose a Lab API, mutate RelaySOUL, or change visible response delivery.
 
-Current implementation does not provide a complete asynchronous RelaySLP worker, deferred job-admission helper, enqueue candidate, durable job queue, scheduled/background execution, worker claim/lease state, Secondary MEM consolidation runtime, or page/index/log apply.
+Phase 6-A1 now provides the helper-only `relaymem.slp_job_admission_preflight.v0` boundary. It validates trigger, processing stage, correlation, namespace, source lineage, response terminal state, and persistence-policy status without queue I/O or memory writes.
+
+Phase 6-A2 now provides the helper-only response-finalization handoff. It consumes the exact A1 private result for a finalized `turn_end` response and may create one runtime-private `relaymem.slp_enqueue_candidate.v0` artifact. The candidate is metadata-only, dry-run-only, and is omitted from public diagnostics.
+
+Current implementation still does not provide a durable RelaySLP job queue, dispatch idempotency key, scheduled/background execution, worker claim/lease state, worker invocation, Secondary MEM consolidation runtime, or page/index/log apply.
 
 ## Current compatibility
 
@@ -36,28 +42,31 @@ Current implementation does not provide a complete asynchronous RelaySLP worker,
 - Current query preparation may use request messages.
 - `relaymem.retrieval_runtime.v1`, `relaymem.retrieval_projection.v1`, and `relaymem.slp_projection.v1` do not have current producers.
 - RelayMEM-M3a candidates and M3b write-preflight operations are helper-only and are not request-runtime RelaySLP jobs.
+- A1/A2 artifacts are helper-only orchestration artifacts and are not durable queue records.
 - RelayRUN checkpoint and retry artifacts do not currently provide a general SLP queue, worker resume, or retry executor.
 
 ## Phase 6-A boundary
 
-[Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md) defines the next RelayLM Core implementation sequence.
+[Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md) defines the RelayLM Core implementation sequence.
 
-The first helper boundary is deferred job-admission preflight:
+The implemented A1/A2 sequence is:
 
 ```text
-completed or eligible runtime event
-  -> validate trigger, processing stage, correlation, namespace, governed evidence reference, and terminal status
+completed finalized turn event
+  -> A1 validate trigger, processing stage, correlation, namespace, source lineage, and terminal status
   -> admitted / held / blocked / skipped
+  -> A2 create one runtime-private dry-run enqueue candidate
+  -> no queue I/O
 ```
 
-This admission boundary owns deferred orchestration metadata only. It must consume rather than duplicate RelayMEM-M3b source-lineage semantics, Primary MEM write eligibility, memory-write idempotency, or later RelayMEM-M4 consolidation semantics.
+A1/A2 own deferred orchestration metadata only. They consume rather than duplicate RelayMEM-M3b source-lineage semantics, Primary MEM write eligibility, memory-write idempotency, or later RelayMEM-M4 consolidation semantics.
 
 Dispatch idempotency and memory-write idempotency remain separate:
 
-- Phase 6 / RelayRUN orchestration prevents duplicate job dispatch, claim, or retry execution.
+- Phase 6 / RelayRUN orchestration will prevent duplicate job dispatch, claim, or retry execution.
 - RelayMEM persistence preflight prevents duplicate durable memory writes.
 
-Phase 6-A0 is docs-only. Phase 6-A1 remains helper-only, default-off, dry-run-first, fail-closed, and free of queue I/O, worker execution, request-runtime wiring, or MEM persistence.
+A1 and A2 remain helper-only, default-off, dry-run-first, fail-closed, and free of durable queue I/O, worker execution, request-runtime wiring, or MEM persistence.
 
 ## Target architecture
 
@@ -71,7 +80,9 @@ RelaySLP may read SOUL as a protected anchor and may emit a separately governed 
 
 ## Required migration
 
-Update the typed RelayINT handoff, canonicalized query evidence, Retrieval result/projection split, RelayCTX consumers, deferred job admission, queue/worker orchestration, storage/idempotency gates, RelayRUN retry/checkpoint integration, RelaySOUL proposal handoff, SOUL Lab memory-operation UI, and smoke coverage through separate bounded slices.
+The next bounded migration is Phase 6-B: define a durable queue, dispatch idempotency, enqueue/claim/lease/terminal-state semantics, and content-free status projection without taking over RelayMEM memory meaning or memory-write idempotency.
+
+Later slices must add worker execution, storage/idempotency apply, RelayRUN retry/checkpoint integration, RelaySOUL proposal handoff, SOUL Lab memory-operation UI, and smoke coverage through separate bounded changes.
 
 Do not require the full migration to land atomically. Each slice must preserve:
 
@@ -83,4 +94,4 @@ Do not require the full migration to land atomically. Each slice must preserve:
 - separation between dispatch and memory-write idempotency,
 - no direct RelaySOUL mutation.
 
-See [Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md), [Memory Lifecycle Design](memory_lifecycle_design.md), [RelayMEM MVP Design](relaymem_mvp_design.md), [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md), [RelayMEM Retrieval Execution Design](relaymem_retrieval_execution_design.md), and [RelayMEM SLP Execution Design](relaymem_slp_execution_design.md).
+See [Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md), [Phase 6-A1 RelaySLP Job Admission Contract](phase6a1_relayslp_job_admission_contract.md), [Phase 6-A2 RelaySLP Response-Finalization Handoff Contract](phase6a2_relayslp_response_handoff_contract.md), [Memory Lifecycle Design](memory_lifecycle_design.md), [RelayMEM MVP Design](relaymem_mvp_design.md), [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md), [RelayMEM Retrieval Execution Design](relaymem_retrieval_execution_design.md), and [RelayMEM SLP Execution Design](relaymem_slp_execution_design.md).
