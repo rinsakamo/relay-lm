@@ -23,20 +23,23 @@ relaylm_related_authority:
   - docs/architecture/phase6a2_relayslp_response_handoff_contract.md
   - docs/architecture/phase6b0_relayslp_durable_queue_contract.md
   - docs/architecture/phase6b1_relayslp_dispatch_preflight.md
+  - docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md
   - docs/architecture/relaymem_mvp_implementation_plan.md
   - docs/architecture/relaymem_slp_current_target.md
   - docs/architecture/relaymem_m3e_atomic_primary_page_writer.md
   - docs/architecture/relaymem_m3f_primary_index_log_reconciliation_preflight.md
+  - docs/architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md
   - docs/architecture/soul_lab_ui_a0_a1_handoff.md
   - docs/architecture/soul_lab_ui_a2_adoption_handoff.md
   - docs/architecture/soul_lab_ui_a3_communication_handoff.md
   - docs/architecture/soul_lab_ui_a4_pod_handoff.md
+  - docs/architecture/soul_lab_ui_a5_memory_inspector_handoff.md
 ---
 # RelayLM Project Status
 
 Last reviewed: 2026-06-22 JST
 
-Status baseline commit: `3d059bac0556d25308ee97e4068bec04a959e7b8`
+Status baseline commit: `3e5142793b0f3f58a10c5261aa1a4263414c6cef`
 
 ## Purpose and authority
 
@@ -60,9 +63,9 @@ The repository-wide documentation audit, audit Phases 1–8, is complete as of 2
 Managed-route correctness boundary: Phase 5-C complete
 Pre-stream hardening: Phase 5-D complete through D2
 Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
-Asynchronous RelaySLP orchestration: helper implementation complete through Phase 6-B1
-RelayMEM independent track: M1/M2 foundations complete; Primary MEM path implemented through M3f preflight
-SOUL Lab UI independent track: UI-A0 through UI-A4 implemented as browser-local mock/presentation slices
+Asynchronous RelaySLP orchestration: durable enqueue implementation complete through Phase 6-B2
+RelayMEM independent track: M1/M2 foundations complete; Primary MEM path implemented through M3g apply
+SOUL Lab UI independent track: UI-A0 through UI-A5 implemented as browser-local mock/presentation slices
 
 Latest completed bounded slices:
   Phase 5.5-B2 request-runtime SSE suppression wiring
@@ -117,19 +120,28 @@ Latest completed bounded slices:
   + content-free relaymem.slp_queue_status_projection.v0
   + default-off, read-only, dry-run-only; no queue I/O, worker, memory write, or SOUL mutation
 
-  RelayMEM-M3c through M3f Primary MEM persistence preparation
+  Phase 6-B2 atomic durable enqueue
+  + exact direct B1 result and durable-job candidate revalidation
+  + gated secure create-if-absent canonical JSON publication with durable timestamps
+  + duplicate/collision/corruption/write-failure classification
+  + content-free relaymem.slp_queue_status_projection.v0
+  + no claim, lease, worker, memory write, SOUL mutation, request-runtime wiring, or visible-response change
+
+  RelayMEM-M3c through M3g Primary MEM persistence path
   + M3c deterministic Primary page candidate
   + M3d exact writer-handoff and store-target preflight
   + M3e default-off atomic no-clobber Primary page writer
   + M3f read-only index/log reconciliation preflight and deterministic ordered plan
-  + no request-runtime wiring, RelaySLP worker, Secondary MEM consolidation, or index/log apply
+  + M3g gated index-before-log reconciliation apply with retryable partial progress
+  + no request-runtime wiring, RelaySLP worker, or Secondary MEM consolidation
 
-  SOUL Lab UI-A0 through UI-A4
+  SOUL Lab UI-A0 through UI-A5
   + TypeScript/React/Vite shell, mock Home, and read-only Lab Observation preview
   + browser-local first-launch and character-adoption draft flow
   + mock Communication with peer classification, autonomous exchange, Soft Stop, and content-free timeline
   + mock Pod intervention with bounded targets, protected-trait locks, candidate diff, comparison, Hold/Discard, and non-executing Apply/Rollback previews
-  + no peer network request, durable RelaySOUL candidate, managed apply, rollback, RelayRUN/RelaySLP mutation, transcript persistence, TTS, audio, or avatar execution
+  + Memory Inspector for formed/held/blocked outcomes and browser-local Correct/Merge/Forget/Pin/Unpin/Discard previews
+  + no peer network request, durable RelaySOUL candidate, managed apply, persisted memory mutation, rollback, RelayRUN/RelaySLP mutation, transcript persistence, TTS, audio, or avatar execution
 ```
 
 Phase 5.5-B2 is complete as gated request-runtime SSE suppression wiring. Runtime request handling still preserves ordinary backend SSE forwarding by default. The wrapper is used only when `relayctx_stream_unpack_dry_run_enabled=true`; dry-run-only mode remains byte-for-byte pass-through, and apply mode suppresses RelayCTX internal marker/candidate material from user-visible SSE output.
@@ -152,17 +164,16 @@ Phase 5-C5c is complete as request-local cache-writer wiring for trusted in-proc
 
 Phase 6-A1 is complete as a default-off, dry-run-first helper-only deferred job-admission preflight. Phase 6-A2 is complete as a default-off, dry-run-only response-finalization handoff that may construct one runtime-private metadata candidate from an accepted finalized `turn_end` A1 result. Neither slice is request-runtime wired or performs queue I/O.
 
-Phase 6-B0 remains the authoritative durable queue design and state-machine contract. Phase 6-B1 now implements its first bounded consumer: exact direct A2 validation, deterministic dispatch/job identities, fixed initial queue/retry metadata, one runtime-private queued durable-job candidate, and a content-free status projection. B1 performs no queue I/O, duplicate lookup, durable timestamp assignment, claim, lease, worker invocation, memory apply, or SOUL mutation.
+Phase 6-B0 remains the authoritative durable queue design and state-machine contract. Phase 6-B1 implements exact direct A2 validation, deterministic dispatch/job identities, fixed initial queue/retry metadata, one runtime-private queued durable-job candidate, and a content-free status projection. Phase 6-B2 now consumes only that exact B1 result, assigns durable timestamps, atomically publishes a canonical create-if-absent record, and classifies duplicate/collision/corruption/write failure. B2 performs no claim, lease, retry transition, worker invocation, memory apply, or SOUL mutation.
 
-RelayMEM-M3c through M3f are complete as independent bounded slices. M3e is the first current helper that can durably publish a Primary MEM page when all direct-call gates pass. M3f reopens and revalidates that page plus the current index/log and emits a deterministic reconciliation plan, but remains read-only and never applies the index/log changes.
+RelayMEM-M3c through M3g are complete as independent bounded slices. M3e can durably publish a Primary MEM page, M3f reopens and derives a deterministic index/log reconciliation plan, and M3g applies required control-file updates with index-before-log ordering and retryable partial progress.
 
-SOUL Lab UI-A0 through UI-A4 are complete as presentation-only browser slices. They provide the UI foundation, mock Home/Observation surfaces, first-launch/adoption drafts, browser-local autonomous Communication, and a browser-local Pod intervention workflow without reading persona source contents, registering a character, sending peer network requests, creating a durable RelaySOUL candidate, calling `/lab/api/*`, applying or rolling back SOUL, or mutating RelayRUN, RelaySLP, SOUL, or MEM state.
+SOUL Lab UI-A0 through UI-A5 are complete as presentation-only browser slices. They provide the UI foundation, mock Home/Observation surfaces, first-launch/adoption drafts, browser-local autonomous Communication, Pod intervention, and a Memory Inspector with non-persistent operation previews without sending peer network requests, creating a durable RelaySOUL candidate, calling `/lab/api/*`, applying or rolling back SOUL, or mutating RelayRUN, RelaySLP, SOUL, or MEM state.
 
 Next boundaries remain independently sequenced:
 
-- Phase 6-B2: gated atomic create-if-absent durable enqueue with duplicate/collision/corruption classification and no worker invocation,
-- RelayMEM-M3g: gated index/log reconciliation apply consuming the exact M3f plan,
-- SOUL Lab UI-A5: browser-local Memory Inspector for formed/held/blocked outcomes and non-persistent operation previews,
+- Phase 6-B3: claim/lease/retry-release/stale-recovery/terminal-state helpers with no worker execution,
+- later RelayMEM Secondary MEM consolidation and Lab-persisted memory operations,
 - later SOUL Lab Runtime MVP adapter bridge/runtime work for TTS/audio/avatar execution.
 
 New RelaySOUL execution-gate design documents should still be avoided unless they directly unblock a current runtime safety issue or are part of the later SOUL Lab runtime adapter boundary.
@@ -206,14 +217,17 @@ Current `main` includes:
 - RelayMEM-M3d Primary writer-handoff preflight,
 - RelayMEM-M3e default-off atomic Primary page writer,
 - RelayMEM-M3f read-only Primary index/log reconciliation preflight,
+- RelayMEM-M3g gated Primary index/log reconciliation apply,
 - SOUL Lab UI-A0/A1 shell, mock Home, and read-only Lab Observation preview,
 - SOUL Lab UI-A2 browser-local first-launch and adoption draft flow,
 - SOUL Lab UI-A3 browser-local mock Communication session surface,
 - SOUL Lab UI-A4 browser-local mock Pod / SOUL Intervention workflow,
+- SOUL Lab UI-A5 browser-local Memory Inspector,
 - Phase 6-A1 RelaySLP job-admission preflight helper,
 - Phase 6-A2 RelaySLP response-finalization handoff helper,
 - Phase 6-B0 durable RelaySLP queue contract,
-- Phase 6-B1 dispatch/job-record preflight helper.
+- Phase 6-B1 dispatch/job-record preflight helper,
+- Phase 6-B2 atomic durable enqueue helper.
 
 The safe defaults remain unchanged:
 
@@ -232,7 +246,7 @@ relayctx_tts_adapter_handoff_runtime_dry_run_only = true
 
 Default `memory_light` compatibility compilation may therefore still preserve frontend history until the bounded apply path is explicitly enabled. Token-budget truncation also remains opt-in. Client-instruction cache writing remains opt-in and dry-run-only unless an explicit caller disables the dry-run gate and a trusted in-process producer supplies a runtime-private typed parse source. Runtime stream suppression and runtime TTS adapter handoff/transport planning are default-off. RelayLM still does not execute TTS, generate audio, control avatars, or deliver adapter transport.
 
-Phase 6-A1, A2, and B1 are direct helper gates rather than route configuration fields. Their call defaults are disabled and dry-run-only. No request runtime invokes them automatically. Phase 6-B1 creates only a runtime-private dry-run durable-job candidate and does not persist it. RelayMEM-M3e is also a direct-helper boundary: its call defaults are `enabled=false`, `apply_enabled=false`, and `dry_run_only=true`. M3f accepts only read-only dry-run operation and cannot apply index/log changes.
+Phase 6-A1, A2, B1, and B2 are direct helper gates rather than route configuration fields. No request runtime invokes them automatically. B1 creates only a runtime-private dry-run durable-job candidate; B2 separately defaults to `enabled=false`, `apply_enabled=false`, and `dry_run_only=true` and persists only under all explicit apply gates. RelayMEM-M3e and M3g remain separate direct-helper persistence boundaries.
 
 ## Token estimation boundary
 
@@ -321,6 +335,8 @@ Phase 6-B0 assigns durable queue records, duplicate prevention, queue state, cla
 
 Phase 6-B1 directly consumes and revalidates the exact runtime-private A2 result. It generates `relaymem.slp_dispatch_key.v0` dispatch identity from the fixed B0 canonical tuple, derives a separate deterministic job ID, initializes an exact queued `relaymem.slp_durable_job.v0` candidate, and emits only the allowlisted content-free queue projection. It does not perform queue I/O.
 
+Phase 6-B2 directly consumes and revalidates the exact B1 result and candidate. It securely opens a dedicated absolute queue root, assigns durable timestamps only for new records, atomically publishes canonical JSON by no-clobber create-if-absent semantics, and never overwrites malformed or colliding records. Its public/default projection remains content-free.
+
 Dispatch idempotency and memory-write idempotency remain distinct. Phase 6 / RelayRUN owns the former; RelayMEM persistence owns the latter. RelaySLP never directly mutates RelaySOUL.
 
 ## Fail-closed and diagnostics posture
@@ -345,12 +361,11 @@ The runtime does not yet provide:
 - TTS execution, audio generation, or avatar control,
 - dedicated output-side RelayREF and complete output-side RelaySCN,
 - cross-cutting per-node RelayRUN orchestration,
-- request-runtime Phase 6-A1/A2/B1 wiring,
-- Phase 6-B2 atomic durable RelaySLP enqueue and duplicate/collision/corruption handling,
+- request-runtime Phase 6-A1/A2/B1/B2 wiring,
 - scheduler/background worker, claim, lease, retry, or terminal execution,
 - RelaySLP worker invocation,
 - Secondary MEM consolidation runtime,
-- RelayMEM-M3g index/log reconciliation apply and broader Phase 6 persistence apply,
+- RelayMEM Secondary MEM consolidation and broader Phase 6 persistence apply,
 - actual RelaySOUL apply, rollback, or persistence execution,
 - model-specific exact tokenizer integration.
 
@@ -374,7 +389,7 @@ Open-LLM-VTuber
   -> OpenAI-compatible backend
 ```
 
-RelayLM Core request runtime does not own frontend rendering, ASR, TTS execution, transport delivery, or avatar execution. The repository does include the presentation-only SOUL Lab UI-A0 through UI-A4 under `apps/soul-lab`; it remains mock/browser-local and is not a Core authority surface. Current streaming remains backend SSE forwarding by default; gated runtime Stream Unpack suppression and runtime TTS adapter handoff/transport planning exist only when their gates are explicitly enabled.
+RelayLM Core request runtime does not own frontend rendering, ASR, TTS execution, transport delivery, or avatar execution. The repository does include the presentation-only SOUL Lab UI-A0 through UI-A5 under `apps/soul-lab`; it remains mock/browser-local and is not a Core authority surface. Current streaming remains backend SSE forwarding by default; gated runtime Stream Unpack suppression and runtime TTS adapter handoff/transport planning exist only when their gates are explicitly enabled.
 
 ## Where to read next
 

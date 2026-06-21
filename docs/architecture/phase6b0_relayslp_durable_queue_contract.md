@@ -22,6 +22,7 @@ relaylm_related_authority:
   - phase6a1_relayslp_job_admission_contract.md
   - phase6a2_relayslp_response_handoff_contract.md
   - phase6b1_relayslp_dispatch_preflight.md
+  - phase6b2_relayslp_atomic_durable_enqueue.md
   - relaymem_slp_current_target.md
   - relaymem_slp_execution_design.md
   - relayrun_runtime_checkpoint_design.md
@@ -34,17 +35,19 @@ relaylm_related_authority:
 
 Phase 6-B0 remains the authoritative durable-queue design and state-machine contract.
 
-Phase 6-B1 now implements the first bounded consumer of this contract: a default-off, read-only, dry-run-only dispatch/job-record preflight. B1 generates deterministic dispatch and job identities plus one runtime-private initial `relaymem.slp_durable_job.v0` candidate, but performs no queue I/O.
+Phase 6-B1 implements the first bounded consumer of this contract: a default-off, read-only, dry-run-only dispatch/job-record preflight. B1 generates deterministic dispatch and job identities plus one runtime-private initial `relaymem.slp_durable_job.v0` candidate, but performs no queue I/O.
 
-The next implementation boundary is Phase 6-B2: gated atomic create-if-absent durable enqueue, duplicate/collision/corruption classification, and durable timestamp assignment without worker invocation.
+Phase 6-B2: gated atomic create-if-absent durable enqueue is now implemented. B2 consumes only the exact B1 result and candidate, assigns durable timestamps, classifies duplicate/collision/corruption, and invokes no worker.
+
+The next implementation boundary is Phase 6-B3: claim, lease, retry-release, stale-recovery, and terminal-state helpers without worker execution.
 
 ```text
 finalized visible response
   -> A1 admission result
   -> A2 runtime-private enqueue candidate
   -> B1 deterministic dispatch/job identity and dry-run durable-job candidate: implemented
-  -> B2 atomic durable enqueue: next
-  -> B3 claim/lease/retry-release/terminal helpers: later
+  -> B2 atomic durable enqueue: implemented
+  -> B3 claim/lease/retry-release/terminal helpers: next
   -> Phase 6-C worker execution: later
 ```
 
@@ -304,7 +307,7 @@ Every mutation uses compare-and-swap semantics over at least job ID, dispatch ke
 
 ## Atomic enqueue and duplicate handling
 
-B2 must use create-if-absent under a uniqueness constraint on dispatch key. Result vocabulary:
+B2 uses create-if-absent under a uniqueness constraint on dispatch key. Result vocabulary:
 
 ```text
 enqueued_new
@@ -385,12 +388,12 @@ Phase 6-B1: implemented
   default-off dry-run job-record and dispatch-idempotency preflight helper
   no queue I/O
 
-Phase 6-B2: next
+Phase 6-B2: implemented
   gated atomic durable enqueue
   duplicate/collision/corruption handling
   no worker invocation
 
-Phase 6-B3
+Phase 6-B3: next
   claim, lease, retry-release, stale recovery, terminal-state helpers
   no worker execution
 

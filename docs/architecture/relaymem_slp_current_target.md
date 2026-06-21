@@ -18,9 +18,11 @@ relaylm_related_authority:
   - phase6a2_relayslp_response_handoff_contract.md
   - phase6b0_relayslp_durable_queue_contract.md
   - phase6b1_relayslp_dispatch_preflight.md
+  - phase6b2_relayslp_atomic_durable_enqueue.md
   - relaymem_m3d_primary_writer_handoff.md
   - relaymem_m3e_atomic_primary_page_writer.md
   - relaymem_m3f_primary_index_log_reconciliation_preflight.md
+  - relaymem_m3g_primary_index_log_reconciliation_apply.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_execution_design.md
   - memory_lifecycle_design.md
@@ -31,13 +33,15 @@ relaylm_related_authority:
 
 ## Current implemented
 
-Current RelayMEM provides `relaymem_retrieval.v0`, bounded candidate/snippet planning, selected gated context-injection helpers, typed content-free trace projection, read-only durable-memory behavior, Primary/Secondary store-layout compatibility diagnostics, RelayMEM-M2 retrieval-priority helpers, the helper-only RelayMEM-M3a Primary MEM formation candidate boundary, the helper-only RelayMEM-M3b source-lineage/write-preflight boundary, the M3c Primary MEM page-candidate boundary, the M3d Primary writer-handoff preflight, the M3e atomic Primary MEM page writer, and the M3f Primary index/log reconciliation preflight.
+Current RelayMEM provides `relaymem_retrieval.v0`, bounded candidate/snippet planning, selected gated context-injection helpers, typed content-free trace projection, read-only durable-memory behavior, Primary/Secondary store-layout compatibility diagnostics, RelayMEM-M2 retrieval-priority helpers, the helper-only RelayMEM-M3a Primary MEM formation candidate boundary, the helper-only RelayMEM-M3b source-lineage/write-preflight boundary, the M3c Primary MEM page-candidate boundary, the M3d Primary writer-handoff preflight, the M3e atomic Primary MEM page writer, the M3f Primary index/log reconciliation preflight, and the M3g gated index/log reconciliation apply helper.
 
 RelayMEM-M3b validates content-free source lineage, derives bounded Primary MEM write-preflight operations and memory-write idempotency keys, and blocks unsupported or non-autonomous apply classes. M3c derives the deterministic page candidate. M3d revalidates the exact candidate and store target without mutation, then emits a runtime-private writer handoff plus content-free projection.
 
 RelayMEM-M3e is a default-off, dry-run-first direct helper that may atomically publish one exact M3d-selected Primary MEM Markdown page when all explicit apply gates pass. It revalidates path, lineage, digest, page shape, and memory-write idempotency immediately before secure no-clobber publication. M3e does not update the MEM index or log, invoke RelaySLP, wire request runtime, expose a Lab API, mutate RelaySOUL, or change visible response delivery.
 
 RelayMEM-M3f is a default-off, read-only, dry-run-only helper that consumes one exact eligible M3e receipt, securely revalidates the published page and bounded current index/log state, and derives a deterministic ordered reconciliation plan. It distinguishes exact no-op, repairable index-only/log-only states, page mismatch, and index/log conflict without writing any file.
+
+RelayMEM-M3g consumes one exact M3f plan, revalidates page/index/log identity immediately before mutation, and applies required control-file updates with index-before-log ordering, fsync, atomic replace, and retryable `index_applied_log_pending` handling. It remains separate from Phase 6 queue and worker orchestration.
 
 Phase 6-A1 provides the helper-only `relaymem.slp_job_admission_preflight.v0` boundary. It validates trigger, processing stage, correlation, namespace, source lineage, response terminal state, and persistence-policy status without queue I/O or memory writes.
 
@@ -47,7 +51,9 @@ Phase 6-B0 defines the durable queue contract: `relaymem.slp_durable_job.v0`, di
 
 Phase 6-B1 implements the first exact consumer of that contract. It revalidates the exact runtime-private A2 result, source projection, and enqueue candidate; derives deterministic versioned dispatch and separately domain-separated job identities; initializes one exact queued durable-job candidate; and emits only the allowlisted content-free queue projection. B1 is default-off, read-only, dry-run-only, and performs no queue I/O.
 
-Current implementation still does not provide a durable RelaySLP job queue, scheduled/background execution, worker claim/lease state, worker invocation, Secondary MEM consolidation runtime, or Primary MEM index/log reconciliation apply. B1 dispatch identity and dry-run durable-job construction exist; B2 durable enqueue and M3g reconciliation apply do not.
+Phase 6-B2 implements gated atomic durable enqueue. It consumes only the exact B1 result and candidate, securely revalidates canonical identity and initial state, assigns durable timestamps for new records, publishes through create-if-absent semantics, and classifies `enqueued_new`, `duplicate_existing`, `blocked_collision`, `blocked_corrupt`, and `write_failed` without worker invocation.
+
+Current implementation still does not provide scheduled/background execution, worker claim/lease state, worker invocation, or Secondary MEM consolidation runtime. B2 durable queue records and M3g index/log reconciliation apply now exist as separate direct-helper boundaries.
 
 ## Current compatibility
 
@@ -58,14 +64,14 @@ Current implementation still does not provide a durable RelaySLP job queue, sche
 - RelayMEM-M3e may apply one Primary MEM page only through explicit direct-helper gates; it is not request-runtime or worker wired and does not reconcile index/log state.
 - RelayMEM-M3f may only read/revalidate and derive a private reconciliation plan; it cannot write or create index/log files.
 - A1/A2 artifacts are helper-only orchestration artifacts and are not durable queue records.
-- B1 creates only a runtime-private dry-run durable-job candidate and content-free projection; it does not persist a B0 record or query duplicate state.
+- B1 creates only a runtime-private dry-run durable-job candidate and content-free projection. B2 separately persists exact B1 records behind explicit gates and classifies duplicate/collision/corruption without invoking a worker.
 - RelayRUN checkpoint and retry artifacts do not currently provide a general SLP queue, worker resume, or retry executor.
 
 ## Phase 6-A and B boundary
 
 [Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md) defines the RelayLM Core implementation sequence.
 
-The implemented A1/A2/B1 sequence and B0 design handoff are:
+The implemented A1/A2/B1/B2 sequence and B0 design handoff are:
 
 ```text
 completed finalized turn event
@@ -73,24 +79,24 @@ completed finalized turn event
   -> admitted / held / blocked / skipped
   -> A2 create one runtime-private dry-run enqueue candidate
   -> B1 derive deterministic dispatch/job identity and one queued durable-job candidate
-  -> B2 durable enqueue remains next
-  -> no queue I/O
+  -> B2 atomically create or classify the durable queue record
+  -> B3 claim/lease/retry/terminal helpers remain next
 ```
 
 A1/A2/B1 own deferred orchestration metadata and dispatch preparation only. They consume rather than duplicate RelayMEM-M3b source-lineage and memory-write eligibility semantics. They do not invoke or replace the separately implemented M3c/M3d/M3e/M3f Primary MEM page-candidate, writer-handoff, atomic page-write, or reconciliation-preflight boundaries, and they do not own later RelayMEM-M4 consolidation semantics.
 
-B0 assigns dispatch identity, durable queue state, duplicate prevention, claim/lease fencing, and content-free queue status to Phase 6 / RelayRUN orchestration. B1 implements only the deterministic dispatch/job identity and initial private record-candidate preparation. It requires direct runtime-private A2 consumption and forbids reconstruction from public projection, trace, frontend metadata, or visible response text.
+B0 assigns dispatch identity, durable queue state, duplicate prevention, claim/lease fencing, and content-free queue status to Phase 6 / RelayRUN orchestration. B1 implements deterministic dispatch/job identity and initial private record-candidate preparation. B2 consumes only that exact B1 result and performs secure atomic create-if-absent persistence plus duplicate/collision/corruption classification. Neither B1 nor B2 reconstructs private artifacts from public projection, trace, frontend metadata, or visible response text.
 
 Dispatch idempotency and memory-write idempotency remain separate:
 
 - Phase 6 / RelayRUN orchestration prevents duplicate job enqueue, claim, or retry execution.
 - RelayMEM persistence preflight and M3e apply prevent duplicate durable Primary MEM page publication; M3f independently revalidates existing page/index/log identity before proposing reconciliation.
 
-A1, A2, and B1 remain helper-only, default-off, dry-run-first, fail-closed, and free of durable queue I/O, worker execution, request-runtime wiring, or MEM persistence. RelayMEM-M3e remains a separate direct-helper persistence boundary and is not evidence that Phase 6 queue or worker execution exists.
+A1, A2, and B1 remain helper-only, default-off, dry-run-first, fail-closed, and free of durable queue I/O. B2 is the separate default-off, dry-run-first durable queue I/O boundary and still performs no worker execution, request-runtime wiring, or MEM persistence. RelayMEM-M3e/M3g remain separate RelayMEM persistence boundaries and are not evidence that a Phase 6 worker exists.
 
 ## Target architecture
 
-The detailed RelayMEM and RelaySLP documents define the target local-first store, typed relations, lint, safety scopes, deferred candidate compiler, and gated persistence updates. Atomic Primary MEM page publication has landed as the bounded M3e helper, and deterministic Primary MEM index/log reconciliation planning has landed as the bounded read-only M3f helper. M3g index/log apply, Secondary MEM consolidation, and broader page/index/log transaction recovery remain target design until their bounded producers, consumers, apply/skip/block contracts, projections, and smoke coverage land.
+The detailed RelayMEM and RelaySLP documents define the target local-first store, typed relations, lint, safety scopes, deferred candidate compiler, and gated persistence updates. Atomic Primary MEM page publication has landed as M3e, deterministic index/log reconciliation planning as M3f, and gated index-before-log reconciliation apply as M3g. Secondary MEM consolidation and broader page/index/log transaction recovery remain target design until their bounded producers, consumers, apply/skip/block contracts, projections, and smoke coverage land.
 
 [Memory Lifecycle Design](memory_lifecycle_design.md) owns the target semantic boundary between RelayCTX short-term memory, governed experience evidence, autonomous ordinary MEM formation, Primary MEM, Secondary MEM consolidation, and SOUL Lab observation/correction operations.
 
@@ -100,9 +106,9 @@ RelaySLP may read SOUL as a protected anchor and may emit a separately governed 
 
 ## Required migration
 
-The next bounded RelayLM Core implementation is Phase 6-B2: consume one exact validated B1 result and runtime-private durable-job candidate, assign durable timestamps, and perform gated atomic create-if-absent enqueue with duplicate/collision/corruption classification and no worker invocation.
+The next bounded RelayLM Core implementation is Phase 6-B3: add claim, lease, retry-release, stale-recovery, and terminal-state helpers over strict B2 records without worker execution.
 
-The next bounded independent RelayMEM implementation is M3g: consume one exact ready M3f plan and apply index-before-log reconciliation under explicit gates and compare-and-swap validation. M3g must not become the Phase 6 dispatch queue or imply worker execution.
+RelayMEM-M3g is complete as the independent index/log reconciliation apply boundary. Secondary MEM consolidation and any later RelayMEM-M4 work remain separate from the Phase 6 dispatch queue and worker sequence.
 
 Later Phase 6 B3 slices must add claim/lease/stale-lease/terminal-state helpers and content-free status projection without taking over RelayMEM memory meaning or memory-write idempotency. Worker execution, broader Phase 6 persistence reconciliation, RelayRUN retry/checkpoint integration, RelaySOUL proposal handoff, and SOUL Lab memory-operation UI remain separate later work.
 
@@ -116,4 +122,4 @@ Do not require the full migration to land atomically. Each slice must preserve:
 - separation between dispatch and memory-write idempotency,
 - no direct RelaySOUL mutation.
 
-See [Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md), [Phase 6-A1 RelaySLP Job Admission Contract](phase6a1_relayslp_job_admission_contract.md), [Phase 6-A2 RelaySLP Response-Finalization Handoff Contract](phase6a2_relayslp_response_handoff_contract.md), [Phase 6-B0 RelaySLP Durable Queue Contract](phase6b0_relayslp_durable_queue_contract.md), [Phase 6-B1 RelaySLP Dispatch Preflight](phase6b1_relayslp_dispatch_preflight.md), [RelayMEM-M3d Primary Writer Handoff Preflight](relaymem_m3d_primary_writer_handoff.md), [RelayMEM-M3e Atomic Primary MEM Page Writer](relaymem_m3e_atomic_primary_page_writer.md), [RelayMEM-M3f Primary Index/Log Reconciliation Preflight](relaymem_m3f_primary_index_log_reconciliation_preflight.md), [Memory Lifecycle Design](memory_lifecycle_design.md), [RelayMEM MVP Design](relaymem_mvp_design.md), [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md), [RelayMEM Retrieval Execution Design](relaymem_retrieval_execution_design.md), and [RelayMEM SLP Execution Design](relaymem_slp_execution_design.md).
+See [Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md), [Phase 6-A1 RelaySLP Job Admission Contract](phase6a1_relayslp_job_admission_contract.md), [Phase 6-A2 RelaySLP Response-Finalization Handoff Contract](phase6a2_relayslp_response_handoff_contract.md), [Phase 6-B0 RelaySLP Durable Queue Contract](phase6b0_relayslp_durable_queue_contract.md), [Phase 6-B1 RelaySLP Dispatch Preflight](phase6b1_relayslp_dispatch_preflight.md), [Phase 6-B2 RelaySLP Atomic Durable Enqueue](phase6b2_relayslp_atomic_durable_enqueue.md), [RelayMEM-M3d Primary Writer Handoff Preflight](relaymem_m3d_primary_writer_handoff.md), [RelayMEM-M3e Atomic Primary MEM Page Writer](relaymem_m3e_atomic_primary_page_writer.md), [RelayMEM-M3f Primary Index/Log Reconciliation Preflight](relaymem_m3f_primary_index_log_reconciliation_preflight.md), [RelayMEM-M3g Primary Index/Log Reconciliation Apply](relaymem_m3g_primary_index_log_reconciliation_apply.md), [Memory Lifecycle Design](memory_lifecycle_design.md), [RelayMEM MVP Design](relaymem_mvp_design.md), [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md), [RelayMEM Retrieval Execution Design](relaymem_retrieval_execution_design.md), and [RelayMEM SLP Execution Design](relaymem_slp_execution_design.md).

@@ -21,6 +21,7 @@ relaylm_related_authority:
   - phase6_async_relayslp_bounded_slice.md
   - phase6a2_relayslp_response_handoff_contract.md
   - phase6b0_relayslp_durable_queue_contract.md
+  - phase6b2_relayslp_atomic_durable_enqueue.md
   - relaymem_slp_current_target.md
   - pipeline_implementation_plan.md
   - ../PROJECT_STATUS.md
@@ -161,7 +162,7 @@ failure_class = none
 terminal_reason_id = ""
 ```
 
-B1 does not assign durable timestamps. B2 will assign `created_at` and `updated_at` only as part of atomic durable enqueue.
+B1 does not assign durable timestamps. B2 assigns `created_at` and `updated_at` only as part of atomic durable enqueue.
 
 The A2 candidate does not carry queue retry policy. B1 therefore initializes `retry_class=unclassified`; it does not recover A1 retry metadata or infer retry policy from the processing stage.
 
@@ -242,8 +243,8 @@ PYTHONPATH=. python scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.p
 
 Coverage includes default-off and strict dry-run gates, exact direct A2 type/shape validation, deterministic dispatch and job identities, session-presence identity, operational-status exclusions, fixed queued/retry initialization, strict dispatch/memory-write separation, unknown-field and side-effect rejection, content-free projections, and absence of queue/worker/memory/SOUL/visible-response side effects.
 
-## Next bounded slice
+## Phase 6-B2 implementation handoff
 
-Phase 6-B2 should consume only an exact validated B1 result and runtime-private durable-job candidate.
+Phase 6-B2 consumes only an exact validated B1 result and runtime-private durable-job candidate. It adds gated atomic create-if-absent persistence, assigns durable timestamps, and distinguishes `enqueued_new`, `duplicate_existing`, `blocked_collision`, `blocked_corrupt`, and `write_failed` without worker invocation.
 
-B2 may add gated atomic create-if-absent persistence, assign durable timestamps, and distinguish `enqueued_new`, `duplicate_existing`, `blocked_collision`, `blocked_corrupt`, and `write_failed`. It must not invoke a worker or implement claim/lease state in the same slice.
+The next bounded slice is Phase 6-B3 claim/lease/retry-release/stale-recovery/terminal-state helpers. Worker execution remains later.
