@@ -92,7 +92,7 @@ RelaySLP may read SOUL as a protected anchor and may emit a separately governed 
 
 ## Required migration
 
-The next bounded Phase 6 implementation is Phase 6-B1: validate the exact A2 runtime-private candidate and derive a deterministic Phase 6-owned dispatch identity and dry-run durable-record candidate behind default-off, dry-run-only gates, without queue I/O.
+The next bounded implementation is Phase 6-B1: validate the exact A2 runtime-private candidate and derive a deterministic Phase 6-owned dispatch identity and dry-run durable-record candidate behind default-off, dry-run-only gates, without queue I/O.
 
 Later B2/B3 slices must add atomic durable enqueue, duplicate/collision/corruption handling, claim/lease/stale-lease/terminal-state helpers, and content-free status projection without taking over RelayMEM memory meaning or memory-write idempotency. Worker execution, Phase 6 persistence reconciliation, RelayRUN retry/checkpoint integration, RelaySOUL proposal handoff, and SOUL Lab memory-operation UI remain separate later work. The independent RelayMEM track may continue from M3e into M3f index/log reconciliation without becoming the Phase 6 dispatch queue.
 
