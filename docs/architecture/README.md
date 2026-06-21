@@ -27,11 +27,13 @@ Canonical authority:
 3. Dedicated current contracts
 4. [Current / Target / Migration Guide](current_target_migration_guide.md)
 
-Product-critical next slice:
+Product-critical Phase 6 boundaries:
 
 - [Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md)
+- [Phase 6-A1 RelaySLP Job Admission Contract](phase6a1_relayslp_job_admission_contract.md)
+- [Phase 6-A2 RelaySLP Response-Finalization Handoff Contract](phase6a2_relayslp_response_handoff_contract.md)
 
-Phase 6 starts with a docs-only ownership boundary, followed by a helper-only deferred RelaySLP job-admission preflight. It separates dispatch idempotency and RelayRUN orchestration from RelayMEM-M3b/M4 memory semantics, keeps request runtime independent from persistence I/O, and preserves default-off, dry-run-first, fail-closed, and content-free diagnostics behavior.
+Phase 6-A1 validates deferred RelaySLP admission metadata. Phase 6-A2 consumes a finalized `turn_end` A1 result and creates one runtime-private dry-run enqueue candidate without queue I/O. Dispatch idempotency, durable enqueue, claim/lease state, worker execution, memory persistence, and RelaySOUL mutation remain outside the A1/A2 boundary.
 
 Completed Core streaming boundary:
 

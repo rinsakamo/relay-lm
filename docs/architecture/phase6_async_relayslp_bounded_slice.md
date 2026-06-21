@@ -16,6 +16,8 @@ relaylm_not_authoritative_for:
   - SOUL Lab runtime TTS audio or avatar execution
 relaylm_related_authority:
   - pipeline_implementation_plan.md
+  - phase6a1_relayslp_job_admission_contract.md
+  - phase6a2_relayslp_response_handoff_contract.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_execution_design.md
   - relaymem_slp_current_target.md
@@ -27,32 +29,33 @@ relaylm_related_authority:
 
 ## Status
 
-Phase 6 is planned. This document defines the first bounded implementation sequence after Phase 5.5 closes for RelayLM Core.
-
-The first implementation boundary is:
+Phase 6 is implemented through the helper-only A2 boundary:
 
 ```text
-Phase 6-A0 documentation boundary
-  -> Phase 6-A1 deferred RelaySLP job-admission preflight helper
+Phase 6-A0 documentation and ownership boundary: complete
+Phase 6-A1 deferred RelaySLP job-admission preflight: complete
+Phase 6-A2 response-finalization handoff and dry-run enqueue candidate: complete
 ```
 
-Phase 6-A0 is docs-only. Phase 6-A1 must remain helper-only, default-off, dry-run-first, fail-closed, and free of persistence or request-runtime wiring.
+The next implementation boundary is Phase 6-B: a separately designed bounded durable queue with dispatch idempotency and enqueue/claim/lease/terminal-state semantics.
+
+A1 and A2 remain helper-only, default-off, dry-run-first, fail-closed, and free of request-runtime wiring, queue I/O, worker execution, memory persistence, and RelaySOUL mutation.
 
 ## Purpose
 
 RelaySLP is the deferred memory compiler. It improves future memory after the normal response path and must not delay or invalidate an already valid visible response.
 
-Phase 6 introduces the asynchronous orchestration boundary around RelaySLP without duplicating the independent RelayMEM-M track's memory semantics or persistence preflight.
+Phase 6 introduces asynchronous orchestration around RelaySLP without duplicating RelayMEM-M memory semantics or persistence preflight.
 
 ```text
-completed or eligible runtime event
-  -> deferred SLP job admission preflight
+completed finalized turn event
+  -> A1 deferred job-admission preflight
   -> admitted / held / blocked / skipped
-  -> later queue and worker boundary
-  -> RelayMEM-owned candidate or persistence processing
+  -> A2 response-finalization handoff
+  -> runtime-private dry-run enqueue candidate
+  -> later Phase 6-B queue and dispatch boundary
+  -> later worker and RelayMEM-owned processing
 ```
-
-The initial slice defines whether a future deferred job is structurally admissible. It does not execute the job.
 
 ## Ownership split
 
@@ -69,7 +72,7 @@ The independent RelayMEM-M track owns:
 - Primary-to-Secondary MEM consolidation semantics,
 - durable page, index, and log formats and apply primitives.
 
-Phase 6 must consume these bounded artifacts when their producers exist. It must not independently redefine them.
+Phase 6 consumes those bounded artifacts. It must not redefine them.
 
 ### Phase 6 owns deferred execution orchestration
 
@@ -78,7 +81,8 @@ Phase 6 owns:
 - deferred job admission,
 - trigger and processing-stage classification,
 - run, turn, session, and namespace correlation,
-- dispatch idempotency,
+- response-finalization handoff,
+- dispatch idempotency in Phase 6-B,
 - enqueue, claim, lease, retry, and terminal-state orchestration in later slices,
 - content-free job status projections,
 - RelayRUN checkpoint and retry integration in later slices,
@@ -90,108 +94,58 @@ RelayRUN may own job correlation, node state, checkpoint state, retry eligibilit
 
 ### RelaySLP does not mutate SOUL
 
-RelaySLP may produce a RelaySOUL proposal candidate through a separately governed path. It must never write RelaySOUL files or apply identity, values, output-policy, or relationship-anchor changes directly.
+RelaySLP may produce a RelaySOUL proposal candidate through a separately governed path. It must never write RelaySOUL files or directly apply identity, values, output-policy, or relationship-anchor changes.
 
 ## Relationship to RelayMEM-M3b
 
-RelayMEM-M3b is the Primary MEM write-preflight boundary. It owns content-free source-lineage validation, bounded target classification, autonomous-apply eligibility, and memory-write idempotency.
+RelayMEM-M3b owns content-free source-lineage validation, bounded target classification, autonomous-apply eligibility, memory-write preflight, and memory-write idempotency.
 
-Phase 6-A must not duplicate those responsibilities.
+Phase 6-A1 consumes M3b lineage artifacts. Phase 6-A2 consumes the exact A1 private result and its matching content-free projection. Neither A1 nor A2 creates or uses a memory-write idempotency key.
 
-The two idempotency layers are distinct:
+The two idempotency layers remain distinct:
 
 ```text
 Dispatch idempotency
-  prevents the same deferred SLP job from being enqueued or claimed twice
-  owned by Phase 6 orchestration / RelayRUN control state
+  prevents the same deferred job from being durably enqueued or claimed twice
+  owned by Phase 6-B orchestration / RelayRUN control state
 
 Memory-write idempotency
   prevents the same candidate or page update from being durably applied twice
   owned by RelayMEM write preflight and persistence apply
 ```
 
-A job may be retried while a previously completed memory write must remain deduplicated. Therefore these keys must not be collapsed into one artifact or treated as interchangeable.
+A job may be retried while a previously completed memory write remains deduplicated. The keys must never be collapsed into one artifact.
 
-## Phase 6-A1: deferred job-admission preflight
+## Phase 6-A1: deferred job-admission preflight — complete
 
-### Goal
-
-Define a pure helper that decides whether a deferred RelaySLP job request is structurally admissible without enqueueing, executing, or persisting anything.
-
-Suggested module:
-
-```text
-relaylm/relaymem_slp_job_admission.py
-```
-
-Suggested entry point:
+A1 is implemented in `relaylm/relaymem_slp_job_admission.py` through:
 
 ```text
 build_relaymem_slp_job_admission_preflight(...)
 ```
 
-The exact function and schema names remain implementation details until the helper lands.
-
-### Initial inputs
-
-The helper should accept only bounded metadata and protected references, not arbitrary runtime dumps:
-
-- explicit `enabled` and `dry_run_only` gates,
-- trigger mode,
-- requested processing stage,
-- run and turn correlation,
-- optional session correlation,
-- memory namespace,
-- source event kind,
-- governed evidence or source-lineage reference presence,
-- upstream artifact schema/version,
-- bounded source count,
-- visible-response finalization state,
-- runtime terminal status,
-- persistence-policy class or upstream policy status.
-
-Runtime-private references or fingerprints must not appear in the public projection.
-
-### Trigger modes
-
-The target trigger vocabulary is:
+Implemented schemas:
 
 ```text
-turn_end
-explicit_memory_request
-session_end
-communication_end
-scheduled_consolidation
-recovery_followup
-lab_memory_operation
+relaymem.slp_job_admission_preflight.v0
+relaymem.slp_job_admission_projection.v0
 ```
 
-Phase 6-A1 should initially allow only the smallest justified subset, preferably:
+Initially supported trigger modes:
 
 ```text
 turn_end
 explicit_memory_request
 ```
 
-Unknown or unsupported trigger modes must fail closed.
-
-### Processing stages
-
-The target processing-stage vocabulary is:
+Initially supported processing stages:
 
 ```text
 primary_formation
 primary_write_preflight
-secondary_consolidation
-memory_operation
-lint
 ```
 
-The admission helper transports and validates the stage identifier. It must not implement the stage's memory semantics.
-
-### Admission outcomes
-
-The bounded status vocabulary should distinguish at least:
+Implemented outcomes:
 
 ```text
 skipped
@@ -201,66 +155,61 @@ admitted_dry_run
 eligible_for_enqueue
 ```
 
-`eligible_for_enqueue` does not mean that a queue, worker, or persistence apply exists. It means only that later enqueue wiring may proceed when all explicit gates exist.
+`eligible_for_enqueue` is structural eligibility only. A1 performs no queue I/O and creates no durable job.
 
-### Required blocking
+A1 validates fixed bounded metadata, the M3b-compatible source-lineage schema and identity shape, strict booleans, namespace, source count, terminal response state, and persistence-policy status. Its public projection omits runtime-private references, lineage fingerprints, candidate arrays, and both idempotency-key domains.
 
-Admission must block when:
+See [Phase 6-A1 RelaySLP Job Admission Contract](phase6a1_relayslp_job_admission_contract.md).
 
-- the feature is disabled,
-- the trigger or processing stage is unknown,
-- required correlation or namespace metadata is malformed,
-- required governed evidence or source lineage is absent,
-- the upstream artifact schema is unsupported,
-- the visible response is not in a safe terminal state for a turn-end trigger,
-- runtime status indicates blocked, failed, waiting-user, or unresolved recovery unless that trigger is explicitly supported,
-- RelaySCN or upstream policy blocks persistence,
-- input attempts to supply raw user, model, prompt, snippet, page, or SOUL content through the admission metadata surface.
+## Phase 6-A2: response-finalization handoff — complete
 
-The helper must not infer persistence permission from successful visible output alone.
+A2 is implemented in `relaylm/relaymem_slp_response_handoff.py` through:
 
-## Content-free projection
+```text
+build_relaymem_slp_response_finalization_handoff(...)
+build_relaymem_slp_response_handoff_node_result(...)
+```
 
-The public node-result or diagnostics projection may expose only bounded allowlisted fields such as:
+Implemented schemas:
 
-- schema version,
-- enabled and dry-run booleans,
-- admission status,
-- trigger-mode enum,
-- processing-stage enum,
-- bounded source count,
-- correlation-presence booleans,
-- source-reference-valid boolean,
-- visible-response-finalized boolean,
-- retry class,
-- blocked reason IDs.
+```text
+relaymem.slp_response_handoff.v0
+relaymem.slp_enqueue_candidate.v0
+relaymem.slp_response_handoff_projection.v0
+```
 
-It must not expose:
+The initial A2 boundary accepts only finalized `turn_end` A1 results for `primary_formation` or `primary_write_preflight`. `explicit_memory_request` remains outside response-finalization handoff.
 
-- raw user or model text,
-- visible response text,
-- prompt or backend payload content,
-- candidate normalized values,
-- memory page titles, bodies, summaries, snippets, or patches,
-- filesystem paths,
-- source fingerprints or lineage identifiers,
-- dispatch or memory-write idempotency keys,
-- RelaySOUL content,
-- runtime-private candidate arrays.
+A2 validates:
 
-## Phase 6-A1 non-goals
+- the exact A1 private-result schema,
+- the exact A1 public-projection schema,
+- strict booleans and fixed correlation keys,
+- private-result/projection equality for shared fields,
+- absence of prior queue, worker, memory, SOUL, or visible-response side effects,
+- absence of dispatch and memory-write idempotency keys,
+- finalized response, correlation, namespace, count, lineage fingerprint, runtime terminal state, and persistence-policy gates.
 
-Phase 6-A1 does not implement:
+A2 may create one runtime-private metadata-only candidate when explicitly enabled and dry-run-only. It performs no queue I/O, enqueue, dispatch-key allocation, worker invocation, RelaySLP invocation, memory write, RelaySOUL mutation, or visible-response mutation.
+
+The public `relaymem_slp_response_handoff` node result omits the candidate, identifiers, namespace value, lineage fingerprint, and both idempotency-key domains.
+
+See [Phase 6-A2 RelaySLP Response-Finalization Handoff Contract](phase6a2_relayslp_response_handoff_contract.md).
+
+## Phase 6-A non-goals
+
+A1 and A2 do not implement:
 
 - request-runtime wiring,
 - a background thread, process, scheduler, or worker,
 - filesystem or database job queues,
-- enqueue delivery,
+- durable enqueue delivery,
+- dispatch idempotency,
 - claim or lease state,
 - Primary MEM candidate generation,
-- Primary MEM write preflight,
+- Primary MEM write apply,
 - Primary or Secondary MEM writes,
-- Secondary MEM consolidation,
+- Secondary MEM consolidation runtime,
 - page, index, or log updates,
 - generic RelayRUN resume or retry apply,
 - RelaySOUL proposal generation or mutation,
@@ -270,17 +219,6 @@ Phase 6-A1 does not implement:
 ## Later bounded sequence
 
 ```text
-Phase 6-A0
-  documentation and ownership boundary
-
-Phase 6-A1
-  helper-only deferred job-admission preflight
-
-Phase 6-A2
-  response-finalization handoff
-  default-off and dry-run-only
-  creates an enqueue candidate without queue I/O
-
 Phase 6-B
   bounded durable queue
   dispatch idempotency
@@ -301,6 +239,23 @@ Phase 6-E
 
 Each later slice requires its own explicit bounded design and smoke coverage. This document does not claim those stages are implemented.
 
+## Phase 6-B entry conditions
+
+Before durable queue work begins, Phase 6-B must define:
+
+- a bounded durable job-record schema,
+- how the A2 candidate is consumed without trusting public diagnostics as private source,
+- dispatch-idempotency key ownership and derivation inputs,
+- enqueue atomicity and duplicate handling,
+- claim and lease state transitions,
+- terminal success/failure/cancelled states,
+- retry-class boundaries without memory semantic decisions,
+- content-free public status projection,
+- corruption, stale lease, and restart behavior,
+- proof that queue work cannot delay or invalidate an already finalized response.
+
+Phase 6-B must not use the M3b memory-write idempotency key as its dispatch key.
+
 ## Safety invariants
 
 All Phase 6 slices must preserve:
@@ -317,32 +272,8 @@ All Phase 6 slices must preserve:
 - Phase 5.5 stream/TTS behavior remains unchanged,
 - TTS, audio, adapter delivery, Live2D/avatar, and lip-sync execution remain SOUL Lab Runtime MVP responsibilities.
 
-## Phase 6-A1 smoke expectations
+## Implemented smoke coverage
 
-The helper slice should cover:
+A1 smoke coverage includes disabled/default behavior, dry-run admission, enqueue eligibility without enqueue, trigger/stage validation, correlation and namespace validation, lineage identity and schema validation, bounded metadata, strict booleans, terminal-state and policy handling, and content-free projection checks.
 
-- disabled skip,
-- dry-run admission,
-- explicit apply/enqueue gate still unsupported or false,
-- unknown trigger block,
-- unknown processing-stage block,
-- malformed correlation block,
-- missing namespace block,
-- missing governed evidence/source-lineage block,
-- unsupported upstream schema block,
-- non-terminal turn-end block,
-- persistence-policy block,
-- waiting-user/recovery block,
-- bounded source-count enforcement,
-- content-free projection,
-- proof that runtime-private references, fingerprints, idempotency keys, raw text, paths, and candidate arrays are absent from public diagnostics.
-
-## Completion criteria for Phase 6-A0
-
-Phase 6-A0 is complete when:
-
-1. this bounded-slice document is linked from the current documentation indexes,
-2. the pipeline plan identifies Phase 6-A1 as the next RelayLM Core implementation boundary,
-3. the RelayMEM / RelaySLP current-target document distinguishes admission orchestration from RelayMEM-M memory semantics,
-4. the RelayMEM-M independent plan records that M3b/M4 artifacts are upstream semantic inputs rather than Phase 6 duplicates,
-5. no runtime, config, persistence, stream, TTS, audio, avatar, or SOUL behavior changes.
+A2 smoke coverage includes disabled/default behavior, strict gates, dry-run candidate generation from both accepted A1 statuses, finalized-response enforcement, explicit-memory-request rejection, held/blocked/skipped propagation, exact private-result and public-projection validation, side-effect rejection, candidate omission from node diagnostics, and proof that queue, worker, memory, SOUL, and visible-response side effects remain false.
