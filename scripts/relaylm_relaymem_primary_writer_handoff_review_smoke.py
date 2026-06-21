@@ -35,6 +35,17 @@ def main() -> None:
         result = _run(metadata_mismatch, root)
         assert "primary_page_candidate_page_memory_kind_mismatch" in result["blocked_reasons"]
 
+        title_newline = _artifact()
+        page = title_newline["page_candidates"][0]
+        page["page_markdown"] = page["page_markdown"].replace(
+            'title: "Project event"',
+            'title: "Project\\nEvent"',
+        )
+        page["page_bytes"] = len(page["page_markdown"].encode("utf-8"))
+        page["page_digest"] = sha256(page["page_markdown"].encode("utf-8")).hexdigest()
+        result = _run(title_newline, root)
+        assert "primary_page_candidate_page_title_invalid" in result["blocked_reasons"]
+
         front_matter_key = _artifact()
         page = front_matter_key["page_candidates"][0]
         page["page_markdown"] = page["page_markdown"].replace(
