@@ -1,0 +1,40 @@
+name: Sync Phase 6-B1 with latest main
+
+on:
+  push:
+    branches:
+      - phase6b1-relayslp-dispatch-preflight
+    paths:
+      - "scripts/phase6b1_sync_main_status.py"
+      - ".github/workflows/phase6b1-sync-main.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: phase6b1-relayslp-dispatch-preflight
+      - name: Merge latest main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge -X ours --no-edit origin/main
+      - name: Reconcile current status documents
+        run: python scripts/phase6b1_sync_main_status.py
+      - name: Remove temporary synchronization files
+        run: |
+          git rm .github/workflows/phase6b1-sync-main.yml \
+            scripts/phase6b1_sync_main_status.py
+      - name: Commit and push synchronized branch
+        run: |
+          git add docs/PROJECT_STATUS.md docs/architecture/README.md
+          git diff --cached --check
+          git commit -m "docs: reconcile Phase 6-B1 with current status"
+          git push origin HEAD:phase6b1-relayslp-dispatch-preflight
