@@ -6,7 +6,7 @@ relaylm_volatility: medium
 relaylm_owner: implementation
 relaylm_update_trigger:
   - Phase 6-A2 helper schema or status vocabulary changes
-  - Phase 6-B durable queue boundary lands
+  - Phase 6-B consumer compatibility changes
 relaylm_not_authoritative_for:
   - RelayMEM candidate semantics
   - durable queue persistence
@@ -18,6 +18,7 @@ relaylm_related_authority:
   - phase6_async_relayslp_bounded_slice.md
   - phase6a1_relayslp_job_admission_contract.md
   - phase6b0_relayslp_durable_queue_contract.md
+  - phase6b1_relayslp_dispatch_preflight.md
   - pipeline_implementation_plan.md
   - relaymem_slp_current_target.md
 ---
@@ -116,8 +117,10 @@ memory_write_idempotency_key = ""
 
 The public projection includes only status, bounded counts/enums, validated source correlation-presence booleans, finalization state, and reason IDs. These source fields remain present when a validated A1 result is held, blocked, skipped, or rejected by the A2 dry-run/finalization gate even though no candidate is created. The projection excludes the runtime-private candidate, run/session identifiers, namespace values, lineage fingerprints, and both idempotency-key domains.
 
-## Next boundary
+## Current consumer and next boundary
 
-[Phase 6-B0 RelaySLP Durable Queue Contract](phase6b0_relayslp_durable_queue_contract.md) defines the durable job record, safe private-candidate consumption, dispatch-idempotency derivation inputs, atomic enqueue and duplicate behavior, claim/lease/terminal states, restart/corruption handling, and content-free queue projection. B0 is design-only and does not make the A2 candidate durable.
+[Phase 6-B0 RelaySLP Durable Queue Contract](phase6b0_relayslp_durable_queue_contract.md) defines the durable job record, safe private-candidate consumption, dispatch-idempotency derivation, atomic enqueue and duplicate behavior, claim/lease/terminal states, restart/corruption handling, and content-free queue projection.
 
-The next implementation slice is Phase 6-B1: a default-off, dry-run-only job-record and dispatch-idempotency preflight helper with no queue I/O. Phase 6-A2 must not be interpreted as implementing B0, B1, or a durable queue.
+[Phase 6-B1 RelaySLP Dispatch Preflight](phase6b1_relayslp_dispatch_preflight.md) is the first implemented A2 consumer. It accepts only the exact in-process A2 result, revalidates the exact enqueue candidate and its source-projection consistency, derives Phase 6-owned deterministic dispatch and job identities, and emits one runtime-private initial queued durable-job candidate. It performs no queue I/O.
+
+The next implementation slice is Phase 6-B2 atomic durable enqueue. A2 must not be interpreted as implementing B1 identity generation, B2 persistence, B3 claim/lease state, or worker execution.
