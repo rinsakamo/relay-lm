@@ -1,5 +1,5 @@
 export type MemoryOutcomeState = "formed" | "held" | "blocked";
-export type MemoryOperation = "correct" | "forget" | "pin" | "unpin" | "merge";
+export type MemoryOperation = "correct" | "forget" | "discard" | "pin" | "unpin" | "merge";
 
 export interface MemoryProvenanceStep {
   stepId: string;
