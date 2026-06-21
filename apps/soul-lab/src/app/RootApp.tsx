@@ -34,10 +34,7 @@ export function RootApp() {
     }
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
-  const [language, setLanguage] = useState<Language>(() => {
-    const storedLanguage = window.localStorage.getItem("soul-lab-language");
-    return storedLanguage === "en" ? "en" : "ja";
-  });
+  const [language, setLanguage] = useState<Language>("ja");
   const [activeCharacterId, setActiveCharacterId] = useState(() => {
     const storedCharacterId = window.localStorage.getItem("soul-lab-active-character");
     return mockCharacters.some((character) => character.characterId === storedCharacterId)
@@ -71,7 +68,6 @@ export function RootApp() {
 
   useEffect(() => {
     document.documentElement.lang = language;
-    window.localStorage.setItem("soul-lab-language", language);
   }, [language]);
 
   useEffect(() => {
