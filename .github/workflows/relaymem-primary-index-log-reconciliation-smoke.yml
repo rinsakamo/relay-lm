@@ -48,9 +48,18 @@ jobs:
           scripts/relaylm_relaymem_primary_index_log_reconciliation_smoke.py
           scripts/relaylm_relaymem_primary_index_log_reconciliation_marker_smoke.py
       - name: Run RelayMEM M3f reconciliation preflight smoke
-        run: >-
-          PYTHONPATH=.
-          python scripts/relaylm_relaymem_primary_index_log_reconciliation_smoke.py
+        shell: bash
+        run: |
+          set -o pipefail
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_reconciliation_smoke.py \
+            2>&1 | tee /tmp/relaymem-m3f-smoke.log
+      - name: Upload RelayMEM M3f failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relaymem-m3f-smoke-failure
+          path: /tmp/relaymem-m3f-smoke.log
+          if-no-files-found: error
       - name: Run RelayMEM M3f marker hardening smoke
         run: >-
           PYTHONPATH=.
