@@ -61,9 +61,10 @@ SOUL Lab product layers:
 - [SOUL Lab UI-A0 / UI-A1 Handoff](soul_lab_ui_a0_a1_handoff.md) — current TypeScript/React/Vite foundation, mock Home, read-only Lab Observation preview, and browser authority boundary.
 - [SOUL Lab UI-A2 Adoption Handoff](soul_lab_ui_a2_adoption_handoff.md) — first-launch No Active Character state, Lab Assistant guidance, and browser-local new/adopt/import draft flows.
 - [SOUL Lab UI-A3 Communication Handoff](soul_lab_ui_a3_communication_handoff.md) — browser-local peer classification, autonomous mock exchange loop, Soft Stop, emergency stop, and content-free timeline.
+- [SOUL Lab UI-A4 Pod Handoff](soul_lab_ui_a4_pod_handoff.md) — bounded intervention targets, locked protected traits, candidate diff, browser-local comparison, Hold/Discard, and non-executing Apply/Rollback previews.
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md) — post-UI-MVP runtime adapter layer for TTS, audio queue, Live2D/avatar mapping, timing, preview, and adapter telemetry.
 
-The current UI implementation is complete through UI-A3. UI-A4 Pod / SOUL Intervention is the next independent UI slice; peer transport, server-side management APIs, and Runtime adapter execution remain separate.
+The current UI implementation is complete through UI-A4. UI-A5 Memory Inspector is the next independent UI slice; peer transport, server-side management APIs, RelaySOUL apply/rollback, memory mutation, and Runtime adapter execution remain separate.
 
 Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1` with explicit `client_instruction_source.v1` provenance. Role, wording, and message position alone are not provenance.
 
