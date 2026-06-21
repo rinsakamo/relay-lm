@@ -31,8 +31,10 @@ The current bounded UI implementation covers UI-A0 through UI-A5:
 - content-free intervention timeline,
 - formed / held / blocked Memory Inspector outcomes,
 - bounded source, gate, store, and subjective-perspective projections,
-- browser-local Correct, Forget, Pin, Unpin, and Merge previews,
-- explicit destructive-preview confirmation for Forget,
+- browser-local Correct and Merge previews for formed or held outcomes,
+- browser-local Forget, Pin, and Unpin previews for formed memory,
+- browser-local Discard preview for an unpromoted held candidate,
+- explicit destructive-preview confirmation for formed-memory Forget,
 - content-free memory-inspection timeline.
 
 It intentionally does **not** connect to RelayLM runtime APIs, inspect source locations, read selected file contents, create character files, send peer network requests, mutate RelayRUN or RelaySLP, write SOUL or MEM, apply a SOUL candidate, execute rollback, execute a memory operation, read credentials, execute TTS, or control an avatar.
@@ -72,4 +74,4 @@ The production bundle is written to `apps/soul-lab/dist/` with a `/lab/` asset b
 
 ## Authority boundary
 
-The browser is presentation and interaction only. It must not become the authority for SOUL, MEM, RelayRUN, RelaySLP, peer transport, intervention apply, rollback, memory correction, forgetting, pinning, merging, backend credentials, source inspection, or persistence decisions. Mock actions in these slices update browser-local React state only.
+The browser is presentation and interaction only. It must not become the authority for SOUL, MEM, RelayRUN, RelaySLP, peer transport, intervention apply, rollback, memory correction, forgetting, held-candidate discard, pinning, merging, backend credentials, source inspection, or persistence decisions. Mock actions in these slices update browser-local React state only.
