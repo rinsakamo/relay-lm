@@ -236,9 +236,9 @@ def main() -> None:
     _require_all(
         current_target,
         (
-            "Phase 6-B1 now implements",
-            "It performs no queue I/O or enqueue.",
-            "The next bounded Phase 6 implementation is Phase 6-B2",
+            "Phase 6-B1 implements the first exact consumer",
+            "performs no queue I/O",
+            "The next bounded RelayLM Core implementation is Phase 6-B2",
         ),
         label="current-target alignment",
     )
@@ -248,7 +248,7 @@ def main() -> None:
         (
             "Phase 6-B1 dry-run job-record and dispatch-idempotency preflight helper: complete",
             "Phase 6-B1: job-record and dispatch-idempotency preflight — complete",
-            "The next implementation boundary is Phase 6-B2 atomic durable enqueue",
+            "The next RelayLM Core boundary is Phase 6-B2 atomic durable enqueue",
         ),
         label="pipeline-plan alignment",
     )
