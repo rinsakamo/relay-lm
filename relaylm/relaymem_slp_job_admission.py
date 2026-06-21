@@ -273,15 +273,18 @@ def _parse_lineage(
         return _invalid_lineage("source_lineage_missing")
     if set(artifact) - _LINEAGE_FIELDS:
         return _invalid_lineage("source_lineage_unexpected_field")
-    checks = (
-        ("schema_version", _SOURCE_LINEAGE_SCHEMA_VERSION, "source_lineage_schema_mismatch"),
+    if artifact.get("schema_version") != _SOURCE_LINEAGE_SCHEMA_VERSION:
+        return _invalid_lineage("source_lineage_schema_mismatch")
+
+    boolean_checks = (
         ("content_free", True, "source_lineage_not_content_free"),
         ("content_included", False, "source_lineage_content_included"),
         ("raw_text_included", False, "source_lineage_raw_text_included"),
         ("valid", True, "source_lineage_invalid"),
     )
-    for field, expected, reason in checks:
-        if artifact.get(field) != expected:
+    for field, expected, reason in boolean_checks:
+        value = artifact.get(field)
+        if type(value) is not bool or value is not expected:
             return _invalid_lineage(reason)
 
     # Validate fixed containers before values; never recursively walk caller metadata.
