@@ -1,9 +1,10 @@
-"""Runtime wiring for RelayCTX TTS adapter handoff planning.
+"""Runtime wiring for RelayCTX TTS adapter handoff and transport planning.
 
 Phase 5.5-C2 consumes only safe visible SSE output after Phase 5.5-B2
-suppression apply mode. It records C0/C1 content-free node results and does
-not mutate stream bytes, execute TTS, generate audio, control avatars, or
-persist CTX/MEM/SOUL/SLP state.
+suppression apply mode. Phase 5.5-C4 extends that stream-final planning to
+construct C3 adapter transport envelopes. It records C0/C1/C3 content-free node
+results and does not mutate stream bytes, deliver adapter transport, execute
+TTS, generate audio, control avatars, or persist CTX/MEM/SOUL/SLP state.
 """
 
 from __future__ import annotations
@@ -15,6 +16,10 @@ from typing import TYPE_CHECKING, Any
 from relaylm.relayctx_tts_adapter_handoff import (
     build_relayctx_tts_adapter_handoff_node_result,
     build_tts_adapter_handoff_plan,
+)
+from relaylm.relayctx_tts_adapter_transport import (
+    build_relayctx_tts_adapter_transport_node_result,
+    build_tts_adapter_transport_envelope,
 )
 from relaylm.relayctx_tts_segmentation import (
     build_relayctx_tts_segmentation_node_result,
@@ -150,7 +155,13 @@ def _record_tts_adapter_handoff_results(
         dry_run_only=dry_run_only,
     )
     handoff_node = build_relayctx_tts_adapter_handoff_node_result(handoff_plan)
-    node_results = (hint_node, handoff_node)
+    transport_envelope = build_tts_adapter_transport_envelope(
+        handoff_plan,
+        enabled=True,
+        dry_run_only=dry_run_only,
+    )
+    transport_node = build_relayctx_tts_adapter_transport_node_result(transport_envelope)
+    node_results = (hint_node, handoff_node, transport_node)
     if pipeline_context is not None:
         for node_result in node_results:
             pipeline_context.record_node_result(node_result)

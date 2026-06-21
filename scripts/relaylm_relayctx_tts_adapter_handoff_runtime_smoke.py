@@ -91,23 +91,26 @@ def assert_content_free(log: dict[str, Any]) -> None:
     require(VISIBLE_SECOND not in encoded, encoded)
     require(INTERNAL_BODY not in encoded, encoded)
     require(RELAYCTX_UPDATE_OPEN not in encoded, encoded)
-    require("handoff_items" not in log.get("diagnostics", {}), log)
-    require("hints" not in log.get("diagnostics", {}), log)
+    diagnostics = log.get("diagnostics", {})
+    require("handoff_items" not in diagnostics, log)
+    require("transport_items" not in diagnostics, log)
+    require("hints" not in diagnostics, log)
 
 
-def assert_c2_node_names(actual_node_names: list[str]) -> None:
+def assert_runtime_node_names(actual_node_names: list[str]) -> None:
     require(
         actual_node_names
         == [
             "relayctx_tts_segmentation_hints",
             "relayctx_tts_adapter_handoff",
+            "relayctx_tts_adapter_transport",
         ],
         actual_node_names,
     )
 
 
-def assert_c2_nodes_only(ctx: DummyPipelineContext) -> None:
-    assert_c2_node_names(node_names(ctx.node_results))
+def assert_runtime_nodes_only(ctx: DummyPipelineContext) -> None:
+    assert_runtime_node_names(node_names(ctx.node_results))
 
 
 def make_trace_config(trace_path: Path) -> RelayLMConfig:
@@ -143,23 +146,29 @@ async def assert_runtime_handoff_dry_run_from_safe_visible_output() -> None:
     )
     output = await collect(c2_iter)
     require(output == b"".join(chunks), output)
-    assert_c2_nodes_only(ctx)
+    assert_runtime_nodes_only(ctx)
     require(len(finalized) == 1, finalized)
-    assert_c2_node_names(node_names(finalized[0]))
+    assert_runtime_node_names(node_names(finalized[0]))
     hint_log = log_by_node(ctx, "relayctx_tts_segmentation_hints")
     handoff_log = log_by_node(ctx, "relayctx_tts_adapter_handoff")
+    transport_log = log_by_node(ctx, "relayctx_tts_adapter_transport")
     require(hint_log["decision"] == "dry_run_ready", hint_log)
     require(hint_log["diagnostics"]["candidate_hint_count"] > 0, hint_log)
     require(hint_log["diagnostics"]["emitted_hint_count"] == 0, hint_log)
     require(handoff_log["decision"] == "dry_run_ready", handoff_log)
     require(handoff_log["diagnostics"]["handoff_candidate_count"] > 0, handoff_log)
     require(handoff_log["diagnostics"]["emitted_handoff_count"] == 0, handoff_log)
+    require(transport_log["decision"] == "dry_run_ready", transport_log)
+    require(transport_log["diagnostics"]["transport_candidate_count"] > 0, transport_log)
+    require(transport_log["diagnostics"]["emitted_transport_count"] == 0, transport_log)
+    require(transport_log["diagnostics"]["external_io_performed"] is False, transport_log)
     assert_content_free(hint_log)
     assert_content_free(handoff_log)
-    print("ok runtime TTS handoff dry-run consumes safe visible output")
+    assert_content_free(transport_log)
+    print("ok runtime TTS transport dry-run consumes safe visible output")
 
 
-async def assert_runtime_handoff_ready_without_tts_execution() -> None:
+async def assert_runtime_transport_ready_without_delivery_or_execution() -> None:
     chunks = [sse_content(VISIBLE_PREFIX), sse_done()]
     ctx = DummyPipelineContext()
     finalized: list[tuple[Any, ...]] = []
@@ -173,24 +182,31 @@ async def assert_runtime_handoff_ready_without_tts_execution() -> None:
     )
     output = await collect(c2_iter)
     require(output == b"".join(chunks), output)
-    assert_c2_nodes_only(ctx)
+    assert_runtime_nodes_only(ctx)
     require(len(finalized) == 1, finalized)
-    assert_c2_node_names(node_names(finalized[0]))
+    assert_runtime_node_names(node_names(finalized[0]))
     hint_log = log_by_node(ctx, "relayctx_tts_segmentation_hints")
     handoff_log = log_by_node(ctx, "relayctx_tts_adapter_handoff")
+    transport_log = log_by_node(ctx, "relayctx_tts_adapter_transport")
     require(hint_log["decision"] == "ready", hint_log)
     require(handoff_log["decision"] == "ready", handoff_log)
     require(handoff_log["diagnostics"]["emitted_handoff_count"] > 0, handoff_log)
-    require(handoff_log["diagnostics"]["tts_execution_requested"] is False, handoff_log)
-    require(handoff_log["diagnostics"]["audio_generation_requested"] is False, handoff_log)
-    require(handoff_log["diagnostics"]["avatar_control_requested"] is False, handoff_log)
-    require(handoff_log["diagnostics"]["persistence_allowed"] is False, handoff_log)
+    require(transport_log["decision"] == "ready", transport_log)
+    require(transport_log["diagnostics"]["emitted_transport_count"] > 0, transport_log)
+    for log in (handoff_log, transport_log):
+        require(log["diagnostics"]["tts_execution_requested"] is False, log)
+        require(log["diagnostics"]["audio_generation_requested"] is False, log)
+        require(log["diagnostics"]["avatar_control_requested"] is False, log)
+        require(log["diagnostics"]["persistence_allowed"] is False, log)
+    require(transport_log["diagnostics"]["transport_delivery_requested"] is False, transport_log)
+    require(transport_log["diagnostics"]["external_io_performed"] is False, transport_log)
     assert_content_free(hint_log)
     assert_content_free(handoff_log)
-    print("ok runtime TTS handoff ready records handoff without execution")
+    assert_content_free(transport_log)
+    print("ok runtime TTS transport ready records envelope without delivery or execution")
 
 
-async def assert_stream_final_trace_records_c2_node_results() -> None:
+async def assert_stream_final_trace_records_runtime_node_results() -> None:
     request_id = "relayctx-tts-runtime-final-trace-smoke"
     chunks = [sse_content(VISIBLE_PREFIX), sse_done()]
     with TemporaryDirectory() as tmp_dir:
@@ -233,11 +249,11 @@ async def assert_stream_final_trace_records_c2_node_results() -> None:
         require(events == ["backend_stream_response", "backend_stream_response"], events)
         final_nodes = records[1].get("metadata", {}).get("pipeline_node_results")
         require(isinstance(final_nodes, list), records[1])
-        assert_c2_node_names([str(node.get("node_name")) for node in final_nodes])
+        assert_runtime_node_names([str(node.get("node_name")) for node in final_nodes])
         for node in final_nodes:
             require(isinstance(node, dict), node)
             assert_content_free(node)
-        print("ok stream-final trace records C2 node results content-free")
+        print("ok stream-final trace records runtime TTS node results content-free")
 
 
 async def assert_stream_final_trace_state_is_not_cached_by_default() -> None:
@@ -317,7 +333,7 @@ async def assert_no_handoff_when_disabled() -> None:
     print("ok runtime TTS handoff disabled mode is pass-through")
 
 
-async def assert_invalid_safe_output_observation_blocks_handoff() -> None:
+async def assert_invalid_safe_output_observation_blocks_handoff_and_transport() -> None:
     chunks = [sse_multi_content(VISIBLE_PREFIX, VISIBLE_SECOND), sse_done()]
     ctx = DummyPipelineContext()
     output = await collect(
@@ -330,25 +346,30 @@ async def assert_invalid_safe_output_observation_blocks_handoff() -> None:
         )
     )
     require(output == b"".join(chunks), output)
-    assert_c2_nodes_only(ctx)
+    assert_runtime_nodes_only(ctx)
     hint_log = log_by_node(ctx, "relayctx_tts_segmentation_hints")
     handoff_log = log_by_node(ctx, "relayctx_tts_adapter_handoff")
+    transport_log = log_by_node(ctx, "relayctx_tts_adapter_transport")
     require(hint_log["decision"] == "invalid_input", hint_log)
     require(handoff_log["decision"] == "invalid_input", handoff_log)
     require(handoff_log["diagnostics"]["emitted_handoff_count"] == 0, handoff_log)
+    require(transport_log["decision"] == "invalid_input", transport_log)
+    require(transport_log["diagnostics"]["emitted_transport_count"] == 0, transport_log)
+    require(transport_log["diagnostics"]["external_io_performed"] is False, transport_log)
     assert_content_free(hint_log)
     assert_content_free(handoff_log)
-    print("ok runtime TTS handoff invalid observation blocks handoff")
+    assert_content_free(transport_log)
+    print("ok runtime TTS invalid observation blocks handoff and transport")
 
 
 async def main_async() -> None:
     await assert_runtime_handoff_dry_run_from_safe_visible_output()
-    await assert_runtime_handoff_ready_without_tts_execution()
-    await assert_stream_final_trace_records_c2_node_results()
+    await assert_runtime_transport_ready_without_delivery_or_execution()
+    await assert_stream_final_trace_records_runtime_node_results()
     await assert_stream_final_trace_state_is_not_cached_by_default()
     await assert_no_handoff_without_b2_safe_output()
     await assert_no_handoff_when_disabled()
-    await assert_invalid_safe_output_observation_blocks_handoff()
+    await assert_invalid_safe_output_observation_blocks_handoff_and_transport()
 
 
 def main() -> None:

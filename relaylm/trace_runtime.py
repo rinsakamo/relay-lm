@@ -161,6 +161,7 @@ def _is_stream_final_tts_node_results(
     allowed = {
         "relayctx_tts_segmentation_hints",
         "relayctx_tts_adapter_handoff",
+        "relayctx_tts_adapter_transport",
     }
     return all(result.get("node_name") in allowed for result in node_results)
 
