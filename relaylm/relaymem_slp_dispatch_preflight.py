@@ -38,6 +38,19 @@ _A2_RESULT_FIELDS = {
     "queue_io_performed", "enqueued", "worker_invoked", "invokes_slp",
     "writes_memory", "mutates_soul", "changes_visible_response", "blocked_reasons",
 }
+_A2_SOURCE_PROJECTION_FIELDS = {
+    "trigger_mode",
+    "processing_stage",
+    "source_event_kind",
+    "source_count",
+    "correlation",
+}
+_A2_SOURCE_CORRELATION_FIELDS = {
+    "run_id_present",
+    "turn_index_present",
+    "session_id_present",
+    "namespace_present",
+}
 _A2_CANDIDATE_FIELDS = {
     "schema_version", "candidate_kind", "trigger_mode", "processing_stage",
     "source_event_kind", "run_id", "turn_index", "session_id", "namespace",
@@ -300,6 +313,12 @@ def _validate_handoff_result(
         return None, ("a2_handoff_runtime_shape_mismatch",)
     if runtime.get("schema_version") != _SOURCE_RESULT_SCHEMA:
         return None, ("a2_handoff_schema_mismatch",)
+    projection_errors = _validate_source_projection_runtime(
+        source.source_projection,
+        source_projection,
+    )
+    if projection_errors:
+        return None, projection_errors
     for field in ("helper_only", "diagnostics_only", "read_only"):
         if runtime.get(field) is not True:
             return None, (f"a2_handoff_{field}_invalid",)
@@ -332,6 +351,53 @@ def _validate_handoff_result(
     if runtime.get("candidate") != candidate_runtime:
         return None, ("a2_candidate_runtime_mismatch",)
     return source, ()
+
+
+def _validate_source_projection_runtime(
+    projection: RelayMEMSLPSourceProjection,
+    runtime: object,
+) -> tuple[str, ...]:
+    if not isinstance(runtime, Mapping):
+        return ("a2_source_projection_shape_invalid",)
+    if (
+        len(runtime) != len(_A2_SOURCE_PROJECTION_FIELDS)
+        or set(runtime) != _A2_SOURCE_PROJECTION_FIELDS
+    ):
+        return ("a2_source_projection_shape_mismatch",)
+
+    correlation = runtime.get("correlation")
+    if not isinstance(correlation, Mapping):
+        return ("a2_source_projection_correlation_invalid",)
+    if (
+        len(correlation) != len(_A2_SOURCE_CORRELATION_FIELDS)
+        or set(correlation) != _A2_SOURCE_CORRELATION_FIELDS
+    ):
+        return ("a2_source_projection_correlation_shape_mismatch",)
+
+    for field in ("trigger_mode", "processing_stage", "source_event_kind"):
+        attribute = getattr(projection, field)
+        runtime_value = runtime.get(field)
+        if type(attribute) is not str or type(runtime_value) is not str:
+            return ("a2_source_projection_enum_invalid",)
+        if runtime_value != attribute:
+            return (f"a2_source_projection_{field}_mismatch",)
+
+    if (
+        type(projection.source_count) is not int
+        or not 1 <= projection.source_count <= _MAX_SOURCES
+        or type(runtime.get("source_count")) is not int
+        or runtime.get("source_count") != projection.source_count
+    ):
+        return ("a2_source_projection_source_count_invalid",)
+
+    for field in _A2_SOURCE_CORRELATION_FIELDS:
+        attribute = getattr(projection, field)
+        runtime_value = correlation.get(field)
+        if type(attribute) is not bool or type(runtime_value) is not bool:
+            return ("a2_source_projection_presence_invalid",)
+        if runtime_value is not attribute:
+            return (f"a2_source_projection_{field}_mismatch",)
+    return ()
 
 
 def _validate_source_candidate_consistency(
@@ -397,6 +463,13 @@ def _validate_candidate(
         return None, ("a2_candidate_schema_mismatch",)
     if runtime.get("candidate_kind") != "relayslp_deferred_job":
         return None, ("a2_candidate_kind_invalid",)
+    if type(runtime.get("turn_index")) is not int or runtime.get("turn_index") < 0:
+        return None, ("a2_candidate_runtime_turn_index_invalid",)
+    if (
+        type(runtime.get("source_count")) is not int
+        or not 1 <= runtime.get("source_count") <= _MAX_SOURCES
+    ):
+        return None, ("a2_candidate_runtime_source_count_invalid",)
     if candidate.trigger_mode != "turn_end":
         return None, ("a2_trigger_mode_invalid",)
     if candidate.processing_stage not in _ALLOWED_STAGES:
@@ -452,7 +525,9 @@ def _validate_candidate(
         "source_lineage_fingerprint", "source_admission_status",
         "runtime_terminal_status", "persistence_policy_status",
     ):
-        if runtime.get(field) != getattr(candidate, field):
+        runtime_value = runtime.get(field)
+        attribute = getattr(candidate, field)
+        if type(runtime_value) is not type(attribute) or runtime_value != attribute:
             return None, (f"a2_candidate_{field}_mismatch",)
     return candidate, ()
 

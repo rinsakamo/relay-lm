@@ -12,6 +12,7 @@ from relaylm.relaymem_slp_job_admission import (
 )
 from relaylm.relaymem_slp_response_handoff import (
     RelayMEMSLPEnqueueCandidate,
+    RelayMEMSLPSourceProjection,
     build_relaymem_slp_response_finalization_handoff,
 )
 
@@ -124,6 +125,30 @@ def main() -> None:
     _assert_rejected(disabled_a2, "exact_a2_enqueue_candidate_required")
 
     assert handoff.source_projection is not None
+    projection_original = RelayMEMSLPSourceProjection.to_log_dict
+
+    def projection_extra_field(
+        self: RelayMEMSLPSourceProjection,
+    ) -> dict[str, object]:
+        value = projection_original(self)
+        value["private_value"] = "must-not-pass"
+        return value
+
+    RelayMEMSLPSourceProjection.to_log_dict = projection_extra_field  # type: ignore[method-assign]
+    try:
+        _assert_rejected(_handoff(), "a2_source_projection_shape_mismatch")
+    finally:
+        RelayMEMSLPSourceProjection.to_log_dict = projection_original  # type: ignore[method-assign]
+
+    def projection_non_mapping(self: RelayMEMSLPSourceProjection) -> object:
+        return ["invalid"]
+
+    RelayMEMSLPSourceProjection.to_log_dict = projection_non_mapping  # type: ignore[method-assign]
+    try:
+        _assert_rejected(_handoff(), "a2_source_projection_shape_invalid")
+    finally:
+        RelayMEMSLPSourceProjection.to_log_dict = projection_original  # type: ignore[method-assign]
+
     _assert_consistency_rejected(
         replace(
             handoff,
@@ -199,6 +224,32 @@ def main() -> None:
     )
 
     original = RelayMEMSLPEnqueueCandidate.to_runtime_dict
+
+    def bool_runtime_turn_index(
+        self: RelayMEMSLPEnqueueCandidate,
+    ) -> dict[str, object]:
+        value = original(self)
+        value["turn_index"] = True
+        return value
+
+    RelayMEMSLPEnqueueCandidate.to_runtime_dict = bool_runtime_turn_index  # type: ignore[method-assign]
+    try:
+        _assert_rejected(_handoff(), "a2_candidate_runtime_turn_index_invalid")
+    finally:
+        RelayMEMSLPEnqueueCandidate.to_runtime_dict = original  # type: ignore[method-assign]
+
+    def bool_runtime_source_count(
+        self: RelayMEMSLPEnqueueCandidate,
+    ) -> dict[str, object]:
+        value = original(self)
+        value["source_count"] = True
+        return value
+
+    RelayMEMSLPEnqueueCandidate.to_runtime_dict = bool_runtime_source_count  # type: ignore[method-assign]
+    try:
+        _assert_rejected(_handoff(), "a2_candidate_runtime_source_count_invalid")
+    finally:
+        RelayMEMSLPEnqueueCandidate.to_runtime_dict = original  # type: ignore[method-assign]
 
     def extra_field(self: RelayMEMSLPEnqueueCandidate) -> dict[str, object]:
         value = original(self)
