@@ -1,7 +1,7 @@
 ---
-relaylm_doc_type: architecture_handoff
+relaylm_doc_type: implementation_handoff
 relaylm_authority: relaymem_mvp_independent_track
-relaylm_status: current
+relaylm_status: historical_after_merge
 relaylm_volatility: medium
 relaylm_owner: relaymem
 relaylm_update_trigger:
@@ -12,6 +12,7 @@ relaylm_not_authoritative_for:
   - repository-wide Phase 5.5 Stream Unpack sequencing
   - RelayCTX stream/TTS adapter behavior
   - exact runtime config defaults outside RelayMEM-M3
+  - current repository-wide implementation status
 relaylm_related_authority:
   - relaymem_mvp_implementation_plan.md
   - memory_lifecycle_design.md
@@ -23,6 +24,8 @@ relaylm_related_authority:
 ## Status
 
 RelayMEM-M3a is complete as a helper-only Primary MEM formation candidate boundary.
+
+This handoff is historical evidence for the completed bounded slice. Current repository-wide status remains owned by `../PROJECT_STATUS.md`, and RelayMEM-M sequencing remains owned by `relaymem_mvp_implementation_plan.md`.
 
 The completed slice adds a pure dry-run helper that can classify governed experience evidence into Primary MEM / Experience MEM candidates without writing memory or changing runtime behavior.
 
@@ -79,13 +82,14 @@ python scripts/relaylm_relaymem_primary_formation_dry_run_smoke.py
 
 The next RelayMEM-M3 slice should be a Primary MEM write-preflight boundary.
 
-M3b should consume M3a candidates and produce a runtime-private write preflight / operation artifact, while still keeping actual filesystem writes disabled by default.
+M3b should first add or pass a content-free source-lineage artifact into M3a candidate output or the M3b preflight input. Only after that lineage exists should M3b derive idempotency keys or apply eligibility. The current M3a candidates intentionally expose only a fixed candidate ID, event kind, bands, policy enums, and message-shape counts; those fields are not sufficient to build collision-safe idempotency keys for distinct turns.
 
 Recommended M3b scope:
 
-- derive a deterministic idempotency key from content-free source lineage and candidate metadata,
+- define the minimal content-free source-lineage input required for Primary MEM write preflight,
+- reject candidates when required lineage is missing or malformed,
+- derive a deterministic idempotency key only after lineage is present,
 - derive a bounded target namespace/path category without writing files,
-- block candidates without source lineage,
 - block `review_required`, `explicit_approval_required`, and `never_auto_promote` from autonomous apply,
 - allow only `free_to_update` candidates to become apply-eligible when explicit gates pass,
 - preserve dry-run-only behavior by default,
@@ -101,6 +105,7 @@ Future M3 work must preserve:
 ```text
 ordinary governed experience evidence
   -> Primary MEM candidate
+  -> content-free source lineage
   -> write preflight / operation artifact
   -> gated idempotent apply only when explicitly enabled
 ```
