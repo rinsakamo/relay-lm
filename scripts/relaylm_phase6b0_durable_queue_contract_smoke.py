@@ -11,6 +11,8 @@ A2_CONTRACT_PATH = (
     ROOT / "docs/architecture/phase6a2_relayslp_response_handoff_contract.md"
 )
 CURRENT_TARGET_PATH = ROOT / "docs/architecture/relaymem_slp_current_target.md"
+PIPELINE_PLAN_PATH = ROOT / "docs/architecture/pipeline_implementation_plan.md"
+PROJECT_STATUS_PATH = ROOT / "docs/PROJECT_STATUS.md"
 ARCHITECTURE_INDEX_PATH = ROOT / "docs/architecture/README.md"
 A2_HELPER_PATH = ROOT / "relaylm/relaymem_slp_response_handoff.py"
 WORKFLOW_PATH = (
@@ -40,6 +42,8 @@ def main() -> None:
     contract = _read(CONTRACT_PATH)
     a2_contract = _read(A2_CONTRACT_PATH)
     current_target = _read(CURRENT_TARGET_PATH)
+    pipeline_plan = _read(PIPELINE_PLAN_PATH)
+    project_status = _read(PROJECT_STATUS_PATH)
     architecture_index = _read(ARCHITECTURE_INDEX_PATH)
     a2_helper = _read(A2_HELPER_PATH)
     workflow = _read(WORKFLOW_PATH)
@@ -244,6 +248,8 @@ def main() -> None:
         ("architecture index", architecture_index),
         ("A2 contract", a2_contract),
         ("RelayMEM/SLP current-target", current_target),
+        ("pipeline implementation plan", pipeline_plan),
+        ("project status", project_status),
     ):
         assert contract_link in document, f"{label} does not link the B0 contract"
 
@@ -255,6 +261,26 @@ def main() -> None:
             "The next bounded implementation is Phase 6-B1",
         ),
         label="current-target status alignment",
+    )
+    _require_all(
+        pipeline_plan,
+        (
+            "Phase 6-B0 durable queue contract and state-machine design: complete",
+            "Phase 6-B1 dry-run job-record and dispatch-idempotency preflight helper",
+            "B0 remains design-only",
+            "### Phase 6-B1: job-record and dispatch-idempotency preflight — next",
+        ),
+        label="pipeline sequencing alignment",
+    )
+    _require_all(
+        project_status,
+        (
+            "B0 design contract complete",
+            "Phase 6-B0 durable RelaySLP queue contract",
+            "Phase 6-B1: default-off, dry-run-only job-record and dispatch-idempotency preflight helper",
+            "B0 defines these boundaries but does not implement them.",
+        ),
+        label="project status alignment",
     )
 
     _require_all(
@@ -280,6 +306,8 @@ def main() -> None:
         "docs/architecture/phase6b0_relayslp_durable_queue_contract.md",
         "docs/architecture/phase6a2_relayslp_response_handoff_contract.md",
         "docs/architecture/relaymem_slp_current_target.md",
+        "docs/architecture/pipeline_implementation_plan.md",
+        "docs/PROJECT_STATUS.md",
         "docs/architecture/README.md",
         "relaylm/relaymem_slp_response_handoff.py",
         "scripts/relaylm_phase6b0_durable_queue_contract_smoke.py",
