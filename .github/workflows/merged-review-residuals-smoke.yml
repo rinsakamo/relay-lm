@@ -1,0 +1,44 @@
+name: Merged review residuals smoke
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/relaymem_primary_page_candidate.py"
+      - "relaylm/_relaymem_primary_page_candidate_impl.py"
+      - "relaylm/relaymem_primary_write_preflight.py"
+      - "relaylm/relaymem_store.py"
+      - "relaylm/_relaymem_store_impl.py"
+      - "relaylm/client_instruction_cache_write.py"
+      - "relaylm/_client_instruction_cache_write_impl.py"
+      - "relaylm/client_instruction_typed_parse.py"
+      - "scripts/relaylm_merged_review_residuals_smoke.py"
+      - ".github/workflows/merged-review-residuals-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/relaymem_primary_page_candidate.py"
+      - "relaylm/_relaymem_primary_page_candidate_impl.py"
+      - "relaylm/relaymem_primary_write_preflight.py"
+      - "relaylm/relaymem_store.py"
+      - "relaylm/_relaymem_store_impl.py"
+      - "relaylm/client_instruction_cache_write.py"
+      - "relaylm/_client_instruction_cache_write_impl.py"
+      - "relaylm/client_instruction_typed_parse.py"
+      - "scripts/relaylm_merged_review_residuals_smoke.py"
+      - ".github/workflows/merged-review-residuals-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e .
+      - run: python -m compileall relaylm scripts/relaylm_merged_review_residuals_smoke.py
+      - run: python scripts/relaylm_merged_review_residuals_smoke.py
