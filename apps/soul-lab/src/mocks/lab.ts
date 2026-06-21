@@ -16,7 +16,7 @@ export const mockCharacters: CharacterSummary[] = [
     soulVersion: "v3",
     stabilityLabel: "Stable",
     interventionState: "inactive",
-    lastActiveLabel: "12秒前",
+    lastActiveSeconds: 12,
   },
   {
     characterId: "mica",
@@ -27,7 +27,7 @@ export const mockCharacters: CharacterSummary[] = [
     soulVersion: "v2",
     stabilityLabel: "Observing",
     interventionState: "inactive",
-    lastActiveLabel: "8分前",
+    lastActiveSeconds: 480,
   },
 ];
 
