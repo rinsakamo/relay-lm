@@ -81,6 +81,11 @@ const ja = {
   validationSources: "3つの必須sourceが揃っていることを確認してください。",
   validationSoul: "SOUL.mdを選択してください。",
   validationCompanions: "不足するcompanion sourceを選択するか、安全な初期化を有効にしてください。",
+  validationSoulFilename: "SOUL.mdスロットには、ファイル名がSOUL.mdのものを選択してください。",
+  validationOutputFilename:
+    "OUTPUT_POLICY.mdスロットには、ファイル名がOUTPUT_POLICY.mdのものを選択してください。",
+  validationRelationshipFilename:
+    "RELATIONSHIP_ANCHOR.mdスロットには、ファイル名がRELATIONSHIP_ANCHOR.mdのものを選択してください。",
   kindNew: "新規作成",
   kindAdopt: "source set採用",
   kindImport: "SOUL.md取込",
@@ -169,6 +174,10 @@ const en: Record<AdoptionMessageKey, string> = {
   validationSources: "Confirm all three required sources.",
   validationSoul: "Select SOUL.md.",
   validationCompanions: "Select missing companion sources or enable safe initialization.",
+  validationSoulFilename: "Select a file named SOUL.md for the SOUL.md slot.",
+  validationOutputFilename: "Select a file named OUTPUT_POLICY.md for the OUTPUT_POLICY.md slot.",
+  validationRelationshipFilename:
+    "Select a file named RELATIONSHIP_ANCHOR.md for the RELATIONSHIP_ANCHOR.md slot.",
   kindNew: "New character",
   kindAdopt: "Source-set adoption",
   kindImport: "SOUL.md import",
