@@ -872,10 +872,13 @@ def _strict_bool(value: Any, reason: str) -> tuple[bool, tuple[str, ...]]:
 def _is_token(value: object) -> bool:
     return (
         type(value) is str
-        and 1 <= len(value) <= _MAX_TOKEN
         and value == value.strip()
-        and not _bad_text(value)
-        and not any(character in value for character in "/\\")
+        and 0 < len(value) <= _MAX_TOKEN
+        and all(
+            character.isascii()
+            and (character.isalnum() or character in "-_.:/")
+            for character in value
+        )
     )
 
 

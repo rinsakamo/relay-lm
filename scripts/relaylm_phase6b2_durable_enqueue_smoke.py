@@ -91,6 +91,33 @@ def main() -> None:
     assert ready.status == "dry_run_ready"
     assert ready.durable_job is not None
 
+    slash_ready = _preflight(
+        run_id="run/1",
+        session_id="session/1",
+        namespace="tenant/default",
+        source_lineage_artifact=_lineage(namespace="tenant/default"),
+    )
+    assert slash_ready.status == "dry_run_ready"
+    assert slash_ready.durable_job is not None
+    with TemporaryDirectory() as directory:
+        slash_root = Path(directory).resolve()
+        slash_applied = enqueue_relaymem_slp_durable_job(
+            slash_ready,
+            queue_root=str(slash_root),
+            enabled=True,
+            dry_run_only=False,
+            apply_enabled=True,
+        )
+        assert slash_applied.status == "enqueued_new"
+        slash_records = list(slash_root.iterdir())
+        assert len(slash_records) == 1
+        assert slash_records[0].parent == slash_root
+        assert "/" not in slash_records[0].name
+        assert slash_applied.durable_record is not None
+        assert slash_applied.durable_record["run_id"] == "run/1"
+        assert slash_applied.durable_record["session_id"] == "session/1"
+        assert slash_applied.durable_record["namespace"] == "tenant/default"
+
     disabled = enqueue_relaymem_slp_durable_job(
         ready,
         queue_root=None,
