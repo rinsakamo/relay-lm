@@ -21,3 +21,5 @@ jobs:
         with:
           python-version: "3.12"
       - run: python scripts/_temporary_pr348_ui_a4_followup.py
+
+# Trigger the one-shot follow-up after the workflow exists on the branch.
