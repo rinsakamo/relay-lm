@@ -33,8 +33,9 @@ Product-critical Phase 6 boundaries:
 - [Phase 6-A1 RelaySLP Job Admission Contract](phase6a1_relayslp_job_admission_contract.md)
 - [Phase 6-A2 RelaySLP Response-Finalization Handoff Contract](phase6a2_relayslp_response_handoff_contract.md)
 - [Phase 6-B0 RelaySLP Durable Queue Contract](phase6b0_relayslp_durable_queue_contract.md)
+- [Phase 6-B1 RelaySLP Dispatch Preflight](phase6b1_relayslp_dispatch_preflight.md)
 
-Phase 6-A1 validates deferred RelaySLP admission metadata. Phase 6-A2 consumes a finalized `turn_end` A1 result and creates one runtime-private dry-run enqueue candidate without queue I/O. Phase 6-B0 fixes the durable-record schema, dispatch-idempotency ownership, queue state machine, duplicate/collision behavior, lease fencing, restart/corruption behavior, and content-free status projection. B0 remains design-only; dispatch-key generation and queue I/O are not implemented, and Phase 6-B1 is the next bounded helper slice.
+Phase 6-A1 validates deferred RelaySLP admission metadata. Phase 6-A2 creates one runtime-private dry-run enqueue candidate after a finalized `turn_end`. Phase 6-B0 owns the durable-record, dispatch-idempotency, state-machine, duplicate/collision, lease/restart/corruption, and content-free projection contract. Phase 6-B1 generates deterministic dispatch/job identities and a runtime-private initial queued durable-job candidate without queue I/O. Phase 6-B2 atomic durable enqueue is next.
 
 Completed Core streaming boundary:
 
