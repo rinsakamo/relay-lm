@@ -1,24 +1,40 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ChangeEvent } from "react";
 import type { LabRoute, Language, Theme } from "../domain/lab";
 import { AdoptionPage } from "../features/adoption/AdoptionPage";
 import { CommunicationPage } from "../features/communication/CommunicationPage";
 import { MemoryInspectorPage } from "../features/memory-inspector/MemoryInspectorPage";
 import { PodPage } from "../features/pod/PodPage";
+import { SettingsPage } from "../features/settings/SettingsPage";
 import { translate, type MessageKey } from "../locales/messages";
 import { mockCharacters } from "../mocks/lab";
 import { App } from "./App";
 
-const rootNavigation: Array<{ route: LabRoute; label: MessageKey; marker: string }> = [
+const navigation: Array<{ route: LabRoute; label: MessageKey; marker: string }> = [
   { route: "home", label: "nav.home", marker: "⌂" },
   { route: "observation", label: "nav.observation", marker: "◉" },
   { route: "communication", label: "nav.communication", marker: "⇄" },
   { route: "pod", label: "nav.pod", marker: "◇" },
   { route: "adoption", label: "nav.adoption", marker: "+" },
+  { route: "settings", label: "nav.settings", marker: "⚙" },
 ];
+
+const footerLabels: Record<LabRoute, string> = {
+  home: "UI-A0 / UI-A1 · Home",
+  adoption: "UI-A2 · Adoption / First Launch",
+  communication: "UI-A3 · Character Communication",
+  pod: "UI-A4 · Pod / SOUL Intervention",
+  observation: "UI-A5 · Memory Inspector",
+  settings: "UI-A6 · Shared Shell / Settings",
+};
+
+function isLabRoute(value: string): value is LabRoute {
+  return navigation.some((item) => item.route === value);
+}
 
 function hashRoute(): LabRoute {
   const value = window.location.hash.replace(/^#\/?/, "");
-  return rootNavigation.some((item) => item.route === value) ? (value as LabRoute) : "home";
+  return isLabRoute(value) ? value : "home";
 }
 
 export function RootApp() {
@@ -42,28 +58,33 @@ export function RootApp() {
       ? (storedCharacterId as string)
       : firstCharacter.characterId;
   });
-  const [communicationLocked, setCommunicationLocked] = useState(false);
-  const [interventionLocked, setInterventionLocked] = useState(false);
-  const [inspectorLocked, setInspectorLocked] = useState(false);
+  const [navigationLock, setNavigationLock] = useState<LabRoute | null>(null);
 
   const activeCharacter = useMemo(
     () => mockCharacters.find((character) => character.characterId === activeCharacterId) ?? firstCharacter,
     [activeCharacterId, firstCharacter],
   );
-  const lockedRoute: LabRoute | null = communicationLocked
-    ? "communication"
-    : interventionLocked
-      ? "pod"
-      : inspectorLocked
-        ? "observation"
-        : null;
-  const interactionLocked = lockedRoute !== null;
+  const interactionLocked = navigationLock !== null;
+  const adoptionRoute = route === "adoption";
 
   useEffect(() => {
-    const syncRoute = () => setRoute(hashRoute());
+    const syncRoute = () => {
+      const nextRoute = hashRoute();
+      if (navigationLock && nextRoute !== navigationLock) {
+        const lockedHash = `#/${navigationLock}`;
+        if (window.location.hash !== lockedHash) {
+          window.history.replaceState(null, "", lockedHash);
+        }
+        setRoute(navigationLock);
+        return;
+      }
+      setRoute(nextRoute);
+    };
+
+    syncRoute();
     window.addEventListener("hashchange", syncRoute);
     return () => window.removeEventListener("hashchange", syncRoute);
-  }, []);
+  }, [navigationLock]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -78,32 +99,48 @@ export function RootApp() {
     window.localStorage.setItem("soul-lab-active-character", activeCharacterId);
   }, [activeCharacterId]);
 
+  const updateNavigationLock = useCallback((lockRoute: LabRoute, locked: boolean) => {
+    setNavigationLock((current) => {
+      if (locked) {
+        return lockRoute;
+      }
+      return current === lockRoute ? null : current;
+    });
+  }, []);
+
+  const handleCommunicationLockChange = useCallback(
+    (locked: boolean) => updateNavigationLock("communication", locked),
+    [updateNavigationLock],
+  );
+  const handleInterventionLockChange = useCallback(
+    (locked: boolean) => updateNavigationLock("pod", locked),
+    [updateNavigationLock],
+  );
+  const handleInspectorLockChange = useCallback(
+    (locked: boolean) => updateNavigationLock("observation", locked),
+    [updateNavigationLock],
+  );
+
   function navigate(nextRoute: LabRoute) {
-    if (lockedRoute && nextRoute !== lockedRoute) {
+    if (navigationLock && nextRoute !== navigationLock) {
       return;
     }
 
     const nextHash = `#/${nextRoute}`;
     if (window.location.hash === nextHash) {
       setRoute(nextRoute);
+    } else {
+      window.location.hash = nextHash;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function selectCharacter(characterId: string) {
+    if (interactionLocked) {
       return;
     }
-    window.location.hash = nextHash;
+    setActiveCharacterId(characterId);
   }
-
-  if (
-    route !== "adoption" &&
-    route !== "communication" &&
-    route !== "pod" &&
-    route !== "observation"
-  ) {
-    return <App />;
-  }
-
-  const adoptionRoute = route === "adoption";
-  const observationRoute = route === "observation";
-  const communicationRoute = route === "communication";
-  const podRoute = route === "pod";
 
   return (
     <div className="app-shell">
@@ -119,13 +156,13 @@ export function RootApp() {
         </div>
 
         <nav className="primary-navigation" aria-label="SOUL Lab">
-          {rootNavigation.map((item) => (
+          {navigation.map((item) => (
             <button
               className={`nav-item ${item.route === route ? "nav-item-active" : ""}`}
               type="button"
               key={item.route}
               aria-current={item.route === route ? "page" : undefined}
-              disabled={Boolean(lockedRoute && item.route !== lockedRoute)}
+              disabled={Boolean(navigationLock && item.route !== navigationLock)}
               onClick={() => navigate(item.route)}
             >
               <span className="nav-marker" aria-hidden="true">
@@ -138,7 +175,11 @@ export function RootApp() {
 
         <div className="sidebar-note">
           <span className="mock-pill">{translate(language, "app.mockBadge")}</span>
-          <p>{translate(language, "nav.settingsSoon")}</p>
+          <p>
+            {navigationLock
+              ? translate(language, "nav.locked")
+              : translate(language, "nav.boundaryNote")}
+          </p>
         </div>
       </aside>
 
@@ -155,7 +196,7 @@ export function RootApp() {
               <select
                 value={activeCharacter.characterId}
                 disabled={interactionLocked}
-                onChange={(event) => setActiveCharacterId(event.target.value)}
+                onChange={(event: ChangeEvent<HTMLSelectElement>) => selectCharacter(event.target.value)}
               >
                 {mockCharacters.map((character) => (
                   <option value={character.characterId} key={character.characterId}>
@@ -207,46 +248,50 @@ export function RootApp() {
         </header>
 
         <main className="main-content">
-          {adoptionRoute && (
+          {route === "home" && (
+            <App language={language} activeCharacter={activeCharacter} onNavigate={navigate} />
+          )}
+          {route === "adoption" && (
             <AdoptionPage language={language} onBackHome={() => navigate("home")} />
           )}
-          {observationRoute && (
+          {route === "observation" && (
             <MemoryInspectorPage
               key={activeCharacter.characterId}
               language={language}
               activeCharacter={activeCharacter}
-              onInspectorLockChange={setInspectorLocked}
+              onInspectorLockChange={handleInspectorLockChange}
             />
           )}
-          {communicationRoute && (
+          {route === "communication" && (
             <CommunicationPage
+              key={activeCharacter.characterId}
               language={language}
               activeCharacter={activeCharacter}
               characters={mockCharacters}
-              onSessionLockChange={setCommunicationLocked}
+              onSessionLockChange={handleCommunicationLockChange}
             />
           )}
-          {podRoute && (
+          {route === "pod" && (
             <PodPage
               key={activeCharacter.characterId}
               language={language}
               activeCharacter={activeCharacter}
-              onInterventionLockChange={setInterventionLocked}
+              onInterventionLockChange={handleInterventionLockChange}
+            />
+          )}
+          {route === "settings" && (
+            <SettingsPage
+              language={language}
+              theme={theme}
+              activeCharacterId={activeCharacter.characterId}
+              characters={mockCharacters}
             />
           )}
         </main>
 
         <footer className="footer-bar">
           <span>{translate(language, "footer.boundary")}</span>
-          <span>
-            {adoptionRoute
-              ? "UI-A2 · Adoption / First Launch"
-              : observationRoute
-                ? "UI-A5 · Memory Inspector"
-                : communicationRoute
-                  ? "UI-A3 · Character Communication"
-                  : "UI-A4 · Pod / SOUL Intervention"}
-          </span>
+          <span>{footerLabels[route]}</span>
         </footer>
       </div>
     </div>

@@ -1,0 +1,13 @@
+@media (max-width: 720px) {
+  .primary-navigation {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .nav-item {
+    min-width: 0;
+  }
+
+  .nav-item > span:last-child {
+    max-width: 100%;
+  }
+}

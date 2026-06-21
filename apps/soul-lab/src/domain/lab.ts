@@ -9,7 +9,8 @@ export type LabRoute =
   | "observation"
   | "communication"
   | "pod"
-  | "adoption";
+  | "adoption"
+  | "settings";
 
 export interface CharacterSummary {
   characterId: string;
