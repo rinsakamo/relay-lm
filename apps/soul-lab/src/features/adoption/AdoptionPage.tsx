@@ -6,7 +6,6 @@ import "./adoption.css";
 
 type AdoptionMode = "choose" | "assistant" | "new" | "adopt" | "import" | "review" | "complete";
 type AdoptionKind = "new" | "adopt" | "import";
-
 type FileSlot = "soul" | "output" | "relationship";
 
 interface AdoptionDraft {
@@ -22,14 +21,27 @@ interface AdoptionPageProps {
 }
 
 function slugify(value: string): string {
-  const normalized = value
+  const trimmed = value.trim();
+  const asciiSlug = trimmed
     .normalize("NFKD")
     .toLowerCase()
-    .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-  return normalized || "new-character";
+  if (asciiSlug) {
+    return asciiSlug;
+  }
+
+  const unicodeSlug = Array.from(trimmed)
+    .map((character) => character.codePointAt(0)?.toString(16))
+    .filter((codePoint): codePoint is string => Boolean(codePoint))
+    .join("-");
+
+  return unicodeSlug ? `character-${unicodeSlug}` : "new-character";
+}
+
+function hasExpectedFilename(filename: string, expectedFilename: string): boolean {
+  return filename.toLocaleLowerCase("en-US") === expectedFilename.toLocaleLowerCase("en-US");
 }
 
 function FilePicker({
@@ -87,7 +99,6 @@ function ChoiceCard({
 export function AdoptionPage({ language, onBackHome }: AdoptionPageProps) {
   const [mode, setMode] = useState<AdoptionMode>("choose");
   const [returnMode, setReturnMode] = useState<Exclude<AdoptionMode, "review" | "complete">>("choose");
-  const [kind, setKind] = useState<AdoptionKind>("new");
   const [displayName, setDisplayName] = useState("");
   const [relationshipNote, setRelationshipNote] = useState("");
   const [sourceLocation, setSourceLocation] = useState("");
@@ -108,7 +119,6 @@ export function AdoptionPage({ language, onBackHome }: AdoptionPageProps) {
   function reset() {
     setMode("choose");
     setReturnMode("choose");
-    setKind("new");
     setDisplayName("");
     setRelationshipNote("");
     setSourceLocation("");
@@ -136,7 +146,6 @@ export function AdoptionPage({ language, onBackHome }: AdoptionPageProps) {
         return;
       }
 
-      setKind("new");
       setReturnMode("new");
       setDraft({
         kind: "new",
@@ -164,8 +173,10 @@ export function AdoptionPage({ language, onBackHome }: AdoptionPageProps) {
         return;
       }
 
-      const inferredName = displayName.trim() || sourceLocation.trim().split(/[\\/]/).filter(Boolean).at(-1) || "Adopted character";
-      setKind("adopt");
+      const inferredName =
+        displayName.trim() ||
+        sourceLocation.trim().split(/[\\/]/).filter(Boolean).at(-1) ||
+        "Adopted character";
       setReturnMode("adopt");
       setDraft({
         kind: "adopt",
@@ -186,13 +197,25 @@ export function AdoptionPage({ language, onBackHome }: AdoptionPageProps) {
         setError(adoptionMessage(language, "validationSoul"));
         return;
       }
+      if (!hasExpectedFilename(files.soul, "SOUL.md")) {
+        setError(adoptionMessage(language, "validationSoulFilename"));
+        return;
+      }
+      if (files.output && !hasExpectedFilename(files.output, "OUTPUT_POLICY.md")) {
+        setError(adoptionMessage(language, "validationOutputFilename"));
+        return;
+      }
+      if (files.relationship && !hasExpectedFilename(files.relationship, "RELATIONSHIP_ANCHOR.md")) {
+        setError(adoptionMessage(language, "validationRelationshipFilename"));
+        return;
+      }
       if ((!files.output && !initializeOutput) || (!files.relationship && !initializeRelationship)) {
         setError(adoptionMessage(language, "validationCompanions"));
         return;
       }
 
-      const inferredName = displayName.trim() || files.soul.replace(/\.md$/i, "") || "Imported character";
-      setKind("import");
+      const inferredName =
+        displayName.trim() || files.soul.replace(/\.md$/i, "") || "Imported character";
       setReturnMode("import");
       setDraft({
         kind: "import",
@@ -339,7 +362,11 @@ export function AdoptionPage({ language, onBackHome }: AdoptionPageProps) {
             <span>✓ {adoptionMessage(language, "outputDefault")}</span>
             <span>✓ {adoptionMessage(language, "relationshipDefault")}</span>
           </fieldset>
-          {error && <p className="adoption-error">{error}</p>}
+          {error && (
+            <p className="adoption-error" role="alert">
+              {error}
+            </p>
+          )}
           <div className="adoption-form-actions">
             <button className="button button-secondary" type="button" onClick={() => openMode("choose")}>
               {adoptionMessage(language, "back")}
@@ -398,7 +425,11 @@ export function AdoptionPage({ language, onBackHome }: AdoptionPageProps) {
             ))}
           </fieldset>
           <p className="boundary-note">{adoptionMessage(language, "sourceNote")}</p>
-          {error && <p className="adoption-error">{error}</p>}
+          {error && (
+            <p className="adoption-error" role="alert">
+              {error}
+            </p>
+          )}
           <div className="adoption-form-actions">
             <button className="button button-secondary" type="button" onClick={() => openMode("choose")}>
               {adoptionMessage(language, "back")}
@@ -469,7 +500,11 @@ export function AdoptionPage({ language, onBackHome }: AdoptionPageProps) {
             </label>
           </div>
           <p className="boundary-note">{adoptionMessage(language, "importNote")}</p>
-          {error && <p className="adoption-error">{error}</p>}
+          {error && (
+            <p className="adoption-error" role="alert">
+              {error}
+            </p>
+          )}
           <div className="adoption-form-actions">
             <button className="button button-secondary" type="button" onClick={() => openMode("choose")}>
               {adoptionMessage(language, "back")}
@@ -488,7 +523,7 @@ export function AdoptionPage({ language, onBackHome }: AdoptionPageProps) {
           <dl className="adoption-review-grid">
             <div>
               <dt>{adoptionMessage(language, "reviewKind")}</dt>
-              <dd>{kindLabel(kind)}</dd>
+              <dd>{kindLabel(draft.kind)}</dd>
             </div>
             <div>
               <dt>{adoptionMessage(language, "reviewName")}</dt>
