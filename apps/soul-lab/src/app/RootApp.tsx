@@ -214,6 +214,7 @@ export function RootApp() {
           )}
           {podRoute && (
             <PodPage
+              key={activeCharacter.characterId}
               language={language}
               activeCharacter={activeCharacter}
               onInterventionLockChange={setInterventionLocked}
