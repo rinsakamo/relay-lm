@@ -10,6 +10,21 @@ from relaylm.relaymem_slp_job_admission import (
 )
 
 
+def _shape(
+    *,
+    source_event_id: bool = True,
+    run_id: bool = True,
+    session_id: bool = True,
+    turn_index: bool = True,
+) -> dict[str, bool]:
+    return {
+        "source_event_id_present": source_event_id,
+        "run_id_present": run_id,
+        "session_id_present": session_id,
+        "turn_index_present": turn_index,
+    }
+
+
 def _lineage(**overrides: Any) -> dict[str, Any]:
     artifact: dict[str, Any] = {
         "schema_version": "relaymem.primary_source_lineage.v0",
@@ -20,12 +35,7 @@ def _lineage(**overrides: Any) -> dict[str, Any]:
         "namespace": "default",
         "valid": True,
         "lineage_fingerprint": "a" * 64,
-        "lineage_shape": {
-            "source_event_id_present": True,
-            "run_id_present": True,
-            "session_id_present": True,
-            "turn_index_present": True,
-        },
+        "lineage_shape": _shape(),
         "blocked_reasons": [],
     }
     artifact.update(overrides)
@@ -108,12 +118,20 @@ def main() -> None:
         result = _valid(processing_stage=stage)
         assert result["admission_status"] == "blocked"
 
-    assert "run_id_invalid" in _valid(run_id="raw user text has spaces")["blocked_reasons"]
-    assert "turn_index_required_for_turn_end" in _valid(turn_index=None)["blocked_reasons"]
+    assert "run_id_invalid" in _valid(run_id="raw user text has spaces")[
+        "blocked_reasons"
+    ]
+    assert "turn_index_required_for_turn_end" in _valid(turn_index=None)[
+        "blocked_reasons"
+    ]
     assert "turn_index_invalid" in _valid(turn_index=-1)["blocked_reasons"]
-    assert "namespace_invalid" in _valid(namespace="bad namespace")["blocked_reasons"]
+    assert "namespace_invalid" in _valid(namespace="bad namespace")[
+        "blocked_reasons"
+    ]
     assert "source_count_invalid" in _valid(source_count=True)["blocked_reasons"]
-    assert "source_count_limit_exceeded" in _valid(source_count=33)["blocked_reasons"]
+    assert "source_count_limit_exceeded" in _valid(source_count=33)[
+        "blocked_reasons"
+    ]
 
     assert "visible_response_not_finalized" in _valid(
         visible_response_finalized=False
@@ -165,6 +183,85 @@ def main() -> None:
     assert "source_lineage_fingerprint_invalid" in _valid(
         source_lineage_artifact=_lineage(lineage_fingerprint="not-a-hash")
     )["blocked_reasons"]
+
+    forged_shape = _lineage(
+        lineage_shape=_shape(
+            source_event_id=False,
+            run_id=False,
+            session_id=False,
+            turn_index=False,
+        )
+    )
+    forged_result = _valid(source_lineage_artifact=forged_shape)
+    assert forged_result["admission_status"] == "blocked"
+    assert forged_result["source_reference_valid"] is False
+    assert "source_lineage_missing" in forged_result["blocked_reasons"]
+
+    source_event_identity = _valid(
+        source_lineage_artifact=_lineage(
+            lineage_shape=_shape(
+                source_event_id=True,
+                run_id=False,
+                session_id=False,
+                turn_index=False,
+            )
+        )
+    )
+    assert source_event_identity["source_reference_valid"] is True
+    assert source_event_identity["admission_status"] == "admitted_dry_run"
+
+    turn_run_identity = _valid(
+        source_lineage_artifact=_lineage(
+            lineage_shape=_shape(
+                source_event_id=False,
+                run_id=True,
+                session_id=False,
+                turn_index=True,
+            )
+        )
+    )
+    assert turn_run_identity["source_reference_valid"] is True
+
+    turn_session_identity = _valid(
+        source_lineage_artifact=_lineage(
+            lineage_shape=_shape(
+                source_event_id=False,
+                run_id=False,
+                session_id=True,
+                turn_index=True,
+            )
+        )
+    )
+    assert turn_session_identity["source_reference_valid"] is True
+
+    turn_without_index = _valid(
+        source_lineage_artifact=_lineage(
+            lineage_shape=_shape(
+                source_event_id=False,
+                run_id=True,
+                session_id=False,
+                turn_index=False,
+            )
+        )
+    )
+    assert turn_without_index["source_reference_valid"] is False
+    assert "source_lineage_missing" in turn_without_index["blocked_reasons"]
+
+    session_identity = _valid(
+        trigger_mode="session_end",
+        source_event_kind="session",
+        source_lineage_artifact=_lineage(
+            source_event_kind="session",
+            lineage_shape=_shape(
+                source_event_id=False,
+                run_id=False,
+                session_id=True,
+                turn_index=False,
+            ),
+        ),
+    )
+    assert session_identity["source_reference_valid"] is True
+    assert "trigger_mode_unsupported" in session_identity["blocked_reasons"]
 
     injected = _lineage()
     injected["raw_user_text"] = "private"
