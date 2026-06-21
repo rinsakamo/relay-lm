@@ -208,6 +208,29 @@ def main() -> None:
         root = Path(directory).resolve()
         record = _timestamped_record(ready)
         record["run_id"] = "different-run"
+        record["unexpected"] = True
+        (root / filename).write_bytes(_canonical(record))
+        result = _classify_existing(ready, root)
+        assert result.status == "blocked_corrupt"
+        assert result.outcome == "blocked_corrupt"
+        assert "durable_job_shape_mismatch" in result.blocked_reasons
+
+    with TemporaryDirectory() as directory:
+        root = Path(directory).resolve()
+        record = _timestamped_record(ready)
+        encoded = _canonical(record)
+        marker = f'"turn_index":{record["turn_index"]}'.encode("ascii")
+        assert marker in encoded
+        (root / filename).write_bytes(encoded.replace(marker, b'"turn_index":NaN'))
+        result = _classify_existing(ready, root)
+        assert result.status == "blocked_corrupt"
+        assert result.outcome == "blocked_corrupt"
+        assert "queue_record_malformed_json" in result.blocked_reasons
+
+    with TemporaryDirectory() as directory:
+        root = Path(directory).resolve()
+        record = _timestamped_record(ready)
+        record["run_id"] = "different-run"
         (root / filename).write_bytes(_canonical(record))
         before = (root / filename).read_bytes()
         result = _classify_existing(ready, root)

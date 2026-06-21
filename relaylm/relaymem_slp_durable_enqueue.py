@@ -343,6 +343,7 @@ def _validate_record_mapping(
     *,
     expected: Mapping[str, object] | None,
     allow_timestamps: bool,
+    validate_derived_identity: bool = True,
 ) -> tuple[str, ...]:
     if not isinstance(runtime, Mapping):
         return ("durable_job_shape_invalid",)
@@ -387,7 +388,7 @@ def _validate_record_mapping(
     job_id = runtime.get("job_id")
     if not _has_prefixed_digest(dispatch_key, _DISPATCH_KEY_PREFIX):
         return ("durable_job_dispatch_key_invalid",)
-    if dispatch_key != _derive_dispatch_key(runtime):
+    if validate_derived_identity and dispatch_key != _derive_dispatch_key(runtime):
         return ("durable_job_dispatch_key_mismatch",)
     if not _has_prefixed_digest(job_id, _JOB_ID_PREFIX):
         return ("durable_job_job_id_invalid",)
@@ -514,11 +515,20 @@ def _inspect_existing(
         assert record is not None
         if record.get("dispatch_idempotency_key") != expected_candidate.get("dispatch_idempotency_key"):
             return _classified("blocked_corrupt", record, "queue_record_key_path_mismatch")
-        if any(record.get(field) != expected_candidate.get(field) for field in _IDENTITY_FIELDS):
-            return _classified("blocked_collision", record, "dispatch_identity_collision")
-        errors = _validate_record_mapping(record, expected=expected_candidate, allow_timestamps=True)
+        identity_differs = any(
+            record.get(field) != expected_candidate.get(field)
+            for field in _IDENTITY_FIELDS
+        )
+        errors = _validate_record_mapping(
+            record,
+            expected=expected_candidate,
+            allow_timestamps=True,
+            validate_derived_identity=not identity_differs,
+        )
         if errors:
             return {"classification": "blocked_corrupt", "record": record, "reasons": errors}
+        if identity_differs:
+            return _classified("blocked_collision", record, "dispatch_identity_collision")
         return {"classification": "duplicate_existing", "record": record, "reasons": ()}
     except OSError:
         return _classified("write_failed", None, "queue_record_unreadable")
@@ -755,15 +765,26 @@ def _decode_canonical_record(data: bytes) -> tuple[dict[str, object] | None, str
             output[key] = value
         return output
 
+    def reject_nonfinite_constant(_: str) -> object:
+        raise ValueError("non-finite JSON number")
+
     try:
-        value = json.loads(text, object_pairs_hook=object_pairs)
-    except (json.JSONDecodeError, RecursionError):
+        value = json.loads(
+            text,
+            object_pairs_hook=object_pairs,
+            parse_constant=reject_nonfinite_constant,
+        )
+    except (json.JSONDecodeError, RecursionError, ValueError):
         return None, "queue_record_malformed_json"
     if duplicate:
         return None, "queue_record_duplicate_json_key"
     if not isinstance(value, dict):
         return None, "queue_record_json_not_object"
-    if _canonical_json_bytes(value) != data:
+    try:
+        canonical = _canonical_json_bytes(value)
+    except (TypeError, ValueError, RecursionError, OverflowError):
+        return None, "queue_record_malformed_json"
+    if canonical != data:
         return None, "queue_record_noncanonical_json"
     return value, None
 
