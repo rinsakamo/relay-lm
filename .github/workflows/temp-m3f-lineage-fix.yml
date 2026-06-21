@@ -1,0 +1,36 @@
+name: Temporary M3f lineage typo fix
+
+on:
+  push:
+    branches:
+      - relaymem-m3f-primary-index-log-reconciliation
+    paths:
+      - ".github/workflows/temp-m3f-lineage-fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: relaymem-m3f-primary-index-log-reconciliation
+      - name: Fix exact M3f lineage typo
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("relaylm/_relaymem_primary_index_log_reconciliation_plan.py")
+          text = path.read_text(encoding="utf-8")
+          old = "is_sha256(lineae)"
+          new = "is_sha256(lineage)"
+          if text.count(old) != 1:
+              raise SystemExit("unexpected lineage typo count")
+          path.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add relaylm/_relaymem_primary_index_log_reconciliation_plan.py
+          git commit -m "fix: correct M3f log lineage validation"
+          git push origin HEAD:relaymem-m3f-primary-index-log-reconciliation
