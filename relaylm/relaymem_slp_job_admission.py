@@ -191,8 +191,13 @@ def build_relaymem_slp_job_admission_preflight(
         structural_reasons.append("explicit_request_source_event_kind_unsupported")
 
     if safe_runtime_status in _BLOCKED_RUNTIME_TERMINAL_STATUSES:
-        structural_reasons.append(f"runtime_status_blocks_admission:{safe_runtime_status}")
-    elif safe_runtime_status and safe_runtime_status not in _ALLOWED_RUNTIME_TERMINAL_STATUSES:
+        structural_reasons.append(
+            f"runtime_status_blocks_admission:{safe_runtime_status}"
+        )
+    elif (
+        safe_runtime_status
+        and safe_runtime_status not in _ALLOWED_RUNTIME_TERMINAL_STATUSES
+    ):
         structural_reasons.append("runtime_status_not_admissible")
 
     if safe_trigger == "turn_end" and safe_visible_finalized is not True:
@@ -213,7 +218,10 @@ def build_relaymem_slp_job_admission_preflight(
         structural_reasons.append(
             f"persistence_policy_blocks_admission:{safe_policy_status}"
         )
-    elif safe_policy_status and safe_policy_status not in _ALLOWED_PERSISTENCE_POLICY_STATUSES:
+    elif (
+        safe_policy_status
+        and safe_policy_status not in _ALLOWED_PERSISTENCE_POLICY_STATUSES
+    ):
         structural_reasons.append("persistence_policy_not_admissible")
 
     if safe_dry_run_only is False and safe_enqueue_enabled is False:
@@ -230,7 +238,9 @@ def build_relaymem_slp_job_admission_preflight(
         enqueue_enabled=safe_enqueue_enabled,
     )
     retry_class = _retry_class(status, structural_reasons)
-    blocked_reasons = _dedupe(structural_reasons + hold_reasons)[:_MAX_BLOCKED_REASONS]
+    blocked_reasons = _dedupe(structural_reasons + hold_reasons)[
+        :_MAX_BLOCKED_REASONS
+    ]
 
     projection = {
         "schema_version": _PROJECTION_SCHEMA_VERSION,
@@ -359,6 +369,11 @@ def _parse_source_lineage(
         invalid_reason="source_lineage_event_kind_invalid",
     )
     reasons = _dedupe(namespace_reasons + source_event_reasons)
+    if lineage_event_kind and not _lineage_shape_has_identity(
+        source_event_kind=lineage_event_kind,
+        shape=shape,
+    ):
+        reasons.append("source_lineage_missing")
     if (
         lineage_namespace
         and expected_namespace
@@ -382,6 +397,26 @@ def _parse_source_lineage(
         "lineage_fingerprint": str(fingerprint),
         "blocked_reasons": [],
     }
+
+
+def _lineage_shape_has_identity(
+    *,
+    source_event_kind: str,
+    shape: Mapping[str, Any],
+) -> bool:
+    """Mirror RelayMEM-M3b source-lineage identity requirements."""
+
+    if shape.get("source_event_id_present") is True:
+        return True
+    run_or_session_present = (
+        shape.get("run_id_present") is True
+        or shape.get("session_id_present") is True
+    )
+    if source_event_kind == "turn":
+        return shape.get("turn_index_present") is True and run_or_session_present
+    if source_event_kind == "session":
+        return run_or_session_present
+    return False
 
 
 def _invalid_lineage(reason: str) -> dict[str, Any]:
@@ -546,7 +581,9 @@ def _contains_forbidden_content_key(value: Any) -> bool:
                 return True
             if _contains_forbidden_content_key(item):
                 return True
-    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+    elif isinstance(value, Sequence) and not isinstance(
+        value, (str, bytes, bytearray)
+    ):
         return any(_contains_forbidden_content_key(item) for item in value)
     return False
 
