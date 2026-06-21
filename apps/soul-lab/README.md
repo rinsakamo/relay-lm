@@ -2,7 +2,7 @@
 
 `apps/soul-lab` is the browser-based local interface for RelayLM character continuity.
 
-The current bounded UI implementation covers UI-A0 through UI-A3:
+The current bounded UI implementation covers UI-A0 through UI-A4:
 
 - TypeScript + React + Vite foundation,
 - Japanese-default message catalogs with English preview catalogs,
@@ -23,9 +23,15 @@ The current bounded UI implementation covers UI-A0 through UI-A3:
 - Soft Stop as the normal communication close boundary,
 - two-step emergency stop as an explicit exception,
 - content-free communication timeline,
-- reserved route for SOUL Intervention.
+- mock-driven Pod / SOUL Intervention workflow,
+- bounded intervention targets and locked protected traits,
+- human-readable candidate summary and SOUL diff projection,
+- one browser-local comparison,
+- Hold and Discard decisions,
+- non-executing Apply and Rollback previews,
+- content-free intervention timeline.
 
-It intentionally does **not** connect to RelayLM runtime APIs, inspect source locations, read selected file contents, create character files, send peer network requests, mutate RelayRUN or RelaySLP, write SOUL or MEM, read credentials, execute TTS, or control an avatar.
+It intentionally does **not** connect to RelayLM runtime APIs, inspect source locations, read selected file contents, create character files, send peer network requests, mutate RelayRUN or RelaySLP, write SOUL or MEM, apply a SOUL candidate, execute rollback, read credentials, execute TTS, or control an avatar.
 
 ## Requirements
 
@@ -47,6 +53,7 @@ Direct routes:
 ```text
 http://127.0.0.1:5173/lab/#/adoption
 http://127.0.0.1:5173/lab/#/communication
+http://127.0.0.1:5173/lab/#/pod
 ```
 
 ## Validation
@@ -60,4 +67,4 @@ The production bundle is written to `apps/soul-lab/dist/` with a `/lab/` asset b
 
 ## Authority boundary
 
-The browser is presentation and interaction only. It must not become the authority for SOUL, MEM, RelayRUN, RelaySLP, peer transport, backend credentials, source inspection, or persistence decisions. Mock actions in these slices update browser-local React state only.
+The browser is presentation and interaction only. It must not become the authority for SOUL, MEM, RelayRUN, RelaySLP, peer transport, intervention apply, rollback, backend credentials, source inspection, or persistence decisions. Mock actions in these slices update browser-local React state only.
