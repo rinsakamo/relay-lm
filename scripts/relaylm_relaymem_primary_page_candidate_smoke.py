@@ -224,6 +224,24 @@ def main() -> int:
     )
     print("ok forged preflight idempotency key fails closed")
 
+    content_bearing_preflight = dict(preflight)
+    content_bearing_operation = dict(preflight["operations"][0])
+    content_bearing_operation["content_included"] = True
+    content_bearing_preflight["operations"] = [content_bearing_operation]
+    content_bearing = build_relaymem_primary_page_candidate_dry_run(
+        preflight_artifact=content_bearing_preflight,
+        source_lineage_artifact=lineage,
+        governed_experience_artifact=experience,
+        enabled=True,
+    )
+    require(content_bearing["page_candidate_count"] == 0, content_bearing)
+    require(
+        "primary_write_preflight_content_included_invalid"
+        in content_bearing["blocked_reasons"],
+        content_bearing,
+    )
+    print("ok content-bearing preflight operations are rejected")
+
     held_candidate = _candidate("system_ops")
     held_lineage = _lineage()
     held = build_relaymem_primary_page_candidate_dry_run(
@@ -274,6 +292,25 @@ def main() -> int:
         summary_text="invalid\0summary",
     )
     require(control["valid"] is False, control)
+    surrogate = build_relaymem_governed_experience_summary(
+        candidate_id=candidate["candidate_id"],
+        source_event_kind="turn",
+        namespace="character-alpha",
+        summary_text="invalid\ud800summary",
+    )
+    require(surrogate["valid"] is False, surrogate)
+    require(
+        "governed_experience_summary_invalid" in surrogate["blocked_reasons"],
+        surrogate,
+    )
+    surrogate_result = build_relaymem_primary_page_candidate_dry_run(
+        preflight_artifact=preflight,
+        source_lineage_artifact=lineage,
+        governed_experience_artifact=surrogate,
+        enabled=True,
+    )
+    require(surrogate_result["page_candidate_count"] == 0, surrogate_result)
+    print("ok surrogate text is rejected before UTF-8 serialization")
     print("ok governed summaries are bounded and control-safe")
 
     return 0
