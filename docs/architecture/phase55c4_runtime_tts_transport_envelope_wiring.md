@@ -52,6 +52,7 @@ Implemented files:
   - verifies dry-run and ready transport-envelope diagnostics
   - verifies no delivery, TTS, audio, avatar, persistence, or external I/O
   - verifies stream-final trace output remains content-free
+  - verifies invalid safe-output observation blocks both handoff and transport emission
 
 ## Runtime node ordering
 
