@@ -204,13 +204,19 @@ def _parse_m3d_projection(
         reasons.append("primary_writer_handoff_projection_content_field_present")
     if strings(value.get("blocked_reasons")):
         reasons.append("primary_writer_handoff_projection_blocked")
-    if value.get("status_counts") != {"ready": 1}:
+    if not _strict_int(value.get("handoff_count"), 1):
+        reasons.append("primary_writer_handoff_projection_handoff_count_invalid")
+    if not _strict_int(value.get("writer_apply_eligible_count"), 1):
+        reasons.append(
+            "primary_writer_handoff_projection_writer_apply_eligible_count_invalid"
+        )
+    if not _count_map(value.get("status_counts"), {"ready": 1}):
         reasons.append("primary_writer_handoff_projection_status_counts_invalid")
 
     handoff_valid = handoff.get("valid") is True
-    if handoff_valid and value.get("target_category_counts") != {
-        handoff["target_category"]: 1
-    }:
+    if handoff_valid and not _count_map(
+        value.get("target_category_counts"), {handoff["target_category"]: 1}
+    ):
         reasons.append("primary_writer_handoff_projection_category_counts_invalid")
 
     items = value.get("handoffs")
@@ -230,6 +236,14 @@ def _parse_m3d_projection(
                 "primary_writer_handoff_projection_item_fields_mismatch",
             )
         )
+        if not _strict_int(items[0].get("operation_index"), 0):
+            reasons.append(
+                "primary_writer_handoff_projection_item_operation_index_invalid"
+            )
+        if handoff_valid and not _strict_int(
+            items[0].get("page_bytes"), int(handoff["page_bytes"])
+        ):
+            reasons.append("primary_writer_handoff_projection_item_page_bytes_invalid")
         if handoff_valid:
             reasons.extend(
                 exact(
@@ -254,3 +268,13 @@ def _parse_m3d_projection(
             )
     reasons = dedupe(reasons)
     return invalid(*reasons) if reasons else {"valid": True, "blocked_reasons": []}
+
+
+def _strict_int(value: object, expected: int) -> bool:
+    return type(value) is int and value == expected
+
+
+def _count_map(value: object, expected: Mapping[str, int]) -> bool:
+    if not isinstance(value, Mapping) or set(value.keys()) != set(expected.keys()):
+        return False
+    return all(_strict_int(value.get(key), count) for key, count in expected.items())
