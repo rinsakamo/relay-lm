@@ -7,12 +7,13 @@ from tempfile import TemporaryDirectory
 import yaml
 from fastapi.testclient import TestClient
 
+from relaylm.config import RelayLMConfig
 from relaylm.soul_lab_app import create_app
 from relaylm.soul_lab_management import (
     build_lab_characters_projection,
     build_lab_settings_projection,
+    is_loopback_host,
 )
-from relaylm.config import RelayLMConfig
 
 
 def _raw_config() -> dict[str, object]:
@@ -72,6 +73,15 @@ def _assert_secret_free(payload: object) -> None:
 
 
 def main() -> None:
+    assert is_loopback_host("127.0.0.1") is True
+    assert is_loopback_host("127.0.0.2") is True
+    assert is_loopback_host("::1") is True
+    assert is_loopback_host("[::1]") is True
+    assert is_loopback_host("localhost") is True
+    assert is_loopback_host("0.0.0.0") is False
+    assert is_loopback_host("::") is False
+    assert is_loopback_host("relaylm.local") is False
+
     raw = _raw_config()
     config = RelayLMConfig.model_validate(raw)
 
@@ -119,7 +129,8 @@ def main() -> None:
     _assert_secret_free(characters)
 
     with TemporaryDirectory() as directory:
-        config_path = Path(directory) / "config.yaml"
+        directory_path = Path(directory)
+        config_path = directory_path / "config.yaml"
         config_path.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
         client = TestClient(create_app(str(config_path)))
 
@@ -140,6 +151,31 @@ def main() -> None:
 
         _assert_secret_free(settings_response.json())
         _assert_secret_free(characters_response.json())
+
+        remote_raw = _raw_config()
+        remote_raw["listen"] = {"host": "0.0.0.0", "port": 8090}
+        remote_config = RelayLMConfig.model_validate(remote_raw)
+        remote_settings = build_lab_settings_projection(remote_config).model_dump(mode="json")
+        assert remote_settings["listen"]["loopback_only"] is False
+
+        remote_config_path = directory_path / "remote-config.yaml"
+        remote_config_path.write_text(
+            yaml.safe_dump(remote_raw, sort_keys=False),
+            encoding="utf-8",
+        )
+        remote_client = TestClient(create_app(str(remote_config_path)))
+        remote_settings_response = remote_client.get("/lab/api/settings")
+        remote_characters_response = remote_client.get("/lab/api/characters")
+        assert remote_settings_response.status_code == 403
+        assert remote_characters_response.status_code == 403
+        assert remote_settings_response.json() == {
+            "detail": "lab_management_requires_loopback_listen"
+        }
+        assert remote_characters_response.json() == {
+            "detail": "lab_management_requires_loopback_listen"
+        }
+        assert remote_client.get("/healthz").json() == {"status": "ok"}
+        assert remote_client.get("/v1/models").status_code == 200
 
     print("SOUL Lab management projection smoke passed")
 
