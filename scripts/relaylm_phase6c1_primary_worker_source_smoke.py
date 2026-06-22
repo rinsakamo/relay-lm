@@ -285,6 +285,9 @@ def main() -> int:
     bad_experience = source_payload(record)
     bad_experience["governed_experience_artifact"]["summary_chars"] = True
     assert_reason(build(bad_experience, record, RelayMEMSLPPrimaryWorkerSourceScope()), "governed_experience_summary_chars_mismatch")
+    missing_title = source_payload(record)
+    missing_title["governed_experience_artifact"]["title"] = None
+    assert_reason(build(missing_title, record, RelayMEMSLPPrimaryWorkerSourceScope()), "governed_experience_title_invalid")
     bad_experience_namespace = source_payload(record)
     bad_experience_namespace["governed_experience_artifact"]["namespace"] = "character:other:primary"
     assert_reason(build(bad_experience_namespace, record, RelayMEMSLPPrimaryWorkerSourceScope()), "worker_source_experience_namespace_mismatch")
