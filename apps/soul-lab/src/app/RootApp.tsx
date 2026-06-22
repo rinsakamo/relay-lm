@@ -5,7 +5,7 @@ import { AdoptionPage } from "../features/adoption/AdoptionPage";
 import { CommunicationPage } from "../features/communication/CommunicationPage";
 import { MemoryInspectorPage } from "../features/memory-inspector/MemoryInspectorPage";
 import { PodPage } from "../features/pod/PodPage";
-import { SettingsPage } from "../features/settings/SettingsPage";
+import { ConnectedSettingsPage } from "../features/settings/ConnectedSettingsPage";
 import { translate, type MessageKey } from "../locales/messages";
 import { mockCharacters } from "../mocks/lab";
 import { App } from "./App";
@@ -25,7 +25,7 @@ const footerLabels: Record<LabRoute, string> = {
   communication: "UI-A3 · Character Communication",
   pod: "UI-A4 · Pod / SOUL Intervention",
   observation: "UI-A5 · Memory Inspector",
-  settings: "UI-A6 · Shared Shell / Settings",
+  settings: "UI-A6 / UI-A7 · Shared Shell / Management Projection",
 };
 
 function isLabRoute(value: string): value is LabRoute {
@@ -280,7 +280,7 @@ export function RootApp() {
             />
           )}
           {route === "settings" && (
-            <SettingsPage
+            <ConnectedSettingsPage
               language={language}
               theme={theme}
               activeCharacterId={activeCharacter.characterId}
