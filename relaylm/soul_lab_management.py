@@ -44,14 +44,6 @@ class LabRuntimeComponentProjection(BaseModel):
     network_probe_performed: bool = False
 
 
-class LabModelRouteProjection(BaseModel):
-    route_model: str
-    backend_id: str
-    backend_model: str | None = None
-    character_id: str | None = None
-    mode: str
-
-
 class LabSettingsProjection(BaseModel):
     schema_version: Literal["relaylm.lab.settings.v0"] = "relaylm.lab.settings.v0"
     projection_kind: Literal["read_only"] = "read_only"
@@ -61,7 +53,6 @@ class LabSettingsProjection(BaseModel):
     network_probe_performed: bool = False
     listen: LabListenProjection
     runtime_components: list[LabRuntimeComponentProjection]
-    model_routes: list[LabModelRouteProjection]
     credential_boundary: LabCredentialBoundaryProjection = Field(
         default_factory=LabCredentialBoundaryProjection
     )
@@ -145,17 +136,6 @@ def build_lab_settings_projection(config: RelayLMConfig) -> LabSettingsProjectio
         ]
     )
 
-    model_routes = [
-        LabModelRouteProjection(
-            route_model=route_model,
-            backend_id=route.backend,
-            backend_model=route.backend_model,
-            character_id=route.character_id,
-            mode=route.mode or config.mode,
-        )
-        for route_model, route in sorted(config.model_routes.items())
-    ]
-
     return LabSettingsProjection(
         listen=LabListenProjection(
             host=config.listen.host,
@@ -163,7 +143,6 @@ def build_lab_settings_projection(config: RelayLMConfig) -> LabSettingsProjectio
             loopback_only=is_loopback_host(config.listen.host),
         ),
         runtime_components=runtime_components,
-        model_routes=model_routes,
     )
 
 
