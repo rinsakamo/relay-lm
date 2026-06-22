@@ -20,7 +20,7 @@ export interface LabSettingsProjection {
   listen: {
     host: string;
     port: number;
-    loopback_only: boolean;
+    loopback_only: true;
   };
   runtime_components: LabRuntimeComponentProjection[];
   credential_boundary: {
@@ -113,7 +113,7 @@ function parseSettingsProjection(value: unknown): LabSettingsProjection | null {
     !isRecord(value.listen) ||
     typeof value.listen.host !== "string" ||
     typeof value.listen.port !== "number" ||
-    typeof value.listen.loopback_only !== "boolean" ||
+    value.listen.loopback_only !== true ||
     !Array.isArray(value.runtime_components) ||
     !isRecord(value.credential_boundary) ||
     value.credential_boundary.owner !== "relaylm_server" ||
@@ -144,7 +144,7 @@ function parseSettingsProjection(value: unknown): LabSettingsProjection | null {
     listen: {
       host: value.listen.host,
       port: value.listen.port,
-      loopback_only: value.listen.loopback_only,
+      loopback_only: true,
     },
     runtime_components: runtimeComponents as LabRuntimeComponentProjection[],
     credential_boundary: {
