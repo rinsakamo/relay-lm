@@ -27,7 +27,7 @@ RelayLM documentation is AI-first: documents should be understandable when retri
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing
 - [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md) — current Core orchestration track, complete through B2 durable enqueue
 - [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md) — independent memory track, Primary MEM path complete through M3g apply
-- [SOUL Lab UI-A7 read-only management projection](architecture/soul_lab_ui_a7_management_projection_handoff.md) — current UI track through secret-free Lab API reads and explicit mock fallback
+- [SOUL Lab UI-A7 read-only management projection](architecture/soul_lab_ui_a7_management_projection_handoff.md) — current UI track through loopback-only secret-free Lab API reads and explicit mock fallback
 - [Architecture docs](architecture/README.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Contract docs](contracts/README.md)
@@ -45,7 +45,7 @@ Use [Project Status](PROJECT_STATUS.md) for the current developer-facing view an
 
 Phase 5.5 Stream Unpack / TTS handoff preparation is complete for RelayLM Core. Concrete TTS execution, audio queueing, adapter delivery, Live2D/avatar mapping, motion, and lip-sync remain SOUL Lab Runtime MVP responsibilities.
 
-Current work is split across independent tracks. RelayLM Core is complete through Phase 6-B2 atomic durable enqueue; B3 claim/lease/retry/terminal helpers are next. RelayMEM has implemented its Primary MEM path through M3g index/log reconciliation apply. SOUL Lab UI is implemented through UI-A7 read-only management projections. Peer transport, management mutations, persisted memory operations, static UI serving, and runtime adapter execution remain separate.
+Current work is split across independent tracks. RelayLM Core is complete through Phase 6-B2 atomic durable enqueue; B3 claim/lease/retry/terminal helpers are next. RelayMEM has implemented its Primary MEM path through M3g index/log reconciliation apply. SOUL Lab UI is implemented through UI-A7 loopback-only read management projections. Peer transport, management mutations, persisted memory operations, static UI serving, and runtime adapter execution remain separate.
 
 Use [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) before treating proposed schemas, future execution gates, or historical compatibility artifacts as current behavior.
 
