@@ -2,7 +2,7 @@
 
 `apps/soul-lab` is the browser-based local interface for RelayLM character continuity.
 
-The current bounded UI implementation covers UI-A0 through UI-A6:
+The current bounded UI implementation covers UI-A0 through UI-A7:
 
 - TypeScript + React + Vite foundation,
 - Japanese-default message catalogs with English preview catalogs,
@@ -37,22 +37,35 @@ The current bounded UI implementation covers UI-A0 through UI-A6:
 - browser-local Discard preview for an unpromoted held candidate,
 - explicit destructive-preview confirmation for formed-memory Forget,
 - content-free memory-inspection timeline,
-- mock Settings / Runtime Boundary route,
-- read-only character registry projection,
-- RelayLM, local model, TTS, and avatar endpoint / capability projections,
-- browser-local external OpenAI-compatible peer configuration preview,
-- explicit server-owned credential boundary,
+- shared Settings / Runtime Boundary route,
+- read-only `GET /lab/api/settings` runtime-config projection,
+- read-only `GET /lab/api/characters` character-registry projection,
+- strict browser-side schema validation before server data is displayed,
+- explicit loading, server-owned, and mock-fallback source states,
+- server-side endpoint redaction and credential exclusion,
+- RelayLM, backend, TTS, and avatar endpoint / capability projections,
 - content-free diagnostics summary,
+- browser-local external OpenAI-compatible peer configuration preview only in mock fallback,
 - hash-route enforcement while Communication, Pod, or Memory Inspector holds the navigation lock.
 
-It intentionally does **not** connect to RelayLM runtime APIs, inspect source locations, read selected file contents, create character files, send peer network requests, mutate RelayRUN or RelaySLP, write SOUL or MEM, apply a SOUL candidate, execute rollback, execute a memory operation, read or store credentials, validate or write runtime configuration, probe endpoints, start processes, execute TTS, or control an avatar.
+UI-A7 connects only to the two read-only Lab management endpoints. It intentionally does **not** inspect source locations, read source contents, create character files, write settings, test backend connectivity, send peer communication requests, mutate RelayRUN or RelaySLP, write SOUL or MEM, apply a SOUL candidate, execute rollback, execute a memory operation, read or store credentials, probe endpoints, start processes, execute TTS, or control an avatar.
 
 ## Requirements
 
 - Node.js 22.12 or newer
 - npm
+- RelayLM running on `127.0.0.1:8090` for the connected UI-A7 projection
 
 ## Development
+
+Start RelayLM from the repository root with a valid config:
+
+```bash
+source .venv/bin/activate
+relaylm --config config.yaml
+```
+
+Then start Vite:
 
 ```bash
 cd apps/soul-lab
@@ -60,7 +73,7 @@ npm install
 npm run dev
 ```
 
-Vite listens on `http://127.0.0.1:5173/lab/`.
+Vite listens on `http://127.0.0.1:5173/lab/` and proxies `/lab/api/*` reads to `http://127.0.0.1:8090`.
 
 Direct routes:
 
@@ -73,6 +86,8 @@ http://127.0.0.1:5173/lab/#/pod
 http://127.0.0.1:5173/lab/#/settings
 ```
 
+When both Lab API responses pass exact schema validation, Settings shows the server-owned projection. If either request fails or returns an invalid schema, Settings explicitly labels and displays the UI-A6 browser-local mock fallback.
+
 ## Validation
 
 ```bash
@@ -80,8 +95,16 @@ npm run typecheck
 npm run build
 ```
 
-The production bundle is written to `apps/soul-lab/dist/` with a `/lab/` asset base. A later RelayLM runtime slice will serve that bundle and provide dedicated `/lab/api/*` management endpoints.
+The server projection smoke is run from the repository root:
+
+```bash
+python scripts/relaylm_soul_lab_management_projection_smoke.py
+```
+
+The production bundle is written to `apps/soul-lab/dist/` with a `/lab/` asset base. Serving that bundle from RelayLM remains a later bounded slice; UI-A7 adds the read-only management APIs and development proxy only.
 
 ## Authority boundary
 
-The browser is presentation and interaction only. It must not become the authority for SOUL, MEM, RelayRUN, RelaySLP, peer transport, intervention apply, rollback, memory correction, forgetting, held-candidate discard, pinning, merging, runtime configuration, persistent character registry, authoritative connection state, process lifecycle, backend credentials, source inspection, or persistence decisions. Mock actions in these slices update browser-local React state only. Theme and the selected mock character may use existing non-secret display-preference storage; credentials and configuration drafts must not use `localStorage`.
+The browser is presentation and interaction only. It must not become the authority for SOUL, MEM, RelayRUN, RelaySLP, peer transport, intervention apply, rollback, memory correction, forgetting, held-candidate discard, pinning, merging, runtime configuration, persistent character registry, authoritative connection state, process lifecycle, backend credentials, source inspection, or persistence decisions.
+
+The server projections contain configuration metadata and booleans only. They exclude API keys, URL credentials, URL query/fragment data, persona source paths, persona source contents, memory source paths, trace paths, raw traces, prompt text, and conversation text. Theme and the selected mock character may use existing non-secret display-preference storage; credentials and configuration drafts must not use `localStorage`.
