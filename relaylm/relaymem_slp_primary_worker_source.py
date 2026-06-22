@@ -679,7 +679,7 @@ def _parse_governed_experience(
     if value.get("source_event_kind") not in ALLOWED_EVENT_KINDS:
         errors.append("governed_experience_source_event_kind_invalid")
     title = value.get("title")
-    if title is not None and (
+    if (
         type(title) is not str
         or not title
         or len(title) > MAX_TITLE_CHARS
