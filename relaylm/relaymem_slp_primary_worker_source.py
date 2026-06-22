@@ -129,7 +129,7 @@ class RelayMEMSLPPrimaryWorkerSourceScope:
         return True
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, repr=False)
 class RelayMEMSLPPrimaryWorkerSource:
     """Exact immutable runtime-private content-bearing C1-0 source bundle."""
 
@@ -244,7 +244,7 @@ class RelayMEMSLPPrimaryWorkerSourceBuildResult:
     enabled: bool
     dry_run_only: bool
     apply_enabled: bool
-    source: RelayMEMSLPPrimaryWorkerSource | None
+    source: RelayMEMSLPPrimaryWorkerSource | None = field(repr=False)
     source_correlation_valid: bool
     blocked_reasons: tuple[str, ...]
 
