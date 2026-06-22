@@ -8,6 +8,7 @@ relaylm_update_trigger:
   - RelayMEM or RelaySLP producer consumer boundary changes
   - Phase 6 deferred orchestration slice lands
   - durable MEM persistence apply state changes
+  - ordinary-runtime worker integration changes
 relaylm_not_authoritative_for:
   - repository-wide phase sequencing
   - exact RelayMEM or RelaySLP schemas
@@ -23,6 +24,7 @@ relaylm_related_authority:
   - relaymem_m3e_atomic_primary_page_writer.md
   - relaymem_m3f_primary_index_log_reconciliation_preflight.md
   - relaymem_m3g_primary_index_log_reconciliation_apply.md
+  - relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_execution_design.md
   - memory_lifecycle_design.md
@@ -31,95 +33,178 @@ relaylm_related_authority:
 ---
 # RelayMEM / RelaySLP Current / Target Boundary
 
-## Current implemented
+## Current implemented boundary
 
-Current RelayMEM provides `relaymem_retrieval.v0`, bounded candidate/snippet planning, selected gated context-injection helpers, typed content-free trace projection, read-only durable-memory behavior, Primary/Secondary store-layout compatibility diagnostics, RelayMEM-M2 retrieval-priority helpers, the helper-only RelayMEM-M3a Primary MEM formation candidate boundary, the helper-only RelayMEM-M3b source-lineage/write-preflight boundary, the M3c Primary MEM page-candidate boundary, the M3d Primary writer-handoff preflight, the M3e atomic Primary MEM page writer, the M3f Primary index/log reconciliation preflight, and the M3g gated index/log reconciliation apply helper.
+### RelayMEM retrieval
 
-RelayMEM-M3b validates content-free source lineage, derives bounded Primary MEM write-preflight operations and memory-write idempotency keys, and blocks unsupported or non-autonomous apply classes. M3c derives the deterministic page candidate. M3d revalidates the exact candidate and store target without mutation, then emits a runtime-private writer handoff plus content-free projection.
+Current RelayMEM provides bounded read-only store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, and gated RelayCTX injection.
 
-RelayMEM-M3e is a default-off, dry-run-first direct helper that may atomically publish one exact M3d-selected Primary MEM Markdown page when all explicit apply gates pass. It revalidates path, lineage, digest, page shape, and memory-write idempotency immediately before secure no-clobber publication. M3e does not update the MEM index or log, invoke RelaySLP, wire request runtime, expose a Lab API, mutate RelaySOUL, or change visible response delivery.
+Current retrieval remains a usable foundation rather than proof of newly formed runtime memory. Existing durable pages can be retrieved, but the ordinary request runtime does not yet create new Primary MEM through a Phase 6 worker.
 
-RelayMEM-M3f is a default-off, read-only, dry-run-only helper that consumes one exact eligible M3e receipt, securely revalidates the published page and bounded current index/log state, and derives a deterministic ordered reconciliation plan. It distinguishes exact no-op, repairable index-only/log-only states, page mismatch, and index/log conflict without writing any file.
+### RelayMEM Primary formation and persistence
 
-RelayMEM-M3g consumes one exact M3f plan, revalidates page/index/log identity immediately before mutation, and applies required control-file updates with index-before-log ordering, fsync, atomic replace, and retryable `index_applied_log_pending` handling. It remains separate from Phase 6 queue and worker orchestration.
-
-Phase 6-A1 provides the helper-only `relaymem.slp_job_admission_preflight.v0` boundary. It validates trigger, processing stage, correlation, namespace, source lineage, response terminal state, and persistence-policy status without queue I/O or memory writes.
-
-Phase 6-A2 provides the helper-only response-finalization handoff. It consumes the exact A1 private result for a finalized `turn_end` response and may create one runtime-private `relaymem.slp_enqueue_candidate.v0` artifact. The candidate is metadata-only, dry-run-only, and is omitted from public diagnostics.
-
-Phase 6-B0 defines the durable queue contract: `relaymem.slp_durable_job.v0`, dispatch-idempotency ownership and derivation inputs, atomic create-if-absent enqueue semantics, queue states, claim/lease fencing, stale-lease and restart behavior, corruption handling, and the content-free `relaymem.slp_queue_status_projection.v0` boundary.
-
-Phase 6-B1 implements the first exact consumer of that contract. It revalidates the exact runtime-private A2 result, source projection, and enqueue candidate; derives deterministic versioned dispatch and separately domain-separated job identities; initializes one exact queued durable-job candidate; and emits only the allowlisted content-free queue projection. B1 is default-off, read-only, dry-run-only, and performs no queue I/O.
-
-Phase 6-B2 implements gated atomic durable enqueue. It consumes only the exact B1 result and candidate, securely revalidates canonical identity and initial state, assigns durable timestamps for new records, publishes through create-if-absent semantics, and classifies `enqueued_new`, `duplicate_existing`, `blocked_collision`, `blocked_corrupt`, and `write_failed` without worker invocation.
-
-Current implementation still does not provide scheduled/background execution, worker claim/lease state, worker invocation, or Secondary MEM consolidation runtime. B2 durable queue records and M3g index/log reconciliation apply now exist as separate direct-helper boundaries.
-
-## Current compatibility
-
-- Retrieval still consumes a historical RelayREF-shaped input from the RelayINT-facing wrapper.
-- Current query preparation may use request messages.
-- `relaymem.retrieval_runtime.v1`, `relaymem.retrieval_projection.v1`, and `relaymem.slp_projection.v1` do not have current producers.
-- RelayMEM-M3a through M3d artifacts are helper-only and are not request-runtime RelaySLP jobs.
-- RelayMEM-M3e may apply one Primary MEM page only through explicit direct-helper gates; it is not request-runtime or worker wired and does not reconcile index/log state.
-- RelayMEM-M3f may only read/revalidate and derive a private reconciliation plan; it cannot write or create index/log files.
-- A1/A2 artifacts are helper-only orchestration artifacts and are not durable queue records.
-- B1 creates only a runtime-private dry-run durable-job candidate and content-free projection. B2 separately persists exact B1 records behind explicit gates and classifies duplicate/collision/corruption without invoking a worker.
-- RelayRUN checkpoint and retry artifacts do not currently provide a general SLP queue, worker resume, or retry executor.
-
-## Phase 6-A and B boundary
-
-[Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md) defines the RelayLM Core implementation sequence.
-
-The implemented A1/A2/B1/B2 sequence and B0 design handoff are:
+Current direct/helper boundaries include:
 
 ```text
-completed finalized turn event
-  -> A1 validate trigger, processing stage, correlation, namespace, source lineage, and terminal status
-  -> admitted / held / blocked / skipped
-  -> A2 create one runtime-private dry-run enqueue candidate
-  -> B1 derive deterministic dispatch/job identity and one queued durable-job candidate
-  -> B2 atomically create or classify the durable queue record
-  -> B3 claim/lease/retry/terminal helpers remain next
+M3a formation candidate
+M3b source lineage and write preflight
+M3c deterministic Primary page candidate
+M3d writer handoff and store-target preflight
+M3e atomic no-clobber page publication
+M3f read-only index/log reconciliation plan
+M3g gated index-before-log reconciliation apply
+M3h read-only receipt/store recovery audit
 ```
 
-A1/A2/B1 own deferred orchestration metadata and dispatch preparation only. They consume rather than duplicate RelayMEM-M3b source-lineage and memory-write eligibility semantics. They do not invoke or replace the separately implemented M3c/M3d/M3e/M3f Primary MEM page-candidate, writer-handoff, atomic page-write, or reconciliation-preflight boundaries, and they do not own later RelayMEM-M4 consolidation semantics.
+M3e can publish one exact Primary page. M3g can reconcile the bounded index/log state with retryable partial progress. M3h can inspect the M3g receipt and current store to classify no recovery, retryable reconciliation, manual confirmation, or future journal-aware recovery candidacy.
 
-B0 assigns dispatch identity, durable queue state, duplicate prevention, claim/lease fencing, and content-free queue status to Phase 6 / RelayRUN orchestration. B1 implements deterministic dispatch/job identity and initial private record-candidate preparation. B2 consumes only that exact B1 result and performs secure atomic create-if-absent persistence plus duplicate/collision/corruption classification. Neither B1 nor B2 reconstructs private artifacts from public projection, trace, frontend metadata, or visible response text.
+These boundaries are not request-runtime or worker wired. They are not evidence that ordinary turn-end memory formation is active.
+
+### Phase 6 deferred orchestration
+
+Current Phase 6 provides:
+
+- A1 helper-only job admission,
+- A2 helper-only finalized-turn handoff,
+- B0 durable queue/state-machine contract,
+- B1 helper-only deterministic dispatch/job-record candidate,
+- B2 direct-helper atomic durable enqueue.
+
+The implemented sequence is:
+
+```text
+exact finalized-turn metadata
+  -> A1 admission
+  -> A2 runtime-private enqueue candidate
+  -> B1 dispatch identity and queued durable-record candidate
+  -> B2 create or classify durable queue record
+```
+
+Current Phase 6 still does not provide:
+
+- automatic request-finalization invocation,
+- claim or lease transitions,
+- retry-release or stale-lease recovery,
+- scheduler/background execution,
+- worker invocation,
+- RelayMEM M3a-M3h execution,
+- next-turn recall validation.
+
+## Current compatibility constraints
+
+- Retrieval may still consume historical compatibility-shaped inputs through existing wrappers.
+- Current query preparation may use request messages.
+- Target `v1` retrieval and SLP projections do not all have current producers.
+- A1/A2/B1/B2 accept exact runtime-private artifacts and must not reconstruct them from public projection, frontend metadata, or visible response text.
+- B2 durable queue records and M3e/M3g durable memory writes are separate explicit apply boundaries.
+- RelayRUN checkpoint and recovery artifacts do not yet provide a general SLP worker resume executor.
+- M3h is read-only evidence and cannot authorize repair or replay.
+
+## Ownership boundary
+
+### RelayMEM owns
+
+- memory candidate meaning,
+- safety scope and persistence eligibility,
+- source lineage,
+- memory-write idempotency,
+- deterministic page content,
+- page/index/log apply semantics,
+- reconciliation and recovery classification,
+- Secondary MEM consolidation meaning.
+
+### Phase 6 / RelayRUN owns
+
+- deferred dispatch admission,
+- response-finalization handoff,
+- dispatch identity,
+- queue record lifecycle,
+- claim/lease/retry/terminal control,
+- worker invocation and stage correlation,
+- restart and checkpoint integration.
+
+### RelaySLP and SOUL
+
+RelaySLP may read SOUL as a protected anchor and may later emit a separately governed RelaySOUL proposal candidate. RelaySLP must never directly mutate SOUL.
+
+## Idempotency boundary
 
 Dispatch idempotency and memory-write idempotency remain separate:
 
-- Phase 6 / RelayRUN orchestration prevents duplicate job enqueue, claim, or retry execution.
-- RelayMEM persistence preflight and M3e apply prevent duplicate durable Primary MEM page publication; M3f independently revalidates existing page/index/log identity before proposing reconciliation.
+```text
+Phase 6 dispatch idempotency
+  prevents duplicate queue scheduling and execution
 
-A1, A2, and B1 remain helper-only, default-off, dry-run-first, fail-closed, and free of durable queue I/O. B2 is the separate default-off, dry-run-first durable queue I/O boundary and still performs no worker execution, request-runtime wiring, or MEM persistence. RelayMEM-M3e/M3g remain separate RelayMEM persistence boundaries and are not evidence that a Phase 6 worker exists.
+RelayMEM memory-write idempotency
+  prevents duplicate durable memory application
+```
 
-## Target architecture
+A worker retry may be valid after a queue lease failure while a previously completed memory write remains deduplicated. Public projection must not expose either private identity domain.
 
-The detailed RelayMEM and RelaySLP documents define the target local-first store, typed relations, lint, safety scopes, deferred candidate compiler, and gated persistence updates. Atomic Primary MEM page publication has landed as M3e, deterministic index/log reconciliation planning as M3f, and gated index-before-log reconciliation apply as M3g. Secondary MEM consolidation and broader page/index/log transaction recovery remain target design until their bounded producers, consumers, apply/skip/block contracts, projections, and smoke coverage land.
+## Active migration: Primary MEM end-to-end integration
 
-[Memory Lifecycle Design](memory_lifecycle_design.md) owns the target semantic boundary between RelayCTX short-term memory, governed experience evidence, autonomous ordinary MEM formation, Primary MEM, Secondary MEM consolidation, and SOUL Lab observation/correction operations.
+The next migration is not another independent persistence helper. It is the ordinary runtime path:
 
-Ordinary MEM formation is target-autonomous by default. User approval is not the normal path for every memory candidate; review and approval are exception paths for sensitive, destructive, identity-level, low-confidence, contradictory, cross-namespace, or SOUL-affecting changes.
+```text
+finalized ordinary turn
+  -> request-runtime A1/A2/B1/B2
+  -> B3 queue claim/lease/retry lifecycle
+  -> worker invokes M3a-M3h
+  -> verified durable Primary MEM
+  -> later RelayMEM retrieval
+  -> RelayCTX injection
+  -> response uses formed memory
+```
 
-RelaySLP may read SOUL as a protected anchor and may emit a separately governed RelaySOUL proposal candidate, but it must never directly mutate SOUL.
+### Step 1: Phase 6-B3
 
-## Required migration
+Add bounded claim, lease, retry-release, stale-recovery, and terminal-state helpers over exact B2 records. B3 remains control-only and does not execute memory work.
 
-The next bounded RelayLM Core implementation is Phase 6-B3: add claim, lease, retry-release, stale-recovery, and terminal-state helpers over strict B2 records without worker execution.
+### Step 2: request-runtime enqueue wiring
 
-RelayMEM-M3g is complete as the independent index/log reconciliation apply boundary. Secondary MEM consolidation and any later RelayMEM-M4 work remain separate from the Phase 6 dispatch queue and worker sequence.
+Invoke A1/A2/B1/B2 after ordinary managed response finalization without delaying or invalidating the visible response.
 
-Later Phase 6 B3 slices must add claim/lease/stale-lease/terminal-state helpers and content-free status projection without taking over RelayMEM memory meaning or memory-write idempotency. Worker execution, broader Phase 6 persistence reconciliation, RelayRUN retry/checkpoint integration, RelaySOUL proposal handoff, and SOUL Lab memory-operation UI remain separate later work.
+### Step 3: bounded Primary MEM worker
 
-Do not require the full migration to land atomically. Each slice must preserve:
+Claim one eligible job and invoke existing M3a-M3h boundaries in order. Do not duplicate memory semantics inside the worker.
 
-- request-runtime non-blocking behavior,
-- default-off and dry-run-first gates,
-- content-free public diagnostics,
-- protected content-bearing memory/SLP domains,
+### Step 4: next-turn recall
+
+Verify that the newly durable memory is discovered through current retrieval and injected through RelayCTX for the correct character and namespace only.
+
+### Step 5: SOUL Lab observation
+
+Expose real latest-run, formed, held, blocked, and used-memory read projections through server-owned `/lab/api/*` routes. The browser remains non-authoritative.
+
+## Target after the active migration
+
+After the Primary MEM loop is proven, later target work includes:
+
+- Secondary MEM consolidation,
+- broader restart/retry and checkpoint integration,
+- real correction/forget/pin/merge memory operations,
+- RelaySOUL proposal handoff and separately governed apply,
+- broader page/index/log recovery only when M3h operational evidence requires it.
+
+Secondary MEM and SOUL execution are not prerequisites for proving the Primary MEM loop.
+
+## Preserved invariants
+
+Every migration step must preserve:
+
+- visible response delivery does not wait for deferred processing,
+- SLP failure does not invalidate an already valid response,
+- default-off and dry-run-first rollout where applicable,
 - fail-closed namespace, lineage, policy, and schema validation,
+- protected content-bearing memory/SLP domains,
+- content-free generic trace, public errors, and status projections,
+- autonomous ordinary `free_to_update` memory only when RelayMEM gates pass,
+- held or blocked handling for sensitive, contradictory, destructive, cross-namespace, or SOUL-affecting changes,
 - separation between dispatch and memory-write idempotency,
 - no direct RelaySOUL mutation.
 
-See [Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md), [Phase 6-A1 RelaySLP Job Admission Contract](phase6a1_relayslp_job_admission_contract.md), [Phase 6-A2 RelaySLP Response-Finalization Handoff Contract](phase6a2_relayslp_response_handoff_contract.md), [Phase 6-B0 RelaySLP Durable Queue Contract](phase6b0_relayslp_durable_queue_contract.md), [Phase 6-B1 RelaySLP Dispatch Preflight](phase6b1_relayslp_dispatch_preflight.md), [Phase 6-B2 RelaySLP Atomic Durable Enqueue](phase6b2_relayslp_atomic_durable_enqueue.md), [RelayMEM-M3d Primary Writer Handoff Preflight](relaymem_m3d_primary_writer_handoff.md), [RelayMEM-M3e Atomic Primary MEM Page Writer](relaymem_m3e_atomic_primary_page_writer.md), [RelayMEM-M3f Primary Index/Log Reconciliation Preflight](relaymem_m3f_primary_index_log_reconciliation_preflight.md), [RelayMEM-M3g Primary Index/Log Reconciliation Apply](relaymem_m3g_primary_index_log_reconciliation_apply.md), [Memory Lifecycle Design](memory_lifecycle_design.md), [RelayMEM MVP Design](relaymem_mvp_design.md), [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md), [RelayMEM Retrieval Execution Design](relaymem_retrieval_execution_design.md), and [RelayMEM SLP Execution Design](relaymem_slp_execution_design.md).
+## Completion interpretation
+
+M3a-M3h completion means the Primary MEM primitives exist. B2 completion means a durable queue record can be created. Neither means the memory feature is end to end.
+
+The active migration is complete only when an ordinary finalized turn can enqueue work, a worker can safely produce verified Primary MEM, and a later ordinary turn can retrieve and use it within the correct scope.
