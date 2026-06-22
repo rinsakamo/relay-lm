@@ -41,6 +41,7 @@ def main() -> int:
         "Current B3 cannot generate `dead_letter`",
         "execute_relaymem_primary_pipeline",
         "C1-5 restart-complete protected source persistence",
+        "no automatic retry for corruption",
     )
 
     require(
@@ -55,10 +56,9 @@ def main() -> int:
 
     forbid(
         text,
-        "reuse the dispatch key as the memory-write key",
-        "reconstruct memory content from trace",
-        "automatic retry for corruption",
-        "RelaySLP directly mutates RelaySOUL",
+        "The worker reuses the dispatch key as the memory-write key.",
+        "The worker reconstructs memory content from trace.",
+        "RelaySLP directly mutates RelaySOUL.",
     )
 
     print("RelayLM Phase 6-C1 worker contract smoke passed.")
