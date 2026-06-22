@@ -1,0 +1,67 @@
+.management-projection-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: 0.95rem;
+  background: var(--surface-muted);
+}
+
+.management-projection-banner > div {
+  min-width: 0;
+}
+
+.management-projection-banner strong,
+.management-projection-banner span {
+  display: block;
+}
+
+.management-projection-banner strong {
+  margin-top: 0.2rem;
+  font-size: 0.9rem;
+}
+
+.management-projection-banner span {
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.management-projection-server {
+  border-color: color-mix(in srgb, var(--success) 36%, var(--border));
+}
+
+.management-projection-fallback {
+  border-color: color-mix(in srgb, var(--warning) 40%, var(--border));
+}
+
+.management-projection-loading {
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+.settings-character-card small {
+  overflow-wrap: anywhere;
+}
+
+.settings-empty-state {
+  margin: 0;
+  padding: 1rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 0.8rem;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+}
+
+@media (max-width: 720px) {
+  .management-projection-banner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .management-projection-banner .button {
+    width: 100%;
+  }
+}
