@@ -80,6 +80,14 @@ SOUL Lab Runtime:
   TTS/audio/avatar adapter execution: planned later
 ```
 
+### Compatibility status anchors
+
+Phase 6-B1 dry-run job-record and dispatch-idempotency preflight helper: complete.
+
+Phase 6-B1: job-record and dispatch-idempotency preflight — complete.
+
+The next RelayLM Core boundary is Phase 6-B3. That boundary is the last queue-only prerequisite before request-runtime enqueue wiring and worker execution.
+
 ## Active priority: Integration Milestone I1
 
 ### Primary MEM end-to-end runtime loop
