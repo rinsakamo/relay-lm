@@ -53,36 +53,9 @@ on:
       - ".github/workflows/relaymem-slp-queue-state-smoke.yml"
 
 permissions:
-  contents: write
-  pull-requests: read
+  contents: read
 
 jobs:
-  apply-final-review-fix:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Apply final B3 projection review fix
-        run: python scripts/relaylm_phase6b3_final_review_fix.py
-      - name: Validate targeted regression
-        run: |
-          python -m compileall -q relaylm/relaymem_slp_queue_state.py scripts/relaylm_phase6b3_precommit_failure_projection_smoke.py
-          PYTHONPATH=. python scripts/relaylm_phase6b3_precommit_failure_projection_smoke.py
-      - name: Commit fix
-        run: |
-          git rm scripts/relaylm_phase6b3_final_review_fix.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "fix: project current state for invalid proposals"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
-
   smoke:
     runs-on: ubuntu-latest
     steps:
