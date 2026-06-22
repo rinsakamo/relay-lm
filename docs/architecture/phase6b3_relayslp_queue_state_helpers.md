@@ -123,7 +123,7 @@ The request job ID is re-derived from the dispatch key before any queue path is 
 
 Every operation reads and revalidates the complete canonical `relaymem.slp_durable_job.v0` shape. Validation includes:
 
-- the exact 29-field set and exact schema versions,
+- the exact 32-field set and exact schema versions,
 - strict bool/int separation for all counters,
 - bounded ASCII tokens and source counts,
 - deterministic dispatch-key re-derivation,
@@ -195,7 +195,7 @@ claim_owner = ""
 lease_token = ""
 lease_acquired_at = null
 lease_expires_at = null
-retry_class = request retry_class
+retry_class = request retry class
 retry_not_before = request retry timestamp or null
 failure_class = request failure class
 ```
