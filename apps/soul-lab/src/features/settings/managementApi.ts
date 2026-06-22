@@ -7,7 +7,7 @@ export interface LabRuntimeComponentProjection {
   endpoint: string | null;
   model_labels: string[];
   capability: string;
-  network_probe_performed: boolean;
+  network_probe_performed: false;
 }
 
 export interface LabSettingsProjection {
@@ -69,6 +69,66 @@ export interface LabManagementProjectionBundle {
   characters: LabCharactersProjection;
 }
 
+const settingsKeys = [
+  "schema_version",
+  "projection_kind",
+  "source",
+  "content_free",
+  "settings_write_supported",
+  "network_probe_performed",
+  "listen",
+  "runtime_components",
+  "credential_boundary",
+  "diagnostics",
+] as const;
+const listenKeys = ["host", "port", "loopback_only"] as const;
+const runtimeComponentKeys = [
+  "component_id",
+  "label",
+  "state",
+  "endpoint",
+  "model_labels",
+  "capability",
+  "network_probe_performed",
+] as const;
+const credentialBoundaryKeys = [
+  "owner",
+  "browser_loaded",
+  "credential_fields_included",
+] as const;
+const diagnosticsKeys = [
+  "mode",
+  "projected_event_count",
+  "credential_fields_loaded",
+  "source_content_included",
+  "raw_trace_included",
+] as const;
+const charactersKeys = [
+  "schema_version",
+  "projection_kind",
+  "source",
+  "content_free",
+  "persistent_registry_mutation_supported",
+  "credential_fields_included",
+  "source_content_included",
+  "characters",
+] as const;
+const characterKeys = [
+  "character_id",
+  "route_models",
+  "backend_ids",
+  "memory_namespaces",
+  "modes",
+  "soul_configured",
+  "output_policy_configured",
+  "relationship_anchor_configured",
+  "memory_seed_configured",
+  "stable_memory_summary_configured",
+  "source_complete",
+  "source_content_included",
+  "source_paths_included",
+] as const;
+
 export async function loadLabManagementProjections(
   signal?: AbortSignal,
 ): Promise<LabManagementProjectionBundle> {
@@ -100,7 +160,7 @@ async function fetchJson(path: string, signal?: AbortSignal): Promise<unknown> {
 }
 
 function parseSettingsProjection(value: unknown): LabSettingsProjection | null {
-  if (!isRecord(value)) {
+  if (!isRecord(value) || !hasExactKeys(value, settingsKeys)) {
     return null;
   }
   if (
@@ -111,18 +171,21 @@ function parseSettingsProjection(value: unknown): LabSettingsProjection | null {
     value.settings_write_supported !== false ||
     value.network_probe_performed !== false ||
     !isRecord(value.listen) ||
+    !hasExactKeys(value.listen, listenKeys) ||
     typeof value.listen.host !== "string" ||
-    typeof value.listen.port !== "number" ||
+    !isNonNegativeInteger(value.listen.port) ||
     value.listen.loopback_only !== true ||
     !Array.isArray(value.runtime_components) ||
     !isRecord(value.credential_boundary) ||
+    !hasExactKeys(value.credential_boundary, credentialBoundaryKeys) ||
     value.credential_boundary.owner !== "relaylm_server" ||
     value.credential_boundary.browser_loaded !== false ||
     value.credential_boundary.credential_fields_included !== false ||
     !isRecord(value.diagnostics) ||
+    !hasExactKeys(value.diagnostics, diagnosticsKeys) ||
     value.diagnostics.mode !== "content_free" ||
-    typeof value.diagnostics.projected_event_count !== "number" ||
-    typeof value.diagnostics.credential_fields_loaded !== "number" ||
+    !isNonNegativeInteger(value.diagnostics.projected_event_count) ||
+    !isNonNegativeInteger(value.diagnostics.credential_fields_loaded) ||
     value.diagnostics.source_content_included !== false ||
     value.diagnostics.raw_trace_included !== false
   ) {
@@ -165,6 +228,7 @@ function parseSettingsProjection(value: unknown): LabSettingsProjection | null {
 function parseRuntimeComponent(value: unknown): LabRuntimeComponentProjection | null {
   if (
     !isRecord(value) ||
+    !hasExactKeys(value, runtimeComponentKeys) ||
     typeof value.component_id !== "string" ||
     typeof value.label !== "string" ||
     (value.state !== "configured" && value.state !== "unconfigured") ||
@@ -189,6 +253,7 @@ function parseRuntimeComponent(value: unknown): LabRuntimeComponentProjection | 
 function parseCharactersProjection(value: unknown): LabCharactersProjection | null {
   if (
     !isRecord(value) ||
+    !hasExactKeys(value, charactersKeys) ||
     value.schema_version !== "relaylm.lab.characters.v0" ||
     value.projection_kind !== "read_only" ||
     value.source !== "runtime_config" ||
@@ -221,6 +286,7 @@ function parseCharactersProjection(value: unknown): LabCharactersProjection | nu
 function parseCharacterProjection(value: unknown): LabCharacterProjection | null {
   if (
     !isRecord(value) ||
+    !hasExactKeys(value, characterKeys) ||
     typeof value.character_id !== "string" ||
     !isStringArray(value.route_models) ||
     !isStringArray(value.backend_ids) ||
@@ -254,8 +320,20 @@ function parseCharacterProjection(value: unknown): LabCharacterProjection | null
   };
 }
 
+function hasExactKeys(
+  value: Record<string, unknown>,
+  keys: readonly string[],
+): boolean {
+  const actualKeys = Object.keys(value);
+  return actualKeys.length === keys.length && keys.every((key) => actualKeys.includes(key));
+}
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
