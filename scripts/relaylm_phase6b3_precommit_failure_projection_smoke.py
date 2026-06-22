@@ -17,6 +17,7 @@ from scripts.relaylm_phase6b3_queue_state_security_smoke import (
 )
 
 
+# Every non-applied failure must project the current persisted queue state.
 def main() -> None:
     original_now = queue_state._now_utc
     original_reopen = queue_storage.reopen_and_compare
