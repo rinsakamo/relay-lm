@@ -29,6 +29,7 @@ relaylm_related_authority:
   - docs/architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
   - docs/architecture/soul_lab_ui_mvp.md
   - docs/architecture/soul_lab_ui_a6_shared_shell_settings_handoff.md
+  - docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
   - docs/architecture/soul_lab_runtime_mvp.md
 ---
 # RelayLM Project Status
@@ -57,7 +58,7 @@ Pre-stream hardening: Phase 5-D complete through D2
 Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
 Asynchronous RelaySLP orchestration: durable enqueue implementation complete through Phase 6-B2
 RelayMEM Primary path: M1/M2 complete; M3a through M3h implemented as direct/helper boundaries
-SOUL Lab UI: UI-A0 through UI-A6 implemented as browser-local mock/presentation slices
+SOUL Lab UI: UI-A0 through UI-A7 implemented; A7 adds local-only read management projections
 ```
 
 ### Core request/runtime foundation
@@ -116,7 +117,7 @@ Current limitation:
 
 ### SOUL Lab UI
 
-UI-A0 through UI-A6 provide:
+UI-A0 through UI-A7 provide:
 
 - TypeScript/React/Vite browser shell,
 - Japanese-default and English-preview localization,
@@ -127,16 +128,22 @@ UI-A0 through UI-A6 provide:
 - mock Communication with Soft Stop,
 - mock Pod intervention and non-executing SOUL candidate previews,
 - Memory Inspector with non-persistent Correct/Merge/Forget/Pin/Unpin/Discard previews,
-- shared shell and Settings/runtime-boundary projections.
+- shared shell and Settings/runtime-boundary projections,
+- local-only read `GET /lab/api/settings` and `GET /lab/api/characters` server projections,
+- exact browser-side allowlist validation with explicit UI-A6 mock fallback,
+- configured-listen and actual transport-peer loopback enforcement,
+- secret-free endpoint, capability, character-registry, and content-free diagnostics metadata.
 
 Current limitation:
 
-- no authoritative `/lab/api/*` integration,
+- UI-A7 exposes only bounded runtime configuration and character-registry metadata,
+- no latest-run, formed/held/blocked memory, or used-memory read API,
 - no peer network request,
-- no durable character registry or memory operation,
+- no durable character-registry or memory operation,
 - no RelaySOUL apply or rollback,
-- no persisted transcript or latest-run observation source,
-- no TTS/audio/avatar execution.
+- no persisted transcript,
+- no TTS/audio/avatar execution,
+- no static serving of the built SOUL Lab bundle from RelayLM.
 
 ## Active implementation priority
 
@@ -190,7 +197,8 @@ Consequences:
 - default `memory_light` compatibility may preserve frontend history until managed apply is enabled,
 - stream suppression and TTS handoff planning remain default-off,
 - RelayLM Core does not deliver adapter transport or execute TTS/audio/avatar behavior,
-- Phase 6 and RelayMEM persistence apply remain explicit gated boundaries rather than ordinary default runtime behavior.
+- Phase 6 and RelayMEM persistence apply remain explicit gated boundaries rather than ordinary default runtime behavior,
+- UI-A7 management routes are read-only and fail closed unless both configured listen scope and actual transport peer are loopback.
 
 ## Not yet implemented
 
@@ -202,9 +210,11 @@ The runtime does not yet provide:
 - worker invocation of RelayMEM M3a-M3h,
 - end-to-end next-turn recall proof from newly formed runtime memory,
 - Secondary MEM consolidation,
-- real SOUL Lab management APIs,
+- SOUL Lab latest-run and memory-outcome read APIs,
+- SOUL Lab settings or character mutation APIs,
 - durable memory correction/forget/pin/merge operations,
 - actual RelaySOUL apply, rollback, or persistence execution,
+- RelayLM static serving of the built SOUL Lab UI,
 - adapter transport delivery,
 - TTS execution, audio generation, or avatar control,
 - complete output-side RelayREF and output-side RelaySCN,
@@ -245,7 +255,7 @@ Open-LLM-VTuber
   -> OpenAI-compatible backend
 ```
 
-The current SOUL Lab app can be built and reviewed as a presentation prototype, but it is not yet an authoritative runtime control surface.
+The SOUL Lab app can be built as a presentation prototype and can read the bounded UI-A7 management projections through the canonical local RelayLM entry point. It is not yet an authoritative runtime control surface or a real memory-observation surface.
 
 ## Where to read next
 
@@ -260,4 +270,5 @@ The current SOUL Lab app can be built and reviewed as a presentation prototype, 
 - [RelayMEM-M3h Recovery Audit](architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md)
 - [SOUL Lab UI MVP](architecture/soul_lab_ui_mvp.md)
 - [SOUL Lab UI-A6 Shared Shell / Settings](architecture/soul_lab_ui_a6_shared_shell_settings_handoff.md)
+- [SOUL Lab UI-A7 Read-only Management Projection](architecture/soul_lab_ui_a7_management_projection_handoff.md)
 - [SOUL Lab Runtime MVP](architecture/soul_lab_runtime_mvp.md)

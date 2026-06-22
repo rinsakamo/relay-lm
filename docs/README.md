@@ -22,12 +22,12 @@ RelayLM documentation is AI-first: documents should be understandable when retri
 
 ## Start here
 
-- [Current project status](PROJECT_STATUS.md) — concise current boundary and next choices
+- [Current project status](PROJECT_STATUS.md) — concise current boundary, Integration Milestone I1, and next choices
 - [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing
-- [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md) — current Core orchestration track, complete through A2 helpers and B0 design
-- [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md) — independent memory track, complete through M3f preflight
-- [SOUL Lab UI-A4 Pod handoff](architecture/soul_lab_ui_a4_pod_handoff.md) — current UI track through browser-local mock intervention
+- [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md) — Core orchestration track complete through B2 durable enqueue; B3 is next
+- [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md) — Primary MEM direct/helper path complete through M3h recovery audit
+- [SOUL Lab UI-A7 read-only management projection](architecture/soul_lab_ui_a7_management_projection_handoff.md) — local-only secret-free Lab API reads and explicit mock fallback
 - [Architecture docs](architecture/README.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Contract docs](contracts/README.md)
@@ -41,11 +41,11 @@ RelayLM documentation is AI-first: documents should be understandable when retri
 
 The repository-wide documentation audit, audit Phases 1–8, is complete as of 2026-06-17 JST. That numbering is independent of runtime implementation phases.
 
-Use [Project Status](PROJECT_STATUS.md) for the current developer-facing view and [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md) for later sequencing.
+Use [Project Status](PROJECT_STATUS.md) for the current developer-facing view and [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md) for detailed sequencing.
 
 Phase 5.5 Stream Unpack / TTS handoff preparation is complete for RelayLM Core. Concrete TTS execution, audio queueing, adapter delivery, Live2D/avatar mapping, motion, and lip-sync remain SOUL Lab Runtime MVP responsibilities.
 
-Current work is split across independent tracks. RelayLM Core is complete through Phase 6-A2 helpers and the Phase 6-B0 durable-queue design; B1 is next. RelayMEM has implemented its Primary MEM path through M3f read-only index/log reconciliation planning; M3g apply is next. SOUL Lab UI is implemented through UI-A4; UI-A5 Memory Inspector is next. Concrete TTS/audio/avatar execution remains SOUL Lab Runtime work.
+Current work is integration-first around Integration Milestone I1. RelayLM Core is complete through Phase 6-B2 atomic durable enqueue; B3 claim/lease/retry/terminal helpers are next. RelayMEM has implemented the Primary MEM direct/helper path through M3h recovery audit, but ordinary turn finalization and a worker do not yet invoke it. SOUL Lab UI is implemented through UI-A7 local-only read management projections. Latest-run and real memory-outcome reads, management mutations, persisted memory operations, static UI serving, and runtime adapter execution remain separate.
 
 Use [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) before treating proposed schemas, future execution gates, or historical compatibility artifacts as current behavior.
 
@@ -86,6 +86,8 @@ When documents disagree:
 - [RelayMEM-M3d Primary writer handoff](architecture/relaymem_m3d_primary_writer_handoff.md)
 - [RelayMEM-M3e Atomic Primary page writer](architecture/relaymem_m3e_atomic_primary_page_writer.md)
 - [RelayMEM-M3f Index/log reconciliation preflight](architecture/relaymem_m3f_primary_index_log_reconciliation_preflight.md)
+- [RelayMEM-M3g Index/log reconciliation apply](architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md)
+- [RelayMEM-M3h Reconciliation recovery audit](architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md)
 - [Scene lifecycle design](architecture/scene_lifecycle_design.md)
 - [AI VTuber pipeline profile](architecture/ai_vtuber_pipeline_profile.md)
 - [SOUL Lab UI MVP](architecture/soul_lab_ui_mvp.md)
@@ -93,6 +95,9 @@ When documents disagree:
 - [SOUL Lab UI-A2 Adoption handoff](architecture/soul_lab_ui_a2_adoption_handoff.md)
 - [SOUL Lab UI-A3 Communication handoff](architecture/soul_lab_ui_a3_communication_handoff.md)
 - [SOUL Lab UI-A4 Pod handoff](architecture/soul_lab_ui_a4_pod_handoff.md)
+- [SOUL Lab UI-A5 Memory Inspector handoff](architecture/soul_lab_ui_a5_memory_inspector_handoff.md)
+- [SOUL Lab UI-A6 Shared Shell / Settings handoff](architecture/soul_lab_ui_a6_shared_shell_settings_handoff.md)
+- [SOUL Lab UI-A7 Read-only Management Projection handoff](architecture/soul_lab_ui_a7_management_projection_handoff.md)
 - [SOUL Lab Runtime MVP](architecture/soul_lab_runtime_mvp.md)
 - [RelayINT MVP design](architecture/relayint_mvp_design.md)
 
