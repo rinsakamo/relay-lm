@@ -86,6 +86,8 @@ with HTTP `403`.
 
 This guard is derived from validated server configuration and is independent of request headers. It does not trust `Host`, `Origin`, or forwarded-address headers to prove locality. Existing Core routes remain available according to their existing runtime behavior when the Lab management routes are refused.
 
+The browser parser also requires `listen.loopback_only` to be exactly `true`. A response claiming a non-loopback projection is discarded even if it was delivered with HTTP `200`, and the UI uses the explicit mock fallback instead.
+
 ## Settings projection
 
 `GET /lab/api/settings` returns schema:
@@ -148,15 +150,17 @@ Backend URLs are reduced to scheme, host, optional port, and path. Invalid or un
 
 ## Browser validation
 
-`managementApi.ts` accepts a response only when the version, projection kind, source, read-only flags, credential flags, diagnostics flags, and item shapes match the UI-A7 contract.
+`managementApi.ts` accepts a response only when the version, projection kind, source, read-only flags, loopback-only flag, credential flags, diagnostics flags, and item shapes match the UI-A7 contract.
 
 ```text
 both responses valid
+and settings.listen.loopback_only == true
   -> server projection
 
 HTTP failure or 403 refusal
 or JSON shape mismatch
 or authority flag mismatch
+or loopback-only mismatch
   -> discard response
   -> labeled mock fallback
 ```
