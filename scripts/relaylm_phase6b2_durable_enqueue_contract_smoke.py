@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 B0 = ROOT / "docs/architecture/phase6b0_relayslp_durable_queue_contract.md"
 B1 = ROOT / "docs/architecture/phase6b1_relayslp_dispatch_preflight.md"
 B2 = ROOT / "docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md"
+B3 = ROOT / "docs/architecture/phase6b3_relayslp_queue_state_helpers.md"
 CURRENT_TARGET = ROOT / "docs/architecture/relaymem_slp_current_target.md"
 PIPELINE_PLAN = ROOT / "docs/architecture/pipeline_implementation_plan.md"
 PROJECT_STATUS = ROOT / "docs/PROJECT_STATUS.md"
@@ -31,6 +32,7 @@ def main() -> None:
     b0 = _read(B0)
     b1 = _read(B1)
     b2 = _read(B2)
+    b3 = _read(B3)
     current_target = _read(CURRENT_TARGET)
     pipeline_plan = _read(PIPELINE_PLAN)
     project_status = _read(PROJECT_STATUS)
@@ -55,7 +57,7 @@ def main() -> None:
             "malformed UTF-8",
             "schema drift",
             "memory-write idempotency key is never accepted as queue identity",
-            "Phase 6-B3 may add claim, lease, retry-release",
+            "Phase 6-B3 is implemented",
         ),
         label="B2 handoff",
     )
@@ -79,11 +81,21 @@ def main() -> None:
         label="B1/B2 alignment",
     )
     _require_all(
+        b3,
+        (
+            "complete canonical Phase 6-B2 durable records",
+            "deterministic dispatch-digest filename",
+            "Phase 6-C worker execution",
+        ),
+        label="B2/B3 alignment",
+    )
+    _require_all(
         current_target,
         (
             "Phase 6-B2",
             "atomic durable enqueue",
             "Phase 6-B3",
+            "Phase 6-C worker execution",
         ),
         label="current-target alignment",
     )
@@ -92,7 +104,8 @@ def main() -> None:
         (
             "Phase 6-B2 atomic durable enqueue",
             "complete",
-            "Phase 6-B3",
+            "Phase 6-B3 queue lifecycle",
+            "Phase 6-C worker execution",
         ),
         label="pipeline-plan alignment",
     )
@@ -102,10 +115,12 @@ def main() -> None:
             "Asynchronous RelaySLP orchestration",
             "Phase 6-B2",
             "Phase 6-B3",
+            "Phase 6-C worker execution",
         ),
         label="project-status alignment",
     )
     assert "phase6b2_relayslp_atomic_durable_enqueue.md" in architecture_index
+    assert "phase6b3_relayslp_queue_state_helpers.md" in architecture_index
 
     _require_all(
         helper,

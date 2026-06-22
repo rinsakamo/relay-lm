@@ -27,6 +27,7 @@ relaylm_related_authority:
   - phase6b0_relayslp_durable_queue_contract.md
   - phase6b1_relayslp_dispatch_preflight.md
   - phase6b2_relayslp_atomic_durable_enqueue.md
+  - phase6b3_relayslp_queue_state_helpers.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - relaymem_m3e_atomic_primary_page_writer.md
@@ -76,7 +77,8 @@ Phase 6 asynchronous RelaySLP orchestration:
   B0 durable queue contract: complete
   B1 dispatch/job-record preflight: complete as helper-only
   B2 atomic durable enqueue: complete as direct helper
-  B3 queue lifecycle helpers: next
+  B3 queue lifecycle helpers: complete as direct helper
+  C worker execution under an active lease fence: next
 
 RelayMEM independent track:
   M1/M2 store and retrieval foundations: complete
@@ -102,7 +104,9 @@ Phase 6-B1: job-record and dispatch-idempotency preflight — complete.
 
 Phase 6-B2 atomic durable enqueue: complete.
 
-The next RelayLM Core boundary is Phase 6-B3. That boundary is the last queue-only prerequisite before request-runtime enqueue wiring and worker execution.
+Phase 6-B3 queue lifecycle: complete.
+
+The next RelayLM Core boundary is Phase 6-C worker execution under an exact active B3 owner, claim-generation, and lease-token fence. Request-runtime enqueue wiring is also required for the active milestone; neither worker execution nor request-runtime wiring is included in B3.
 
 ## Active priority: Integration Milestone I1
 
@@ -113,7 +117,8 @@ The highest-priority implementation goal is one ordinary runtime loop that prove
 ```text
 finalized user turn
   -> deferred SLP admission and durable enqueue
-  -> queue claim and worker execution
+  -> B3 queue claim and active lease
+  -> Phase 6-C worker execution
   -> RelayMEM M3a-M3h Primary MEM processing
   -> durable page/index/log result
   -> next-turn RelayMEM retrieval
@@ -124,19 +129,23 @@ finalized user turn
 
 This milestone has priority over Secondary MEM consolidation, additional mock UI surfaces, TTS/Live2D execution, new RelaySOUL governance documents, protocol expansion, and model-specific optimization.
 
-### I1-A: Phase 6-B3 queue lifecycle
+### I1-A: Phase 6-B3 queue lifecycle — complete
 
-Implement bounded claim, lease, retry-release, stale-lease recovery, and terminal-state transitions over exact B2 durable records.
+The bounded direct helper now implements:
 
-Requirements:
+```text
+claim
+renew_lease
+retry_release
+stale_recovery
+commit_terminal
+```
 
-- preserve dispatch-idempotency ownership in Phase 6 / RelayRUN,
-- use lease-token and claim-generation fencing,
-- classify retryable and terminal control outcomes without deciding memory meaning,
-- remain content-free on public diagnostic surfaces,
-- do not make visible-response success depend on queue processing.
+It preserves dispatch-idempotency ownership in Phase 6 / RelayRUN, uses revision/owner/claim-generation/lease-token fencing, classifies queue-control outcomes without deciding memory meaning, exposes only content-free public diagnostics, and keeps visible-response success independent of queue processing.
 
-B3 is the final queue-only prerequisite. It must not become an open-ended sequence of additional helper-only queue phases.
+B3 remains default-off and dry-run-first. It validates complete canonical B2 records, uses a nonblocking queue lock and inode/byte compare-and-swap, never generates `dead_letter`, and never executes a worker.
+
+B3 was the final queue-only prerequisite. The implementation sequence must now move into runtime integration and worker execution rather than adding another queue-helper phase.
 
 ### I1-B: request-runtime deferred enqueue wiring
 
@@ -148,14 +157,16 @@ Requirements:
 - enqueue failure is recorded but does not invalidate an already valid response,
 - only exact runtime-private artifacts are passed between stages,
 - default-off and dry-run-first rollout remains available,
-- request-runtime smoke proves no content-bearing SLP artifact enters generic trace or public errors.
+- request-runtime smoke proves no content-bearing SLP artifact enters generic trace or public errors,
+- the runtime does not claim or execute work inline with visible response delivery.
 
-### I1-C: Primary MEM worker execution
+### I1-C: Phase 6-C Primary MEM worker execution
 
-Add a bounded worker that claims one eligible job and invokes existing RelayMEM-owned boundaries rather than redefining memory semantics:
+Add a bounded worker that obtains one active B3 claim and invokes existing RelayMEM-owned boundaries rather than redefining memory semantics:
 
 ```text
-M3a formation candidate
+B3 active lease fence
+  -> M3a formation candidate
   -> M3b lineage/write preflight
   -> M3c deterministic page candidate
   -> M3d writer handoff
@@ -163,10 +174,20 @@ M3a formation candidate
   -> M3f reconciliation plan
   -> M3g index-before-log apply
   -> M3h read-only recovery audit
-  -> queue terminal or retry state
+  -> B3 retry release or terminal commit
 ```
 
-The worker must preserve the separation between dispatch idempotency and memory-write idempotency. It must not directly mutate RelaySOUL or perform Secondary MEM consolidation.
+The worker must:
+
+- revalidate the exact active owner, claim generation, lease token, revision, and expiry before execution-sensitive transitions,
+- never execute under an expired or stale lease,
+- preserve the separation between dispatch idempotency and memory-write idempotency,
+- invoke M3a-M3h as their exact current typed boundaries,
+- classify retry/terminal outcomes without moving memory meaning into Phase 6,
+- avoid direct RelaySOUL mutation and Secondary MEM consolidation,
+- remain detached from visible response completion.
+
+The first worker slice should execute one already-claimed job; scheduler loops, broad concurrency management, and generalized worker pools are not prerequisites for the first end-to-end proof.
 
 ### I1-D: next-turn recall validation
 
@@ -180,7 +201,8 @@ Required integration smoke:
 4. submit a second turn whose answer requires that memory,
 5. verify the selected memory is scoped to the correct character and namespace,
 6. verify the backend-bound context includes only the bounded selected memory,
-7. verify no cross-character or cross-namespace leakage.
+7. verify no cross-character or cross-namespace leakage,
+8. verify duplicate dispatch and worker retry preserve both idempotency domains.
 
 ### I1-E: SOUL Lab real observation bridge
 
@@ -201,7 +223,7 @@ Integration Milestone I1 is complete only when all of the following are true:
 
 - a normal managed turn can schedule deferred Primary MEM processing without delaying the visible response,
 - the durable queue can claim, lease, retry, recover stale work, and reach terminal state,
-- a worker can execute the existing M3a-M3h boundaries,
+- a worker can execute the existing M3a-M3h boundaries under an exact B3 lease,
 - formed Primary MEM is retrieved in a later ordinary turn,
 - character and namespace isolation are verified,
 - SOUL Lab reads real latest-run and memory outcomes,
@@ -219,7 +241,8 @@ Helper-level completion and UI-A7 settings/characters reads alone do not satisfy
 - Current profile compilation still precedes normalized target SCN/INT/Retrieval handoffs.
 - Complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy is not implemented.
 - RelayCTX stream suppression and TTS handoff metadata are default-off; RelayLM Core does not deliver transport or execute TTS/audio/avatar behavior.
-- Phase 6 A1/A2/B1/B2 and RelayMEM M3a-M3h are not yet connected into one ordinary request-runtime worker path.
+- Phase 6 A1/A2/B1/B2 request-runtime wiring is absent.
+- Phase 6-C worker execution and worker invocation of RelayMEM M3a-M3h are absent.
 - SOUL Lab UI-A7 provides bounded local read management metadata but no real run/memory observation or authoritative mutation.
 - RelayREF output observation, Secondary MEM consolidation, and actual RelaySOUL apply remain later work.
 - Token estimation is deterministic and CJK-aware but model-agnostic rather than tokenizer-exact.
@@ -245,7 +268,7 @@ Concrete adapter delivery and TTS/audio/avatar execution belong to SOUL Lab Runt
 
 ### Deferred orchestration primitives
 
-Phase 6 has implemented exact bounded artifacts through atomic durable enqueue. B2 persists a queued record but does not claim it, invoke a worker, write memory, or wire request finalization.
+Phase 6 has implemented exact bounded artifacts through B3 fenced queue lifecycle. B2 persists a queued record. B3 can claim, renew, retry-release, recover stale work, and commit terminal state, but neither helper invokes a worker or wires ordinary request finalization.
 
 ### Primary MEM primitives
 

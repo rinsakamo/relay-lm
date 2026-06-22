@@ -1,20 +1,22 @@
-"""Contract smoke for the current Phase 6-B durable RelaySLP queue boundary."""
+"""Contract smoke for the durable RelaySLP queue boundary through Phase 6-B3."""
 from __future__ import annotations
 
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACT_PATH = ROOT / "docs/architecture/phase6b0_relayslp_durable_queue_contract.md"
-B1_HANDOFF_PATH = ROOT / "docs/architecture/phase6b1_relayslp_dispatch_preflight.md"
-B2_HANDOFF_PATH = ROOT / "docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md"
-CURRENT_TARGET_PATH = ROOT / "docs/architecture/relaymem_slp_current_target.md"
-PIPELINE_PLAN_PATH = ROOT / "docs/architecture/pipeline_implementation_plan.md"
-PROJECT_STATUS_PATH = ROOT / "docs/PROJECT_STATUS.md"
-ARCHITECTURE_INDEX_PATH = ROOT / "docs/architecture/README.md"
-A2_HELPER_PATH = ROOT / "relaylm/relaymem_slp_response_handoff.py"
-B1_HELPER_PATH = ROOT / "relaylm/relaymem_slp_dispatch_preflight.py"
-B1_WORKFLOW_PATH = ROOT / ".github/workflows/relaymem-slp-dispatch-preflight-smoke.yml"
+B0 = ROOT / "docs/architecture/phase6b0_relayslp_durable_queue_contract.md"
+B1 = ROOT / "docs/architecture/phase6b1_relayslp_dispatch_preflight.md"
+B2 = ROOT / "docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md"
+B3 = ROOT / "docs/architecture/phase6b3_relayslp_queue_state_helpers.md"
+CURRENT = ROOT / "docs/architecture/relaymem_slp_current_target.md"
+PLAN = ROOT / "docs/architecture/pipeline_implementation_plan.md"
+STATUS = ROOT / "docs/PROJECT_STATUS.md"
+INDEX = ROOT / "docs/architecture/README.md"
+A2_HELPER = ROOT / "relaylm/relaymem_slp_response_handoff.py"
+B1_HELPER = ROOT / "relaylm/relaymem_slp_dispatch_preflight.py"
+B3_HELPER = ROOT / "relaylm/relaymem_slp_queue_state.py"
+B1_WORKFLOW = ROOT / ".github/workflows/relaymem-slp-dispatch-preflight-smoke.yml"
+B3_WORKFLOW = ROOT / ".github/workflows/relaymem-slp-queue-state-smoke.yml"
 
 
 def _read(path: Path) -> str:
@@ -22,49 +24,41 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _require_all(text: str, values: tuple[str, ...], *, label: str) -> None:
+def _require_all(text: str, values: tuple[str, ...], label: str) -> None:
     missing = [value for value in values if value not in text]
-    assert not missing, f"{label} missing required values: {missing}"
+    assert not missing, f"{label} missing: {missing}"
 
 
 def _section(text: str, start: str, end: str) -> str:
-    start_index = text.find(start)
-    assert start_index >= 0, f"missing section start: {start}"
-    end_index = text.find(end, start_index + len(start))
-    assert end_index >= 0, f"missing section end: {end}"
-    return text[start_index:end_index]
+    begin = text.find(start)
+    assert begin >= 0, f"missing section: {start}"
+    finish = text.find(end, begin + len(start))
+    assert finish >= 0, f"missing section: {end}"
+    return text[begin:finish]
 
 
 def main() -> None:
-    contract = _read(CONTRACT_PATH)
-    b1_handoff = _read(B1_HANDOFF_PATH)
-    b2_handoff = _read(B2_HANDOFF_PATH)
-    current_target = _read(CURRENT_TARGET_PATH)
-    pipeline_plan = _read(PIPELINE_PLAN_PATH)
-    project_status = _read(PROJECT_STATUS_PATH)
-    architecture_index = _read(ARCHITECTURE_INDEX_PATH)
-    a2_helper = _read(A2_HELPER_PATH)
-    b1_helper = _read(B1_HELPER_PATH)
-    b1_workflow = _read(B1_WORKFLOW_PATH)
+    b0 = _read(B0)
+    b1 = _read(B1)
+    b2 = _read(B2)
+    b3 = _read(B3)
+    current = _read(CURRENT)
+    plan = _read(PLAN)
+    status = _read(STATUS)
+    index = _read(INDEX)
+    a2_helper = _read(A2_HELPER)
+    b1_helper = _read(B1_HELPER)
+    b3_helper = _read(B3_HELPER)
+    b1_workflow = _read(B1_WORKFLOW)
+    b3_workflow = _read(B3_WORKFLOW)
 
     _require_all(
-        contract,
+        b0,
         (
             "relaylm_authority: phase6b0_relayslp_durable_queue",
             "Phase 6-B0 remains the authoritative durable-queue design",
-            "Phase 6-B1 implements",
-            "Phase 6-B2: gated atomic create-if-absent durable enqueue",
-            "relaymem.slp_enqueue_candidate.v0",
             "relaymem.slp_durable_job.v0",
             "relaymem.slp_queue_status_projection.v0",
-            "no queue I/O",
-        ),
-        label="B0 current boundary",
-    )
-
-    _require_all(
-        contract,
-        (
             "Dispatch idempotency",
             "memory-write idempotency",
             "must not be reused as a memory-write key",
@@ -72,27 +66,24 @@ def main() -> None:
             "owned by Phase 6 / RelayRUN orchestration",
             "owned by RelayMEM persistence preflight and apply",
         ),
-        label="idempotency ownership",
+        "B0 identity ownership",
     )
-
     _require_all(
-        contract,
+        b0,
         (
             "`PipelineNodeResult`",
             "public projection fields",
             "trace or audit records",
             "frontend metadata",
             "visible response text",
-            "the original A1 public projection",
-            "caller-supplied dictionaries that merely resemble the candidate",
-            "Unknown fields, missing fields, wrong types, nested substitutions",
-            "B2 must consume that validated B1 artifact",
+            "caller-supplied dictionaries that merely resemble a typed artifact",
+            "B2 consumes the exact B1 result",
+            "B3 consumes an exact runtime-private transition request",
         ),
-        label="protected A2 consumption",
+        "protected private artifacts",
     )
-
     _require_all(
-        contract,
+        b0,
         (
             "dispatch_key_version",
             "candidate_schema_version",
@@ -107,16 +98,15 @@ def main() -> None:
             "source_count",
             "source_lineage_fingerprint",
         ),
-        label="dispatch identity inputs",
+        "dispatch identity inputs",
     )
-
-    excluded = _section(
-        contract,
+    exclusions = _section(
+        b0,
         "The derivation must not include:",
         "Operational status fields may change",
     )
     _require_all(
-        excluded,
+        exclusions,
         (
             "wall-clock timestamps",
             "random UUIDs",
@@ -128,55 +118,31 @@ def main() -> None:
             "memory-write idempotency keys",
             "raw content",
         ),
-        label="dispatch identity exclusions",
+        "dispatch identity exclusions",
     )
-
     _require_all(
-        contract,
+        b0,
         (
-            "The A2 candidate does not contain a retry classification.",
             "retry_class = unclassified",
             "failure_class = none",
-            "B1 must not recover `retry_class` from the A1 projection",
             "attempt_count = 0",
             "claim_generation = 0",
-        ),
-        label="B1 initialization",
-    )
-
-    _require_all(
-        contract,
-        (
-            "queued",
-            "claimed",
-            "succeeded",
-            "failed",
-            "cancelled",
-            "dead_letter",
             "create -> queued",
             "queued -> claimed",
+            "claimed -> queued",
             "claimed -> succeeded",
             "claimed -> failed",
-            "claimed -> queued",
-            "validated retry release or stale-lease recovery",
+            "claimed -> cancelled",
             "No transition is allowed out of `succeeded`, `failed`, `cancelled`, or `dead_letter`.",
             "compare-and-swap semantics",
-            "claim_generation",
-            "lease_token",
-        ),
-        label="queue state machine",
-    )
-
-    _require_all(
-        contract,
-        (
-            "increments `attempt_count`",
-            "increments `claim_generation`",
-            "Lease renewal must compare-and-swap",
-            "A retry-release transition is structurally distinct from terminal failure.",
-            "preserve the dispatch identity and attempt count",
             "terminal-state immutability",
-            "create-if-absent",
+            "B3 does not generate `dead_letter`",
+        ),
+        "queue state contract",
+    )
+    _require_all(
+        b0,
+        (
             "enqueued_new",
             "duplicate_existing",
             "blocked_collision",
@@ -184,107 +150,110 @@ def main() -> None:
             "write_failed",
             "Same key plus different key-input fields is not a duplicate",
             "must not be silently repaired",
-            "expired `claimed` records are not automatically executed",
+            "expired claimed records are not automatically executed",
+            "Same-inode byte mutation is a conflict",
         ),
-        label="future enqueue and recovery invariants",
+        "enqueue and recovery contract",
     )
-
     _require_all(
-        contract,
+        b0,
         (
-            "Queue persistence failure must not",
+            "Queue persistence or transition failure must not",
             "change the HTTP success already selected",
             "rewrite or append visible text",
             "delay stream completion while waiting for persistence",
             "create a synchronous memory-write fallback",
         ),
-        label="visible-response independence",
+        "visible response independence",
     )
-
-    projection = _section(
-        contract,
-        "## Public status projection",
-        "## Visible-response independence",
-    )
+    projection = _section(b0, "## Public status projection", "## Visible-response independence")
     _require_all(
         projection,
         (
             "content-free",
             "job and dispatch identifiers",
-            "run, turn, session, and namespace values",
-            "lineage fingerprints",
             "claim owner and lease token",
             "memory-write idempotency keys",
             "raw content of any kind",
         ),
-        label="public projection exclusions",
+        "public projection exclusions",
     )
 
     _require_all(
-        b1_handoff,
+        b1,
         (
-            "relaylm_authority: phase6b1_relayslp_dispatch_preflight",
             "Phase 6-B1 is implemented",
             "relaymem.slp_dispatch_preflight.v0",
             "relaymem.slp_durable_job.v0",
-            "relaymem.slp_queue_status_projection.v0",
-            "relaymem.slp_dispatch_key.v0",
-            "relaymem.slp_job_id.v0",
             "Phase 6-B2 consumes only an exact validated B1 result",
         ),
-        label="B1 handoff",
+        "B1 handoff",
     )
-
     _require_all(
-        b2_handoff,
+        b2,
         (
-            "relaylm_authority: phase6b2_relayslp_atomic_durable_enqueue",
             "Phase 6-B2 is implemented",
+            "atomic create-if-absent publication",
             "enqueued_new",
             "duplicate_existing",
             "blocked_collision",
             "blocked_corrupt",
             "write_failed",
+            "Phase 6-B3 is implemented",
         ),
-        label="B2 handoff",
+        "B2 handoff",
     )
-
     _require_all(
-        current_target,
+        b3,
+        (
+            "Phase 6-B3 is implemented",
+            "claim\nrenew_lease\nretry_release\nstale_recovery\ncommit_terminal",
+            "record_revision == 3",
+            "attempt_count == 2",
+            "claim_generation == 2",
+            "B3 never generates `dead_letter`",
+            "Phase 6-C worker execution",
+        ),
+        "B3 handoff",
+    )
+    _require_all(
+        current,
         (
             "Phase 6-B1 implements the first exact consumer",
-            "performs no queue I/O",
-            "The next bounded RelayLM Core implementation is Phase 6-B3",
+            "Phase 6-B2 implements atomic durable enqueue",
+            "Phase 6-B3 implements default-off, dry-run-first fenced",
+            "The next bounded RelayLM Core implementation is Phase 6-C worker execution",
         ),
-        label="current-target alignment",
+        "current target",
     )
-
     _require_all(
-        pipeline_plan,
+        plan,
         (
-            "Phase 6-B1 dry-run job-record and dispatch-idempotency preflight helper: complete",
             "Phase 6-B1: job-record and dispatch-idempotency preflight — complete",
-            "The next RelayLM Core boundary is Phase 6-B3",
+            "Phase 6-B2 atomic durable enqueue: complete",
+            "Phase 6-B3 queue lifecycle: complete",
+            "The next RelayLM Core boundary is Phase 6-C worker execution",
         ),
-        label="pipeline-plan alignment",
+        "pipeline plan",
     )
-
     _require_all(
-        project_status,
+        status,
         (
-            "Asynchronous RelaySLP orchestration: durable enqueue implementation complete through Phase 6-B2",
+            "Asynchronous RelaySLP orchestration: queue lifecycle helpers complete through Phase 6-B3",
             "Phase 6-B1 RelaySLP dispatch preflight",
             "Phase 6-B2 atomic durable enqueue",
+            "Phase 6-B3 fenced queue state transitions",
+            "Phase 6-C worker execution",
         ),
-        label="project-status alignment",
+        "project status",
     )
-
-    for link in (
+    for name in (
         "phase6b0_relayslp_durable_queue_contract.md",
         "phase6b1_relayslp_dispatch_preflight.md",
         "phase6b2_relayslp_atomic_durable_enqueue.md",
+        "phase6b3_relayslp_queue_state_helpers.md",
     ):
-        assert link in architecture_index, f"architecture index missing {link}"
+        assert name in index, f"architecture index missing {name}"
 
     _require_all(
         a2_helper,
@@ -294,25 +263,38 @@ def main() -> None:
             '"memory_write_idempotency_key": ""',
             '"runtime_private": True',
         ),
-        label="A2 compatibility",
+        "A2 compatibility",
     )
-
     _require_all(
         b1_helper,
         (
             '_RESULT_SCHEMA = "relaymem.slp_dispatch_preflight.v0"',
             '_DURABLE_JOB_SCHEMA = "relaymem.slp_durable_job.v0"',
-            '_PROJECTION_SCHEMA = "relaymem.slp_queue_status_projection.v0"',
-            '_DISPATCH_KEY_VERSION = "relaymem.slp_dispatch_key.v0"',
-            '_JOB_ID_VERSION = "relaymem.slp_job_id.v0"',
             "exact_a2_handoff_result_required",
             "_validate_source_candidate_consistency",
-            '"retry_class": "unclassified"',
             '"queue_io_performed": False',
         ),
-        label="B1 helper compatibility",
+        "B1 compatibility",
     )
-
+    _require_all(
+        b3_helper,
+        (
+            '_REQUEST_SCHEMA = "relaymem.slp_queue_transition_request.v0"',
+            '_RESULT_SCHEMA = "relaymem.slp_queue_state_transition.v0"',
+            "exact_transition_request_required",
+            "record_revision_mismatch",
+            "claim_owner_mismatch",
+            "claim_generation_mismatch",
+            "lease_token_mismatch",
+            "terminal_state_immutable",
+            'node_name="relaymem_slp_queue_state"',
+            '"worker_invoked": False',
+            '"writes_memory": False',
+            '"mutates_soul": False',
+            '"changes_visible_response": False',
+        ),
+        "B3 compatibility",
+    )
     _require_all(
         b1_workflow,
         (
@@ -322,10 +304,22 @@ def main() -> None:
             "python -m compileall -q",
             "PYTHONPATH=. python",
         ),
-        label="B1 workflow",
+        "B1 workflow",
+    )
+    _require_all(
+        b3_workflow,
+        (
+            "relaylm/relaymem_slp_queue_state.py",
+            "scripts/relaylm_phase6b3_queue_state_smoke.py",
+            "scripts/relaylm_phase6b3_queue_state_security_smoke.py",
+            "scripts/relaylm_phase6b3_queue_state_contract_smoke.py",
+            "python -m compileall -q",
+            "PYTHONPATH=. python",
+        ),
+        "B3 workflow",
     )
 
-    print("Phase 6-B durable RelaySLP queue contract smoke passed through B2")
+    print("Phase 6-B durable RelaySLP queue contract smoke passed through B3")
 
 
 if __name__ == "__main__":

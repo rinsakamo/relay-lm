@@ -6,14 +6,15 @@ relaylm_volatility: medium
 relaylm_owner: implementation
 relaylm_update_trigger:
   - Phase 6-B1 dispatch preflight changes
-  - Phase 6-B2 durable enqueue lands
-  - Phase 6-B3 claim lease or terminal-state helper lands
+  - Phase 6-B2 durable enqueue changes
+  - Phase 6-B3 claim lease retry or terminal-state helper changes
+  - Phase 6-C worker execution lands
   - queue backend or recovery semantics change
 relaylm_not_authoritative_for:
   - RelayMEM candidate meaning or safety scope
   - Primary or Secondary MEM formation
   - memory-write preflight or memory-write idempotency
-  - worker RelaySLP execution
+  - worker RelaySLP execution details
   - page index or log apply
   - RelaySOUL mutation
   - SOUL Lab TTS audio or avatar execution
@@ -23,6 +24,7 @@ relaylm_related_authority:
   - phase6a2_relayslp_response_handoff_contract.md
   - phase6b1_relayslp_dispatch_preflight.md
   - phase6b2_relayslp_atomic_durable_enqueue.md
+  - phase6b3_relayslp_queue_state_helpers.md
   - relaymem_slp_current_target.md
   - relaymem_slp_execution_design.md
   - relayrun_runtime_checkpoint_design.md
@@ -35,11 +37,13 @@ relaylm_related_authority:
 
 Phase 6-B0 remains the authoritative durable-queue design and state-machine contract.
 
-Phase 6-B1 implements the first bounded consumer of this contract: a default-off, read-only, dry-run-only dispatch/job-record preflight. B1 generates deterministic dispatch and job identities plus one runtime-private initial `relaymem.slp_durable_job.v0` candidate, but performs no queue I/O.
+Implemented bounded consumers are:
 
-Phase 6-B2: gated atomic create-if-absent durable enqueue is now implemented. B2 consumes only the exact B1 result and candidate, assigns durable timestamps, classifies duplicate/collision/corruption, and invokes no worker.
+- Phase 6-B1: exact dispatch/job-record preflight with no queue I/O,
+- Phase 6-B2: atomic create-if-absent durable enqueue,
+- Phase 6-B3: fenced claim, lease, retry-release, stale-recovery, and terminal-state helpers.
 
-The next implementation boundary is Phase 6-B3: claim, lease, retry-release, stale-recovery, and terminal-state helpers without worker execution.
+The next implementation boundary is Phase 6-C worker execution under an exact active B3 lease fence.
 
 ```text
 finalized visible response
@@ -47,8 +51,8 @@ finalized visible response
   -> A2 runtime-private enqueue candidate
   -> B1 deterministic dispatch/job identity and dry-run durable-job candidate: implemented
   -> B2 atomic durable enqueue: implemented
-  -> B3 claim/lease/retry-release/terminal helpers: next
-  -> Phase 6-C worker execution: later
+  -> B3 claim/lease/retry-release/stale-recovery/terminal helpers: implemented
+  -> Phase 6-C worker execution: next
 ```
 
 Queue work is detached post-finalization work. Queue failure must never replace, delay, invalidate, or downgrade the already-finalized visible response.
@@ -79,14 +83,14 @@ Queue work is detached post-finalization work. Queue failure must never replace,
 
 ### RelaySLP does not own orchestration persistence
 
-RelaySLP may later execute a claimed job and consume RelayMEM-owned artifacts. It does not define queue identity, repair queue corruption, or directly mutate RelaySOUL.
+RelaySLP may execute a correctly claimed job in Phase 6-C and consume RelayMEM-owned artifacts. It does not define queue identity, repair queue corruption, or directly mutate RelaySOUL.
 
 ## Idempotency domains
 
 Dispatch idempotency and memory-write idempotency remain distinct artifacts with distinct owners and lifetimes.
 
 ```text
-dispatch idempotency
+Dispatch idempotency
   prevents duplicate durable enqueue, duplicate active claim, and duplicate execution dispatch
   owned by Phase 6 / RelayRUN orchestration
 
@@ -97,40 +101,21 @@ memory-write idempotency
 
 The dispatch key must not be reused as a memory-write key. A memory-write key must not be accepted as a dispatch key.
 
-## Protected A2 consumption
+## Protected producer consumption
 
-A Phase 6-B consumer must receive the runtime-private A2 result directly. It must not reconstruct a candidate from:
+A Phase 6-B consumer must receive the exact preceding runtime-private typed result. It must not reconstruct a candidate or request from:
 
 - `PipelineNodeResult`,
 - public projection fields,
 - trace or audit records,
 - frontend metadata,
 - visible response text,
-- the original A1 public projection,
-- caller-supplied dictionaries that merely resemble the candidate.
+- an earlier public projection,
+- caller-supplied dictionaries that merely resemble a typed artifact.
 
-The exact `relaymem.slp_enqueue_candidate.v0` field set must be validated. Required invariants include:
+Unknown fields, missing fields, wrong types, nested substitutions, prior side effects, pre-populated forbidden values, and lookalike classes fail closed.
 
-- `candidate_kind = relayslp_deferred_job`,
-- `trigger_mode = turn_end`,
-- `processing_stage = primary_formation | primary_write_preflight`,
-- `source_event_kind = turn`,
-- `response_finalized = true`,
-- `dry_run_only = true`,
-- `enqueue_requested = false`,
-- `queue_io_performed = false`,
-- `enqueued = false`,
-- `worker_invoked = false`,
-- `invokes_slp = false`,
-- `writes_memory = false`,
-- `mutates_soul = false`,
-- `changes_visible_response = false`,
-- empty dispatch and memory-write idempotency keys,
-- valid bounded correlation, namespace, source count, lineage fingerprint, terminal status, and persistence-policy metadata.
-
-Unknown fields, missing fields, wrong types, nested substitutions, prior side effects, or pre-populated idempotency keys fail closed.
-
-B1 produces a separate runtime-private dry-run durable-record candidate. B2 must consume that validated B1 artifact rather than serializing an A2 dictionary directly.
+B1 consumes the exact A2 result. B2 consumes the exact B1 result and durable candidate. B3 consumes an exact runtime-private transition request and independently revalidates the complete canonical B2 record from disk.
 
 ## Durable record schema
 
@@ -188,9 +173,7 @@ The record contains only bounded orchestration metadata and protected references
 
 ## B1 initialization
 
-B1 copies only validated A2 source fields and initializes only Phase 6-owned fields.
-
-The A2 candidate does not contain a retry classification. Therefore B1 initializes:
+The A2 candidate does not contain a retry classification. B1 initializes:
 
 ```text
 state = queued
@@ -272,15 +255,17 @@ Allowed transitions:
 create -> queued
 queued -> claimed
 queued -> cancelled
-queued -> dead_letter    only through later bounded isolation policy
+queued -> dead_letter    only through a later bounded isolation policy
 claimed -> queued        only through validated retry release or stale-lease recovery
 claimed -> succeeded
 claimed -> failed
 claimed -> cancelled
-claimed -> dead_letter   only through later bounded terminal policy
+claimed -> dead_letter   only through a later bounded isolation policy
 ```
 
-Every mutation uses compare-and-swap semantics over at least job ID, dispatch key, record revision, and state. Claim, renewal, retry release, stale recovery, and claimed-terminal transitions additionally fence on `claim_generation` and `lease_token`.
+B3 does not generate `dead_letter`.
+
+Every mutation uses compare-and-swap semantics over at least job ID, dispatch key, record revision, state, original inode, and original canonical bytes. Claim, renewal, retry release, stale recovery, and claimed-terminal transitions additionally fence on `claim_generation` and `lease_token`; active-lease operations except stale recovery also fence on `claim_owner`.
 
 ## State invariants
 
@@ -289,21 +274,33 @@ Every mutation uses compare-and-swap semantics over at least job ID, dispatch ke
 - claim owner and lease token are empty,
 - lease timestamps are null,
 - terminal reason is empty,
-- `retry_not_before` may be null or a future bounded timestamp.
+- `retry_not_before` may be null or a canonical bounded timestamp,
+- attempt count and claim generation are preserved from the last claim.
 
 ### Claimed
 
 - claim owner and unpredictable lease token are present,
 - lease acquisition and expiry timestamps are present and ordered,
-- terminal reason is empty,
-- only the current lease holder may renew or commit a claimed transition.
+- retry-not-before and terminal reason are empty,
+- only the current active lease holder may renew, retry-release, or commit a claimed terminal transition,
+- expired leases require stale recovery and are not renewed or executed.
 
 ### Terminal
 
 - claim and lease fields are cleared,
+- retry-not-before is null,
 - terminal reason is present,
 - `failed` and `dead_letter` require a non-`none` failure class,
+- `succeeded` and `cancelled` require `failure_class = none`,
 - terminal-state immutability is absolute.
+
+Across all states:
+
+```text
+attempt_count == claim_generation
+record_revision >= claim_generation
+updated_at >= created_at
+```
 
 ## Atomic enqueue and duplicate handling
 
@@ -319,33 +316,50 @@ write_failed
 
 A duplicate is accepted only when the existing record has identical canonical dispatch key-input fields. Same key plus different key-input fields is not a duplicate. Existing records must never be overwritten merely because the same key is presented again.
 
-Fields excluded from dispatch identity must not create a second record and must not overwrite an existing record during duplicate handling.
-
 ## Claim and lease invariants
 
-A successful future claim atomically requires `state=queued`, respects `retry_not_before`, increments `record_revision`, increments `attempt_count`, increments `claim_generation`, sets claim owner and lease token/timestamps, and transitions to `claimed`.
+A successful claim atomically requires `state=queued`, respects `retry_not_before`, increments `record_revision`, increments `attempt_count`, increments `claim_generation`, sets claim owner and a newly generated opaque lease token, records acquisition/expiry timestamps, and transitions to `claimed`.
 
-Lease renewal must compare-and-swap the current revision while preserving claim generation and lease token. Lease expiry does not execute work or mutate state; it only permits a separately validated stale-recovery attempt.
+Lease renewal compares the current revision, state, owner, claim generation, and lease token. It increments revision while preserving attempt count, generation, owner, token, and acquisition time. Lease expiry does not execute work or mutate state; it only permits a separately validated stale-recovery attempt.
 
-## Retry release
+At `retry_not_before`, a queued record is ready. At `lease_expires_at`, a claimed record is expired.
 
-A retry-release transition is structurally distinct from terminal failure. A future `claimed -> queued` release must fence on revision, claim generation, and lease token; increment revision; preserve the dispatch identity and attempt count; clear claim/lease fields; store bounded failure/retry metadata; and optionally set `retry_not_before`.
+## Retry release and stale recovery
 
-Retry budgets, backoff values, worker error classification, and terminal policy are not defined by B0/B1.
+A retry-release transition is structurally distinct from terminal failure. `claimed -> queued` release fences on revision, owner, claim generation, and lease token; requires an active lease; increments revision; preserves dispatch identity, attempt count, and generation; clears claim/lease fields; and stores bounded caller-classified retry/failure metadata.
 
-## Restart and corruption
+Stale recovery fences on revision, state, claim generation, and lease token but intentionally does not require owner equality. It is allowed only at or after expiry, increments revision, preserves attempts/generation, clears claim/lease fields, and stores fixed stale-lease classifications.
+
+Retry budgets, backoff values, worker error classification, and terminal policy are not defined by B0/B1/B2/B3.
+
+## Terminal commit
+
+An active claimed record may commit `succeeded`, `failed`, or `cancelled` under the exact lease fence. A queued record may commit only `cancelled` with empty claim fence fields.
+
+B3 clears claim/lease and retry-ready metadata, records the terminal reason, and never creates `dead_letter`. Terminal-state immutability applies before all other transition logic.
+
+## Filesystem, locking, and CAS
+
+B2 and B3 use the deterministic dispatch-digest filename under one absolute, pre-existing queue root. No job ID, owner, token, retry value, terminal reason, or content value forms a path.
+
+B3 securely walks each queue-root component with directory file descriptors and rejects symlinks, non-directories, missing components, changed inodes, unsafe final types, hard-link counts other than one, oversized records, malformed or noncanonical JSON, and unsupported secure-dirfd platforms.
+
+B3 takes a nonblocking shared queue-root lock for dry-run inspection and a nonblocking exclusive queue-root lock for apply.
+
+A mutation writes and `fsync`s an exclusive same-directory temporary file, immediately reopens and revalidates the target, requires the original inode and exact bytes to match, atomically renames the temporary file over the target, `fsync`s the directory, and strictly re-reads the committed record. Same-inode byte mutation is a conflict.
+
+Corrupt records must not be silently repaired, normalized, overwritten, claimed, recovered, terminated, or passed to a worker.
+
+## Restart behavior
 
 On restart:
 
-- queued records remain eligible after `retry_not_before`,
+- queued records remain eligible at or after `retry_not_before`,
 - unexpired claimed records remain claimed,
-- expired `claimed` records are not automatically executed,
+- expired claimed records are not automatically executed,
+- stale recovery is a separate fenced mutation,
 - terminal records remain terminal,
-- malformed records are blocked from claim.
-
-Queue readers and writers fail closed on unsupported schemas, unknown/missing fields, impossible state combinations, identity/key mismatch, duplicate records, malformed counters/timestamps, lease data on non-claimed records, missing lease data on claimed records, and unsafe or torn file-backed storage evidence.
-
-Corrupt records must not be silently repaired, overwritten, claimed, or passed to a worker.
+- malformed records are blocked from all transitions.
 
 ## Public status projection
 
@@ -355,10 +369,12 @@ The public/default schema is:
 relaymem.slp_queue_status_projection.v0
 ```
 
-It is content-free and may include only allowlisted state/status/count/boolean fields. It excludes:
+It is content-free and may include only allowlisted status, transition kind, queue state, attempt count, claim/lease/terminal booleans, retry/failure classifications, applied/attempted flags, and bounded reason IDs.
+
+It excludes:
 
 - the durable record body,
-- the A2 or B1 runtime-private candidate,
+- runtime-private transition requests and results,
 - job and dispatch identifiers,
 - run, turn, session, and namespace values,
 - lineage fingerprints,
@@ -370,7 +386,7 @@ It is content-free and may include only allowlisted state/status/count/boolean f
 
 ## Visible-response independence
 
-Queue persistence failure must not:
+Queue persistence or transition failure must not:
 
 - change the HTTP success already selected,
 - rewrite or append visible text,
@@ -393,31 +409,31 @@ Phase 6-B2: implemented
   duplicate/collision/corruption handling
   no worker invocation
 
-Phase 6-B3: next
-  claim, lease, retry-release, stale recovery, terminal-state helpers
+Phase 6-B3: implemented
+  claim, lease, retry-release, stale-recovery, terminal-state helpers
   no worker execution
 
-Phase 6-C
-  worker execution through RelayMEM-owned bounded artifacts
+Phase 6-C worker execution: next
+  exact active B3 lease fence
+  existing RelayMEM-owned M3a-M3h boundaries
 ```
 
 ## Current non-goals
 
-B0/B1 do not implement:
+B0-B3 do not implement:
 
-- queue configuration or filesystem/database I/O,
-- durable enqueue or duplicate lookup,
-- claim/lease/state mutation,
-- retry execution,
-- worker or scheduler execution,
+- scheduler loops or queue scanning,
+- worker execution,
 - RelaySLP invocation,
-- memory-write preflight or apply,
-- page/index/log mutation,
-- RelaySOUL mutation,
+- retry budget or backoff policy,
 - request-runtime wiring,
+- memory-write preflight or apply from a worker,
+- Primary or Secondary MEM formation from queue work,
+- page/index/log mutation from queue work,
+- RelaySOUL mutation,
 - visible-response mutation or delay,
 - TTS, audio, Live2D, avatar, or lip-sync processing.
 
 ## Validation
 
-B1 provides dedicated behavior and security smokes. Later B2/B3 validation must prove atomic create-if-absent semantics, duplicate/collision distinction, fail-closed corruption handling, fenced transitions, attempt/claim monotonicity, stale-lease behavior, and terminal-state immutability without leaking private identities or content.
+Dedicated B1, B2, and B3 behavior, security, and contract smokes prove exact typed boundaries, canonical records, duplicate/collision distinction, fail-closed corruption handling, fenced transitions, attempt/claim monotonicity, stale-lease behavior, terminal-state immutability, lock/CAS behavior, and content-free public diagnostics.

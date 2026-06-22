@@ -23,6 +23,9 @@ from relaylm.relaymem_slp_dispatch_preflight import (
     RelayMEMSLPDispatchPreflightResult,
     RelayMEMSLPDurableJobCandidate,
 )
+from relaylm.relaymem_slp_queue_record import (
+    validate_record_mapping as _validate_canonical_queue_record,
+)
 
 _RESULT_SCHEMA = "relaymem.slp_durable_enqueue.v0"
 _DURABLE_JOB_SCHEMA = "relaymem.slp_durable_job.v0"
@@ -67,6 +70,7 @@ _ALLOWED_STAGES = ("primary_formation", "primary_write_preflight")
 _ALLOWED_ADMISSION_STATUSES = ("admitted_dry_run", "eligible_for_enqueue")
 _ALLOWED_RUNTIME_STATUSES = ("completed", "succeeded", "idle")
 _ALLOWED_POLICY_STATUSES = ("allowed", "free_to_update")
+_TERMINAL_STATES = frozenset({"succeeded", "failed", "cancelled", "dead_letter"})
 
 RelayMEMSLPDurableEnqueueStatus = Literal[
     "disabled",
@@ -137,10 +141,11 @@ class RelayMEMSLPDurableEnqueueResult:
 
     def to_log_dict(self) -> dict[str, object]:
         record = self.durable_record
+        state = record.get("state") if record else None
         return {
             "schema_version": _PROJECTION_SCHEMA,
             "status": self.status,
-            "state": record.get("state") if record else None,
+            "state": state,
             "trigger_mode": record.get("trigger_mode") if record else None,
             "processing_stage": record.get("processing_stage") if record else None,
             "source_event_kind": record.get("source_event_kind") if record else None,
@@ -151,9 +156,9 @@ class RelayMEMSLPDurableEnqueueResult:
             "enqueue_attempted": self.enqueue_attempted,
             "enqueue_applied": self.enqueue_applied,
             "duplicate_detected": self.duplicate_detected,
-            "claim_active": False,
-            "lease_present": False,
-            "terminal": False,
+            "claim_active": state == "claimed",
+            "lease_present": bool(record and record.get("lease_token")),
+            "terminal": state in _TERMINAL_STATES,
             "failure_class": record.get("failure_class", "none") if record else "none",
             "blocked_reason_ids": list(self.blocked_reasons),
         }
@@ -519,10 +524,8 @@ def _inspect_existing(
             record.get(field) != expected_candidate.get(field)
             for field in _IDENTITY_FIELDS
         )
-        errors = _validate_record_mapping(
+        errors = _validate_canonical_queue_record(
             record,
-            expected=expected_candidate,
-            allow_timestamps=True,
             validate_derived_identity=not identity_differs,
         )
         if errors:
