@@ -127,6 +127,15 @@ def main() -> None:
         assert duplicate.durable_record == claimed_record
         assert record_path.read_bytes() == claimed_bytes
 
+        projection = duplicate.to_log_dict()
+        assert projection["state"] == "claimed"
+        assert projection["claim_active"] is True
+        assert projection["lease_present"] is True
+        assert projection["terminal"] is False
+        assert "claim_owner" not in projection
+        assert "lease_token" not in projection
+        assert "lease_expires_at" not in projection
+
     print("Phase 6-B3 enqueue lifecycle compatibility smoke: ok")
 
 
