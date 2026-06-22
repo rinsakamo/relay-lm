@@ -55,7 +55,7 @@ When documents disagree:
 Managed-route correctness: Phase 5-C complete
 Pre-stream hardening: Phase 5-D complete through D2
 Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
-Asynchronous RelaySLP orchestration: complete through Phase 6-B2 atomic durable enqueue
+Asynchronous RelaySLP orchestration: durable enqueue implementation complete through Phase 6-B2
 RelayMEM Primary path: M1/M2 complete; M3a through M3h implemented as direct/helper boundaries
 SOUL Lab UI: UI-A0 through UI-A6 implemented as browser-local mock/presentation slices
 ```
@@ -84,8 +84,8 @@ Implemented:
 - A1 deferred job-admission preflight,
 - A2 finalized-turn handoff and runtime-private enqueue candidate,
 - B0 durable queue schema and state-machine contract,
-- B1 deterministic dispatch/job identity and queued-record candidate,
-- B2 gated atomic create-if-absent durable enqueue with duplicate/collision/corruption classification.
+- Phase 6-B1 RelaySLP dispatch preflight,
+- Phase 6-B2 atomic durable enqueue with duplicate/collision/corruption classification.
 
 Current limitation:
 
