@@ -29,14 +29,14 @@ relaylm_related_authority:
 SOUL Lab UI-A7 adds the first server-owned Lab management boundary while keeping the browser read-only and preserving UI-A6 as an explicit fallback.
 
 ```text
-RelayLM runtime config
+RelayLM loopback runtime config
   -> server-owned content-free projection
   -> GET /lab/api/settings
   -> GET /lab/api/characters
   -> strict browser schema validation
   -> Settings server projection
 
-request failure or invalid schema
+request failure, non-loopback refusal, or invalid schema
   -> explicitly labeled UI-A6 mock fallback
 ```
 
@@ -44,8 +44,8 @@ request failure or invalid schema
 
 UI-A7 implements only:
 
-- `GET /lab/api/settings`,
-- `GET /lab/api/characters`,
+- loopback-only `GET /lab/api/settings`,
+- loopback-only `GET /lab/api/characters`,
 - exact versioned projection schemas,
 - server-side redaction and content exclusion,
 - `Cache-Control: no-store`,
@@ -63,6 +63,28 @@ It does not add a settings write endpoint, character mutation endpoint, connecti
 The canonical `relaylm` console command now starts this wrapper. Existing `/healthz`, `/v1/models`, and `/v1/chat/completions` behavior continues to come from the core application.
 
 Direct use of `relaylm.app:create_app` remains a core-only application factory. The canonical CLI is the supported UI-A7 runtime entry point.
+
+## Loopback access boundary
+
+The management routes are available only when the configured RelayLM listen host is loopback.
+
+Accepted loopback forms include:
+
+- `localhost`,
+- IPv4 loopback addresses such as `127.0.0.1` and `127.0.0.2`,
+- IPv6 loopback `::1` and `[::1]`.
+
+Non-loopback or wildcard listen hosts such as `0.0.0.0`, `::`, LAN addresses, and arbitrary hostnames cause both Lab management routes to return:
+
+```json
+{
+  "detail": "lab_management_requires_loopback_listen"
+}
+```
+
+with HTTP `403`.
+
+This guard is derived from validated server configuration and is independent of request headers. It does not trust `Host`, `Origin`, or forwarded-address headers to prove locality. Existing Core routes remain available according to their existing runtime behavior when the Lab management routes are refused.
 
 ## Settings projection
 
@@ -132,7 +154,7 @@ Backend URLs are reduced to scheme, host, optional port, and path. Invalid or un
 both responses valid
   -> server projection
 
-HTTP failure
+HTTP failure or 403 refusal
 or JSON shape mismatch
 or authority flag mismatch
   -> discard response
@@ -170,7 +192,7 @@ RelayLM canonical CLI
   relaylm --config config.yaml
 ```
 
-The development proxy is local-only and does not add permissive CORS behavior.
+The development proxy is local-only and does not add permissive CORS behavior. RelayLM must also be configured with a loopback listen host for the management routes to return their projections.
 
 ## Validation
 
@@ -193,7 +215,9 @@ The smoke verifies:
 5. complete and incomplete character projection behavior,
 6. `Cache-Control: no-store`,
 7. mutation methods return `405`,
-8. core `/healthz` and `/v1/models` remain available.
+8. loopback host classification including IPv4 and IPv6 loopback,
+9. non-loopback management requests return `403`,
+10. core `/healthz` and `/v1/models` remain available in both loopback and non-loopback configurations.
 
 UI validation remains:
 
@@ -212,6 +236,7 @@ It does not authorize or implement:
 
 - `PATCH /lab/api/settings/*`,
 - `POST /lab/api/characters`,
+- remote or LAN access to Lab management metadata,
 - backend connection testing,
 - credential loading into the browser,
 - persistent active-character changes,
@@ -224,4 +249,4 @@ It does not authorize or implement:
 
 ## Next bounded slice
 
-A later slice may serve the built UI from RelayLM or add a narrowly scoped mutation preflight. Any mutation work must remain separate from UI-A7 and begin with an explicit server-side schema, validation, dry-run or preflight boundary, and credential ownership model.
+A later slice may serve the built UI from RelayLM or add a narrowly scoped mutation preflight. Any mutation work must remain separate from UI-A7 and begin with an explicit server-side schema, validation, dry-run or preflight boundary, credential ownership model, and a separately reviewed access-control boundary.
