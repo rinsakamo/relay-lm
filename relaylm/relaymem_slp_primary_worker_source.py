@@ -364,15 +364,9 @@ def validate_relaymem_slp_primary_worker_source(
     *,
     claimed_record: object,
     request_scope: object,
-    require_unconsumed: bool = True,
 ) -> tuple[RelayMEMSLPPrimaryWorkerSource | None, tuple[str, ...]]:
     """Validate exact type, scope lifetime, consumption state, and correlation."""
 
-    require_value, require_errors = strict_bool(
-        require_unconsumed, "require_unconsumed_invalid"
-    )
-    if require_errors:
-        return None, require_errors
     if type(source) is not RelayMEMSLPPrimaryWorkerSource:
         return None, ("exact_worker_source_required",)
     if type(request_scope) is not RelayMEMSLPPrimaryWorkerSourceScope:
@@ -381,7 +375,7 @@ def validate_relaymem_slp_primary_worker_source(
         return None, ("request_scope_stale",)
     if not request_scope._owns(source):
         return None, ("cross_request_source_rejected",)
-    if require_value and request_scope._is_consumed(source):
+    if request_scope._is_consumed(source):
         return None, ("worker_source_already_consumed",)
 
     typed_errors = _validate_typed_source(source)
@@ -408,7 +402,6 @@ def consume_relaymem_slp_primary_worker_source(
         source,
         claimed_record=claimed_record,
         request_scope=request_scope,
-        require_unconsumed=True,
     )
     if exact is None:
         return None, errors
