@@ -38,8 +38,8 @@ The current bounded UI implementation covers UI-A0 through UI-A7:
 - explicit destructive-preview confirmation for formed-memory Forget,
 - content-free memory-inspection timeline,
 - shared Settings / Runtime Boundary route,
-- read-only `GET /lab/api/settings` runtime-config projection,
-- read-only `GET /lab/api/characters` character-registry projection,
+- loopback-only read access to `GET /lab/api/settings` runtime-config projection,
+- loopback-only read access to `GET /lab/api/characters` character-registry projection,
 - strict browser-side schema validation before server data is displayed,
 - explicit loading, server-owned, and mock-fallback source states,
 - server-side endpoint redaction and credential exclusion,
@@ -54,7 +54,7 @@ UI-A7 connects only to the two read-only Lab management endpoints. It intentiona
 
 - Node.js 22.12 or newer
 - npm
-- RelayLM running on `127.0.0.1:8090` for the connected UI-A7 projection
+- RelayLM listening on a loopback host such as `127.0.0.1:8090` for the connected UI-A7 projection
 
 ## Development
 
@@ -86,7 +86,7 @@ http://127.0.0.1:5173/lab/#/pod
 http://127.0.0.1:5173/lab/#/settings
 ```
 
-When both Lab API responses pass exact schema validation, Settings shows the server-owned projection. If either request fails or returns an invalid schema, Settings explicitly labels and displays the UI-A6 browser-local mock fallback.
+When both Lab API responses pass exact schema validation, Settings shows the server-owned projection. If either request fails, is refused because RelayLM is bound to a non-loopback host, or returns an invalid schema, Settings explicitly labels and displays the UI-A6 browser-local mock fallback.
 
 ## Validation
 
@@ -107,4 +107,4 @@ The production bundle is written to `apps/soul-lab/dist/` with a `/lab/` asset b
 
 The browser is presentation and interaction only. It must not become the authority for SOUL, MEM, RelayRUN, RelaySLP, peer transport, intervention apply, rollback, memory correction, forgetting, held-candidate discard, pinning, merging, runtime configuration, persistent character registry, authoritative connection state, process lifecycle, backend credentials, source inspection, or persistence decisions.
 
-The server projections contain configuration metadata and booleans only. They exclude API keys, URL credentials, URL query/fragment data, persona source paths, persona source contents, memory source paths, trace paths, raw traces, prompt text, and conversation text. Theme and the selected mock character may use existing non-secret display-preference storage; credentials and configuration drafts must not use `localStorage`.
+The server projections contain configuration metadata and booleans only. They exclude API keys, URL credentials, URL query/fragment data, persona source paths, persona source contents, memory source paths, trace paths, raw traces, prompt text, and conversation text. The Lab management routes return `403` when RelayLM is configured to listen on a non-loopback host, while the existing Core routes remain available. Theme and the selected mock character may use existing non-secret display-preference storage; credentials and configuration drafts must not use `localStorage`.
