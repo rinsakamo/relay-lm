@@ -66,9 +66,11 @@ SOUL Lab product layers:
 - [SOUL Lab UI-A3 Communication Handoff](soul_lab_ui_a3_communication_handoff.md) — browser-local peer classification, autonomous mock exchange loop, Soft Stop, emergency stop, and content-free timeline.
 - [SOUL Lab UI-A4 Pod Handoff](soul_lab_ui_a4_pod_handoff.md) — bounded intervention targets, locked protected traits, candidate diff, browser-local comparison, Hold/Discard, and non-executing Apply/Rollback previews.
 - [SOUL Lab UI-A5 Memory Inspector Handoff](soul_lab_ui_a5_memory_inspector_handoff.md) — formed/held/blocked outcomes, bounded provenance, subjective perspective, formed-memory Forget/Pin/Unpin, held-candidate Discard, and shared Correct/Merge previews.
+- [SOUL Lab UI-A6 Shared Shell / Settings Handoff](soul_lab_ui_a6_shared_shell_settings_handoff.md) — one shared shell owner, character-scoped route state, navigation-lock enforcement, and mock Settings authority boundaries.
+- [SOUL Lab UI-A7 Read-only Management Projection Handoff](soul_lab_ui_a7_management_projection_handoff.md) — secret-free runtime-config and character-registry reads, exact browser schema validation, and explicit mock fallback.
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md) — post-UI-MVP runtime adapter layer for TTS, audio queue, Live2D/avatar mapping, timing, preview, and adapter telemetry.
 
-The current UI implementation is complete through UI-A5. Peer transport, server-side management APIs, persisted memory operations, RelaySOUL apply/rollback, and Runtime adapter execution remain separate.
+The current UI implementation is complete through UI-A7. UI-A7 adds only read-only server management projections. Peer transport, settings and character mutations, persisted memory operations, RelaySOUL apply/rollback, static bundle serving, and Runtime adapter execution remain separate.
 
 Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1` with explicit `client_instruction_source.v1` provenance. Role, wording, and message position alone are not provenance.
 
