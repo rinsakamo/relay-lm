@@ -22,6 +22,7 @@ jobs:
           fetch-depth: 0
       - name: Apply current-state projection fix
         run: |
+          # Retry marker: apply the exact one-line source fix and regression extension.
           python - <<'PY'
           from pathlib import Path
 
