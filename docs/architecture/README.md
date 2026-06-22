@@ -36,8 +36,9 @@ Product-critical Phase 6 boundaries:
 - [Phase 6-B1 RelaySLP Dispatch Preflight](phase6b1_relayslp_dispatch_preflight.md)
 - [Phase 6-B2 RelaySLP Atomic Durable Enqueue](phase6b2_relayslp_atomic_durable_enqueue.md)
 - [Phase 6-B3 RelaySLP Fenced Queue State Helpers](phase6b3_relayslp_queue_state_helpers.md)
+- [Phase 6-C1 Primary MEM Worker Contract](phase6c1_primary_mem_worker_contract.md)
 
-Phase 6-A1 validates deferred RelaySLP admission metadata. Phase 6-A2 creates one runtime-private dry-run enqueue candidate after a finalized `turn_end`. Phase 6-B0 owns the durable-record, dispatch-idempotency, state-machine, duplicate/collision, lease/restart/corruption, and content-free projection contract. Phase 6-B1 generates deterministic dispatch/job identities and a runtime-private initial queued durable-job candidate without queue I/O. Phase 6-B2 performs gated atomic create-if-absent durable enqueue. Phase 6-B3 now performs fenced claim, renewal, retry release, stale recovery, and terminal commit without worker execution. Phase 6-C worker execution is next.
+Phase 6-A1 validates deferred RelaySLP admission metadata. Phase 6-A2 creates one runtime-private dry-run enqueue candidate after a finalized `turn_end`. Phase 6-B0 owns the durable-record, dispatch-idempotency, state-machine, duplicate/collision, lease/restart/corruption, and content-free projection contract. Phase 6-B1 generates deterministic dispatch/job identities and a runtime-private initial queued durable-job candidate without queue I/O. Phase 6-B2 performs gated atomic create-if-absent durable enqueue. Phase 6-B3 now performs fenced claim, renewal, retry release, stale recovery, and terminal commit without worker execution. Phase 6-C1 defines the exact active-lease, protected-source, idempotency, retry, crash, and outcome-mapping contract required before worker implementation.
 
 Completed Core streaming boundary:
 
