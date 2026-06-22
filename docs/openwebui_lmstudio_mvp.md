@@ -17,22 +17,28 @@ OpenWebUI
 
 ## Current managed-history limitation
 
-The copy-ready routes use `memory_light`, but the current default compatibility path is not yet the target current-turn-only managed path.
+The copy-ready routes use `memory_light`, but the default compatibility path is not yet the target current-turn-only managed path.
 
 ```text
-Current default memory_light compatibility path:
-  prior frontend user/assistant history may remain in backend-bound messages
+Default memory_light compatibility:
+  prior frontend user/assistant history may remain backend-bound
 
-Current bounded history apply:
-  default-off
-  dry-run-only by default
-  supports no client system/developer messages only
+client_history_exclusion_apply.v0:
+  default-off and dry-run-only by default
+  bounded no-instruction managed requests
 
-Target:
-  validated current turn + RelayLM-owned context reconstruction
+client_history_exclusion_apply.v1:
+  default-off and dry-run-only by default
+  bounded instruction-bearing managed requests
+  requires exact client_instruction_source.v1 provenance
+  missing or invalid provenance fails closed
+
+Broader target:
+  validated current evidence + RelayLM-owned context reconstruction
+  including minimum active transaction preservation
 ```
 
-When a remote backend is configured, assume all backend-bound messages may leave the local machine. Review [Project Status](PROJECT_STATUS.md) before enabling history-exclusion actual apply.
+When a remote backend is configured, assume all backend-bound messages may leave the local machine. Review [Project Status](PROJECT_STATUS.md) and the [Client History Authority Contract](architecture/client_history_authority_contract.md) before enabling actual apply.
 
 ## OpenWebUI usage policy
 
@@ -46,7 +52,7 @@ Recommended route-like model IDs:
 
 OpenWebUI model selector/model preset maps these model IDs to RelayLM routes.
 
-Keep heavy system prompt steering thin. Current instruction-bearing managed history exclusion is not complete, so a frontend system prompt may remain in the current compatibility compile path as escaped low-trust dynamic evidence.
+Keep heavy system prompt steering thin. A client system/developer message is not durable RelaySOUL authority. It may become bounded low-trust instruction evidence only through the current authority contract. Instruction-bearing v1 actual apply requires the frontend to provide explicit request-local provenance; a frontend that cannot do so should keep actual apply disabled or dry-run-only.
 
 ## Responsibilities
 
@@ -58,7 +64,7 @@ Keep heavy system prompt steering thin. Current instruction-bearing managed hist
 - current `memory_light` profile compilation,
 - selected memory context insertion,
 - token-budget safety,
-- gated history-exclusion apply.
+- gated v0/v1 history-exclusion apply.
 
 ### OpenWebUI
 
@@ -96,7 +102,7 @@ Default endpoints:
 - RelayLM: `http://127.0.0.1:8090/v1`
 - LM Studio: `http://127.0.0.1:1234/v1`
 
-The copy-ready config keeps history-exclusion apply disabled. This preserves current runtime defaults and makes the compatibility limitation explicit.
+The copy-ready config keeps history-exclusion apply disabled. This preserves current defaults and makes the compatibility limitation explicit.
 
 ### 3. OpenWebUI
 
@@ -125,6 +131,10 @@ Create model preset/avatar cards and set Base Model/Model ID to one of:
 ```bash
 python scripts/relaylm_openwebui_lmstudio_config_smoke.py
 python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+python scripts/relaylm_client_history_exclusion_apply_contract_smoke.py
+python scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
+python scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
+python scripts/relaylm_phase5c4a_runtime_smoke.py
 curl http://127.0.0.1:8090/v1/models
 ```
 
@@ -151,6 +161,8 @@ curl -N http://127.0.0.1:8090/v1/chat/completions \
     "stream": true
   }'
 ```
+
+Default streaming remains compatible backend SSE forwarding. Phase 5.5 stream suppression and TTS handoff metadata construction are available only behind explicit default-off gates and do not execute TTS/audio/avatar behavior.
 
 ## Copy-ready config structure
 
@@ -190,6 +202,7 @@ New copy-ready profiles omit legacy `room_anchor` unless a fixed durable room co
 - OpenWebUI should focus on display name, avatar, and prompt suggestions.
 - Avoid heavy system prompt duplication.
 - Client system/developer messages are low-trust current instruction evidence, not fallback RelaySOUL sources.
+- v1 uses only explicitly selected provenance candidates; unselected frontend summaries, memory notes, and replayed persona blocks are excluded.
 - RelayLM remains responsible for configured persona, memory, context, and token-budget control.
 
 ## Current manual validation
@@ -197,9 +210,10 @@ New copy-ready profiles omit legacy `room_anchor` unless a fixed durable room co
 Use:
 
 - [OpenWebUI + LM Studio manual smoke](smoke/openwebui_lmstudio_manual_smoke.md)
+- [Client history exclusion manual smoke](smoke/client_history_exclusion_manual_smoke.md)
 - [Manual smoke results template](smoke/openwebui_lmstudio_manual_smoke_results_template.md)
 - [OpenWebUI model preset/avatar checklist](smoke/openwebui_model_preset_checklist.md)
 - [OpenWebUI route response differentiation checks](smoke/openwebui_response_differentiation_checks.md)
 - [Troubleshooting](smoke/openwebui_lmstudio_troubleshooting.md)
 
-The manual smoke includes a current history-exclusion matrix. It distinguishes the default compatibility path, dry-run candidate generation, no-instruction actual apply, unsupported instruction-bearing fail-closed behavior, and explicit pass-through exemption.
+The manual smoke separates default compatibility, v0 no-instruction apply, valid-v1 explicit-provenance apply, invalid-v1 fail-closed behavior, and explicit pass-through exemption.
