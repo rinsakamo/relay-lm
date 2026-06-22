@@ -86,6 +86,8 @@ Phase 6-B1 dry-run job-record and dispatch-idempotency preflight helper: complet
 
 Phase 6-B1: job-record and dispatch-idempotency preflight — complete.
 
+Phase 6-B2 atomic durable enqueue: complete.
+
 The next RelayLM Core boundary is Phase 6-B3. That boundary is the last queue-only prerequisite before request-runtime enqueue wiring and worker execution.
 
 ## Active priority: Integration Milestone I1
