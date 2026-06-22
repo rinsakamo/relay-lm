@@ -30,13 +30,14 @@ SOUL Lab UI-A7 adds the first server-owned Lab management boundary while keeping
 
 ```text
 RelayLM loopback runtime config
+and loopback transport peer
   -> server-owned content-free projection
   -> GET /lab/api/settings
   -> GET /lab/api/characters
-  -> strict browser schema validation
+  -> exact browser schema validation
   -> Settings server projection
 
-request failure, non-loopback refusal, or invalid schema
+request failure, access refusal, or invalid schema
   -> explicitly labeled UI-A6 mock fallback
 ```
 
@@ -44,8 +45,8 @@ request failure, non-loopback refusal, or invalid schema
 
 UI-A7 implements only:
 
-- loopback-only `GET /lab/api/settings`,
-- loopback-only `GET /lab/api/characters`,
+- local-only `GET /lab/api/settings`,
+- local-only `GET /lab/api/characters`,
 - exact versioned projection schemas,
 - server-side redaction and content exclusion,
 - `Cache-Control: no-store`,
@@ -64,9 +65,12 @@ The canonical `relaylm` console command now starts this wrapper. Existing `/heal
 
 Direct use of `relaylm.app:create_app` remains a core-only application factory. The canonical CLI is the supported UI-A7 runtime entry point.
 
-## Loopback access boundary
+## Local access boundary
 
-The management routes are available only when the configured RelayLM listen host is loopback.
+Both of the following conditions are required for a Lab management response:
+
+1. the validated RelayLM configuration uses a loopback listen host,
+2. the actual ASGI transport peer is loopback.
 
 Accepted loopback forms include:
 
@@ -74,17 +78,17 @@ Accepted loopback forms include:
 - IPv4 loopback addresses such as `127.0.0.1` and `127.0.0.2`,
 - IPv6 loopback `::1` and `[::1]`.
 
-Non-loopback or wildcard listen hosts such as `0.0.0.0`, `::`, LAN addresses, and arbitrary hostnames cause both Lab management routes to return:
+A wildcard/non-loopback configured host, a non-loopback transport peer, or an unavailable peer address causes both Lab management routes to return:
 
 ```json
 {
-  "detail": "lab_management_requires_loopback_listen"
+  "detail": "lab_management_requires_loopback_access"
 }
 ```
 
 with HTTP `403`.
 
-This guard is derived from validated server configuration and is independent of request headers. It does not trust `Host`, `Origin`, or forwarded-address headers to prove locality. Existing Core routes remain available according to their existing runtime behavior when the Lab management routes are refused.
+The transport-peer check prevents a direct Uvicorn launch with a socket bind broader than `config.listen.host` from exposing the management routes to a remote client. The check does not use `Host` or `Origin` as proof of locality. Existing Core routes remain available according to their existing runtime behavior when the Lab management routes are refused.
 
 The browser parser also requires `listen.loopback_only` to be exactly `true`. A response claiming a non-loopback projection is discarded even if it was delivered with HTTP `200`, and the UI uses the explicit mock fallback instead.
 
@@ -103,12 +107,14 @@ The response contains:
 - listen host, port, and loopback classification,
 - RelayLM endpoint metadata,
 - configured backend endpoint metadata,
-- configured route and model labels,
+- configured route and model labels inside runtime-component items,
 - TTS and avatar capability state,
 - explicit credential-boundary metadata,
 - content-free diagnostics counters.
 
 The endpoint does not perform a network probe. `configured` means present in validated runtime configuration, not reachable or healthy.
+
+An earlier unused top-level `model_routes` projection was removed. Route-model labels needed by Settings remain inside the bounded runtime-component and character projections.
 
 ## Character projection
 
@@ -150,22 +156,34 @@ Backend URLs are reduced to scheme, host, optional port, and path. Invalid or un
 
 ## Browser validation
 
-`managementApi.ts` accepts a response only when the version, projection kind, source, read-only flags, loopback-only flag, credential flags, diagnostics flags, and item shapes match the UI-A7 contract.
+`managementApi.ts` accepts a response only when every object has the exact allowlisted key set and every value matches the UI-A7 contract.
+
+Exact-key validation applies to:
+
+- the settings projection,
+- listen metadata,
+- every runtime component,
+- credential-boundary metadata,
+- diagnostics metadata,
+- the characters projection,
+- every character item.
 
 ```text
 both responses valid
 and settings.listen.loopback_only == true
+and no object contains an unexpected key
   -> server projection
 
 HTTP failure or 403 refusal
-or JSON shape mismatch
-or authority flag mismatch
+or missing field
+or unexpected field
+or value/type mismatch
 or loopback-only mismatch
-  -> discard response
+  -> discard the bundle
   -> labeled mock fallback
 ```
 
-The browser does not partially trust one response while silently mixing it with the other. The settings and character projections are loaded as one bundle.
+The browser does not partially trust one response while silently mixing it with the other. The settings and character projections are loaded as one bundle. Unexpected fields are rejected rather than silently sanitized so a server regression cannot enter the trusted server-display state while carrying unreviewed metadata.
 
 ## Settings presentation
 
@@ -180,7 +198,7 @@ Server success displays:
 
 Failure displays the existing UI-A6 `SettingsPage` as an explicitly labeled browser-local mock fallback.
 
-The two sources are not displayed simultaneously. This prevents mock labels from being mistaken for server state.
+The two sources are not displayed simultaneously. Reload clears the previous server bundle before entering the loading state, so stale server schema metadata is not shown during revalidation.
 
 ## Development topology
 
@@ -196,7 +214,7 @@ RelayLM canonical CLI
   relaylm --config config.yaml
 ```
 
-The development proxy is local-only and does not add permissive CORS behavior. RelayLM must also be configured with a loopback listen host for the management routes to return their projections.
+The development proxy is local-only and does not add permissive CORS behavior. RelayLM must use loopback configuration, and the proxy-to-RelayLM transport peer must also be loopback.
 
 ## Validation
 
@@ -217,11 +235,13 @@ The smoke verifies:
 3. URL userinfo, query, and fragment removal,
 4. source-path and trace-path exclusion,
 5. complete and incomplete character projection behavior,
-6. `Cache-Control: no-store`,
-7. mutation methods return `405`,
-8. loopback host classification including IPv4 and IPv6 loopback,
-9. non-loopback management requests return `403`,
-10. core `/healthz` and `/v1/models` remain available in both loopback and non-loopback configurations.
+6. removal of the unused top-level `model_routes` field,
+7. `Cache-Control: no-store`,
+8. mutation methods return `405`,
+9. loopback host classification including IPv4 and IPv6 loopback,
+10. a non-loopback transport peer receives `403` even with loopback configuration,
+11. loopback transport receives `403` with non-loopback configuration,
+12. core `/healthz` and `/v1/models` remain available when management access is refused.
 
 UI validation remains:
 
