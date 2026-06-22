@@ -100,6 +100,20 @@ jobs:
         run: PYTHONPATH=. python scripts/relaylm_phase6b3_queue_root_path_smoke.py
       - name: Run Phase 6-B3 queue state smoke
         run: PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
+      - name: Verify Phase 6-B3 bounded renewal horizon contract
+        run: |
+          PYTHONPATH=. python - <<'PY'
+          from pathlib import Path
+
+          source = Path("relaylm/relaymem_slp_queue_state.py").read_text(encoding="utf-8")
+          smoke = Path("scripts/relaylm_phase6b3_queue_state_smoke.py").read_text(encoding="utf-8")
+          contract = Path("docs/architecture/phase6b3_relayslp_queue_state_helpers.md").read_text(encoding="utf-8")
+
+          assert '_lease_expiry(now, request.lease_duration_seconds)' in source
+          assert '_lease_expiry(expiry, request.lease_duration_seconds)' not in source
+          assert '2026-06-22T01:00:35.000000Z' in smoke
+          assert 'does not accumulate duration from the previous expiry' in contract
+          PY
       - name: Run strict Phase 6-B3 queue state security smoke
         run: PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_security_smoke.py
       - name: Run Phase 6-B3 queue state contract smoke
