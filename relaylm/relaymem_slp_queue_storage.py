@@ -196,7 +196,9 @@ def atomic_replace_record(
             temp_fd = os.open(temp_name, flags, 0o600, dir_fd=root_fd)
             temp_created = True
         except OSError:
-            return _failure(proposal, "queue_temp_create_failed")
+            return _precommit_failure(
+                snapshot, proposal, "write_failed", "queue_temp_create_failed"
+            )
         try:
             _write_all(temp_fd, data)
             os.fsync(temp_fd)
@@ -208,20 +210,22 @@ def atomic_replace_record(
             ):
                 raise OSError(errno.EIO, "unsafe temp file")
         except OSError:
-            return _failure(proposal, "queue_temp_write_failed")
+            return _precommit_failure(
+                snapshot, proposal, "write_failed", "queue_temp_write_failed"
+            )
         finally:
             os.close(temp_fd)
 
         cas_error = reopen_and_compare(root_fd, filename, snapshot)
         if cas_error:
-            return AtomicReplaceOutcome(
-                "conflict", False, False, dict(snapshot.record), (cas_error,)
-            )
+            return _precommit_failure(snapshot, proposal, "conflict", cas_error)
         try:
             os.replace(temp_name, filename, src_dir_fd=root_fd, dst_dir_fd=root_fd)
             temp_created = False
         except OSError:
-            return _failure(proposal, "queue_atomic_replace_failed")
+            return _precommit_failure(
+                snapshot, proposal, "write_failed", "queue_atomic_replace_failed"
+            )
         try:
             os.fsync(root_fd)
         except OSError:
@@ -298,9 +302,18 @@ def _write_all(fd: int, data: bytes) -> None:
         offset += written
 
 
-def _failure(proposal: dict[str, object], reason: str) -> AtomicReplaceOutcome:
+def _precommit_failure(
+    snapshot: RecordSnapshot,
+    proposal: dict[str, object],
+    status: str,
+    reason: str,
+) -> AtomicReplaceOutcome:
+    """Restore caller-visible state when no rename has committed the proposal."""
+
+    proposal.clear()
+    proposal.update(snapshot.record)
     return AtomicReplaceOutcome(
-        "write_failed", False, False, dict(proposal), (reason,)
+        status, False, False, dict(snapshot.record), (reason,)
     )
 
 
