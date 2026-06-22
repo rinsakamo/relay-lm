@@ -23,6 +23,9 @@ from relaylm.relaymem_slp_dispatch_preflight import (
     RelayMEMSLPDispatchPreflightResult,
     RelayMEMSLPDurableJobCandidate,
 )
+from relaylm.relaymem_slp_queue_record import (
+    validate_record_mapping as _validate_canonical_queue_record,
+)
 
 _RESULT_SCHEMA = "relaymem.slp_durable_enqueue.v0"
 _DURABLE_JOB_SCHEMA = "relaymem.slp_durable_job.v0"
@@ -519,10 +522,8 @@ def _inspect_existing(
             record.get(field) != expected_candidate.get(field)
             for field in _IDENTITY_FIELDS
         )
-        errors = _validate_record_mapping(
+        errors = _validate_canonical_queue_record(
             record,
-            expected=expected_candidate,
-            allow_timestamps=True,
             validate_derived_identity=not identity_differs,
         )
         if errors:
