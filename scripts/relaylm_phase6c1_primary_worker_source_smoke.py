@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -331,6 +330,8 @@ def main() -> int:
 
     # 18-19. Public projection, result and PipelineNodeResult stay content-free.
     assert_content_free(valid.to_log_dict())
+    assert_content_free(valid)
+    assert_content_free(valid.source)
     assert_content_free(valid.to_runtime_dict())
     node = build_relaymem_slp_primary_worker_source_node_result(valid)
     assert_content_free(node.to_log_dict())
