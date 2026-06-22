@@ -67,6 +67,12 @@ def main() -> None:
         "Current Phase 5.5 provides gated stream-safety",
     )
     require(
+        "docs/architecture/runtime_architecture.md",
+        "## Mode contract",
+        "## Routing modes",
+        "## Runtime ownership non-goals",
+    )
+    require(
         "docs/config_schema.md",
         "relayctx_stream_unpack_dry_run_enabled",
         "relayctx_stream_unpack_max_buffer_chars",
