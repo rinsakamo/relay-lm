@@ -151,7 +151,7 @@ def main() -> None:
             "Same key plus different key-input fields is not a duplicate",
             "must not be silently repaired",
             "expired claimed records are not automatically executed",
-            "same-inode byte mutation is a conflict",
+            "Same-inode byte mutation is a conflict",
         ),
         "enqueue and recovery contract",
     )
