@@ -63,8 +63,8 @@ def main() -> None:
         "docs/architecture/client_instruction_authority_contract.md",
         "client_history_exclusion_apply.v1",
         "Phase 5-C4b content-free RelaySCN-facing cache-hit diagnostics projection",
-        "one-shot runtime-private typed-parse source consumption",
-        "Current Phase 5.5 provides gated stream-safety",
+        "one-shot trusted runtime-private typed-parse source consumption",
+        "Current Phase 5.5-B2 through C4 provides gated",
     )
     require(
         "docs/architecture/runtime_architecture.md",
