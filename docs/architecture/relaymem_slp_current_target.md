@@ -90,6 +90,10 @@ Current Phase 6 still does not provide:
 - RelayMEM M3a-M3h execution,
 - next-turn recall validation.
 
+### Compatibility status anchors
+
+Phase 6-B1 implements the first exact consumer of the A2 runtime-private handoff and performs no queue I/O. The next bounded RelayLM Core implementation is Phase 6-B3, followed by request-runtime enqueue wiring and worker execution for the active integration milestone.
+
 ## Current compatibility constraints
 
 - Retrieval may still consume historical compatibility-shaped inputs through existing wrappers.
