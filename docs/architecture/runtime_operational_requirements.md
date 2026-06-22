@@ -14,16 +14,28 @@ Current runtime provides:
 - current profile compilation and selected RelayCTX Repack phases,
 - typed `CompileApplyDecision` plus the content-free `mvp-ctx-apply-0` compile-decision diagnostics artifact,
 - request-level diagnostics and checkpoint-like RelayRUN artifacts,
-- a default-off no-instruction history-exclusion apply contract,
-- a backend-forward gate for explicitly requested actual apply.
+- default-off `client_history_exclusion_apply.v0` no-instruction managed apply,
+- default-off `client_history_exclusion_apply.v1` explicit-provenance instruction-bearing managed apply,
+- an exact backend-forward gate for intentionally requested actual apply,
+- strict read-only instruction-cache lookup and C4b content-free diagnostics projection,
+- default-off trusted runtime-private typed-parse and cache-writer plumbing,
+- default-compatible streaming plus Phase 5.5-B2 gated suppression and C0-C4 handoff metadata construction,
+- Phase 6 durable enqueue through B2,
+- RelayMEM direct/helper persistence primitives through M3h,
+- SOUL Lab UI-A7 loopback-only settings/characters read projections.
 
 Current runtime does not yet provide:
 
 - complete per-node RelayRUN orchestration,
 - a full route-authority-aware managed fallback taxonomy,
 - explicit forwarded-payload-source typing across all compile paths,
-- Stream Unpack,
-- idempotent partial-stream recovery.
+- active tool-chain reconstruction,
+- a trusted backend-response instruction-control artifact producer,
+- semantic RelaySCN apply from cached interpretation,
+- generalized partial-stream recovery,
+- Phase 6 queue lifecycle and worker execution,
+- ordinary-runtime Primary MEM formation and later-turn recall,
+- TTS/audio/avatar adapter delivery or execution.
 
 Target requirements below remain requirements even when the complete runtime path is not yet implemented.
 
@@ -80,7 +92,7 @@ Required invariants:
 
 The older conceptual chain `memory_full -> memory_light -> pass_through` may describe historical mode degradation only. It must not be interpreted as managed-route authority fallback. `pass_through` requires explicit route delegation.
 
-## Current no-instruction apply failure behavior
+## Current history-apply failure behavior
 
 When all of these are true:
 
@@ -88,7 +100,11 @@ When all of these are true:
 - `client_history_exclusion_apply_dry_run_only=false`,
 - route mode is managed,
 
-backend forwarding requires an exact successful `client_history_exclusion_apply.v0` result with:
+backend forwarding requires an exact successful typed apply result and the exact selected request-local candidate.
+
+### v0 no-instruction
+
+A supported no-instruction request requires `client_history_exclusion_apply.v0` with:
 
 ```text
 status = applied
@@ -96,23 +112,24 @@ payload_mutation_applied = true
 forwarded_payload present
 ```
 
-The following stop forwarding:
+### v1 instruction-bearing
 
-- missing result,
-- blocked result,
-- skipped result on a managed route,
-- `ready` candidate-only result,
-- any otherwise non-applied result.
+A supported instruction-bearing request requires:
 
-Runtime exceptions are converted into a bounded `blocked` result. `client_history_exclusion_apply.v0` does not currently define a separate `failed` status.
+- `client_instruction_source.v1` explicit provenance,
+- exact validation against request-local instruction identity,
+- `client_history_exclusion_apply.v1` status `applied`,
+- exact selected candidate at backend forwarding.
 
-Explicit `pass_through` routes are exempt. This current gate covers only the no-instruction slice.
+Missing or invalid provenance, candidate mismatch, downstream mutation, active tool-chain requirements, or any non-applied result stops forwarding.
+
+Runtime exceptions are converted into bounded blocked/error results. Failure never restores raw history or treats all system/developer messages as current instruction evidence. Explicit `pass_through` routes are exempt.
 
 ## Stable runtime reason posture
 
 Operational reasons should be typed and stable enough for smoke tests and runtime analysis. Raw exception text must not become a public contract.
 
-Representative reason IDs include:
+Representative reason classes include:
 
 - `route_not_found`,
 - `backend_unavailable`,
@@ -125,11 +142,12 @@ Representative reason IDs include:
 - `request_incompatible_with_repack`,
 - `policy_blocked`,
 - `waiting_user_required`,
-- `client_history_exclusion_apply_result_missing`,
-- `client_history_exclusion_apply_blocked`,
-- `client_history_exclusion_apply_preparation_failed`.
+- history-apply missing/blocked/preparation reasons,
+- invalid instruction provenance reasons,
+- typed-parse/cache-writer source or validation reasons,
+- Phase 6 enqueue/claim/retry lifecycle reasons once implemented.
 
-These names are examples of stable operational classes, not permission to emit arbitrary freeform exception messages.
+These names are operational classes, not permission to emit arbitrary freeform exception messages.
 
 ## Failure-domain behavior
 
@@ -161,16 +179,20 @@ Expected behavior:
 - preserve content-free RelayRUN checkpoint/trace evidence,
 - do not fabricate a successful assistant answer.
 
-### Partial stream failure — target requirement
+### Stream failure
 
-Expected behavior:
+Current Phase 5.5 gated suppression preserves already emitted safe visible chunks, blocks incomplete or malformed internal candidates, records content-free state, and avoids duplicate replay.
+
+Generalized partial-stream resume/recovery remains target work. It must:
 
 - preserve already emitted valid visible chunks,
 - block incomplete internal/update candidates,
 - record partial-stream state and recovery metadata,
-- do not replay or duplicate emitted chunks during recovery.
+- avoid replay or duplication during recovery.
 
-Complete partial-stream recovery is not current implementation.
+### Deferred Phase 6 failure
+
+An already valid visible response must not become invalid because deferred enqueue, claim, worker execution, or memory persistence fails. Phase 6 status and retry state remain content-free, while memory semantics stay owned by RelayMEM.
 
 ## OpenAI-compatible surface
 
@@ -191,6 +213,21 @@ Primary frontend and authority references:
 - [Client History Authority Contract](client_history_authority_contract.md),
 - [Client Instruction Authority Contract](client_instruction_authority_contract.md),
 - [Managed-Route Fallback Authority Contract](managed_route_fallback_contract.md).
+
+## SOUL Lab management surface
+
+Current UI-A7 provides local-only read endpoints for settings and character-registry metadata. Access requires both a loopback configured listen host and a loopback transport peer.
+
+The projection must remain:
+
+- read-only,
+- exact-schema and allowlist based,
+- secret-free,
+- free of persona/memory source paths or contents,
+- free of prompt, conversation, trace, and credential content,
+- independent from Core route availability when access is refused.
+
+Latest-run, memory outcome, settings mutation, character mutation, and durable memory operations remain separate future boundaries.
 
 ## Observability contract
 
@@ -254,7 +291,8 @@ Runtime acceptance covers more than unit-level correctness.
 
 - a frontend can point its OpenAI-compatible base URL to RelayLM,
 - model routes resolve predictably,
-- current streaming chunks are forwarded without full-response buffering,
+- default streaming chunks are forwarded without full-response buffering,
+- gated Phase 5.5 suppression does not duplicate or semantically rewrite safe visible text,
 - non-streaming responses remain compatible,
 - supported sampling fields and headers are preserved where practical,
 - unsupported compatibility-sensitive transactions are explicitly blocked rather than silently rewritten.
@@ -263,6 +301,7 @@ Runtime acceptance covers more than unit-level correctness.
 
 - approved durable persona and output-policy anchors precede lower-authority evidence,
 - latest validated user content remains present,
+- v1 accepts only explicitly provenanced instruction candidates,
 - memory evidence cannot replace identity authority,
 - internal tags, artifacts, and diagnostics do not leak into ordinary output.
 
@@ -272,7 +311,9 @@ Runtime acceptance covers more than unit-level correctness.
 - low-confidence, blocked, or contradictory candidates remain inactive/held,
 - Retrieval remains read-only,
 - persistence is blocked in restricted scenes or waiting-user states,
-- actual RelaySLP and RelaySOUL writes require separate future gates.
+- RelayMEM direct/helper writes remain gated and idempotent,
+- ordinary runtime does not claim autonomous memory formation until Phase 6 worker integration and later-turn recall pass,
+- RelaySOUL writes require a separate governed apply path.
 
 ### Latency
 
@@ -280,12 +321,13 @@ Runtime acceptance covers more than unit-level correctness.
 - realtime profiles avoid heavy synchronous retrieval by default,
 - streaming can begin without waiting for RelaySLP or post-response extraction,
 - first-token, first-sentence, and first-TTS-enqueue timings can be measured separately,
-- ordinary requests should not eagerly allocate or serialize the complete recovery chain when no recovery-relevant condition exists after Phase 5-D2.
+- ordinary requests should not eagerly allocate or serialize the complete recovery chain when no recovery-relevant condition exists.
 
-### Recovery and idempotency — target acceptance
+### Recovery and idempotency
 
 - partial failures do not duplicate visible chunks or writes,
-- retries/resume use RelayRUN state and idempotency rules,
+- retries/resume use RelayRUN and Phase 6 state and idempotency rules where implemented,
+- dispatch idempotency remains separate from RelayMEM memory-write idempotency,
 - repaired context remains untrusted until required confirmation,
 - safe blocked/error outcomes remain observable,
 - checkpoint persistence is not misrepresented as proof that resume is supported.
@@ -302,32 +344,21 @@ RelayINT
 RelayMEM Retrieval
   owns read-only current-answer evidence
 
-RelaySLP
-  owns deferred memory/SOUL candidate compilation and gated write preparation
+RelayMEM persistence
+  owns memory meaning, write eligibility, durable content, and write idempotency
+
+RelaySLP / Phase 6
+  owns deferred candidate compilation and queue/worker control within their split boundaries
 
 RelayCTX
   owns context construction, selection, token degradation, Repack, and Unpack
 
 RelayRUN
   owns execution order, fallback/recovery, node states, checkpoints,
-  lineage, retry/idempotency, and trace projection
+  lineage, retry/idempotency coordination, and trace projection
 
 Adapters
   own transport compatibility and backend-specific forwarding
 ```
 
 No operational fallback may blur or transfer these ownership boundaries.
-
-## Non-goals
-
-This document does not define:
-
-- the current implementation phase in detail,
-- a historical MVP roadmap,
-- memory schema details,
-- scene-policy schema details,
-- prompt block layout details,
-- backend-specific KV-cache behavior,
-- concrete TTS or avatar engine implementation.
-
-Those remain in their dedicated current, target, integration, and historical documents.
