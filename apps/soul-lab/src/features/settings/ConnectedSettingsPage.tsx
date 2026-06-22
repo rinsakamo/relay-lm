@@ -28,6 +28,7 @@ export function ConnectedSettingsPage(props: ConnectedSettingsPageProps) {
   useEffect(() => {
     const controller = new AbortController();
     setProjectionState("loading");
+    setProjectionBundle(null);
     loadLabManagementProjections(controller.signal)
       .then((bundle) => {
         if (controller.signal.aborted) {
@@ -73,7 +74,7 @@ export function ConnectedSettingsPage(props: ConnectedSettingsPageProps) {
           <p className="eyebrow">{settingsA7Message(language, "sourceEyebrow")}</p>
           <strong>{title}</strong>
           <span>{description}</span>
-          {projectionBundle ? (
+          {projectionState === "server" && projectionBundle ? (
             <span>
               {settingsA7Message(language, "schema")}: {projectionBundle.settings.schema_version}
             </span>
