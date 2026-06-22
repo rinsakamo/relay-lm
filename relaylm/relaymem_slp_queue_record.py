@@ -145,7 +145,11 @@ def parse_timestamp(value: object) -> datetime | None:
     return parsed
 
 
-def validate_record_mapping(runtime: object) -> tuple[str, ...]:
+def validate_record_mapping(
+    runtime: object,
+    *,
+    validate_derived_identity: bool = True,
+) -> tuple[str, ...]:
     if not isinstance(runtime, Mapping):
         return ("durable_job_shape_invalid",)
     if len(runtime) != len(DURABLE_JOB_FIELDS) or set(runtime) != DURABLE_JOB_FIELDS:
@@ -188,7 +192,7 @@ def validate_record_mapping(runtime: object) -> tuple[str, ...]:
     job_id = runtime.get("job_id")
     if not has_prefixed_digest(dispatch_key, DISPATCH_KEY_PREFIX):
         return ("durable_job_dispatch_key_invalid",)
-    if dispatch_key != derive_dispatch_key(runtime):
+    if validate_derived_identity and dispatch_key != derive_dispatch_key(runtime):
         return ("durable_job_dispatch_key_mismatch",)
     if not has_prefixed_digest(job_id, JOB_ID_PREFIX):
         return ("durable_job_job_id_invalid",)
