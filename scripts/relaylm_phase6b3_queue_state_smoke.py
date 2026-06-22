@@ -162,7 +162,10 @@ def main() -> None:
             assert renewed["attempt_count"] == 1
             assert renewed["claim_generation"] == 1
             assert renewed["lease_token"] == claimed["lease_token"]
-            assert renewed["lease_expires_at"] > claimed["lease_expires_at"]
+            assert renewed["claim_owner"] == claimed["claim_owner"]
+            assert renewed["lease_acquired_at"] == claimed["lease_acquired_at"]
+            assert renewed["lease_expires_at"] == "2026-06-22T01:00:35.000000Z"
+            assert renewed["lease_expires_at"] != "2026-06-22T01:01:00.000000Z"
 
             queue_state._now_utc = lambda: base_now + timedelta(seconds=10)
             release = _apply(root, _request(

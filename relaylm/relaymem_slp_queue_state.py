@@ -566,9 +566,7 @@ def _build_proposal(
             return None, "not_ready", ("active_lease_expired_stale_recovery_required",)
 
     if kind == "renew_lease":
-        expiry = parse_timestamp(record["lease_expires_at"])
-        assert expiry is not None
-        renewed_text, error = _lease_expiry(expiry, request.lease_duration_seconds)
+        renewed_text, error = _lease_expiry(now, request.lease_duration_seconds)
         if error:
             return None, "blocked", (error,)
         proposal.update({

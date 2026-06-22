@@ -178,7 +178,7 @@ lease_token
 
 An already expired lease is not renewed. The result is `not_ready` with a stale-recovery-required reason. Expiry equality is expired.
 
-Renewal increments only `record_revision`, updates `updated_at`, and extends `lease_expires_at`. It preserves attempt count, claim generation, owner, lease token, and lease acquisition time. Timestamp arithmetic overflow and clock regression are returned as bounded blocked results rather than exceptions.
+Renewal increments only `record_revision`, updates `updated_at`, and resets `lease_expires_at` to the validated current UTC transition time plus the bounded requested lease duration. It does not accumulate duration from the previous expiry. It preserves attempt count, claim generation, owner, lease token, and lease acquisition time. Timestamp arithmetic overflow and clock regression are returned as bounded blocked results rather than exceptions.
 
 ### `retry_release`
 
