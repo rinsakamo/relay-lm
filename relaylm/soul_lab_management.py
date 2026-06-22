@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from ipaddress import ip_address
 from typing import Literal
 from urllib.parse import urlsplit, urlunsplit
 
@@ -106,10 +107,8 @@ def build_lab_settings_projection(config: RelayLMConfig) -> LabSettingsProjectio
         )
     ]
 
-    routes_by_backend: dict[str, list[str]] = defaultdict(list)
     route_models_by_backend: dict[str, list[str]] = defaultdict(list)
-    for route_model, route in config.model_routes.items():
-        routes_by_backend[route.backend].append(route_model)
+    for route in config.model_routes.values():
         if route.backend_model:
             route_models_by_backend[route.backend].append(route.backend_model)
 
@@ -161,7 +160,7 @@ def build_lab_settings_projection(config: RelayLMConfig) -> LabSettingsProjectio
         listen=LabListenProjection(
             host=config.listen.host,
             port=config.listen.port,
-            loopback_only=_is_loopback_host(config.listen.host),
+            loopback_only=is_loopback_host(config.listen.host),
         ),
         runtime_components=runtime_components,
         model_routes=model_routes,
@@ -224,6 +223,18 @@ def build_lab_characters_projection(config: RelayLMConfig) -> LabCharactersProje
     return LabCharactersProjection(characters=characters)
 
 
+def is_loopback_host(host: str) -> bool:
+    normalized = host.strip().lower()
+    if normalized == "localhost":
+        return True
+    if normalized.startswith("[") and normalized.endswith("]"):
+        normalized = normalized[1:-1]
+    try:
+        return ip_address(normalized).is_loopback
+    except ValueError:
+        return False
+
+
 def _safe_endpoint_projection(value: str) -> str:
     try:
         parsed = urlsplit(value)
@@ -239,7 +250,3 @@ def _safe_endpoint_projection(value: str) -> str:
 
 def _display_host(host: str) -> str:
     return f"[{host}]" if ":" in host and not host.startswith("[") else host
-
-
-def _is_loopback_host(host: str) -> bool:
-    return host.strip().lower() in {"127.0.0.1", "localhost", "::1", "[::1]"}
