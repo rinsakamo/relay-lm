@@ -49,6 +49,8 @@ def open_queue_root(root_path: str | None) -> tuple[int | None, tuple[str, ...]]
     parts = absolute.parts
     if not parts or not absolute.anchor:
         return None, ("queue_root_invalid",)
+    if any(part in {".", ".."} for part in parts[1:]):
+        return None, ("queue_root_parent_traversal_blocked",)
     flags = os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_CLOEXEC", 0)
     try:
         fd = os.open(absolute.anchor, flags)
