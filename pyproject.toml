@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-relaylm = "relaylm.app:main"
+relaylm = "relaylm.soul_lab_app:main"
 
 [build-system]
 requires = ["setuptools>=68"]
