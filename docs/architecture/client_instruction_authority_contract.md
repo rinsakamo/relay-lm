@@ -10,6 +10,9 @@ It complements:
 - [Pipeline Responsibility Design](pipeline_responsibility_design.md)
 - [Pipeline Implementation Plan](pipeline_implementation_plan.md)
 - [Phase 5-C4a Implementation Handoff](phase5c4a_instruction_bearing_managed_apply_handoff.md)
+- [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](phase5c4b_cache_hit_relayscn_projection_handoff.md)
+- [Phase 5-C5c Runtime Cache-Writer Boundary Handoff](phase5c5c_runtime_cache_writer_boundary_handoff.md)
+- [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md)
 - [Scene Lifecycle Design](scene_lifecycle_design.md)
 - [RelaySCN MVP Scene Policy](relayscn_mvp_scene_policy.md)
 - [Context Packing Design](context_packing_design.md)
@@ -20,8 +23,8 @@ The core rule is:
 
 ```text
 Client system/developer messages are not backend-authoritative instructions.
-They are current-scene instruction evidence.
-RelaySCN normalizes them into scene state, role, context, and constraints.
+They are low-trust current-scene instruction evidence.
+RelaySCN owns semantic normalization into scene state, role, context, and constraints.
 RelaySOUL remains the durable persona authority.
 ```
 
@@ -33,23 +36,30 @@ Current runtime provides:
 
 - content-free instruction extraction diagnostics,
 - request-local normalized instruction identity and deterministic hashes,
-- optional read-only cache lookup,
+- optional strict read-only cache lookup,
 - history-exclusion preflight classification,
-- no instruction-cache projection apply,
-- no typed instruction-response parsing or cache write,
-- no direct RelaySCN or RelaySOUL mutation from client instruction evidence.
+- `client_history_exclusion_apply.v0` for supported no-instruction requests,
+- `client_history_exclusion_apply.v1` for supported instruction-bearing requests with exact `client_instruction_source.v1` provenance,
+- Phase 5-C4b content-free RelaySCN-facing projection diagnostics from validated cache hits,
+- typed-parse candidate validation and content-free node results,
+- one-shot trusted runtime-private typed-parse source consumption,
+- default-off gated cache-writer planning and apply,
+- Phase 5.5-B2 through C4 stream-safety and TTS-handoff metadata construction.
 
-### Active migration
+### Current limitations
 
-Phase 5-C4a adds instruction-bearing managed apply. For correctness, a supported request may carry at most one bounded escaped low-trust evidence block built from request-local normalized candidates. This migration path excludes raw client instruction message objects and prior history but does not claim that RelaySCN normalization or cache optimization is complete.
+Current runtime does not:
 
-### Deferred target
+- infer v1 provenance from role, wording, content, or position,
+- semantically apply the C4b diagnostics projection to RelaySCN,
+- parse arbitrary backend visible responses into typed instruction artifacts,
+- trust frontend metadata as a typed-parse source,
+- support parser-versioned cache lookup/write compatibility,
+- reconstruct active tool transactions,
+- directly mutate RelaySCN or RelaySOUL from client instruction evidence,
+- deliver adapter transport or execute TTS, audio, or avatar behavior.
 
-- Phase 5-C4b: validated cache-hit RelaySCN projection and suppression of repeated evidence.
-- Phase 5-C5: typed instruction-response artifact validation and independent cache write.
-- Phase 5.5: Stream Unpack that prevents control-envelope leakage.
-
-Target examples below are design requirements, not current wire contracts unless an implemented schema, producer, consumer, and runtime position are named.
+All apply-like paths remain behind explicit default-off and dry-run-first gates. Target examples below remain design requirements unless an implemented schema, producer, consumer, and runtime position are named.
 
 ## Authority boundaries
 
@@ -91,24 +101,67 @@ Client system prompts and client conversation history cross the same external bo
 Client-provided messages are request evidence, not backend context.
 ```
 
-For a RelayLM-managed route, RelayLM extracts only:
+For a RelayLM-managed route, RelayLM extracts only the bounded current evidence permitted by the current contract:
 
-- the current user turn,
-- current system/developer instruction evidence,
+- the exact current user turn,
+- explicitly selected current system/developer instruction evidence for v1,
 - request options and approved metadata,
-- minimum active tool or multimodal transaction state.
+- minimum active tool or multimodal transaction state only after a dedicated preservation contract exists.
 
-The original client message array is then excluded from the normal managed backend context and a new message list is constructed.
+The current v0/v1 apply paths construct a new managed message list. Active tool transactions remain blocked because the minimum chain is not yet reconstructed.
 
 ```text
 previous user / assistant history
-  -> normally excluded and replaced by RelayCTX / RelayMEM state
+  -> excluded after successful managed apply
+  -> replaced by RelayCTX / RelayMEM-owned state
 
-current client system / developer instruction
+current client system / developer candidates
   -> normalized into request-local identity
   -> optionally checked by read-only cache lookup
-  -> carried only through the bounded authority path selected for the phase
+  -> only explicitly provenanced candidates may enter v1 evidence
 ```
+
+## Instruction identity and provenance
+
+All supported client `system` and `developer` messages may participate in request-local normalization and identity. Identity does not itself authorize forwarding.
+
+```text
+identity
+  = which normalized candidates exist
+
+provenance
+  = which candidates the frontend explicitly identifies
+    as current instruction evidence for this request
+```
+
+Role, wording, content, and message position do not establish provenance.
+
+### Explicit v1 provenance
+
+Instruction-bearing `client_history_exclusion_apply.v1` accepts only explicit provenance through the reserved request-local control envelope:
+
+```json
+{
+  "relaylm": {
+    "instruction_evidence": {
+      "schema_version": "client_instruction_source.v1",
+      "message_indices": [0]
+    }
+  }
+}
+```
+
+Selected indices must:
+
+- be non-empty, bounded, strictly increasing, and non-duplicated,
+- be in range,
+- point to `system` or `developer` messages,
+- occur before the latest current user turn,
+- exactly match request-local instruction identity candidates.
+
+Missing or invalid provenance blocks v1 actual apply. Unselected system/developer candidates are excluded, including frontend summaries, memory notes, replayed persona blocks, and other role-encoded compatibility material.
+
+The reserved top-level `relaylm` envelope is RelayLM control-plane input and is removed before managed backend forwarding.
 
 ## SCN-first classification target
 
@@ -164,7 +217,45 @@ Classification examples:
      blocked unless an explicit tool contract allows it
 ```
 
-The typed v1 scene shape and complete SCN-first runtime order remain target architecture.
+The typed v1 scene shape and complete SCN-first runtime order remain target architecture. The current C4b projection is diagnostics-only and does not implement semantic RelaySCN apply.
+
+## Current managed backend construction
+
+### No-instruction v0
+
+A supported v0 candidate contains:
+
+```text
+one RelayLM-owned compiled prefix
++ exact validated current user message
+```
+
+It requires zero client system/developer messages.
+
+### Instruction-bearing v1
+
+A supported v1 candidate contains:
+
+```text
+one RelayLM-owned compiled system message containing:
+  approved runtime/profile/context blocks
+  + one bounded escaped low-trust instruction-evidence block
++ exact validated current user message
+```
+
+The v1 candidate excludes:
+
+- prior client user/assistant messages,
+- raw client instruction message objects,
+- unselected instruction candidates,
+- frontend summaries and memory notes not explicitly selected,
+- old unrelated tool results,
+- opaque instruction-cache entry content,
+- the reserved RelayLM control envelope.
+
+The evidence builder emits canonical raw typed JSON with explicit source-role labels. The managed compiler renderer escapes the evidence and enforces the rendered-size bound immediately before final render.
+
+Client instruction evidence is always below RelayLM runtime/safety policy and approved persona authority. It cannot directly mutate RelaySOUL, persistence, tools, runtime policy, or safety policy.
 
 ## Existing SOUL
 
@@ -186,7 +277,7 @@ existing SOUL
 
 ## Missing SOUL
 
-When a managed route has no usable SOUL source, client instruction evidence may support a safe temporary scene role or constraints for the current request.
+When a managed route has no usable SOUL source, client instruction evidence may support a safe temporary scene role or constraints only after a supported typed RelaySCN consumer exists.
 
 ```text
 SOUL missing
@@ -196,7 +287,7 @@ SOUL missing
   -> optional separate RelaySOUL initialization/proposal path
 ```
 
-The raw system prompt must never be copied wholesale into `SOUL.md` or treated as fallback SOUL authority.
+Current managed profile compilation still requires configured approved profile sources. The raw system prompt must never be copied wholesale into `SOUL.md` or treated as fallback SOUL authority.
 
 ## Durable promotion path
 
@@ -260,9 +351,9 @@ The cache identity must not depend on previous conversation history. Changing in
 
 Identity content and hashes remain runtime-private. Generic diagnostics expose only typed readiness, count, and status metadata.
 
-## Phase 5-C4a evidence behavior
+## Current v1 evidence behavior
 
-The active correctness slice uses normalized request-local candidates to render at most one bounded low-trust evidence block.
+The current instruction-bearing correctness path uses normalized, explicitly selected request-local candidates to render at most one bounded low-trust evidence block.
 
 Required properties:
 
@@ -274,20 +365,31 @@ Required properties:
 - no raw client instruction message object in backend messages,
 - no content in trace, node results, public errors, or exception text.
 
-Temporary migration behavior:
+Current migration behavior:
 
 ```text
 cache disabled / miss / hit
-  -> bounded normalized evidence may be used for correctness
+  -> bounded selected evidence may be used for v1 correctness
   -> no opaque cache entry injection
-  -> no cache write
+  -> cache-hit diagnostics do not themselves suppress evidence
 ```
 
-This temporary behavior is not the target repeated-prompt optimization.
+This behavior is not the target repeated-prompt optimization.
 
-## Target cache lookup behavior
+## Current cache-hit projection and target apply behavior
 
-After Phase 5-C4b implements an allowlisted validated projection:
+Phase 5-C4b currently emits `client_instruction_relayscn_projection.v0` as a detached content-free diagnostics summary from a validated cache hit.
+
+It may expose only allowlisted enum/count/boolean-style facts and must not expose role names, scene values, instruction text, cache bodies, hashes, paths, payloads, or response text.
+
+C4b does not currently:
+
+- apply RelaySCN semantic state,
+- suppress v1 instruction evidence,
+- inject opaque cache content,
+- mutate backend payloads.
+
+The target repeated-prompt behavior remains:
 
 ```text
 current client instruction
@@ -295,18 +397,18 @@ current client instruction
   -> identity/hash
   -> cache lookup
 
-validated cache hit
-  -> suppress raw instruction evidence
-  -> pass only allowlisted normalized RelaySCN projection
+validated semantic cache hit
+  -> suppress repeated raw instruction evidence
+  -> pass only allowlisted normalized RelaySCN state
 
 cache miss
   -> use instruction once as bounded first-pass evidence
   -> request normal response plus a separately versioned control artifact
   -> validate artifact
-  -> write only through the independent Phase 5-C5 gate
+  -> write only through the independent writer gate
 ```
 
-A read-only hit in current code does not prove that projection apply exists. Opaque cache bodies must never be injected.
+A read-only hit or diagnostics projection does not prove that semantic projection apply exists. Opaque cache bodies must never be injected.
 
 ## Target first-pass strategy
 
@@ -354,6 +456,29 @@ It must reject or strip:
 
 Durable candidates remain candidates only and are never applied by the parser.
 
+## Current typed-parse and cache-writer plumbing
+
+Current C5 runtime plumbing accepts only a trusted in-process runtime-private typed-parse candidate. The source is consumed once and cleared during `PipelineContext` construction so stale candidates cannot leak into later requests.
+
+When explicitly enabled, writer planning consumes:
+
+- request-local instruction identity,
+- the validated typed-parse result,
+- managed-route gate state,
+- writer dry-run setting,
+- cache root and maximum entry size.
+
+With `client_instruction_cache_write_dry_run_only=true`, no file is written. With dry-run disabled, the writer may persist only after exact schema, policy, scope, source, and identity validation passes.
+
+Current C5 plumbing does not:
+
+- parse backend visible text,
+- accept arbitrary frontend metadata,
+- extract a control envelope from a response,
+- support non-null parser-version lookup/write under the current unversioned key,
+- apply RelaySCN semantics,
+- mutate backend or user-visible payloads.
+
 ## RelayCTX Unpack boundary
 
 Target output separation is:
@@ -373,13 +498,13 @@ Required invariants:
 
 - control content never reaches users, captions, TTS, or avatar speech,
 - malformed/missing control content does not invalidate an otherwise valid visible response,
-- cache write occurs only after schema, policy, scope, and provenance validation,
+- cache write occurs only after schema, policy, scope, identity, provenance, and source validation,
 - raw prompt or raw backend response text is never stored as the cache entry,
 - durable candidates are never applied automatically.
 
 Current non-stream `relayctx_working_update.v0` does not implement this client-instruction parse contract. The future artifact must be separately versioned rather than overloading the existing CTX update envelope.
 
-Stream handling remains Phase 5.5 and must buffer enough trailing content to prevent partial internal-marker leakage while preserving safe already-emitted visible text.
+Current Phase 5.5-B2 through C4 provides gated internal-sentinel suppression and TTS-safe segmentation/handoff metadata construction. It does not implement the trusted client-instruction control-artifact producer, deliver adapter transport, or execute TTS/audio/avatar behavior.
 
 ## Target cache entry contract
 
@@ -401,7 +526,7 @@ Visible-response delivery and cache mutation are independent outcomes.
 
 ```text
 valid visible response
-+ invalid control artifact
++ invalid or missing control artifact
   -> return visible response
   -> do not write cache
   -> record bounded parse failure
@@ -414,6 +539,7 @@ A bounded retry policy should prevent indefinite reparsing. Repeated failure kee
 ```text
 keep RelaySOUL identity
 apply only compatible scene-role / scene-constraint elements
+  when a typed semantic consumer exists
 block durable overwrite
 record content-free conflict diagnostics
 ```
@@ -422,7 +548,7 @@ record content-free conflict diagnostics
 
 ```text
 block the override fragment
-retain compatible scene-role fragments where safe
+retain compatible scene-role fragments only when a typed policy consumer permits it
 ```
 
 ### SOUL is missing
@@ -447,7 +573,7 @@ active tool transaction detected
 
 ## Replayed and changed prompts
 
-Target behavior for an unchanged instruction is a validated cache hit that suppresses repeated evidence and repeated RelaySOUL proposals. This optimization is not current until Phase 5-C4b lands.
+The target behavior for an unchanged instruction is a validated semantic cache hit that suppresses repeated evidence and repeated RelaySOUL proposals. Current C4b provides only the content-free diagnostics projection; semantic suppression/apply is not current.
 
 When normalized identity changes, RelayLM should treat it as new current-scene evidence, permit scene role/constraint changes, and never imply a durable identity change.
 
@@ -467,8 +593,9 @@ no managed RelaySCN/RelaySOUL authority is asserted by this route
 client messages
   -> canonicalization
   -> request-local instruction identity
-  -> selected current migration/target resolution path
-  -> RelayCTX-constructed backend payload
+  -> explicit provenance selection for v1
+  -> v0 or v1 managed context construction
+  -> exact backend-forward gate
 ```
 
 `pass_through` is an explicit delegated route, not an emergency fallback for failed managed instruction handling.
@@ -496,71 +623,63 @@ dynamic_suffix
   current user input
 ```
 
-Instruction evidence must never be placed above runtime/safety or approved persona authority. After validated cache projection exists, a cache hit suppresses the evidence block.
+Instruction evidence must never be placed above runtime/safety or approved persona authority. A future validated semantic cache projection may suppress the repeated evidence block; current C4b diagnostics alone does not.
 
 ## Runtime node mapping
 
-Current implemented preparation is request-local and partial:
+Current implemented request-local path:
 
 ```text
 request parse
   -> instruction extraction/identity preparation
   -> optional read-only cache lookup
+  -> C4b content-free cache-hit projection diagnostics
+  -> optional trusted runtime-private typed-parse validation
+  -> optional gated cache-writer planning/apply
   -> history-exclusion preflight
-  -> current no-instruction apply or blocked instruction-bearing path
-```
-
-Active Phase 5-C4a adds:
-
-```text
-instruction-bearing apply preparation
-  -> bounded evidence rendering
-  -> fresh managed payload
+  -> v0 no-instruction or v1 explicit-provenance apply
   -> backend-forward exact-applied gate
 ```
 
 Target later mapping adds:
 
 ```text
-validated cache projection
-  -> Input-side RelaySCN
+trusted response control-artifact producer
+  -> separately versioned parse validation
+  -> semantic RelaySCN state consumer
   -> RelayINT
   -> RelayMEM Retrieval
   -> RelayCTX Repack
-  -> Main LLM
-  -> separately versioned Unpack/parse validation
-  -> independent cache write
+  -> independent version-aware cache write
 ```
 
 ## Implementation sequencing
 
 ```text
 Current foundations
-  Phase 5-C1 / 5-C2 / 5-C3
+  Phase 5-C1 / C2 / C3
     canonicalization, identity, read-only lookup, preflight
 
-Current bounded compatibility apply
-  Phase 5-C1a
-    no-instruction client_history_exclusion_apply.v0
+Current managed apply
+  v0 no-instruction client_history_exclusion_apply.v0
+  Phase 5-C4a explicit-provenance client_history_exclusion_apply.v1
 
-Active correctness slice
-  Phase 5-C4a
-    instruction-bearing managed apply with bounded low-trust evidence
+Current cache observation
+  Phase 5-C4b diagnostics-only RelaySCN-facing projection
 
-Deferred optimization
-  Phase 5-C4b
-    validated cache-hit RelaySCN projection
+Current typed-parse / writer plumbing
+  Phase 5-C5 trusted runtime-private source validation
+  default-off independent writer gate
 
-Deferred parse/write
-  Phase 5-C5
-    typed instruction artifact validation and cache write
+Current output-safety preparation
+  Phase 5.5-B2 through C4 suppression and handoff metadata
 
-Output streaming
-  Phase 5.5
-    Stream Unpack and internal-control suppression
-
-Later RelaySOUL work
-  durable candidate review, approval, revision, and persistence
+Deferred integration
+  trusted response control-artifact producer
+  parser-versioned lookup/write compatibility
+  semantic RelaySCN apply from validated interpretation
+  active tool-chain reconstruction
+  RelaySOUL proposal/apply/revision execution
 ```
 
 Older Phase 3/Phase 5 mappings are historical planning context and do not override this sequence.
@@ -574,53 +693,61 @@ Content-free diagnostics may expose:
 - cache lookup class without key/hash/path/content,
 - evidence block presence and bounded size class,
 - raw instruction message forwarded=false,
-- cache projection applied=false until 5-C4b,
-- cache write applied=false until 5-C5,
-- durable candidate count and blocked-kind count only after validated parsing exists,
+- C4b projection status and bounded enum/count fields,
+- typed-parse and cache-write status/reason classes,
+- payload mutation and exact-forward booleans,
 - bounded stable reason IDs.
 
-Diagnostics must not copy raw instruction text, normalized text, hashes, cache keys, cache paths, scene semantic values, response text, or arbitrary cache entries.
+Diagnostics must not copy raw instruction text, normalized text, hashes, cache keys, cache paths, scene semantic values, response text, typed-parse bodies, or arbitrary cache entries.
 
 ## Required smoke coverage
 
-### Current and Phase 5-C4a
+### Current bounded behavior
 
-1. Client instruction messages and prior history are not forwarded as authoritative message objects.
+1. Client instruction messages and prior history are not forwarded as authoritative message objects after successful apply.
 2. The exact current text or multimodal user message remains present.
 3. System-only, developer-only, and mixed role/order identity is deterministic.
-4. At most one bounded escaped low-trust evidence block is emitted.
-5. Runtime/safety and approved SOUL remain above instruction evidence.
-6. Apply dependency closure works without manually enabling diagnostic-only flags.
-7. Cache disabled/miss/hit states do not inject opaque cache content or write entries.
-8. Active tool transactions block before backend forwarding.
-9. Explicit pass-through retains delegated behavior.
-10. Dry-run is mutation-neutral and actual apply requires an exact applied result.
-11. Trace, node results, public errors, and exception projections remain content-free.
-12. Runtime exceptions produce bounded stable reasons only.
+4. v1 explicit provenance selection and rejection are deterministic.
+5. At most one bounded escaped low-trust evidence block is emitted.
+6. Runtime/safety and approved SOUL remain above instruction evidence.
+7. Valid v1 actual apply reaches the backend only through the exact selected candidate.
+8. Invalid or missing v1 provenance fails closed without restoring history.
+9. Cache disabled/miss/hit states do not inject opaque cache content.
+10. C4b projection remains content-free and diagnostics-only.
+11. C5 runtime-private source is one-shot and writer gates remain fail-closed.
+12. Dry-run writer behavior performs no filesystem mutation.
+13. Active tool transactions block before backend forwarding.
+14. Explicit pass-through retains delegated behavior.
+15. Phase 5.5 metadata does not imply TTS/audio/avatar execution.
+16. Trace, node results, public errors, and exception projections remain content-free.
 
 ### Deferred target phases
 
-13. A validated cache hit injects only an allowlisted RelaySCN projection and suppresses evidence.
-14. Cache miss produces visible text plus a separately versioned control artifact.
-15. Invalid control artifacts preserve valid visible output and do not write cache.
-16. Valid artifacts write only through an independent schema/policy/scope/provenance gate.
-17. Route, character, schema, policy, or parser-version changes invalidate cache scope.
-18. Durable candidates never directly mutate SOUL.
-19. Replayed prompts do not create repeated RelaySOUL proposals.
-20. Streaming control markers never leak to users, captions, or TTS.
+17. A validated semantic cache hit injects only an allowlisted RelaySCN state and suppresses repeated evidence.
+18. Cache miss produces visible text plus a separately versioned control artifact.
+19. Invalid control artifacts preserve valid visible output and do not write cache.
+20. Valid artifacts write only through an independent schema/policy/scope/provenance/source gate.
+21. Route, character, schema, policy, or parser-version changes invalidate cache scope.
+22. Durable candidates never directly mutate SOUL.
+23. Replayed prompts do not create repeated RelaySOUL proposals.
+24. Streaming control markers never leak to users, captions, or TTS.
 
 ## Final boundary
 
 ```text
 Client messages are request evidence, not backend authority.
 
-Current 5-C4a correctness:
-  normalized instruction evidence may be shown once per request as one bounded,
-  escaped, low-trust block while prior history and raw instruction messages are excluded.
+Current managed correctness:
+  v0 handles bounded no-instruction requests.
+  v1 handles bounded explicit-provenance instruction-bearing requests.
 
-Target optimization:
-  a validated cache hit resolves to an allowlisted RelaySCN projection and suppresses
-  repeated evidence; typed parsing and cache write remain separately gated.
+Current cache work:
+  C4b observes validated hits through content-free diagnostics.
+  C5 validates trusted runtime-private typed candidates and can gate writes.
+
+Still target:
+  a trusted response artifact producer, semantic RelaySCN apply,
+  broader transaction compatibility, and complete default-on managed reconstruction.
 
 No path directly mutates RelaySOUL from ordinary client prompt replay.
 ```

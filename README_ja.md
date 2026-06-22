@@ -82,7 +82,7 @@ RelayLMが担当するのは会話プロキシ、コンテキスト境界、ラ�
 `docs/PROJECT_STATUS.md` を現在地の正本とし、このREADMEではPhase番号や短期間で変わる実装状況を重複管理しません。
 
 > [!IMPORTANT]
-> 現在のデフォルト `memory_light` 互換経路では、フロントエンドが送った過去のuser/assistant履歴がバックエンド向けmessage listに残る場合があります。実装済みのhistory-exclusion applyはデフォルト無効で、現在はclient `system`/`developer` messageを含まないmanaged requestだけを対象とします。current turnだけを使うtarget managed reconstructionは未完成です。詳細は [Project Status](docs/PROJECT_STATUS.md) と [OpenWebUI + LM Studioガイド](docs/openwebui_lmstudio_mvp.md) を参照してください。
+> デフォルトの `memory_light` 互換経路では、フロントエンドが送った過去のuser/assistant履歴がバックエンド向けmessage listに残る場合があります。history-exclusion applyはデフォルト無効・dry-run-only既定です。実装済みv0はclient `system`/`developer` messageを含まない限定的なmanaged requestを、v1は正確な `client_instruction_source.v1` provenanceを持つinstruction-bearing managed requestを扱います。v1のprovenanceが欠落または不正な場合はfail-closedになります。active tool chainの保持を含む、より広いcurrent-turn-only reconstructionは未完成です。詳細は [Project Status](docs/PROJECT_STATUS.md)、[Client History Authority Contract](docs/architecture/client_history_authority_contract.md)、[OpenWebUI + LM Studioガイド](docs/openwebui_lmstudio_mvp.md) を参照してください。
 
 ## ✅ 動作要件
 

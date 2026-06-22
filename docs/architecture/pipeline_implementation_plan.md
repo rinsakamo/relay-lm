@@ -18,6 +18,8 @@ relaylm_related_authority:
   - ../DOCUMENTATION_MODEL.md
   - pipeline_responsibility_design.md
   - current_target_migration_guide.md
+  - client_history_authority_contract.md
+  - client_instruction_authority_contract.md
   - phase5_5_stream_unpack_bounded_slice.md
   - phase6_async_relayslp_bounded_slice.md
   - phase6a1_relayslp_job_admission_contract.md
@@ -33,6 +35,7 @@ relaylm_related_authority:
   - relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
   - soul_lab_ui_mvp.md
   - soul_lab_ui_a6_shared_shell_settings_handoff.md
+  - soul_lab_ui_a7_management_projection_handoff.md
   - soul_lab_runtime_mvp.md
 ---
 # RelayLM Pipeline Implementation Plan
@@ -41,7 +44,7 @@ relaylm_related_authority:
 
 This document owns implementation status, phase sequencing, dependency boundaries, and the active integration priority. Component ownership remains in [Pipeline Responsibility Design](pipeline_responsibility_design.md), exact contracts remain in their dedicated documents, and current/target interpretation remains in [Current / Target / Migration Guide](current_target_migration_guide.md).
 
-The project is now in an integration-first stage. New helper-only or mock-only slices are justified only when they directly unblock the active end-to-end milestone or close a demonstrated safety defect.
+The project is in an integration-first stage. New helper-only or mock-only slices are justified only when they directly unblock the active end-to-end milestone or close a demonstrated safety defect.
 
 ## Status legend
 
@@ -53,9 +56,18 @@ The project is now in an integration-first stage. New helper-only or mock-only s
 ## Current position
 
 ```text
-Phase 5-C managed-route correctness: complete
+Phase 5-C managed-route correctness:
+  v0 no-instruction managed apply: complete
+  v1 explicit-provenance instruction-bearing managed apply: complete
+  C4b cache-hit RelaySCN-facing diagnostics projection: complete, diagnostics-only
+  C5 runtime-private typed-parse / cache-writer plumbing: complete, default-off
+  trusted backend-response artifact producer and RelaySCN semantic apply: pending
+
 Phase 5-D pre-stream hardening: complete through D2
-Phase 5.5 Stream Unpack / TTS handoff preparation: complete for RelayLM Core
+
+Phase 5.5 Stream Unpack / TTS handoff preparation:
+  complete for RelayLM Core through B2 and C4
+  adapter delivery and TTS/audio/avatar execution: pending outside Core
 
 Phase 6 asynchronous RelaySLP orchestration:
   A0 ownership and sequencing: complete
@@ -73,8 +85,10 @@ RelayMEM independent track:
   ordinary-runtime worker integration and next-turn recall: pending
 
 SOUL Lab UI independent track:
-  UI-A0 through UI-A6: complete as browser-local mock/presentation slices
-  real /lab/api/* read and mutation integration: pending
+  UI-A0 through UI-A6 browser-local presentation slices: complete
+  UI-A7 local-only settings/characters read projections: complete
+  latest-run and memory-outcome reads: pending
+  authoritative mutation APIs: pending
 
 SOUL Lab Runtime:
   TTS/audio/avatar adapter execution: planned later
@@ -170,9 +184,10 @@ Required integration smoke:
 
 ### I1-E: SOUL Lab real observation bridge
 
-After the runtime loop exists, replace the most important mock projections with server-owned read APIs:
+UI-A7 already provides the bounded local-only read foundation for settings and character-registry metadata. It does not expose run or memory outcomes.
 
-- registered characters and active character projection,
+After the runtime loop exists, add server-owned read APIs for:
+
 - latest run and SLP status,
 - recently formed memories,
 - held or blocked memory outcomes,
@@ -193,18 +208,19 @@ Integration Milestone I1 is complete only when all of the following are true:
 - at least one correction operation changes later retrieval behavior,
 - restart and duplicate-dispatch smoke preserve idempotency.
 
-Helper-level completion alone does not satisfy I1.
+Helper-level completion and UI-A7 settings/characters reads alone do not satisfy I1.
 
 ## Current caveats
 
 - Managed client-history exclusion remains default-off and dry-run-only by default.
+- v1 instruction-bearing apply requires exact explicit provenance; active tool transactions remain blocked.
+- C4b is a diagnostics-only cache-hit projection and does not semantically apply RelaySCN state.
+- C5 runtime writer plumbing requires a trusted in-process typed-parse source and does not parse backend visible responses.
 - Current profile compilation still precedes normalized target SCN/INT/Retrieval handoffs.
 - Complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy is not implemented.
-- Active tool transactions remain blocked because minimum-chain reconstruction is absent.
-- Instruction-cache lookup and RelaySCN projection are read-only; cache writing requires explicit trusted runtime-private input and gates.
-- RelayCTX stream suppression and TTS handoff planning remain default-off; RelayLM Core does not deliver adapter transport or execute TTS/audio/avatar behavior.
+- RelayCTX stream suppression and TTS handoff metadata are default-off; RelayLM Core does not deliver transport or execute TTS/audio/avatar behavior.
 - Phase 6 A1/A2/B1/B2 and RelayMEM M3a-M3h are not yet connected into one ordinary request-runtime worker path.
-- SOUL Lab UI-A0 through UI-A6 remain browser-local presentation slices without authoritative management APIs.
+- SOUL Lab UI-A7 provides bounded local read management metadata but no real run/memory observation or authoritative mutation.
 - RelayREF output observation, Secondary MEM consolidation, and actual RelaySOUL apply remain later work.
 - Token estimation is deterministic and CJK-aware but model-agnostic rather than tokenizer-exact.
 
@@ -212,7 +228,7 @@ Helper-level completion alone does not satisfy I1.
 
 ### Core request and context path
 
-Complete bounded work includes PipelineContext stabilization, RelayCTX Repack, RelayINT compatibility, PipelineNodeResult, non-stream RelayCTX Unpack, managed client-history authority through instruction-bearing apply, CJK-aware token estimation, and lazy RelayRUN recovery-detail wiring.
+Complete bounded work includes PipelineContext stabilization, RelayCTX Repack, RelayINT compatibility, PipelineNodeResult, non-stream RelayCTX Unpack, managed client-history authority through v0/v1 apply, C4b cache-hit diagnostics projection, C5 runtime-private parse/writer plumbing, CJK-aware token estimation, and lazy RelayRUN recovery-detail wiring.
 
 ### Stream safety and handoff preparation
 
@@ -235,9 +251,11 @@ Phase 6 has implemented exact bounded artifacts through atomic durable enqueue. 
 
 RelayMEM M3a-M3h provide formation, lineage, deterministic page construction, atomic page publication, index/log reconciliation, and read-only recovery classification. They remain direct/helper boundaries until I1 worker integration lands.
 
-### SOUL Lab presentation
+### SOUL Lab presentation and read foundation
 
-UI-A0 through UI-A6 provide the shared shell, Home, Adoption, Communication, Pod, Memory Inspector, Settings, localization, theme, active-character scope, and bounded browser-local operation previews. They do not prove runtime connectivity or durable mutation.
+UI-A0 through UI-A6 provide the shared shell, Home, Adoption, Communication, Pod, Memory Inspector, Settings, localization, theme, active-character scope, and bounded browser-local operation previews.
+
+UI-A7 adds loopback-only, secret-free `GET /lab/api/settings` and `GET /lab/api/characters` projections with exact browser schema validation and explicit mock fallback. It does not prove real memory observation or durable mutation.
 
 ## Deferred until after I1
 

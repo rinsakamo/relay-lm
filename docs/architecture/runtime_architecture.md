@@ -105,7 +105,7 @@ client system/developer evidence
   -> bounded low-trust evidence for current-scene interpretation
 ```
 
-Client-supplied `system` and `developer` messages are not fallback SOUL sources and are not forwarded as backend-authoritative instructions on managed routes. Input-side RelaySCN may normalize bounded current instruction evidence into a temporary scene role, context, or constraint. When no approved SOUL exists, RelayLM may use a safe temporary RelaySCN state for the current request and open a separate gated RelaySOUL initialization or proposal path; it must not copy the raw client prompt into `SOUL.md`.
+Client-supplied `system` and `developer` messages are not fallback SOUL sources. On a supported v1 managed request, only explicitly provenanced candidates may enter one bounded low-trust instruction-evidence block. Input-side RelaySCN may later normalize validated evidence into a temporary scene role, context, or constraint. RelayLM must never copy the raw client prompt into `SOUL.md`.
 
 Detailed authority rules live in [Client Instruction Authority Contract](client_instruction_authority_contract.md).
 
@@ -138,6 +138,8 @@ RelaySLP boundary:
 - emits held, rejected, update, or proposal candidates through explicit gates,
 - does not answer the current turn or bypass persistence approval.
 
+Current Phase 6 reaches atomic durable enqueue through B2, but ordinary request finalization, queue lifecycle, worker execution, and later-turn recall are not yet integrated.
+
 ### Context compiler layer
 
 Responsibilities:
@@ -154,15 +156,24 @@ Client-provided message arrays are request evidence, not automatically trusted b
 
 - explicit `pass_through` routes preserve compatible client-owned messages,
 - the default `memory_light` compatibility path may retain prior client user/assistant history in the backend-bound message list,
-- current streaming remains primarily backend forwarding.
+- default streaming remains compatible backend SSE forwarding.
 
 #### Current bounded managed apply
 
-- `client_history_exclusion_apply.v0` is default-off,
-- actual apply requires `client_history_exclusion_apply_enabled=true` and `client_history_exclusion_apply_dry_run_only=false`,
-- the current apply supports managed `memory_light` requests only when client `system`/`developer` messages are absent,
-- unsupported managed requests fail closed rather than restoring raw client context,
+- history-exclusion apply is default-off and dry-run-only by default,
+- `client_history_exclusion_apply.v0` supports bounded managed `memory_light` requests with no client system/developer messages,
+- `client_history_exclusion_apply.v1` supports bounded instruction-bearing requests only with exact `client_instruction_source.v1` provenance,
+- role, wording, and message position alone are not provenance,
+- unsupported or invalid managed requests fail closed rather than restoring raw client context,
+- active tool transactions remain blocked until a minimum-chain reconstruction contract exists,
 - `pass_through` remains an explicit exemption.
+
+#### Current cache interpretation plumbing
+
+- cache lookup is strict and read-only,
+- C4b emits a detached content-free RelaySCN-facing diagnostics projection from a validated hit,
+- C5 can validate a trusted runtime-private typed-parse candidate and invoke a default-off gated cache writer,
+- current code does not parse arbitrary backend visible responses, trust frontend metadata as a typed source, semantically apply RelaySCN state, or support parser-versioned lookup/write compatibility.
 
 #### Target managed reconstruction
 
@@ -174,7 +185,7 @@ validated current user turn
   -> newly constructed backend-bound message list
 ```
 
-The complete target path extracts current request evidence and reconstructs backend context from RelayLM-owned state according to the client-authority contracts. It is broader than the current no-instruction apply slice.
+The complete target path is broader than current v0/v1 request support and makes managed reconstruction the ordinary behavior rather than an explicit apply gate.
 
 RelayLM treats prompt construction as context compilation rather than concatenation.
 
@@ -186,7 +197,7 @@ RelayCTX boundary:
 - RelayCTX output is runtime compiled context, not a RelaySOUL artifact,
 - RelayCTX Unpack separates explicit internal update blocks from user-visible text and does not judge visible content by meaning.
 
-On managed routes, RelayCTX Repack and RelayCTX Unpack are target default-on core protocol-boundary operations. They attach RelayLM-owned internal context before backend generation and separate explicit internal updates after backend generation. They are not optional semantic moderation layers. `pass_through` routes remain the compatibility exemption.
+Current non-stream Unpack is gated. Current Phase 5.5 also provides default-off request-runtime stream suppression and TTS-handoff metadata construction through B2/C4. The target architecture makes Repack/Unpack default-on core protocol-boundary behavior for managed routes; `pass_through` remains the compatibility exemption.
 
 The compiled prompt should use tags for persona and conversation context. Machine contracts such as adapter results, diagnostics, traces, and tool protocols should remain JSON/dataclass-shaped. In short: JSON is for machine contracts; tags are for persona/context conditioning.
 
@@ -207,6 +218,8 @@ Relay Adapter boundary:
 - preserve request/response compatibility and streaming semantics,
 - avoid changing persona policy or memory decisions,
 - remain a transport/integration boundary rather than a semantic pipeline stage.
+
+Phase 5.5 transport envelopes are runtime-private metadata only. RelayLM Core does not deliver them to a TTS process or execute audio/avatar behavior.
 
 Policy and runtime decision boundary:
 

@@ -10,7 +10,7 @@ Open-LLM-VTuber
   -> OpenAI-compatible backend
 ```
 
-RelayLM does not own Open-LLM-VTuber's UI, display history, ASR, TTS engine, or avatar runtime. On managed routes, RelayLM does own the backend-bound context authority and the visible/internal output safety boundary.
+RelayLM does not own Open-LLM-VTuber's UI, display history, ASR, TTS engine, or avatar runtime. On managed routes, RelayLM owns the backend-bound context authority and the bounded visible/internal output-safety boundary.
 
 The primary local MVP path remains OpenWebUI -> RelayLM -> LM Studio. Open-LLM-VTuber is an optional realtime profile.
 
@@ -18,13 +18,18 @@ The primary local MVP path remains OpenWebUI -> RelayLM -> LM Studio. Open-LLM-V
 
 Current behavior:
 
-- streaming is primarily backend SSE forwarding,
-- current `memory_light` compatibility compilation may retain prior frontend user/assistant history,
-- the implemented `client_history_exclusion_apply.v0` is default-off and supports no client system/developer messages only,
-- Stream Unpack, output segmentation, RelayREF, and complete Output-side RelaySCN are not implemented,
-- incoming persona/system text is not durable RelaySOUL authority.
+- default streaming remains compatible backend SSE forwarding,
+- Phase 5.5-B2 can perform gated request-runtime internal-sentinel suppression,
+- Phase 5.5-C0 through C4 can construct TTS-safe segmentation, adapter-handoff, and transport-envelope metadata from B2 safe visible output,
+- default `memory_light` compatibility may retain prior frontend user/assistant history,
+- `client_history_exclusion_apply.v0` supports bounded no-instruction managed requests,
+- `client_history_exclusion_apply.v1` supports bounded instruction-bearing managed requests only with exact `client_instruction_source.v1` provenance,
+- both apply paths remain default-off and dry-run-only by default,
+- complete RelayREF and Output-side RelaySCN execution are not implemented,
+- incoming persona/system text is not durable RelaySOUL authority,
+- RelayLM Core does not deliver adapter transport or execute TTS/audio/avatar behavior.
 
-The target current-turn-only managed reconstruction path described below is broader than current implementation. See [Open-LLM-VTuber Current / Target Boundary](open_llm_vtuber_current_target.md) and [Project Status](../PROJECT_STATUS.md).
+The broader target current-turn-only path described below includes more compatibility shapes, active transaction preservation, typed RelaySCN semantic apply, and ordinary default-on managed reconstruction. See [Open-LLM-VTuber Current / Target Boundary](open_llm_vtuber_current_target.md) and [Project Status](../PROJECT_STATUS.md).
 
 ## Required API surface
 
@@ -58,14 +63,14 @@ For a RelayLM-managed route, the target authority flow is:
 ```text
 client messages
   -> extract validated current user turn
-  -> extract bounded current system/developer evidence
+  -> select bounded current system/developer evidence through explicit provenance
   -> preserve minimum active transaction state
   -> exclude prior client history and raw instructions
   -> RelaySCN normalization
   -> RelayLM-owned context reconstruction
 ```
 
-The complete target flow is not yet current runtime behavior. Current default `memory_light` compatibility compilation may still retain prior client history.
+Current v0/v1 apply implements a bounded subset. It does not yet preserve active tool transactions or make semantic RelaySCN normalization the ordinary apply path.
 
 ## Persona prompt handling
 
@@ -73,8 +78,9 @@ Open-LLM-VTuber's `persona_prompt` or equivalent incoming system prompt is not a
 
 ```text
 incoming persona prompt
-  -> bounded low-trust client instruction evidence
-  -> current compatibility block or future RelaySCN normalization
+  -> request-local instruction identity
+  -> explicit provenance selection when v1 apply is requested
+  -> bounded low-trust instruction evidence
   -> current request behavior
 
 optional explicit import path
@@ -88,7 +94,8 @@ Rules:
 
 - never copy the raw prompt wholesale into `SOUL.md`,
 - never treat it as fallback durable persona authority,
-- never place it above RelayLM-owned durable policy on a managed route,
+- never infer v1 provenance from role, wording, or position,
+- never place instruction evidence above RelayLM-owned durable policy on a managed route,
 - durable import is an explicit migration/calibration workflow,
 - when approved RelaySOUL exists, it remains authoritative over conflicting client persona text.
 
@@ -105,19 +112,27 @@ Target managed routes use:
 - normalized RelaySCN state,
 - minimum active transaction state.
 
-Current limitation:
+Current bounded behavior:
 
 ```text
-current default memory_light compatibility path
+default memory_light compatibility
   -> prior frontend user/assistant history may remain backend-bound
 
 client_history_exclusion_apply.v0
-  -> default-off
-  -> dry-run-only by default
-  -> no client system/developer messages only
+  -> default-off and dry-run-only by default
+  -> bounded no-instruction requests
+
+client_history_exclusion_apply.v1
+  -> default-off and dry-run-only by default
+  -> bounded instruction-bearing requests
+  -> exact client_instruction_source.v1 provenance required
+
+missing or invalid v1 provenance
+  -> fail closed
+  -> no raw-history fallback
 ```
 
-Frontend visible history may remain in the frontend UI/storage. Do not claim it has been excluded from backend context unless the exact current apply gates and request shape have been verified.
+Frontend visible history may remain in the frontend UI/storage. Do not claim it has been excluded from backend context unless the exact apply gates, request shape, and provenance have been verified.
 
 ## Minimal frontend configuration
 
@@ -139,6 +154,8 @@ character_config:
 ```
 
 The exact Open-LLM-VTuber configuration structure is frontend-version-dependent. RelayLM requires an OpenAI-compatible Chat Completions connection to `/v1/chat/completions` and a route model ID published by `/v1/models`.
+
+A frontend that cannot emit the reserved v1 provenance envelope should leave instruction-bearing actual apply disabled or dry-run-only. The basic proxy path does not require v1 actual apply.
 
 ## RelayLM routing
 
@@ -181,15 +198,37 @@ Connection testing or explicit delegated-authority integration. Compatible messa
 
 ### Current `memory_light`
 
-Current profile compilation is apply-capable. History-exclusion actual apply is a separate default-off boundary and currently supports only no-instruction requests.
+Current profile compilation is apply-capable. History-exclusion actual apply is a separate default-off boundary:
+
+- v0 handles bounded no-instruction requests,
+- v1 handles bounded explicit-provenance instruction-bearing requests,
+- active tool transactions and unsupported compatibility shapes fail closed.
 
 ### Target managed lightweight/full modes
 
-RelayLM canonicalizes client evidence and reconstructs backend context according to the client history and instruction authority contracts.
+RelayLM canonicalizes client evidence and reconstructs backend context according to the client history and instruction authority contracts as ordinary managed behavior.
 
 Mode names and current runtime behavior are defined in [Runtime Architecture](runtime_architecture.md) and [Project Status](../PROJECT_STATUS.md).
 
 ## Streaming output boundary
+
+Current default path:
+
+```text
+backend stream
+  -> compatible SSE forwarding
+```
+
+Current optional Phase 5.5 path:
+
+```text
+backend stream
+  -> B2 internal-sentinel suppression when explicitly enabled
+  -> C0 TTS-safe segmentation metadata
+  -> C1/C2 adapter-handoff planning and runtime observation
+  -> C3/C4 adapter-facing transport-envelope metadata
+  -> unchanged safe visible SSE output
+```
 
 The target realtime path is:
 
@@ -204,17 +243,19 @@ backend stream
   -> external TTS / Avatar adapters / captions
 ```
 
-This path is not yet implemented. Current streaming is primarily backend SSE forwarding.
+Current Phase 5.5 does not provide complete RelayREF/Output-side RelaySCN processing, adapter delivery, TTS/audio execution, avatar control, or generalized partial-stream resume.
 
-Internal markers and malformed candidates must be blocked before external speech/avatar consumers receive them when Stream Unpack is introduced.
+Internal markers and malformed candidates must remain blocked before external speech/avatar consumers receive them.
 
 ## Adapter boundary
 
-RelayLM emits engine-neutral hints only.
+RelayLM Core emits engine-neutral hints and runtime-private metadata only.
 
 - TTS adapter maps text chunks and style hints to the selected engine.
 - Avatar adapter maps expression/motion hints to the selected Live2D/runtime configuration.
 - RelayEMO does not call or control those engines directly.
+- Phase 5.5 transport envelopes are not proof of transport delivery.
+- SOUL Lab Runtime owns later audio queueing, TTS invocation, timing, lip-sync, and avatar execution.
 
 ## Non-goals
 
@@ -222,6 +263,7 @@ This integration does not:
 
 - make the incoming persona prompt durable authority,
 - claim current prior-history exclusion when the apply gate is disabled,
+- infer instruction provenance from message role or wording,
 - require Open-LLM-VTuber code changes for the basic proxy path,
 - take ownership of ASR/TTS/Live2D execution,
 - rewrite tool or structured protocol payloads as persona text,
@@ -233,6 +275,7 @@ This integration does not:
 - [Client History Authority Contract](client_history_authority_contract.md)
 - [Client Instruction Authority Contract](client_instruction_authority_contract.md)
 - [Open-LLM-VTuber Current / Target Boundary](open_llm_vtuber_current_target.md)
+- [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md)
 - [AI VTuber Pipeline Profile](ai_vtuber_pipeline_profile.md)
 - [Pipeline Responsibility Design](pipeline_responsibility_design.md)
 - [Project Status](../PROJECT_STATUS.md)
