@@ -3,11 +3,13 @@ name: RelayMEM RelaySLP queue state smoke
 on:
   pull_request:
     paths:
+      - "relaylm/relaymem_slp_durable_enqueue.py"
       - "relaylm/relaymem_slp_queue_state.py"
       - "relaylm/relaymem_slp_queue_record.py"
       - "relaylm/relaymem_slp_queue_storage.py"
       - "scripts/relaylm_phase6b0_durable_queue_contract_smoke.py"
       - "scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py"
+      - "scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py"
       - "scripts/relaylm_phase6b3_queue_state_smoke.py"
       - "scripts/relaylm_phase6b3_queue_state_security_smoke.py"
       - "scripts/relaylm_phase6b3_queue_state_contract_smoke.py"
@@ -25,11 +27,13 @@ on:
     branches:
       - main
     paths:
+      - "relaylm/relaymem_slp_durable_enqueue.py"
       - "relaylm/relaymem_slp_queue_state.py"
       - "relaylm/relaymem_slp_queue_record.py"
       - "relaylm/relaymem_slp_queue_storage.py"
       - "scripts/relaylm_phase6b0_durable_queue_contract_smoke.py"
       - "scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py"
+      - "scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py"
       - "scripts/relaylm_phase6b3_queue_state_smoke.py"
       - "scripts/relaylm_phase6b3_queue_state_security_smoke.py"
       - "scripts/relaylm_phase6b3_queue_state_contract_smoke.py"
@@ -60,11 +64,13 @@ jobs:
       - name: Compile Phase 6-B queue helpers and smokes
         run: >-
           python -m compileall -q
+          relaylm/relaymem_slp_durable_enqueue.py
           relaylm/relaymem_slp_queue_state.py
           relaylm/relaymem_slp_queue_record.py
           relaylm/relaymem_slp_queue_storage.py
           scripts/relaylm_phase6b0_durable_queue_contract_smoke.py
           scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
+          scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py
           scripts/relaylm_phase6b3_queue_state_smoke.py
           scripts/relaylm_phase6b3_queue_state_security_smoke.py
           scripts/relaylm_phase6b3_queue_state_contract_smoke.py
@@ -80,6 +86,8 @@ jobs:
         run: PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_security_smoke.py
       - name: Run Phase 6-B2 durable enqueue contract smoke
         run: PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
+      - name: Run B2/B3 enqueue lifecycle compatibility smoke
+        run: PYTHONPATH=. python scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py
       - name: Run Phase 6-B3 queue state smoke
         run: PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
       - name: Run strict Phase 6-B3 queue state security smoke
