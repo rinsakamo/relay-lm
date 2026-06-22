@@ -1,0 +1,80 @@
+name: Phase 6-B3 targeted renewal patch
+
+on:
+  push:
+    branches:
+      - phase6b3-queue-state-helpers
+    paths:
+      - ".github/workflows/phase6b3-targeted-renewal-patch.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6b3-queue-state-helpers
+          fetch-depth: 0
+      - name: Apply bounded renewal fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              text = target.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one anchor, found {count}")
+              target.write_text(text.replace(old, new), encoding="utf-8")
+
+          replace_once(
+              "relaylm/relaymem_slp_queue_state.py",
+              '''    if kind == "renew_lease":
+                  expiry = parse_timestamp(record["lease_expires_at"])
+                  assert expiry is not None
+                  renewed_text, error = _lease_expiry(expiry, request.lease_duration_seconds)
+          ''',
+              '''    if kind == "renew_lease":
+                  renewed_text, error = _lease_expiry(now, request.lease_duration_seconds)
+          ''',
+          )
+
+          replace_once(
+              "scripts/relaylm_phase6b3_queue_state_smoke.py",
+              '''            assert renewed["record_revision"] == 2
+                          assert renewed["attempt_count"] == 1
+                          assert renewed["claim_generation"] == 1
+                          assert renewed["lease_token"] == claimed["lease_token"]
+                          assert renewed["lease_expires_at"] > claimed["lease_expires_at"]
+          ''',
+              '''            assert renewed["record_revision"] == 2
+                          assert renewed["attempt_count"] == 1
+                          assert renewed["claim_generation"] == 1
+                          assert renewed["claim_owner"] == claimed["claim_owner"]
+                          assert renewed["lease_token"] == claimed["lease_token"]
+                          assert renewed["lease_acquired_at"] == claimed["lease_acquired_at"]
+                          assert renewed["lease_expires_at"] == "2026-06-22T01:00:35.000000Z"
+                          assert renewed["lease_expires_at"] != "2026-06-22T01:01:00.000000Z"
+          ''',
+          )
+
+          replace_once(
+              "docs/architecture/phase6b3_relayslp_queue_state_helpers.md",
+              '''Renewal increments only `record_revision`, updates `updated_at`, and extends `lease_expires_at`. It preserves attempt count, claim generation, owner, lease token, and lease acquisition time. Timestamp arithmetic overflow and clock regression are returned as bounded blocked results rather than exceptions.''',
+              '''Renewal increments only `record_revision`, updates `updated_at`, and resets `lease_expires_at` to the validated current UTC transition time plus the bounded requested lease duration. It does not accumulate duration from the previous expiry. It preserves attempt count, claim generation, owner, lease token, and lease acquisition time. Timestamp arithmetic overflow and clock regression are returned as bounded blocked results rather than exceptions.''',
+          )
+
+          Path(".github/workflows/phase6b3-targeted-renewal-patch.yml").unlink()
+          PY
+      - name: Commit targeted fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: bound lease renewal from current time"
+          git push origin HEAD:phase6b3-queue-state-helpers
