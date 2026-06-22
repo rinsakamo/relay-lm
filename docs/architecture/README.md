@@ -57,6 +57,7 @@ RelayMEM Primary persistence track:
 - [RelayMEM-M3e Atomic Primary Page Writer](relaymem_m3e_atomic_primary_page_writer.md) — default-off direct-helper page publication.
 - [RelayMEM-M3f Index/Log Reconciliation Preflight](relaymem_m3f_primary_index_log_reconciliation_preflight.md) — read-only deterministic reconciliation planning.
 - [RelayMEM-M3g Index/Log Reconciliation Apply](relaymem_m3g_primary_index_log_reconciliation_apply.md) — gated index-before-log apply with exact-plan revalidation and retryable partial progress.
+- [RelayMEM-M3h Reconciliation Recovery Audit](relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md) — exact-receipt read-only recovery classification and content-free projection.
 
 SOUL Lab product layers:
 
