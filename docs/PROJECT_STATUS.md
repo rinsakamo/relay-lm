@@ -19,6 +19,9 @@ relaylm_related_authority:
   - docs/architecture/pipeline_responsibility_design.md
   - docs/architecture/pipeline_implementation_plan.md
   - docs/architecture/current_target_migration_guide.md
+  - docs/architecture/client_history_authority_contract.md
+  - docs/architecture/client_instruction_authority_contract.md
+  - docs/architecture/phase5_5_stream_unpack_bounded_slice.md
   - docs/architecture/phase6_async_relayslp_bounded_slice.md
   - docs/architecture/phase6b0_relayslp_durable_queue_contract.md
   - docs/architecture/phase6b1_relayslp_dispatch_preflight.md
@@ -29,7 +32,6 @@ relaylm_related_authority:
   - docs/architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md
   - docs/architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
   - docs/architecture/soul_lab_ui_mvp.md
-  - docs/architecture/soul_lab_ui_a6_shared_shell_settings_handoff.md
   - docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
   - docs/architecture/soul_lab_runtime_mvp.md
 ---
@@ -37,7 +39,12 @@ relaylm_related_authority:
 
 Last reviewed: 2026-06-22 JST
 
-Status baseline `main` commit: `baf2648673385f6aab4eb916e5f010a68b2f16fb`
+Status reviewed through:
+
+- Phase 6-B3 fenced queue state transitions,
+- RelayMEM-M3h recovery audit,
+- SOUL Lab UI-A7 read-only management projection,
+- PR #359 merge commit `1ee67b4f5a8c20cfbdbef79e99f3cb4e6e90a5b1`.
 
 ## Purpose and authority
 
@@ -54,7 +61,7 @@ When documents disagree:
 ## Current implementation position
 
 ```text
-Managed-route correctness: Phase 5-C complete
+Managed-route correctness: Phase 5-C complete through bounded v0/v1 apply and C5 runtime plumbing
 Pre-stream hardening: Phase 5-D complete through D2
 Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
 Asynchronous RelaySLP orchestration: queue lifecycle helpers complete through Phase 6-B3
@@ -72,12 +79,26 @@ Current `main` includes:
 - RelayINT-facing reference-repair compatibility,
 - selected RelayMEM retrieval and gated RelayCTX injection,
 - pure and gated non-stream RelayCTX Unpack,
-- gated stream sentinel/suppression runtime handling,
-- TTS-safe segmentation and adapter handoff/transport metadata construction,
-- managed-route client-history exclusion through no-instruction and instruction-bearing apply contracts,
+- Phase 5.5-B2 gated request-runtime stream suppression,
+- Phase 5.5-C0 through C4 segmentation, handoff, and transport-envelope metadata construction,
+- `client_history_exclusion_apply.v0` for bounded no-instruction managed requests,
+- `client_history_exclusion_apply.v1` for bounded explicit-provenance instruction-bearing managed requests,
+- strict read-only client-instruction cache lookup,
+- C4b content-free RelaySCN-facing cache-hit diagnostics projection,
+- C5 runtime-private typed-parse validation and default-off cache-writer wiring,
 - CJK-aware deterministic token estimation,
 - lazy RelayRUN recovery-detail request-runtime wiring,
 - RelaySOUL dry-run/preflight governance foundations.
+
+Current managed-history limitations:
+
+- history-exclusion apply remains default-off and dry-run-only by default,
+- v1 requires exact `client_instruction_source.v1` provenance,
+- role, wording, and position alone are not provenance,
+- active tool transactions remain blocked because minimum-chain reconstruction is absent,
+- C4b does not semantically apply RelaySCN state,
+- C5 does not parse arbitrary backend visible text or trust frontend metadata as a typed-parse source,
+- parser-versioned cache lookup/write compatibility is not implemented.
 
 ### Phase 6 RelaySLP orchestration
 
@@ -178,6 +199,8 @@ Immediate sequence:
 5. Add real SOUL Lab read APIs for latest run, formed/held/blocked memory, and used memory.
 6. Add one auditable Correct operation whose result changes later retrieval behavior.
 
+UI-A7 already supplies the bounded settings/characters read foundation. It does not satisfy I1 memory observation or correction criteria.
+
 B3 is complete as a prerequisite, not as the final product goal. Helper-only completion does not close I1.
 
 ## Safe defaults and compatibility
@@ -199,8 +222,8 @@ relayctx_tts_adapter_handoff_runtime_dry_run_only = true
 
 Consequences:
 
-- default `memory_light` compatibility may preserve frontend history until managed apply is enabled,
-- stream suppression and TTS handoff planning remain default-off,
+- default `memory_light` compatibility may preserve frontend history until managed apply is intentionally enabled,
+- stream suppression and TTS handoff metadata construction remain default-off,
 - RelayLM Core does not deliver adapter transport or execute TTS/audio/avatar behavior,
 - Phase 6 and RelayMEM persistence apply remain explicit gated boundaries rather than ordinary default runtime behavior,
 - B3 defaults to `enabled=false`, `dry_run_only=true`, and `apply_enabled=false`,
@@ -210,6 +233,11 @@ Consequences:
 
 The runtime does not yet provide:
 
+- complete current-turn-only reconstruction for all compatibility-sensitive request shapes,
+- active tool-chain reconstruction,
+- a trusted backend-response instruction-control artifact producer,
+- semantic RelaySCN apply from the C4b cache projection,
+- parser-versioned cache lookup/write compatibility,
 - request-runtime A1/A2/B1/B2 invocation,
 - Phase 6-C worker execution,
 - scheduler/background worker execution,
@@ -225,7 +253,6 @@ The runtime does not yet provide:
 - TTS execution, audio generation, or avatar control,
 - complete output-side RelayREF and output-side RelaySCN,
 - complete Runtime Compile Gate v1 taxonomy,
-- active tool-chain reconstruction,
 - model-specific exact tokenizer integration,
 - `/v1/responses` support.
 
@@ -266,16 +293,14 @@ The SOUL Lab app can be built as a presentation prototype and can read the bound
 ## Where to read next
 
 - [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md)
+- [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
+- [Client History Authority Contract](architecture/client_history_authority_contract.md)
+- [Client Instruction Authority Contract](architecture/client_instruction_authority_contract.md)
+- [Phase 5.5 Stream Unpack Bounded Slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
 - [Phase 6 Asynchronous RelaySLP Bounded Slice](architecture/phase6_async_relayslp_bounded_slice.md)
-- [Phase 6-B0 Durable Queue Contract](architecture/phase6b0_relayslp_durable_queue_contract.md)
-- [Phase 6-B1 Dispatch Preflight](architecture/phase6b1_relayslp_dispatch_preflight.md)
 - [Phase 6-B2 Atomic Durable Enqueue](architecture/phase6b2_relayslp_atomic_durable_enqueue.md)
 - [Phase 6-B3 Fenced Queue State Helpers](architecture/phase6b3_relayslp_queue_state_helpers.md)
 - [RelayMEM MVP Implementation Plan](architecture/relaymem_mvp_implementation_plan.md)
-- [RelayMEM / RelaySLP Current / Target Boundary](architecture/relaymem_slp_current_target.md)
-- [RelayMEM-M3g Reconciliation Apply](architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md)
 - [RelayMEM-M3h Recovery Audit](architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md)
-- [SOUL Lab UI MVP](architecture/soul_lab_ui_mvp.md)
-- [SOUL Lab UI-A6 Shared Shell / Settings](architecture/soul_lab_ui_a6_shared_shell_settings_handoff.md)
 - [SOUL Lab UI-A7 Read-only Management Projection](architecture/soul_lab_ui_a7_management_projection_handoff.md)
 - [SOUL Lab Runtime MVP](architecture/soul_lab_runtime_mvp.md)
