@@ -10,6 +10,7 @@ on:
       - "scripts/relaylm_phase6b0_durable_queue_contract_smoke.py"
       - "scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py"
       - "scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py"
+      - "scripts/relaylm_phase6b3_precommit_failure_projection_smoke.py"
       - "scripts/relaylm_phase6b3_queue_root_path_smoke.py"
       - "scripts/relaylm_phase6b3_queue_state_smoke.py"
       - "scripts/relaylm_phase6b3_queue_state_security_smoke.py"
@@ -35,6 +36,7 @@ on:
       - "scripts/relaylm_phase6b0_durable_queue_contract_smoke.py"
       - "scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py"
       - "scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py"
+      - "scripts/relaylm_phase6b3_precommit_failure_projection_smoke.py"
       - "scripts/relaylm_phase6b3_queue_root_path_smoke.py"
       - "scripts/relaylm_phase6b3_queue_state_smoke.py"
       - "scripts/relaylm_phase6b3_queue_state_security_smoke.py"
@@ -73,6 +75,7 @@ jobs:
           scripts/relaylm_phase6b0_durable_queue_contract_smoke.py
           scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
           scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py
+          scripts/relaylm_phase6b3_precommit_failure_projection_smoke.py
           scripts/relaylm_phase6b3_queue_root_path_smoke.py
           scripts/relaylm_phase6b3_queue_state_smoke.py
           scripts/relaylm_phase6b3_queue_state_security_smoke.py
@@ -91,6 +94,8 @@ jobs:
         run: PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
       - name: Run B2/B3 enqueue lifecycle compatibility smoke
         run: PYTHONPATH=. python scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py
+      - name: Run Phase 6-B3 precommit failure projection smoke
+        run: PYTHONPATH=. python scripts/relaylm_phase6b3_precommit_failure_projection_smoke.py
       - name: Run Phase 6-B3 queue root path smoke
         run: PYTHONPATH=. python scripts/relaylm_phase6b3_queue_root_path_smoke.py
       - name: Run Phase 6-B3 queue state smoke
