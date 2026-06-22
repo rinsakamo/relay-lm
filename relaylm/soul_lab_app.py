@@ -6,7 +6,7 @@ import argparse
 import os
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
 from relaylm.app import create_app as create_core_app
@@ -14,15 +14,25 @@ from relaylm.config import RelayLMConfig, load_config
 from relaylm.soul_lab_management import (
     build_lab_characters_projection,
     build_lab_settings_projection,
+    is_loopback_host,
 )
 
 
 def create_app(config_path: str | None = None) -> FastAPI:
     app = create_core_app(config_path)
     config: RelayLMConfig = app.state.relaylm_config
+    lab_management_allowed = is_loopback_host(config.listen.host)
+
+    def require_loopback_management() -> None:
+        if not lab_management_allowed:
+            raise HTTPException(
+                status_code=403,
+                detail="lab_management_requires_loopback_listen",
+            )
 
     @app.get("/lab/api/characters", response_model=None)
     async def lab_characters() -> JSONResponse:
+        require_loopback_management()
         projection = build_lab_characters_projection(config)
         return JSONResponse(
             content=projection.model_dump(mode="json"),
@@ -31,6 +41,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
 
     @app.get("/lab/api/settings", response_model=None)
     async def lab_settings() -> JSONResponse:
+        require_loopback_management()
         projection = build_lab_settings_projection(config)
         return JSONResponse(
             content=projection.model_dump(mode="json"),
