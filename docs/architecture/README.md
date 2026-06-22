@@ -34,8 +34,9 @@ Product-critical Phase 6 boundaries:
 - [Phase 6-A2 RelaySLP Response-Finalization Handoff Contract](phase6a2_relayslp_response_handoff_contract.md)
 - [Phase 6-B0 RelaySLP Durable Queue Contract](phase6b0_relayslp_durable_queue_contract.md)
 - [Phase 6-B1 RelaySLP Dispatch Preflight](phase6b1_relayslp_dispatch_preflight.md)
+- [Phase 6-B2 RelaySLP Atomic Durable Enqueue](phase6b2_relayslp_atomic_durable_enqueue.md)
 
-Phase 6-A1 validates deferred RelaySLP admission metadata. Phase 6-A2 creates one runtime-private dry-run enqueue candidate after a finalized `turn_end`. Phase 6-B0 owns the durable-record, dispatch-idempotency, state-machine, duplicate/collision, lease/restart/corruption, and content-free projection contract. Phase 6-B1 generates deterministic dispatch/job identities and a runtime-private initial queued durable-job candidate without queue I/O. Phase 6-B2 atomic durable enqueue is next.
+Phase 6-A1 validates deferred RelaySLP admission metadata. Phase 6-A2 creates one runtime-private dry-run enqueue candidate after a finalized `turn_end`. Phase 6-B0 owns the durable-record, dispatch-idempotency, state-machine, duplicate/collision, lease/restart/corruption, and content-free projection contract. Phase 6-B1 generates deterministic dispatch/job identities and a runtime-private initial queued durable-job candidate without queue I/O. Phase 6-B2 now performs gated atomic create-if-absent durable enqueue with duplicate/collision/corruption classification and no worker invocation. Phase 6-B3 claim/lease/retry/terminal helpers are next.
 
 Completed Core streaming boundary:
 
@@ -54,7 +55,8 @@ RelayMEM Primary persistence track:
 - [RelayMEM-M3a Primary Formation Handoff](relaymem_m3a_primary_formation_handoff.md) — governed Primary MEM candidate boundary.
 - [RelayMEM-M3d Primary Writer Handoff](relaymem_m3d_primary_writer_handoff.md) — exact M3c candidate/store-target revalidation and writer handoff.
 - [RelayMEM-M3e Atomic Primary Page Writer](relaymem_m3e_atomic_primary_page_writer.md) — default-off direct-helper page publication.
-- [RelayMEM-M3f Index/Log Reconciliation Preflight](relaymem_m3f_primary_index_log_reconciliation_preflight.md) — read-only deterministic reconciliation planning; M3g apply remains next.
+- [RelayMEM-M3f Index/Log Reconciliation Preflight](relaymem_m3f_primary_index_log_reconciliation_preflight.md) — read-only deterministic reconciliation planning.
+- [RelayMEM-M3g Index/Log Reconciliation Apply](relaymem_m3g_primary_index_log_reconciliation_apply.md) — gated index-before-log apply with exact-plan revalidation and retryable partial progress.
 
 SOUL Lab product layers:
 
@@ -66,7 +68,7 @@ SOUL Lab product layers:
 - [SOUL Lab UI-A5 Memory Inspector Handoff](soul_lab_ui_a5_memory_inspector_handoff.md) — formed/held/blocked outcomes, bounded provenance, subjective perspective, formed-memory Forget/Pin/Unpin, held-candidate Discard, and shared Correct/Merge previews.
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md) — post-UI-MVP runtime adapter layer for TTS, audio queue, Live2D/avatar mapping, timing, preview, and adapter telemetry.
 
-The current UI implementation is complete through UI-A4. UI-A5 Memory Inspector is the next independent UI slice; peer transport, server-side management APIs, RelaySOUL apply/rollback, memory mutation, and Runtime adapter execution remain separate.
+The current UI implementation is complete through UI-A5. Peer transport, server-side management APIs, persisted memory operations, RelaySOUL apply/rollback, and Runtime adapter execution remain separate.
 
 Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1` with explicit `client_instruction_source.v1` provenance. Role, wording, and message position alone are not provenance.
 

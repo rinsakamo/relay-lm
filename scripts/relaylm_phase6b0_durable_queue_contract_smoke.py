@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "docs/architecture/phase6b0_relayslp_durable_queue_contract.md"
 B1_HANDOFF_PATH = ROOT / "docs/architecture/phase6b1_relayslp_dispatch_preflight.md"
+B2_HANDOFF_PATH = ROOT / "docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md"
 CURRENT_TARGET_PATH = ROOT / "docs/architecture/relaymem_slp_current_target.md"
 PIPELINE_PLAN_PATH = ROOT / "docs/architecture/pipeline_implementation_plan.md"
 PROJECT_STATUS_PATH = ROOT / "docs/PROJECT_STATUS.md"
@@ -37,6 +38,7 @@ def _section(text: str, start: str, end: str) -> str:
 def main() -> None:
     contract = _read(CONTRACT_PATH)
     b1_handoff = _read(B1_HANDOFF_PATH)
+    b2_handoff = _read(B2_HANDOFF_PATH)
     current_target = _read(CURRENT_TARGET_PATH)
     pipeline_plan = _read(PIPELINE_PLAN_PATH)
     project_status = _read(PROJECT_STATUS_PATH)
@@ -50,7 +52,7 @@ def main() -> None:
         (
             "relaylm_authority: phase6b0_relayslp_durable_queue",
             "Phase 6-B0 remains the authoritative durable-queue design",
-            "Phase 6-B1 now implements",
+            "Phase 6-B1 implements",
             "Phase 6-B2: gated atomic create-if-absent durable enqueue",
             "relaymem.slp_enqueue_candidate.v0",
             "relaymem.slp_durable_job.v0",
@@ -228,9 +230,23 @@ def main() -> None:
             "relaymem.slp_queue_status_projection.v0",
             "relaymem.slp_dispatch_key.v0",
             "relaymem.slp_job_id.v0",
-            "Phase 6-B2 should consume only an exact validated B1 result",
+            "Phase 6-B2 consumes only an exact validated B1 result",
         ),
         label="B1 handoff",
+    )
+
+    _require_all(
+        b2_handoff,
+        (
+            "relaylm_authority: phase6b2_relayslp_atomic_durable_enqueue",
+            "Phase 6-B2 is implemented",
+            "enqueued_new",
+            "duplicate_existing",
+            "blocked_collision",
+            "blocked_corrupt",
+            "write_failed",
+        ),
+        label="B2 handoff",
     )
 
     _require_all(
@@ -238,7 +254,7 @@ def main() -> None:
         (
             "Phase 6-B1 implements the first exact consumer",
             "performs no queue I/O",
-            "The next bounded RelayLM Core implementation is Phase 6-B2",
+            "The next bounded RelayLM Core implementation is Phase 6-B3",
         ),
         label="current-target alignment",
     )
@@ -248,7 +264,7 @@ def main() -> None:
         (
             "Phase 6-B1 dry-run job-record and dispatch-idempotency preflight helper: complete",
             "Phase 6-B1: job-record and dispatch-idempotency preflight — complete",
-            "The next RelayLM Core boundary is Phase 6-B2 atomic durable enqueue",
+            "The next RelayLM Core boundary is Phase 6-B3",
         ),
         label="pipeline-plan alignment",
     )
@@ -256,9 +272,9 @@ def main() -> None:
     _require_all(
         project_status,
         (
-            "Asynchronous RelaySLP orchestration: helper implementation complete through Phase 6-B1",
+            "Asynchronous RelaySLP orchestration: durable enqueue implementation complete through Phase 6-B2",
             "Phase 6-B1 RelaySLP dispatch preflight",
-            "Phase 6-B2: gated atomic create-if-absent durable enqueue",
+            "Phase 6-B2 atomic durable enqueue",
         ),
         label="project-status alignment",
     )
@@ -266,6 +282,7 @@ def main() -> None:
     for link in (
         "phase6b0_relayslp_durable_queue_contract.md",
         "phase6b1_relayslp_dispatch_preflight.md",
+        "phase6b2_relayslp_atomic_durable_enqueue.md",
     ):
         assert link in architecture_index, f"architecture index missing {link}"
 
@@ -308,7 +325,7 @@ def main() -> None:
         label="B1 workflow",
     )
 
-    print("Phase 6-B durable RelaySLP queue contract smoke passed through B1")
+    print("Phase 6-B durable RelaySLP queue contract smoke passed through B2")
 
 
 if __name__ == "__main__":

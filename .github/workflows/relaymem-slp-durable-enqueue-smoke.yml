@@ -1,0 +1,75 @@
+name: RelayMEM RelaySLP durable enqueue smoke
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/relaymem_slp_dispatch_preflight.py"
+      - "relaylm/relaymem_slp_durable_enqueue.py"
+      - "scripts/relaylm_phase6b0_durable_queue_contract_smoke.py"
+      - "scripts/relaylm_phase6b1_dispatch_preflight_smoke.py"
+      - "scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py"
+      - "scripts/relaylm_phase6b2_durable_enqueue_smoke.py"
+      - "scripts/relaylm_phase6b2_durable_enqueue_security_smoke.py"
+      - "scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py"
+      - "docs/architecture/phase6b0_relayslp_durable_queue_contract.md"
+      - "docs/architecture/phase6b1_relayslp_dispatch_preflight.md"
+      - "docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md"
+      - "docs/architecture/relaymem_slp_current_target.md"
+      - "docs/architecture/pipeline_implementation_plan.md"
+      - "docs/PROJECT_STATUS.md"
+      - "docs/architecture/README.md"
+      - ".github/workflows/relaymem-slp-durable-enqueue-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/relaymem_slp_dispatch_preflight.py"
+      - "relaylm/relaymem_slp_durable_enqueue.py"
+      - "scripts/relaylm_phase6b0_durable_queue_contract_smoke.py"
+      - "scripts/relaylm_phase6b1_dispatch_preflight_smoke.py"
+      - "scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py"
+      - "scripts/relaylm_phase6b2_durable_enqueue_smoke.py"
+      - "scripts/relaylm_phase6b2_durable_enqueue_security_smoke.py"
+      - "scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py"
+      - "docs/architecture/phase6b0_relayslp_durable_queue_contract.md"
+      - "docs/architecture/phase6b1_relayslp_dispatch_preflight.md"
+      - "docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md"
+      - "docs/architecture/relaymem_slp_current_target.md"
+      - "docs/architecture/pipeline_implementation_plan.md"
+      - "docs/PROJECT_STATUS.md"
+      - "docs/architecture/README.md"
+      - ".github/workflows/relaymem-slp-durable-enqueue-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile Phase 6-B2 helper and smokes
+        run: >-
+          python -m compileall -q
+          relaylm/relaymem_slp_durable_enqueue.py
+          scripts/relaylm_phase6b0_durable_queue_contract_smoke.py
+          scripts/relaylm_phase6b1_dispatch_preflight_smoke.py
+          scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py
+          scripts/relaylm_phase6b2_durable_enqueue_smoke.py
+          scripts/relaylm_phase6b2_durable_enqueue_security_smoke.py
+          scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
+      - name: Run Phase 6-B0 contract smoke
+        run: PYTHONPATH=. python scripts/relaylm_phase6b0_durable_queue_contract_smoke.py
+      - name: Run Phase 6-B1 dispatch preflight smoke
+        run: PYTHONPATH=. python scripts/relaylm_phase6b1_dispatch_preflight_smoke.py
+      - name: Run strict Phase 6-B1 security smoke
+        run: PYTHONPATH=. python scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py
+      - name: Run Phase 6-B2 durable enqueue smoke
+        run: PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_smoke.py
+      - name: Run strict Phase 6-B2 durable enqueue security smoke
+        run: PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_security_smoke.py
+      - name: Run Phase 6-B2 contract smoke
+        run: PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
