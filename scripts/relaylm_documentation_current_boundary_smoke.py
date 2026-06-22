@@ -34,8 +34,8 @@ def main() -> None:
     )
     require(
         "README_ja.md",
-        "client_history_exclusion_apply.v0",
-        "client_history_exclusion_apply.v1",
+        "実装済みv0",
+        "v1は正確な",
         "client_instruction_source.v1",
     )
 
