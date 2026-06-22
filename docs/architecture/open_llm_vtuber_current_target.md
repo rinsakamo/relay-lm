@@ -10,16 +10,19 @@ Open-LLM-VTuber -> RelayLM -> OpenAI-compatible backend
 
 Current behavior:
 
-- streaming is primarily backend SSE forwarding,
-- default-off `client_history_exclusion_apply.v0` supports only managed requests with no client system/developer messages,
-- actual apply retains one RelayLM-owned compiled prefix and the validated current user message,
-- explicit actual apply blocks forwarding when no exact applied result exists,
-- Stream Unpack, safe segmentation, RelayREF, and complete Output-side RelaySCN are not implemented,
-- RelayLM does not own frontend UI, ASR, TTS execution, or avatar execution.
+- ordinary streaming remains byte-compatible backend SSE forwarding by default,
+- Phase 5.5-B2 can perform gated request-runtime internal-sentinel suppression when explicitly enabled,
+- Phase 5.5-C0 through C4 can build TTS-safe segmentation hints, adapter-handoff plans, and adapter-facing transport envelopes from B2 safe visible output behind explicit default-off gates,
+- `client_history_exclusion_apply.v0` supports bounded managed no-instruction requests,
+- `client_history_exclusion_apply.v1` supports bounded instruction-bearing requests only when exact `client_instruction_source.v1` provenance is supplied,
+- both history-exclusion apply paths remain default-off and dry-run-only by default,
+- missing or invalid v1 provenance fails closed rather than restoring raw history or treating every system/developer message as current instruction evidence,
+- non-stream RelayCTX Unpack and the Phase 5.5 stream-safety boundaries exist, but complete RelayREF and Output-side RelaySCN execution are not implemented,
+- RelayLM does not deliver adapter transport or own frontend UI, ASR, TTS execution, audio generation, or avatar execution.
 
 ## Target architecture
 
-The target managed request path adds bounded low-trust current-instruction evidence, active transaction preservation, prior-history exclusion, RelaySCN normalization, and RelayLM-owned context reconstruction.
+The target managed request path adds broader compatibility-shape support, minimum active-transaction preservation, typed RelaySCN normalization/apply, and RelayLM-owned current-turn context reconstruction as the ordinary managed behavior.
 
 The target realtime output path is:
 
@@ -34,10 +37,17 @@ backend stream
   -> external TTS / Avatar consumers
 ```
 
-These target stages are not current runtime behavior.
+Current Phase 5.5 provides the bounded stream-safety and handoff-preparation subset of this path. Default-on complete output orchestration, adapter delivery, TTS/audio execution, and avatar control remain target behavior.
 
 ## Required migration
 
-Update instruction-bearing managed apply, active-transaction preservation, Stream Unpack, segmentation, RelayREF, Output-side RelaySCN, cancellation/duplicate handling, and external end-to-end smoke coverage together.
+Required later work includes:
 
-See [Open-LLM-VTuber Integration Design](open_llm_vtuber_integration.md), [Project Status](../PROJECT_STATUS.md), and [Pipeline Implementation Plan](pipeline_implementation_plan.md).
+- broader instruction-bearing compatibility and active-transaction reconstruction,
+- typed RelaySCN application from validated instruction interpretation,
+- complete RelayREF and Output-side RelaySCN consumers,
+- cancellation and partial-stream recovery beyond current fail-closed suppression,
+- SOUL Lab Runtime adapter delivery and execution,
+- external Open-LLM-VTuber end-to-end validation.
+
+See [Open-LLM-VTuber Integration Design](open_llm_vtuber_integration.md), [Project Status](../PROJECT_STATUS.md), [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md), and [Pipeline Implementation Plan](pipeline_implementation_plan.md).

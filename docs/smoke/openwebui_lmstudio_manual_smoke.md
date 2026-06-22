@@ -2,7 +2,7 @@
 
 ## Scope
 
-This runbook verifies the real local connection path and current managed-history boundary.
+This runbook verifies the real local connection path and the current managed-history and gated streaming boundaries.
 
 Related docs:
 
@@ -31,9 +31,10 @@ The copy-ready `memory_light` routes do not imply current-turn-only backend cont
 With default settings:
 
 - prior frontend user/assistant history may remain in backend-bound messages,
-- history-exclusion apply is disabled,
-- no-instruction history-exclusion is available only behind explicit gates,
-- instruction-bearing managed apply is not implemented,
+- history-exclusion apply is disabled and dry-run-only by default,
+- v0 actual apply supports bounded no-instruction requests,
+- v1 actual apply supports bounded instruction-bearing requests only with exact `client_instruction_source.v1` provenance,
+- missing or invalid v1 provenance fails closed,
 - explicit `pass_through` remains delegated client authority.
 
 A remote backend receives the backend-bound message list. Use one only when the current exposure is acceptable.
@@ -102,13 +103,15 @@ git diff --no-index examples/config/openwebui_lmstudio.yaml config.yaml
 ```bash
 python scripts/relaylm_openwebui_lmstudio_config_smoke.py
 python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+python scripts/relaylm_client_history_exclusion_apply_contract_smoke.py
 python scripts/relaylm_client_history_exclusion_apply_runtime_smoke.py
 python scripts/relaylm_client_history_exclusion_apply_forward_gate_smoke.py
+python scripts/relaylm_phase5c4a_runtime_smoke.py
 python scripts/relaylm_profile_loading_smoke.py
 python scripts/relaylm_config_room_scene_compat_smoke.py
 ```
 
-These scripts validate the copy-ready config, fake-backend proxy path, current profile ownership, exhaustive config-field coverage, managed history-exclusion matrix, forward gate, and optional legacy `room_anchor` compatibility.
+These scripts validate the copy-ready config, fake-backend proxy path, current profile ownership, exhaustive config-field coverage, v0/v1 managed history-exclusion behavior, exact forward gating, and optional legacy `room_anchor` compatibility.
 
 Check route publication:
 
@@ -148,12 +151,14 @@ curl -N http://127.0.0.1:8090/v1/chat/completions \
   }'
 ```
 
-Expected:
+Expected with default settings:
 
 - non-stream returns a normal JSON completion,
 - stream emits progressive SSE chunks,
-- current stream path is primarily backend forwarding,
-- Stream Unpack is not claimed as active.
+- stream bytes remain compatible backend forwarding,
+- Phase 5.5 apply-like stream behavior remains inactive until explicitly enabled.
+
+When intentionally testing Phase 5.5 gates, use the dedicated deterministic smokes. B2 may suppress internal sentinels and C0 through C4 may emit content-free handoff metadata, but they must not execute TTS, generate audio, control an avatar, or replay already emitted visible chunks.
 
 ## Step 5: OpenWebUI connection
 
@@ -180,7 +185,7 @@ hostname -I
 docker exec open-webui curl http://<WSL_IP>:8090/v1/models
 ```
 
-RelayLM may need `listen.host: 0.0.0.0` for container access. Use firewall/network controls and avoid accidental public exposure.
+RelayLM may need `listen.host: 0.0.0.0` for container access. Use firewall/network controls and avoid accidental public exposure. UI-A7 `/lab/api/*` management reads remain loopback-only even when Core routes are exposed for a local container topology.
 
 ## Step 6: profile differentiation
 
@@ -201,8 +206,9 @@ Run and record the dedicated [client history exclusion smoke](client_history_exc
 
 It separates:
 
-- minimal apply controls from optional diagnostics flags,
 - default compatibility from dry-run and actual apply,
+- v0 no-instruction from v1 explicit-provenance instruction-bearing apply,
+- invalid or missing v1 provenance from valid v1 operation,
 - managed routes from pass-through,
 - deterministic script evidence from optional manual payload capture.
 
@@ -229,7 +235,7 @@ PASS requires:
 - RelayLM model list and non-stream/stream paths work,
 - OpenWebUI uses Standard / Compatible and reaches RelayLM,
 - route/profile behavior is plausible,
-- managed history authority matches the dedicated matrix,
+- managed history authority matches the dedicated v0/v1 matrix,
 - recovery artifacts remain diagnostics-only and content-free,
 - no internal marker or recovery artifact leaks into backend/user-visible content.
 
@@ -237,11 +243,13 @@ FAIL includes:
 
 - OpenWebUI sends `/v1/responses`,
 - managed actual apply restores previous history after a blocked result,
-- unsupported instruction-bearing apply reaches the backend as fallback,
+- valid v1 explicit-provenance apply is rejected contrary to the current contract,
+- missing or invalid v1 provenance reaches the backend,
 - pass-through is blocked as a managed route,
 - content-bearing request/response/prompt data appears in persisted diagnostics,
 - visible recovery text appears from the diagnostics-only chain,
-- backend or response body changes unexpectedly.
+- backend or response body changes unexpectedly,
+- gated stream suppression replays or duplicates already emitted visible output.
 
 ## Evidence collection
 
@@ -253,8 +261,7 @@ Collect only redacted, shareable evidence:
 - OpenWebUI connection type and reachable URL class,
 - LM Studio model ID,
 - route ID and mode,
-- managed-history result and observation method,
+- managed-history request class and result,
 - backend message role/count summary when captured,
 - recovery artifact names and safety assertions,
-- backend-payload and response-body mutation results,
 - non-stream/stream/recovery pass/fail summary.

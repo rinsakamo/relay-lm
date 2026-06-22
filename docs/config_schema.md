@@ -81,7 +81,7 @@ characters:
 
 ## Current history-authority limitation
 
-The current default `memory_light` compatibility compiler may preserve prior client user/assistant history after the RelayLM-owned compiled system message.
+The default `memory_light` compatibility compiler may preserve prior client user/assistant history after the RelayLM-owned compiled system message.
 
 Current history-exclusion apply defaults:
 
@@ -90,9 +90,14 @@ client_history_exclusion_apply_enabled: false
 client_history_exclusion_apply_dry_run_only: true
 ```
 
-The implemented `client_history_exclusion_apply.v0` supports only managed `memory_light` requests with no client `system` or `developer` messages. Enabling actual apply before an unsupported request is supported causes a fail-closed backend-forward block rather than a raw-history fallback.
+Implemented bounded apply contracts:
 
-Do not claim current-turn-only managed reconstruction unless the exact request shape and apply gates are verified. See [Project Status](PROJECT_STATUS.md).
+- `client_history_exclusion_apply.v0` supports managed `memory_light` requests with no client `system` or `developer` messages.
+- `client_history_exclusion_apply.v1` supports instruction-bearing managed requests only when an exact `client_instruction_source.v1` provenance envelope selects the current instruction candidates.
+- missing, invalid, unordered, duplicated, out-of-range, post-user, non-instruction, or identity-mismatched v1 provenance fails closed.
+- failure never restores raw prior history or treats all client instruction messages as current evidence.
+
+Do not claim current-turn-only managed reconstruction unless the exact request shape and apply gates are verified. Active tool-chain reconstruction and broader compatibility shapes remain incomplete. See [Project Status](PROJECT_STATUS.md).
 
 ## Top-level fields
 
@@ -123,6 +128,8 @@ listen:
 ```
 
 Defaults are `127.0.0.1` and `8090`.
+
+The SOUL Lab UI-A7 management-read routes require both a loopback configured listen host and a loopback transport peer. This local-only rule does not change Core route availability.
 
 ### `common_runtime_policy`
 
@@ -276,8 +283,7 @@ Notes:
 - Snippet extraction/injection is default-off and gated.
 - Retrieval does not mutate MEM or SOUL.
 - `chars_per_token=4` is the ASCII-word compatibility ratio used by the deterministic tokenizer-free estimator. CJK/Kana/Hangul/full-width text, punctuation, symbols/emoji, combining/format characters, and other non-ASCII characters are accounted for separately. The result remains model-agnostic and is not tokenizer-exact.
-
-The older `default_store` / `stores` example is not part of the current Pydantic config model.
+- The older `default_store` / `stores` example is not part of the current Pydantic config model.
 
 ## Client-message and instruction flags
 
@@ -296,9 +302,12 @@ client_instruction_cache_write_dry_run_only: true
 ```
 
 - canonicalization and preflight are diagnostics/request-local planning boundaries.
-- history apply is default-off and dry-run-only by default.
-- cache lookup is bounded and read-only; it does not inject RelaySCN state or write cache files.
-- typed parse and cache-write preflight are default-off. C5a can validate request-local parse candidates and plan a cache save, but it does not parse backend responses, write cache files, mutate backend payloads, or apply RelaySCN state.
+- v0/v1 history apply is default-off and dry-run-only by default.
+- cache lookup is bounded and read-only; it does not inject a RelaySCN runtime state or write cache files.
+- Phase 5-C4b emits only a detached content-free RelaySCN-facing diagnostics projection from a validated cache hit; it does not apply RelaySCN semantics or mutate backend payloads.
+- typed parse and cache-write runtime wiring are default-off. A trusted in-process runtime-private typed parse source may be validated and passed to the gated writer.
+- with `client_instruction_cache_write_dry_run_only=true`, the writer remains planning-only. With dry-run disabled, a file may be written only after the C5 validation, scope, schema, and source gates pass.
+- current runtime does not parse arbitrary backend visible text, trust frontend metadata as typed parse source, apply RelaySCN state, or support parser-versioned lookup/write compatibility.
 
 ## RelayCTX flags
 
@@ -314,9 +323,20 @@ relayctx_unpack_enabled: false
 relayctx_unpack_apply_enabled: false
 relayctx_unpack_dry_run_only: true
 relayctx_unpack_max_update_chars: 4096
+relayctx_stream_unpack_dry_run_enabled: false
+relayctx_stream_unpack_dry_run_only: true
+relayctx_stream_unpack_max_buffer_chars: 256
+relayctx_tts_adapter_handoff_runtime_enabled: false
+relayctx_tts_adapter_handoff_runtime_dry_run_only: true
+relayctx_tts_adapter_handoff_max_segment_chars: 120
+relayctx_tts_adapter_handoff_min_segment_chars: 8
 ```
 
-Short-term CTX and non-stream Unpack remain default-off. Unpack does not affect streaming responses.
+- Short-term CTX and non-stream Unpack remain default-off.
+- Non-stream Unpack does not affect streaming responses.
+- default streaming remains byte-compatible backend SSE forwarding.
+- when explicitly enabled, Phase 5.5-B2 can perform request-runtime SSE internal-sentinel suppression; C0 through C4 can construct segmentation, adapter-handoff, and transport-envelope metadata from safe visible output.
+- the Phase 5.5 flags do not deliver adapter transport, execute TTS, generate audio, or control avatars.
 
 ## RelayINT flags
 

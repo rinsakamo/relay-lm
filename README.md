@@ -82,7 +82,7 @@ For the current phase, implemented boundaries, dry-run/read-only/default-off beh
 `docs/PROJECT_STATUS.md` is the maintained current-state view. This README intentionally does not duplicate phase numbers or short-lived implementation status.
 
 > [!IMPORTANT]
-> On the current default `memory_light` compatibility path, prior frontend-supplied user/assistant history may still remain in the backend-bound message list. The implemented history-exclusion apply is default-off and currently supports only managed requests with no client `system`/`developer` messages. The target current-turn-only managed reconstruction path is not complete yet. See [Project Status](docs/PROJECT_STATUS.md) and the [OpenWebUI + LM Studio guide](docs/openwebui_lmstudio_mvp.md).
+> On the default `memory_light` compatibility path, prior frontend-supplied user/assistant history may still remain in the backend-bound message list. History-exclusion apply remains default-off and dry-run-only by default. The implemented v0 path supports bounded no-instruction managed requests; the v1 path supports bounded instruction-bearing managed requests only with exact `client_instruction_source.v1` provenance. Missing or invalid v1 provenance fails closed. Broader current-turn-only reconstruction, including active tool-chain preservation, is not complete. See [Project Status](docs/PROJECT_STATUS.md), the [Client History Authority Contract](docs/architecture/client_history_authority_contract.md), and the [OpenWebUI + LM Studio guide](docs/openwebui_lmstudio_mvp.md).
 
 ## ✅ Requirements
 

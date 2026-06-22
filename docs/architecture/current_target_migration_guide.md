@@ -18,6 +18,10 @@ relaylm_related_authority:
   - ../DOCUMENTATION_MODEL.md
   - pipeline_responsibility_design.md
   - pipeline_implementation_plan.md
+  - client_history_authority_contract.md
+  - client_instruction_authority_contract.md
+  - phase5_5_stream_unpack_bounded_slice.md
+  - phase6_async_relayslp_bounded_slice.md
 ---
 # RelayLM Current / Target / Migration Guide
 
@@ -29,43 +33,31 @@ This guide distinguishes implemented runtime behavior from target architecture. 
 
 Use these labels consistently:
 
-- **Current implemented**: code path, schema, producer, consumer, and smoke coverage exist.
+- **Current implemented**: code path, schema, producer, consumer, and smoke coverage exist for the bounded behavior described.
 - **Compatibility**: intentionally retained behavior that is not the final architecture.
 - **Target**: design intent without a complete current producer/consumer/apply path.
 - **Migration**: bounded work required to move from current or compatibility behavior to target behavior.
+
+A helper, diagnostics projection, or gated writer may be current without implying that its broader semantic consumer or default-on product loop exists.
 
 Historical material under `docs/mvp/` or `docs/architecture/archive/` is evidence, not current authority.
 
 ## Current pipeline boundary
 
-The canonical target order remains:
-
-```text
-User input
-  -> Input-side RelaySCN
-  -> Input-side RelayEMO
-  -> RelayCTX Repack
-  -> Main LLM
-  -> RelayCTX Unpack
-  -> Return-side RelayEMO
-  -> Output-side RelaySCN
-  -> User output
-```
-
-Current runtime still contains compatibility ordering and diagnostics-only helpers. Do not infer complete target ownership solely from function names or trace order.
+The canonical target order remains defined by [Pipeline Responsibility Design](pipeline_responsibility_design.md). Current runtime still contains compatibility ordering, default-off gates, and diagnostics-only helpers. Do not infer complete target ownership solely from function names or trace order.
 
 ## Boundary matrix
 
 | Boundary | Current implemented or compatibility | Target architecture | Required migration |
 |---|---|---|---|
-| RelaySCN | v0 scene state/policy diagnostics and compatibility consumers | typed input/output scene controller | typed v1 handoffs, ordering migration, downstream consumers |
-| Context compiler | profile compiler plus current RelayCTX/RelayMEM compatibility phases | RelayCTX-owned compiler over canonicalized evidence | typed ownership, fallback, complete source taxonomy |
-| Client history apply | v0 no-instruction apply and v1 explicit-provenance instruction-bearing apply; default-off | managed context reconstructed only from approved RelayLM state and current evidence | broader compatibility shapes and active transaction preservation |
-| Instruction cache | runtime-private identity and strict read-only cache lookup; no writer or projection apply | validated allowlisted RelaySCN projection, then typed parse/write | Phase 5-C4b projection and Phase 5-C5 parse/write |
-| Runtime Compile Gate | `CompileApplyDecision`, content-free diagnostics, bounded history-apply forward gate | route-authority-aware plan/result/decision projections and managed fallback | source tracking, fallback builder, complete state taxonomy |
-| RelayMEM Retrieval | current v0 retrieval and gated runtime injection | typed INT handoff and separate runtime-private/content-free projections | API and consumer migration |
-| RelaySLP | dry-run/preflight foundations | deferred candidate compiler and gated storage apply | orchestration, idempotency, persistence smoke |
-| Open-LLM-VTuber | optional OpenAI-compatible frontend; backend SSE forwarding | managed context plus safe Stream Unpack/output pipeline | external E2E and streaming stages |
+| RelaySCN | v0 scene policy plus diagnostics-only cache-hit projection; no cache projection semantic apply | typed input/output scene controller | typed v1 handoffs, semantic consumers, ordering migration |
+| Context compiler | profile compiler plus current RelayCTX/RelayMEM compatibility phases | RelayCTX-owned compiler over canonicalized evidence | typed ownership, managed fallback, complete source taxonomy |
+| Client history apply | v0 no-instruction and v1 explicit-provenance instruction-bearing apply; default-off/dry-run-only by default | managed context reconstructed from approved RelayLM state and current evidence | broader compatibility shapes and active transaction preservation |
+| Instruction cache | strict read-only lookup, C4b content-free RelaySCN-facing diagnostics projection, C5 runtime-private typed-parse validation and gated writer wiring | validated scene interpretation with typed producer, semantic RelaySCN apply, versioned lookup/write | trusted control-artifact producer, parser-version compatibility, semantic apply |
+| Runtime Compile Gate | `CompileApplyDecision`, content-free diagnostics, bounded history-apply exact-forward gate | route-authority-aware plan/result/decision projections and managed fallback | source tracking, fallback builder, complete state taxonomy |
+| RelayMEM Retrieval | current v0 retrieval and gated runtime injection | typed INT handoff and separate runtime-private/content-free projections | API and consumer migration plus I1 end-to-end recall |
+| RelaySLP / Phase 6 | A1/A2/B1 helpers and B2 atomic durable enqueue | deferred worker orchestration and gated memory apply | B3 lifecycle, request-runtime enqueue wiring, worker execution |
+| Streaming / Phase 5.5 | default-compatible forwarding plus gated B2 suppression and C0-C4 handoff metadata construction | complete default-on output pipeline and runtime adapter delivery | RelayREF/output-SCN consumers, adapter delivery, partial recovery |
 | RelayRUN recovery | checkpoint/recovery foundations and diagnostics | runtime orchestration with gated visible recovery generation | output gates and user-action handling |
 | RelaySOUL | compatibility dry-run/preflight governance | three durable persona sources with explicit approval/apply/rollback | schema and storage migration |
 
@@ -77,12 +69,9 @@ Current runtime still contains compatibility ordering and diagnostics-only helpe
 schema:
   client_history_exclusion_apply.v0
 
-producer/runtime:
-  relaylm.client_history_exclusion_apply
-  relaylm.client_history_exclusion_apply_runtime
+request class:
+  bounded managed request with no client system/developer messages
 ```
-
-The v0 path supports bounded no-instruction managed requests and retains its existing semantics.
 
 ### Current instruction-bearing contract
 
@@ -92,12 +81,6 @@ schema:
 
 source provenance:
   client_instruction_source.v1
-
-producer/runtime:
-  relaylm.client_instruction_source
-  relaylm.client_history_exclusion_apply_v1_prepare
-  relaylm.managed_apply_finalize
-  relaylm.pipeline_context
 ```
 
 Instruction-bearing actual apply is explicit-only. A request must carry the reserved `relaylm.instruction_evidence` control envelope with selected message indices.
@@ -109,25 +92,33 @@ Validation requires that selected indices:
 - occur before the latest current user turn,
 - match request-local `ClientInstructionIdentity` candidates.
 
-Role, content, and position do not establish provenance. Unselected system/developer messages are excluded, which prevents frontend summaries, memory notes, and replayed persona material from being promoted solely because of role encoding.
+Role, content, and position do not establish provenance. Unselected system/developer messages are excluded, including frontend summaries, memory notes, and replayed persona material.
 
-The successful v1 candidate contains one RelayLM-owned compiled system message plus the exact validated current user message. It excludes prior history, raw instruction objects, unselected instruction candidates, opaque cache content, and the reserved `relaylm` control envelope.
+The successful v1 candidate contains one RelayLM-owned compiled system message plus the exact validated current user message. It excludes prior history, raw instruction objects, unselected instruction candidates, opaque cache content, and the reserved control envelope.
 
-The runtime-private result may contain a rebuilt payload. Persisted projections expose only bounded counts, booleans, status values, source mode, and reason IDs.
+Both v0 and v1 remain default-off and dry-run-only by default. Active tool transactions remain blocked until a minimum-chain reconstruction contract exists.
 
-## Client instruction evidence rendering
+## Client instruction cache and typed parse
 
-The identity/evidence builder owns canonical raw JSON and source-role labels. The managed compiler renderer owns XML escaping and the final rendered-size bound. The typed legacy `incoming_system_prompt` block is replaced exactly once; rendered output is not searched or rewritten.
+Current accepted cache-entry schema remains `relaylm.client_instruction_cache.v0` with strict read-only lookup validation.
 
-## Client instruction cache
+Current bounded implementation also includes:
 
-Current accepted entry schema remains `relaylm.client_instruction_cache.v0` with strict read-only validation. Current runtime supports hit, miss, blocked, and skipped evidence but does not:
+- Phase 5-C4b `client_instruction_relayscn_projection.v0`, which emits a detached content-free diagnostics summary from a validated hit,
+- typed-parse candidate validation and content-free node results,
+- runtime-private one-shot typed-parse source consumption,
+- gated cache-writer planning and apply behind explicit default-off flags.
 
-- write cache entries,
-- apply cache-hit RelaySCN projections,
-- inject opaque cache entries into backend context.
+Current implementation does **not**:
 
-Phase 5-C4b may add an allowlisted RelaySCN projection. Phase 5-C5 may add typed parsing and an independent cache-write gate. A writer must preserve the existing v0 schema exactly or introduce a new version and migrate all producers/consumers together.
+- parse arbitrary backend visible responses,
+- trust frontend metadata as a typed-parse source,
+- inject opaque cache bodies into backend context,
+- apply cache projection semantics to RelaySCN,
+- support parser-versioned lookup/write compatibility,
+- make cache writing default-on.
+
+With `client_instruction_cache_write_dry_run_only=true`, the writer remains planning-only. With dry-run disabled, it may write only after exact schema, policy, scope, identity, and runtime-private source validation succeeds.
 
 ## Runtime Compile Gate
 
@@ -145,17 +136,54 @@ managed COMPILE_FALLBACK
 complete BLOCKED taxonomy
 ```
 
-For v1 history apply, the adapter additionally verifies that the actual forwarded payload exactly equals the selected request-local candidate. Downstream mutation blocks forwarding.
+For v1 history apply, the adapter verifies that the actual forwarded payload exactly equals the selected request-local candidate. Downstream mutation blocks forwarding.
 
 ## Streaming boundary
 
-Current streaming primarily forwards backend bytes. Input-side v1 apply uses the same fail-closed authority gate for stream and non-stream requests. Output-side Stream Unpack, internal-envelope suppression, safe segmentation, and TTS-aware forwarding remain target work.
+Current default behavior remains compatible backend SSE forwarding.
+
+Current gated Phase 5.5 behavior includes:
+
+- B2 request-runtime internal-sentinel suppression,
+- C0 TTS-safe segmentation hints,
+- C1 adapter-handoff planning,
+- C2 runtime observation/wiring,
+- C3 adapter-facing transport-envelope construction,
+- C4 runtime transport-envelope wiring.
+
+These boundaries are default-off, content-free on public diagnostics, and do not deliver transport, execute TTS, generate audio, control an avatar, or persist MEM/SOUL/SLP state.
+
+Complete RelayREF and Output-side RelaySCN processing, adapter delivery, TTS/audio/avatar execution, and generalized partial-stream recovery remain target work.
+
+## RelaySLP and Primary MEM migration
+
+Phase 6 currently reaches B2 atomic durable enqueue. RelayMEM M3a-M3h currently provides direct/helper Primary MEM formation, publication, reconciliation, and recovery-audit boundaries.
+
+The active migration is:
+
+```text
+ordinary finalized turn
+  -> A1/A2/B1/B2 request-runtime enqueue
+  -> B3 claim/lease/retry lifecycle
+  -> worker invokes M3a-M3h
+  -> later-turn RelayMEM retrieval
+  -> RelayCTX injection
+```
+
+Queue creation or helper-level memory publication alone does not complete this product loop.
 
 ## Safe defaults
 
 ```text
 client_history_exclusion_apply_enabled=false
 client_history_exclusion_apply_dry_run_only=true
+client_instruction_typed_parse_enabled=false
+client_instruction_cache_write_enabled=false
+client_instruction_cache_write_dry_run_only=true
+relayctx_stream_unpack_dry_run_enabled=false
+relayctx_stream_unpack_dry_run_only=true
+relayctx_tts_adapter_handoff_runtime_enabled=false
+relayctx_tts_adapter_handoff_runtime_dry_run_only=true
 ```
 
-No migration step may silently enable actual apply, restore raw history after failure, treat client instruction evidence as RelaySOUL authority, expose content-bearing runtime state in generic diagnostics, or reconstruct incomplete tool transactions without a dedicated contract.
+No migration step may silently enable actual apply, restore raw history after failure, treat client instruction evidence as RelaySOUL authority, expose content-bearing runtime state in generic diagnostics, reconstruct incomplete tool transactions without a dedicated contract, or imply concrete TTS/avatar execution from handoff metadata alone.
