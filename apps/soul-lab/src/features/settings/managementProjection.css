@@ -42,6 +42,24 @@
   border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
 }
 
+.management-projection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.management-projection-grid > .settings-panel {
+  min-width: 0;
+}
+
+.management-projection-diagnostics {
+  grid-column: 1 / -1;
+}
+
+.connected-settings-page > .settings-page {
+  gap: 1.25rem;
+}
+
 .settings-character-card small {
   overflow-wrap: anywhere;
 }
@@ -53,6 +71,16 @@
   border-radius: 0.8rem;
   color: var(--text-muted);
   background: var(--surface-muted);
+}
+
+@media (max-width: 960px) {
+  .management-projection-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .management-projection-diagnostics {
+    grid-column: auto;
+  }
 }
 
 @media (max-width: 720px) {
