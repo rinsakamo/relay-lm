@@ -72,6 +72,18 @@ def _assert_secret_free(payload: object) -> None:
         assert value not in serialized, value
 
 
+def _assert_management_refused(client: TestClient) -> None:
+    settings_response = client.get("/lab/api/settings")
+    characters_response = client.get("/lab/api/characters")
+    expected = {"detail": "lab_management_requires_loopback_access"}
+    assert settings_response.status_code == 403
+    assert characters_response.status_code == 403
+    assert settings_response.json() == expected
+    assert characters_response.json() == expected
+    assert client.get("/healthz").json() == {"status": "ok"}
+    assert client.get("/v1/models").status_code == 200
+
+
 def main() -> None:
     assert is_loopback_host("127.0.0.1") is True
     assert is_loopback_host("127.0.0.2") is True
@@ -99,6 +111,7 @@ def main() -> None:
     assert settings["diagnostics"]["mode"] == "content_free"
     assert settings["diagnostics"]["source_content_included"] is False
     assert settings["listen"]["loopback_only"] is True
+    assert "model_routes" not in settings
 
     backend = next(
         component
@@ -132,7 +145,8 @@ def main() -> None:
         directory_path = Path(directory)
         config_path = directory_path / "config.yaml"
         config_path.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
-        client = TestClient(create_app(str(config_path)))
+        app = create_app(str(config_path))
+        client = TestClient(app, client=("127.0.0.1", 50000))
 
         settings_response = client.get("/lab/api/settings")
         assert settings_response.status_code == 200
@@ -152,6 +166,9 @@ def main() -> None:
         _assert_secret_free(settings_response.json())
         _assert_secret_free(characters_response.json())
 
+        remote_peer_client = TestClient(app, client=("192.0.2.10", 50000))
+        _assert_management_refused(remote_peer_client)
+
         remote_raw = _raw_config()
         remote_raw["listen"] = {"host": "0.0.0.0", "port": 8090}
         remote_config = RelayLMConfig.model_validate(remote_raw)
@@ -163,19 +180,12 @@ def main() -> None:
             yaml.safe_dump(remote_raw, sort_keys=False),
             encoding="utf-8",
         )
-        remote_client = TestClient(create_app(str(remote_config_path)))
-        remote_settings_response = remote_client.get("/lab/api/settings")
-        remote_characters_response = remote_client.get("/lab/api/characters")
-        assert remote_settings_response.status_code == 403
-        assert remote_characters_response.status_code == 403
-        assert remote_settings_response.json() == {
-            "detail": "lab_management_requires_loopback_listen"
-        }
-        assert remote_characters_response.json() == {
-            "detail": "lab_management_requires_loopback_listen"
-        }
-        assert remote_client.get("/healthz").json() == {"status": "ok"}
-        assert remote_client.get("/v1/models").status_code == 200
+        remote_config_app = create_app(str(remote_config_path))
+        loopback_peer_client = TestClient(
+            remote_config_app,
+            client=("127.0.0.1", 50000),
+        )
+        _assert_management_refused(loopback_peer_client)
 
     print("SOUL Lab management projection smoke passed")
 
