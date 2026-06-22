@@ -244,7 +244,7 @@ requested side effect
   -> fail-closed runtime gate
 ```
 
-The core runtime does not add a universal post-generation classifier, secondary moderation LLM, or meaning-changing rewrite step for teasing, insults, arguments, adult-oriented tone, politics, or other open-ended conversation judgments. Generated conversation depends on the selected model, approved character profile, context, and user configuration.
+The core runtime does not add a universal post-generation classifier, secondary moderation LLM, or meaning-changing rewrite step for teasing, insults, arguments, adult-oriented tone, politics, or other open-ended conversation judgments. Generated conversation depends on the selected model, approved character profile, context, and user configuration. A recommended model profile verifies compatibility and expected default behavior; it does not certify or guarantee content.
 
 RelayLM governs tool calls, code or command execution, filesystem and protected-data access, credentials, network actions, persistence, configuration changes, MEM mutation, RelaySOUL mutation, and other externally observable or irreversible side effects. These capabilities do not inherit authority from natural-language output.
 
@@ -271,4 +271,94 @@ RelaySCN resolves scene and persistence policy
   -> RelayCTX packs selected context and applies token budgets
   -> RelayRUN orchestrates runtime fallback/recovery and records trace/checkpoint artifacts
   -> adapters preserve API/backend compatibility
+
+Out-of-band:
+  governed evidence -> RelaySLP -> gated MEM updates / SOUL proposals
 ```
+
+## Mode contract
+
+RelayLM modes define how much of the runtime stack is active.
+
+### pass_through
+
+Purpose:
+
+- verify URL-swap integration,
+- test `/v1/models`,
+- test `/v1/chat/completions`,
+- test streaming SSE forwarding.
+
+Behavior:
+
+- use routing and backend adapter,
+- do not modify messages,
+- map model name to backend model when configured,
+- forward common OpenAI-compatible fields transparently.
+
+### memory_light
+
+Purpose:
+
+- add useful memory while preserving low latency,
+- make AI characters feel more continuous without heavy RAG.
+
+Behavior:
+
+- preserve stable character blocks,
+- keep bounded RelayLM-owned selected recent context,
+- add lightweight approved character/viewer memory,
+- avoid heavy retrieval, rerankers, or compression in the synchronous path.
+
+### memory_full
+
+Purpose:
+
+- perform full budget-aware context compilation,
+- support memory, RAG, spill, and compression.
+
+Behavior:
+
+- compile SOUL, OUTPUT_POLICY, relationship anchors, RelaySCN state, approved retrieved memory, selected RelayLM-owned recent context, and current-turn evidence,
+- enforce token budgets,
+- support retrieval and compression behind explicit interfaces,
+- keep stable prefix blocks before dynamic retrieved content.
+
+### optional persona_finalizer profile
+
+Purpose:
+
+- shape only final natural-language responses from an external agent framework,
+- preserve the agent result while applying persona, relationship, memory, and output policy.
+
+Default agent integration should pass through planning, tool calls, tool observations, and structured output. Persona/context repacking should apply to final natural-language answers or normal chat turns.
+
+## Routing modes
+
+RelayLM supports both routing styles.
+
+### Single proxy mode
+
+One RelayLM instance serves multiple characters and routes by model name.
+
+This is the onboarding-first mode.
+
+### Per-character instance mode
+
+Each character has a dedicated RelayLM server, port, and cache namespace.
+
+This is the speed-first mode. It improves prefix stability and reduces cross-character cache interference.
+
+## Runtime ownership non-goals
+
+RelayLM does not own:
+
+- direct KV-cache mutation or backend engine scheduler changes,
+- frontend UI behavior,
+- Live2D control,
+- ASR or TTS model runtimes,
+- heavy RAG in the default synchronous path,
+- general agent tool-workflow orchestration beyond compatibility-preserving pass-through,
+- universal semantic censorship or content guarantees for ordinary model-generated conversation.
+
+RelayLM does own authority-bounded context construction, visible/internal output separation, protocol-valid output segmentation, and typed capability gates before external tools, TTS, avatar, network, persistence, or other side-effect consumers receive data. Current implementation status and sequencing for those boundaries live only in [Pipeline Implementation Plan](pipeline_implementation_plan.md).
