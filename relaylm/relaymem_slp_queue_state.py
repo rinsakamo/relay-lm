@@ -494,7 +494,7 @@ def _transition_locked(
     if proposal_errors:
         return _result(
             "corrupt", request.transition_kind, True, dry_run_only, apply_enabled,
-            True, apply_requested, False, False, state, str(proposal.get("state")),
+            True, apply_requested, False, False, state, state,
             record, ("proposed_record_invalid", *proposal_errors),
         )
     if not apply_requested:
