@@ -22,6 +22,7 @@ relaylm_related_authority:
   - phase6b0_relayslp_durable_queue_contract.md
   - phase6b1_relayslp_dispatch_preflight.md
   - phase6b2_relayslp_atomic_durable_enqueue.md
+  - phase6b3_relayslp_queue_state_helpers.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_execution_design.md
   - relaymem_slp_current_target.md
@@ -33,7 +34,7 @@ relaylm_related_authority:
 
 ## Status
 
-Phase 6 is implemented through atomic durable enqueue:
+Phase 6 is implemented through fenced durable queue lifecycle helpers:
 
 ```text
 Phase 6-A0 ownership and sequencing: complete
@@ -42,12 +43,12 @@ Phase 6-A2 response-finalization handoff: complete as helper-only
 Phase 6-B0 durable queue contract: complete
 Phase 6-B1 dispatch/job-record preflight: complete as helper-only
 Phase 6-B2 atomic durable enqueue: complete as direct helper
-Phase 6-B3 claim/lease/retry/terminal lifecycle: next
+Phase 6-B3 claim/renew/retry/stale/terminal lifecycle: complete as direct helper
 request-runtime enqueue wiring: pending
-worker execution: pending
+Phase 6-C worker execution: next
 ```
 
-A1, A2, B1, and B2 are exact bounded components but are not automatically invoked by ordinary request finalization. B2 can durably create or classify a queued record behind explicit gates, but no current scheduler or worker claims it.
+A1, A2, B1, B2, and B3 are exact bounded components but are not automatically invoked as one ordinary request-runtime path. B2 can durably create or classify a queued record. B3 can safely claim and transition it. No current scheduler or worker executes RelayMEM processing.
 
 ## Purpose
 
@@ -61,8 +62,8 @@ completed finalized turn
   -> A2 response handoff
   -> B1 dispatch and durable-record candidate
   -> B2 durable enqueue
-  -> B3 claim/lease/retry/terminal lifecycle
-  -> worker invokes RelayMEM-owned processing
+  -> B3 claim/lease/retry/stale/terminal lifecycle
+  -> Phase 6-C worker invokes RelayMEM-owned processing
   -> future turns can retrieve formed memory
 ```
 
@@ -106,37 +107,19 @@ RelaySLP may later produce a separately governed RelaySOUL proposal candidate. I
 
 ### Phase 6-A1: deferred job admission
 
-A1 validates bounded trigger, processing stage, correlation, namespace, source lineage, response terminal state, and persistence-policy status.
-
-Supported initial trigger modes include `turn_end` and `explicit_memory_request`. Supported initial stages include `primary_formation` and `primary_write_preflight`.
-
-A1 performs no queue I/O, worker invocation, memory write, or SOUL mutation.
+A1 validates bounded trigger, processing stage, correlation, namespace, source lineage, response terminal state, and persistence-policy status. It performs no queue I/O, worker invocation, memory write, or SOUL mutation.
 
 ### Phase 6-A2: response-finalization handoff
 
-A2 consumes the exact A1 private result and matching public projection for a finalized `turn_end`. It may create one runtime-private metadata-only enqueue candidate behind explicit gates.
-
-A2 performs no queue I/O, dispatch-key allocation, worker invocation, memory write, SOUL mutation, or visible-response mutation.
+A2 consumes the exact A1 private result and matching public projection for a finalized `turn_end`. It may create one runtime-private metadata-only enqueue candidate behind explicit gates. It performs no queue I/O, dispatch-key allocation, worker invocation, memory write, SOUL mutation, or visible-response mutation.
 
 ### Phase 6-B0: durable queue contract
 
-B0 defines:
-
-- the durable job schema,
-- dispatch-idempotency ownership and derivation inputs,
-- create-if-absent enqueue semantics,
-- queued, claimed, succeeded, failed, cancelled, and dead-letter states,
-- revision, attempt, claim-generation, lease-token, retry, and terminal invariants,
-- stale-lease and restart behavior,
-- corruption handling,
-- content-free queue status projection,
-- visible-response independence.
+B0 defines the durable job schema, dispatch-idempotency ownership, state machine, revision/attempt/generation/lease invariants, retry and terminal semantics, restart/corruption behavior, content-free projection, and visible-response independence.
 
 ### Phase 6-B1: dispatch/job-record preflight
 
-B1 consumes exact A2 runtime-private artifacts, derives deterministic dispatch and job identities, initializes one exact queued durable-record candidate, and emits a content-free projection.
-
-B1 performs no queue I/O or worker execution.
+B1 consumes exact A2 runtime-private artifacts, derives deterministic dispatch and job identities, initializes one exact queued durable-record candidate, and emits a content-free projection. It performs no queue I/O or worker execution.
 
 ### Phase 6-B2: atomic durable enqueue
 
@@ -154,33 +137,59 @@ write_failed
 
 B2 performs no claim, lease, retry transition, worker invocation, memory write, SOUL mutation, request-runtime wiring, or visible-response mutation.
 
-## Next boundary: Phase 6-B3
+### Phase 6-B3: fenced durable queue lifecycle
 
-B3 adds queue lifecycle transitions over exact B2 records:
+B3 consumes an exact runtime-private transition request and revalidates the complete canonical B2 record. It implements:
 
-- claim,
-- lease issuance and renewal rules,
-- claim-generation and lease-token fencing,
-- retry release,
-- stale-lease recovery,
-- succeeded/failed/cancelled/dead-letter terminal transitions,
+```text
+claim
+renew_lease
+retry_release
+stale_recovery
+commit_terminal
+```
+
+B3 provides:
+
+- revision, state, job, and dispatch identity compare-and-swap,
+- active owner, claim-generation, and lease-token fencing,
+- owner-independent stale recovery with generation/token fencing,
+- bounded retry/failure classification storage without policy decisions,
+- queued cancellation and claimed success/failure/cancellation,
+- absolute terminal immutability,
+- nonblocking shared/exclusive queue-root locking,
+- inode-and-byte CAS and durable atomic replacement,
 - content-free lifecycle projection.
 
-B3 must not:
-
-- execute RelaySLP or RelayMEM,
-- decide candidate meaning or safety scope,
-- reuse the memory-write idempotency key as the dispatch key,
-- mutate RelaySOUL,
-- make visible-response success depend on queue state.
+B3 does not generate `dead_letter`; that state remains reserved for a later explicit isolation policy. It does not execute RelaySLP or RelayMEM, decide candidate meaning, reuse memory-write identity, mutate RelaySOUL, wire request runtime, or make visible-response success depend on queue state.
 
 B3 is the final queue-only prerequisite for the active integration milestone. Do not extend the B series with unrelated helper-only work unless a concrete queue safety defect requires it.
 
-## Integration sequence after B3
+## Next boundary: Phase 6-C worker execution
 
-### Phase 6-C0: request-runtime enqueue wiring
+Phase 6-C executes one claimed job only under the exact active B3 lease fence.
 
-Wire finalized ordinary managed turns through A1, A2, B1, and B2.
+The first bounded worker should:
+
+1. receive or acquire one exact claimed record,
+2. revalidate revision, state, owner, claim generation, token, and lease expiry,
+3. invoke existing RelayMEM boundaries without redefining them,
+4. map bounded outcomes to B3 retry release or terminal commit,
+5. stop safely on lease loss, expiry, conflict, or corrupt evidence.
+
+```text
+B3 active lease
+  -> M3a -> M3b -> M3c -> M3d -> M3e -> M3f -> M3g -> M3h
+  -> B3 retry_release or commit_terminal
+```
+
+The worker owns stage execution and queue transitions only. RelayMEM continues to own memory meaning, write eligibility, page content, reconciliation, recovery classification, and memory-write idempotency.
+
+Phase 6-C must not initially become a generalized scheduler, broad worker pool, or retry-policy engine. One bounded execution path is sufficient for the first end-to-end proof.
+
+## Parallel required integration: request-runtime enqueue wiring
+
+Finalized ordinary managed turns still need A1 -> A2 -> B1 -> B2 wiring.
 
 Required behavior:
 
@@ -189,33 +198,19 @@ Required behavior:
 - enqueue after response-finalization eligibility is known,
 - record content-free status when disabled, skipped, held, blocked, enqueued, duplicated, or failed,
 - preserve default-off and dry-run-first rollout,
-- never copy source content into generic trace, public errors, or queue projections.
+- never copy source content into generic trace, public errors, or queue projections,
+- never execute the worker inline with visible response delivery.
 
-### Phase 6-C1: bounded Primary MEM worker
+## End-to-end recall validation
 
-A worker claims one eligible job and invokes existing RelayMEM boundaries:
-
-```text
-M3a -> M3b -> M3c -> M3d -> M3e -> M3f -> M3g -> M3h
-```
-
-The worker owns stage execution and queue transitions only. RelayMEM continues to own memory meaning, write eligibility, page content, reconciliation, and recovery classification.
-
-Worker outcomes must map to:
-
-- terminal success when durable state is verified,
-- retry release for bounded retryable operational failure,
-- held or blocked terminal classification when RelayMEM policy forbids apply,
-- dead-letter or manual-confirmation state only under explicit bounded rules.
-
-### Phase 6-C2: end-to-end recall validation
-
-Prove the ordinary loop:
+After runtime enqueue and Phase 6-C worker execution exist, prove:
 
 ```text
 turn 1
   -> enqueue
-  -> worker forms Primary MEM
+  -> B3 claim
+  -> Phase 6-C worker forms Primary MEM
+  -> B3 terminal success
 
 turn 2
   -> RelayMEM retrieval
@@ -223,7 +218,7 @@ turn 2
   -> backend response uses the formed memory
 ```
 
-The smoke must verify character scope, namespace scope, duplicate-dispatch handling, restart behavior, and absence of content leakage into public diagnostics.
+The smoke must verify character scope, namespace scope, duplicate-dispatch handling, stale/retry behavior, restart behavior, both idempotency domains, and absence of content leakage into public diagnostics.
 
 ## Later Phase 6 work
 
@@ -232,7 +227,8 @@ After the Primary MEM runtime loop is proven:
 - integrate RelayRUN checkpoint/restart and retry-budget policy more deeply,
 - add broader persistence/recovery coordination only where M3h evidence justifies it,
 - support Secondary MEM consolidation jobs after RelayMEM-M4 exists,
-- add RelaySOUL proposal handoff without direct mutation.
+- add RelaySOUL proposal handoff without direct mutation,
+- add explicit dead-letter/manual-confirmation policy only when bounded requirements exist.
 
 These later stages must not block the initial Primary MEM end-to-end loop.
 
@@ -250,7 +246,7 @@ Memory-write idempotency
   owned by RelayMEM
 ```
 
-A job may be retried while an already-completed memory write remains deduplicated. The keys and their schemas must not be collapsed.
+A job may be retried while an already-completed memory write remains deduplicated. The dispatch key, lease token, claim generation, and memory-write key must not be collapsed.
 
 ## Safety invariants
 
@@ -259,14 +255,14 @@ All Phase 6 slices must preserve:
 - normal response and stream delivery do not wait for SLP completion,
 - SLP failure does not invalidate an already valid visible response,
 - default-off and dry-run-first rollout where applicable,
-- fail-closed schema, namespace, policy, and lineage handling,
+- fail-closed schema, namespace, policy, lineage, queue, and lease handling,
 - content-bearing material remains in protected memory/SLP domains,
 - public diagnostics remain content-free,
-- ordinary safe MEM formation may be autonomous when RelayMEM gates pass,
+- ordinary safe MEM formation may be autonomous only when RelayMEM gates pass,
 - sensitive, contradictory, destructive, cross-namespace, or SOUL-affecting changes remain held or blocked,
 - RelaySLP never directly mutates SOUL,
 - TTS/audio/avatar execution remains outside RelayLM Core.
 
 ## Active completion criterion
 
-Phase 6 is not product-complete when B3 lands. For the current milestone, Phase 6 is complete enough only when an ordinary finalized turn can enqueue work, a worker can execute the existing Primary MEM path, queue state reaches a correct terminal or retry outcome, and a later turn can retrieve the formed memory.
+Phase 6 is not product-complete when B3 lands. For the current milestone, Phase 6 is complete enough only when an ordinary finalized turn can enqueue work, a Phase 6-C worker can execute the existing Primary MEM path under an exact active B3 lease, queue state reaches a correct terminal or retry outcome, and a later turn can retrieve the formed memory.

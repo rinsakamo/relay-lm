@@ -6,7 +6,7 @@ relaylm_volatility: medium
 relaylm_owner: implementation
 relaylm_update_trigger:
   - Phase 6-B2 durable enqueue storage contract changes
-  - Phase 6-B3 claim lease retry or terminal-state helper lands
+  - Phase 6-B3 queue state helper changes
   - queue backend or record schema changes
 relaylm_not_authoritative_for:
   - RelayMEM memory meaning or memory-write idempotency
@@ -20,6 +20,7 @@ relaylm_related_authority:
   - phase6a2_relayslp_response_handoff_contract.md
   - phase6b0_relayslp_durable_queue_contract.md
   - phase6b1_relayslp_dispatch_preflight.md
+  - phase6b3_relayslp_queue_state_helpers.md
   - relaymem_slp_current_target.md
   - pipeline_implementation_plan.md
   - ../PROJECT_STATUS.md
@@ -40,6 +41,8 @@ exact runtime-private B1 result
 ```
 
 B2 does not invoke a scheduler, worker, RelaySLP, RelayMEM apply helper, or RelaySOUL mutation. It is not request-runtime wired and cannot change or delay the already-finalized visible response.
+
+Phase 6-B3 is implemented separately over strict canonical B2 records. B3 owns fenced queue-control transitions but does not alter B2 create-if-absent semantics. Phase 6-C worker execution remains the next Core boundary.
 
 ## Public helper
 
@@ -109,6 +112,8 @@ slp-dispatch-v0-<64 lowercase hexadecimal dispatch digest>.json
 
 The filename is derived only from the validated dispatch key. No run ID, session ID, namespace, lineage value, raw content, caller filename, or memory-write key participates in path construction.
 
+B3 reuses this exact deterministic dispatch-digest filename. It does not derive a second path from job ID, owner, generation, or lease token.
+
 ## Canonical durable record
 
 For a new record, B2 copies the exact validated B1 candidate and assigns one UTC timestamp to both:
@@ -131,6 +136,8 @@ no trailing newline
 ```
 
 Unknown fields, missing fields, duplicate JSON keys, malformed UTF-8, malformed JSON, non-canonical bytes, unsupported schemas, strict-type violations, impossible initial state, invalid timestamps, dispatch-key mismatch, or job-ID mismatch fail closed.
+
+The same exact canonical shape is the only record B3 may transition. B3 independently re-derives identity and validates state-specific queue-control invariants before proposing any mutation.
 
 ## Atomic create-if-absent publication
 
@@ -197,6 +204,8 @@ B2 rejects:
 
 Platforms without the required secure dirfd operations fail closed.
 
+B3 adds a nonblocking shared/exclusive queue-root lock, hard-link-count validation, inode-and-byte compare-and-swap, same-directory atomic replacement, directory `fsync`, and strict committed-record re-read for state transitions. Those mechanisms do not retroactively change B2's create-if-absent publication contract.
+
 ## Content-free projection
 
 The public/default projection remains `relaymem.slp_queue_status_projection.v0` and includes only allowlisted state/status/count/boolean fields and bounded reason IDs.
@@ -204,7 +213,7 @@ The public/default projection remains `relaymem.slp_queue_status_projection.v0` 
 It excludes:
 
 - durable record bodies,
-- B1 and B2 runtime-private candidates or results,
+- B1/B2/B3 runtime-private artifacts,
 - job and dispatch identifiers,
 - run, turn, session, namespace, and lineage values,
 - queue-root and record paths,
@@ -213,7 +222,7 @@ It excludes:
 - memory-write idempotency keys,
 - raw content of any kind.
 
-The optional `PipelineNodeResult` uses node name `relaymem_slp_durable_enqueue` and marks the private queue record as omitted.
+The optional B2 `PipelineNodeResult` uses node name `relaymem_slp_durable_enqueue` and marks the private queue record as omitted.
 
 ## Visible-response independence
 
@@ -245,6 +254,8 @@ Phase 6-B2 does not:
 - change visible response delivery,
 - execute TTS, audio, Live2D, or avatar behavior.
 
+Those queue-control operations now exist only in the separate Phase 6-B3 helper. Worker execution remains absent.
+
 ## Validation
 
 ```bash
@@ -264,6 +275,8 @@ PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
 
 Coverage includes default-off and dry-run-first gates, exact direct B1 consumption, strict bool/int rejection, dispatch/job identity re-derivation, canonical timestamped records, no-clobber publication, exact duplicate convergence, operational-field identity exclusions, collision and corruption classification, symlink and unexpected-file rejection, malformed UTF-8/JSON and schema drift, non-canonical bytes, queue-root path safety, content-free projections, and absence of worker/MEM/SOUL/visible-response side effects.
 
-## Next bounded slice
+## Handoff to B3 and Phase 6-C
 
-Phase 6-B3 may add claim, lease, retry-release, stale-recovery, and terminal-state helpers over strict B2 records. B3 must remain separate from worker execution and must preserve revision, claim-generation, and lease-token fencing from the B0 contract.
+Phase 6-B3 is implemented as the only current mutator of Phase 6-owned queue-control metadata. It accepts strict B2 records and adds fenced `claim`, `renew_lease`, `retry_release`, `stale_recovery`, and `commit_terminal` transitions.
+
+Phase 6-C may consume only an exact active B3 lease fence. It must not weaken B2 record identity, overwrite corruption, reuse dispatch identity as memory-write identity, or make visible response delivery depend on deferred execution.
