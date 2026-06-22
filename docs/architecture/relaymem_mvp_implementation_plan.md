@@ -6,7 +6,7 @@ relaylm_volatility: medium
 relaylm_owner: relaymem
 relaylm_update_trigger:
   - RelayMEM MVP slice lands
-  - RelaySLP persistence sequencing changes
+  - RelaySLP worker sequencing changes
   - memory lifecycle layer semantics change
   - Lab memory operation API changes
 relaylm_not_authoritative_for:
@@ -25,30 +25,19 @@ relaylm_related_authority:
   - relaymem_m3d_primary_writer_handoff.md
   - relaymem_m3e_atomic_primary_page_writer.md
   - relaymem_m3f_primary_index_log_reconciliation_preflight.md
+  - relaymem_m3g_primary_index_log_reconciliation_apply.md
+  - relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
   - context_packing_design.md
 ---
 # RelayMEM MVP Implementation Plan
 
 ## Purpose
 
-This document defines the independent RelayMEM MVP implementation track.
+This document defines the RelayMEM MVP implementation track. Repository-wide sequencing remains owned by [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
 
-RelayMEM MVP can progress independently from Phase 5.5 Stream Unpack, TTS adapter handoff, SOUL Lab UI, and SOUL Lab Runtime work as long as it keeps narrow integration points with RelayCTX, RelaySCN, RelayEMO, RelayRUN, and RelaySOUL.
+RelayMEM's immediate goal is no longer to add another isolated persistence primitive. M3a-M3h already cover the bounded Primary MEM formation, publication, reconciliation, and recovery-audit chain. The next goal is to connect that chain to the ordinary deferred runtime and prove later-turn recall.
 
-Repository-wide implementation status and global sequencing remain owned by [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md). This document owns the RelayMEM-M bounded track shape.
-
-## Core boundary
-
-```text
-RelayMEM-M track
-  -> local memory store contracts
-  -> read-only retrieval usability
-  -> primary experience memory formation
-  -> secondary crystallized memory consolidation
-  -> Lab-ready memory operation APIs
-```
-
-The track must preserve the lifecycle defined in [Memory Lifecycle Design](memory_lifecycle_design.md):
+## Core lifecycle
 
 ```text
 Short-term CTX
@@ -56,7 +45,16 @@ Short-term CTX
   -> Primary MEM / Experience MEM
   -> RelaySLP consolidation
   -> Secondary MEM / Crystallized MEM
-  -> SOUL Lab observation/correction
+  -> SOUL Lab observation and correction
+```
+
+The active milestone focuses on the first usable loop:
+
+```text
+ordinary turn
+  -> autonomous safe Primary MEM formation
+  -> durable page/index/log result
+  -> later-turn retrieval and RelayCTX injection
 ```
 
 ## Current implementation position
@@ -65,179 +63,84 @@ Short-term CTX
 MEM-M0 lifecycle and terminology: complete
 MEM-M1 bounded store-layout compatibility/read-only diagnostics: complete
 MEM-M2 bounded retrieval priority/snippet/injection foundations: complete
-MEM-M3 autonomous Primary MEM path: complete through M3f
-  M3a formation candidate
-  M3b source lineage and write preflight
-  M3c deterministic page candidate
-  M3d writer-handoff preflight
-  M3e atomic Primary page writer
-  M3f index/log reconciliation preflight
-MEM-M3g index/log reconciliation apply: next
-MEM-M4 Secondary MEM consolidation: planned
-MEM-M5 Lab-ready memory operations API: planned
+
+MEM-M3 Primary MEM path:
+  M3a formation candidate: complete
+  M3b source lineage and write preflight: complete
+  M3c deterministic page candidate: complete
+  M3d writer-handoff preflight: complete
+  M3e atomic Primary page writer: complete
+  M3f index/log reconciliation preflight: complete
+  M3g index/log reconciliation apply: complete
+  M3h read-only reconciliation recovery audit: complete
+  M3i ordinary-runtime worker integration and next-turn recall: next
+
+MEM-M4 Secondary MEM consolidation: planned after M3i
+MEM-M5 Lab-ready memory operations API: planned after the real observation bridge begins
 ```
 
-M3e is a direct-helper persistence boundary and is disabled/dry-run by default. M3f is read-only and dry-run-only. Neither slice is request-runtime or RelaySLP-worker wired.
+M3a-M3h are direct/helper boundaries. They do not prove that an ordinary finalized turn forms memory automatically, that a worker reaches them, or that the next turn retrieves the result.
 
-## Independence assumptions
+## Independence and integration
 
-RelayMEM MVP does not require:
+RelayMEM may continue to evolve independently from TTS, Live2D, and SOUL Lab Runtime work. It must not remain independent from Phase 6 worker execution indefinitely.
 
-- Phase 5.5 Stream Unpack completion,
-- TTS segmentation or adapter handoff,
+The current integration contract is:
+
+```text
+Phase 6 owns queue and worker control
+RelayMEM owns memory meaning and persistence
+RelayCTX owns later-turn packing
+SOUL Lab owns observation and explicit user operations through server APIs
+```
+
+Track independence permits parallel implementation. It does not make request-runtime and worker wiring optional.
+
+## Non-goals for the active milestone
+
+The active Primary MEM loop does not require:
+
 - TTS execution,
 - Live2D/avatar control,
-- SOUL Lab UI implementation,
-- SOUL Lab Runtime implementation,
 - vector database infrastructure,
 - embedding retrieval,
-- automatic RelaySOUL mutation.
-
-It may use existing runtime foundations:
-
-- RelayCTX Repack placement and payload mutation helpers,
-- RelaySCN memory scope and persistence policy,
-- RelayEMO salience evidence in bounded form,
-- RelayRUN idempotency, checkpoint, and content-free operation projection patterns,
-- RelayMEM read-only retrieval/store diagnostics already present in current implementation.
-
-## Non-goals for the RelayMEM MVP track
-
-RelayMEM MVP must not introduce:
-
-- per-turn user approval for ordinary memory formation,
-- raw trace persistence as memory,
-- direct RelaySOUL mutation,
+- Secondary MEM consolidation,
+- automatic RelaySOUL mutation,
+- per-turn user approval for ordinary safe memory formation,
 - broad semantic rewriting of visible responses,
-- frontend chat-history authority restoration,
-- direct TTS/avatar behavior,
-- synchronous latency-critical full SLP consolidation,
-- unbounded filesystem scanning or unbounded memory page reads.
+- frontend chat-history authority restoration.
 
-## Slice MEM-M0: lifecycle and terminology docs — complete
+## MEM-M1: store contract — complete
 
-Goal: establish the target memory layer model before runtime changes.
+The local file-backed memory store recognizes Primary and Secondary memory classes, bounded allowed paths, layer/scope/source-lineage metadata, index/log control files, current-layout compatibility, secure path traversal rules, bounded scans/reads, UTF-8 validation, and content-free diagnostics.
 
-Scope:
-
-- define Short-term CTX,
-- define Primary MEM / Experience MEM,
-- define Secondary MEM / Crystallized MEM,
-- define SOUL anchor boundary,
-- define autonomous ordinary memory formation,
-- align Lab as observation/correction rather than approval queue.
-
-Completion criteria:
-
-- `memory_lifecycle_design.md` exists and is linked,
-- RelayMEM and RelaySLP docs reference autonomous ordinary memory formation,
-- SOUL Lab UI docs use memory formation / correction terminology.
-
-This docs-only slice is complete and does not itself claim runtime behavior.
-
-## Slice MEM-M1: primary/secondary store contract — complete for bounded read-only compatibility
-
-Goal: make the local file-backed memory store layout ready for primary and secondary MEM without enabling broad writes, while explicitly defining the migration from the current `memory/raw` plus flat `memory/mem/*` layout.
-
-Scope:
-
-- introduce explicit store contract for primary and secondary memory classes,
-- define allowed paths and blocked paths,
-- define page metadata fields for memory layer, scope, source lineage, confidence/stability band, salience band, safety scope, and idempotency key,
-- define index/log expectations for primary and secondary MEM,
-- update read-only diagnostics to recognize primary/secondary layout,
-- preserve read-only compatibility with the current flat layout until the migration slice lands,
-- keep all writes disabled or dry-run-only by default.
-
-Target layout:
+Target layout remains:
 
 ```text
 memory/
   sources/
-    conversations/
-    communications/
-    corrections/
-
   mem/
     primary/
-      sessions/
-      scenes/
-      relationships/
-      projects/
     secondary/
-      projects/
-      concepts/
-      claims/
-      summaries/
-      relations/
     index.md
     log.md
 ```
 
-Migration note:
+## MEM-M2: retrieval usable foundation — complete
+
+M2 supports bounded candidate selection by namespace, layer, scope metadata, and summary/tag matching; runtime-private snippet extraction; content-free retrieval projection; and gated RelayCTX injection.
+
+Priority remains:
 
 ```text
-Current documented/current-runtime layout:
-  memory/raw/
-  memory/mem/projects/
-  memory/mem/concepts/
-  memory/mem/summaries/
-  memory/mem/relations/
-  memory/mem/index.md
-  memory/mem/log.md
-
-Target MEM-M1 layout:
-  memory/sources/
-  memory/mem/primary/
-  memory/mem/secondary/
+1. Secondary MEM stable summaries
+2. relationship/user Secondary MEM
+3. scene/session Primary MEM
+4. project/concept Secondary MEM
+5. external retrieved context when explicitly configured
 ```
 
-MEM-M1 must either support the current flat layout as a read-only compatibility source or migrate it explicitly under dry-run/apply gates before MEM-M2 treats the new layout as canonical for retrieval.
-
-Required safety:
-
-- no symlink traversal,
-- no absolute or parent-relative path escape,
-- bounded scans,
-- bounded reads,
-- UTF-8 validation,
-- content-free store diagnostics by default.
-
-Smoke coverage:
-
-- valid target layout discovery,
-- current flat layout compatibility discovery,
-- missing layout fallback,
-- symlink block,
-- unsupported file block,
-- malformed UTF-8 block,
-- bounded scan behavior,
-- content-free diagnostics.
-
-## Slice MEM-M2: retrieval usable MVP — complete for bounded retrieval foundations
-
-Goal: make existing formed memory useful for current answers through safe retrieval and gated RelayCTX packing.
-
-Scope:
-
-- read primary and secondary MEM pages from the local store,
-- select bounded candidates by namespace, memory layer, scope metadata, and keyword/tag summary matching,
-- extract bounded snippets only in runtime-private artifacts,
-- expose content-free retrieval projections,
-- support gated snippet runtime injection through RelayCTX Repack,
-- keep default-off / dry-run-only gates unless explicitly configured.
-
-Retrieval priority:
-
-```text
-1. Secondary MEM summaries for stable continuity
-2. Relationship/user secondary MEM
-3. Scene/session primary MEM
-4. Project/concept secondary MEM
-5. External retrieved context only when explicitly configured
-```
-
-Authority rule:
+Authority remains:
 
 ```text
 SOUL / OUTPUT_POLICY / RELATIONSHIP_ANCHOR
@@ -248,209 +151,148 @@ SOUL / OUTPUT_POLICY / RELATIONSHIP_ANCHOR
   > latest input
 ```
 
-Required safety:
+Retrieval must remain read-only, character/namespace scoped, and unable to mutate RelaySOUL.
 
-- retrieval must not write memory,
-- retrieval must not mutate RelaySOUL,
-- ambiguous references must remain RelayINT/RelaySCN gated,
-- primary MEM must not override secondary MEM or SOUL,
-- raw memory bodies/snippets must not enter default trace/audit.
+## MEM-M3: Primary MEM formation and persistence
 
-Smoke coverage:
+### M3a-M3d: candidate and handoff — complete
 
-- secondary-only retrieval,
-- primary-only retrieval,
-- mixed priority retrieval,
-- namespace mismatch omission,
-- scene/recovery persistence block,
-- runtime-private snippet extraction,
-- content-free projection,
-- gated RelayCTX injection default-off,
-- gated RelayCTX injection apply path.
+These slices provide:
 
-## Slice MEM-M3: autonomous primary MEM formation — complete through M3f
+- governed experience input validation,
+- memory kind and safety-scope classification,
+- RelaySCN persistence-policy consumption,
+- bounded RelayEMO salience metadata,
+- source lineage,
+- memory-write idempotency,
+- deterministic page construction,
+- exact writer/store-target handoff.
 
-Goal: turn governed experience evidence into Primary MEM / Experience MEM after a turn, session, or communication event without requiring per-turn user approval.
+### M3e: atomic page publication — complete
 
-Implemented bounded sub-slices:
+M3e may publish one exact selected Primary MEM page behind explicit default-off, dry-run-first gates. It uses no-clobber secure publication and revalidates path, lineage, digest, page shape, and memory-write identity immediately before write.
 
-- **M3a — complete:** Primary MEM formation candidate helper.
-- **M3b — complete:** source-lineage and write-preflight helper with memory-write idempotency.
-- **M3c — complete:** deterministic governed Primary page candidate.
-- **M3d — complete:** exact writer-handoff/store-target preflight.
-- **M3e — complete:** default-off atomic no-clobber Primary page writer.
-- **M3f — complete:** read-only deterministic index/log reconciliation preflight.
-- **M3g — next:** gated compare-and-swap-style index/log reconciliation apply.
+### M3f: reconciliation preflight — complete
 
-M3e may durably write only the selected page. M3f writes nothing. Request-runtime wiring, durable RelaySLP dispatch, Secondary consolidation, and page/index/log transaction recovery remain outside M3a-M3f.
+M3f securely reopens the published page and bounded index/log state, then derives an exact ordered reconciliation plan without mutation.
 
-Scope:
+### M3g: reconciliation apply — complete
 
-- define a bounded governed experience input artifact,
-- consume RelaySCN scene/persistence policy,
-- consume RelayEMO salience evidence in bounded form,
-- produce primary memory candidates,
-- classify memory kind and safety scope,
-- support `free_to_update`, `review_required`, `explicit_approval_required`, and `never_auto_promote`,
-- apply only `free_to_update` candidates when explicit apply gates pass,
-- emit content-free operation projections.
+M3g consumes one exact M3f plan and applies required index/log updates with index-before-log ordering, atomic replace, durability checks, and retryable partial-progress classification.
 
-Primary MEM candidate examples:
+### M3h: recovery audit — complete
 
-- session episode,
-- communication episode,
-- relationship moment,
-- recent project event,
-- scene-bound memory,
-- salient but unresolved experience.
+M3h consumes one exact M3g receipt, revalidates the current page/index/log store read-only, and classifies no-recovery, retryable reconciliation, manual confirmation, or future journal-aware recovery candidacy. M3h does not repair the store.
 
-Required safety:
+## MEM-M3i: ordinary-runtime integration and recall — next
 
-- raw affect estimates must not become durable facts,
-- recovery/formal-document/medical-safety scenes must block persistence unless explicitly allowed by policy,
-- low-confidence personal inference must not auto-promote,
-- source lineage must be present,
-- idempotency key must prevent duplicate writes,
-- failure must not affect visible response delivery.
+### Goal
 
-Smoke coverage:
+Turn the complete M3a-M3h primitive chain into a real deferred Primary MEM feature.
 
-- dry-run candidate generation,
-- free-to-update apply default-off,
-- free-to-update apply when gates pass,
-- review-required hold,
-- explicit-approval proposal block,
-- never-auto-promote block,
-- EMO salience preserved as metadata not fact,
-- RelaySCN persistence block,
-- idempotent duplicate prevention,
-- content-free projection.
-
-## Slice MEM-M4: secondary MEM consolidation
-
-Goal: consolidate Primary MEM into Secondary MEM / Crystallized MEM using SOUL, existing MEM, lineage, contradiction checks, and retrieval needs.
-
-Scope:
-
-- read primary MEM candidates/pages,
-- group related primary memories,
-- detect duplicates and superseded items,
-- produce secondary summaries, concept updates, project states, relationship summaries, claims, or relation updates,
-- preserve source lineage,
-- mark primary MEM as retained, summarized, superseded, or still active,
-- emit SOUL proposal candidates only when identity/value/relationship-anchor changes are implicated.
-
-Required safety:
-
-- SOUL is read as an anchor but not mutated,
-- contradictions must be held unless resolved,
-- sensitive or identity-level changes must become proposal/approval artifacts,
-- secondary MEM must not erase primary lineage,
-- apply must be idempotent and rollback-friendly.
-
-Smoke coverage:
-
-- primary-to-secondary summary creation,
-- duplicate merge,
-- supersede older primary memory,
-- contradiction hold,
-- SOUL proposal candidate generation without SOUL mutation,
-- content-free projection,
-- idempotent apply.
-
-## Slice MEM-M5: Lab-ready memory operations API
-
-Goal: provide backend APIs that SOUL Lab can use later without making Lab UI a prerequisite.
-
-Scope:
-
-- list recently formed memories,
-- list held/blocked memories,
-- list memories used in a concrete latest response/run,
-- correct memory,
-- forget/hide memory,
-- pin/unpin memory,
-- merge memories,
-- review/correct/apply/discard held memory items,
-- expose content-free operation status for UI.
-
-API shape is target-only until implemented, but should be scoped explicitly by character/user/session/memory namespace. Used-memory reads must be scoped to a concrete UI session, communication session, run ID, or last-run identifier; a character-only used-memory route is ambiguous when multiple tabs or sessions share one character.
-
-Suggested route families:
+### Producer/consumer path
 
 ```text
-GET  /lab/api/characters/{character_id}/memory/recent
-GET  /lab/api/characters/{character_id}/memory/held
-GET  /lab/api/ui-sessions/{ui_session_id}/lab/last-run/memory/used
+finalized ordinary turn
+  -> Phase 6 durable queue
+  -> Phase 6 worker claims job
+  -> M3a-M3h execute in order
+  -> verified durable Primary MEM
+  -> later RelayMEM retrieval
+  -> RelayCTX injection
+  -> later answer uses the memory
+```
+
+### Scope
+
+M3i must:
+
+- define the exact worker-to-M3a governed evidence handoff,
+- reuse existing M3a-M3h artifacts rather than reconstructing them from public projections,
+- map held/blocked/retryable/terminal RelayMEM outcomes to Phase 6 queue state,
+- preserve dispatch idempotency separately from memory-write idempotency,
+- expose only content-free operation status outside protected runtime domains,
+- verify that newly written memory is discoverable by the current M2 retrieval path,
+- prove correct character and namespace isolation,
+- keep visible response delivery independent of deferred work.
+
+### Required end-to-end smoke
+
+1. submit a managed turn that yields one eligible governed experience,
+2. verify deferred durable enqueue,
+3. claim and execute one worker job,
+4. verify M3e page publication and M3g index/log state,
+5. run M3h and confirm the expected store classification,
+6. submit a later turn requiring that memory,
+7. verify M2 selects it and RelayCTX injects it,
+8. verify wrong-character and wrong-namespace requests do not select it,
+9. retry the same dispatch and verify queue and memory-write deduplication.
+
+### Completion rule
+
+M3 is not end-to-end complete until M3i passes. M3a-M3h completion means the persistence primitives exist; it does not mean the product memory loop is active.
+
+## MEM-M4: Secondary MEM consolidation — deferred until M3i
+
+M4 will consolidate related Primary MEM into stable Secondary MEM using existing SOUL anchors, lineage, contradiction checks, duplicate/supersession handling, and retrieval needs.
+
+M4 remains important but must not precede proof that Primary MEM can be formed and recalled in the ordinary runtime.
+
+Expected later scope:
+
+- group related Primary MEM,
+- detect duplicate and superseded items,
+- produce stable summaries, concepts, project states, relationship summaries, claims, and relations,
+- preserve full lineage,
+- hold unresolved contradiction,
+- emit RelaySOUL proposal candidates without direct SOUL mutation,
+- support idempotent and rollback-friendly apply.
+
+## MEM-M5: Lab-ready memory operations API — planned
+
+M5 exposes server-owned APIs for real SOUL Lab observation and explicit memory operations.
+
+Initial read surface:
+
+```text
+GET /lab/api/characters/{character_id}/memory/recent
+GET /lab/api/characters/{character_id}/memory/held
+GET /lab/api/ui-sessions/{ui_session_id}/lab/last-run/memory/used
+```
+
+Initial mutation priority:
+
+```text
 POST /lab/api/characters/{character_id}/memory/{memory_id}/correct
-POST /lab/api/characters/{character_id}/memory/{memory_id}/forget
-POST /lab/api/characters/{character_id}/memory/{memory_id}/pin
-POST /lab/api/characters/{character_id}/memory/{memory_id}/unpin
-POST /lab/api/characters/{character_id}/memory/{memory_id}/merge
-POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/review
-POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/correct
-POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/apply
-POST /lab/api/characters/{character_id}/memory/held/{held_memory_id}/discard
 ```
 
-`memory_id` refers to already-formed memory. `held_memory_id` refers to a held `review_required` item that is not yet a formed durable memory. `GET /lab/api/ui-sessions/{ui_session_id}/lab/last-run/memory/used` returns the memories used by the latest response within that concrete UI session.
+Correction is first because it provides the clearest proof that user intervention changes later retrieval behavior while preserving an auditable prior state.
 
-Required safety:
+Later operations:
 
-- destructive forget/delete requires explicit user action,
-- pin/unpin may require explicit action because it changes retrieval priority,
-- held-memory apply must re-run persistence and namespace gates,
-- correction preserves lineage,
-- cross-namespace operations are blocked by default,
-- browser never directly reads/writes raw MEM files.
+- forget/hide,
+- pin/unpin,
+- merge,
+- review/correct/apply/discard held candidates.
 
-Smoke coverage:
+All operations must be explicitly scoped by character, namespace, and a concrete run/session or memory identifier. Browser state is never authoritative for durable memory.
 
-- scoped list operations,
-- session-scoped used-memory list operation,
-- correction dry-run/apply gate,
-- forget dry-run/apply gate,
-- pin/unpin operation,
-- held-memory review/correct/apply/discard operation,
-- merge operation,
-- namespace mismatch block,
-- content-free UI status projection.
+## Safety invariants
 
-## Recommended implementation order
+All RelayMEM slices preserve:
 
-```text
-MEM-M1 store compatibility: complete
-  -> MEM-M2 retrieval foundations: complete
-  -> MEM-M3a-M3f Primary MEM path: complete
-  -> MEM-M3g index/log reconciliation apply: next
-  -> MEM-M4 Secondary consolidation: planned
-  -> MEM-M5 Lab-ready memory operations API: planned
-```
+- source lineage is required for durable facts,
+- raw affect estimates do not become facts,
+- low-confidence personal inference does not auto-promote,
+- recovery/formal-document/medical-safety policy can block persistence,
+- ordinary `free_to_update` memory may apply autonomously when gates pass,
+- review-required and approval-required items remain held,
+- destructive user operations require explicit action,
+- Primary MEM cannot override Secondary MEM or SOUL authority,
+- generic trace and public diagnostics remain content-free,
+- no RelayMEM slice directly mutates RelaySOUL,
+- failure does not invalidate an already valid visible response.
 
-MEM-M1/M2 foundations and M3a-M3f are now implemented. M3g is the next independent persistence slice. MEM-M4 remains the step that makes memory stable and SOUL-aligned through Secondary consolidation, while MEM-M5 prepares the management API without blocking Core or UI work.
+## Sequencing rule
 
-## Relationship to Phase 6 RelaySLP
-
-Phase 6 asynchronous RelaySLP remains the broader deferred persistence/runtime orchestration phase.
-
-The MEM-M track can start before full Phase 6 completion if each slice remains bounded:
-
-- no always-on background worker required for MEM-M1/M2,
-- turn-end or explicit invocation is enough for MEM-M3 dry-run/apply gates,
-- scheduled/background consolidation can remain later for MEM-M4,
-- Lab UI can remain later while MEM-M5 exposes backend contracts.
-
-## Next bounded slice
-
-RelayMEM-M3g should consume only one exact ready M3f reconciliation plan and apply index-before-log changes under explicit gates. It must use compare-and-swap validation against the expected current byte count/digest, remain idempotent, report partial/uncertain durability without claiming success, and avoid request-runtime, Phase 6 queue, worker, Secondary MEM, RelaySOUL, and visible-response behavior.
-
-## Completion target for MEM MVP
-
-RelayMEM MVP is strong enough when:
-
-1. existing secondary MEM can be retrieved and safely packed into current answers,
-2. primary experience memories can be formed autonomously under gates,
-3. primary memories can later consolidate into secondary memories,
-4. trace/audit remains content-free by default,
-5. SOUL is never directly mutated by MEM,
-6. Lab can later observe, correct, forget, pin/unpin, review held items, and merge memory without becoming a per-turn approval queue.
+Until M3i closes, prefer integration work that connects an existing RelayMEM producer or consumer over new persistence schemas, new recovery layers, or Secondary MEM behavior. Additional M3 recovery work requires concrete evidence from M3h that the existing retry/manual-confirmation boundary is insufficient.
