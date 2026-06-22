@@ -39,6 +39,8 @@ curl http://127.0.0.1:8090/v1/models
 
 From Docker, try `http://host.docker.internal:8090/v1`. If RelayLM runs in WSL, test the WSL address from the container. Binding RelayLM to `0.0.0.0` may be necessary, but it exposes the proxy beyond loopback and requires firewall controls.
 
+SOUL Lab UI-A7 management reads are intentionally different: `/lab/api/settings` and `/lab/api/characters` require both a loopback configured listen host and a loopback transport peer. They return `403` for wildcard, LAN, remote, or unknown-peer access even when Core routes remain available.
+
 ## OpenWebUI configuration
 
 Use **Admin Settings -> Connections -> OpenAI**. RelayLM is not a Tools/OpenAPI server.
@@ -71,9 +73,9 @@ Therefore, default `memory_light` compatibility compilation may still preserve f
 The implemented bounded contracts are:
 
 - `client_history_exclusion_apply.v0`: supported no-instruction requests,
-- `client_history_exclusion_apply.v1`: supported instruction-bearing requests.
+- `client_history_exclusion_apply.v1`: supported instruction-bearing requests with explicit provenance.
 
-For v1, a frontend must explicitly identify the current instruction message indices through the reserved `relaylm.instruction_evidence` envelope using schema `client_instruction_source.v1`. Role, wording, and message position alone are not accepted as provenance.
+For v1, a frontend must identify the current instruction message indices through the reserved `relaylm.instruction_evidence` envelope using schema `client_instruction_source.v1`. Role, wording, and message position alone are not accepted as provenance.
 
 Only explicitly selected `system` or `developer` candidates become bounded low-trust evidence. Unselected candidates, including frontend summaries and memory notes, are excluded. The reserved RelayLM control envelope is removed before managed backend forwarding.
 
@@ -98,7 +100,11 @@ Explicit `pass_through` routes remain client-owned and unchanged.
 
 ## Streaming
 
-Test non-stream first, then test LM Studio direct streaming and proxy connectivity. Phase 5-C4a applies the same input-side authority gate to stream and non-stream requests, but output-side Stream Unpack and TTS-safe segmentation are not implemented.
+Test non-stream first, then test LM Studio direct streaming and proxy connectivity.
+
+Current default streaming remains byte-compatible backend SSE forwarding. When explicitly enabled, Phase 5.5-B2 can wrap request-runtime SSE and suppress complete, split, or terminal-partial internal sentinels. Phase 5.5-C0 through C4 can then create content-free segmentation, TTS handoff, and transport-envelope metadata from B2 safe visible output.
+
+These gates remain default-off and do not deliver adapter transport, execute TTS, generate audio, or control an avatar. A failure in the gated stream path should fail closed without replaying already emitted visible chunks.
 
 ## Historical local values
 
