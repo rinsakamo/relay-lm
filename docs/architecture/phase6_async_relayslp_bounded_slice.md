@@ -175,9 +175,9 @@ B3 does not generate `dead_letter`; that state remains reserved for a later expl
 
 B3 is the final queue-only prerequisite for the active integration milestone. Do not extend the B series with unrelated helper-only work unless a concrete queue safety defect requires it.
 
-## Next boundary: Phase 6-C1 worker implementation
+## Next boundary: Phase 6-C worker execution
 
-[Phase 6-C1 Primary MEM Worker Contract](phase6c1_primary_mem_worker_contract.md) defines the exact integration boundary.
+The first bounded worker implementation is Phase 6-C1. [Phase 6-C1 Primary MEM Worker Contract](phase6c1_primary_mem_worker_contract.md) defines the exact integration boundary.
 
 The first worker executes one already-claimed job only under the exact active B3 lease fence. It requires:
 
