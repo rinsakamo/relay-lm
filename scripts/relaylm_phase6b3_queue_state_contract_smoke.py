@@ -101,9 +101,10 @@ def main() -> None:
     _require_all(
         current_target,
         (
-            "Phase 6-B3",
-            "fenced durable queue lifecycle helpers",
-            "The next bounded RelayLM Core implementation is Phase 6-C",
+            "Phase 6-B3 implements default-off, dry-run-first fenced",
+            "I1-B invokes A1 -> A2 -> B1 -> B2",
+            "C1-1 provides exact RelayMEM composition",
+            "The next bounded RelayLM Core implementation on `main` is C1-2",
         ),
         label="current-target alignment",
     )
