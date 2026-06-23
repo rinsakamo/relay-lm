@@ -105,44 +105,46 @@ def m3g_process_lock_contention_retries_then_converges() -> None:
             require(queued["claim_owner"] == "", "M3g retry owner retained")
             require(queued["lease_token"] == "", "M3g retry token retained")
 
-        retry_record = _claim_again(
-            queue_root,
-            queued,
-            owner="worker-c1-4-m3g-retry",
-            token="phase6c1-c1-4-m3g-token-b",
-        )
-        retry_request, _ = build_request(
-            queue_root,
-            store_root,
-            record=retry_record,
-        )
-        converged = execute_relaymem_slp_primary_worker(retry_request)
-        require(converged.status == "terminal_succeeded", converged.to_log_dict())
-        require(converged.pipeline_result is not None, "M3g convergence missing")
-        require(
-            converged.pipeline_result.m3e_result["status"] == "already_applied",
-            converged.to_log_dict(),
-        )
-        require(read_record(queue_path)["state"] == "succeeded", "M3g convergence")
-        require(
-            len(list((store_root / "memory/mem/primary/projects").glob("*.md")))
-            == pages_before + 1,
-            "M3g retry duplicated page",
-        )
-        require(
-            (store_root / "memory/mem/index.md")
-            .read_text(encoding="utf-8")
-            .count("relaymem-primary-index-entry-v0")
-            == 1,
-            "M3g retry duplicated index",
-        )
-        require(
-            (store_root / "memory/mem/log.md")
-            .read_text(encoding="utf-8")
-            .count("relaymem-primary-log-entry-v0")
-            == 1,
-            "M3g retry duplicated log",
-        )
+            lock_holder.release()
+            require(not lock_holder.running, "M3g lock holder cleanup")
+            retry_record = _claim_again(
+                queue_root,
+                queued,
+                owner="worker-c1-4-m3g-retry",
+                token="phase6c1-c1-4-m3g-token-b",
+            )
+            retry_request, _ = build_request(
+                queue_root,
+                store_root,
+                record=retry_record,
+            )
+            converged = execute_relaymem_slp_primary_worker(retry_request)
+            require(converged.status == "terminal_succeeded", converged.to_log_dict())
+            require(converged.pipeline_result is not None, "M3g convergence missing")
+            require(
+                converged.pipeline_result.m3e_result["status"] == "already_applied",
+                converged.to_log_dict(),
+            )
+            require(read_record(queue_path)["state"] == "succeeded", "M3g convergence")
+            require(
+                len(list((store_root / "memory/mem/primary/projects").glob("*.md")))
+                == pages_before + 1,
+                "M3g retry duplicated page",
+            )
+            require(
+                index_path.read_text(encoding="utf-8").count(
+                    "relaymem-primary-index-entry-v0"
+                )
+                == 1,
+                "M3g retry duplicated index",
+            )
+            require(
+                log_path.read_text(encoding="utf-8").count(
+                    "relaymem-primary-log-entry-v0"
+                )
+                == 1,
+                "M3g retry duplicated log",
+            )
 
 
 def m3h_process_lock_contention_retries_then_converges() -> None:
@@ -203,39 +205,41 @@ def m3h_process_lock_contention_retries_then_converges() -> None:
                 "M3h failure class",
             )
 
-        retry_record = _claim_again(
-            queue_root,
-            queued,
-            owner="worker-c1-4-m3h-retry",
-            token="phase6c1-c1-4-m3h-token-b",
-        )
-        retry_request, _ = build_request(
-            queue_root,
-            store_root,
-            record=retry_record,
-        )
-        converged = execute_relaymem_slp_primary_worker(retry_request)
-        require(converged.status == "terminal_succeeded", converged.to_log_dict())
-        require(read_record(queue_path)["state"] == "succeeded", "M3h convergence")
-        require(
-            len(list((store_root / "memory/mem/primary/projects").glob("*.md")))
-            == pages_before + 1,
-            "M3h retry duplicated page",
-        )
-        require(
-            (store_root / "memory/mem/index.md")
-            .read_text(encoding="utf-8")
-            .count("relaymem-primary-index-entry-v0")
-            == 2,
-            "M3h retry index convergence",
-        )
-        require(
-            (store_root / "memory/mem/log.md")
-            .read_text(encoding="utf-8")
-            .count("relaymem-primary-log-entry-v0")
-            == 2,
-            "M3h retry log convergence",
-        )
+            lock_holder.release()
+            require(not lock_holder.running, "M3h lock holder cleanup")
+            retry_record = _claim_again(
+                queue_root,
+                queued,
+                owner="worker-c1-4-m3h-retry",
+                token="phase6c1-c1-4-m3h-token-b",
+            )
+            retry_request, _ = build_request(
+                queue_root,
+                store_root,
+                record=retry_record,
+            )
+            converged = execute_relaymem_slp_primary_worker(retry_request)
+            require(converged.status == "terminal_succeeded", converged.to_log_dict())
+            require(read_record(queue_path)["state"] == "succeeded", "M3h convergence")
+            require(
+                len(list((store_root / "memory/mem/primary/projects").glob("*.md")))
+                == pages_before + 1,
+                "M3h retry duplicated page",
+            )
+            require(
+                index_path.read_text(encoding="utf-8").count(
+                    "relaymem-primary-index-entry-v0"
+                )
+                == 2,
+                "M3h retry index convergence",
+            )
+            require(
+                log_path.read_text(encoding="utf-8").count(
+                    "relaymem-primary-log-entry-v0"
+                )
+                == 2,
+                "M3h retry log convergence",
+            )
 
 
 def main() -> int:
