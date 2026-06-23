@@ -141,21 +141,29 @@ def _result(
     queue_transition_performed: bool = False,
     reasons: tuple[str, ...] | list[str] = (),
 ) -> RelayMEMSLPPrimaryWorkerResult:
-    enabled = (
-        request.enabled
-        if request is not None and type(request.enabled) is bool
-        else False
-    )
-    dry_run = (
-        request.dry_run_only
-        if request is not None and type(request.dry_run_only) is bool
-        else True
-    )
-    apply_enabled = (
-        request.apply_enabled
-        if request is not None and type(request.apply_enabled) is bool
-        else False
-    )
+    # Invalid requests may contain non-canonical or non-bool gates. Never echo
+    # those impossible combinations into the exact result envelope; project a
+    # canonical disabled dry-run gate while preserving bounded reason IDs.
+    if status == "invalid_input":
+        enabled = False
+        dry_run = True
+        apply_enabled = False
+    else:
+        enabled = (
+            request.enabled
+            if request is not None and type(request.enabled) is bool
+            else False
+        )
+        dry_run = (
+            request.dry_run_only
+            if request is not None and type(request.dry_run_only) is bool
+            else True
+        )
+        apply_enabled = (
+            request.apply_enabled
+            if request is not None and type(request.apply_enabled) is bool
+            else False
+        )
     return RelayMEMSLPPrimaryWorkerResult(
         schema_version=RESULT_SCHEMA,
         status=status,
