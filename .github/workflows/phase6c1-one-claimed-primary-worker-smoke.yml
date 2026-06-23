@@ -32,7 +32,7 @@ permissions:
   contents: write
 
 jobs:
-  patch-source:
+  patch_source:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
@@ -107,8 +107,8 @@ jobs:
           git push origin HEAD:phase6c1-one-claimed-primary-worker
 
   smoke:
-    needs: patch-source
-    if: always() && (github.event_name != 'pull_request' || needs.patch-source.outputs.patched != 'true')
+    needs: patch_source
+    if: always() && (github.event_name != 'pull_request' || needs.patch_source.outputs.patched != 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
