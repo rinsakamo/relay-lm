@@ -36,9 +36,13 @@ Product-critical Phase 6 boundaries:
 - [Phase 6-B1 RelaySLP Dispatch Preflight](phase6b1_relayslp_dispatch_preflight.md)
 - [Phase 6-B2 RelaySLP Atomic Durable Enqueue](phase6b2_relayslp_atomic_durable_enqueue.md)
 - [Phase 6-B3 RelaySLP Fenced Queue State Helpers](phase6b3_relayslp_queue_state_helpers.md)
+- [Phase 6 I1-B Runtime Enqueue and Protected Source Capture](phase6_i1b_runtime_enqueue_source_capture_handoff.md)
 - [Phase 6-C1 Primary MEM Worker Contract](phase6c1_primary_mem_worker_contract.md)
+- [Phase 6-C1-1 RelayMEM Primary Pipeline Compose](phase6c1_relaymem_primary_pipeline_compose.md)
+- [Phase 6-C1-3 Primary Worker Outcome Classifier](phase6c1_primary_worker_outcome_classifier.md)
+- [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
 
-Phase 6-A1 validates deferred RelaySLP admission metadata. Phase 6-A2 creates one runtime-private dry-run enqueue candidate after a finalized `turn_end`. Phase 6-B0 owns the durable-record, dispatch-idempotency, state-machine, duplicate/collision, lease/restart/corruption, and content-free projection contract. Phase 6-B1 generates deterministic dispatch/job identities and a runtime-private initial queued durable-job candidate without queue I/O. Phase 6-B2 performs gated atomic create-if-absent durable enqueue. Phase 6-B3 performs fenced claim, renewal, retry release, stale recovery, and terminal commit without worker execution. Phase 6-C1 defines the exact active-lease, protected-source, idempotency, retry, crash, and outcome-mapping contract. C1-0 now implements the exact request-local protected worker-source bundle, claimed-record correlation, one-shot scope fencing, and content-free projection; C1-1 RelayMEM composition remains next.
+Phase 6-A1 validates deferred RelaySLP admission metadata. Phase 6-A2 creates one runtime-private dry-run enqueue candidate after a finalized `turn_end`. Phase 6-B0 owns the durable-record, dispatch-idempotency, state-machine, duplicate/collision, lease/restart/corruption, and content-free projection contract. Phase 6-B1 generates deterministic dispatch/job identities and a runtime-private initial queued durable-job candidate without queue I/O. Phase 6-B2 performs gated atomic create-if-absent durable enqueue. Phase 6-B3 performs fenced claim, renewal, retry release, stale recovery, and terminal commit without worker execution. I1-B now wires ordinary managed non-stream and stream response finalization to post-response A1 -> A2 -> B1 -> B2 enqueue plus process-local protected source capture. Phase 6-C1 defines the exact active-lease, protected-source, idempotency, retry, crash, and outcome-mapping contract. C1-0 implements the exact request-local protected worker-source bundle, C1-1 implements the canonical M3a-M3h compose boundary, and C1-3 implements the pure queue-transition outcome classifier. C1-2 one-already-claimed-job worker execution is the remaining Phase 6-C1 runtime boundary on `main`.
 
 Completed Core streaming boundary:
 
@@ -49,7 +53,7 @@ Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, 
 Memory lifecycle:
 
 - [Memory Lifecycle Design](memory_lifecycle_design.md) — short-term CTX, governed experience evidence, autonomous ordinary MEM formation, RelaySLP, and SOUL Lab memory operations.
-- [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md) — current helper state and the migration into deferred Phase 6 orchestration.
+- [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md) — current runtime enqueue/source-capture, queue lifecycle, C1 component, and remaining worker integration boundary.
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — independent MEM-M bounded implementation track for store contracts, retrieval usability, primary memory formation, secondary consolidation, and Lab-ready operations.
 
 RelayMEM Primary persistence track:
@@ -79,4 +83,4 @@ Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1
 
 Historical and MVP documents do not override these current owners.
 
-Implementation handoffs under this directory are bounded slice records. After merge, they are historical implementation evidence unless a current status page, implementation plan, or contract explicitly references their behavior as current.
+Implementation handoffs under this directory are bounded slice records. Their front matter controls interpretation: `current` handoffs may describe a live bounded implementation until superseded, while `historical_after_merge` handoffs are implementation evidence only. Neither overrides Project Status, the implementation plan, or dedicated current contracts.

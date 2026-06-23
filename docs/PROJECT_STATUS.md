@@ -23,10 +23,16 @@ relaylm_related_authority:
   - docs/architecture/client_instruction_authority_contract.md
   - docs/architecture/phase5_5_stream_unpack_bounded_slice.md
   - docs/architecture/phase6_async_relayslp_bounded_slice.md
+  - docs/architecture/phase6a1_relayslp_job_admission_contract.md
+  - docs/architecture/phase6a2_relayslp_response_handoff_contract.md
   - docs/architecture/phase6b0_relayslp_durable_queue_contract.md
   - docs/architecture/phase6b1_relayslp_dispatch_preflight.md
   - docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md
   - docs/architecture/phase6b3_relayslp_queue_state_helpers.md
+  - docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md
+  - docs/architecture/phase6c1_primary_mem_worker_contract.md
+  - docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md
+  - docs/architecture/phase6c1_primary_worker_outcome_classifier.md
   - docs/architecture/relaymem_mvp_implementation_plan.md
   - docs/architecture/relaymem_slp_current_target.md
   - docs/architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md
@@ -37,14 +43,15 @@ relaylm_related_authority:
 ---
 # RelayLM Project Status
 
-Last reviewed: 2026-06-22 JST
+Last reviewed: 2026-06-23 JST
 
 Status reviewed through:
 
-- Phase 6-B3 fenced queue state transitions,
-- RelayMEM-M3h recovery audit,
-- SOUL Lab UI-A7 read-only management projection,
-- PR #359 merge commit `1ee67b4f5a8c20cfbdbef79e99f3cb4e6e90a5b1`.
+- Phase 6 I1-B ordinary request-runtime enqueue and process-local protected source capture,
+- Phase 6-C1-0 protected worker-source bundle,
+- Phase 6-C1-1 RelayMEM M3a-M3h compose boundary,
+- Phase 6-C1-3 pure worker-outcome classifier,
+- PR #365 merge commit `8dafc1dc87f7ff01df9c05b533803270e4aae306`.
 
 ## Purpose and authority
 
@@ -64,8 +71,8 @@ When documents disagree:
 Managed-route correctness: Phase 5-C complete through bounded v0/v1 apply and C5 runtime plumbing
 Pre-stream hardening: Phase 5-D complete through D2
 Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
-Asynchronous RelaySLP orchestration: queue lifecycle helpers complete through Phase 6-B3
-RelayMEM Primary path: M1/M2 complete; M3a through M3h implemented as direct/helper boundaries
+Asynchronous RelaySLP orchestration: I1-B runtime enqueue complete; queue lifecycle complete through B3; C1-0/C1-1/C1-3 complete
+RelayMEM Primary path: M1/M2 complete; M3a through M3h implemented and composed through C1-1
 SOUL Lab UI: UI-A0 through UI-A7 implemented; A7 adds local-only read management projections
 ```
 
@@ -109,17 +116,21 @@ Implemented:
 - B0 durable queue schema and state-machine contract,
 - Phase 6-B1 RelaySLP dispatch preflight,
 - Phase 6-B2 atomic durable enqueue with duplicate/collision/corruption classification,
-- Phase 6-B3 fenced queue state transitions for claim, renew, retry release, stale recovery, and terminal commit.
+- Phase 6-B3 fenced queue state transitions for claim, renew, retry release, stale recovery, and terminal commit,
+- I1-B ordinary managed non-stream and stream response-finalization wiring through post-response A1 -> A2 -> B1 -> B2 execution,
+- B2-success-gated process-local protected source capture with exact claim-time C1-0 construction,
+- C1-0 protected worker-source bundle, correlation, one-shot consumption, and content-free projection,
+- C1-3 pure RelayMEM-outcome to B3-transition-intent classification.
 
 B3 is default-off and dry-run-first. It revalidates complete canonical B2 records, uses revision/state/owner/generation/token fencing, applies nonblocking shared/exclusive queue locking, detects inode and byte CAS conflicts, preserves terminal immutability, and never generates `dead_letter`.
 
 Current limitation:
 
-- A1/A2/B1/B2 are not called automatically from ordinary request finalization,
-- B3 is a direct helper and no scheduler or worker invokes it automatically,
-- Phase 6-C worker execution is not implemented,
-- no worker invokes RelayMEM processing,
-- queue persistence and lifecycle control do not yet lead to memory persistence.
+- no scheduler or worker automatically claims queued work,
+- C1-2 one-already-claimed-job worker execution is not yet on `main`,
+- the process-local protected source registry is not restart-complete,
+- a process exit after visible response delivery but before the Starlette background task completes may leave no durable enqueue for that turn,
+- queue persistence and lifecycle control do not yet autonomously lead to memory persistence.
 
 ### RelayMEM Primary persistence
 
@@ -132,12 +143,14 @@ Implemented direct/helper boundaries:
 - M3e default-off atomic no-clobber page publication,
 - M3f deterministic index/log reconciliation preflight,
 - M3g gated index-before-log reconciliation apply with retryable partial progress,
-- M3h read-only receipt/store recovery audit and recovery classification.
+- M3h read-only receipt/store recovery audit and recovery classification,
+- C1-1 exact M3a-M3h compose order with runtime-private stage ledger and content-free projection.
 
 Current limitation:
 
-- the ordinary request runtime and Phase 6 worker do not invoke M3a-M3h,
-- successful helper execution does not prove autonomous turn-end memory formation,
+- ordinary request finalization does not invoke M3a-M3h inline,
+- C1-2 has not yet connected an active B3 claim and exact C1-0 source to the compose/classifier/B3 transition path on `main`,
+- successful direct/helper execution does not prove autonomous turn-end memory formation,
 - Secondary MEM consolidation is not implemented,
 - Lab memory mutation APIs are not implemented.
 
@@ -179,10 +192,13 @@ The project is integration-first.
 
 ```text
 ordinary finalized turn
-  -> A1/A2/B1/B2 runtime enqueue
-  -> B3 claim/lease/retry lifecycle
-  -> Phase 6-C worker execution
-  -> M3a-M3h Primary MEM processing
+  -> A1/A2/B1/B2 runtime enqueue                complete as I1-B
+  -> B3 claim/lease/retry lifecycle             complete as direct helpers
+  -> C1-0 protected source                      complete
+  -> C1-2 one-claimed worker                    next
+  -> C1-1 M3a-M3h compose                       complete
+  -> C1-3 outcome classification                complete
+  -> B3 retry release or terminal commit
   -> durable page/index/log outcome
   -> later-turn RelayMEM retrieval
   -> RelayCTX injection
@@ -192,16 +208,16 @@ ordinary finalized turn
 
 Immediate sequence:
 
-1. Wire finalized managed turns through A1/A2/B1/B2 while keeping visible response delivery independent.
-2. Implement Phase 6-C worker execution under the exact active B3 owner/generation/token fence.
-3. Invoke existing M3a-M3h boundaries without redefining memory semantics.
+1. Land C1-2 one-already-claimed-job execution under the exact active B3 owner/generation/token fence.
+2. Add an integrated ordinary-runtime claim/source-consume/compose/classify/B3-transition smoke without redefining memory semantics.
+3. Make protected source/finalization ownership restart-complete, including the post-response background-task crash window.
 4. Add an end-to-end smoke proving next-turn recall and character/namespace isolation.
 5. Add real SOUL Lab read APIs for latest run, formed/held/blocked memory, and used memory.
 6. Add one auditable Correct operation whose result changes later retrieval behavior.
 
 UI-A7 already supplies the bounded settings/characters read foundation. It does not satisfy I1 memory observation or correction criteria.
 
-B3 is complete as a prerequisite, not as the final product goal. Helper-only completion does not close I1.
+I1-B, B3, C1-0, C1-1, and C1-3 are complete prerequisites, not the final product goal. Helper-level completion does not close I1.
 
 ## Safe defaults and compatibility
 
@@ -227,6 +243,7 @@ Consequences:
 - RelayLM Core does not deliver adapter transport or execute TTS/audio/avatar behavior,
 - Phase 6 and RelayMEM persistence apply remain explicit gated boundaries rather than ordinary default runtime behavior,
 - B3 defaults to `enabled=false`, `dry_run_only=true`, and `apply_enabled=false`,
+- I1-B background enqueue/source capture is response-independent and does not execute or claim a worker,
 - UI-A7 management routes are read-only and fail closed unless both configured listen scope and actual transport peer are loopback.
 
 ## Not yet implemented
@@ -238,10 +255,10 @@ The runtime does not yet provide:
 - a trusted backend-response instruction-control artifact producer,
 - semantic RelaySCN apply from the C4b cache projection,
 - parser-versioned cache lookup/write compatibility,
-- request-runtime A1/A2/B1/B2 invocation,
-- Phase 6-C worker execution,
-- scheduler/background worker execution,
-- worker invocation of RelayMEM M3a-M3h,
+- C1-2 one-already-claimed-job worker execution on `main`,
+- scheduler/background worker claim execution,
+- restart-complete protected source/finalization persistence,
+- autonomous worker invocation of RelayMEM M3a-M3h from ordinary queued work,
 - end-to-end next-turn recall proof from newly formed runtime memory,
 - Secondary MEM consolidation,
 - SOUL Lab latest-run and memory-outcome read APIs,
@@ -294,12 +311,16 @@ The SOUL Lab app can be built as a presentation prototype and can read the bound
 
 - [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
+- [RelayMEM / RelaySLP Current / Target Boundary](architecture/relaymem_slp_current_target.md)
 - [Client History Authority Contract](architecture/client_history_authority_contract.md)
 - [Client Instruction Authority Contract](architecture/client_instruction_authority_contract.md)
 - [Phase 5.5 Stream Unpack Bounded Slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
 - [Phase 6 Asynchronous RelaySLP Bounded Slice](architecture/phase6_async_relayslp_bounded_slice.md)
-- [Phase 6-B2 Atomic Durable Enqueue](architecture/phase6b2_relayslp_atomic_durable_enqueue.md)
+- [Phase 6 I1-B Runtime Enqueue and Protected Source Capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md)
 - [Phase 6-B3 Fenced Queue State Helpers](architecture/phase6b3_relayslp_queue_state_helpers.md)
+- [Phase 6-C1 Primary MEM Worker Contract](architecture/phase6c1_primary_mem_worker_contract.md)
+- [Phase 6-C1-1 RelayMEM Primary Pipeline Compose](architecture/phase6c1_relaymem_primary_pipeline_compose.md)
+- [Phase 6-C1-3 Primary Worker Outcome Classifier](architecture/phase6c1_primary_worker_outcome_classifier.md)
 - [RelayMEM MVP Implementation Plan](architecture/relaymem_mvp_implementation_plan.md)
 - [RelayMEM-M3h Recovery Audit](architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md)
 - [SOUL Lab UI-A7 Read-only Management Projection](architecture/soul_lab_ui_a7_management_projection_handoff.md)

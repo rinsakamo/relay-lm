@@ -28,6 +28,10 @@ relaylm_related_authority:
   - phase6b1_relayslp_dispatch_preflight.md
   - phase6b2_relayslp_atomic_durable_enqueue.md
   - phase6b3_relayslp_queue_state_helpers.md
+  - phase6_i1b_runtime_enqueue_source_capture_handoff.md
+  - phase6c1_primary_mem_worker_contract.md
+  - phase6c1_relaymem_primary_pipeline_compose.md
+  - phase6c1_primary_worker_outcome_classifier.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - relaymem_m3e_atomic_primary_page_writer.md
@@ -72,19 +76,24 @@ Phase 5.5 Stream Unpack / TTS handoff preparation:
 
 Phase 6 asynchronous RelaySLP orchestration:
   A0 ownership and sequencing: complete
-  A1 job admission: complete as helper-only
-  A2 response-finalization handoff: complete as helper-only
+  A1 job admission: complete
+  A2 response-finalization handoff: complete
   B0 durable queue contract: complete
-  B1 dispatch/job-record preflight: complete as helper-only
-  B2 atomic durable enqueue: complete as direct helper
-  B3 queue lifecycle helpers: complete as direct helper
-  C worker execution under an active lease fence: next
+  B1 dispatch/job-record preflight: complete
+  B2 atomic durable enqueue: complete
+  B3 queue lifecycle helpers: complete
+  I1-B ordinary request-runtime A1 -> A2 -> B1 -> B2 wiring: complete
+  C1-0 protected worker-source bundle: complete
+  C1-1 RelayMEM M3a-M3h compose: complete
+  C1-3 pure worker-outcome classifier: complete
+  C1-2 one-already-claimed-job worker execution: next
 
 RelayMEM independent track:
   M1/M2 store and retrieval foundations: complete
   M3a-M3g Primary MEM formation and persistence primitives: complete
   M3h read-only reconciliation recovery audit: complete
-  ordinary-runtime worker integration and next-turn recall: pending
+  C1-1 exact M3a-M3h composition: complete
+  ordinary-runtime claimed-worker integration and next-turn recall: pending
 
 SOUL Lab UI independent track:
   UI-A0 through UI-A6 browser-local presentation slices: complete
@@ -100,13 +109,15 @@ SOUL Lab Runtime:
 
 Phase 6-B1 dry-run job-record and dispatch-idempotency preflight helper: complete.
 
-Phase 6-B1: job-record and dispatch-idempotency preflight — complete.
-
 Phase 6-B2 atomic durable enqueue: complete.
 
 Phase 6-B3 queue lifecycle: complete.
 
-The next RelayLM Core boundary is Phase 6-C worker execution under an exact active B3 owner, claim-generation, and lease-token fence. Request-runtime enqueue wiring is also required for the active milestone; neither worker execution nor request-runtime wiring is included in B3.
+Integration Milestone I1-B request-runtime deferred enqueue and protected source capture: complete for ordinary managed non-stream and stream requests.
+
+Phase 6-C1-0 protected worker source, C1-1 RelayMEM composition, and C1-3 pure outcome classification: complete.
+
+The next RelayLM Core boundary is C1-2: execute one already-claimed canonical B3 job under the exact active owner, claim-generation, lease-token, revision, and expiry fence. Scheduler loops, generalized worker pools, and restart-complete protected source persistence remain later boundaries.
 
 ## Active priority: Integration Milestone I1
 
@@ -116,10 +127,13 @@ The highest-priority implementation goal is one ordinary runtime loop that prove
 
 ```text
 finalized user turn
-  -> deferred SLP admission and durable enqueue
-  -> B3 queue claim and active lease
-  -> Phase 6-C worker execution
-  -> RelayMEM M3a-M3h Primary MEM processing
+  -> deferred SLP admission and durable enqueue       complete as I1-B
+  -> B3 queue claim and active lease                  helper complete
+  -> exact C1-0 protected source                      complete
+  -> C1-2 one-claimed worker execution                next
+  -> C1-1 RelayMEM M3a-M3h processing                 complete
+  -> C1-3 outcome classification                      complete
+  -> B3 retry release or terminal commit
   -> durable page/index/log result
   -> next-turn RelayMEM retrieval
   -> RelayCTX injection
@@ -131,7 +145,7 @@ This milestone has priority over Secondary MEM consolidation, additional mock UI
 
 ### I1-A: Phase 6-B3 queue lifecycle — complete
 
-The bounded direct helper now implements:
+The bounded direct helper implements:
 
 ```text
 claim
@@ -143,37 +157,41 @@ commit_terminal
 
 It preserves dispatch-idempotency ownership in Phase 6 / RelayRUN, uses revision/owner/claim-generation/lease-token fencing, classifies queue-control outcomes without deciding memory meaning, exposes only content-free public diagnostics, and keeps visible-response success independent of queue processing.
 
-B3 remains default-off and dry-run-first. It validates complete canonical B2 records, uses a nonblocking queue lock and inode/byte compare-and-swap, never generates `dead_letter`, and never executes a worker.
+B3 remains default-off and dry-run-first. It validates complete canonical B2 records, uses a nonblocking queue lock and inode/byte compare-and-swap, never generates `dead_letter`, and never schedules or executes a worker by itself.
 
-B3 was the final queue-only prerequisite. The implementation sequence must now move into runtime integration and worker execution rather than adding another queue-helper phase.
+### I1-B: request-runtime deferred enqueue wiring — complete
 
-### I1-B: request-runtime deferred enqueue wiring
+Ordinary managed non-stream and stream response finalization now executes the exact A1 -> A2 -> B1 -> B2 sequence in a Starlette background task after visible response delivery. The implementation provides:
 
-Wire the existing A1 -> A2 -> B1 -> B2 sequence into finalized ordinary managed turns.
+- visible response finalization independent of queue persistence,
+- bounded enqueue/source-retention failure reporting without invalidating an already valid response,
+- exact runtime-private artifact handoff between stages,
+- default-off and dry-run-first rollout,
+- content-free audit projection and leakage smoke,
+- no inline B3 claim, worker execution, or RelayMEM persistence,
+- B2-success-gated process-local protected source capture,
+- exact claim-time C1-0 construction and one-shot consumption.
 
-Requirements:
+The first registry is capacity/TTL bounded and process-local. Capacity exhaustion rejects the new capture rather than evicting an existing one; TTL expiry removes the capture and later claim-time consumption returns explicit source-unavailable. It is not restart-complete.
 
-- visible response finalization occurs independently of queue persistence,
-- enqueue failure is recorded but does not invalidate an already valid response,
-- only exact runtime-private artifacts are passed between stages,
-- default-off and dry-run-first rollout remains available,
-- request-runtime smoke proves no content-bearing SLP artifact enters generic trace or public errors,
-- the runtime does not claim or execute work inline with visible response delivery.
+A separate durability gap remains if the process exits after response delivery but before the background task completes. Restart completion must cover that pre-enqueue window as well as post-enqueue protected-source persistence.
 
-### I1-C: Phase 6-C Primary MEM worker execution
+### I1-C: Phase 6-C Primary MEM worker execution — integration pending
 
-Add a bounded worker that obtains one active B3 claim and invokes existing RelayMEM-owned boundaries rather than redefining memory semantics:
+Completed bounded components:
+
+- C1-0 exact protected worker-source schema, builder, validator, correlation, one-shot scope, and content-free projection,
+- C1-1 exact M3a-M3h compose function with stage ledger and content-free projection,
+- C1-3 pure M3e/M3g/M3h outcome classifier producing bounded B3 transition intent.
+
+Remaining C1-2 worker path:
 
 ```text
 B3 active lease fence
-  -> M3a formation candidate
-  -> M3b lineage/write preflight
-  -> M3c deterministic page candidate
-  -> M3d writer handoff
-  -> M3e atomic page publication
-  -> M3f reconciliation plan
-  -> M3g index-before-log apply
-  -> M3h read-only recovery audit
+  -> exact C1-0 source consumption
+  -> C1-1 M3a-M3h compose
+  -> C1-3 pure outcome classification
+  -> final active lease fence
   -> B3 retry release or terminal commit
 ```
 
@@ -182,12 +200,12 @@ The worker must:
 - revalidate the exact active owner, claim generation, lease token, revision, and expiry before execution-sensitive transitions,
 - never execute under an expired or stale lease,
 - preserve the separation between dispatch idempotency and memory-write idempotency,
-- invoke M3a-M3h as their exact current typed boundaries,
-- classify retry/terminal outcomes without moving memory meaning into Phase 6,
+- invoke the existing C1-1 compose boundary rather than redefining M3 semantics,
+- use the C1-3 classifier rather than duplicating outcome mapping,
 - avoid direct RelaySOUL mutation and Secondary MEM consolidation,
 - remain detached from visible response completion.
 
-The first worker slice should execute one already-claimed job; scheduler loops, broad concurrency management, and generalized worker pools are not prerequisites for the first end-to-end proof.
+The first worker slice executes one already-claimed job. Scheduler loops, broad concurrency management, generalized worker pools, and retry-timing engines are not prerequisites for this boundary.
 
 ### I1-D: next-turn recall validation
 
@@ -230,7 +248,7 @@ Integration Milestone I1 is complete only when all of the following are true:
 - at least one correction operation changes later retrieval behavior,
 - restart and duplicate-dispatch smoke preserve idempotency.
 
-Helper-level completion and UI-A7 settings/characters reads alone do not satisfy I1.
+I1-B and helper/component completion alone do not satisfy I1.
 
 ## Current caveats
 
@@ -241,8 +259,8 @@ Helper-level completion and UI-A7 settings/characters reads alone do not satisfy
 - Current profile compilation still precedes normalized target SCN/INT/Retrieval handoffs.
 - Complete Runtime Compile Gate v1 route-authority/fallback/source taxonomy is not implemented.
 - RelayCTX stream suppression and TTS handoff metadata are default-off; RelayLM Core does not deliver transport or execute TTS/audio/avatar behavior.
-- Phase 6 A1/A2/B1/B2 request-runtime wiring is absent.
-- Phase 6-C worker execution and worker invocation of RelayMEM M3a-M3h are absent.
+- I1-B request-runtime enqueue/source capture is complete but process-local and response-background-task based, not restart-complete.
+- C1-2 worker execution and autonomous worker invocation of RelayMEM M3a-M3h are absent from `main`.
 - SOUL Lab UI-A7 provides bounded local read management metadata but no real run/memory observation or authoritative mutation.
 - RelayREF output observation, Secondary MEM consolidation, and actual RelaySOUL apply remain later work.
 - Token estimation is deterministic and CJK-aware but model-agnostic rather than tokenizer-exact.
@@ -266,13 +284,13 @@ Phase 5.5 is closed for RelayLM Core through:
 
 Concrete adapter delivery and TTS/audio/avatar execution belong to SOUL Lab Runtime MVP and are deferred until the text and memory loop is proven.
 
-### Deferred orchestration primitives
+### Phase 6 orchestration and worker components
 
-Phase 6 has implemented exact bounded artifacts through B3 fenced queue lifecycle. B2 persists a queued record. B3 can claim, renew, retry-release, recover stale work, and commit terminal state, but neither helper invokes a worker or wires ordinary request finalization.
+Phase 6 has implemented exact bounded artifacts through B3 fenced queue lifecycle and I1-B ordinary request-runtime enqueue/source capture. B2 persists a queued record. B3 can claim, renew, retry-release, recover stale work, and commit terminal state. C1-0 provides the exact protected worker source, C1-1 composes M3a-M3h, and C1-3 classifies exact outcomes. C1-2 remains the missing connection for one already-claimed job; no scheduler or worker pool is implied by I1-B.
 
 ### Primary MEM primitives
 
-RelayMEM M3a-M3h provide formation, lineage, deterministic page construction, atomic page publication, index/log reconciliation, and read-only recovery classification. They remain direct/helper boundaries until I1 worker integration lands.
+RelayMEM M3a-M3h provide formation, lineage, deterministic page construction, atomic page publication, index/log reconciliation, and read-only recovery classification. C1-1 now fixes their exact composition order without weakening stage validators. They remain disconnected from autonomous queued execution until C1-2 lands.
 
 ### SOUL Lab presentation and read foundation
 
@@ -315,4 +333,4 @@ choose the integration work unless a concrete safety defect blocks it.
 
 ## Update rule
 
-Update this plan whenever a phase lands, I1 sequencing changes, a target-only schema gains a real producer/consumer path, or a mock/direct-helper boundary becomes ordinary runtime behavior. Keep detailed schema and historical evidence in dedicated contract and handoff documents rather than duplicating them here.
+Update this plan whenever a phase lands, I1 sequencing changes, a target-only schema gains a real producer/consumer path, or a mock/direct-helper boundary becomes ordinary runtime behavior. Any PR that marks a bounded handoff `current` and implemented must also review and update `docs/PROJECT_STATUS.md`, this plan, `docs/README.md`, the relevant architecture index entry, and any affected current/target boundary document in the same PR or explicitly document why no status change occurred. Keep detailed schema and historical evidence in dedicated contract and handoff documents rather than duplicating them here.

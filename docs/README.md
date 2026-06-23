@@ -25,8 +25,10 @@ RelayLM documentation is AI-first: documents should be understandable when retri
 - [Current project status](PROJECT_STATUS.md) — concise current boundary, Integration Milestone I1, and next choices
 - [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing
-- [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md) — orchestration track through B3 queue lifecycle; Phase 6-C worker execution is next
+- [Phase 6 I1-B runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md) — ordinary managed request-runtime A1 -> A2 -> B1 -> B2 wiring and process-local source retention
+- [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md) — exact active-lease, protected-source, retry, crash, and outcome boundary; C1-2 worker execution is next on `main`
 - [Phase 6-B3 fenced queue state helpers](architecture/phase6b3_relayslp_queue_state_helpers.md) — exact claim/lease/retry/stale/terminal queue-control boundary
+- [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md) — current producer/consumer connection and remaining migration boundary
 - [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md) — Primary MEM direct/helper path complete through M3h recovery audit
 - [SOUL Lab UI-A7 read-only management projection](architecture/soul_lab_ui_a7_management_projection_handoff.md) — local-only secret-free Lab API reads and explicit mock fallback
 - [Architecture docs](architecture/README.md)
@@ -46,7 +48,7 @@ Use [Project Status](PROJECT_STATUS.md) for the current developer-facing view an
 
 Phase 5.5 Stream Unpack / TTS handoff preparation is complete for RelayLM Core. Concrete TTS execution, audio queueing, adapter delivery, Live2D/avatar mapping, motion, and lip-sync remain SOUL Lab Runtime MVP responsibilities.
 
-Current work is integration-first around Integration Milestone I1. RelayLM Core is complete through Phase 6-B3 fenced queue lifecycle helpers; Phase 6-C worker execution under an active lease fence and request-runtime enqueue wiring are next. RelayMEM has implemented the Primary MEM direct/helper path through M3h recovery audit, but ordinary turn finalization and a worker do not yet invoke it. SOUL Lab UI is implemented through UI-A7 local-only read management projections. Latest-run and real memory-outcome reads, management mutations, persisted memory operations, static UI serving, and runtime adapter execution remain separate.
+Current work is integration-first around Integration Milestone I1. Ordinary managed non-stream and stream finalization now performs response-independent A1 -> A2 -> B1 -> B2 enqueue and process-local protected source capture. Phase 6-B3 queue lifecycle helpers, C1-0 protected source, C1-1 M3a-M3h compose, and C1-3 pure outcome classification are complete. C1-2 one-already-claimed-job execution is the remaining worker connection on `main`; scheduler execution, restart-complete source/finalization persistence, and later-turn recall remain pending. SOUL Lab UI is implemented through UI-A7 local-only read management projections. Latest-run and real memory-outcome reads, management mutations, persisted memory operations, static UI serving, and runtime adapter execution remain separate.
 
 Use [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) before treating proposed schemas, future execution gates, or historical compatibility artifacts as current behavior.
 
@@ -70,10 +72,16 @@ When documents disagree:
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md)
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md)
 - [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md)
+- [Phase 6-A1 Job admission](architecture/phase6a1_relayslp_job_admission_contract.md)
+- [Phase 6-A2 Response-finalization handoff](architecture/phase6a2_relayslp_response_handoff_contract.md)
 - [Phase 6-B0 Durable queue contract](architecture/phase6b0_relayslp_durable_queue_contract.md)
 - [Phase 6-B1 Dispatch preflight](architecture/phase6b1_relayslp_dispatch_preflight.md)
 - [Phase 6-B2 Atomic durable enqueue](architecture/phase6b2_relayslp_atomic_durable_enqueue.md)
 - [Phase 6-B3 Fenced queue state helpers](architecture/phase6b3_relayslp_queue_state_helpers.md)
+- [Phase 6 I1-B Runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md)
+- [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md)
+- [Phase 6-C1-1 RelayMEM Primary pipeline compose](architecture/phase6c1_relaymem_primary_pipeline_compose.md)
+- [Phase 6-C1-3 Primary worker outcome classifier](architecture/phase6c1_primary_worker_outcome_classifier.md)
 - [Completed Phase 5.5 Stream Unpack bounded slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Client history authority contract](architecture/client_history_authority_contract.md)
@@ -135,7 +143,8 @@ AI-first maintenance rules:
 - add front matter to active current/architecture/plan/contract docs when practical,
 - include document type, authority, status, volatility, owner, update trigger, and non-authority fields,
 - keep current/target/compatibility/historical/frozen status explicit,
-- do not encode source text, prompts, traces, cache bodies, or runtime-private data in metadata.
+- do not encode source text, prompts, traces, cache bodies, or runtime-private data in metadata,
+- when an implemented/current handoff changes milestone state, review Project Status, the implementation plan, this index, the architecture index, and affected current/target boundaries together.
 
 Placement rules:
 

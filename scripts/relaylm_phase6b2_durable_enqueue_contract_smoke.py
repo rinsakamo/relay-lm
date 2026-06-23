@@ -92,30 +92,30 @@ def main() -> None:
     _require_all(
         current_target,
         (
-            "Phase 6-B2",
-            "atomic durable enqueue",
-            "Phase 6-B3",
-            "Phase 6-C worker execution",
+            "Phase 6-B2 implements atomic durable enqueue",
+            "Phase 6-B3 implements default-off, dry-run-first fenced",
+            "I1-B invokes A1 -> A2 -> B1 -> B2",
+            "The next bounded RelayLM Core implementation on `main` is C1-2",
         ),
         label="current-target alignment",
     )
     _require_all(
         pipeline_plan,
         (
-            "Phase 6-B2 atomic durable enqueue",
-            "complete",
-            "Phase 6-B3 queue lifecycle",
-            "Phase 6-C worker execution",
+            "Phase 6-B2 atomic durable enqueue: complete",
+            "Phase 6-B3 queue lifecycle: complete",
+            "Integration Milestone I1-B request-runtime deferred enqueue and protected source capture: complete",
+            "The next RelayLM Core boundary is C1-2",
         ),
         label="pipeline-plan alignment",
     )
     _require_all(
         project_status,
         (
-            "Asynchronous RelaySLP orchestration",
-            "Phase 6-B2",
-            "Phase 6-B3",
-            "Phase 6-C worker execution",
+            "Asynchronous RelaySLP orchestration: I1-B runtime enqueue complete; queue lifecycle complete through B3; C1-0/C1-1/C1-3 complete",
+            "Phase 6-B2 atomic durable enqueue",
+            "Phase 6-B3 fenced queue state transitions",
+            "C1-2 one-already-claimed-job worker execution is not yet on `main`",
         ),
         label="project-status alignment",
     )
