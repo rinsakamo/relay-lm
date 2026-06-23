@@ -9,11 +9,14 @@ A committed source artifact is never deleted merely because this caller did not
 observe B2 success. B2 may have published its queue record before reporting a
 late fsync or verification failure, or another process may publish the same job.
 The uncertain artifact is therefore retained for reconciliation rather than
-risking a claimable queue record with no protected source.
+risking a claimable queue record with no protected source. Synchronous orphan
+cleanup is limited to the invalid-configuration case where the queue root itself
+is still absent and queue publication is therefore impossible.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import Literal
 
 from .pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
@@ -281,7 +284,16 @@ def apply_relaymem_slp_durable_runtime_enqueue(
         and enqueue.status in {"enqueued_new", "duplicate_existing"}
     )
     if not queue_published:
-        orphan = _retained_orphan_result(persisted)
+        orphan = (
+            source_store.discard_unqueued(
+                source_payload=payload,
+                durable_job=dispatch.durable_job,
+                character_id=source.character_id,
+            )
+            if persisted.status == "published_new"
+            and _queue_root_definitely_absent(queue_root)
+            else _retained_orphan_result(persisted)
+        )
         reasons = dedupe(
             (*applied.blocked_reasons, *orphan.blocked_reasons)
         ) or ("durable_enqueue_failed",)
@@ -375,6 +387,15 @@ def build_relaymem_slp_durable_runtime_enqueue_node_result(
             }
         ],
     )
+
+
+def _queue_root_definitely_absent(queue_root: object) -> bool:
+    if type(queue_root) is not str:
+        return False
+    try:
+        return not Path(queue_root).exists()
+    except OSError:
+        return False
 
 
 def _retained_orphan_result(
