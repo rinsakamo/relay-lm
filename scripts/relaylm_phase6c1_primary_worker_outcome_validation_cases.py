@@ -57,6 +57,15 @@ def run_validation_cases() -> tuple[object, ...]:
 
     unknown_field = classify(M3eWithUnknownField(), m3g(), m3h())
     assert "exact_m3e_result_required" in unknown_field.blocked_reason_ids
+
+    @dataclass(frozen=True)
+    class M3eMissingField:
+        schema_version: str = M3E_SCHEMA
+        status: str = "applied"
+        handoff_valid: bool = True
+
+    missing_field = classify(M3eMissingField(), m3g(), m3h())
+    assert "exact_m3e_result_required" in missing_field.blocked_reason_ids
     bool_int = classify(
         replace(m3e_applied(), page_applied=1),
         m3g(),
@@ -71,6 +80,7 @@ def run_validation_cases() -> tuple[object, ...]:
         unknown,
         wrong_schema,
         unknown_field,
+        missing_field,
         bool_int,
         generic,
     )
