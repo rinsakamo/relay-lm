@@ -143,7 +143,13 @@ def store_failure_from_reasons(reason_ids: tuple[str, ...]) -> FailureClass | No
         if "digest_mismatch" in reason or any(
             token in reason
             for token in (
-                "_invalid", "_corrupt", "utf8", "symlink", "non_regular", "schema"
+                "_invalid",
+                "_corrupt",
+                "utf8",
+                "symlink",
+                "not_regular",
+                "non_regular",
+                "schema",
             )
         ):
             return "store_corruption"
