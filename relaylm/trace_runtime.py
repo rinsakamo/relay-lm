@@ -87,7 +87,12 @@ def trace_runtime_event(
         metadata_expects_stream_final_trace = bool(
             trace_metadata.pop("stream_final_pipeline_node_results_expected", False)
         )
-        if resolved_pipeline_node_results is not None and not explicit_pipeline_node_results:
+        if resolved_pipeline_node_results is not None and (
+            not explicit_pipeline_node_results
+            or _is_relaymem_slp_runtime_enqueue_node_results(
+                resolved_pipeline_node_results
+            )
+        ):
             trace_metadata["pipeline_node_results"] = resolved_pipeline_node_results
         trace_metadata.update(_supported_diagnostics_metadata(diagnostics))
         record = build_trace_record(
@@ -151,6 +156,17 @@ def _pipeline_node_results_to_log_dicts(
     node_results: Sequence[PipelineNodeResult],
 ) -> list[dict[str, Any]]:
     return [result.to_log_dict() for result in node_results]
+
+
+def _is_relaymem_slp_runtime_enqueue_node_results(
+    node_results: list[dict[str, Any]] | None,
+) -> bool:
+    if not node_results or len(node_results) != 2:
+        return False
+    return [result.get("node_name") for result in node_results] == [
+        "relaymem_slp_finalized_turn_source",
+        "relaymem_slp_runtime_enqueue",
+    ]
 
 
 def _is_stream_final_tts_node_results(
