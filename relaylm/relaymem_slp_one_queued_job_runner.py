@@ -314,7 +314,7 @@ def execute_one_queued_relaymem_slp_primary_job(
         )
 
     try:
-        active, checked_claim, active_reasons = _check_active_claim(
+        active, _, active_reasons = _check_active_claim(
             claimed,
             queue_root=exact.queue_root,
             lease_duration_seconds=exact.lease_duration_seconds,
@@ -322,17 +322,8 @@ def execute_one_queued_relaymem_slp_primary_job(
         )
     except Exception:
         active = False
-        checked_claim = None
         active_reasons = ("one_queued_job_claim_revalidation_failed",)
-    checked_record = (
-        checked_claim.durable_record if checked_claim is not None else None
-    )
-    if not active or not _exact_claimed_record(checked_record):
-        reasons = active_reasons or (
-            "one_queued_job_checked_record_invalid"
-            if active
-            else "one_queued_job_claim_not_current"
-        )
+    if not active:
         return _result(
             "claim_lost_before_rehydrate",
             exact,
@@ -340,10 +331,13 @@ def execute_one_queued_relaymem_slp_primary_job(
             claim_performed=True,
             claim_result=claim,
             claim_status=claim.status,
-            reasons=reasons,
+            reasons=active_reasons or ("one_queued_job_claim_not_current",),
         )
-    assert type(checked_record) is dict
-    claimed = dict(checked_record)
+    # The canonical B3 dry-run fence rereads the durable record and proves that
+    # this exact claimed revision/owner/generation/token is current. Its returned
+    # durable_record is a renewal proposal, so the committed claim record remains
+    # the exact input for C1-5 and C1-2.
+    claimed = dict(claimed)
 
     try:
         prepared = prepare_relaymem_slp_primary_worker_source_for_claim(
