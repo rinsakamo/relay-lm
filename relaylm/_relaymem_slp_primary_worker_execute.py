@@ -4,7 +4,6 @@ from __future__ import annotations
 from .relaymem_primary_pipeline import (
     REQUEST_SCHEMA as PRIMARY_PIPELINE_REQUEST_SCHEMA,
     RelayMEMPrimaryPipelineRequest,
-    RelayMEMPrimaryPipelineResult,
     execute_relaymem_primary_pipeline,
     project_relaymem_primary_pipeline,
 )
@@ -17,6 +16,7 @@ from .relaymem_slp_primary_worker_source import validate_relaymem_slp_primary_wo
 from ._relaymem_slp_primary_worker_fence import _CheckpointCoordinator, _check_active_claim
 from ._relaymem_slp_primary_worker_outcome_adapter import (
     _apply_outcome_transition,
+    _bounded_outcome_and_retry,
     _classify_pipeline,
     _side_effect_started,
 )
@@ -92,9 +92,7 @@ def execute_relaymem_slp_primary_worker(
                     status="invalid",
                 ),
             )
-            return _finish_classified_without_pipeline(
-                exact, outcome, source_reasons
-            )
+            return _finish_classified_without_pipeline(exact, outcome, source_reasons)
         return _result(
             status="source_invalid",
             request=exact,
@@ -153,8 +151,12 @@ def execute_relaymem_slp_primary_worker(
         )
 
     if exact.dry_run_only:
-        status = "dry_run_ready" if pipeline.status == "dry_run_ready" else (
-            "pipeline_held" if pipeline.status == "held" else "pipeline_blocked"
+        status = (
+            "dry_run_ready"
+            if pipeline.status == "dry_run_ready"
+            else "pipeline_held"
+            if pipeline.status == "held"
+            else "pipeline_blocked"
         )
         return _result(
             status=status,
@@ -212,6 +214,9 @@ def execute_relaymem_slp_primary_worker(
             reasons=(*pipeline.reason_ids, *outcome.blocked_reason_ids),
         )
 
+    outcome, retry_not_before = _bounded_outcome_and_retry(
+        outcome, coordinator.current_record
+    )
     final_allowed, _, final_reasons = _check_active_claim(
         coordinator.current_record,
         queue_root=exact.queue_root,
@@ -238,7 +243,7 @@ def execute_relaymem_slp_primary_worker(
         outcome,
         current_record=coordinator.current_record,
         queue_root=exact.queue_root,
-        retry_not_before=exact.retry_not_before,
+        retry_not_before=retry_not_before,
     )
     applied = (
         transition.status == "applied"
