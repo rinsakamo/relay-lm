@@ -5,6 +5,7 @@ on:
     paths:
       - "scripts/_relaylm_phase6c1_fault_fixtures.py"
       - "scripts/relaylm_phase6c1_fault_injection_smoke.py"
+      - "scripts/relaylm_phase6c1_fault_race_smoke.py"
       - "relaylm/relaymem_slp_queue_state.py"
       - "relaylm/relaymem_slp_queue_record.py"
       - "relaylm/relaymem_slp_queue_storage.py"
@@ -23,6 +24,7 @@ on:
     paths:
       - "scripts/_relaylm_phase6c1_fault_fixtures.py"
       - "scripts/relaylm_phase6c1_fault_injection_smoke.py"
+      - "scripts/relaylm_phase6c1_fault_race_smoke.py"
       - "relaylm/relaymem_slp_queue_state.py"
       - "relaylm/relaymem_slp_queue_record.py"
       - "relaylm/relaymem_slp_queue_storage.py"
@@ -50,52 +52,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Compile Phase 6-C1 fault fixtures and smoke
+      - name: Compile Phase 6-C1 fault fixtures and smokes
         run: >-
           python -m compileall -q
           scripts/_relaylm_phase6c1_fault_fixtures.py
           scripts/relaylm_phase6c1_fault_injection_smoke.py
-      - name: Validate queue claim and lease fixtures
-        run: >-
-          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
-          test_claimed_record, test_expired_claim, test_stale_fences;
-          test_claimed_record(); test_expired_claim(); test_stale_fences()'
-      - name: Validate M3e publication and duplicate fixtures
-        run: >-
-          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
-          test_m3e_and_duplicate; test_m3e_and_duplicate()'
-      - name: Validate M3g lock contention fixture
-        run: >-
-          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
-          test_m3g_lock_contention; test_m3g_lock_contention()'
-      - name: Validate M3h lock contention fixture
-        run: >-
-          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
-          test_m3h_lock_contention; test_m3h_lock_contention()'
-      - name: Validate reconciliation recovery fixtures
-        run: >-
-          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
-          test_recovery_states, test_diverged_controls;
-          test_recovery_states(); test_diverged_controls()'
-      - name: Validate crash-point fixtures
-        run: >-
-          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
-          test_crash_points; test_crash_points()'
-      - name: Validate deterministic fixture construction
-        run: >-
-          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
-          test_determinism_and_identity_domains;
-          test_determinism_and_identity_domains()'
-      - name: Validate source and worker boundaries
-        run: >-
-          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
-          test_source_boundaries; test_source_boundaries()'
-      - name: Validate subprocess content leakage
-        run: >-
-          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
-          test_subprocess_content_leakage; test_subprocess_content_leakage()'
-      - name: Run complete Phase 6-C1 fault injection smoke
+          scripts/relaylm_phase6c1_fault_race_smoke.py
+      - name: Run Phase 6-C1 fault injection smoke
         run: python scripts/relaylm_phase6c1_fault_injection_smoke.py
+      - name: Run Phase 6-C1 fault race smoke
+        run: python scripts/relaylm_phase6c1_fault_race_smoke.py
       - name: Run Phase 6-B3 queue contract smoke
         run: python scripts/relaylm_phase6b3_queue_state_contract_smoke.py
       - name: Run RelayMEM M3e page writer smoke
