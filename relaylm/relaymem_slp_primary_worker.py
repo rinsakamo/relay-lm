@@ -7,6 +7,8 @@ projection ownership remain explicit.
 """
 from __future__ import annotations
 
+from threading import RLock
+
 from . import _relaymem_slp_primary_worker_execute as _execute
 from . import _relaymem_slp_primary_worker_outcome_adapter as _outcome_adapter
 from .pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
@@ -25,18 +27,26 @@ classify_relaymem_slp_primary_worker_outcome = (
     _execute.classify_relaymem_slp_primary_worker_outcome
 )
 
+# The existing production-test seams are module-level callables. Synchronize
+# their temporary propagation into the private implementation so a patched
+# invocation cannot affect a concurrent worker call. RelayMEM compose already
+# serializes its own module-level helper seams, so this does not introduce a new
+# concurrency restriction within the current bounded worker slice.
+_WORKER_SEAM_LOCK = RLock()
+
 
 def execute_relaymem_slp_primary_worker(
     request: object,
 ) -> RelayMEMSLPPrimaryWorkerResult:
     """Execute exactly one caller-selected canonical B3 claimed record."""
 
-    pipeline = globals()["execute_relaymem_primary_pipeline"]
-    classifier = globals()["classify_relaymem_slp_primary_worker_outcome"]
-    _execute.execute_relaymem_primary_pipeline = pipeline
-    _execute.classify_relaymem_slp_primary_worker_outcome = classifier
-    _outcome_adapter.classify_relaymem_slp_primary_worker_outcome = classifier
-    return _execute.execute_relaymem_slp_primary_worker(request)
+    with _WORKER_SEAM_LOCK:
+        pipeline = globals()["execute_relaymem_primary_pipeline"]
+        classifier = globals()["classify_relaymem_slp_primary_worker_outcome"]
+        _execute.execute_relaymem_primary_pipeline = pipeline
+        _execute.classify_relaymem_slp_primary_worker_outcome = classifier
+        _outcome_adapter.classify_relaymem_slp_primary_worker_outcome = classifier
+        return _execute.execute_relaymem_slp_primary_worker(request)
 
 
 def build_relaymem_slp_primary_worker_node_result(
