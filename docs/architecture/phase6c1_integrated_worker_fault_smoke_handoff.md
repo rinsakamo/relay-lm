@@ -17,7 +17,6 @@ relaylm_not_authoritative_for:
 relaylm_related_authority:
   - phase6c1_primary_mem_worker_contract.md
   - phase6c1_one_claimed_primary_worker_handoff.md
-  - phase6c1_fault_injection_fixture_handoff.md
   - phase6c1_relaymem_primary_pipeline_compose.md
   - phase6c1_primary_worker_outcome_classifier.md
   - phase6b3_relayslp_queue_state_helpers.md
