@@ -92,10 +92,10 @@ def main() -> None:
     _require_all(
         current_target,
         (
-            "Phase 6-B2",
-            "atomic durable enqueue",
-            "Phase 6-B3",
-            "Phase 6-C worker execution",
+            "Phase 6-B2 implements atomic durable enqueue",
+            "Phase 6-B3 implements default-off, dry-run-first fenced",
+            "I1-B invokes A1 -> A2 -> B1 -> B2",
+            "The next bounded RelayLM Core implementation on `main` is C1-2",
         ),
         label="current-target alignment",
     )
