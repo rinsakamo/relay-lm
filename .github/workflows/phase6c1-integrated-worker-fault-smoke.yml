@@ -69,6 +69,7 @@ jobs:
           relaylm/_relaymem_slp_primary_worker_types.py
           relaylm/_relaymem_slp_primary_worker_fence.py
           relaylm/_relaymem_slp_primary_worker_outcome_adapter.py
+          relaylm/_relaymem_slp_primary_worker_outcome_result.py
           relaylm/_relaymem_slp_primary_worker_validate.py
           relaylm/_relaymem_slp_primary_worker_execute.py
           relaylm/_relaymem_slp_primary_worker_view.py
@@ -76,6 +77,7 @@ jobs:
           scripts/relaylm_phase6c1_worker_fault_smoke.py
           scripts/relaylm_phase6c1_worker_crash_convergence_smoke.py
           scripts/relaylm_phase6c1_worker_lease_race_smoke.py
+          scripts/relaylm_phase6c1_worker_corruption_smoke.py
           scripts/relaylm_phase6c1_worker_content_leakage_smoke.py
           scripts/relaylm_phase6c1_worker_integration_ci_runner.py
       - name: Run bounded integrated worker suite
