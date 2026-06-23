@@ -32,15 +32,29 @@ def main() -> None:
         "UI-A0 through UI-A7",
         "GET /lab/api/settings",
         "GET /lab/api/characters",
-        "Phase 6-B3",
+        "C1-0 through C1-5 complete",
+        "B3 claim -> C1-5 rehydrate -> C1-2 execute",
+        "durably enqueued jobs",
     )
-    forbid("docs/PROJECT_STATUS.md", "Status baseline `main` commit:")
+    forbid(
+        "docs/PROJECT_STATUS.md",
+        "Status baseline `main` commit:",
+        "C1-2 one-already-claimed-job worker execution is not yet on `main`",
+    )
 
     require(
         "docs/architecture/pipeline_implementation_plan.md",
-        "UI-A7 local-only settings/characters read projections: complete",
+        "UI-A0 through UI-A7: complete",
         "latest-run and memory-outcome reads: pending",
-        "Phase 6-B3",
+        "Phase 6-C1-0 through C1-5 are complete",
+        "one-job claim/rehydrate/execute integration adapter",
+    )
+
+    require(
+        "docs/architecture/relaymem_slp_current_target.md",
+        "C1-5 durable claim-independent protected source and restart rehydration",
+        "one-job claim/rehydrate/execute adapter",
+        "pre-enqueue background-finalizer crash window",
     )
 
     require(

@@ -1,9 +1,8 @@
 """Post-response Phase 6 I1-B runtime finalization.
 
 The stream observer is byte-preserving and sits outside RelayCTX suppression and
-TTS handoff.  The background function runs only after Starlette has completed
-response delivery.  It catches all failures, records only content-free node
-results, and never changes the already-finalized response.
+TTS handoff. The background function runs only after response delivery, persists
+protected source before queue publication, and records only content-free nodes.
 """
 from __future__ import annotations
 
@@ -16,6 +15,12 @@ from typing import Any
 from relaylm.config import RelayLMConfig
 from relaylm.diagnostics import RequestDiagnostics
 from relaylm.pipeline_context import PipelineContext
+from relaylm.relaymem_slp_durable_runtime_enqueue import (
+    RelayMEMSLPDurableRuntimeEnqueueResult,
+    apply_relaymem_slp_durable_runtime_enqueue,
+    build_relaymem_slp_durable_runtime_enqueue_failure_result,
+    build_relaymem_slp_durable_runtime_enqueue_node_result,
+)
 from relaylm.relaymem_slp_finalized_turn_source import (
     RelayMEMSLPFinalizedTurnSourceResult,
     build_relaymem_slp_finalized_turn_source,
@@ -24,11 +29,11 @@ from relaylm.relaymem_slp_finalized_turn_source import (
 from relaylm.relaymem_slp_primary_worker_source_registry import (
     RelayMEMSLPPrimaryWorkerSourceRegistry,
 )
+from relaylm.relaymem_slp_protected_source_store import (
+    RelayMEMSLPDurableProtectedSourceStore,
+)
 from relaylm.relaymem_slp_runtime_enqueue import (
-    RelayMEMSLPRuntimeEnqueueResult,
-    apply_relaymem_slp_runtime_enqueue,
     build_relaymem_slp_runtime_enqueue_failure_result,
-    build_relaymem_slp_runtime_enqueue_node_result,
 )
 from relaylm.trace_runtime import trace_runtime_event
 
@@ -143,8 +148,8 @@ def run_relaymem_slp_runtime_enqueue_after_response(
     assistant_visible_text: str | None = None,
     stream_capture: RelayMEMSLPFinalizedVisibleTextCapture | None = None,
     message_count: int = 0,
-) -> RelayMEMSLPRuntimeEnqueueResult:
-    """Run safe source capture/enqueue after response delivery and swallow errors."""
+) -> RelayMEMSLPDurableRuntimeEnqueueResult:
+    """Run source capture and crash-consistent enqueue after response delivery."""
 
     source_result: RelayMEMSLPFinalizedTurnSourceResult | None = None
     try:
@@ -163,22 +168,38 @@ def run_relaymem_slp_runtime_enqueue_after_response(
             response_finalized=True,
             enabled=config.relaymem_slp_runtime_enqueue_enabled,
         )
-        result = apply_relaymem_slp_runtime_enqueue(
+        source_store = (
+            RelayMEMSLPDurableProtectedSourceStore(
+                config.relaymem_slp_protected_source_root,
+                max_artifact_bytes=(
+                    config.relaymem_slp_protected_source_max_artifact_bytes
+                ),
+            )
+            if config.relaymem_slp_protected_source_root is not None
+            else None
+        )
+        result = apply_relaymem_slp_durable_runtime_enqueue(
             source_result,
             registry=registry,
+            source_store=source_store,
             queue_root=config.relaymem_slp_queue_root,
             enabled=config.relaymem_slp_runtime_enqueue_enabled,
             dry_run_only=config.relaymem_slp_runtime_enqueue_dry_run_only,
             apply_enabled=config.relaymem_slp_runtime_enqueue_apply_enabled,
         )
     except Exception:
-        result = build_relaymem_slp_runtime_enqueue_failure_result()
+        runtime_failure = build_relaymem_slp_runtime_enqueue_failure_result()
+        result = build_relaymem_slp_durable_runtime_enqueue_failure_result(
+            runtime_failure
+        )
 
     nodes = []
     try:
         if source_result is not None:
-            nodes.append(build_relaymem_slp_finalized_turn_source_node_result(source_result))
-        nodes.append(build_relaymem_slp_runtime_enqueue_node_result(result))
+            nodes.append(
+                build_relaymem_slp_finalized_turn_source_node_result(source_result)
+            )
+        nodes.append(build_relaymem_slp_durable_runtime_enqueue_node_result(result))
         for node in nodes:
             pipeline_context.record_node_result(node)
         trace_runtime_event(
@@ -192,8 +213,12 @@ def run_relaymem_slp_runtime_enqueue_after_response(
     except Exception:
         pass
     finally:
-        if result.status == "dry_run_ready" and result.source_scope is not None:
-            result.source_scope.close()
+        runtime_result = result.runtime_result
+        if (
+            runtime_result.status == "dry_run_ready"
+            and runtime_result.source_scope is not None
+        ):
+            runtime_result.source_scope.close()
     return result
 
 

@@ -18,19 +18,21 @@ relaylm_current_status_source: PROJECT_STATUS.md
 
 This page is the entry point for RelayLM documentation.
 
-RelayLM documentation is AI-first: documents should be understandable when retrieved partially by ChatGPT, Codex, or another assistant. Use [Documentation Model](DOCUMENTATION_MODEL.md) for document types, metadata, status labels, and authority rules.
+RelayLM documentation is AI-first: documents should remain understandable when retrieved partially by ChatGPT, Codex, or another assistant. Use [Documentation Model](DOCUMENTATION_MODEL.md) for document types, metadata, status labels, and authority rules.
 
 ## Start here
 
 - [Current project status](PROJECT_STATUS.md) — concise current boundary, Integration Milestone I1, and next choices
 - [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing
-- [Phase 6 I1-B runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md) — ordinary managed request-runtime A1 -> A2 -> B1 -> B2 wiring and process-local source retention
-- [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md) — exact active-lease, protected-source, retry, crash, and outcome boundary; C1-2 worker execution is next on `main`
-- [Phase 6-B3 fenced queue state helpers](architecture/phase6b3_relayslp_queue_state_helpers.md) — exact claim/lease/retry/stale/terminal queue-control boundary
+- [Phase 6 I1-B runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md) — ordinary managed request-runtime enqueue and finalized-turn source production
+- [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md) — exact active-lease, source, retry, crash, and outcome boundary
+- [Phase 6-C1-2 one-claimed worker](architecture/phase6c1_one_claimed_primary_worker_handoff.md) — production execution of one exact claimed B3 job
+- [Phase 6-C1-4 integrated worker fault smoke](architecture/phase6c1_integrated_worker_fault_smoke_handoff.md) — crash, lease, lock, race, corruption, and leakage convergence
+- [Phase 6-C1-5 durable protected source persistence](architecture/phase6c1_durable_protected_source_persistence.md) — source-before-queue publication and restart rehydration
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md) — current producer/consumer connection and remaining migration boundary
-- [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md) — Primary MEM direct/helper path complete through M3h recovery audit
-- [SOUL Lab UI-A7 read-only management projection](architecture/soul_lab_ui_a7_management_projection_handoff.md) — local-only secret-free Lab API reads and explicit mock fallback
+- [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md) — Primary MEM persistence, worker integration, recall, and Lab-ready sequence
+- [SOUL Lab UI-A7 read-only management projection](architecture/soul_lab_ui_a7_management_projection_handoff.md) — local-only secret-free Lab API reads and mock fallback
 - [Architecture docs](architecture/README.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Contract docs](contracts/README.md)
@@ -42,17 +44,17 @@ RelayLM documentation is AI-first: documents should be understandable when retri
 
 ## Current status
 
-The repository-wide documentation audit, audit Phases 1–8, is complete as of 2026-06-17 JST. That numbering is independent of runtime implementation phases.
-
 Use [Project Status](PROJECT_STATUS.md) for the current developer-facing view and [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md) for detailed sequencing.
 
 Phase 5.5 Stream Unpack / TTS handoff preparation is complete for RelayLM Core. Concrete TTS execution, audio queueing, adapter delivery, Live2D/avatar mapping, motion, and lip-sync remain SOUL Lab Runtime MVP responsibilities.
 
-Current work is integration-first around Integration Milestone I1. Ordinary managed non-stream and stream finalization now performs response-independent A1 -> A2 -> B1 -> B2 enqueue and process-local protected source capture. Phase 6-B3 queue lifecycle helpers, C1-0 protected source, C1-1 M3a-M3h compose, and C1-3 pure outcome classification are complete. C1-2 one-already-claimed-job execution is the remaining worker connection on `main`; scheduler execution, restart-complete source/finalization persistence, and later-turn recall remain pending. SOUL Lab UI is implemented through UI-A7 local-only read management projections. Latest-run and real memory-outcome reads, management mutations, persisted memory operations, static UI serving, and runtime adapter execution remain separate.
+Current work is integration-first around Integration Milestone I1. Ordinary managed non-stream and stream finalization performs response-independent A1 -> A2 -> B1 -> B2 enqueue. Phase 6-B3 and C1-0 through C1-5 are complete, including one-claimed execution, integrated fault convergence, and protected-source restart recovery for durably enqueued jobs.
+
+The next boundary is a thin one-job B3 claim -> C1-5 rehydrate -> C1-2 execute adapter, followed by next-turn recall. Queue scanning, daemon scheduling, the pre-enqueue background-task crash window, and real SOUL Lab memory APIs remain pending.
+
+SOUL Lab UI is implemented through UI-A7 local-only read management projections. Latest-run and real memory-outcome reads, management mutations, persisted memory operations, static UI serving, and runtime adapter execution remain separate.
 
 Use [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) before treating proposed schemas, future execution gates, or historical compatibility artifacts as current behavior.
-
-Use [Documentation Model](DOCUMENTATION_MODEL.md) before adding new docs or deciding whether a document is status, stable architecture, implementation planning, contract, smoke/how-to, handoff, ADR, or historical evidence.
 
 ## Canonical precedence
 
@@ -81,7 +83,10 @@ When documents disagree:
 - [Phase 6 I1-B Runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md)
 - [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md)
 - [Phase 6-C1-1 RelayMEM Primary pipeline compose](architecture/phase6c1_relaymem_primary_pipeline_compose.md)
+- [Phase 6-C1-2 One-claimed Primary MEM worker](architecture/phase6c1_one_claimed_primary_worker_handoff.md)
 - [Phase 6-C1-3 Primary worker outcome classifier](architecture/phase6c1_primary_worker_outcome_classifier.md)
+- [Phase 6-C1-4 Integrated worker fault smoke](architecture/phase6c1_integrated_worker_fault_smoke_handoff.md)
+- [Phase 6-C1-5 Durable protected source persistence](architecture/phase6c1_durable_protected_source_persistence.md)
 - [Completed Phase 5.5 Stream Unpack bounded slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Client history authority contract](architecture/client_history_authority_contract.md)
@@ -118,11 +123,11 @@ When documents disagree:
 
 Contract, artifact, schema, approval, and gate documents are collected under `docs/contracts/`.
 
-Current compile behavior includes the typed `CompileApplyDecision`, the content-free `mvp-ctx-apply-0` diagnostics artifact, and bounded history-exclusion apply contracts v0/v1. Complete Runtime Compile Gate v1 remains target work.
+Current compile behavior includes typed compile decisions, content-free diagnostics, and bounded history-exclusion apply contracts v0/v1. Complete Runtime Compile Gate v1 remains target work.
 
 ## MVP and historical material
 
-`docs/mvp/` contains historical implementation snapshots. `docs/architecture/archive/` preserves superseded architecture rationale. Neither overrides current architecture, contracts, project status, or implementation sequencing.
+`docs/mvp/` contains historical implementation snapshots. `docs/architecture/archive/` preserves superseded rationale. Neither overrides current architecture, contracts, project status, or implementation sequencing.
 
 ## Setup, smoke, and validation
 
@@ -130,31 +135,29 @@ Current compile behavior includes the typed `CompileApplyDecision`, the content-
 - [Smoke and validation docs](smoke/README.md)
 - [OpenWebUI + RelayLM troubleshooting](smoke/openwebui_lmstudio_troubleshooting.md)
 
-## Documentation maintenance
-
 Run the Markdown-link audit after moving, renaming, or adding links:
 
 ```bash
 python scripts/relaylm_docs_link_check.py
 ```
 
+## Documentation maintenance
+
 AI-first maintenance rules:
 
-- add front matter to active current/architecture/plan/contract docs when practical,
-- include document type, authority, status, volatility, owner, update trigger, and non-authority fields,
-- keep current/target/compatibility/historical/frozen status explicit,
+- add front matter to active current/architecture/plan/contract docs,
+- include type, authority, status, volatility, owner, update trigger, and non-authority fields,
+- keep current/target/compatibility/historical status explicit,
 - do not encode source text, prompts, traces, cache bodies, or runtime-private data in metadata,
-- when an implemented/current handoff changes milestone state, review Project Status, the implementation plan, this index, the architecture index, and affected current/target boundaries together.
+- when an implemented handoff changes milestone state, review Project Status, the implementation plan, this index, the architecture index, affected current/target boundaries, and status-checking smoke scripts together.
 
 Placement rules:
 
 - repository-wide current status -> `docs/PROJECT_STATUS.md`
-- completed or active bounded implementation handoffs -> `docs/architecture/`
+- completed or active bounded handoffs -> `docs/architecture/`
 - cross-cutting architecture and pipeline docs -> `docs/architecture/`
-- historical architecture rationale -> `docs/architecture/archive/`
+- historical rationale -> `docs/architecture/archive/`
 - MVP snapshots -> `docs/mvp/`
 - schemas and contracts -> `docs/contracts/`
-- smoke, troubleshooting, and evaluation docs -> `docs/smoke/`
-- RelaySOUL governance docs -> `docs/relaysoul/`
-
-Before removing detail from an active document, preserve unique design intent in the appropriate current owner.
+- smoke and troubleshooting -> `docs/smoke/`
+- RelaySOUL governance -> `docs/relaysoul/`

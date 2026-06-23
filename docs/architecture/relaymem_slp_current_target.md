@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: current_target_boundary
+relaylm_doc_type: current_target_migration
 relaylm_authority: relaymem_relayslp_current_target
 relaylm_status: current
 relaylm_volatility: medium
@@ -22,10 +22,11 @@ relaylm_related_authority:
   - phase6_i1b_runtime_enqueue_source_capture_handoff.md
   - phase6c1_primary_mem_worker_contract.md
   - phase6c1_relaymem_primary_pipeline_compose.md
+  - phase6c1_one_claimed_primary_worker_handoff.md
   - phase6c1_primary_worker_outcome_classifier.md
+  - phase6c1_integrated_worker_fault_smoke_handoff.md
+  - phase6c1_durable_protected_source_persistence.md
   - relaymem_mvp_implementation_plan.md
-  - relaymem_m3g_primary_index_log_reconciliation_apply.md
-  - relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
   - pipeline_implementation_plan.md
   - ../PROJECT_STATUS.md
 ---
@@ -33,9 +34,9 @@ relaylm_related_authority:
 
 ## Current implemented boundary
 
-RelayMEM currently provides bounded read-only store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, and gated RelayCTX injection.
+RelayMEM currently provides bounded store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, and gated RelayCTX injection.
 
-The direct/helper Primary MEM chain is implemented through:
+The Primary MEM formation/persistence chain is implemented through:
 
 ```text
 M3a formation candidate
@@ -48,73 +49,105 @@ M3g gated index-before-log reconciliation apply
 M3h read-only receipt/store recovery audit
 ```
 
-C1-1 now composes the exact M3a-M3h order without weakening their validators. C1-3 maps exact M3e/M3g/M3h evidence to a pure B3 transition intent. These boundaries are not autonomous queue execution by themselves.
+The Phase 6 integration boundary is implemented through C1-5:
 
-Phase 6 currently provides A1 admission, A2 response-finalization handoff, B0 queue design, B1 dispatch/job-record preflight, B2 durable enqueue, B3 fenced durable queue lifecycle helpers, I1-B ordinary request-runtime enqueue/source capture, and C1-0 exact protected worker-source construction and one-shot consumption.
+```text
+C1-0 exact current-claim protected source
+C1-1 canonical M3a-M3h compose
+C1-2 lease-fenced one-already-claimed worker
+C1-3 pure outcome classification
+C1-4 integrated fault/crash convergence
+C1-5 durable claim-independent protected source and restart rehydration
+```
 
-### Compatibility status anchors
+C1-2 executes only one already-claimed canonical B3 job. It does not scan or select queued work. C1-5 persists protected content separately from the content-free queue and creates a fresh C1-0 source/scope for each current claim.
 
-Phase 6-B1 implements the first exact consumer of the A2 runtime-private handoff and performs no queue I/O.
+## Compatibility status anchors
 
-Phase 6-B2 implements atomic durable enqueue behind explicit gates.
+Phase 6-B1 is the exact consumer of the A2 runtime-private handoff and performs no queue I/O.
 
-Phase 6-B3 implements default-off, dry-run-first fenced `claim`, `renew_lease`, `retry_release`, `stale_recovery`, and `commit_terminal` operations over complete canonical B2 records. It performs no scheduling or worker execution by itself.
+Phase 6-B2 performs atomic durable enqueue behind explicit gates.
 
-I1-B invokes A1 -> A2 -> B1 -> B2 after ordinary managed non-stream and stream response finalization. It retains the exact protected source payload only after B2 success and does not claim or execute work inline.
+Phase 6-B3 performs default-off, dry-run-first `claim`, `renew_lease`, `retry_release`, `stale_recovery`, and `commit_terminal`. It owns queue metadata only and never executes a worker.
 
-C1-0 provides the exact claim-correlated protected worker source. C1-1 provides exact RelayMEM composition. C1-3 provides pure queue-transition outcome classification.
+I1-B runs A1 -> A2 -> B1 -> B2 after ordinary managed non-stream/stream response finalization. It never claims or executes work inline.
 
-The next bounded RelayLM Core implementation on `main` is C1-2 one-already-claimed-job worker execution under the exact active B3 owner, claim-generation, lease-token, revision, and expiry fence.
+C1-5 fixes publication order:
+
+```text
+finalized-turn protected capture
+  -> durable protected-source commit
+  -> unchanged B2 content-free queue publication
+  -> optional process-local hot cache
+```
+
+A claim resolves the capture from the hot cache or durable artifact, validates identity/integrity, creates a fresh one-shot scope, and invokes the canonical C1-0 builder.
 
 ## Current limitations
 
 The current runtime still lacks:
 
-- C1-2 one-already-claimed-job execution on `main`,
-- scheduler/background worker claim execution,
-- autonomous worker invocation of C1-1 and C1-3 from ordinary queued work,
-- restart-complete protected source/finalization persistence,
-- guaranteed enqueue when the process exits after visible response delivery but before the Starlette background finalizer completes,
-- proof that newly formed memory is retrieved in a later turn,
+- a bounded ordinary-runtime adapter that accepts one exact queued record, performs B3 claim, rehydrates through C1-5, and invokes C1-2,
+- queue scanning, daemon supervision, generalized worker pools, and retry scheduling,
+- guaranteed enqueue when the process exits after visible response delivery but before the Starlette background finalizer publishes the source/queue pair,
+- proof that newly formed memory is selected and used in a later turn,
 - Secondary MEM consolidation,
-- real SOUL Lab memory APIs.
+- real SOUL Lab memory observation and mutation APIs.
 
-A1/A2/B1/B2/B3 and C1 boundaries must consume exact runtime-private artifacts and must not reconstruct them from public projection, frontend metadata, or visible response text. B2 queue records and M3e/M3g memory writes remain separate apply boundaries. B3 controls only queue metadata. M3h is read-only evidence and cannot authorize repair or replay.
+C1-5 is restart-complete only for protected-source recovery of durably enqueued jobs. It does not claim to recover a turn that never reached durable source publication and B2 enqueue.
 
-The process-local protected source registry is fail-closed: expired or inactive entries are purged, capacity exhaustion rejects the new capture rather than evicting an existing one, and a later claim after expiry or release receives explicit source-unavailable. This live-process mode does not satisfy restart completion.
+A1/A2/B1/B2/B3 and C1 consume exact runtime-private artifacts. They must not reconstruct private evidence from public projection, frontend metadata, visible response text, generic trace, or lookalike dictionaries.
+
+B2 queue persistence and M3e/M3g memory persistence remain separate apply boundaries. B3 controls queue state only. M3h is read-only evidence and cannot authorize repair by itself.
 
 ## Ownership boundary
 
-RelayMEM owns memory meaning, safety scope, source lineage, memory-write idempotency, deterministic page content, page/index/log apply semantics, recovery classification, and Secondary MEM consolidation meaning.
+RelayMEM owns:
 
-Phase 6 / RelayRUN owns dispatch admission, response-finalization handoff, dispatch identity, queue lifecycle, claim/lease/retry/terminal control, worker invocation, and restart/checkpoint integration.
+- memory meaning and safety scope,
+- source lineage,
+- memory-write idempotency,
+- deterministic page content,
+- page/index/log apply semantics,
+- recovery classification,
+- Secondary MEM consolidation meaning.
 
-RelaySLP may read SOUL as a protected anchor and may later emit a separately governed proposal. It must never directly mutate SOUL.
+Phase 6 / RelayRUN owns:
+
+- dispatch admission and identity,
+- response-finalization handoff,
+- durable queue lifecycle,
+- claim/lease/retry/terminal control,
+- worker invocation control,
+- restart/checkpoint integration.
+
+RelaySLP may read SOUL as a protected anchor and may later emit a separately governed proposal. It never directly mutates SOUL.
 
 ## Idempotency boundary
 
-Dispatch idempotency and memory-write idempotency remain separate:
-
 ```text
 Phase 6 dispatch idempotency
-  prevents duplicate queue scheduling, active claim, and execution dispatch
+  prevents duplicate logical scheduling and active execution dispatch
 
 RelayMEM memory-write idempotency
   prevents duplicate durable memory application
 ```
 
-A worker retry may be valid while a previously completed memory write remains deduplicated. The B3 lease token and claim generation are execution fences, not memory-write idempotency keys.
+A worker retry may be valid while a prior memory write is already exact. Dispatch keys, claim generation, lease token, and memory-write keys remain distinct.
 
 ## Active migration: Primary MEM end-to-end integration
 
 ```text
 finalized ordinary turn
   -> I1-B request-runtime A1/A2/B1/B2              complete
+  -> C1-5 durable protected source                  complete
   -> B3 queue claim/lease/retry lifecycle           helper complete
+  -> one-job claim/rehydrate/execute adapter         next
   -> C1-0 exact protected source                    complete
-  -> C1-2 one-claimed worker                        next on main
+  -> C1-2 one-claimed worker                        complete
   -> C1-1 M3a-M3h compose                           complete
   -> C1-3 pure outcome classification               complete
+  -> C1-4 fault/crash convergence                   complete
   -> B3 retry release or terminal commit
   -> verified durable Primary MEM
   -> later RelayMEM retrieval
@@ -124,36 +157,43 @@ finalized ordinary turn
 
 The sequence is:
 
-1. land C1-2 one-already-claimed-job execution under the exact active B3 fence,
-2. prove the ordinary-runtime claim/source-consume/compose/classify/transition path with an integrated smoke,
-3. make source/finalization ownership restart-complete, including the post-response background-task crash window,
-4. validate later-turn recall with character and namespace isolation,
-5. expose real latest-run and memory outcomes through server-owned SOUL Lab APIs.
+1. add the bounded one-job claim/rehydrate/execute adapter,
+2. prove ordinary runtime enqueue -> claim -> rehydrate -> worker -> B3 transition,
+3. validate later-turn recall and character/namespace isolation,
+4. expose real latest-run and memory outcomes through server-owned SOUL Lab APIs,
+5. add one auditable Correct operation that changes later retrieval,
+6. resolve or formally bound the separate pre-enqueue background-finalizer crash window.
 
-I1-B, B3, C1-0, C1-1, and C1-3 are complete prerequisites, but the Primary MEM loop remains integration pending.
+I1-B, B3, and C1-0 through C1-5 are complete prerequisites. The Primary MEM product loop remains integration pending.
 
 ## Target after the active migration
 
-After the Primary MEM loop is proven, later work may add Secondary MEM consolidation, broader restart/retry integration, correction/forget/pin/merge APIs, RelaySOUL proposal handoff, and broader recovery only when M3h evidence requires it.
+After I1, later work may add:
+
+- Secondary MEM consolidation,
+- broader scheduler/service lifecycle,
+- correction/forget/pin/merge APIs,
+- RelaySOUL proposal handoff,
+- broader recovery only where M3h evidence requires it.
 
 ## Preserved invariants
 
-Every migration step must preserve:
+Every migration step preserves:
 
 - visible response delivery does not wait for deferred processing,
 - SLP failure does not invalidate an already valid response,
 - default-off and dry-run-first rollout where applicable,
-- fail-closed namespace, lineage, policy, schema, queue, and lease validation,
+- fail-closed namespace, lineage, policy, schema, queue, lease, and source validation,
 - protected content-bearing memory/SLP domains,
 - content-free public diagnostics,
 - autonomous ordinary memory only when RelayMEM gates pass,
-- held or blocked handling for sensitive, contradictory, destructive, cross-namespace, or SOUL-affecting changes,
+- held/blocked handling for sensitive, contradictory, destructive, cross-namespace, or SOUL-affecting changes,
 - separation between dispatch and memory-write idempotency,
 - terminal-state immutability and exact lease fencing,
 - no direct RelaySOUL mutation.
 
 ## Completion interpretation
 
-M3a-M3h completion means the Primary MEM primitives exist. C1-1 completion means their exact order is composed. C1-3 completion means their exact outcomes can be classified without queue I/O. B2 completion means a durable queue record can be created. B3 completion means Phase 6-owned queue metadata can be safely claimed, renewed, released, recovered, and terminated. I1-B completion means ordinary response finalization can enqueue and retain a live-process protected source without delaying visible output. None of these alone means the memory feature is end to end.
+M3a-M3h completion means the Primary MEM primitives exist. C1-1 fixes their exact order. C1-2 executes one active claim. C1-3 classifies exact outcomes. C1-4 verifies integrated convergence. C1-5 makes protected-source recovery restart-complete for durably enqueued jobs.
 
-The active migration is complete only when an ordinary finalized turn can enqueue work, a C1-2 worker can safely produce verified Primary MEM under a B3 lease, and a later ordinary turn can retrieve and use it within the correct scope.
+None of these alone means the memory feature is end to end. The active migration is complete only when ordinary queued work reaches C1-2 through the bounded adapter and a later ordinary turn retrieves and uses the resulting memory within the correct scope.

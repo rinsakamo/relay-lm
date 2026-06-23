@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: implementation_contract
+relaylm_doc_type: contract
 relaylm_authority: phase6c1_primary_mem_worker
 relaylm_status: current
 relaylm_volatility: medium
@@ -8,8 +8,8 @@ relaylm_update_trigger:
   - Phase 6-C1 worker input or outcome schema changes
   - B3 lease or queue transition semantics change
   - RelayMEM M3a-M3h result vocabulary changes
-  - protected worker-source persistence lands
-  - worker implementation or crash-recovery smoke lands
+  - protected worker-source persistence changes
+  - worker crash-recovery smoke changes
 relaylm_not_authoritative_for:
   - RelayMEM memory meaning or page/index/log schemas
   - B3 queue record or transition schemas
@@ -21,13 +21,13 @@ relaylm_related_authority:
   - phase6_async_relayslp_bounded_slice.md
   - phase6b0_relayslp_durable_queue_contract.md
   - phase6b3_relayslp_queue_state_helpers.md
+  - phase6_i1b_runtime_enqueue_source_capture_handoff.md
+  - phase6c1_relaymem_primary_pipeline_compose.md
+  - phase6c1_one_claimed_primary_worker_handoff.md
+  - phase6c1_primary_worker_outcome_classifier.md
+  - phase6c1_integrated_worker_fault_smoke_handoff.md
+  - phase6c1_durable_protected_source_persistence.md
   - relaymem_mvp_implementation_plan.md
-  - relaymem_slp_execution_design.md
-  - relaymem_m3a_primary_formation_handoff.md
-  - relaymem_m3e_atomic_primary_page_writer.md
-  - relaymem_m3f_primary_index_log_reconciliation_preflight.md
-  - relaymem_m3g_primary_index_log_reconciliation_apply.md
-  - relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
   - pipeline_implementation_plan.md
   - ../PROJECT_STATUS.md
 ---
@@ -35,9 +35,18 @@ relaylm_related_authority:
 
 ## Status
 
-This document defines the first bounded Phase 6-C1 worker contract. The worker implementation is pending.
+Phase 6-C1 is implemented through C1-5:
 
-The contract closes the integration boundary between an exact active B3 claim and the existing RelayMEM M3a-M3h primitives. It does not introduce another queue-helper phase and does not redefine memory semantics.
+```text
+C1-0 protected current-claim source
+C1-1 RelayMEM M3a-M3h compose
+C1-2 one-already-claimed worker
+C1-3 pure outcome classifier
+C1-4 integrated fault/crash smoke
+C1-5 durable protected-source persistence
+```
+
+The bounded worker closes the integration boundary between one exact active B3 claim and the existing RelayMEM M3a-M3h primitives. It does not introduce another queue state machine and does not redefine memory semantics.
 
 ```text
 exact active B3 claim
@@ -47,35 +56,35 @@ exact active B3 claim
   -> lease-fenced retry release or terminal commit
 ```
 
-The first implementation executes one already-claimed job. Scheduler scanning, generalized worker pools, process supervision, Secondary MEM, RelaySOUL apply, and SOUL Lab mutation are outside this slice.
+The worker executes one already-claimed job only. Queue scanning, generalized scheduling, daemon supervision, worker pools, Secondary MEM, RelaySOUL apply, and SOUL Lab mutation are outside C1.
 
 ## Critical source boundary
 
-The canonical B2/B3 durable queue record is intentionally content-free. It contains correlation, namespace, lineage fingerprint, dispatch identity, and queue-control metadata, but it does not contain the governed experience body required to create a Primary MEM page.
+The canonical B2/B3 durable queue record is intentionally content-free. It contains correlation, namespace, lineage fingerprint, dispatch identity, and queue-control metadata, but it does not contain the governed experience required to create a Primary MEM page.
 
-M3a classifies whether governed evidence may produce a Primary MEM candidate. It is not a content extractor. M3c requires a separately produced governed-experience artifact containing a bounded trusted title and summary.
+M3a classifies governed evidence; it is not a content extractor. M3c requires a separately produced governed-experience artifact with bounded trusted title and summary.
 
-Therefore a worker must not attempt to reconstruct memory content from:
+A worker must never reconstruct memory content from:
 
 - the durable queue record,
-- the B3 public projection,
+- a B3 public projection,
 - generic trace or audit records,
 - visible response text recovered from logs,
-- frontend metadata,
+- frontend metadata or history,
 - a public M3 projection,
 - a caller-supplied lookalike dictionary.
 
-The required protected input is an exact runtime-private source bundle:
+The exact current-claim source schema is:
 
 ```text
 relaymem.slp_primary_worker_source.v0
 ```
 
-Its implementation and persistence boundary are prerequisites for C1 execution.
+C1-0 implements the source bundle. C1-5 implements separate durable claim-independent persistence and restart rehydration.
 
 ## Protected worker-source bundle
 
-The bundle is content-bearing and belongs to the protected memory/source domain. It must contain exact correlation with the claimed job:
+The bundle is content-bearing and runtime-private. Its exact correlation includes:
 
 ```text
 schema_version
@@ -96,28 +105,29 @@ governed_messages
 governed_experience_artifact
 ```
 
-The bundle must not be placed in the B2/B3 queue record, `PipelineNodeResult`, generic trace, public error, or default operational projection.
+It must not be placed in the queue record, `PipelineNodeResult`, generic trace, public error, or default operational projection.
 
-The source bundle producer owns only protected evidence capture and exact correlation. RelayMEM continues to own candidate meaning, summary/page validation, memory-write idempotency, and persistence.
+The source producer owns evidence capture and correlation only. RelayMEM owns candidate meaning, summary/page validation, memory-write idempotency, and persistence.
 
-### Initial live-source mode
+### Live-process compatibility mode
 
-The first bounded worker may accept an exact in-process source bundle retained by request-runtime C0 wiring. This mode is sufficient for a first live-process integration smoke but is not restart-complete.
+C1-2 may accept an exact in-process source prepared from the optional hot cache. The hot cache is not restart authority.
 
-If the process restarts and the exact protected source bundle is unavailable, the job must not execute from queue metadata alone. It remains queued/failed under an explicit bounded source-unavailable classification; raw content must not be reconstructed from traces or UI history.
+If neither the hot cache nor the exact durable artifact can supply the protected capture, the job must not execute from queue metadata alone. It fails or blocks under a bounded source-unavailable/corrupt classification.
 
-### Restart-complete mode
+### Restart-complete protected-source mode
 
-I1 restart completion requires one protected durable source-artifact design or another exact rehydratable source owner. That design must:
+C1-5:
 
-- persist content separately from the content-free queue record,
-- bind the artifact to dispatch/job/run/turn/session/namespace/lineage identity,
-- reject symlink, path substitution, schema drift, and correlation mismatch,
-- use explicit retention and deletion rules,
-- remain inaccessible to generic trace and public APIs,
-- permit a new claim to rerun the deterministic RelayMEM chain.
+- persists content separately before B2 publishes the queue record,
+- binds source schema, job, dispatch, character, and complete capture integrity,
+- rejects symlink, path substitution, schema drift, unsafe file type, hardlink, and correlation mismatch,
+- retains the artifact through retry release, lease expiry, stale recovery, and a new claim,
+- creates a fresh C1-0 source and one-shot scope for each current claim,
+- keeps protected content outside generic diagnostics and public APIs,
+- removes the artifact only after canonical B3 terminal commit.
 
-A durable protected source artifact is not optional for crash recovery before M3e when the original process-local evidence is gone.
+This makes protected-source recovery restart-complete for durably enqueued jobs. It does not close a process exit before the post-response background finalizer publishes the source and queue record.
 
 ## Exact claimed-record input
 
@@ -134,27 +144,18 @@ terminal_reason_id empty
 retry_not_before null
 ```
 
-The worker receives the exact current:
-
-- record revision,
-- claim owner,
-- claim generation,
-- lease token,
-- lease expiry,
-- job and dispatch identities.
-
-The worker must not consume a public B3 projection as a substitute for the runtime-private claimed record.
+The worker receives the exact current record revision, owner, generation, token, expiry, job identity, and dispatch identity. A public B3 projection is never accepted as a substitute.
 
 ## Lease-fencing rules
 
-The worker may start only while the exact claim is active and unexpired.
+The worker starts only while the exact claim is active and unexpired.
 
-It must revalidate or renew the exact B3 fence at these checkpoints:
+It revalidates or renews the exact B3 fence:
 
 1. before protected source consumption,
 2. before M3e page publication,
 3. before M3g index/log apply,
-4. before any B3 retry-release or terminal commit.
+4. before B3 retry release or terminal commit.
 
 The fence is:
 
@@ -169,26 +170,26 @@ job_id
 + unexpired lease
 ```
 
-A successful B3 renewal increments record revision. The worker must replace its expected revision with the renewed canonical record before continuing.
+A successful renewal increments record revision. The worker replaces its expected record with the renewed canonical record before continuing.
 
-On lease loss, expiry, stale-recovery conflict, revision conflict, owner mismatch, generation mismatch, or token mismatch:
+On lease loss, expiry, stale recovery conflict, revision conflict, owner mismatch, generation mismatch, or token mismatch:
 
-- do not begin another side effect,
-- do not claim success,
-- do not commit a terminal queue state with a stale fence,
-- allow a later exact claim to converge through dispatch and memory-write idempotency.
+- no new side effect begins,
+- success is not claimed,
+- no stale retry/terminal transition is attempted,
+- a later exact claim may converge through both idempotency domains.
 
-An operation already completed before lease loss is not rolled back. A later worker must rediscover it through the existing idempotent RelayMEM boundaries.
+An already completed durable side effect is not rolled back.
 
 ## RelayMEM composition boundary
 
-The worker should call one RelayMEM-owned composition function, provisionally:
+C1-2 calls the RelayMEM-owned:
 
 ```python
 execute_relaymem_primary_pipeline(...)
 ```
 
-The compose function fixes stage order and exact artifact handoff while preserving direct access to each existing M3 helper for tests, audit, and future recovery work.
+Canonical order:
 
 ```text
 M3a formation candidate
@@ -201,13 +202,13 @@ M3a formation candidate
   -> M3h read-only recovery audit
 ```
 
-The compose function must not weaken or bypass the exact validators in any stage. Its purpose is to reduce orchestration mistakes, not to remove defense in depth.
+Every direct-helper validator still executes. Compose reduces orchestration mistakes; it does not weaken defense in depth.
 
-The compose result should provide one runtime-private stage ledger and one content-free projection. The ledger may retain exact private artifacts needed within the active claim. The public projection may expose only stage names, bounded statuses, booleans, counts, and reason IDs.
+The compose ledger is runtime-private. Public projection exposes only bounded stage/status/boolean/count/reason fields.
 
 ## Idempotency domains
 
-Two idempotency domains remain separate.
+Two domains remain separate.
 
 ### Dispatch idempotency
 
@@ -226,37 +227,28 @@ memory-write idempotency key
   prevents duplicate durable page/index/log application
 ```
 
-The worker may correlate the two domains in a private execution ledger, but it must never:
+The worker never derives one key from the other, copies dispatch identity into memory-write fields, accepts a memory-write key as queue identity, or exposes either key publicly.
 
-- derive one key from the other,
-- copy the dispatch key into an M3 memory-write field,
-- accept a memory-write key as a queue identity,
-- expose either key in public projections.
-
-A new claim after a crash reruns the RelayMEM chain from the exact protected source bundle. M3e and M3g then converge through memory-write idempotency while B3 continues to fence queue ownership through dispatch identity.
+A new claim reruns the deterministic RelayMEM chain from a fresh exact protected source. M3e/M3g converge through memory-write idempotency while B3 fences execution through dispatch identity.
 
 ## M3f plan lifetime
 
-Within one active claim, the worker may retain the exact runtime-private M3f plan in memory and use it for an immediate M3g retry.
+Within one active claim, an exact runtime-private M3f plan may be retained for immediate M3g use.
 
-Across process restart or a new claim, the worker must not depend on an in-memory plan. It reruns the deterministic chain and generates a fresh M3f plan from current durable state.
-
-The M3g receipt alone cannot drive reconciliation because it does not contain proposed control-file content. C1 must not serialize the M3f plan into the content-free queue record.
+Across process restart or a new claim, the worker regenerates a fresh M3f plan from current durable state. The plan is never serialized into the content-free queue record.
 
 ## Outcome classification
 
-Phase 6 owns queue control. RelayMEM owns the meaning of each result. C1 maps exact RelayMEM outcomes to existing B3 transitions without changing their semantics.
+Phase 6 owns queue control. RelayMEM owns the meaning of stage results. C1-3 maps exact RelayMEM evidence to existing B3 transitions.
 
 ### Terminal success
 
 Commit `succeeded` only when:
 
 - M3e page state is exact or idempotently exact,
-- M3g reports `applied` or `already_applied`,
-- M3h reports `recovery_not_required`,
-- the final B3 lease fence is still exact and active.
-
-Suggested queue metadata:
+- M3g is `applied` or `already_applied`,
+- M3h is `recovery_not_required`,
+- the final B3 lease fence remains exact and active.
 
 ```text
 terminal_state = succeeded
@@ -266,246 +258,149 @@ terminal_reason_id = primary_mem_durable_state_verified
 
 ### Transient resource contention
 
-The following are expected transient operational outcomes, not corruption or policy failure:
-
-- M3g `primary_reconciliation_apply_lock_unavailable`,
-- M3h read-audit lock contention,
-- a bounded queue/source-store lock contention where no mutation occurred.
-
-Map them to B3 `retry_release` with a short bounded backoff and jitter:
+M3g exclusive-lock contention, M3h audit-lock contention, and bounded queue/source-store lock contention with no mutation map to:
 
 ```text
+retry_release
 retry_class = transient_lock_contention
 failure_class = resource_contention
 ```
 
-Retry count remains bounded by worker policy. B3 records the chosen classification and timestamp but does not calculate policy.
-
 ### Safe reconciliation retry
 
-When M3g/M3h verifies:
+Verified `index_applied_log_pending` with `retry_reconciliation` maps to:
 
 ```text
-index_applied_log_pending
-+ recovery_classification = retry_reconciliation
-```
-
-map to B3 `retry_release`:
-
-```text
+retry_release
 retry_class = primary_reconciliation_retry
 failure_class = partial_progress_verified
 ```
 
-Within the same live claim, the exact retained M3f plan may be reused. On a new claim, rerun M3a-M3f and generate a current plan.
+A new claim regenerates M3f from current state.
 
-### Policy-held or policy-blocked memory
+### Policy held or blocked
 
-A RelayMEM policy outcome is terminal for the queue execution attempt. It is not a queue corruption state.
+Current B3 has no `held` queue state. Exact RelayMEM policy evidence commits terminal failed with bounded `memory_policy_held` or `memory_policy_blocked`. Memory meaning remains in the protected RelayMEM domain.
 
-Because the current B3 state machine has no `held` queue state, use:
+### Manual confirmation and recovery isolation
 
-```text
-terminal_state = failed
-failure_class = memory_policy_held | memory_policy_blocked
-terminal_reason_id = bounded RelayMEM policy reason
-```
-
-The held/blocked memory meaning remains in the protected RelayMEM domain and may later be exposed through a Lab-owned memory outcome API.
-
-### Manual confirmation
-
-M3h `manual_confirmation_required` must not trigger automatic page/index/log reapply.
-
-Map to:
-
-```text
-terminal_state = failed
-failure_class = manual_confirmation_required
-terminal_reason_id = primary_mem_manual_confirmation_required
-```
-
-### Journal-aware recovery candidate
-
-M3h `journaled_recovery_candidate` does not authorize repair. Current B3 cannot generate `dead_letter`; therefore C1 terminates as:
-
-```text
-terminal_state = failed
-failure_class = recovery_isolation_required
-terminal_reason_id = primary_mem_journaled_recovery_candidate
-```
-
-A later explicit isolation policy may introduce dead-letter generation. C1 must not invent one through an unsupported transition.
+`manual_confirmation_required` and `journaled_recovery_candidate` are terminal failed classifications. C1 never invents unsupported `dead_letter` generation and never automatically repairs uncertain state.
 
 ### Store conflict, corruption, or divergence
 
-Examples include:
+Page missing/digest mismatch, malformed/conflicting control state, invalid store evidence, source correlation mismatch, `state_diverged`, `page_unverified`, and `control_unverified` never produce success and are not blindly retried.
 
-- page missing or digest mismatch after a claimed write path,
-- index/log conflict not classified as verified partial progress,
-- invalid/corrupt canonical store evidence,
-- `state_diverged`, `page_unverified`, or `control_unverified`,
-- source-bundle correlation mismatch.
-
-Do not retry blindly. Commit `failed` when the current lease is still valid:
-
-```text
-failure_class = store_conflict | store_corruption | source_correlation_invalid
-```
-
-If the lease is already lost, stop without a stale terminal commit and let the current claimant classify the state.
+If the lease is already lost, the stale worker stops without terminal commit.
 
 ### Durability uncertainty
 
-`applied_durability_unconfirmed`, `applied_cleanup_incomplete`, or `applied_state_uncertain` must pass through M3h before queue classification.
-
-- fully reconciled but durability unconfirmed -> `manual_confirmation_required`,
-- verified `index_applied_log_pending` -> bounded reconciliation retry,
-- uncertain/diverged/cleanup-sensitive state -> recovery isolation required,
-- never collapse uncertainty into success.
+M3e/M3g durability uncertainty must pass through M3h. Uncertainty is never collapsed into success.
 
 ## Retry policy bounds
 
-C1 owns a small, explicit policy table. B3 remains a storage/transition helper.
-
-The first worker implementation should support only:
+The implemented C1-2 worker supports only:
 
 - transient lock contention,
 - verified reconciliation partial progress,
 - lease renewal/reclaim coordination.
 
-It must include:
+It includes finite attempt limits, bounded deterministic jitter/backoff, no infinite immediate retry, and no automatic retry for corruption, policy hold, manual confirmation, or recovery isolation.
 
-- finite attempt limits,
-- bounded backoff,
-- jitter for shared M3g lock contention,
-- no automatic retry for corruption, policy hold, manual confirmation, or journal candidate,
-- no infinite immediate retry loop.
+B3 stores retry metadata but does not calculate policy.
 
-Exact durations and attempt limits belong in code/config and smoke tests, not duplicated across architecture documents.
+## M3g/M3h concurrency
 
-## M3g/M3h concurrency model
+M3g serializes `memory/mem/index.md` and `memory/mem/log.md` updates with one nonblocking exclusive directory lock. M3h shared audit may contend with an active writer.
 
-Multiple B3 claims may execute concurrently for distinct jobs, but M3g serializes all `memory/mem/index.md` and `memory/mem/log.md` updates under one non-blocking exclusive directory lock.
-
-Therefore:
-
-- page formation/publication may proceed concurrently where existing M3 contracts permit,
-- index/log reconciliation is an intentional single-writer critical section,
-- lock failure is normal transient contention,
-- workers must release and back off rather than spin,
-- M3h shared audit may also contend with an active M3g writer and is retryable when no invalid store evidence exists.
-
-The first worker implementation does not need a broad pool. One bounded worker is sufficient for the first end-to-end proof; concurrency smoke still must prove that a second worker cannot corrupt or duplicate durable state.
+Lock contention is a normal retryable operational outcome when no invalid store evidence exists. Workers release and back off; they do not spin.
 
 ## Crash and restart behavior
 
-Required crash points:
+Integrated smoke covers:
 
 1. after claim and before source consumption,
-2. after M3e page publication and before M3f,
-3. after M3g index publication and before log publication,
-4. after fully reconciled memory and before B3 terminal commit,
-5. during lease expiry while another worker performs stale recovery.
+2. after M3e and before M3f,
+3. after index publication and before log publication,
+4. after full reconciliation and before B3 terminal commit,
+5. lease expiry while another worker performs stale recovery.
 
 Rules:
 
-- a crash never changes an already finalized visible response,
-- stale recovery may return the job to `queued`,
-- a new claim reruns from the exact protected source bundle,
-- M3e recognizes an exact existing page as idempotent,
-- M3f derives a plan from current state,
-- M3g recognizes exact proposed control state and verified partial progress,
-- M3h decides whether success, retry, manual confirmation, or isolation is safe,
-- only the current lease holder may release or commit queue state.
+- visible response state never changes,
+- stale recovery may return work to queued,
+- a new claim rehydrates a fresh source through C1-5,
+- M3e recognizes an exact existing page,
+- M3f derives current state,
+- M3g recognizes exact or verified partial progress,
+- M3h decides success/retry/manual/isolation evidence,
+- only the current lease holder transitions queue state.
 
-If the durable protected source artifact is absent after restart, the job cannot safely rerun the full chain. This must be an explicit source-unavailable result, not silent loss or trace-based reconstruction.
+If the exact durable source is missing or corrupt after restart, execution fails closed; queue metadata is never used to reconstruct content.
 
 ## Required smoke matrix
 
-The C1 implementation is incomplete until smoke covers:
+C1 coverage includes:
 
-1. exact claimed-record and source-bundle correlation,
-2. normal M3a-M3h success and B3 terminal success,
-3. same dispatch replay with no second queue record,
-4. rerun with the same protected source producing the same memory-write identity,
-5. M3e success followed by worker crash and new-claim convergence,
-6. M3g index-success/log-pending crash and new-claim convergence,
-7. M3g exclusive-lock contention -> bounded retry release,
-8. M3h shared-lock contention -> bounded retry release,
-9. lease renewal before M3e and M3g,
-10. lease loss before side effect -> no further side effect,
-11. lease loss after side effect -> no stale terminal commit and later idempotent convergence,
-12. parallel worker attempting the same stale generation/token -> fenced rejection,
-13. policy-held and policy-blocked outcomes -> failed classification without memory apply,
-14. manual confirmation and journal candidate -> no automatic retry/apply,
-15. source-bundle unavailable after restart -> explicit safe block,
-16. wrong character, namespace, run, turn, lineage, job, or dispatch correlation -> fail closed,
-17. no protected content, paths, keys, tokens, timestamps, or memory body in public diagnostics,
-18. next-turn retrieval and RelayCTX injection only after verified durable success.
+- exact claim/source correlation,
+- normal M3a-M3h success and B3 terminal success,
+- duplicate dispatch behavior,
+- same-memory idempotent rerun,
+- M3e crash and new-claim convergence,
+- index-before-log crash and reconciliation convergence,
+- M3g/M3h lock contention and bounded retry release,
+- lease renewal before M3e/M3g,
+- lease loss before/after side effect,
+- stale generation/token rejection,
+- policy held/blocked terminal classification,
+- manual-confirmation/recovery-isolation behavior,
+- restart rehydration and missing/corrupt source isolation,
+- wrong character/namespace/run/turn/lineage/job/dispatch rejection,
+- no protected content, paths, keys, tokens, timestamps, or memory body in public diagnostics.
 
-## Content-free public projection
+Next-turn retrieval/RelayCTX injection is an I1 integration smoke, not a C1 worker prerequisite.
 
-The worker public projection may expose:
+## Public projection
+
+May expose:
 
 ```text
-schema version
-status
-current stage
-stage count
-completed stage count
-retryable boolean
-terminal boolean
-policy-held boolean
-lease-valid boolean
-lease-renewed boolean
-source-bundle-present boolean
-source-correlation-valid boolean
-page verified/applied booleans
-index/log reconciled booleans
-recovery classification enum
+schema/status
+current stage and counts
+retryable/terminal booleans
+policy-held/manual/recovery booleans
+lease-valid/renewed booleans
+source-present/correlation-valid booleans
+page/index/log/recovery booleans
 bounded retry/failure/terminal reason IDs
 ```
 
-It must not expose:
-
-- raw messages or visible response text,
-- governed title or summary,
-- page/index/log content,
-- source artifact body,
-- queue/store paths,
-- namespace values,
-- run/session/job/dispatch identifiers,
-- lineage fingerprints,
-- memory-write idempotency keys,
-- claim owner, lease token, or exact timestamps,
-- OS exception strings.
+Must not expose raw messages, visible response text, governed title/summary, page/index/log content, source body, paths, namespace, runtime identities, lineage, idempotency keys, lease material, timestamps, or OS exception text.
 
 ## Preserved non-goals
 
-Phase 6-C1 does not:
+C1 does not:
 
-- perform request-runtime enqueue wiring itself,
+- perform request-runtime enqueue itself,
 - scan the queue or implement a scheduler loop,
 - create a generalized worker pool,
 - weaken M3 validators,
 - redefine memory meaning or safety policy,
-- persist protected source content in the content-free queue record,
+- place protected source content in the queue,
 - implement Secondary MEM,
 - directly mutate RelaySOUL,
-- expose memory mutation through SOUL Lab,
-- execute TTS, audio, Live2D, avatar, or lip-sync behavior,
+- expose Lab mutation,
+- execute TTS/audio/Live2D/avatar behavior,
 - make visible-response success depend on deferred work.
 
 ## Implementation sequence
 
 ```text
-C1-0 protected worker-source bundle contract and exact correlation
-C1-1 RelayMEM M3a-M3h compose function
-C1-2 one already-claimed B3 worker execution
-C1-3 outcome mapping and B3 retry/terminal transitions
-C1-4 crash, lease-loss, and lock-contention smoke
-C1-5 restart-complete protected source persistence
+C1-0 protected worker source                    complete
+C1-1 M3a-M3h compose                            complete
+C1-2 one already-claimed worker                 complete
+C1-3 outcome mapping                            complete
+C1-4 crash/lease/lock/fault smoke               complete
+C1-5 restart-complete protected source recovery complete for durably enqueued jobs
 ```
 
-C1-0 through C1-4 may prove the live-process loop. I1 restart completion additionally requires C1-5 or an equivalent exact durable source owner.
+The next boundary is a thin one-job queued-record claim/rehydrate/execute adapter, followed by next-turn recall. I1 separately retains the pre-enqueue background-finalizer crash window.

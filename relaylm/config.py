@@ -117,6 +117,12 @@ class RelayLMConfig(BaseModel):
     relaymem_slp_runtime_enqueue_dry_run_only: bool = True
     relaymem_slp_runtime_enqueue_apply_enabled: bool = False
     relaymem_slp_queue_root: str | None = None
+    relaymem_slp_protected_source_root: str | None = None
+    relaymem_slp_protected_source_max_artifact_bytes: int = Field(
+        default=256 * 1024,
+        ge=1,
+        le=1024 * 1024,
+    )
     relaymem_slp_source_registry_max_entries: int = Field(default=256, ge=1)
     relaymem_slp_source_registry_ttl_seconds: int = Field(default=1800, ge=1)
     client_message_canonicalization_dry_run_enabled: bool = False

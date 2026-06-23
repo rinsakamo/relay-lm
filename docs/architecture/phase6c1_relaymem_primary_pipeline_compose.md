@@ -7,7 +7,7 @@ relaylm_owner: relaymem
 relaylm_update_trigger:
   - RelayMEM Primary compose request, ledger, result, or projection schema changes
   - M3a-M3h result vocabulary or prerequisite semantics change
-  - Phase 6-C1 one-claimed-job worker integration lands
+  - Phase 6-C1 worker integration changes
 relaylm_not_authoritative_for:
   - protected worker-source schema, persistence, retention, or deletion
   - B3 queue transitions, lease fencing, retry policy, or outcome classification
@@ -15,6 +15,9 @@ relaylm_not_authoritative_for:
   - Secondary MEM, RelaySOUL mutation, or SOUL Lab runtime behavior
 relaylm_related_authority:
   - phase6c1_primary_mem_worker_contract.md
+  - phase6c1_one_claimed_primary_worker_handoff.md
+  - phase6c1_integrated_worker_fault_smoke_handoff.md
+  - phase6c1_durable_protected_source_persistence.md
   - relaymem_m3a_primary_formation_handoff.md
   - relaymem_m3d_primary_writer_handoff.md
   - relaymem_m3e_atomic_primary_page_writer.md
@@ -26,7 +29,7 @@ relaylm_related_authority:
 
 ## Status
 
-Phase 6-C1-1 is implemented as a RelayMEM-owned production compose helper:
+Phase 6-C1-1 is implemented as the RelayMEM-owned production compose helper:
 
 ```python
 execute_relaymem_primary_pipeline(request)
@@ -45,7 +48,9 @@ M3a formation
   -> M3h read-only recovery audit
 ```
 
-The compose helper is not the Phase 6 worker. Queue claim, lease renewal and loss handling, retry release, terminal commit, backoff, stale recovery, source persistence, and scheduler behavior remain unimplemented here.
+C1-2 now invokes this helper under exact active B3 lease checkpoints. C1-4 verifies its crash, lease-loss, lock-contention, corruption, and retry convergence. C1-5 supplies restart rehydration of a fresh protected source for durably enqueued jobs.
+
+Compose remains queue-agnostic. It does not claim jobs, renew leases, calculate retry timing, perform B3 transitions, persist protected source, scan the queue, or run a scheduler.
 
 ## Exact input boundary
 
@@ -55,37 +60,40 @@ The public request schema is:
 relaymem.primary_pipeline_request.v0
 ```
 
-The request is an exact frozen runtime-private dataclass. It retains, with content-bearing fields excluded from `repr`:
+The request is an exact frozen runtime-private dataclass containing:
 
-- the exact C1-0 protected worker-source object,
+- the exact C1-0 protected source object,
 - its exact request-local source scope,
-- the exact claimed record used only by the C1-0 correlation validator,
+- the exact claimed record used by C1-0 correlation validation,
 - the configured store root,
-- strict boolean `enabled`, `dry_run_only`, and `apply_enabled` gates.
+- strict boolean `enabled`, `dry_run_only`, and `apply_enabled` gates,
+- exact runtime-private worker checkpoint callbacks where applicable.
 
-Generic dictionaries, source lookalikes, wrong source schemas, cross-request scopes, consumed sources, source/claim correlation mismatch, bool/int confusion, contradictory gates, and incomplete apply gates fail before M3a.
+Generic dictionaries, source lookalikes, wrong source schemas, cross-request scopes, consumed sources, source/claim mismatch, bool/int confusion, contradictory gates, and incomplete apply gates fail before M3a.
 
-The compose boundary does not validate an active lease or mutate the claimed record. C1-2 must perform lease fencing before source consumption and before M3e, M3g, and any B3 transition.
+Compose does not own active lease validation. C1-2 fences execution before source consumption, M3e, M3g, and the final B3 transition.
 
-## Artifact handoff
+## Exact artifact handoff
 
-Each existing M3 public helper remains directly available. Compose passes the exact returned private object to the next helper without reconstructing it:
+Every existing M3 public helper remains directly available. Compose passes exact private artifacts without reconstructing them:
 
-- M3a `candidates` to M3b,
-- complete M3b result plus one exact C1-0-derived source-lineage bridge to M3c,
-- complete M3c result to M3d,
-- complete M3d result to M3e,
+- M3a candidates to M3b,
+- exact M3b result and C1-0-derived lineage bridge to M3c,
+- exact M3c result to M3d,
+- exact M3d result to M3e,
 - exact M3e receipt to M3f,
 - exact M3f private plan to M3g,
 - exact M3g receipt to M3h.
 
-The lineage bridge uses the existing `relaymem.primary_source_lineage.v0` field set and preserves the protected source bundle's exact lineage fingerprint. It does not substitute the dispatch idempotency key or derive a new memory-write identity. M3b remains the sole owner of memory-write idempotency.
+The lineage bridge preserves the protected source lineage fingerprint. It does not substitute the dispatch idempotency key or derive memory-write identity. M3b remains the sole owner of memory-write idempotency.
 
-Every downstream M3 validator still executes. Compose additionally requires exact top-level result schemas and field sets before it records or forwards a stage result.
+Every downstream validator still executes. Compose also requires exact top-level schemas and field sets before forwarding stage results.
 
 ## Stop and audit rules
 
-Policy block, policy hold, invalid prerequisites, schema drift, store conflict, and missing exact artifacts stop later stages. M3g lock contention returns immediately as a retryable compose observation; compose does not sleep, loop, or calculate backoff.
+Policy block, policy hold, invalid prerequisites, schema drift, store conflict, missing exact artifacts, and impossible stage combinations stop later stages.
+
+M3g lock contention returns immediately as a retryable compose observation. Compose does not sleep, loop, or calculate backoff.
 
 M3g results with an exact receipt proceed to M3h. M3h classifications remain RelayMEM results:
 
@@ -94,13 +102,13 @@ M3g results with an exact receipt proceed to M3h. M3h classifications remain Rel
 - `manual_confirmation_required`,
 - `journaled_recovery_candidate`.
 
-Compose does not map these to `retry_release`, `commit_succeeded`, or `commit_failed`. The Phase 6 worker outcome classifier owns that mapping.
+Compose does not map these to queue transitions. C1-3 owns the pure mapping and C1-2 owns the actual B3 transition under the final lease fence.
 
-M3e post-publication uncertainty is never collapsed into success. The current M3f contract accepts only exact `applied` or `already_applied` M3e receipts, so an M3e uncertainty that cannot produce an M3g receipt stops with its exact M3e evidence. M3g partial or uncertain receipts continue to M3h when the existing M3h contract accepts them.
+M3e/M3g durability uncertainty is never collapsed into success.
 
 ## Exact-existing page convergence
 
-M3d already recognizes an exact existing page as `already_applied`. M3e validation now accepts two explicit, mutually exclusive exact M3d variants:
+M3d and M3e recognize two exact variants:
 
 ```text
 ready:
@@ -114,13 +122,13 @@ already_applied:
   writer_apply_eligible = false
 ```
 
-Both variants retain the same strict field-set, content, path, digest, idempotency, and public-projection validation. This closes the full-chain retry gap: a new exact source invocation can rerun M3a-M3d, have M3e re-inspect the exact page, and continue through fresh M3f-M3h reconciliation without reconstructing a prior writer handoff.
+Both variants preserve strict path, content, digest, idempotency, and projection validation. A new claim may rerun M3a-M3d, recognize an exact existing page, regenerate M3f from current state, and converge M3g/M3h without reconstructing a prior in-memory plan.
 
-## Dry-run and disabled behavior
+## Gates
 
 Disabled mode executes no M3 stage and does not consume the source.
 
-Dry-run mode consumes and validates the exact source, executes M3a-M3d, and reports `dry_run_ready`. It does not call M3e or M3g and does not claim durable success. M3f and M3h are not fabricated without durable receipts.
+Dry-run validates and consumes the exact source, executes M3a-M3d, and reports `dry_run_ready`. It does not call M3e or M3g and does not claim durable success.
 
 Apply mode requires:
 
@@ -130,7 +138,7 @@ apply_enabled = true
 dry_run_only = false
 ```
 
-Existing helper gates remain authoritative and are passed without override.
+Existing helper gates remain authoritative.
 
 ## Runtime-private ledger and public projection
 
@@ -140,7 +148,7 @@ The result schema is:
 relaymem.primary_pipeline_result.v0
 ```
 
-It stores one ordered entry for every exact stage enum, including explicit unexecuted entries. Private M3 results are excluded from dataclass `repr` and from log serialization.
+It records an ordered entry for every exact stage, including explicit unexecuted entries. Private M3 results are excluded from dataclass `repr` and log serialization.
 
 The content-free projection schema is:
 
@@ -148,37 +156,29 @@ The content-free projection schema is:
 relaymem.primary_pipeline_projection.v0
 ```
 
-It exposes only bounded stage names, status, strict gate booleans, completed-stage count, block/hold/retry flags, page/reconciliation booleans, recovery classification, and bounded reason IDs. It explicitly reports that no queue I/O, B3 transition, lease operation, retry sleep, RelaySOUL mutation, or Secondary MEM processing occurred.
+It exposes bounded stage names, statuses, booleans, counts, recovery classification, and reason IDs. It reports that compose itself performs no queue scanning, B3 transition, retry sleep, RelaySOUL mutation, or Secondary MEM processing.
 
-It omits governed messages, title and summary, page/index/log content, store paths, namespace, run/session/job/dispatch identifiers, lineage and hash values, memory-write keys, timestamps, exception text, and private M3 objects.
+It omits governed messages, title/summary, page/index/log content, store paths, namespace, runtime identifiers, lineage, hashes, memory-write keys, timestamps, exception text, and private M3 objects.
 
 ## Validation
 
 ```bash
-python -m compileall -q \
-  relaylm/relaymem_primary_pipeline.py \
-  relaylm/_relaymem_primary_page_writer_handoff.py \
-  relaylm/_relaymem_primary_page_writer_contract.py \
-  scripts/relaylm_relaymem_primary_pipeline_smoke.py \
-  scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
-
 PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_smoke.py
 PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
+PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
 ```
 
-The compose workflow also runs the existing M3a-M3h, C1-0 source, C1 worker-contract, and documentation-link smokes.
+## Current integration boundary
 
-## Next boundary
-
-The next I1 boundary is Phase 6-C1-2: one already-claimed job worker. It should combine:
+The next boundary is not another compose helper. It is a thin one-job adapter:
 
 ```text
-exact active B3 claim
-  + exact protected worker source
-  + lease checkpoints
-  + execute_relaymem_primary_pipeline(...)
-  + existing pure outcome classifier
-  + lease-fenced B3 retry release or terminal commit
+one exact queued record
+  -> B3 claim
+  -> C1-5 rehydrate
+  -> fresh C1-0 source/scope
+  -> C1-2 worker using this compose helper
 ```
 
-Protected source persistence remains a separate prerequisite for restart-complete execution. This compose helper neither persists nor reconstructs protected source content.
+After that adapter, I1 proceeds to next-turn recall validation. Compose remains queue-agnostic and neither persists nor reconstructs protected source content.
