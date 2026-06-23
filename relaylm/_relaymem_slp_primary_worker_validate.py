@@ -10,7 +10,7 @@ from .relaymem_slp_primary_worker_source import (
     RelayMEMSLPPrimaryWorkerSource,
     RelayMEMSLPPrimaryWorkerSourceScope,
 )
-from .relaymem_slp_queue_record import MAX_LEASE_SECONDS, dedupe, parse_timestamp
+from .relaymem_slp_queue_record import MAX_LEASE_SECONDS, dedupe
 from .relaymem_slp_queue_state import RelayMEMSLPQueueStateTransitionResult
 from ._relaymem_slp_primary_worker_fence import (
     _check_active_claim,
@@ -66,10 +66,8 @@ def _validate_request(
         or not 1 <= value.lease_duration_seconds <= MAX_LEASE_SECONDS
     ):
         reasons.append("primary_worker_lease_duration_invalid")
-    if value.retry_not_before is not None and parse_timestamp(
-        value.retry_not_before
-    ) is None:
-        reasons.append("primary_worker_retry_not_before_invalid")
+    if value.retry_not_before is not None:
+        reasons.append("primary_worker_retry_not_before_caller_owned")
     return (value, ()) if not reasons else (None, _reason_ids(reasons))
 
 
@@ -96,7 +94,7 @@ def _finish_classified_without_pipeline(
         outcome,
         current_record=request.claimed_record,
         queue_root=request.queue_root,
-        retry_not_before=request.retry_not_before,
+        retry_not_before=None,
     )
     if not (
         transition.status == "applied"
@@ -141,9 +139,6 @@ def _result(
     queue_transition_performed: bool = False,
     reasons: tuple[str, ...] | list[str] = (),
 ) -> RelayMEMSLPPrimaryWorkerResult:
-    # Invalid requests may contain non-canonical or non-bool gates. Never echo
-    # those impossible combinations into the exact result envelope; project a
-    # canonical disabled dry-run gate while preserving bounded reason IDs.
     if status == "invalid_input":
         enabled = False
         dry_run = True
