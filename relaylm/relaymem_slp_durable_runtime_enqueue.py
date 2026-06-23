@@ -1,9 +1,15 @@
 """Crash-consistent I1-B enqueue adapter for Phase 6-C1-5.
 
 The canonical I1-B helper is first executed in dry-run mode to obtain the exact
-B1 identity and protected capture.  The capture is durably committed before B2
-publishes the content-free queue record.  The canonical apply helper then runs
+B1 identity and protected capture. The capture is durably committed before B2
+publishes the content-free queue record. The canonical apply helper then runs
 unchanged, preserving B2 and process-local registry ownership.
+
+A committed source artifact is never deleted merely because this caller did not
+observe B2 success. B2 may have published its queue record before reporting a
+late fsync or verification failure, or another process may publish the same job.
+The uncertain artifact is therefore retained for reconciliation rather than
+risking a claimable queue record with no protected source.
 """
 from __future__ import annotations
 
@@ -103,6 +109,9 @@ class RelayMEMSLPDurableRuntimeEnqueueResult:
             "orphan_cleanup_status": (
                 cleanup.status if cleanup is not None else "not_required"
             ),
+            "orphan_reconciliation_required": bool(
+                cleanup is not None and cleanup.cleanup_required
+            ),
             "process_local_cache_retained": bool(
                 self.runtime_result.source_retention_result is not None
                 and self.runtime_result.source_retention_result.retained
@@ -148,17 +157,30 @@ def apply_relaymem_slp_durable_runtime_enqueue(
         )
         if gate_reasons:
             return _result(
-                "invalid_input", delegated, enabled_value, dry_value, apply_value, gate_reasons
+                "invalid_input",
+                delegated,
+                enabled_value,
+                dry_value,
+                apply_value,
+                gate_reasons,
             )
         if not enabled_value:
             return _result("disabled", delegated, False, dry_value, apply_value, ())
         if dry_value:
             return _result(
                 "dry_run_ready" if delegated.status == "dry_run_ready" else "blocked",
-                delegated, True, True, apply_value, delegated.blocked_reasons,
+                delegated,
+                True,
+                True,
+                apply_value,
+                delegated.blocked_reasons,
             )
         return _result(
-            "blocked", delegated, True, False, False,
+            "blocked",
+            delegated,
+            True,
+            False,
+            False,
             delegated.blocked_reasons or ("apply_gate_incomplete",),
         )
 
@@ -174,12 +196,20 @@ def apply_relaymem_slp_durable_runtime_enqueue(
         preparation.source_scope.close()
     if type(registry) is not RelayMEMSLPPrimaryWorkerSourceRegistry:
         return _result(
-            "source_persistence_failed", preparation, True, False, True,
+            "source_persistence_failed",
+            preparation,
+            True,
+            False,
+            True,
             ("exact_source_registry_required",),
         )
     if type(source_store) is not RelayMEMSLPDurableProtectedSourceStore:
         return _result(
-            "source_persistence_failed", preparation, True, False, True,
+            "source_persistence_failed",
+            preparation,
+            True,
+            False,
+            True,
             ("exact_durable_protected_source_store_required",),
         )
 
@@ -250,19 +280,10 @@ def apply_relaymem_slp_durable_runtime_enqueue(
         enqueue is not None
         and enqueue.status in {"enqueued_new", "duplicate_existing"}
     )
-    cleanup: RelayMEMSLPProtectedSourceStoreResult | None = None
-    if not queue_published and persisted.status == "published_new":
-        cleanup = source_store.discard_unqueued(
-            source_payload=payload,
-            durable_job=dispatch.durable_job,
-            character_id=source.character_id,
-        )
     if not queue_published:
+        orphan = _retained_orphan_result(persisted)
         reasons = dedupe(
-            (
-                *applied.blocked_reasons,
-                *(cleanup.blocked_reasons if cleanup is not None else ()),
-            )
+            (*applied.blocked_reasons, *orphan.blocked_reasons)
         ) or ("durable_enqueue_failed",)
         return _result(
             "enqueue_failed",
@@ -271,8 +292,9 @@ def apply_relaymem_slp_durable_runtime_enqueue(
             False,
             True,
             reasons,
+            source_persisted_before_enqueue=True,
             source_store_result=persisted,
-            orphan_cleanup_result=cleanup,
+            orphan_cleanup_result=orphan,
         )
 
     restart_complete = True
@@ -352,6 +374,22 @@ def build_relaymem_slp_durable_runtime_enqueue_node_result(
                 "writes_memory": False,
             }
         ],
+    )
+
+
+def _retained_orphan_result(
+    persisted: RelayMEMSLPProtectedSourceStoreResult,
+) -> RelayMEMSLPProtectedSourceStoreResult:
+    return RelayMEMSLPProtectedSourceStoreResult(
+        status="cleanup_required",
+        durable=True,
+        source_available=True,
+        duplicate_existing=persisted.duplicate_existing,
+        cleanup_required=True,
+        cleanup_marker_written=False,
+        blocked_reasons=("protected_source_orphan_reconciliation_required",),
+        source_integrity_digest=None,
+        protected_capture=None,
     )
 
 
