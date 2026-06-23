@@ -1,51 +1,120 @@
-name: RelayMEM Primary pipeline source patch
+name: RelayMEM Primary pipeline compose smoke
 
 on:
   pull_request:
     paths:
+      - "relaylm/relaymem_primary_pipeline.py"
+      - "relaylm/_relaymem_primary_pipeline_impl.py"
+      - "relaylm/_relaymem_primary_page_writer_handoff.py"
+      - "relaylm/_relaymem_primary_page_writer_contract.py"
+      - "scripts/relaylm_relaymem_primary_pipeline_smoke.py"
+      - "scripts/relaylm_relaymem_primary_pipeline_security_smoke.py"
+      - "scripts/relaylm_relaymem_primary_pipeline_result_validation_smoke.py"
+      - "docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md"
+      - ".github/workflows/relaymem-primary-pipeline-compose-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/relaymem_primary_pipeline.py"
+      - "relaylm/_relaymem_primary_pipeline_impl.py"
+      - "relaylm/_relaymem_primary_page_writer_handoff.py"
+      - "relaylm/_relaymem_primary_page_writer_contract.py"
+      - "scripts/relaylm_relaymem_primary_pipeline_smoke.py"
+      - "scripts/relaylm_relaymem_primary_pipeline_security_smoke.py"
+      - "scripts/relaylm_relaymem_primary_pipeline_result_validation_smoke.py"
+      - "docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md"
       - ".github/workflows/relaymem-primary-pipeline-compose-smoke.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch:
+  smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          ref: phase6c1-one-claimed-primary-worker
-          fetch-depth: 1
-      - name: Normalize exact M3e idempotent snapshot
-        shell: bash
+          python-version: "3.12"
+      - name: Compile compose boundary and smokes
+        run: >-
+          python -m compileall -q
+          relaylm/relaymem_primary_pipeline.py
+          relaylm/_relaymem_primary_pipeline_impl.py
+          relaylm/_relaymem_primary_page_writer_handoff.py
+          relaylm/_relaymem_primary_page_writer_contract.py
+          scripts/relaylm_relaymem_primary_pipeline_smoke.py
+          scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
+          scripts/relaylm_relaymem_primary_pipeline_result_validation_smoke.py
+      - name: Run RelayMEM Primary compose functional smoke
         run: |
-          set -euo pipefail
-          python - <<'PY'
+          PYTHONPATH=. python - <<'PY'
+          import runpy
+          import traceback
           from pathlib import Path
 
-          path = Path("relaylm/relaymem_slp_primary_worker.py")
-          text = path.read_text(encoding="utf-8")
-          old = '            page_applied=value["page_applied"],\n'
-          new = '''            page_applied=(
-                value["page_applied"]
-                or (
-                    value["status"] == "already_applied"
-                    and value["idempotent_noop"] is True
-                )
-            ),
-'''
-          if text.count(old) != 1:
-              raise SystemExit("worker snapshot patch target mismatch")
-          path.write_text(text.replace(old, new), encoding="utf-8")
+          diagnostic = Path("compose-smoke-diagnostic.txt")
+          try:
+              runpy.run_path(
+                  "scripts/relaylm_relaymem_primary_pipeline_smoke.py",
+                  run_name="__main__",
+              )
+          except SystemExit as exc:
+              if exc.code in (None, 0):
+                  raise
+              frames = traceback.extract_tb(exc.__traceback__)
+              diagnostic.write_text(
+                  "SystemExit\n" + "\n".join(
+                      f"{Path(frame.filename).name}:{frame.lineno}:{frame.name}"
+                      for frame in frames[-8:]
+                  ) + "\n",
+                  encoding="utf-8",
+              )
+              raise
+          except BaseException as exc:
+              frames = traceback.extract_tb(exc.__traceback__)
+              diagnostic.write_text(
+                  type(exc).__name__ + "\n" + "\n".join(
+                      f"{Path(frame.filename).name}:{frame.lineno}:{frame.name}"
+                      for frame in frames[-8:]
+                  ) + "\n",
+                  encoding="utf-8",
+              )
+              raise SystemExit(1) from None
           PY
-          python -m py_compile relaylm/relaymem_slp_primary_worker.py
-          git diff --check
-      - name: Commit worker snapshot patch
-        shell: bash
+      - name: Upload sanitized compose smoke diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relaymem-primary-compose-diagnostic
+          path: compose-smoke-diagnostic.txt
+          if-no-files-found: error
+          retention-days: 1
+      - name: Run RelayMEM Primary compose security smokes
         run: |
-          set -euo pipefail
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add relaylm/relaymem_slp_primary_worker.py
-          git commit -m "fix: normalize idempotent M3e worker outcome snapshot"
-          git push origin HEAD:phase6c1-one-claimed-primary-worker
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_result_validation_smoke.py
+      - name: Run M3a-M3d contract smokes
+        run: |
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_formation_dry_run_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_write_preflight_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_candidate_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_idempotency_smoke.py
+      - name: Run M3e writer smokes
+        run: |
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_security_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_atomicity_smoke.py
+      - name: Run M3f-M3h persistence smokes
+        run: |
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_reconciliation_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_apply_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
+      - name: Run Phase 6-C1 source and contract smokes
+        run: |
+          PYTHONPATH=. python scripts/relaylm_phase6c1_primary_worker_source_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6c1_worker_contract_smoke.py
+      - name: Run documentation link check
+        run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
