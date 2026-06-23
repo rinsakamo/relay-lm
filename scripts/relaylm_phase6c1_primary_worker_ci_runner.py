@@ -10,6 +10,7 @@ SMOKES = (
     "scripts/relaylm_phase6c1_primary_worker_security_smoke.py",
     "scripts/relaylm_phase6c1_primary_worker_result_validation_smoke.py",
     "scripts/relaylm_phase6c1_primary_worker_fault_smoke.py",
+    "scripts/relaylm_phase6c1_primary_worker_review_fix_smoke.py",
 )
 DIAGNOSTIC = Path("phase6c1-primary-worker-diagnostic.txt")
 

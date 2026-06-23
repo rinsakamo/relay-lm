@@ -1,13 +1,14 @@
 """Production-worker fault integration smoke for Phase 6-C1-4."""
 from __future__ import annotations
 
+from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
 
 import relaylm.relaymem_primary_pipeline as pipeline
 import relaylm.relaymem_slp_queue_state as queue_state
 from relaylm.relaymem_slp_primary_worker import execute_relaymem_slp_primary_worker
-from relaylm.relaymem_slp_queue_record import record_filename
+from relaylm.relaymem_slp_queue_record import parse_timestamp, record_filename
 
 from _relaylm_phase6c1_fault_fixtures import (
     build_claimed_job_fixture,
@@ -32,8 +33,14 @@ def _claim_again(
     *,
     owner: str,
     token: str,
-) -> dict[str, object]:
-    with patch.object(queue_state, "_new_lease_token", return_value=token):
+) -> tuple[dict[str, object], object]:
+    retry_at = parse_timestamp(queued.get("retry_not_before"))
+    require(retry_at is not None, "retry_not_before missing")
+    resume_at = retry_at + timedelta(seconds=1)
+    with (
+        patch.object(queue_state, "_new_lease_token", return_value=token),
+        patch.object(queue_state, "_now_utc", return_value=resume_at),
+    ):
         result = transition(
             queue_root,
             queued,
@@ -43,7 +50,7 @@ def _claim_again(
         )
     require(result.status == "applied", result.to_log_dict())
     require(type(result.durable_record) is dict, "new claim record missing")
-    return dict(result.durable_record)
+    return dict(result.durable_record), resume_at
 
 
 def m3g_process_lock_contention_retries_then_converges() -> None:
@@ -107,7 +114,7 @@ def m3g_process_lock_contention_retries_then_converges() -> None:
 
             lock_holder.release()
             require(not lock_holder.running, "M3g lock holder cleanup")
-            retry_record = _claim_again(
+            retry_record, resume_at = _claim_again(
                 queue_root,
                 queued,
                 owner="worker-c1-4-m3g-retry",
@@ -118,7 +125,8 @@ def m3g_process_lock_contention_retries_then_converges() -> None:
                 store_root,
                 record=retry_record,
             )
-            converged = execute_relaymem_slp_primary_worker(retry_request)
+            with patch.object(queue_state, "_now_utc", return_value=resume_at):
+                converged = execute_relaymem_slp_primary_worker(retry_request)
             require(converged.status == "terminal_succeeded", converged.to_log_dict())
             require(converged.pipeline_result is not None, "M3g convergence missing")
             require(
@@ -207,7 +215,7 @@ def m3h_process_lock_contention_retries_then_converges() -> None:
 
             lock_holder.release()
             require(not lock_holder.running, "M3h lock holder cleanup")
-            retry_record = _claim_again(
+            retry_record, resume_at = _claim_again(
                 queue_root,
                 queued,
                 owner="worker-c1-4-m3h-retry",
@@ -218,7 +226,8 @@ def m3h_process_lock_contention_retries_then_converges() -> None:
                 store_root,
                 record=retry_record,
             )
-            converged = execute_relaymem_slp_primary_worker(retry_request)
+            with patch.object(queue_state, "_now_utc", return_value=resume_at):
+                converged = execute_relaymem_slp_primary_worker(retry_request)
             require(converged.status == "terminal_succeeded", converged.to_log_dict())
             require(read_record(queue_path)["state"] == "succeeded", "M3h convergence")
             require(

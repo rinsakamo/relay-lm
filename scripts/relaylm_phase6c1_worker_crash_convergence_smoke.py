@@ -13,6 +13,7 @@ from relaylm.relaymem_slp_primary_worker import execute_relaymem_slp_primary_wor
 from relaylm.relaymem_slp_primary_worker_source import (
     validate_relaymem_slp_primary_worker_source,
 )
+from relaylm.relaymem_slp_queue_record import parse_timestamp
 
 from relaylm_phase6c1_primary_worker_fault_smoke import (
     checkpoint_losses,
@@ -125,7 +126,9 @@ def index_only_partial_state_converges() -> None:
             "consumed source reason",
         )
 
-        with fixed_queue_time():
+        retry_ready_at = parse_timestamp(queued["retry_not_before"])
+        require(retry_ready_at is not None, "partial retry not-before missing")
+        with fixed_queue_time(retry_ready_at):
             claim_result = transition(
                 queue_root,
                 queued,
@@ -143,7 +146,7 @@ def index_only_partial_state_converges() -> None:
         )
         require(retry_scope is not first_scope, "fresh source scope required")
 
-        with fixed_queue_time():
+        with fixed_queue_time(retry_ready_at):
             converged = execute_relaymem_slp_primary_worker(retry_request)
         require(converged.status == "terminal_succeeded", converged.to_log_dict())
         require(converged.pipeline_result is not None, "converged pipeline missing")
