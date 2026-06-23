@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
       - "relaylm/relaymem_primary_pipeline.py"
+      - "relaylm/_relaymem_primary_pipeline_impl.py"
       - "relaylm/_relaymem_primary_page_writer_handoff.py"
       - "relaylm/_relaymem_primary_page_writer_contract.py"
       - "scripts/relaylm_relaymem_primary_pipeline_smoke.py"
       - "scripts/relaylm_relaymem_primary_pipeline_security_smoke.py"
+      - "scripts/relaylm_relaymem_primary_pipeline_result_validation_smoke.py"
       - "docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md"
       - ".github/workflows/relaymem-primary-pipeline-compose-smoke.yml"
   push:
@@ -15,10 +17,12 @@ on:
       - main
     paths:
       - "relaylm/relaymem_primary_pipeline.py"
+      - "relaylm/_relaymem_primary_pipeline_impl.py"
       - "relaylm/_relaymem_primary_page_writer_handoff.py"
       - "relaylm/_relaymem_primary_page_writer_contract.py"
       - "scripts/relaylm_relaymem_primary_pipeline_smoke.py"
       - "scripts/relaylm_relaymem_primary_pipeline_security_smoke.py"
+      - "scripts/relaylm_relaymem_primary_pipeline_result_validation_smoke.py"
       - "docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md"
       - ".github/workflows/relaymem-primary-pipeline-compose-smoke.yml"
 
@@ -37,10 +41,12 @@ jobs:
         run: >-
           python -m compileall -q
           relaylm/relaymem_primary_pipeline.py
+          relaylm/_relaymem_primary_pipeline_impl.py
           relaylm/_relaymem_primary_page_writer_handoff.py
           relaylm/_relaymem_primary_page_writer_contract.py
           scripts/relaylm_relaymem_primary_pipeline_smoke.py
           scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
+          scripts/relaylm_relaymem_primary_pipeline_result_validation_smoke.py
       - name: Run RelayMEM Primary compose functional smoke
         run: |
           PYTHONPATH=. python - <<'PY'
@@ -85,8 +91,10 @@ jobs:
           path: compose-smoke-diagnostic.txt
           if-no-files-found: error
           retention-days: 1
-      - name: Run RelayMEM Primary compose security smoke
-        run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
+      - name: Run RelayMEM Primary compose security smokes
+        run: |
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_result_validation_smoke.py
       - name: Run M3a-M3d contract smokes
         run: |
           PYTHONPATH=. python scripts/relaylm_relaymem_primary_formation_dry_run_smoke.py
