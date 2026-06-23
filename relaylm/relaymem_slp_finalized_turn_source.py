@@ -291,9 +291,13 @@ def build_relaymem_slp_finalized_turn_source(
             blocked_reasons=("governed_experience_build_failed",),
         )
 
-    persistence_status = (
-        "blocked" if scene.get("persistence_block") is True else "allowed"
-    )
+    if scene.get("persistence_block") is True:
+        return _result(
+            "blocked",
+            enabled=True,
+            response_finalized=True,
+            blocked_reasons=("scene_persistence_blocked",),
+        )
     source = RelayMEMSLPFinalizedTurnSource(
         schema_version=FINALIZED_TURN_SOURCE_SCHEMA,
         character_id=character_id,
@@ -303,7 +307,7 @@ def build_relaymem_slp_finalized_turn_source(
         namespace=namespace,
         source_event_kind="turn",
         source_count=1,
-        persistence_policy_status=persistence_status,
+        persistence_policy_status="allowed",
         source_lineage_artifact=deepcopy(lineage),
         relayscn_scene_policy_artifact=scene,
         relayemo_artifact=emo,

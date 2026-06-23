@@ -171,7 +171,7 @@ def run_relaymem_slp_runtime_enqueue_after_response(
             dry_run_only=config.relaymem_slp_runtime_enqueue_dry_run_only,
             apply_enabled=config.relaymem_slp_runtime_enqueue_apply_enabled,
         )
-    except BaseException:
+    except Exception:
         result = build_relaymem_slp_runtime_enqueue_failure_result()
 
     nodes = []
@@ -189,7 +189,7 @@ def run_relaymem_slp_runtime_enqueue_after_response(
             metadata={"event": "relaymem_slp_runtime_enqueue"},
             pipeline_node_results=tuple(nodes),
         )
-    except BaseException:
+    except Exception:
         pass
     finally:
         if result.status == "dry_run_ready" and result.source_scope is not None:
