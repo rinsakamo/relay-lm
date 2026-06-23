@@ -9,6 +9,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from relaylm.relaymem_primary_page_candidate import (
+    build_relaymem_governed_experience_summary,
+)
 from relaylm.relaymem_slp_primary_worker_source import (
     SOURCE_FIELDS,
     SOURCE_SCHEMA,
@@ -36,6 +39,14 @@ RUN_ID = "run-c1-0"
 SESSION_ID = "session-c1-0"
 LINEAGE = "a" * 64
 LEASE_TOKEN = "lease-c1-0-secret"
+
+
+class RecordLookalike(dict[str, object]):
+    pass
+
+
+class ReasonListLookalike(list[str]):
+    pass
 
 
 def require(condition: bool, message: object) -> None:
@@ -121,29 +132,19 @@ def source_payload(record: dict[str, object]) -> dict[str, object]:
             {"role": "user", "content": RAW_USER},
             {"role": "assistant", "content": RAW_ASSISTANT},
         ],
-        "governed_experience_artifact": {
-            "schema_version": "relaymem.governed_experience_summary.v0",
-            "runtime_private": True,
-            "content_included": True,
-            "raw_source_text_included": False,
-            "raw_message_history_included": False,
-            "raw_affect_estimates_included": False,
-            "summary_origin": "trusted_in_process_summary",
-            "candidate_id": "primary_candidate:0",
-            "source_event_kind": "turn",
-            "namespace": NAMESPACE,
-            "title": RAW_TITLE,
-            "summary_text": RAW_SUMMARY,
-            "summary_chars": len(RAW_SUMMARY),
-            "valid": True,
-            "blocked_reasons": [],
-        },
+        "governed_experience_artifact": build_relaymem_governed_experience_summary(
+            candidate_id="primary_candidate:0",
+            source_event_kind="turn",
+            namespace=NAMESPACE,
+            title=RAW_TITLE,
+            summary_text=RAW_SUMMARY,
+        ),
     }
 
 
 def build(
     payload: object,
-    record: dict[str, object],
+    record: object,
     scope: RelayMEMSLPPrimaryWorkerSourceScope,
 ):
     return build_relaymem_slp_primary_worker_source(
@@ -204,53 +205,103 @@ def main() -> int:
         request_scope=scope,
     )
     require(exact is valid.source and not errors, errors)
-    print("ok valid exact request-local source bundle")
+
+    optional_title_payload = source_payload(record)
+    optional_title_payload["governed_experience_artifact"] = (
+        build_relaymem_governed_experience_summary(
+            candidate_id="primary_candidate:0",
+            source_event_kind="turn",
+            namespace=NAMESPACE,
+            title=None,
+            summary_text=RAW_SUMMARY,
+        )
+    )
+    optional_title = build(
+        optional_title_payload,
+        record,
+        RelayMEMSLPPrimaryWorkerSourceScope(),
+    )
+    require(optional_title.status == "dry_run_ready", optional_title)
+    require(
+        optional_title.source.to_protected_runtime_dict()[
+            "governed_experience_artifact"
+        ]["title"]
+        is None,
+        optional_title,
+    )
+    print("ok valid exact request-local source and existing M3c artifact")
 
     # 2. Unknown source field rejected.
     unknown = source_payload(record)
     unknown["unexpected_content_field"] = RAW_USER
-    assert_reason(build(unknown, record, RelayMEMSLPPrimaryWorkerSourceScope()), "worker_source_shape_mismatch")
+    assert_reason(
+        build(unknown, record, RelayMEMSLPPrimaryWorkerSourceScope()),
+        "worker_source_shape_mismatch",
+    )
     print("ok unknown source field rejected")
 
     # 3. bool/int confusion rejected for both counters.
     bool_turn = source_payload(record)
     bool_turn["turn_index"] = True
-    assert_reason(build(bool_turn, record, RelayMEMSLPPrimaryWorkerSourceScope()), "worker_source_turn_index_invalid")
+    assert_reason(
+        build(bool_turn, record, RelayMEMSLPPrimaryWorkerSourceScope()),
+        "worker_source_turn_index_invalid",
+    )
     bool_count = source_payload(record)
     bool_count["source_count"] = True
-    assert_reason(build(bool_count, record, RelayMEMSLPPrimaryWorkerSourceScope()), "worker_source_count_invalid")
+    assert_reason(
+        build(bool_count, record, RelayMEMSLPPrimaryWorkerSourceScope()),
+        "worker_source_count_invalid",
+    )
     print("ok bool and int remain distinct")
 
     # 4. Missing field rejected.
     missing = source_payload(record)
     del missing["relayemo_artifact"]
-    assert_reason(build(missing, record, RelayMEMSLPPrimaryWorkerSourceScope()), "worker_source_shape_mismatch")
+    assert_reason(
+        build(missing, record, RelayMEMSLPPrimaryWorkerSourceScope()),
+        "worker_source_shape_mismatch",
+    )
     print("ok missing source field rejected")
 
     # 5-7. Fixed schema and private/content markers fail closed.
     wrong_schema = source_payload(record)
     wrong_schema["schema_version"] = "relaymem.slp_primary_worker_source.v1"
-    assert_reason(build(wrong_schema, record, RelayMEMSLPPrimaryWorkerSourceScope()), "worker_source_schema_mismatch")
+    assert_reason(
+        build(wrong_schema, record, RelayMEMSLPPrimaryWorkerSourceScope()),
+        "worker_source_schema_mismatch",
+    )
     not_private = source_payload(record)
     not_private["runtime_private"] = False
-    assert_reason(build(not_private, record, RelayMEMSLPPrimaryWorkerSourceScope()), "worker_source_runtime_private_required")
+    assert_reason(
+        build(not_private, record, RelayMEMSLPPrimaryWorkerSourceScope()),
+        "worker_source_runtime_private_required",
+    )
     no_content = source_payload(record)
     no_content["content_included"] = False
-    assert_reason(build(no_content, record, RelayMEMSLPPrimaryWorkerSourceScope()), "worker_source_content_required")
+    assert_reason(
+        build(no_content, record, RelayMEMSLPPrimaryWorkerSourceScope()),
+        "worker_source_content_required",
+    )
     print("ok schema and private content markers are exact")
 
     # 8. Job identity mismatch.
     other = claimed_record(run_id="run-other-job")
     bad_job = source_payload(record)
     bad_job["job_id"] = other["job_id"]
-    assert_reason(build(bad_job, record, RelayMEMSLPPrimaryWorkerSourceScope()), "worker_source_job_dispatch_identity_mismatch")
+    assert_reason(
+        build(bad_job, record, RelayMEMSLPPrimaryWorkerSourceScope()),
+        "worker_source_job_dispatch_identity_mismatch",
+    )
     print("ok job mismatch rejected")
 
     # 9. Dispatch identity mismatch with an internally matching foreign pair.
     bad_dispatch = source_payload(record)
     bad_dispatch["dispatch_idempotency_key"] = other["dispatch_idempotency_key"]
     bad_dispatch["job_id"] = other["job_id"]
-    dispatch_result = build(bad_dispatch, record, RelayMEMSLPPrimaryWorkerSourceScope())
+    dispatch_result = build(
+        bad_dispatch, record, RelayMEMSLPPrimaryWorkerSourceScope()
+    )
     require(
         "worker_source_dispatch_key_mismatch" in dispatch_result.blocked_reasons
         and "worker_source_job_id_mismatch" in dispatch_result.blocked_reasons,
@@ -273,25 +324,62 @@ def main() -> int:
             case["governed_experience_artifact"]["namespace"] = replacement
         result = build(case, record, RelayMEMSLPPrimaryWorkerSourceScope())
         assert_reason(result, reason)
-    print("ok run turn session namespace and lineage correlation are exact")
+
+    claimed_lookalike = build(
+        source_payload(record),
+        RecordLookalike(record),
+        RelayMEMSLPPrimaryWorkerSourceScope(),
+    )
+    assert_reason(claimed_lookalike, "claimed_record_shape_invalid")
+    print("ok correlation and exact claimed-record type are enforced")
 
     # 15. Governed message shape mismatch.
     bad_message = source_payload(record)
     bad_message["governed_messages"][1]["name"] = "unknown"
-    assert_reason(build(bad_message, record, RelayMEMSLPPrimaryWorkerSourceScope()), "governed_message_field_set_mismatch")
+    assert_reason(
+        build(bad_message, record, RelayMEMSLPPrimaryWorkerSourceScope()),
+        "governed_message_field_set_mismatch",
+    )
     print("ok governed message boundary is exact")
 
-    # 16. Governed experience shape and cross-field mismatch.
+    # 16. Governed experience and nested artifact shape mismatch.
     bad_experience = source_payload(record)
     bad_experience["governed_experience_artifact"]["summary_chars"] = True
-    assert_reason(build(bad_experience, record, RelayMEMSLPPrimaryWorkerSourceScope()), "governed_experience_summary_chars_mismatch")
-    missing_title = source_payload(record)
-    missing_title["governed_experience_artifact"]["title"] = None
-    assert_reason(build(missing_title, record, RelayMEMSLPPrimaryWorkerSourceScope()), "governed_experience_title_invalid")
+    assert_reason(
+        build(bad_experience, record, RelayMEMSLPPrimaryWorkerSourceScope()),
+        "governed_experience_summary_chars_mismatch",
+    )
+    bad_title = source_payload(record)
+    bad_title["governed_experience_artifact"]["title"] = ""
+    assert_reason(
+        build(bad_title, record, RelayMEMSLPPrimaryWorkerSourceScope()),
+        "governed_experience_title_invalid",
+    )
     bad_experience_namespace = source_payload(record)
-    bad_experience_namespace["governed_experience_artifact"]["namespace"] = "character:other:primary"
-    assert_reason(build(bad_experience_namespace, record, RelayMEMSLPPrimaryWorkerSourceScope()), "worker_source_experience_namespace_mismatch")
-    print("ok governed experience boundary is exact")
+    bad_experience_namespace["governed_experience_artifact"]["namespace"] = (
+        "character:other:primary"
+    )
+    assert_reason(
+        build(
+            bad_experience_namespace,
+            record,
+            RelayMEMSLPPrimaryWorkerSourceScope(),
+        ),
+        "worker_source_experience_namespace_mismatch",
+    )
+    bad_reason_container = source_payload(record)
+    bad_reason_container["relayscn_scene_policy_artifact"][
+        "persistence_block_reasons"
+    ] = ReasonListLookalike()
+    assert_reason(
+        build(
+            bad_reason_container,
+            record,
+            RelayMEMSLPPrimaryWorkerSourceScope(),
+        ),
+        "relayscn_persistence_reasons_invalid",
+    )
+    print("ok governed experience and nested container boundaries are exact")
 
     # 17. Cross-request, consumed, and stale sources are rejected.
     cross_scope = RelayMEMSLPPrimaryWorkerSourceScope()
@@ -328,7 +416,10 @@ def main() -> int:
         claimed_record=record,
         request_scope=RelayMEMSLPPrimaryWorkerSourceScope(),
     )
-    require(generic is None and generic_errors == ("exact_worker_source_required",), generic_errors)
+    require(
+        generic is None and generic_errors == ("exact_worker_source_required",),
+        generic_errors,
+    )
     print("ok stale consumed cross-request and generic lookalike sources rejected")
 
     # 18-19. Public projection, result and PipelineNodeResult stay content-free.
@@ -340,8 +431,12 @@ def main() -> int:
     assert_content_free(node.to_log_dict())
     require(node.artifacts[0]["source_omitted"] is True, node)
     malformed_secret = source_payload(record)
-    malformed_secret["governed_messages"] = [{"role": "user", "content": RAW_USER, "secret": RAW_SUMMARY}]
-    secret_result = build(malformed_secret, record, RelayMEMSLPPrimaryWorkerSourceScope())
+    malformed_secret["governed_messages"] = [
+        {"role": "user", "content": RAW_USER, "secret": RAW_SUMMARY}
+    ]
+    secret_result = build(
+        malformed_secret, record, RelayMEMSLPPrimaryWorkerSourceScope()
+    )
     assert_content_free(secret_result.to_log_dict())
     require(RAW_USER not in repr(secret_result.blocked_reasons), secret_result)
     print("ok public trace node and errors contain no protected content")
