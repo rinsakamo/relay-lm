@@ -1,0 +1,49 @@
+name: Phase 6 runtime enqueue source capture smoke
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/relaymem_slp_runtime_enqueue.py"
+      - "relaylm/relaymem_slp_primary_worker_source_registry.py"
+      - "scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py"
+      - "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md"
+      - ".github/workflows/phase6-runtime-enqueue-source-capture-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/relaymem_slp_runtime_enqueue.py"
+      - "relaylm/relaymem_slp_primary_worker_source_registry.py"
+      - "scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py"
+      - "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md"
+      - ".github/workflows/phase6-runtime-enqueue-source-capture-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile runtime enqueue source capture boundary
+        run: >-
+          python -m compileall -q
+          relaylm/relaymem_slp_runtime_enqueue.py
+          relaylm/relaymem_slp_primary_worker_source_registry.py
+          scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
+      - name: Validate runtime enqueue and source capture
+        run: PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
+      - name: Revalidate exact Phase 6 boundaries
+        run: |
+          PYTHONPATH=. python scripts/relaylm_relaymem_slp_job_admission_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_slp_response_handoff_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6b1_dispatch_preflight_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6c1_primary_worker_source_smoke.py
+      - name: Check documentation links
+        run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
