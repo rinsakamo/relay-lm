@@ -13,7 +13,6 @@ on:
       - "relaylm/relaymem_slp_runtime_enqueue.py"
       - "relaylm/relaymem_slp_primary_worker_source_registry.py"
       - "config.example.yaml"
-      - "scripts/_relaylm_phase6_i1b_trace_projection_fix.py"
       - "scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py"
       - "scripts/relaylm_phase6_runtime_enqueue_app_smoke.py"
       - "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md"
@@ -21,43 +20,30 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "relaylm/app.py"
+      - "relaylm/audit_projection.py"
+      - "relaylm/config.py"
+      - "relaylm/routing.py"
+      - "relaylm/trace_runtime.py"
+      - "relaylm/relaymem_slp_finalized_turn_source.py"
+      - "relaylm/relaymem_slp_runtime_finalization.py"
+      - "relaylm/relaymem_slp_runtime_enqueue.py"
+      - "relaylm/relaymem_slp_primary_worker_source_registry.py"
+      - "config.example.yaml"
+      - "scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py"
+      - "scripts/relaylm_phase6_runtime_enqueue_app_smoke.py"
+      - "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md"
+      - ".github/workflows/phase6-runtime-enqueue-source-capture-smoke.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply-audit-projection:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: phase6-i1b-runtime-enqueue-source-capture
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Register exact content-free Phase 6 trace projection
-        run: |
-          if [ -f scripts/_relaylm_phase6_i1b_trace_projection_fix.py ]; then
-            python scripts/_relaylm_phase6_i1b_trace_projection_fix.py
-            python -m compileall -q relaylm/audit_projection.py relaylm/trace_runtime.py
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git rm scripts/_relaylm_phase6_i1b_trace_projection_fix.py
-            git add relaylm/audit_projection.py relaylm/trace_runtime.py
-            git commit -m "feat: register Phase 6 runtime enqueue audit projection"
-            git push origin HEAD:phase6-i1b-runtime-enqueue-source-capture
-          else
-            echo "audit projection already registered"
-          fi
-
   smoke:
-    needs: apply-audit-projection
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: phase6-i1b-runtime-enqueue-source-capture
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -80,24 +66,7 @@ jobs:
       - name: Validate runtime enqueue and source capture
         run: PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
       - name: Validate ordinary non-stream and stream runtime wiring
-        id: app-smoke
-        run: |
-          set +e
-          PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py > /tmp/phase6-i1b-app-smoke.log 2>&1
-          status=$?
-          if [ "$status" -ne 0 ]; then
-            tail -n 100 /tmp/phase6-i1b-app-smoke.log
-            exit "$status"
-          fi
-          cat /tmp/phase6-i1b-app-smoke.log
-      - name: Upload app smoke failure log
-        if: failure() && steps.app-smoke.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: phase6-i1b-app-smoke-log
-          path: /tmp/phase6-i1b-app-smoke.log
-          if-no-files-found: error
-          retention-days: 1
+        run: PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
       - name: Revalidate exact Phase 6 boundaries
         run: |
           PYTHONPATH=. python scripts/relaylm_relaymem_slp_job_admission_smoke.py
