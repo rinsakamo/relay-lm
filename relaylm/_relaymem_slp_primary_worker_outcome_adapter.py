@@ -64,21 +64,20 @@ def _exact_policy_outcome(
             return None
         candidates = value.get("candidates")
         count = value.get("candidate_count")
-        if type(candidates) is not list or type(count) is not int:
+        if (
+            type(candidates) is not list
+            or type(count) is not int
+            or count != 1
+            or len(candidates) != 1
+            or type(candidates[0]) is not dict
+        ):
             return None
-        if count != len(candidates):
-            return None
-        if count == 0:
+        promotion = candidates[0].get("promotion_policy")
+        safety = candidates[0].get("safety_scope")
+        if promotion == "review_required" or safety == "held_for_review":
+            status = "held"
+        elif promotion != "free_to_update" or safety != "ordinary_memory":
             status = "blocked"
-        elif count == 1 and type(candidates[0]) is dict:
-            promotion = candidates[0].get("promotion_policy")
-            safety = candidates[0].get("safety_scope")
-            if promotion == "review_required" or safety == "held_for_review":
-                status = "held"
-            elif promotion != "free_to_update" or safety != "ordinary_memory":
-                status = "blocked"
-        else:
-            return None
     elif pipeline.last_stage == "m3b_write_preflight":
         value = pipeline.m3b_result
         if type(value) is not dict:
