@@ -1,6 +1,11 @@
 name: Phase 6-C1 worker source patch
 
 on:
+  push:
+    branches:
+      - phase6c1-one-claimed-primary-worker
+    paths:
+      - .github/workflows/phase6c1-worker-source-patch.yml
   pull_request:
     branches:
       - main
@@ -14,12 +19,12 @@ permissions:
 
 jobs:
   patch:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: phase6c1-one-claimed-primary-worker
           fetch-depth: 1
       - name: Normalize exact M3e idempotent snapshot
         shell: bash
