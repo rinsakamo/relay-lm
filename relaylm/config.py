@@ -113,6 +113,12 @@ class RelayLMConfig(BaseModel):
     relayctx_tts_adapter_handoff_runtime_dry_run_only: bool = True
     relayctx_tts_adapter_handoff_max_segment_chars: int = Field(default=120, gt=0)
     relayctx_tts_adapter_handoff_min_segment_chars: int = Field(default=8, gt=0)
+    relaymem_slp_runtime_enqueue_enabled: bool = False
+    relaymem_slp_runtime_enqueue_dry_run_only: bool = True
+    relaymem_slp_runtime_enqueue_apply_enabled: bool = False
+    relaymem_slp_queue_root: str | None = None
+    relaymem_slp_source_registry_max_entries: int = Field(default=256, ge=1)
+    relaymem_slp_source_registry_ttl_seconds: int = Field(default=1800, ge=1)
     client_message_canonicalization_dry_run_enabled: bool = False
     client_history_exclusion_preflight_enabled: bool = False
     client_history_exclusion_apply_enabled: bool = False
