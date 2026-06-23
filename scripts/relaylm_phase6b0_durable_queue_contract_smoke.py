@@ -222,7 +222,8 @@ def main() -> None:
             "Phase 6-B1 implements the first exact consumer",
             "Phase 6-B2 implements atomic durable enqueue",
             "Phase 6-B3 implements default-off, dry-run-first fenced",
-            "The next bounded RelayLM Core implementation is Phase 6-C worker execution",
+            "I1-B invokes A1 -> A2 -> B1 -> B2",
+            "The next bounded RelayLM Core implementation on `main` is C1-2",
         ),
         "current target",
     )
