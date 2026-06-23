@@ -105,6 +105,43 @@ def technical_failure_is_not_policy() -> None:
         )
 
 
+def zero_candidate_identity_failure_is_not_policy() -> None:
+    with TemporaryDirectory() as queue_dir, TemporaryDirectory() as store_dir:
+        queue_root, store_root = Path(queue_dir), Path(store_dir)
+        record = claimed_record(run_id="run-worker-review-zero-candidate")
+        queue_path = write_record(queue_root, record)
+        prepare_store(store_root)
+        request, _ = build_request(queue_root, store_root, record=record)
+        real_formation = pipeline.build_relaymem_primary_formation_dry_run
+
+        def invalid_candidate_identity(**kwargs: object):
+            kwargs["candidate_id"] = "invalid candidate identity"
+            return real_formation(**kwargs)
+
+        with (
+            fixed_queue_time(),
+            patch.object(
+                pipeline,
+                "build_relaymem_primary_formation_dry_run",
+                side_effect=invalid_candidate_identity,
+            ),
+        ):
+            result = execute_relaymem_slp_primary_worker(request)
+        require(result.status == "pipeline_blocked", result.to_log_dict())
+        require(not result.queue_transition_performed, result.to_log_dict())
+        require(read_record(queue_path)["state"] == "claimed", read_record(queue_path))
+        require(result.pipeline_result is not None, result.to_log_dict())
+        require(
+            "primary_candidate_id_invalid" in result.pipeline_result.reason_ids,
+            result.to_log_dict(),
+        )
+        require(
+            result.outcome_result is not None
+            and result.outcome_result.transition_kind == "blocked_invalid_input",
+            result.to_log_dict(),
+        )
+
+
 def retry_policy_is_internal_and_bounded() -> None:
     with TemporaryDirectory() as queue_dir, TemporaryDirectory() as store_dir:
         queue_root, store_root = Path(queue_dir), Path(store_dir)
@@ -284,6 +321,7 @@ def registry_retry_retains_source_and_converges() -> None:
 def main() -> int:
     SAFE_DIAGNOSTIC.unlink(missing_ok=True)
     technical_failure_is_not_policy()
+    zero_candidate_identity_failure_is_not_policy()
     retry_policy_is_internal_and_bounded()
     registry_retry_retains_source_and_converges()
     print("Phase 6-C1 final-review fix smoke: OK")
