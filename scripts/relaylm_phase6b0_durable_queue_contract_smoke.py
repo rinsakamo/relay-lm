@@ -229,21 +229,22 @@ def main() -> None:
     _require_all(
         plan,
         (
-            "Phase 6-B1: job-record and dispatch-idempotency preflight — complete",
             "Phase 6-B2 atomic durable enqueue: complete",
             "Phase 6-B3 queue lifecycle: complete",
-            "The next RelayLM Core boundary is Phase 6-C worker execution",
+            "Integration Milestone I1-B request-runtime deferred enqueue and protected source capture: complete",
+            "Phase 6-C1-0 protected worker source, C1-1 RelayMEM composition, and C1-3 pure outcome classification: complete",
+            "The next RelayLM Core boundary is C1-2",
         ),
         "pipeline plan",
     )
     _require_all(
         status,
         (
-            "Asynchronous RelaySLP orchestration: queue lifecycle helpers complete through Phase 6-B3",
+            "Asynchronous RelaySLP orchestration: I1-B runtime enqueue complete; queue lifecycle complete through B3; C1-0/C1-1/C1-3 complete",
             "Phase 6-B1 RelaySLP dispatch preflight",
             "Phase 6-B2 atomic durable enqueue",
             "Phase 6-B3 fenced queue state transitions",
-            "Phase 6-C worker execution",
+            "C1-2 one-already-claimed-job worker execution is not yet on `main`",
         ),
         "project status",
     )
