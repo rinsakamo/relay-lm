@@ -53,10 +53,8 @@ PROJECTION_SCHEMA = "relaymem.slp_one_queued_job_runner_projection.v0"
 RunnerStatus = Literal[
     "disabled",
     "invalid_input",
-    "blocked",
     "dry_run_ready",
     "claim_not_applied",
-    "claimed_record_invalid",
     "claim_lost_before_rehydrate",
     "source_unavailable",
     "source_retryable",
@@ -229,9 +227,6 @@ def execute_one_queued_relaymem_slp_primary_job(
     exact, request_reasons = _validate_request(request)
     if exact is None:
         return _result("invalid_input", request, reasons=request_reasons)
-    if not exact.dry_run_only and not exact.apply_enabled:
-        return _result("blocked", exact, reasons=("apply_gate_incomplete",))
-
     try:
         source_store = RelayMEMSLPDurableProtectedSourceStore(
             exact.protected_source_root,
@@ -319,7 +314,7 @@ def execute_one_queued_relaymem_slp_primary_job(
         )
 
     try:
-        active, _, active_reasons = _check_active_claim(
+        active, checked_claim, active_reasons = _check_active_claim(
             claimed,
             queue_root=exact.queue_root,
             lease_duration_seconds=exact.lease_duration_seconds,
@@ -327,8 +322,17 @@ def execute_one_queued_relaymem_slp_primary_job(
         )
     except Exception:
         active = False
+        checked_claim = None
         active_reasons = ("one_queued_job_claim_revalidation_failed",)
-    if not active:
+    checked_record = (
+        checked_claim.durable_record if checked_claim is not None else None
+    )
+    if not active or not _exact_claimed_record(checked_record):
+        reasons = active_reasons or (
+            "one_queued_job_checked_record_invalid"
+            if active
+            else "one_queued_job_claim_not_current"
+        )
         return _result(
             "claim_lost_before_rehydrate",
             exact,
@@ -336,8 +340,10 @@ def execute_one_queued_relaymem_slp_primary_job(
             claim_performed=True,
             claim_result=claim,
             claim_status=claim.status,
-            reasons=active_reasons or ("one_queued_job_claim_not_current",),
+            reasons=reasons,
         )
+    assert type(checked_record) is dict
+    claimed = dict(checked_record)
 
     try:
         prepared = prepare_relaymem_slp_primary_worker_source_for_claim(

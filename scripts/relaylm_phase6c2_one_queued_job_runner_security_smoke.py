@@ -15,6 +15,9 @@ from relaylm.relaymem_slp_one_queued_job_runner import (
     build_relaymem_slp_one_queued_job_runner_node_result,
     execute_one_queued_relaymem_slp_primary_job,
 )
+from relaylm.relaymem_slp_primary_worker_source_adapter import (
+    RelayMEMSLPPreparedWorkerSourceResult,
+)
 from relaylm.relaymem_slp_primary_worker_source_registry import (
     RelayMEMSLPPrimaryWorkerSourceRegistry,
 )
@@ -162,6 +165,64 @@ def run_corrupt_case(kind: str) -> None:
             require(token not in combined, (kind, "stdio leak", token))
 
 
+def source_store_retryable() -> None:
+    with (
+        TemporaryDirectory() as queue_dir,
+        TemporaryDirectory() as protected_dir,
+        TemporaryDirectory() as memory_dir,
+    ):
+        queue_root = Path(queue_dir)
+        protected_root = Path(protected_dir)
+        memory_root = Path(memory_dir)
+        prepare_store(memory_root)
+        applied = apply_durable(
+            queue_root, protected_root, RelayMEMSLPPrimaryWorkerSourceRegistry()
+        )
+        queued = queued_from(applied)
+        retryable = RelayMEMSLPPreparedWorkerSourceResult(
+            status="retryable",
+            retained=True,
+            source_available=True,
+            restart_rehydrated=False,
+            blocked_reasons=("protected_source_store_lock_unavailable",),
+        )
+        worker_calls = 0
+
+        def forbidden_worker(_: object):
+            nonlocal worker_calls
+            worker_calls += 1
+            raise AssertionError("worker must not run during source-store contention")
+
+        with (
+            patch.object(
+                runner,
+                "prepare_relaymem_slp_primary_worker_source_for_claim",
+                return_value=retryable,
+            ),
+            patch.object(runner, "execute_relaymem_slp_primary_worker", forbidden_worker),
+        ):
+            result = execute_one_queued_relaymem_slp_primary_job(
+                request(
+                    queue_root,
+                    protected_root,
+                    memory_root,
+                    queued,
+                    RelayMEMSLPPrimaryWorkerSourceRegistry(),
+                    owner="worker-source-lock-c2",
+                )
+            )
+        require(result.status == "source_retryable", result.to_log_dict())
+        require(result.retryable and result.claim_performed, result.to_log_dict())
+        require(not result.source_prepared and not result.worker_invoked, result.to_log_dict())
+        require(worker_calls == 0, worker_calls)
+        queue_path = queue_root / record_filename(
+            str(queued["dispatch_idempotency_key"])
+        )
+        require(read_record(queue_path)["state"] == "claimed", "retryable source rewound claim")
+        require(artifact_path(protected_root).exists(), "retryable source deleted artifact")
+        assert_content_free(result.to_log_dict())
+
+
 def lost_claim_before_rehydrate() -> None:
     with (
         TemporaryDirectory() as queue_dir,
@@ -218,6 +279,7 @@ def main() -> int:
         "symlink",
     ):
         run_corrupt_case(kind)
+    source_store_retryable()
     lost_claim_before_rehydrate()
     print("Phase 6-C2 one queued-job security smoke: OK")
     return 0
