@@ -65,6 +65,45 @@ def run_success_retry_cases() -> tuple[object, ...]:
         transition_kind="retry_release",
         retry_class="transient_lock_contention",
     )
+    mismatched_lock_h = classify(
+        m3e_applied(),
+        m3g(),
+        m3h(
+            source_status="already_applied",
+            status="blocked",
+            store_state="not_evaluated",
+            classification="not_evaluated",
+            page_verified=False,
+            index_state="not_checked",
+            log_state="not_checked",
+            reasons=("primary_reconciliation_recovery_lock_unavailable",),
+        ),
+    )
+    assert_shape(
+        mismatched_lock_h,
+        transition_kind="blocked_invalid_input",
+        retryable=False,
+        terminal=False,
+    )
+    dirty_lock_h = classify(
+        m3e_applied(),
+        m3g(),
+        m3h(
+            status="blocked",
+            store_state="state_diverged",
+            classification="not_evaluated",
+            page_verified=False,
+            index_state="diverged",
+            log_state="invalid",
+            reasons=("primary_reconciliation_recovery_lock_unavailable",),
+        ),
+    )
+    assert_shape(
+        dirty_lock_h,
+        transition_kind="blocked_invalid_input",
+        retryable=False,
+        terminal=False,
+    )
 
     partial = classify(
         m3e_applied(),
@@ -83,4 +122,4 @@ def run_success_retry_cases() -> tuple[object, ...]:
         retry_class="primary_reconciliation_retry",
         failure_class="partial_progress_verified",
     )
-    return exact, idem, lock_g, lock_h, partial
+    return exact, idem, lock_g, lock_h, mismatched_lock_h, dirty_lock_h, partial
