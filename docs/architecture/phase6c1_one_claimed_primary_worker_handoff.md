@@ -51,6 +51,12 @@ Ownership rules are:
 
 The legacy registry `consume_for_claim()` API remains unchanged for compatibility. C1-2 integration uses the retry-safe preparation adapter instead of passing an already-consumed source to the worker.
 
+## Governed candidate identity
+
+The I1-B governed-experience artifact owns the turn-specific content-free `candidate_id`. The serialized compose facade supplies that exact identifier to M3a before candidate formation, and the exact M3a candidate then flows unchanged through M3b and must match the governed-experience artifact at M3c.
+
+Direct M3a callers retain the historical `primary_candidate:0` default. The worker path does not rewrite the governed artifact to that fixed value and does not derive candidate identity from queue metadata. This preserves turn-specific identity while keeping memory-write idempotency owned by M3b.
+
 ## Runtime sequence
 
 ```text
