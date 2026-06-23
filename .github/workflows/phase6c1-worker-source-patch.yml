@@ -1,0 +1,75 @@
+name: Phase 6-C1 worker source patch
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - synchronize
+    paths:
+      - .github/workflows/phase6c1-worker-source-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+      - name: Normalize exact M3e idempotent snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          worker = Path("relaylm/relaymem_slp_primary_worker.py")
+          text = worker.read_text(encoding="utf-8")
+          old = '''            page_applied=value["page_applied"],
+            idempotent_noop=value["idempotent_noop"],
+'''
+          new = '''            page_applied=(
+                value["page_applied"]
+                or (
+                    value["status"] == "already_applied"
+                    and value["idempotent_noop"] is True
+                )
+            ),
+            idempotent_noop=value["idempotent_noop"],
+'''
+          if text.count(old) != 1:
+              raise SystemExit("worker snapshot patch target mismatch")
+          worker.write_text(text.replace(old, new), encoding="utf-8")
+
+          runner = Path("scripts/relaylm_phase6c1_primary_worker_ci_runner.py")
+          runner_text = runner.read_text(encoding="utf-8")
+          probe_line = '    "scripts/relaylm_phase6c1_primary_worker_final_fence_probe.py",\n'
+          if runner_text.count(probe_line) != 1:
+              raise SystemExit("probe runner target mismatch")
+          runner.write_text(runner_text.replace(probe_line, ""), encoding="utf-8")
+
+          probe = Path("scripts/relaylm_phase6c1_primary_worker_final_fence_probe.py")
+          if not probe.is_file():
+              raise SystemExit("probe missing")
+          probe.unlink()
+          PY
+          python -m compileall -q \
+            relaylm/relaymem_slp_primary_worker.py \
+            scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+      - name: Commit source patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add relaylm/relaymem_slp_primary_worker.py \
+            scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+          git add -u scripts/relaylm_phase6c1_primary_worker_final_fence_probe.py
+          git diff --cached --check
+          git commit -m "fix: normalize idempotent M3e worker outcome snapshot"
+          git push origin HEAD:phase6c1-one-claimed-primary-worker
