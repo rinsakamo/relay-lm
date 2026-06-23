@@ -139,7 +139,7 @@ def full_m3h(classification: str, *, lock: bool = False) -> dict[str, object]:
         projection = {
             "page_verified": True,
             "index_state": "proposed",
-            "log_state": "missing" if partial else "proposed",
+            "log_state": "expected" if partial else "proposed",
             "cleanup_artifacts_present": False,
         }
     value["projection"] = projection
