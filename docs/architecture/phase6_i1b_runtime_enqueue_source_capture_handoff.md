@@ -48,6 +48,15 @@ response that has already been finalized. Non-stream tests verify the JSON body
 remains exact after enqueue failure. Stream tests verify every backend SSE byte,
 including `[DONE]`, remains exact.
 
+This response-independent design has one explicit live-process durability gap:
+if the process exits after visible response delivery but before the Starlette
+background task completes, no durable enqueue or protected source publication is
+guaranteed for that turn. That gap is distinct from losing an already-published
+process-local source after restart. I1 restart completion must cover both the
+pre-enqueue background-task window and post-enqueue protected-source recovery;
+C1-5 or an equivalent durable source/finalization owner must not describe only
+registry rehydration.
+
 ## Finalized-turn authority
 
 The first bounded ordinary runtime owns one RelayRUN run per HTTP request and one
@@ -117,20 +126,32 @@ Until that sequence occurs, public diagnostics report `worker_ready = false`.
 
 ## Retention semantics
 
-The registry is thread-safe and bounded by entry count and monotonic TTL. It is
-process-local and explicitly not restart-complete. It exposes exact publish,
-consume-for-claim, and release operations.
+The registry is thread-safe, process-local, explicitly not restart-complete, and
+bounded by an exact entry-count limit plus a monotonic TTL. It exposes exact
+publish, consume-for-claim, and release operations.
+
+Its bounded policy is fail-closed rather than eviction-based:
+
+- expired entries and entries whose request scope is already inactive are purged
+  before size, publish, consume, or release decisions;
+- purge closes the retained C1-0 request scope;
+- when the entry-count limit remains full after purge, a new publication is
+  rejected with `protected_source_registry_capacity_reached`;
+- a capacity rejection never evicts or overwrites an existing capture;
+- a claim after TTL expiry or explicit release receives
+  `protected_source_unavailable` through the normal source-unavailable path.
 
 Duplicate publication is idempotent only when character and protected payload
 are exactly equivalent. A same-dispatch different-source payload fails closed
-and never overwrites the existing capture. Expiry and release close the retained
-C1-0 request scope. Successful consume transfers scope ownership to the future
-worker.
+and never overwrites the existing capture. Successful consume removes the
+capture and transfers scope ownership to the worker.
 
 A durable queue record may remain after source-retention failure because B2 has
 already committed it. The runtime reports `source_retention_failed`, keeps
 `worker_ready = false`, and never copies protected content into the queue record,
-trace, log, public error, response, or PipelineNodeResult.
+trace, log, public error, response, or PipelineNodeResult. Capacity exhaustion,
+TTL expiry, explicit release, process restart, and a missing post-response task
+must all remain distinguishable from durable worker success.
 
 ## Audit projection
 
@@ -178,8 +199,9 @@ PYTHONPATH=. python scripts/relaylm_docs_link_check.py
 
 ## Remaining I1 boundary
 
-Worker execution remains unimplemented. The next boundary is C1-2: execute one
-already-claimed job using the exact C1-0 source, the merged RelayMEM M3a-M3h
-compose boundary, the pure worker-outcome classifier, and B3 fenced retry or
-terminal transitions. Restart-complete protected source persistence and
-next-turn Primary MEM recall remain later I1 work.
+Worker execution remains unimplemented on `main`. The next boundary is C1-2:
+execute one already-claimed job using the exact C1-0 source, the merged RelayMEM
+M3a-M3h compose boundary, the pure worker-outcome classifier, and B3 fenced retry
+or terminal transitions. Restart-complete protected source persistence, coverage
+of the post-response task crash window, and next-turn Primary MEM recall remain
+later I1 work.
