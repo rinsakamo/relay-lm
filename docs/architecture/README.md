@@ -83,4 +83,4 @@ Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1
 
 Historical and MVP documents do not override these current owners.
 
-Implementation handoffs under this directory are bounded slice records. After merge, they are historical implementation evidence unless a current status page, implementation plan, or contract explicitly references their behavior as current.
+Implementation handoffs under this directory are bounded slice records. Their front matter controls interpretation: `current` handoffs may describe a live bounded implementation until superseded, while `historical_after_merge` handoffs are implementation evidence only. Neither overrides Project Status, the implementation plan, or dedicated current contracts.
