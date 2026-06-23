@@ -6,6 +6,16 @@ on:
       - phase6c1-one-claimed-primary-worker
     paths:
       - .github/workflows/phase6c1-worker-bootstrap.yml
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      - .github/workflows/phase6c1-worker-bootstrap.yml
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,10 +23,12 @@ permissions:
 
 jobs:
   materialize:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: phase6c1-one-claimed-primary-worker
           fetch-depth: 0
       - name: Reassemble reviewed branch payload
         env:
