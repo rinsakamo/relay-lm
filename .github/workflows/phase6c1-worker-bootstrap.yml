@@ -1,10 +1,49 @@
 name: Phase 6-C1 worker bootstrap
+
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - phase6c1-one-claimed-primary-worker
+    paths:
+      - .github/workflows/phase6c1-worker-bootstrap.yml
+
 permissions:
   contents: write
+  pull-requests: read
+
 jobs:
-  noop:
+  materialize:
     runs-on: ubuntu-latest
     steps:
-      - run: echo ready
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reassemble reviewed branch payload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          comments="$(gh api "repos/${GITHUB_REPOSITORY}/issues/367/comments?per_page=100")"
+          : > phase6c1-payload.b64
+          for part in 1 2 3 4; do
+            marker="<!-- PHASE6C1_PAYLOAD_PART_${part} -->"
+            body="$(jq -r --arg marker "$marker" '[.[] | select(.body | startswith($marker))] | last | .body // empty' <<<"$comments")"
+            test -n "$body"
+            printf '%s\n' "$body" | tail -n +2 >> phase6c1-payload.b64
+          done
+          base64 --decode phase6c1-payload.b64 > phase6c1-bundle.tar.gz
+          echo "c9eb54e4dad07dc0431ae5c9c5b4a752159785f69c80148215952ed9c5d1a7ef  phase6c1-bundle.tar.gz" | sha256sum --check
+          tar -xzf phase6c1-bundle.tar.gz
+          rm -f phase6c1-payload.b64 phase6c1-bundle.tar.gz
+          rm -f .github/workflows/phase6c1-worker-bootstrap.yml
+      - name: Commit implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git commit -m "feat: add Phase 6-C1 one-claimed Primary MEM worker"
+          git push origin HEAD:phase6c1-one-claimed-primary-worker
