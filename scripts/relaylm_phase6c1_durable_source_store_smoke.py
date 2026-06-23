@@ -279,7 +279,12 @@ def bounds_orphans_and_cleanup_marker() -> None:
             )
         require(released.status == "cleanup_required", released.to_log_dict())
         require(artifact.exists(), "cleanup failure removed artifact")
-        require(list(protected_root.glob(".protected-source-cleanup-*.json")), released.to_log_dict())
+        require(released.cleanup_required, released.to_log_dict())
+        require(
+            released.store_result is not None
+            and released.store_result.cleanup_required,
+            released.to_log_dict(),
+        )
         queue_path = queue_root / record_filename(str(terminal["dispatch_idempotency_key"]))
         require(read_record(queue_path)["state"] == "succeeded", "cleanup rewound terminal")
         prepared.release_prepared_scope()
