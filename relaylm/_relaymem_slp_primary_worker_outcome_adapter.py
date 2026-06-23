@@ -30,6 +30,15 @@ _RETRY_JITTER_SECONDS = {
     "transient_lock_contention": 5,
     "primary_reconciliation_retry": 10,
 }
+_M3A_NON_POLICY_BLOCK_REASONS = frozenset(
+    {
+        "primary_formation_disabled",
+        "primary_candidate_id_invalid",
+        "latest_user_message_missing",
+        "scene_policy_blocks_memory",
+        "malformed_relayscn_artifact",
+    }
+)
 
 
 def _classify_pipeline(
@@ -67,17 +76,28 @@ def _exact_policy_outcome(
         if (
             type(candidates) is not list
             or type(count) is not int
-            or count != 1
-            or len(candidates) != 1
-            or type(candidates[0]) is not dict
+            or count != len(candidates)
         ):
             return None
-        promotion = candidates[0].get("promotion_policy")
-        safety = candidates[0].get("safety_scope")
-        if promotion == "review_required" or safety == "held_for_review":
-            status = "held"
-        elif promotion != "free_to_update" or safety != "ordinary_memory":
+        if count == 0:
+            reasons = value.get("blocked_reasons")
+            if (
+                type(reasons) is not list
+                or not reasons
+                or any(type(reason) is not str for reason in reasons)
+                or any(reason in _M3A_NON_POLICY_BLOCK_REASONS for reason in reasons)
+            ):
+                return None
             status = "blocked"
+        elif count == 1 and type(candidates[0]) is dict:
+            promotion = candidates[0].get("promotion_policy")
+            safety = candidates[0].get("safety_scope")
+            if promotion == "review_required" or safety == "held_for_review":
+                status = "held"
+            elif promotion != "free_to_update" or safety != "ordinary_memory":
+                status = "blocked"
+        else:
+            return None
     elif pipeline.last_stage == "m3b_write_preflight":
         value = pipeline.m3b_result
         if type(value) is not dict:
