@@ -15,6 +15,7 @@ SCRIPTS = (
     "scripts/relaylm_phase6c1_worker_fault_smoke.py",
     "scripts/relaylm_phase6c1_worker_crash_convergence_smoke.py",
     "scripts/relaylm_phase6c1_worker_lease_race_smoke.py",
+    "scripts/relaylm_phase6c1_worker_corruption_smoke.py",
     "scripts/relaylm_phase6c1_worker_content_leakage_smoke.py",
     "scripts/relaylm_phase6c1_primary_worker_smoke.py",
     "scripts/relaylm_phase6c1_primary_worker_security_smoke.py",
