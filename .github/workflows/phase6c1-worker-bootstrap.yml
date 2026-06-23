@@ -18,11 +18,6 @@ jobs:
   materialize:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 1
-          show-progress: false
       - name: Reassemble reviewed branch payload
         env:
           GH_TOKEN: ${{ github.token }}
@@ -31,21 +26,29 @@ jobs:
           set -euo pipefail
           comments="$(gh api "repos/${GITHUB_REPOSITORY}/issues/367/comments?per_page=100")"
           echo "comment_count=$(jq 'length' <<<"$comments")"
-          : > phase6c1-payload.b64
+          : > "$RUNNER_TEMP/phase6c1-payload.b64"
           for part in 1 2 3 4; do
             marker="<!-- PHASE6C1_PAYLOAD_PART_${part} -->"
             body="$(jq -r --arg marker "$marker" '[.[] | select(.body | startswith($marker))] | last | .body // empty' <<<"$comments")"
             test -n "$body"
             payload="$(printf '%s\n' "$body" | tail -n +2)"
             echo "part_${part}_chars=${#payload}"
-            printf '%s' "$payload" >> phase6c1-payload.b64
+            printf '%s' "$payload" >> "$RUNNER_TEMP/phase6c1-payload.b64"
           done
-          echo "payload_chars=$(wc -c < phase6c1-payload.b64)"
-          base64 --decode phase6c1-payload.b64 > phase6c1-bundle.tar.gz
-          sha256sum phase6c1-bundle.tar.gz
-          echo "c9eb54e4dad07dc0431ae5c9c5b4a752159785f69c80148215952ed9c5d1a7ef  phase6c1-bundle.tar.gz" | sha256sum --check
-          tar -xzf phase6c1-bundle.tar.gz
-          rm -f phase6c1-payload.b64 phase6c1-bundle.tar.gz
+          echo "payload_chars=$(wc -c < "$RUNNER_TEMP/phase6c1-payload.b64")"
+          base64 --decode "$RUNNER_TEMP/phase6c1-payload.b64" > "$RUNNER_TEMP/phase6c1-bundle.tar.gz"
+          sha256sum "$RUNNER_TEMP/phase6c1-bundle.tar.gz"
+          echo "c9eb54e4dad07dc0431ae5c9c5b4a752159785f69c80148215952ed9c5d1a7ef  $RUNNER_TEMP/phase6c1-bundle.tar.gz" | sha256sum --check
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+          show-progress: false
+      - name: Materialize implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -xzf "$RUNNER_TEMP/phase6c1-bundle.tar.gz"
           rm -f .github/workflows/phase6c1-worker-bootstrap.yml
       - name: Commit implementation
         shell: bash
