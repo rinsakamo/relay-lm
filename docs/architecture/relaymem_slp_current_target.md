@@ -156,4 +156,4 @@ Every migration step must preserve:
 
 M3a-M3h completion means the Primary MEM primitives exist. C1-1 completion means their exact order is composed. C1-3 completion means their exact outcomes can be classified without queue I/O. B2 completion means a durable queue record can be created. B3 completion means Phase 6-owned queue metadata can be safely claimed, renewed, released, recovered, and terminated. I1-B completion means ordinary response finalization can enqueue and retain a live-process protected source without delaying visible output. None of these alone means the memory feature is end to end.
 
-The active migration is complete only when an ordinary finalized turn can enqueue work, a Phase 6-C worker can safely produce verified Primary MEM under a B3 lease, and a later ordinary turn can retrieve and use it within the correct scope.
+The active migration is complete only when an ordinary finalized turn can enqueue work, a C1-2 worker can safely produce verified Primary MEM under a B3 lease, and a later ordinary turn can retrieve and use it within the correct scope.
