@@ -33,7 +33,7 @@ jobs:
             printf '%s\n' "$body" | tail -n +2 | tr -d '\n' >> "$RUNNER_TEMP/phase6c1-payload.b64"
           done
           base64 --decode "$RUNNER_TEMP/phase6c1-payload.b64" > "$RUNNER_TEMP/phase6c1-bundle.tar.gz"
-          echo "7d4abc6be0947f6a64d69ef4635a920ed10a0bd11dafdaf09a255a7e42394ba9  $RUNNER_TEMP/phase6c1-bundle.tar.gz" | sha256sum --check
+          echo "c9eb54e4dad07dc0431ae5c9c5b4a752159785f69c80148215952ed9c5d1a7ef  $RUNNER_TEMP/phase6c1-bundle.tar.gz" | sha256sum --check
           tar -tzf "$RUNNER_TEMP/phase6c1-bundle.tar.gz"
       - uses: actions/checkout@v4
         with:
