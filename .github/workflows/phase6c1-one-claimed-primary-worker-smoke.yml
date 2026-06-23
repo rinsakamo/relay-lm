@@ -5,6 +5,8 @@ on:
     paths:
       - "relaylm/relaymem_slp_primary_worker.py"
       - "relaylm/_relaymem_slp_primary_worker_*.py"
+      - "relaylm/relaymem_slp_primary_worker_source_adapter.py"
+      - "relaylm/relaymem_slp_primary_worker_source_registry.py"
       - "relaylm/relaymem_primary_pipeline.py"
       - "relaylm/_relaymem_primary_pipeline_impl.py"
       - "relaylm/relaymem_slp_queue_state.py"
@@ -20,6 +22,8 @@ on:
     paths:
       - "relaylm/relaymem_slp_primary_worker.py"
       - "relaylm/_relaymem_slp_primary_worker_*.py"
+      - "relaylm/relaymem_slp_primary_worker_source_adapter.py"
+      - "relaylm/relaymem_slp_primary_worker_source_registry.py"
       - "relaylm/relaymem_primary_pipeline.py"
       - "relaylm/_relaymem_primary_pipeline_impl.py"
       - "relaylm/relaymem_slp_queue_state.py"
@@ -41,6 +45,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install RelayLM runtime dependencies
+        run: python -m pip install -e .
       - name: Compile worker boundary and smokes
         run: >-
           python -m compileall -q
@@ -51,6 +57,7 @@ jobs:
           relaylm/_relaymem_slp_primary_worker_validate.py
           relaylm/_relaymem_slp_primary_worker_execute.py
           relaylm/_relaymem_slp_primary_worker_view.py
+          relaylm/relaymem_slp_primary_worker_source_adapter.py
           relaylm/relaymem_primary_pipeline.py
           scripts/relaylm_phase6c1_primary_worker_test_support.py
           scripts/relaylm_phase6c1_primary_worker_ci_runner.py
@@ -58,6 +65,7 @@ jobs:
           scripts/relaylm_phase6c1_primary_worker_smoke.py
           scripts/relaylm_phase6c1_primary_worker_security_smoke.py
           scripts/relaylm_phase6c1_primary_worker_fault_smoke.py
+          scripts/relaylm_phase6c1_primary_worker_review_fix_smoke.py
       - name: Run compose checkpoint seam smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py
       - name: Run one-claimed worker smokes
@@ -70,8 +78,9 @@ jobs:
           path: phase6c1-primary-worker-diagnostic.txt
           if-no-files-found: ignore
           retention-days: 1
-      - name: Run B3 queue and C1 source smokes
+      - name: Run I1-B source and B3 regressions
         run: |
+          PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
           PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
           PYTHONPATH=. python scripts/relaylm_phase6c1_primary_worker_source_smoke.py
       - name: Run classifier and fault fixture smokes
