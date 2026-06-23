@@ -672,7 +672,7 @@ def _parse_governed_experience(
     if value.get("source_event_kind") not in ALLOWED_EVENT_KINDS:
         errors.append("governed_experience_source_event_kind_invalid")
     title = value.get("title")
-    if (
+    if title is not None and (
         type(title) is not str
         or not title
         or len(title) > MAX_TITLE_CHARS
@@ -703,10 +703,11 @@ def _parse_governed_experience(
 def _validate_claimed_record(
     value: object,
 ) -> tuple[Mapping[str, object] | None, tuple[str, ...]]:
+    if type(value) is not dict:
+        return None, ("claimed_record_shape_invalid",)
     errors = validate_record_mapping(value)
     if errors:
         return None, errors
-    assert isinstance(value, Mapping)
     if value.get("schema_version") != DURABLE_JOB_SCHEMA:
         return None, ("claimed_record_schema_mismatch",)
     if value.get("state") != "claimed":
@@ -791,8 +792,7 @@ def _thaw_json(value: object) -> object:
 
 def _is_string_sequence(value: object) -> bool:
     return (
-        isinstance(value, Sequence)
-        and not isinstance(value, (str, bytes, bytearray))
+        type(value) in {list, tuple}
         and len(value) <= 32
         and all(type(item) is str and item and is_token(item) for item in value)
     )
