@@ -5,123 +5,121 @@ relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: relaymem_slp
 relaylm_update_trigger:
-  - one-claimed Primary MEM worker crash, lease, lock, retry, or terminal semantics change
+  - one-claimed worker crash, lease, lock, retry, or terminal semantics change
   - Phase 6-C1 fault fixtures or integrated smoke coverage changes
-  - durable protected worker-source persistence is implemented
+  - durable protected worker-source persistence changes
 relaylm_not_authoritative_for:
   - ordinary app.py or stream-final request-runtime source production
   - queue scanning, scheduling, daemon, worker-pool, or retry-timer ownership
   - RelayMEM M3a-M3h persistence semantics
-  - protected source persistence, restart rehydration, retention, or cleanup
+  - protected source artifact schema or retention implementation
   - next-turn retrieval, RelayCTX injection, RelaySOUL mutation, or Secondary MEM
 relaylm_related_authority:
   - phase6c1_primary_mem_worker_contract.md
   - phase6c1_one_claimed_primary_worker_handoff.md
   - phase6c1_relaymem_primary_pipeline_compose.md
   - phase6c1_primary_worker_outcome_classifier.md
+  - phase6c1_durable_protected_source_persistence.md
   - phase6b3_relayslp_queue_state_helpers.md
 ---
 # Phase 6-C1-4 Integrated Worker Fault Smoke Handoff
 
 ## Status
 
-Phase 6-C1-4 is complete as an integration-verification slice for the production one-claimed-job worker introduced by PR #367.
+Phase 6-C1-4 is complete as integration verification for the production one-claimed worker.
 
-This slice does not add a second worker implementation, queue semantics, source schema, persistence helper, scheduler, or runtime registry. It connects the canonical Thread C fault fixtures and existing production/test seams to the exact worker boundary:
+It does not add another worker implementation, queue semantic, source schema, persistence helper, scheduler, or runtime registry. It connects the canonical Thread C fixtures and production/test seams to:
 
 ```python
 execute_relaymem_slp_primary_worker(request)
 ```
 
-The verified production chain is:
+Verified chain:
 
 ```text
 exact B3 claimed record
-  + exact C1-0 protected source and request-local scope
-  -> C1-2 lease-fenced one-claimed worker
-  -> M3a-M3h compose
-  -> pure worker outcome classifier
+  + exact C1-0 protected source and one-shot scope
+  -> C1-2 lease-fenced worker
+  -> C1-1 M3a-M3h compose
+  -> C1-3 outcome classifier
   -> canonical B3 retry_release or terminal transition
 ```
 
 ## Integrated safety evidence
 
-The dedicated suite verifies the following behavior at the production worker boundary.
-
 ### Lease and crash fencing
 
-- lease loss before source consumption leaves the source unconsumed and starts no M3 stage
-- lease loss before M3e prevents page publication
-- lease loss before M3g preserves an already-published page but prevents index/log reconciliation
-- lease loss after M3h and before the B3 transition preserves durable memory state and rejects the stale terminal commit
-- a successful renewal replaces the worker's expected durable record revision before later checkpoints and transition
-- stale revision, owner, generation, token, and expired-lease requests cannot continue or transition the queue
-- a generation N worker cannot act after generation N+1 becomes current
-- two worker calls starting from one record revision produce exactly one current worker; the other is fenced before source consumption
+The suite verifies:
+
+- lease loss before source consumption starts no M3 stage,
+- lease loss before M3e prevents page publication,
+- lease loss before M3g preserves page state but prevents control-file mutation,
+- lease loss after M3h prevents stale terminal commit,
+- renewal replaces expected durable record revision,
+- stale revision, owner, generation, token, and expired leases cannot continue,
+- generation N cannot act after generation N+1 becomes current,
+- competing calls from one revision yield one current worker and one fenced rejection.
 
 ### Crash convergence and idempotency
 
-- an M3e-complete crash is recoverable by a new claim using a fresh canonical C1-0 source scope
-- exact existing M3e state is recognized as `already_applied`
-- the canonical index-before-log partial state is classified as `retry_reconciliation`
-- the current claimant alone performs `retry_release`
-- a later claim regenerates a fresh M3f plan and converges the pending log without duplicating page, index, or log entries
-- a fully reconciled pre-terminal crash is recoverable without rollback and produces one terminal success transition
-- dispatch identity and memory-write identity remain distinct
+The suite verifies:
+
+- M3e-complete crash converges under a new claim,
+- exact existing page is recognized as `already_applied`,
+- index-applied/log-pending is classified as reconciliation retry,
+- only the current claimant performs retry release,
+- a later claim regenerates M3f and converges the pending log,
+- fully reconciled pre-terminal crash converges to one terminal success,
+- dispatch identity and memory-write identity remain distinct.
 
 ### Lock contention
 
-The Thread C separate-process lock holder is used against production M3g and M3h paths.
+Separate-process lock holders exercise production M3g and M3h paths.
 
-- M3g exclusive-lock contention returns immediately as lock unavailable
-- M3h audit contention remains read-only and is not reported as corruption
-- neither path sleeps, spins, performs blind control-file replacement, or mutates index/log while contended
-- the pure classifier maps both paths to `retry_release` with:
-  - `retry_class = transient_lock_contention`
-  - `failure_class = resource_contention`
-- lease fields are cleared by the canonical B3 retry release
-- after lock release, a new claim converges normally
+- M3g exclusive-lock contention returns immediately,
+- M3h audit contention remains read-only,
+- neither path sleeps, spins, blindly replaces control files, or mutates while contended,
+- C1-3 maps valid contention to bounded `retry_release`,
+- canonical B3 retry release clears lease fields,
+- a new claim converges after lock release.
 
 ### Outcome and terminal isolation
 
-The worker-level outcome matrix verifies:
+The worker matrix verifies:
 
-- durable M3e/M3g state plus `recovery_not_required` is the only success path
-- policy held commits terminal failed with `memory_policy_held`
-- policy blocked commits terminal failed with `memory_policy_blocked`
-- manual confirmation commits terminal failed with `manual_confirmation_required`
-- journaled recovery candidate commits terminal failed with `recovery_isolation_required`
-- page missing, page digest mismatch, malformed index, conflicting index, conflicting log, non-UTF-8 controls, symlinks, and unsafe control-file types are never classified as success
-- `state_diverged`, `page_unverified`, and `control_unverified` commit terminal failed with the classifier-owned store failure class
-- M3g durability uncertainty cannot produce success
-- source correlation failure commits terminal failed without memory mutation
-- unsupported `held` or `dead_letter` queue states are not introduced
-- stale claimants cannot perform retry or terminal transitions
-
-The integrated corruption matrix found one bounded classifier defect: production M3g emits `*_file_not_regular`, while the classifier recognized only `non_regular`. C1-4 adds `not_regular` to the existing corruption token mapping without changing the queue transition contract or any RelayMEM persistence semantics.
+- exact durable M3e/M3g state plus M3h `recovery_not_required` is the only success path,
+- policy held/blocked becomes terminal failed without false queue corruption,
+- manual confirmation and recovery isolation never auto-apply,
+- page/control corruption and unsafe file types never produce success,
+- state divergence and unverified state remain terminal-safe,
+- durability uncertainty cannot produce success,
+- source correlation failure mutates no memory,
+- unsupported `held` or `dead_letter` states are not introduced,
+- stale claimants cannot transition queue state.
 
 ### Source one-shot semantics
 
-- one exact source can be consumed only once within its exact request-local scope
-- a source remains available when lease fencing rejects the worker before source consumption
-- cross-request and stale scopes remain invalid
-- a retry or crash convergence run constructs a new exact C1-0 source and scope from the retained protected input boundary
-- durable protected source persistence and restart rehydration are not claimed by this slice
+The suite verifies:
+
+- one exact C1-0 source is consumed once within its scope,
+- lease rejection before consumption leaves it unconsumed,
+- cross-request and stale scopes are invalid,
+- a retry/new claim receives a fresh source and scope from retained claim-independent evidence.
+
+C1-4 originally used explicit live-process input. C1-5 now supplies the same claim-independent evidence through a durable protected artifact after restart without weakening one-shot semantics.
 
 ### Content-free surfaces
 
-Thread G-specific canaries cover message content, governed summary, namespace, dispatch identity, memory identity, lease token, queue path, and store path.
+Leakage canaries cover message content, governed summary, namespace, dispatch identity, memory identity, lease token, queue path, store path, and source-artifact material.
 
 The suite verifies absence from:
 
-- worker public projection
-- `PipelineNodeResult`
-- B3 public transition projection
-- `repr` for worker request/result
-- stdout and stderr
-- serialized workflow-facing diagnostics
-
-The CI runner captures all child-process stdout/stderr and emits only a bounded content-free script name and reason on failure. Its uploaded diagnostic never contains raw child output.
+- worker public projection,
+- `PipelineNodeResult`,
+- B3 public transition projection,
+- request/result `repr`,
+- stdout and stderr,
+- workflow-facing diagnostics.
 
 ## Dedicated files
 
@@ -135,31 +133,27 @@ scripts/relaylm_phase6c1_worker_integration_ci_runner.py
 .github/workflows/phase6c1-integrated-worker-fault-smoke.yml
 ```
 
-The runner also re-executes the existing B3, C1-0 source, classifier, Thread C fixture/race, compose/security, C1-2 worker, M3e, M3g, M3h, Phase 6-C1 contract, and documentation-link smokes.
+The runner also executes B3, C1-0, classifier, compose, C1-2, M3e, M3g, M3h, contract, and documentation regressions.
 
 ## Ownership and dependency boundaries
 
-Thread C continues to own the reusable test-only fault fixture module. Thread F continues to own the production one-claimed worker and its functional/security smoke. Thread G owns the integrated fault, convergence, race, corruption, leakage suite and this handoff. The only production change is the bounded classifier reason-token correction described above.
+Thread C owns reusable test-only fault fixtures. Thread F owns production C1-2 and functional/security smoke. Thread G/C1-4 owns the integrated fault, convergence, race, corruption, and leakage suite.
 
-The suite supplies an exact claimed record and exact protected source directly to the worker. It does not import or require the ordinary request-runtime producer or process-local registry associated with PR #365, and Issue #366 remains an ordinary request-runtime source-producer concern rather than a worker-safety dependency.
+The suite accepts exact claimed input and exact source at the worker boundary. It does not own ordinary request production, queue scanning, scheduler lifecycle, or next-turn recall.
 
-## Explicitly not implemented
+## Explicitly not implemented by C1-4
 
-This completion does not add:
+C1-4 does not add:
 
-- ordinary `app.py` or stream-finalizer worker wiring
-- authoritative turn-index or governed-experience production
-- queue scanner, scheduler, daemon, generalized worker pool, or retry scheduler
-- worker-side sleep, jitter, or broad backoff engine
-- durable protected source persistence
-- restart-complete protected source rehydration
-- next-turn memory retrieval or RelayCTX injection
-- SOUL Lab APIs, memory correction, RelaySOUL mutation, Secondary MEM, TTS, audio, Live2D, or avatar execution
+- ordinary app/stream-finalizer worker invocation,
+- queue scanner, scheduler, daemon, worker pool, or retry timer service,
+- the one-job queued-record claim/rehydrate adapter,
+- next-turn retrieval or RelayCTX injection,
+- SOUL Lab APIs or memory correction,
+- RelaySOUL mutation, Secondary MEM, TTS, audio, Live2D, or avatar execution.
 
-## Next Phase 6-C1 boundary
+## Subsequent boundary
 
-The next dependency boundary is Phase 6-C1-5:
+C1-5 now preserves C1-0 source correlation and one-shot contracts while making protected-source recovery restart-complete for durably enqueued jobs.
 
-> Durable protected source persistence
-
-C1-5 must preserve the C1-0 protected-source and one-shot contracts while making exact source recovery restart-complete. C1-4 does not hide the current process-local or explicit-input limitation.
+The next integration boundary is a thin one-job queued-record adapter using canonical B3 claim, C1-5 rehydration, and C1-2 execution. Next-turn retrieval and RelayCTX injection follow after that adapter.
