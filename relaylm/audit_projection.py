@@ -710,6 +710,90 @@ _RELAYCTX_UNPACK_DIAGNOSTICS = _mapping(
     }
 )
 
+_RELAYMEM_SLP_FINALIZED_TURN_SOURCE_DIAGNOSTICS = _mapping(
+    {
+        "schema_version": _enum("relaymem.slp_finalized_turn_source_projection.v0"),
+        "diagnostics_only": _bool,
+        "content_free": _bool,
+        "content_included": _bool,
+        "raw_text_included": _bool,
+        "raw_messages_included": _bool,
+        "governed_title_included": _bool,
+        "governed_summary_included": _bool,
+        "identifier_values_included": _bool,
+        "namespace_value_included": _bool,
+        "lineage_fingerprint_included": _bool,
+        "status": _enum("disabled", "invalid_input", "blocked", "ready"),
+        "enabled": _bool,
+        "response_finalized": _bool,
+        "source_ready": _bool,
+        "source_count": _non_negative_int,
+        "current_user_present": _bool,
+        "assistant_response_present": _bool,
+        "scene_policy_present": _bool,
+        "relayemo_present": _bool,
+        "worker_invoked": _bool,
+        "queue_io_performed": _bool,
+        "writes_memory": _bool,
+        "mutates_soul": _bool,
+        "changes_visible_response": _bool,
+        "blocked_reason_ids": _REASON_LIST,
+    }
+)
+
+_RELAYMEM_SLP_RUNTIME_ENQUEUE_DIAGNOSTICS = _mapping(
+    {
+        "schema_version": _enum("relaymem.slp_runtime_enqueue_projection.v0"),
+        "diagnostics_only": _bool,
+        "content_free": _bool,
+        "content_included": _bool,
+        "raw_text_included": _bool,
+        "raw_messages_included": _bool,
+        "governed_title_included": _bool,
+        "governed_summary_included": _bool,
+        "namespace_value_included": _bool,
+        "identifier_values_included": _bool,
+        "lineage_fingerprint_included": _bool,
+        "idempotency_key_included": _bool,
+        "queue_path_included": _bool,
+        "timestamp_values_included": _bool,
+        "exception_text_included": _bool,
+        "status": _enum(
+            "disabled", "invalid_input", "skipped", "held", "blocked",
+            "dry_run_ready", "enqueued", "duplicate_existing",
+            "enqueue_failed", "source_retention_failed",
+        ),
+        "enabled": _bool,
+        "dry_run_only": _bool,
+        "apply_enabled": _bool,
+        "finalized_turn_source_ready": _bool,
+        "admission_eligible": _bool,
+        "handoff_ready": _bool,
+        "dispatch_ready": _bool,
+        "source_capture_built": _bool,
+        "typed_source_built": _bool,
+        "source_retained": _bool,
+        "worker_ready": _bool,
+        "enqueue_attempted": _bool,
+        "enqueue_new": _bool,
+        "duplicate_existing": _bool,
+        "blocked": _bool,
+        "failure_stage": _enum(
+            "none", "gate", "source_capture", "admission", "handoff",
+            "dispatch", "enqueue", "source_retention",
+        ),
+        "process_local_source_retention": _bool,
+        "restart_complete_source_persistence": _bool,
+        "worker_invoked": _bool,
+        "b3_claim_performed": _bool,
+        "invokes_slp": _bool,
+        "writes_memory": _bool,
+        "mutates_soul": _bool,
+        "changes_visible_response": _bool,
+        "blocked_reason_ids": _REASON_LIST,
+    }
+)
+
 PIPELINE_NODE_PROJECTORS: dict[str, NodeProjector] = {
     "client_message_canonicalization": NodeProjector(
         decisions=frozenset({
@@ -815,6 +899,20 @@ PIPELINE_NODE_PROJECTORS: dict[str, NodeProjector] = {
         }),
         diagnostics=_RELAYCTX_UNPACK_DIAGNOSTICS,
         artifact_names=frozenset({"relayctx_unpack_runtime_result"}),
+    ),
+    "relaymem_slp_finalized_turn_source": NodeProjector(
+        decisions=frozenset({"disabled", "invalid_input", "blocked", "ready"}),
+        diagnostics=_RELAYMEM_SLP_FINALIZED_TURN_SOURCE_DIAGNOSTICS,
+        artifact_names=frozenset({"relaymem_slp_finalized_turn_source"}),
+    ),
+    "relaymem_slp_runtime_enqueue": NodeProjector(
+        decisions=frozenset({
+            "disabled", "invalid_input", "skipped", "held", "blocked",
+            "dry_run_ready", "enqueued", "duplicate_existing",
+            "enqueue_failed", "source_retention_failed",
+        }),
+        diagnostics=_RELAYMEM_SLP_RUNTIME_ENQUEUE_DIAGNOSTICS,
+        artifact_names=frozenset({"relaymem_slp_protected_source_capture"}),
     ),
 }
 
@@ -948,7 +1046,10 @@ _RUNTIME_INJECTION = _mapping(
 )
 
 TOP_LEVEL_PROJECTORS: dict[str, Validator] = {
-    "event": _enum("backend_error", "backend_response", "backend_stream_response"),
+    "event": _enum(
+        "backend_error", "backend_response", "backend_stream_response",
+        "relaymem_slp_runtime_enqueue",
+    ),
     "content_type": _content_type,
     "status_code": _http_status,
     "error_class": _class_token,
