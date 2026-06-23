@@ -117,7 +117,9 @@ def parse_relaymem_primary_writer_handoff(
     handoff = parse_m3d_handoff(handoffs[0])
     if handoff.get("valid") is not True:
         reasons.extend(handoff["blocked_reasons"])
-    projection = _parse_m3d_projection(value.get("projection"), handoff)
+    projection = _parse_m3d_projection(
+        value.get("projection"), handoff, raw_handoff=handoffs[0]
+    )
     if projection.get("valid") is not True:
         reasons.extend(projection["blocked_reasons"])
     reasons = dedupe(reasons)
@@ -127,7 +129,10 @@ def parse_relaymem_primary_writer_handoff(
 
 
 def _parse_m3d_projection(
-    value: object, handoff: Mapping[str, Any]
+    value: object,
+    handoff: Mapping[str, Any],
+    *,
+    raw_handoff: Mapping[str, Any],
 ) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         return invalid("primary_writer_handoff_projection_missing")
@@ -139,7 +144,8 @@ def _parse_m3d_projection(
         "primary_writer_handoff_projection_fields_mismatch",
     )
     handoff_valid = handoff.get("valid") is True
-    variant = handoff.get("preflight_status") if handoff_valid else None
+    raw_variant = raw_handoff.get("preflight_status")
+    variant = raw_variant if isinstance(raw_variant, str) else None
     variant_values = _PROJECTION_VARIANTS.get(str(variant))
     exact_values: dict[str, object] = {
         "diagnostics_only": True,
