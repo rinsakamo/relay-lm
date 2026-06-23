@@ -10,6 +10,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DIAGNOSTIC = REPO_ROOT / "phase6c1-worker-integration-diagnostic.txt"
 TIMEOUT_SECONDS = 120
+SAFE_FAILURE_PREFIX = b"C1_4_SAFE_FAILURE:"
 
 SCRIPTS = (
     "scripts/relaylm_phase6c1_worker_fault_smoke.py",
@@ -91,6 +92,16 @@ def _write_diagnostic(
     )
 
 
+def _safe_case_reason(combined: bytes) -> str:
+    for line in combined.splitlines():
+        if not line.startswith(SAFE_FAILURE_PREFIX):
+            continue
+        candidate = line[len(SAFE_FAILURE_PREFIX):].decode("ascii", errors="ignore")
+        if candidate and all(ch.islower() or ch.isdigit() or ch == "_" for ch in candidate):
+            return f"nonzero_exit_{candidate}"
+    return "nonzero_exit"
+
+
 def _run_script(script: str) -> tuple[bool, str]:
     env = dict(os.environ)
     pythonpath = os.pathsep.join((str(REPO_ROOT), str(REPO_ROOT / "scripts")))
@@ -113,7 +124,7 @@ def _run_script(script: str) -> tuple[bool, str]:
     if any(marker.encode("utf-8") in combined for marker in PROTECTED_OUTPUT_MARKERS):
         return False, "protected_output_detected"
     if process.returncode != 0:
-        return False, "nonzero_exit"
+        return False, _safe_case_reason(combined)
     return True, "passed"
 
 
