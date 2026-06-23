@@ -94,7 +94,8 @@ RelayMEM independent track:
   C1-1/C1-2 execution boundary: complete
   C1-4 fault convergence: complete
   C1-5 protected-source restart recovery: complete
-  ordinary-runtime one-job runner and next-turn recall: pending
+  C2 one-job runtime adapter: complete
+  next-turn recall and scope isolation: pending
 
 SOUL Lab UI independent track:
   UI-A0 through UI-A7: complete
@@ -124,7 +125,7 @@ Phase 6-C1-0 through C1-5 are complete:
 - integrated crash/fault convergence,
 - durable claim-independent protected capture and restart rehydration.
 
-The next RelayLM Core boundary is a thin one-job claim/rehydrate/execute integration adapter. It accepts one exact queued canonical record, uses B3 claim, resolves source through C1-5, invokes C1-2, and preserves bounded retry/terminal behavior. It is not a queue scanner, daemon, generalized worker pool, or retry scheduler.
+Phase 6-C2 completes the thin one-job claim/rehydrate/execute integration adapter. It accepts one exact queued canonical record, uses B3 claim, resolves source through C1-5, invokes C1-2, and preserves bounded retry/terminal behavior without adding a queue scanner, daemon, generalized worker pool, or retry scheduler. The next RelayLM Core boundary is next-turn recall and scope isolation.
 
 ## Active priority: Integration Milestone I1
 
@@ -135,7 +136,7 @@ finalized user turn
   -> deferred SLP admission and durable enqueue       complete as I1-B
   -> durable protected source publication             complete as C1-5
   -> B3 queue claim and active lease                  helper complete
-  -> one-job claim/rehydrate/execute adapter           next
+  -> C2 one-job claim/rehydrate/execute adapter        complete
   -> exact C1-0 protected source                      complete
   -> C1-2 one-claimed worker execution                complete
   -> C1-1 RelayMEM M3a-M3h processing                 complete
@@ -182,7 +183,7 @@ Current guarantees:
 
 C1-5 makes protected-source recovery restart-complete for durably enqueued jobs. A separate gap remains if the process exits after response delivery but before the background finalizer reaches durable source publication and B2 enqueue.
 
-### I1-C: Phase 6-C Primary MEM worker — bounded components complete
+### I1-C: Phase 6-C Primary MEM worker — bounded components and C2 integration complete
 
 Completed components:
 
@@ -191,9 +192,10 @@ Completed components:
 - C1-2 one already-claimed job worker with lease checkpoints and bounded retry timing,
 - C1-3 pure outcome classifier,
 - C1-4 lease-loss, crash-convergence, lock-contention, stale-claim, corruption, race, and leakage smoke,
-- C1-5 durable protected capture, restart lookup, fresh-source construction, retention, and post-terminal cleanup.
+- C1-5 durable protected capture, restart lookup, fresh-source construction, retention, and post-terminal cleanup,
+- C2 exact queued-record claim, canonical reread, C1-5 preparation, unchanged C1-2 execution, and terminal-only cleanup.
 
-Remaining connection:
+Completed C2 connection:
 
 ```text
 one exact queued canonical B3 record
@@ -204,7 +206,7 @@ one exact queued canonical B3 record
   -> canonical B3 retry release or terminal commit
 ```
 
-The adapter must not scan the queue, own a daemon lifecycle, create a worker pool, sleep until retry time, or redefine RelayMEM semantics.
+The C2 adapter does not scan the queue, own a daemon lifecycle, create a worker pool, sleep until retry time, or redefine RelayMEM semantics. The remaining I1 connection is next-turn recall with correct character and namespace scope.
 
 ### I1-D: next-turn recall validation
 
@@ -263,7 +265,7 @@ Component completion alone does not satisfy I1.
 - RelayCTX stream suppression and TTS handoff metadata are default-off; RelayLM Core does not execute TTS/audio/avatar behavior.
 - I1-B remains response-background-task based; the pre-enqueue process-exit window is not restart-complete.
 - C1-5 protects only work that reached source publication and durable enqueue.
-- C1-2 exists, but the ordinary runtime still lacks the one-job adapter and later-turn recall proof.
+- C1-2 and C2 exist, but the ordinary runtime still lacks later-turn recall and scope-isolation proof.
 - UI-A7 has no real run/memory observation or authoritative mutation.
 - Secondary MEM and actual RelaySOUL apply remain later work.
 
@@ -279,7 +281,7 @@ Phase 5.5 is closed for RelayLM Core through stream sentinel observation, safe v
 
 ### Phase 6 orchestration and worker components
 
-Phase 6 has implemented B0-B3, I1-B, and C1-0 through C1-5. The remaining Phase 6 product connection is one bounded queued-record claim/rehydrate/execute adapter, followed by recall and Lab integration.
+Phase 6 has implemented B0-B3, I1-B, C1-0 through C1-5, and the bounded C2 queued-record claim/rehydrate/execute adapter. The remaining Phase 6 product connection is next-turn recall and scope isolation, followed by Lab integration.
 
 ### Primary MEM primitives
 
