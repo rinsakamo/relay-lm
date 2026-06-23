@@ -112,6 +112,7 @@ class RelayMEMSLPDurableRuntimeEnqueueResult:
                 if self.runtime_result.enqueue_result is not None
                 else "not_attempted"
             ),
+            "worker_ready": False,
             "worker_invoked": False,
             "b3_claim_performed": False,
             "writes_memory": False,
@@ -329,7 +330,7 @@ def build_relaymem_slp_durable_runtime_enqueue_node_result(
     }.get(result.status, "diagnostic_only")
     projection = result.to_log_dict()
     return build_pipeline_node_result(
-        node_name="relaymem_slp_durable_runtime_enqueue",
+        node_name="relaymem_slp_runtime_enqueue",
         status=node_status,
         decision=result.status,
         blocked_reasons=result.blocked_reasons,
