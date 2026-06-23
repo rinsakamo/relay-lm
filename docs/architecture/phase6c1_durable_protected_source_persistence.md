@@ -106,6 +106,13 @@ Crash convergence:
 
 The source-before-queue order prevents a durably enqueued record from lacking its committed source artifact.
 
+When B2 success is not observed, C1-5 distinguishes two cases:
+
+- if the queue root itself is still absent, queue publication is impossible and a newly created artifact may be removed synchronously;
+- for every other uncertain outcome, including a possible late fsync or verification failure after queue publication, the complete artifact is retained and reported as `cleanup_required` with `protected_source_orphan_reconciliation_required`.
+
+This intentionally prefers a complete orphan over a claimable queue record whose protected source was deleted. This slice does not add the future reconciliation or cleanup scanner.
+
 The separate unresolved window is:
 
 ```text
@@ -149,7 +156,7 @@ Dedicated smoke covers:
 - create/read/restart rehydration and idempotent duplicate handling,
 - malformed or mismatched artifact rejection,
 - bounded storage and safe file handling,
-- source-before-queue ordering and orphan cleanup,
+- source-before-queue ordering, provable no-enqueue cleanup, and uncertain-outcome artifact retention,
 - retry release, new generation, fresh source/scope, and terminal convergence,
 - post-terminal cleanup behavior,
 - separate-process producer/restart-consumer execution through C1-2,
