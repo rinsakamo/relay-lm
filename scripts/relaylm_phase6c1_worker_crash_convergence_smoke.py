@@ -1,6 +1,8 @@
 """Integrated crash and partial-reconciliation convergence smoke for C1-4."""
 from __future__ import annotations
 
+import sys
+from collections.abc import Callable
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
@@ -171,10 +173,18 @@ def index_only_partial_state_converges() -> None:
         )
 
 
+def _run_case(name: str, function: Callable[[], None]) -> None:
+    try:
+        function()
+    except Exception:
+        print(f"C1_4_SAFE_FAILURE:{name}", file=sys.stderr)
+        raise
+
+
 def main() -> int:
-    checkpoint_losses()
-    m3e_crash_new_claim_convergence()
-    index_only_partial_state_converges()
+    _run_case("checkpoint_losses", checkpoint_losses)
+    _run_case("m3e_crash_convergence", m3e_crash_new_claim_convergence)
+    _run_case("index_partial_convergence", index_only_partial_state_converges)
     print("Phase 6-C1 integrated worker crash convergence smoke: OK")
     return 0
 
