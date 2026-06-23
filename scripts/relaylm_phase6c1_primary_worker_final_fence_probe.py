@@ -49,8 +49,20 @@ def main() -> int:
         with fixed_queue_time():
             later = execute_relaymem_slp_primary_worker(later_request)
         if later.status != "terminal_succeeded":
+            reason = later.reason_ids[0] if later.reason_ids else "none"
+            pipeline_status = (
+                later.pipeline_result.status
+                if later.pipeline_result is not None
+                else "none"
+            )
+            outcome_kind = (
+                later.outcome_result.transition_kind
+                if later.outcome_result is not None
+                else "none"
+            )
             error_type = type(
-                f"LaterWorkerStatus_{later.status}",
+                "LaterWorker_"
+                f"{later.status}_{pipeline_status}_{outcome_kind}_{reason}",
                 (AssertionError,),
                 {},
             )
