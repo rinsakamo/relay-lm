@@ -52,10 +52,10 @@ This response-independent design has one explicit live-process durability gap:
 if the process exits after visible response delivery but before the Starlette
 background task completes, no durable enqueue or protected source publication is
 guaranteed for that turn. That gap is distinct from losing an already-published
-process-local source after restart. I1 restart completion must cover both the
-pre-enqueue background-task window and post-enqueue protected-source recovery;
-C1-5 or an equivalent durable source/finalization owner must not describe only
-registry rehydration.
+process-local source after restart. Later I1 restart-completion work must cover
+both the pre-enqueue background-task window and post-enqueue protected-source
+recovery; a durable source/finalization owner must not describe only registry
+rehydration.
 
 ## Finalized-turn authority
 
