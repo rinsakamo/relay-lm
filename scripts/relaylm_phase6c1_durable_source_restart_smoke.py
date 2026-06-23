@@ -110,7 +110,9 @@ def restart_retry_new_claim_and_terminal_cleanup() -> None:
                 request_scope=stale_scope,
             )
             stale = execute_relaymem_slp_primary_worker(stale_request)
-            require(stale.status == "invalid_input", stale.to_log_dict())
+            require(stale.status in {"invalid_input", "source_invalid"}, stale.to_log_dict())
+            require(not stale.side_effect_started, stale.to_log_dict())
+            require(not stale.queue_transition_performed, stale.to_log_dict())
             second = execute_relaymem_slp_primary_worker(
                 worker_request(queue_root, memory_root, claimed_n1, prepared_n1)
             )
