@@ -153,6 +153,11 @@ trace, log, public error, response, or PipelineNodeResult. Capacity exhaustion,
 TTL expiry, explicit release, process restart, and a missing post-response task
 must all remain distinguishable from durable worker success.
 
+The runtime source-capture smoke covers capacity rejection, monotonic-TTL purge,
+and consume-after-removal source-unavailable behavior. The C1 worker acceptance
+matrix additionally requires a claimed job with no source to fail closed without
+calling C1-1 or committing durable success.
+
 ## Audit projection
 
 The generic trace registry explicitly recognizes only:
