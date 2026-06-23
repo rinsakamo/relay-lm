@@ -55,7 +55,7 @@ Phase 6-C1-2 one-claimed worker: complete
 Phase 6-C1-3 outcome classifier: complete
 Phase 6-C1-4 integrated fault smoke: complete
 Phase 6-C1-5 durable protected source: complete
-one-job claim/rehydrate/execute integration adapter: next
+Phase 6-C2 one-job claim/rehydrate/execute adapter: complete
 ```
 
 Ordinary finalization can publish a protected source and enqueue without delaying visible output. C1-2 can execute one exact already-claimed job. No current scanner, daemon, or scheduler automatically selects queued work.
@@ -260,3 +260,23 @@ All Phase 6 slices preserve:
 ## Active completion criterion
 
 Phase 6-C1 is restart-complete for protected-source recovery of durably enqueued jobs. Phase 6 is product-complete for I1 only when ordinary queued work reaches C1-2 through the one-job adapter, queue state converges correctly, a later turn retrieves and uses the memory, and the separate pre-enqueue background-finalizer crash window is resolved or explicitly bounded.
+
+<!-- phase6c2-status:start -->
+## Phase 6-C2 completion alignment
+
+The bounded E-to-F integration is complete for one caller-selected canonical queued job:
+
+```text
+I1-B producer: complete
+B3 lifecycle: complete
+C1-0 through C1-5: complete
+C2 one-job claim/rehydrate/execute adapter: complete
+next-turn recall and scope isolation: next
+SOUL Lab real observation: later
+auditable Correct operation: later
+```
+
+C2 delegates claim mutation to canonical B3, protected-source preparation to C1-5, and execution plus retry/terminal transition to the unchanged C1-2 worker. It does not add queue scanning, scheduling, polling, daemon/service lifecycle, a worker pool, pre-enqueue background-finalizer crash recovery, next-turn recall, memory correction, or Secondary MEM.
+
+See [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md).
+<!-- phase6c2-status:end -->

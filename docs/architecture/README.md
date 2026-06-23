@@ -87,3 +87,23 @@ The current UI is complete through UI-A7. UI-A7 adds only loopback-only settings
 Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1` with explicit `client_instruction_source.v1` provenance. Role, wording, and message position alone are not provenance.
 
 Historical and MVP documents do not override current owners. Implementation handoffs are bounded slice records; they do not override Project Status, the implementation plan, or dedicated current contracts.
+
+<!-- phase6c2-status:start -->
+## Phase 6-C2 completion alignment
+
+The bounded E-to-F integration is complete for one caller-selected canonical queued job:
+
+```text
+I1-B producer: complete
+B3 lifecycle: complete
+C1-0 through C1-5: complete
+C2 one-job claim/rehydrate/execute adapter: complete
+next-turn recall and scope isolation: next
+SOUL Lab real observation: later
+auditable Correct operation: later
+```
+
+C2 delegates claim mutation to canonical B3, protected-source preparation to C1-5, and execution plus retry/terminal transition to the unchanged C1-2 worker. It does not add queue scanning, scheduling, polling, daemon/service lifecycle, a worker pool, pre-enqueue background-finalizer crash recovery, next-turn recall, memory correction, or Secondary MEM.
+
+See [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md).
+<!-- phase6c2-status:end -->

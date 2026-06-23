@@ -197,3 +197,23 @@ Every migration step preserves:
 M3a-M3h completion means the Primary MEM primitives exist. C1-1 fixes their exact order. C1-2 executes one active claim. C1-3 classifies exact outcomes. C1-4 verifies integrated convergence. C1-5 makes protected-source recovery restart-complete for durably enqueued jobs.
 
 None of these alone means the memory feature is end to end. The active migration is complete only when ordinary queued work reaches C1-2 through the bounded adapter and a later ordinary turn retrieves and uses the resulting memory within the correct scope.
+
+<!-- phase6c2-status:start -->
+## Phase 6-C2 completion alignment
+
+The bounded E-to-F integration is complete for one caller-selected canonical queued job:
+
+```text
+I1-B producer: complete
+B3 lifecycle: complete
+C1-0 through C1-5: complete
+C2 one-job claim/rehydrate/execute adapter: complete
+next-turn recall and scope isolation: next
+SOUL Lab real observation: later
+auditable Correct operation: later
+```
+
+C2 delegates claim mutation to canonical B3, protected-source preparation to C1-5, and execution plus retry/terminal transition to the unchanged C1-2 worker. It does not add queue scanning, scheduling, polling, daemon/service lifecycle, a worker pool, pre-enqueue background-finalizer crash recovery, next-turn recall, memory correction, or Secondary MEM.
+
+See [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md).
+<!-- phase6c2-status:end -->

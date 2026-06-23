@@ -28,6 +28,7 @@ relaylm_related_authority:
   - docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md
   - docs/architecture/phase6c1_integrated_worker_fault_smoke_handoff.md
   - docs/architecture/phase6c1_durable_protected_source_persistence.md
+  - docs/architecture/phase6c2_one_queued_primary_worker_integration.md
   - docs/architecture/relaymem_mvp_implementation_plan.md
   - docs/architecture/relaymem_slp_current_target.md
   - docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
@@ -44,7 +45,8 @@ Status reviewed through:
 - Phase 6-C1-2 one-already-claimed Primary MEM worker,
 - Phase 6-C1-3 pure worker-outcome classifier,
 - Phase 6-C1-4 integrated worker fault and crash-convergence smoke,
-- Phase 6-C1-5 durable protected source persistence and restart rehydration.
+- Phase 6-C1-5 durable protected source persistence and restart rehydration,
+- Phase 6-C2 one queued-job claim / rehydrate / execute integration adapter.
 
 ## Purpose and authority
 
@@ -64,7 +66,7 @@ When documents disagree:
 Managed-route correctness: Phase 5-C complete through bounded v0/v1 apply and C5 runtime plumbing
 Pre-stream hardening: Phase 5-D complete through D2
 Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
-Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete
+Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete; C2 one-job adapter complete
 RelayMEM Primary path: M1/M2 complete; M3a-M3h composed and executable for one exact active claim
 SOUL Lab UI: UI-A0 through UI-A7 implemented; A7 adds local-only read management projections
 ```
@@ -113,14 +115,14 @@ Implemented:
 - C1-2 lease-fenced execution of one already-claimed canonical B3 job,
 - C1-3 pure RelayMEM-outcome classification,
 - C1-4 integrated crash, lease-loss, lock-contention, stale-claim, corruption, and leakage smoke,
-- C1-5 source-before-queue durable protected artifact publication and restart rehydration.
+- C1-5 source-before-queue durable protected artifact publication and restart rehydration,
+- C2 exact queued-record claim, durable rehydrate, C1-2 execution, and terminal-only cleanup.
 
 C1-5 keeps the queue record content-free. The process-local registry is now only an optional hot cache; a new claim may rehydrate the claim-independent protected capture from the durable artifact and build a fresh C1-0 source/scope.
 
 Current limitations:
 
 - no queue scanner, daemon, or scheduler automatically selects and claims queued work,
-- the ordinary runtime still lacks a thin one-job adapter performing B3 claim -> C1-5 rehydrate -> C1-2 execute,
 - C1-5 is restart-complete only for protected-source recovery of durably enqueued jobs,
 - a process exit after visible response delivery but before the Starlette background finalizer publishes the source and queue record may still lose that turn's deferred work,
 - next-turn recall and real SOUL Lab memory observation remain unproven.
@@ -145,7 +147,6 @@ Implemented direct/helper boundaries:
 Current limitations:
 
 - ordinary response finalization intentionally does not invoke M3a-M3h inline,
-- an explicit one-job claim/rehydrate/execute adapter is required before ordinary queued work reaches C1-2 without test injection,
 - successful worker execution does not yet prove that a later ordinary turn retrieves and uses the newly formed memory,
 - Secondary MEM consolidation is not implemented,
 - durable Lab memory mutation APIs are not implemented.
@@ -183,7 +184,7 @@ ordinary finalized turn
   -> A1/A2/B1/B2 runtime enqueue                complete as I1-B
   -> C1-5 durable protected source              complete
   -> B3 claim/lease/retry lifecycle             complete as direct helpers
-  -> one-job claim/rehydrate/execute adapter     next integration boundary
+  -> C2 one-job claim/rehydrate/execute adapter: complete
   -> C1-0 protected source                      complete
   -> C1-2 one-claimed worker                    complete
   -> C1-1 M3a-M3h compose                       complete
@@ -199,14 +200,12 @@ ordinary finalized turn
 
 Immediate sequence:
 
-1. Add a thin one-job integration adapter: exact queued record -> B3 claim -> C1-5 source rehydrate -> C1-2 worker.
-2. Add an ordinary-runtime integration smoke for enqueue, explicit claim, rehydrate, compose, classify, and B3 transition.
-3. Add a two-turn smoke proving next-turn recall and character/namespace isolation.
-4. Add real SOUL Lab read APIs for latest run, formed/held/blocked memory, and used memory.
-5. Add one auditable Correct operation whose result changes later retrieval behavior.
-6. Treat the visible-response-to-background-finalizer crash window as a separate I1 durability boundary; C1-5 does not claim to close it.
+1. Add a two-turn smoke proving next-turn recall and character/namespace isolation.
+2. Add real SOUL Lab read APIs for latest run, formed/held/blocked memory, and used memory.
+3. Add one auditable Correct operation whose result changes later retrieval behavior.
+4. Treat the visible-response-to-background-finalizer crash window as a separate I1 durability boundary; C1-5 and C2 do not claim to close it.
 
-I1-B, B3, and C1-0 through C1-5 are complete prerequisites, not the final product goal.
+I1-B, B3, C1-0 through C1-5, and C2 are complete prerequisites, not the final product goal.
 
 ## Safe defaults and compatibility
 
@@ -241,7 +240,6 @@ The runtime does not yet provide:
 - active tool-chain reconstruction,
 - trusted backend-response instruction-control production and semantic RelaySCN apply,
 - parser-versioned cache compatibility,
-- a bounded ordinary-runtime one-job claim/rehydrate/execute adapter,
 - queue scanner, daemon, or scheduler-driven worker execution,
 - restart completion for the pre-enqueue background-finalizer crash window,
 - end-to-end next-turn recall proof from newly formed runtime memory,
@@ -276,4 +274,24 @@ OpenWebUI
   -> LM Studio http://127.0.0.1:1234/v1
 ```
 
-The memory write path remains explicitly gated. C1-5 adds restart-safe protected-source recovery for durably enqueued work; it does not make queue scheduling or next-turn recall automatic.
+The memory write path remains explicitly gated. C1-5 and C2 provide restart-safe protected-source recovery and one exact queued-job execution; they do not make queue scheduling or next-turn recall automatic.
+
+<!-- phase6c2-status:start -->
+## Phase 6-C2 completion alignment
+
+The bounded E-to-F integration is complete for one caller-selected canonical queued job:
+
+```text
+I1-B producer: complete
+B3 lifecycle: complete
+C1-0 through C1-5: complete
+C2 one-job claim/rehydrate/execute adapter: complete
+next-turn recall and scope isolation: next
+SOUL Lab real observation: later
+auditable Correct operation: later
+```
+
+C2 delegates claim mutation to canonical B3, protected-source preparation to C1-5, and execution plus retry/terminal transition to the unchanged C1-2 worker. It does not add queue scanning, scheduling, polling, daemon/service lifecycle, a worker pool, pre-enqueue background-finalizer crash recovery, next-turn recall, memory correction, or Secondary MEM.
+
+See [Phase 6-C2 One Queued Primary Worker Integration](architecture/phase6c2_one_queued_primary_worker_integration.md).
+<!-- phase6c2-status:end -->

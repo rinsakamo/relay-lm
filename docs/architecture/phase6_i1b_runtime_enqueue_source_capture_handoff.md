@@ -188,3 +188,23 @@ I1-B, C1-2, C1-4, and C1-5 are implemented. The next bounded boundary is a one-j
 It must remain separate from a queue scanner, daemon, generalized scheduler, and visible response delivery.
 
 After that adapter, I1 still requires next-turn recall with character/namespace isolation, real SOUL Lab observation, one auditable Correct operation, and an explicit decision for the pre-enqueue background-finalizer crash window.
+
+<!-- phase6c2-status:start -->
+## Phase 6-C2 completion alignment
+
+The bounded E-to-F integration is complete for one caller-selected canonical queued job:
+
+```text
+I1-B producer: complete
+B3 lifecycle: complete
+C1-0 through C1-5: complete
+C2 one-job claim/rehydrate/execute adapter: complete
+next-turn recall and scope isolation: next
+SOUL Lab real observation: later
+auditable Correct operation: later
+```
+
+C2 delegates claim mutation to canonical B3, protected-source preparation to C1-5, and execution plus retry/terminal transition to the unchanged C1-2 worker. It does not add queue scanning, scheduling, polling, daemon/service lifecycle, a worker pool, pre-enqueue background-finalizer crash recovery, next-turn recall, memory correction, or Secondary MEM.
+
+See [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md).
+<!-- phase6c2-status:end -->
