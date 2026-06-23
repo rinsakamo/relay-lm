@@ -4,7 +4,6 @@ MEM-M3a is helper-only. It classifies whether governed experience evidence could
 become Primary MEM, but it does not write memory, mutate RelaySOUL, invoke SLP,
 or expose raw message text in its public projection.
 """
-
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
@@ -13,6 +12,7 @@ from typing import Any
 
 _SCHEMA_VERSION = "relaymem.primary_formation_dry_run.v0"
 _PROJECTION_SCHEMA_VERSION = "relaymem.primary_formation_projection.v0"
+_MAX_CANDIDATE_ID = 128
 _KNOWN_SCENE_TYPES = {
     "casual_chat",
     "design_talk",
@@ -40,24 +40,36 @@ def build_relaymem_primary_formation_dry_run(
     dry_run_only: bool = True,
     apply_enabled: bool = False,
     source_event_kind: str = "turn",
+    candidate_id: str = "primary_candidate:0",
 ) -> dict[str, Any]:
-    """Build Primary MEM formation candidates without applying them."""
+    """Build Primary MEM formation candidates without applying them.
+
+    ``candidate_id`` is content-free identity supplied by the exact governed
+    experience owner. The historical fixed value remains the compatibility
+    default for direct helper callers.
+    """
 
     parsed_scn = _parse_relayscn(relayscn_scene_policy_artifact)
-    safe_messages = [message for message in messages or [] if isinstance(message, Mapping)]
+    safe_messages = [
+        message for message in messages or [] if isinstance(message, Mapping)
+    ]
     source_summary = _source_summary(safe_messages)
     salience_band = _salience_band(relayemo_artifact)
     stability_band = _stability_band(parsed_scn)
-    blocked_reasons = _blocked_reasons(
-        enabled=enabled,
-        parsed_scn=parsed_scn,
-        source_summary=source_summary,
+    safe_candidate_id, candidate_id_reasons = _candidate_identifier(candidate_id)
+    blocked_reasons = _dedupe(
+        candidate_id_reasons
+        + _blocked_reasons(
+            enabled=enabled,
+            parsed_scn=parsed_scn,
+            source_summary=source_summary,
+        )
     )
     candidates: list[dict[str, Any]] = []
     if not blocked_reasons:
         candidates.append(
             _candidate(
-                candidate_id="primary_candidate:0",
+                candidate_id=safe_candidate_id,
                 parsed_scn=parsed_scn,
                 source_summary=source_summary,
                 salience_band=salience_band,
@@ -93,6 +105,21 @@ def build_relaymem_primary_formation_dry_run(
         "blocked_reasons": blocked_reasons,
         "projection": projection,
     }
+
+
+def _candidate_identifier(value: object) -> tuple[str, list[str]]:
+    if (
+        not isinstance(value, str)
+        or value != value.strip()
+        or not 0 < len(value) <= _MAX_CANDIDATE_ID
+        or not all(
+            character.isascii()
+            and (character.isalnum() or character in "-_.:/")
+            for character in value
+        )
+    ):
+        return "", ["primary_candidate_id_invalid"]
+    return value, []
 
 
 def _parse_relayscn(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -139,7 +166,9 @@ def _source_summary(messages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         message for message in messages if message.get("role") == "assistant"
     ]
     latest_user = user_messages[-1] if user_messages else None
-    latest_user_chars = _content_length(latest_user.get("content")) if latest_user else 0
+    latest_user_chars = (
+        _content_length(latest_user.get("content")) if latest_user else 0
+    )
     return {
         "schema_version": "relaymem.primary_source_summary.v0",
         "content_included": False,
@@ -161,7 +190,9 @@ def _candidate(
     source_event_kind: str,
 ) -> dict[str, Any]:
     memory_kind = _memory_kind(str(parsed_scn.get("scene_type", "unknown")))
-    promotion_policy = _promotion_policy(str(parsed_scn.get("scene_type", "unknown")))
+    promotion_policy = _promotion_policy(
+        str(parsed_scn.get("scene_type", "unknown"))
+    )
     return {
         "candidate_id": candidate_id,
         "memory_layer": "primary",
@@ -195,7 +226,9 @@ def _blocked_reasons(
     if parsed_scn.get("malformed") is True or scene_type == "unknown":
         reasons.append("scene_policy_blocks_memory")
     if parsed_scn.get("persistence_block") is True:
-        persistence_reasons = _string_list(parsed_scn.get("persistence_block_reasons"))
+        persistence_reasons = _string_list(
+            parsed_scn.get("persistence_block_reasons")
+        )
         reasons.extend(persistence_reasons or ["relayscn_persistence_block"])
     if scene_type in _SCENE_BLOCK_REASONS:
         reasons.append(_SCENE_BLOCK_REASONS[scene_type])
@@ -223,7 +256,9 @@ def _projection(
         "candidate_count": len(candidates),
         "scene_type": str(parsed_scn.get("scene_type", "unknown")),
         "source_counts": {
-            "message_count": _non_negative_int(source_summary.get("message_count")),
+            "message_count": _non_negative_int(
+                source_summary.get("message_count")
+            ),
             "user_message_count": _non_negative_int(
                 source_summary.get("user_message_count")
             ),
@@ -231,7 +266,9 @@ def _projection(
                 source_summary.get("assistant_message_count")
             ),
         },
-        "promotion_policy_counts": _count_by_key(candidates, "promotion_policy"),
+        "promotion_policy_counts": _count_by_key(
+            candidates, "promotion_policy"
+        ),
         "memory_kind_counts": _count_by_key(candidates, "memory_kind"),
         "blocked_reasons": [str(reason) for reason in blocked_reasons],
         "candidates": [
@@ -239,10 +276,14 @@ def _projection(
                 "candidate_id": str(candidate.get("candidate_id", "")),
                 "memory_layer": "primary",
                 "memory_kind": str(candidate.get("memory_kind", "unknown")),
-                "promotion_policy": str(candidate.get("promotion_policy", "unknown")),
+                "promotion_policy": str(
+                    candidate.get("promotion_policy", "unknown")
+                ),
                 "safety_scope": str(candidate.get("safety_scope", "unknown")),
                 "salience_band": str(candidate.get("salience_band", "unknown")),
-                "stability_band": str(candidate.get("stability_band", "unknown")),
+                "stability_band": str(
+                    candidate.get("stability_band", "unknown")
+                ),
             }
             for candidate in candidates
         ],
@@ -260,7 +301,12 @@ def _memory_kind(scene_type: str) -> str:
 
 
 def _promotion_policy(scene_type: str) -> str:
-    if scene_type in {"formal_document", "medical_or_safety", "recovery", "unknown"}:
+    if scene_type in {
+        "formal_document",
+        "medical_or_safety",
+        "recovery",
+        "unknown",
+    }:
         return "never_auto_promote"
     if scene_type == "system_ops":
         return "review_required"
@@ -283,10 +329,14 @@ def _salience_band(relayemo_artifact: Mapping[str, Any] | None) -> str:
     assistant_state = relayemo_artifact.get("assistant_emotion_state")
     affect_estimate = relayemo_artifact.get("user_affect_estimate")
     intensity = _finite_float(
-        assistant_state.get("intensity") if isinstance(assistant_state, Mapping) else None
+        assistant_state.get("intensity")
+        if isinstance(assistant_state, Mapping)
+        else None
     )
     confidence = _finite_float(
-        affect_estimate.get("confidence") if isinstance(affect_estimate, Mapping) else None
+        affect_estimate.get("confidence")
+        if isinstance(affect_estimate, Mapping)
+        else None
     )
     score = max(intensity or 0.0, confidence or 0.0)
     if score >= 0.75:
@@ -301,7 +351,9 @@ def _salience_band(relayemo_artifact: Mapping[str, Any] | None) -> str:
 def _stability_band(parsed_scn: Mapping[str, Any]) -> str:
     stability = _finite_float(parsed_scn.get("stability"))
     confidence = _finite_float(parsed_scn.get("confidence"))
-    numeric_values = [item for item in (stability, confidence) if item is not None]
+    numeric_values = [
+        item for item in (stability, confidence) if item is not None
+    ]
     if not numeric_values:
         return "unknown"
     score = min(numeric_values)
@@ -324,7 +376,9 @@ def _content_length(content: Any) -> int:
     return 0
 
 
-def _count_by_key(candidates: Sequence[Mapping[str, Any]], key: str) -> dict[str, int]:
+def _count_by_key(
+    candidates: Sequence[Mapping[str, Any]], key: str
+) -> dict[str, int]:
     counts: dict[str, int] = {}
     for candidate in candidates:
         value = str(candidate.get(key, "unknown"))
