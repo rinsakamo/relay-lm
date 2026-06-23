@@ -1,11 +1,6 @@
 name: Phase 6-C1 worker bootstrap
 
 on:
-  push:
-    branches:
-      - phase6c1-one-claimed-primary-worker
-    paths:
-      - .github/workflows/phase6c1-worker-bootstrap.yml
   pull_request:
     branches:
       - main
@@ -30,7 +25,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: phase6c1-one-claimed-primary-worker
-          fetch-depth: 0
+          fetch-depth: 1
+          show-progress: false
       - name: Reassemble reviewed branch payload
         env:
           GH_TOKEN: ${{ github.token }}
@@ -38,14 +34,19 @@ jobs:
         run: |
           set -euo pipefail
           comments="$(gh api "repos/${GITHUB_REPOSITORY}/issues/367/comments?per_page=100")"
+          echo "comment_count=$(jq 'length' <<<"$comments")"
           : > phase6c1-payload.b64
           for part in 1 2 3 4; do
             marker="<!-- PHASE6C1_PAYLOAD_PART_${part} -->"
             body="$(jq -r --arg marker "$marker" '[.[] | select(.body | startswith($marker))] | last | .body // empty' <<<"$comments")"
             test -n "$body"
-            printf '%s\n' "$body" | tail -n +2 >> phase6c1-payload.b64
+            payload="$(printf '%s\n' "$body" | tail -n +2)"
+            echo "part_${part}_chars=${#payload}"
+            printf '%s' "$payload" >> phase6c1-payload.b64
           done
+          echo "payload_chars=$(wc -c < phase6c1-payload.b64)"
           base64 --decode phase6c1-payload.b64 > phase6c1-bundle.tar.gz
+          sha256sum phase6c1-bundle.tar.gz
           echo "c9eb54e4dad07dc0431ae5c9c5b4a752159785f69c80148215952ed9c5d1a7ef  phase6c1-bundle.tar.gz" | sha256sum --check
           tar -xzf phase6c1-bundle.tar.gz
           rm -f phase6c1-payload.b64 phase6c1-bundle.tar.gz
