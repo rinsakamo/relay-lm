@@ -1,6 +1,11 @@
 name: Apply Phase 6 I1-B runtime wiring once
 
 on:
+  push:
+    branches:
+      - phase6-i1b-runtime-enqueue-source-capture
+    paths:
+      - ".github/workflows/phase6-i1b-runtime-wiring-apply.yml"
   pull_request:
     paths:
       - ".github/workflows/phase6-i1b-runtime-wiring-apply.yml"
