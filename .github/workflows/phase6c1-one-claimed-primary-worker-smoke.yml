@@ -45,18 +45,23 @@ jobs:
           relaylm/relaymem_slp_primary_worker.py
           relaylm/relaymem_primary_pipeline.py
           scripts/relaylm_phase6c1_primary_worker_test_support.py
+          scripts/relaylm_phase6c1_primary_worker_ci_runner.py
           scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py
           scripts/relaylm_phase6c1_primary_worker_smoke.py
           scripts/relaylm_phase6c1_primary_worker_security_smoke.py
           scripts/relaylm_phase6c1_primary_worker_fault_smoke.py
       - name: Run compose checkpoint seam smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py
-      - name: Run one-claimed worker functional smoke
-        run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_smoke.py
-      - name: Run one-claimed worker security smoke
-        run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_security_smoke.py
-      - name: Run one-claimed worker fault smoke
-        run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_fault_smoke.py
+      - name: Run one-claimed worker smokes
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+      - name: Upload sanitized worker diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6c1-primary-worker-diagnostic
+          path: phase6c1-primary-worker-diagnostic.txt
+          if-no-files-found: ignore
+          retention-days: 1
       - name: Run B3 queue and C1 source smokes
         run: |
           PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
