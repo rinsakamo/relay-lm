@@ -40,7 +40,7 @@ def index_only_partial_state_converges() -> None:
         prepare_store(store_root)
         request, first_scope = build_request(queue_root, store_root, record=record)
 
-        real_m3f = pipeline.build_relaymem_primary_index_log_reconciliation_preflight
+        real_m3g = pipeline.apply_relaymem_primary_index_log_reconciliation
         original_replace = apply_io.os.replace
         replace_calls = 0
 
@@ -51,18 +51,20 @@ def index_only_partial_state_converges() -> None:
                 raise OSError("phase6c1_c1_4_injected_log_replace_failure")
             original_replace(*args, **kwargs)
 
-        def arm_fault_after_m3e(**kwargs: object):
-            result = real_m3f(**kwargs)
+        def apply_with_fault(**kwargs: object):
             apply_io.os.replace = fail_log_replace
-            return result
+            try:
+                return real_m3g(**kwargs)
+            finally:
+                apply_io.os.replace = original_replace
 
         try:
             with (
                 fixed_queue_time(),
                 patch.object(
                     pipeline,
-                    "build_relaymem_primary_index_log_reconciliation_preflight",
-                    side_effect=arm_fault_after_m3e,
+                    "apply_relaymem_primary_index_log_reconciliation",
+                    side_effect=apply_with_fault,
                 ),
             ):
                 partial = execute_relaymem_slp_primary_worker(request)
