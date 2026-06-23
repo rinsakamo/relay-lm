@@ -62,6 +62,25 @@ M3D_HANDOFF_FIELDS = {
     "blocked_reasons",
 }
 
+_HANDOFF_VARIANTS: dict[str, dict[str, bool | str]] = {
+    "ready": {
+        "preflight_status": "ready",
+        "target_exists": False,
+        "target_digest_matches": False,
+        "idempotent_noop": False,
+        "upstream_writer_handoff_eligible": True,
+        "writer_apply_eligible": True,
+    },
+    "already_applied": {
+        "preflight_status": "already_applied",
+        "target_exists": True,
+        "target_digest_matches": True,
+        "idempotent_noop": True,
+        "upstream_writer_handoff_eligible": True,
+        "writer_apply_eligible": False,
+    },
+}
+
 
 def parse_m3d_handoff(value: Mapping[str, Any]) -> dict[str, Any]:
     if value.get("schema_version") != M3D_HANDOFF_SCHEMA:
@@ -69,32 +88,26 @@ def parse_m3d_handoff(value: Mapping[str, Any]) -> dict[str, Any]:
     reasons = exact_fields(
         value, M3D_HANDOFF_FIELDS, "primary_writer_handoff_fields_mismatch"
     )
-    reasons.extend(
-        exact(
-            value,
-            {
-                "runtime_private": True,
-                "content_included": True,
-                "raw_source_text_included": False,
-                "raw_message_history_included": False,
-                "raw_affect_estimates_included": False,
-                "memory_layer": "primary",
-                "promotion_policy": "free_to_update",
-                "safety_scope": "ordinary_memory",
-                "preflight_status": "ready",
-                "target_exists": False,
-                "target_digest_matches": False,
-                "idempotent_noop": False,
-                "upstream_writer_handoff_eligible": True,
-                "writer_apply_eligible": True,
-                "writes_memory": False,
-                "updates_index": False,
-                "updates_log": False,
-                "applied": False,
-            },
-            "primary_writer_handoff_",
-        )
-    )
+    exact_values: dict[str, object] = {
+        "runtime_private": True,
+        "content_included": True,
+        "raw_source_text_included": False,
+        "raw_message_history_included": False,
+        "raw_affect_estimates_included": False,
+        "memory_layer": "primary",
+        "promotion_policy": "free_to_update",
+        "safety_scope": "ordinary_memory",
+        "writes_memory": False,
+        "updates_index": False,
+        "updates_log": False,
+        "applied": False,
+    }
+    variant = value.get("preflight_status")
+    if isinstance(variant, str) and variant in _HANDOFF_VARIANTS:
+        exact_values.update(_HANDOFF_VARIANTS[variant])
+    else:
+        reasons.append("primary_writer_handoff_preflight_status_invalid")
+    reasons.extend(exact(value, exact_values, "primary_writer_handoff_"))
     if strings(value.get("blocked_reasons")):
         reasons.append("primary_writer_handoff_blocked")
 
@@ -248,5 +261,6 @@ def parse_m3d_handoff(value: Mapping[str, Any]) -> dict[str, Any]:
         "page_markdown": page_markdown,
         "page_bytes": page_bytes,
         "page_digest": digest,
+        "preflight_status": variant,
         "blocked_reasons": [],
     }
