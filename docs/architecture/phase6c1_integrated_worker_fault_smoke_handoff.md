@@ -27,7 +27,7 @@ relaylm_related_authority:
 
 Phase 6-C1-4 is complete as an integration-verification slice for the production one-claimed-job worker introduced by PR #367.
 
-This slice does not add a second worker implementation, queue semantics, source schema, outcome mapping, persistence helper, scheduler, or runtime registry. It connects the canonical Thread C fault fixtures and existing production/test seams to the exact worker boundary:
+This slice does not add a second worker implementation, queue semantics, source schema, persistence helper, scheduler, or runtime registry. It connects the canonical Thread C fault fixtures and existing production/test seams to the exact worker boundary:
 
 ```python
 execute_relaymem_slp_primary_worker(request)
@@ -91,10 +91,14 @@ The worker-level outcome matrix verifies:
 - policy blocked commits terminal failed with `memory_policy_blocked`
 - manual confirmation commits terminal failed with `manual_confirmation_required`
 - journaled recovery candidate commits terminal failed with `recovery_isolation_required`
-- store corruption, conflict, divergence, page uncertainty, and control uncertainty are never classified as success
+- page missing, page digest mismatch, malformed index, conflicting index, conflicting log, non-UTF-8 controls, symlinks, and unsafe control-file types are never classified as success
+- `state_diverged`, `page_unverified`, and `control_unverified` commit terminal failed with the classifier-owned store failure class
+- M3g durability uncertainty cannot produce success
 - source correlation failure commits terminal failed without memory mutation
 - unsupported `held` or `dead_letter` queue states are not introduced
 - stale claimants cannot perform retry or terminal transitions
+
+The integrated corruption matrix found one bounded classifier defect: production M3g emits `*_file_not_regular`, while the classifier recognized only `non_regular`. C1-4 adds `not_regular` to the existing corruption token mapping without changing the queue transition contract or any RelayMEM persistence semantics.
 
 ### Source one-shot semantics
 
@@ -125,6 +129,7 @@ The CI runner captures all child-process stdout/stderr and emits only a bounded 
 scripts/relaylm_phase6c1_worker_fault_smoke.py
 scripts/relaylm_phase6c1_worker_crash_convergence_smoke.py
 scripts/relaylm_phase6c1_worker_lease_race_smoke.py
+scripts/relaylm_phase6c1_worker_corruption_smoke.py
 scripts/relaylm_phase6c1_worker_content_leakage_smoke.py
 scripts/relaylm_phase6c1_worker_integration_ci_runner.py
 .github/workflows/phase6c1-integrated-worker-fault-smoke.yml
@@ -134,7 +139,7 @@ The runner also re-executes the existing B3, C1-0 source, classifier, Thread C f
 
 ## Ownership and dependency boundaries
 
-Thread C continues to own the reusable test-only fault fixture module. Thread F continues to own the production one-claimed worker and its functional/security smoke. Thread G owns only the integrated fault, convergence, race, leakage suite and this handoff.
+Thread C continues to own the reusable test-only fault fixture module. Thread F continues to own the production one-claimed worker and its functional/security smoke. Thread G owns the integrated fault, convergence, race, corruption, leakage suite and this handoff. The only production change is the bounded classifier reason-token correction described above.
 
 The suite supplies an exact claimed record and exact protected source directly to the worker. It does not import or require the ordinary request-runtime producer or process-local registry associated with PR #365, and Issue #366 remains an ordinary request-runtime source-producer concern rather than a worker-safety dependency.
 
