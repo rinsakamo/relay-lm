@@ -28,6 +28,7 @@ RelayLM documentation is AI-first: documents should be understandable when retri
 - [Phase 6 I1-B runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md) — ordinary managed request-runtime A1 -> A2 -> B1 -> B2 wiring and process-local source retention
 - [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md) — exact active-lease, protected-source, retry, crash, and outcome boundary; C1-2 worker execution is next on `main`
 - [Phase 6-B3 fenced queue state helpers](architecture/phase6b3_relayslp_queue_state_helpers.md) — exact claim/lease/retry/stale/terminal queue-control boundary
+- [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md) — current producer/consumer connection and remaining migration boundary
 - [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md) — Primary MEM direct/helper path complete through M3h recovery audit
 - [SOUL Lab UI-A7 read-only management projection](architecture/soul_lab_ui_a7_management_projection_handoff.md) — local-only secret-free Lab API reads and explicit mock fallback
 - [Architecture docs](architecture/README.md)
@@ -142,7 +143,8 @@ AI-first maintenance rules:
 - add front matter to active current/architecture/plan/contract docs when practical,
 - include document type, authority, status, volatility, owner, update trigger, and non-authority fields,
 - keep current/target/compatibility/historical/frozen status explicit,
-- do not encode source text, prompts, traces, cache bodies, or runtime-private data in metadata.
+- do not encode source text, prompts, traces, cache bodies, or runtime-private data in metadata,
+- when an implemented/current handoff changes milestone state, review Project Status, the implementation plan, this index, the architecture index, and affected current/target boundaries together.
 
 Placement rules:
 
