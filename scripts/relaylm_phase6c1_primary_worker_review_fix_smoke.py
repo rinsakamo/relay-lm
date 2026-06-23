@@ -44,6 +44,7 @@ from relaylm_phase6c1_primary_worker_test_support import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+SAFE_DIAGNOSTIC = Path("phase6c1-primary-worker-safe-status.json")
 _RUNTIME = runpy.run_path(
     str(REPO_ROOT / "scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py"),
     run_name="relaylm_phase6c1_review_source_support",
@@ -53,8 +54,8 @@ finalized = _RUNTIME["finalized"]
 claim = _RUNTIME["claim"]
 
 
-def _print_safe_worker_status(label: str, result: object) -> None:
-    """Print only bounded content-free state when a focused assertion fails."""
+def _record_safe_worker_status(label: str, result: object) -> None:
+    """Persist only bounded content-free state when a focused assertion fails."""
 
     pipeline_result = getattr(result, "pipeline_result", None)
     outcome_result = getattr(result, "outcome_result", None)
@@ -73,7 +74,9 @@ def _print_safe_worker_status(label: str, result: object) -> None:
         "queue_transition_kind": getattr(queue_result, "transition_kind", None),
         "queue_reason_ids": list(getattr(queue_result, "blocked_reasons", ())),
     }
-    print(json.dumps(payload, sort_keys=True))
+    SAFE_DIAGNOSTIC.write_text(
+        json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8"
+    )
 
 
 def technical_failure_is_not_policy() -> None:
@@ -224,7 +227,7 @@ def registry_retry_retains_source_and_converges() -> None:
                 _worker_request(queue_root, store_root, claimed, prepared)
             )
         if first.status != "retry_released":
-            _print_safe_worker_status("registry_first", first)
+            _record_safe_worker_status("registry_first", first)
         require(first.status == "retry_released", first.to_log_dict())
         prepared.release_prepared_scope()
         require(registry.size == 1, registry)
@@ -248,7 +251,7 @@ def registry_retry_retains_source_and_converges() -> None:
         finally:
             queue_state._now_utc = original_now
         if second.status != "terminal_succeeded":
-            _print_safe_worker_status("registry_second", second)
+            _record_safe_worker_status("registry_second", second)
         require(second.status == "terminal_succeeded", second.to_log_dict())
         prepared_again.release_prepared_scope()
         terminal = second.queue_transition_result.durable_record
@@ -279,6 +282,7 @@ def registry_retry_retains_source_and_converges() -> None:
 
 
 def main() -> int:
+    SAFE_DIAGNOSTIC.unlink(missing_ok=True)
     technical_failure_is_not_policy()
     retry_policy_is_internal_and_bounded()
     registry_retry_retains_source_and_converges()
