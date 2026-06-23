@@ -311,6 +311,7 @@ The SOUL Lab app can be built as a presentation prototype and can read the bound
 
 - [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
+- [RelayMEM / RelaySLP Current / Target Boundary](architecture/relaymem_slp_current_target.md)
 - [Client History Authority Contract](architecture/client_history_authority_contract.md)
 - [Client Instruction Authority Contract](architecture/client_instruction_authority_contract.md)
 - [Phase 5.5 Stream Unpack Bounded Slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
