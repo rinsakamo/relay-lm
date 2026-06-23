@@ -1,8 +1,8 @@
-"""End-to-end ordinary runtime smoke for Phase 6 I1-B.
+"""End-to-end ordinary runtime smoke for Phase 6 I1-B and C1-5.
 
 The smoke proves that non-stream and stream responses finish independently from
-post-response enqueue/source retention, and that the stream observer preserves
-backend SSE bytes exactly.
+post-response enqueue/source retention, that protected source is committed before
+the queue record, and that the stream observer preserves backend SSE bytes exactly.
 """
 from __future__ import annotations
 
@@ -93,6 +93,7 @@ def _write_config(
     *,
     backend_port: int,
     queue_root: Path,
+    protected_source_root: Path,
     trace_path: Path,
 ) -> None:
     cfg = yaml.safe_load((REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8"))
@@ -113,6 +114,8 @@ def _write_config(
     cfg["relaymem_slp_runtime_enqueue_dry_run_only"] = False
     cfg["relaymem_slp_runtime_enqueue_apply_enabled"] = True
     cfg["relaymem_slp_queue_root"] = str(queue_root.resolve())
+    cfg["relaymem_slp_protected_source_root"] = str(protected_source_root.resolve())
+    cfg["relaymem_slp_protected_source_max_artifact_bytes"] = 256 * 1024
     cfg["memory"].update(
         {
             "store_enabled": False,
@@ -200,13 +203,16 @@ def main() -> None:
         with tempfile.TemporaryDirectory(dir=REPO_ROOT) as directory:
             root = Path(directory)
             queue_root = root / "queue"
+            protected_source_root = root / "protected-source"
             queue_root.mkdir()
+            protected_source_root.mkdir()
             trace_path = root / "apply.jsonl"
             config_path = root / "apply.yaml"
             _write_config(
                 config_path,
                 backend_port=port,
                 queue_root=queue_root,
+                protected_source_root=protected_source_root,
                 trace_path=trace_path,
             )
             app = create_app(str(config_path))
@@ -220,6 +226,10 @@ def main() -> None:
                 require(
                     len(list(queue_root.glob("slp-dispatch-v0-*.json"))) == 1,
                     list(queue_root.iterdir()),
+                )
+                require(
+                    len(list(protected_source_root.glob("protected-source-v0-*.json"))) == 1,
+                    list(protected_source_root.iterdir()),
                 )
                 registry = app.state.relaymem_slp_primary_worker_source_registry
                 require(registry.size == 1, registry)
@@ -246,6 +256,10 @@ def main() -> None:
                     len(list(queue_root.glob("slp-dispatch-v0-*.json"))) == 2,
                     list(queue_root.iterdir()),
                 )
+                require(
+                    len(list(protected_source_root.glob("protected-source-v0-*.json"))) == 2,
+                    list(protected_source_root.iterdir()),
+                )
                 require(registry.size == 2, registry)
                 stream_trace = _runtime_enqueue_record(trace_path)
                 _assert_trace_content_free(stream_trace)
@@ -258,10 +272,13 @@ def main() -> None:
             failure_trace = root / "failure.jsonl"
             failure_config = root / "failure.yaml"
             missing_queue = root / "missing-queue"
+            failure_protected_source_root = root / "failure-protected-source"
+            failure_protected_source_root.mkdir()
             _write_config(
                 failure_config,
                 backend_port=port,
                 queue_root=missing_queue,
+                protected_source_root=failure_protected_source_root,
                 trace_path=failure_trace,
             )
             failure_app = create_app(str(failure_config))
@@ -273,6 +290,10 @@ def main() -> None:
             require(response.status_code == 200, response.text)
             require(response.json() == NON_STREAM_BODY, response.json())
             require(not missing_queue.exists(), missing_queue)
+            require(
+                not list(failure_protected_source_root.glob("protected-source-v0-*.json")),
+                list(failure_protected_source_root.iterdir()),
+            )
             require(
                 failure_app.state.relaymem_slp_primary_worker_source_registry.size == 0,
                 failure_app.state.relaymem_slp_primary_worker_source_registry,
