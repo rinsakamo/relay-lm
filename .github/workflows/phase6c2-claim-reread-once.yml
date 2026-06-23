@@ -1,0 +1,38 @@
+name: Phase 6-C2 claim reread correction once
+
+on:
+  push:
+    branches:
+      - phase6c2-one-queued-job-integration
+    paths:
+      - "scripts/_phase6c2_fix_claim_reread.py"
+      - ".github/workflows/phase6c2-claim-reread-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6c2-one-queued-job-integration
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Correct canonical claim reread use
+        run: python scripts/_phase6c2_fix_claim_reread.py
+      - name: Remove one-shot machinery
+        run: |
+          rm scripts/_phase6c2_fix_claim_reread.py
+          rm .github/workflows/phase6c2-claim-reread-once.yml
+      - name: Commit claim reread correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add relaylm/relaymem_slp_one_queued_job_runner.py scripts/_phase6c2_fix_claim_reread.py .github/workflows/phase6c2-claim-reread-once.yml
+          git commit -m "fix: preserve committed claim after canonical B3 reread"
+          git push origin HEAD:phase6c2-one-queued-job-integration
