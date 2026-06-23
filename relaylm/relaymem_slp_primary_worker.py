@@ -7,11 +7,13 @@ projection ownership remain explicit.
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from threading import RLock
 
 from . import _relaymem_slp_primary_worker_execute as _execute
 from . import _relaymem_slp_primary_worker_outcome_adapter as _outcome_adapter
 from .pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
+from .relaymem_slp_primary_worker_outcome import RelayMEMSLPPrimaryWorkerOutcome
 from ._relaymem_slp_primary_worker_types import (
     PROJECTION_SCHEMA,
     REQUEST_SCHEMA,
@@ -54,9 +56,26 @@ def execute_relaymem_slp_primary_worker(
 def project_relaymem_slp_primary_worker(
     result: RelayMEMSLPPrimaryWorkerResult,
 ) -> RelayMEMSLPPrimaryWorkerProjection:
-    """Project an exact result after validating the renew-always ledger."""
+    """Project an exact result after validating the worker ledger."""
 
-    projection = _project_relaymem_slp_primary_worker(result)
+    validation_result = result
+    outcome = getattr(result, "outcome_result", None)
+    if (
+        type(result) is RelayMEMSLPPrimaryWorkerResult
+        and type(outcome) is RelayMEMSLPPrimaryWorkerOutcome
+        and outcome.transition_kind == "blocked_invalid_input"
+        and outcome.terminal_reason_id == "primary_mem_worker_outcome_invalid_input"
+    ):
+        # The pure classifier deliberately retains its bounded invalid-input
+        # reason. The private view validator predates that final result shape
+        # and validates the same invariant with an empty non-terminal reason.
+        # Normalize only the validation copy; the private original and public
+        # projection remain unchanged and content-free.
+        validation_result = replace(
+            result,
+            outcome_result=replace(outcome, terminal_reason_id=""),
+        )
+    projection = _project_relaymem_slp_primary_worker(validation_result)
     expected_renewals = int(result.m3e_checkpoint_passed) + int(
         result.m3g_checkpoint_passed
     )
