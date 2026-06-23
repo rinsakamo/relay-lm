@@ -95,16 +95,16 @@ def classify_relaymem_slp_primary_worker_outcome(
             failure_class="resource_contention",
         )
 
+    if m3h is not None and m3h.source_status != m3g.status:
+        return invalid("m3g_m3h_source_status_mismatch")
+
     if m3h is not None and M3H_LOCK_REASON in m3h.blocked_reason_ids:
-        if any(reason != M3H_LOCK_REASON for reason in m3h.blocked_reason_ids):
+        if not _m3h_lock_contention_is_clean(m3h):
             return invalid("m3h_lock_with_invalid_store_evidence")
         return retry(
             retry_class="transient_lock_contention",
             failure_class="resource_contention",
         )
-
-    if m3h is not None and m3h.source_status != m3g.status:
-        return invalid("m3g_m3h_source_status_mismatch")
 
     if m3g.status in M3G_UNCERTAIN:
         return _classify_uncertainty(m3h)
@@ -145,6 +145,22 @@ def classify_relaymem_slp_primary_worker_outcome(
     ):
         return invalid("m3g_not_applied_with_recovery_not_required")
     return invalid("incompatible_m3_result_combination")
+
+
+def _m3h_lock_contention_is_clean(
+    value: RelayMEMSLPPrimaryRecoveryAuditOutcome,
+) -> bool:
+    return (
+        value.status == "blocked"
+        and value.receipt_valid
+        and value.store_state == "not_evaluated"
+        and not value.page_verified
+        and value.index_state == "not_checked"
+        and value.log_state == "not_checked"
+        and not value.cleanup_artifacts_present
+        and value.recovery_classification == "not_evaluated"
+        and value.blocked_reason_ids == (M3H_LOCK_REASON,)
+    )
 
 
 def _classify_uncertainty(
