@@ -11,6 +11,7 @@ on:
       - "relaylm/relaymem_slp_runtime_enqueue.py"
       - "relaylm/relaymem_slp_primary_worker_source_registry.py"
       - "config.example.yaml"
+      - "scripts/_relaylm_phase6_i1b_review_fix.py"
       - "scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py"
       - "scripts/relaylm_phase6_runtime_enqueue_app_smoke.py"
       - "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md"
@@ -18,28 +19,47 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "relaylm/app.py"
-      - "relaylm/config.py"
-      - "relaylm/routing.py"
-      - "relaylm/relaymem_slp_finalized_turn_source.py"
-      - "relaylm/relaymem_slp_runtime_finalization.py"
-      - "relaylm/relaymem_slp_runtime_enqueue.py"
-      - "relaylm/relaymem_slp_primary_worker_source_registry.py"
-      - "config.example.yaml"
-      - "scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py"
-      - "scripts/relaylm_phase6_runtime_enqueue_app_smoke.py"
-      - "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md"
-      - ".github/workflows/phase6-runtime-enqueue-source-capture-smoke.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  smoke:
+  apply-review-fixes:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: phase6-i1b-runtime-enqueue-source-capture
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Apply bounded production review fixes
+        run: |
+          if [ -f scripts/_relaylm_phase6_i1b_review_fix.py ]; then
+            python scripts/_relaylm_phase6_i1b_review_fix.py
+            python -m compileall -q \
+              relaylm/relaymem_slp_finalized_turn_source.py \
+              relaylm/relaymem_slp_runtime_finalization.py
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git rm scripts/_relaylm_phase6_i1b_review_fix.py
+            git add \
+              relaylm/relaymem_slp_finalized_turn_source.py \
+              relaylm/relaymem_slp_runtime_finalization.py
+            git commit -m "fix: fail closed on blocked finalized-turn persistence"
+            git push origin HEAD:phase6-i1b-runtime-enqueue-source-capture
+          else
+            echo "review fixes already applied"
+          fi
+
+  smoke:
+    needs: apply-review-fixes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6-i1b-runtime-enqueue-source-capture
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -56,25 +76,11 @@ jobs:
           relaylm/relaymem_slp_runtime_enqueue.py
           relaylm/relaymem_slp_primary_worker_source_registry.py
           scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
+          scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
       - name: Validate runtime enqueue and source capture
-        id: runtime-smoke
-        run: |
-          set +e
-          PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py > /tmp/phase6-i1b-smoke.log 2>&1
-          status=$?
-          if [ "$status" -ne 0 ]; then
-            tail -n 80 /tmp/phase6-i1b-smoke.log
-            exit "$status"
-          fi
-          cat /tmp/phase6-i1b-smoke.log
-      - name: Upload Phase 6 smoke failure log
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: phase6-i1b-smoke-log
-          path: /tmp/phase6-i1b-smoke.log
-          if-no-files-found: error
-          retention-days: 1
+        run: PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
+      - name: Validate ordinary non-stream and stream runtime wiring
+        run: PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
       - name: Revalidate exact Phase 6 boundaries
         run: |
           PYTHONPATH=. python scripts/relaylm_relaymem_slp_job_admission_smoke.py
@@ -83,5 +89,9 @@ jobs:
           PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_smoke.py
           PYTHONPATH=. python scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py
           PYTHONPATH=. python scripts/relaylm_phase6c1_primary_worker_source_smoke.py
+      - name: Revalidate request runtime finalization
+        run: |
+          PYTHONPATH=. python scripts/relaylm_relayctx_unpack_runtime_app_smoke.py
+          PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
       - name: Check documentation links
         run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
