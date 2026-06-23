@@ -1,6 +1,7 @@
 """Focused smoke for the final-review fixes on Phase 6-C1-2."""
 from __future__ import annotations
 
+import json
 import runpy
 from dataclasses import replace
 from datetime import timedelta
@@ -50,6 +51,29 @@ _RUNTIME = runpy.run_path(
 CHARACTER_ID = _RUNTIME["CHARACTER_ID"]
 finalized = _RUNTIME["finalized"]
 claim = _RUNTIME["claim"]
+
+
+def _print_safe_worker_status(label: str, result: object) -> None:
+    """Print only bounded content-free state when a focused assertion fails."""
+
+    pipeline_result = getattr(result, "pipeline_result", None)
+    outcome_result = getattr(result, "outcome_result", None)
+    queue_result = getattr(result, "queue_transition_result", None)
+    payload = {
+        "label": label,
+        "status": getattr(result, "status", None),
+        "reason_ids": list(getattr(result, "reason_ids", ())),
+        "pipeline_status": getattr(pipeline_result, "status", None),
+        "pipeline_reason_ids": list(getattr(pipeline_result, "reason_ids", ())),
+        "outcome_status": getattr(outcome_result, "status", None),
+        "outcome_transition_kind": getattr(outcome_result, "transition_kind", None),
+        "outcome_failure_class": getattr(outcome_result, "failure_class", None),
+        "outcome_reason_ids": list(getattr(outcome_result, "blocked_reason_ids", ())),
+        "queue_status": getattr(queue_result, "status", None),
+        "queue_transition_kind": getattr(queue_result, "transition_kind", None),
+        "queue_reason_ids": list(getattr(queue_result, "blocked_reasons", ())),
+    }
+    print(json.dumps(payload, sort_keys=True))
 
 
 def technical_failure_is_not_policy() -> None:
@@ -199,6 +223,8 @@ def registry_retry_retains_source_and_converges() -> None:
             first = execute_relaymem_slp_primary_worker(
                 _worker_request(queue_root, store_root, claimed, prepared)
             )
+        if first.status != "retry_released":
+            _print_safe_worker_status("registry_first", first)
         require(first.status == "retry_released", first.to_log_dict())
         prepared.release_prepared_scope()
         require(registry.size == 1, registry)
@@ -221,6 +247,8 @@ def registry_retry_retains_source_and_converges() -> None:
             )
         finally:
             queue_state._now_utc = original_now
+        if second.status != "terminal_succeeded":
+            _print_safe_worker_status("registry_second", second)
         require(second.status == "terminal_succeeded", second.to_log_dict())
         prepared_again.release_prepared_scope()
         terminal = second.queue_transition_result.durable_record
