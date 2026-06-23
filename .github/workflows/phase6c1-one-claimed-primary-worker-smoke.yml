@@ -75,7 +75,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: phase6c1-primary-worker-diagnostic
-          path: phase6c1-primary-worker-diagnostic.txt
+          path: |
+            phase6c1-primary-worker-diagnostic.txt
+            phase6c1-primary-worker-safe-status.json
           if-no-files-found: ignore
           retention-days: 1
       - name: Run I1-B source and B3 regressions
