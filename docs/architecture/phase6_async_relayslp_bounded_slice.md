@@ -28,6 +28,7 @@ relaylm_related_authority:
   - phase6c1_one_claimed_primary_worker_handoff.md
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
+  - phase6c2_one_queued_primary_worker_integration.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - memory_lifecycle_design.md
@@ -38,7 +39,7 @@ relaylm_related_authority:
 
 ## Status
 
-Phase 6 is implemented through I1-B, fenced B3 lifecycle, and Phase 6-C1-0 through C1-5.
+Phase 6 is implemented through I1-B, fenced B3 lifecycle, Phase 6-C1-0 through C1-5, and the bounded Phase 6-C2 one-job adapter.
 
 ```text
 Phase 6-A0 ownership and sequencing: complete
@@ -175,32 +176,13 @@ C1-4 verifies normal success, stale claim fencing, lease loss at side-effect bou
 
 C1-5 persists the claim-independent capture separately, validates identity and integrity, rehydrates after restart, retains it across retry/stale recovery, and removes it only after canonical terminal commit.
 
-## Next integration boundary
+### C2: one queued-job integration
 
-The next slice is deliberately smaller than a scheduler:
+C2 accepts one caller-selected exact queued record, delegates claim mutation to canonical B3, delegates fresh source/scope preparation to C1-5, invokes C1-2 unchanged, and runs terminal-only protected-source cleanup. It does not scan or schedule the queue.
 
-```text
-one exact queued canonical B3 record
-  -> canonical B3 claim
-  -> C1-5 protected capture lookup
-  -> fresh C1-0 source and scope
-  -> C1-2 one-claimed worker
-  -> B3 retry release or terminal commit
-```
+## Next integration boundary: next-turn recall and scope isolation
 
-It must not:
-
-- scan the queue,
-- run a daemon,
-- create a generalized worker pool,
-- sleep until retry time,
-- own broad backoff policy,
-- redefine M3 semantics,
-- execute inline with visible response delivery.
-
-## End-to-end recall validation
-
-After the one-job adapter exists, prove:
+C2 now provides the bounded one-job claim/rehydrate/execute path. The next smoke must prove:
 
 ```text
 turn 1
@@ -259,24 +241,4 @@ All Phase 6 slices preserve:
 
 ## Active completion criterion
 
-Phase 6-C1 is restart-complete for protected-source recovery of durably enqueued jobs. Phase 6 is product-complete for I1 only when ordinary queued work reaches C1-2 through the one-job adapter, queue state converges correctly, a later turn retrieves and uses the memory, and the separate pre-enqueue background-finalizer crash window is resolved or explicitly bounded.
-
-<!-- phase6c2-status:start -->
-## Phase 6-C2 completion alignment
-
-The bounded E-to-F integration is complete for one caller-selected canonical queued job:
-
-```text
-I1-B producer: complete
-B3 lifecycle: complete
-C1-0 through C1-5: complete
-C2 one-job claim/rehydrate/execute adapter: complete
-next-turn recall and scope isolation: next
-SOUL Lab real observation: later
-auditable Correct operation: later
-```
-
-C2 delegates claim mutation to canonical B3, protected-source preparation to C1-5, and execution plus retry/terminal transition to the unchanged C1-2 worker. It does not add queue scanning, scheduling, polling, daemon/service lifecycle, a worker pool, pre-enqueue background-finalizer crash recovery, next-turn recall, memory correction, or Secondary MEM.
-
-See [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md).
-<!-- phase6c2-status:end -->
+Phase 6-C1 is restart-complete for protected-source recovery of durably enqueued jobs, and C2 completes one exact queued-job execution. Phase 6 is product-complete for I1 only when a later turn retrieves and uses the memory within the correct character/namespace scope and the separate pre-enqueue background-finalizer crash window is resolved or explicitly bounded.

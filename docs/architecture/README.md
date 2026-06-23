@@ -43,11 +43,12 @@ Canonical authority:
 - [Phase 6-C1-3 Primary Worker Outcome Classifier](phase6c1_primary_worker_outcome_classifier.md)
 - [Phase 6-C1-4 Integrated Worker Fault Smoke](phase6c1_integrated_worker_fault_smoke_handoff.md)
 - [Phase 6-C1-5 Durable Protected Source Persistence](phase6c1_durable_protected_source_persistence.md)
+- [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
 
-Phase 6-A1/A2 and B0-B3 own deferred admission, finalized-turn handoff, durable queue publication, and fenced queue lifecycle. I1-B wires ordinary managed response finalization to post-response enqueue. C1-0 owns exact current-claim source construction, C1-1 composes M3a-M3h, C1-2 executes one already-claimed job, C1-3 classifies outcomes, C1-4 verifies integrated fault convergence, and C1-5 durably persists and restart-rehydrates the claim-independent protected capture.
+Phase 6-A1/A2 and B0-B3 own deferred admission, finalized-turn handoff, durable queue publication, and fenced queue lifecycle. I1-B wires ordinary managed response finalization to post-response enqueue. C1-0 owns exact current-claim source construction, C1-1 composes M3a-M3h, C1-2 executes one already-claimed job, C1-3 classifies outcomes, C1-4 verifies integrated fault convergence, C1-5 durably persists and restart-rehydrates the claim-independent protected capture, and C2 connects one exact queued record through canonical claim, rehydrate, and C1-2 execution.
 
-Phase 6-C1 is restart-complete for protected-source recovery of durably enqueued jobs. The next boundary is a thin one-job B3 claim -> C1-5 rehydrate -> C1-2 execute adapter. Queue scanning, daemon scheduling, the pre-enqueue background-finalizer crash window, and next-turn recall remain unimplemented.
+Phase 6-C2 is complete for one caller-selected canonical queued job. The next boundary is next-turn recall and character/namespace isolation. Queue scanning, daemon scheduling, and the pre-enqueue background-finalizer crash window remain unimplemented.
 
 ## Completed Core streaming boundary
 
@@ -58,7 +59,7 @@ Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, 
 ## Memory lifecycle
 
 - [Memory Lifecycle Design](memory_lifecycle_design.md) — short-term CTX, governed experience evidence, autonomous ordinary MEM formation, RelaySLP, and SOUL Lab memory operations.
-- [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md) — current enqueue/source capture, queue lifecycle, completed C1-0 through C1-5, and remaining one-job runner/recall integration.
+- [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md) — current enqueue/source capture, queue lifecycle, completed C1-0 through C1-5 and C2, and remaining next-turn recall integration.
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — store contracts, retrieval, Primary MEM formation, worker integration, recall, Secondary consolidation, and Lab-ready operations.
 
 ## RelayMEM Primary persistence track
@@ -87,23 +88,3 @@ The current UI is complete through UI-A7. UI-A7 adds only loopback-only settings
 Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1` with explicit `client_instruction_source.v1` provenance. Role, wording, and message position alone are not provenance.
 
 Historical and MVP documents do not override current owners. Implementation handoffs are bounded slice records; they do not override Project Status, the implementation plan, or dedicated current contracts.
-
-<!-- phase6c2-status:start -->
-## Phase 6-C2 completion alignment
-
-The bounded E-to-F integration is complete for one caller-selected canonical queued job:
-
-```text
-I1-B producer: complete
-B3 lifecycle: complete
-C1-0 through C1-5: complete
-C2 one-job claim/rehydrate/execute adapter: complete
-next-turn recall and scope isolation: next
-SOUL Lab real observation: later
-auditable Correct operation: later
-```
-
-C2 delegates claim mutation to canonical B3, protected-source preparation to C1-5, and execution plus retry/terminal transition to the unchanged C1-2 worker. It does not add queue scanning, scheduling, polling, daemon/service lifecycle, a worker pool, pre-enqueue background-finalizer crash recovery, next-turn recall, memory correction, or Secondary MEM.
-
-See [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md).
-<!-- phase6c2-status:end -->

@@ -33,6 +33,7 @@ relaylm_related_authority:
   - phase6c1_primary_worker_outcome_classifier.md
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
+  - phase6c2_one_queued_primary_worker_integration.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - soul_lab_ui_a7_management_projection_handoff.md
@@ -85,6 +86,7 @@ Phase 6 asynchronous RelaySLP orchestration:
   C1-4 integrated worker fault/crash convergence: complete
   C1-5 durable protected source persistence: complete
   Phase 6-C2 one-job claim/rehydrate/execute adapter: complete
+  next-turn recall and scope isolation: next
 
 RelayMEM independent track:
   M1/M2 store and retrieval foundations: complete
@@ -307,23 +309,3 @@ Independent tracks may proceed in parallel only when their next slice serves I1 
 ## Update rule
 
 Update this plan whenever a phase lands, I1 sequencing changes, a target-only schema gains a real producer/consumer path, or a helper/mock boundary becomes ordinary runtime behavior. The same PR must review `docs/PROJECT_STATUS.md`, `docs/README.md`, the architecture index, affected current/target documents, and status-checking smoke scripts.
-
-<!-- phase6c2-status:start -->
-## Phase 6-C2 completion alignment
-
-The bounded E-to-F integration is complete for one caller-selected canonical queued job:
-
-```text
-I1-B producer: complete
-B3 lifecycle: complete
-C1-0 through C1-5: complete
-C2 one-job claim/rehydrate/execute adapter: complete
-next-turn recall and scope isolation: next
-SOUL Lab real observation: later
-auditable Correct operation: later
-```
-
-C2 delegates claim mutation to canonical B3, protected-source preparation to C1-5, and execution plus retry/terminal transition to the unchanged C1-2 worker. It does not add queue scanning, scheduling, polling, daemon/service lifecycle, a worker pool, pre-enqueue background-finalizer crash recovery, next-turn recall, memory correction, or Secondary MEM.
-
-See [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md).
-<!-- phase6c2-status:end -->

@@ -27,6 +27,7 @@ relaylm_related_authority:
   - phase6c1_primary_worker_outcome_classifier.md
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
+  - phase6c2_one_queued_primary_worker_integration.md
   - relaymem_mvp_implementation_plan.md
   - pipeline_implementation_plan.md
   - ../PROJECT_STATUS.md
@@ -403,24 +404,4 @@ C1-4 crash/lease/lock/fault smoke               complete
 C1-5 restart-complete protected source recovery complete for durably enqueued jobs
 ```
 
-The next boundary is a thin C2 one-job queued-record claim/rehydrate/execute adapter, followed by next-turn recall. I1 separately retains the pre-enqueue background-finalizer crash window.
-
-<!-- phase6c2-status:start -->
-## Phase 6-C2 completion alignment
-
-The bounded E-to-F integration is complete for one caller-selected canonical queued job:
-
-```text
-I1-B producer: complete
-B3 lifecycle: complete
-C1-0 through C1-5: complete
-C2 one-job claim/rehydrate/execute adapter: complete
-next-turn recall and scope isolation: next
-SOUL Lab real observation: later
-auditable Correct operation: later
-```
-
-C2 delegates claim mutation to canonical B3, protected-source preparation to C1-5, and execution plus retry/terminal transition to the unchanged C1-2 worker. It does not add queue scanning, scheduling, polling, daemon/service lifecycle, a worker pool, pre-enqueue background-finalizer crash recovery, next-turn recall, memory correction, or Secondary MEM.
-
-See [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md).
-<!-- phase6c2-status:end -->
+Phase 6-C2 one-job queued-record claim/rehydrate/execute adapter: complete. The next boundary is next-turn recall and scope isolation: next. I1 separately retains the pre-enqueue background-finalizer crash window.
