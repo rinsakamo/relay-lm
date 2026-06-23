@@ -33,6 +33,9 @@ FINALIZED_TURN_SOURCE_SCHEMA = "relaymem.slp_finalized_turn_source.v0"
 FINALIZED_TURN_SOURCE_PROJECTION_SCHEMA = (
     "relaymem.slp_finalized_turn_source_projection.v0"
 )
+# One ordinary HTTP request owns one RelayRUN run and exactly one finalized turn.
+# The first bounded runtime therefore uses a run-local zero-based turn authority.
+RUN_LOCAL_TURN_INDEX = 0
 _MAX_MESSAGE_CHARS = 32_768
 _MAX_SUMMARY_CHARS = 2_048
 _MAX_TITLE_CHARS = 160
@@ -213,7 +216,7 @@ def build_relaymem_slp_finalized_turn_source(
         reasons.append("namespace_invalid")
     if not is_token(context.run_id):
         reasons.append("run_id_invalid")
-    if type(context.turn_index) is not int or context.turn_index < 0:
+    if type(RUN_LOCAL_TURN_INDEX) is not int or RUN_LOCAL_TURN_INDEX < 0:
         reasons.append("turn_index_invalid")
     session_id: str | None
     if resolved_session_id is None:
@@ -255,7 +258,7 @@ def build_relaymem_slp_finalized_turn_source(
         source_event_id=context.request_id,
         run_id=context.run_id,
         session_id=session_id,
-        turn_index=context.turn_index,
+        turn_index=RUN_LOCAL_TURN_INDEX,
         namespace=namespace,
     )
     if lineage.get("valid") is not True:
@@ -268,7 +271,7 @@ def build_relaymem_slp_finalized_turn_source(
 
     candidate_id = _candidate_id(
         run_id=context.run_id,
-        turn_index=context.turn_index,
+        turn_index=RUN_LOCAL_TURN_INDEX,
         lineage_fingerprint=str(lineage.get("lineage_fingerprint", "")),
     )
     title = _title(user_text)
@@ -295,7 +298,7 @@ def build_relaymem_slp_finalized_turn_source(
         schema_version=FINALIZED_TURN_SOURCE_SCHEMA,
         character_id=character_id,
         run_id=context.run_id,
-        turn_index=context.turn_index,
+        turn_index=RUN_LOCAL_TURN_INDEX,
         session_id=session_id,
         namespace=namespace,
         source_event_kind="turn",

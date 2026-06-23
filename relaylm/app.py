@@ -14,6 +14,7 @@ from typing import Any
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
+from starlette.background import BackgroundTask
 
 from relaylm.adapter import (
     BackendRequestError,
@@ -21,6 +22,14 @@ from relaylm.adapter import (
     open_chat_completion_stream,
 )
 from relaylm.config import RelayLMConfig, load_config
+from relaylm.relaymem_slp_primary_worker_source_registry import (
+    RelayMEMSLPPrimaryWorkerSourceRegistry,
+)
+from relaylm.relaymem_slp_runtime_finalization import (
+    RelayMEMSLPFinalizedVisibleTextCapture,
+    run_relaymem_slp_runtime_enqueue_after_response,
+    wrap_stream_with_relaymem_slp_finalized_turn_capture,
+)
 from relaylm.diagnostics import (
     RequestDiagnostics,
     build_compile_decision_dry_run,
@@ -100,6 +109,12 @@ def create_app(config_path: str | None = None) -> FastAPI:
     config = load_config(config_path)
     app = FastAPI(title="RelayLM", version="0.1.0")
     app.state.relaylm_config = config
+    app.state.relaymem_slp_primary_worker_source_registry = (
+        RelayMEMSLPPrimaryWorkerSourceRegistry(
+            max_entries=config.relaymem_slp_source_registry_max_entries,
+            ttl_seconds=config.relaymem_slp_source_registry_ttl_seconds,
+        )
+    )
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
@@ -618,6 +633,33 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 diagnostics,
                 relayrun_artifact=stream_relayrun_artifact,
             )
+            stream_background = None
+            if (
+                config.relaymem_slp_runtime_enqueue_enabled
+                and route.mode_applied != "pass_through"
+            ):
+                stream_capture = RelayMEMSLPFinalizedVisibleTextCapture()
+                body_iter = wrap_stream_with_relaymem_slp_finalized_turn_capture(
+                    body_iter,
+                    capture=stream_capture,
+                )
+                stream_background = BackgroundTask(
+                    run_relaymem_slp_runtime_enqueue_after_response,
+                    config=config,
+                    diagnostics=stream_diagnostics,
+                    pipeline_context=pipeline_context,
+                    registry=(
+                        app.state.relaymem_slp_primary_worker_source_registry
+                    ),
+                    status_code=status_code,
+                    resolved_session_id=merged_scope.get("session_id"),
+                    relayscn_scene_policy_artifact=(
+                        relayscn_scene_policy_artifact
+                    ),
+                    relayemo_artifact=relayemo_artifact,
+                    stream_capture=stream_capture,
+                    message_count=len(_extract_trace_messages(forwarded_payload)),
+                )
             trace_runtime_event(
                 config=config,
                 diagnostics=stream_diagnostics,
@@ -634,6 +676,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 status_code=status_code,
                 media_type=content_type,
                 headers=stream_diagnostics.to_headers(),
+                background=stream_background,
             )
 
         try:
@@ -710,6 +753,30 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     marker_preview.get("gate_open")
                 )
         if isinstance(body, dict) or isinstance(body, list):
+            assistant_visible_text = extract_response_text(body)
+            response_background = None
+            if (
+                config.relaymem_slp_runtime_enqueue_enabled
+                and route.mode_applied != "pass_through"
+                and isinstance(assistant_visible_text, str)
+            ):
+                response_background = BackgroundTask(
+                    run_relaymem_slp_runtime_enqueue_after_response,
+                    config=config,
+                    diagnostics=success_diagnostics,
+                    pipeline_context=pipeline_context,
+                    registry=(
+                        app.state.relaymem_slp_primary_worker_source_registry
+                    ),
+                    status_code=status_code,
+                    resolved_session_id=merged_scope.get("session_id"),
+                    relayscn_scene_policy_artifact=(
+                        relayscn_scene_policy_artifact
+                    ),
+                    relayemo_artifact=relayemo_artifact,
+                    assistant_visible_text=assistant_visible_text,
+                    message_count=len(_extract_trace_messages(forwarded_payload)),
+                )
             trace_runtime_event(
                 config=config,
                 diagnostics=success_diagnostics,
@@ -718,7 +785,12 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 metadata={"event": "backend_response", "status_code": status_code},
             )
             headers.update(response_headers)
-            return JSONResponse(status_code=status_code, content=body, headers=headers)
+            return JSONResponse(
+                status_code=status_code,
+                content=body,
+                headers=headers,
+                background=response_background,
+            )
         return JSONResponse(status_code=status_code, content={"raw": body}, headers=headers)
 
     return app

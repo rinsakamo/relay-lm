@@ -74,6 +74,19 @@ relayctx_tts_adapter_handoff_runtime_dry_run_only: true
 relayctx_tts_adapter_handoff_max_segment_chars: 120
 relayctx_tts_adapter_handoff_min_segment_chars: 8
 
+# Phase 6 I1-B ordinary managed-turn deferred enqueue is default-off. Dry-run
+# captures exact request-local protected source evidence after visible response
+# delivery but performs no B2 queue I/O and publishes nothing to the registry.
+# Apply requires enabled=true, dry_run_only=false, apply_enabled=true, and an
+# absolute existing queue root. The protected source registry is process-local
+# and explicitly not restart-complete; no worker is started by this boundary.
+relaymem_slp_runtime_enqueue_enabled: false
+relaymem_slp_runtime_enqueue_dry_run_only: true
+relaymem_slp_runtime_enqueue_apply_enabled: false
+relaymem_slp_queue_root:
+relaymem_slp_source_registry_max_entries: 256
+relaymem_slp_source_registry_ttl_seconds: 1800
+
 # Client message canonicalization dry-run is default-off, diagnostics-only, and
 # content-free. When enabled, RelayLM inspects PipelineContext.original_payload
 # for current-request message shape, records a pipeline node result, and never
