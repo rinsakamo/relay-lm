@@ -1,6 +1,8 @@
 """Terminal failure mappings for the Phase 6-C1 outcome smoke."""
 from relaylm.relaymem_slp_primary_worker_outcome import (
     RelayMEMSLPPrimaryPolicyOutcome,
+    RelayMEMSLPPrimarySourceCorrelationOutcome,
+    classify_relaymem_slp_primary_worker_outcome,
 )
 from relaylm_phase6c1_primary_worker_outcome_support import (
     POLICY_SCHEMA,
@@ -137,6 +139,24 @@ def run_terminal_cases() -> tuple[object, ...]:
         failure_class="store_conflict",
     )
 
+    source_invalid = classify_relaymem_slp_primary_worker_outcome(
+        m3e_result=None,
+        m3g_result=None,
+        m3h_result=None,
+        source_correlation=RelayMEMSLPPrimarySourceCorrelationOutcome(
+            "relaymem.slp_primary_worker_source_correlation.v0",
+            "invalid",
+        ),
+    )
+    assert_shape(
+        source_invalid,
+        transition_kind="commit_failed",
+        failure_class="source_correlation_invalid",
+        terminal_reason_id="primary_mem_source_correlation_invalid",
+        retryable=False,
+        terminal=True,
+    )
+
     uncertain_retry = classify(
         m3e_applied(),
         m3g("applied_state_uncertain"),
@@ -162,5 +182,6 @@ def run_terminal_cases() -> tuple[object, ...]:
         page_digest,
         index_conflict,
         diverged,
+        source_invalid,
         uncertain_retry,
     )
