@@ -1,0 +1,90 @@
+name: Phase 6-C1 integrated worker fault smoke
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/relaymem_slp_primary_worker.py"
+      - "relaylm/_relaymem_slp_primary_worker_*.py"
+      - "relaylm/relaymem_slp_primary_worker_source.py"
+      - "relaylm/relaymem_slp_primary_worker_outcome.py"
+      - "relaylm/relaymem_slp_queue_state.py"
+      - "relaylm/relaymem_primary_pipeline.py"
+      - "relaylm/_relaymem_primary_pipeline_impl.py"
+      - "relaylm/relaymem_primary_page_writer.py"
+      - "relaylm/relaymem_primary_index_log_apply.py"
+      - "relaylm/relaymem_primary_index_log_recovery_audit.py"
+      - "scripts/_relaylm_phase6c1_fault_fixtures.py"
+      - "scripts/relaylm_phase6c1_primary_worker_*.py"
+      - "scripts/relaylm_phase6c1_worker_*.py"
+      - "scripts/relaylm_phase6c1_fault_*.py"
+      - "scripts/relaylm_phase6b3_queue_state_smoke.py"
+      - "scripts/relaylm_relaymem_primary_*.py"
+      - "scripts/relaylm_docs_link_check.py"
+      - "docs/architecture/phase6c1_integrated_worker_fault_smoke_handoff.md"
+      - ".github/workflows/phase6c1-integrated-worker-fault-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/relaymem_slp_primary_worker.py"
+      - "relaylm/_relaymem_slp_primary_worker_*.py"
+      - "relaylm/relaymem_slp_primary_worker_source.py"
+      - "relaylm/relaymem_slp_primary_worker_outcome.py"
+      - "relaylm/relaymem_slp_queue_state.py"
+      - "relaylm/relaymem_primary_pipeline.py"
+      - "relaylm/_relaymem_primary_pipeline_impl.py"
+      - "relaylm/relaymem_primary_page_writer.py"
+      - "relaylm/relaymem_primary_index_log_apply.py"
+      - "relaylm/relaymem_primary_index_log_recovery_audit.py"
+      - "scripts/_relaylm_phase6c1_fault_fixtures.py"
+      - "scripts/relaylm_phase6c1_primary_worker_*.py"
+      - "scripts/relaylm_phase6c1_worker_*.py"
+      - "scripts/relaylm_phase6c1_fault_*.py"
+      - "scripts/relaylm_phase6b3_queue_state_smoke.py"
+      - "scripts/relaylm_relaymem_primary_*.py"
+      - "scripts/relaylm_docs_link_check.py"
+      - "docs/architecture/phase6c1_integrated_worker_fault_smoke_handoff.md"
+      - ".github/workflows/phase6c1-integrated-worker-fault-smoke.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase6c1-integrated-worker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile integrated worker smoke
+        run: >-
+          python -m compileall -q
+          relaylm/relaymem_slp_primary_worker.py
+          relaylm/_relaymem_slp_primary_worker_types.py
+          relaylm/_relaymem_slp_primary_worker_fence.py
+          relaylm/_relaymem_slp_primary_worker_outcome_adapter.py
+          relaylm/_relaymem_slp_primary_worker_validate.py
+          relaylm/_relaymem_slp_primary_worker_execute.py
+          relaylm/_relaymem_slp_primary_worker_view.py
+          scripts/_relaylm_phase6c1_fault_fixtures.py
+          scripts/relaylm_phase6c1_worker_fault_smoke.py
+          scripts/relaylm_phase6c1_worker_crash_convergence_smoke.py
+          scripts/relaylm_phase6c1_worker_lease_race_smoke.py
+          scripts/relaylm_phase6c1_worker_content_leakage_smoke.py
+          scripts/relaylm_phase6c1_worker_integration_ci_runner.py
+      - name: Run bounded integrated worker suite
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
+      - name: Upload sanitized diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6c1-integrated-worker-diagnostic
+          path: phase6c1-worker-integration-diagnostic.txt
+          if-no-files-found: ignore
+          retention-days: 1
