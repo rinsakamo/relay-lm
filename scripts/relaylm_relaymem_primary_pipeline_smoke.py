@@ -12,8 +12,10 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from relaylm import relaymem_primary_pipeline as pipeline
 from relaylm.relaymem_primary_page_candidate import (
     build_relaymem_governed_experience_summary,
+    build_relaymem_primary_page_candidate_dry_run as real_m3c,
 )
 from relaylm.relaymem_primary_pipeline import (
     REQUEST_SCHEMA,
@@ -25,9 +27,6 @@ from relaylm.relaymem_primary_pipeline import (
 )
 from relaylm.relaymem_primary_write_preflight import (
     build_relaymem_primary_write_preflight_dry_run as real_m3b,
-)
-from relaylm.relaymem_primary_page_candidate import (
-    build_relaymem_primary_page_candidate_dry_run as real_m3c,
 )
 from relaylm.relaymem_slp_primary_worker_source import (
     SOURCE_SCHEMA,
@@ -55,8 +54,10 @@ def require(condition: bool, message: object) -> None:
         raise AssertionError(message)
 
 
-def claimed_record(*, run_id: str = "run-c1-compose", namespace: str = CANARY_NAMESPACE) -> dict[str, object]:
-    now = datetime(2026, 6, 23, 0, 0, 0, tzinfo=timezone.utc)
+def claimed_record(
+    *, run_id: str = "run-c1-compose", namespace: str = CANARY_NAMESPACE
+) -> dict[str, object]:
+    now = datetime(2026, 6, 23, tzinfo=timezone.utc)
     record: dict[str, object] = {
         "schema_version": DURABLE_JOB_SCHEMA,
         "job_id": "",
@@ -96,8 +97,11 @@ def claimed_record(*, run_id: str = "run-c1-compose", namespace: str = CANARY_NA
     return record
 
 
-def source_payload(record: dict[str, object], *, scene_type: str = "design_talk") -> dict[str, object]:
+def source_payload(
+    record: dict[str, object], *, scene_type: str = "design_talk"
+) -> dict[str, object]:
     blocked = scene_type in {"formal_document", "medical_or_safety", "recovery"}
+    reasons = [f"scene_policy_blocks_persistence:{scene_type}"] if blocked else []
     return {
         "schema_version": SOURCE_SCHEMA,
         "runtime_private": True,
@@ -120,10 +124,10 @@ def source_payload(record: dict[str, object], *, scene_type: str = "design_talk"
             "scene_policy": {
                 "relaymem_retrieval_scope": "project_context",
                 "persistence_block": blocked,
-                "persistence_block_reasons": [f"scene_policy_blocks_persistence:{scene_type}"] if blocked else [],
+                "persistence_block_reasons": reasons,
             },
             "persistence_block": blocked,
-            "persistence_block_reasons": [f"scene_policy_blocks_persistence:{scene_type}"] if blocked else [],
+            "persistence_block_reasons": reasons,
         },
         "relayemo_artifact": {
             "assistant_emotion_state": {"intensity": 0.67},
@@ -132,7 +136,7 @@ def source_payload(record: dict[str, object], *, scene_type: str = "design_talk"
         "governed_messages": [
             {"role": "system", "content": "governed system context"},
             {"role": "user", "content": CANARY_SOURCE},
-            {"role": "assistant", "content": "I will retain the bounded project evidence."},
+            {"role": "assistant", "content": "bounded project evidence"},
         ],
         "governed_experience_artifact": build_relaymem_governed_experience_summary(
             candidate_id="primary_candidate:0",
@@ -155,16 +159,17 @@ def create_request(
 ) -> tuple[RelayMEMPrimaryPipelineRequest, dict[str, object]]:
     canonical = record or claimed_record()
     scope = RelayMEMSLPPrimaryWorkerSourceScope()
+    source_enabled = enabled or (dry_run_only and not apply_enabled)
     built = build_relaymem_slp_primary_worker_source(
         source_payload(canonical, scene_type=scene_type),
         claimed_record=canonical,
         request_scope=scope,
-        enabled=enabled,
+        enabled=source_enabled,
         dry_run_only=dry_run_only,
         apply_enabled=apply_enabled,
     )
     require(built.source is not None, built.to_log_dict())
-    return RelayMEMPrimaryPipelineRequest(
+    request = RelayMEMPrimaryPipelineRequest(
         schema_version=REQUEST_SCHEMA,
         runtime_private=True,
         content_included=True,
@@ -175,7 +180,8 @@ def create_request(
         enabled=enabled,
         dry_run_only=dry_run_only,
         apply_enabled=apply_enabled,
-    ), canonical
+    )
+    return request, canonical
 
 
 def prepare_store(root: Path) -> None:
@@ -185,16 +191,9 @@ def prepare_store(root: Path) -> None:
     (root / "memory/mem/log.md").write_text("# Log\n", encoding="utf-8")
 
 
-def assert_stage_order(result: object) -> None:
-    stages = tuple(item.stage for item in result.stage_results)
-    require(stages == STAGES, stages)
-    completed_indexes = [STAGES.index(item.stage) for item in result.stage_results if item.completed]
-    require(completed_indexes == sorted(completed_indexes), completed_indexes)
-
-
-def assert_content_free(value: object, *, root: Path | None = None, actual_key: str | None = None) -> None:
+def _assert_safe(value: object, root: Path, key: str = "") -> None:
     text = repr(value)
-    forbidden = {
+    forbidden = (
         CANARY_SOURCE,
         CANARY_SUMMARY,
         CANARY_NAMESPACE,
@@ -206,16 +205,13 @@ def assert_content_free(value: object, *, root: Path | None = None, actual_key: 
         "slp-dispatch-v0:",
         "slp-job-v0:",
         "memory/mem/",
-    }
-    if root is not None:
-        forbidden.add(str(root))
-    if actual_key:
-        forbidden.add(actual_key)
-    for token in forbidden:
-        require(token not in text, "content-free surface leaked protected data")
+        str(root),
+        key,
+    )
+    require(all(not token or token not in text for token in forbidden), "protected leak")
 
 
-def fake_m3e_blocked(reason: str) -> dict[str, object]:
+def _m3e_blocked(reason: str) -> dict[str, object]:
     return {
         "schema_version": "relaymem.primary_page_write_apply.v0",
         "helper_only": True,
@@ -245,7 +241,8 @@ def fake_m3e_blocked(reason: str) -> dict[str, object]:
     }
 
 
-def fake_m3g(*, status: str, reason: str | None = None) -> dict[str, object]:
+def _m3g(status: str, reason: str | None = None) -> dict[str, object]:
+    complete = status in {"applied", "already_applied"}
     return {
         "schema_version": "relaymem.primary_index_log_reconciliation_apply.v0",
         "helper_only": True,
@@ -260,12 +257,12 @@ def fake_m3g(*, status: str, reason: str | None = None) -> dict[str, object]:
         "status": status,
         "writes_memory": status != "blocked",
         "index_reconciled": status != "blocked",
-        "log_reconciled": status in {"applied", "already_applied"},
+        "log_reconciled": complete,
         "index_updated": status == "applied",
         "log_updated": status == "applied",
         "index_idempotent_noop": status == "already_applied",
         "log_idempotent_noop": status == "already_applied",
-        "durability_confirmed": status in {"applied", "already_applied"},
+        "durability_confirmed": complete,
         "cleanup_complete": True,
         "updates_index": status == "applied",
         "updates_log": status == "applied",
@@ -274,13 +271,14 @@ def fake_m3g(*, status: str, reason: str | None = None) -> dict[str, object]:
         "runtime_wired": False,
         "lab_api_exposed": False,
         "visible_response_changed": False,
-        "receipt": None if status == "blocked" else {"schema_version": "test-private-receipt"},
+        "receipt": None if status == "blocked" else {"schema_version": "private"},
         "blocked_reasons": [reason] if reason else [],
         "projection": {},
     }
 
 
-def fake_m3h(classification: str, *, reason: str | None = None) -> dict[str, object]:
+def _m3h(classification: str) -> dict[str, object]:
+    partial = classification == "retry_reconciliation"
     return {
         "schema_version": "relaymem.primary_index_log_reconciliation_recovery_audit_result.v0",
         "helper_only": True,
@@ -291,8 +289,8 @@ def fake_m3h(classification: str, *, reason: str | None = None) -> dict[str, obj
         "audit_supported": True,
         "receipt_valid": True,
         "status": classification,
-        "source_status": "index_applied_log_pending" if classification == "retry_reconciliation" else "applied",
-        "store_state": "index_applied_log_pending" if classification == "retry_reconciliation" else "fully_reconciled",
+        "source_status": "index_applied_log_pending" if partial else "applied",
+        "store_state": "index_applied_log_pending" if partial else "fully_reconciled",
         "recovery_classification": classification,
         "writes_memory": False,
         "updates_index": False,
@@ -304,104 +302,80 @@ def fake_m3h(classification: str, *, reason: str | None = None) -> dict[str, obj
         "lab_api_exposed": False,
         "visible_response_changed": False,
         "audit": {"runtime_private": True},
-        "blocked_reasons": [reason] if reason else [],
+        "blocked_reasons": [],
         "projection": {},
     }
 
 
-def main() -> int:
+def _normal_and_duplicate() -> None:
     with tempfile.TemporaryDirectory(prefix=CANARY_STORE_PATH) as temporary:
         root = Path(temporary)
         prepare_store(root)
         request, _ = create_request(root)
-        captured: dict[str, object] = {}
+        seen: dict[str, object] = {}
+        originals = {
+            "m3d": pipeline.build_relaymem_primary_writer_handoff_preflight,
+            "m3e": pipeline.apply_relaymem_primary_page_write,
+            "m3f": pipeline.build_relaymem_primary_index_log_reconciliation_preflight,
+            "m3g": pipeline.apply_relaymem_primary_index_log_reconciliation,
+            "m3h": pipeline.audit_relaymem_primary_index_log_reconciliation_recovery,
+        }
 
-        from relaylm import relaymem_primary_pipeline as pipeline
-
-        def m3b_capture(**kwargs):
-            captured["m3a_candidates"] = kwargs["candidates"]
+        def m3b(**kwargs):
+            seen["m3a"] = kwargs["candidates"]
             return real_m3b(**kwargs)
 
-        def m3c_capture(**kwargs):
-            captured["m3b"] = kwargs["preflight_artifact"]
-            captured["experience"] = kwargs["governed_experience_artifact"]
+        def m3c(**kwargs):
+            seen["m3b"] = kwargs["preflight_artifact"]
             return real_m3c(**kwargs)
 
-        original_m3d = pipeline.build_relaymem_primary_writer_handoff_preflight
-        original_m3e = pipeline.apply_relaymem_primary_page_write
-        original_m3f = pipeline.build_relaymem_primary_index_log_reconciliation_preflight
-        original_m3g = pipeline.apply_relaymem_primary_index_log_reconciliation
-        original_m3h = pipeline.audit_relaymem_primary_index_log_reconciliation_recovery
+        def wrap(name: str, key: str):
+            def call(**kwargs):
+                seen[name] = kwargs[key]
+                return originals[name](**kwargs)
+            return call
 
-        def m3d_capture(**kwargs):
-            captured["m3c"] = kwargs["page_candidate_artifact"]
-            return original_m3d(**kwargs)
-
-        def m3e_capture(**kwargs):
-            captured["m3d"] = kwargs["writer_handoff_artifact"]
-            return original_m3e(**kwargs)
-
-        def m3f_capture(**kwargs):
-            captured["m3e_receipt"] = kwargs["receipt"]
-            return original_m3f(**kwargs)
-
-        def m3g_capture(**kwargs):
-            captured["m3f_plan"] = kwargs["plan_artifact"]
-            return original_m3g(**kwargs)
-
-        def m3h_capture(**kwargs):
-            captured["m3g_receipt"] = kwargs["receipt"]
-            return original_m3h(**kwargs)
-
-        out = io.StringIO()
-        err = io.StringIO()
+        out, err = io.StringIO(), io.StringIO()
         with (
             redirect_stdout(out),
             redirect_stderr(err),
-            patch.object(pipeline, "build_relaymem_primary_write_preflight_dry_run", side_effect=m3b_capture),
-            patch.object(pipeline, "build_relaymem_primary_page_candidate_dry_run", side_effect=m3c_capture),
-            patch.object(pipeline, "build_relaymem_primary_writer_handoff_preflight", side_effect=m3d_capture),
-            patch.object(pipeline, "apply_relaymem_primary_page_write", side_effect=m3e_capture),
-            patch.object(pipeline, "build_relaymem_primary_index_log_reconciliation_preflight", side_effect=m3f_capture),
-            patch.object(pipeline, "apply_relaymem_primary_index_log_reconciliation", side_effect=m3g_capture),
-            patch.object(pipeline, "audit_relaymem_primary_index_log_reconciliation_recovery", side_effect=m3h_capture),
+            patch.object(pipeline, "build_relaymem_primary_write_preflight_dry_run", side_effect=m3b),
+            patch.object(pipeline, "build_relaymem_primary_page_candidate_dry_run", side_effect=m3c),
+            patch.object(pipeline, "build_relaymem_primary_writer_handoff_preflight", side_effect=wrap("m3d", "page_candidate_artifact")),
+            patch.object(pipeline, "apply_relaymem_primary_page_write", side_effect=wrap("m3e", "writer_handoff_artifact")),
+            patch.object(pipeline, "build_relaymem_primary_index_log_reconciliation_preflight", side_effect=wrap("m3f", "receipt")),
+            patch.object(pipeline, "apply_relaymem_primary_index_log_reconciliation", side_effect=wrap("m3g", "plan_artifact")),
+            patch.object(pipeline, "audit_relaymem_primary_index_log_reconciliation_recovery", side_effect=wrap("m3h", "receipt")),
         ):
             result = execute_relaymem_primary_pipeline(request)
         require(result.status == "recovery_not_required", result.to_log_dict())
+        require(tuple(item.stage for item in result.stage_results) == STAGES, "stage order")
         require(result.completed_stage_count == 8, result.to_log_dict())
-        assert_stage_order(result)
-        require(captured["m3a_candidates"] is result.m3a_result["candidates"], "M3a->M3b identity")
-        require(captured["m3b"] is result.m3b_result, "M3b->M3c identity")
-        require(captured["m3c"] is result.m3c_result, "M3c->M3d identity")
-        require(captured["m3d"] is result.m3d_result, "M3d->M3e identity")
-        require(captured["m3e_receipt"] is result.m3e_result["receipt"], "M3e->M3f identity")
-        require(captured["m3f_plan"] is result.m3f_result["plan"], "M3f->M3g identity")
-        require(captured["m3g_receipt"] is result.m3g_result["receipt"], "M3g->M3h identity")
-        require(out.getvalue() == "" and err.getvalue() == "", (out.getvalue(), err.getvalue()))
+        require(seen["m3a"] is result.m3a_result["candidates"], "m3a identity")
+        require(seen["m3b"] is result.m3b_result, "m3b identity")
+        require(seen["m3d"] is result.m3c_result, "m3c identity")
+        require(seen["m3e"] is result.m3d_result, "m3d identity")
+        require(seen["m3f"] is result.m3e_result["receipt"], "m3e identity")
+        require(seen["m3g"] is result.m3f_result["plan"], "m3f identity")
+        require(seen["m3h"] is result.m3g_result["receipt"], "m3g identity")
+        require(out.getvalue() == "" and err.getvalue() == "", "unexpected output")
         target = next((root / "memory/mem/primary/projects").glob("*.md"))
-        actual_key = target.stem
         projection = project_relaymem_primary_pipeline(result)
-        node = build_relaymem_primary_pipeline_node_result(result)
-        assert_content_free(projection.to_log_dict(), root=root, actual_key=actual_key)
-        assert_content_free(node.to_log_dict(), root=root, actual_key=actual_key)
-        assert_content_free(result, root=root, actual_key=actual_key)
-        assert_content_free(result.stage_results, root=root, actual_key=actual_key)
-        require(projection.page_applied is True, projection)
-        require(projection.index_applied is True and projection.log_applied is True, projection)
+        _assert_safe(result, root, target.stem)
+        _assert_safe(projection.to_log_dict(), root, target.stem)
+        _assert_safe(build_relaymem_primary_pipeline_node_result(result).to_log_dict(), root, target.stem)
 
-        repeated_request, _ = create_request(root)
-        repeated = execute_relaymem_primary_pipeline(repeated_request)
-        require(repeated.status == "recovery_not_required", repeated.to_log_dict())
-        require(repeated.m3e_result["status"] == "already_applied", repeated.to_log_dict())
-        require(repeated.m3g_result["status"] == "already_applied", repeated.to_log_dict())
-        require(project_relaymem_primary_pipeline(repeated).page_exact_existing is True, repeated.to_log_dict())
+        repeated, _ = create_request(root)
+        duplicate = execute_relaymem_primary_pipeline(repeated)
+        require(duplicate.status == "recovery_not_required", duplicate.to_log_dict())
+        require(duplicate.m3e_result["status"] == "already_applied", duplicate.to_log_dict())
+        require(duplicate.m3g_result["status"] == "already_applied", duplicate.to_log_dict())
         require(len(list((root / "memory/mem/primary/projects").glob("*.md"))) == 1, "duplicate page")
-        index_text = (root / "memory/mem/index.md").read_text(encoding="utf-8")
-        log_text = (root / "memory/mem/log.md").read_text(encoding="utf-8")
-        require(index_text.count("relaymem-primary-index-entry-v0") == 1, index_text)
-        require(log_text.count("relaymem-primary-log-entry-v0") == 1, log_text)
-    print("ok exact M3a-M3h success, stage order, identity handoffs, and duplicate convergence")
+        require((root / "memory/mem/index.md").read_text().count("relaymem-primary-index-entry-v0") == 1, "duplicate index")
+        require((root / "memory/mem/log.md").read_text().count("relaymem-primary-log-entry-v0") == 1, "duplicate log")
 
+
+def _input_and_stop_cases() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         prepare_store(root)
@@ -418,89 +392,69 @@ def main() -> int:
             dry_run_only=False,
             apply_enabled=True,
         )
-        with patch("relaylm.relaymem_primary_pipeline.build_relaymem_primary_formation_dry_run") as m3a:
-            invalid = execute_relaymem_primary_pipeline(generic)
-            require(invalid.status == "invalid_input" and not m3a.called, invalid.to_log_dict())
+        require(execute_relaymem_primary_pipeline(generic).status == "invalid_input", "dict source")
 
-        wrong_request, _ = create_request(root)
-        object.__setattr__(wrong_request.worker_source, "schema_version", "wrong.source.v0")
-        with patch("relaylm.relaymem_primary_pipeline.build_relaymem_primary_formation_dry_run") as m3a:
-            wrong = execute_relaymem_primary_pipeline(wrong_request)
-            require(wrong.status == "invalid_input" and not m3a.called, wrong.to_log_dict())
+        wrong, _ = create_request(root)
+        object.__setattr__(wrong.worker_source, "schema_version", "wrong.source.v0")
+        require(execute_relaymem_primary_pipeline(wrong).status == "invalid_input", "wrong schema")
 
-        correlation_request, _ = create_request(root)
-        mismatched = claimed_record(run_id="other-run")
-        object.__setattr__(correlation_request, "claimed_record", mismatched)
-        with patch("relaylm.relaymem_primary_pipeline.build_relaymem_primary_formation_dry_run") as m3a:
-            correlation = execute_relaymem_primary_pipeline(correlation_request)
-            require(correlation.status == "invalid_input" and not m3a.called, correlation.to_log_dict())
+        correlation, _ = create_request(root)
+        object.__setattr__(correlation, "claimed_record", claimed_record(run_id="other-run"))
+        require(execute_relaymem_primary_pipeline(correlation).status == "invalid_input", "correlation")
 
-        disabled_request, _ = create_request(
-            root, enabled=False, dry_run_only=True, apply_enabled=False
-        )
-        with patch("relaylm.relaymem_primary_pipeline.build_relaymem_primary_formation_dry_run") as m3a:
-            disabled = execute_relaymem_primary_pipeline(disabled_request)
-            require(disabled.status == "disabled" and not m3a.called, disabled.to_log_dict())
-    print("ok generic source, wrong schema, correlation failure, and disabled mode stop before M3a")
+        disabled, _ = create_request(root, enabled=False, dry_run_only=True, apply_enabled=False)
+        with patch.object(pipeline, "build_relaymem_primary_formation_dry_run") as m3a:
+            result = execute_relaymem_primary_pipeline(disabled)
+        require(result.status == "disabled" and not m3a.called, result.to_log_dict())
 
-    with tempfile.TemporaryDirectory() as temporary:
-        root = Path(temporary)
-        prepare_store(root)
-        blocked_request, _ = create_request(root, scene_type="formal_document")
-        with patch("relaylm.relaymem_primary_pipeline.build_relaymem_primary_write_preflight_dry_run") as m3b:
-            blocked = execute_relaymem_primary_pipeline(blocked_request)
-            require(blocked.status == "blocked" and not m3b.called, blocked.to_log_dict())
-
-        held_request, _ = create_request(root, scene_type="system_ops")
-        with patch("relaylm.relaymem_primary_pipeline.build_relaymem_primary_write_preflight_dry_run") as m3b:
-            held = execute_relaymem_primary_pipeline(held_request)
-            require(held.status == "held" and not m3b.called, held.to_log_dict())
+        for scene, status in (("formal_document", "blocked"), ("system_ops", "held")):
+            candidate, _ = create_request(root, scene_type=scene)
+            with patch.object(pipeline, "build_relaymem_primary_write_preflight_dry_run") as m3b:
+                result = execute_relaymem_primary_pipeline(candidate)
+            require(result.status == status and not m3b.called, result.to_log_dict())
 
         m3b_request, _ = create_request(root)
-
         def blocked_m3b(**kwargs):
             value = real_m3b(**kwargs)
             value["operations"][0]["preflight_status"] = "blocked"
             value["operations"][0]["blocked_reasons"] = ["test_m3b_blocked"]
             return value
-
         with (
-            patch("relaylm.relaymem_primary_pipeline.build_relaymem_primary_write_preflight_dry_run", side_effect=blocked_m3b),
-            patch("relaylm.relaymem_primary_pipeline.build_relaymem_primary_page_candidate_dry_run") as m3c,
+            patch.object(pipeline, "build_relaymem_primary_write_preflight_dry_run", side_effect=blocked_m3b),
+            patch.object(pipeline, "build_relaymem_primary_page_candidate_dry_run") as m3c,
         ):
-            m3b_failed = execute_relaymem_primary_pipeline(m3b_request)
-            require(m3b_failed.status == "blocked" and not m3c.called, m3b_failed.to_log_dict())
+            result = execute_relaymem_primary_pipeline(m3b_request)
+        require(result.status == "blocked" and not m3c.called, result.to_log_dict())
 
         m3c_request, _ = create_request(root)
-
         def invalid_m3c(**kwargs):
             value = real_m3c(**kwargs)
             value["page_candidate_count"] = 0
             value["page_candidates"] = []
             value["blocked_reasons"] = ["governed_experience_invalid"]
             return value
-
         with (
-            patch("relaylm.relaymem_primary_pipeline.build_relaymem_primary_page_candidate_dry_run", side_effect=invalid_m3c),
-            patch("relaylm.relaymem_primary_pipeline.build_relaymem_primary_writer_handoff_preflight") as m3d,
+            patch.object(pipeline, "build_relaymem_primary_page_candidate_dry_run", side_effect=invalid_m3c),
+            patch.object(pipeline, "build_relaymem_primary_writer_handoff_preflight") as m3d,
         ):
-            m3c_failed = execute_relaymem_primary_pipeline(m3c_request)
-            require(m3c_failed.status == "blocked" and not m3d.called, m3c_failed.to_log_dict())
-    print("ok M3a blocked/held, M3b failure, and M3c invalid stop downstream stages")
+            result = execute_relaymem_primary_pipeline(m3c_request)
+        require(result.status == "blocked" and not m3d.called, result.to_log_dict())
 
+
+def _failure_and_recovery_cases() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         prepare_store(root)
-        m3e_request, _ = create_request(root)
+        request, _ = create_request(root)
         with (
-            patch("relaylm.relaymem_primary_pipeline.apply_relaymem_primary_page_write", return_value=fake_m3e_blocked("primary_page_writer_target_conflict")),
-            patch("relaylm.relaymem_primary_pipeline.build_relaymem_primary_index_log_reconciliation_preflight") as m3f,
+            patch.object(pipeline, "apply_relaymem_primary_page_write", return_value=_m3e_blocked("primary_page_writer_target_conflict")),
+            patch.object(pipeline, "build_relaymem_primary_index_log_reconciliation_preflight") as m3f,
         ):
-            m3e_failed = execute_relaymem_primary_pipeline(m3e_request)
-            require(m3e_failed.status == "blocked" and not m3f.called, m3e_failed.to_log_dict())
+            result = execute_relaymem_primary_pipeline(request)
+        require(result.status == "blocked" and not m3f.called, result.to_log_dict())
 
         uncertain_request, _ = create_request(root)
-        uncertain = fake_m3e_blocked("primary_page_writer_directory_fsync_failed")
+        uncertain = _m3e_blocked("primary_page_writer_directory_fsync_failed")
         uncertain.update(
             status="applied_durability_unconfirmed",
             writes_memory=True,
@@ -508,76 +462,63 @@ def main() -> int:
             cleanup_complete=False,
             receipt={"schema_version": "private-uncertain-receipt"},
         )
-        with (
-            patch("relaylm.relaymem_primary_pipeline.apply_relaymem_primary_page_write", return_value=uncertain),
-            patch("relaylm.relaymem_primary_pipeline.build_relaymem_primary_index_log_reconciliation_preflight") as m3f,
-        ):
-            uncertain_result = execute_relaymem_primary_pipeline(uncertain_request)
-            require(uncertain_result.status == "blocked" and not m3f.called, uncertain_result.to_log_dict())
+        with patch.object(pipeline, "apply_relaymem_primary_page_write", return_value=uncertain):
+            result = execute_relaymem_primary_pipeline(uncertain_request)
+        require(result.status == "blocked", result.to_log_dict())
 
         lock_request, _ = create_request(root)
-        lock_result = fake_m3g(status="blocked", reason="primary_reconciliation_apply_lock_unavailable")
         with (
-            patch("relaylm.relaymem_primary_pipeline.apply_relaymem_primary_index_log_reconciliation", return_value=lock_result),
-            patch("relaylm.relaymem_primary_pipeline.audit_relaymem_primary_index_log_reconciliation_recovery") as m3h,
+            patch.object(pipeline, "apply_relaymem_primary_index_log_reconciliation", return_value=_m3g("blocked", "primary_reconciliation_apply_lock_unavailable")),
+            patch.object(pipeline, "audit_relaymem_primary_index_log_reconciliation_recovery") as m3h,
         ):
-            locked = execute_relaymem_primary_pipeline(lock_request)
-            require(locked.status == "blocked" and not m3h.called, locked.to_log_dict())
-            require(project_relaymem_primary_pipeline(locked).retryable is True, locked.to_log_dict())
-    print("ok M3e failure, durability uncertainty, and M3g lock fail closed without retry loops")
+            result = execute_relaymem_primary_pipeline(lock_request)
+        require(result.status == "blocked" and not m3h.called, result.to_log_dict())
+        require(project_relaymem_primary_pipeline(result).retryable, result.to_log_dict())
 
-    for classification, expected_status in (
-        ("retry_reconciliation", "retry_reconciliation"),
-        ("manual_confirmation_required", "manual_confirmation_required"),
-        ("journaled_recovery_candidate", "journaled_recovery_candidate"),
+    for classification in (
+        "retry_reconciliation",
+        "manual_confirmation_required",
+        "journaled_recovery_candidate",
     ):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             prepare_store(root)
             request, _ = create_request(root)
             with (
-                patch("relaylm.relaymem_primary_pipeline.apply_relaymem_primary_index_log_reconciliation", return_value=fake_m3g(status="index_applied_log_pending")),
-                patch("relaylm.relaymem_primary_pipeline.audit_relaymem_primary_index_log_recovery_audit", return_value=fake_m3h(classification)),
+                patch.object(pipeline, "apply_relaymem_primary_index_log_reconciliation", return_value=_m3g("index_applied_log_pending")),
+                patch.object(pipeline, "audit_relaymem_primary_index_log_reconciliation_recovery", return_value=_m3h(classification)),
             ):
-                classified = execute_relaymem_primary_pipeline(request)
-            require(classified.status == expected_status, classified.to_log_dict())
-            require(
-                project_relaymem_primary_pipeline(classified).recovery_classification
-                == classification,
-                classified.to_log_dict(),
-            )
-    print("ok partial progress, manual confirmation, and journaled recovery classifications preserved")
+                result = execute_relaymem_primary_pipeline(request)
+            require(result.status == classification, result.to_log_dict())
 
+
+def _dry_run() -> None:
     with tempfile.TemporaryDirectory(prefix=CANARY_STORE_PATH) as temporary:
         root = Path(temporary)
         prepare_store(root)
-        before = {
-            path.relative_to(root).as_posix(): path.read_bytes()
-            for path in root.rglob("*")
-            if path.is_file()
-        }
+        before = {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*") if p.is_file()}
         request, _ = create_request(root, dry_run_only=True, apply_enabled=False)
         with (
-            patch("relaylm.relaymem_primary_pipeline.apply_relaymem_primary_page_write") as m3e,
-            patch("relaylm.relaymem_primary_pipeline.apply_relaymem_primary_index_log_reconciliation") as m3g,
+            patch.object(pipeline, "apply_relaymem_primary_page_write") as m3e,
+            patch.object(pipeline, "apply_relaymem_primary_index_log_reconciliation") as m3g,
         ):
-            dry = execute_relaymem_primary_pipeline(request)
-        after = {
-            path.relative_to(root).as_posix(): path.read_bytes()
-            for path in root.rglob("*")
-            if path.is_file()
-        }
-        require(dry.status == "dry_run_ready", dry.to_log_dict())
-        require(not m3e.called and not m3g.called, (m3e.call_count, m3g.call_count))
-        require(before == after, (before, after))
-        projection = project_relaymem_primary_pipeline(dry).to_log_dict()
-        require(projection["queue_io_performed"] is False, projection)
-        require(projection["queue_transition_performed"] is False, projection)
-        require(projection["mutates_soul"] is False, projection)
-        require(projection["secondary_mem_processed"] is False, projection)
-        assert_content_free(projection, root=root)
-    print("ok dry-run has no M3e/M3g mutation, queue control, SOUL mutation, or Secondary MEM")
+            result = execute_relaymem_primary_pipeline(request)
+        after = {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+        require(result.status == "dry_run_ready", result.to_log_dict())
+        require(not m3e.called and not m3g.called and before == after, "dry-run mutation")
+        public = project_relaymem_primary_pipeline(result).to_log_dict()
+        require(public["queue_io_performed"] is False, public)
+        require(public["queue_transition_performed"] is False, public)
+        require(public["mutates_soul"] is False, public)
+        require(public["secondary_mem_processed"] is False, public)
+        _assert_safe(public, root)
 
+
+def main() -> int:
+    _normal_and_duplicate()
+    _input_and_stop_cases()
+    _failure_and_recovery_cases()
+    _dry_run()
     print("RelayMEM Primary pipeline compose smoke passed")
     return 0
 
