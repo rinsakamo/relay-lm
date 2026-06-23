@@ -1,0 +1,38 @@
+name: Phase 6-C2 documentation refinement once
+
+on:
+  push:
+    branches:
+      - phase6c2-one-queued-job-integration
+    paths:
+      - "scripts/_phase6c2_refine_docs.py"
+      - ".github/workflows/phase6c2-doc-refinement-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  refine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6c2-one-queued-job-integration
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Refine Phase 6-C2 documentation
+        run: python scripts/_phase6c2_refine_docs.py
+      - name: Remove one-shot refinement machinery
+        run: |
+          rm scripts/_phase6c2_refine_docs.py
+          rm .github/workflows/phase6c2-doc-refinement-once.yml
+      - name: Commit refined documentation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs scripts/_phase6c2_refine_docs.py .github/workflows/phase6c2-doc-refinement-once.yml
+          git commit -m "docs: refine Phase 6-C2 completion boundaries"
+          git push origin HEAD:phase6c2-one-queued-job-integration
