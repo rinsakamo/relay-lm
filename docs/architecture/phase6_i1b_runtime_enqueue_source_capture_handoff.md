@@ -6,24 +6,27 @@ relaylm_volatility: medium
 relaylm_owner: implementation
 relaylm_update_trigger:
   - ordinary request ownership changes from one run-local turn per request
-  - C1-2 one-claimed-job worker consumes process-local source captures
-  - protected durable source persistence lands
+  - C1-2 one-claimed-job worker source preparation changes
+  - protected durable source persistence changes
   - next-turn Primary MEM recall wiring lands
 relaylm_not_authoritative_for:
   - C1-0 protected worker-source schema or validator
   - B2/B3 queue record semantics
   - RelayMEM M3a-M3h composition
   - worker outcome classification
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - phase6c1_durable_protected_source_persistence.md
+  - phase6c1_one_claimed_primary_worker_handoff.md
+  - phase6b2_relayslp_atomic_durable_enqueue.md
 ---
 # Phase 6 I1-B Runtime Enqueue and Protected Source Capture Handoff
 
 ## Status
 
-Integration Milestone I1-B is implemented for ordinary managed non-stream and
-stream requests. The visible response is finalized and delivered independently,
-then a Starlette background task prepares the deferred queue/source artifacts.
-The request thread does not claim the job, execute a worker, or call the RelayMEM
-M3a-M3h compose boundary.
+Integration Milestone I1-B is implemented for ordinary managed non-stream and stream requests. The visible response is finalized and delivered independently, then a Starlette background task prepares the deferred source and queue artifacts.
+
+The request thread does not claim a job, execute a worker, or call RelayMEM M3a-M3h inline.
 
 ## Runtime order
 
@@ -38,175 +41,150 @@ ordinary managed request
        -> A1 admission
        -> A2 response-finalization handoff
        -> B1 dispatch / durable-record preflight
-       -> exact 16-field C1-0 payload assembly
-       -> B2 atomic durable enqueue
-       -> process-local protected source registry publication
+       -> exact claim-independent 16-field protected capture
+       -> C1-5 durable protected-source commit
+       -> B2 atomic content-free durable enqueue
+       -> optional process-local hot-cache publication
 ```
 
-The background finalizer catches bounded operational failure and never changes a
-response that has already been finalized. Non-stream tests verify the JSON body
-remains exact after enqueue failure. Stream tests verify every backend SSE byte,
-including `[DONE]`, remains exact.
+The background finalizer catches bounded operational failure and never changes a response that has already been finalized. Non-stream and stream smokes verify visible output remains exact across deferred failures.
 
-This response-independent design has one explicit live-process durability gap:
-if the process exits after visible response delivery but before the Starlette
-background task completes, no durable enqueue or protected source publication is
-guaranteed for that turn. That gap is distinct from losing an already-published
-process-local source after restart. Later I1 restart-completion work must cover
-both the pre-enqueue background-task window and post-enqueue protected-source
-recovery; a durable source/finalization owner must not describe only registry
-rehydration.
+## Durability interpretation
+
+Two crash windows are distinct:
+
+```text
+A. visible response delivered
+   -> process exits before background finalizer publishes source/queue
+
+B. source and queue published
+   -> process exits before or during worker execution
+```
+
+C1-5 closes window B for protected-source recovery: every durably enqueued job has a committed protected artifact that can be rehydrated after restart.
+
+C1-5 does not close window A. A turn that never reached durable source publication and B2 enqueue is not recoverable by source rehydration alone.
 
 ## Finalized-turn authority
 
-The first bounded ordinary runtime owns one RelayRUN run per HTTP request and one
-finalized turn in that run. Its exact run-local turn authority is therefore:
+The first bounded ordinary runtime owns one RelayRUN run per HTTP request and one finalized turn in that run:
 
 ```text
 turn_index = 0
 ```
 
-This value is not a cross-request counter and is not presented as durable session
-turn history. Dispatch uniqueness remains bound to the existing exact run ID,
-request-derived lineage, session, namespace, and B1 dispatch identity.
+This is a run-local index, not a durable cross-request session counter. Dispatch uniqueness remains bound to exact run, lineage, session, namespace, and B1 identity.
 
 The finalized-turn producer uses:
 
-- the exact request-local `PipelineContext`;
-- the exact current-user message retained by
-  `ClientHistoryExclusionPreflightResult`;
-- the final safe assistant-visible text;
-- the current RelaySCN scene-policy artifact;
-- the current RelayEMO artifact, when present;
-- `build_relaymem_primary_source_lineage` for canonical lineage;
-- `build_relaymem_governed_experience_summary` for the existing governed
-  experience schema.
+- exact request-local `PipelineContext`,
+- exact current-user evidence retained by client-history preflight,
+- final safe assistant-visible text,
+- current RelaySCN scene-policy artifact,
+- current RelayEMO artifact when present,
+- canonical Primary source lineage,
+- canonical governed-experience summary.
 
-It does not call the M3c page-candidate builder or any M3a-M3h persistence stage.
-A RelaySCN persistence block prevents source readiness and fails closed with the
-bounded reason `scene_persistence_blocked`.
+It does not call M3a-M3h or create a Primary page candidate. A scene persistence block fails closed.
 
 ## Exact stage handoff
 
-`relaylm/relaymem_slp_runtime_enqueue.py` accepts only the exact
-`RelayMEMSLPFinalizedTurnSourceResult`. It passes the exact production result of
-each phase to the next phase:
+`relaylm/relaymem_slp_runtime_enqueue.py` consumes only exact production results:
 
 ```text
-A1 exact result -> A2 exact handoff -> B1 exact candidate -> B2 exact result
+A1 exact result
+  -> A2 exact handoff
+  -> B1 exact candidate
+  -> C1-5 exact protected artifact publication
+  -> B2 exact enqueue result
 ```
 
-It does not reconstruct private data from public projections, derive dispatch
-identity independently, hand-write queue JSON, bypass validators, or replace B2
-with direct filesystem access.
+It does not reconstruct private data from public projections, derive dispatch identity independently, hand-write queue JSON, bypass validators, or replace B2 with direct queue access.
 
 Disabled mode performs no content-bearing source construction and no queue I/O.
-Dry-run constructs the finalized-turn source, A1/A2/B1 artifacts, and exact
-protected payload, but performs no B2 enqueue and no registry publication. Apply
-mode requires all three explicit gates and publishes the source only after B2
-reports `enqueued_new` or an exactly correlated `duplicate_existing`.
 
-## Why typed C1-0 construction remains claim-time
+Dry-run constructs the finalized-turn source, A1/A2/B1 artifacts, and exact protected payload, but performs no durable source publication and no B2 enqueue.
 
-The canonical C1-0 builder accepts only an exact B3 record with
-`state = claimed`. Request finalization has only a B1 candidate or B2 queued
-record. The runtime therefore retains the exact protected 16-field payload and
-an exact C1-0 request scope without fabricating a claim or directly constructing
-the C1 dataclass.
+Apply mode requires all explicit gates, an absolute queue root, and an absolute protected-source root. It commits the source before B2 and publishes the process-local hot cache only after B2 returns `enqueued_new` or an exactly correlated `duplicate_existing`.
 
-When C1-2 later presents the real claimed record, the registry:
+## Why C1-0 construction remains claim-time
 
-1. validates the canonical claimed record and character correlation;
-2. invokes `build_relaymem_slp_primary_worker_source` with that record;
-3. invokes `consume_relaymem_slp_primary_worker_source` exactly once;
-4. transfers the typed source and scope to the worker;
-5. removes the capture from the registry.
+The canonical C1-0 builder accepts only an exact B3 record with `state = claimed`. Request finalization has only a B1 candidate or B2 queued record.
 
-Until that sequence occurs, public diagnostics report `worker_ready = false`.
+Therefore I1-B/C1-5 retain the exact claim-independent protected capture without fabricating a claim or directly constructing the claim-bound C1-0 dataclass.
+
+When a real claim exists, the source preparation adapter:
+
+1. validates the canonical claimed record and character correlation,
+2. resolves the capture from the process-local hot cache or durable C1-5 artifact,
+3. creates a fresh exact C1-0 request scope,
+4. invokes `build_relaymem_slp_primary_worker_source` for the current claim,
+5. transfers an unconsumed typed source and scope to C1-2,
+6. retains the claim-independent capture until canonical terminal completion.
+
+Each retry/new generation receives a fresh source object and one-shot scope. A consumed or stale source object remains invalid.
 
 ## Retention semantics
 
-The registry is thread-safe, process-local, explicitly not restart-complete, and
-bounded by an exact entry-count limit plus a monotonic TTL. It exposes exact
-publish, consume-for-claim, and release operations.
+### Process-local hot cache
 
-Its bounded policy is fail-closed rather than eviction-based:
+The registry remains thread-safe, capacity/TTL bounded, and fail-closed:
 
-- expired entries and entries whose request scope is already inactive are purged
-  before size, publish, consume, or release decisions;
-- purge closes the retained C1-0 request scope;
-- when the entry-count limit remains full after purge, a new publication is
-  rejected with `protected_source_registry_capacity_reached`;
-- a capacity rejection never evicts or overwrites an existing capture;
-- a claim after TTL expiry or explicit release receives
-  `protected_source_unavailable` through the normal source-unavailable path.
+- expired cache entries are purged,
+- capacity exhaustion rejects the new cache entry rather than evicting existing state,
+- duplicate cache publication is idempotent only for exact equivalent content,
+- hot-cache expiry does not delete the durable artifact.
 
-Duplicate publication is idempotent only when character and protected payload
-are exactly equivalent. A same-dispatch different-source payload fails closed
-and never overwrites the existing capture. Successful consume removes the
-capture and transfers scope ownership to the worker.
+### Durable source owner
 
-A durable queue record may remain after source-retention failure because B2 has
-already committed it. The runtime reports `source_retention_failed`, keeps
-`worker_ready = false`, and never copies protected content into the queue record,
-trace, log, public error, response, or PipelineNodeResult. Capacity exhaustion,
-TTL expiry, explicit release, process restart, and a missing post-response task
-must all remain distinguishable from durable worker success.
+C1-5 owns restart persistence:
 
-The runtime source-capture smoke covers capacity rejection, monotonic-TTL purge,
-and consume-after-removal source-unavailable behavior. The C1 worker acceptance
-matrix additionally requires a claimed job with no source to fail closed without
-calling C1-1 or committing durable success.
+- exact source schema and field set,
+- job/dispatch/character binding,
+- canonical integrity digest,
+- safe path and file-type validation,
+- no-clobber publication,
+- retry/stale-recovery retention,
+- fresh claim-time rehydration,
+- post-terminal cleanup.
+
+The source-before-queue order prevents a durably enqueued record from lacking its committed source artifact. A crash may leave a complete orphan artifact before B2, but an exact repeat converges idempotently.
+
+Terminal cleanup occurs only after B3 terminal commit. Cleanup failure is reported without rolling back queue state.
 
 ## Audit projection
 
-The generic trace registry explicitly recognizes only:
+Public/audit surfaces contain only bounded schemas, statuses, booleans, counts, failure-stage enums, and reason IDs.
 
-```text
-relaymem_slp_runtime_enqueue
-relaymem_slp_finalized_turn_source
-relaymem_slp_runtime_enqueue
-```
+They exclude:
 
-The persisted projection contains bounded schemas, statuses, booleans, counts,
-failure-stage enums, and reason IDs only. It excludes user/assistant text, title,
-summary, namespace values, run/session/job/dispatch identifiers, lineage,
-idempotency keys, queue paths, timestamps, exception text, and protected nested
-results. Unknown nodes and fields continue to be omitted by the fail-closed audit
-projection.
+- user or assistant text,
+- governed title/summary/body,
+- namespace values,
+- run/session/job/dispatch identifiers,
+- lineage and idempotency keys,
+- queue/source paths,
+- source digests,
+- timestamps,
+- exception text,
+- protected nested results.
 
 ## Validation
 
 ```bash
-python -m compileall -q \
-  relaylm/app.py \
-  relaylm/audit_projection.py \
-  relaylm/trace_runtime.py \
-  relaylm/relaymem_slp_finalized_turn_source.py \
-  relaylm/relaymem_slp_runtime_finalization.py \
-  relaylm/relaymem_slp_runtime_enqueue.py \
-  relaylm/relaymem_slp_primary_worker_source_registry.py \
-  scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py \
-  scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
-
 PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
 PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
-PYTHONPATH=. python scripts/relaylm_relaymem_slp_job_admission_smoke.py
-PYTHONPATH=. python scripts/relaylm_relaymem_slp_response_handoff_smoke.py
-PYTHONPATH=. python scripts/relaylm_phase6b1_dispatch_preflight_smoke.py
 PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_smoke.py
-PYTHONPATH=. python scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
 PYTHONPATH=. python scripts/relaylm_phase6c1_primary_worker_source_smoke.py
-PYTHONPATH=. python scripts/relaylm_relayctx_unpack_runtime_app_smoke.py
-PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
 PYTHONPATH=. python scripts/relaylm_docs_link_check.py
 ```
 
 ## Remaining I1 boundary
 
-Worker execution remains unimplemented on `main`. The next boundary is C1-2:
-execute one already-claimed job using the exact C1-0 source, the merged RelayMEM
-M3a-M3h compose boundary, the pure worker-outcome classifier, and B3 fenced retry
-or terminal transitions. Restart-complete protected source persistence, coverage
-of the post-response task crash window, and next-turn Primary MEM recall remain
-later I1 work.
+I1-B, C1-2, C1-4, and C1-5 are implemented. The next bounded boundary is a one-job adapter that accepts one exact queued canonical record, performs B3 claim, rehydrates through C1-5, and invokes C1-2.
+
+It must remain separate from a queue scanner, daemon, generalized scheduler, and visible response delivery.
+
+After that adapter, I1 still requires next-turn recall with character/namespace isolation, real SOUL Lab observation, one auditable Correct operation, and an explicit decision for the pre-enqueue background-finalizer crash window.
