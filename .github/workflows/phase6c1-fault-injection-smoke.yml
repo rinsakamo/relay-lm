@@ -81,11 +81,15 @@ jobs:
         run: >-
           python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
           test_crash_points; test_crash_points()'
-      - name: Validate determinism and identity boundaries
+      - name: Validate deterministic fixture construction
         run: >-
           python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
-          test_determinism_and_identity_domains, test_source_boundaries;
-          test_determinism_and_identity_domains(); test_source_boundaries()'
+          test_determinism_and_identity_domains;
+          test_determinism_and_identity_domains()'
+      - name: Validate source and worker boundaries
+        run: >-
+          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
+          test_source_boundaries; test_source_boundaries()'
       - name: Validate subprocess content leakage
         run: >-
           python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
