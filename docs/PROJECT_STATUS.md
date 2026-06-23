@@ -185,6 +185,7 @@ ordinary finalized turn
   -> C1-5 durable protected source              complete
   -> B3 claim/lease/retry lifecycle             complete as direct helpers
   -> C2 one-job claim/rehydrate/execute adapter: complete
+  -> next-turn recall and scope isolation: next
   -> C1-0 protected source                      complete
   -> C1-2 one-claimed worker                    complete
   -> C1-1 M3a-M3h compose                       complete
