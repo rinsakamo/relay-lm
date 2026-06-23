@@ -5,13 +5,13 @@ module. This facade fixes the exact public types, synchronizes testable M3
 helper seams, and rejects non-canonical request modes or impossible result
 ledgers before any public projection is produced.
 
-Phase 6-C1-2 adds a minimal runtime-private checkpoint seam.  The seam knows
+Phase 6-C1-2 adds a minimal runtime-private checkpoint seam. The seam knows
 nothing about queue roots, claims, leases, or B3 transitions; it only asks an
 exact callback whether the next protected or durable side effect may begin.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from threading import RLock
 from typing import Any, Literal
@@ -44,10 +44,8 @@ class RelayMEMPrimaryPipelineCheckpointResult:
 
 
 PrimaryPipelineCheckpoint = Callable[
-    [PrimaryPipelineCheckpointName],
-    RelayMEMPrimaryPipelineCheckpointResult,
+    [PrimaryPipelineCheckpointName], RelayMEMPrimaryPipelineCheckpointResult
 ]
-
 
 # Preserve the existing module-level M3 seams. The functional and security
 # smokes patch these exact names; execute synchronizes them into the private
@@ -76,7 +74,6 @@ audit_relaymem_primary_index_log_reconciliation_recovery = (
 )
 
 _HELPER_NAMES = (
-    "build_relaymem_primary_formation_dry_run",
     "build_relaymem_primary_write_preflight_dry_run",
     "build_relaymem_primary_page_candidate_dry_run",
     "build_relaymem_primary_writer_handoff_preflight",
@@ -115,14 +112,8 @@ _PIPELINE_STATUSES = frozenset(
         "journaled_recovery_candidate",
     }
 )
-_CHECKPOINT_NAMES = frozenset(
-    {
-        "before_source_consumption",
-        "before_m3e_page_writer",
-        "before_m3g_reconciliation_apply",
-    }
-)
 _COMPOSE_LOCK = RLock()
+_CURRENT_CANDIDATE_ID: str | None = None
 
 _original_validate_request = _impl._validate_request
 _original_project = _impl.project_relaymem_primary_pipeline
@@ -154,11 +145,17 @@ def _validate_pipeline_result(result: object) -> RelayMEMPrimaryPipelineResult:
         for value in (result.enabled, result.dry_run_only, result.apply_enabled)
     ):
         raise ValueError("primary pipeline result gate type invalid")
-    if (result.enabled, result.dry_run_only, result.apply_enabled) not in _CANONICAL_MODES:
+    if (
+        result.enabled,
+        result.dry_run_only,
+        result.apply_enabled,
+    ) not in _CANONICAL_MODES:
         raise ValueError("primary pipeline result gate mode invalid")
     if result.status not in _PIPELINE_STATUSES:
         raise ValueError("primary pipeline result status invalid")
-    if type(result.stage_results) is not tuple or len(result.stage_results) != len(STAGES):
+    if type(result.stage_results) is not tuple or len(result.stage_results) != len(
+        STAGES
+    ):
         raise ValueError("primary pipeline stage ledger cardinality invalid")
     if tuple(item.stage for item in result.stage_results) != STAGES:
         raise ValueError("primary pipeline stage order invalid")
@@ -182,7 +179,10 @@ def _validate_pipeline_result(result: object) -> RelayMEMPrimaryPipelineResult:
             )
         ):
             raise ValueError("primary pipeline stage flag type invalid")
-        if type(item.reason_ids) is not tuple or _impl._reasons(item.reason_ids) != item.reason_ids:
+        if (
+            type(item.reason_ids) is not tuple
+            or _impl._reasons(item.reason_ids) != item.reason_ids
+        ):
             raise ValueError("primary pipeline stage reason ids invalid")
         if item.status in {"not_run", "skipped_dry_run"} and (
             item.executed
@@ -193,22 +193,32 @@ def _validate_pipeline_result(result: object) -> RelayMEMPrimaryPipelineResult:
             or item.terminal
         ):
             raise ValueError("primary pipeline unexecuted stage flags invalid")
-        if item.status == "completed" and (not item.executed or not item.completed):
+        if item.status == "completed" and (
+            not item.executed or not item.completed
+        ):
             raise ValueError("primary pipeline completed stage flags invalid")
-        if item.status == "blocked" and (not item.executed or not item.blocked):
+        if item.status == "blocked" and (
+            not item.executed or not item.blocked
+        ):
             raise ValueError("primary pipeline blocked stage flags invalid")
         if item.status == "held" and (not item.executed or not item.held):
             raise ValueError("primary pipeline held stage flags invalid")
-        if item.status == "retryable" and (not item.executed or not item.retryable):
+        if item.status == "retryable" and (
+            not item.executed or not item.retryable
+        ):
             raise ValueError("primary pipeline retryable stage flags invalid")
         if item.executed:
             executed_indexes.append(index)
         if item.completed:
             completed_indexes.append(index)
 
-    if executed_indexes and executed_indexes != list(range(executed_indexes[-1] + 1)):
+    if executed_indexes and executed_indexes != list(
+        range(executed_indexes[-1] + 1)
+    ):
         raise ValueError("primary pipeline executed stage order invalid")
-    if completed_indexes and completed_indexes != list(range(completed_indexes[-1] + 1)):
+    if completed_indexes and completed_indexes != list(
+        range(completed_indexes[-1] + 1)
+    ):
         raise ValueError("primary pipeline completed stage order invalid")
     if type(result.completed_stage_count) is not int or (
         result.completed_stage_count != len(completed_indexes)
@@ -216,17 +226,41 @@ def _validate_pipeline_result(result: object) -> RelayMEMPrimaryPipelineResult:
         raise ValueError("primary pipeline completed stage count invalid")
 
     expected_last = STAGES[executed_indexes[-1]] if executed_indexes else None
-    expected_completed = STAGES[completed_indexes[-1]] if completed_indexes else None
+    expected_completed = (
+        STAGES[completed_indexes[-1]] if completed_indexes else None
+    )
     if result.last_stage != expected_last:
         raise ValueError("primary pipeline last stage invalid")
     if result.last_completed_stage != expected_completed:
         raise ValueError("primary pipeline last completed stage invalid")
-    if type(result.reason_ids) is not tuple or _impl._reasons(result.reason_ids) != result.reason_ids:
+    if (
+        type(result.reason_ids) is not tuple
+        or _impl._reasons(result.reason_ids) != result.reason_ids
+    ):
         raise ValueError("primary pipeline result reason ids invalid")
     return result
 
 
+def _candidate_id_from_request(request: object) -> str | None:
+    source = getattr(request, "worker_source", None)
+    experience = getattr(source, "governed_experience_artifact", None)
+    if not isinstance(experience, Mapping):
+        return None
+    candidate_id = experience.get("candidate_id")
+    return candidate_id if type(candidate_id) is str else None
+
+
+def _formation_with_candidate_identity(*args: Any, **kwargs: Any) -> Any:
+    target = globals()["build_relaymem_primary_formation_dry_run"]
+    if _CURRENT_CANDIDATE_ID is not None:
+        kwargs["candidate_id"] = _CURRENT_CANDIDATE_ID
+    return target(*args, **kwargs)
+
+
 def _sync_helper_seams() -> None:
+    _impl.build_relaymem_primary_formation_dry_run = (
+        _formation_with_candidate_identity
+    )
     for name in _HELPER_NAMES:
         setattr(_impl, name, globals()[name])
 
@@ -273,54 +307,62 @@ def execute_relaymem_primary_pipeline(
     *,
     checkpoint: PrimaryPipelineCheckpoint | None = None,
 ) -> RelayMEMPrimaryPipelineResult:
-    """Execute compose with optional exact pre-side-effect checkpoints.
-
-    Checkpoints are serialized with seam synchronization because existing M3
-    test seams are module-level callables.  The callback is content-free and
-    queue-agnostic.  A denied or malformed callback stops before the protected
-    source consume, M3e write, or M3g apply respectively.
-    """
+    """Execute compose with optional exact pre-side-effect checkpoints."""
 
     if checkpoint is not None and not callable(checkpoint):
         raise TypeError("checkpoint callable required")
+    global _CURRENT_CANDIDATE_ID
     with _COMPOSE_LOCK:
-        _sync_helper_seams()
-        if checkpoint is None:
-            return _impl.execute_relaymem_primary_pipeline(request)
-
-        original_consume = _impl.consume_relaymem_slp_primary_worker_source
-        original_m3e = _impl.apply_relaymem_primary_page_write
-        original_m3g = _impl.apply_relaymem_primary_index_log_reconciliation
-
-        def consume_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
-            decision = _checkpoint_result(checkpoint, "before_source_consumption")
-            if not decision.allowed:
-                return None, decision.reason_ids
-            return original_consume(*args, **kwargs)
-
-        def m3e_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
-            decision = _checkpoint_result(checkpoint, "before_m3e_page_writer")
-            if not decision.allowed:
-                raise RuntimeError("primary pipeline checkpoint denied")
-            return original_m3e(*args, **kwargs)
-
-        def m3g_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
-            decision = _checkpoint_result(
-                checkpoint, "before_m3g_reconciliation_apply"
-            )
-            if not decision.allowed:
-                raise RuntimeError("primary pipeline checkpoint denied")
-            return original_m3g(*args, **kwargs)
-
-        _impl.consume_relaymem_slp_primary_worker_source = consume_with_checkpoint
-        _impl.apply_relaymem_primary_page_write = m3e_with_checkpoint
-        _impl.apply_relaymem_primary_index_log_reconciliation = m3g_with_checkpoint
+        previous_candidate_id = _CURRENT_CANDIDATE_ID
+        _CURRENT_CANDIDATE_ID = _candidate_id_from_request(request)
         try:
-            return _impl.execute_relaymem_primary_pipeline(request)
+            _sync_helper_seams()
+            if checkpoint is None:
+                return _impl.execute_relaymem_primary_pipeline(request)
+
+            original_consume = _impl.consume_relaymem_slp_primary_worker_source
+            original_m3e = _impl.apply_relaymem_primary_page_write
+            original_m3g = _impl.apply_relaymem_primary_index_log_reconciliation
+
+            def consume_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
+                decision = _checkpoint_result(
+                    checkpoint, "before_source_consumption"
+                )
+                if not decision.allowed:
+                    return None, decision.reason_ids
+                return original_consume(*args, **kwargs)
+
+            def m3e_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
+                decision = _checkpoint_result(
+                    checkpoint, "before_m3e_page_writer"
+                )
+                if not decision.allowed:
+                    raise RuntimeError("primary pipeline checkpoint denied")
+                return original_m3e(*args, **kwargs)
+
+            def m3g_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
+                decision = _checkpoint_result(
+                    checkpoint, "before_m3g_reconciliation_apply"
+                )
+                if not decision.allowed:
+                    raise RuntimeError("primary pipeline checkpoint denied")
+                return original_m3g(*args, **kwargs)
+
+            _impl.consume_relaymem_slp_primary_worker_source = (
+                consume_with_checkpoint
+            )
+            _impl.apply_relaymem_primary_page_write = m3e_with_checkpoint
+            _impl.apply_relaymem_primary_index_log_reconciliation = (
+                m3g_with_checkpoint
+            )
+            try:
+                return _impl.execute_relaymem_primary_pipeline(request)
+            finally:
+                _impl.consume_relaymem_slp_primary_worker_source = original_consume
+                _impl.apply_relaymem_primary_page_write = original_m3e
+                _impl.apply_relaymem_primary_index_log_reconciliation = original_m3g
         finally:
-            _impl.consume_relaymem_slp_primary_worker_source = original_consume
-            _impl.apply_relaymem_primary_page_write = original_m3e
-            _impl.apply_relaymem_primary_index_log_reconciliation = original_m3g
+            _CURRENT_CANDIDATE_ID = previous_candidate_id
 
 
 def project_relaymem_primary_pipeline(
