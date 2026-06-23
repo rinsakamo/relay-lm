@@ -55,6 +55,7 @@ jobs:
           relaylm/relaymem_slp_primary_worker_source_registry.py
           scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
       - name: Validate runtime enqueue and source capture
+        id: runtime-smoke
         run: |
           set +e
           PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py > /tmp/phase6-i1b-smoke.log 2>&1
@@ -64,6 +65,14 @@ jobs:
             exit "$status"
           fi
           cat /tmp/phase6-i1b-smoke.log
+      - name: Upload Phase 6 smoke failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6-i1b-smoke-log
+          path: /tmp/phase6-i1b-smoke.log
+          if-no-files-found: error
+          retention-days: 1
       - name: Revalidate exact Phase 6 boundaries
         run: |
           PYTHONPATH=. python scripts/relaylm_relaymem_slp_job_admission_smoke.py
