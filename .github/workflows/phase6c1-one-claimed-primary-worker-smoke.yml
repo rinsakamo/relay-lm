@@ -9,12 +9,14 @@ on:
       - "relaylm/relaymem_slp_primary_worker_source_registry.py"
       - "relaylm/relaymem_primary_pipeline.py"
       - "relaylm/_relaymem_primary_pipeline_impl.py"
+      - "relaylm/relaymem_primary_formation.py"
       - "relaylm/relaymem_slp_queue_state.py"
       - "relaylm/relaymem_slp_primary_worker_source.py"
       - "relaylm/relaymem_slp_primary_worker_outcome.py"
       - "scripts/relaylm_phase6c1_primary_worker_*.py"
       - "scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py"
       - "docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md"
+      - "docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md"
       - ".github/workflows/phase6c1-one-claimed-primary-worker-smoke.yml"
   push:
     branches:
@@ -26,12 +28,14 @@ on:
       - "relaylm/relaymem_slp_primary_worker_source_registry.py"
       - "relaylm/relaymem_primary_pipeline.py"
       - "relaylm/_relaymem_primary_pipeline_impl.py"
+      - "relaylm/relaymem_primary_formation.py"
       - "relaylm/relaymem_slp_queue_state.py"
       - "relaylm/relaymem_slp_primary_worker_source.py"
       - "relaylm/relaymem_slp_primary_worker_outcome.py"
       - "scripts/relaylm_phase6c1_primary_worker_*.py"
       - "scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py"
       - "docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md"
+      - "docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md"
       - ".github/workflows/phase6c1-one-claimed-primary-worker-smoke.yml"
 
 permissions:
@@ -59,6 +63,7 @@ jobs:
           relaylm/_relaymem_slp_primary_worker_view.py
           relaylm/relaymem_slp_primary_worker_source_adapter.py
           relaylm/relaymem_primary_pipeline.py
+          relaylm/relaymem_primary_formation.py
           scripts/relaylm_phase6c1_primary_worker_test_support.py
           scripts/relaylm_phase6c1_primary_worker_ci_runner.py
           scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py
@@ -92,6 +97,7 @@ jobs:
           PYTHONPATH=. python scripts/relaylm_phase6c1_fault_race_smoke.py
       - name: Run RelayMEM compose and persistence smokes
         run: |
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_formation_dry_run_smoke.py
           PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_smoke.py
           PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
           PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_smoke.py
