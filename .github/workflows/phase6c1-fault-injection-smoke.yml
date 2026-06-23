@@ -43,6 +43,8 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      PYTHONPATH: .
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -53,13 +55,48 @@ jobs:
           python -m compileall -q
           scripts/_relaylm_phase6c1_fault_fixtures.py
           scripts/relaylm_phase6c1_fault_injection_smoke.py
-      - name: Run Phase 6-C1 fault injection smoke
-        run: PYTHONPATH=. python scripts/relaylm_phase6c1_fault_injection_smoke.py
+      - name: Validate queue claim and lease fixtures
+        run: >-
+          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
+          test_claimed_record, test_expired_claim, test_stale_fences;
+          test_claimed_record(); test_expired_claim(); test_stale_fences()'
+      - name: Validate M3e publication and duplicate fixtures
+        run: >-
+          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
+          test_m3e_and_duplicate; test_m3e_and_duplicate()'
+      - name: Validate M3g lock contention fixture
+        run: >-
+          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
+          test_m3g_lock_contention; test_m3g_lock_contention()'
+      - name: Validate M3h lock contention fixture
+        run: >-
+          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
+          test_m3h_lock_contention; test_m3h_lock_contention()'
+      - name: Validate reconciliation recovery fixtures
+        run: >-
+          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
+          test_recovery_states, test_diverged_controls;
+          test_recovery_states(); test_diverged_controls()'
+      - name: Validate crash-point fixtures
+        run: >-
+          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
+          test_crash_points; test_crash_points()'
+      - name: Validate determinism and identity boundaries
+        run: >-
+          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
+          test_determinism_and_identity_domains, test_source_boundaries;
+          test_determinism_and_identity_domains(); test_source_boundaries()'
+      - name: Validate subprocess content leakage
+        run: >-
+          python -c 'from scripts.relaylm_phase6c1_fault_injection_smoke import
+          test_subprocess_content_leakage; test_subprocess_content_leakage()'
+      - name: Run complete Phase 6-C1 fault injection smoke
+        run: python scripts/relaylm_phase6c1_fault_injection_smoke.py
       - name: Run Phase 6-B3 queue contract smoke
-        run: PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_contract_smoke.py
+        run: python scripts/relaylm_phase6b3_queue_state_contract_smoke.py
       - name: Run RelayMEM M3e page writer smoke
-        run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_smoke.py
+        run: python scripts/relaylm_relaymem_primary_page_writer_smoke.py
       - name: Run RelayMEM M3g apply smoke
-        run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_apply_smoke.py
+        run: python scripts/relaylm_relaymem_primary_index_log_apply_smoke.py
       - name: Run RelayMEM M3h recovery audit smoke
-        run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
+        run: python scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
