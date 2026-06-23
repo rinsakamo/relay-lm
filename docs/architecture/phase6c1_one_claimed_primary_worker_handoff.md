@@ -6,16 +6,15 @@ relaylm_volatility: medium
 relaylm_owner: relaymem_slp
 relaylm_update_trigger:
   - one-claimed Primary MEM worker request, result, projection, or lease checkpoint semantics change
-  - ordinary request-runtime source adapter is integrated
   - protected source persistence or scheduler ownership is implemented
+  - retry bounds or source-retention ownership changes
 relaylm_not_authoritative_for:
-  - ordinary app.py or stream-final request-runtime source capture
-  - authoritative turn-index allocation or governed-experience production
-  - queue scanning, scheduling, daemon, worker pool, or backoff policy
-  - protected source persistence, restart rehydration, retention, or cleanup
+  - queue scanning, scheduling, daemon, or generalized worker pools
+  - protected durable source persistence or restart rehydration
   - RelayMEM page, index, or log semantics owned by M3a-M3h
   - Secondary MEM, RelaySOUL mutation, or SOUL Lab runtime behavior
 relaylm_related_authority:
+  - phase6_i1b_runtime_enqueue_source_capture_handoff.md
   - phase6c1_primary_mem_worker_contract.md
   - phase6b3_relayslp_queue_state_helpers.md
   - phase6c1_relaymem_primary_pipeline_compose.md
@@ -31,11 +30,28 @@ Phase 6-C1-2 is implemented as a production helper for exactly one already-claim
 execute_relaymem_slp_primary_worker(request)
 ```
 
-The caller supplies one exact claimed record, one exact C1-0 protected worker source, its current request-local scope, the queue root, and the RelayMEM store root. The worker does not scan the queue, select jobs, reconstruct source content, allocate a turn index, or depend on the Draft PR #365 request-runtime registry.
+The worker accepts one exact claimed record, one exact unconsumed C1-0 protected source, its request-local scope, the queue root, and the RelayMEM store root. It does not scan the queue, select jobs, reconstruct protected content from queue metadata, or execute inline with visible response delivery.
 
-## Implemented runtime sequence
+## I1-B source ownership
 
-The worker fixes this order:
+The I1-B registry retains the protected 16-field source capture across claims. The integration adapter:
+
+```python
+prepare_relaymem_slp_primary_worker_source_for_claim(...)
+```
+
+builds a fresh unconsumed C1-0 source and fresh request scope for the exact active claim while leaving the protected registry capture retained. The worker owns one-shot source consumption at its `before_source_consumption` checkpoint.
+
+Ownership rules are:
+
+- terminal success or terminal failure: close the prepared scope and release the retained registry capture;
+- retry release: close only the prepared scope and retain the protected capture for the next claim;
+- lease loss or technical block: do not silently discard the retained capture;
+- process restart: still not restart-complete because the registry remains process-local.
+
+The legacy registry `consume_for_claim()` API remains unchanged for compatibility. C1-2 integration uses the retry-safe preparation adapter instead of passing an already-consumed source to the worker.
+
+## Runtime sequence
 
 ```text
 exact request and claimed-record validation
@@ -50,18 +66,42 @@ exact request and claimed-record validation
   -> M3g index-before-log reconciliation
   -> M3h recovery audit
   -> pure worker outcome classification
+  -> bounded retry policy or terminal intent
   -> final active lease fence
   -> canonical B3 retry_release or commit_terminal
 ```
 
-RelayMEM compose remains queue-agnostic. It only invokes exact runtime-private checkpoint callbacks before source consumption, M3e, and M3g. The worker owns canonical queue re-read, owner/generation/token/revision/expiry fencing, B3 lease renewal, and revision replacement after renewal.
+RelayMEM compose remains queue-agnostic. It only invokes exact runtime-private checkpoint callbacks before source consumption, M3e, and M3g. The worker owns canonical queue re-read, owner/generation/token/revision/expiry fencing, lease renewal, and revision replacement after renewal.
+
+## Technical failure versus policy meaning
+
+M3a or M3b `blocked` is converted to a terminal memory-policy outcome only when exact private evidence proves the policy meaning:
+
+- M3a candidate count and candidate shape are exact, with held or blocked promotion/safety policy;
+- M3b contains exactly one operation with held or non-eligible preflight status.
+
+Helper exceptions, malformed stage results, schema drift, or impossible shapes are not reclassified as policy failure. They remain blocked without a stale or false terminal queue commit.
+
+## Retry policy
+
+C1-2 calculates retry timing internally. The compatibility field `retry_not_before` remains present in the exact request schema, but any non-`None` caller value is rejected.
+
+- transient lock contention: 5-second base plus deterministic bounded jitter below 5 seconds;
+- verified reconciliation partial progress: 20-second base plus deterministic bounded jitter below 10 seconds;
+- maximum worker attempts: 5;
+- attempt-limit exhaustion becomes terminal failed with `primary_mem_retry_attempt_limit_reached`;
+- retry records always contain `retry_not_before` later than their `updated_at`;
+- corruption, policy hold, manual confirmation, and recovery isolation are never automatically retried.
+
+The deterministic jitter seed uses only runtime-private job identity, claim generation, and retry class. Exact timestamps and identifiers remain absent from public projections.
 
 ## Exact boundaries
 
-Production module:
+Production modules:
 
 ```text
 relaylm/relaymem_slp_primary_worker.py
+relaylm/relaymem_slp_primary_worker_source_adapter.py
 ```
 
 Schemas:
@@ -70,61 +110,38 @@ Schemas:
 relaymem.slp_primary_worker_request.v0
 relaymem.slp_primary_worker_result.v0
 relaymem.slp_primary_worker_projection.v0
+relaymem.slp_primary_worker_prepared_source_projection.v0
 ```
 
-Only the exact frozen worker request, exact canonical B3 claimed record, exact `RelayMEMSLPPrimaryWorkerSource`, and exact `RelayMEMSLPPrimaryWorkerSourceScope` are accepted. Generic dictionaries, public projections, classifier lookalikes, checkpoint lookalikes, bool/int confusion, wrong schemas, impossible gates, invalid roots, stale claims, and cross-request source reuse fail closed.
-
-The apply gate is exactly:
-
-```text
-enabled = true
-dry_run_only = false
-apply_enabled = true
-```
-
-Disabled mode performs no source consumption, compose execution, memory mutation, or B3 transition. Dry-run validates the exact request, active claim, and source correlation, executes compose in dry-run mode, and performs no M3e, M3g, or queue mutation. It does not claim durable success.
+Only exact frozen worker/source types and complete canonical B3 records are accepted. Public projections, lookalike dictionaries, bool/int confusion, wrong schemas, impossible gates, stale claims, and cross-request source reuse fail closed.
 
 ## Lease and crash behavior
 
-M3e and M3g checkpoints use the canonical B3 `renew_lease` transition. A successful renewal increments the canonical record revision; the worker replaces its expected record with the returned durable record before continuing.
+M3e and M3g checkpoints use canonical B3 `renew_lease`. A successful renewal increments the record revision and replaces the worker's expected canonical record before execution continues.
 
-Lease loss before source consumption leaves the source unconsumed and performs no M3 stage or queue transition. Lease loss before M3e prevents page publication. Lease loss before M3g preserves an already-published page but prevents index/log mutation. Lease loss before the final queue transition prevents stale retry release or terminal commit.
+Lease loss before source consumption leaves the prepared source unconsumed. Lease loss before M3e prevents page publication. Lease loss before M3g preserves an already-published page but prevents index/log mutation. Lease loss before the final transition prevents stale retry release or terminal commit.
 
-Completed durable side effects are not rolled back. Later claims converge through the existing M3e/M3g idempotency and M3h recovery classification boundaries.
-
-## Outcome mapping
-
-The worker invokes the production pure classifier and does not reimplement its result mapping.
-
-- verified durable success commits B3 `succeeded` with reason `primary_mem_durable_state_verified`
-- lock contention and verified reconciliation partial progress use B3 `retry_release`
-- policy held/blocked, manual confirmation, recovery isolation, corruption, conflict, and divergence commit B3 `failed` with the classifier-owned failure class and reason
-- invalid or inconsistent classifier input performs no unsafe queue transition
-- no `dead_letter` state is introduced
+Completed durable side effects are not rolled back. A later claim rebuilds a fresh source from the retained protected capture and converges through M3e/M3g idempotency and M3h classification.
 
 ## Public projection
 
-The public projection and `PipelineNodeResult` are deterministic and content-free. They expose bounded statuses, checkpoint booleans, renewal count, pipeline status, outcome transition kind, retryable/terminal/success/failure booleans, queue-transition-performed, and bounded reason IDs.
+The public projection and `PipelineNodeResult` expose bounded statuses, checkpoint booleans, renewal count, pipeline status, outcome transition kind, retryable/terminal booleans, queue-transition-performed, and bounded reason IDs.
 
-They omit source messages, governed title/summary/body, page/index/log content, roots and filenames, namespace and runtime identifiers, lineage and idempotency keys, owner/token/revision/generation, timestamps, retry timestamp, raw exception text, and private compose/classifier/B3 results. Content-bearing dataclass fields are excluded from `repr`.
+They omit source messages, governed title/summary/body, page/index/log content, roots and filenames, namespace and runtime identifiers, lineage and idempotency keys, claim owner/token/revision/generation, timestamps, raw exception text, and private compose/classifier/B3 results.
 
-## Explicitly not implemented
+## Validation
 
-The following remain outside this slice:
+```bash
+PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_review_fix_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase6c1_primary_worker_source_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase6c1_primary_worker_outcome_smoke.py
+PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_smoke.py
+PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
+```
 
-- ordinary `app.py` and stream-final observer wiring
-- authoritative `turn_index` allocation
-- governed-experience producer
-- Draft PR #365 registry/capture/handoff integration
-- durable protected-source persistence or restart rehydration
-- queue scanner, scheduler, daemon, generalized worker pool, and thread management
-- backoff or jitter engine
-- source cleanup daemon
-- next-turn retrieval or RelayCTX memory injection
-- SOUL Lab API, authoritative memory correction, RelaySOUL mutation, Secondary MEM, TTS, audio, Live2D, or avatar execution
+## Remaining boundary
 
-Issue #366 therefore remains open and does not block this already-claimed worker boundary.
-
-## Next integration point
-
-A later adapter may combine the completed ordinary request-runtime source capture boundary with a real B3 claimed record and construct the exact C1-0 source plus this worker request. Alternatively, C1-4 may add an integrated worker smoke. The worker itself remains independent of that adapter and of any process-local registry.
+This slice still does not implement a queue scanner, automatic claim scheduler, daemon supervision, generalized worker pool, restart-complete protected source storage, later-turn recall proof, or SOUL Lab observation. Those remain subsequent I1 integration work.
