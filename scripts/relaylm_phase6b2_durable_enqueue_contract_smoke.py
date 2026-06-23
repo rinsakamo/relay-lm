@@ -1,4 +1,4 @@
-"""Check B2 ownership and the current Phase 6-C1 status."""
+"""Check B2 ownership and the current Phase 6 integration status."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,18 +25,19 @@ def main() -> None:
     check(
         body("docs/architecture/relaymem_slp_current_target.md"),
         "Phase 6-B2 performs atomic durable enqueue",
-        "one-job claim/rehydrate/execute adapter",
+        "C2 one-job claim/rehydrate/execute adapter",
     )
     check(
         body("docs/architecture/pipeline_implementation_plan.md"),
         "B2 atomic durable enqueue: complete",
         "Phase 6-C1-0 through C1-5 are complete",
+        "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
     )
     check(
         body("docs/PROJECT_STATUS.md"),
         "B2 atomic durable enqueue",
         "C1-5 source-before-queue durable protected artifact publication",
-        "B3 claim -> C1-5 rehydrate -> C1-2 execute",
+        "C2 one-job claim/rehydrate/execute adapter: complete",
     )
     check(body("relaylm/relaymem_slp_durable_enqueue.py"), "relaymem.slp_durable_enqueue.v0")
     print("Phase 6-B2 durable enqueue contract smoke: ok")
