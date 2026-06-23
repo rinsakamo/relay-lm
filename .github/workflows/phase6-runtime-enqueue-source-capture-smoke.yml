@@ -3,8 +3,15 @@ name: Phase 6 runtime enqueue source capture smoke
 on:
   pull_request:
     paths:
+      - "relaylm/app.py"
+      - "relaylm/config.py"
+      - "relaylm/routing.py"
+      - "relaylm/relaymem_slp_finalized_turn_source.py"
+      - "relaylm/relaymem_slp_runtime_finalization.py"
       - "relaylm/relaymem_slp_runtime_enqueue.py"
       - "relaylm/relaymem_slp_primary_worker_source_registry.py"
+      - "config.example.yaml"
+      - "scripts/_relaylm_phase6_i1b_apply_runtime_wiring.py"
       - "scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py"
       - "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md"
       - ".github/workflows/phase6-runtime-enqueue-source-capture-smoke.yml"
@@ -12,26 +19,69 @@ on:
     branches:
       - main
     paths:
+      - "relaylm/app.py"
+      - "relaylm/config.py"
+      - "relaylm/routing.py"
+      - "relaylm/relaymem_slp_finalized_turn_source.py"
+      - "relaylm/relaymem_slp_runtime_finalization.py"
       - "relaylm/relaymem_slp_runtime_enqueue.py"
       - "relaylm/relaymem_slp_primary_worker_source_registry.py"
+      - "config.example.yaml"
       - "scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py"
       - "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md"
       - ".github/workflows/phase6-runtime-enqueue-source-capture-smoke.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  smoke:
+  apply-runtime-wiring:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: phase6-i1b-runtime-enqueue-source-capture
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Apply exact bounded runtime patch
+        run: |
+          if [ -f scripts/_relaylm_phase6_i1b_apply_runtime_wiring.py ]; then
+            python scripts/_relaylm_phase6_i1b_apply_runtime_wiring.py
+            python -m compileall -q \
+              relaylm/app.py \
+              relaylm/relaymem_slp_finalized_turn_source.py \
+              relaylm/relaymem_slp_runtime_finalization.py \
+              relaylm/relaymem_slp_runtime_enqueue.py
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git rm -f .github/workflows/phase6-i1b-runtime-wiring-patch.yml
+            git rm -f .github/workflows/phase6-i1b-runtime-wiring-apply.yml
+            git rm -f scripts/_relaylm_phase6_i1b_apply_runtime_wiring.py
+            git add relaylm/app.py relaylm/relaymem_slp_finalized_turn_source.py config.example.yaml
+            git commit -m "feat: wire deferred enqueue after response finalization"
+            git push origin HEAD:phase6-i1b-runtime-enqueue-source-capture
+          else
+            echo "runtime wiring already applied"
+          fi
+
+  smoke:
+    needs: apply-runtime-wiring
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase6-i1b-runtime-enqueue-source-capture
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - name: Compile runtime enqueue source capture boundary
         run: >-
           python -m compileall -q
+          relaylm/app.py
+          relaylm/relaymem_slp_finalized_turn_source.py
+          relaylm/relaymem_slp_runtime_finalization.py
           relaylm/relaymem_slp_runtime_enqueue.py
           relaylm/relaymem_slp_primary_worker_source_registry.py
           scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
