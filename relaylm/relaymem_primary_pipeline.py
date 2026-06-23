@@ -4,10 +4,17 @@ The implementation remains runtime-private in the adjacent implementation
 module. This facade fixes the exact public types, synchronizes testable M3
 helper seams, and rejects non-canonical request modes or impossible result
 ledgers before any public projection is produced.
+
+Phase 6-C1-2 adds a minimal runtime-private checkpoint seam.  The seam knows
+nothing about queue roots, claims, leases, or B3 transitions; it only asks an
+exact callback whether the next protected or durable side effect may begin.
 """
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from dataclasses import dataclass
+from threading import RLock
+from typing import Any, Literal
 
 from . import _relaymem_primary_pipeline_impl as _impl
 from ._relaymem_primary_pipeline_impl import (
@@ -20,6 +27,27 @@ from ._relaymem_primary_pipeline_impl import (
     RelayMEMPrimaryPipelineResult,
     RelayMEMPrimaryPipelineStageResult,
 )
+
+PrimaryPipelineCheckpointName = Literal[
+    "before_source_consumption",
+    "before_m3e_page_writer",
+    "before_m3g_reconciliation_apply",
+]
+
+
+@dataclass(frozen=True)
+class RelayMEMPrimaryPipelineCheckpointResult:
+    """Exact content-free permission returned by a runtime-private checkpoint."""
+
+    allowed: bool
+    reason_ids: tuple[str, ...] = ()
+
+
+PrimaryPipelineCheckpoint = Callable[
+    [PrimaryPipelineCheckpointName],
+    RelayMEMPrimaryPipelineCheckpointResult,
+]
+
 
 # Preserve the existing module-level M3 seams. The functional and security
 # smokes patch these exact names; execute synchronizes them into the private
@@ -87,6 +115,14 @@ _PIPELINE_STATUSES = frozenset(
         "journaled_recovery_candidate",
     }
 )
+_CHECKPOINT_NAMES = frozenset(
+    {
+        "before_source_consumption",
+        "before_m3e_page_writer",
+        "before_m3g_reconciliation_apply",
+    }
+)
+_COMPOSE_LOCK = RLock()
 
 _original_validate_request = _impl._validate_request
 _original_project = _impl.project_relaymem_primary_pipeline
@@ -195,11 +231,96 @@ def _sync_helper_seams() -> None:
         setattr(_impl, name, globals()[name])
 
 
+def _checkpoint_result(
+    checkpoint: PrimaryPipelineCheckpoint,
+    name: PrimaryPipelineCheckpointName,
+) -> RelayMEMPrimaryPipelineCheckpointResult:
+    try:
+        value = checkpoint(name)
+    except Exception:
+        return RelayMEMPrimaryPipelineCheckpointResult(
+            allowed=False,
+            reason_ids=("primary_pipeline_checkpoint_callback_failed",),
+        )
+    if type(value) is not RelayMEMPrimaryPipelineCheckpointResult:
+        return RelayMEMPrimaryPipelineCheckpointResult(
+            allowed=False,
+            reason_ids=("primary_pipeline_checkpoint_result_invalid",),
+        )
+    if type(value.allowed) is not bool or type(value.reason_ids) is not tuple:
+        return RelayMEMPrimaryPipelineCheckpointResult(
+            allowed=False,
+            reason_ids=("primary_pipeline_checkpoint_result_invalid",),
+        )
+    reasons = _impl._reasons(value.reason_ids)
+    if reasons != value.reason_ids:
+        return RelayMEMPrimaryPipelineCheckpointResult(
+            allowed=False,
+            reason_ids=("primary_pipeline_checkpoint_result_invalid",),
+        )
+    if value.allowed and reasons:
+        return RelayMEMPrimaryPipelineCheckpointResult(
+            allowed=False,
+            reason_ids=("primary_pipeline_checkpoint_result_invalid",),
+        )
+    if not value.allowed and not reasons:
+        reasons = ("primary_pipeline_checkpoint_denied",)
+    return RelayMEMPrimaryPipelineCheckpointResult(value.allowed, reasons)
+
+
 def execute_relaymem_primary_pipeline(
     request: object,
+    *,
+    checkpoint: PrimaryPipelineCheckpoint | None = None,
 ) -> RelayMEMPrimaryPipelineResult:
-    _sync_helper_seams()
-    return _impl.execute_relaymem_primary_pipeline(request)
+    """Execute compose with optional exact pre-side-effect checkpoints.
+
+    Checkpoints are serialized with seam synchronization because existing M3
+    test seams are module-level callables.  The callback is content-free and
+    queue-agnostic.  A denied or malformed callback stops before the protected
+    source consume, M3e write, or M3g apply respectively.
+    """
+
+    if checkpoint is not None and not callable(checkpoint):
+        raise TypeError("checkpoint callable required")
+    with _COMPOSE_LOCK:
+        _sync_helper_seams()
+        if checkpoint is None:
+            return _impl.execute_relaymem_primary_pipeline(request)
+
+        original_consume = _impl.consume_relaymem_slp_primary_worker_source
+        original_m3e = _impl.apply_relaymem_primary_page_write
+        original_m3g = _impl.apply_relaymem_primary_index_log_reconciliation
+
+        def consume_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
+            decision = _checkpoint_result(checkpoint, "before_source_consumption")
+            if not decision.allowed:
+                return None, decision.reason_ids
+            return original_consume(*args, **kwargs)
+
+        def m3e_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
+            decision = _checkpoint_result(checkpoint, "before_m3e_page_writer")
+            if not decision.allowed:
+                raise RuntimeError("primary pipeline checkpoint denied")
+            return original_m3e(*args, **kwargs)
+
+        def m3g_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
+            decision = _checkpoint_result(
+                checkpoint, "before_m3g_reconciliation_apply"
+            )
+            if not decision.allowed:
+                raise RuntimeError("primary pipeline checkpoint denied")
+            return original_m3g(*args, **kwargs)
+
+        _impl.consume_relaymem_slp_primary_worker_source = consume_with_checkpoint
+        _impl.apply_relaymem_primary_page_write = m3e_with_checkpoint
+        _impl.apply_relaymem_primary_index_log_reconciliation = m3g_with_checkpoint
+        try:
+            return _impl.execute_relaymem_primary_pipeline(request)
+        finally:
+            _impl.consume_relaymem_slp_primary_worker_source = original_consume
+            _impl.apply_relaymem_primary_page_write = original_m3e
+            _impl.apply_relaymem_primary_index_log_reconciliation = original_m3g
 
 
 def project_relaymem_primary_pipeline(
@@ -226,6 +347,9 @@ __all__ = [
     "REQUEST_SCHEMA",
     "RESULT_SCHEMA",
     "STAGES",
+    "PrimaryPipelineCheckpoint",
+    "PrimaryPipelineCheckpointName",
+    "RelayMEMPrimaryPipelineCheckpointResult",
     "RelayMEMPrimaryPipelineProjection",
     "RelayMEMPrimaryPipelineRequest",
     "RelayMEMPrimaryPipelineResult",
