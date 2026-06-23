@@ -26,49 +26,44 @@ relaylm_related_authority:
 
 ## Status
 
-Phase 6-C1-5 makes the protected worker-source recovery boundary restart-complete without adding source content to the RelaySLP queue record.
-
-The implemented production chain is:
+Phase 6-C1-5 makes protected worker-source recovery restart-complete for durably enqueued jobs without adding source content to the RelaySLP queue record.
 
 ```text
 exact finalized-turn capture
-  -> canonical I1-B dry-run identity and source payload construction
-  -> durable protected-source create-if-absent commit
-  -> unchanged canonical B2 content-free durable enqueue
-  -> optional process-local registry hot cache
+  -> durable protected-source commit
+  -> canonical B2 content-free enqueue
+  -> optional process-local hot cache
 
-current exact B3 claimed record
-  -> process-local hot-cache lookup or durable artifact lookup
-  -> schema / identity / integrity validation
-  -> fresh C1-0 one-shot scope
-  -> canonical C1-0 builder
-  -> fresh unconsumed worker source
+current exact B3 claim
+  -> hot-cache or durable lookup
+  -> identity and integrity validation
+  -> fresh C1-0 scope and source
   -> C1-2 one-claimed worker
 ```
 
-This closes restart recovery of the protected worker source. It does not implement a queue scanner, scheduler, daemon, next-turn recall, or SOUL Lab observation.
+This closes the post-enqueue source-recovery boundary. It does not implement queue scanning, scheduling, daemon lifecycle, next-turn recall, SOUL Lab observation, or recovery of a turn that never reached background source/queue publication.
 
 ## Ownership
 
 - I1-B owns finalized-turn content production and canonical B1 identity construction.
 - C1-5 owns protected capture persistence, validation, restart lookup, and post-terminal cleanup.
-- B2 remains the sole owner of content-free durable queue publication.
-- B3 remains the sole owner of claim, lease, retry release, stale recovery, and terminal queue state.
-- C1-0 remains the sole owner of current-claim source correlation and one-shot source construction.
-- C1-2 remains the sole owner of one current claimed-job execution and retry timing.
-- M3a-M3h remain the sole owners of Primary MEM formation and persistence.
+- B2 owns content-free queue publication.
+- B3 owns claim, lease, retry release, stale recovery, and terminal queue state.
+- C1-0 owns current-claim correlation and one-shot source construction.
+- C1-2 owns one current claimed-job execution and retry timing.
+- M3a-M3h own Primary MEM formation and persistence.
 
-No queue-record field or B2/B3 state-machine meaning changes in this slice.
+No queue-record field or B2/B3 state meaning changes in this slice.
 
 ## Durable artifact
 
-The runtime-private artifact schema is:
+The runtime-private schema is:
 
 ```text
 relaymem.slp_protected_source_artifact.v0
 ```
 
-Its exact top-level fields are:
+Top-level fields:
 
 ```text
 schema_version
@@ -82,89 +77,59 @@ source_integrity_digest
 protected_capture
 ```
 
-`protected_capture` is the exact claim-independent 16-field C1-0 payload produced by I1-B. The integrity digest binds source schema version, queue job identity, dispatch identity, character identity, and the complete protected capture under canonical JSON serialization.
+`protected_capture` is the exact claim-independent C1-0 payload produced by I1-B. The integrity digest binds source schema, queue identities, character identity, and complete protected capture under canonical serialization.
 
-Claim token, claim owner, lease timestamps, claim generation, record revision, and a prior one-shot scope are not stored in the artifact.
+Claim owner/token, lease timestamps, generation, revision, and a previous one-shot scope are not stored.
 
-The deterministic artifact filename is derived only from the artifact schema and canonical queue identities. It does not include message text, namespace text, lineage text, source content, or raw digest input.
+## Publication and recovery
 
-## Filesystem contract
-
-The store requires an absolute pre-existing runtime-private root and uses secure directory-FD traversal. It rejects parent traversal, symlink roots, non-directory roots, changed directory inodes, symlink artifacts, non-regular artifacts, hard-linked artifacts, oversized artifacts, malformed UTF-8, malformed JSON, duplicate JSON keys, non-canonical serialization, unsupported schemas, unexpected or missing fields, identity mismatch, and integrity mismatch.
-
-Publication uses:
+Publication order is fixed:
 
 ```text
-exclusive random 0600 temporary file
-  -> bounded full write
-  -> file fsync
-  -> Linux renameat2(RENAME_NOREPLACE)
-  -> directory fsync
-  -> exact published-byte verification
-```
-
-An equivalent existing artifact is idempotent. The same queue identity with different protected content is a collision and is never overwritten. Temporary files are never accepted by claim-time lookup.
-
-## Publication order and crash convergence
-
-The production adapter fixes publication order as follows:
-
-```text
-canonical I1-B dry-run preparation
+canonical I1-B preparation
   -> protected source durable commit
-  -> canonical I1-B apply / B2 enqueue
-  -> process-local hot-cache publication
+  -> canonical B2 enqueue
+  -> optional hot-cache publication
 ```
 
-Crash windows converge as follows:
+An equivalent existing artifact is idempotent. Same identity with different protected content is rejected and never overwritten.
 
-| Crash point | Result |
+Crash convergence:
+
+| Point | Result |
 |---|---|
-| before source write | no queue record and no source artifact |
-| after temporary write, before publish | unpublished temporary file is ignored |
-| after source commit, before enqueue | complete orphan; an exact repeat is idempotent and can continue to B2 |
-| after enqueue | queue record always has a committed source artifact available for restart lookup |
-| after queue publish, before hot-cache publication | restart lookup uses the durable artifact; hot-cache loss is non-fatal |
-| before terminal transition | artifact remains available for retry or new claim |
-| after terminal transition, before cleanup | terminal queue state is preserved; cleanup helper removes the artifact or emits cleanup-required state |
+| before source publication | no queue record and no source artifact |
+| after source, before enqueue | complete orphan; exact repeat may continue idempotently |
+| after enqueue | committed source is available for restart lookup |
+| before terminal transition | source remains available for retry/new claim |
+| after terminal transition, before cleanup | queue terminal state remains authoritative |
 
-When B2 fails synchronously after this call created a new source artifact, the adapter validates and removes that exact orphan. A process crash can leave a complete orphan, but never a claimable queue record without a committed source artifact.
+The source-before-queue order prevents a durably enqueued record from lacking its committed source artifact.
+
+The separate unresolved window is:
+
+```text
+visible response delivered
+  -> process exits before the background finalizer publishes source and queue
+```
+
+C1-5 cannot rehydrate an artifact that was never published.
 
 ## Retry and stale recovery
 
-`retry_release`, lease expiry, and stale recovery do not remove the durable artifact. Generation N and generation N+1 use the same claim-independent protected capture but never the same C1-0 source object or one-shot scope.
+Retry release, lease expiry, and stale recovery retain the durable artifact. Each new claim creates a fresh C1-0 source object and one-shot scope from the same claim-independent capture.
 
-Each claim performs:
-
-```text
-durable capture
-+ current exact claimed record
-+ new scope
--> canonical C1-0 builder
--> fresh source
-```
-
-A stale or consumed source object remains invalid. C1-5 does not calculate retry delay, jitter, or attempt limits; those remain C1-2 authority.
+A stale or consumed source object remains invalid. C1-5 does not calculate retry delay, jitter, or attempt limits.
 
 ## Terminal cleanup
 
-The cleanup adapter is called only after a canonical B3 terminal transition has committed. It first releases any process-local hot-cache capture and then validates and removes the matching durable artifact.
+Cleanup begins only after canonical B3 terminal commit. It releases hot-cache state and removes the matching durable artifact.
 
-Successful cleanup is immediate unlink plus directory fsync. If cleanup cannot complete, the helper returns `cleanup_required` and attempts to publish a bounded content-free cleanup marker. It never reverts a successful queue transition, never changes the queue record to retry, and never stores source content in the marker.
+Cleanup failure returns bounded cleanup-required state and never rolls back the queue transition. This slice adds no background cleanup service.
 
-This slice does not add a background GC scanner. A future scheduler/service boundary may consume cleanup-required markers, but that authority is not introduced here.
+## Public boundary
 
-## Missing and corrupt source semantics
-
-C1-5 reports bounded reason identifiers only:
-
-- missing artifact: `missing` / source unavailable;
-- lock or filesystem contention: `retryable`;
-- malformed, truncated, non-UTF-8, schema, identity, digest, symlink, non-regular, hardlink, or size failure: `corrupt`;
-- same identity with different source: `collision`;
-- cleanup failure after terminal commit: `cleanup_required`.
-
-Raw exception text, artifact paths, identifiers, digests, namespace values, lineage values, messages, titles, summaries, and protected payloads are absent from public projections and workflow diagnostics.
+Public projections and workflow diagnostics expose only bounded status and reason fields. They omit protected content, paths, identities, digests, namespace/lineage values, and exception detail.
 
 ## Configuration
 
@@ -175,22 +140,22 @@ relaymem_slp_protected_source_root: /absolute/runtime-private/path
 relaymem_slp_protected_source_max_artifact_bytes: 262144
 ```
 
-The root must exist and be protected by deployment filesystem permissions. Dry-run mode remains usable without a durable source root.
+The root must already exist and be protected by deployment permissions. Dry-run remains usable without it.
 
 ## Verification
 
-The dedicated smoke covers:
+Dedicated smoke covers:
 
-- create, read, restart rehydrate, equivalent duplicate, conflicting duplicate, and concurrent create-if-absent;
-- canonical serialization, bounded size, schema drift, field drift, malformed/truncated/non-UTF-8 JSON, digest and identity tampering;
-- symlink, directory, FIFO, traversal, hardlink-sensitive reads, and ignored temporary files;
-- source-before-queue ordering and synchronous orphan cleanup;
-- generation N retry release, fresh generation N+1 source/scope, stale source rejection, terminal convergence, and capture digest stability;
-- terminal cleanup and cleanup-required behavior without queue rollback;
-- real separate-process producer/restart-consumer execution through the production one-claimed worker;
-- leakage canaries across queue JSON, projections, node results, repr, filenames, stdout, and stderr;
-- C1-0, I1-B, B2, B3, C1-2, Thread G integrated fault, documentation, and onboarding regressions.
+- create/read/restart rehydration and idempotent duplicate handling,
+- malformed or mismatched artifact rejection,
+- bounded storage and safe file handling,
+- source-before-queue ordering and orphan cleanup,
+- retry release, new generation, fresh source/scope, and terminal convergence,
+- post-terminal cleanup behavior,
+- separate-process producer/restart-consumer execution through C1-2,
+- content-free queue, projection, repr, filename, stdout, and stderr surfaces,
+- C1-0, I1-B, B2, B3, C1-2, C1-4, documentation, onboarding, RelayCTX, and TTS regressions.
 
 ## Accurate completion boundary
 
-> Phase 6-C1 is restart-complete for protected worker-source recovery. Next-turn Primary MEM recall remains unimplemented.
+> Phase 6-C1 is restart-complete for protected worker-source recovery of durably enqueued jobs. The pre-enqueue background-finalizer window, one-job queue-to-worker adapter, next-turn recall, and SOUL Lab observation remain unimplemented.
