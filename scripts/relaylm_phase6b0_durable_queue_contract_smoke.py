@@ -37,7 +37,7 @@ def main() -> None:
         current,
         "Phase 6-B2 performs atomic durable enqueue",
         "Phase 6-B3 performs default-off, dry-run-first",
-        "one-job claim/rehydrate/execute adapter",
+        "C2 one-job claim/rehydrate/execute adapter",
         "durably enqueued jobs",
     )
     require(
@@ -45,12 +45,13 @@ def main() -> None:
         "B2 atomic durable enqueue: complete",
         "B3 queue lifecycle helpers: complete",
         "Phase 6-C1-0 through C1-5 are complete",
-        "thin one-job claim/rehydrate/execute integration adapter",
+        "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
     )
     require(
         status,
         "Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete",
-        "B3 claim -> C1-5 rehydrate -> C1-2 execute",
+        "C2 one-job claim/rehydrate/execute adapter: complete",
+        "next-turn recall and scope isolation: next",
     )
     require(b1, "relaymem.slp_dispatch_preflight.v0", "relaymem.slp_durable_job.v0")
     require(b2, "relaymem.slp_durable_enqueue.v0", "exact_b1_preflight_result_required")
