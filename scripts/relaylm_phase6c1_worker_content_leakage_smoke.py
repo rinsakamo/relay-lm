@@ -96,8 +96,6 @@ def public_surfaces_and_process_output_are_content_free() -> None:
             str(record["source_lineage_fingerprint"]),
             str(page.stem),
             str(record["claim_owner"]),
-            str(record["record_revision"]),
-            str(record["claim_generation"]),
         )
         workflow_projection = json.dumps(
             {
@@ -120,6 +118,11 @@ def public_surfaces_and_process_output_are_content_free() -> None:
             _require_content_free(value, private_values)
         require(stdout.getvalue() == "", "unexpected stdout")
         require(stderr.getvalue() == "", "unexpected stderr")
+        require(projection["record_revision_included"] is False, "revision leak flag")
+        require(
+            projection["claim_generation_included"] is False,
+            "claim generation leak flag",
+        )
         require(projection["private_pipeline_result_included"] is False, "pipeline leak flag")
         require(projection["private_outcome_result_included"] is False, "outcome leak flag")
         require(projection["private_queue_result_included"] is False, "queue leak flag")
