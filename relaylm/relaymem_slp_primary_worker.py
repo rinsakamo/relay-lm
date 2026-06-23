@@ -20,7 +20,9 @@ from ._relaymem_slp_primary_worker_types import (
     RelayMEMSLPPrimaryWorkerRequest,
     RelayMEMSLPPrimaryWorkerResult,
 )
-from ._relaymem_slp_primary_worker_view import project_relaymem_slp_primary_worker
+from ._relaymem_slp_primary_worker_view import (
+    project_relaymem_slp_primary_worker as _project_relaymem_slp_primary_worker,
+)
 
 execute_relaymem_primary_pipeline = _execute.execute_relaymem_primary_pipeline
 classify_relaymem_slp_primary_worker_outcome = (
@@ -47,6 +49,20 @@ def execute_relaymem_slp_primary_worker(
         _execute.classify_relaymem_slp_primary_worker_outcome = classifier
         _outcome_adapter.classify_relaymem_slp_primary_worker_outcome = classifier
         return _execute.execute_relaymem_slp_primary_worker(request)
+
+
+def project_relaymem_slp_primary_worker(
+    result: RelayMEMSLPPrimaryWorkerResult,
+) -> RelayMEMSLPPrimaryWorkerProjection:
+    """Project an exact result after validating the renew-always ledger."""
+
+    projection = _project_relaymem_slp_primary_worker(result)
+    expected_renewals = int(result.m3e_checkpoint_passed) + int(
+        result.m3g_checkpoint_passed
+    )
+    if result.lease_renewal_count != expected_renewals:
+        raise ValueError("primary worker renewal checkpoint ledger invalid")
+    return projection
 
 
 def build_relaymem_slp_primary_worker_node_result(
