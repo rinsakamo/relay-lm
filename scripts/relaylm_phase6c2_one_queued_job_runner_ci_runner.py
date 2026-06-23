@@ -1,4 +1,4 @@
-"""Bounded CI runner for the Phase 6-C2 one queued-job integration suite."""
+"""Bounded CI runner for canonical claim-reread C2 integration coverage."""
 from __future__ import annotations
 
 import os
