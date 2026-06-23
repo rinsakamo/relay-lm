@@ -110,18 +110,19 @@ def main() -> None:
     _require_all(
         pipeline_plan,
         (
-            "B3 queue lifecycle helpers: complete as direct helper",
+            "B3 queue lifecycle helpers: complete",
             "Phase 6-B3 queue lifecycle: complete",
-            "The next RelayLM Core boundary is Phase 6-C worker execution",
+            "Integration Milestone I1-B request-runtime deferred enqueue and protected source capture: complete",
+            "The next RelayLM Core boundary is C1-2",
         ),
         label="pipeline-plan alignment",
     )
     _require_all(
         project_status,
         (
-            "Asynchronous RelaySLP orchestration: queue lifecycle helpers complete through Phase 6-B3",
+            "Asynchronous RelaySLP orchestration: I1-B runtime enqueue complete; queue lifecycle complete through B3; C1-0/C1-1/C1-3 complete",
             "Phase 6-B3 fenced queue state transitions",
-            "Phase 6-C worker execution",
+            "C1-2 one-already-claimed-job worker execution is not yet on `main`",
         ),
         label="project-status alignment",
     )
