@@ -1,0 +1,38 @@
+name: Phase 6-C1 durable source stage diagnostic
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/_relaymem_slp_protected_source_*.py"
+      - "relaylm/relaymem_slp_protected_source_store.py"
+      - "relaylm/relaymem_slp_durable_runtime_enqueue.py"
+      - "relaylm/relaymem_slp_primary_worker_source_adapter.py"
+      - "relaylm/relaymem_slp_runtime_finalization.py"
+      - "scripts/_relaylm_phase6c1_durable_source_support.py"
+      - "scripts/relaylm_phase6c1_durable_source_*.py"
+      - ".github/workflows/phase6c1-durable-source-stage-diagnostic.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install RelayLM runtime dependencies
+        run: python -m pip install -e .
+      - name: Run bounded stage diagnostic
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_source_diagnostic.py
+      - name: Upload content-free stage diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6c1-durable-source-stage
+          path: phase6c1-durable-source-stage.txt
+          if-no-files-found: error
+          retention-days: 1
