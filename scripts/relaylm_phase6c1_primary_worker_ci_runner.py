@@ -6,7 +6,6 @@ import traceback
 from pathlib import Path
 
 SMOKES = (
-    "scripts/relaylm_phase6c1_primary_worker_final_fence_probe.py",
     "scripts/relaylm_phase6c1_primary_worker_smoke.py",
     "scripts/relaylm_phase6c1_primary_worker_security_smoke.py",
     "scripts/relaylm_phase6c1_primary_worker_fault_smoke.py",

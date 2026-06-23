@@ -1,50 +1,92 @@
-name: Phase 6-C1 worker snapshot patch
+name: Phase 6-C1 one-claimed Primary worker smoke
 
 on:
   pull_request:
     paths:
+      - "relaylm/relaymem_slp_primary_worker.py"
+      - "relaylm/_relaymem_slp_primary_worker_*.py"
+      - "relaylm/relaymem_primary_pipeline.py"
+      - "relaylm/_relaymem_primary_pipeline_impl.py"
+      - "relaylm/relaymem_slp_queue_state.py"
+      - "relaylm/relaymem_slp_primary_worker_source.py"
+      - "relaylm/relaymem_slp_primary_worker_outcome.py"
+      - "scripts/relaylm_phase6c1_primary_worker_*.py"
+      - "scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py"
+      - "docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md"
+      - ".github/workflows/phase6c1-one-claimed-primary-worker-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/relaymem_slp_primary_worker.py"
+      - "relaylm/_relaymem_slp_primary_worker_*.py"
+      - "relaylm/relaymem_primary_pipeline.py"
+      - "relaylm/_relaymem_primary_pipeline_impl.py"
+      - "relaylm/relaymem_slp_queue_state.py"
+      - "relaylm/relaymem_slp_primary_worker_source.py"
+      - "relaylm/relaymem_slp_primary_worker_outcome.py"
+      - "scripts/relaylm_phase6c1_primary_worker_*.py"
+      - "scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py"
+      - "docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md"
       - ".github/workflows/phase6c1-one-claimed-primary-worker-smoke.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  patch:
+  smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          ref: phase6c1-one-claimed-primary-worker
-          fetch-depth: 1
-      - name: Patch exact M3e idempotent snapshot
-        shell: bash
+          python-version: "3.12"
+      - name: Compile worker boundary and smokes
+        run: >-
+          python -m compileall -q
+          relaylm/relaymem_slp_primary_worker.py
+          relaylm/_relaymem_slp_primary_worker_types.py
+          relaylm/_relaymem_slp_primary_worker_fence.py
+          relaylm/_relaymem_slp_primary_worker_outcome_adapter.py
+          relaylm/_relaymem_slp_primary_worker_validate.py
+          relaylm/_relaymem_slp_primary_worker_execute.py
+          relaylm/_relaymem_slp_primary_worker_view.py
+          relaylm/relaymem_primary_pipeline.py
+          scripts/relaylm_phase6c1_primary_worker_test_support.py
+          scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+          scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py
+          scripts/relaylm_phase6c1_primary_worker_smoke.py
+          scripts/relaylm_phase6c1_primary_worker_security_smoke.py
+          scripts/relaylm_phase6c1_primary_worker_fault_smoke.py
+      - name: Run compose checkpoint seam smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py
+      - name: Run one-claimed worker smokes
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+      - name: Upload sanitized worker diagnostic
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6c1-primary-worker-diagnostic
+          path: phase6c1-primary-worker-diagnostic.txt
+          if-no-files-found: ignore
+          retention-days: 1
+      - name: Run B3 queue and C1 source smokes
         run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("relaylm/relaymem_slp_primary_worker.py")
-          text = path.read_text(encoding="utf-8")
-          old = '            page_applied=value["page_applied"],\n'
-          new = '''            page_applied=(
-                value["page_applied"]
-                or (
-                    value["status"] == "already_applied"
-                    and value["idempotent_noop"] is True
-                )
-            ),
-'''
-          if text.count(old) != 1:
-              raise SystemExit("worker snapshot patch target mismatch")
-          path.write_text(text.replace(old, new), encoding="utf-8")
-          PY
-          python -m py_compile relaylm/relaymem_slp_primary_worker.py
-          git diff --check
-      - name: Commit worker snapshot patch
-        shell: bash
+          PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6c1_primary_worker_source_smoke.py
+      - name: Run classifier and fault fixture smokes
         run: |
-          set -euo pipefail
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add relaylm/relaymem_slp_primary_worker.py
-          git commit -m "fix: normalize idempotent M3e worker outcome snapshot"
-          git push origin HEAD:phase6c1-one-claimed-primary-worker
+          PYTHONPATH=. python scripts/relaylm_phase6c1_primary_worker_outcome_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6c1_fault_injection_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6c1_fault_race_smoke.py
+      - name: Run RelayMEM compose and persistence smokes
+        run: |
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_apply_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
+      - name: Run Phase 6-C1 contract and docs checks
+        run: |
+          PYTHONPATH=. python scripts/relaylm_phase6c1_worker_contract_smoke.py
+          PYTHONPATH=. python scripts/relaylm_docs_link_check.py
