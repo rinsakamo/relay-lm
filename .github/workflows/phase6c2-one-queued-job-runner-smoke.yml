@@ -58,7 +58,7 @@ jobs:
         run: python -m pip install -e .
       - name: Compile Phase 6-C2 and repository Python
         run: python -m compileall -q relaylm scripts
-      - name: Run Phase 6-C2 functional and security suite
+      - name: Run Phase 6-C2 committed-claim functional and security suite
         run: >-
           PYTHONPATH=.:scripts
           python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
