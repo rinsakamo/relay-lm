@@ -31,6 +31,8 @@ export function buildChatCompletionsBody(snapshot: ConversationRequestSnapshot):
   ) {
     throw new HomeConversationError("invalid_request");
   }
+
+  let transcriptChars = 0;
   const messages = snapshot.messages.map((message) => {
     if (
       (message.role !== "user" && message.role !== "assistant") ||
@@ -39,8 +41,24 @@ export function buildChatCompletionsBody(snapshot: ConversationRequestSnapshot):
     ) {
       throw new HomeConversationError("invalid_request");
     }
+    const messageLimit =
+      message.role === "user"
+        ? HOME_CONVERSATION_BOUNDS.maxUserMessageChars
+        : HOME_CONVERSATION_BOUNDS.maxResponseChars;
+    if (message.content.length > messageLimit) {
+      throw new HomeConversationError("invalid_request");
+    }
+    transcriptChars += message.content.length;
+    if (transcriptChars > HOME_CONVERSATION_BOUNDS.maxTranscriptChars) {
+      throw new HomeConversationError("invalid_request");
+    }
     return { role: message.role, content: message.content };
   });
+
+  const lastMessage = messages[messages.length - 1];
+  if (!lastMessage || lastMessage.role !== "user" || lastMessage.content.trim().length === 0) {
+    throw new HomeConversationError("invalid_request");
+  }
   return { model: snapshot.routeModel, messages, stream: snapshot.stream };
 }
 
