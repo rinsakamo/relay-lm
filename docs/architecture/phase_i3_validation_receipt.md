@@ -141,3 +141,27 @@ The receipt intentionally contains no prompt, transcript, path, digest, token, e
 ```json
 {"codes": ["reconciliation_required", "store_unavailable"]}
 ```
+
+## M3e recovery diagnosis
+
+```json
+{
+  "m3e": [
+    {
+      "blocked_reasons": [],
+      "durability_confirmed": true,
+      "status": "applied"
+    },
+    {
+      "blocked_reasons": [],
+      "durability_confirmed": true,
+      "status": "applied"
+    },
+    {
+      "blocked_reasons": [],
+      "durability_confirmed": false,
+      "status": "already_applied"
+    }
+  ]
+}
+```
