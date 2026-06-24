@@ -37,7 +37,11 @@ def form_primary_memory(
     title: str,
     summary: str,
 ) -> str:
-    prepare_store(store_root)
+    index = store_root / "memory" / "mem" / "index.md"
+    log = store_root / "memory" / "mem" / "log.md"
+    if not index.exists() and not log.exists():
+        prepare_store(store_root)
+    require(index.is_file() and log.is_file(), "canonical_control_state_missing")
     lineage = build_relaymem_primary_source_lineage(
         source_event_kind="manual_import",
         source_event_id=f"phase-i3-{candidate_id}",
