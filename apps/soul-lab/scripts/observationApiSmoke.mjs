@@ -179,4 +179,12 @@ assert.match(componentSource, /Source: RelayLM runtime/);
 assert.match(componentSource, /Local preview data/);
 assert.doesNotMatch(componentSource, /dangerouslySetInnerHTML/);
 
+const rootAppSource = await fs.readFile(
+  new URL("../src/app/RootApp.tsx", import.meta.url),
+  "utf8",
+);
+assert.match(rootAppSource, /loadLabManagementProjections/);
+assert.match(rootAppSource, /runtimeCharacters/);
+assert.match(rootAppSource, /characters\.map/);
+
 console.log("SOUL Lab observation browser schema smoke passed");

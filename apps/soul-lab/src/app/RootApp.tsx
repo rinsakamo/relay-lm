@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
-import type { LabRoute, Language, Theme } from "../domain/lab";
+import type { CharacterSummary, LabRoute, Language, Theme } from "../domain/lab";
 import { AdoptionPage } from "../features/adoption/AdoptionPage";
 import { CommunicationPage } from "../features/communication/CommunicationPage";
 import { ConnectedLabObservationPage } from "../features/lab/ConnectedLabObservationPage";
 import { PodPage } from "../features/pod/PodPage";
 import { ConnectedSettingsPage } from "../features/settings/ConnectedSettingsPage";
+import {
+  loadLabManagementProjections,
+  type LabCharacterProjection,
+} from "../features/settings/managementApi";
 import { translate, type MessageKey } from "../locales/messages";
 import { mockCharacters } from "../mocks/lab";
 import { App } from "./App";
@@ -37,6 +41,25 @@ function hashRoute(): LabRoute {
   return isLabRoute(value) ? value : "home";
 }
 
+function runtimeCharacterSummary(character: LabCharacterProjection): CharacterSummary {
+  const initials = Array.from(character.character_id)
+    .filter((value) => /[A-Za-z0-9]/.test(value))
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "RL";
+  return {
+    characterId: character.character_id,
+    displayName: character.character_id,
+    initials,
+    status: character.source_complete ? "online" : "degraded",
+    sceneName: character.modes[0] ?? "managed",
+    soulVersion: character.soul_configured ? "configured" : "unconfigured",
+    stabilityLabel: character.source_complete ? "Configured" : "Incomplete",
+    interventionState: "inactive",
+    lastActiveSeconds: 0,
+  };
+}
+
 export function RootApp() {
   const firstCharacter = mockCharacters[0];
   if (!firstCharacter) {
@@ -59,13 +82,40 @@ export function RootApp() {
       : firstCharacter.characterId;
   });
   const [navigationLock, setNavigationLock] = useState<LabRoute | null>(null);
+  const [runtimeCharacters, setRuntimeCharacters] = useState<CharacterSummary[] | null>(null);
 
+  const characters = useMemo(
+    () => runtimeCharacters && runtimeCharacters.length > 0 ? runtimeCharacters : mockCharacters,
+    [runtimeCharacters],
+  );
   const activeCharacter = useMemo(
-    () => mockCharacters.find((character) => character.characterId === activeCharacterId) ?? firstCharacter,
-    [activeCharacterId, firstCharacter],
+    () => characters.find((character) => character.characterId === activeCharacterId) ?? characters[0] ?? firstCharacter,
+    [activeCharacterId, characters, firstCharacter],
   );
   const interactionLocked = navigationLock !== null;
   const adoptionRoute = route === "adoption";
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadLabManagementProjections(controller.signal)
+      .then((bundle) => {
+        if (controller.signal.aborted) return;
+        const projected = [...bundle.characters.characters]
+          .sort((left, right) => left.character_id.localeCompare(right.character_id))
+          .map(runtimeCharacterSummary);
+        if (projected.length > 0) setRuntimeCharacters(projected);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setRuntimeCharacters(null);
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (characters.some((character) => character.characterId === activeCharacterId)) return;
+    const nextCharacter = characters[0];
+    if (nextCharacter) setActiveCharacterId(nextCharacter.characterId);
+  }, [activeCharacterId, characters]);
 
   useEffect(() => {
     const syncRoute = () => {
@@ -177,7 +227,9 @@ export function RootApp() {
           <span className="mock-pill">
             {route === "observation"
               ? "REAL / EXPLICIT PREVIEW"
-              : translate(language, "app.mockBadge")}
+              : runtimeCharacters
+                ? "RUNTIME CHARACTERS"
+                : translate(language, "app.mockBadge")}
           </span>
           <p>
             {navigationLock
@@ -206,7 +258,7 @@ export function RootApp() {
                 disabled={interactionLocked}
                 onChange={(event: ChangeEvent<HTMLSelectElement>) => selectCharacter(event.target.value)}
               >
-                {mockCharacters.map((character) => (
+                {characters.map((character) => (
                   <option value={character.characterId} key={character.characterId}>
                     {character.displayName}
                   </option>
@@ -275,7 +327,7 @@ export function RootApp() {
               key={activeCharacter.characterId}
               language={language}
               activeCharacter={activeCharacter}
-              characters={mockCharacters}
+              characters={characters}
               onSessionLockChange={handleCommunicationLockChange}
             />
           )}
@@ -292,7 +344,7 @@ export function RootApp() {
               language={language}
               theme={theme}
               activeCharacterId={activeCharacter.characterId}
-              characters={mockCharacters}
+              characters={characters}
             />
           )}
         </main>
