@@ -28,11 +28,12 @@ class _Capture:
         with self._lock:
             self.payloads.append(payload)
 
-    def last(self) -> dict[str, Any]:
+    def last_chat_payload(self) -> dict[str, Any]:
         with self._lock:
-            if not self.payloads:
-                raise AssertionError("no backend payload captured")
-            return self.payloads[-1]
+            for payload in reversed(self.payloads):
+                if isinstance(payload.get("messages"), list):
+                    return payload
+        raise AssertionError("no backend chat payload captured")
 
 
 class _BackendHandler(BaseHTTPRequestHandler):
@@ -70,13 +71,15 @@ def require(condition: bool, message: object) -> None:
         raise AssertionError(message)
 
 
-def _last_metadata(trace_path: Path) -> dict[str, Any]:
+def _last_backend_response_metadata(trace_path: Path) -> dict[str, Any]:
     lines = trace_path.read_text(encoding="utf-8").strip().splitlines()
     require(bool(lines), "trace is empty")
-    record = json.loads(lines[-1])
-    metadata = record.get("metadata")
-    require(isinstance(metadata, dict), record)
-    return metadata
+    for line in reversed(lines):
+        record = json.loads(line)
+        metadata = record.get("metadata") if isinstance(record, dict) else None
+        if isinstance(metadata, dict) and metadata.get("event") == "backend_response":
+            return metadata
+    raise AssertionError("backend_response trace record is missing")
 
 
 def _post_and_get_projection(
@@ -86,7 +89,7 @@ def _post_and_get_projection(
 ) -> dict[str, Any]:
     response = client.post("/v1/chat/completions", json=payload)
     require(response.status_code == 200, response.text)
-    metadata = _last_metadata(trace_path)
+    metadata = _last_backend_response_metadata(trace_path)
     require("relaymem_retrieval_artifact" not in metadata, metadata)
     projection = metadata.get("relaymem_primary_recall_projection")
     require(isinstance(projection, dict), metadata)
@@ -173,10 +176,11 @@ def main() -> int:
                 require(design["ctx_block_present"] is False, design)
                 require(design["estimated_tokens"] == 0, design)
                 require(design["injection_performed"] is False, design)
-                _assert_no_backend_artifact(capture.last())
+                backend_payload = capture.last_chat_payload()
+                _assert_no_backend_artifact(backend_payload)
                 require(
-                    capture.last().get("metadata") == design_payload["metadata"],
-                    capture.last(),
+                    backend_payload.get("metadata") == design_payload["metadata"],
+                    backend_payload,
                 )
                 print("ok design_talk emits content-free retrieval projection")
 
@@ -196,7 +200,7 @@ def main() -> int:
                 )
                 require(recovery["persistence_block"] is True, recovery)
                 require(recovery["selected_count"] == 0, recovery)
-                _assert_no_backend_artifact(capture.last())
+                _assert_no_backend_artifact(capture.last_chat_payload())
                 print("ok recovery projection stays current-context-only")
 
                 for scene_type in ("medical_or_safety", "formal_document"):
@@ -228,7 +232,7 @@ def main() -> int:
                 require(unknown["persistence_block"] is True, unknown)
                 print("ok unknown scene projection fails closed")
 
-                metadata = _last_metadata(trace_path)
+                metadata = _last_backend_response_metadata(trace_path)
                 projection_text = repr(
                     metadata.get("relaymem_primary_recall_projection")
                 )
