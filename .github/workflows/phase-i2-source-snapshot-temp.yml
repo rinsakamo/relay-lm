@@ -1,7 +1,7 @@
 name: Phase I-2 source snapshot temp
 
 on:
-  push:
+  pull_request:
     paths:
       - ".github/workflows/phase-i2-source-snapshot-temp.yml"
 
