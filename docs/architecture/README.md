@@ -55,7 +55,7 @@ Phase 6-A1/A2 and B0-B3 own deferred admission, finalized-turn handoff, durable 
 
 Phase I-1 completes ordinary next-turn Primary MEM recall with exact character/namespace isolation and RelayCTX injection. Phase I-2 adds a bounded read-only observation model, loopback-only APIs, strict browser validation, and real Lab Observation rendering without changing RelayMEM, RelaySLP, RelayRUN, or RelayCTX authority. Phase I-3 completes auditable revision-fenced Correct and later corrected retrieval. UI-B0 adds a browser-local text-first client for the existing RelayLM Chat Completions path without adding a new routing, memory, SOUL, or backend authority.
 
-The next planned work is documented in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md). O0, I1-G, automatic queue selection, supervised worker operation, broader memory governance, Secondary MEM, and RelaySOUL apply/rollback remain separate.
+The next planned work is documented in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md). O0, I1-G pre-enqueue background-finalizer durability, automatic queue selection, supervised worker operation, broader memory governance, Secondary MEM, and RelaySOUL apply/rollback remain separate.
 
 ## Completed Core streaming boundary
 
@@ -110,4 +110,4 @@ Historical and MVP documents do not override current owners. Implementation hand
 
 ## Operational alignment
 
-UI-B0 does not close I1-G, select queued work automatically, or create a worker service. O0 local one-job execution, I1-G pre-enqueue durability, queue scanning, scheduling, and supervised lifecycle remain separate roadmap slices.
+UI-B0 does not close I1-G pre-enqueue background-finalizer durability, select queued work automatically, or create a worker service. O0 local one-job execution, queue scanning, scheduling, and supervised lifecycle remain separate roadmap slices.
