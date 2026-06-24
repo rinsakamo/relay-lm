@@ -84,8 +84,8 @@ Supported class:
 
 Initial recommended backends:
 
-- vLLM for production-style local serving and future RelayKV alignment
-- SGLang for future runtime/cache research alignment
+- vLLM for production-style local serving and optional external cache integration
+- SGLang for production-style local serving and backend-runtime experiments
 - LM Studio, Ollama, llama.cpp server, OpenRouter, or hosted APIs as compatibility targets
 
 The proxy should initially depend only on normal chat completion semantics. Backend-specific optimizations should be added behind adapters.
