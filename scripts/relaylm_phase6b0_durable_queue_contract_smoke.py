@@ -1,4 +1,4 @@
-"""Validate durable queue ownership without freezing an obsolete next-phase label."""
+"""Validate durable queue ownership without freezing obsolete phase wording."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,6 +13,10 @@ def read(relative: str) -> str:
 def require(text: str, *anchors: str) -> None:
     missing = [anchor for anchor in anchors if anchor not in text]
     assert not missing, missing
+
+
+def require_any(text: str, *alternatives: str) -> None:
+    assert any(value in text for value in alternatives), alternatives
 
 
 def main() -> None:
@@ -42,10 +46,18 @@ def main() -> None:
     )
     require(
         plan,
-        "B2 atomic durable enqueue: complete",
-        "B3 queue lifecycle helpers: complete",
         "Phase 6-C1-0 through C1-5 are complete",
         "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
+    )
+    require_any(
+        plan,
+        "B0 through B3: complete",
+        "B2 atomic durable enqueue: complete",
+    )
+    require_any(
+        plan,
+        "B0 through B3: complete",
+        "B3 queue lifecycle helpers: complete",
     )
     require(
         status,
