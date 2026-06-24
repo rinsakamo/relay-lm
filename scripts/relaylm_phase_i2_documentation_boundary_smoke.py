@@ -31,8 +31,8 @@ def main() -> None:
     )
     require_text(
         "docs/architecture/pipeline_implementation_plan.md",
-        "I2 real latest-run and memory observation: complete",
-        "observation read model",
+        "### I1-E / Phase I-2: real SOUL Lab observation — complete",
+        "Observation evidence is read-only",
     )
     require_text(
         "docs/architecture/relaymem_mvp_implementation_plan.md",
@@ -46,9 +46,9 @@ def main() -> None:
     )
     require_text(
         "docs/architecture/soul_lab_ui_mvp.md",
-        "Source: RelayLM runtime",
-        "Source: Local preview data",
-        "AbortController",
+        "Phase I-2 provides real latest-run, formed/held/blocked, and used-memory evidence",
+        "Real and preview data are never combined automatically",
+        "AbortSignal",
     )
     require_text(
         "docs/architecture/soul_lab_runtime_mvp.md",
