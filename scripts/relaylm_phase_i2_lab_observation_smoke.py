@@ -152,8 +152,8 @@ def main() -> None:
                 require(wrong.json()["items"] == [], wrong.json())
                 require(MEMORY_CANARY not in wrong.text, wrong.text)
 
-                for method in (client.post, client.put, client.patch, client.delete):
-                    refused = method(f"{base}/memory/recent?{query}", json={})
+                for method in ("POST", "PUT", "PATCH", "DELETE"):
+                    refused = client.request(method, f"{base}/memory/recent?{query}", json={})
                     require(refused.status_code == 405, refused.text)
 
                 remote = TestClient(recall_app, client=("192.0.2.10", 50000))
