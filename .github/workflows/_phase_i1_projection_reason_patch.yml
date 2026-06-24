@@ -35,6 +35,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add relaylm/relaymem_primary_recall.py
+          git add relaylm/relaymem_primary_recall.py scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
           git commit -m "fix: preserve explicit disabled-store recall reason"
           git push origin HEAD:phase-i1-primary-mem-next-turn-recall
