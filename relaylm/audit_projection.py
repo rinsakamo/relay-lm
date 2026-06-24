@@ -1045,6 +1045,43 @@ _RUNTIME_INJECTION = _mapping(
     }
 )
 
+_PRIMARY_RECALL_LAYER_COUNTS = _exact_string_int_map(frozenset({"primary"}))
+_PRIMARY_RECALL_PROJECTION = _mapping(
+    {
+        "schema_version": _enum("relaymem.primary_recall_projection.v0"),
+        "diagnostics_only": _bool,
+        "content_free": _bool,
+        "content_included": _bool,
+        "memory_text_included": _bool,
+        "title_or_summary_included": _bool,
+        "character_value_included": _bool,
+        "namespace_value_included": _bool,
+        "runtime_identifier_values_included": _bool,
+        "path_values_included": _bool,
+        "digest_values_included": _bool,
+        "lineage_values_included": _bool,
+        "idempotency_values_included": _bool,
+        "backend_prompt_included": _bool,
+        "retrieval_attempted": _bool,
+        "scene_type": _bounded_token,
+        "retrieval_scope": _bounded_token,
+        "fallback_reason": _optional(_lower_token),
+        "persistence_block": _bool,
+        "ctx_block_present": _bool,
+        "selected_count": _non_negative_int,
+        "selected_layer_counts": _PRIMARY_RECALL_LAYER_COUNTS,
+        "character_scope_resolved": _bool,
+        "namespace_scope_valid": _bool,
+        "scope_matched": _bool,
+        "injection_candidate_present": _bool,
+        "injection_performed": _optional(_bool),
+        "estimated_chars": _non_negative_int,
+        "estimated_tokens": _non_negative_int,
+        "memory_used": _bool,
+        "blocked_reason_ids": _REASON_LIST,
+    }
+)
+
 TOP_LEVEL_PROJECTORS: dict[str, Validator] = {
     "event": _enum(
         "backend_error", "backend_response", "backend_stream_response",
@@ -1069,6 +1106,7 @@ TOP_LEVEL_PROJECTORS: dict[str, Validator] = {
     "relayrun_artifact": _RELAYRUN,
     "runtime_ctx_injection_result": _RUNTIME_INJECTION,
     "runtime_snippet_injection_result": _RUNTIME_INJECTION,
+    "relaymem_primary_recall_projection": _PRIMARY_RECALL_PROJECTION,
 }
 
 

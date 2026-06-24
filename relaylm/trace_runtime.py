@@ -225,6 +225,11 @@ def _supported_diagnostics_metadata(
     for key, value in supported:
         if value is not None:
             output[key] = value
+    relaymem_diagnostics = diagnostics.relaymem_retrieval_artifact
+    if isinstance(relaymem_diagnostics, dict):
+        projection = relaymem_diagnostics.get("primary_recall_projection")
+        if isinstance(projection, dict):
+            output["relaymem_primary_recall_projection"] = projection
     return output
 
 

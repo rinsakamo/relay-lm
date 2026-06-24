@@ -411,6 +411,27 @@ def create_app(config_path: str | None = None) -> FastAPI:
             relaymem_retrieval_artifact=relaymem_retrieval_artifact,
             compiled_payload=compiled_request.payload,
         )
+        relaymem_primary_recall_projection = relaymem_retrieval_artifact.get(
+            "primary_recall_projection"
+        )
+        if isinstance(relaymem_primary_recall_projection, dict):
+            relaymem_primary_recall_projection["injection_performed"] = (
+                runtime_snippet_injection_result.get("applied") is True
+                or runtime_ctx_injection_result.get("applied") is True
+            )
+            relaymem_primary_recall_projection["memory_used"] = (
+                relaymem_primary_recall_projection["injection_performed"]
+            )
+        relaymem_diagnostics_artifact = {
+            "artifact_version": "relaymem_retrieval_projection.v0",
+            "diagnostics_only": True,
+            "content_free": True,
+            "primary_recall_projection": deepcopy(
+                relaymem_primary_recall_projection
+            )
+            if isinstance(relaymem_primary_recall_projection, dict)
+            else None,
+        }
         forwarded_payload, token_budget_truncation = apply_token_budget_truncation_phase(
             config=config,
             pipeline_context=pipeline_context,
@@ -555,7 +576,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 relayemo_artifact=relayemo_artifact,
                 relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
                 relayref_artifact=relayref_artifact,
-                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+                relaymem_retrieval_artifact=relaymem_diagnostics_artifact,
                 runtime_ctx_injection_result=runtime_ctx_injection_result,
                 runtime_snippet_injection_result=runtime_snippet_injection_result,
             ),
