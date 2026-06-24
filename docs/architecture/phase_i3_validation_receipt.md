@@ -7,13 +7,14 @@ relaylm_owner: phase_i3_ci
 ---
 # Phase I-3 branch validation receipt
 
-Final branch verification executed on 2026-06-24 JST for Draft PR #379.
+Final branch verification executed on 2026-06-24 JST for PR #379.
 
 | Group | Result |
 |---|---|
 | Git diff whitespace check | success |
 | Python compileall | success |
 | Phase I-3 functional, security, bounds, corruption, path-safety, concurrency, and fault/recovery runner | success |
+| Wrong-character/namespace indistinguishability before and after correction | success |
 | M3e-M3h, Phase 6-C1/C2, I-1, I-2, and management regressions | success |
 | Documentation links and current-boundary smokes | success |
 | SOUL Lab typecheck, strict browser schema smokes, and production build | success |
