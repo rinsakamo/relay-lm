@@ -1,0 +1,41 @@
+name: Phase I-1 projection reason patch
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/_phase_i1_projection_reason_patch.py"
+      - ".github/workflows/_phase_i1_projection_reason_patch.yml"
+
+permissions:
+  contents: write
+
+env:
+  PYTHONPATH: .:scripts
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i1-primary-mem-next-turn-recall
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/_phase_i1_projection_reason_patch.py
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - run: python scripts/relaylm_relaymem_store_dry_run_smoke.py
+      - run: python scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
+      - run: python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
+      - name: Commit projection reason fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add relaylm/relaymem_primary_recall.py
+          git commit -m "fix: preserve explicit disabled-store recall reason"
+          git push origin HEAD:phase-i1-primary-mem-next-turn-recall
