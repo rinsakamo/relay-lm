@@ -177,3 +177,19 @@ Result: success
 ## Expanded I-3 runner
 
 Result: success
+
+## Whitespace diagnosis
+
+```text
+docs/PROJECT_STATUS.md:296
+docs/README.md:190
+docs/architecture/README.md:117
+docs/architecture/integration_i1_primary_mem_two_turn_recall.md:147
+docs/architecture/memory_lifecycle_design.md:490
+docs/architecture/phase_i2_real_soul_lab_observation.md:319
+docs/architecture/pipeline_implementation_plan.md:289
+docs/architecture/relaymem_mvp_implementation_plan.md:341
+docs/architecture/relaymem_slp_current_target.md:258
+docs/architecture/soul_lab_runtime_mvp.md:247
+docs/architecture/soul_lab_ui_mvp.md:411
+```
