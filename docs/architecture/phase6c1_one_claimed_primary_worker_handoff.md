@@ -21,6 +21,7 @@ relaylm_related_authority:
   - phase6c1_primary_worker_outcome_classifier.md
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
+  - phase6c2_one_queued_primary_worker_integration.md
 ---
 # Phase 6-C1-2 One-Claimed Primary MEM Worker Handoff
 
@@ -157,4 +158,4 @@ PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_sm
 
 C1-5 now provides restart-complete protected-source recovery for durably enqueued jobs.
 
-C1-2 still does not implement a queue scanner, automatic claim scheduler, daemon supervision, generalized worker pool, the thin one-job queued-record claim/rehydrate adapter, later-turn recall proof, or SOUL Lab observation. Those remain subsequent I1 integration work.
+C1-2 still does not implement a queue scanner, automatic claim scheduler, daemon supervision, generalized worker pool, later-turn recall proof, or SOUL Lab observation. C2 now owns the thin one-job queued-record claim/rehydrate adapter without changing C1-2. Next-turn recall and scope isolation are the next I1 integration boundary.

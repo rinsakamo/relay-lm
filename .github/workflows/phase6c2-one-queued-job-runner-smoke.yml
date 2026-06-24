@@ -1,0 +1,77 @@
+name: Phase 6-C2 one queued-job runner smoke
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/relaymem_slp_one_queued_job_runner.py"
+      - "relaylm/relaymem_slp_queue_*.py"
+      - "relaylm/relaymem_slp_protected_source_store.py"
+      - "relaylm/relaymem_slp_primary_worker_source_adapter.py"
+      - "relaylm/relaymem_slp_primary_worker_source_registry.py"
+      - "relaylm/relaymem_slp_primary_worker.py"
+      - "relaylm/_relaymem_slp_primary_worker_*.py"
+      - "relaylm/relaymem_primary_pipeline.py"
+      - "scripts/relaylm_phase6c2_one_queued_job_runner_*.py"
+      - "scripts/relaylm_phase6c1_*.py"
+      - "scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py"
+      - "scripts/relaylm_phase6b3_queue_state_contract_smoke.py"
+      - "scripts/relaylm_documentation_current_boundary_smoke.py"
+      - "docs/architecture/phase6c2_one_queued_primary_worker_integration.md"
+      - ".github/workflows/phase6c2-one-queued-job-runner-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/relaymem_slp_one_queued_job_runner.py"
+      - "relaylm/relaymem_slp_queue_*.py"
+      - "relaylm/relaymem_slp_protected_source_store.py"
+      - "relaylm/relaymem_slp_primary_worker_source_adapter.py"
+      - "relaylm/relaymem_slp_primary_worker_source_registry.py"
+      - "relaylm/relaymem_slp_primary_worker.py"
+      - "relaylm/_relaymem_slp_primary_worker_*.py"
+      - "relaylm/relaymem_primary_pipeline.py"
+      - "scripts/relaylm_phase6c2_one_queued_job_runner_*.py"
+      - "scripts/relaylm_phase6c1_*.py"
+      - "scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py"
+      - "scripts/relaylm_phase6b3_queue_state_contract_smoke.py"
+      - "scripts/relaylm_documentation_current_boundary_smoke.py"
+      - "docs/architecture/phase6c2_one_queued_primary_worker_integration.md"
+      - ".github/workflows/phase6c2-one-queued-job-runner-smoke.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase6c2-one-queued-job-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install RelayLM runtime dependencies
+        run: python -m pip install -e .
+      - name: Compile Phase 6-C2 and repository Python
+        run: python -m compileall -q relaylm scripts
+      - name: Run Phase 6-C2 committed-claim functional and security suite
+        run: >-
+          PYTHONPATH=.:scripts
+          python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+      - name: Run Phase 6 queue regressions
+        run: |
+          PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_contract_smoke.py
+      - name: Run Phase 6-C1 worker regressions
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
+      - name: Run documentation status boundary smoke
+        run: PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+      - name: Run documentation link check
+        run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py

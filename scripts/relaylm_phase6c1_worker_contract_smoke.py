@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6-C1 worker and restart boundaries."""
+"""Validate current Phase 6-C1 worker and Phase 6-C2 integration boundaries."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,7 +41,8 @@ def main() -> int:
         "C1-5",
         "durably enqueued jobs",
         "no automatic retry for corruption",
-        "one-job queued-record claim/rehydrate/execute adapter",
+        "C2 one-job queued-record claim/rehydrate/execute adapter",
+        "next-turn recall and scope isolation: next",
     )
 
     require(

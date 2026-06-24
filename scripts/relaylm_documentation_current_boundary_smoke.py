@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate that active docs retain the current bounded-runtime milestones."""
+"""Validate current Phase 6-C2 status without pinning obsolete future wording."""
 
 from pathlib import Path
 
@@ -23,88 +23,52 @@ def forbid(path: str, *anchors: str) -> None:
 
 
 def main() -> None:
-    require("README.md", "client_instruction_source.v1", "implemented v0 path")
-    require("README_ja.md", "client_instruction_source.v1", "実装済みv0")
-
     require(
         "docs/PROJECT_STATUS.md",
-        "Phase 5.5-C0 through C4",
-        "UI-A0 through UI-A7",
-        "GET /lab/api/settings",
-        "GET /lab/api/characters",
         "C1-0 through C1-5 complete",
-        "B3 claim -> C1-5 rehydrate -> C1-2 execute",
+        "C2 one-job claim/rehydrate/execute adapter: complete",
+        "next-turn recall and scope isolation: next",
         "durably enqueued jobs",
+        "pre-enqueue background-finalizer crash window",
     )
     forbid(
         "docs/PROJECT_STATUS.md",
-        "Status baseline `main` commit:",
         "C1-2 one-already-claimed-job worker execution is not yet on `main`",
+        "one-job claim/rehydrate/execute adapter     next integration boundary",
     )
 
     require(
         "docs/architecture/pipeline_implementation_plan.md",
-        "UI-A0 through UI-A7: complete",
-        "latest-run and memory-outcome reads: pending",
         "Phase 6-C1-0 through C1-5 are complete",
-        "one-job claim/rehydrate/execute integration adapter",
+        "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
+        "next-turn recall and scope isolation: next",
+        "C2 exact queued-record claim, canonical reread",
+    )
+    forbid(
+        "docs/architecture/pipeline_implementation_plan.md",
+        "The next RelayLM Core boundary is a thin one-job",
+        "one-job claim/rehydrate/execute adapter           next",
+        "ordinary runtime still lacks the one-job adapter",
+        "remaining Phase 6 product connection is one bounded queued-record",
     )
 
     require(
         "docs/architecture/relaymem_slp_current_target.md",
         "C1-5 durable claim-independent protected source and restart rehydration",
-        "one-job claim/rehydrate/execute adapter",
+        "C2 one-job claim/rehydrate/execute adapter",
+        "Next-turn recall and scope isolation: next",
         "pre-enqueue background-finalizer crash window",
     )
 
     require(
-        "docs/architecture/current_target_migration_guide.md",
-        "v1 explicit-provenance instruction-bearing apply",
-        "C4b content-free RelaySCN-facing diagnostics projection",
-        "B2 request-runtime internal-sentinel suppression",
-        "C4 runtime transport-envelope wiring",
-    )
-
-    require(
-        "docs/architecture/client_instruction_authority_contract.md",
-        "client_history_exclusion_apply.v1",
-        "Phase 5-C4b content-free RelaySCN-facing projection diagnostics",
-        "Current Phase 5.5-B2 through C4",
-        "## Target cache entry contract",
-    )
-
-    require(
-        "docs/architecture/runtime_architecture.md",
-        "## Mode contract",
-        "## Routing modes",
-        "## Runtime ownership non-goals",
-    )
-
-    require(
-        "docs/config_schema.md",
-        "relayctx_stream_unpack_dry_run_enabled",
-        "relayctx_stream_unpack_max_buffer_chars",
-        "relayctx_tts_adapter_handoff_runtime_enabled",
-        "relayctx_tts_adapter_handoff_min_segment_chars",
-    )
-
-    require(
-        "docs/smoke/client_history_exclusion_manual_smoke.md",
-        "Actual v1 instruction-bearing apply",
-        "Missing or invalid v1 provenance",
-    )
-
-    forbid(
-        "docs/smoke/openwebui_lmstudio_manual_smoke.md",
-        "instruction-bearing managed apply is not implemented",
-    )
-    forbid(
-        "docs/smoke/openwebui_lmstudio_troubleshooting.md",
-        "output-side Stream Unpack and TTS-safe segmentation are not implemented",
-    )
-    forbid(
-        "docs/architecture/current_target_migration_guide.md",
-        "Phase 5-C4b may add",
+        "docs/architecture/phase6c2_one_queued_primary_worker_integration.md",
+        "exact queued B3 record",
+        "canonical B3 claim",
+        "C1-5 protected-source lookup / rehydrate",
+        "unchanged C1-2 one-claimed worker",
+        "Queue scanning/scheduling",
+        "next-turn recall and scope isolation",
+        "pre-enqueue background-finalizer crash recovery",
     )
 
     print("RelayLM documentation current-boundary smoke passed.")

@@ -21,6 +21,7 @@ relaylm_related_authority:
   - phase6c1_primary_mem_worker_contract.md
   - phase6c1_one_claimed_primary_worker_handoff.md
   - phase6c1_integrated_worker_fault_smoke_handoff.md
+  - phase6c2_one_queued_primary_worker_integration.md
 ---
 # Phase 6-C1-5 Durable Protected Source Persistence
 
@@ -165,4 +166,4 @@ Dedicated smoke covers:
 
 ## Accurate completion boundary
 
-> Phase 6-C1 is restart-complete for protected worker-source recovery of durably enqueued jobs. The pre-enqueue background-finalizer window, one-job queue-to-worker adapter, next-turn recall, and SOUL Lab observation remain unimplemented.
+> Phase 6-C1 is restart-complete for protected worker-source recovery of durably enqueued jobs. The pre-enqueue background-finalizer window, next-turn recall and scope isolation, and SOUL Lab observation remain unimplemented; the C2 one-job queue-to-worker adapter is now complete.

@@ -26,6 +26,7 @@ relaylm_related_authority:
   - phase6c1_primary_worker_outcome_classifier.md
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
+  - phase6c2_one_queued_primary_worker_integration.md
   - relaymem_mvp_implementation_plan.md
   - pipeline_implementation_plan.md
   - ../PROJECT_STATUS.md
@@ -49,7 +50,7 @@ M3g gated index-before-log reconciliation apply
 M3h read-only receipt/store recovery audit
 ```
 
-The Phase 6 integration boundary is implemented through C1-5:
+The Phase 6 integration boundary is implemented through C1-5 and C2:
 
 ```text
 C1-0 exact current-claim protected source
@@ -58,9 +59,10 @@ C1-2 lease-fenced one-already-claimed worker
 C1-3 pure outcome classification
 C1-4 integrated fault/crash convergence
 C1-5 durable claim-independent protected source and restart rehydration
+C2 one-job claim/rehydrate/execute adapter
 ```
 
-C1-2 executes only one already-claimed canonical B3 job. It does not scan or select queued work. C1-5 persists protected content separately from the content-free queue and creates a fresh C1-0 source/scope for each current claim.
+C1-2 executes only one already-claimed canonical B3 job. It does not scan or select queued work. C1-5 persists protected content separately from the content-free queue and creates a fresh C1-0 source/scope for each current claim. C2 accepts one caller-selected exact queued record and connects canonical B3 claim, C1-5 preparation, and unchanged C1-2 execution.
 
 ## Compatibility status anchors
 
@@ -87,7 +89,6 @@ A claim resolves the capture from the hot cache or durable artifact, validates i
 
 The current runtime still lacks:
 
-- a bounded ordinary-runtime adapter that accepts one exact queued record, performs B3 claim, rehydrates through C1-5, and invokes C1-2,
 - queue scanning, daemon supervision, generalized worker pools, and retry scheduling,
 - guaranteed enqueue when the process exits after visible response delivery but before the Starlette background finalizer publishes the source/queue pair,
 - proof that newly formed memory is selected and used in a later turn,
@@ -142,7 +143,7 @@ finalized ordinary turn
   -> I1-B request-runtime A1/A2/B1/B2              complete
   -> C1-5 durable protected source                  complete
   -> B3 queue claim/lease/retry lifecycle           helper complete
-  -> one-job claim/rehydrate/execute adapter         next
+  -> C2 one-job claim/rehydrate/execute adapter      complete
   -> C1-0 exact protected source                    complete
   -> C1-2 one-claimed worker                        complete
   -> C1-1 M3a-M3h compose                           complete
@@ -155,16 +156,14 @@ finalized ordinary turn
   -> response uses formed memory
 ```
 
-The sequence is:
+The sequence is now:
 
-1. add the bounded one-job claim/rehydrate/execute adapter,
-2. prove ordinary runtime enqueue -> claim -> rehydrate -> worker -> B3 transition,
-3. validate later-turn recall and character/namespace isolation,
-4. expose real latest-run and memory outcomes through server-owned SOUL Lab APIs,
-5. add one auditable Correct operation that changes later retrieval,
-6. resolve or formally bound the separate pre-enqueue background-finalizer crash window.
+1. validate later-turn recall and character/namespace isolation,
+2. expose real latest-run and memory outcomes through server-owned SOUL Lab APIs,
+3. add one auditable Correct operation that changes later retrieval,
+4. resolve or formally bound the separate pre-enqueue background-finalizer crash window.
 
-I1-B, B3, and C1-0 through C1-5 are complete prerequisites. The Primary MEM product loop remains integration pending.
+I1-B, B3, C1-0 through C1-5, and C2 are complete prerequisites. Next-turn recall and scope isolation: next; the Primary MEM product loop remains integration pending.
 
 ## Target after the active migration
 
@@ -194,6 +193,6 @@ Every migration step preserves:
 
 ## Completion interpretation
 
-M3a-M3h completion means the Primary MEM primitives exist. C1-1 fixes their exact order. C1-2 executes one active claim. C1-3 classifies exact outcomes. C1-4 verifies integrated convergence. C1-5 makes protected-source recovery restart-complete for durably enqueued jobs.
+M3a-M3h completion means the Primary MEM primitives exist. C1-1 fixes their exact order. C1-2 executes one active claim. C1-3 classifies exact outcomes. C1-4 verifies integrated convergence. C1-5 makes protected-source recovery restart-complete for durably enqueued jobs. C2 connects one exact queued record to that worker.
 
-None of these alone means the memory feature is end to end. The active migration is complete only when ordinary queued work reaches C1-2 through the bounded adapter and a later ordinary turn retrieves and uses the resulting memory within the correct scope.
+These boundaries still do not make the memory feature end to end. The active migration completes only when a later ordinary turn retrieves and uses the resulting memory within the correct character/namespace scope.

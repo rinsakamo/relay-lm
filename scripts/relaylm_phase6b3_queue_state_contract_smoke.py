@@ -1,4 +1,4 @@
-"""Check the B3 document and current integration sequence."""
+"""Check the B3 document and current bounded integration sequence."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,17 +23,18 @@ def main() -> None:
     require(
         read("docs/architecture/relaymem_slp_current_target.md"),
         "Phase 6-B3 performs default-off, dry-run-first",
-        "one-job claim/rehydrate/execute adapter",
+        "C2 one-job claim/rehydrate/execute adapter",
     )
     require(
         read("docs/architecture/pipeline_implementation_plan.md"),
         "B3 queue lifecycle helpers: complete",
         "Phase 6-C1-0 through C1-5 are complete",
+        "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
     )
     require(
         read("docs/PROJECT_STATUS.md"),
         "B3 fenced claim, renew, retry release, stale recovery, and terminal commit",
-        "B3 claim -> C1-5 rehydrate -> C1-2 execute",
+        "C2 one-job claim/rehydrate/execute adapter: complete",
     )
     require(read("relaylm/relaymem_slp_queue_state.py"), "relaymem.slp_queue_transition_request.v0")
     print("Phase 6-B3 queue state contract smoke: ok")

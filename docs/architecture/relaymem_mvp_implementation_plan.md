@@ -25,6 +25,7 @@ relaylm_related_authority:
   - phase6c1_one_claimed_primary_worker_handoff.md
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
+  - phase6c2_one_queued_primary_worker_integration.md
   - relaymem_m3a_primary_formation_handoff.md
   - relaymem_m3d_primary_writer_handoff.md
   - relaymem_m3e_atomic_primary_page_writer.md
@@ -39,7 +40,7 @@ relaylm_related_authority:
 
 This document defines the RelayMEM MVP implementation track. Repository-wide sequencing remains owned by [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
 
-RelayMEM's immediate goal is no longer another persistence primitive. M3a-M3h, C1-1/C1-2 execution, C1-4 fault convergence, and C1-5 protected-source restart recovery now exist. The next goal is to connect one ordinary queued job to that worker and prove later-turn recall.
+RelayMEM's immediate goal is no longer another persistence primitive. M3a-M3h, C1-1/C1-2 execution, C1-4 fault convergence, C1-5 protected-source restart recovery, and the C2 one-job adapter now exist. The next goal is to prove later-turn recall with character/namespace isolation.
 
 ## Core lifecycle
 
@@ -78,7 +79,8 @@ MEM-M3 Primary MEM path:
   M3g index/log reconciliation apply: complete
   M3h read-only recovery audit: complete
   M3i-a worker contract/fault/restart integration: complete through C1-5
-  M3i-b one-job runtime adapter and next-turn recall: next
+  M3i-b one-job runtime adapter: complete as Phase 6-C2
+  M3i-c next-turn recall and scope isolation: next
 
 MEM-M4 Secondary MEM consolidation: deferred until M3i-b
 MEM-M5 Lab-ready memory operations: planned after real observation begins
@@ -187,7 +189,7 @@ Completed integration includes:
 
 These boundaries do not scan or schedule the queue and do not prove later-turn recall.
 
-## MEM-M3i-b: one-job runtime integration and recall — next
+## MEM-M3i-b: one-job runtime integration — complete; recall is next
 
 ### Goal
 
@@ -209,10 +211,8 @@ finalized ordinary turn
 
 ### Remaining scope
 
-M3i-b must:
+C2 completed the one-job portion of M3i-b by adding the thin queued-record claim/rehydrate/execute adapter and reusing exact C1/M3 artifacts rather than public projections. The remaining recall scope must:
 
-- add the thin one-job queued-record claim/rehydrate/execute adapter,
-- reuse exact C1/M3 artifacts rather than public projections,
 - verify new memory is discoverable by M2,
 - prove correct character and namespace isolation,
 - verify backend context contains only bounded selected memory,
@@ -224,7 +224,7 @@ M3i-b must:
 
 1. submit a managed turn yielding one eligible governed experience,
 2. verify durable source publication and B2 enqueue,
-3. claim and execute one job through the new adapter,
+3. claim and execute one job through the C2 adapter,
 4. verify M3e page and M3g index/log state,
 5. confirm M3h and B3 terminal/retry outcome,
 6. submit a later turn requiring that memory,
@@ -234,7 +234,7 @@ M3i-b must:
 
 ### Completion rule
 
-M3 is not end-to-end complete until M3i-b passes. C1-0 through C1-5 prove the worker and protected-source restart boundary, not the product recall loop.
+The C2 one-job portion of M3i-b is complete, but M3 is not end-to-end complete until next-turn recall and scope isolation pass. C1-0 through C1-5 and C2 prove worker execution and protected-source restart boundaries, not the product recall loop.
 
 ## MEM-M4: Secondary MEM consolidation — deferred
 
@@ -292,4 +292,4 @@ All RelayMEM slices preserve:
 
 ## Sequencing rule
 
-Until M3i-b closes, prefer connecting existing producers and consumers over new persistence schemas, recovery layers, or Secondary MEM behavior. Additional recovery work requires concrete M3h evidence that the existing retry/manual/isolation boundary is insufficient.
+Until next-turn recall and scope isolation close M3i, prefer connecting existing producers and consumers over new persistence schemas, recovery layers, or Secondary MEM behavior. Additional recovery work requires concrete M3h evidence that the existing retry/manual/isolation boundary is insufficient.

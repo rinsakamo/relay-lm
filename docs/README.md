@@ -161,3 +161,5 @@ Placement rules:
 - schemas and contracts -> `docs/contracts/`
 - smoke and troubleshooting -> `docs/smoke/`
 - RelaySOUL governance -> `docs/relaysoul/`
+
+Current Phase 6 integration handoff: [Phase 6-C2 One Queued Primary Worker Integration](architecture/phase6c2_one_queued_primary_worker_integration.md). The next product boundary is next-turn recall with character/namespace isolation; queue scanning and daemon lifecycle remain out of scope.

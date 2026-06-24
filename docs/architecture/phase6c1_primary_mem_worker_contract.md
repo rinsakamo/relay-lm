@@ -27,6 +27,7 @@ relaylm_related_authority:
   - phase6c1_primary_worker_outcome_classifier.md
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
+  - phase6c2_one_queued_primary_worker_integration.md
   - relaymem_mvp_implementation_plan.md
   - pipeline_implementation_plan.md
   - ../PROJECT_STATUS.md
@@ -403,4 +404,4 @@ C1-4 crash/lease/lock/fault smoke               complete
 C1-5 restart-complete protected source recovery complete for durably enqueued jobs
 ```
 
-The next boundary is a thin one-job queued-record claim/rehydrate/execute adapter, followed by next-turn recall. I1 separately retains the pre-enqueue background-finalizer crash window.
+Phase 6-C2 one-job queued-record claim/rehydrate/execute adapter: complete. The next boundary is next-turn recall and scope isolation: next. I1 separately retains the pre-enqueue background-finalizer crash window.

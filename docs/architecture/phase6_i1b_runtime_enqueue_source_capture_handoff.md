@@ -18,6 +18,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - phase6c1_durable_protected_source_persistence.md
   - phase6c1_one_claimed_primary_worker_handoff.md
+  - phase6c2_one_queued_primary_worker_integration.md
   - phase6b2_relayslp_atomic_durable_enqueue.md
 ---
 # Phase 6 I1-B Runtime Enqueue and Protected Source Capture Handoff
@@ -183,8 +184,6 @@ PYTHONPATH=. python scripts/relaylm_docs_link_check.py
 
 ## Remaining I1 boundary
 
-I1-B, C1-2, C1-4, and C1-5 are implemented. The next bounded boundary is a one-job adapter that accepts one exact queued canonical record, performs B3 claim, rehydrates through C1-5, and invokes C1-2.
+I1-B, C1-2, C1-4, C1-5, and C2 are implemented. C2 accepts one exact queued canonical record, performs canonical B3 claim, rehydrates through C1-5, and invokes C1-2 without adding a scanner, daemon, generalized scheduler, or visible-response coupling.
 
-It must remain separate from a queue scanner, daemon, generalized scheduler, and visible response delivery.
-
-After that adapter, I1 still requires next-turn recall with character/namespace isolation, real SOUL Lab observation, one auditable Correct operation, and an explicit decision for the pre-enqueue background-finalizer crash window.
+The next bounded boundary is next-turn recall with character/namespace isolation. Real SOUL Lab observation, one auditable Correct operation, and an explicit decision for the pre-enqueue background-finalizer crash window remain later I1 work.
