@@ -1,7 +1,9 @@
 name: Phase I-2 correlated receipt update
 
 on:
-  pull_request:
+  push:
+    branches:
+      - phase-i2-real-soul-lab-observation
     paths:
       - ".github/workflows/phase-i2-correlated-receipt-temp.yml"
 
@@ -13,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -26,4 +26,4 @@ jobs:
           git config user.email actions@github.com
           git add relaylm/soul_lab_observation_store.py relaylm/soul_lab_observation_projection.py scripts/relaylm_phase_i2_lab_observation_security_smoke.py
           git diff --cached --quiet || git commit -m "fix: correlate latest run observation receipts exactly"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          git push origin HEAD:phase-i2-real-soul-lab-observation
