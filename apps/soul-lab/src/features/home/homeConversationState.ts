@@ -27,7 +27,7 @@ export function conversationSessionKey(
 
 export function createConversationSession(
   sourceMode: ConversationSourceMode,
-  sessionId = crypto.randomUUID(),
+  sessionId: string = crypto.randomUUID(),
 ): ConversationSession {
   return {
     sessionId,
@@ -42,7 +42,7 @@ export function createConversationSession(
 
 export function resetConversationSession(
   current: ConversationSession,
-  sessionId = crypto.randomUUID(),
+  sessionId: string = crypto.randomUUID(),
 ): ConversationSession {
   return {
     ...createConversationSession(current.sourceMode, sessionId),
