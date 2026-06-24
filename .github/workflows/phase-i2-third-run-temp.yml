@@ -1,0 +1,29 @@
+name: Phase I-2 third-run test update
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/phase-i2-third-run-temp.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/phase_i2_add_third_run_temp.py
+      - run: python -m compileall -q relaylm scripts
+      - name: Commit update
+        run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add scripts/relaylm_phase_i2_lab_observation_security_smoke.py
+          git diff --cached --quiet || git commit -m "test: cover bounded receipt selection across timezones"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
