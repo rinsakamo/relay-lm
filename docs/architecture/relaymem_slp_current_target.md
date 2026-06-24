@@ -29,6 +29,8 @@ relaylm_related_authority:
   - phase6c2_one_queued_primary_worker_integration.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i2_real_soul_lab_observation.md
+  - phase_i3_auditable_primary_mem_correct.md
+  - phase_i4_primary_mem_forget_hide_contract.md
   - relaymem_mvp_implementation_plan.md
   - pipeline_implementation_plan.md
   - ../PROJECT_STATUS.md
@@ -64,9 +66,9 @@ C1-5 durable claim-independent protected source and restart rehydration
 C2 one-job claim/rehydrate/execute adapter
 ```
 
-C1-2 executes only one already-claimed canonical B3 job. It does not scan or select queued work. C1-5 persists protected content separately from the content-free queue and creates a fresh C1-0 source/scope for each current claim. C2 accepts one caller-selected exact queued record and connects canonical B3 claim, C1-5 preparation, and unchanged C1-2 execution.
+C1-2 executes one already-claimed B3 job. C1-5 persists protected content separately from the content-free queue and creates a fresh C1-0 source/scope for each current claim. C2 accepts one caller-selected exact queued record and connects B3 claim, C1-5 preparation, and unchanged C1-2 execution.
 
-Phase I-1 completes the ordinary second-turn path:
+Phase I-1 completes ordinary next-turn retrieval:
 
 ```text
 validated character partition
@@ -75,84 +77,99 @@ validated character partition
   -> bounded selected-memory artifact
   -> existing RelayCTX injection
   -> backend-bound request
-  -> completed response generation
 ```
 
-Phase I-2 completes real read-only observation:
+Phase I-2 completes bounded real read-only observation. Phase I-3 completes auditable Correct and later retrieval of the corrected current revision.
+
+## Current compatibility anchors
+
+- B1 is the exact consumer of A2 and performs no queue I/O.
+- B2 performs gated atomic durable enqueue.
+- B3 owns queue metadata and fenced lifecycle only.
+- I1-B runs A1 -> A2 -> B1 -> B2 after ordinary response finalization and never claims/executes inline.
+- C1-5 fixes source-before-queue ordering for work that reaches publication.
+- I1 next-turn Primary MEM recall: complete.
+- Character and namespace isolation: complete.
+- I2 real SOUL Lab observation: complete.
+- I3 auditable Primary MEM Correct: complete.
+
+## Current Phase I-3 mutation boundary
+
+Correct currently provides:
+
+- exact character, namespace, logical memory, physical page, and revision validation,
+- read-only preflight and bounded semantic diff,
+- opaque short-lived token,
+- per-memory lock and pending-operation fence,
+- immutable successor page,
+- M3f/M3g convergence,
+- prepared/applied recovery and exact replay,
+- immutable correction receipt,
+- M2 current-revision resolution,
+- historical used-memory integrity.
+
+The current resolver is correction-specific. It does not understand a `hidden` lifecycle state.
+
+## Defined target: Phase I-4A Forget / Hide contract
+
+Phase I-4A defines but does not implement:
 
 ```text
-completed managed run and worker outcomes
-  -> bounded durable observation evidence where required
-  -> pure character/namespace-scoped projection
-  -> loopback-only Lab API
-  -> strict browser validation
-  -> server-owned Lab Observation UI
+Forget            user-facing explicit operation
+hidden            canonical current retrieval-ineligible lifecycle state
+Forget tombstone  immutable runtime-private audit artifact
 ```
 
-## Compatibility status anchors
-
-Phase 6-B1 is the exact consumer of the A2 runtime-private handoff and performs no queue I/O.
-
-Phase 6-B2 performs atomic durable enqueue behind explicit gates.
-
-Phase 6-B3 performs default-off, dry-run-first `claim`, `renew_lease`, `retry_release`, `stale_recovery`, and `commit_terminal`. It owns queue metadata only and never executes a worker.
-
-I1-B runs A1 -> A2 -> B1 -> B2 after ordinary managed non-stream/stream response finalization. It never claims or executes work inline.
-
-C1-5 fixes publication order:
+Persistence decision:
 
 ```text
-finalized-turn protected capture
-  -> durable protected-source commit
-  -> unchanged B2 content-free queue publication
-  -> optional process-local hot cache
+revision N active
+  -> immutable successor Primary page
+revision N+1 hidden
+  -> index/log and M2 exclusion convergence
+  -> Forget tombstone finalization
 ```
 
-A claim resolves the capture from the hot cache or durable artifact, validates identity/integrity, creates a fresh one-shot scope, and invokes the canonical C1-0 builder.
+Candidate A is authoritative: lifecycle advances with an immutable successor page and revision. A tombstone is audit/recovery evidence, not a second sidecar current-state authority.
 
-I1 next-turn Primary MEM recall: complete. Character and namespace isolation: complete.
+Target canonical resolver:
 
-I2 real SOUL Lab observation: complete. The observation surface is read-only and cannot become memory or queue authority.
+```text
+relaylm.mem.primary_current_state.v0
+lifecycle_state: active | hidden
+mutation_state: none | prepared | recovery_required | corrupt
+retrieval_eligible: true | false
+```
+
+Correct and Forget must share one per-memory lock namespace, pending-operation fence, operation identity lookup, and revision claim. At most one may consume a current revision.
+
+Prepared, recovery-required, corrupt, hidden, and prior physical revisions are fail-closed for ordinary M2 retrieval. No Forget-specific retriever is introduced.
 
 ## Current limitations
 
 The current runtime still lacks:
 
-- queue scanning, daemon supervision, generalized worker pools, and retry scheduling,
-- guaranteed enqueue when the process exits after visible response delivery but before the Starlette background finalizer publishes the source/queue pair,
+- queue scanning, retry scheduling, daemon supervision, and generalized worker pools,
+- guaranteed enqueue when the process exits after visible response delivery but before the Starlette background finalizer publishes source/queue,
+- the canonical lifecycle resolver defined by I-4A,
+- production Forget preflight/apply/history artifacts,
+- hidden-state M2 exclusion and historical lifecycle projection,
+- SOUL Lab Forget UI,
+- restore / unhide and physical purge,
+- Pin/Unpin, Merge/Supersession, Held Apply/Discard,
 - Secondary MEM consolidation,
-- auditable Correct and later forget/pin/merge/held-review mutations,
 - RelaySOUL mutation,
 - static Lab bundle serving and TTS/audio/avatar execution.
 
-C1-5 is restart-complete only for protected-source recovery of durably enqueued jobs. It does not claim to recover a turn that never reached durable source publication and B2 enqueue. This pre-enqueue background-finalizer crash window remains separate from Phase I-2 observation durability.
-
-A1/A2/B1/B2/B3 and C1 consume exact runtime-private artifacts. They must not reconstruct private evidence from public projection, frontend metadata, visible response text, generic trace, or lookalike dictionaries.
-
-B2 queue persistence and M3e/M3g memory persistence remain separate apply boundaries. B3 controls queue state only. M3h is read-only evidence and cannot authorize repair by itself. Phase I-2 receipts are also read-only evidence and cannot authorize repair or retrieval.
+C1-5 is restart-complete only for protected-source recovery of durably enqueued jobs. It does not recover a turn that never reached durable publication. I1-G pre-enqueue background-finalizer durability remains unresolved.
 
 ## Ownership boundary
 
-RelayMEM owns:
+RelayMEM owns memory meaning, source lineage, memory-write identity, deterministic page content, lifecycle/current-state resolution, page/index/log apply, recovery classification, and Secondary MEM consolidation meaning.
 
-- memory meaning and safety scope,
-- source lineage,
-- memory-write idempotency,
-- deterministic page content,
-- page/index/log apply semantics,
-- recovery classification,
-- Secondary MEM consolidation meaning.
+Phase 6 / RelayRUN owns dispatch admission, response-finalization handoff, durable queue lifecycle, claim/lease/retry/terminal control, worker invocation control, and restart/checkpoint integration.
 
-Phase 6 / RelayRUN owns:
-
-- dispatch admission and identity,
-- response-finalization handoff,
-- durable queue lifecycle,
-- claim/lease/retry/terminal control,
-- worker invocation control,
-- restart/checkpoint integration.
-
-RelayCTX owns backend-bound packing and injection. SOUL Lab observation records only bounded evidence of the already completed outcome. RelaySLP may read SOUL as a protected anchor and may later emit a separately governed proposal. It never directly mutates SOUL.
+RelayCTX owns backend-bound packing and injection. SOUL Lab provides bounded observation and explicit operations through server APIs. RelaySLP may read SOUL as a protected anchor and may emit proposal candidates, but never directly mutates SOUL.
 
 ## Idempotency boundary
 
@@ -163,11 +180,14 @@ Phase 6 dispatch idempotency
 RelayMEM memory-write idempotency
   prevents duplicate durable memory application
 
+Primary mutation operation idempotency
+  prevents duplicate Correct or Forget revisions and audit artifacts
+
 Lab observation receipt identity
-  prevents duplicate read-model evidence without changing either authority
+  prevents duplicate read-model evidence without changing authority
 ```
 
-A worker retry may be valid while a prior memory write is already exact. Dispatch keys, claim generation, lease token, memory-write keys, and observation receipt correlations remain distinct.
+These identities remain distinct. A worker retry, exact memory write, observation receipt, correction replay, and future Forget replay must not be conflated.
 
 ## Completed Primary MEM integration
 
@@ -177,81 +197,50 @@ finalized ordinary turn
   -> C1-5 durable protected source                  complete
   -> B3 queue claim/lease/retry lifecycle           complete helper boundary
   -> C2 one-job claim/rehydrate/execute adapter      complete
-  -> C1-0 exact protected source                    complete
-  -> C1-2 one-claimed worker                        complete
-  -> C1-1 M3a-M3h compose                           complete
-  -> C1-3 pure outcome classification               complete
-  -> C1-4 fault/crash convergence                   complete
+  -> C1-0/C1-2/C1-1/C1-3/C1-4 worker path          complete
   -> verified durable Primary MEM                   complete
   -> later RelayMEM retrieval                       complete as Phase I-1
   -> RelayCTX bounded injection                     complete as Phase I-1
-  -> response uses formed memory                    complete as Phase I-1
   -> real Lab observation                           complete as Phase I-2
+  -> audited correction and corrected retrieval      complete as Phase I-3
 ```
 
-## Phase I-2 observation boundary
+Phase I-4A does not add an implemented step to this path.
 
-The observation API exposes only bounded, exact, server-owned projections for:
+## Target migration sequence
 
-- latest completed managed run,
-- recently formed validated Primary memories,
-- held and blocked outcomes,
-- memories actually included in the latest backend-bound request.
+```text
+I-4A  exact lifecycle/persistence/concurrency/API/fault contract      defined target
+I-4B  common current-state resolver and shared Correct/Forget fence   unimplemented
+I-4C  hidden successor apply and prepared/tombstone artifacts         unimplemented
+I-4D  M3 convergence, M2 exclusion, historical lifecycle projection  unimplemented
+I-4E  loopback API and SOUL Lab Forget UI                             unimplemented
+I-4F  crash/race/security/fresh-conversation validation                unimplemented
+```
 
-The API requires explicit character and namespace scope. It reuses UI-A7's loopback configured-host and actual-peer checks, returns `Cache-Control: no-store`, and refuses mutation methods.
+I-4B may narrow-refactor the current correction resolver. It must preserve M2 relevance ownership and avoid a broad generic mutation framework.
 
-Existing durable Primary state is reused for formed memory. Minimal durable receipts are used only for worker outcome and used-memory evidence that otherwise would not survive restart. Receipts are not M1/M2 candidates, not protected source, not B3 records, and not repair instructions.
+## Historical evidence target
 
-## Active migration: Phase I-3 auditable Correct
+Past used-memory receipts remain immutable. A future projection may show:
 
-The next sequence is:
+```text
+injected_summary: historical backend-bound representation
+current_summary: null when current lifecycle is hidden
+current_lifecycle_state: hidden
+lifecycle_changed: true
+```
 
-1. accept one explicit Correct request for one validated observed Primary memory,
-2. validate exact character, namespace, current memory identity, page, index, and log state,
-3. build a bounded correction preflight,
-4. apply one atomic authoritative update while preserving prior representation and provenance,
-5. persist audit evidence distinct from observation receipts,
-6. verify a later M2 retrieval uses the corrected representation.
-
-Forget, pin/unpin, merge, held apply/discard, broader scheduler/service lifecycle, and RelaySOUL proposal handoff remain later.
+The past request is never rewritten to imply the memory was not used.
 
 ## Preserved invariants
 
-Every migration step preserves:
+Every migration step preserves visible-response independence, exact scope and lineage, protected content domains, bounded public projections, separate idempotency domains, fail-closed corruption handling, no browser filesystem/lifecycle authority, no mock mutation fallback, no direct RelaySOUL mutation, and no re-exposure of a prepared or committed hidden memory.
 
-- visible response delivery does not wait for deferred processing,
-- SLP or observation failure does not invalidate an already valid response,
-- default-off and dry-run-first rollout where applicable,
-- fail-closed namespace, lineage, policy, schema, queue, lease, source, and receipt validation,
-- protected content-bearing memory/SLP domains,
-- bounded explicit Lab inspection without raw prompt/transcript/source disclosure,
-- content-free generic public diagnostics,
-- autonomous ordinary memory only when RelayMEM gates pass,
-- held/blocked handling for sensitive, contradictory, destructive, cross-namespace, or SOUL-affecting changes,
-- separation between dispatch, memory-write, and observation idempotency,
-- terminal-state immutability and exact lease fencing,
-- no direct RelaySOUL mutation.
+Forget is not a physical deletion, secure erase, purge, restore/unhide, or legal-erasure feature.
 
 ## Completion interpretation
 
-M3a-M3h completion means the Primary MEM primitives exist. C1-1 fixes their exact order. C1-2 executes one active claim. C1-3 classifies exact outcomes. C1-4 verifies integrated convergence. C1-5 makes protected-source recovery restart-complete for durably enqueued jobs. C2 connects one exact queued record to that worker.
+M3a-M3h primitives, C1-0 through C1-5, C2, I-1 recall, I-2 observation, and I-3 Correct are implemented. I-4A is a defined target contract. Forget is not implemented until I-4B through I-4F provide producer, consumer, apply, retrieval exclusion, UI, and validation coverage.
 
-Phase I-1 completes the ordinary two-turn Primary MEM loop within the correct character/namespace scope. Phase I-2 completes bounded real observation of that loop. Phase I-3 auditable Correct is next.
-
-## Phase I-2 / I1-G status
-
-I1 next-turn Primary MEM recall: complete.
-Character and namespace isolation: complete.
-I2 real SOUL Lab observation: complete.
-I1-G pre-enqueue background-finalizer durability remains unresolved.
-
-<!-- phase-i3-auditable-primary-mem-correct -->
-## Phase I-3 auditable Primary MEM Correct — complete (2026-06-24)
-
-Phase I-3 completes the first real observe/correct/retrieve loop. A formed Primary MEM observed through Phase I-2 can be corrected through read-only preflight, bounded semantic diff, explicit short-lived-token apply, immutable successor-page publication through the existing M3e boundary, canonical M3f/M3g index/log convergence, and immutable audit receipt finalization. Existing M2 retrieval resolves only the corrected current revision and existing RelayCTX injection remains the sole prompt path.
-
-Character/namespace isolation, stable logical memory identity, no-clobber publication, exact operation idempotency, one-winner revision fencing, crash recovery, and historical used-memory integrity are preserved. Correction reason, audit receipt, paths, digests, lineage, queue/lease state, and prior full pages are not retrieval inputs or public prompt content.
-
-Authority and exact contracts: `docs/architecture/phase_i3_auditable_primary_mem_correct.md`.
-
-Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement forget, pin/unpin, merge, held apply/discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.
+I1-G pre-enqueue background-finalizer durability remains unresolved. UI-B0, O0, queue scanner / daemon operation, and supervised worker status are unchanged.
