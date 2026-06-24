@@ -36,7 +36,7 @@ export interface LabRecentMemoryItem {
   confidence_label: "not_recorded";
   scope_label: "character_namespace";
   formed_at: string | null;
-  pinned: boolean;
+  pinned: boolean | null;
   source_kind: string;
 }
 
@@ -233,7 +233,7 @@ function parseRecentItem(value: unknown): LabRecentMemoryItem | null {
     !isOpaqueId(value.memory_id) || value.layer !== "primary" || value.status !== "formed" ||
     !isSafeText(value.title, 160) || !isSafeText(value.bounded_summary, 512) ||
     value.confidence_label !== "not_recorded" || value.scope_label !== "character_namespace" ||
-    !isNullableString(value.formed_at) || typeof value.pinned !== "boolean" ||
+    !isNullableString(value.formed_at) || !(value.pinned === null || typeof value.pinned === "boolean") ||
     typeof value.source_kind !== "string"
   ) return null;
   return value as unknown as LabRecentMemoryItem;

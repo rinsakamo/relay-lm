@@ -54,7 +54,7 @@ function fixtures() {
           confidence_label: "not_recorded",
           scope_label: "character_namespace",
           formed_at: null,
-          pinned: false,
+          pinned: null,
           source_kind: "preference",
         },
       ],

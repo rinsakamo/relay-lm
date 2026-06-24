@@ -39,7 +39,7 @@ class LabRecentMemoryItem(_ExactModel):
     confidence_label: Literal["not_recorded"] = "not_recorded"
     scope_label: Literal["character_namespace"] = "character_namespace"
     formed_at: str | None = None
-    pinned: bool = False
+    pinned: bool | None = None
     source_kind: str
 
 
