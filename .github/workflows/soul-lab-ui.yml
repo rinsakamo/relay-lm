@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "apps/soul-lab/**"
+      - "docs/**"
+      - "scripts/phase_i2_merge_main_temp.py"
       - ".github/workflows/soul-lab-ui.yml"
   push:
     branches:
@@ -13,9 +15,34 @@ on:
       - ".github/workflows/soul-lab-ui.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
+  reconcile-main:
+    if: github.event_name == 'pull_request' && github.head_ref == 'phase-i2-real-soul-lab-observation'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i2-real-soul-lab-observation
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: git fetch origin main
+      - name: Merge latest main while preserving Phase I-2 resolutions
+        run: git merge --no-ff --no-edit -X ours origin/main
+      - run: python scripts/phase_i2_merge_main_temp.py
+      - run: python -m compileall -q relaylm scripts
+      - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+      - name: Commit and push reconciliation
+        run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add docs scripts/relaylm_phase_i2_documentation_boundary_smoke.py
+          git diff --cached --quiet || git commit -m "docs: preserve I1-G after Phase I2 integration"
+          git push origin HEAD:phase-i2-real-soul-lab-observation
+
   build:
     runs-on: ubuntu-latest
     defaults:
