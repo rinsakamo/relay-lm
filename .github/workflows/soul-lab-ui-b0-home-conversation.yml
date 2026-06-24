@@ -31,9 +31,24 @@ jobs:
         with:
           node-version: "22"
       - run: npm install --no-audit --no-fund
-      - run: npm run typecheck
-      - run: npm run smoke:home-conversation
+      - name: Run typecheck
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee typecheck.log
+      - name: Run Home conversation smoke
+        run: |
+          set -o pipefail
+          npm run smoke:home-conversation 2>&1 | tee home-conversation-smoke.log
       - run: npm run build
+      - name: Upload frontend validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-b0-frontend-validation-logs
+          path: |
+            apps/soul-lab/typecheck.log
+            apps/soul-lab/home-conversation-smoke.log
+          if-no-files-found: ignore
 
   regressions:
     runs-on: ubuntu-latest
@@ -45,9 +60,19 @@ jobs:
       - run: pip install -e .
       - run: python -m compileall -q relaylm scripts
       - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
-      - run: PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+      - name: Run documentation current-boundary smoke
+        run: |
+          set -o pipefail
+          PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py 2>&1 | tee documentation-current-boundary.log
       - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
       - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i2_lab_observation_ci_runner.py
       - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
       - run: PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_config_smoke.py
       - run: PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+      - name: Upload regression diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-b0-regression-diagnostics
+          path: documentation-current-boundary.log
+          if-no-files-found: ignore
