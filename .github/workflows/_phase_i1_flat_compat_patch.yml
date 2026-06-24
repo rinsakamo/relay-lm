@@ -1,0 +1,37 @@
+name: Phase I-1 flat-store compatibility patch
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/_phase_i1_flat_compat_patch.py"
+      - ".github/workflows/_phase_i1_flat_compat_patch.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i1-primary-mem-next-turn-recall
+          fetch-depth: 0
+      - run: python scripts/_phase_i1_flat_compat_patch.py
+      - run: python -m compileall -q relaylm scripts
+      - name: Run focused compatibility smokes
+        run: |
+          python -m pip install -e .
+          PYTHONPATH=. python scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add relaylm
+          git commit -m "fix: preserve flat RelayMEM retrieval compatibility"
+          git push origin HEAD:phase-i1-primary-mem-next-turn-recall
