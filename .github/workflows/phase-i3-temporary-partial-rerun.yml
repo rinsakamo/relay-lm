@@ -1,0 +1,44 @@
+name: Temporary Phase I-3 partial-state rerun
+
+on:
+  push:
+    branches:
+      - phase-i3-auditable-primary-mem-correct
+    paths:
+      - .github/workflows/phase-i3-temporary-partial-rerun.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fault:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i3-auditable-primary-mem-correct
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - id: smoke
+        continue-on-error: true
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_fault_smoke.py
+      - name: Record bounded result
+        env:
+          RESULT: ${{ steps.smoke.outcome }}
+        run: |
+          cat >> docs/architecture/phase_i3_validation_receipt.md <<EOF
+
+          ## Real index-applied/log-pending recovery rerun
+
+          Result: ${RESULT}
+          EOF
+          rm .github/workflows/phase-i3-temporary-partial-rerun.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/architecture/phase_i3_validation_receipt.md
+          git add -u .github/workflows/phase-i3-temporary-partial-rerun.yml
+          git commit -m "test: record I3 index-before-log recovery rerun"
+          git push origin HEAD:phase-i3-auditable-primary-mem-correct
