@@ -1,41 +1,41 @@
-name: Phase I-1 runtime projection diagnostics
+name: Phase I-1 truncation projection smoke patch
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - "scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py"
+      - "scripts/_phase_i1_truncation_projection_patch.py"
       - ".github/workflows/_phase_i1_legacy_trace_smoke_patch.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   PYTHONPATH: .:scripts
 
 jobs:
-  diagnostics:
+  patch:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: phase-i1-primary-mem-next-turn-recall
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: python scripts/_phase_i1_truncation_projection_patch.py
+      - name: Commit truncation projection smoke updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py scripts/relaylm_relaymem_snippet_runtime_injection_apply_smoke.py
+          git commit -m "test: verify truncation through backend payloads"
+          git push origin HEAD:phase-i1-primary-mem-next-turn-recall
       - run: pip install -e .
-      - name: Run runtime CTX smoke
-        id: smoke
-        continue-on-error: true
-        run: python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py > runtime-projection-smoke.log 2>&1
-      - name: Upload runtime projection log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: phase-i1-runtime-projection-log
-          path: runtime-projection-smoke.log
-          if-no-files-found: error
-      - name: Fail when runtime smoke fails
-        if: steps.smoke.outcome != 'success'
-        run: exit 1
+      - run: python -m compileall -q relaylm scripts
+      - run: python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py
+      - run: python scripts/relaylm_relaymem_snippet_runtime_injection_apply_smoke.py
+      - run: python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
