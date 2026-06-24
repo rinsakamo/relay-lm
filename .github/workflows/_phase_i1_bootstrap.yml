@@ -33,18 +33,33 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e .
-      - name: Normalize one-shot patch anchors
+      - name: Normalize one-shot patch anchors and fail-closed gate
         run: |
           python - <<'PY'
           from pathlib import Path
-          path = Path("scripts/_phase_i1_bootstrap_patch.py")
-          body = path.read_text(encoding="utf-8")
+
+          patcher = Path("scripts/_phase_i1_bootstrap_patch.py")
+          body = patcher.read_text(encoding="utf-8")
           body = body.replace(
               'if body.count(old) != 1:\n        raise RuntimeError(f"{path}: expected one patch anchor, got {body.count(old)}")\n    target.write_text(body.replace(old, new), encoding="utf-8")',
               'if old not in body:\n        raise RuntimeError(f"{path}: patch anchor missing")\n    target.write_text(body.replace(old, new, 1), encoding="utf-8")',
               1,
           )
-          path.write_text(body, encoding="utf-8")
+          patcher.write_text(body, encoding="utf-8")
+
+          adapter = Path("relaylm/relaymem_primary_recall.py")
+          body = adapter.read_text(encoding="utf-8")
+          body = body.replace(
+              '    original_decision = artifact.get("snippet_apply_decision")\n    if original_decision not in {"eligible_but_not_applied", "dry_run_only"}:\n        reasons.append("existing_retrieval_gate_blocked")',
+              '    original_decision = artifact.get("snippet_apply_decision")\n    gate_allowed = original_decision in {"eligible_but_not_applied", "dry_run_only"}\n    if not gate_allowed:\n        reasons.append("existing_retrieval_gate_blocked")',
+              1,
+          )
+          body = body.replace(
+              '    if root is not None and namespace is not None:\n        control, control_reasons = _load_control_state(root)',
+              '    if root is not None and namespace is not None and gate_allowed:\n        control, control_reasons = _load_control_state(root)',
+              1,
+          )
+          adapter.write_text(body, encoding="utf-8")
           PY
       - name: Apply branch patch
         id: apply_patch
