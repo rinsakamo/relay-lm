@@ -1,0 +1,70 @@
+name: Temporary Phase I-3 bounded frame trace
+
+on:
+  push:
+    branches:
+      - phase-i3-auditable-primary-mem-correct
+    paths:
+      - .github/workflows/phase-i3-temporary-frame-trace.yml
+
+permissions:
+  contents: write
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i3-auditable-primary-mem-correct
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Capture bounded repo frame chains
+        run: |
+          PYTHONPATH=.:scripts python - <<'PY'
+          import importlib
+          import json
+          import traceback
+          from pathlib import Path
+
+          modules = (
+              "relaylm_phase_i3_primary_mem_correct_smoke",
+              "relaylm_phase_i3_primary_mem_correct_security_smoke",
+              "relaylm_phase_i3_primary_mem_correct_fault_smoke",
+          )
+          result = {}
+          for name in modules:
+              try:
+                  importlib.import_module(name).main()
+              except BaseException as exc:
+                  frames = []
+                  for frame in traceback.extract_tb(exc.__traceback__):
+                      file = Path(frame.filename).name
+                      if file.startswith("relaylm_phase_i3") or file.startswith("_relaylm_phase_i3") or file == "relaymem_primary_correction.py":
+                          frames.append({"file": file, "line": frame.lineno, "function": frame.name})
+                  result[name] = {"exception": type(exc).__name__, "frames": frames[-8:]}
+              else:
+                  result[name] = {"status": "success"}
+          Path("phase-i3-frame-trace.json").write_text(
+              json.dumps(result, ensure_ascii=True, sort_keys=True, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Record bounded frame chains
+        run: |
+          {
+            printf '\n## Bounded repo frame chains\n\n```json\n'
+            cat phase-i3-frame-trace.json
+            printf '```\n'
+          } >> docs/architecture/phase_i3_validation_receipt.md
+          rm phase-i3-frame-trace.json
+          rm .github/workflows/phase-i3-temporary-frame-trace.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/architecture/phase_i3_validation_receipt.md
+          git add -u .github/workflows/phase-i3-temporary-frame-trace.yml
+          git commit -m "test: record bounded Phase I3 frame chains"
+          git push origin HEAD:phase-i3-auditable-primary-mem-correct
