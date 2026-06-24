@@ -201,13 +201,14 @@ try {
   const bytes = encoder.encode(eventText);
   const multibyteStart = bytes.findIndex((value) => value >= 0x80);
   assert.notEqual(multibyteStart, -1);
+  const splitAfterFirstByte = multibyteStart + 1;
   const chunks = [
     bytes.slice(0, 7),
-    bytes.slice(7, multibyteStart + 1),
-    bytes.slice(multibyteStart + 1, multibyteStart + 2),
-    bytes.slice(multibyteStart + 2, 157),
-    bytes.slice(157),
+    bytes.slice(7, splitAfterFirstByte),
+    bytes.slice(splitAfterFirstByte, splitAfterFirstByte + 1),
+    bytes.slice(splitAfterFirstByte + 1),
   ];
+  assert.equal(chunks.reduce((total, chunk) => total + chunk.byteLength, 0), bytes.byteLength);
   let streamed = "";
   const streamCapture = {};
   const streamResult = await api.streamHomeConversation(
