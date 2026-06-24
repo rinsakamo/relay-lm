@@ -242,11 +242,11 @@ Out-of-band after-turn path:
 - 🧬 [RelaySOUL設計とゲート](docs/relaysoul/README.md)
 - 🗃️ [MVP概要とマイルストーン履歴](docs/mvp/README.md)
 
-## 🔗 RelayKVとの関係
+## 🔗 バックエンドキャッシュ境界
 
-[RelayKV](https://github.com/rinsakamo/relay-kv) は、隣接するランタイム・KVキャッシュ研究リポジトリです。RelayLMは、その1層上で会話とコンテキストを扱うプロキシです。
+RelayLMは、バックエンドのKVキャッシュを実体化・永続化・オフロード・転送・直接変更しません。任意のキャッシュ基盤は、推論バックエンドまたはbackend adapterの外側にある外部ランタイム層の責務です。
 
-RelayLMは、RelayKVのworking-set選択、anchor/recent/retrieved分離、Persona Anchor KV、cache-aware layoutといった設計知見を活用しますが、初期製品では推論エンジンのKVキャッシュを直接変更しません。
+RelayLMが担当するのは、承認済みコンテキストを可能な範囲で安定したcache-friendlyなprompt layoutへコンパイルすることまでであり、特定のキャッシュ実装を必須としません。
 
 ## 📄 ライセンス
 

@@ -170,7 +170,7 @@ Out of scope:
 
 - direct backend KV-cache mutation
 - engine scheduler changes
-- replacing RelayKV runtime/cache research
+- implementing or replacing backend KV-cache infrastructure
 
 ## Authority order
 
