@@ -30,6 +30,8 @@ from .soul_lab_observation_store import (
 _PENDING_LIMIT = 1024
 _PENDING: "OrderedDict[str, dict[str, Any]]" = OrderedDict()
 _PENDING_LOCK = threading.RLock()
+_HOOK_LOCK = threading.RLock()
+_HOOK_INSTALLED = False
 
 
 def capture_primary_worker_observation(request: object, result: object) -> None:
@@ -90,6 +92,35 @@ def capture_primary_worker_observation(request: object, result: object) -> None:
         write_outcome_receipt(store_root, payload)
     except Exception:
         return
+
+
+def install_lab_observation_runtime_hook() -> None:
+    """Attach best-effort capture to the canonical app-owned Repack seam."""
+
+    global _HOOK_INSTALLED
+    with _HOOK_LOCK:
+        if _HOOK_INSTALLED:
+            return
+        from . import app as core_app
+
+        original = core_app.apply_relaymem_runtime_injection_phase
+        if getattr(original, "_relaylm_lab_observation_hook", False) is True:
+            _HOOK_INSTALLED = True
+            return
+
+        def observed_injection(*args: Any, **kwargs: Any) -> Any:
+            result = original(*args, **kwargs)
+            capture_runtime_injection_observation(
+                config=kwargs.get("config"),
+                pipeline_context=kwargs.get("pipeline_context"),
+                relaymem_retrieval_artifact=kwargs.get("relaymem_retrieval_artifact"),
+                result=result,
+            )
+            return result
+
+        setattr(observed_injection, "_relaylm_lab_observation_hook", True)
+        core_app.apply_relaymem_runtime_injection_phase = observed_injection
+        _HOOK_INSTALLED = True
 
 
 def capture_runtime_injection_observation(
@@ -314,4 +345,5 @@ __all__ = [
     "capture_primary_worker_observation",
     "capture_runtime_injection_observation",
     "finalize_runtime_observation",
+    "install_lab_observation_runtime_hook",
 ]
