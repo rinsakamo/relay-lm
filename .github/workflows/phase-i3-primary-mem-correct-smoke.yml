@@ -1,0 +1,109 @@
+name: Phase I-3 auditable Primary MEM Correct
+
+on:
+  push:
+    paths:
+      - "relaylm/**"
+      - "scripts/relaylm_phase_i3_*"
+      - "scripts/_relaylm_phase_i3_test_support.py"
+      - "apps/soul-lab/**"
+      - "docs/**"
+      - ".github/workflows/phase-i3-primary-mem-correct-smoke.yml"
+  pull_request:
+    paths:
+      - "relaylm/**"
+      - "scripts/relaylm_phase_i3_*"
+      - "scripts/_relaylm_phase_i3_test_support.py"
+      - "apps/soul-lab/**"
+      - "docs/**"
+      - ".github/workflows/phase-i3-primary-mem-correct-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  correction:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run Phase I-3 functional, security, and fault smokes
+        run: |
+          set -o pipefail
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py 2>&1 | tee phase-i3-smoke.log
+      - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+      - name: Upload Phase I-3 log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i3-smoke-log
+          path: phase-i3-smoke.log
+          if-no-files-found: ignore
+
+  relaymem-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run canonical writer, recovery, Phase 6, I-1, and I-2 regressions
+        run: |
+          set -o pipefail
+          {
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_security_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_atomicity_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_reconciliation_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_reconciliation_marker_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_apply_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_apply_security_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_security_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_receipt_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i2_lab_observation_ci_runner.py
+            PYTHONPATH=. python scripts/relaylm_soul_lab_management_projection_smoke.py
+          } 2>&1 | tee phase-i3-regressions.log
+      - name: Upload regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i3-regression-log
+          path: phase-i3-regressions.log
+          if-no-files-found: ignore
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/soul-lab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - name: Run strict observation browser schema smoke
+        run: |
+          rm -rf .observation-smoke
+          npx tsc src/features/lab/observationApi.ts --target ES2022 --module ES2022 --moduleResolution Bundler --outDir .observation-smoke --skipLibCheck
+          node scripts/observationApiSmoke.mjs
+          rm -rf .observation-smoke
+      - name: Run strict correction browser schema smoke
+        run: |
+          rm -rf .correction-smoke
+          npx tsc src/features/lab/correctionApi.ts --target ES2022 --module ES2022 --moduleResolution Bundler --outDir .correction-smoke --skipLibCheck
+          node scripts/correctionApiSmoke.mjs
+          rm -rf .correction-smoke
+      - run: npm run build

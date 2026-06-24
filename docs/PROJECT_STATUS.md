@@ -34,6 +34,7 @@ relaylm_related_authority:
   - docs/architecture/relaymem_slp_current_target.md
   - docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
   - docs/architecture/phase_i2_real_soul_lab_observation.md
+  - docs/architecture/phase_i3_auditable_primary_mem_correct.md
 ---
 # RelayLM Project Status
 
@@ -45,7 +46,8 @@ Status reviewed through:
 - Phase 6-C1-0 through C1-5 Primary MEM worker, fault, and durable-source boundaries,
 - Phase 6-C2 one queued-job claim / rehydrate / execute integration adapter,
 - Phase I-1 Primary MEM next-turn recall and character/namespace isolation,
-- Phase I-2 real SOUL Lab latest-run and memory observation integration.
+- Phase I-2 real SOUL Lab latest-run and memory observation integration,
+- Phase I-3 auditable Primary MEM Correct and later retrieval convergence.
 
 ## Purpose and authority
 
@@ -67,9 +69,9 @@ Pre-stream hardening: Phase 5-D complete through D2
 Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
 Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete; C2 one-job adapter complete
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; ordinary next-turn recall and scope isolation complete
-SOUL Lab UI: UI-A0 through UI-A7 complete; Phase I-2 real read-only observation connected
+SOUL Lab UI: UI-A0 through UI-A7 complete; Phase I-2 observation and Phase I-3 token-gated Correct connected
+I1 observe/correct/retrieve product loop: complete
 I1-G pre-enqueue background-finalizer durability: unresolved
-Next product boundary: Phase I-3 auditable Correct operation
 ```
 
 ## Core request/runtime foundation
@@ -145,7 +147,7 @@ Current limitations:
 
 - ordinary response finalization intentionally does not invoke M3a-M3h inline,
 - Secondary MEM consolidation is not implemented,
-- durable Correct/forget/pin/merge mutation is not implemented.
+- auditable formed-Primary-MEM Correct is implemented; forget/pin/unpin/merge remain unimplemented.
 
 ## SOUL Lab UI and real observation
 
@@ -164,14 +166,14 @@ UI-A0 through UI-A7 and Phase I-2 provide:
 - bounded titles, summaries, reasons, item counts, and response size,
 - durable restart-readable observation receipts only where existing authority did not preserve evidence,
 - source labels that keep `RelayLM runtime` and `Local preview data` separate,
-- disabled Correct/forget/pin/merge/apply/discard controls pending I-3.
+- token-gated Correct for real formed Primary MEM; forget/pin/merge and held apply/discard remain disabled.
 
 Phase I-2 observation receipts are read-model evidence only. They are not Primary MEM, are not retrievable by M1/M2, do not replace protected source, do not alter B3/C1 authority, and cannot repair runtime state.
 
 Current limitations:
 
 - no durable character-registry mutation,
-- no Correct/forget/pin/unpin/merge or held apply/discard operation,
+- no forget/pin/unpin/merge or held apply/discard operation,
 - no RelaySOUL apply or rollback,
 - no persisted transcript inspection,
 - no TTS/audio/avatar execution,
@@ -179,22 +181,23 @@ Current limitations:
 
 ## Active implementation priority
 
-### Phase I-3: auditable Correct operation
+### Phase I-3: auditable Primary MEM Correct — complete
 
-The next bounded product path is one auditable correction whose result changes later retrieval behavior without bypassing existing RelayMEM authority.
-
-Required boundary:
+The bounded product path is implemented:
 
 ```text
-real Lab Observation item
-  -> explicit Correct request
-  -> exact character/namespace/current-memory validation
-  -> bounded mutation preflight
-  -> atomic authoritative memory update and audit evidence
-  -> later M2 retrieval observes the corrected representation
+real formed Primary MEM observation
+  -> read-only correction preflight and bounded semantic diff
+  -> explicit short-lived-token apply
+  -> immutable successor page through M3e
+  -> M3f/M3g index/log convergence and bounded recovery
+  -> immutable correction receipt
+  -> existing M2 and RelayCTX select the corrected current revision
 ```
 
-Phase I-3 must not be widened into general memory administration, RelaySOUL mutation, queue scheduling, or daemon lifecycle.
+The stable logical memory identity remains unchanged, prior pages remain auditable, superseded or prepared-only pages are excluded from ordinary retrieval, and past used-memory evidence is not rewritten.
+
+The next implementation priority must be selected independently from the architecture plan. I1-G still owns the unresolved process-exit window after visible response delivery but before background-finalizer source/queue publication.
 
 ## Completion boundary (2026-06-24)
 
@@ -206,7 +209,8 @@ Phase I-3 must not be widened into general memory administration, RelaySOUL muta
 - character and namespace isolation: complete
 - I2 real SOUL Lab observation: complete
 - I1-G pre-enqueue background-finalizer durability: unresolved
-- auditable Correct operation: next as Phase I-3
+- I3 auditable Primary MEM Correct: complete
+- I1 observe/correct/retrieve product loop: complete
 
 ## Safe defaults and compatibility
 
@@ -235,7 +239,7 @@ Consequences:
 - Phase 6 source publication/B2 enqueue remains explicitly gated,
 - B3/C1-2/C2 are caller-driven boundaries rather than separately configured daemons,
 - I1-B never claims or executes a worker inline with visible response delivery,
-- all SOUL Lab management and observation routes remain local-only read surfaces.
+- SOUL Lab management and observation reads remain local-only; Correct additionally requires exact JSON, exact schema, expected revision, and a preflight-issued token.
 
 ## Not yet implemented
 
@@ -247,7 +251,7 @@ The runtime does not yet provide:
 - queue scanner, daemon, or scheduler-driven worker execution,
 - restart completion for I1-G's pre-enqueue background-finalizer crash window,
 - Secondary MEM consolidation,
-- durable correction/forget/pin/merge or held apply/discard operations,
+- durable forget/pin/merge or held apply/discard operations,
 - actual RelaySOUL apply, rollback, or persistence execution,
 - RelayLM static serving of SOUL Lab,
 - adapter transport delivery, TTS, audio generation, or avatar control,
@@ -264,7 +268,7 @@ OpenWebUI
   -> LM Studio http://127.0.0.1:1234/v1
 ```
 
-The memory write path remains explicitly gated. C1-5 and C2 provide restart-safe protected-source recovery and one exact queued-job execution; Phase I-1 provides ordinary scoped recall; Phase I-2 provides bounded read-only observation. Queue scheduling and the pre-enqueue background-finalizer crash window remain separate unresolved operational boundaries.
+The memory write path remains explicitly gated. C1-5 and C2 provide restart-safe protected-source recovery and one exact queued-job execution; Phase I-1 provides ordinary scoped recall; Phase I-2 provides bounded read-only observation; Phase I-3 provides token-gated audited Correct with later M2 convergence. Queue scheduling and the pre-enqueue background-finalizer crash window remain separate unresolved operational boundaries.
 
 ## Phase I-2 and I1-G cross-boundary status
 
@@ -274,6 +278,18 @@ The memory write path remains explicitly gated. C1-5 and C2 provide restart-safe
 - character and namespace isolation: complete
 - I2 real SOUL Lab observation: complete
 - I1-G pre-enqueue background-finalizer durability: unresolved
-- auditable Correct operation: next as Phase I-3
+- I3 auditable Primary MEM Correct: complete
+- I1 observe/correct/retrieve product loop: complete
 
 I1-G tracks the process-exit window after visible response delivery but before protected-source and B2 queue publication. Phase I-2 observation receipts do not repair or reclassify that durability gap.
+
+<!-- phase-i3-auditable-primary-mem-correct -->
+## Phase I-3 auditable Primary MEM Correct — complete (2026-06-24)
+
+Phase I-3 completes the first real observe/correct/retrieve loop. A formed Primary MEM observed through Phase I-2 can be corrected through read-only preflight, bounded semantic diff, explicit short-lived-token apply, immutable successor-page publication through the existing M3e boundary, canonical M3f/M3g index/log convergence, and immutable audit receipt finalization. Existing M2 retrieval resolves only the corrected current revision and existing RelayCTX injection remains the sole prompt path.
+
+Character/namespace isolation, stable logical memory identity, no-clobber publication, exact operation idempotency, one-winner revision fencing, crash recovery, and historical used-memory integrity are preserved. Correction reason, audit receipt, paths, digests, lineage, queue/lease state, and prior full pages are not retrieval inputs or public prompt content.
+
+Authority and exact contracts: `docs/architecture/phase_i3_auditable_primary_mem_correct.md`.
+
+Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement forget, pin/unpin, merge, held apply/discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.

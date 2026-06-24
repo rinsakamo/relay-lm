@@ -25,7 +25,7 @@ def main() -> None:
     require_text(
         "docs/PROJECT_STATUS.md",
         "I2 real SOUL Lab observation: complete",
-        "auditable Correct operation: next",
+        "I3 auditable Primary MEM Correct: complete",
         "I1-G",
         "pre-enqueue background-finalizer",
     )
@@ -70,8 +70,8 @@ def main() -> None:
         "Lab observation receipts are secondary read-only evidence only",
         "GET /lab/api/characters/{character_id}/memory/recent?namespace=...&limit=...",
     )
-    require_text("docs/README.md", handoff)
-    require_text("docs/architecture/README.md", handoff)
+    require_text("docs/README.md", handoff, "phase_i3_auditable_primary_mem_correct.md")
+    require_text("docs/architecture/README.md", handoff, "phase_i3_auditable_primary_mem_correct.md")
 
     for path in (
         "docs/PROJECT_STATUS.md",

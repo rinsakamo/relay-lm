@@ -127,6 +127,18 @@ def apply_relaymem_primary_recall_scope(
         control, control_reasons = _load_control_state(root)
         reasons.extend(control_reasons)
         if control is not None:
+            # Correction metadata is an audit/revision selector only. M2 remains
+            # relevance owner and the canonical page/index/log validator remains
+            # unchanged. The local import avoids a module cycle because the
+            # correction apply boundary reuses these private validation helpers.
+            from .relaymem_primary_correction import (
+                load_primary_correction_state,
+                resolve_primary_correction_identity,
+            )
+
+            correction_state = load_primary_correction_state(
+                root, namespace=namespace
+            )
             for raw_candidate in candidates:
                 if len(selected) >= max_candidates:
                     reasons.append("primary_recall_candidate_cap_reached")
@@ -149,7 +161,20 @@ def apply_relaymem_primary_recall_scope(
                 if loaded is None:
                     reasons.extend(blocked)
                     continue
-                identity = loaded["idempotency_key"]
+                physical_identity = loaded["idempotency_key"]
+                resolved_identity = resolve_primary_correction_identity(
+                    correction_state, physical_identity
+                )
+                if resolved_identity is None:
+                    reasons.append("primary_recall_correction_state_invalid")
+                    continue
+                identity, revision, is_current = resolved_identity
+                if not is_current:
+                    reasons.append("primary_recall_superseded_revision_excluded")
+                    continue
+                loaded["physical_idempotency_key"] = physical_identity
+                loaded["idempotency_key"] = identity
+                loaded["revision"] = revision
                 if identity in seen_identities:
                     reasons.append("primary_recall_duplicate_identity_deduped")
                     continue
@@ -508,7 +533,10 @@ def _load_validated_page(
         "lineage_fingerprint": lineage,
         "page_digest": digest,
         "summary": summary,
+        "title": title,
         "memory_kind": memory_kind,
+        "namespace": expected_namespace,
+        "source_event_kind": metadata["source_event_kind"],
     }, []
 
 

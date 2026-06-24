@@ -93,6 +93,7 @@ When documents disagree:
 - [Phase 6-C2 One queued-job Primary worker integration](architecture/phase6c2_one_queued_primary_worker_integration.md)
 - [Integration I1 Primary MEM two-turn recall](architecture/integration_i1_primary_mem_two_turn_recall.md)
 - [Phase I-2 Real SOUL Lab Observation](architecture/phase_i2_real_soul_lab_observation.md)
+- [Phase I-3 Auditable Primary MEM Correct](architecture/phase_i3_auditable_primary_mem_correct.md)
 - [Completed Phase 5.5 Stream Unpack bounded slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Client history authority contract](architecture/client_history_authority_contract.md)
@@ -175,3 +176,14 @@ Current Phase 6 handoff is [Phase 6-C2 One Queued Primary Worker Integration](ar
 The two-turn ordinary managed path is complete: Turn 1 can publish and execute one durable Primary MEM job through C2, and Turn 2 can select the resulting memory through existing M2, validate character partition and namespace, and inject bounded evidence through RelayCTX.
 
 SOUL Lab now exposes bounded, restart-readable observation of the latest completed run, validated formed memory, held/blocked outcomes, and memory actually included in the latest backend-bound request. See [Phase I-2 Real SOUL Lab Observation](architecture/phase_i2_real_soul_lab_observation.md).
+
+<!-- phase-i3-auditable-primary-mem-correct -->
+## Phase I-3 auditable Primary MEM Correct — complete (2026-06-24)
+
+Phase I-3 completes the first real observe/correct/retrieve loop. A formed Primary MEM observed through Phase I-2 can be corrected through read-only preflight, bounded semantic diff, explicit short-lived-token apply, immutable successor-page publication through the existing M3e boundary, canonical M3f/M3g index/log convergence, and immutable audit receipt finalization. Existing M2 retrieval resolves only the corrected current revision and existing RelayCTX injection remains the sole prompt path.
+
+Character/namespace isolation, stable logical memory identity, no-clobber publication, exact operation idempotency, one-winner revision fencing, crash recovery, and historical used-memory integrity are preserved. Correction reason, audit receipt, paths, digests, lineage, queue/lease state, and prior full pages are not retrieval inputs or public prompt content.
+
+Authority and exact contracts: `docs/architecture/phase_i3_auditable_primary_mem_correct.md`.
+
+Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement forget, pin/unpin, merge, held apply/discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.
