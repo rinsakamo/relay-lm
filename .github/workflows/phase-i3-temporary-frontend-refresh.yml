@@ -1,0 +1,51 @@
+name: Temporary Phase I-3 frontend refresh patch
+
+on:
+  push:
+    branches:
+      - phase-i3-auditable-primary-mem-correct
+    paths:
+      - scripts/_phase_i3_frontend_refresh_patch.py
+      - .github/workflows/phase-i3-temporary-frontend-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i3-auditable-primary-mem-correct
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: python scripts/_phase_i3_frontend_refresh_patch.py
+      - run: npm install --no-audit --no-fund
+        working-directory: apps/soul-lab
+      - run: npm run typecheck
+        working-directory: apps/soul-lab
+      - name: Run strict correction browser schema smoke
+        working-directory: apps/soul-lab
+        run: |
+          rm -rf .correction-smoke
+          npx tsc src/features/lab/correctionApi.ts --target ES2022 --module ES2022 --moduleResolution Bundler --outDir .correction-smoke --skipLibCheck
+          node scripts/correctionApiSmoke.mjs
+          rm -rf .correction-smoke
+      - run: npm run build
+        working-directory: apps/soul-lab
+      - name: Commit frontend refresh fix
+        run: |
+          rm scripts/_phase_i3_frontend_refresh_patch.py
+          rm .github/workflows/phase-i3-temporary-frontend-refresh.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/soul-lab
+          git add -u scripts/_phase_i3_frontend_refresh_patch.py .github/workflows/phase-i3-temporary-frontend-refresh.yml
+          git commit -m "fix: refresh current memory after I3 conflicts"
+          git push origin HEAD:phase-i3-auditable-primary-mem-correct
