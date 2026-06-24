@@ -1,0 +1,29 @@
+name: Phase I-2 pin state update
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/phase-i2-pin-state-temp.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/phase_i2_pin_state_temp.py
+      - run: python -m compileall -q relaylm scripts
+      - name: Commit updates
+        run: |
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add relaylm/soul_lab_observation_projection.py apps/soul-lab/src/features/lab/observationApi.ts apps/soul-lab/scripts/observationApiSmoke.mjs
+          git diff --cached --quiet || git commit -m "fix: preserve unrecorded pin state"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
