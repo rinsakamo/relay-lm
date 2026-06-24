@@ -7,6 +7,7 @@ from copy import deepcopy
 from dataclasses import replace
 import json
 import os
+from pathlib import Path
 import uuid
 from collections.abc import Mapping
 from typing import Any
@@ -67,6 +68,11 @@ from relaylm.relayint import (
 )
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
+from relaylm.relaymem_primary_recall import (
+    apply_relaymem_primary_recall_scope,
+    build_relaymem_primary_recall_compat_projection,
+    resolve_relaymem_character_store_root,
+)
 from relaylm.relayrun import (
     build_relayrun_node,
     new_run_id,
@@ -103,7 +109,7 @@ from relaylm.relayctx_repack import (
     apply_relaymem_runtime_injection_phase,
     apply_token_budget_truncation_phase,
 )
-from collections.abc import Mapping
+
 
 def create_app(config_path: str | None = None) -> FastAPI:
     config = load_config(config_path)
@@ -364,8 +370,30 @@ def create_app(config_path: str | None = None) -> FastAPI:
             )
         )
 
+        relaymem_configured_store_root = config.memory.root_path
+        relaymem_character_partition_present = False
+        if (
+            isinstance(relaymem_configured_store_root, str)
+            and relaymem_configured_store_root
+        ):
+            character_partition = (
+                Path(relaymem_configured_store_root) / "characters"
+            )
+            relaymem_character_partition_present = (
+                character_partition.exists() or character_partition.is_symlink()
+            )
+        if relaymem_character_partition_present:
+            relaymem_scoped_store_root = (
+                resolve_relaymem_character_store_root(
+                    relaymem_configured_store_root,
+                    route.character_id,
+                )
+            )
+        else:
+            relaymem_scoped_store_root = relaymem_configured_store_root
+
         relaymem_store_diagnostics = build_relaymem_store_diagnostics(
-            root_path=config.memory.root_path,
+            root_path=relaymem_scoped_store_root,
             store_enabled=config.memory.store_enabled,
             retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
         )
@@ -384,6 +412,22 @@ def create_app(config_path: str | None = None) -> FastAPI:
             max_snippet_chars=config.memory.max_snippet_chars,
             max_snippet_candidates=config.memory.max_snippet_candidates,
         )
+        if relaymem_character_partition_present:
+            relaymem_retrieval_artifact = apply_relaymem_primary_recall_scope(
+                relaymem_retrieval_artifact,
+                scoped_store_root=relaymem_scoped_store_root,
+                expected_namespace=route.memory_namespace,
+                max_snippet_chars=config.memory.max_snippet_chars,
+                max_snippet_candidates=config.memory.max_snippet_candidates,
+                snippet_budget=config.memory.snippet_budget,
+                chars_per_token=config.memory.chars_per_token,
+            )
+        else:
+            relaymem_retrieval_artifact["primary_recall_projection"] = (
+                build_relaymem_primary_recall_compat_projection(
+                    relaymem_retrieval_artifact
+                )
+            )
         (
             forwarded_payload,
             runtime_ctx_injection_result,
@@ -394,6 +438,27 @@ def create_app(config_path: str | None = None) -> FastAPI:
             relaymem_retrieval_artifact=relaymem_retrieval_artifact,
             compiled_payload=compiled_request.payload,
         )
+        relaymem_primary_recall_projection = relaymem_retrieval_artifact.get(
+            "primary_recall_projection"
+        )
+        if isinstance(relaymem_primary_recall_projection, dict):
+            relaymem_primary_recall_projection["injection_performed"] = (
+                runtime_snippet_injection_result.get("applied") is True
+                or runtime_ctx_injection_result.get("applied") is True
+            )
+            relaymem_primary_recall_projection["memory_used"] = (
+                relaymem_primary_recall_projection["injection_performed"]
+            )
+        relaymem_diagnostics_artifact = {
+            "artifact_version": "relaymem_retrieval_projection.v0",
+            "diagnostics_only": True,
+            "content_free": True,
+            "primary_recall_projection": deepcopy(
+                relaymem_primary_recall_projection
+            )
+            if isinstance(relaymem_primary_recall_projection, dict)
+            else None,
+        }
         forwarded_payload, token_budget_truncation = apply_token_budget_truncation_phase(
             config=config,
             pipeline_context=pipeline_context,
@@ -538,7 +603,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 relayemo_artifact=relayemo_artifact,
                 relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
                 relayref_artifact=relayref_artifact,
-                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+                relaymem_retrieval_artifact=relaymem_diagnostics_artifact,
                 runtime_ctx_injection_result=runtime_ctx_injection_result,
                 runtime_snippet_injection_result=runtime_snippet_injection_result,
             ),

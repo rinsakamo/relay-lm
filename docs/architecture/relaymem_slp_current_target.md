@@ -91,7 +91,7 @@ The current runtime still lacks:
 
 - queue scanning, daemon supervision, generalized worker pools, and retry scheduling,
 - guaranteed enqueue when the process exits after visible response delivery but before the Starlette background finalizer publishes the source/queue pair,
-- proof that newly formed memory is selected and used in a later turn,
+- real SOUL Lab observation of formed and used memory,
 - Secondary MEM consolidation,
 - real SOUL Lab memory observation and mutation APIs.
 
@@ -151,19 +151,19 @@ finalized ordinary turn
   -> C1-4 fault/crash convergence                   complete
   -> B3 retry release or terminal commit
   -> verified durable Primary MEM
-  -> later RelayMEM retrieval
-  -> RelayCTX injection
-  -> response uses formed memory
+  -> later RelayMEM retrieval                          complete as Phase I-1
+  -> RelayCTX bounded injection                           complete as Phase I-1
+  -> response uses formed memory                          complete as Phase I-1
 ```
 
 The sequence is now:
 
-1. validate later-turn recall and character/namespace isolation,
-2. expose real latest-run and memory outcomes through server-owned SOUL Lab APIs,
-3. add one auditable Correct operation that changes later retrieval,
-4. resolve or formally bound the separate pre-enqueue background-finalizer crash window.
+1. expose real latest-run and memory outcomes through server-owned SOUL Lab APIs,
+2. add one auditable Correct operation that changes later retrieval,
+3. resolve or formally bound the separate pre-enqueue background-finalizer crash window,
+4. keep queue scanning and daemon lifecycle as separate operational work.
 
-I1-B, B3, C1-0 through C1-5, and C2 are complete prerequisites. Next-turn recall and scope isolation: next; the Primary MEM product loop remains integration pending.
+I1-B, B3, C1-0 through C1-5, C2, and Phase I-1 next-turn recall are complete. Character and namespace isolation: complete. SOUL Lab real observation is next.
 
 ## Target after the active migration
 
@@ -195,4 +195,14 @@ Every migration step preserves:
 
 M3a-M3h completion means the Primary MEM primitives exist. C1-1 fixes their exact order. C1-2 executes one active claim. C1-3 classifies exact outcomes. C1-4 verifies integrated convergence. C1-5 makes protected-source recovery restart-complete for durably enqueued jobs. C2 connects one exact queued record to that worker.
 
-These boundaries still do not make the memory feature end to end. The active migration completes only when a later ordinary turn retrieves and uses the resulting memory within the correct character/namespace scope.
+Phase I-1 completes the ordinary two-turn Primary MEM loop by retrieving and using the resulting memory only within the correct character/namespace scope. SOUL Lab observation and Correct operations remain later boundaries.
+
+## Phase I-1 recall handoff
+
+I1 next-turn Primary MEM recall: complete. Character and namespace isolation: complete. C2 remains an explicit one-record integration seam; it is not a queue
+scanner or daemon. The C2 caller and ordinary request retrieval share the
+character-partition resolver. Existing M2 selection is narrowed by canonical
+page/index/log/namespace validation before bounded RelayCTX injection.
+
+The pre-enqueue background-finalizer crash window remains unresolved. SOUL Lab
+real observation is next and auditable Correct operation is later.

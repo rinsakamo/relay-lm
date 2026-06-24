@@ -372,3 +372,12 @@ approved durable persona
   -> conservative budget
   -> authority-safe backend messages
 ```
+
+## I1 bounded Primary MEM injection
+
+RelayCTX receives a request-local selected-memory artifact after existing M2
+selection and exact scope/integrity validation. Only bounded Primary summary
+evidence is inserted before the latest user message. SOUL, OUTPUT_POLICY,
+RELATIONSHIP_ANCHOR, Secondary MEM, and RelaySCN remain higher authority; path,
+identity, lineage, retry, and control-file metadata are excluded from the
+backend prompt and public diagnostics.

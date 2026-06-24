@@ -1,0 +1,99 @@
+name: Phase I-1 two-turn Primary MEM recall smoke
+
+on:
+  push:
+    paths:
+      - "relaylm/**"
+      - "scripts/relaylm_phase_i1_*"
+      - "scripts/relaylm_documentation_current_boundary_smoke.py"
+      - "docs/**"
+      - ".github/workflows/phase-i1-two-turn-primary-recall-smoke.yml"
+  pull_request:
+    paths:
+      - "relaylm/**"
+      - "scripts/relaylm_phase_i1_*"
+      - "scripts/relaylm_documentation_current_boundary_smoke.py"
+      - "docs/**"
+      - ".github/workflows/phase-i1-two-turn-primary-recall-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  phase-i1:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run Phase I-1 integration and security smokes
+        run: |
+          set -o pipefail
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py 2>&1 | tee phase-i1-smoke.log
+      - name: Upload Phase I-1 runner log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i1-smoke-log
+          path: phase-i1-smoke.log
+          if-no-files-found: ignore
+      - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+
+  relaymem-relayctx-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run RelayMEM M1/M2, RelayCTX, and managed enqueue regressions
+        run: |
+          set -o pipefail
+          {
+            PYTHONPATH=. python scripts/relaylm_relaymem_store_dry_run_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_selection_dry_run_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_ctx_injection_plan_dry_run_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_snippet_runtime_injection_apply_smoke.py
+            PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
+          } 2>&1 | tee relaymem-regressions.log
+      - name: Upload RelayMEM regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relaymem-regressions-log
+          path: relaymem-regressions.log
+          if-no-files-found: ignore
+
+  phase6-worker-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run B3, C1, and C2 regressions
+        run: |
+          set -o pipefail
+          {
+            PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_contract_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+          } 2>&1 | tee phase6-regressions.log
+      - name: Upload Phase 6 regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6-regressions-log
+          path: phase6-regressions.log
+          if-no-files-found: ignore

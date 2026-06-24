@@ -468,3 +468,11 @@ Secondary MEM stores SOUL-aligned crystallized memory for durable retrieval.
 SOUL Lab lets the user observe, correct, forget, pin, merge, and escalate.
 SOUL Intervention remains explicit.
 ```
+
+## Primary MEM next-turn use
+
+A successfully reconciled Primary MEM may participate in a later ordinary
+request only through its opaque character store partition, exact namespace,
+canonical page/index/log linkage, and current RelaySCN retrieval gates. Run and
+session are not added as new long-term restrictions. Held, blocked, failed,
+malformed, conflicting, or unreconciled candidates are not injected.

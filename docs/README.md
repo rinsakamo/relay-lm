@@ -30,6 +30,8 @@ RelayLM documentation is AI-first: documents should remain understandable when r
 - [Phase 6-C1-2 one-claimed worker](architecture/phase6c1_one_claimed_primary_worker_handoff.md) — production execution of one exact claimed B3 job
 - [Phase 6-C1-4 integrated worker fault smoke](architecture/phase6c1_integrated_worker_fault_smoke_handoff.md) — crash, lease, lock, race, corruption, and leakage convergence
 - [Phase 6-C1-5 durable protected source persistence](architecture/phase6c1_durable_protected_source_persistence.md) — source-before-queue publication and restart rehydration
+- [Phase 6-C2 one queued-job integration](architecture/phase6c2_one_queued_primary_worker_integration.md) — exact queued record claim, rehydrate, worker execute, and terminal transition
+- [Integration I1 Primary MEM two-turn recall](architecture/integration_i1_primary_mem_two_turn_recall.md) — ordinary next-turn retrieval, scope isolation, and bounded RelayCTX injection
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md) — current producer/consumer connection and remaining migration boundary
 - [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md) — Primary MEM persistence, worker integration, recall, and Lab-ready sequence
 - [SOUL Lab UI-A7 read-only management projection](architecture/soul_lab_ui_a7_management_projection_handoff.md) — local-only secret-free Lab API reads and mock fallback
@@ -48,9 +50,9 @@ Use [Project Status](PROJECT_STATUS.md) for the current developer-facing view an
 
 Phase 5.5 Stream Unpack / TTS handoff preparation is complete for RelayLM Core. Concrete TTS execution, audio queueing, adapter delivery, Live2D/avatar mapping, motion, and lip-sync remain SOUL Lab Runtime MVP responsibilities.
 
-Current work is integration-first around Integration Milestone I1. Ordinary managed non-stream and stream finalization performs response-independent A1 -> A2 -> B1 -> B2 enqueue. Phase 6-B3 and C1-0 through C1-5 are complete, including one-claimed execution, integrated fault convergence, and protected-source restart recovery for durably enqueued jobs.
+Current work is integration-first around Integration Milestone I1. Ordinary managed non-stream and stream finalization performs response-independent A1 -> A2 -> B1 -> B2 enqueue. Phase 6-B3, C1-0 through C1-5, and the bounded C2 one-job integration are complete. Phase I-1 also proves ordinary next-turn Primary MEM recall with character/namespace isolation and bounded RelayCTX injection.
 
-The next boundary is a thin one-job B3 claim -> C1-5 rehydrate -> C1-2 execute adapter, followed by next-turn recall. Queue scanning, daemon scheduling, the pre-enqueue background-task crash window, and real SOUL Lab memory APIs remain pending.
+The next product boundary is real SOUL Lab latest-run and memory-outcome observation, followed by one auditable Correct operation. Queue scanning, daemon scheduling, and the pre-enqueue background-task crash window remain separate unresolved boundaries.
 
 SOUL Lab UI is implemented through UI-A7 local-only read management projections. Latest-run and real memory-outcome reads, management mutations, persisted memory operations, static UI serving, and runtime adapter execution remain separate.
 
@@ -87,6 +89,8 @@ When documents disagree:
 - [Phase 6-C1-3 Primary worker outcome classifier](architecture/phase6c1_primary_worker_outcome_classifier.md)
 - [Phase 6-C1-4 Integrated worker fault smoke](architecture/phase6c1_integrated_worker_fault_smoke_handoff.md)
 - [Phase 6-C1-5 Durable protected source persistence](architecture/phase6c1_durable_protected_source_persistence.md)
+- [Phase 6-C2 One queued-job Primary worker integration](architecture/phase6c2_one_queued_primary_worker_integration.md)
+- [Integration I1 Primary MEM two-turn recall](architecture/integration_i1_primary_mem_two_turn_recall.md)
 - [Completed Phase 5.5 Stream Unpack bounded slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Client history authority contract](architecture/client_history_authority_contract.md)
@@ -162,4 +166,12 @@ Placement rules:
 - smoke and troubleshooting -> `docs/smoke/`
 - RelaySOUL governance -> `docs/relaysoul/`
 
-Current Phase 6 integration handoff: [Phase 6-C2 One Queued Primary Worker Integration](architecture/phase6c2_one_queued_primary_worker_integration.md). The next product boundary is next-turn recall with character/namespace isolation; queue scanning and daemon lifecycle remain out of scope.
+Current Phase 6 handoff is [Phase 6-C2 One Queued Primary Worker Integration](architecture/phase6c2_one_queued_primary_worker_integration.md), and its downstream Phase I-1 two-turn recall integration is complete. The next product boundary is real SOUL Lab observation; queue scanning, daemon lifecycle, and the pre-enqueue crash window remain out of scope.
+
+## Integration I1: next-turn Primary MEM recall
+
+The two-turn ordinary managed path is complete: Turn 1 can publish and execute
+one durable Primary MEM job through C2, and Turn 2 can select the resulting
+memory through existing M2, validate character partition and namespace, and
+inject bounded evidence through RelayCTX. See
+[Integration I1 Primary MEM Two-Turn Recall](architecture/integration_i1_primary_mem_two_turn_recall.md).

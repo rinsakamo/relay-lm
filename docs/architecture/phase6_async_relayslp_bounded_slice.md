@@ -29,6 +29,7 @@ relaylm_related_authority:
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
   - phase6c2_one_queued_primary_worker_integration.md
+  - integration_i1_primary_mem_two_turn_recall.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - memory_lifecycle_design.md
@@ -39,7 +40,7 @@ relaylm_related_authority:
 
 ## Status
 
-Phase 6 is implemented through I1-B, fenced B3 lifecycle, Phase 6-C1-0 through C1-5, and the bounded Phase 6-C2 one-job adapter.
+Phase 6 is implemented through I1-B, fenced B3 lifecycle, Phase 6-C1-0 through C1-5, the bounded Phase 6-C2 one-job adapter, and Phase I-1 next-turn Primary MEM recall with character/namespace isolation.
 
 ```text
 Phase 6-A0 ownership and sequencing: complete
@@ -57,9 +58,11 @@ Phase 6-C1-3 outcome classifier: complete
 Phase 6-C1-4 integrated fault smoke: complete
 Phase 6-C1-5 durable protected source: complete
 Phase 6-C2 one-job claim/rehydrate/execute adapter: complete
+Phase I-1 next-turn Primary MEM recall: complete
+Phase I-1 character and namespace isolation: complete
 ```
 
-Ordinary finalization can publish a protected source and enqueue without delaying visible output. C1-2 can execute one exact already-claimed job. No current scanner, daemon, or scheduler automatically selects queued work.
+Ordinary finalization can publish a protected source and enqueue without delaying visible output. C1-2 can execute one exact already-claimed job, and a later ordinary managed request can retrieve the resulting Primary MEM within the correct character/namespace partition. No current scanner, daemon, or scheduler automatically selects queued work.
 
 ## Purpose
 
@@ -180,9 +183,9 @@ C1-5 persists the claim-independent capture separately, validates identity and i
 
 C2 accepts one caller-selected exact queued record, delegates claim mutation to canonical B3, delegates fresh source/scope preparation to C1-5, invokes C1-2 unchanged, and runs terminal-only protected-source cleanup. It does not scan or schedule the queue.
 
-## Next integration boundary: next-turn recall and scope isolation
+### Phase I-1: next-turn recall and scope isolation
 
-C2 now provides the bounded one-job claim/rehydrate/execute path. The next smoke must prove:
+Phase I-1 proves the bounded two-turn connection:
 
 ```text
 turn 1
@@ -193,16 +196,18 @@ turn 1
   -> B3 terminal success
 
 turn 2
-  -> RelayMEM retrieval
-  -> RelayCTX injection
+  -> existing RelayMEM M2 retrieval
+  -> exact character/namespace and page/index/log validation
+  -> bounded RelayCTX injection
+  -> backend request contains selected memory evidence
   -> backend response uses formed memory
 ```
 
-The smoke must verify character/namespace scope, duplicate dispatch, retry behavior, both idempotency domains, source correlation, no public-content leakage, and no cross-character selection.
+The integration verifies character/namespace isolation, duplicate dispatch and retrieval deduplication, restart rehydration, policy blocking, bounded size/token behavior, canonical page/index/log reconciliation, unsafe-path rejection, content-free public diagnostics, and absence of cross-character selection. It does not add run/session as a new long-term retrieval restriction.
 
 ## Later Phase 6 work
 
-After the Primary MEM loop is proven:
+After the Phase I-1 Primary MEM loop:
 
 - add scheduler/service lifecycle only from concrete operational requirements,
 - deepen RelayRUN checkpoint/retry-budget integration,
@@ -220,9 +225,13 @@ Dispatch idempotency
 Memory-write idempotency
   owned by RelayMEM
   prevents duplicate durable memory application
+
+Retrieval deduplication identity
+  owned by the request-local RelayMEM/RelayCTX integration
+  prevents one durable memory from appearing more than once in one prompt
 ```
 
-A job retry may be valid while an existing memory write remains exact. Dispatch key, lease token, claim generation, and memory-write key must not be collapsed.
+A job retry may be valid while an existing memory write remains exact. Dispatch key, lease token, claim generation, memory-write key, and retrieval deduplication identity must not be collapsed.
 
 ## Safety invariants
 
@@ -241,4 +250,6 @@ All Phase 6 slices preserve:
 
 ## Active completion criterion
 
-Phase 6-C1 is restart-complete for protected-source recovery of durably enqueued jobs, and C2 completes one exact queued-job execution. Phase 6 is product-complete for I1 only when a later turn retrieves and uses the memory within the correct character/namespace scope and the separate pre-enqueue background-finalizer crash window is resolved or explicitly bounded.
+Phase 6-C1 is restart-complete for protected-source recovery of durably enqueued jobs, C2 completes one exact queued-job execution, and Phase I-1 completes ordinary next-turn Primary MEM recall with character/namespace isolation.
+
+The wider I1 durability boundary is not complete until the separate visible-response-to-background-finalizer pre-enqueue crash window is resolved or explicitly bounded. Queue scanning, scheduling, daemon/service lifecycle, Secondary MEM consolidation, SOUL Lab observation/Correct operations, RelaySOUL mutation, and TTS/audio/Live2D execution remain outside this completion claim.

@@ -42,7 +42,7 @@ def main() -> int:
         "durably enqueued jobs",
         "no automatic retry for corruption",
         "C2 one-job queued-record claim/rehydrate/execute adapter",
-        "next-turn recall and scope isolation: next",
+        "Phase I-1 next-turn recall and scope isolation: complete",
     )
 
     require(

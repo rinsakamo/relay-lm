@@ -86,7 +86,8 @@ Phase 6 asynchronous RelaySLP orchestration:
   C1-4 integrated worker fault/crash convergence: complete
   C1-5 durable protected source persistence: complete
   Phase 6-C2 one-job claim/rehydrate/execute adapter: complete
-  next-turn recall and scope isolation: next
+  I1 next-turn Primary MEM recall: complete
+  character and namespace isolation: complete
 
 RelayMEM independent track:
   M1/M2 store and retrieval foundations: complete
@@ -95,7 +96,7 @@ RelayMEM independent track:
   C1-4 fault convergence: complete
   C1-5 protected-source restart recovery: complete
   C2 one-job runtime adapter: complete
-  next-turn recall and scope isolation: pending
+  next-turn recall and scope isolation: complete
 
 SOUL Lab UI independent track:
   UI-A0 through UI-A7: complete
@@ -125,7 +126,7 @@ Phase 6-C1-0 through C1-5 are complete:
 - integrated crash/fault convergence,
 - durable claim-independent protected capture and restart rehydration.
 
-Phase 6-C2 completes the thin one-job claim/rehydrate/execute integration adapter. It accepts one exact queued canonical record, uses B3 claim, resolves source through C1-5, invokes C1-2, and preserves bounded retry/terminal behavior without adding a queue scanner, daemon, generalized worker pool, or retry scheduler. The next RelayLM Core boundary is next-turn recall and scope isolation.
+Phase 6-C2 completes the thin one-job claim/rehydrate/execute integration adapter. It accepts one exact queued canonical record, uses B3 claim, resolves source through C1-5, invokes C1-2, and preserves bounded retry/terminal behavior without adding a queue scanner, daemon, generalized worker pool, or retry scheduler. Phase I-1 now completes next-turn recall and character/namespace isolation; SOUL Lab real observation is next.
 
 ## Active priority: Integration Milestone I1
 
@@ -144,9 +145,9 @@ finalized user turn
   -> C1-4 fault/crash convergence                     complete
   -> B3 retry release or terminal commit
   -> durable page/index/log result
-  -> next-turn RelayMEM retrieval
-  -> RelayCTX injection
-  -> model response uses the formed memory
+  -> next-turn RelayMEM retrieval                      complete as Phase I-1
+  -> RelayCTX bounded injection                         complete as Phase I-1
+  -> model response uses the formed memory              complete as Phase I-1
   -> SOUL Lab reads real latest-run and memory outcome
   -> one auditable correction changes later retrieval
 ```
@@ -265,7 +266,7 @@ Component completion alone does not satisfy I1.
 - RelayCTX stream suppression and TTS handoff metadata are default-off; RelayLM Core does not execute TTS/audio/avatar behavior.
 - I1-B remains response-background-task based; the pre-enqueue process-exit window is not restart-complete.
 - C1-5 protects only work that reached source publication and durable enqueue.
-- C1-2 and C2 exist, but the ordinary runtime still lacks later-turn recall and scope-isolation proof.
+- Phase I-1 proves later-turn recall and character/namespace isolation; SOUL Lab still lacks real observation APIs.
 - UI-A7 has no real run/memory observation or authoritative mutation.
 - Secondary MEM and actual RelaySOUL apply remain later work.
 
@@ -281,7 +282,7 @@ Phase 5.5 is closed for RelayLM Core through stream sentinel observation, safe v
 
 ### Phase 6 orchestration and worker components
 
-Phase 6 has implemented B0-B3, I1-B, C1-0 through C1-5, and the bounded C2 queued-record claim/rehydrate/execute adapter. The remaining Phase 6 product connection is next-turn recall and scope isolation, followed by Lab integration.
+Phase 6 has implemented B0-B3, I1-B, C1-0 through C1-5, the bounded C2 queued-record claim/rehydrate/execute adapter, and Phase I-1 scoped next-turn recall. SOUL Lab real observation is the next product connection.
 
 ### Primary MEM primitives
 
@@ -311,3 +312,15 @@ Independent tracks may proceed in parallel only when their next slice serves I1 
 ## Update rule
 
 Update this plan whenever a phase lands, I1 sequencing changes, a target-only schema gains a real producer/consumer path, or a helper/mock boundary becomes ordinary runtime behavior. The same PR must review `docs/PROJECT_STATUS.md`, `docs/README.md`, the architecture index, affected current/target documents, and status-checking smoke scripts.
+
+## Phase I-1 Primary MEM next-turn recall — complete
+
+Phase 6-C1-0 through C1-5 are complete. Phase 6-C2 one-job
+claim/rehydrate/execute adapter: complete. I1 next-turn Primary MEM recall:
+complete. character and namespace isolation: complete.
+
+Turn 2 uses the configured root's opaque character partition, existing M2
+selection, strict Primary page/index/log/namespace verification, and existing
+RelayCTX bounded snippet injection. It does not introduce a parallel retriever
+or synchronously wait for the Turn 1 worker. SOUL Lab real observation is next;
+auditable Correct operation is later.

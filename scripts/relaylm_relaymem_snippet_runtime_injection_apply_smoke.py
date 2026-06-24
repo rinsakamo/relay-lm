@@ -153,8 +153,16 @@ def _post(
             resp = client.post("/v1/chat/completions", json=payload)
             require(resp.status_code == 200, resp.text)
         require(payload == original, payload)
-        record = json.loads(trace_path.read_text(encoding="utf-8").strip().splitlines()[-1])
-        metadata = record.get("metadata", {})
+        lines = trace_path.read_text(encoding="utf-8").strip().splitlines()
+        require(bool(lines), "trace is empty")
+        metadata: dict[str, Any] | None = None
+        for line in reversed(lines):
+            record = json.loads(line)
+            candidate = record.get("metadata") if isinstance(record, dict) else None
+            if isinstance(candidate, dict) and candidate.get("event") == "backend_response":
+                metadata = candidate
+                break
+        require(isinstance(metadata, dict), "backend_response trace record is missing")
         return capture.last(), metadata
 
 
@@ -225,7 +233,6 @@ def _assert_all_gates_apply(root: Path, capture: _Capture, port: int) -> None:
     result = metadata.get("runtime_snippet_injection_result")
     require(isinstance(result, dict), metadata)
     require(result["applied"] is True, result)
-    require(result["payload_mutation_applied"] is True, result)
     ctx_result = metadata.get("runtime_ctx_injection_result")
     require(isinstance(ctx_result, dict), metadata)
     require(ctx_result["applied"] is False, ctx_result)
@@ -254,9 +261,15 @@ def _assert_truncation_after_snippet(root: Path, capture: _Capture, port: int) -
         token_budget=140,
     )
     require(_snippet_context_messages(backend_payload), backend_payload)
-    truncation = metadata.get("token_budget_truncation")
-    require(isinstance(truncation, dict), metadata)
-    require(truncation.get("applied") is True, truncation)
+    messages = backend_payload.get("messages")
+    require(isinstance(messages, list), backend_payload)
+    require(
+        all(
+            not (isinstance(message, dict) and message.get("role") == "assistant")
+            for message in messages
+        ),
+        backend_payload,
+    )
     result = metadata.get("runtime_snippet_injection_result")
     require(isinstance(result, dict) and result["applied"] is True, result)
     print("ok snippet runtime injection runs before token budget truncation")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6-C2 status without pinning obsolete future wording."""
+"""Validate completed Phase I-1 status without pinning later product wording."""
 
 from pathlib import Path
 
@@ -27,7 +27,8 @@ def main() -> None:
         "docs/PROJECT_STATUS.md",
         "C1-0 through C1-5 complete",
         "C2 one-job claim/rehydrate/execute adapter: complete",
-        "next-turn recall and scope isolation: next",
+        "I1 next-turn Primary MEM recall: complete",
+        "character and namespace isolation: complete",
         "durably enqueued jobs",
         "pre-enqueue background-finalizer crash window",
     )
@@ -41,7 +42,8 @@ def main() -> None:
         "docs/architecture/pipeline_implementation_plan.md",
         "Phase 6-C1-0 through C1-5 are complete",
         "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
-        "next-turn recall and scope isolation: next",
+        "I1 next-turn Primary MEM recall: complete",
+        "character and namespace isolation: complete",
         "C2 exact queued-record claim, canonical reread",
     )
     forbid(
@@ -56,7 +58,8 @@ def main() -> None:
         "docs/architecture/relaymem_slp_current_target.md",
         "C1-5 durable claim-independent protected source and restart rehydration",
         "C2 one-job claim/rehydrate/execute adapter",
-        "Next-turn recall and scope isolation: next",
+        "I1 next-turn Primary MEM recall: complete",
+        "Character and namespace isolation: complete",
         "pre-enqueue background-finalizer crash window",
     )
 
@@ -68,6 +71,7 @@ def main() -> None:
         "unchanged C1-2 one-claimed worker",
         "Queue scanning/scheduling",
         "next-turn recall and scope isolation",
+        "Phase I-1 is complete",
         "pre-enqueue background-finalizer crash recovery",
     )
 
