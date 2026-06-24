@@ -1,42 +1,41 @@
-name: Phase I-1 legacy trace smoke patch
+name: Phase I-1 runtime CTX diagnostics
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - "scripts/_phase_i1_legacy_trace_smoke_patch.py"
+      - "scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py"
       - ".github/workflows/_phase_i1_legacy_trace_smoke_patch.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   PYTHONPATH: .:scripts
 
 jobs:
-  patch:
-    if: github.actor != 'github-actions[bot]'
+  diagnostics:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: phase-i1-primary-mem-next-turn-recall
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python scripts/_phase_i1_legacy_trace_smoke_patch.py
-      - name: Commit legacy trace smoke updates
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scripts/relaylm_relaymem_selection_dry_run_smoke.py scripts/relaylm_relaymem_ctx_injection_plan_dry_run_smoke.py
-          git commit -m "test: keep legacy RelayMEM runtime traces content-free"
-          git push origin HEAD:phase-i1-primary-mem-next-turn-recall
       - run: pip install -e .
-      - run: python -m compileall -q relaylm scripts
-      - run: python scripts/relaylm_relaymem_selection_dry_run_smoke.py
-      - run: python scripts/relaylm_relaymem_ctx_injection_plan_dry_run_smoke.py
-      - run: python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py
-      - run: python scripts/relaylm_relaymem_snippet_runtime_injection_apply_smoke.py
+      - name: Run runtime CTX injection smoke
+        id: smoke
+        continue-on-error: true
+        run: python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py > runtime-ctx-smoke.log 2>&1
+      - name: Upload runtime CTX log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i1-runtime-ctx-log
+          path: runtime-ctx-smoke.log
+          if-no-files-found: error
+      - name: Fail when runtime CTX smoke fails
+        if: steps.smoke.outcome != 'success'
+        run: exit 1
