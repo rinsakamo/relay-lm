@@ -1,0 +1,35 @@
+name: Temporary Phase I-3 documentation EOF normalization
+
+on:
+  push:
+    branches:
+      - phase-i3-auditable-primary-mem-correct
+    paths:
+      - scripts/_phase_i3_normalize_doc_eof.py
+      - .github/workflows/phase-i3-temporary-doc-eof.yml
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i3-auditable-primary-mem-correct
+          fetch-depth: 0
+      - run: python scripts/_phase_i3_normalize_doc_eof.py
+      - run: |
+          git fetch origin main
+          git diff --check origin/main...HEAD
+      - name: Commit normalized documentation
+        run: |
+          rm scripts/_phase_i3_normalize_doc_eof.py
+          rm .github/workflows/phase-i3-temporary-doc-eof.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          git add -u scripts/_phase_i3_normalize_doc_eof.py .github/workflows/phase-i3-temporary-doc-eof.yml
+          git commit -m "docs: normalize Phase I3 documentation endings"
+          git push origin HEAD:phase-i3-auditable-primary-mem-correct
