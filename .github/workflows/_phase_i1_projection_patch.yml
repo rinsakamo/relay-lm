@@ -20,7 +20,20 @@ jobs:
         with:
           ref: phase-i1-primary-mem-next-turn-recall
           fetch-depth: 0
-      - run: python scripts/_phase_i1_projection_patch.py
+      - name: Apply projection patch
+        id: apply_patch
+        continue-on-error: true
+        run: python scripts/_phase_i1_projection_patch.py > phase-i1-projection-patch.log 2>&1
+      - name: Upload projection patch log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i1-projection-patch-log
+          path: phase-i1-projection-patch.log
+          if-no-files-found: error
+      - name: Fail when projection patch failed
+        if: steps.apply_patch.outcome != 'success'
+        run: exit 1
       - run: python -m compileall -q relaylm scripts
       - name: Commit patch
         run: |
