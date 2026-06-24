@@ -1,40 +1,39 @@
-name: Phase I-1 store smoke projection patch
+name: Phase I-1 store smoke projection diagnostics
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - "scripts/_phase_i1_store_smoke_projection_patch.py"
+      - "scripts/relaylm_relaymem_store_dry_run_smoke.py"
       - ".github/workflows/_phase_i1_store_smoke_projection_patch.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   PYTHONPATH: .
 
 jobs:
-  patch:
-    if: github.actor != 'github-actions[bot]'
+  diagnostics:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: phase-i1-primary-mem-next-turn-recall
-          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python scripts/_phase_i1_store_smoke_projection_patch.py
-      - name: Commit smoke update before validation
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scripts/relaylm_relaymem_store_dry_run_smoke.py
-          git commit -m "test: keep RelayMEM store trace projection content-free"
-          git push origin HEAD:phase-i1-primary-mem-next-turn-recall
       - run: pip install -e .
       - name: Run updated store smoke
+        id: smoke
+        continue-on-error: true
+        run: python scripts/relaylm_relaymem_store_dry_run_smoke.py > phase-i1-store-smoke.log 2>&1
+      - name: Upload store smoke log
         if: always()
-        run: python scripts/relaylm_relaymem_store_dry_run_smoke.py
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i1-store-smoke-log
+          path: phase-i1-store-smoke.log
+          if-no-files-found: error
+      - name: Fail when store smoke failed
+        if: steps.smoke.outcome != 'success'
+        run: exit 1
