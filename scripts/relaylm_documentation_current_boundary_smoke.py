@@ -59,7 +59,7 @@ def main() -> None:
         "C1-5 durable claim-independent protected source and restart rehydration",
         "C2 one-job claim/rehydrate/execute adapter",
         "I1 next-turn Primary MEM recall: complete",
-        "character and namespace isolation: complete",
+        "Character and namespace isolation: complete",
         "pre-enqueue background-finalizer crash window",
     )
 
