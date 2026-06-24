@@ -56,13 +56,13 @@ replace_once(
 replace_once(
     "apps/soul-lab/src/features/lab/observationApi.ts",
     '''function isNonNegativeInteger(value: unknown): value is number {\n''',
-    '''function isPositiveInteger(value: unknown): value is number {\n  return Number.isInteger(value) && Number(value) >= 1;\n}\n\nfunction isNonNegativeInteger(value: unknown): value is number {\n''',
+    '''function isPositiveInteger(value: unknown): value is number {\n  return typeof value === "number" && Number.isInteger(value) && value >= 1;\n}\n\nfunction isNonNegativeInteger(value: unknown): value is number {\n''',
 )
 
 replace_once(
     "apps/soul-lab/scripts/observationApiSmoke.mjs",
-    '''          source_kind: "preference",\n        },\n''',
-    '''          source_kind: "preference",\n          revision: 1,\n          correction_count: 0,\n          last_corrected_at: null,\n          has_prior_revision: false,\n        },\n''',
+    '''          formed_at: null,\n          pinned: null,\n          source_kind: "preference",\n        },\n''',
+    '''          formed_at: null,\n          pinned: null,\n          source_kind: "preference",\n          revision: 1,\n          correction_count: 0,\n          last_corrected_at: null,\n          has_prior_revision: false,\n        },\n''',
 )
 replace_once(
     "apps/soul-lab/src/features/lab/correctionApi.ts",
