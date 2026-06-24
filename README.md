@@ -242,11 +242,11 @@ For authoritative ownership and order, see the [Pipeline Responsibility Design](
 - 🧬 [RelaySOUL design and gates](docs/relaysoul/README.md)
 - 🗃️ [MVP summaries and milestone history](docs/mvp/README.md)
 
-## 🔗 Relationship to RelayKV
+## 🔗 Backend cache boundary
 
-[RelayKV](https://github.com/rinsakamo/relay-kv) is the adjacent runtime/KV-cache research repository. RelayLM operates one layer above runtime APIs as a conversation and context proxy.
+RelayLM does not materialize, persist, offload, transfer, or directly mutate backend KV cache. Optional cache infrastructure belongs to the inference backend or an external runtime layer behind the backend adapter.
 
-RelayLM can benefit from RelayKV design lessons—working-set selection, anchor/recent/retrieved separation, Persona Anchor KV, and cache-aware layout—without directly mutating engine KV cache in the initial product.
+RelayLM remains responsible only for compiling approved context into a stable, cache-friendly prompt layout where practical; it does not require a particular cache implementation.
 
 ## 📄 License
 
