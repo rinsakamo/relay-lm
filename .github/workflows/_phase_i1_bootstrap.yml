@@ -78,18 +78,34 @@ jobs:
           python scripts/_phase_i1_bootstrap_patch.py > phase-i1-bootstrap.log 2>&1
       - name: Recover implementation commit without workflow files
         if: steps.source.outputs.present == 'true' && steps.apply_patch.outcome != 'success'
+        id: recovery
+        continue-on-error: true
         run: |
-          test "$(git rev-parse HEAD)" != "$(git rev-parse origin/phase-i1-primary-mem-next-turn-recall)"
-          git checkout origin/phase-i1-primary-mem-next-turn-recall -- .github/workflows/_phase_i1_bootstrap.yml
-          rm -f .github/workflows/phase-i1-two-turn-primary-recall-smoke.yml
-          rm -f phase-i1-bootstrap.log
-          git add -A
-          git commit --amend --no-edit
-          git push origin HEAD:phase-i1-primary-mem-next-turn-recall
-      - name: Upload bootstrap log
+          {
+            set -x
+            git status --short
+            git log --oneline --decorate -n 3
+            test "$(git rev-parse HEAD)" != "$(git rev-parse origin/phase-i1-primary-mem-next-turn-recall)"
+            git reset --soft origin/phase-i1-primary-mem-next-turn-recall
+            git restore --staged .github/workflows/phase-i1-two-turn-primary-recall-smoke.yml || true
+            rm -f .github/workflows/phase-i1-two-turn-primary-recall-smoke.yml
+            git restore --source=origin/phase-i1-primary-mem-next-turn-recall --staged --worktree .github/workflows/_phase_i1_bootstrap.yml
+            rm -f phase-i1-bootstrap.log
+            git add -A
+            git status --short
+            git diff --cached --name-status
+            git commit -m "feat: wire I1 Primary MEM next-turn recall"
+            git push origin HEAD:phase-i1-primary-mem-next-turn-recall
+          } > phase-i1-recovery.log 2>&1
+      - name: Upload bootstrap diagnostics
         if: always() && steps.source.outputs.present == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: phase-i1-bootstrap-log
-          path: phase-i1-bootstrap.log
+          path: |
+            phase-i1-bootstrap.log
+            phase-i1-recovery.log
           if-no-files-found: ignore
+      - name: Fail when recovery failed
+        if: steps.source.outputs.present == 'true' && steps.apply_patch.outcome != 'success' && steps.recovery.outcome != 'success'
+        run: exit 1
