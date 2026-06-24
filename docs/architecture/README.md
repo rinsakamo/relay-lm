@@ -47,14 +47,15 @@ Canonical authority:
 - [Integration I1 Primary MEM Two-Turn Recall](integration_i1_primary_mem_two_turn_recall.md)
 - [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md)
+- [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
 
 Phase 6-A1/A2 and B0-B3 own deferred admission, finalized-turn handoff, durable queue publication, and fenced queue lifecycle. I1-B wires ordinary managed response finalization to post-response enqueue. C1-0 owns exact current-claim source construction, C1-1 composes M3a-M3h, C1-2 executes one already-claimed job, C1-3 classifies outcomes, C1-4 verifies integrated fault convergence, C1-5 durably persists and restart-rehydrates the claim-independent protected capture, and C2 connects one exact queued record through canonical claim, rehydrate, and C1-2 execution.
 
-Phase I-1 completes ordinary next-turn Primary MEM recall with exact character/namespace isolation and RelayCTX injection. Phase I-2 adds a bounded read-only observation model, loopback-only APIs, strict browser validation, and real Lab Observation rendering without changing RelayMEM, RelaySLP, RelayRUN, or RelayCTX authority. Phase I-3 completes auditable revision-fenced Correct and later corrected retrieval.
+Phase I-1 completes ordinary next-turn Primary MEM recall with exact character/namespace isolation and RelayCTX injection. Phase I-2 adds a bounded read-only observation model, loopback-only APIs, strict browser validation, and real Lab Observation rendering without changing RelayMEM, RelaySLP, RelayRUN, or RelayCTX authority. Phase I-3 completes auditable revision-fenced Correct and later corrected retrieval. UI-B0 adds a browser-local text-first client for the existing RelayLM Chat Completions path without adding a new routing, memory, SOUL, or backend authority.
 
-The next planned work is documented in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md). I1-G, automatic queue selection, supervised worker operation, broader memory governance, Secondary MEM, and RelaySOUL apply/rollback remain unimplemented.
+The next planned work is documented in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md). O0, I1-G, automatic queue selection, supervised worker operation, broader memory governance, Secondary MEM, and RelaySOUL apply/rollback remain separate.
 
 ## Completed Core streaming boundary
 
@@ -90,21 +91,23 @@ Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, 
 - [SOUL Lab UI-A7 Read-only Management Projection Handoff](soul_lab_ui_a7_management_projection_handoff.md)
 - [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md)
+- [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md)
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md)
 
-The browser shell is complete through UI-A7, Phase I-2 real observation, and Phase I-3 Correct. Real Home conversation, broader memory operations, RelaySOUL apply/rollback, static bundle serving, peer transport, and Runtime adapter execution remain separate.
+The browser shell is complete through UI-A7, Phase I-2 real observation, Phase I-3 Correct, and UI-B0 real Home conversation. UI-B0 uses a single unambiguous server-projected route, same-origin non-stream/SSE transport, explicit Real Runtime versus Local Preview sessions, Stop/Retry/New Conversation controls, and stale response fencing. Broader memory operations, RelaySOUL apply/rollback, static bundle serving, peer transport, and TTS/avatar execution remain separate.
 
 Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1` with explicit `client_instruction_source.v1` provenance. Role, wording, and message position alone are not provenance.
 
 Historical and MVP documents do not override current owners. Implementation handoffs are bounded slice records; they do not override Project Status, the implementation plan, or dedicated current contracts.
 
-## Integration I1 through Phase I-3
+## Integration I1 through UI-B0
 
 - [Primary MEM two-turn recall](integration_i1_primary_mem_two_turn_recall.md): ordinary Turn 1 durable formation, ordinary Turn 2 scoped M2 selection, canonical page/index/log validation, and bounded RelayCTX injection.
 - [Real SOUL Lab observation](phase_i2_real_soul_lab_observation.md): latest completed run, validated formed memories, durable held/blocked outcomes, and actual backend-bound used-memory evidence, all read-only and character/namespace scoped.
 - [Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md): token-gated revision-fenced correction, immutable audit evidence, recovery convergence, and later corrected retrieval.
+- [Real Home conversation](soul_lab_ui_b0_real_home_conversation.md): existing RelayLM Chat Completions transport exposed through a bounded browser-local experiment surface.
 
-## I1-G alignment
+## Operational alignment
 
-Phase I-3 completes the first observe/correct/retrieve product loop. I1-G pre-enqueue background-finalizer durability remains unresolved and separate from queue scanning, scheduling, and supervised worker lifecycle.
+UI-B0 does not close I1-G, select queued work automatically, or create a worker service. O0 local one-job execution, I1-G pre-enqueue durability, queue scanning, scheduling, and supervised lifecycle remain separate roadmap slices.
