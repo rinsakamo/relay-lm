@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/home/runner/work/relay-lm/relay-lm/scripts/relaylm_phase_i2_lab_observation_smoke.py", line 10, in <module>
+    from fastapi.testclient import TestClient
+ModuleNotFoundError: No module named 'fastapi'
+Traceback (most recent call last):
+  File "/home/runner/work/relay-lm/relay-lm/scripts/relaylm_phase_i2_lab_observation_ci_runner.py", line 27, in <module>
+    main()
+  File "/home/runner/work/relay-lm/relay-lm/scripts/relaylm_phase_i2_lab_observation_ci_runner.py", line 19, in main
+    run_smoke("relaylm_phase_i2_lab_observation_smoke.py")
+  File "/home/runner/work/relay-lm/relay-lm/scripts/relaylm_phase_i2_lab_observation_ci_runner.py", line 11, in run_smoke
+    subprocess.run(
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.12.13/x64/bin/python', '/home/runner/work/relay-lm/relay-lm/scripts/relaylm_phase_i2_lab_observation_smoke.py']' returned non-zero exit status 1.
