@@ -10,6 +10,7 @@ from pathlib import Path
 import yaml
 from fastapi.testclient import TestClient
 
+from relaylm import soul_lab_observation_store as observation_store
 from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
 from relaylm.soul_lab_app import create_app
 from relaylm.soul_lab_observation_projection import (
@@ -172,9 +173,15 @@ def main() -> None:
             character_id=CHARACTER,
             namespace=NAMESPACE,
         )
-        latest = build_lab_last_run_projection(scope)
+        original_receipt_limit = observation_store._MAX_RECEIPTS_PER_KIND
+        observation_store._MAX_RECEIPTS_PER_KIND = 2
+        try:
+            latest = build_lab_last_run_projection(scope)
+        finally:
+            observation_store._MAX_RECEIPTS_PER_KIND = original_receipt_limit
         require(latest.run_id == "run-b", latest.model_dump())
         require(latest.status == "completed", latest.model_dump())
+        require("observation_receipt_count_exceeded" in latest.bounded_reason_ids, latest.model_dump())
         used = build_lab_memory_used_projection(scope)
         require(used.run_id == "run-b", used.model_dump())
         require(len(used.items) == 16, used.model_dump())
