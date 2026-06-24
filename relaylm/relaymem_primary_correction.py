@@ -614,8 +614,6 @@ def _publish_prepared_successor(
         dry_run_only=False,
         apply_enabled=True,
     )
-    if fault_at == "after_index_apply":
-        raise PrimaryCorrectionError("reconciliation_required")
     if (
         apply_result.get("index_reconciled") is not True
         or apply_result.get("log_reconciled") is not True
