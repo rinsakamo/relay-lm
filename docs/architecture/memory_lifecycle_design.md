@@ -19,20 +19,22 @@ relaylm_related_authority:
   - relaymem_slp_execution_design.md
   - scene_memory_scope_design.md
   - soul_lab_ui_mvp.md
+  - phase_i3_auditable_primary_mem_correct.md
+  - phase_i4_primary_mem_forget_hide_contract.md
   - ../PROJECT_STATUS.md
 ---
 # Memory Lifecycle Design
 
 ## Purpose
 
-This document defines how RelayLM treats short-term memory, experience evidence, long-term MEM formation, and SOUL Lab memory operations as one lifecycle.
+This document defines how RelayLM treats short-term memory, governed experience evidence, durable MEM formation, and explicit SOUL Lab memory operations as one lifecycle.
 
 The key product boundary is:
 
 ```text
 Ordinary MEM formation is autonomous by default.
-User approval is not required for ordinary memory formation.
-SOUL-level changes and high-risk memory operations require explicit intervention.
+User approval is not required for every ordinary memory.
+SOUL-level changes and destructive or authority-changing operations require explicit intervention.
 ```
 
 RelayMEM should feel like a character forming experience, not like the user managing a per-turn approval queue.
@@ -41,449 +43,316 @@ RelayMEM should feel like a character forming experience, not like the user mana
 
 ```text
 RelayCTX short-term state
-  -> current-session continuity, referable items, unresolved slots
+  -> current-session continuity and unresolved working state
 
-Experience evidence
-  -> governed turn/session/communication evidence after normal response
+Governed experience evidence
+  -> bounded turn/session/communication evidence after normal response
 
 RelaySLP
-  -> deferred memory extraction, salience/scope/safety classification, merge/update/hold/reject/proposal
+  -> deferred extraction, salience/scope/safety classification, merge/update/hold/reject/proposal
 
 RelayMEM durable memory
-  -> formed memories, summaries, relations, and retrieval pages
+  -> Primary experience memories, Secondary crystallized memories, relations, and retrieval pages
 
 SOUL Lab
-  -> observation, correction, forgetting, pinning, merging, and SOUL-level intervention when needed
+  -> observation, Correct, Forget, Pin/Unpin, Merge, held review, and explicit SOUL intervention
 ```
 
-Short-term memory helps the current interaction. Long-term MEM crystallizes experience for future interactions.
+Short-term memory helps the current interaction. Durable MEM crystallizes governed experience for future interactions.
 
 ## Memory layers
 
-RelayLM memory should be read as four related layers:
-
 ```text
 0. Short-term CTX
-   Working memory for the current turn, session, or scene.
+   Request/session/scene working memory.
 
 1. Primary MEM / Experience MEM
    EMO- and SCN-influenced experiential memory.
 
 2. Secondary MEM / Crystallized MEM
-   SLP-consolidated memory organized against SOUL, existing MEM, lineage, and retrieval needs.
+   SLP-consolidated memory organized against SOUL, existing MEM, lineage, contradiction, and retrieval needs.
 
 3. SOUL anchor
    Durable identity, values, worldview, output policy, and relationship anchors.
 ```
 
-SOUL is not just another memory page. It is the durable identity/value anchor used to decide whether an experience remains ordinary MEM, becomes stable relationship/project/concept memory, or must be escalated as a SOUL proposal.
+SOUL is not another memory page. It is a higher-authority identity/value anchor used to decide whether experience remains ordinary MEM, becomes stable Secondary MEM, or must become a separately governed proposal.
 
 ### Short-term CTX
 
-Short-term CTX is working memory.
+Short-term CTX includes current topic, active task, referable items, unresolved slots, selected recent continuity, and bounded current-session summary. It is latency-sensitive and is not automatically durable. It may become source evidence for RelaySLP when policy permits.
 
-It includes:
+### Primary MEM
 
-- current topic,
-- active task,
-- prior decision,
-- referable items,
-- unresolved slots,
-- selected recent continuity,
-- current-session summary.
+Primary MEM captures what the character experienced, noticed, or found salient. It may represent session episodes, communication moments, subjective impressions, recent project events, unresolved experiences, emotional salience, and scene-bound memories.
 
-It is request/session/scene local, latency-sensitive, and not automatically durable. It may become source evidence for RelaySLP, but it is not itself long-term MEM.
-
-### Primary MEM: experience memory
-
-Primary MEM is EMO- and SCN-influenced experiential memory.
-
-It captures what the character experienced, noticed, or found salient. It may include:
-
-- session episodes,
-- communication episodes,
-- subjective impressions,
-- relationship moments,
-- recent project events,
-- unresolved but salient experiences,
-- emotional salience markers,
-- scene-bound memories.
-
-Primary MEM is stronger than short-term CTX because it may survive the current session, but it is still closer to lived experience than to stable knowledge.
-
-RelayEMO influences salience and temperature. RelaySCN influences scope, scene, persistence policy, and whether the experience is eligible to be remembered. Neither EMO nor SCN may turn raw affect estimates into durable facts by itself.
-
-Example boundary:
+Primary MEM may survive sessions, but it remains closer to lived experience than stable knowledge. RelayEMO influences salience and RelaySCN influences scope/persistence policy. Neither may turn raw affect estimates into durable facts by itself.
 
 ```text
-Allowed primary MEM:
+Allowed Primary MEM:
   In the previous communication session, Mica seemed anxious in the latter half.
 
 Disallowed durable fact:
   Mica is an anxious person.
 ```
 
-### Secondary MEM: crystallized memory
+### Secondary MEM
 
-Secondary MEM is SLP-consolidated memory.
+Secondary MEM is contradiction-checked, lineage-backed, SOUL-aligned crystallized memory. It may become stable project state, concepts, relationship summaries, preferences, recurring patterns, claims, relations, or durable summaries.
 
-It is formed when RelaySLP organizes primary MEM or other governed evidence against:
+Secondary MEM is less emotionally raw than Primary MEM. EMO/SCN may remain provenance or salience, not an unsupported fact.
 
-- SOUL constraints,
-- existing MEM pages,
-- source lineage,
-- contradiction checks,
-- namespace boundaries,
-- long-term retrieval needs,
-- relation typing and summaries.
+### SOUL anchor
 
-Secondary MEM may become:
-
-- stable project state,
-- concept pages,
-- relationship summaries,
-- durable preferences,
-- recurring patterns,
-- contradiction-resolved claims,
-- relation graph entries,
-- stable memory summaries.
-
-Secondary MEM is less emotionally raw than primary MEM. It preserves EMO/SCN as provenance, salience, or scope when useful, but it should not preserve transient affect as a durable claim.
-
-Example transformation:
-
-```text
-Primary MEM:
-  The user reacted strongly against requiring manual approval for every MEM candidate.
-
-Secondary MEM:
-  RelayLM MEM design should treat ordinary memory formation as autonomous, while SOUL Lab provides observation, correction, forgetting, pinning, and merging after the fact.
-```
-
-### SOUL anchor boundary
-
-SOUL is the character's durable identity and value anchor.
-
-SOUL affects secondary MEM formation by answering questions like:
-
-- Is this ordinary memory or identity-level change?
-- Does this experience conflict with protected values or relationship anchors?
-- Should this become a stable relationship/project/concept memory?
-- Should this be escalated as a RelaySOUL proposal?
-
-A memory may produce a SOUL candidate, but it must not directly mutate SOUL.
-
-```text
-Primary MEM
-  -> what happened or felt salient
-
-Secondary MEM
-  -> what this means for future continuity
-
-SOUL proposal
-  -> whether identity, values, or relationship anchors should change
-
-SOUL revision
-  -> explicit intervention path only
-```
+SOUL answers whether an experience is ordinary memory, conflicts with protected values or relationship anchors, should become stable Secondary MEM, or should produce a proposal. RelayMEM/RelaySLP may produce SOUL candidates but never directly mutate SOUL.
 
 ## Component ownership
 
-### RelayCTX short-term memory
+### RelayCTX
 
-RelayCTX owns request-local and session-local continuity needed for the current answer:
+RelayCTX owns request/session-local continuity for the current answer. It is not durable merely because it helped a prompt.
 
-- current topic,
-- active task or question,
-- prior decision,
-- referable items,
-- unresolved slots,
-- selected recent continuity metadata,
-- bounded short-term summaries.
+### Governed experience evidence
 
-RelayCTX short-term memory must not be treated as durable memory merely because it helped a prompt. It is not automatically persisted and it is not a source of RelaySOUL changes.
+Experience evidence may include source references, session summaries, validated CTX update candidates, RelaySCN persistence policy, bounded RelayEMO salience, RelayRUN recovery correlation, user corrections, explicit memory requests, and retrieval lineage.
 
-### Experience evidence
-
-Experience evidence is governed source material produced around a turn, session, communication, correction, or recovery event.
-
-It may include:
-
-- source references to the latest exchange,
-- communication session summaries,
-- RelayCTX Unpack/update candidates after validation,
-- RelaySCN scene/persistence policy,
-- RelayEMO expression or salience evidence in bounded form,
-- RelayRUN checkpoint/recovery metadata,
-- user corrections or explicit memory requests,
-- retrieval summaries and source lineage.
-
-Experience evidence is not the same as generic runtime trace. Content-bearing evidence belongs in the protected memory/source domain, not default trace/audit projections.
+Content-bearing evidence belongs in protected memory/SLP domains, not default trace or public audit projections.
 
 ### RelaySLP
 
-RelaySLP is the deferred memory compiler.
+RelaySLP is the deferred memory compiler. It may classify governed evidence as no change, new memory, update, summary, relation, held/blocked result, separately authorized operation candidate, or RelaySOUL proposal candidate.
 
-It decides whether governed evidence becomes:
+Ordinary memory may apply autonomously only when all policy, safety, lineage, namespace, confidence/stability, and idempotency gates pass.
 
-- no durable memory change,
-- a new memory record,
-- an update to an existing memory page,
-- a session or scene summary,
-- a relation update,
-- a held/blocked item,
-- a correction or forgetting operation,
-- a RelaySOUL proposal candidate.
+### RelayMEM
 
-RelaySLP is allowed to apply ordinary memory updates only when the apply gate, RelaySCN persistence policy, source lineage, confidence/stability, namespace, and idempotency checks pass.
-
-### RelayMEM durable memory
-
-RelayMEM durable memory stores formed experience and retrieval pages.
-
-It is lower authority than SOUL, OUTPUT_POLICY, and RELATIONSHIP_ANCHOR. It should inform answers and continuity, but it must not silently rewrite identity, values, relationship policy, or output style.
+RelayMEM owns durable formed memory, lifecycle, current revision, retrieval pages, lineage, and page/index/log persistence. It remains lower authority than SOUL, OUTPUT_POLICY, and RELATIONSHIP_ANCHOR.
 
 ### SOUL Lab
 
-SOUL Lab is not a mandatory approval queue for ordinary memory formation.
+SOUL Lab is not a mandatory approval queue. It lets the user observe formed/used/held outcomes and perform explicit governed operations through server-owned APIs.
 
-It should let the user:
+Canonical user operations include:
 
-- see recently formed memories,
-- see which memories influenced an answer,
-- inspect uncertain or held memories,
-- correct a memory,
-- forget or hide a memory,
-- pin or unpin important memories,
-- merge duplicates,
-- resolve contradictions,
-- escalate identity-level changes into SOUL Intervention.
+- Correct a current active memory,
+- Forget a current active memory,
+- Pin or Unpin where later contracts permit,
+- Merge duplicates where later contracts permit,
+- review held candidates,
+- escalate identity-level proposals to SOUL Intervention.
 
-## Short-term versus long-term memory
+## Short-term versus durable memory
 
 ```text
 Short-term memory
   - owned primarily by RelayCTX
   - request/session/scene local
-  - helps immediate coherence
   - bounded and latency-sensitive
   - not automatically durable
 
-Long-term MEM
+Durable MEM
   - owned by RelayMEM / RelaySLP
-  - durable and namespace-scoped
-  - formed from governed experience evidence
+  - character and namespace scoped
+  - formed from governed evidence
   - retrievable across turns/sessions
-  - updateable by policy-governed SLP
+  - changed only through policy-governed persistence or explicit operations
 ```
 
-Scene memory and session memory sit between the two. They may begin as short-term continuity and later become long-term MEM only when RelaySLP policy allows promotion.
+Scene and session memory may begin as short-term continuity and later become durable only when RelaySLP policy allows promotion.
 
-## Primary-to-secondary consolidation
-
-Primary MEM and secondary MEM should not collapse into one bucket.
+## Primary-to-Secondary consolidation
 
 ```text
 Short-term CTX
-  -> turn/session working state
-  -> source evidence for SLP when policy allows
+  -> source evidence when policy permits
 
 Primary MEM
-  -> scene-aware and EMO-influenced experience memory
-  -> useful for recent continuity and subjective relationship memory
+  -> scene-aware and EMO-influenced experience
 
 Secondary MEM
-  -> SOUL-aligned, contradiction-checked, lineage-backed memory
-  -> useful for durable retrieval and stable summaries
+  -> SOUL-aligned, contradiction-checked, lineage-backed stable memory
 ```
 
-RelaySLP may create primary MEM quickly at turn/session end, then consolidate it later into secondary MEM. Consolidation may merge several primary memories, mark older ones as superseded, or extract a stable relation/summary while preserving source lineage.
+RelaySLP may later consolidate several eligible active Primary memories, mark older ones superseded, or extract stable relations/summaries while preserving lineage. A canonical hidden Primary MEM is not an ordinary consolidation candidate.
 
 ## Retrieval authority and prompt placement
 
-Retrieval should preserve authority order.
+Authority order:
 
 ```text
-Highest authority:
-  SOUL / OUTPUT_POLICY / RELATIONSHIP_ANCHOR
-
-Stable memory:
-  Secondary MEM / Crystallized MEM
-
-Dynamic context:
-  RelaySCN scene state
-  Primary MEM / Experience MEM
-  Short-term CTX
-  latest user input
+SOUL / OUTPUT_POLICY / RELATIONSHIP_ANCHOR
+  > Secondary MEM
+  > RelaySCN
+  > Primary MEM
+  > Short-term CTX
+  > latest user input
 ```
 
-Prompt placement should keep stable, approved context before dynamic evidence:
+Prompt placement should keep stable approved context before dynamic evidence. Primary MEM helps continuity but does not override SOUL or Secondary MEM.
 
-```text
-stable prefix:
-  SOUL
-  OUTPUT_POLICY
-  RELATIONSHIP_ANCHOR
-  selected secondary MEM summary
+RelayMEM Retrieval reads eligible formed memory for the current answer. It never writes memory. RelaySLP writes future memory after the normal answer path.
 
-dynamic suffix:
-  SCN
-  selected primary MEM
-  selected short-term CTX
-  latest input
-```
+## Autonomous formation and explicit intervention
 
-Primary MEM can help a reply feel continuous and emotionally aware, but it must not override SOUL or secondary MEM. Secondary MEM can guide durable continuity, but it still remains lower authority than SOUL.
+Ordinary safe memory formation is autonomous by default. The conversation loop does not pause for per-turn approvals. The Lab shows formed/held outcomes and allows after-the-fact explicit operations.
 
-## Autonomous memory formation
+Explicit intervention is required for identity/SOUL changes, relationship-anchor changes, durable output-policy changes, destructive lifecycle changes, pinning that changes priority, sensitive disputed facts, unresolved contradictions, and cross-namespace operations.
 
-Ordinary memory formation should be autonomous by default.
-
-That means:
-
-- the user should not approve every ordinary memory candidate,
-- the normal conversation loop should not pause for memory decisions,
-- safe low-risk memories may be formed after turn/session end when gates pass,
-- Lab shows what was formed and what was held,
-- user correction remains available after the fact.
-
-This is intentionally different from RelaySOUL mutation. SOUL-level changes require explicit intervention because they alter identity, values, output policy, relationship anchors, or durable persona constraints.
-
-## Intervention boundaries
-
-User/operator intervention is required for:
-
-- RelaySOUL changes,
-- relationship anchor changes,
-- durable output policy changes,
-- destructive memory deletion,
-- explicit pinning or unpinning when it changes retrieval priority,
-- sensitive personal facts,
-- low-confidence personal inference,
-- unresolved contradictions,
-- user-disputed memories,
-- policy-blocked persistence,
-- memory operations that cross namespace boundaries.
-
-User/operator intervention is not required for every ordinary project note, concept refinement, relationship continuity detail, or session summary when RelaySLP gates classify it as safe to apply.
-
-## Safety scopes
-
-Safety scopes should be interpreted as memory-operation classes, not as a universal user-approval requirement.
+Safety scopes remain:
 
 ```text
 free_to_update
-  May be autonomously applied by RelaySLP when all gates pass.
-
 review_required
-  Held because the system cannot safely decide without later review or correction.
-
 explicit_approval_required
-  Requires explicit user/operator approval or a RelaySOUL proposal path.
-
 never_auto_promote
-  Never becomes ordinary durable memory automatically.
 ```
 
-`review_required` and `explicit_approval_required` are exception paths. They should not be the ordinary memory formation experience.
+Review and approval are exception paths, not the ordinary formation experience.
+
+## Primary revision and lifecycle model
+
+Each logical Primary MEM has one stable `memory_id`, one canonical current physical page, one monotonically increasing revision, one canonical lifecycle state, and one retrieval-eligibility result.
+
+Target current-state resolver:
+
+```text
+relaylm.mem.primary_current_state.v0
+lifecycle_state: active | hidden
+mutation_state: none | prepared | recovery_required | corrupt
+retrieval_eligible: true | false
+```
+
+This resolver is the only authority for:
+
+- what physical page is current,
+- what revision is current,
+- whether the current logical memory is active,
+- whether it is eligible for ordinary retrieval,
+- whether a pending/corrupt operation requires fail-closed quarantine.
+
+The current implementation provides correction-specific resolution only. The common lifecycle resolver is target work for Phase I-4B.
+
+## Phase I-3 Correct — implemented
+
+```text
+revision N active
+  -> read-only Correct preflight
+  -> exact token/revision-fenced apply
+  -> immutable successor Primary page
+revision N+1 active
+  -> M3f/M3g convergence
+  -> immutable correction receipt
+```
+
+Correct preserves logical identity, prior immutable pages, exact scope, per-memory one-winner concurrency, operation idempotency, crash recovery, and historical used-memory evidence. Existing M2 resolves only the corrected current revision.
+
+Authority: `phase_i3_auditable_primary_mem_correct.md`.
+
+## Phase I-4A Forget / Hide — defined target
+
+The canonical terms are deliberately distinct:
+
+| Term | Meaning |
+|---|---|
+| Forget | user-facing explicit operation |
+| `hidden` | canonical current lifecycle state that is not active and not retrieval-eligible |
+| Forget tombstone | immutable runtime-private audit/recovery artifact; not a lifecycle state or retrieval page |
+
+`Hide` is phase-language only, not a second operation. Physical deletion, secure erase, purge, restore, and unhide are separate future boundaries.
+
+### Persistence decision
+
+Candidate A is selected:
+
+```text
+revision N active
+  -> exact prepared operation; fail-closed quarantine
+  -> immutable successor Primary page through M3e
+revision N+1 hidden
+  -> M3f/M3g index-before-log convergence
+  -> M2 exclusion verification
+  -> immutable Forget tombstone
+```
+
+The hidden successor page is lifecycle authority. A tombstone is audit evidence and must not become an independently committed sidecar flag.
+
+### Retrieval target
+
+- active, valid, converged current memory may be ranked by existing M2;
+- hidden current memory is excluded;
+- all prior physical revisions are excluded;
+- prepared, recovery-required, corrupt, or ambiguous chains are excluded fail-closed;
+- hidden reason and tombstone metadata never reach RelayCTX;
+- unrelated memory ranking is unchanged.
+
+### Concurrency target
+
+Correct and Forget share one per-memory lock namespace, pending-operation fence, operation identity lookup, and current revision claim. Only one operation can consume revision N.
+
+```text
+Correct preflight at N -> Forget commits N first -> Correct returns stale_revision
+Forget preflight at N -> Correct commits N first -> Forget returns stale_revision
+concurrent Forget applies -> one commit owner
+exact Forget replay -> same result, no new revision/tombstone
+new Forget against hidden -> already_hidden
+Correct/Pin/Merge/Secondary against hidden -> ineligible unless a later contract explicitly changes it
+```
+
+### Historical evidence target
+
+Past used-memory receipts remain immutable:
+
+```text
+injected_summary = representation actually injected in the past
+current_summary = null when current lifecycle is hidden
+current_lifecycle_state = hidden
+lifecycle_changed = true
+```
+
+The past conversation is never rewritten as though it did not use the memory.
+
+### Current implementation claim
+
+Phase I-4A is documentation only. Production Forget preflight/apply/history, lifecycle resolver changes, hidden successor publication, M2 exclusion, observation projection changes, and SOUL Lab Forget UI are unimplemented.
+
+Authority: `phase_i4_primary_mem_forget_hide_contract.md`.
 
 ## Lab presentation model
 
-Prefer these Lab surfaces:
+Preferred surfaces:
 
 ```text
 Memory Formation
   newly formed memories
-  held or uncertain memories
-  blocked memory operations
+  held or blocked outcomes
   memories used in latest response
-  source experience summary
-  correction / forget / pin / merge controls
+  current revision and lifecycle
+  Correct / Forget / Pin / Merge controls when eligible
 ```
 
-Avoid making the primary UI a per-turn approval inbox:
+Avoid a mandatory approval inbox for every candidate. Real mutation failure must never become mock success.
 
-```text
-Memory candidate approval queue
-  approve / hold / reject every candidate
-```
+Target Forget UI must state:
 
-The Lab should support operator control without turning normal memory formation into user labor.
-
-## Retrieval relationship
-
-RelayMEM Retrieval reads formed memory for the current answer. It does not write memory.
-
-```text
-formed MEM
-  -> RelayMEM Retrieval
-  -> bounded runtime-private evidence
-  -> RelayCTX packing
-  -> current answer
-```
-
-RelaySLP writes or updates future memory after the normal answer path.
-
-```text
-current experience
-  -> governed evidence
-  -> deferred RelaySLP
-  -> gated memory apply
-  -> future retrieval
-```
+- future ordinary conversations no longer retrieve the memory,
+- this is not physical file deletion,
+- audit evidence remains,
+- past conversation and used-memory evidence is not rewritten.
 
 ## Content-bearing and content-free boundary
 
-Content-bearing memory artifacts may contain source text, candidate values, snippets, or page updates only in protected memory/SLP domains.
+Content-bearing source, candidate, summary, and page data remains in protected memory/SLP domains. Generic trace, public errors, and diagnostics remain bounded and exclude raw source, prompts, transcripts, credentials, paths, roots, digests, lineage, and unrestricted pages.
 
-Default trace, audit, public errors, and general runtime diagnostics must remain content-free and expose only:
-
-- counts,
-- booleans,
-- status values,
-- reason IDs,
-- safety scope classes,
-- confidence/stability bands,
-- namespace classes,
-- apply attempted/applied booleans.
+Forget reason and tombstone metadata are not retrieval inputs.
 
 ## Non-goals
 
-This lifecycle does not make RelayLM:
+This lifecycle does not make RelayLM a universal semantic judge, vector database product, automatic SOUL mutation system, per-turn approval workflow, physical deletion/secure-erasure system, restore/unhide system, or reason to persist raw runtime traces as memory.
 
-- a universal semantic memory judge,
-- a vector database product,
-- an automatic SOUL mutation system,
-- a per-turn user approval workflow,
-- a replacement for explicit user correction,
-- a reason to persist raw runtime traces as memory.
+## Current operational boundary
 
-## Summary
+Successfully reconciled active Primary MEM may participate in later ordinary requests only through exact character partition, namespace, canonical page/index/log linkage, current lifecycle resolution, and existing M2/RelayCTX gates.
 
-```text
-RelayCTX keeps short-term continuity.
-Primary MEM captures EMO- and SCN-influenced experience.
-RelaySLP consolidates primary MEM into secondary MEM when gates pass.
-Secondary MEM stores SOUL-aligned crystallized memory for durable retrieval.
-SOUL Lab lets the user observe, correct, forget, pin, merge, and escalate.
-SOUL Intervention remains explicit.
-```
+Held, blocked, failed, malformed, superseded, hidden, prepared, recovery-required, conflicting, or corrupt candidates are not target prompt inputs.
 
-## Primary MEM next-turn use
-
-A successfully reconciled Primary MEM may participate in a later ordinary
-request only through its opaque character store partition, exact namespace,
-canonical page/index/log linkage, and current RelaySCN retrieval gates. Run and
-session are not added as new long-term restrictions. Held, blocked, failed,
-malformed, conflicting, or unreconciled candidates are not injected.
-
-<!-- phase-i3-auditable-primary-mem-correct -->
-## Phase I-3 auditable Primary MEM Correct — complete (2026-06-24)
-
-Phase I-3 completes the first real observe/correct/retrieve loop. A formed Primary MEM observed through Phase I-2 can be corrected through read-only preflight, bounded semantic diff, explicit short-lived-token apply, immutable successor-page publication through the existing M3e boundary, canonical M3f/M3g index/log convergence, and immutable audit receipt finalization. Existing M2 retrieval resolves only the corrected current revision and existing RelayCTX injection remains the sole prompt path.
-
-Character/namespace isolation, stable logical memory identity, no-clobber publication, exact operation idempotency, one-winner revision fencing, crash recovery, and historical used-memory integrity are preserved. Correction reason, audit receipt, paths, digests, lineage, queue/lease state, and prior full pages are not retrieval inputs or public prompt content.
-
-Authority and exact contracts: `docs/architecture/phase_i3_auditable_primary_mem_correct.md`.
-
-Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement forget, pin/unpin, merge, held apply/discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.
+I1-G pre-enqueue background-finalizer durability remains unresolved. Queue scanner / daemon operation, UI-B0, and O0 remain unimplemented/planned and are unchanged by Phase I-4A.
