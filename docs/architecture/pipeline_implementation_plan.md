@@ -31,6 +31,8 @@ relaylm_related_authority:
   - phase6c2_one_queued_primary_worker_integration.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i2_real_soul_lab_observation.md
+  - phase_i3_auditable_primary_mem_correct.md
+  - post_i3_evaluation_work_roadmap.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - soul_lab_ui_a7_management_projection_handoff.md
@@ -84,8 +86,14 @@ RelayMEM Primary integration:
 SOUL Lab:
   UI-A0 through UI-A7: complete
   I2 real latest-run and memory observation: complete
-  I3 I3 auditable Primary MEM Correct: complete
-  broader authoritative mutations: pending
+  I3 auditable Primary MEM Correct: complete
+  real Home conversation and broader authoritative mutations: planned
+
+Operations:
+  local one-job runner: planned
+  queue scanner / retry scheduler: planned
+  supervised worker service: planned
+  always-on local operation: planned
 
 SOUL Lab Runtime:
   TTS/audio/avatar adapter execution: planned later
@@ -106,9 +114,9 @@ Phase 6-C1-0 through C1-5 are complete:
 - integrated crash/fault convergence,
 - durable claim-independent protected capture and restart rehydration.
 
-Phase 6-C2 one-job claim/rehydrate/execute adapter: complete. It accepts one exact queued canonical record, uses B3 claim, resolves source through C1-5, invokes C1-2, and preserves bounded retry/terminal behavior without adding a queue scanner, daemon, generalized worker pool, or retry scheduler.
+Phase 6-C2 one-job claim/rehydrate/execute adapter is complete. It accepts one exact queued canonical record, uses B3 claim, resolves source through C1-5, invokes C1-2, and preserves bounded retry/terminal behavior without adding a queue scanner, daemon, generalized worker pool, or retry scheduler.
 
-Phase I-1 next-turn recall and scope isolation are complete. Phase I-2 real SOUL Lab observation is complete. Phase I-3 auditable Correct is the next product boundary.
+Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, and Phase I-3 auditable Correct are complete. Planned work after I-3 is recorded in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md).
 
 ## Completed Primary MEM end-to-end loop
 
@@ -129,6 +137,7 @@ finalized user turn
   -> RelayCTX bounded injection                        complete as Phase I-1
   -> model response uses the formed memory             complete as Phase I-1
   -> SOUL Lab reads real latest-run and memory outcome complete as Phase I-2
+  -> auditable correction and corrected retrieval      complete as Phase I-3
 ```
 
 ### I1-A: B3 queue lifecycle — complete
@@ -215,30 +224,57 @@ Phase I-1 completes next-turn recall and character/namespace isolation.
 
 Phase I-2 exposes bounded, loopback-only latest-run, formed, held/blocked, and actually injected memory evidence without changing RelayMEM, RelaySLP, RelayRUN, or RelayCTX authority.
 
-### I1-G: pre-enqueue background-finalizer durability — unresolved
+### I1-F / Phase I-3: auditable Primary MEM Correct — complete
 
-I1-G tracks termination after visible response delivery but before durable source and B2 queue publication. C1-5, C2, Phase I-1, and Phase I-2 do not close this boundary. `docs/config_schema.md`, the Current/Target matrix, and status smokes must move together; stale TODO or future-tense text in related documents is rejected.
-
-## Active priority: Phase I-3 auditable Correct
-
-Add one fully auditable `Correct` operation whose result changes later retrieval behavior while preserving prior state and provenance.
-
-Required sequence:
+Phase I-3 completes the first real observe/correct/retrieve loop:
 
 ```text
-real observed memory item
-  -> explicit character/namespace/current-memory validation
-  -> bounded correction preflight
-  -> atomic authoritative memory update
-  -> durable audit evidence
-  -> later M2 retrieval selects corrected representation
+real formed Primary MEM observation
+  -> read-only correction preflight and bounded semantic diff
+  -> explicit short-lived-token apply
+  -> immutable successor page through M3e
+  -> M3f/M3g index/log convergence and bounded recovery
+  -> immutable correction receipt
+  -> existing M2 and RelayCTX select the corrected current revision
 ```
 
-Phase I-3 does not include general memory administration, RelaySOUL mutation, queue scanning, scheduler/daemon lifecycle, or Secondary MEM consolidation. Forget, pin/unpin, merge, held apply/discard, and broader operations follow later.
+Character/namespace isolation, stable logical memory identity, no-clobber publication, exact operation idempotency, one-winner revision fencing, crash recovery, and historical used-memory integrity are preserved. Exact authority and contracts are defined in [Phase I-3 Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md).
+
+### I1-G: pre-enqueue background-finalizer durability — unresolved
+
+I1-G tracks termination after visible response delivery but before durable source and B2 queue publication. C1-5, C2, Phase I-1, Phase I-2, and Phase I-3 do not close this boundary. `docs/config_schema.md`, the Current/Target matrix, and status smokes must move together; stale TODO or future-tense text in related documents is rejected.
+
+## Planned work after Phase I-3
+
+The detailed target sequence is maintained in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md).
+
+```text
+Memory governance:
+  I-4 Forget / Hide
+  I-5 Pin / Unpin
+  I-6 Merge / Supersession
+  I-7 Held Apply / Discard
+  I-8 Secondary MEM consolidation
+  I-9 RelaySOUL proposal / intervention / rollback
+
+SOUL Lab experience:
+  UI-B0 Real Home Conversation
+  UI-B1 Memory lifecycle visibility
+  UI-B2 Evaluation scenarios and evidence
+
+Operations:
+  O0 Local one-job runner
+  I1-G Pre-enqueue durability
+  O1 Queue scanner / retry scheduler
+  O2 Supervised worker service
+  O3 Always-on local operation
+```
+
+The immediate parallel work candidates are UI-B0, O0, I1-G contract/fault design, and the I-4 lifecycle contract. This sequencing does not mark any of them implemented.
 
 ## Current completion criteria
 
-The end-to-end Primary MEM loop is complete through observation when:
+The end-to-end Primary MEM loop is complete through auditable correction when:
 
 - a managed turn schedules deferred Primary MEM processing without delaying visible output,
 - the durable queue claims, leases, retries, recovers stale work, and reaches terminal state,
@@ -248,7 +284,10 @@ The end-to-end Primary MEM loop is complete through observation when:
 - character and namespace isolation are verified,
 - SOUL Lab reads real latest-run and memory outcomes,
 - observation survives restart without inventing missing evidence,
-- duplicate/retry smoke preserves queue and memory-write idempotency.
+- duplicate/retry smoke preserves queue and memory-write idempotency,
+- a real formed Primary MEM can be revision-fenced and corrected,
+- page/index/log and audit recovery converge,
+- later ordinary retrieval resolves only the corrected current revision.
 
 The pre-enqueue background-finalizer crash window remains explicitly outside this completion claim.
 
@@ -261,28 +300,21 @@ The pre-enqueue background-finalizer crash window remains explicitly outside thi
 - RelayCTX stream suppression and TTS handoff metadata are default-off; RelayLM Core does not execute TTS/audio/avatar behavior.
 - I1-G remains unresolved: I1-B is response-background-task based and the pre-enqueue process-exit window is not restart-complete.
 - C1-5 protects only work that reached source publication and durable enqueue.
-- Phase I-2 is observe-only; no Correct/forget/pin/merge/apply/discard behavior exists.
-- Secondary MEM and actual RelaySOUL apply remain later work.
+- Phase I-3 implements only Correct; forget, pin/unpin, merge, held apply/discard, Secondary MEM, and RelaySOUL apply/rollback remain later work.
+- Real SOUL Lab Home conversation, local automatic worker selection, and supervised service lifecycle remain planned.
 
 ## Deferred after the current boundary
 
+Detailed sequencing is in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md).
+
 - RelayMEM-M4 Secondary MEM consolidation,
-- broad SOUL proposal apply,
+- broad SOUL proposal apply and rollback,
 - generalized memory administration,
-- queue scanner/scheduler and daemon/service lifecycle,
+- real SOUL Lab Home conversation,
+- local one-job runner and queue scanner/scheduler,
+- daemon/service lifecycle and always-on operation,
 - static SOUL Lab bundle serving,
 - TTS/audio/Live2D execution,
 - protocol expansion,
 - model-specific optimization,
 - generalized agent functionality.
-
-<!-- phase-i3-auditable-primary-mem-correct -->
-## Phase I-3 auditable Primary MEM Correct — complete (2026-06-24)
-
-Phase I-3 completes the first real observe/correct/retrieve loop. A formed Primary MEM observed through Phase I-2 can be corrected through read-only preflight, bounded semantic diff, explicit short-lived-token apply, immutable successor-page publication through the existing M3e boundary, canonical M3f/M3g index/log convergence, and immutable audit receipt finalization. Existing M2 retrieval resolves only the corrected current revision and existing RelayCTX injection remains the sole prompt path.
-
-Character/namespace isolation, stable logical memory identity, no-clobber publication, exact operation idempotency, one-winner revision fencing, crash recovery, and historical used-memory integrity are preserved. Correction reason, audit receipt, paths, digests, lineage, queue/lease state, and prior full pages are not retrieval inputs or public prompt content.
-
-Authority and exact contracts: `docs/architecture/phase_i3_auditable_primary_mem_correct.md`.
-
-Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement forget, pin/unpin, merge, held apply/discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.
