@@ -22,7 +22,8 @@ jobs:
       - run: python scripts/_phase_i3_normalize_doc_eof.py
       - run: |
           git fetch origin main
-          git diff --check origin/main...HEAD
+          git add docs
+          git diff --cached --check origin/main
       - name: Commit normalized documentation
         run: |
           rm scripts/_phase_i3_normalize_doc_eof.py
