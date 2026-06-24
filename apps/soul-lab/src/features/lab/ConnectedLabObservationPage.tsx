@@ -67,9 +67,7 @@ export function ConnectedLabObservationPage({
         const code =
           error instanceof LabObservationError
             ? error.code
-            : error instanceof Error
-              ? error.message
-              : "lab_observation_unavailable";
+            : "lab_observation_unavailable";
         setState({ kind: "error", code });
       }
     })();
