@@ -11,6 +11,9 @@ on:
 permissions:
   contents: write
 
+env:
+  PYTHONPATH: .
+
 jobs:
   patch:
     if: github.actor != 'github-actions[bot]'
@@ -25,7 +28,7 @@ jobs:
           python-version: "3.12"
       - run: python scripts/_phase_i1_store_smoke_projection_patch.py
       - run: pip install -e .
-      - run: PYTHONPATH=. python scripts/relaylm_relaymem_store_dry_run_smoke.py
+      - run: python scripts/relaylm_relaymem_store_dry_run_smoke.py
       - name: Commit smoke update
         run: |
           git config user.name "github-actions[bot]"
