@@ -26,3 +26,28 @@ The receipt intentionally contains no prompt, transcript, path, digest, token, e
 | functional and retrieval convergence | failure |
 | mutation/token/scope security | failure |
 | crash and recovery | failure |
+
+## Bounded failure locations
+
+```json
+{
+  "relaylm_phase_i3_primary_mem_correct_fault_smoke": {
+    "exception": "AssertionError",
+    "file": "_relaylm_phase_i3_test_support.py",
+    "line": 29,
+    "status": "failure"
+  },
+  "relaylm_phase_i3_primary_mem_correct_security_smoke": {
+    "exception": "AssertionError",
+    "file": "_relaylm_phase_i3_test_support.py",
+    "line": 29,
+    "status": "failure"
+  },
+  "relaylm_phase_i3_primary_mem_correct_smoke": {
+    "exception": "AssertionError",
+    "file": "relaylm_phase_i3_primary_mem_correct_smoke.py",
+    "line": 51,
+    "status": "failure"
+  }
+}
+```
