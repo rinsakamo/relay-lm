@@ -1,0 +1,42 @@
+name: Phase I-1 projection diagnostics
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/_phase_i1_projection_reason_patch.py"
+      - ".github/workflows/_phase_i1_projection_diag.yml"
+
+permissions:
+  contents: read
+
+env:
+  PYTHONPATH: .:scripts
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i1-primary-mem-next-turn-recall
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/_phase_i1_projection_reason_patch.py
+      - run: pip install -e .
+      - name: Run retrieval projection smoke
+        id: smoke
+        continue-on-error: true
+        run: python scripts/relaylm_relaymem_retrieval_dry_run_smoke.py > projection-smoke.log 2>&1
+      - name: Upload projection log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i1-projection-log
+          path: projection-smoke.log
+          if-no-files-found: error
+      - name: Mark failed smoke
+        if: steps.smoke.outcome != 'success'
+        run: exit 1
