@@ -1,6 +1,6 @@
 # RelayLM Configuration Reference
 
-## Status
+## Status and authority
 
 This is the active current configuration reference for `relaylm.config.RelayLMConfig`.
 
@@ -8,6 +8,7 @@ This is the active current configuration reference for `relaylm.config.RelayLMCo
 - `config.example.yaml` is the exhaustive commented example.
 - `examples/config/openwebui_lmstudio.yaml` is the copy-ready standard setup.
 - Target architecture documents do not create current config fields by themselves.
+- A helper or runtime boundary without a `RelayLMConfig` field must not be documented as if it had a top-level enable/apply gate.
 
 ## Important authority warning
 
@@ -83,8 +84,6 @@ characters:
 
 The default `memory_light` compatibility compiler may preserve prior client user/assistant history after the RelayLM-owned compiled system message.
 
-Current history-exclusion apply defaults:
-
 ```yaml
 client_history_exclusion_apply_enabled: false
 client_history_exclusion_apply_dry_run_only: true
@@ -94,24 +93,20 @@ Implemented bounded apply contracts:
 
 - `client_history_exclusion_apply.v0` supports managed `memory_light` requests with no client `system` or `developer` messages.
 - `client_history_exclusion_apply.v1` supports instruction-bearing managed requests only when an exact `client_instruction_source.v1` provenance envelope selects the current instruction candidates.
-- missing, invalid, unordered, duplicated, out-of-range, post-user, non-instruction, or identity-mismatched v1 provenance fails closed.
-- failure never restores raw prior history or treats all client instruction messages as current evidence.
+- Missing, invalid, unordered, duplicated, out-of-range, post-user, non-instruction, or identity-mismatched v1 provenance fails closed.
+- Failure never restores raw prior history or treats all client instruction messages as current evidence.
 
-Do not claim current-turn-only managed reconstruction unless the exact request shape and apply gates are verified. Active tool-chain reconstruction and broader compatibility shapes remain incomplete. See [Project Status](PROJECT_STATUS.md).
+Do not claim current-turn-only managed reconstruction unless the exact request shape and apply gates are verified. Active tool-chain reconstruction and broader compatibility shapes remain incomplete.
 
-## Top-level fields
+## Core top-level fields
 
 ### `mode`
-
-Type:
 
 ```text
 pass_through | memory_light | memory_full
 ```
 
 Default: `pass_through`.
-
-Current apply behavior:
 
 - `pass_through`: delegated client-message authority; profile compiler diagnostics only.
 - `memory_light`: current profile compiler apply-capable.
@@ -127,15 +122,11 @@ listen:
   port: 8090
 ```
 
-Defaults are `127.0.0.1` and `8090`.
-
-The SOUL Lab UI-A7 management-read routes require both a loopback configured listen host and a loopback transport peer. This local-only rule does not change Core route availability.
+Defaults are `127.0.0.1` and `8090`. SOUL Lab read routes require both a loopback configured host and a loopback transport peer; this does not change Core route availability.
 
 ### `common_runtime_policy`
 
 Optional path to a shared RelayLM-owned runtime policy file. A managed character may override it with `characters.<id>.common_runtime_policy`.
-
-Current managed profile compilation requires either the character-level or top-level path.
 
 ### `trace`
 
@@ -164,14 +155,12 @@ backends:
 Fields:
 
 - `type`: currently only `openai_compatible`.
-- `base_url`: required OpenAI-compatible base URL.
+- `base_url`: required.
 - `api_key`: optional.
 - `default_model`: optional backend model fallback.
 - `timeout_seconds`: default `60.0`.
 
 ## `model_routes`
-
-Required mapping from incoming `model` names to RelayLM routes.
 
 ```yaml
 model_routes:
@@ -199,7 +188,7 @@ Fields:
 - `memory_namespace`: optional memory scope metadata.
 - `user_id`, `user_type`, `room_id`, `scene_id`, `session_id`: optional route-level scope metadata.
 
-Persona file paths do not belong under `model_routes`. They belong under `characters`.
+Persona file paths belong under `characters`, not `model_routes`.
 
 ## `characters`
 
@@ -209,21 +198,21 @@ characters:
     common_runtime_policy:
     soul: examples/profiles/companion/SOUL.md
     output_policy: examples/profiles/companion/OUTPUT_POLICY.md
+    room_anchor:
+    memory_seed_path: examples/memory/companion_memories.yaml
     relationship_anchor:
     stable_memory_summary:
     scene_state: examples/profiles/default/SCENE_STATE.md
-    room_anchor:
     room_state:
-    memory_seed_path: examples/memory/companion_memories.yaml
     token_policy_shadow_enabled:
 ```
 
-Current required fields for a configured character:
+Required fields:
 
 - `soul`
 - `output_policy`
 
-Current optional fields:
+Optional fields:
 
 - `common_runtime_policy`
 - `room_anchor`
@@ -234,25 +223,13 @@ Current optional fields:
 - `room_state`
 - `token_policy_shadow_enabled`
 
-`room_state` is a legacy alias used only when `scene_state` is unset.
-
-`room_anchor` is a legacy compatibility field for fixed, durable room constraints. New copy-ready profiles should normally omit it. Do not put current topic, current mood, open questions, recent turns, or other volatile state in `room_anchor`.
+`room_state` is a legacy alias used only when `scene_state` is unset. `room_anchor` is a compatibility field for fixed durable room constraints; do not place current topic, current mood, open questions, recent turns, or durable memory bodies there.
 
 ### Scene/CTX/EMO ownership
 
-`scene_state` describes semantic situation and policy inputs, such as scene type, active role, setting/task frame, participants, and scene constraints.
-
-Do not place these as RelaySCN-owned state:
-
-- current mood or raw affect estimate — RelayEMO,
-- current topic notes — RelayCTX working state,
-- open questions or unresolved slots — RelayCTX working state,
-- transcript-shaped recent turns — RelayCTX,
-- durable memory bodies — RelayMEM.
+`scene_state` describes semantic situation and policy inputs. Current mood/raw affect belongs to RelayEMO; current topic, open questions, unresolved slots, and transcript-shaped recent turns belong to RelayCTX; durable memory bodies belong to RelayMEM.
 
 ## `memory`
-
-Current fields and defaults:
 
 ```yaml
 memory:
@@ -277,13 +254,12 @@ memory:
   max_snippet_candidates: 3
 ```
 
-Notes:
-
 - Retrieval/store inspection is local-first and read-only by default.
-- Snippet extraction/injection is default-off and gated.
+- Snippet extraction/injection is default-off and explicitly gated.
 - Retrieval does not mutate MEM or SOUL.
-- `chars_per_token=4` is the ASCII-word compatibility ratio used by the deterministic tokenizer-free estimator. CJK/Kana/Hangul/full-width text, punctuation, symbols/emoji, combining/format characters, and other non-ASCII characters are accounted for separately. The result remains model-agnostic and is not tokenizer-exact.
-- The older `default_store` / `stores` example is not part of the current Pydantic config model.
+- `token_budget`, `chars_per_token`, `snippet_budget`, and `max_snippet_chars` must be greater than zero; `max_snippet_candidates` may be zero.
+- `chars_per_token=4` is a deterministic model-agnostic estimate, not tokenizer-exact.
+- The older `default_store` / `stores` shape is not part of the current Pydantic model.
 
 ## Client-message and instruction flags
 
@@ -301,13 +277,12 @@ client_instruction_cache_write_enabled: false
 client_instruction_cache_write_dry_run_only: true
 ```
 
-- canonicalization and preflight are diagnostics/request-local planning boundaries.
+- Canonicalization, extraction, and preflight are diagnostics/request-local planning boundaries.
 - v0/v1 history apply is default-off and dry-run-only by default.
-- cache lookup is bounded and read-only; it does not inject a RelaySCN runtime state or write cache files.
-- Phase 5-C4b emits only a detached content-free RelaySCN-facing diagnostics projection from a validated cache hit; it does not apply RelaySCN semantics or mutate backend payloads.
-- typed parse and cache-write runtime wiring are default-off. A trusted in-process runtime-private typed parse source may be validated and passed to the gated writer.
-- with `client_instruction_cache_write_dry_run_only=true`, the writer remains planning-only. With dry-run disabled, a file may be written only after the C5 validation, scope, schema, and source gates pass.
-- current runtime does not parse arbitrary backend visible text, trust frontend metadata as typed parse source, apply RelaySCN state, or support parser-versioned lookup/write compatibility.
+- Cache lookup is bounded and read-only.
+- `client_instruction_cache_max_entry_bytes` accepts 1 through 1048576.
+- Typed parse and cache-write wiring are default-off and require a trusted in-process runtime-private source.
+- The runtime does not parse arbitrary backend visible text, trust frontend metadata as typed parse source, apply RelaySCN semantics, or provide parser-versioned lookup/write compatibility.
 
 ## RelayCTX flags
 
@@ -334,9 +309,34 @@ relayctx_tts_adapter_handoff_min_segment_chars: 8
 
 - Short-term CTX and non-stream Unpack remain default-off.
 - Non-stream Unpack does not affect streaming responses.
-- default streaming remains byte-compatible backend SSE forwarding.
-- when explicitly enabled, Phase 5.5-B2 can perform request-runtime SSE internal-sentinel suppression; C0 through C4 can construct segmentation, adapter-handoff, and transport-envelope metadata from safe visible output.
-- the Phase 5.5 flags do not deliver adapter transport, execute TTS, generate audio, or control avatars.
+- Default streaming remains byte-compatible backend SSE forwarding.
+- `relayctx_stream_unpack_max_buffer_chars` accepts 32 through 4096.
+- Phase 5.5 flags can construct suppression/segmentation/handoff metadata but do not deliver transport, execute TTS, generate audio, or control avatars.
+
+## RelayMEM / RelaySLP Phase 6 flags
+
+```yaml
+relaymem_slp_runtime_enqueue_enabled: false
+relaymem_slp_runtime_enqueue_dry_run_only: true
+relaymem_slp_runtime_enqueue_apply_enabled: false
+relaymem_slp_queue_root:
+relaymem_slp_protected_source_root:
+relaymem_slp_protected_source_max_artifact_bytes: 262144
+relaymem_slp_source_registry_max_entries: 256
+relaymem_slp_source_registry_ttl_seconds: 1800
+```
+
+These are the complete current top-level fields for the ordinary I1-B/C1-5 source-publication and B2 enqueue seam.
+
+- Dry-run observation requires `relaymem_slp_runtime_enqueue_enabled=true`; no durable source or queue mutation occurs while `relaymem_slp_runtime_enqueue_dry_run_only=true`.
+- Durable publication requires `relaymem_slp_runtime_enqueue_enabled=true`, `relaymem_slp_runtime_enqueue_dry_run_only=false`, and `relaymem_slp_runtime_enqueue_apply_enabled=true`.
+- Apply also requires absolute existing `relaymem_slp_queue_root` and runtime-private `relaymem_slp_protected_source_root` directories.
+- `relaymem_slp_protected_source_max_artifact_bytes` defaults to 262144 and accepts 1 through 1048576 bytes.
+- `relaymem_slp_source_registry_max_entries` and `relaymem_slp_source_registry_ttl_seconds` default to 256 and 1800 and must be at least 1.
+- The registry is only a capacity/TTL-bounded process-local hot cache. At capacity, a new entry is rejected rather than evicting an existing entry. Restart rehydration uses the durable C1-5 artifact.
+- The B2 queue record remains content-free; the protected-source root contains runtime-private content-bearing artifacts.
+
+B3 claim/lease helpers, C1-2 worker execution, and the C2 one-job adapter are explicit caller-driven boundaries. They do not have separate top-level `RelayLMConfig` enable/apply fields, do not scan the queue, and do not start a scheduler or daemon.
 
 ## RelayINT flags
 
@@ -351,7 +351,7 @@ relayint_quick_clarification_apply_dry_run_only: true
 relayint_quick_clarification_response_max_chars: 120
 ```
 
-Quick-clarification apply remains plan/preflight-oriented; it does not currently provide a complete user-visible short-circuit route.
+Confidence thresholds accept 0.0 through 1.0. Quick-clarification apply remains plan/preflight-oriented and does not provide a complete user-visible short-circuit route.
 
 ## RelayEMO flags
 
@@ -377,7 +377,7 @@ relayemo_llm_affect_probe_skip_when_busy: true
 relayemo_llm_affect_probe_every_n_turns: 1
 ```
 
-The LLM affect probe remains default-off, dry-run, budgeted, and fail-closed. It must not mutate durable affect, MEM, SOUL, TTS, or visible output.
+`relayemo_text_marker_apply_mode` accepts `diagnostics_only`, `preview`, or `apply`. `relayemo_affect_probe_mode` accepts `heuristic` or `llm_structured_dry_run`. The LLM affect probe remains default-off, dry-run, budgeted, and fail-closed; it must not mutate durable affect, MEM, SOUL, TTS, or visible output.
 
 ## RelayRUN flags
 
@@ -410,7 +410,7 @@ relayrun_user_action_dry_run_enabled: false
 relayrun_user_action_dry_run_only: true
 ```
 
-These are default-off diagnostics/preflight contracts unless a dedicated current contract says otherwise. They do not imply actual resume, retry, visible recovery output, or response mutation.
+These are default-off diagnostics/preflight contracts unless a dedicated current contract says otherwise. They do not imply actual resume, retry, visible recovery output, or response mutation. `relayrun_checkpoint_index_max_files` must be at least 1.
 
 ## Config design rules
 
@@ -422,4 +422,4 @@ These are default-off diagnostics/preflight contracts unless a dedicated current
 - Never use incoming client instructions as fallback durable SOUL authority.
 - Treat client system/developer messages as low-trust current instruction evidence.
 - Keep current, compatibility, and target config examples labeled.
-- Do not enable mutation, persistence, or recovery apply merely because a helper/schema exists.
+- Do not enable mutation, persistence, recovery, worker execution, or scheduling merely because a helper/schema exists.

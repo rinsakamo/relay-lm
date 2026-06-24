@@ -22,6 +22,7 @@ relaylm_related_authority:
   - client_instruction_authority_contract.md
   - phase5_5_stream_unpack_bounded_slice.md
   - phase6_async_relayslp_bounded_slice.md
+  - integration_i1_primary_mem_two_turn_recall.md
 ---
 # RelayLM Current / Target / Migration Guide
 
@@ -38,7 +39,7 @@ Use these labels consistently:
 - **Target**: design intent without a complete current producer/consumer/apply path.
 - **Migration**: bounded work required to move from current or compatibility behavior to target behavior.
 
-A helper, diagnostics projection, or gated writer may be current without implying that its broader semantic consumer or default-on product loop exists.
+A helper, diagnostics projection, or gated writer may be current without implying that its broader semantic consumer or default-on product loop exists. Conversely, completed producer/consumer paths must not remain listed as required migration.
 
 Historical material under `docs/mvp/` or `docs/architecture/archive/` is evidence, not current authority.
 
@@ -55,8 +56,8 @@ The canonical target order remains defined by [Pipeline Responsibility Design](p
 | Client history apply | v0 no-instruction and v1 explicit-provenance instruction-bearing apply; default-off/dry-run-only by default | managed context reconstructed from approved RelayLM state and current evidence | broader compatibility shapes and active transaction preservation |
 | Instruction cache | strict read-only lookup, C4b content-free RelaySCN-facing diagnostics projection, C5 runtime-private typed-parse validation and gated writer wiring | validated scene interpretation with typed producer, semantic RelaySCN apply, versioned lookup/write | trusted control-artifact producer, parser-version compatibility, semantic apply |
 | Runtime Compile Gate | `CompileApplyDecision`, content-free diagnostics, bounded history-apply exact-forward gate | route-authority-aware plan/result/decision projections and managed fallback | source tracking, fallback builder, complete state taxonomy |
-| RelayMEM Retrieval | current v0 retrieval and gated runtime injection | typed INT handoff and separate runtime-private/content-free projections | API and consumer migration plus I1 end-to-end recall |
-| RelaySLP / Phase 6 | A1/A2/B1 helpers and B2 atomic durable enqueue | deferred worker orchestration and gated memory apply | B3 lifecycle, request-runtime enqueue wiring, worker execution |
+| RelayMEM Retrieval | current M2 retrieval, strict Primary state verification, and gated bounded RelayCTX injection proven by Phase I-1 | typed RelayINT handoff and separate runtime-private/content-free projections | RelayINT API and consumer migration; Phase I-1 recall itself is complete |
+| RelaySLP / Phase 6 | A1/A2/B0-B3, ordinary I1-B source-before-queue publication, C1-0 through C1-5, C2 one-job claim/rehydrate/execute, and Phase I-1 next-turn recall with character/namespace isolation | durable deferred orchestration with automatic operational scheduling and bounded observation/correction | I1-G pre-enqueue finalizer durability plus queue scanning/scheduling/daemon lifecycle; completed C1/C2/I-1 behavior does not require remigration |
 | Streaming / Phase 5.5 | default-compatible forwarding plus gated B2 suppression and C0-C4 handoff metadata construction | complete default-on output pipeline and runtime adapter delivery | RelayREF/output-SCN consumers, adapter delivery, partial recovery |
 | RelayRUN recovery | checkpoint/recovery foundations and diagnostics | runtime orchestration with gated visible recovery generation | output gates and user-action handling |
 | RelaySOUL | compatibility dry-run/preflight governance | three durable persona sources with explicit approval/apply/rollback | schema and storage migration |
@@ -104,25 +105,16 @@ Current accepted cache-entry schema remains `relaylm.client_instruction_cache.v0
 
 Current bounded implementation also includes:
 
-- Phase 5-C4b `client_instruction_relayscn_projection.v0`, which emits a detached content-free diagnostics summary from a validated hit,
+- Phase 5-C4b `client_instruction_relayscn_projection.v0`, a detached content-free diagnostics summary from a validated hit,
 - typed-parse candidate validation and content-free node results,
 - runtime-private one-shot typed-parse source consumption,
 - gated cache-writer planning and apply behind explicit default-off flags.
 
-Current implementation does **not**:
-
-- parse arbitrary backend visible responses,
-- trust frontend metadata as a typed-parse source,
-- inject opaque cache bodies into backend context,
-- apply cache projection semantics to RelaySCN,
-- support parser-versioned lookup/write compatibility,
-- make cache writing default-on.
-
-With `client_instruction_cache_write_dry_run_only=true`, the writer remains planning-only. With dry-run disabled, it may write only after exact schema, policy, scope, identity, and runtime-private source validation succeeds.
+Current implementation does **not** parse arbitrary backend visible responses, trust frontend metadata as a typed-parse source, inject opaque cache bodies into backend context, apply cache projection semantics to RelaySCN, support parser-versioned lookup/write compatibility, or make cache writing default-on.
 
 ## Runtime Compile Gate
 
-Current typed apply decision remains `CompileApplyDecision`, with content-free `mvp-ctx-apply-0` diagnostics and a narrow managed history-apply forward gate.
+Current typed apply decision remains `CompileApplyDecision`, with content-free diagnostics and a narrow managed history-apply exact-forward gate.
 
 The following remain target forms:
 
@@ -157,20 +149,28 @@ Complete RelayREF and Output-side RelaySCN processing, adapter delivery, TTS/aud
 
 ## RelaySLP and Primary MEM migration
 
-Phase 6 currently reaches B2 atomic durable enqueue. RelayMEM M3a-M3h currently provides direct/helper Primary MEM formation, publication, reconciliation, and recovery-audit boundaries.
-
-The active migration is:
+Phase 6 currently implements the bounded production path through ordinary next-turn recall:
 
 ```text
 ordinary finalized turn
-  -> A1/A2/B1/B2 request-runtime enqueue
-  -> B3 claim/lease/retry lifecycle
-  -> worker invokes M3a-M3h
-  -> later-turn RelayMEM retrieval
-  -> RelayCTX injection
+  -> I1-B A1/A2/B1 source-before-queue publication and B2 enqueue
+  -> caller-selected C2 canonical B3 claim
+  -> C1-5 durable protected-source rehydration
+  -> C1-2 execution of C1-1 M3a-M3h
+  -> B3 retry release or terminal commit
+  -> later-turn M2 retrieval
+  -> RelayCTX bounded injection
 ```
 
-Queue creation or helper-level memory publication alone does not complete this product loop.
+Phase I-1 verifies the later-turn retrieval path, character partition, memory namespace, canonical page/index/log state, bounded backend context, and duplicate/retry idempotency. This is current implemented behavior, not a required migration.
+
+Remaining migration boundaries are explicit and separate:
+
+- **I1-G pre-enqueue durability**: a process exit after visible response delivery but before the Starlette background finalizer publishes the protected source and B2 queue record can still lose deferred work.
+- **Operational scheduling**: C2 handles one exact caller-selected queued record; no queue scanner, retry scheduler, daemon lifecycle, or worker pool selects work automatically.
+- **Product observation and intervention**: real SOUL Lab observation and auditable correction are I1-E/I1-F product boundaries rather than missing C1/C2 worker wiring.
+
+Queue creation or helper availability alone is not evidence for these remaining boundaries, but B3, C1-2, C1-5, C2, and Phase I-1 must not be described as absent.
 
 ## Safe defaults
 
@@ -184,6 +184,9 @@ relayctx_stream_unpack_dry_run_enabled=false
 relayctx_stream_unpack_dry_run_only=true
 relayctx_tts_adapter_handoff_runtime_enabled=false
 relayctx_tts_adapter_handoff_runtime_dry_run_only=true
+relaymem_slp_runtime_enqueue_enabled=false
+relaymem_slp_runtime_enqueue_dry_run_only=true
+relaymem_slp_runtime_enqueue_apply_enabled=false
 ```
 
-No migration step may silently enable actual apply, restore raw history after failure, treat client instruction evidence as RelaySOUL authority, expose content-bearing runtime state in generic diagnostics, reconstruct incomplete tool transactions without a dedicated contract, or imply concrete TTS/avatar execution from handoff metadata alone.
+No migration step may silently enable actual apply, restore raw history after failure, treat client instruction evidence as RelaySOUL authority, expose content-bearing runtime state in generic diagnostics, reconstruct incomplete tool transactions without a dedicated contract, or imply worker scheduling/TTS/avatar execution from helper or handoff metadata alone.
