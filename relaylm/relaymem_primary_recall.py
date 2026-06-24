@@ -788,7 +788,10 @@ def _projection_fallback_reason(artifact: Mapping[str, Any]) -> str | None:
     store_diagnostics = artifact.get("store_diagnostics")
     if isinstance(store_diagnostics, Mapping):
         store_reason = _token(store_diagnostics.get("fallback_reason"))
-        if store_reason == "memory_store_disabled":
+        if (
+            store_reason == "memory_store_disabled"
+            and artifact_reason == "memory_store_not_configured"
+        ):
             return store_reason
     return artifact_reason
 
