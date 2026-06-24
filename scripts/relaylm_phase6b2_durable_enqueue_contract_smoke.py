@@ -1,4 +1,4 @@
-"""Check B2 ownership and the current Phase 6 integration status."""
+"""Check B2 ownership without freezing one status sentence."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -11,6 +11,10 @@ def body(path: str) -> str:
 def check(text: str, *values: str) -> None:
     missing = [value for value in values if value not in text]
     assert not missing, missing
+
+
+def check_any(text: str, *values: str) -> None:
+    assert any(value in text for value in values), values
 
 
 def main() -> None:
@@ -27,12 +31,13 @@ def main() -> None:
         "Phase 6-B2 performs atomic durable enqueue",
         "C2 one-job claim/rehydrate/execute adapter",
     )
+    plan = body("docs/architecture/pipeline_implementation_plan.md")
     check(
-        body("docs/architecture/pipeline_implementation_plan.md"),
-        "B2 atomic durable enqueue: complete",
+        plan,
         "Phase 6-C1-0 through C1-5 are complete",
         "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
     )
+    check_any(plan, "B0 through B3: complete", "B2 atomic durable enqueue: complete")
     check(
         body("docs/PROJECT_STATUS.md"),
         "B2 atomic durable enqueue",
