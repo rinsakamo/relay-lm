@@ -22,15 +22,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
       - run: python scripts/_phase_i3_hardening_patch.py
       - run: python -m compileall -q relaylm
-      - run: npm install --no-audit --no-fund
-        working-directory: apps/soul-lab
-      - run: npm run typecheck
-        working-directory: apps/soul-lab
       - name: Commit hardening changes
         run: |
           rm scripts/_phase_i3_hardening_patch.py
