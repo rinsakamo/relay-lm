@@ -58,8 +58,18 @@ def resolve_relaymem_character_store_root(
         return None
     if not isinstance(character_id, str) or _TOKEN_RE.fullmatch(character_id) is None:
         return None
+    root = Path(configured_root)
+    if _path_has_symlink_component(root):
+        return None
+    if root.exists() and not root.is_dir():
+        return None
+    character_root = root / "characters"
+    if character_root.is_symlink():
+        return None
+    if character_root.exists() and not character_root.is_dir():
+        return None
     digest = stable_hash((_CHARACTER_PARTITION_VERSION, character_id))
-    return str(Path(configured_root) / "characters" / digest)
+    return str(character_root / digest)
 
 
 def apply_relaymem_primary_recall_scope(

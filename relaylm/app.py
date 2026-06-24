@@ -109,7 +109,7 @@ from relaylm.relayctx_repack import (
     apply_relaymem_runtime_injection_phase,
     apply_token_budget_truncation_phase,
 )
-from collections.abc import Mapping
+
 
 def create_app(config_path: str | None = None) -> FastAPI:
     config = load_config(config_path)

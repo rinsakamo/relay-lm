@@ -192,6 +192,56 @@ def assert_public_projection_content_free(projection: object) -> None:
 def main() -> None:
     with tempfile.TemporaryDirectory() as directory:
         base = Path(directory)
+        regular_file_root = base / "regular-file-root"
+        regular_file_root.write_text("not-a-directory", encoding="utf-8")
+        require(
+            resolve_relaymem_character_store_root(
+                str(regular_file_root), CHARACTER
+            )
+            is None,
+            "regular-file configured root must fail closed",
+        )
+        invalid_partition_root = base / "invalid-partition-root"
+        invalid_partition_root.mkdir()
+        (invalid_partition_root / "characters").write_text(
+            "not-a-directory", encoding="utf-8"
+        )
+        require(
+            resolve_relaymem_character_store_root(
+                str(invalid_partition_root), CHARACTER
+            )
+            is None,
+            "regular-file characters partition must fail closed",
+        )
+        if hasattr(os, "symlink"):
+            outside_root = base / "outside-root"
+            outside_root.mkdir()
+            configured_root_link = base / "configured-root-link"
+            configured_root_link.symlink_to(
+                outside_root, target_is_directory=True
+            )
+            require(
+                resolve_relaymem_character_store_root(
+                    str(configured_root_link), CHARACTER
+                )
+                is None,
+                "symlink configured root must fail closed",
+            )
+            configured_root = base / "configured-root"
+            configured_root.mkdir()
+            real_characters = base / "real-characters"
+            real_characters.mkdir()
+            (configured_root / "characters").symlink_to(
+                real_characters, target_is_directory=True
+            )
+            require(
+                resolve_relaymem_character_store_root(
+                    str(configured_root), CHARACTER
+                )
+                is None,
+                "symlink characters partition must fail closed",
+            )
+
         first_value = resolve_relaymem_character_store_root(str(base), CHARACTER)
         other_value = resolve_relaymem_character_store_root(
             str(base), OTHER_CHARACTER
