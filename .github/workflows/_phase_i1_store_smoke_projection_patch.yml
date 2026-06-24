@@ -28,7 +28,20 @@ jobs:
           python-version: "3.12"
       - run: python scripts/_phase_i1_store_smoke_projection_patch.py
       - run: pip install -e .
-      - run: python scripts/relaylm_relaymem_store_dry_run_smoke.py
+      - name: Run updated store smoke
+        id: smoke
+        continue-on-error: true
+        run: python scripts/relaylm_relaymem_store_dry_run_smoke.py > store-smoke.log 2>&1
+      - name: Upload store smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i1-store-smoke-log
+          path: store-smoke.log
+          if-no-files-found: error
+      - name: Fail when store smoke failed
+        if: steps.smoke.outcome != 'success'
+        run: exit 1
       - name: Commit smoke update
         run: |
           git config user.name "github-actions[bot]"
