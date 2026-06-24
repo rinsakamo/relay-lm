@@ -18,7 +18,9 @@ from .soul_lab_observation_store import (
     bounded_text,
     normalize_reason_ids,
     read_outcome_receipts,
+    read_outcome_receipts_for_run,
     read_run_receipts,
+    read_used_receipt_for_run,
     read_used_receipts,
     stable_correlation,
 )
@@ -199,11 +201,16 @@ def build_lab_last_run_projection(scope: LabObservationScope) -> LabLastRunProje
         )
     latest = max(runs, key=_run_order_key)
     run_id = str(latest["run_id"])
-    outcomes, outcome_reasons = read_outcome_receipts(scope.store_root)
-    matched_outcomes = [item for item in outcomes if item.get("run_id") == run_id and item.get("namespace") == scope.namespace]
+    outcomes, outcome_reasons = read_outcome_receipts_for_run(scope.store_root, run_id)
+    matched_outcomes = [item for item in outcomes if item.get("namespace") == scope.namespace]
     counts = {state: sum(item.get("outcome_status") == state for item in matched_outcomes) for state in ("formed", "held", "blocked")}
-    used, used_reasons = read_used_receipts(scope.store_root)
-    used_match = next((item for item in used if item.get("run_id") == run_id and item.get("character_id") == scope.character_id and item.get("namespace") == scope.namespace), None)
+    used_match, used_reasons = read_used_receipt_for_run(scope.store_root, run_id)
+    if used_match is not None and (
+        used_match.get("character_id") != scope.character_id
+        or used_match.get("namespace") != scope.namespace
+    ):
+        used_match = None
+        used_reasons = normalize_reason_ids([*used_reasons, "observation_receipt_scope_mismatch"])
     nonzero = [state for state, count in counts.items() if count]
     outcome_status = nonzero[0] if len(nonzero) == 1 else "mixed" if nonzero else "none"
     slp_status = str(latest["slp_status"])
@@ -321,14 +328,19 @@ def build_lab_memory_used_projection(scope: LabObservationScope) -> LabMemoryUse
         )
     latest = max(runs, key=_run_order_key)
     run_id = str(latest["run_id"])
-    receipts, used_reasons = read_used_receipts(scope.store_root)
-    receipt = next((item for item in receipts if item.get("run_id") == run_id and item.get("character_id") == scope.character_id and item.get("namespace") == scope.namespace), None)
+    receipt, used_reasons = read_used_receipt_for_run(scope.store_root, run_id)
+    if receipt is not None and (
+        receipt.get("character_id") != scope.character_id
+        or receipt.get("namespace") != scope.namespace
+    ):
+        receipt = None
+        used_reasons = normalize_reason_ids([*used_reasons, "observation_receipt_scope_mismatch"])
     if receipt is None:
         return LabMemoryUsedProjection(
             availability="empty", character_id=scope.character_id, namespace=scope.namespace,
             run_id=run_id, retrieval_attempted=False, candidate_discovered=False, selected=False,
             relayctx_injection_performed=False, backend_bound_included=False,
-            response_generation_completed=True, items=[],
+            response_generation_completed=latest["relayrun_status"] == "completed", items=[],
             bounded_reason_ids=normalize_reason_ids([*run_reasons, *used_reasons]),
         )
     current, current_reasons = _current_summaries(scope.store_root, scope.namespace)
@@ -350,7 +362,7 @@ def build_lab_memory_used_projection(scope: LabObservationScope) -> LabMemoryUse
         candidate_discovered=bool(receipt["candidate_discovered"]), selected=bool(receipt["selected"]),
         relayctx_injection_performed=bool(receipt["relayctx_injection_performed"]),
         backend_bound_included=bool(receipt["backend_bound_included"]),
-        response_generation_completed=True, items=items, bounded_reason_ids=reasons,
+        response_generation_completed=latest["relayrun_status"] == "completed", items=items, bounded_reason_ids=reasons,
     )
 
 

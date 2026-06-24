@@ -119,6 +119,7 @@ def main() -> None:
         write_used_receipt(str(scoped), used_receipt("run-b", 16))
         # A used receipt without a completed run cannot become latest evidence.
         write_used_receipt(str(scoped), used_receipt("run-z-incomplete", 1))
+        write_used_receipt(str(scoped), used_receipt("run-y-incomplete", 1))
 
         for index in range(55):
             status = "held" if index % 2 == 0 else "blocked"
@@ -182,12 +183,12 @@ def main() -> None:
         observation_store._MAX_RECEIPTS_PER_KIND = 2
         try:
             latest = build_lab_last_run_projection(scope)
+            used = build_lab_memory_used_projection(scope)
         finally:
             observation_store._MAX_RECEIPTS_PER_KIND = original_receipt_limit
         require(latest.run_id == "run-b", latest.model_dump())
         require(latest.status == "completed", latest.model_dump())
         require("observation_receipt_count_exceeded" in latest.bounded_reason_ids, latest.model_dump())
-        used = build_lab_memory_used_projection(scope)
         require(used.run_id == "run-b", used.model_dump())
         require(len(used.items) == 16, used.model_dump())
         held = build_lab_memory_held_projection(scope, limit=50)

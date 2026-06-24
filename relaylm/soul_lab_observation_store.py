@@ -116,6 +116,48 @@ def read_used_receipts(store_root: object) -> tuple[list[dict[str, Any]], list[s
     return _read_receipts(store_root, "used", USED_RECEIPT_SCHEMA, _validate_used_payload)
 
 
+def read_outcome_receipts_for_run(
+    store_root: object, run_id: str
+) -> tuple[list[dict[str, Any]], list[str]]:
+    if not isinstance(run_id, str) or _TOKEN_RE.fullmatch(run_id) is None:
+        return [], ["observation_run_id_invalid"]
+    return _read_receipts(
+        store_root,
+        "outcomes",
+        OUTCOME_RECEIPT_SCHEMA,
+        _validate_outcome_payload,
+        predicate=lambda item: item.get("run_id") == run_id,
+    )
+
+
+def read_used_receipt_for_run(
+    store_root: object, run_id: str
+) -> tuple[dict[str, Any] | None, list[str]]:
+    if not isinstance(run_id, str) or _TOKEN_RE.fullmatch(run_id) is None:
+        return None, ["observation_run_id_invalid"]
+    try:
+        root = _safe_store_root(store_root, create_observation=False)
+    except ObservationStoreError as exc:
+        return None, [str(exc)]
+    kind_dir = root / "used"
+    if not kind_dir.exists():
+        return None, []
+    if kind_dir.is_symlink() or not kind_dir.is_dir():
+        return None, ["observation_kind_directory_unsafe"]
+    path = kind_dir / f"{stable_correlation(run_id)}.json"
+    if not path.exists():
+        return None, []
+    try:
+        envelope = _read_one(path, kind_dir)
+        payload = _validate_envelope(envelope, USED_RECEIPT_SCHEMA)
+        validated = _validate_used_payload(payload)
+        if validated.get("run_id") != run_id:
+            raise ObservationStoreError("observation_receipt_identity_mismatch")
+        return validated, []
+    except (OSError, UnicodeError, json.JSONDecodeError, ObservationStoreError):
+        return None, ["observation_receipt_corrupt_ignored"]
+
+
 def _validate_run_payload(value: Mapping[str, Any]) -> dict[str, Any]:
     expected = {
         "schema", "runtime_private", "read_model_only", "request_id", "run_id",
@@ -291,7 +333,14 @@ def _write_receipt(store_root: object, kind: str, identity: str, payload: Mappin
             pass
 
 
-def _read_receipts(store_root: object, kind: str, expected_schema: str, validator: Any) -> tuple[list[dict[str, Any]], list[str]]:
+def _read_receipts(
+    store_root: object,
+    kind: str,
+    expected_schema: str,
+    validator: Any,
+    *,
+    predicate: Any | None = None,
+) -> tuple[list[dict[str, Any]], list[str]]:
     reasons: set[str] = set()
     try:
         root = _safe_store_root(store_root, create_observation=False)
@@ -313,6 +362,8 @@ def _read_receipts(store_root: object, kind: str, expected_schema: str, validato
                 envelope = _read_one(path, kind_dir)
                 payload = _validate_envelope(envelope, expected_schema)
                 validated = validator(payload)
+                if predicate is not None and not predicate(validated):
+                    continue
                 timestamp, identity = _receipt_order_key(validated, expected_schema)
                 entry = (timestamp, identity, path.name, validated)
                 valid_count += 1
@@ -467,7 +518,8 @@ def _timestamp(value: Mapping[str, Any], key: str) -> None:
 __all__ = [
     "OUTCOME_RECEIPT_SCHEMA", "RUN_RECEIPT_SCHEMA", "USED_RECEIPT_SCHEMA",
     "ObservationStoreError", "bounded_text", "normalize_reason_ids",
-    "read_outcome_receipts", "read_run_receipts", "read_used_receipts",
+    "read_outcome_receipts", "read_outcome_receipts_for_run", "read_run_receipts",
+    "read_used_receipt_for_run", "read_used_receipts",
     "stable_correlation", "utc_now", "write_outcome_receipt", "write_run_receipt",
     "write_used_receipt",
 ]
