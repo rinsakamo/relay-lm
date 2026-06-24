@@ -51,3 +51,55 @@ The receipt intentionally contains no prompt, transcript, path, digest, token, e
   }
 }
 ```
+
+## Bounded repo frame chains
+
+```json
+{
+  "relaylm_phase_i3_primary_mem_correct_fault_smoke": {
+    "exception": "AssertionError",
+    "frames": [
+      {
+        "file": "relaylm_phase_i3_primary_mem_correct_fault_smoke.py",
+        "function": "main",
+        "line": 115
+      },
+      {
+        "file": "_relaylm_phase_i3_test_support.py",
+        "function": "require",
+        "line": 29
+      }
+    ]
+  },
+  "relaylm_phase_i3_primary_mem_correct_security_smoke": {
+    "exception": "AssertionError",
+    "frames": [
+      {
+        "file": "relaylm_phase_i3_primary_mem_correct_security_smoke.py",
+        "function": "main",
+        "line": 88
+      },
+      {
+        "file": "_relaylm_phase_i3_test_support.py",
+        "function": "require",
+        "line": 29
+      }
+    ]
+  },
+  "relaylm_phase_i3_primary_mem_correct_smoke": {
+    "exception": "AssertionError",
+    "frames": [
+      {
+        "file": "relaylm_phase_i3_primary_mem_correct_smoke.py",
+        "function": "main",
+        "line": 193
+      },
+      {
+        "file": "relaylm_phase_i3_primary_mem_correct_smoke.py",
+        "function": "require",
+        "line": 51
+      }
+    ]
+  }
+}
+```
