@@ -199,8 +199,9 @@ def main() -> None:
             require(wrong_namespace.json()["run_id"] is None, wrong_namespace.json())
             require("run-b" not in wrong_namespace.text, wrong_namespace.text)
 
-            for verb in (client.post, client.put, client.patch, client.delete):
-                response = verb(
+            for method in ("POST", "PUT", "PATCH", "DELETE"):
+                response = client.request(
+                    method,
                     f"{base}/lab/last-run?namespace={NAMESPACE}",
                     json={"mutation": True},
                 )

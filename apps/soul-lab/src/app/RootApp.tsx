@@ -174,11 +174,19 @@ export function RootApp() {
         </nav>
 
         <div className="sidebar-note">
-          <span className="mock-pill">{translate(language, "app.mockBadge")}</span>
+          <span className="mock-pill">
+            {route === "observation"
+              ? "REAL / EXPLICIT PREVIEW"
+              : translate(language, "app.mockBadge")}
+          </span>
           <p>
             {navigationLock
               ? translate(language, "nav.locked")
-              : translate(language, "nav.boundaryNote")}
+              : route === "observation"
+                ? language === "ja"
+                  ? "実データを優先し、ローカルプレビューは明示的に切り替えます。"
+                  : "Runtime data is primary; local preview requires an explicit switch."
+                : translate(language, "nav.boundaryNote")}
           </p>
         </div>
       </aside>

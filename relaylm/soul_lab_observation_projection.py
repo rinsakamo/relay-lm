@@ -259,7 +259,7 @@ def build_lab_recent_memory_projection(scope: LabObservationScope, *, limit: int
         seen.add(identity)
         summary = bounded_text(loaded.get("summary"), maximum=512)
         items.append(LabRecentMemoryItem(
-            memory_id=identity, title=bounded_text(summary, maximum=160),
+            memory_id=identity, title="",
             bounded_summary=summary, source_kind=str(loaded.get("memory_kind", "primary")),
         ))
         if len(items) >= bounded_limit:
