@@ -169,3 +169,7 @@ The receipt intentionally contains no prompt, transcript, path, digest, token, e
 ## Fault rerun after M3e exact-page fix
 
 Result: success
+
+## Real index-applied/log-pending recovery rerun
+
+Result: success
