@@ -30,9 +30,6 @@ from .soul_lab_observation_store import (
 _PENDING_LIMIT = 1024
 _PENDING: "OrderedDict[str, dict[str, Any]]" = OrderedDict()
 _PENDING_LOCK = threading.RLock()
-_HOOK_LOCK = threading.RLock()
-_HOOK_INSTALLED = False
-_ORIGINAL_INJECTION: Callable[..., Any] | None = None
 
 
 def capture_primary_worker_observation(request: object, result: object) -> None:
@@ -84,7 +81,9 @@ def capture_primary_worker_observation(request: object, result: object) -> None:
             "worker_status": str(status),
             "pipeline_status": str(pipeline_status) if pipeline_status is not None else None,
             "title": bounded_text(experience.get("title"), maximum=160),
-            "bounded_summary": bounded_text(experience.get("summary_text"), maximum=512),
+            "bounded_summary": bounded_text(
+                experience.get("summary_text"), maximum=512
+            ),
             "observed_at": utc_now(),
             "reason_ids": reason_ids,
         }
@@ -93,37 +92,35 @@ def capture_primary_worker_observation(request: object, result: object) -> None:
         return
 
 
-def install_lab_observation_runtime_hook() -> None:
-    """Install one narrow wrapper around the already-owned injection function."""
+def capture_runtime_injection_observation(
+    *,
+    config: object,
+    pipeline_context: object,
+    relaymem_retrieval_artifact: object,
+    result: object,
+) -> None:
+    """Capture actual RelayCTX/backend-bound memory evidence best-effort."""
 
-    global _HOOK_INSTALLED, _ORIGINAL_INJECTION
-    with _HOOK_LOCK:
-        if _HOOK_INSTALLED:
-            return
-        from . import app as core_app
-
-        original = core_app.apply_relaymem_runtime_injection_phase
-        _ORIGINAL_INJECTION = original
-
-        def observed_injection(*args: Any, **kwargs: Any) -> Any:
-            result = original(*args, **kwargs)
-            try:
-                _capture_injection(kwargs, result)
-            except Exception:
-                pass
-            return result
-
-        setattr(observed_injection, "_relaylm_lab_observation_hook", True)
-        core_app.apply_relaymem_runtime_injection_phase = observed_injection
-        _HOOK_INSTALLED = True
+    try:
+        _capture_runtime_injection_observation(
+            config=config,
+            pipeline_context=pipeline_context,
+            retrieval=relaymem_retrieval_artifact,
+            result=result,
+        )
+    except Exception:
+        return
 
 
-def _capture_injection(kwargs: Mapping[str, Any], result: object) -> None:
+def _capture_runtime_injection_observation(
+    *,
+    config: object,
+    pipeline_context: object,
+    retrieval: object,
+    result: object,
+) -> None:
     if not isinstance(result, tuple) or len(result) != 3:
         return
-    config = kwargs.get("config")
-    pipeline_context = kwargs.get("pipeline_context")
-    retrieval = kwargs.get("relaymem_retrieval_artifact")
     if config is None or pipeline_context is None or not isinstance(retrieval, Mapping):
         return
     route = getattr(pipeline_context, "route", None)
@@ -131,7 +128,10 @@ def _capture_injection(kwargs: Mapping[str, Any], result: object) -> None:
     namespace = getattr(route, "memory_namespace", None)
     request_id = getattr(pipeline_context, "request_id", None)
     run_id = getattr(pipeline_context, "run_id", None)
-    if not all(isinstance(value, str) and value for value in (character_id, namespace, request_id, run_id)):
+    if not all(
+        isinstance(value, str) and value
+        for value in (character_id, namespace, request_id, run_id)
+    ):
         return
     memory = getattr(config, "memory", None)
     configured_root = getattr(memory, "root_path", None)
@@ -152,7 +152,9 @@ def _capture_injection(kwargs: Mapping[str, Any], result: object) -> None:
     selected = selected if isinstance(selected, list) else []
     ctx_result = result[1] if isinstance(result[1], Mapping) else {}
     snippet_result = result[2] if isinstance(result[2], Mapping) else {}
-    injection_performed = ctx_result.get("applied") is True or snippet_result.get("applied") is True
+    injection_performed = (
+        ctx_result.get("applied") is True or snippet_result.get("applied") is True
+    )
     used_items: list[dict[str, str]] = []
     if injection_performed:
         for item in selected[:16]:
@@ -191,15 +193,20 @@ def _capture_injection(kwargs: Mapping[str, Any], result: object) -> None:
         "reason_ids": reasons,
     }
     write_used_receipt(scoped_root, used_payload)
+    repack_status = "applied" if injection_performed else "not_applied"
     pending = {
         "store_root": scoped_root,
         "request_id": request_id,
         "run_id": run_id,
         "character_id": character_id,
         "namespace": namespace,
-        "response_mode": "stream" if getattr(pipeline_context, "stream_enabled", False) else "non_stream",
-        "relayctx_repack_status": "applied" if injection_performed else "not_applied",
-        "slp_status": "deferred" if getattr(config, "relaymem_slp_runtime_enqueue_enabled", False) else "disabled",
+        "response_mode": "stream"
+        if getattr(pipeline_context, "stream_enabled", False)
+        else "non_stream",
+        "relayctx_repack_status": repack_status,
+        "slp_status": "deferred"
+        if getattr(config, "relaymem_slp_runtime_enqueue_enabled", False)
+        else "disabled",
         "reason_ids": reasons,
     }
     with _PENDING_LOCK:
@@ -210,8 +217,13 @@ def _capture_injection(kwargs: Mapping[str, Any], result: object) -> None:
 
 
 def finalize_runtime_observation(
-    *, request_id: str | None, run_id: str | None, started_at: str,
-    completed_at: str, duration_ms: int, http_status: int,
+    *,
+    request_id: str | None,
+    run_id: str | None,
+    started_at: str,
+    completed_at: str,
+    duration_ms: int,
+    http_status: int,
 ) -> None:
     """Finalize a run receipt after the ASGI response body has completed."""
 
@@ -219,7 +231,9 @@ def finalize_runtime_observation(
         return
     with _PENDING_LOCK:
         pending = _PENDING.pop(request_id, None)
-    if not isinstance(pending, dict) or run_id != pending.get("run_id"):
+    if not isinstance(pending, dict):
+        return
+    if run_id != pending.get("run_id"):
         return
     try:
         payload = {
@@ -269,11 +283,17 @@ class LabObservationResponseMiddleware:
                 response_status = int(message.get("status", 500))
                 for raw_name, raw_value in message.get("headers", []):
                     try:
-                        response_headers[raw_name.decode("latin-1").lower()] = raw_value.decode("latin-1")
+                        name = raw_name.decode("latin-1").lower()
+                        value = raw_value.decode("latin-1")
                     except (AttributeError, UnicodeError):
                         continue
+                    response_headers[name] = value
             await send(message)
-            if message.get("type") == "http.response.body" and message.get("more_body", False) is False and not finalized:
+            if (
+                message.get("type") == "http.response.body"
+                and message.get("more_body", False) is False
+                and not finalized
+            ):
                 finalized = True
                 completed = datetime.now(timezone.utc).isoformat()
                 duration = int(max(0.0, time.monotonic() - started_monotonic) * 1000)
@@ -290,6 +310,8 @@ class LabObservationResponseMiddleware:
 
 
 __all__ = [
-    "LabObservationResponseMiddleware", "capture_primary_worker_observation",
-    "finalize_runtime_observation", "install_lab_observation_runtime_hook",
+    "LabObservationResponseMiddleware",
+    "capture_primary_worker_observation",
+    "capture_runtime_injection_observation",
+    "finalize_runtime_observation",
 ]
