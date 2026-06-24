@@ -29,7 +29,21 @@ jobs:
           python-version: "3.12"
       - run: pip install -e .
       - run: python -m compileall -q relaylm scripts
-      - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
+      - name: Phase I-1 integration runner
+        id: phase_i1
+        continue-on-error: true
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py > phase-i1-smoke.log 2>&1
+      - name: Upload Phase I-1 runner log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i1-smoke-log
+          path: phase-i1-smoke.log
+          if-no-files-found: error
+      - name: Fail when Phase I-1 runner failed
+        if: steps.phase_i1.outcome != 'success'
+        run: exit 1
       - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
       - name: RelayMEM M1/M2 and RelayCTX regressions
         run: |
