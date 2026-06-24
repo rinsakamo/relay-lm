@@ -169,7 +169,7 @@ def main() -> int:
                 )
                 require(design["retrieval_scope"] == "project_context", design)
                 require(
-                    design["fallback_reason"] == "memory_store_not_configured",
+                    design["fallback_reason"] == "memory_store_disabled",
                     design,
                 )
                 require(design["selected_count"] == 0, design)

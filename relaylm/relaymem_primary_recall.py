@@ -212,7 +212,7 @@ def apply_relaymem_primary_recall_scope(
         "retrieval_attempted": attempted,
         "scene_type": _token(artifact.get("scene_type")) or "unknown",
         "retrieval_scope": _token(artifact.get("retrieval_scope")) or "current_context_only",
-        "fallback_reason": _token(artifact.get("fallback_reason")),
+        "fallback_reason": _projection_fallback_reason(artifact),
         "persistence_block": artifact.get("persistence_block") is True,
         "ctx_block_present": artifact.get("ctx_block") is not None,
         "selected_count": len(selected),
@@ -709,7 +709,7 @@ def build_relaymem_primary_recall_compat_projection(
         "retrieval_attempted": isinstance(retrieval_artifact, Mapping),
         "scene_type": _token(artifact.get("scene_type")) or "unknown",
         "retrieval_scope": _token(artifact.get("retrieval_scope")) or "current_context_only",
-        "fallback_reason": _token(artifact.get("fallback_reason")),
+        "fallback_reason": _projection_fallback_reason(artifact),
         "persistence_block": artifact.get("persistence_block") is True,
         "ctx_block_present": artifact.get("ctx_block") is not None,
         "selected_count": len(primary_candidates),
@@ -781,6 +781,16 @@ def _token(value: object) -> str | None:
     if not isinstance(value, str) or _TOKEN_RE.fullmatch(value) is None or bad_text(value):
         return None
     return value
+
+
+def _projection_fallback_reason(artifact: Mapping[str, Any]) -> str | None:
+    artifact_reason = _token(artifact.get("fallback_reason"))
+    store_diagnostics = artifact.get("store_diagnostics")
+    if isinstance(store_diagnostics, Mapping):
+        store_reason = _token(store_diagnostics.get("fallback_reason"))
+        if store_reason == "memory_store_disabled":
+            return store_reason
+    return artifact_reason
 
 
 def _reason_ids(values: Sequence[str]) -> list[str]:
