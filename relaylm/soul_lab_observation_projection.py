@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -168,6 +169,11 @@ def resolve_lab_observation_scope(config: RelayLMConfig, *, character_id: str, n
     return LabObservationScope(True, True, character_id, namespace, scoped, ())
 
 
+def _run_order_key(item: dict[str, object]) -> tuple[datetime, str]:
+    completed = datetime.fromisoformat(str(item["completed_at"]).replace("Z", "+00:00"))
+    return completed.astimezone(timezone.utc), str(item["run_id"])
+
+
 def build_lab_last_run_projection(scope: LabObservationScope) -> LabLastRunProjection:
     if not scope.available or scope.store_root is None:
         return LabLastRunProjection(
@@ -191,7 +197,7 @@ def build_lab_last_run_projection(scope: LabObservationScope) -> LabLastRunProje
             blocked_count=0, used_memory_count=0, recovery_required=False,
             bounded_reason_ids=normalize_reason_ids(run_reasons),
         )
-    latest = max(runs, key=lambda item: (str(item["completed_at"]), str(item["run_id"])))
+    latest = max(runs, key=_run_order_key)
     run_id = str(latest["run_id"])
     outcomes, outcome_reasons = read_outcome_receipts(scope.store_root)
     matched_outcomes = [item for item in outcomes if item.get("run_id") == run_id and item.get("namespace") == scope.namespace]
@@ -313,7 +319,7 @@ def build_lab_memory_used_projection(scope: LabObservationScope) -> LabMemoryUse
             relayctx_injection_performed=False, backend_bound_included=False,
             response_generation_completed=False, items=[], bounded_reason_ids=normalize_reason_ids(run_reasons),
         )
-    latest = max(runs, key=lambda item: (str(item["completed_at"]), str(item["run_id"])))
+    latest = max(runs, key=_run_order_key)
     run_id = str(latest["run_id"])
     receipts, used_reasons = read_used_receipts(scope.store_root)
     receipt = next((item for item in receipts if item.get("run_id") == run_id and item.get("character_id") == scope.character_id and item.get("namespace") == scope.namespace), None)
