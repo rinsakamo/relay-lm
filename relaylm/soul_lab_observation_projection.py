@@ -43,6 +43,10 @@ class LabRecentMemoryItem(_ExactModel):
     formed_at: str | None = None
     pinned: bool | None = None
     source_kind: str
+    revision: int = Field(ge=1)
+    correction_count: int = Field(ge=0)
+    last_corrected_at: str | None = None
+    has_prior_revision: bool
 
 
 class LabMemoryOutcomeItem(_ExactModel):
@@ -263,14 +267,31 @@ def build_lab_recent_memory_projection(scope: LabObservationScope, *, limit: int
             availability="unavailable", character_id=scope.character_id, namespace=scope.namespace,
             limit=bounded_limit, items=[], bounded_reason_ids=normalize_reason_ids(reasons),
         )
+    from .relaymem_primary_correction import (
+        load_primary_correction_state,
+        resolve_primary_correction_identity,
+    )
+
+    correction_state = load_primary_correction_state(
+        root, namespace=scope.namespace
+    )
     items: list[LabRecentMemoryItem] = []
     seen: set[str] = set()
     projection_reasons: list[str] = list(reasons)
     for entry in reversed(control["log"]):
         if entry.get("namespace") != scope.namespace:
             continue
-        identity = entry.get("idempotency_key")
-        if not isinstance(identity, str) or identity in seen:
+        physical_identity = entry.get("idempotency_key")
+        if not isinstance(physical_identity, str):
+            continue
+        resolved = resolve_primary_correction_identity(
+            correction_state, physical_identity
+        )
+        if resolved is None:
+            projection_reasons.append("primary_correction_state_invalid")
+            continue
+        identity, revision, is_current = resolved
+        if not is_current or identity in seen:
             continue
         loaded, blocked = _load_validated_page(
             root, {"path": entry.get("page_relative_path")},
@@ -280,10 +301,19 @@ def build_lab_recent_memory_projection(scope: LabObservationScope, *, limit: int
             projection_reasons.extend(blocked)
             continue
         seen.add(identity)
+        receipts = correction_state.receipts_by_logical.get(identity, ())
         summary = bounded_text(loaded.get("summary"), maximum=512)
         items.append(LabRecentMemoryItem(
-            memory_id=identity, title="",
-            bounded_summary=summary, source_kind=str(loaded.get("memory_kind", "primary")),
+            memory_id=identity,
+            title=bounded_text(loaded.get("title"), maximum=160),
+            bounded_summary=summary,
+            source_kind=str(loaded.get("memory_kind", "primary")),
+            revision=revision,
+            correction_count=len(receipts),
+            last_corrected_at=(
+                str(receipts[-1]["applied_at"]) if receipts else None
+            ),
+            has_prior_revision=bool(receipts),
         ))
         if len(items) >= bounded_limit:
             break
@@ -385,13 +415,28 @@ def _current_summaries(store_root: str, namespace: str) -> tuple[dict[str, str],
     control, reasons = _load_control_state(root)
     if control is None:
         return {}, reasons
+    from .relaymem_primary_correction import (
+        load_primary_correction_state,
+        resolve_primary_correction_identity,
+    )
+
+    correction_state = load_primary_correction_state(root, namespace=namespace)
     summaries: dict[str, str] = {}
     output_reasons = list(reasons)
     for entry in control["index"]:
         if entry.get("namespace") != namespace:
             continue
-        identity = entry.get("idempotency_key")
-        if not isinstance(identity, str):
+        physical_identity = entry.get("idempotency_key")
+        if not isinstance(physical_identity, str):
+            continue
+        resolved = resolve_primary_correction_identity(
+            correction_state, physical_identity
+        )
+        if resolved is None:
+            output_reasons.append("primary_correction_state_invalid")
+            continue
+        identity, _revision, is_current = resolved
+        if not is_current:
             continue
         loaded, blocked = _load_validated_page(
             root, {"path": entry.get("page_relative_path")},
