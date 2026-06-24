@@ -111,6 +111,11 @@ def main() -> None:
         same_completion = "2026-06-24T08:10:00+00:00"
         write_run_receipt(str(scoped), run_receipt("run-a", same_completion))
         write_run_receipt(str(scoped), run_receipt("run-b", same_completion))
+        # A later-looking local timestamp that is earlier in UTC must not win.
+        write_run_receipt(
+            str(scoped),
+            run_receipt("run-c-offset", "2026-06-24T17:09:00+09:00"),
+        )
         write_used_receipt(str(scoped), used_receipt("run-b", 16))
         # A used receipt without a completed run cannot become latest evidence.
         write_used_receipt(str(scoped), used_receipt("run-z-incomplete", 1))
