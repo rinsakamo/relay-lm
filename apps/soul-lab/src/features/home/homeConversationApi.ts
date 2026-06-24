@@ -75,7 +75,7 @@ export async function requestHomeConversation(
   } catch {
     throw new HomeConversationError("response_invalid");
   }
-  return parseNonStreamCompletion(payload);
+  return parseNonStreamCompletion(payload, responseCharacterLimit(snapshot));
 }
 
 export async function streamHomeConversation(
@@ -91,6 +91,7 @@ export async function streamHomeConversation(
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder("utf-8", { fatal: true });
+  const visibleLimit = responseCharacterLimit(snapshot);
   let buffer = "";
   let byteCount = 0;
   let visibleCount = 0;
@@ -143,7 +144,7 @@ export async function streamHomeConversation(
         if (parsed.finishReason !== null) finishReason = parsed.finishReason;
         if (parsed.delta.length > 0) {
           visibleCount += parsed.delta.length;
-          if (visibleCount > HOME_CONVERSATION_BOUNDS.maxResponseChars) {
+          if (visibleCount > visibleLimit) {
             throw new HomeConversationError("response_too_large");
           }
           onDelta(parsed.delta);
@@ -192,6 +193,7 @@ async function performRequest(
       body: JSON.stringify(buildChatCompletionsBody(snapshot)),
     });
   } catch (error) {
+    if (error instanceof HomeConversationError) throw error;
     if (signal.aborted || (error instanceof DOMException && error.name === "AbortError")) {
       throw new HomeConversationError("aborted");
     }
@@ -224,7 +226,11 @@ async function readBoundedText(response: Response, signal: AbortSignal): Promise
         throw new HomeConversationError("response_invalid");
       }
     }
-    result += decoder.decode();
+    try {
+      result += decoder.decode();
+    } catch {
+      throw new HomeConversationError("response_invalid");
+    }
   } catch (error) {
     if (signal.aborted) throw new HomeConversationError("aborted");
     if (error instanceof HomeConversationError) throw error;
@@ -238,7 +244,10 @@ async function readBoundedText(response: Response, signal: AbortSignal): Promise
   return result;
 }
 
-function parseNonStreamCompletion(value: unknown): ConversationCompletion {
+function parseNonStreamCompletion(
+  value: unknown,
+  visibleLimit: number,
+): ConversationCompletion {
   if (!isRecord(value) || !Array.isArray(value.choices) || value.choices.length === 0) {
     throw new HomeConversationError("response_invalid");
   }
@@ -246,7 +255,7 @@ function parseNonStreamCompletion(value: unknown): ConversationCompletion {
   if (!isRecord(choice) || !isRecord(choice.message) || typeof choice.message.content !== "string") {
     throw new HomeConversationError("response_invalid");
   }
-  if (choice.message.content.length > HOME_CONVERSATION_BOUNDS.maxResponseChars) {
+  if (choice.message.content.length > visibleLimit) {
     throw new HomeConversationError("response_too_large");
   }
   const finishReason = choice.finish_reason;
@@ -260,7 +269,7 @@ function parseStreamEvent(
   value: unknown,
   expectedResponseId: string | null,
 ): { delta: string; finishReason: string | null; responseId: string | null } {
-  if (!isRecord(value) || !Array.isArray(value.choices) || value.choices.length === 0) {
+  if (!isRecord(value) || !Array.isArray(value.choices)) {
     throw new HomeConversationError("stream_invalid");
   }
   const responseId = value.id;
@@ -269,6 +278,14 @@ function parseStreamEvent(
   }
   if (expectedResponseId && responseId && responseId !== expectedResponseId) {
     throw new HomeConversationError("stream_invalid");
+  }
+  const resolvedResponseId =
+    expectedResponseId ?? (typeof responseId === "string" ? responseId : null);
+  if (value.choices.length === 0) {
+    if (!isRecord(value.usage)) {
+      throw new HomeConversationError("stream_invalid");
+    }
+    return { delta: "", finishReason: null, responseId: resolvedResponseId };
   }
   const choice = value.choices[0];
   if (!isRecord(choice) || !isRecord(choice.delta)) {
@@ -289,8 +306,19 @@ function parseStreamEvent(
   return {
     delta: typeof content === "string" ? content : "",
     finishReason: finishReason ?? null,
-    responseId: expectedResponseId ?? (typeof responseId === "string" ? responseId : null),
+    responseId: resolvedResponseId,
   };
+}
+
+function responseCharacterLimit(snapshot: ConversationRequestSnapshot): number {
+  const requestCharacters = snapshot.messages.reduce(
+    (total, message) => total + message.content.length,
+    0,
+  );
+  return Math.min(
+    HOME_CONVERSATION_BOUNDS.maxResponseChars,
+    Math.max(0, HOME_CONVERSATION_BOUNDS.maxTranscriptChars - requestCharacters),
+  );
 }
 
 function parseSseData(rawEvent: string): string | null {
