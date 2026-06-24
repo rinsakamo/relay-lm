@@ -59,6 +59,49 @@ try {
   assert.equal("backend_id" in exactBody, false);
   assert.equal("system" in exactBody, false);
 
+  async function expectReason(promise, reason) {
+    await assert.rejects(promise, (error) => {
+      assert.equal(error.name, "HomeConversationError");
+      assert.equal(error.reason, reason);
+      assert.equal(String(error.message).includes("secret backend body"), false);
+      return true;
+    });
+  }
+
+  for (const invalidSnapshot of [
+    { ...baseSnapshot, sourceMode: "preview" },
+    { ...baseSnapshot, messages: [{ role: "user", content: "   " }] },
+    { ...baseSnapshot, messages: [{ role: "assistant", content: "not-final-user" }] },
+    {
+      ...baseSnapshot,
+      messages: [
+        {
+          role: "user",
+          content: "x".repeat(state.HOME_CONVERSATION_BOUNDS.maxUserMessageChars + 1),
+        },
+      ],
+    },
+    {
+      ...baseSnapshot,
+      messages: [
+        {
+          role: "assistant",
+          content: "x".repeat(state.HOME_CONVERSATION_BOUNDS.maxResponseChars),
+        },
+        {
+          role: "assistant",
+          content: "y".repeat(state.HOME_CONVERSATION_BOUNDS.maxResponseChars),
+        },
+        { role: "user", content: "z" },
+      ],
+    },
+  ]) {
+    await expectReason(
+      Promise.resolve().then(() => api.buildChatCompletionsBody(invalidSnapshot)),
+      "invalid_request",
+    );
+  }
+
   const capture = {};
   const validFetch = async (url, init) => {
     capture.url = url;
@@ -86,15 +129,6 @@ try {
   assert.equal(capture.init.headers["Content-Type"], "application/json");
   assert.deepEqual(JSON.parse(capture.init.body), exactBody);
 
-  async function expectReason(promise, reason) {
-    await assert.rejects(promise, (error) => {
-      assert.equal(error.name, "HomeConversationError");
-      assert.equal(error.reason, reason);
-      assert.equal(String(error.message).includes("secret backend body"), false);
-      return true;
-    });
-  }
-
   const jsonResponse = (payload, status = 200) =>
     async () => new Response(typeof payload === "string" ? payload : JSON.stringify(payload), { status });
   await expectReason(
@@ -118,6 +152,10 @@ try {
     "response_invalid",
   );
   await expectReason(
+    api.requestHomeConversation(baseSnapshot, new AbortController().signal, async () => new Response(null, { status: 200 })),
+    "body_unavailable",
+  );
+  await expectReason(
     api.requestHomeConversation(
       baseSnapshot,
       new AbortController().signal,
@@ -134,9 +172,13 @@ try {
     "aborted",
   );
 
-  function streamResponse(chunks) {
-    return async () =>
-      new Response(
+  function streamResponse(chunks, captureTarget = null) {
+    return async (url, init) => {
+      if (captureTarget) {
+        captureTarget.url = url;
+        captureTarget.init = init;
+      }
+      return new Response(
         new ReadableStream({
           start(controller) {
             for (const chunk of chunks) controller.enqueue(chunk);
@@ -145,6 +187,7 @@ try {
         }),
         { status: 200, headers: { "Content-Type": "text/event-stream" } },
       );
+    };
   }
 
   const encoder = new TextEncoder();
@@ -156,18 +199,39 @@ try {
     'data: {"id":"r1","choices":[{"delta":{"content":"にちは"},"finish_reason":"stop"}],"usage":{"total_tokens":3}}\n\n' +
     "data: [DONE]\n\n";
   const bytes = encoder.encode(eventText);
-  const chunks = [bytes.slice(0, 7), bytes.slice(7, 89), bytes.slice(89, 134), bytes.slice(134, 157), bytes.slice(157)];
+  const multibyteStart = bytes.findIndex((value) => value >= 0x80);
+  assert.notEqual(multibyteStart, -1);
+  const chunks = [
+    bytes.slice(0, 7),
+    bytes.slice(7, multibyteStart + 1),
+    bytes.slice(multibyteStart + 1, multibyteStart + 2),
+    bytes.slice(multibyteStart + 2, 157),
+    bytes.slice(157),
+  ];
   let streamed = "";
+  const streamCapture = {};
   const streamResult = await api.streamHomeConversation(
     streamSnapshot,
     new AbortController().signal,
     (delta) => { streamed += delta; },
-    streamResponse(chunks),
+    streamResponse(chunks, streamCapture),
   );
   assert.equal(streamed, "こんにちは");
   assert.equal(streamResult.finishReason, "stop");
   assert.equal(streamResult.eventCount, 5);
+  assert.equal(streamCapture.url, "/v1/chat/completions");
+  assert.deepEqual(JSON.parse(streamCapture.init.body), {
+    model: "alice-route",
+    messages: [{ role: "user", content: "hello" }],
+    stream: true,
+  });
+  assert.equal(streamCapture.init.credentials, "same-origin");
+  assert.equal(streamCapture.init.headers.Authorization, undefined);
 
+  await expectReason(
+    api.streamHomeConversation(streamSnapshot, new AbortController().signal, () => {}, async () => new Response(null, { status: 200 })),
+    "body_unavailable",
+  );
   await expectReason(
     api.streamHomeConversation(streamSnapshot, new AbortController().signal, () => {}, streamResponse([encoder.encode("data: {bad}\n\ndata: [DONE]\n\n")])),
     "stream_invalid",
@@ -181,7 +245,32 @@ try {
       streamSnapshot,
       new AbortController().signal,
       () => {},
+      streamResponse([
+        encoder.encode(
+          'data: {"id":"one","choices":[{"delta":{"content":"a"},"finish_reason":null}]}\n\n' +
+          'data: {"id":"two","choices":[{"delta":{"content":"b"},"finish_reason":null}]}\n\n' +
+          "data: [DONE]\n\n",
+        ),
+      ]),
+    ),
+    "stream_invalid",
+  );
+  await expectReason(
+    api.streamHomeConversation(
+      streamSnapshot,
+      new AbortController().signal,
+      () => {},
       streamResponse([encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: "x".repeat(state.HOME_CONVERSATION_BOUNDS.maxResponseChars + 1) }, finish_reason: null }] })}\n\ndata: [DONE]\n\n`)]),
+    ),
+    "response_too_large",
+  );
+  const tooManyEvents = `${": keepalive\n\n".repeat(state.HOME_CONVERSATION_BOUNDS.maxSseEvents + 1)}data: [DONE]\n\n`;
+  await expectReason(
+    api.streamHomeConversation(
+      streamSnapshot,
+      new AbortController().signal,
+      () => {},
+      streamResponse([encoder.encode(tooManyEvents)]),
     ),
     "response_too_large",
   );
@@ -224,6 +313,10 @@ try {
   assert.equal(state.requestSnapshotMatches(baseSnapshot, { characterId: "alice", sessionId: "session-1", generation: 1, routeModel: "alice-route" }), true);
   assert.equal(state.requestSnapshotMatches(baseSnapshot, { characterId: "bob", sessionId: "session-1", generation: 1, routeModel: "alice-route" }), false);
   assert.equal(state.requestSnapshotMatches(baseSnapshot, { characterId: "alice", sessionId: "session-1", generation: 2, routeModel: "alice-route" }), false);
+  assert.equal(state.requestSnapshotMatches(baseSnapshot, { characterId: "alice", sessionId: "session-1", generation: 1, routeModel: "other-route" }), false);
+  assert.equal(state.isRequestActive("submitting"), true);
+  assert.equal(state.isRequestActive("streaming"), true);
+  assert.equal(state.isRequestActive("failed"), false);
 
   const history = state.toWireHistory([
     { messageId: "u1", role: "user", content: "kept", status: "complete", occurredAtLabel: "now" },
@@ -232,16 +325,13 @@ try {
   ]);
   assert.deepEqual(history, [{ role: "user", content: "kept" }]);
 
-  await expectReason(
-    Promise.resolve().then(() => api.buildChatCompletionsBody({ ...baseSnapshot, sourceMode: "preview" })),
-    "invalid_request",
-  );
-
   const componentSource = await readFile(new URL("../src/features/home/HomeConversationPage.tsx", import.meta.url), "utf8");
   assert.match(componentSource, /stoppedByUser/);
   assert.match(componentSource, /assistantMessageId/);
   assert.match(componentSource, /invalidateActiveRequest/);
   assert.match(componentSource, /requestSnapshotMatches/);
+  assert.match(componentSource, /!session\.draft\.trim\(\)/);
+  assert.match(componentSource, /isRequestActive\(current\.requestState\)/);
   assert.doesNotMatch(componentSource, /dangerouslySetInnerHTML/);
   assert.doesNotMatch(componentSource, /localStorage.*session/i);
 
