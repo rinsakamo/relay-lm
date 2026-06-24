@@ -1,0 +1,27 @@
+name: Phase I-1 branch bootstrap
+
+on:
+  push:
+    branches:
+      - phase-i1-primary-mem-next-turn-recall
+    paths:
+      - "scripts/_phase_i1_bootstrap_patch.py"
+      - ".github/workflows/_phase_i1_bootstrap.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i1-primary-mem-next-turn-recall
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: PYTHONPATH=.:scripts python scripts/_phase_i1_bootstrap_patch.py
