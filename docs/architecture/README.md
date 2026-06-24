@@ -44,11 +44,12 @@ Canonical authority:
 - [Phase 6-C1-4 Integrated Worker Fault Smoke](phase6c1_integrated_worker_fault_smoke_handoff.md)
 - [Phase 6-C1-5 Durable Protected Source Persistence](phase6c1_durable_protected_source_persistence.md)
 - [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md)
+- [Integration I1 Primary MEM Two-Turn Recall](integration_i1_primary_mem_two_turn_recall.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
 
 Phase 6-A1/A2 and B0-B3 own deferred admission, finalized-turn handoff, durable queue publication, and fenced queue lifecycle. I1-B wires ordinary managed response finalization to post-response enqueue. C1-0 owns exact current-claim source construction, C1-1 composes M3a-M3h, C1-2 executes one already-claimed job, C1-3 classifies outcomes, C1-4 verifies integrated fault convergence, C1-5 durably persists and restart-rehydrates the claim-independent protected capture, and C2 connects one exact queued record through canonical claim, rehydrate, and C1-2 execution.
 
-Phase 6-C2 is complete for one caller-selected canonical queued job. The next boundary is next-turn recall and character/namespace isolation. Queue scanning, daemon scheduling, and the pre-enqueue background-finalizer crash window remain unimplemented.
+Phase 6-C2 is complete for one caller-selected canonical queued job, and Phase I-1 completes next-turn recall with character/namespace isolation. The next product boundary is real SOUL Lab observation. I1-G pre-enqueue background-finalizer durability, queue scanning, daemon scheduling, and automatic worker selection remain unimplemented.
 
 ## Completed Core streaming boundary
 
@@ -59,7 +60,7 @@ Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, 
 ## Memory lifecycle
 
 - [Memory Lifecycle Design](memory_lifecycle_design.md) — short-term CTX, governed experience evidence, autonomous ordinary MEM formation, RelaySLP, and SOUL Lab memory operations.
-- [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md) — current enqueue/source capture, queue lifecycle, completed C1-0 through C1-5 and C2, and remaining next-turn recall integration.
+- [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md) — current enqueue/source capture, queue lifecycle, completed C1-0 through C1-5/C2/Phase I-1 recall, and remaining durability/operational boundaries.
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — store contracts, retrieval, Primary MEM formation, worker integration, recall, Secondary consolidation, and Lab-ready operations.
 
 ## RelayMEM Primary persistence track
@@ -91,6 +92,5 @@ Historical and MVP documents do not override current owners. Implementation hand
 
 ## Integration I1
 
-- [Primary MEM two-turn recall](integration_i1_primary_mem_two_turn_recall.md):
-  ordinary Turn 1 durable formation, ordinary Turn 2 scoped M2 selection,
-  canonical page/index/log validation, and bounded RelayCTX injection.
+- [Primary MEM two-turn recall](integration_i1_primary_mem_two_turn_recall.md): ordinary Turn 1 durable formation, ordinary Turn 2 scoped M2 selection, canonical page/index/log validation, and bounded RelayCTX injection.
+- I1-G is the explicit unresolved durability boundary between visible response completion and durable source/queue publication. It is not covered by C1-5 restart rehydration for already-durable work.
