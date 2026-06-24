@@ -34,6 +34,7 @@ relaylm_related_authority:
   - docs/architecture/relaymem_slp_current_target.md
   - docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
   - docs/architecture/phase_i2_real_soul_lab_observation.md
+  - docs/architecture/phase_i3_i9_evaluation_work_roadmap.md
 ---
 # RelayLM Project Status
 
@@ -195,6 +196,22 @@ real Lab Observation item
 ```
 
 Phase I-3 must not be widened into general memory administration, RelaySOUL mutation, queue scheduling, or daemon lifecycle.
+
+## Planned evaluation and work roadmap
+
+[Phase I-3 through I-9 Evaluation and Work Roadmap](architecture/phase_i3_i9_evaluation_work_roadmap.md) records the planned sequence after the current boundary:
+
+```text
+I-3  Correct
+I-4  Forget / Hide
+I-5  Pin / Unpin
+I-6  Merge / Supersession
+I-7  Held Apply / Discard
+I-8  Secondary MEM consolidation
+I-9  RelaySOUL proposal / intervention / rollback
+```
+
+It also defines real SOUL Lab Home conversation, a local one-job runner, I1-G durability, queue scanning, worker supervision, always-on operation, detailed work slices, and three staged evaluation gates. Those items remain planned and do not change the current completion claims on this page.
 
 ## Completion boundary (2026-06-24)
 
