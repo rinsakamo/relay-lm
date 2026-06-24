@@ -202,6 +202,7 @@ def apply_primary_memory_correction(
         if prepared is not None:
             _validate_prepared_replay(prepared, claims=claims, token_digest=token_digest)
         else:
+            _ensure_no_other_pending(root, memory_id, operation_key)
             state = load_primary_correction_state(root, namespace=namespace)
             target = _load_current_target(
                 root,
@@ -459,6 +460,18 @@ def recover_primary_memory_corrections(
                 continue
             try:
                 with _memory_lock(root, logical):
+                    current_state = load_primary_correction_state(
+                        root, namespace=namespace
+                    )
+                    current = current_state.current_by_logical.get(
+                        logical, (logical, 1)
+                    )
+                    if current != (
+                        str(prepared["prior_physical_id"]),
+                        int(prepared["prior_revision"]),
+                    ):
+                        failed += 1
+                        continue
                     result = _publish_prepared_successor(root, prepared, fault_at=None)
                     applied = {
                         "schema_version": RECEIPT_SCHEMA,
@@ -990,6 +1003,20 @@ def _read_operation_receipt(
     if not validator(value, namespace=str(namespace), memory_id=memory_id):
         raise PrimaryCorrectionError("target_corrupt")
     return value
+
+
+def _ensure_no_other_pending(
+    root: Path, memory_id: str, operation_key: str
+) -> None:
+    memory_dir = root / _CORRECTION_ROOT / memory_id
+    _ensure_private_dir(root, memory_dir)
+    for prepared_path in memory_dir.glob("*.prepared.json"):
+        other_key = prepared_path.name.removesuffix(".prepared.json")
+        if other_key == operation_key:
+            continue
+        applied_path = memory_dir / f"{other_key}.applied.json"
+        if not applied_path.exists():
+            raise PrimaryCorrectionError("operation_conflict")
 
 
 def _operation_path(root: Path, memory_id: str, operation_key: str, state: str) -> Path:

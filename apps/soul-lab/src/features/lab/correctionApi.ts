@@ -227,7 +227,7 @@ function parseHistory(value: unknown, memoryId: string): MemoryCorrectionHistory
     !isNonNegativeInteger(value.correction_count) || !isNullableSafeText(value.last_corrected_at, 128) ||
     !(value.last_correction_status === null || value.last_correction_status === "reconciled") ||
     typeof value.has_prior_revision !== "boolean" || !Array.isArray(value.items) || value.items.length > 50 ||
-    value.items.length !== value.correction_count
+    value.items.length > value.correction_count
   ) return null;
   const items = value.items.map(parseHistoryItem);
   if (items.some((item) => item === null)) return null;

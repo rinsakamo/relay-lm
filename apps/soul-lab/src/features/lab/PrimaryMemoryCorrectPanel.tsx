@@ -127,7 +127,10 @@ export function PrimaryMemoryCorrectPanel({
   }
 
   const loading = state.kind === "preflight-loading" || state.kind === "apply-loading";
-  const ready = state.kind === "preflight-ready" ? state.value : null;
+  const ready =
+    state.kind === "preflight-ready" || state.kind === "apply-loading"
+      ? state.value
+      : null;
 
   return (
     <section className="surface-panel" aria-live="polite">

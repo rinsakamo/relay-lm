@@ -16,7 +16,7 @@ class _ExactModel(BaseModel):
 
 
 class LabMemoryCorrectPreflightRequest(_ExactModel):
-    schema: Literal["relaylm.lab.memory_correct_preflight_request.v0"] = PREFLIGHT_REQUEST_SCHEMA
+    schema: Literal["relaylm.lab.memory_correct_preflight_request.v0"]
     expected_revision: int = Field(ge=1, le=2_147_483_647)
     corrected_title: str = Field(max_length=160)
     corrected_summary: str = Field(min_length=1, max_length=2048)
@@ -34,7 +34,7 @@ class LabMemoryCorrectPreflightRequest(_ExactModel):
 
 
 class LabMemoryCorrectApplyRequest(_ExactModel):
-    schema: Literal["relaylm.lab.memory_correct_apply_request.v0"] = APPLY_REQUEST_SCHEMA
+    schema: Literal["relaylm.lab.memory_correct_apply_request.v0"]
     operation_id: str = Field(min_length=1, max_length=128)
     apply_token: str = Field(min_length=1, max_length=8192)
     expected_revision: int = Field(ge=1, le=2_147_483_647)

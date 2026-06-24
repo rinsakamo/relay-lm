@@ -38,6 +38,10 @@ export interface LabRecentMemoryItem {
   formed_at: string | null;
   pinned: boolean | null;
   source_kind: string;
+  revision: number;
+  correction_count: number;
+  last_corrected_at: string | null;
+  has_prior_revision: boolean;
 }
 
 export interface LabRecentMemoryProjection {
@@ -133,7 +137,8 @@ const recentKeys = [
 ] as const;
 const recentItemKeys = [
   "memory_id", "layer", "status", "title", "bounded_summary", "confidence_label",
-  "scope_label", "formed_at", "pinned", "source_kind",
+  "scope_label", "formed_at", "pinned", "source_kind", "revision",
+  "correction_count", "last_corrected_at", "has_prior_revision",
 ] as const;
 const heldKeys = recentKeys;
 const heldItemKeys = [
@@ -234,7 +239,10 @@ function parseRecentItem(value: unknown): LabRecentMemoryItem | null {
     !isSafeText(value.title, 160) || !isSafeText(value.bounded_summary, 512) ||
     value.confidence_label !== "not_recorded" || value.scope_label !== "character_namespace" ||
     !isNullableString(value.formed_at) || !(value.pinned === null || typeof value.pinned === "boolean") ||
-    typeof value.source_kind !== "string"
+    typeof value.source_kind !== "string" || !isPositiveInteger(value.revision) ||
+    !isNonNegativeInteger(value.correction_count) || !isNullableString(value.last_corrected_at) ||
+    typeof value.has_prior_revision !== "boolean" ||
+    value.has_prior_revision !== (value.correction_count > 0)
   ) return null;
   return value as unknown as LabRecentMemoryItem;
 }
@@ -305,6 +313,10 @@ function isAvailability(value: unknown): value is ObservationAvailability {
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === "string";
 }
+function isPositiveInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 1;
+}
+
 function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
