@@ -1,4 +1,4 @@
-"""Run Phase I-3 functional, security, and fault smokes in isolated processes."""
+"""Run all Phase I-3 functional, security, validation, and fault smokes."""
 from __future__ import annotations
 
 import subprocess
@@ -9,6 +9,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = (
     "relaylm_phase_i3_primary_mem_correct_smoke.py",
     "relaylm_phase_i3_primary_mem_correct_security_smoke.py",
+    "relaylm_phase_i3_primary_mem_correct_validation_smoke.py",
+    "relaylm_phase_i3_primary_mem_correct_target_validation_smoke.py",
+    "relaylm_phase_i3_primary_mem_correct_path_safety_smoke.py",
     "relaylm_phase_i3_primary_mem_correct_fault_smoke.py",
 )
 
