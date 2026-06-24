@@ -57,10 +57,16 @@ jobs:
         run: |
           set -o pipefail
           {
-            PYTHONPATH=.:scripts python scripts/relaylm_primary_page_writer_ci_runner.py
-            PYTHONPATH=.:scripts python scripts/relaylm_primary_index_log_reconciliation_ci_runner.py
-            PYTHONPATH=.:scripts python scripts/relaylm_primary_index_log_apply_ci_runner.py
-            PYTHONPATH=.:scripts python scripts/relaylm_primary_recovery_boundary_ci_runner.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_security_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_atomicity_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_reconciliation_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_reconciliation_marker_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_apply_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_apply_security_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_security_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_receipt_smoke.py
             PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
             PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
             PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
