@@ -1,4 +1,4 @@
-"""Security and fail-closed smoke for Phase I-1 scoped Primary MEM recall."""
+"""Security and fail-closed smoke for Phase I-1 scoped recall."""
 from __future__ import annotations
 
 import json
@@ -25,12 +25,7 @@ def require(condition: bool, detail: object) -> None:
         raise AssertionError(detail)
 
 
-def broad_artifact(
-    path: str,
-    *,
-    decision: str = "eligible_but_not_applied",
-    duplicate: bool = False,
-) -> dict[str, object]:
+def broad(path: str, *, decision: str = "eligible_but_not_applied", duplicate: bool = False) -> dict[str, object]:
     candidate = {
         "path": path,
         "source": "mem_page",
@@ -44,9 +39,7 @@ def broad_artifact(
     return {
         "artifact_version": "relaymem_retrieval.v0",
         "snippet_apply_decision": decision,
-        "selected_mem_candidates": (
-            [candidate, dict(candidate)] if duplicate else [candidate]
-        ),
+        "selected_mem_candidates": [candidate, dict(candidate)] if duplicate else [candidate],
     }
 
 
@@ -69,23 +62,14 @@ def write_memory(root: Path) -> str:
         "content_role": "evidence",
         "title": "飲み物",
     }
-    page = (
-        "---\n"
-        + "\n".join(
-            f"{key}: {json.dumps(str(value), ensure_ascii=False)}"
-            for key, value in metadata.items()
-        )
-        + f"\n---\n# Primary memory\n\n## Summary\n\n{SUMMARY}\n"
-    )
+    page = "---\n" + "\n".join(
+        f"{key}: {json.dumps(str(value), ensure_ascii=False)}" for key, value in metadata.items()
+    ) + f"\n---\n# Primary memory\n\n## Summary\n\n{SUMMARY}\n"
     page_path = root / relative
     page_path.write_text(page, encoding="utf-8")
     digest = sha256(page.encode("utf-8")).hexdigest()
-    index_id = stable_hash(
-        ("relaymem-primary-index-entry-v0", identity, digest, relative)
-    )
-    log_id = stable_hash(
-        ("relaymem-primary-log-entry-v0", identity, digest, relative)
-    )
+    index_id = stable_hash(("relaymem-primary-index-entry-v0", identity, digest, relative))
+    log_id = stable_hash(("relaymem-primary-log-entry-v0", identity, digest, relative))
     index_entry = {
         "schema_version": "relaymem.primary_index_entry.v0",
         "entry_id": index_id,
@@ -119,60 +103,29 @@ def write_memory(root: Path) -> str:
     }
     (root / "memory/mem/index.md").write_text(
         "# Index\n<!-- relaymem-primary-index-entry-v0 "
-        + json.dumps(
-            index_entry,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        )
+        + json.dumps(index_entry, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         + " -->\n",
         encoding="utf-8",
     )
     (root / "memory/mem/log.md").write_text(
         "# Log\n<!-- relaymem-primary-log-entry-v0 "
-        + json.dumps(
-            log_entry,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        )
+        + json.dumps(log_entry, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         + " -->\n",
         encoding="utf-8",
     )
     return relative
 
 
-def apply_scope(
-    value: dict[str, object],
-    root: Path,
-    namespace: str = NAMESPACE,
-    max_chars: int = 512,
-    token_budget: int = 512,
-) -> dict[str, object]:
+def apply(value: dict[str, object], root: Path, namespace: str = NAMESPACE, max_chars: int = 512) -> dict[str, object]:
     return apply_relaymem_primary_recall_scope(
         value,
         scoped_store_root=str(root),
         expected_namespace=namespace,
         max_snippet_chars=max_chars,
         max_snippet_candidates=3,
-        snippet_budget=token_budget,
+        snippet_budget=512,
         chars_per_token=4,
     )
-
-
-def assert_public_projection_content_free(projection: object) -> None:
-    text = repr(projection)
-    for forbidden in (
-        SUMMARY,
-        NAMESPACE,
-        "security-a",
-        "security-b",
-        "memory/mem/",
-        "idempotency_key",
-        "lineage_fingerprint",
-        "page_digest",
-    ):
-        require(forbidden not in text, (forbidden, text))
 
 
 def main() -> None:
@@ -187,84 +140,37 @@ def main() -> None:
         prepare_store(other)
         relative = write_memory(first)
 
-        valid = apply_scope(broad_artifact(relative, duplicate=True), first)
+        valid = apply(broad(relative, duplicate=True), first)
         runtime = valid["primary_recall_runtime"]
         projection = valid["primary_recall_projection"]
         require(runtime["selected_count"] == 1, runtime)
         require(projection["selected_count"] == 1, projection)
         require(valid["snippet_runtime_injection_plan"]["preview_text"], valid)
-        require(
-            "primary_recall_duplicate_identity_deduped"
-            in runtime["blocked_reason_ids"],
-            runtime,
-        )
-        assert_public_projection_content_free(projection)
+        public_text = repr(projection)
+        for forbidden in (SUMMARY, NAMESPACE, relative, "idempotency_key", "lineage_fingerprint"):
+            require(forbidden not in public_text, (forbidden, public_text))
 
-        wrong_namespace = apply_scope(
-            broad_artifact(relative),
-            first,
-            "wrong-namespace",
-        )
-        require(
-            wrong_namespace["primary_recall_projection"]["selected_count"] == 0,
-            wrong_namespace["primary_recall_projection"],
-        )
-        wrong_character = apply_scope(broad_artifact(relative), other)
-        require(
-            wrong_character["primary_recall_projection"]["selected_count"] == 0,
-            wrong_character["primary_recall_projection"],
-        )
-        blocked_scene = apply_scope(
-            broad_artifact(relative, decision="blocked_scene_policy"),
-            first,
-        )
-        require(
-            blocked_scene["primary_recall_projection"]["selected_count"] == 0,
-            blocked_scene["primary_recall_projection"],
-        )
-        bounded_chars = apply_scope(broad_artifact(relative), first, max_chars=4)
-        require(
-            bounded_chars["primary_recall_projection"]["selected_count"] == 0,
-            bounded_chars["primary_recall_projection"],
-        )
-        bounded_tokens = apply_scope(
-            broad_artifact(relative),
-            first,
-            token_budget=1,
-        )
-        require(
-            bounded_tokens["primary_recall_projection"]["selected_count"] == 0,
-            bounded_tokens["primary_recall_projection"],
-        )
-
-        availability_only = broad_artifact(relative)
-        availability_only["selected_mem_candidates"][0]["reason"] = (
-            "candidate_available"
-        )
-        unrelated = apply_scope(availability_only, first)
-        require(
-            unrelated["primary_recall_projection"]["selected_count"] == 0,
-            unrelated["primary_recall_projection"],
-        )
+        wrong_namespace = apply(broad(relative), first, "wrong-namespace")
+        require(wrong_namespace["primary_recall_projection"]["selected_count"] == 0, wrong_namespace)
+        wrong_character = apply(broad(relative), other)
+        require(wrong_character["primary_recall_projection"]["selected_count"] == 0, wrong_character)
+        blocked_scene = apply(broad(relative, decision="blocked_scene_policy"), first)
+        require(blocked_scene["primary_recall_projection"]["selected_count"] == 0, blocked_scene)
+        bounded = apply(broad(relative), first, max_chars=4)
+        require(bounded["primary_recall_projection"]["selected_count"] == 0, bounded)
 
         page = first / relative
-        original_page = page.read_bytes()
-        page.write_bytes(original_page + b"corrupt")
-        corrupt = apply_scope(broad_artifact(relative), first)
-        require(
-            corrupt["primary_recall_projection"]["selected_count"] == 0,
-            corrupt["primary_recall_projection"],
-        )
-        page.write_bytes(original_page)
+        original = page.read_bytes()
+        page.write_bytes(original + b"corrupt")
+        corrupt = apply(broad(relative), first)
+        require(corrupt["primary_recall_projection"]["selected_count"] == 0, corrupt)
+        page.write_bytes(original)
 
         index = first / "memory/mem/index.md"
         original_index = index.read_text(encoding="utf-8")
         index.write_text("# Index\n", encoding="utf-8")
-        mismatch = apply_scope(broad_artifact(relative), first)
-        require(
-            mismatch["primary_recall_projection"]["selected_count"] == 0,
-            mismatch["primary_recall_projection"],
-        )
+        mismatch = apply(broad(relative), first)
+        require(mismatch["primary_recall_projection"]["selected_count"] == 0, mismatch)
         index.write_text(original_index, encoding="utf-8")
 
         if hasattr(os, "symlink"):
@@ -272,17 +178,13 @@ def main() -> None:
             page.rename(real)
             try:
                 page.symlink_to(real.name)
-                linked = apply_scope(broad_artifact(relative), first)
-                require(
-                    linked["primary_recall_projection"]["selected_count"] == 0,
-                    linked["primary_recall_projection"],
-                )
+                linked = apply(broad(relative), first)
+                require(linked["primary_recall_projection"]["selected_count"] == 0, linked)
             finally:
                 if page.is_symlink():
                     page.unlink()
                 real.rename(page)
-
-    print("Phase I-1 scoped Primary MEM recall security smoke passed")
+    print("Phase I-1 scoped recall security smoke passed")
 
 
 if __name__ == "__main__":

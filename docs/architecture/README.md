@@ -88,3 +88,9 @@ The current UI is complete through UI-A7. UI-A7 adds only loopback-only settings
 Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1` with explicit `client_instruction_source.v1` provenance. Role, wording, and message position alone are not provenance.
 
 Historical and MVP documents do not override current owners. Implementation handoffs are bounded slice records; they do not override Project Status, the implementation plan, or dedicated current contracts.
+
+## Integration I1
+
+- [Primary MEM two-turn recall](integration_i1_primary_mem_two_turn_recall.md):
+  ordinary Turn 1 durable formation, ordinary Turn 2 scoped M2 selection,
+  canonical page/index/log validation, and bounded RelayCTX injection.

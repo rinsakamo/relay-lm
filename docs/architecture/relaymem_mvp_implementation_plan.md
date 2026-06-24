@@ -293,3 +293,10 @@ All RelayMEM slices preserve:
 ## Sequencing rule
 
 Until next-turn recall and scope isolation close M3i, prefer connecting existing producers and consumers over new persistence schemas, recovery layers, or Secondary MEM behavior. Additional recovery work requires concrete M3h evidence that the existing retry/manual/isolation boundary is insufficient.
+
+## Phase I-1 integration status
+
+Primary MEM next-turn recall and character/namespace isolation are complete.
+The implementation keeps M2 as discovery owner, validates durable M3 page,
+index, and log state, deduplicates write identity, and injects only bounded
+summary evidence. Secondary MEM consolidation and Lab correction remain later.

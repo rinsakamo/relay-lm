@@ -120,3 +120,12 @@ Dedicated Phase 6-C2 coverage includes:
 ## Accurate completion boundary
 
 > I1-B production, B3 lifecycle, C1-0 through C1-5, and the C2 one-job claim/rehydrate/execute adapter are complete. Queue scanning/scheduling, daemon/service lifecycle, pre-enqueue background-finalizer crash recovery, next-turn recall and scope isolation, SOUL Lab real observation, memory correction, and Secondary MEM remain outside this slice.
+
+## Phase I-1 downstream completion
+
+Phase I-1 is complete. The C2 `store_root` supplied by a production caller is
+resolved with the same opaque character-partition function used by ordinary
+Turn 2 retrieval. C2 itself remains unchanged: exact queued B3 record,
+canonical B3 claim, C1-5 protected-source lookup / rehydrate, and unchanged
+C1-2 one-claimed worker. Queue scanning/scheduling and pre-enqueue
+background-finalizer crash recovery remain out of scope.

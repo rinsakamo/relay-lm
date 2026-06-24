@@ -92,7 +92,8 @@ def apply_relaymem_primary_recall_scope(
         reasons.append("memory_namespace_invalid")
 
     original_decision = artifact.get("snippet_apply_decision")
-    if original_decision not in {"eligible_but_not_applied", "dry_run_only"}:
+    gate_allowed = original_decision in {"eligible_but_not_applied", "dry_run_only"}
+    if not gate_allowed:
         reasons.append("existing_retrieval_gate_blocked")
 
     raw_candidates = artifact.get("selected_mem_candidates")
@@ -112,7 +113,7 @@ def apply_relaymem_primary_recall_scope(
     used_tokens = 0
     seen_identities: set[str] = set()
 
-    if root is not None and namespace is not None:
+    if root is not None and namespace is not None and gate_allowed:
         control, control_reasons = _load_control_state(root)
         reasons.extend(control_reasons)
         if control is not None:

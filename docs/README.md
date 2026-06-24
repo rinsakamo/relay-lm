@@ -163,3 +163,11 @@ Placement rules:
 - RelaySOUL governance -> `docs/relaysoul/`
 
 Current Phase 6 integration handoff: [Phase 6-C2 One Queued Primary Worker Integration](architecture/phase6c2_one_queued_primary_worker_integration.md). The next product boundary is next-turn recall with character/namespace isolation; queue scanning and daemon lifecycle remain out of scope.
+
+## Integration I1: next-turn Primary MEM recall
+
+The two-turn ordinary managed path is complete: Turn 1 can publish and execute
+one durable Primary MEM job through C2, and Turn 2 can select the resulting
+memory through existing M2, validate character partition and namespace, and
+inject bounded evidence through RelayCTX. See
+[Integration I1 Primary MEM Two-Turn Recall](architecture/integration_i1_primary_mem_two_turn_recall.md).

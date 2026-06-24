@@ -242,3 +242,11 @@ All Phase 6 slices preserve:
 ## Active completion criterion
 
 Phase 6-C1 is restart-complete for protected-source recovery of durably enqueued jobs, and C2 completes one exact queued-job execution. Phase 6 is product-complete for I1 only when a later turn retrieves and uses the memory within the correct character/namespace scope and the separate pre-enqueue background-finalizer crash window is resolved or explicitly bounded.
+
+## Phase I-1 downstream integration
+
+The asynchronous slice now has a proven downstream consumer: an explicitly run
+C2 job can durably form Primary MEM without delaying the visible Turn 1
+response, and a later ordinary request can retrieve it through scoped M2 and
+bounded RelayCTX injection. This does not add queue scanning, scheduling,
+daemon lifecycle, or pre-enqueue crash recovery.

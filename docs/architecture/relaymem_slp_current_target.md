@@ -196,3 +196,14 @@ Every migration step preserves:
 M3a-M3h completion means the Primary MEM primitives exist. C1-1 fixes their exact order. C1-2 executes one active claim. C1-3 classifies exact outcomes. C1-4 verifies integrated convergence. C1-5 makes protected-source recovery restart-complete for durably enqueued jobs. C2 connects one exact queued record to that worker.
 
 These boundaries still do not make the memory feature end to end. The active migration completes only when a later ordinary turn retrieves and uses the resulting memory within the correct character/namespace scope.
+
+## Phase I-1 recall handoff
+
+I1 next-turn Primary MEM recall: complete. Character and namespace isolation:
+complete. C2 remains an explicit one-record integration seam; it is not a queue
+scanner or daemon. The C2 caller and ordinary request retrieval share the
+character-partition resolver. Existing M2 selection is narrowed by canonical
+page/index/log/namespace validation before bounded RelayCTX injection.
+
+The pre-enqueue background-finalizer crash window remains unresolved. SOUL Lab
+real observation is next and auditable Correct operation is later.

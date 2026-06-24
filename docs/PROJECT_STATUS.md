@@ -276,3 +276,22 @@ OpenWebUI
 ```
 
 The memory write path remains explicitly gated. C1-5 and C2 provide restart-safe protected-source recovery and one exact queued-job execution; they do not make queue scheduling or next-turn recall automatic.
+
+## Phase I-1 completion boundary (2026-06-24)
+
+- I1-B producer: complete
+- B3 lifecycle: complete
+- C1-0 through C1-5 complete
+- C2 one-job claim/rehydrate/execute adapter: complete
+- I1 next-turn Primary MEM recall: complete
+- character and namespace isolation: complete
+- SOUL Lab real observation: next
+- auditable Correct operation: later
+
+The ordinary second-turn path now resolves an opaque character partition below
+the configured RelayMEM root, uses existing M2 discovery, validates the exact
+Primary page plus canonical index/log and namespace, and hands only bounded
+request-local summary evidence to the existing RelayCTX snippet injection path.
+Queue scanning/scheduling, daemon lifecycle, the pre-enqueue background-finalizer
+crash window, Secondary MEM consolidation, SOUL mutation, and TTS/Live2D remain
+outside this completion claim.

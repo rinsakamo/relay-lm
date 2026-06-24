@@ -311,3 +311,15 @@ Independent tracks may proceed in parallel only when their next slice serves I1 
 ## Update rule
 
 Update this plan whenever a phase lands, I1 sequencing changes, a target-only schema gains a real producer/consumer path, or a helper/mock boundary becomes ordinary runtime behavior. The same PR must review `docs/PROJECT_STATUS.md`, `docs/README.md`, the architecture index, affected current/target documents, and status-checking smoke scripts.
+
+## Phase I-1 Primary MEM next-turn recall — complete
+
+Phase 6-C1-0 through C1-5 are complete. Phase 6-C2 one-job
+claim/rehydrate/execute adapter: complete. I1 next-turn Primary MEM recall:
+complete. character and namespace isolation: complete.
+
+Turn 2 uses the configured root's opaque character partition, existing M2
+selection, strict Primary page/index/log/namespace verification, and existing
+RelayCTX bounded snippet injection. It does not introduce a parallel retriever
+or synchronously wait for the Turn 1 worker. SOUL Lab real observation is next;
+auditable Correct operation is later.
