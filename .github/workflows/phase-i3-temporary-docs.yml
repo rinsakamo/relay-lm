@@ -22,6 +22,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Make exact replacements sequentially idempotent
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/_phase_i3_docs_patch.py")
+          body = path.read_text(encoding="utf-8")
+          old = '''    count = body.count(old)\n    if count != 1:\n        raise SystemExit(f"{path}: expected one occurrence of {old!r}, found {count}")\n    return body.replace(old, new, 1)\n'''
+          new = '''    count = body.count(old)\n    if count == 0:\n        if new in body:\n            return body\n        raise SystemExit(f"{path}: missing expected occurrence of {old!r}")\n    return body.replace(old, new, 1)\n'''
+          if body.count(old) != 1:
+              raise SystemExit("documentation patch helper shape changed")
+          path.write_text(body.replace(old, new, 1), encoding="utf-8")
+          PY
       - run: python scripts/_phase_i3_docs_patch.py
       - run: python -m compileall -q scripts
       - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
