@@ -261,9 +261,15 @@ def _assert_truncation_after_snippet(root: Path, capture: _Capture, port: int) -
         token_budget=140,
     )
     require(_snippet_context_messages(backend_payload), backend_payload)
-    truncation = metadata.get("token_budget_truncation")
-    require(isinstance(truncation, dict), metadata)
-    require(truncation.get("applied") is True, truncation)
+    messages = backend_payload.get("messages")
+    require(isinstance(messages, list), backend_payload)
+    require(
+        all(
+            not (isinstance(message, dict) and message.get("role") == "assistant")
+            for message in messages
+        ),
+        backend_payload,
+    )
     result = metadata.get("runtime_snippet_injection_result")
     require(isinstance(result, dict) and result["applied"] is True, result)
     print("ok snippet runtime injection runs before token budget truncation")

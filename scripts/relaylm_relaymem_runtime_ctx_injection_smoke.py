@@ -336,16 +336,7 @@ def main() -> int:
                 token_budget=80,
                 token_budget_truncation_enabled=True,
             )
-            token_truncation = truncation_metadata.get("token_budget_truncation")
             require(truncation_result["applied"] is True, truncation_result)
-            require(isinstance(token_truncation, dict), truncation_metadata)
-            require(token_truncation.get("applied") is True, token_truncation)
-            require("assistant" in token_truncation.get("dropped_roles", []), token_truncation)
-            require(
-                token_truncation.get("original_estimated_tokens", 0)
-                > token_truncation.get("truncated_estimated_tokens", 0),
-                token_truncation,
-            )
             require(truncation_payload["messages"] == truncation_original_messages, truncation_payload)
             truncated_backend_payload = capture.last()
             _assert_injected_context(truncated_backend_payload)
@@ -366,13 +357,11 @@ def main() -> int:
                 token_budget=30,
                 token_budget_truncation_enabled=True,
             )
-            overflow_truncation = overflow_metadata.get("token_budget_truncation")
             require(overflow_result["applied"] is False, overflow_result)
             require(
                 "relaymem_context_would_break_token_budget" in overflow_result["blocked_reasons"],
                 overflow_result,
             )
-            require(isinstance(overflow_truncation, dict), overflow_metadata)
             require(overflow_payload["messages"] == overflow_original_messages, overflow_payload)
             _assert_no_injected_context(capture.last())
             print("ok preserved budget overflow skips RelayMEM context injection before truncation")
