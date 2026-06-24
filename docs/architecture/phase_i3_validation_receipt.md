@@ -103,3 +103,27 @@ The receipt intentionally contains no prompt, transcript, path, digest, token, e
   }
 }
 ```
+
+## Bounded assertion and reason trace
+
+```json
+{
+  "relaylm_phase_i3_primary_mem_correct_fault_smoke": {
+    "assertion_source": "require(recovered == {\"recovered\": 1, \"failed\": 0}, recovered)",
+    "bounded_reason_ids": [],
+    "exception": "AssertionError"
+  },
+  "relaylm_phase_i3_primary_mem_correct_security_smoke": {
+    "assertion_source": "require(valid.status_code == 200, valid.text)",
+    "bounded_reason_ids": [
+      "not_found_or_wrong_scope"
+    ],
+    "exception": "AssertionError"
+  },
+  "relaylm_phase_i3_primary_mem_correct_smoke": {
+    "assertion_source": "require(OLD in visible_text(before), before.json())",
+    "bounded_reason_ids": [],
+    "exception": "AssertionError"
+  }
+}
+```
