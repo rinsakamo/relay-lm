@@ -3,7 +3,7 @@ import type { ChangeEvent } from "react";
 import type { LabRoute, Language, Theme } from "../domain/lab";
 import { AdoptionPage } from "../features/adoption/AdoptionPage";
 import { CommunicationPage } from "../features/communication/CommunicationPage";
-import { MemoryInspectorPage } from "../features/memory-inspector/MemoryInspectorPage";
+import { ConnectedLabObservationPage } from "../features/lab/ConnectedLabObservationPage";
 import { PodPage } from "../features/pod/PodPage";
 import { ConnectedSettingsPage } from "../features/settings/ConnectedSettingsPage";
 import { translate, type MessageKey } from "../locales/messages";
@@ -24,7 +24,7 @@ const footerLabels: Record<LabRoute, string> = {
   adoption: "UI-A2 · Adoption / First Launch",
   communication: "UI-A3 · Character Communication",
   pod: "UI-A4 · Pod / SOUL Intervention",
-  observation: "UI-A5 · Memory Inspector",
+  observation: "Phase I-2 · Real Lab Observation",
   settings: "UI-A6 / UI-A7 · Shared Shell / Management Projection",
 };
 
@@ -255,7 +255,7 @@ export function RootApp() {
             <AdoptionPage language={language} onBackHome={() => navigate("home")} />
           )}
           {route === "observation" && (
-            <MemoryInspectorPage
+            <ConnectedLabObservationPage
               key={activeCharacter.characterId}
               language={language}
               activeCharacter={activeCharacter}
