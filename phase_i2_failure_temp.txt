@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/runner/work/relay-lm/relay-lm/scripts/phase_i2_apply_local_fixes_temp.py", line 69, in main
+  File "scripts/phase_i2_apply_local_fixes_temp.py", line 449, in validate
+  File "scripts/phase_i2_apply_local_fixes_temp.py", line 15, in run
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '('python', 'scripts/relaylm_phase_i2_lab_observation_ci_runner.py')' returned non-zero exit status 1.
