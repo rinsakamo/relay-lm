@@ -127,3 +127,11 @@ The receipt intentionally contains no prompt, transcript, path, digest, token, e
   }
 }
 ```
+
+## Dedicated rerun after fixture corrections
+
+| Script | Result |
+|---|---|
+| functional and retrieval convergence | success |
+| mutation/token/scope security | success |
+| crash and recovery | failure |
