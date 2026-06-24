@@ -98,3 +98,7 @@ Historical and MVP documents do not override current owners. Implementation hand
 
 - [Primary MEM two-turn recall](integration_i1_primary_mem_two_turn_recall.md): ordinary Turn 1 durable formation, ordinary Turn 2 scoped M2 selection, canonical page/index/log validation, and bounded RelayCTX injection.
 - [Real SOUL Lab observation](phase_i2_real_soul_lab_observation.md): latest completed run, validated formed memories, durable held/blocked outcomes, and actual backend-bound used-memory evidence, all read-only and character/namespace scoped.
+
+## Phase I-2 / I1-G alignment
+
+Phase I-1 completes next-turn recall with character/namespace isolation. Phase I-2 completes real read-only Lab observation. I1-G pre-enqueue background-finalizer durability remains unresolved and separate from queue scheduling and daemon lifecycle.

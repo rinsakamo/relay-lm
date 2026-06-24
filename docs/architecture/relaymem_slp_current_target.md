@@ -237,3 +237,10 @@ Every migration step preserves:
 M3a-M3h completion means the Primary MEM primitives exist. C1-1 fixes their exact order. C1-2 executes one active claim. C1-3 classifies exact outcomes. C1-4 verifies integrated convergence. C1-5 makes protected-source recovery restart-complete for durably enqueued jobs. C2 connects one exact queued record to that worker.
 
 Phase I-1 completes the ordinary two-turn Primary MEM loop within the correct character/namespace scope. Phase I-2 completes bounded real observation of that loop. Phase I-3 auditable Correct is next.
+
+## Phase I-2 / I1-G status
+
+I1 next-turn Primary MEM recall: complete.
+Character and namespace isolation: complete.
+I2 real SOUL Lab observation: complete.
+I1-G pre-enqueue background-finalizer durability remains unresolved.

@@ -68,7 +68,8 @@ Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
 Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete; C2 one-job adapter complete
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; ordinary next-turn recall and scope isolation complete
 SOUL Lab UI: UI-A0 through UI-A7 complete; Phase I-2 real read-only observation connected
-Next boundary: Phase I-3 auditable Correct operation
+I1-G pre-enqueue background-finalizer durability: unresolved
+Next product boundary: Phase I-3 auditable Correct operation
 ```
 
 ## Core request/runtime foundation
@@ -204,6 +205,7 @@ Phase I-3 must not be widened into general memory administration, RelaySOUL muta
 - I1 next-turn Primary MEM recall: complete
 - character and namespace isolation: complete
 - I2 real SOUL Lab observation: complete
+- I1-G pre-enqueue background-finalizer durability: unresolved
 - auditable Correct operation: next as Phase I-3
 
 ## Safe defaults and compatibility
@@ -263,3 +265,15 @@ OpenWebUI
 ```
 
 The memory write path remains explicitly gated. C1-5 and C2 provide restart-safe protected-source recovery and one exact queued-job execution; Phase I-1 provides ordinary scoped recall; Phase I-2 provides bounded read-only observation. Queue scheduling and the pre-enqueue background-finalizer crash window remain separate unresolved operational boundaries.
+
+## Phase I-2 and I1-G cross-boundary status
+
+- Phase 6-C1-0 through C1-5 complete
+- C2 one-job claim/rehydrate/execute adapter: complete
+- I1 next-turn Primary MEM recall: complete
+- character and namespace isolation: complete
+- I2 real SOUL Lab observation: complete
+- I1-G pre-enqueue background-finalizer durability: unresolved
+- auditable Correct operation: next as Phase I-3
+
+I1-G tracks the process-exit window after visible response delivery but before protected-source and B2 queue publication. Phase I-2 observation receipts do not repair or reclassify that durability gap.

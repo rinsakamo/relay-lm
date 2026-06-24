@@ -321,3 +321,9 @@ With next-turn recall, scope isolation, and real observation complete, prefer on
 - real SOUL Lab observation: complete
 - auditable Correct: next
 - Secondary MEM consolidation: deferred
+
+## I1-G boundary after Phase I-2
+
+M3i-c next-turn recall and scope isolation: complete as Phase I-1.
+M3i-d real read-only Lab observation: complete as Phase I-2.
+I1-G pre-enqueue background-finalizer durability remains unresolved. Observation receipts cannot repair it.

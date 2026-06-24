@@ -301,3 +301,7 @@ Not completed by Phase I-2:
 - Secondary MEM consolidation
 - static UI bundle serving
 - TTS/audio/Live2D execution
+
+## I1-G boundary
+
+I1-G pre-enqueue background-finalizer durability remains unresolved. Lab observation receipts are secondary evidence and cannot repair, replay, or reclassify this gap.

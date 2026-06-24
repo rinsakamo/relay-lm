@@ -17,11 +17,10 @@ from .relaymem_primary_recall import (
 from .soul_lab_observation_store import (
     bounded_text,
     normalize_reason_ids,
-    read_outcome_receipts,
+    read_outcome_receipts_for_namespace,
     read_outcome_receipts_for_run,
-    read_run_receipts,
+    read_run_receipts_for_scope,
     read_used_receipt_for_run,
-    read_used_receipts,
     stable_correlation,
 )
 
@@ -176,6 +175,15 @@ def _run_order_key(item: dict[str, object]) -> tuple[datetime, str]:
     return completed.astimezone(timezone.utc), str(item["run_id"])
 
 
+def _outcome_order_key(item: dict[str, object]) -> tuple[datetime, str, str]:
+    observed = datetime.fromisoformat(str(item["observed_at"]).replace("Z", "+00:00"))
+    return (
+        observed.astimezone(timezone.utc),
+        str(item.get("run_id", "")),
+        str(item.get("job_correlation_id", "")),
+    )
+
+
 def build_lab_last_run_projection(scope: LabObservationScope) -> LabLastRunProjection:
     if not scope.available or scope.store_root is None:
         return LabLastRunProjection(
@@ -187,7 +195,9 @@ def build_lab_last_run_projection(scope: LabObservationScope) -> LabLastRunProje
             formed_count=0, held_count=0, blocked_count=0, used_memory_count=0,
             recovery_required=False, bounded_reason_ids=list(scope.reason_ids),
         )
-    runs, run_reasons = read_run_receipts(scope.store_root)
+    runs, run_reasons = read_run_receipts_for_scope(
+        scope.store_root, scope.character_id, scope.namespace
+    )
     runs = [item for item in runs if item.get("character_id") == scope.character_id and item.get("namespace") == scope.namespace]
     if not runs:
         return LabLastRunProjection(
@@ -291,9 +301,11 @@ def build_lab_memory_held_projection(scope: LabObservationScope, *, limit: int) 
             availability="unavailable", character_id=scope.character_id, namespace=scope.namespace,
             limit=bounded_limit, items=[], bounded_reason_ids=list(scope.reason_ids),
         )
-    receipts, reasons = read_outcome_receipts(scope.store_root)
+    receipts, reasons = read_outcome_receipts_for_namespace(
+        scope.store_root, scope.namespace
+    )
     selected = [item for item in receipts if item.get("namespace") == scope.namespace and item.get("outcome_status") in {"held", "blocked"}]
-    selected.sort(key=lambda item: (str(item.get("observed_at", "")), str(item.get("run_id", "")), str(item.get("job_correlation_id", ""))), reverse=True)
+    selected.sort(key=_outcome_order_key, reverse=True)
     items = [LabMemoryOutcomeItem(
         outcome_id=stable_correlation(f"{item['run_id']}:{item['job_correlation_id']}"),
         run_id=str(item["run_id"]), status=item["outcome_status"],
@@ -317,7 +329,9 @@ def build_lab_memory_used_projection(scope: LabObservationScope) -> LabMemoryUse
             relayctx_injection_performed=False, backend_bound_included=False,
             response_generation_completed=False, items=[], bounded_reason_ids=list(scope.reason_ids),
         )
-    runs, run_reasons = read_run_receipts(scope.store_root)
+    runs, run_reasons = read_run_receipts_for_scope(
+        scope.store_root, scope.character_id, scope.namespace
+    )
     runs = [item for item in runs if item.get("character_id") == scope.character_id and item.get("namespace") == scope.namespace]
     if not runs:
         return LabMemoryUsedProjection(

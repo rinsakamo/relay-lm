@@ -106,9 +106,42 @@ def read_run_receipts(store_root: object) -> tuple[list[dict[str, Any]], list[st
     return _read_receipts(store_root, "runs", RUN_RECEIPT_SCHEMA, _validate_run_payload)
 
 
+def read_run_receipts_for_scope(
+    store_root: object, character_id: str, namespace: str
+) -> tuple[list[dict[str, Any]], list[str]]:
+    if not isinstance(character_id, str) or _TOKEN_RE.fullmatch(character_id) is None:
+        return [], ["observation_character_id_invalid"]
+    if not isinstance(namespace, str) or _TOKEN_RE.fullmatch(namespace) is None:
+        return [], ["observation_namespace_invalid"]
+    return _read_receipts(
+        store_root,
+        "runs",
+        RUN_RECEIPT_SCHEMA,
+        _validate_run_payload,
+        predicate=lambda item: (
+            item.get("character_id") == character_id
+            and item.get("namespace") == namespace
+        ),
+    )
+
+
 def read_outcome_receipts(store_root: object) -> tuple[list[dict[str, Any]], list[str]]:
     return _read_receipts(
         store_root, "outcomes", OUTCOME_RECEIPT_SCHEMA, _validate_outcome_payload
+    )
+
+
+def read_outcome_receipts_for_namespace(
+    store_root: object, namespace: str
+) -> tuple[list[dict[str, Any]], list[str]]:
+    if not isinstance(namespace, str) or _TOKEN_RE.fullmatch(namespace) is None:
+        return [], ["observation_namespace_invalid"]
+    return _read_receipts(
+        store_root,
+        "outcomes",
+        OUTCOME_RECEIPT_SCHEMA,
+        _validate_outcome_payload,
+        predicate=lambda item: item.get("namespace") == namespace,
     )
 
 
@@ -518,8 +551,10 @@ def _timestamp(value: Mapping[str, Any], key: str) -> None:
 __all__ = [
     "OUTCOME_RECEIPT_SCHEMA", "RUN_RECEIPT_SCHEMA", "USED_RECEIPT_SCHEMA",
     "ObservationStoreError", "bounded_text", "normalize_reason_ids",
-    "read_outcome_receipts", "read_outcome_receipts_for_run", "read_run_receipts",
-    "read_used_receipt_for_run", "read_used_receipts",
+    "read_outcome_receipts", "read_outcome_receipts_for_namespace",
+    "read_outcome_receipts_for_run", "read_run_receipts",
+    "read_run_receipts_for_scope", "read_used_receipt_for_run",
+    "read_used_receipts",
     "stable_correlation", "utc_now", "write_outcome_receipt", "write_run_receipt",
     "write_used_receipt",
 ]

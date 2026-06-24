@@ -129,3 +129,7 @@ Phase I-1 and I-2 do not complete:
 - RelaySOUL mutation,
 - TTS, audio, or Live2D execution,
 - static UI bundle serving.
+
+## I1-G boundary
+
+I1-G pre-enqueue background-finalizer durability remains unresolved. Phase I-1 recall and Phase I-2 observation do not recover a turn that never reached durable source and B2 publication.

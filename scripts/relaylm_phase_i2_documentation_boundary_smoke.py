@@ -26,7 +26,8 @@ def main() -> None:
         "docs/PROJECT_STATUS.md",
         "I2 real SOUL Lab observation: complete",
         "auditable Correct operation: next",
-        "pre-enqueue background-finalizer crash window",
+        "I1-G",
+        "pre-enqueue background-finalizer",
     )
     require_text(
         "docs/architecture/pipeline_implementation_plan.md",

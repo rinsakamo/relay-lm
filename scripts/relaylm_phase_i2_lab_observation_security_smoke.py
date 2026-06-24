@@ -143,6 +143,28 @@ def main() -> None:
                 },
             )
 
+        # Newer records from another namespace must not starve this scope.
+        for index in range(3):
+            write_outcome_receipt(
+                str(scoped),
+                {
+                    "schema": OUTCOME_RECEIPT_SCHEMA,
+                    "runtime_private": True,
+                    "read_model_only": True,
+                    "run_id": "other-namespace-flood",
+                    "job_correlation_id": stable_correlation(f"other-job-{index}"),
+                    "namespace": OTHER_NAMESPACE,
+                    "turn_index": index,
+                    "outcome_status": "held",
+                    "worker_status": "pipeline_held",
+                    "pipeline_status": "held",
+                    "title": "other namespace",
+                    "bounded_summary": "must not hide the requested namespace",
+                    "observed_at": f"2099-01-01T00:0{index}:00+00:00",
+                    "reason_ids": ["other_namespace_flood"],
+                },
+            )
+
         outcome_dir = scoped / ".relaylm-lab-observation-v0" / "outcomes"
         bad_envelope = {
             "schema": "relaylm.lab.observation_store.v0",
@@ -184,6 +206,7 @@ def main() -> None:
         try:
             latest = build_lab_last_run_projection(scope)
             used = build_lab_memory_used_projection(scope)
+            held_scoped = build_lab_memory_held_projection(scope, limit=2)
         finally:
             observation_store._MAX_RECEIPTS_PER_KIND = original_receipt_limit
         require(latest.run_id == "run-b", latest.model_dump())
@@ -191,6 +214,8 @@ def main() -> None:
         require("observation_receipt_count_exceeded" in latest.bounded_reason_ids, latest.model_dump())
         require(used.run_id == "run-b", used.model_dump())
         require(len(used.items) == 16, used.model_dump())
+        require(len(held_scoped.items) == 2, held_scoped.model_dump())
+        require(all(item.run_id == "run-b" for item in held_scoped.items), held_scoped.model_dump())
         held = build_lab_memory_held_projection(scope, limit=50)
         require(len(held.items) == 50, len(held.items))
         require("observation_receipt_corrupt_ignored" in held.bounded_reason_ids, held.model_dump())

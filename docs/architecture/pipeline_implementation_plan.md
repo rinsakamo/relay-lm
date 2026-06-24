@@ -207,6 +207,18 @@ The observation read model:
 - exposes no raw prompt, transcript, trace, path, credential, queue/lease metadata, or full memory page,
 - implements no mutation.
 
+### I1-D: next-turn recall validation — complete
+
+Phase I-1 completes next-turn recall and character/namespace isolation.
+
+### I1-E / Phase I-2: real SOUL Lab observation — complete
+
+Phase I-2 exposes bounded, loopback-only latest-run, formed, held/blocked, and actually injected memory evidence without changing RelayMEM, RelaySLP, RelayRUN, or RelayCTX authority.
+
+### I1-G: pre-enqueue background-finalizer durability — unresolved
+
+I1-G tracks termination after visible response delivery but before durable source and B2 queue publication. C1-5, C2, Phase I-1, and Phase I-2 do not close this boundary. `docs/config_schema.md`, the Current/Target matrix, and status smokes must move together; stale TODO or future-tense text in related documents is rejected.
+
 ## Active priority: Phase I-3 auditable Correct
 
 Add one fully auditable `Correct` operation whose result changes later retrieval behavior while preserving prior state and provenance.

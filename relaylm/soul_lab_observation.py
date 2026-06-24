@@ -280,7 +280,7 @@ def finalize_runtime_observation(
             "duration_ms": max(0, min(int(duration_ms), 86_400_000)),
             "response_mode": pending["response_mode"],
             "http_status": int(http_status),
-            "relayrun_status": "completed" if http_status < 500 else "failed",
+            "relayrun_status": "completed" if 200 <= http_status < 400 else "failed",
             "relayctx_repack_status": pending["relayctx_repack_status"],
             "relayctx_unpack_status": "not_observed",
             "slp_status": pending["slp_status"],
