@@ -18,48 +18,43 @@ relaylm_related_authority:
   - docs/DOCUMENTATION_MODEL.md
   - docs/architecture/pipeline_responsibility_design.md
   - docs/architecture/pipeline_implementation_plan.md
+  - docs/architecture/post_i3_evaluation_work_roadmap.md
   - docs/architecture/current_target_migration_guide.md
   - docs/architecture/phase6_async_relayslp_bounded_slice.md
   - docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md
   - docs/architecture/phase6b3_relayslp_queue_state_helpers.md
   - docs/architecture/phase6c1_primary_mem_worker_contract.md
-  - docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md
-  - docs/architecture/phase6c1_primary_worker_outcome_classifier.md
   - docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md
-  - docs/architecture/phase6c1_integrated_worker_fault_smoke_handoff.md
   - docs/architecture/phase6c1_durable_protected_source_persistence.md
   - docs/architecture/phase6c2_one_queued_primary_worker_integration.md
   - docs/architecture/integration_i1_primary_mem_two_turn_recall.md
-  - docs/architecture/relaymem_mvp_implementation_plan.md
-  - docs/architecture/relaymem_slp_current_target.md
-  - docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
   - docs/architecture/phase_i2_real_soul_lab_observation.md
   - docs/architecture/phase_i3_auditable_primary_mem_correct.md
+  - docs/architecture/soul_lab_ui_b0_real_home_conversation.md
 ---
 # RelayLM Project Status
 
-Last reviewed: 2026-06-24 JST
+Last reviewed: 2026-06-25 JST
 
 Status reviewed through:
 
 - Phase 6 I1-B ordinary request-runtime enqueue and finalized-turn protected capture,
-- Phase 6-C1-0 through C1-5 Primary MEM worker, fault, and durable-source boundaries,
+- Phase 6-C1-0 through C1-5 Primary MEM worker and durable-source boundaries,
 - Phase 6-C2 one queued-job claim / rehydrate / execute integration adapter,
 - Phase I-1 Primary MEM next-turn recall and character/namespace isolation,
 - Phase I-2 real SOUL Lab latest-run and memory observation integration,
-- Phase I-3 auditable Primary MEM Correct and later retrieval convergence.
+- Phase I-3 auditable Primary MEM Correct and later retrieval convergence,
+- SOUL Lab UI-B0 real Home non-stream and streaming conversation integration.
 
 ## Purpose and authority
 
-This page is the concise current-state view for developers and reviewers. It records what works now, what remains gated or disconnected, and the immediate implementation priority.
-
-When documents disagree:
+This page is the concise current-state view. When documents disagree:
 
 1. [Pipeline Responsibility Design](architecture/pipeline_responsibility_design.md) owns component responsibilities and canonical target order.
 2. [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md) owns detailed implementation status and sequencing.
-3. Dedicated current contracts own exact schemas and bounded behavior.
-4. [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) defines compatibility and target interpretation.
-5. `docs/mvp/` and historical handoffs are evidence only.
+3. Dedicated current contracts and handoffs own exact bounded behavior.
+4. [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) owns compatibility interpretation.
+5. `docs/mvp/` and archived documents are evidence only.
 
 ## Current implementation position
 
@@ -68,138 +63,114 @@ Managed-route correctness: Phase 5-C complete through bounded v0/v1 apply and C5
 Pre-stream hardening: Phase 5-D complete through D2
 Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
 Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete; C2 one-job adapter complete
-RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; ordinary next-turn recall and scope isolation complete
-SOUL Lab UI: UI-A0 through UI-A7 complete; Phase I-2 observation and Phase I-3 token-gated Correct connected
+RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and scope isolation complete
+SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, and UI-B0 complete
+Real Home conversation: same-origin RelayLM non-stream and SSE transport complete
 I1 observe/correct/retrieve product loop: complete
 I1-G pre-enqueue background-finalizer durability: unresolved
+O0 local one-job runner: separate and not implemented in UI-B0
 ```
 
 ## Core request/runtime foundation
 
-Current implementation includes:
+Implemented:
 
-- OpenAI-compatible `/v1/chat/completions` proxying, routing, and backend forwarding,
-- `PipelineContext` and ordered content-free `PipelineNodeResult` collection,
-- managed client-history authority through bounded v0/v1 apply,
-- selected RelayMEM retrieval and gated RelayCTX injection,
-- pure and gated non-stream RelayCTX Unpack,
-- Phase 5.5 stream suppression and TTS-safe handoff metadata,
-- strict read-only client-instruction cache lookup,
-- runtime-private typed parse and default-off cache-write plumbing,
-- CJK-aware deterministic token estimation,
-- lazy RelayRUN recovery-detail wiring,
-- RelaySOUL dry-run/preflight governance foundations.
+- OpenAI-compatible `/v1/chat/completions` routing and backend forwarding,
+- managed character resolution and SOUL / OUTPUT_POLICY application,
+- selected RelayMEM M2 retrieval and bounded RelayCTX injection,
+- non-stream and stream response handling,
+- post-response RelaySLP enqueue handoff where explicitly enabled,
+- conservative default-off apply gates.
 
-Current managed-route limitations:
-
-- history-exclusion apply remains default-off and dry-run-only by default,
-- active tool transactions remain blocked because minimum-chain reconstruction is absent,
-- trusted backend-response instruction-control production and semantic RelaySCN apply are incomplete,
-- parser-versioned cache lookup/write compatibility is not implemented.
+Current limitations include incomplete active tool-chain reconstruction, parser-versioned cache compatibility, output-side RelayREF/RelaySCN completion, and `/v1/responses` support.
 
 ## Phase 6 RelaySLP orchestration
 
 Implemented:
 
-- A1 deferred job-admission preflight,
-- A2 finalized-turn handoff,
-- B0 durable queue schema and state machine,
-- B1 deterministic dispatch/job-record preflight,
-- B2 atomic durable enqueue,
-- B3 fenced claim, renew, retry release, stale recovery, and terminal commit,
-- I1-B ordinary managed non-stream and stream post-response A1 -> A2 -> B1 -> B2 wiring,
-- C1-0 exact claim-correlated protected worker source and one-shot scope,
-- C1-1 canonical M3a-M3h compose,
-- C1-2 lease-fenced execution of one already-claimed canonical B3 job,
-- C1-3 pure RelayMEM-outcome classification,
-- C1-4 integrated crash, lease-loss, lock-contention, stale-claim, corruption, and leakage smoke,
-- C1-5 source-before-queue durable protected artifact publication and restart rehydration,
-- C2 exact queued-record claim, durable rehydrate, C1-2 execution, and terminal-only cleanup.
+- A1/A2 deferred admission and finalized-turn handoff,
+- B0-B3 durable enqueue and fenced lifecycle,
+- I1-B ordinary runtime source publication and enqueue,
+- C1-0 through C1-5 complete,
+- C2 one-job claim/rehydrate/execute adapter: complete.
 
-C1-5 keeps the queue record content-free. The process-local registry is only an optional hot cache; a new claim may rehydrate the claim-independent protected capture for durably enqueued jobs and construct a fresh C1-0 source/scope.
+C1-5 keeps queue records content-free and persists the claim-independent protected capture before queue publication. C2 can claim one exact queued record, rehydrate a fresh protected source, invoke the one-claimed worker, and commit the canonical terminal result.
 
-Current limitations:
+Still separate:
 
-- no queue scanner, daemon, or scheduler automatically selects and claims queued work,
-- C1-5 is restart-complete only for protected-source recovery of durably enqueued jobs,
-- the pre-enqueue background-finalizer crash window remains unresolved: a process exit after visible response delivery but before source/queue publication may still lose that deferred turn.
+- no automatic queue scanner, retry scheduler, or supervised worker daemon,
+- no always-on production operation,
+- I1-G pre-enqueue background-finalizer durability: unresolved.
+
+I1-G tracks the process-exit window after visible-response delivery but before protected-source and B2 queue publication.
 
 ## RelayMEM Primary persistence and recall
 
 Implemented:
 
-- M3a Primary MEM formation candidate,
-- M3b source lineage, safety, and memory-write preflight,
-- M3c deterministic Primary page candidate,
-- M3d writer/store-target handoff,
-- M3e atomic no-clobber page publication,
-- M3f deterministic index/log reconciliation preflight,
-- M3g gated index-before-log reconciliation apply,
-- M3h read-only receipt/store recovery audit,
-- C1-1 exact M3a-M3h composition,
-- C1-2 one-active-claim execution,
-- Phase I-1 ordinary next-turn M2 retrieval,
-- exact Primary page plus canonical index/log validation,
-- bounded RelayCTX injection for the correct character and namespace,
-- proof that the generated response path receives the injected memory.
+- M3a-M3h Primary MEM formation, atomic page publication, index/log convergence, and recovery audit,
+- exact one-claim worker execution,
+- I1 next-turn Primary MEM recall: complete,
+- character and namespace isolation: complete,
+- bounded RelayCTX memory injection,
+- Phase I-3 immutable successor correction with durable audit evidence.
 
-Current limitations:
+Still separate:
 
-- ordinary response finalization intentionally does not invoke M3a-M3h inline,
-- Secondary MEM consolidation is not implemented,
-- auditable formed-Primary-MEM Correct is implemented; forget/pin/unpin/merge remain unimplemented.
+- Forget / Hide,
+- Pin / Unpin,
+- Merge / Supersession,
+- Held Apply / Discard,
+- Secondary MEM consolidation,
+- RelaySOUL proposal/intervention/rollback.
 
-## SOUL Lab UI and real observation
+## SOUL Lab UI
 
-UI-A0 through UI-A7 and Phase I-2 provide:
+Implemented through UI-B0:
 
 - TypeScript/React/Vite browser shell,
-- Japanese-default and English-preview localization,
+- Japanese-default and English preview language support,
 - light/dark themes,
-- active-character selection and character-scoped browser state,
-- Home, Adoption, Communication, Pod, Settings, and Lab Observation surfaces,
-- loopback-only `GET /lab/api/settings` and `GET /lab/api/characters`,
-- loopback-only latest-run, recent Primary memory, held/blocked outcome, and used-memory APIs,
-- exact versioned server projections and strict exact-key browser validation,
-- explicit loading, empty, refused, invalid-schema, unavailable, real-data, and local-preview states,
-- AbortController plus request generation to discard stale responses after character switching,
-- bounded titles, summaries, reasons, item counts, and response size,
-- durable restart-readable observation receipts only where existing authority did not preserve evidence,
-- source labels that keep `RelayLM runtime` and `Local preview data` separate,
-- token-gated Correct for real formed Primary MEM; forget/pin/merge and held apply/discard remain disabled.
+- server-projected active characters and content-free runtime settings,
+- UI-A0 through UI-A7 product surfaces,
+- I2 real SOUL Lab observation: complete,
+- I3 auditable Primary MEM Correct: complete,
+- real Home conversation over same-origin `/v1/chat/completions`,
+- bounded non-stream response parsing,
+- bounded UTF-8/SSE streaming parsing,
+- one assistant entry per streamed response,
+- Stop with partial-text preservation,
+- retry without duplicate user messages,
+- browser-local New Conversation,
+- per-character and per-source-mode session separation,
+- character/session/generation/route fencing against stale completions and chunks,
+- explicit `REAL RUNTIME` / `LOCAL PREVIEW` separation,
+- no automatic mock fallback after runtime failure.
 
-Phase I-2 observation receipts are read-model evidence only. They are not Primary MEM, are not retrievable by M1/M2, do not replace protected source, do not alter B3/C1 authority, and cannot repair runtime state.
+UI-B0 uses only the exact `/lab/api/characters` server projection to select a conversation route. Zero routes are unavailable and multiple distinct routes are fail-closed as `ambiguous_route`. The browser does not own backend IDs, memory namespaces, SOUL, system prompts, credentials, filesystem paths, or queue identities.
 
-Current limitations:
+The real request continues through existing RelayLM character resolution, M2 retrieval, RelayCTX injection, backend forwarding, and deferred RelaySLP boundaries. UI-B0 does not implement memory retrieval or prompt injection itself.
 
-- no durable character-registry mutation,
-- no forget/pin/unpin/merge or held apply/discard operation,
-- no RelaySOUL apply or rollback,
-- no persisted transcript inspection,
-- no TTS/audio/avatar execution,
-- no static serving of the built SOUL Lab bundle from RelayLM.
+The dedicated frontend typecheck, strict Home conversation Node smoke, production build, documentation checks, OpenWebUI/LM Studio proxy smokes, and Phase I-1/I-2/I-3 regression runners pass. A real LM Studio workstation manual smoke remains an environment validation step and is documented in [UI-B0 Real Home Conversation](architecture/soul_lab_ui_b0_real_home_conversation.md).
 
-## Active implementation priority
+## Evaluation boundary
 
-### Phase I-3: auditable Primary MEM Correct — complete
-
-The bounded product path is implemented:
+UI-B0 completes the browser-side text-first experiment surface. Together with existing I-1, I-2, I-3 and an explicit one-job C2 execution method, it enables a manual E1 evaluation:
 
 ```text
-real formed Primary MEM observation
-  -> read-only correction preflight and bounded semantic diff
-  -> explicit short-lived-token apply
-  -> immutable successor page through M3e
-  -> M3f/M3g index/log convergence and bounded recovery
-  -> immutable correction receipt
-  -> existing M2 and RelayCTX select the corrected current revision
+real Home conversation
+  -> explicit one-job C2 execution or future O0
+  -> formed Primary MEM
+  -> Phase I-2 observation
+  -> Phase I-3 Correct
+  -> Home New Conversation
+  -> corrected-memory question
+  -> Phase I-2 used-memory evidence
 ```
 
-The stable logical memory identity remains unchanged, prior pages remain auditable, superseded or prepared-only pages are excluded from ordinary retrieval, and past used-memory evidence is not rewritten.
+UI-B0 does not claim that automatic queued-job execution or the full E1 loop is automated. O0 remains a separate parallel slice.
 
-The next implementation priority must be selected independently from the architecture plan. I1-G still owns the unresolved process-exit window after visible response delivery but before background-finalizer source/queue publication.
-
-## Completion boundary (2026-06-24)
+## Completion boundary (2026-06-25)
 
 - I1-B producer: complete
 - B3 lifecycle: complete
@@ -208,13 +179,13 @@ The next implementation priority must be selected independently from the archite
 - I1 next-turn Primary MEM recall: complete
 - character and namespace isolation: complete
 - I2 real SOUL Lab observation: complete
-- I1-G pre-enqueue background-finalizer durability: unresolved
 - I3 auditable Primary MEM Correct: complete
 - I1 observe/correct/retrieve product loop: complete
+- UI-B0 real Home conversation: complete
+- I1-G pre-enqueue background-finalizer durability: unresolved
+- O0 local one-job runner: separate
 
 ## Safe defaults and compatibility
-
-Current safe defaults remain conservative:
 
 ```text
 client_history_exclusion_apply_enabled = false
@@ -232,64 +203,26 @@ relaymem_slp_runtime_enqueue_dry_run_only = true
 relaymem_slp_runtime_enqueue_apply_enabled = false
 ```
 
-Consequences:
-
-- default `memory_light` compatibility may preserve frontend history until managed apply is intentionally enabled,
-- stream suppression and TTS handoff metadata remain default-off,
-- Phase 6 source publication/B2 enqueue remains explicitly gated,
-- B3/C1-2/C2 are caller-driven boundaries rather than separately configured daemons,
-- I1-B never claims or executes a worker inline with visible response delivery,
-- SOUL Lab management and observation reads remain local-only; Correct additionally requires exact JSON, exact schema, expected revision, and a preflight-issued token.
+UI-B0 does not change these server defaults. It adds no permissive CORS policy, browser credential distribution, direct browser-to-LM-Studio connection, transcript persistence, static bundle serving, or runtime process controls.
 
 ## Not yet implemented
 
-The runtime does not yet provide:
+- O0 local one-job runner,
+- queue scanner and retry scheduler,
+- supervised worker service and always-on operation,
+- I1-G pre-enqueue durability,
+- I-4 through I-9 governance and RelaySOUL slices,
+- durable transcript inspection,
+- static RelayLM serving of the SOUL Lab bundle,
+- TTS/audio/avatar/Live2D execution,
+- ASR and peer communication transport.
 
-- complete current-turn-only reconstruction for every compatibility-sensitive request shape,
-- active tool-chain reconstruction,
-- parser-versioned cache compatibility,
-- queue scanner, daemon, or scheduler-driven worker execution,
-- restart completion for I1-G's pre-enqueue background-finalizer crash window,
-- Secondary MEM consolidation,
-- durable forget/pin/merge or held apply/discard operations,
-- actual RelaySOUL apply, rollback, or persistence execution,
-- RelayLM static serving of SOUL Lab,
-- adapter transport delivery, TTS, audio generation, or avatar control,
-- complete output-side RelayREF and Output-side RelaySCN,
-- complete Runtime Compile Gate v1 taxonomy,
-- model-specific exact tokenizer integration,
-- `/v1/responses` support.
-
-## Usable runtime path
+## Usable local topology
 
 ```text
-OpenWebUI
+SOUL Lab Vite http://127.0.0.1:5173/lab/
   -> RelayLM http://127.0.0.1:8090/v1
   -> LM Studio http://127.0.0.1:1234/v1
 ```
 
-The memory write path remains explicitly gated. C1-5 and C2 provide restart-safe protected-source recovery and one exact queued-job execution; Phase I-1 provides ordinary scoped recall; Phase I-2 provides bounded read-only observation; Phase I-3 provides token-gated audited Correct with later M2 convergence. Queue scheduling and the pre-enqueue background-finalizer crash window remain separate unresolved operational boundaries.
-
-## Phase I-2 and I1-G cross-boundary status
-
-- Phase 6-C1-0 through C1-5 complete
-- C2 one-job claim/rehydrate/execute adapter: complete
-- I1 next-turn Primary MEM recall: complete
-- character and namespace isolation: complete
-- I2 real SOUL Lab observation: complete
-- I1-G pre-enqueue background-finalizer durability: unresolved
-- I3 auditable Primary MEM Correct: complete
-- I1 observe/correct/retrieve product loop: complete
-
-I1-G tracks the process-exit window after visible response delivery but before protected-source and B2 queue publication. Phase I-2 observation receipts do not repair or reclassify that durability gap.
-
-<!-- phase-i3-auditable-primary-mem-correct -->
-## Phase I-3 auditable Primary MEM Correct — complete (2026-06-24)
-
-Phase I-3 completes the first real observe/correct/retrieve loop. A formed Primary MEM observed through Phase I-2 can be corrected through read-only preflight, bounded semantic diff, explicit short-lived-token apply, immutable successor-page publication through the existing M3e boundary, canonical M3f/M3g index/log convergence, and immutable audit receipt finalization. Existing M2 retrieval resolves only the corrected current revision and existing RelayCTX injection remains the sole prompt path.
-
-Character/namespace isolation, stable logical memory identity, no-clobber publication, exact operation idempotency, one-winner revision fencing, crash recovery, and historical used-memory integrity are preserved. Correction reason, audit receipt, paths, digests, lineage, queue/lease state, and prior full pages are not retrieval inputs or public prompt content.
-
-Authority and exact contracts: `docs/architecture/phase_i3_auditable_primary_mem_correct.md`.
-
-Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement forget, pin/unpin, merge, held apply/discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.
+The Vite `/v1` proxy remains loopback-targeted with `changeOrigin: false`. Real runtime and preview conversations remain separate browser-local sessions.
