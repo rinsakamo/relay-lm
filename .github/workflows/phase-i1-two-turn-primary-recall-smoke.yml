@@ -46,18 +46,48 @@ jobs:
         run: exit 1
       - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
       - name: RelayMEM M1/M2 and RelayCTX regressions
+        id: relaymem_regressions
+        continue-on-error: true
         run: |
-          PYTHONPATH=. python scripts/relaylm_relaymem_store_dry_run_smoke.py
-          PYTHONPATH=. python scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
-          PYTHONPATH=. python scripts/relaylm_relaymem_selection_dry_run_smoke.py
-          PYTHONPATH=. python scripts/relaylm_relaymem_ctx_injection_plan_dry_run_smoke.py
-          PYTHONPATH=. python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py
-          PYTHONPATH=. python scripts/relaylm_relaymem_snippet_runtime_injection_apply_smoke.py
-          PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
+          set -o pipefail
+          {
+            PYTHONPATH=. python scripts/relaylm_relaymem_store_dry_run_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_selection_dry_run_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_ctx_injection_plan_dry_run_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py
+            PYTHONPATH=. python scripts/relaylm_relaymem_snippet_runtime_injection_apply_smoke.py
+            PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
+          } > relaymem-regressions.log 2>&1
+      - name: Upload RelayMEM regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relaymem-regressions-log
+          path: relaymem-regressions.log
+          if-no-files-found: error
+      - name: Fail when RelayMEM regressions failed
+        if: steps.relaymem_regressions.outcome != 'success'
+        run: exit 1
       - name: Phase 6 worker and C2 regressions
+        id: phase6_regressions
+        continue-on-error: true
         run: |
-          PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_contract_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
-          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
-          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+          set -o pipefail
+          {
+            PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_contract_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+          } > phase6-regressions.log 2>&1
+      - name: Upload Phase 6 regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6-regressions-log
+          path: phase6-regressions.log
+          if-no-files-found: error
+      - name: Fail when Phase 6 regressions failed
+        if: steps.phase6_regressions.outcome != 'success'
+        run: exit 1
