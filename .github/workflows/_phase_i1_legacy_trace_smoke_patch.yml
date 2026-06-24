@@ -1,0 +1,42 @@
+name: Phase I-1 legacy trace smoke patch
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/_phase_i1_legacy_trace_smoke_patch.py"
+      - ".github/workflows/_phase_i1_legacy_trace_smoke_patch.yml"
+
+permissions:
+  contents: write
+
+env:
+  PYTHONPATH: .:scripts
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i1-primary-mem-next-turn-recall
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/_phase_i1_legacy_trace_smoke_patch.py
+      - name: Commit legacy trace smoke updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/relaylm_relaymem_selection_dry_run_smoke.py scripts/relaylm_relaymem_ctx_injection_plan_dry_run_smoke.py
+          git commit -m "test: keep legacy RelayMEM runtime traces content-free"
+          git push origin HEAD:phase-i1-primary-mem-next-turn-recall
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - run: python scripts/relaylm_relaymem_selection_dry_run_smoke.py
+      - run: python scripts/relaylm_relaymem_ctx_injection_plan_dry_run_smoke.py
+      - run: python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py
+      - run: python scripts/relaylm_relaymem_snippet_runtime_injection_apply_smoke.py
