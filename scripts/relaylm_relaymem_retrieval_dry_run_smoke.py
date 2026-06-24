@@ -79,16 +79,26 @@ def _last_metadata(trace_path: Path) -> dict[str, Any]:
     return metadata
 
 
-def _post_and_get_retrieval(
+def _post_and_get_projection(
     client: TestClient,
     trace_path: Path,
     payload: dict[str, Any],
 ) -> dict[str, Any]:
-    resp = client.post("/v1/chat/completions", json=payload)
-    require(resp.status_code == 200, resp.text)
-    artifact = _last_metadata(trace_path).get("relaymem_retrieval_artifact")
-    require(isinstance(artifact, dict), _last_metadata(trace_path))
-    return artifact
+    response = client.post("/v1/chat/completions", json=payload)
+    require(response.status_code == 200, response.text)
+    metadata = _last_metadata(trace_path)
+    require("relaymem_retrieval_artifact" not in metadata, metadata)
+    projection = metadata.get("relaymem_primary_recall_projection")
+    require(isinstance(projection, dict), metadata)
+    require(projection.get("content_free") is True, projection)
+    require(projection.get("content_included") is False, projection)
+    require(projection.get("memory_text_included") is False, projection)
+    require(projection.get("path_values_included") is False, projection)
+    require(projection.get("digest_values_included") is False, projection)
+    require(projection.get("lineage_values_included") is False, projection)
+    require(projection.get("idempotency_values_included") is False, projection)
+    require(projection.get("backend_prompt_included") is False, projection)
+    return projection
 
 
 def _scene_payload(scene_type: str, content: str | None = None) -> dict[str, Any]:
@@ -109,6 +119,7 @@ def _scene_payload(scene_type: str, content: str | None = None) -> dict[str, Any
 def _assert_no_backend_artifact(payload: dict[str, Any]) -> None:
     forbidden = {
         "relaymem_retrieval_artifact",
+        "relaymem_primary_recall_projection",
         "relayref_artifact",
         "relayscn_scene_policy_artifact",
         "ctx_block",
@@ -129,8 +140,12 @@ def main() -> int:
     try:
         with tempfile.TemporaryDirectory() as td:
             trace_path = Path(td) / "trace.jsonl"
-            cfg = yaml.safe_load((REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8"))
-            cfg["backends"]["local_backend"]["base_url"] = f"http://127.0.0.1:{port}/v1"
+            cfg = yaml.safe_load(
+                (REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8")
+            )
+            cfg["backends"]["local_backend"]["base_url"] = (
+                f"http://127.0.0.1:{port}/v1"
+            )
             cfg["trace"] = {"enabled": True, "path": str(trace_path)}
             cfg["model_routes"]["relaylm-default"]["mode"] = "pass_through"
             cfg_path = Path(td) / "cfg.yaml"
@@ -138,64 +153,95 @@ def main() -> int:
 
             app = create_app(str(cfg_path))
             with TestClient(app) as client:
-                design_payload = _scene_payload("design_talk", "RelayMEM retrieval design")
-                design = _post_and_get_retrieval(client, trace_path, design_payload)
-                require(design["artifact_version"] == "relaymem_retrieval.v0", design)
-                require(design["diagnostics_only"] is True, design)
-                require(design["apply_allowed"] is False, design)
+                design_payload = _scene_payload(
+                    "design_talk", "RelayMEM retrieval design"
+                )
+                design = _post_and_get_projection(
+                    client, trace_path, design_payload
+                )
+                require(
+                    design["schema_version"]
+                    == "relaymem.primary_recall_projection.v0",
+                    design,
+                )
                 require(design["retrieval_scope"] == "project_context", design)
-                require(design["fallback_reason"] == "memory_store_not_configured", design)
-                require(design["selected"] == [], design)
-                require(design["ctx_block"] is None, design)
-                require(design["used_tokens"] == 0, design)
+                require(
+                    design["fallback_reason"] == "memory_store_not_configured",
+                    design,
+                )
+                require(design["selected_count"] == 0, design)
+                require(design["ctx_block_present"] is False, design)
+                require(design["estimated_tokens"] == 0, design)
+                require(design["injection_performed"] is False, design)
                 _assert_no_backend_artifact(capture.last())
                 require(
                     capture.last().get("metadata") == design_payload["metadata"],
                     capture.last(),
                 )
-                print("ok design_talk emits dry-run retrieval with no store fallback")
+                print("ok design_talk emits content-free retrieval projection")
 
-                recovery_payload = _scene_payload("recovery", "何の話だったっけ")
-                recovery = _post_and_get_retrieval(client, trace_path, recovery_payload)
-                require(recovery["retrieval_scope"] == "current_context_only", recovery)
-                require(recovery["selected"] == [], recovery)
+                recovery = _post_and_get_projection(
+                    client,
+                    trace_path,
+                    _scene_payload("recovery", "何の話だったっけ"),
+                )
                 require(
-                    recovery["fallback_reason"] == "unresolved_reference_requires_confirmation",
+                    recovery["retrieval_scope"] == "current_context_only",
+                    recovery,
+                )
+                require(
+                    recovery["fallback_reason"]
+                    == "unresolved_reference_requires_confirmation",
                     recovery,
                 )
                 require(recovery["persistence_block"] is True, recovery)
-                require("scene_type_is_recovery" in recovery["persistence_block_reasons"], recovery)
+                require(recovery["selected_count"] == 0, recovery)
                 _assert_no_backend_artifact(capture.last())
-                print("ok recovery retrieval stays current-context-only and blocked")
+                print("ok recovery projection stays current-context-only")
 
                 for scene_type in ("medical_or_safety", "formal_document"):
-                    artifact = _post_and_get_retrieval(
+                    projection = _post_and_get_projection(
                         client,
                         trace_path,
                         _scene_payload(scene_type),
                     )
-                    require(artifact["selected"] == [], artifact)
+                    require(projection["selected_count"] == 0, projection)
                     require(
-                        artifact["fallback_reason"] == "external_memory_blocked_by_scene_policy",
-                        artifact,
+                        projection["fallback_reason"]
+                        == "external_memory_blocked_by_scene_policy",
+                        projection,
                     )
-                    require(artifact["persistence_block"] is True, artifact)
-                print("ok formal and medical scenes block external memory")
+                    require(projection["persistence_block"] is True, projection)
+                print("ok formal and medical projections block external memory")
 
-                unknown = _post_and_get_retrieval(
+                unknown = _post_and_get_projection(
                     client,
                     trace_path,
                     _scene_payload("future_scene"),
                 )
                 require(unknown["scene_type"] == "unknown", unknown)
-                require(unknown["fallback_reason"] == "scene_policy_blocks_memory", unknown)
-                require(unknown["selected"] == [], unknown)
+                require(
+                    unknown["fallback_reason"] == "scene_policy_blocks_memory",
+                    unknown,
+                )
+                require(unknown["selected_count"] == 0, unknown)
                 require(unknown["persistence_block"] is True, unknown)
-                print("ok unknown scene fails closed")
+                print("ok unknown scene projection fails closed")
 
                 metadata = _last_metadata(trace_path)
-                require(isinstance(metadata.get("relaymem_retrieval_artifact"), dict), metadata)
-                print("ok trace metadata includes relaymem_retrieval_artifact")
+                projection_text = repr(
+                    metadata.get("relaymem_primary_recall_projection")
+                )
+                for forbidden in (
+                    "RelayMEM retrieval design",
+                    "何の話だったっけ",
+                    "memory/mem/",
+                    "lineage_fingerprint",
+                    "idempotency_key",
+                    "page_digest",
+                ):
+                    require(forbidden not in projection_text, projection_text)
+                print("ok trace contains only content-free recall projection")
 
         malformed = build_relaymem_retrieval_dry_run_artifact(
             relayscn_scene_policy_artifact={"bad": "shape"},
@@ -204,7 +250,9 @@ def main() -> int:
         )
         require(malformed["scene_type"] == "unknown", malformed)
         require(malformed["retrieval_scope"] == "current_context_only", malformed)
-        require(malformed["fallback_reason"] == "scene_policy_blocks_memory", malformed)
+        require(
+            malformed["fallback_reason"] == "scene_policy_blocks_memory", malformed
+        )
         require(malformed["persistence_block"] is True, malformed)
         print("ok malformed RelaySCN retrieval policy fails closed")
 
@@ -219,11 +267,17 @@ def main() -> int:
             messages=[],
         )
         require(unsupported["scene_type"] == "unknown", unsupported)
-        require(unsupported["retrieval_scope"] == "current_context_only", unsupported)
-        require(unsupported["fallback_reason"] == "scene_policy_blocks_memory", unsupported)
+        require(
+            unsupported["retrieval_scope"] == "current_context_only", unsupported
+        )
+        require(
+            unsupported["fallback_reason"] == "scene_policy_blocks_memory",
+            unsupported,
+        )
         require(unsupported["persistence_block"] is True, unsupported)
         require(
-            "unsupported_scene_type:future_scene" in unsupported["persistence_block_reasons"],
+            "unsupported_scene_type:future_scene"
+            in unsupported["persistence_block_reasons"],
             unsupported,
         )
         print("ok syntactically valid unsupported RelaySCN scene fails closed")
