@@ -1,7 +1,7 @@
 ---
 relaylm_doc_type: implementation_handoff
 relaylm_authority: bounded_ui_integration
-relaylm_status: in_review
+relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: soul_lab_ui_b0
 relaylm_update_trigger:
@@ -23,7 +23,7 @@ relaylm_related_authority:
 
 ## Scope
 
-UI-B0 replaces the fixed Home mock-only submit path with a bounded text-first connection to the existing RelayLM OpenAI-compatible Chat Completions route. It does not create a new conversation, character, memory, SOUL, routing, or backend authority.
+UI-B0 replaces the fixed Home mock-only submit path with a bounded text-first client of the existing RelayLM OpenAI-compatible Chat Completions route. It creates no new conversation, character, memory, SOUL, routing, backend, queue, or worker authority.
 
 ```text
 SOUL Lab Home
@@ -37,19 +37,23 @@ SOUL Lab Home
   -> bounded non-stream JSON or SSE rendering
 ```
 
-## Implemented request path
+## Server-owned conversation target
 
-`RootApp` remains the single owner of active character, route, language, and theme. It now retains the exact `LabCharacterProjection` records returned by `/lab/api/characters`, in addition to display-only `CharacterSummary` values, and passes the exact active projection to Home.
+`RootApp` remains the single owner of route, language, theme, and active character. It retains the exact `LabCharacterProjection` values returned by `/lab/api/characters` and separately derives display summaries.
 
-Home accepts a real conversation target only when the active projection contains exactly one distinct non-empty `route_models` value:
+Home accepts a real target only when the active exact projection contains one distinct non-empty route model:
 
-- zero routes -> `unavailable`
-- more than one distinct route -> `ambiguous_route`
-- exactly one route -> available
+```text
+0 routes       -> unavailable
+1 route        -> available
+2+ routes      -> ambiguous_route
+```
 
-The browser does not select a backend model ID and does not reconstruct a route from display fields. UI-B0 intentionally fails closed instead of assigning new preferred-route semantics to the existing management projection.
+The browser does not choose a backend model ID, infer a route from display fields, or treat array order as preferred-route semantics. A future server-owned preferred route would require a separate projection contract.
 
-The request body is limited to the standard shape:
+## Request contract
+
+A request contains only standard Chat Completions fields:
 
 ```json
 {
@@ -62,74 +66,90 @@ The request body is limited to the standard shape:
 }
 ```
 
-Only completed messages from the current real browser-local session are eligible for the next request. The browser never adds `system` or `developer` messages.
+Only completed messages from the current real browser-local session enter the next request.
 
-## Same-origin and credential boundary
+The browser never adds:
 
-The browser sends requests only to `/v1/chat/completions` with:
+- `system` or `developer` messages,
+- character IDs or memory namespaces,
+- raw SOUL, MEM, or compiled RelayCTX,
+- backend IDs or credentials,
+- filesystem paths,
+- queue, claim, lease, or worker identities,
+- hidden instructions or preview messages.
 
-- `credentials: "same-origin"`
-- `cache: "no-store"`
-- `Content-Type: application/json`
-- `Accept: application/json` or `text/event-stream`
-- an `AbortSignal`
+Fetch uses:
 
-The Vite development server proxies `/v1` to `http://127.0.0.1:8090` with `changeOrigin: false`. The browser does not connect to LM Studio directly, does not receive backend credentials, and does not add a permissive CORS policy.
+```text
+path: /v1/chat/completions
+credentials: same-origin
+cache: no-store
+signal: AbortSignal
+```
 
-The request excludes character IDs, memory namespaces, backend IDs, SOUL, OUTPUT_POLICY, raw MEM, compiled RelayCTX, credentials, filesystem paths, queue/lease identities, and hidden instructions. Existing RelayLM resolution remains the authority for all of them.
+The Vite development server proxies `/v1` to `http://127.0.0.1:8090` with `changeOrigin: false`. The browser never connects directly to LM Studio and UI-B0 adds no permissive CORS policy.
 
 ## Non-stream contract
 
-The non-stream client:
+The non-stream parser:
 
 - requires a successful HTTP response,
-- reads the body through a byte-bounded `ReadableStream`,
+- reads the body through a bounded `ReadableStream`,
 - decodes UTF-8 with fatal validation,
-- accepts OpenAI-compatible optional extension fields,
-- requires a non-empty `choices` array and a string `choices[0].message.content`,
-- validates an optional string/null `finish_reason`,
-- rejects malformed JSON, missing bodies, invalid structures, and oversized responses,
-- maps failures to bounded reason codes without exposing response bodies or exceptions.
+- accepts safe OpenAI-compatible extension fields,
+- requires a non-empty `choices` array,
+- requires string `choices[0].message.content`,
+- validates optional string/null `finish_reason`,
+- rejects missing body, malformed JSON, invalid structure, and oversize,
+- emits bounded reason codes only.
 
-## Stream contract
+Raw response bodies, raw JSON, and backend exceptions are never rendered or included in user-facing errors.
 
-The streaming client handles:
+## Streaming contract
+
+The SSE parser handles:
 
 - `ReadableStream` byte chunks,
 - UTF-8 code points split across chunks,
-- LF or CRLF SSE event boundaries split across chunks,
-- comments and non-data events,
-- one or more `data:` lines,
-- role-only assistant deltas,
-- absent, null, or empty content deltas,
-- string content deltas,
-- optional finish reasons and usage/extensions,
+- LF and CRLF event boundaries split across chunks,
+- `data:` lines and comments,
 - `[DONE]`,
-- abort,
+- role-only assistant deltas,
+- absent/null/empty content deltas,
+- string content deltas,
+- finish reasons,
+- optional usage and extension fields,
+- request abort,
 - malformed JSON/events,
 - mixed response IDs,
-- unavailable bodies,
+- missing response body,
 - truncated streams,
-- byte, visible-text, and event-count upper bounds.
+- byte, text, and event-count bounds.
 
-One assistant entry is created per request. Every accepted content delta appends to that entry; deltas never create additional messages.
+One assistant entry is created for the request. Accepted content deltas append to that entry; a delta never creates another message.
 
-## Stop, failure, and retry state machine
-
-Browser request states are:
+## Request state machine
 
 ```text
 idle
   -> submitting
-  -> streaming (stream requests)
-  -> completed | stopped | failed
+  -> streaming       when stream=true
+  -> completed
+  -> stopped
+  -> failed
 ```
 
-Soft Stop aborts only the active browser fetch. It does not stop RelayLM, a queue, worker, or backend process. Received assistant text remains visible and the message becomes `stopped`.
+### Stop
 
-Failures retain the user message and the bounded assistant failure state. Raw exceptions, backend bodies, raw JSON, and raw SSE are not rendered or logged by the transport.
+Soft Stop aborts only the browser request. It does not stop RelayLM, LM Studio, a queue, or a worker. Received partial text remains visible and the assistant message becomes `stopped`.
 
-Retry is available only for the current real session after `failed` or `stopped`. It reuses the exact stored request snapshot and assistant placeholder, assigns a new request ID and generation, and does not append a duplicate user message. Retry is refused when the current server-projected route no longer matches the snapshot.
+### Failure
+
+The user message remains visible. The assistant placeholder becomes a bounded failure state such as HTTP failure, timeout, invalid response, invalid stream, truncation, body unavailable, abort, or network failure. Raw backend content is not exposed and there is no automatic preview fallback.
+
+### Retry
+
+Retry reuses the exact failed/stopped request snapshot. It assigns a new request ID and generation, clears the existing assistant placeholder, and does not append the user message again. Retry is refused when the current route or session no longer matches the snapshot.
 
 ## Character, session, and generation fencing
 
@@ -137,75 +157,91 @@ Every real request snapshot captures:
 
 - request ID,
 - character ID,
-- route model,
+- server-projected route model,
 - browser-local session ID,
-- monotonically advanced generation,
+- generation,
 - stream mode,
-- exact wire message snapshot,
+- exact wire message list,
 - assistant placeholder ID.
 
-A completion, SSE delta, error, or finalizer may update state only when the active character, session ID, generation, and route snapshot still match. Character switching, source-mode switching, New Conversation, and unmount abort or invalidate the active request. The character selector being enabled or disabled is not used as the safety fence.
+A completion, SSE delta, failure, or finalizer may update state only while the current character, real session, generation, and route snapshot remain valid. Character changes, source-mode changes, New Conversation, and component unmount abort or invalidate the active request. The character selector UI state is not the safety fence.
 
-## Real Runtime and Local Preview separation
+Per-character sessions remain separate. Old-character completion and chunk paths cannot write into the new character session.
 
-Real Runtime is the default source mode. Local Preview requires an explicit user action.
+## Real Runtime and Local Preview
 
-Sessions are keyed by `character ID × source mode`. Therefore:
+Real Runtime is the default source mode. Local Preview requires explicit user selection.
 
-- character sessions do not mix,
-- real and preview messages do not mix,
+Sessions are keyed by:
+
+```text
+character ID × source mode
+```
+
+Therefore:
+
+- different character histories do not mix,
+- real and preview histories do not mix,
 - preview messages cannot enter a real request,
-- runtime failures do not trigger automatic preview fallback,
-- switching modes preserves separate browser-local histories.
+- a runtime error never switches to preview automatically,
+- switching modes preserves distinct browser-local histories.
 
-The source mode and request state remain visible as labels such as `REAL RUNTIME · STREAMING` and `LOCAL PREVIEW · COMPLETED`.
+The current source and request state remain visible through labels such as:
 
-Real runtime status uses only the existing content-free `/lab/api/settings` projection and performs no browser-side network probe. Preview mode alone uses the existing mock runtime/events. TTS and avatar configuration are displayed as projected status but are not text-conversation completion gates.
+```text
+REAL RUNTIME · READY
+REAL RUNTIME · STREAMING
+REAL RUNTIME · FAILED
+REAL RUNTIME · UNAVAILABLE
+LOCAL PREVIEW · COMPLETED
+```
 
-## New Conversation semantics
+Real runtime status reuses only the existing content-free `/lab/api/settings` projection. It performs no browser-side network probe and reads no credentials. TTS and avatar configuration are not text-conversation completion gates.
+
+## New Conversation
 
 New Conversation applies only to the current character and current source mode. It:
 
-- aborts and invalidates an in-flight request,
+- aborts and invalidates the in-flight request,
 - creates a new browser-local session ID,
 - advances the generation fence,
-- clears the current message list,
+- clears current messages,
 - clears the current draft,
-- clears the retry snapshot for that session.
+- clears the retry snapshot.
 
-It does not affect another character or source mode, persisted transcripts, Primary MEM, correction receipts, SOUL, or server state.
+It does not alter another character/source session, persisted transcript data, SOUL, Primary MEM, correction receipts, observation evidence, or server state.
 
-This separation permits an evaluation in which browser history is cleared while durable M2-selected memory may still affect the next response through existing RelayCTX injection.
+A fresh Home conversation proves only that frontend history was reset. Durable-memory influence must still be verified through existing Phase I-2 used-memory evidence.
 
 ## Browser defense bounds
 
 UI-B0 centralizes conservative browser-only limits:
 
-- 40 wire/session messages,
-- 8,000 characters per user message,
-- 64,000 accumulated visible transcript characters,
-- 32,000 response characters,
-- 1 MiB response bytes,
-- 2,048 SSE events,
-- 120-second request timeout.
+```text
+messages                 40
+user message chars       8,000
+visible transcript chars 64,000
+response chars           32,000
+response bytes           1 MiB
+SSE events               2,048
+request timeout          120 seconds
+```
 
-These are browser safeguards, not replacements for server authority. Oversized input or output is rejected; it is not silently truncated and treated as successful.
+These do not replace server authority. Oversize is rejected rather than silently truncated and reported as success.
 
 ## Memory-use validation
 
-UI-B0 does not perform retrieval or prompt injection. The evidence chain remains:
+UI-B0 does not implement retrieval or prompt injection.
 
 ```text
 Home real request
   -> existing M2 selection
   -> existing RelayCTX backend-bound injection
-  -> response
+  -> backend response
   -> Phase I-2 used-memory observation evidence
 ```
 
-The Home UI does not expose raw prompts, compiled context, SOUL, MEM pages, or traces. Phase I-2 remains the evidence surface for memory actually included in backend-bound context. Phase I-3 remains the correction authority.
-
-A fresh browser conversation proves only that frontend history was reset. Durable-memory influence must be confirmed separately through the existing used-memory observation.
+Home never displays raw prompts, compiled context, SOUL, MEM pages, or traces. Phase I-2 remains the evidence surface for actual backend-bound memory inclusion. Phase I-3 remains the correction authority.
 
 ## Validation
 
@@ -232,7 +268,9 @@ PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_config_smoke.py
 PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
 ```
 
-The strict Node smoke covers request shape and same-origin options, valid and invalid non-stream responses, HTTP/malformed/oversized/abort handling, multi-chunk UTF-8 and SSE parsing, role-only and empty deltas, finish reasons, `[DONE]`, malformed/truncated/oversized/aborted streams, route ambiguity, session separation, reset semantics, stale-generation rejection, failed/stopped history filtering, preview rejection, and source-code guards against unsafe rendering or session persistence.
+The dedicated GitHub workflow passes typecheck, strict Node smoke, production build, compileall, documentation checks, Phase I-1/I-2/I-3 regressions, and OpenWebUI/LM Studio configuration/proxy smokes.
+
+The Node smoke covers request shape and same-origin options, valid/invalid non-stream responses, HTTP/malformed/oversize/abort handling, multi-chunk UTF-8 and SSE parsing, role-only and empty deltas, finish reason, `[DONE]`, malformed/truncated/oversized/aborted streams, route ambiguity, session/source separation, reset semantics, stale generation rejection, failed/stopped history filtering, and unsafe-rendering/persistence guards.
 
 ## Manual smoke
 
@@ -242,20 +280,24 @@ SOUL Lab Vite :5173
   -> LM Studio :1234
 ```
 
-1. Start an OpenAI-compatible LM Studio server at `http://127.0.0.1:1234/v1` with a model loaded.
+1. Start LM Studio OpenAI-compatible serving with a model loaded.
 2. Start RelayLM with `relaylm --config config.yaml`.
-3. Run `npm run dev` in `apps/soul-lab` and open `http://127.0.0.1:5173/lab/`.
-4. Confirm the server-configured character appears and Real Runtime is selected.
-5. Exercise non-stream and streaming conversation.
-6. Stop a stream and confirm partial text remains.
+3. Start SOUL Lab with `npm run dev`.
+4. Confirm a server-configured character appears.
+5. Exercise non-stream and streaming Real Runtime conversation.
+6. Stop streaming and confirm partial text remains.
 7. Retry and confirm the user message is not duplicated.
-8. Switch character during streaming and confirm no old chunk appears under the new character.
-9. Start New Conversation and confirm only current browser-local history and draft reset.
-10. Select Local Preview explicitly and confirm its messages never appear in Real Runtime.
-11. Stop RelayLM or make it unavailable and confirm no automatic mock fallback occurs.
+8. Switch character during streaming and confirm no old chunk appears.
+9. use New Conversation and confirm only current browser-local history and draft reset.
+10. Select Local Preview explicitly and confirm it never enters Real Runtime history.
+11. Make RelayLM unavailable and confirm no automatic mock fallback occurs.
 12. Confirm no raw prompt, SOUL, MEM, trace, credential, path, or queue identity is displayed.
 
-For the memory evaluation, use the existing explicit one-job C2 execution method until O0 exists:
+A real LM Studio workstation manual smoke is environment validation and is not fabricated by CI.
+
+## E1 evaluation path
+
+Until O0 exists, use the existing explicit one-job C2 execution method:
 
 ```text
 real Home conversation
@@ -264,7 +306,7 @@ real Home conversation
   -> Phase I-2 observation
   -> Phase I-3 Correct
   -> Home New Conversation
-  -> question affected by corrected memory
+  -> corrected-memory question
   -> Phase I-2 used-memory evidence
 ```
 
@@ -272,18 +314,18 @@ UI-B0 does not claim that the complete E1 flow is automated.
 
 ## Known limitations and separate slices
 
-- More than one projected route model is fail-closed as `ambiguous_route`; preferred-route semantics are not introduced here.
-- Browser transcripts are process-local and non-durable.
-- Static SOUL Lab bundle serving is not included.
-- O0 local one-job runner remains a separate parallel slice.
-- I1-G pre-enqueue durability remains separate.
-- I-4 Forget/Hide and later memory governance remain separate.
-- Queue scanning, scheduling, supervised worker service, and always-on operation remain separate.
-- Secondary MEM consolidation and RelaySOUL proposal/intervention/rollback remain separate.
-- TTS, audio, avatar, Live2D, ASR, and peer communication transport remain separate.
+- multiple projected routes remain fail-closed; UI-B0 adds no route priority semantics,
+- browser transcripts are process-local and non-durable,
+- static SOUL Lab serving remains separate,
+- O0 local one-job runner remains a separate parallel slice,
+- I1-G pre-enqueue durability remains separate,
+- I-4 Forget/Hide and later memory governance remain separate,
+- queue scanning, scheduling, worker supervision, and always-on operation remain separate,
+- Secondary MEM and RelaySOUL proposal/intervention/rollback remain separate,
+- TTS, audio, avatar, Live2D, ASR, and peer transport remain separate.
 
-## E1 proof boundary
+## Proof boundary
 
-UI-B0 proves that a user can exercise the existing real text request path from SOUL Lab Home and safely observe non-stream or stream output with browser-local session controls. Combined with existing I-1, I-2, and I-3 and an explicit one-job execution method, it enables the first hands-on E1 product evaluation.
+UI-B0 proves a bounded browser client can exercise the existing real RelayLM text path with safe local session controls and explicit source separation. Combined with existing I-1/I-2/I-3 and an explicit one-job method, it enables the first hands-on E1 evaluation.
 
-It does not prove automatic deferred-job selection, pre-enqueue crash durability, durable transcripts, memory-governance breadth, or long-running production operation.
+It does not prove automatic deferred-job execution, pre-enqueue crash durability, durable transcripts, broad memory governance, or long-running production operation.
