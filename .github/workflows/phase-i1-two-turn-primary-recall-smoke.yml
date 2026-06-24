@@ -17,31 +17,9 @@ on:
       - ".github/workflows/phase-i1-two-turn-primary-recall-smoke.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply-store-smoke-projection:
-    if: github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: phase-i1-primary-mem-next-turn-recall
-          fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: python scripts/_phase_i1_store_smoke_projection_patch.py
-      - run: pip install -e .
-      - run: PYTHONPATH=. python scripts/relaylm_relaymem_store_dry_run_smoke.py
-      - name: Commit store smoke update
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scripts/relaylm_relaymem_store_dry_run_smoke.py
-          git commit -m "test: keep RelayMEM store trace projection content-free"
-          git push origin HEAD:phase-i1-primary-mem-next-turn-recall
-
   phase-i1:
     runs-on: ubuntu-latest
     steps:
