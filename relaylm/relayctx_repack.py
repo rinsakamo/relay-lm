@@ -4,16 +4,11 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from copy import deepcopy
-from pathlib import Path
 from typing import Any
 
 from relaylm.config import RelayLMConfig
 from relaylm.diagnostics import build_relayctx_short_term_runtime_injection_apply_result
 from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
-from relaylm.relaymem_primary_recall import (
-    apply_relaymem_primary_recall_scope,
-    resolve_relaymem_character_store_root,
-)
 from relaylm.relaymem_runtime_ctx import (
     maybe_apply_relaymem_runtime_ctx_injection,
     maybe_apply_relaymem_snippet_runtime_injection,
@@ -32,39 +27,11 @@ def apply_relaymem_runtime_injection_phase(
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Apply RelayMEM snippet/runtime CTX injection as one CTX Repack phase.
 
-    When the configured store has entered the character-partitioned layout, the
-    existing M2 artifact is narrowed through exact Primary page/index/log and
-    namespace validation before either existing injection path can observe it.
-
     Returns:
         forwarded_payload,
         runtime_ctx_injection_result,
         runtime_snippet_injection_result
     """
-
-    configured_root = config.memory.root_path
-    partition_root = Path(configured_root) / "characters"
-    partitioning_active = (
-        partition_root.exists()
-        and partition_root.is_dir()
-        and not partition_root.is_symlink()
-    )
-    if partitioning_active:
-        scoped_root = resolve_relaymem_character_store_root(
-            configured_root,
-            pipeline_context.route.character_id,
-        )
-        scoped_artifact = apply_relaymem_primary_recall_scope(
-            relaymem_retrieval_artifact,
-            scoped_store_root=scoped_root,
-            expected_namespace=pipeline_context.route.memory_namespace,
-            max_snippet_chars=config.memory.max_snippet_chars,
-            max_snippet_candidates=config.memory.max_snippet_candidates,
-            snippet_budget=config.memory.snippet_budget,
-            chars_per_token=config.memory.chars_per_token,
-        )
-        relaymem_retrieval_artifact.clear()
-        relaymem_retrieval_artifact.update(scoped_artifact)
 
     forwarded_payload, runtime_snippet_injection_result = (
         maybe_apply_relaymem_snippet_runtime_injection(
@@ -113,14 +80,6 @@ def apply_relaymem_runtime_injection_phase(
             forwarded_payload,
             "relaymem_runtime_ctx_injection",
         )
-
-    projection = relaymem_retrieval_artifact.get("primary_recall_projection")
-    if isinstance(projection, dict):
-        projection["injection_performed"] = (
-            runtime_snippet_injection_result.get("applied") is True
-            or runtime_ctx_injection_result.get("applied") is True
-        )
-        projection["memory_used"] = projection["injection_performed"]
 
     return (
         forwarded_payload,

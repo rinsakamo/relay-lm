@@ -6,8 +6,6 @@ from pathlib import Path
 from typing import Any
 
 from . import _relaymem_store_impl as _impl
-from .pipeline_context import get_active_pipeline_context
-from .relaymem_primary_recall import resolve_relaymem_character_store_root
 
 
 discover_relaymem_page_candidates = _impl.discover_relaymem_page_candidates
@@ -20,32 +18,7 @@ def build_relaymem_store_diagnostics(
     store_enabled: bool,
     retrieval_dry_run_only: bool,
 ) -> dict[str, Any]:
-    """Inspect one request-scoped store while reserving MEM page validation.
-
-    Existing flat M1 layouts remain compatible until an operator creates the
-    ``characters`` partition root. Once it exists, ordinary managed requests
-    fail closed into the opaque partition for their exact character.
-    """
-
-    configured_root_path = root_path
-    character_partitioning_active = False
-    character_scope_resolved = False
-    if store_enabled and isinstance(root_path, str) and root_path:
-        partition_root = Path(root_path) / "characters"
-        character_partitioning_active = (
-            partition_root.exists()
-            and partition_root.is_dir()
-            and not partition_root.is_symlink()
-        )
-        active_context = get_active_pipeline_context()
-        if character_partitioning_active and active_context is not None:
-            scoped_root = resolve_relaymem_character_store_root(
-                root_path,
-                active_context.route.character_id,
-            )
-            if scoped_root is not None:
-                root_path = scoped_root
-                character_scope_resolved = True
+    """Inspect the store while reserving validation capacity for MEM pages."""
 
     diagnostics: dict[str, Any] = {
         "schema_version": "relaymem.store_diagnostics.v0",
@@ -63,9 +36,6 @@ def build_relaymem_store_diagnostics(
         "page_paths": [],
         "blocked_files": [],
         "fallback_reason": None,
-        "character_partitioning_active": character_partitioning_active,
-        "character_scope_resolved": character_scope_resolved,
-        "configured_root_present": bool(configured_root_path),
         "validation": {
             "max_files_to_scan": _impl._MAX_FILES_TO_SCAN,
             "max_files_to_validate": _impl._MAX_FILES_TO_VALIDATE,
@@ -85,13 +55,10 @@ def build_relaymem_store_diagnostics(
     if not root_path:
         diagnostics["fallback_reason"] = "memory_store_root_not_configured"
         return diagnostics
-    if character_partitioning_active and not character_scope_resolved:
-        diagnostics["fallback_reason"] = "memory_store_character_scope_invalid"
-        return diagnostics
 
     root = Path(root_path)
     diagnostics["root_path"] = str(root)
-    if not root.exists() or not root.is_dir() or root.is_symlink():
+    if not root.exists() or not root.is_dir():
         diagnostics["fallback_reason"] = "memory_store_root_missing"
         return diagnostics
 
