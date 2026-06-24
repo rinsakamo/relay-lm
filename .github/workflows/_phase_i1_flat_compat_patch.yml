@@ -11,6 +11,9 @@ on:
 permissions:
   contents: write
 
+env:
+  PYTHONPATH: .:scripts
+
 jobs:
   patch:
     if: github.actor != 'github-actions[bot]'
@@ -25,9 +28,9 @@ jobs:
       - name: Run focused compatibility smokes
         run: |
           python -m pip install -e .
-          PYTHONPATH=. python scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
-          PYTHONPATH=. python scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
+          python scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
+          python scripts/relaylm_relayrun_runtime_checkpoint_dry_run_smoke.py
+          python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
       - name: Commit patch
         run: |
           git config user.name "github-actions[bot]"
