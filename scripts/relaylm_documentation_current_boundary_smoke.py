@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1, I2, I1-G, and config documentation."""
+"""Validate current Phase 6, I1, I2, I1-G, and planned I3-I9 documentation."""
 from __future__ import annotations
 import ast
 import re
@@ -53,8 +53,27 @@ def main() -> None:
         "### I1-D: next-turn recall validation — complete",
         "### I1-E / Phase I-2: real SOUL Lab observation — complete",
         "### I1-G: pre-enqueue background-finalizer durability — unresolved",
+        "## Planned post-I-3 work and evaluation sequence",
+        "phase_i3_i9_evaluation_work_roadmap.md",
         "`docs/config_schema.md`",
         "stale TODO or future-tense text in related documents")
+    require("docs/architecture/phase_i3_i9_evaluation_work_roadmap.md",
+        "Phase I-3: Auditable Correct",
+        "Phase I-4: Forget / Hide",
+        "Phase I-5: Pin / Unpin",
+        "Phase I-6: Merge / Supersession",
+        "Phase I-7: Held Apply / Discard",
+        "Phase I-8: Secondary MEM Consolidation",
+        "Phase I-9: RelaySOUL Proposal / Intervention / Rollback",
+        "UI-B0: Real Home Conversation",
+        "O0: Local one-job runner",
+        "I1-G: Pre-enqueue durability",
+        "O1: Queue scanner and retry scheduler",
+        "O2: Supervised worker service",
+        "O3: Always-on local operation",
+        "E1: Core RelayLM product hypothesis",
+        "E2: Primary MEM governance product",
+        "E3: Long-term character system")
     require("docs/architecture/current_target_migration_guide.md",
         "A1/A2/B0-B3, ordinary I1-B source-before-queue publication",
         "Phase I-1 verifies the later-turn retrieval path",
@@ -67,11 +86,13 @@ def main() -> None:
     require("docs/architecture/README.md",
         "Phase I-1 completes next-turn recall with character/namespace isolation",
         "Phase I-2 completes real read-only Lab observation",
+        "phase_i3_i9_evaluation_work_roadmap.md",
         "I1-G pre-enqueue background-finalizer durability")
     require("docs/README.md",
         "`config_schema.md`", "Current/Target Boundary Matrix",
         "stale TODO/future-tense text in related plans",
-        "phase_i2_real_soul_lab_observation.md", "I1-G")
+        "phase_i2_real_soul_lab_observation.md",
+        "phase_i3_i9_evaluation_work_roadmap.md", "I1-G")
     require("docs/architecture/relaymem_slp_current_target.md",
         "C1-5 durable claim-independent protected source and restart rehydration",
         "C2 one-job claim/rehydrate/execute adapter",
