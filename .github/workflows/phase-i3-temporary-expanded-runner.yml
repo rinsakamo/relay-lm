@@ -1,0 +1,44 @@
+name: Temporary Phase I-3 expanded runner
+
+on:
+  push:
+    branches:
+      - phase-i3-auditable-primary-mem-correct
+    paths:
+      - .github/workflows/phase-i3-temporary-expanded-runner.yml
+
+permissions:
+  contents: write
+
+jobs:
+  expanded:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i3-auditable-primary-mem-correct
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - id: runner
+        continue-on-error: true
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
+      - name: Record bounded expanded-runner result
+        env:
+          RESULT: ${{ steps.runner.outcome }}
+        run: |
+          cat >> docs/architecture/phase_i3_validation_receipt.md <<EOF
+
+          ## Expanded I-3 runner
+
+          Result: ${RESULT}
+          EOF
+          rm .github/workflows/phase-i3-temporary-expanded-runner.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/architecture/phase_i3_validation_receipt.md
+          git add -u .github/workflows/phase-i3-temporary-expanded-runner.yml
+          git commit -m "test: record expanded Phase I3 runner result"
+          git push origin HEAD:phase-i3-auditable-primary-mem-correct
