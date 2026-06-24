@@ -1,4 +1,4 @@
-name: Phase I-1 projection reason diagnostics
+name: Phase I-1 projection reason patch
 
 on:
   pull_request:
@@ -9,39 +9,32 @@ on:
       - ".github/workflows/_phase_i1_projection_reason_patch.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   PYTHONPATH: .:scripts
 
 jobs:
-  diagnostics:
+  patch:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: phase-i1-primary-mem-next-turn-recall
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: python scripts/_phase_i1_projection_reason_patch.py
       - run: pip install -e .
-      - name: Run focused projection smokes
-        id: smoke
-        continue-on-error: true
+      - run: python scripts/relaylm_relaymem_store_dry_run_smoke.py
+      - run: python scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
+      - run: python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
+      - name: Commit projection reason fix
         run: |
-          {
-            python scripts/relaylm_relaymem_store_dry_run_smoke.py
-            python scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
-            python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
-          } > phase-i1-projection-reason.log 2>&1
-      - name: Upload projection reason log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: phase-i1-projection-reason-log
-          path: phase-i1-projection-reason.log
-          if-no-files-found: error
-      - name: Fail when focused smokes fail
-        if: steps.smoke.outcome != 'success'
-        run: exit 1
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add relaylm/relaymem_primary_recall.py
+          git commit -m "fix: preserve explicit disabled-store recall reason"
+          git push origin HEAD:phase-i1-primary-mem-next-turn-recall
