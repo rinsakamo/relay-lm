@@ -85,4 +85,10 @@ jobs:
           cache-dependency-path: apps/soul-lab/package-lock.json
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
+      - name: Run strict browser schema smoke
+        run: |
+          rm -rf .observation-smoke
+          npx tsc src/features/lab/observationApi.ts --target ES2022 --module ES2022 --moduleResolution Bundler --outDir .observation-smoke --skipLibCheck
+          node scripts/observationApiSmoke.mjs
+          rm -rf .observation-smoke
       - run: npm run build
