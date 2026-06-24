@@ -1,0 +1,24 @@
+name: Phase I-2 source snapshot temp
+
+on:
+  push:
+    paths:
+      - ".github/workflows/phase-i2-source-snapshot-temp.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload branch source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i2-source-snapshot
+          path: |
+            .
+            !.git/**
+          include-hidden-files: true
+          retention-days: 1
