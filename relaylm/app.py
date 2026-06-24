@@ -7,6 +7,7 @@ from copy import deepcopy
 from dataclasses import replace
 import json
 import os
+from pathlib import Path
 import uuid
 from collections.abc import Mapping
 from typing import Any
@@ -69,6 +70,7 @@ from relaylm.relayscn import build_relayscn_scene_policy_artifact
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
+    build_relaymem_primary_recall_compat_projection,
     resolve_relaymem_character_store_root,
 )
 from relaylm.relayrun import (
@@ -368,10 +370,28 @@ def create_app(config_path: str | None = None) -> FastAPI:
             )
         )
 
-        relaymem_scoped_store_root = resolve_relaymem_character_store_root(
-            config.memory.root_path,
-            route.character_id,
-        )
+        relaymem_configured_store_root = config.memory.root_path
+        relaymem_character_partition_present = False
+        if (
+            isinstance(relaymem_configured_store_root, str)
+            and relaymem_configured_store_root
+        ):
+            character_partition = (
+                Path(relaymem_configured_store_root) / "characters"
+            )
+            relaymem_character_partition_present = (
+                character_partition.exists() or character_partition.is_symlink()
+            )
+        if relaymem_character_partition_present:
+            relaymem_scoped_store_root = (
+                resolve_relaymem_character_store_root(
+                    relaymem_configured_store_root,
+                    route.character_id,
+                )
+            )
+        else:
+            relaymem_scoped_store_root = relaymem_configured_store_root
+
         relaymem_store_diagnostics = build_relaymem_store_diagnostics(
             root_path=relaymem_scoped_store_root,
             store_enabled=config.memory.store_enabled,
@@ -392,15 +412,22 @@ def create_app(config_path: str | None = None) -> FastAPI:
             max_snippet_chars=config.memory.max_snippet_chars,
             max_snippet_candidates=config.memory.max_snippet_candidates,
         )
-        relaymem_retrieval_artifact = apply_relaymem_primary_recall_scope(
-            relaymem_retrieval_artifact,
-            scoped_store_root=relaymem_scoped_store_root,
-            expected_namespace=route.memory_namespace,
-            max_snippet_chars=config.memory.max_snippet_chars,
-            max_snippet_candidates=config.memory.max_snippet_candidates,
-            snippet_budget=config.memory.snippet_budget,
-            chars_per_token=config.memory.chars_per_token,
-        )
+        if relaymem_character_partition_present:
+            relaymem_retrieval_artifact = apply_relaymem_primary_recall_scope(
+                relaymem_retrieval_artifact,
+                scoped_store_root=relaymem_scoped_store_root,
+                expected_namespace=route.memory_namespace,
+                max_snippet_chars=config.memory.max_snippet_chars,
+                max_snippet_candidates=config.memory.max_snippet_candidates,
+                snippet_budget=config.memory.snippet_budget,
+                chars_per_token=config.memory.chars_per_token,
+            )
+        else:
+            relaymem_retrieval_artifact["primary_recall_projection"] = (
+                build_relaymem_primary_recall_compat_projection(
+                    relaymem_retrieval_artifact
+                )
+            )
         (
             forwarded_payload,
             runtime_ctx_injection_result,
