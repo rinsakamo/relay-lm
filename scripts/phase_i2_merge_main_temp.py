@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+# Temporary reconciler for merging the current main documentation boundary.
+
 
 def replace_once(path: str, old: str, new: str) -> None:
     target = Path(path)
