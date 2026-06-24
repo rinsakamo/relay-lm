@@ -68,7 +68,7 @@ def main() -> None:
         "I4 production Forget runtime, M2 exclusion, and UI: unimplemented",
         "I1-G pre-enqueue background-finalizer durability: unresolved",
         "UI-B0 Real Home Conversation and O0 Local one-job runner remain planned",
-        "queue scanner, retry scheduler, daemon, or supervised worker service",
+        "queue scanner, daemon, or scheduler-driven worker execution",
         "restore / unhide",
         "hard delete, secure erase, or physical purge through Forget",
     )
@@ -82,12 +82,12 @@ def main() -> None:
         "### I1-F / Phase I-3: auditable Primary MEM Correct — complete",
         "### I1-F2 / Phase I-4A: Primary MEM Forget / Hide contract — defined target",
         "### I1-G: pre-enqueue background-finalizer durability — unresolved",
-        "I-4B  canonical resolver, shared Correct/Forget fence, preflight/history",
+        "I-4B-I-4F Forget implementation",
         "I-4B through I-4F",
         "post_i3_evaluation_work_roadmap.md",
         "`docs/config_schema.md`",
         "stale TODO or future-tense text in related documents",
-        "UI-B0, O0, and I1-G work may continue in parallel",
+        "The immediate parallel work candidates are UI-B0, O0, I1-G contract/fault design, and I-4B",
         "queue scanner / daemon operation",
     )
 
