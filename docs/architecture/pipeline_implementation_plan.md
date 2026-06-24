@@ -31,6 +31,7 @@ relaylm_related_authority:
   - phase6c2_one_queued_primary_worker_integration.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i2_real_soul_lab_observation.md
+  - phase_i3_i9_evaluation_work_roadmap.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - soul_lab_ui_a7_management_projection_handoff.md
@@ -85,7 +86,14 @@ SOUL Lab:
   UI-A0 through UI-A7: complete
   I2 real latest-run and memory observation: complete
   I3 auditable Correct operation: next
-  broader authoritative mutations: pending
+  real Home conversation: planned immediately after I3 contract stabilization
+  broader authoritative mutations: planned as I4 through I9
+
+Operations:
+  local one-job runner: planned for early evaluation
+  queue scanner / retry scheduler: planned later
+  supervised worker service: planned later
+  always-on local operation: planned later
 
 SOUL Lab Runtime:
   TTS/audio/avatar adapter execution: planned later
@@ -236,6 +244,55 @@ real observed memory item
 
 Phase I-3 does not include general memory administration, RelaySOUL mutation, queue scanning, scheduler/daemon lifecycle, or Secondary MEM consolidation. Forget, pin/unpin, merge, held apply/discard, and broader operations follow later.
 
+## Planned post-I-3 work and evaluation sequence
+
+The detailed planned work slices and evaluation gates are defined in [Phase I-3 through I-9 Evaluation and Work Roadmap](phase_i3_i9_evaluation_work_roadmap.md). The roadmap is target sequencing and does not mark later phases implemented.
+
+Memory-governance sequence:
+
+```text
+I-3  Correct
+I-4  Forget / Hide
+I-5  Pin / Unpin
+I-6  Merge / Supersession
+I-7  Held Apply / Discard
+I-8  Secondary MEM consolidation
+I-9  RelaySOUL proposal / intervention / rollback
+```
+
+Parallel SOUL Lab experience work begins after the I-3 contract stabilizes:
+
+```text
+UI-B0  real Home conversation
+UI-B1  memory lifecycle visibility
+UI-B2  repeatable evaluation scenarios and evidence
+```
+
+Parallel operational work:
+
+```text
+O0    local one-job runner
+I1-G  pre-enqueue durability
+O1    queue scanner / retry scheduler
+O2    supervised worker service
+O3    always-on local operation and soak
+```
+
+Evaluation begins early rather than waiting for I-9:
+
+```text
+E1  I-3 + UI-B0 + O0
+    conversation -> memory -> observation -> Correct -> fresh conversation
+
+E2  I-4 through I-7 + UI-B1
+    Primary MEM governance and Lab usability
+
+E3  I-8 + I-9 + I1-G + O1/O2/O3
+    long-term memory, SOUL evolution, rollback, and operational reliability
+```
+
+I1-G and supervised operation may proceed earlier in parallel. They are mandatory before long-duration memory-formation rates or multi-day consolidation results are treated as reliable product evidence.
+
 ## Current completion criteria
 
 The end-to-end Primary MEM loop is complete through observation when:
@@ -263,13 +320,18 @@ The pre-enqueue background-finalizer crash window remains explicitly outside thi
 - C1-5 protects only work that reached source publication and durable enqueue.
 - Phase I-2 is observe-only; no Correct/forget/pin/merge/apply/discard behavior exists.
 - Secondary MEM and actual RelaySOUL apply remain later work.
+- Real SOUL Lab Home conversation, local worker runner, queue scanner, and supervised service remain planned.
 
 ## Deferred after the current boundary
+
+Detailed planned sequencing for these areas is in [Phase I-3 through I-9 Evaluation and Work Roadmap](phase_i3_i9_evaluation_work_roadmap.md).
 
 - RelayMEM-M4 Secondary MEM consolidation,
 - broad SOUL proposal apply,
 - generalized memory administration,
-- queue scanner/scheduler and daemon/service lifecycle,
+- real SOUL Lab Home conversation,
+- local one-job runner and queue scanner/scheduler,
+- daemon/service lifecycle and always-on operation,
 - static SOUL Lab bundle serving,
 - TTS/audio/Live2D execution,
 - protocol expansion,
