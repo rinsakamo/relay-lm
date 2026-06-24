@@ -25,6 +25,7 @@ RelayLM documentation is AI-first: documents should remain understandable when r
 - [Current project status](PROJECT_STATUS.md) — concise current boundary and the Phase I-3 next step
 - [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing, including explicit I1-G durability tracking
+- [Phase I-3 through I-9 evaluation and work roadmap](architecture/phase_i3_i9_evaluation_work_roadmap.md) — planned memory-governance phases, implementation slices, SOUL Lab conversation work, operational phases, and evaluation gates
 - [Phase 6 I1-B runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md) — ordinary managed request-runtime enqueue and finalized-turn source production
 - [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md) — exact active-lease, source, retry, crash, and outcome boundary
 - [Phase 6-C1-2 one-claimed worker](architecture/phase6c1_one_claimed_primary_worker_handoff.md) — production execution of one exact claimed B3 job
@@ -55,7 +56,7 @@ Integration Milestone I1 is complete through ordinary runtime enqueue, B3 lifecy
 
 Phase I-2 is complete: SOUL Lab can read the latest completed managed run, validated recent Primary memories, durable held/blocked outcomes, and memories actually included in backend-bound context through loopback-only exact-schema APIs. Server-owned data and local preview data remain explicitly separate.
 
-The next product boundary is Phase I-3, one auditable Correct operation whose result changes later retrieval behavior. Queue scanning, daemon scheduling, and the pre-enqueue background-finalizer crash window remain separate unresolved boundaries.
+The next product boundary is Phase I-3, one auditable Correct operation whose result changes later retrieval behavior. The target roadmap then interleaves planned I-4 through I-9 memory governance with real SOUL Lab Home conversation, a local one-job runner, I1-G durability, queue scheduling, supervised workers, and staged product evaluation. These later slices are planned, not current implementation claims.
 
 Use [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) before treating proposed schemas, future execution gates, or historical compatibility artifacts as current behavior.
 
@@ -76,6 +77,7 @@ When documents disagree:
 - [Architecture docs index](architecture/README.md)
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md)
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md)
+- [Phase I-3 through I-9 evaluation and work roadmap](architecture/phase_i3_i9_evaluation_work_roadmap.md)
 - [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md)
 - [Phase 6-A1 Job admission](architecture/phase6a1_relayslp_job_admission_contract.md)
 - [Phase 6-A2 Response-finalization handoff](architecture/phase6a2_relayslp_response_handoff_contract.md)
@@ -168,7 +170,7 @@ Placement rules:
 - smoke and troubleshooting -> `docs/smoke/`
 - RelaySOUL governance -> `docs/relaysoul/`
 
-Current Phase 6 handoff is [Phase 6-C2 One Queued Primary Worker Integration](architecture/phase6c2_one_queued_primary_worker_integration.md). Phase I-1 two-turn recall and Phase I-2 real Lab observation are complete. The next product boundary is Phase I-3 auditable Correct; queue scanning, daemon lifecycle, and the pre-enqueue crash window remain out of scope.
+Current Phase 6 handoff is [Phase 6-C2 One Queued Primary Worker Integration](architecture/phase6c2_one_queued_primary_worker_integration.md). Phase I-1 two-turn recall and Phase I-2 real Lab observation are complete. The next product boundary is Phase I-3 auditable Correct. Later planned work is indexed in the [Phase I-3 through I-9 Evaluation and Work Roadmap](architecture/phase_i3_i9_evaluation_work_roadmap.md).
 
 ## Integration I1 and Phase I-2 completion
 
