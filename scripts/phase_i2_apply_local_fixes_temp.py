@@ -19,6 +19,10 @@ def load_implementation() -> dict[str, Any]:
         cwd=ROOT,
         text=True,
     )
+    source = source.replace(
+        '    write(path, read(path).replace("{mockCharacters.map((character) => (", "{characters.map((character) => (")\n',
+        '    write(path, read(path).replace("{mockCharacters.map((character) => (", "{characters.map((character) => ("))\n',
+    )
     namespace: dict[str, Any] = {
         "__name__": "phase_i2_validation_implementation",
         "__file__": str(ROOT / SCRIPT_PATH),
@@ -43,6 +47,7 @@ def push_diagnostic(detail: str) -> None:
 
 def main() -> None:
     try:
+        (ROOT / "phase_i2_patch_failure_temp.txt").unlink(missing_ok=True)
         load_implementation()["main"]()
     except BaseException:
         detail = traceback.format_exc()
