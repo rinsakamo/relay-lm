@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
-import type { LabRoute, Language, Theme } from "../domain/lab";
+import type { CharacterSummary, LabRoute, Language, Theme } from "../domain/lab";
 import { AdoptionPage } from "../features/adoption/AdoptionPage";
 import { CommunicationPage } from "../features/communication/CommunicationPage";
-import { MemoryInspectorPage } from "../features/memory-inspector/MemoryInspectorPage";
+import { ConnectedLabObservationPage } from "../features/lab/ConnectedLabObservationPage";
 import { PodPage } from "../features/pod/PodPage";
 import { ConnectedSettingsPage } from "../features/settings/ConnectedSettingsPage";
+import {
+  loadLabManagementProjections,
+  type LabCharacterProjection,
+} from "../features/settings/managementApi";
 import { translate, type MessageKey } from "../locales/messages";
 import { mockCharacters } from "../mocks/lab";
 import { App } from "./App";
@@ -24,7 +28,7 @@ const footerLabels: Record<LabRoute, string> = {
   adoption: "UI-A2 · Adoption / First Launch",
   communication: "UI-A3 · Character Communication",
   pod: "UI-A4 · Pod / SOUL Intervention",
-  observation: "UI-A5 · Memory Inspector",
+  observation: "Phase I-2 · Real Lab Observation",
   settings: "UI-A6 / UI-A7 · Shared Shell / Management Projection",
 };
 
@@ -35,6 +39,25 @@ function isLabRoute(value: string): value is LabRoute {
 function hashRoute(): LabRoute {
   const value = window.location.hash.replace(/^#\/?/, "");
   return isLabRoute(value) ? value : "home";
+}
+
+function runtimeCharacterSummary(character: LabCharacterProjection): CharacterSummary {
+  const initials = Array.from(character.character_id)
+    .filter((value) => /[A-Za-z0-9]/.test(value))
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "RL";
+  return {
+    characterId: character.character_id,
+    displayName: character.character_id,
+    initials,
+    status: character.source_complete ? "online" : "degraded",
+    sceneName: character.modes[0] ?? "managed",
+    soulVersion: character.soul_configured ? "configured" : "unconfigured",
+    stabilityLabel: character.source_complete ? "Configured" : "Incomplete",
+    interventionState: "inactive",
+    lastActiveSeconds: 0,
+  };
 }
 
 export function RootApp() {
@@ -59,13 +82,40 @@ export function RootApp() {
       : firstCharacter.characterId;
   });
   const [navigationLock, setNavigationLock] = useState<LabRoute | null>(null);
+  const [runtimeCharacters, setRuntimeCharacters] = useState<CharacterSummary[] | null>(null);
 
+  const characters = useMemo(
+    () => runtimeCharacters && runtimeCharacters.length > 0 ? runtimeCharacters : mockCharacters,
+    [runtimeCharacters],
+  );
   const activeCharacter = useMemo(
-    () => mockCharacters.find((character) => character.characterId === activeCharacterId) ?? firstCharacter,
-    [activeCharacterId, firstCharacter],
+    () => characters.find((character) => character.characterId === activeCharacterId) ?? characters[0] ?? firstCharacter,
+    [activeCharacterId, characters, firstCharacter],
   );
   const interactionLocked = navigationLock !== null;
   const adoptionRoute = route === "adoption";
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadLabManagementProjections(controller.signal)
+      .then((bundle) => {
+        if (controller.signal.aborted) return;
+        const projected = [...bundle.characters.characters]
+          .sort((left, right) => left.character_id.localeCompare(right.character_id))
+          .map(runtimeCharacterSummary);
+        if (projected.length > 0) setRuntimeCharacters(projected);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setRuntimeCharacters(null);
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (characters.some((character) => character.characterId === activeCharacterId)) return;
+    const nextCharacter = characters[0];
+    if (nextCharacter) setActiveCharacterId(nextCharacter.characterId);
+  }, [activeCharacterId, characters]);
 
   useEffect(() => {
     const syncRoute = () => {
@@ -174,11 +224,21 @@ export function RootApp() {
         </nav>
 
         <div className="sidebar-note">
-          <span className="mock-pill">{translate(language, "app.mockBadge")}</span>
+          <span className="mock-pill">
+            {route === "observation"
+              ? "REAL / EXPLICIT PREVIEW"
+              : runtimeCharacters
+                ? "RUNTIME CHARACTERS"
+                : translate(language, "app.mockBadge")}
+          </span>
           <p>
             {navigationLock
               ? translate(language, "nav.locked")
-              : translate(language, "nav.boundaryNote")}
+              : route === "observation"
+                ? language === "ja"
+                  ? "実データを優先し、ローカルプレビューは明示的に切り替えます。"
+                  : "Runtime data is primary; local preview requires an explicit switch."
+                : translate(language, "nav.boundaryNote")}
           </p>
         </div>
       </aside>
@@ -198,7 +258,7 @@ export function RootApp() {
                 disabled={interactionLocked}
                 onChange={(event: ChangeEvent<HTMLSelectElement>) => selectCharacter(event.target.value)}
               >
-                {mockCharacters.map((character) => (
+                {characters.map((character) => (
                   <option value={character.characterId} key={character.characterId}>
                     {character.displayName}
                   </option>
@@ -255,7 +315,7 @@ export function RootApp() {
             <AdoptionPage language={language} onBackHome={() => navigate("home")} />
           )}
           {route === "observation" && (
-            <MemoryInspectorPage
+            <ConnectedLabObservationPage
               key={activeCharacter.characterId}
               language={language}
               activeCharacter={activeCharacter}
@@ -267,7 +327,7 @@ export function RootApp() {
               key={activeCharacter.characterId}
               language={language}
               activeCharacter={activeCharacter}
-              characters={mockCharacters}
+              characters={characters}
               onSessionLockChange={handleCommunicationLockChange}
             />
           )}
@@ -284,7 +344,7 @@ export function RootApp() {
               language={language}
               theme={theme}
               activeCharacterId={activeCharacter.characterId}
-              characters={mockCharacters}
+              characters={characters}
             />
           )}
         </main>

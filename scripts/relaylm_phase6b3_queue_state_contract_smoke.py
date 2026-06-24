@@ -1,4 +1,4 @@
-"""Check the B3 document and current bounded integration sequence."""
+"""Check B3 ownership without freezing one status sentence."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,6 +13,10 @@ def require(text: str, *values: str) -> None:
     assert not missing, missing
 
 
+def require_any(text: str, *values: str) -> None:
+    assert any(value in text for value in values), values
+
+
 def main() -> None:
     require(
         read("docs/architecture/phase6b3_relayslp_queue_state_helpers.md"),
@@ -25,12 +29,13 @@ def main() -> None:
         "Phase 6-B3 performs default-off, dry-run-first",
         "C2 one-job claim/rehydrate/execute adapter",
     )
+    plan = read("docs/architecture/pipeline_implementation_plan.md")
     require(
-        read("docs/architecture/pipeline_implementation_plan.md"),
-        "B3 queue lifecycle helpers: complete",
+        plan,
         "Phase 6-C1-0 through C1-5 are complete",
         "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
     )
+    require_any(plan, "B0 through B3: complete", "B3 queue lifecycle helpers: complete")
     require(
         read("docs/PROJECT_STATUS.md"),
         "B3 fenced claim, renew, retry release, stale recovery, and terminal commit",

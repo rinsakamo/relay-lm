@@ -1,0 +1,92 @@
+name: Phase I-2 real SOUL Lab observation
+
+on:
+  push:
+    paths:
+      - "relaylm/**"
+      - "scripts/relaylm_phase_i2_*"
+      - "scripts/relaylm_soul_lab_management_projection_smoke.py"
+      - "apps/soul-lab/**"
+      - "docs/**"
+      - ".github/workflows/phase-i2-lab-observation-smoke.yml"
+  pull_request:
+    paths:
+      - "relaylm/**"
+      - "scripts/relaylm_phase_i2_*"
+      - "scripts/relaylm_soul_lab_management_projection_smoke.py"
+      - "apps/soul-lab/**"
+      - "docs/**"
+      - ".github/workflows/phase-i2-lab-observation-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  observation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run Phase I-2 functional, restart, security, and leakage smoke
+        run: |
+          set -o pipefail
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i2_lab_observation_ci_runner.py 2>&1 | tee phase-i2-smoke.log
+      - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+      - name: Upload Phase I-2 log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i2-smoke-log
+          path: phase-i2-smoke.log
+          if-no-files-found: ignore
+
+  phase6-and-i1-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run worker and two-turn recall regressions
+        run: |
+          set -o pipefail
+          {
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
+          } 2>&1 | tee phase-i2-regressions.log
+      - name: Upload regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i2-regression-log
+          path: phase-i2-regressions.log
+          if-no-files-found: ignore
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/soul-lab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - name: Run strict browser schema smoke
+        run: |
+          rm -rf .observation-smoke
+          npx tsc src/features/lab/observationApi.ts --target ES2022 --module ES2022 --moduleResolution Bundler --outDir .observation-smoke --skipLibCheck
+          node scripts/observationApiSmoke.mjs
+          rm -rf .observation-smoke
+      - run: npm run build

@@ -14,6 +14,7 @@ from . import _relaymem_slp_primary_worker_execute as _execute
 from . import _relaymem_slp_primary_worker_outcome_adapter as _outcome_adapter
 from .pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
 from .relaymem_slp_primary_worker_outcome import RelayMEMSLPPrimaryWorkerOutcome
+from .soul_lab_observation import capture_primary_worker_observation
 from ._relaymem_slp_primary_worker_types import (
     PROJECTION_SCHEMA,
     REQUEST_SCHEMA,
@@ -50,7 +51,9 @@ def execute_relaymem_slp_primary_worker(
         _execute.execute_relaymem_primary_pipeline = pipeline
         _execute.classify_relaymem_slp_primary_worker_outcome = classifier
         _outcome_adapter.classify_relaymem_slp_primary_worker_outcome = classifier
-        return _execute.execute_relaymem_slp_primary_worker(request)
+        result = _execute.execute_relaymem_slp_primary_worker(request)
+    capture_primary_worker_observation(request, result)
+    return result
 
 
 def project_relaymem_slp_primary_worker(
