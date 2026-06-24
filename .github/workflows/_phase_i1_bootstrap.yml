@@ -1,27 +1,17 @@
-name: Phase I-1 branch bootstrap
+name: Phase I-1 branch cleanup
 
 on:
   push:
     branches:
       - phase-i1-primary-mem-next-turn-recall
     paths:
-      - "scripts/_phase_i1_bootstrap_patch.py"
-      - ".github/workflows/_phase_i1_bootstrap.yml"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "scripts/_phase_i1_bootstrap_patch.py"
       - ".github/workflows/_phase_i1_bootstrap.yml"
 
 permissions:
   contents: write
 
-env:
-  PYTHONPATH: .:scripts
-
 jobs:
-  apply:
+  cleanup:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -29,83 +19,19 @@ jobs:
         with:
           ref: phase-i1-primary-mem-next-turn-recall
           fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - id: source
+      - name: Remove temporary and duplicate wiring
         run: |
-          if test -f scripts/_phase_i1_bootstrap_patch.py; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
+          git fetch origin main
+          git checkout origin/main -- relaylm/relayctx_repack.py relaylm/relaymem_store.py
+          rm -f scripts/_phase_i1_bootstrap_patch.py
+          rm -f phase-i1-bootstrap.log phase-i1-recovery.log
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
           fi
-      - if: steps.source.outputs.present == 'true'
-        run: pip install -e .
-      - name: Normalize one-shot patch anchors and fail-closed gate
-        if: steps.source.outputs.present == 'true'
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          patcher = Path("scripts/_phase_i1_bootstrap_patch.py")
-          body = patcher.read_text(encoding="utf-8")
-          body = body.replace(
-              'if body.count(old) != 1:\n        raise RuntimeError(f"{path}: expected one patch anchor, got {body.count(old)}")\n    target.write_text(body.replace(old, new), encoding="utf-8")',
-              'if old not in body:\n        raise RuntimeError(f"{path}: patch anchor missing")\n    target.write_text(body.replace(old, new, 1), encoding="utf-8")',
-              1,
-          )
-          patcher.write_text(body, encoding="utf-8")
-
-          adapter = Path("relaylm/relaymem_primary_recall.py")
-          body = adapter.read_text(encoding="utf-8")
-          body = body.replace(
-              '    original_decision = artifact.get("snippet_apply_decision")\n    if original_decision not in {"eligible_but_not_applied", "dry_run_only"}:\n        reasons.append("existing_retrieval_gate_blocked")',
-              '    original_decision = artifact.get("snippet_apply_decision")\n    gate_allowed = original_decision in {"eligible_but_not_applied", "dry_run_only"}\n    if not gate_allowed:\n        reasons.append("existing_retrieval_gate_blocked")',
-              1,
-          )
-          body = body.replace(
-              '    if root is not None and namespace is not None:\n        control, control_reasons = _load_control_state(root)',
-              '    if root is not None and namespace is not None and gate_allowed:\n        control, control_reasons = _load_control_state(root)',
-              1,
-          )
-          adapter.write_text(body, encoding="utf-8")
-          PY
-      - name: Apply branch patch
-        if: steps.source.outputs.present == 'true'
-        id: apply_patch
-        continue-on-error: true
-        run: |
-          python scripts/_phase_i1_bootstrap_patch.py > phase-i1-bootstrap.log 2>&1
-      - name: Recover implementation commit without workflow files
-        if: steps.source.outputs.present == 'true' && steps.apply_patch.outcome != 'success'
-        id: recovery
-        continue-on-error: true
-        run: |
-          {
-            set -x
-            git status --short
-            git log --oneline --decorate -n 3
-            test "$(git rev-parse HEAD)" != "$(git rev-parse origin/phase-i1-primary-mem-next-turn-recall)"
-            git reset --soft origin/phase-i1-primary-mem-next-turn-recall
-            git restore --staged .github/workflows/phase-i1-two-turn-primary-recall-smoke.yml || true
-            rm -f .github/workflows/phase-i1-two-turn-primary-recall-smoke.yml
-            git restore --source=origin/phase-i1-primary-mem-next-turn-recall --staged --worktree .github/workflows/_phase_i1_bootstrap.yml
-            rm -f phase-i1-bootstrap.log
-            git add -A
-            git status --short
-            git diff --cached --name-status
-            git commit -m "feat: wire I1 Primary MEM next-turn recall"
-            git push origin HEAD:phase-i1-primary-mem-next-turn-recall
-          } > phase-i1-recovery.log 2>&1
-      - name: Upload bootstrap diagnostics
-        if: always() && steps.source.outputs.present == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: phase-i1-bootstrap-log
-          path: |
-            phase-i1-bootstrap.log
-            phase-i1-recovery.log
-          if-no-files-found: ignore
-      - name: Fail when recovery failed
-        if: steps.source.outputs.present == 'true' && steps.apply_patch.outcome != 'success' && steps.recovery.outcome != 'success'
-        run: exit 1
+          git commit -m "refactor: keep I1 recall wiring at the request boundary"
+          git push origin HEAD:phase-i1-primary-mem-next-turn-recall
