@@ -327,3 +327,15 @@ With next-turn recall, scope isolation, and real observation complete, prefer on
 M3i-c next-turn recall and scope isolation: complete as Phase I-1.
 M3i-d real read-only Lab observation: complete as Phase I-2.
 I1-G pre-enqueue background-finalizer durability remains unresolved. Observation receipts cannot repair it.
+
+<!-- phase-i3-auditable-primary-mem-correct -->
+## Phase I-3 auditable Primary MEM Correct — complete (2026-06-24)
+
+Phase I-3 completes the first real observe/correct/retrieve loop. A formed Primary MEM observed through Phase I-2 can be corrected through read-only preflight, bounded semantic diff, explicit short-lived-token apply, immutable successor-page publication through the existing M3e boundary, canonical M3f/M3g index/log convergence, and immutable audit receipt finalization. Existing M2 retrieval resolves only the corrected current revision and existing RelayCTX injection remains the sole prompt path.
+
+Character/namespace isolation, stable logical memory identity, no-clobber publication, exact operation idempotency, one-winner revision fencing, crash recovery, and historical used-memory integrity are preserved. Correction reason, audit receipt, paths, digests, lineage, queue/lease state, and prior full pages are not retrieval inputs or public prompt content.
+
+Authority and exact contracts: `docs/architecture/phase_i3_auditable_primary_mem_correct.md`.
+
+Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement forget, pin/unpin, merge, held apply/discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.
+

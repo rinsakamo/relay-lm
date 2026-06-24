@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1, I2, I1-G, and config documentation."""
+"""Validate current Phase 6, I1-I3, I1-G, and config documentation."""
 from __future__ import annotations
 import ast
 import re
@@ -46,7 +46,8 @@ def main() -> None:
         "character and namespace isolation: complete",
         "I2 real SOUL Lab observation: complete",
         "I1-G pre-enqueue background-finalizer durability: unresolved",
-        "auditable Correct operation: next as Phase I-3")
+        "I3 auditable Primary MEM Correct: complete",
+        "I1 observe/correct/retrieve product loop: complete")
     require("docs/architecture/pipeline_implementation_plan.md",
         "Phase 6-C1-0 through C1-5 are complete",
         "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
@@ -67,18 +68,22 @@ def main() -> None:
     require("docs/architecture/README.md",
         "Phase I-1 completes next-turn recall with character/namespace isolation",
         "Phase I-2 completes real read-only Lab observation",
+        "Phase I-3 auditable Primary MEM Correct",
         "I1-G pre-enqueue background-finalizer durability")
     require("docs/README.md",
         "`config_schema.md`", "Current/Target Boundary Matrix",
         "stale TODO/future-tense text in related plans",
-        "phase_i2_real_soul_lab_observation.md", "I1-G")
+        "phase_i2_real_soul_lab_observation.md",
+        "phase_i3_auditable_primary_mem_correct.md", "I1-G")
     require("docs/architecture/relaymem_slp_current_target.md",
         "C1-5 durable claim-independent protected source and restart rehydration",
         "C2 one-job claim/rehydrate/execute adapter",
         "I1 next-turn Primary MEM recall: complete",
         "I2 real SOUL Lab observation: complete",
         "I1-G pre-enqueue background-finalizer durability")
-    forbid("docs/PROJECT_STATUS.md", "SOUL Lab real observation: next")
+    forbid("docs/PROJECT_STATUS.md",
+        "SOUL Lab real observation: next",
+        "auditable Correct operation: next")
     print("RelayLM documentation current-boundary smoke passed.")
 
 if __name__ == "__main__":
