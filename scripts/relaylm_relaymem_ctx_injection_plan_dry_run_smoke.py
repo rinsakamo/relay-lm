@@ -29,11 +29,12 @@ class _Capture:
         with self._lock:
             self.payloads.append(payload)
 
-    def last(self) -> dict[str, Any]:
+    def last_chat_payload(self) -> dict[str, Any]:
         with self._lock:
-            if not self.payloads:
-                raise AssertionError("no backend payload captured")
-            return self.payloads[-1]
+            for payload in reversed(self.payloads):
+                if isinstance(payload.get("messages"), list):
+                    return payload
+        raise AssertionError("no backend chat payload captured")
 
 
 class _BackendHandler(BaseHTTPRequestHandler):
@@ -151,18 +152,33 @@ def _scene_payload(scene_type: str, content: str) -> dict[str, Any]:
     }
 
 
-def _last_trace_artifact(trace_path: Path) -> dict[str, Any]:
+def _last_backend_response_metadata(trace_path: Path) -> dict[str, Any]:
     lines = trace_path.read_text(encoding="utf-8").strip().splitlines()
     require(bool(lines), "trace is empty")
-    record = json.loads(lines[-1])
-    artifact = record.get("metadata", {}).get("relaymem_retrieval_artifact")
-    require(isinstance(artifact, dict), record)
-    return artifact
+    for line in reversed(lines):
+        record = json.loads(line)
+        metadata = record.get("metadata") if isinstance(record, dict) else None
+        if isinstance(metadata, dict) and metadata.get("event") == "backend_response":
+            return metadata
+    raise AssertionError("backend_response trace record is missing")
+
+
+def _content_free_projection(metadata: dict[str, Any]) -> dict[str, Any]:
+    require("relaymem_retrieval_artifact" not in metadata, "full retrieval artifact leaked")
+    projection = metadata.get("relaymem_primary_recall_projection")
+    require(isinstance(projection, dict), metadata)
+    require(projection.get("content_free") is True, projection)
+    require(projection.get("content_included") is False, projection)
+    require(projection.get("memory_text_included") is False, projection)
+    require(projection.get("path_values_included") is False, projection)
+    require(projection.get("backend_prompt_included") is False, projection)
+    return projection
 
 
 def _assert_no_backend_artifact(payload: dict[str, Any]) -> None:
     forbidden = {
         "relaymem_retrieval_artifact",
+        "relaymem_primary_recall_projection",
         "ctx_block",
         "ctx_block_candidate",
         "ctx_injection_plan",
@@ -284,11 +300,14 @@ def main() -> int:
                         json=_scene_payload("design_talk", "RelayMEM ctx injection plan"),
                     )
                     require(resp.status_code == 200, resp.text)
-                    traced = _last_trace_artifact(trace_path)
-                    traced_plan = _assert_plan_baseline(traced)
-                    require(traced_plan["preview_text"], traced_plan)
-                    _assert_no_backend_artifact(capture.last())
-                    print("ok trace metadata includes ctx_injection_plan without backend mutation")
+                    metadata = _last_backend_response_metadata(trace_path)
+                    projection = _content_free_projection(metadata)
+                    require(projection["selected_count"] == 0, projection)
+                    require(projection["character_scope_resolved"] is False, projection)
+                    require(projection["injection_performed"] is False, projection)
+                    require("legacy_flat_store_compatibility" in projection["blocked_reason_ids"], projection)
+                    _assert_no_backend_artifact(capture.last_chat_payload())
+                    print("ok trace exposes only content-free plan status without backend mutation")
         finally:
             server.shutdown()
             server.server_close()

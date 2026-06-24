@@ -32,11 +32,12 @@ class _Capture:
         with self._lock:
             self.payloads.append(payload)
 
-    def last(self) -> dict[str, Any]:
+    def last_chat_payload(self) -> dict[str, Any]:
         with self._lock:
-            if not self.payloads:
-                raise AssertionError("no backend payload captured")
-            return self.payloads[-1]
+            for payload in reversed(self.payloads):
+                if isinstance(payload.get("messages"), list):
+                    return payload
+        raise AssertionError("no backend chat payload captured")
 
 
 class _BackendHandler(BaseHTTPRequestHandler):
@@ -122,24 +123,42 @@ def _scene_artifact(scene_type: str = "design_talk") -> dict[str, Any]:
     }
 
 
-def _post_and_get_artifact(
+def _last_backend_response_metadata(trace_path: Path) -> dict[str, Any]:
+    lines = trace_path.read_text(encoding="utf-8").strip().splitlines()
+    require(bool(lines), "trace is empty")
+    for line in reversed(lines):
+        record = json.loads(line)
+        metadata = record.get("metadata") if isinstance(record, dict) else None
+        if isinstance(metadata, dict) and metadata.get("event") == "backend_response":
+            return metadata
+    raise AssertionError("backend_response trace record is missing")
+
+
+def _post_and_get_projection(
     client: TestClient,
     trace_path: Path,
     payload: dict[str, Any],
 ) -> dict[str, Any]:
     resp = client.post("/v1/chat/completions", json=payload)
     require(resp.status_code == 200, resp.text)
-    lines = trace_path.read_text(encoding="utf-8").strip().splitlines()
-    require(bool(lines), "trace is empty")
-    record = json.loads(lines[-1])
-    artifact = record.get("metadata", {}).get("relaymem_retrieval_artifact")
-    require(isinstance(artifact, dict), record)
-    return artifact
+    metadata = _last_backend_response_metadata(trace_path)
+    require("relaymem_retrieval_artifact" not in metadata, "full retrieval artifact leaked")
+    projection = metadata.get("relaymem_primary_recall_projection")
+    require(isinstance(projection, dict), metadata)
+    require(projection.get("content_free") is True, projection)
+    require(projection.get("content_included") is False, projection)
+    require(projection.get("memory_text_included") is False, projection)
+    require(projection.get("path_values_included") is False, projection)
+    require(projection.get("digest_values_included") is False, projection)
+    require(projection.get("lineage_values_included") is False, projection)
+    require(projection.get("idempotency_values_included") is False, projection)
+    return projection
 
 
 def _assert_no_backend_artifact(payload: dict[str, Any]) -> None:
     forbidden = {
         "relaymem_retrieval_artifact",
+        "relaymem_primary_recall_projection",
         "selected_mem_candidates",
         "ctx_block",
         "store_diagnostics",
@@ -306,14 +325,15 @@ def main() -> int:
                 )
                 app = create_app(str(cfg_path))
                 with TestClient(app) as client:
-                    artifact = _post_and_get_artifact(
+                    projection = _post_and_get_projection(
                         client,
                         trace_path,
                         _scene_payload("design_talk", "RelayMEM retrieval"),
                     )
-                    require(artifact["selected_mem_candidates"] == [], artifact)
-                    require(artifact["selected"] == [], artifact)
-                    print("ok disabled store has no selected mem candidates")
+                    require(projection["selected_count"] == 0, projection)
+                    require(projection["fallback_reason"] == "memory_store_disabled", projection)
+                    require(projection["injection_performed"] is False, projection)
+                    print("ok disabled store emits a content-free zero-selection projection")
 
             with tempfile.TemporaryDirectory() as td:
                 trace_path = Path(td) / "trace.jsonl"
@@ -329,47 +349,46 @@ def main() -> int:
                 app = create_app(str(cfg_path))
                 with TestClient(app) as client:
                     design_payload = _scene_payload("design_talk", "RelayMEM retrieval")
-                    design = _post_and_get_artifact(client, trace_path, design_payload)
-                    candidates = design["selected_mem_candidates"]
-                    require(0 < len(candidates) <= 2, design)
-                    require(candidates[0]["source"] == "mem_page", design)
-                    require(candidates[0]["applied_to_ctx"] is False, design)
-                    require(design["ctx_block"] is None, design)
-                    require(design["apply_allowed"] is False, design)
-                    blocked_reasons = {item["reason"] for item in design["blocked"]}
-                    require("malformed_or_unreadable_file" in blocked_reasons, design)
-                    _assert_no_backend_artifact(capture.last())
+                    design = _post_and_get_projection(client, trace_path, design_payload)
+                    require(design["selected_count"] == 0, design)
+                    require(design["character_scope_resolved"] is False, design)
+                    require(design["scope_matched"] is False, design)
+                    require("legacy_flat_store_compatibility" in design["blocked_reason_ids"], design)
+                    backend_payload = capture.last_chat_payload()
+                    _assert_no_backend_artifact(backend_payload)
                     require(
-                        capture.last().get("metadata") == design_payload["metadata"],
-                        capture.last(),
+                        backend_payload.get("metadata") == design_payload["metadata"],
+                        "backend metadata changed",
                     )
-                    print("ok design scene emits selection dry-run candidates")
+                    print("ok legacy-flat runtime selection remains content-free and non-mutating")
 
-                    recovery = _post_and_get_artifact(
+                    recovery = _post_and_get_projection(
                         client,
                         trace_path,
                         _scene_payload("recovery", "何の話だったっけ"),
                     )
                     require(recovery["retrieval_scope"] == "current_context_only", recovery)
-                    require(recovery["selected_mem_candidates"] == [], recovery)
-                    print("ok recovery scene suppresses mem candidate selection")
+                    require(recovery["selected_count"] == 0, recovery)
+                    print("ok recovery scene suppresses runtime selection")
 
                     for scene_type in ("formal_document", "medical_or_safety"):
-                        artifact = _post_and_get_artifact(
+                        projection = _post_and_get_projection(
                             client,
                             trace_path,
                             _scene_payload(scene_type, "RelayMEM evidence"),
                         )
-                        require(artifact["selected_mem_candidates"] == [], artifact)
-                    print("ok formal and medical scenes suppress mem candidate selection")
+                        require(projection["selected_count"] == 0, projection)
+                        require(projection["persistence_block"] is True, projection)
+                    print("ok formal and medical scenes suppress runtime selection")
 
-                    latest = _post_and_get_artifact(
+                    latest = _post_and_get_projection(
                         client,
                         trace_path,
                         _scene_payload("design_talk", "RelayMEM trace check"),
                     )
-                    require(isinstance(latest.get("selected_mem_candidates"), list), latest)
-                    print("ok trace metadata includes selected_mem_candidates")
+                    require(latest["content_free"] is True, latest)
+                    require(latest["selected_layer_counts"] == {"primary": 0}, latest)
+                    print("ok trace metadata exposes only the content-free selection projection")
         finally:
             server.shutdown()
             server.server_close()
