@@ -7,6 +7,12 @@ on:
     paths:
       - "scripts/_phase_i1_bootstrap_patch.py"
       - ".github/workflows/_phase_i1_bootstrap.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "scripts/_phase_i1_bootstrap_patch.py"
+      - ".github/workflows/_phase_i1_bootstrap.yml"
 
 permissions:
   contents: write
