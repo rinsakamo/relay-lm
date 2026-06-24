@@ -34,6 +34,7 @@ relaylm_related_authority:
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
   - phase6c2_one_queued_primary_worker_integration.md
+  - integration_i1_primary_mem_two_turn_recall.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - soul_lab_ui_a7_management_projection_handoff.md
@@ -50,7 +51,7 @@ The project is integration-first. New helper-only or mock-only slices are justif
 ## Status legend
 
 - **complete**: the bounded contract and intended helper/runtime wiring exist with smoke coverage.
-- **integration pending**: component boundaries exist, but the ordinary runtime does not complete the user-visible loop.
+- **integration pending**: component boundaries exist, but the ordinary runtime does not complete the intended loop.
 - **planned**: design exists without a complete producer, consumer, apply, and validation path.
 - **deferred**: intentionally not a gate for the active milestone.
 
@@ -86,8 +87,9 @@ Phase 6 asynchronous RelaySLP orchestration:
   C1-4 integrated worker fault/crash convergence: complete
   C1-5 durable protected source persistence: complete
   Phase 6-C2 one-job claim/rehydrate/execute adapter: complete
-  I1 next-turn Primary MEM recall: complete
+  Phase I-1 next-turn Primary MEM recall: complete
   character and namespace isolation: complete
+  I1-G pre-enqueue background-finalizer durability: unresolved
 
 RelayMEM independent track:
   M1/M2 store and retrieval foundations: complete
@@ -96,11 +98,12 @@ RelayMEM independent track:
   C1-4 fault convergence: complete
   C1-5 protected-source restart recovery: complete
   C2 one-job runtime adapter: complete
-  next-turn recall and scope isolation: complete
+  M3i-c next-turn recall and scope isolation: complete
+  M4 Secondary MEM: deferred until I1 closes
 
 SOUL Lab UI independent track:
   UI-A0 through UI-A7: complete
-  latest-run and memory-outcome reads: pending
+  real latest-run and memory-outcome reads: next product boundary
   authoritative mutation APIs: pending
 
 SOUL Lab Runtime:
@@ -109,13 +112,9 @@ SOUL Lab Runtime:
 
 ## Compatibility status anchors
 
-Phase 6-B1 dry-run dispatch/job-record preflight: complete.
+Phase 6-B1 dry-run dispatch/job-record preflight, B2 atomic durable enqueue, and B3 fenced queue lifecycle are complete.
 
-Phase 6-B2 atomic durable enqueue: complete.
-
-Phase 6-B3 fenced queue lifecycle: complete.
-
-Integration Milestone I1-B ordinary managed non-stream/stream deferred enqueue: complete.
+Integration Milestone I1-B ordinary managed non-stream/stream deferred enqueue is complete.
 
 Phase 6-C1-0 through C1-5 are complete:
 
@@ -126,7 +125,9 @@ Phase 6-C1-0 through C1-5 are complete:
 - integrated crash/fault convergence,
 - durable claim-independent protected capture and restart rehydration.
 
-Phase 6-C2 completes the thin one-job claim/rehydrate/execute integration adapter. It accepts one exact queued canonical record, uses B3 claim, resolves source through C1-5, invokes C1-2, and preserves bounded retry/terminal behavior without adding a queue scanner, daemon, generalized worker pool, or retry scheduler. Phase I-1 now completes next-turn recall and character/namespace isolation; SOUL Lab real observation is next.
+Phase 6-C2 completes the thin one-job claim/rehydrate/execute integration adapter. It accepts one exact queued canonical record, uses B3 claim, resolves source through C1-5, invokes C1-2, and preserves bounded retry/terminal behavior without adding a queue scanner, daemon, generalized worker pool, or retry scheduler.
+
+Phase I-1 completes next-turn recall and character/namespace isolation. The completed recall path is not a remaining migration item.
 
 ## Active priority: Integration Milestone I1
 
@@ -137,19 +138,20 @@ finalized user turn
   -> deferred SLP admission and durable enqueue       complete as I1-B
   -> durable protected source publication             complete as C1-5
   -> B3 queue claim and active lease                  helper complete
-  -> C2 one-job claim/rehydrate/execute adapter        complete
+  -> C2 one-job claim/rehydrate/execute adapter       complete
   -> exact C1-0 protected source                      complete
   -> C1-2 one-claimed worker execution                complete
   -> C1-1 RelayMEM M3a-M3h processing                 complete
   -> C1-3 outcome classification                      complete
   -> C1-4 fault/crash convergence                     complete
-  -> B3 retry release or terminal commit
-  -> durable page/index/log result
-  -> next-turn RelayMEM retrieval                      complete as Phase I-1
-  -> RelayCTX bounded injection                         complete as Phase I-1
-  -> model response uses the formed memory              complete as Phase I-1
+  -> B3 retry release or terminal commit              complete in bounded path
+  -> durable page/index/log result                    complete in bounded path
+  -> next-turn RelayMEM retrieval                     complete as Phase I-1
+  -> RelayCTX bounded injection                       complete as Phase I-1
+  -> model response uses the formed memory            complete as Phase I-1
   -> SOUL Lab reads real latest-run and memory outcome
   -> one auditable correction changes later retrieval
+  -> pre-enqueue finalizer durability is resolved or explicitly bounded
 ```
 
 This milestone has priority over Secondary MEM consolidation, additional mock UI, TTS/Live2D execution, broad RelaySOUL expansion, protocol expansion, and model-specific optimization.
@@ -182,9 +184,9 @@ Current guarantees:
 - the process-local registry is an optional capacity/TTL-bounded hot cache,
 - claim-time preparation builds a fresh C1-0 source and one-shot scope.
 
-C1-5 makes protected-source recovery restart-complete for durably enqueued jobs. A separate gap remains if the process exits after response delivery but before the background finalizer reaches durable source publication and B2 enqueue.
+C1-5 makes protected-source recovery restart-complete for durably enqueued jobs. It does not close the earlier process-exit window before source publication and B2 enqueue; that is I1-G.
 
-### I1-C: Phase 6-C Primary MEM worker — bounded components and C2 integration complete
+### I1-C: Phase 6-C Primary MEM worker — complete for bounded one-job execution
 
 Completed components:
 
@@ -196,8 +198,6 @@ Completed components:
 - C1-5 durable protected capture, restart lookup, fresh-source construction, retention, and post-terminal cleanup,
 - C2 exact queued-record claim, canonical reread, C1-5 preparation, unchanged C1-2 execution, and terminal-only cleanup.
 
-Completed C2 connection:
-
 ```text
 one exact queued canonical B3 record
   -> canonical B3 claim
@@ -207,38 +207,62 @@ one exact queued canonical B3 record
   -> canonical B3 retry release or terminal commit
 ```
 
-The C2 adapter does not scan the queue, own a daemon lifecycle, create a worker pool, sleep until retry time, or redefine RelayMEM semantics. The remaining I1 connection is next-turn recall with correct character and namespace scope.
+The C2 adapter does not scan the queue, own a daemon lifecycle, create a worker pool, sleep until retry time, or redefine RelayMEM semantics.
 
-### I1-D: next-turn recall validation
+### I1-D: next-turn recall validation — complete
 
-Prove that a Primary MEM formed by the ordinary runtime is selected by the existing RelayMEM retrieval path and injected by RelayCTX on a later turn.
+Phase I-1 proves that a Primary MEM formed by the ordinary runtime is selected by the existing RelayMEM retrieval path and injected by RelayCTX on a later turn.
 
-Required smoke:
+Completed smoke:
 
-1. complete a first turn with eligible governed experience,
-2. publish the protected source and enqueue one job,
-3. claim and execute it through the one-job adapter,
-4. verify durable page/index/log state and B3 outcome,
-5. submit a second turn whose answer requires that memory,
-6. verify correct character and namespace scope,
-7. verify backend-bound context contains only bounded selected memory,
-8. verify no cross-character or cross-namespace leakage,
-9. verify duplicate dispatch and worker retry preserve both idempotency domains.
+1. completed a first turn with eligible governed experience,
+2. published the protected source and enqueued one job,
+3. claimed and executed it through the one-job adapter,
+4. verified durable page/index/log state and B3 outcome,
+5. submitted a second turn whose answer requires that memory,
+6. verified correct character and namespace scope,
+7. verified backend-bound context contains only bounded selected memory,
+8. verified no cross-character or cross-namespace leakage,
+9. verified duplicate dispatch and worker retry preserve both idempotency domains.
+
+The implementation reuses existing M2 discovery and RelayCTX injection rather than adding a parallel retriever.
 
 ### I1-E: SOUL Lab real observation bridge
 
-After the runtime loop exists, add server-owned local-only read APIs for:
+Status: next product boundary.
+
+Add server-owned loopback-only read APIs for:
 
 - latest run and SLP status,
 - recently formed memories,
 - held or blocked outcomes,
-- memories used in the latest concrete UI session/run.
+- memories used in the latest concrete run/session.
 
-UI-A7 provides the bounded settings/characters read foundation only.
+UI-A7 provides the bounded settings/characters read foundation only. Observation receipts, when needed, are read-model evidence and do not replace RelayMEM/RelaySLP/RelayCTX authority.
 
 ### I1-F: first auditable correction
 
+Status: pending after real observation.
+
 Add one fully auditable `Correct` operation whose result changes later retrieval behavior while preserving prior state and provenance. Forget, pin/unpin, merge, and broader held-memory operations follow later.
+
+### I1-G: pre-enqueue background-finalizer durability
+
+Status: unresolved required I1 correctness boundary.
+
+I1-B currently schedules source publication and B2 enqueue in a Starlette background finalizer after visible response delivery. C1-5 is restart-complete only after the protected source has been durably published and the queue record exists. A process exit in the earlier response-to-publication window can still lose that turn's deferred work.
+
+The accepted contract must define authority and recovery behavior for that window without moving M3a-M3h inline or making visible response success depend on memory persistence.
+
+Required smoke must cover at least:
+
+1. termination after visible response completion but before protected-source publication,
+2. termination after protected-source publication but before B2 queue publication,
+3. restart discovery or explicit accepted-loss classification without duplicate dispatch,
+4. preservation of response independence, content-free queue records, and protected-source confidentiality,
+5. idempotent convergence when the finalizer or recovery path is replayed.
+
+Queue scanning, retry scheduling, and daemon lifecycle remain separate operational work unless the selected I1-G contract explicitly requires a minimal recovery enumerator.
 
 ## I1 completion criteria
 
@@ -253,7 +277,7 @@ I1 is complete only when:
 - SOUL Lab reads real latest-run and memory outcomes,
 - at least one correction changes later retrieval behavior,
 - duplicate/retry smoke preserves queue and memory-write idempotency,
-- the pre-enqueue background-finalizer crash window is explicitly resolved or bounded by an accepted contract.
+- I1-G is resolved or bounded by an accepted explicit contract.
 
 Component completion alone does not satisfy I1.
 
@@ -264,10 +288,10 @@ Component completion alone does not satisfy I1.
 - C4b is diagnostics-only and does not semantically apply RelaySCN state.
 - C5 requires a trusted in-process typed-parse source and does not parse arbitrary backend visible responses.
 - RelayCTX stream suppression and TTS handoff metadata are default-off; RelayLM Core does not execute TTS/audio/avatar behavior.
-- I1-B remains response-background-task based; the pre-enqueue process-exit window is not restart-complete.
+- I1-G remains unresolved: I1-B is response-background-task based and the pre-enqueue process-exit window is not restart-complete.
 - C1-5 protects only work that reached source publication and durable enqueue.
-- Phase I-1 proves later-turn recall and character/namespace isolation; SOUL Lab still lacks real observation APIs.
-- UI-A7 has no real run/memory observation or authoritative mutation.
+- Phase I-1 proves later-turn recall and character/namespace isolation; it does not prove Lab observation or mutation.
+- UI-A7 has no authoritative mutation.
 - Secondary MEM and actual RelaySOUL apply remain later work.
 
 ## Completed implementation groups
@@ -282,7 +306,7 @@ Phase 5.5 is closed for RelayLM Core through stream sentinel observation, safe v
 
 ### Phase 6 orchestration and worker components
 
-Phase 6 has implemented B0-B3, I1-B, C1-0 through C1-5, the bounded C2 queued-record claim/rehydrate/execute adapter, and Phase I-1 scoped next-turn recall. SOUL Lab real observation is the next product connection.
+Phase 6 has implemented B0-B3, I1-B, C1-0 through C1-5, the bounded C2 queued-record claim/rehydrate/execute adapter, and Phase I-1 scoped next-turn recall.
 
 ### Primary MEM primitives
 
@@ -290,7 +314,7 @@ RelayMEM M3a-M3h provide formation, lineage, deterministic page construction, at
 
 ### SOUL Lab presentation and read foundation
 
-UI-A0 through UI-A7 provide the browser shell, local mock product flows, Memory Inspector previews, and loopback-only settings/characters reads. They do not prove real memory observation or durable mutation.
+UI-A0 through UI-A7 provide the browser shell, local mock product flows, Memory Inspector previews, and loopback-only settings/characters reads. Real observation is I1-E; durable correction is I1-F.
 
 ## Deferred until after I1
 
@@ -311,16 +335,21 @@ Independent tracks may proceed in parallel only when their next slice serves I1 
 
 ## Update rule
 
-Update this plan whenever a phase lands, I1 sequencing changes, a target-only schema gains a real producer/consumer path, or a helper/mock boundary becomes ordinary runtime behavior. The same PR must review `docs/PROJECT_STATUS.md`, `docs/README.md`, the architecture index, affected current/target documents, and status-checking smoke scripts.
+Update this plan whenever a phase lands, I1 sequencing changes, a target-only schema gains a real producer/consumer path, or a helper/mock boundary becomes ordinary runtime behavior.
+
+The same PR must review:
+
+- `docs/PROJECT_STATUS.md`,
+- `docs/README.md`,
+- `docs/architecture/README.md`,
+- `docs/config_schema.md`,
+- the Boundary Matrix and affected sections of `current_target_migration_guide.md`,
+- affected current/target and component plans,
+- stale TODO or future-tense text in related documents,
+- status-checking smoke scripts and their workflow path filters.
 
 ## Phase I-1 Primary MEM next-turn recall — complete
 
-Phase 6-C1-0 through C1-5 are complete. Phase 6-C2 one-job
-claim/rehydrate/execute adapter: complete. I1 next-turn Primary MEM recall:
-complete. character and namespace isolation: complete.
+Phase 6-C1-0 through C1-5 are complete. Phase 6-C2 one-job claim/rehydrate/execute is complete. Phase I-1 next-turn Primary MEM recall and character/namespace isolation are complete.
 
-Turn 2 uses the configured root's opaque character partition, existing M2
-selection, strict Primary page/index/log/namespace verification, and existing
-RelayCTX bounded snippet injection. It does not introduce a parallel retriever
-or synchronously wait for the Turn 1 worker. SOUL Lab real observation is next;
-auditable Correct operation is later.
+Turn 2 uses the configured root's opaque character partition, existing M2 selection, strict Primary page/index/log/namespace verification, and existing RelayCTX bounded snippet injection. It does not introduce a parallel retriever or synchronously wait for the Turn 1 worker.
