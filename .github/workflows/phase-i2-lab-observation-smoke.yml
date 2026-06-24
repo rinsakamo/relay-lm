@@ -80,9 +80,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "22.12.0"
-          cache: npm
-          cache-dependency-path: apps/soul-lab/package-lock.json
+          node-version: "22"
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
       - name: Run strict browser schema smoke
