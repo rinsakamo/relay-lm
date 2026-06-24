@@ -20,13 +20,14 @@ relaylm_not_authoritative_for:
 relaylm_related_authority:
   - soul_lab_ui_mvp.md
   - soul_lab_ui_a6_shared_shell_settings_handoff.md
+  - phase_i2_real_soul_lab_observation.md
   - soul_lab_runtime_mvp.md
 ---
 # SOUL Lab UI-A7 Read-only Lab Management Projection
 
 ## Status
 
-SOUL Lab UI-A7 adds the first server-owned Lab management boundary while keeping the browser read-only and preserving UI-A6 as an explicit fallback.
+SOUL Lab UI-A7 remains complete and unchanged as the first server-owned Lab management boundary. It keeps the browser read-only and preserves UI-A6 as an explicit fallback.
 
 ```text
 RelayLM loopback runtime config
@@ -41,7 +42,9 @@ request failure, access refusal, or invalid schema
   -> explicitly labeled UI-A6 mock fallback
 ```
 
-## Bounded scope
+Phase I-2 reuses the same ASGI and loopback access boundary for separate observation schemas. It does not widen the UI-A7 settings or characters responses and does not make them content-bearing.
+
+## UI-A7 bounded scope
 
 UI-A7 implements only:
 
@@ -55,30 +58,24 @@ UI-A7 implements only:
 - loading, server-owned, and fallback states,
 - a Vite development proxy from `/lab/api/*` to RelayLM on port 8090.
 
-It does not add a settings write endpoint, character mutation endpoint, connection test, process action, or adapter execution.
+It does not add settings writes, character mutation, connection tests, process actions, memory inspection, or adapter execution.
 
 ## ASGI ownership
 
-`relaylm.soul_lab_app` wraps the existing `relaylm.app.create_app` factory and registers the two Lab read routes on the returned FastAPI application.
+`relaylm.soul_lab_app` wraps the existing `relaylm.app.create_app` factory and registers Lab read routes on the returned FastAPI application.
 
-The canonical `relaylm` console command now starts this wrapper. Existing `/healthz`, `/v1/models`, and `/v1/chat/completions` behavior continues to come from the core application.
+The canonical `relaylm` console command starts this wrapper. Existing `/healthz`, `/v1/models`, and `/v1/chat/completions` behavior continues to come from the core application. Direct use of `relaylm.app:create_app` remains a core-only application factory.
 
-Direct use of `relaylm.app:create_app` remains a core-only application factory. The canonical CLI is the supported UI-A7 runtime entry point.
+Phase I-2 preserves this ownership and adds observation middleware/read routes only to `relaylm.soul_lab_app`; it does not alter Core route ownership.
 
 ## Local access boundary
 
-Both of the following conditions are required for a Lab management response:
+Both conditions are required for every Lab management or observation response:
 
-1. the validated RelayLM configuration uses a loopback listen host,
-2. the actual ASGI transport peer is loopback.
+1. validated RelayLM configuration uses a loopback listen host,
+2. actual ASGI transport peer is loopback.
 
-Accepted loopback forms include:
-
-- `localhost`,
-- IPv4 loopback addresses such as `127.0.0.1` and `127.0.0.2`,
-- IPv6 loopback `::1` and `[::1]`.
-
-A wildcard/non-loopback configured host, a non-loopback transport peer, or an unavailable peer address causes both Lab management routes to return:
+Accepted loopback forms include `localhost`, IPv4 loopback, and IPv6 loopback. Wildcard/non-loopback config, non-loopback transport, or unavailable peer causes:
 
 ```json
 {
@@ -88,85 +85,72 @@ A wildcard/non-loopback configured host, a non-loopback transport peer, or an un
 
 with HTTP `403`.
 
-The transport-peer check prevents a direct Uvicorn launch with a socket bind broader than `config.listen.host` from exposing the management routes to a remote client. The check does not use `Host` or `Origin` as proof of locality. Existing Core routes remain available according to their existing runtime behavior when the Lab management routes are refused.
-
-The browser parser also requires `listen.loopback_only` to be exactly `true`. A response claiming a non-loopback projection is discarded even if it was delivered with HTTP `200`, and the UI uses the explicit mock fallback instead.
+Host, Origin, forwarded headers, browser declarations, and query parameters are not proof of locality. Existing Core routes retain their existing behavior when Lab access is refused.
 
 ## Settings projection
 
-`GET /lab/api/settings` returns schema:
+`GET /lab/api/settings` returns:
 
 ```text
 relaylm.lab.settings.v0
 ```
 
-The response contains:
+The response contains only bounded configuration metadata:
 
 - projection kind and source,
 - content-free and read-only flags,
 - listen host, port, and loopback classification,
 - RelayLM endpoint metadata,
-- configured backend endpoint metadata,
-- configured route and model labels inside runtime-component items,
-- TTS and avatar capability state,
-- explicit credential-boundary metadata,
+- redacted configured backend endpoint metadata,
+- route/model labels inside bounded runtime components,
+- TTS/avatar capability state,
+- credential-boundary metadata,
 - content-free diagnostics counters.
 
-The endpoint does not perform a network probe. `configured` means present in validated runtime configuration, not reachable or healthy.
-
-An earlier unused top-level `model_routes` projection was removed. Route-model labels needed by Settings remain inside the bounded runtime-component and character projections.
+It does not perform network probes. `configured` does not mean reachable or healthy.
 
 ## Character projection
 
-`GET /lab/api/characters` returns schema:
+`GET /lab/api/characters` returns:
 
 ```text
 relaylm.lab.characters.v0
 ```
 
-Each character projection may contain:
+Each item may contain:
 
 - `character_id`,
-- associated route-model labels,
+- route/model labels,
 - backend IDs,
 - memory namespace labels,
 - configured route modes,
 - booleans for required persona-source presence,
-- a derived `source_complete` boolean.
+- derived `source_complete`.
 
-It does not contain persona source paths or file contents. A route that references a character without a matching character configuration is included as an incomplete registry projection rather than silently omitted.
+It contains no persona path/content, memory path/content, prompt, transcript, or credential. A route referencing an incomplete character is projected as incomplete rather than silently omitted.
+
+Phase I-2 uses this projection only to discover the explicit server-owned character/namespace mapping for subsequent observation requests. It does not derive filesystem paths in the browser and does not treat browser-local mock characters as server authority.
 
 ## Redaction and exclusion
 
-The server excludes:
+UI-A7 continues to exclude:
 
 - backend API keys,
-- URL usernames and passwords,
-- URL query strings and fragments,
-- persona source paths,
-- persona source contents,
-- memory source paths,
-- trace paths,
-- raw traces,
-- prompt text,
-- conversation text,
+- URL usernames/passwords,
+- URL query/fragment,
+- persona paths/content,
+- memory paths/content,
+- trace paths/raw traces,
+- prompt/conversation text,
 - MEM or SOUL contents.
 
-Backend URLs are reduced to scheme, host, optional port, and path. Invalid or unprojectable endpoint values degrade to a non-secret `configured` label.
+Backend URLs are reduced to scheme, host, optional port, and path. Invalid endpoint values degrade to a non-secret configured label.
+
+Phase I-2 limited memory title/summary inspection is not added to these content-free schemas. It is exposed only through separate versioned observation schemas under the explicit Lab Observation route.
 
 ## Browser validation
 
-`managementApi.ts` accepts a response only when every object has the exact allowlisted key set and every value matches the UI-A7 contract.
-
-Exact-key validation applies to:
-
-- the settings projection,
-- listen metadata,
-- every runtime component,
-- credential-boundary metadata,
-- diagnostics metadata,
-- the characters projection,
-- every character item.
+`managementApi.ts` accepts the settings/characters bundle only when every object has the exact allowlisted key set and every value matches the UI-A7 contract.
 
 ```text
 both responses valid
@@ -174,31 +158,25 @@ and settings.listen.loopback_only == true
 and no object contains an unexpected key
   -> server projection
 
-HTTP failure or 403 refusal
-or missing field
-or unexpected field
+HTTP failure or refusal
+or missing/unexpected field
 or value/type mismatch
 or loopback-only mismatch
   -> discard the bundle
   -> labeled mock fallback
 ```
 
-The browser does not partially trust one response while silently mixing it with the other. The settings and character projections are loaded as one bundle. Unexpected fields are rejected rather than silently sanitized so a server regression cannot enter the trusted server-display state while carrying unreviewed metadata.
+The browser never partially trusts one response while mixing it with another. Reload clears stale server state before revalidation.
+
+Phase I-2 applies the same exact-key principle in a separate `observationApi.ts`, plus explicit character, namespace, run, item-count, summary-length, and enum validation. Management and observation bundles remain separate contracts.
 
 ## Settings presentation
 
-`ConnectedSettingsPage` owns the read attempt and source-state display.
+`ConnectedSettingsPage` owns the UI-A7 read attempt and source-state display.
 
-Server success displays:
+Server success displays content-free runtime components, configured characters, diagnostics, and credential/authority boundaries. Failure displays the UI-A6 Settings page as an explicitly labeled browser-local mock fallback. The two sources are not simultaneous.
 
-- runtime component projections,
-- runtime-config character projections,
-- content-free diagnostics,
-- the server-owned credential and authority boundary.
-
-Failure displays the existing UI-A6 `SettingsPage` as an explicitly labeled browser-local mock fallback.
-
-The two sources are not displayed simultaneously. Reload clears the previous server bundle before entering the loading state, so stale server schema metadata is not shown during revalidation.
+Phase I-2 uses a distinct `ConnectedLabObservationPage`. Settings fallback and Lab Observation fallback do not share trusted data bundles.
 
 ## Development topology
 
@@ -214,36 +192,19 @@ RelayLM canonical CLI
   relaylm --config config.yaml
 ```
 
-The development proxy is local-only and does not add permissive CORS behavior. RelayLM must use loopback configuration, and the proxy-to-RelayLM transport peer must also be loopback.
+The proxy is local-only and does not add permissive CORS. Both RelayLM config and proxy-to-RelayLM peer must be loopback.
 
 ## Validation
 
-Server validation runs:
+UI-A7 server validation remains:
 
 ```bash
-python -m compileall -q \
-  relaylm/soul_lab_management.py \
-  relaylm/soul_lab_app.py \
-  scripts/relaylm_soul_lab_management_projection_smoke.py
-python scripts/relaylm_soul_lab_management_projection_smoke.py
+PYTHONPATH=. python scripts/relaylm_soul_lab_management_projection_smoke.py
 ```
 
-The smoke verifies:
+It verifies exact schemas, secret/path/content exclusion, complete/incomplete character behavior, no-store, mutation `405`, loopback host/peer enforcement, spoof resistance, and unchanged Core health/model routes.
 
-1. exact schema versions and read-only flags,
-2. API key exclusion,
-3. URL userinfo, query, and fragment removal,
-4. source-path and trace-path exclusion,
-5. complete and incomplete character projection behavior,
-6. removal of the unused top-level `model_routes` field,
-7. `Cache-Control: no-store`,
-8. mutation methods return `405`,
-9. loopback host classification including IPv4 and IPv6 loopback,
-10. a non-loopback transport peer receives `403` even with loopback configuration,
-11. loopback transport receives `403` with non-loopback configuration,
-12. core `/healthz` and `/v1/models` remain available when management access is refused.
-
-UI validation remains:
+Frontend validation remains:
 
 ```bash
 cd apps/soul-lab
@@ -252,25 +213,25 @@ npm run typecheck
 npm run build
 ```
 
+Phase I-2 adds separate functional/security/restart/browser validation without replacing the UI-A7 smoke.
+
 ## Authority boundary
 
-UI-A7 is read-only observation of bounded runtime configuration metadata.
+UI-A7 is read-only observation of bounded runtime configuration metadata. It does not authorize or implement:
 
-It does not authorize or implement:
-
-- `PATCH /lab/api/settings/*`,
-- `POST /lab/api/characters`,
-- remote or LAN access to Lab management metadata,
+- settings or character mutation,
+- remote/LAN Lab access,
 - backend connection testing,
-- credential loading into the browser,
+- browser credential loading,
 - persistent active-character changes,
-- SOUL or MEM inspection,
-- SOUL or MEM mutation,
-- RelayRUN or RelaySLP mutation,
-- process start or stop,
-- TTS or avatar execution,
-- static UI bundle serving.
+- SOUL/MEM inspection or mutation,
+- RelayRUN/RelaySLP mutation,
+- process lifecycle,
+- TTS/avatar execution,
+- static UI serving.
 
-## Next bounded slice
+Phase I-2 adds bounded explicit memory/run inspection only. Its receipts remain read-model evidence and cannot change UI-A7 authority or repair Core state.
 
-A later slice may serve the built UI from RelayLM or add a narrowly scoped mutation preflight. Any mutation work must remain separate from UI-A7 and begin with an explicit server-side schema, validation, dry-run or preflight boundary, credential ownership model, and a separately reviewed access-control boundary.
+## Downstream boundary
+
+Phase I-2 real Lab observation is complete. The next bounded product slice is Phase I-3 auditable Correct, implemented as a separately reviewed mutation contract. It must not retrofit writes into UI-A7 settings/characters routes.
