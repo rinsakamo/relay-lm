@@ -43,7 +43,7 @@ from relaylm_phase_i1_two_turn_primary_recall_smoke import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 OLD = "紅茶"
 NEW = "コーヒー"
-QUESTION = "好きな飲み物を教えてください。"
+QUESTION = "好きな飲み物 を教えてください。"
 
 
 def require(condition: bool, detail: object) -> None:
