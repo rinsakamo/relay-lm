@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 jobs:
-  smoke:
+  phase-i1:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,25 +29,29 @@ jobs:
           python-version: "3.12"
       - run: pip install -e .
       - run: python -m compileall -q relaylm scripts
-      - name: Phase I-1 integration runner
-        id: phase_i1
-        continue-on-error: true
+      - name: Run Phase I-1 integration and security smokes
         run: |
-          PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py > phase-i1-smoke.log 2>&1
+          set -o pipefail
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py | tee phase-i1-smoke.log
       - name: Upload Phase I-1 runner log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: phase-i1-smoke-log
           path: phase-i1-smoke.log
-          if-no-files-found: error
-      - name: Fail when Phase I-1 runner failed
-        if: steps.phase_i1.outcome != 'success'
-        run: exit 1
+          if-no-files-found: ignore
       - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
-      - name: RelayMEM M1/M2 and RelayCTX regressions
-        id: relaymem_regressions
-        continue-on-error: true
+
+  relaymem-relayctx-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run RelayMEM M1/M2, RelayCTX, and managed enqueue regressions
         run: |
           set -o pipefail
           {
@@ -58,20 +62,25 @@ jobs:
             PYTHONPATH=. python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py
             PYTHONPATH=. python scripts/relaylm_relaymem_snippet_runtime_injection_apply_smoke.py
             PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
-          } > relaymem-regressions.log 2>&1
+          } | tee relaymem-regressions.log
       - name: Upload RelayMEM regression log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: relaymem-regressions-log
           path: relaymem-regressions.log
-          if-no-files-found: error
-      - name: Fail when RelayMEM regressions failed
-        if: steps.relaymem_regressions.outcome != 'success'
-        run: exit 1
-      - name: Phase 6 worker and C2 regressions
-        id: phase6_regressions
-        continue-on-error: true
+          if-no-files-found: ignore
+
+  phase6-worker-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run B3, C1, and C2 regressions
         run: |
           set -o pipefail
           {
@@ -80,14 +89,11 @@ jobs:
             PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
             PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
             PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
-          } > phase6-regressions.log 2>&1
+          } | tee phase6-regressions.log
       - name: Upload Phase 6 regression log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: phase6-regressions-log
           path: phase6-regressions.log
-          if-no-files-found: error
-      - name: Fail when Phase 6 regressions failed
-        if: steps.phase6_regressions.outcome != 'success'
-        run: exit 1
+          if-no-files-found: ignore
