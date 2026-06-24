@@ -42,9 +42,12 @@ export function ConnectedLabObservationPage({
   const generation = useRef(0);
 
   useEffect(() => {
+    setSelectedMemory(null);
+  }, [activeCharacter.characterId]);
+
+  useEffect(() => {
     onInspectorLockChange(false);
     setMockFallback(false);
-    setSelectedMemory(null);
     setState({ kind: "loading" });
     const controller = new AbortController();
     const requestGeneration = ++generation.current;
@@ -65,6 +68,13 @@ export function ConnectedLabObservationPage({
           controller.signal,
         );
         if (!controller.signal.aborted && generation.current === requestGeneration) {
+          setSelectedMemory((current) =>
+            current === null
+              ? null
+              : bundle.recent.items.find(
+                  (item) => item.memory_id === current.memory_id,
+                ) ?? null,
+          );
           setState({ kind: "real", namespace, bundle });
         }
       } catch (error) {
@@ -234,7 +244,6 @@ export function ConnectedLabObservationPage({
           namespace={state.namespace}
           memory={selectedMemory}
           onApplied={() => {
-            setSelectedMemory(null);
             setRefreshKey((value) => value + 1);
           }}
         />

@@ -34,6 +34,10 @@ function codeFor(error: unknown): string {
   return error instanceof MemoryCorrectionError ? error.code : "runtime_unavailable";
 }
 
+function requiresCurrentMemoryRefresh(code: string): boolean {
+  return code === "stale_revision" || code === "operation_conflict";
+}
+
 export function PrimaryMemoryCorrectPanel({
   language,
   characterId,
@@ -69,7 +73,7 @@ export function PrimaryMemoryCorrectPanel({
       // The correction form remains usable; history is a separate bounded read.
     });
     return () => controller.abort();
-  }, [characterId, namespace, memory.memory_id, memory.title, memory.bounded_summary]);
+  }, [characterId, namespace, memory.memory_id, memory.revision, memory.title, memory.bounded_summary]);
 
   async function requestPreflight() {
     if (state.kind === "preflight-loading" || state.kind === "apply-loading") return;
@@ -94,7 +98,9 @@ export function PrimaryMemoryCorrectPanel({
       }
     } catch (error) {
       if (generation.current === currentGeneration) {
-        setState({ kind: "error", code: codeFor(error) });
+        const code = codeFor(error);
+        setState({ kind: "error", code });
+        if (requiresCurrentMemoryRefresh(code)) onApplied();
       }
     }
   }
@@ -121,7 +127,9 @@ export function PrimaryMemoryCorrectPanel({
       }
     } catch (error) {
       if (generation.current === currentGeneration) {
-        setState({ kind: "error", code: codeFor(error) });
+        const code = codeFor(error);
+        setState({ kind: "error", code });
+        if (requiresCurrentMemoryRefresh(code)) onApplied();
       }
     }
   }

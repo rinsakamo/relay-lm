@@ -116,6 +116,17 @@ await rejectSchema(wrongRevision, () => applyMemoryCorrection(characterId, names
   expectedRevision: 1, operationId: "op", applyToken: "token",
 }));
 
+globalThis.fetch = async () => new Response(
+  JSON.stringify({ detail: "stale_revision" }),
+  { status: 409, headers: { "content-type": "application/json" } },
+);
+await assert.rejects(
+  preflightMemoryCorrection(characterId, namespace, memoryId, {
+    expectedRevision: 1, correctedTitle: "x", correctedSummary: "y", reason: "z", operationId: "op",
+  }),
+  (error) => error instanceof MemoryCorrectionError && error.code === "stale_revision",
+);
+
 globalThis.fetch = async () => new Response("{}", { status: 403 });
 await assert.rejects(
   preflightMemoryCorrection(characterId, namespace, memoryId, {
@@ -133,6 +144,11 @@ assert.match(connectedSource, /PrimaryMemoryCorrectPanel/);
 assert.match(connectedSource, /generation\.current === requestGeneration/);
 assert.match(panelSource, /generation\.current === currentGeneration/);
 assert.match(panelSource, /state\.kind === "apply-loading"/);
+assert.match(panelSource, /requiresCurrentMemoryRefresh/);
+assert.match(panelSource, /code === "stale_revision"/);
+assert.match(panelSource, /code === "operation_conflict"/);
+assert.match(connectedSource, /setSelectedMemory\(\(current\) =>/);
+assert.doesNotMatch(connectedSource, /onApplied=.*setSelectedMemory\(null\)/s);
 assert.match(panelSource, /Confirm apply/);
 assert.doesNotMatch(connectedSource + panelSource, /dangerouslySetInnerHTML|innerHTML/);
 

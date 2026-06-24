@@ -152,7 +152,7 @@ export async function loadMemoryCorrectionHistory(
     cache: "no-store",
     signal,
   });
-  if (!response.ok) throw httpError(response.status);
+  if (!response.ok) throw await httpError(response);
   const parsed = parseHistory(await response.json(), memoryId);
   if (!parsed) throw new MemoryCorrectionError("schema_invalid");
   return parsed;
@@ -171,11 +171,40 @@ async function requestJson(path: string, body: unknown, signal?: AbortSignal): P
     body: JSON.stringify(body),
     signal,
   });
-  if (!response.ok) throw httpError(response.status);
+  if (!response.ok) throw await httpError(response);
   return response.json() as Promise<unknown>;
 }
 
-function httpError(status: number): MemoryCorrectionError {
+const boundedServerErrorCodes = new Set([
+  "invalid_request",
+  "not_found_or_wrong_scope",
+  "stale_revision",
+  "operation_conflict",
+  "preflight_required",
+  "token_expired",
+  "token_invalid",
+  "target_corrupt",
+  "reconciliation_required",
+  "store_unavailable",
+  "access_refused",
+  "response_lost",
+]);
+
+async function httpError(response: Response): Promise<MemoryCorrectionError> {
+  try {
+    const value: unknown = await response.json();
+    if (
+      isRecord(value) &&
+      hasExactKeys(value, ["detail"]) &&
+      typeof value.detail === "string" &&
+      boundedServerErrorCodes.has(value.detail)
+    ) {
+      return new MemoryCorrectionError(value.detail);
+    }
+  } catch {
+    // Fall back to the bounded status mapping below.
+  }
+  const status = response.status;
   const code = status === 403 ? "access_refused"
     : status === 404 ? "not_found_or_wrong_scope"
     : status === 409 ? "conflict"
