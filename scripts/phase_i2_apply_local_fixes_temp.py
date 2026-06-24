@@ -10,6 +10,15 @@ SCRIPT_PATH = "scripts/phase_i2_apply_local_fixes_temp.py"
 IMPLEMENTATION_COMMIT = "2bf35e3bffc31243c41a5e8d736eaeca2eabd36e"
 
 
+def bootstrap_history() -> None:
+    subprocess.run(("git", "config", "user.name", "github-actions"), cwd=ROOT, check=True)
+    subprocess.run(("git", "config", "user.email", "actions@github.com"), cwd=ROOT, check=True)
+    unshallow = subprocess.run(("git", "fetch", "--unshallow", "origin"), cwd=ROOT)
+    if unshallow.returncode != 0:
+        subprocess.run(("git", "fetch", "origin"), cwd=ROOT, check=True)
+    subprocess.run(("git", "fetch", "origin", "main"), cwd=ROOT, check=True)
+
+
 def load_implementation() -> dict[str, Any]:
     source = subprocess.check_output(
         ("git", "show", f"{IMPLEMENTATION_COMMIT}:{SCRIPT_PATH}"),
@@ -41,20 +50,15 @@ def push_diagnostic(detail: str) -> None:
 
 def main() -> None:
     try:
+        bootstrap_history()
         impl = load_implementation()
         run = impl["run"]
-        run("git", "config", "user.name", "github-actions")
-        run("git", "config", "user.email", "actions@github.com")
-        try:
-            run("git", "fetch", "--unshallow", "origin")
-        except subprocess.CalledProcessError:
-            run("git", "fetch", "origin")
-        run("git", "fetch", "origin", "main")
         run("git", "merge", "--no-ff", "--no-edit", "-X", "ours", "origin/main")
 
         impl["harden_observation_code"]()
         impl["reconcile_documents"]()
         impl["cleanup"]()
+        (ROOT / "phase_i2_failure_temp.txt").unlink(missing_ok=True)
 
         run("git", "add", "-A")
         if subprocess.run(("git", "diff", "--cached", "--quiet"), cwd=ROOT).returncode != 0:
