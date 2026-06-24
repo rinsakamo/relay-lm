@@ -1,7 +1,9 @@
 name: Phase I-2 merge latest main
 
 on:
-  pull_request:
+  push:
+    branches:
+      - phase-i2-real-soul-lab-observation
     paths:
       - ".github/workflows/phase-i2-merge-main-temp.yml"
 
