@@ -46,7 +46,8 @@ Status reviewed through:
 - Phase 6-C1-3 pure worker-outcome classifier,
 - Phase 6-C1-4 integrated worker fault and crash-convergence smoke,
 - Phase 6-C1-5 durable protected source persistence and restart rehydration,
-- Phase 6-C2 one queued-job claim / rehydrate / execute integration adapter.
+- Phase 6-C2 one queued-job claim / rehydrate / execute integration adapter,
+- Phase I-1 Primary MEM next-turn recall and character/namespace isolation.
 
 ## Purpose and authority
 
@@ -66,8 +67,8 @@ When documents disagree:
 Managed-route correctness: Phase 5-C complete through bounded v0/v1 apply and C5 runtime plumbing
 Pre-stream hardening: Phase 5-D complete through D2
 Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
-Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete; C2 one-job adapter complete
-RelayMEM Primary path: M1/M2 complete; M3a-M3h composed and executable for one exact active claim
+Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete; C2 one-job adapter complete; I1 next-turn recall complete
+RelayMEM Primary path: M1/M2 complete; M3a-M3h composed and executable; ordinary next-turn recall and character/namespace isolation complete
 SOUL Lab UI: UI-A0 through UI-A7 implemented; A7 adds local-only read management projections
 ```
 
@@ -125,7 +126,7 @@ Current limitations:
 - no queue scanner, daemon, or scheduler automatically selects and claims queued work,
 - C1-5 is restart-complete only for protected-source recovery of durably enqueued jobs,
 - a process exit after visible response delivery but before the Starlette background finalizer publishes the source and queue record may still lose that turn's deferred work,
-- next-turn recall and real SOUL Lab memory observation remain unproven.
+- real SOUL Lab latest-run and memory observation remain unimplemented.
 
 ### RelayMEM Primary persistence
 
@@ -147,7 +148,7 @@ Implemented direct/helper boundaries:
 Current limitations:
 
 - ordinary response finalization intentionally does not invoke M3a-M3h inline,
-- successful worker execution does not yet prove that a later ordinary turn retrieves and uses the newly formed memory,
+- later ordinary-turn retrieval and bounded RelayCTX use are proven for the correct character and namespace,
 - Secondary MEM consolidation is not implemented,
 - durable Lab memory mutation APIs are not implemented.
 
@@ -185,7 +186,7 @@ ordinary finalized turn
   -> C1-5 durable protected source              complete
   -> B3 claim/lease/retry lifecycle             complete as direct helpers
   -> C2 one-job claim/rehydrate/execute adapter: complete
-  -> next-turn recall and scope isolation: next
+  -> next-turn recall and scope isolation: complete
   -> C1-0 protected source                      complete
   -> C1-2 one-claimed worker                    complete
   -> C1-1 M3a-M3h compose                       complete
@@ -201,12 +202,12 @@ ordinary finalized turn
 
 Immediate sequence:
 
-1. Add a two-turn smoke proving next-turn recall and character/namespace isolation.
-2. Add real SOUL Lab read APIs for latest run, formed/held/blocked memory, and used memory.
-3. Add one auditable Correct operation whose result changes later retrieval behavior.
-4. Treat the visible-response-to-background-finalizer crash window as a separate I1 durability boundary; C1-5 and C2 do not claim to close it.
+1. Add real SOUL Lab read APIs for latest run, formed/held/blocked memory, and used memory.
+2. Add one auditable Correct operation whose result changes later retrieval behavior.
+3. Treat the visible-response-to-background-finalizer crash window as a separate I1 durability boundary; C1-5, C2, and Phase I-1 do not claim to close it.
+4. Keep queue scanning, scheduling, and daemon lifecycle as separate later operational work.
 
-I1-B, B3, C1-0 through C1-5, and C2 are complete prerequisites, not the final product goal.
+I1-B, B3, C1-0 through C1-5, C2, and Phase I-1 next-turn recall are complete. SOUL Lab real observation is next; auditable Correct operation is later.
 
 ## Safe defaults and compatibility
 
@@ -243,7 +244,6 @@ The runtime does not yet provide:
 - parser-versioned cache compatibility,
 - queue scanner, daemon, or scheduler-driven worker execution,
 - restart completion for the pre-enqueue background-finalizer crash window,
-- end-to-end next-turn recall proof from newly formed runtime memory,
 - Secondary MEM consolidation,
 - SOUL Lab latest-run and memory-outcome reads,
 - durable correction/forget/pin/merge operations,
@@ -275,7 +275,7 @@ OpenWebUI
   -> LM Studio http://127.0.0.1:1234/v1
 ```
 
-The memory write path remains explicitly gated. C1-5 and C2 provide restart-safe protected-source recovery and one exact queued-job execution; they do not make queue scheduling or next-turn recall automatic.
+The memory write path remains explicitly gated. C1-5 and C2 provide restart-safe protected-source recovery and one exact queued-job execution; Phase I-1 adds ordinary scoped recall, but queue scheduling and the pre-enqueue background-finalizer crash window remain unresolved.
 
 ## Phase I-1 completion boundary (2026-06-24)
 

@@ -51,7 +51,8 @@ def main() -> None:
         status,
         "Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete",
         "C2 one-job claim/rehydrate/execute adapter: complete",
-        "next-turn recall and scope isolation: next",
+        "I1 next-turn Primary MEM recall: complete",
+        "character and namespace isolation: complete",
     )
     require(b1, "relaymem.slp_dispatch_preflight.v0", "relaymem.slp_durable_job.v0")
     require(b2, "relaymem.slp_durable_enqueue.v0", "exact_b1_preflight_result_required")

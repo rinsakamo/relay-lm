@@ -358,7 +358,7 @@ C1 coverage includes:
 - wrong character/namespace/run/turn/lineage/job/dispatch rejection,
 - no protected content, paths, keys, tokens, timestamps, or memory body in public diagnostics.
 
-Next-turn retrieval/RelayCTX injection is an I1 integration smoke, not a C1 worker prerequisite.
+Next-turn retrieval/RelayCTX injection is implemented by Phase I-1 and remains separate from the C1 worker prerequisite contract.
 
 ## Public projection
 
@@ -404,4 +404,4 @@ C1-4 crash/lease/lock/fault smoke               complete
 C1-5 restart-complete protected source recovery complete for durably enqueued jobs
 ```
 
-Phase 6-C2 one-job queued-record claim/rehydrate/execute adapter: complete. The next boundary is next-turn recall and scope isolation: next. I1 separately retains the pre-enqueue background-finalizer crash window.
+Phase 6-C2 one-job queued-record claim/rehydrate/execute adapter: complete. Phase I-1 next-turn recall and scope isolation: complete. I1 separately retains the pre-enqueue background-finalizer crash window.

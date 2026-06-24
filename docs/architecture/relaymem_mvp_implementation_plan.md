@@ -187,9 +187,9 @@ Completed integration includes:
 - crash, lock, stale-claim, corruption, and leakage convergence through C1-4,
 - durable protected-source restart rehydration through C1-5.
 
-These boundaries do not scan or schedule the queue and do not prove later-turn recall.
+These boundaries do not scan or schedule the queue. Phase I-1 separately proves later-turn recall.
 
-## MEM-M3i-b: one-job runtime integration — complete; recall is next
+## MEM-M3i-b: one-job runtime integration and recall — complete
 
 ### Goal
 
@@ -209,9 +209,9 @@ finalized ordinary turn
   -> later answer uses the memory
 ```
 
-### Remaining scope
+### Completed recall scope
 
-C2 completed the one-job portion of M3i-b by adding the thin queued-record claim/rehydrate/execute adapter and reusing exact C1/M3 artifacts rather than public projections. The remaining recall scope must:
+C2 completed the one-job portion of M3i-b, and Phase I-1 completed the ordinary recall portion while reusing exact C1/M3/M2 artifacts rather than public projections. The completed recall scope:
 
 - verify new memory is discoverable by M2,
 - prove correct character and namespace isolation,
@@ -234,7 +234,7 @@ C2 completed the one-job portion of M3i-b by adding the thin queued-record claim
 
 ### Completion rule
 
-The C2 one-job portion of M3i-b is complete, but M3 is not end-to-end complete until next-turn recall and scope isolation pass. C1-0 through C1-5 and C2 prove worker execution and protected-source restart boundaries, not the product recall loop.
+M3i-b is complete through C2 one-job execution and Phase I-1 next-turn recall with character/namespace isolation. Queue scheduling, the pre-enqueue crash window, SOUL Lab observation, and correction remain separate later boundaries.
 
 ## MEM-M4: Secondary MEM consolidation — deferred
 
@@ -292,7 +292,7 @@ All RelayMEM slices preserve:
 
 ## Sequencing rule
 
-Until next-turn recall and scope isolation close M3i, prefer connecting existing producers and consumers over new persistence schemas, recovery layers, or Secondary MEM behavior. Additional recovery work requires concrete M3h evidence that the existing retry/manual/isolation boundary is insufficient.
+With M3i next-turn recall and scope isolation complete, prefer SOUL Lab observation and auditable correction over new persistence schemas, recovery layers, or Secondary MEM behavior. Additional recovery work requires concrete M3h evidence that the existing retry/manual/isolation boundary is insufficient.
 
 ## Phase I-1 integration status
 
