@@ -32,7 +32,7 @@ jobs:
       - name: Run Phase I-1 integration and security smokes
         run: |
           set -o pipefail
-          PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py | tee phase-i1-smoke.log
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py 2>&1 | tee phase-i1-smoke.log
       - name: Upload Phase I-1 runner log
         if: always()
         uses: actions/upload-artifact@v4
@@ -62,7 +62,7 @@ jobs:
             PYTHONPATH=. python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py
             PYTHONPATH=. python scripts/relaylm_relaymem_snippet_runtime_injection_apply_smoke.py
             PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
-          } | tee relaymem-regressions.log
+          } 2>&1 | tee relaymem-regressions.log
       - name: Upload RelayMEM regression log
         if: always()
         uses: actions/upload-artifact@v4
@@ -89,7 +89,7 @@ jobs:
             PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
             PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
             PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
-          } | tee phase6-regressions.log
+          } 2>&1 | tee phase6-regressions.log
       - name: Upload Phase 6 regression log
         if: always()
         uses: actions/upload-artifact@v4
