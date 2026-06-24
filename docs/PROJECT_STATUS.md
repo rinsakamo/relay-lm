@@ -293,4 +293,3 @@ Character/namespace isolation, stable logical memory identity, no-clobber public
 Authority and exact contracts: `docs/architecture/phase_i3_auditable_primary_mem_correct.md`.
 
 Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement forget, pin/unpin, merge, held apply/discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.
-
