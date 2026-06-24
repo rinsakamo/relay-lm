@@ -17,6 +17,9 @@ on:
 permissions:
   contents: write
 
+env:
+  PYTHONPATH: .:scripts
+
 jobs:
   apply:
     if: github.actor != 'github-actions[bot]'
@@ -30,4 +33,18 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e .
-      - run: PYTHONPATH=.:scripts python scripts/_phase_i1_bootstrap_patch.py
+      - name: Apply branch patch
+        id: apply_patch
+        continue-on-error: true
+        run: |
+          python scripts/_phase_i1_bootstrap_patch.py > phase-i1-bootstrap.log 2>&1
+      - name: Upload bootstrap log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i1-bootstrap-log
+          path: phase-i1-bootstrap.log
+          if-no-files-found: error
+      - name: Fail when patch failed
+        if: steps.apply_patch.outcome != 'success'
+        run: exit 1
