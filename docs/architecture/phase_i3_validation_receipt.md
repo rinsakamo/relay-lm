@@ -135,3 +135,9 @@ The receipt intentionally contains no prompt, transcript, path, digest, token, e
 | functional and retrieval convergence | success |
 | mutation/token/scope security | success |
 | crash and recovery | failure |
+
+## Recovery code diagnosis
+
+```json
+{"codes": ["reconciliation_required", "store_unavailable"]}
+```
