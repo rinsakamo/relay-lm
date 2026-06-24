@@ -25,6 +25,11 @@ jobs:
         with:
           node-version: "22"
       - run: pip install -e .
+      - id: whitespace
+        continue-on-error: true
+        run: |
+          git fetch origin main
+          git diff --check origin/main...HEAD
       - id: compile
         continue-on-error: true
         run: python -m compileall -q relaylm scripts
@@ -72,6 +77,7 @@ jobs:
           npm run build
       - name: Replace bounded validation receipt
         env:
+          WHITESPACE: ${{ steps.whitespace.outcome }}
           COMPILE: ${{ steps.compile.outcome }}
           PHASE_I3: ${{ steps.phase_i3.outcome }}
           REGRESSIONS: ${{ steps.relaymem_regressions.outcome }}
@@ -92,6 +98,7 @@ jobs:
 
           | Group | Result |
           |---|---|
+          | Git diff whitespace check | ${WHITESPACE} |
           | Python compileall | ${COMPILE} |
           | Phase I-3 functional, security, bounds, corruption, path-safety, concurrency, and fault/recovery runner | ${PHASE_I3} |
           | M3e-M3h, Phase 6-C1/C2, I-1, I-2, and management regressions | ${REGRESSIONS} |
@@ -109,3 +116,18 @@ jobs:
           git add -u .github/workflows/phase-i3-temporary-final-verification.yml
           git commit -m "test: record final Phase I3 branch verification"
           git push origin HEAD:phase-i3-auditable-primary-mem-correct
+      - name: Fail on any unsuccessful validation group
+        env:
+          WHITESPACE: ${{ steps.whitespace.outcome }}
+          COMPILE: ${{ steps.compile.outcome }}
+          PHASE_I3: ${{ steps.phase_i3.outcome }}
+          REGRESSIONS: ${{ steps.relaymem_regressions.outcome }}
+          DOCS: ${{ steps.docs.outcome }}
+          FRONTEND: ${{ steps.frontend.outcome }}
+        run: |
+          test "$WHITESPACE" = success
+          test "$COMPILE" = success
+          test "$PHASE_I3" = success
+          test "$REGRESSIONS" = success
+          test "$DOCS" = success
+          test "$FRONTEND" = success
