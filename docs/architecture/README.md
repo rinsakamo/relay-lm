@@ -46,13 +46,14 @@ Canonical authority:
 - [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md)
 - [Integration I1 Primary MEM Two-Turn Recall](integration_i1_primary_mem_two_turn_recall.md)
 - [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)
+- [Phase I-3 through I-9 Evaluation and Work Roadmap](phase_i3_i9_evaluation_work_roadmap.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
 
 Phase 6-A1/A2 and B0-B3 own deferred admission, finalized-turn handoff, durable queue publication, and fenced queue lifecycle. I1-B wires ordinary managed response finalization to post-response enqueue. C1-0 owns exact current-claim source construction, C1-1 composes M3a-M3h, C1-2 executes one already-claimed job, C1-3 classifies outcomes, C1-4 verifies integrated fault convergence, C1-5 durably persists and restart-rehydrates the claim-independent protected capture, and C2 connects one exact queued record through canonical claim, rehydrate, and C1-2 execution.
 
 Phase I-1 completes ordinary next-turn Primary MEM recall with exact character/namespace isolation and RelayCTX injection. Phase I-2 adds a bounded read-only observation model, loopback-only APIs, strict browser validation, and real Lab Observation rendering without changing RelayMEM, RelaySLP, RelayRUN, or RelayCTX authority.
 
-The next boundary is Phase I-3 auditable Correct. Queue scanning, daemon scheduling, and the pre-enqueue background-finalizer crash window remain unimplemented.
+The next boundary is Phase I-3 auditable Correct. The evaluation and work roadmap records the planned I-4 through I-9 memory-governance sequence, real SOUL Lab Home conversation work, I1-G durability, queue scheduling, worker supervision, and staged evaluation gates without changing current implementation status.
 
 ## Completed Core streaming boundary
 
@@ -65,6 +66,7 @@ Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, 
 - [Memory Lifecycle Design](memory_lifecycle_design.md) — short-term CTX, governed experience evidence, autonomous ordinary MEM formation, RelaySLP, and SOUL Lab memory operations.
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md) — current enqueue/source capture, queue lifecycle, completed C1-0 through C1-5, C2, I-1 recall, I-2 observation, and the next Correct boundary.
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — store contracts, retrieval, Primary MEM formation, worker integration, recall, observation, Secondary consolidation, and Lab-ready operations.
+- [Phase I-3 through I-9 Evaluation and Work Roadmap](phase_i3_i9_evaluation_work_roadmap.md) — planned Correct through RelaySOUL governance phases, detailed work slices, UI conversation integration, operational phases, and evaluation gates.
 
 ## RelayMEM Primary persistence track
 
@@ -86,9 +88,10 @@ Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, 
 - [SOUL Lab UI-A6 Shared Shell / Settings Handoff](soul_lab_ui_a6_shared_shell_settings_handoff.md)
 - [SOUL Lab UI-A7 Read-only Management Projection Handoff](soul_lab_ui_a7_management_projection_handoff.md)
 - [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)
+- [Phase I-3 through I-9 Evaluation and Work Roadmap](phase_i3_i9_evaluation_work_roadmap.md)
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md)
 
-The browser shell is complete through UI-A7 and Phase I-2. The Lab Observation route now consumes real latest-run and memory evidence through the canonical loopback-only management app, while explicit local preview remains separate. Durable mutation, RelaySOUL apply/rollback, static bundle serving, peer transport, and Runtime adapter execution remain separate.
+The browser shell is complete through UI-A7 and Phase I-2. The Lab Observation route now consumes real latest-run and memory evidence through the canonical loopback-only management app, while explicit local preview remains separate. Durable mutation, RelaySOUL apply/rollback, static bundle serving, peer transport, and Runtime adapter execution remain separate. Real Home conversation is planned as an early parallel work track after the I-3 contract stabilizes so product evaluation can begin before I-9.
 
 Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1` with explicit `client_instruction_source.v1` provenance. Role, wording, and message position alone are not provenance.
 
