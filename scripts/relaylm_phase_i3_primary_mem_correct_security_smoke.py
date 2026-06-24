@@ -157,6 +157,27 @@ def main() -> None:
             )
             require(applied.status_code == 200, applied.text)
             require(applied.json()["result_revision"] == 2, applied.json())
+
+            wrong_namespace_after = client.post(
+                f"{base_a}/correct/preflight?namespace={OTHER_NAMESPACE}",
+                json=preflight_body(2, "wrong-namespace-after-correct"),
+            )
+            require(wrong_namespace_after.status_code == 404, wrong_namespace_after.text)
+            require(
+                wrong_namespace_after.json()
+                == {"detail": "not_found_or_wrong_scope"},
+                wrong_namespace_after.json(),
+            )
+            wrong_namespace_history = client.get(
+                f"{base_a}/corrections?namespace={OTHER_NAMESPACE}"
+            )
+            require(wrong_namespace_history.status_code == 404, wrong_namespace_history.text)
+            require(
+                wrong_namespace_history.json()
+                == {"detail": "not_found_or_wrong_scope"},
+                wrong_namespace_history.json(),
+            )
+
             replay = client.post(
                 f"{base_a}/correct{query}",
                 json=apply_body(1, "security-valid", token),

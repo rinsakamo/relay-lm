@@ -272,8 +272,9 @@ def list_primary_memory_corrections(
     *, store_root: str, namespace: str, memory_id: str
 ) -> dict[str, Any]:
     root = _safe_store_root(store_root)
-    if not is_sha256(memory_id):
-        raise PrimaryCorrectionError("not_found_or_wrong_scope")
+    _load_scoped_control_state(
+        root, namespace=namespace, logical_memory_id=memory_id
+    )
     state = load_primary_correction_state(root, namespace=namespace)
     if "*" in state.invalid_logical or memory_id in state.invalid_logical:
         raise PrimaryCorrectionError("target_corrupt")
@@ -696,6 +697,39 @@ def _build_prepared_receipt(
     }
 
 
+def _load_scoped_control_state(
+    root: Path, *, namespace: str, logical_memory_id: str
+) -> dict[str, Any]:
+    """Confirm logical target membership before reading correction metadata.
+
+    This preserves the not-found/wrong-scope indistinguishability contract even
+    after the target has correction receipts in another namespace.
+    """
+
+    if not is_sha256(logical_memory_id):
+        raise PrimaryCorrectionError("not_found_or_wrong_scope")
+    control, reasons = _load_control_state(root)
+    if control is None or reasons:
+        raise PrimaryCorrectionError("target_corrupt")
+    index_matches = [
+        entry
+        for entry in control["index"]
+        if entry.get("idempotency_key") == logical_memory_id
+        and entry.get("namespace") == namespace
+    ]
+    log_matches = [
+        entry
+        for entry in control["log"]
+        if entry.get("idempotency_key") == logical_memory_id
+        and entry.get("namespace") == namespace
+    ]
+    if not index_matches and not log_matches:
+        raise PrimaryCorrectionError("not_found_or_wrong_scope")
+    if len(index_matches) != 1 or len(log_matches) != 1:
+        raise PrimaryCorrectionError("target_corrupt")
+    return control
+
+
 def _load_current_target(
     root: Path,
     *,
@@ -704,16 +738,14 @@ def _load_current_target(
     expected_revision: int,
     state: CorrectionState,
 ) -> dict[str, Any]:
-    if not is_sha256(logical_memory_id):
-        raise PrimaryCorrectionError("not_found_or_wrong_scope")
+    control = _load_scoped_control_state(
+        root, namespace=namespace, logical_memory_id=logical_memory_id
+    )
     if "*" in state.invalid_logical or logical_memory_id in state.invalid_logical:
         raise PrimaryCorrectionError("target_corrupt")
     current_physical, current_revision = state.current_by_logical.get(logical_memory_id, (logical_memory_id, 1))
     if current_revision != expected_revision:
         raise PrimaryCorrectionError("stale_revision")
-    control, reasons = _load_control_state(root)
-    if control is None or reasons:
-        raise PrimaryCorrectionError("target_corrupt")
     matches = [
         entry
         for entry in control["index"]
