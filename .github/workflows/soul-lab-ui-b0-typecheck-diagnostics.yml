@@ -1,0 +1,30 @@
+name: SOUL Lab UI-B0 typecheck diagnostics
+
+on:
+  pull_request:
+    paths:
+      - "apps/soul-lab/**"
+      - ".github/workflows/soul-lab-ui-b0-typecheck-diagnostics.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/soul-lab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - name: Capture typecheck diagnostics
+        continue-on-error: true
+        run: npm run typecheck > typecheck.log 2>&1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-b0-typecheck-diagnostics
+          path: apps/soul-lab/typecheck.log
