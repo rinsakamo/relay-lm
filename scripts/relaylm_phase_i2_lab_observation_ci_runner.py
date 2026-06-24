@@ -19,6 +19,7 @@ def main() -> None:
     run_smoke("relaylm_phase_i2_lab_observation_smoke.py")
     run_smoke("relaylm_phase_i2_lab_observation_security_smoke.py")
     run_smoke("relaylm_soul_lab_management_projection_smoke.py")
+    run_smoke("relaylm_phase_i2_documentation_boundary_smoke.py")
     print("Phase I-2 Lab observation CI runner passed")
 
 
