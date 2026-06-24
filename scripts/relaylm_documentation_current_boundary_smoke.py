@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1-I3, I1-G, and config documentation."""
+"""Validate current Phase 6, I1-I3, I1-G, roadmap, and config documentation."""
 from __future__ import annotations
 import ast
 import re
@@ -50,12 +50,31 @@ def main() -> None:
         "I1 observe/correct/retrieve product loop: complete")
     require("docs/architecture/pipeline_implementation_plan.md",
         "Phase 6-C1-0 through C1-5 are complete",
-        "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
+        "Phase 6-C2 one-job claim/rehydrate/execute adapter is complete",
         "### I1-D: next-turn recall validation — complete",
         "### I1-E / Phase I-2: real SOUL Lab observation — complete",
+        "### I1-F / Phase I-3: auditable Primary MEM Correct — complete",
         "### I1-G: pre-enqueue background-finalizer durability — unresolved",
+        "post_i3_evaluation_work_roadmap.md",
         "`docs/config_schema.md`",
         "stale TODO or future-tense text in related documents")
+    require("docs/architecture/post_i3_evaluation_work_roadmap.md",
+        "Phase I-3: Auditable Correct — complete",
+        "Phase I-4: Forget / Hide",
+        "Phase I-5: Pin / Unpin",
+        "Phase I-6: Merge / Supersession",
+        "Phase I-7: Held Apply / Discard",
+        "Phase I-8: Secondary MEM Consolidation",
+        "Phase I-9: RelaySOUL Proposal / Intervention / Rollback",
+        "UI-B0: Real Home Conversation",
+        "O0: Local one-job runner",
+        "I1-G: Pre-enqueue durability",
+        "O1: Queue scanner and retry scheduler",
+        "O2: Supervised worker service",
+        "O3: Always-on local operation",
+        "E1: Core RelayLM product hypothesis",
+        "E2: Primary MEM governance product",
+        "E3: Long-term character system")
     require("docs/architecture/current_target_migration_guide.md",
         "A1/A2/B0-B3, ordinary I1-B source-before-queue publication",
         "Phase I-1 verifies the later-turn retrieval path",
@@ -66,15 +85,17 @@ def main() -> None:
         "M3i-d real read-only Lab observation: complete as Phase I-2",
         "I1-G pre-enqueue background-finalizer durability remains unresolved")
     require("docs/architecture/README.md",
-        "Phase I-1 completes next-turn recall with character/namespace isolation",
-        "Phase I-2 completes real read-only Lab observation",
-        "Phase I-3 auditable Primary MEM Correct",
+        "Phase I-1 completes ordinary next-turn Primary MEM recall",
+        "Phase I-2 adds a bounded read-only observation model",
+        "Phase I-3 completes auditable revision-fenced Correct",
+        "post_i3_evaluation_work_roadmap.md",
         "I1-G pre-enqueue background-finalizer durability")
     require("docs/README.md",
         "`config_schema.md`", "Current/Target Boundary Matrix",
         "stale TODO/future-tense text in related plans",
         "phase_i2_real_soul_lab_observation.md",
-        "phase_i3_auditable_primary_mem_correct.md", "I1-G")
+        "phase_i3_auditable_primary_mem_correct.md",
+        "post_i3_evaluation_work_roadmap.md", "I1-G")
     require("docs/architecture/relaymem_slp_current_target.md",
         "C1-5 durable claim-independent protected source and restart rehydration",
         "C2 one-job claim/rehydrate/execute adapter",
@@ -84,6 +105,16 @@ def main() -> None:
     forbid("docs/PROJECT_STATUS.md",
         "SOUL Lab real observation: next",
         "auditable Correct operation: next")
+    forbid("docs/README.md",
+        "Phase I-3 next step",
+        "The next product boundary is Phase I-3")
+    forbid("docs/architecture/README.md",
+        "The next boundary is Phase I-3",
+        "the next Correct boundary")
+    forbid("docs/architecture/pipeline_implementation_plan.md",
+        "I3 I3 auditable",
+        "Phase I-3 auditable Correct is the next product boundary",
+        "## Active priority: Phase I-3 auditable Correct")
     print("RelayLM documentation current-boundary smoke passed.")
 
 if __name__ == "__main__":
