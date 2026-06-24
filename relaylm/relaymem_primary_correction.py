@@ -583,7 +583,17 @@ def _publish_prepared_successor(
         apply_enabled=True,
     )
     receipt = write_result.get("receipt")
-    if not isinstance(receipt, Mapping) or write_result.get("durability_confirmed") is not True:
+    publication_ready = isinstance(receipt, Mapping) and (
+        write_result.get("durability_confirmed") is True
+        or (
+            write_result.get("status") == "already_applied"
+            and write_result.get("idempotent_noop") is True
+            and not write_result.get("blocked_reasons")
+            and receipt.get("status") == "already_applied"
+            and receipt.get("idempotent_noop") is True
+        )
+    )
+    if not publication_ready:
         raise PrimaryCorrectionError("store_unavailable")
     if fault_at == "after_successor_page_publication":
         raise PrimaryCorrectionError("reconciliation_required")
