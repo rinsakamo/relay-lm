@@ -173,3 +173,7 @@ Result: success
 ## Real index-applied/log-pending recovery rerun
 
 Result: success
+
+## Expanded I-3 runner
+
+Result: success
