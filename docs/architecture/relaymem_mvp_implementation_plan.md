@@ -133,8 +133,6 @@ The current milestone does not require:
 
 The local file-backed store recognizes Primary/Secondary classes, bounded paths, layer/scope/lineage metadata, index/log controls, layout compatibility, secure traversal, bounded scans/reads, UTF-8 validation, and content-free diagnostics.
 
-Target layout:
-
 ```text
 memory/
   sources/

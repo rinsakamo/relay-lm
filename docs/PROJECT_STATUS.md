@@ -29,6 +29,7 @@ relaylm_related_authority:
   - docs/architecture/phase6c1_integrated_worker_fault_smoke_handoff.md
   - docs/architecture/phase6c1_durable_protected_source_persistence.md
   - docs/architecture/phase6c2_one_queued_primary_worker_integration.md
+  - docs/architecture/integration_i1_primary_mem_two_turn_recall.md
   - docs/architecture/relaymem_mvp_implementation_plan.md
   - docs/architecture/relaymem_slp_current_target.md
   - docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
@@ -220,13 +221,17 @@ relayctx_stream_unpack_dry_run_enabled = false
 relayctx_stream_unpack_dry_run_only = true
 relayctx_tts_adapter_handoff_runtime_enabled = false
 relayctx_tts_adapter_handoff_runtime_dry_run_only = true
+relaymem_slp_runtime_enqueue_enabled = false
+relaymem_slp_runtime_enqueue_dry_run_only = true
+relaymem_slp_runtime_enqueue_apply_enabled = false
 ```
 
 Consequences:
 
 - default `memory_light` compatibility may preserve frontend history until managed apply is intentionally enabled,
 - stream suppression and TTS handoff metadata remain default-off,
-- Phase 6/B3/RelayMEM apply boundaries remain explicitly gated,
+- Phase 6 source publication/B2 enqueue remains explicitly gated,
+- B3/C1-2/C2 are caller-driven boundaries rather than separately configured daemons,
 - I1-B never claims or executes a worker inline with visible response delivery,
 - all SOUL Lab management and observation routes remain local-only read surfaces.
 
@@ -238,7 +243,7 @@ The runtime does not yet provide:
 - active tool-chain reconstruction,
 - parser-versioned cache compatibility,
 - queue scanner, daemon, or scheduler-driven worker execution,
-- restart completion for the pre-enqueue background-finalizer crash window,
+- restart completion for I1-G's pre-enqueue background-finalizer crash window,
 - Secondary MEM consolidation,
 - durable correction/forget/pin/merge or held apply/discard operations,
 - actual RelaySOUL apply, rollback, or persistence execution,

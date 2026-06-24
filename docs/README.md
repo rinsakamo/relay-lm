@@ -24,7 +24,7 @@ RelayLM documentation is AI-first: documents should remain understandable when r
 
 - [Current project status](PROJECT_STATUS.md) — concise current boundary and the Phase I-3 next step
 - [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
-- [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing
+- [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing, including explicit I1-G durability tracking
 - [Phase 6 I1-B runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md) — ordinary managed request-runtime enqueue and finalized-turn source production
 - [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md) — exact active-lease, source, retry, crash, and outcome boundary
 - [Phase 6-C1-2 one-claimed worker](architecture/phase6c1_one_claimed_primary_worker_handoff.md) — production execution of one exact claimed B3 job
@@ -155,7 +155,7 @@ AI-first maintenance rules:
 - include type, authority, status, volatility, owner, update trigger, and non-authority fields,
 - keep current/target/compatibility/historical status explicit,
 - do not encode source text, prompts, traces, cache bodies, or runtime-private data in metadata,
-- when an implemented handoff changes milestone state, review Project Status, the implementation plan, this index, the architecture index, affected current/target boundaries, and status-checking smoke scripts together.
+- when an implemented handoff changes milestone state, review Project Status, the implementation plan, this index, the architecture index, `config_schema.md`, the Current/Target Boundary Matrix and affected sections, stale TODO/future-tense text in related plans, and status-checking smoke scripts together.
 
 Placement rules:
 

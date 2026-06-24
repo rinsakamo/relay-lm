@@ -47,7 +47,7 @@ The project is integration-first. New helper-only or mock-only slices are justif
 ## Status legend
 
 - **complete**: the bounded contract and intended helper/runtime wiring exist with smoke coverage.
-- **integration pending**: component boundaries exist, but the ordinary runtime does not complete the user-visible loop.
+- **integration pending**: component boundaries exist, but the ordinary runtime does not complete the intended loop.
 - **planned**: design exists without a complete producer, consumer, apply, and validation path.
 - **deferred**: intentionally not a gate for the active milestone.
 
@@ -79,6 +79,7 @@ RelayMEM Primary integration:
   M3a-M3h Primary MEM formation/persistence primitives: complete
   I1 next-turn Primary MEM recall: complete
   character and namespace isolation: complete
+  I1-G pre-enqueue background-finalizer durability: unresolved
 
 SOUL Lab:
   UI-A0 through UI-A7: complete
@@ -92,13 +93,9 @@ SOUL Lab Runtime:
 
 ## Compatibility status anchors
 
-Phase 6-B1 dry-run dispatch/job-record preflight: complete.
+Phase 6-B1 dry-run dispatch/job-record preflight, B2 atomic durable enqueue, and B3 fenced queue lifecycle are complete.
 
-Phase 6-B2 atomic durable enqueue: complete.
-
-Phase 6-B3 fenced queue lifecycle: complete.
-
-Integration Milestone I1-B ordinary managed non-stream/stream deferred enqueue: complete.
+Integration Milestone I1-B ordinary managed non-stream/stream deferred enqueue is complete.
 
 Phase 6-C1-0 through C1-5 are complete:
 
@@ -152,7 +149,7 @@ Current guarantees:
 - the process-local registry is an optional bounded hot cache,
 - claim-time preparation builds a fresh C1-0 source and one-shot scope.
 
-C1-5 makes protected-source recovery restart-complete for durably enqueued jobs. A separate gap remains if the process exits after response delivery but before the background finalizer reaches durable source publication and B2 enqueue.
+C1-5 makes protected-source recovery restart-complete for durably enqueued jobs. It does not close the earlier process-exit window before source publication and B2 enqueue; that is I1-G.
 
 ### I1-C: Primary MEM worker and C2 integration — complete
 
@@ -250,7 +247,7 @@ The pre-enqueue background-finalizer crash window remains explicitly outside thi
 - C4b is diagnostics-only and does not semantically apply RelaySCN state.
 - C5 requires a trusted in-process typed-parse source and does not parse arbitrary backend visible responses.
 - RelayCTX stream suppression and TTS handoff metadata are default-off; RelayLM Core does not execute TTS/audio/avatar behavior.
-- I1-B remains response-background-task based; the pre-enqueue process-exit window is not restart-complete.
+- I1-G remains unresolved: I1-B is response-background-task based and the pre-enqueue process-exit window is not restart-complete.
 - C1-5 protects only work that reached source publication and durable enqueue.
 - Phase I-2 is observe-only; no Correct/forget/pin/merge/apply/discard behavior exists.
 - Secondary MEM and actual RelaySOUL apply remain later work.
