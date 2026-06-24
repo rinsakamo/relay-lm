@@ -29,6 +29,7 @@ OTHER_CHARACTER = "other"
 NAMESPACE = "phase-i1-recall"
 OTHER_NAMESPACE = "phase-i1-other"
 MEMORY_CANARY = "紅茶"
+QUESTION = "好きな飲み物 を教えてください。"
 
 
 def require(condition: bool, detail: object) -> None:
@@ -44,6 +45,10 @@ class Backend(BaseHTTPRequestHandler):
         return
 
     def do_POST(self) -> None:  # noqa: N802
+        if self.path != "/v1/chat/completions":
+            self.send_response(404)
+            self.end_headers()
+            return
         length = int(self.headers.get("content-length", "0"))
         payload = json.loads(self.rfile.read(length).decode("utf-8"))
         with type(self).lock:
@@ -59,15 +64,24 @@ class Backend(BaseHTTPRequestHandler):
         )
         serialized = json.dumps(messages, ensure_ascii=False)
         if "覚えて" in latest_user:
-            answer = "覚えました。"
-        elif "[RelayMEM Snippet Context]" in serialized and MEMORY_CANARY in serialized:
+            answer = f"好きな飲み物 は {MEMORY_CANARY} と覚えました。"
+        elif (
+            "[RelayMEM Snippet Context]" in serialized
+            and MEMORY_CANARY in serialized
+        ):
             answer = f"好きな飲み物は{MEMORY_CANARY}です。"
         else:
             answer = "記憶からは確認できません。"
         body = {
             "id": "chatcmpl-phase-i1",
             "object": "chat.completion",
-            "choices": [{"index": 0, "message": {"role": "assistant", "content": answer}, "finish_reason": "stop"}],
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {"role": "assistant", "content": answer},
+                    "finish_reason": "stop",
+                }
+            ],
         }
         encoded = json.dumps(body, ensure_ascii=False).encode("utf-8")
         self.send_response(200)
@@ -77,10 +91,22 @@ class Backend(BaseHTTPRequestHandler):
         self.wfile.write(encoded)
 
 
-def write_config(path: Path, *, port: int, queue: Path, protected: Path, store: Path) -> None:
-    cfg = yaml.safe_load((REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8"))
+def write_config(
+    path: Path,
+    *,
+    port: int,
+    queue: Path,
+    protected: Path,
+    store: Path,
+    enqueue_enabled: bool,
+) -> None:
+    cfg = yaml.safe_load(
+        (REPO_ROOT / "config.example.yaml").read_text(encoding="utf-8")
+    )
     cfg["trace"] = {"enabled": False, "path": None}
-    cfg["backends"]["local_backend"]["base_url"] = f"http://127.0.0.1:{port}/v1"
+    cfg["backends"]["local_backend"]["base_url"] = (
+        f"http://127.0.0.1:{port}/v1"
+    )
     base_route = cfg["model_routes"]["relaylm-default"]
     base_route.update(
         {
@@ -102,9 +128,9 @@ def write_config(path: Path, *, port: int, queue: Path, protected: Path, store: 
         "memory_namespace": OTHER_NAMESPACE,
     }
     cfg["relayemo_enabled"] = False
-    cfg["relaymem_slp_runtime_enqueue_enabled"] = True
-    cfg["relaymem_slp_runtime_enqueue_dry_run_only"] = False
-    cfg["relaymem_slp_runtime_enqueue_apply_enabled"] = True
+    cfg["relaymem_slp_runtime_enqueue_enabled"] = enqueue_enabled
+    cfg["relaymem_slp_runtime_enqueue_dry_run_only"] = not enqueue_enabled
+    cfg["relaymem_slp_runtime_enqueue_apply_enabled"] = enqueue_enabled
     cfg["relaymem_slp_queue_root"] = str(queue.resolve())
     cfg["relaymem_slp_protected_source_root"] = str(protected.resolve())
     cfg["memory"].update(
@@ -128,7 +154,12 @@ def write_config(path: Path, *, port: int, queue: Path, protected: Path, store: 
     path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
 
 
-def payload(model: str, text: str) -> dict[str, Any]:
+def payload(
+    model: str,
+    text: str,
+    *,
+    scene_type: str = "design_talk",
+) -> dict[str, Any]:
     return {
         "model": model,
         "messages": [{"role": "user", "content": text}],
@@ -136,7 +167,7 @@ def payload(model: str, text: str) -> dict[str, Any]:
         "metadata": {
             "scene_state": {
                 "schema_version": "relayscn.scene_state.v0",
-                "scene_type": "design_talk",
+                "scene_type": scene_type,
                 "confidence": 0.99,
                 "stability": 0.99,
                 "signals": [],
@@ -153,6 +184,15 @@ def read_queued(queue: Path) -> dict[str, object]:
     return value
 
 
+def visible_text(response: object) -> str:
+    body = response.json()
+    return str(body["choices"][0]["message"]["content"])
+
+
+def primary_pages(scoped: Path) -> list[Path]:
+    return sorted(scoped.glob("memory/mem/primary/*/*.md"))
+
+
 def main() -> None:
     server = ThreadingHTTPServer(("127.0.0.1", 0), Backend)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -166,20 +206,32 @@ def main() -> None:
             queue.mkdir()
             protected.mkdir()
             store.mkdir()
-            scoped_value = resolve_relaymem_character_store_root(str(store), CHARACTER)
-            require(scoped_value is not None, "character scope")
+
+            scoped_value = resolve_relaymem_character_store_root(
+                str(store), CHARACTER
+            )
+            other_scoped_value = resolve_relaymem_character_store_root(
+                str(store), OTHER_CHARACTER
+            )
+            require(
+                scoped_value is not None and other_scoped_value is not None,
+                "character scope",
+            )
             scoped = Path(scoped_value)
+            other_scoped = Path(other_scoped_value)
             prepare_store(scoped)
-            config = root / "config.yaml"
+            prepare_store(other_scoped)
+
+            producer_config = root / "producer.yaml"
             write_config(
-                config,
+                producer_config,
                 port=int(server.server_address[1]),
                 queue=queue,
                 protected=protected,
                 store=store,
+                enqueue_enabled=True,
             )
-
-            producer_app = create_app(str(config))
+            producer_app = create_app(str(producer_config))
             with TestClient(producer_app) as client:
                 first = client.post(
                     "/v1/chat/completions",
@@ -189,10 +241,38 @@ def main() -> None:
                     ),
                 )
             require(first.status_code == 200, first.text)
+            require(MEMORY_CANARY in visible_text(first), first.json())
             queued = read_queued(queue)
 
-            # Simulate producer/process restart: C2 receives no hot registry state.
-            result = execute_one_queued_relaymem_slp_primary_job(
+            # Producer/process restart: C2 has no hot registry state.
+            request = RelayMEMSLPOneQueuedJobRunnerRequest(
+                schema_version=REQUEST_SCHEMA,
+                runtime_private=True,
+                content_included=False,
+                queued_record=dict(queued),
+                source_registry=RelayMEMSLPPrimaryWorkerSourceRegistry(),
+                character_id=CHARACTER,
+                queue_root=str(queue),
+                protected_source_root=str(protected),
+                store_root=str(scoped),
+                claim_owner="phase-i1-worker",
+                enabled=True,
+                dry_run_only=False,
+                apply_enabled=True,
+                lease_duration_seconds=300,
+            )
+            result = execute_one_queued_relaymem_slp_primary_job(request)
+            require(result.status == "worker_completed", result.to_log_dict())
+            require(
+                result.worker_status == "terminal_succeeded",
+                result.to_log_dict(),
+            )
+            require(result.restart_rehydrated, result.to_log_dict())
+            pages_after_success = primary_pages(scoped)
+            require(len(pages_after_success) == 1, pages_after_success)
+
+            # Duplicate dispatch presentation cannot invoke the worker or add a page.
+            duplicate = execute_one_queued_relaymem_slp_primary_job(
                 RelayMEMSLPOneQueuedJobRunnerRequest(
                     schema_version=REQUEST_SCHEMA,
                     runtime_private=True,
@@ -203,56 +283,98 @@ def main() -> None:
                     queue_root=str(queue),
                     protected_source_root=str(protected),
                     store_root=str(scoped),
-                    claim_owner="phase-i1-worker",
+                    claim_owner="phase-i1-duplicate-worker",
                     enabled=True,
                     dry_run_only=False,
                     apply_enabled=True,
                     lease_duration_seconds=300,
                 )
             )
-            require(result.status == "worker_completed", result.to_log_dict())
-            require(result.worker_status == "terminal_succeeded", result.to_log_dict())
-            require(result.restart_rehydrated, result.to_log_dict())
+            require(duplicate.worker_invoked is False, duplicate.to_log_dict())
+            require(
+                primary_pages(scoped) == pages_after_success,
+                primary_pages(scoped),
+            )
 
-            # A fresh request runtime reads only the durable store.
-            recall_app = create_app(str(config))
+            recall_config = root / "recall.yaml"
+            write_config(
+                recall_config,
+                port=int(server.server_address[1]),
+                queue=queue,
+                protected=protected,
+                store=store,
+                enqueue_enabled=False,
+            )
+            with Backend.lock:
+                Backend.payloads.clear()
+
+            # Fresh request runtime reads only the durable store.
+            recall_app = create_app(str(recall_config))
             with TestClient(recall_app) as client:
                 second = client.post(
                     "/v1/chat/completions",
-                    json=payload("relaylm-default", "好きな飲み物 を教えてください。"),
+                    json=payload("relaylm-default", QUESTION),
                 )
                 wrong_character = client.post(
                     "/v1/chat/completions",
-                    json=payload("relaylm-other-character", "好きな飲み物 を教えてください。"),
+                    json=payload("relaylm-other-character", QUESTION),
                 )
                 wrong_namespace = client.post(
                     "/v1/chat/completions",
-                    json=payload("relaylm-other-namespace", "好きな飲み物 を教えてください。"),
+                    json=payload("relaylm-other-namespace", QUESTION),
                 )
+                policy_block = client.post(
+                    "/v1/chat/completions",
+                    json=payload(
+                        "relaylm-default",
+                        QUESTION,
+                        scene_type="formal_document",
+                    ),
+                )
+
             require(second.status_code == 200, second.text)
-            require(MEMORY_CANARY in second.json()["choices"][0]["message"]["content"], second.json())
+            require(MEMORY_CANARY in visible_text(second), second.json())
+            for blocked in (wrong_character, wrong_namespace, policy_block):
+                require(blocked.status_code == 200, blocked.text)
+                require(
+                    visible_text(blocked) == "記憶からは確認できません。",
+                    blocked.json(),
+                )
+
+            with Backend.lock:
+                payloads = list(Backend.payloads)
+            require(len(payloads) == 4, len(payloads))
+            serialized = [
+                json.dumps(item.get("messages"), ensure_ascii=False)
+                for item in payloads
+            ]
             require(
-                wrong_character.json()["choices"][0]["message"]["content"] == "記憶からは確認できません。",
-                wrong_character.json(),
+                "[RelayMEM Snippet Context]" in serialized[0],
+                "missing injected context",
             )
-            require(
-                wrong_namespace.json()["choices"][0]["message"]["content"] == "記憶からは確認できません。",
-                wrong_namespace.json(),
-            )
-            payloads = Backend.payloads[-3:]
-            correct_serialized = json.dumps(payloads[0].get("messages"), ensure_ascii=False)
-            wrong_char_serialized = json.dumps(payloads[1].get("messages"), ensure_ascii=False)
-            wrong_ns_serialized = json.dumps(payloads[2].get("messages"), ensure_ascii=False)
-            require("[RelayMEM Snippet Context]" in correct_serialized, "missing injected context")
-            require(MEMORY_CANARY in correct_serialized, "missing memory evidence")
-            require("[RelayMEM Snippet Context]" not in wrong_char_serialized, "wrong-character leak")
-            require("[RelayMEM Snippet Context]" not in wrong_ns_serialized, "wrong-namespace leak")
-            require("slp-dispatch-v0:" not in correct_serialized, "dispatch metadata leaked")
-            require("lineage_fingerprint" not in correct_serialized, "lineage metadata leaked")
+            require(MEMORY_CANARY in serialized[0], "missing memory evidence")
+            for blocked_payload in serialized[1:]:
+                require(
+                    "[RelayMEM Snippet Context]" not in blocked_payload,
+                    "scope/policy leak",
+                )
+                require(
+                    MEMORY_CANARY not in blocked_payload,
+                    "memory content leak",
+                )
+            for forbidden in (
+                "slp-dispatch-v0:",
+                "lineage_fingerprint",
+                "idempotency_key",
+                "page_digest",
+                "retry_not_before",
+            ):
+                require(forbidden not in serialized[0], forbidden)
     finally:
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
     print("Phase I-1 two-turn Primary MEM recall smoke passed")
 
 
