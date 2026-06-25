@@ -93,8 +93,9 @@ SOUL Lab:
 
 Operations:
   I1-GA contract / design decision / fault model: complete
-  I1-GB durable-finalization publication: current implementation work
-  I1-GC through I1-GE: planned
+  I1-GB durable-finalization publication / pre-release admission: complete
+  I1-GC/GD/GE replay, cleanup, and full crash validation: unimplemented
+  I1-G overall: in progress
   O0 local one-job runner: complete
   O1 durable-finalization replay and queue scheduler: planned
   O2 supervised worker service: planned
@@ -120,7 +121,7 @@ Phase 6-C2 one-job claim/rehydrate/execute adapter is complete. It accepts one e
 
 O0 local one-job operation is complete. `relaylm-worker --once --config config.yaml` performs bounded non-recursive discovery, selects at most one eligible queued record, securely rereads it, resolves the exact config-owned character partition, and delegates unchanged authority to C2/B3/C1-5/C1-2.
 
-Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, and UI-B0 Real Home Conversation are complete. I1-GA contract/design/fault-model work is complete. I1-GB through I1-GE remain planned as the complete production durability sequence, with I1-GB currently under implementation. Phase I-4A defines the exact Forget / Hide target contract only.
+Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, and UI-B0 Real Home Conversation are complete. I1-GA contract/design/fault-model work and I1-GB pre-release durable publication are complete. I1-GC through I1-GE remain planned; restart replay/completion convergence, cleanup, and full crash validation are unimplemented. Phase I-4A defines the exact Forget / Hide target contract only.
 
 ## Completed foundation
 
@@ -235,20 +236,21 @@ Correct and Forget must share one per-memory lock namespace, pending-operation f
 
 UI-B0 connects SOUL Lab Home to the existing RelayLM Chat Completions route using one server-projected route, same-origin non-stream/SSE transport, explicit Real Runtime versus Local Preview sessions, Stop/Retry/New Conversation, and stale-response fencing.
 
-### I1-G: pre-enqueue background-finalizer durability — unresolved
+### I1-G: pre-enqueue durable-finalization — in progress
 
-A process may still exit after visible-response delivery but before protected-source and B2 queue publication completes. C1-5 cannot rehydrate an artifact that was never published.
-
-I1-GA is complete as a target contract, design decision, pure state/fault model, and validation boundary. It selects one turn-scoped sealed durable-finalization publication record, fixes source-before-queue replay, bounded retention classes, content-free projection, and the required 30-point fault matrix.
+I1-GA is complete as the target contract, design decision, pure state/fault model, and validation boundary. I1-GB is complete for default-off bounded private base/stream-segment/seal publication, canonical reread validation, exact A1/A2/B1 preparation, non-stream pre-release admission, and stream pre-yield admission. The existing background finalizer remains the only C1-5-then-B2 writer.
 
 ```text
-I1-GB  durable-finalization publication and bounded response-release admission
-I1-GC  one-record restart replay, fencing, duplicate suppression, and completion marker
-I1-GD  retention, orphan reconciliation, and cleanup
-I1-GE  production crash-at-every-boundary integration smoke
+I1-GA  contract / fault model                                      complete
+I1-GB  durable publication and bounded response-release admission complete
+I1-GC  one-record restart replay, exact convergence, completion    unimplemented
+I1-GD  retention, orphan reconciliation, and cleanup               unimplemented
+I1-GE  full production crash-at-every-boundary integration smoke   unimplemented
 ```
 
-I1-GB changes response-finalization ordering but does not implement replay. I1-GC replays one caller-selected sealed record through existing I1-B, C1-5, and B2 authorities. I1-GD classifies and cleans proven-safe records. I1-GE validates the complete production boundary.
+I1-GB prevents RelayLM from intentionally releasing protected non-stream content, protected SSE units, or terminal stream completion before corresponding restart evidence is canonically durable. It does not discover or replay sealed records after restart, and therefore does not by itself complete Window A recovery.
+
+I1-G is not queue scanning, worker scheduling, or C2 execution. O1 may later call the I1-GC one-record replay contract.
 
 ## Phase I-4B through I-4F: Forget / Hide implementation — planned
 
@@ -343,12 +345,12 @@ UI-B1A is read-only and remains outside queue, worker, and mutation authority.
 ### Wave 0 — current parallel work
 
 ```text
-Thread A  I1-GB durable-finalization publication
+Thread A  I1-GB durable-finalization publication — complete
 Thread B  I-4B resolver/shared fence/read-only Forget
 Thread C  O1A scheduling contract only
 ```
 
-I1-GB and I-4B may merge in either order. After both land, rerun response/I1-B/C1-5/B2/UI-B0 regressions and I-3 Correct/resolver/M2-equivalence regressions.
+I1-GB is complete. After I-4B lands, rerun response/I1-B/C1-5/B2/UI-B0 regressions and I-3 Correct/resolver/M2-equivalence regressions before entering the shared Wave 1 work.
 
 ### Wave 1 — one-record recovery and lifecycle commit ownership
 
@@ -433,8 +435,11 @@ The loop remains operator-driven until O1 lands.
 Recommended next sequence:
 
 ```text
+completed:
+  I1-GB
+
 current:
-  I1-GB || I-4B || O1A design
+  I-4B || O1A design
 
 next:
   I1-GC || I-4C1
@@ -513,4 +518,4 @@ When a phase lands, review together:
 - status-checking smoke scripts;
 - stale TODO or future-tense text in related documents.
 
-The current roadmap update changes sequencing only. It does not change runtime configuration, accepted routes, response schemas, M2 eligibility, queue semantics, or browser authority.
+I1-GB adds default-off durable-finalization publication gates, an explicit private root, and bounded capacity/timeout fields documented in `docs/config_schema.md` and `config.example.yaml`. The roadmap sequencing itself does not change M2 eligibility, queue semantics, or browser authority.
