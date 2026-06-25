@@ -125,6 +125,20 @@ class RelayLMConfig(BaseModel):
     )
     relaymem_slp_source_registry_max_entries: int = Field(default=256, ge=1)
     relaymem_slp_source_registry_ttl_seconds: int = Field(default=1800, ge=1)
+    relaymem_local_worker_enabled: bool = False
+    relaymem_local_worker_dry_run_only: bool = True
+    relaymem_local_worker_apply_enabled: bool = False
+    relaymem_local_worker_claim_owner: str = "relaylm-worker-once"
+    relaymem_local_worker_lease_duration_seconds: int = Field(
+        default=300,
+        ge=1,
+        le=7 * 24 * 60 * 60,
+    )
+    relaymem_local_worker_discovery_max_entries: int = Field(
+        default=256,
+        ge=1,
+        le=4096,
+    )
     client_message_canonicalization_dry_run_enabled: bool = False
     client_history_exclusion_preflight_enabled: bool = False
     client_history_exclusion_apply_enabled: bool = False

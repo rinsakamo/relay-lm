@@ -20,6 +20,7 @@ relaylm_related_authority:
   - phase_i4_primary_mem_forget_hide_contract.md
   - soul_lab_ui_b0_real_home_conversation.md
   - i1g_pre_enqueue_durable_finalization_contract.md
+  - o0_local_one_job_runner.md
   - pipeline_implementation_plan.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
@@ -31,7 +32,7 @@ relaylm_related_authority:
 
 ## Purpose
 
-Phase I-3 auditable Primary MEM Correct and UI-B0 real Home conversation are complete. I1-GA has defined the pre-enqueue durable-finalization target and pure fault model. Phase I-4A now defines the Forget / Hide target contract, but no Forget runtime, M2 exclusion, or UI exists. This document records the remaining sequence for evaluating RelayLM as a text-first local character product and then extending memory governance and operations.
+Phase I-3 auditable Primary MEM Correct, UI-B0 real Home conversation, and O0 local one-job execution are complete. I1-GA has defined the pre-enqueue durable-finalization target and pure fault model. Phase I-4A defines the Forget / Hide target contract, but no Forget runtime, M2 exclusion, or UI exists. This document records the remaining sequence for evaluating RelayLM as a text-first local character product and then extending memory governance and operations.
 
 The roadmap has three tracks:
 
@@ -43,8 +44,9 @@ SOUL Lab experience
   -> real Home conversation, lifecycle visibility, evaluation evidence
 
 Operations
-  -> one-job execution, pre-enqueue durability, queue selection,
-     worker supervision, always-on operation
+  -> O0 one-job execution complete
+  -> pre-enqueue durability, queue polling/scheduling,
+     worker supervision, always-on operation remain
 ```
 
 Implementation must remain incremental. Real product evaluation begins before I-9.
@@ -54,6 +56,7 @@ Implementation must remain incremental. Real product evaluation begins before I-
 Complete:
 
 - ordinary managed Turn 1 Primary MEM formation through C2,
+- O0 explicit selection and execution of at most one eligible already-durable queued job,
 - next-turn M2 retrieval and RelayCTX injection,
 - character and namespace isolation,
 - Phase I-2 real latest-run and memory observation,
@@ -69,10 +72,11 @@ Defined target only:
 
 Unresolved or unimplemented:
 
-- O0 local one-job selection and execution convenience,
 - I1-GB through I1-GE production durability,
 - Phase I-4B through I-4F Forget implementation,
-- automatic queue scanning and supervised operation.
+- O1 automatic queue scanning and retry scheduling,
+- O2 supervised worker operation,
+- O3 always-on local operation.
 
 ## Target product loop
 
@@ -81,7 +85,7 @@ SOUL Lab Home real conversation
   -> existing RelayLM managed request
   -> existing M2 retrieval and RelayCTX injection
   -> visible response
-  -> explicit C2 one-job execution or future O0
+  -> O0 explicit one-job execution during early evaluation
   -> Primary MEM formation or held/blocked result
   -> Phase I-2 Lab Observation
   -> Phase I-3 or later explicit memory operation
@@ -256,7 +260,7 @@ UI-B0G  browser-local New Conversation
 UI-B0H  existing M2 / RelayCTX path and Phase I-2 evidence boundary
 ```
 
-The browser does not create SOUL authority, filesystem paths, memory namespaces, backend IDs, credentials, or hidden system prompts. See [UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md).
+The browser does not create SOUL authority, filesystem paths, memory namespaces, backend IDs, credentials, hidden system prompts, or worker authority. See [UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md).
 
 ### UI-B1: Memory lifecycle visibility
 
@@ -282,22 +286,32 @@ Required scenarios include correction, forgetting, pinning, merge, held review, 
 
 ## Track C: Operational work phases
 
-### O0: Local one-job runner
+### O0: Local one-job runner — complete
 
-Goal:
+Completion claim:
 
-> Process one eligible queued job locally using existing B3, C1-5, C2, and C1-2 authority.
+> A local operator can process at most one eligible queued job per CLI invocation through the existing C2 production path.
+
+Implemented form:
 
 ```text
-O0A  bounded eligible-record selection
-O0B  canonical reread before claim
-O0C  unchanged B3 claim and lease fencing
-O0D  unchanged C1-5 rehydration and C2 execution
-O0E  content-free result projection and exit status
-O0F  duplicate, retry-time, terminal, and corruption smoke
+relaylm-worker --once --config config.yaml [--character-id CHARACTER_ID]
 ```
 
-The browser must not be the worker or queue-selection authority.
+Implemented slices:
+
+```text
+O0A  bounded non-recursive eligible-record selection
+O0B  canonical secure reread before claim
+O0C  unchanged B3 claim and lease fencing
+O0D  unchanged C1-5 restart rehydration and C2/C1-2 execution
+O0E  exact config-owned character and store partition resolution
+O0F  default-off disabled / dry-run / apply gates
+O0G  bounded content-free projection and documented exit categories
+O0H  duplicate, race, retry-time, terminal, corruption, isolation, and leakage smoke
+```
+
+O0 adds no polling, idle sleep, scheduler fairness, priority, stale-claim scanner, process supervision, service wrapper, browser control, or worker pool. The browser remains outside worker and queue-selection authority.
 
 ### I1-G: Pre-enqueue durability
 
@@ -315,19 +329,23 @@ I1-GE  crash-at-every-boundary smoke — planned
 
 I1-GA selects one turn-scoped sealed durable-finalization publication record and a one-record replay model. Production durability remains unresolved. The implementation must preserve visible-response independence, source-before-queue ordering, dispatch idempotency, content separation, restart recovery, and no duplicate logical memory formation.
 
+O0 begins after durable source and queue publication and cannot repair the I1-G failure window.
+
 ### O1: Queue scanner and retry scheduler
 
 Goal:
 
-> Select eligible queued records and invoke existing one-job execution without redefining queue or memory semantics.
+> Repeatedly select eligible queued records and invoke the existing O0/C2 one-job boundary without redefining queue or memory semantics.
 
 ```text
-O1A  secure bounded discovery
-O1B  deterministic eligibility and retry ordering
-O1C  canonical reread before B3 claim
-O1D  bounded idle and polling behavior
-O1E  stale, corrupt, terminal, and concurrent scanner smoke
+O1A  bounded polling and idle contract
+O1B  repeated secure discovery and retry-time scheduling
+O1C  fairness and deterministic ordering policy
+O1D  stale-claim recovery orchestration boundaries
+O1E  corrupt, terminal, concurrent, and shutdown smoke
 ```
+
+O1 should reuse O0 selection/reread primitives where compatible, but O0's filename order is not itself the future scheduler fairness contract.
 
 ### O2: Supervised worker service
 
@@ -365,18 +383,19 @@ TTS, audio, Live2D, ASR, and public remote access are not required for the text-
 Completed:
   Phase I-3 Correct
   UI-B0 Real Home Conversation
+  O0 Local one-job runner
   I1-GA contract / design decision / fault model
 
 Defined target only:
   Phase I-4A Forget / Hide contract
 
 Current parallel work:
-  O0 Local one-job runner
   I1-GB durable-finalization publication
   Phase I-4B resolver/shared-fence/preflight work
+  O1 scanner / retry scheduler design
 
 Available now:
-  Evaluation Gate E1 using an existing explicit one-job C2 method
+  Evaluation Gate E1 using UI-B0 + O0
 
 Then:
   Phase I-4C through I-4F
@@ -404,18 +423,19 @@ I1-G and operations may move earlier in parallel, but become mandatory before lo
 ## Parallel development map
 
 ```text
-Thread A  O0 Local one-job runner
-Thread B  I1-GB durable-finalization publication
-Thread C  Phase I-4B canonical resolver, shared fence, and read-only contracts
+Thread A  I1-GB durable-finalization publication
+Thread B  Phase I-4B canonical resolver, shared fence, and read-only contracts
+Thread C  O1 scanner / retry scheduler design
 Thread D  UI-B1 lifecycle visibility design after stable status projections
 ```
 
 Ownership:
 
 - UI-B0 owns Home/chat transport and browser session state and is complete.
-- O0 owns a thin Python runner reusing B3, C1-5, C2, and C1-2.
+- O0 owns the completed thin Python runner reusing B3, C1-5, C2, and C1-2.
 - I1-G owns the pre-enqueue failure window and durable-finalization boundary.
 - I-4 owns lifecycle semantics and a separately reviewed authoritative apply.
+- O1/O2/O3 must build on O0 and C2 rather than moving worker authority into the browser.
 
 ## Evaluation gates
 
@@ -426,12 +446,14 @@ Required:
 ```text
 Phase I-3 complete
 + UI-B0 complete
-+ O0 or another explicit one-job execution method
++ O0 complete
 ```
+
+These prerequisites are now complete.
 
 Proves that the user can converse, form and observe a real Primary MEM, Correct it, retrieve the corrected representation in a fresh browser-local conversation, and distinguish durable memory influence from frontend history.
 
-UI-B0 is complete, so E1 may be exercised now with the existing explicit C2 method. O0 improves repeatability but is not required to begin.
+E1 is available now as an explicit operator-driven evaluation. It is not automatic queue processing.
 
 ### E2: Primary MEM governance product
 
@@ -476,10 +498,11 @@ Raw prompts, protected source, credentials, full traces, and unrestricted memory
 
 - Phase I-3 remains the implemented baseline mutation contract.
 - UI-B0 is a client of existing route, M2, RelayCTX, backend, and RelaySLP authority.
+- O0 is complete only as default-off explicit one-shot local execution and delegates unchanged authority to C2/B3/C1-5/C1-2.
 - I1-GA is contract/test-model only; production I1-G remains unresolved.
 - Phase I-4A is a defined target contract only; I-4B through I-4F require implementation and validation.
 - RelayMEM owns memory meaning and persistence.
 - M2 and RelayCTX own selection and backend-bound injection.
 - RelaySOUL changes require explicit intervention.
-- queue scanning and supervision must reuse B3, C1-5, C2, and C1-2.
+- O1 queue scanning and O2 supervision must reuse O0, B3, C1-5, C2, and C1-2.
 - text conversation does not imply TTS or avatar execution.

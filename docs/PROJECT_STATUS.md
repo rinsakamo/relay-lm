@@ -27,6 +27,7 @@ relaylm_related_authority:
   - docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md
   - docs/architecture/phase6c1_durable_protected_source_persistence.md
   - docs/architecture/phase6c2_one_queued_primary_worker_integration.md
+  - docs/architecture/o0_local_one_job_runner.md
   - docs/architecture/integration_i1_primary_mem_two_turn_recall.md
   - docs/architecture/phase_i2_real_soul_lab_observation.md
   - docs/architecture/phase_i3_auditable_primary_mem_correct.md
@@ -43,6 +44,7 @@ Status reviewed through:
 - Phase 6 I1-B ordinary request-runtime enqueue and finalized-turn protected capture,
 - Phase 6-C1-0 through C1-5 Primary MEM worker and durable-source boundaries,
 - Phase 6-C2 one queued-job claim / rehydrate / execute integration adapter,
+- O0 local one-job runner for one operator-invoked eligible queued job,
 - Phase I-1 Primary MEM next-turn recall and character/namespace isolation,
 - Phase I-2 real SOUL Lab latest-run and memory observation integration,
 - Phase I-3 auditable Primary MEM Correct and later retrieval convergence,
@@ -67,6 +69,7 @@ Managed-route correctness: Phase 5-C complete through bounded v0/v1 apply and C5
 Pre-stream hardening: Phase 5-D complete through D2
 Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
 Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete; C2 one-job adapter complete
+Local worker operation: O0 one invocation -> at most one eligible queued job complete
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and scope isolation complete
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, and UI-B0 complete
 Real Home conversation: same-origin RelayLM non-stream and SSE transport complete
@@ -74,7 +77,6 @@ I1 observe/correct/retrieve product loop: complete
 Phase I-4A Forget / Hide contract: defined target; runtime apply, M2 exclusion, and UI unimplemented
 I1-GA contract / design decision / fault model: complete
 I1-G pre-enqueue background-finalizer durability: unresolved
-O0 local one-job runner: separate and not implemented in UI-B0
 ```
 
 ## Core request/runtime foundation
@@ -90,7 +92,7 @@ Implemented:
 
 Current limitations include incomplete active tool-chain reconstruction, parser-versioned cache compatibility, output-side RelayREF/RelaySCN completion, and `/v1/responses` support.
 
-## Phase 6 RelaySLP orchestration
+## Phase 6 RelaySLP orchestration and O0 operation
 
 Implemented:
 
@@ -98,17 +100,21 @@ Implemented:
 - B0-B3 durable enqueue and fenced lifecycle,
 - I1-B ordinary runtime source publication and enqueue,
 - C1-0 through C1-5 complete,
-- C2 one-job claim/rehydrate/execute adapter: complete.
+- C2 one-job claim/rehydrate/execute adapter: complete,
+- O0 bounded non-recursive eligible-record selection, canonical reread, exact character partition resolution, and one C2 delegation per local CLI invocation.
 
 C1-5 keeps queue records content-free and persists the claim-independent protected capture before queue publication. C2 can claim one exact queued record, rehydrate a fresh protected source, invoke the one-claimed worker, and commit the canonical terminal result.
 
+O0 adds `relaylm-worker --once --config config.yaml`. It is default-off, selects and delegates at most one currently eligible queued record, uses the existing B3/C1-5/C1-2/C2 authorities unchanged, emits one bounded content-free JSON projection, and exits. It does not reconstruct protected content, repair queue records, or add a second lifecycle policy.
+
 Still separate:
 
-- no automatic queue scanner, retry scheduler, or supervised worker daemon,
-- no always-on production operation,
+- O1 automatic queue scanner and retry scheduler,
+- O2 supervised worker service,
+- O3 always-on local operation,
 - I1-G pre-enqueue background-finalizer durability: unresolved.
 
-I1-G tracks the process-exit window after visible-response delivery but before protected-source and B2 queue publication. I1-GA selects the target record, commit point, one-record replay, retention/cleanup classes, content-free projection, and 30-point fault model. It does not change production response delivery or close that window.
+I1-G tracks the process-exit window after visible-response delivery but before protected-source and B2 queue publication. I1-GA selects the target record, commit point, one-record replay, retention/cleanup classes, content-free projection, and 30-point fault model. It does not change production response delivery or close that window. O0 begins only after durable source and queue publication and therefore cannot close I1-G.
 
 ## I1-GA contract and fault model
 
@@ -183,11 +189,11 @@ Phase I-4A changes no browser behavior. The Forget UI remains unimplemented, and
 
 ## Evaluation boundary
 
-UI-B0 completes the browser-side text-first experiment surface. Together with existing I-1, I-2, I-3 and an explicit one-job C2 execution method, it enables a manual E1 evaluation:
+UI-B0 plus O0 completes the explicit text-first local E1 path:
 
 ```text
 real Home conversation
-  -> explicit one-job C2 execution or future O0
+  -> O0 explicit one-job execution
   -> formed Primary MEM
   -> Phase I-2 observation
   -> Phase I-3 Correct
@@ -196,7 +202,7 @@ real Home conversation
   -> Phase I-2 used-memory evidence
 ```
 
-UI-B0 does not claim that automatic queued-job execution or the full E1 loop is automated. O0 remains a separate parallel slice.
+This is still operator-driven. O0 does not automate queue polling or retry scheduling, and UI-B0 does not own worker authority.
 
 ## Completion boundary (2026-06-25)
 
@@ -204,6 +210,10 @@ UI-B0 does not claim that automatic queued-job execution or the full E1 loop is 
 - B3 lifecycle: complete
 - C1-0 through C1-5 complete
 - C2 one-job claim/rehydrate/execute adapter: complete
+- O0 local one-job runner: complete
+- O1 queue scanner / retry scheduler / polling: not implemented
+- O2 supervised worker service: not implemented
+- O3 always-on local operation: not implemented
 - I1 next-turn Primary MEM recall: complete
 - character and namespace isolation: complete
 - I2 real SOUL Lab observation: complete
@@ -215,7 +225,6 @@ UI-B0 does not claim that automatic queued-job execution or the full E1 loop is 
 - I1-GA contract / design decision / fault model: complete
 - I1-GB through I1-GE production durability: not implemented
 - I1-G pre-enqueue background-finalizer durability: unresolved
-- O0 local one-job runner: separate
 
 ## Safe defaults and compatibility
 
@@ -233,15 +242,18 @@ relayctx_tts_adapter_handoff_runtime_dry_run_only = true
 relaymem_slp_runtime_enqueue_enabled = false
 relaymem_slp_runtime_enqueue_dry_run_only = true
 relaymem_slp_runtime_enqueue_apply_enabled = false
+relaymem_local_worker_enabled = false
+relaymem_local_worker_dry_run_only = true
+relaymem_local_worker_apply_enabled = false
 ```
 
-UI-B0, I1-GA, and Phase I-4A do not change these server defaults. I1-GA adds no production writer or response-order change. Phase I-4A adds no accepted runtime route/schema, Primary writer change, M2 filtering, or browser mutation capability.
+UI-B0, I1-GA, Phase I-4A, and O0 do not weaken existing server defaults. I1-GA adds no production writer or response-order change. Phase I-4A adds no accepted runtime route/schema, Primary writer change, M2 filtering, or browser mutation capability. O0 cannot be elevated to apply by CLI flags and performs no discovery while disabled.
 
 ## Not yet implemented
 
-- O0 local one-job runner,
-- queue scanner and retry scheduler,
-- supervised worker service and always-on operation,
+- O1 queue polling, retry scheduling, scanner fairness, or stale-claim orchestration,
+- O2 supervised worker service,
+- O3 always-on local operation,
 - I1-G durable-finalization publication, one-record replay, retention/cleanup, and production crash integration,
 - production Forget lifecycle apply, hidden-state M2 exclusion, Forget history API, or Forget UI,
 - restore / unhide,
@@ -258,6 +270,10 @@ UI-B0, I1-GA, and Phase I-4A do not change these server defaults. I1-GA adds no 
 SOUL Lab Vite http://127.0.0.1:5173/lab/
   -> RelayLM http://127.0.0.1:8090/v1
   -> LM Studio http://127.0.0.1:1234/v1
+
+local operator
+  -> relaylm-worker --once --config config.yaml
+  -> at most one eligible queued job through existing C2
 ```
 
-The Vite `/v1` proxy remains loopback-targeted with `changeOrigin: false`. Real runtime and preview conversations remain separate browser-local sessions.
+The Vite `/v1` proxy remains loopback-targeted with `changeOrigin: false`. Real runtime and preview conversations remain separate browser-local sessions. O0 remains a separate operator authority and is not callable from the browser.
