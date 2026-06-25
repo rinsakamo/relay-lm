@@ -1,0 +1,142 @@
+name: I1-GB finalize transfer
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .i1gb-finalize/READY
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp-i1gb-finalize
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          ref: 2745ffca8eeb1ba91aa562d0951f455aa46ca0d2
+          path: source/head
+      - uses: actions/checkout@v4
+        with:
+          ref: 1010e5a8cabd729ff62ef24408e9c88332b3dd44
+          path: source/base
+      - name: Compose reconciled I1-GB tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            config.example.yaml
+            docs/PROJECT_STATUS.md
+            docs/README.md
+            docs/architecture/README.md
+            docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
+            docs/architecture/integration_i1_primary_mem_two_turn_recall.md
+            docs/architecture/phase6c1_durable_protected_source_persistence.md
+            docs/architecture/phase_i2_real_soul_lab_observation.md
+            docs/architecture/relaymem_mvp_implementation_plan.md
+            docs/architecture/relaymem_slp_current_target.md
+            docs/config_schema.md
+            relaylm/app.py
+            relaylm/config.py
+            relaylm/relaymem_slp_durable_finalization_publication.py
+            relaylm/relaymem_slp_durable_finalization_record.py
+            relaylm/relaymem_slp_durable_finalization_store.py
+            relaylm/relaymem_slp_durable_runtime_enqueue.py
+            relaylm/relaymem_slp_runtime_enqueue.py
+            relaylm/relaymem_slp_runtime_finalization.py
+            scripts/relaylm_i1gb_durable_finalization_app_smoke.py
+            scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
+            scripts/relaylm_phase_i2_documentation_boundary_smoke.py
+          )
+          for path in "${files[@]}"; do
+            mkdir -p "$(dirname "$path")"
+            cp "source/head/$path" "$path"
+          done
+          git merge-file -p \
+            source/head/scripts/relaylm_documentation_current_boundary_smoke.py \
+            source/base/scripts/relaylm_documentation_current_boundary_smoke.py \
+            scripts/relaylm_documentation_current_boundary_smoke.py \
+            > /tmp/documentation-smoke.py
+          mv /tmp/documentation-smoke.py scripts/relaylm_documentation_current_boundary_smoke.py
+          python - <<'PY'
+          from pathlib import Path
+
+          def edit(path: str, replacements: list[tuple[str, str]]) -> None:
+              file = Path(path)
+              text = file.read_text(encoding="utf-8")
+              for old, new in replacements:
+                  count = text.count(old)
+                  if count != 1:
+                      raise SystemExit(f"{path}: expected one match, found {count}: {old[:100]!r}")
+                  text = text.replace(old, new, 1)
+              file.write_text(text, encoding="utf-8")
+
+          edit("docs/architecture/pipeline_implementation_plan.md", [
+              ("  I1-GB durable-finalization publication: current implementation work\n  I1-GC through I1-GE: planned", "  I1-GB durable-finalization publication / pre-release admission: complete\n  I1-GC/GD/GE replay, cleanup, and full crash validation: unimplemented\n  I1-G overall: in progress"),
+              ("Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, and UI-B0 Real Home Conversation are complete. I1-GA contract/design/fault-model work is complete. I1-GB through I1-GE remain planned as the complete production durability sequence, with I1-GB currently under implementation. Phase I-4A defines the exact Forget / Hide target contract only.", "Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, and UI-B0 Real Home Conversation are complete. I1-GA contract/design/fault-model work and I1-GB pre-release durable publication are complete. I1-GC through I1-GE remain planned; restart replay/completion convergence, cleanup, and full crash validation are unimplemented. Phase I-4A defines the exact Forget / Hide target contract only."),
+              ("### I1-G: pre-enqueue background-finalizer durability — unresolved\n\nA process may still exit after visible-response delivery but before protected-source and B2 queue publication completes. C1-5 cannot rehydrate an artifact that was never published.\n\nI1-GA is complete as a target contract, design decision, pure state/fault model, and validation boundary. It selects one turn-scoped sealed durable-finalization publication record, fixes source-before-queue replay, bounded retention classes, content-free projection, and the required 30-point fault matrix.\n\n```text\nI1-GB  durable-finalization publication and bounded response-release admission\nI1-GC  one-record restart replay, fencing, duplicate suppression, and completion marker\nI1-GD  retention, orphan reconciliation, and cleanup\nI1-GE  production crash-at-every-boundary integration smoke\n```\n\nI1-GB changes response-finalization ordering but does not implement replay. I1-GC replays one caller-selected sealed record through existing I1-B, C1-5, and B2 authorities. I1-GD classifies and cleans proven-safe records. I1-GE validates the complete production boundary.", "### I1-G: pre-enqueue durable-finalization — in progress\n\nI1-GA is complete as the target contract, design decision, pure state/fault model, and validation boundary. I1-GB is complete for default-off bounded private base/stream-segment/seal publication, canonical reread validation, exact A1/A2/B1 preparation, non-stream pre-release admission, and stream pre-yield admission. The existing background finalizer remains the only C1-5-then-B2 writer.\n\n```text\nI1-GA  contract / fault model                                      complete\nI1-GB  durable publication and bounded response-release admission complete\nI1-GC  one-record restart replay, exact convergence, completion    unimplemented\nI1-GD  retention, orphan reconciliation, and cleanup               unimplemented\nI1-GE  full production crash-at-every-boundary integration smoke   unimplemented\n```\n\nI1-GB prevents RelayLM from intentionally releasing protected non-stream content, protected SSE units, or terminal stream completion before corresponding restart evidence is canonically durable. It does not discover or replay sealed records after restart, and therefore does not by itself complete Window A recovery.\n\nI1-G is not queue scanning, worker scheduling, or C2 execution. O1 may later call the I1-GC one-record replay contract."),
+              ("Thread A  I1-GB durable-finalization publication\nThread B  I-4B resolver/shared fence/read-only Forget\nThread C  O1A scheduling contract only", "Thread A  I1-GB durable-finalization publication — complete\nThread B  I-4B resolver/shared fence/read-only Forget\nThread C  O1A scheduling contract only"),
+              ("I1-GB and I-4B may merge in either order. After both land, rerun response/I1-B/C1-5/B2/UI-B0 regressions and I-3 Correct/resolver/M2-equivalence regressions.", "I1-GB is complete. After I-4B lands, rerun response/I1-B/C1-5/B2/UI-B0 regressions and I-3 Correct/resolver/M2-equivalence regressions before entering the shared Wave 1 work."),
+              ("current:\n  I1-GB || I-4B || O1A design", "completed:\n  I1-GB\n\ncurrent:\n  I-4B || O1A design"),
+              ("The current roadmap update changes sequencing only. It does not change runtime configuration, accepted routes, response schemas, M2 eligibility, queue semantics, or browser authority.", "I1-GB adds default-off durable-finalization publication gates, an explicit private root, and bounded capacity/timeout fields documented in `docs/config_schema.md` and `config.example.yaml`. The roadmap sequencing itself does not change M2 eligibility, queue semantics, or browser authority."),
+          ])
+
+          edit("docs/architecture/post_i3_evaluation_work_roadmap.md", [
+              ("Phase I-3 auditable Primary MEM Correct, UI-B0 real Home conversation, and O0 local one-job execution are complete. I1-GA defines the pre-enqueue durable-finalization target and pure fault model. Phase I-4A defines the Forget / Hide target contract. Production I1-G durability and production Forget remain incomplete.", "Phase I-3 auditable Primary MEM Correct, UI-B0 real Home conversation, and O0 local one-job execution are complete. I1-GA defines the pre-enqueue durable-finalization target and pure fault model, and I1-GB implements bounded pre-release publication. Phase I-4A defines the Forget / Hide target contract. Restart replay/completion convergence and production Forget remain incomplete."),
+              ("- I1-GA durable-finalization contract and deterministic fault model.", "- I1-GA durable-finalization contract and deterministic fault model;\n- I1-GB bounded private base/segment/seal publication before protected visible release."),
+              ("- I1-GB through I1-GE production durability;", "- I1-GC through I1-GE restart replay, cleanup, and crash validation;"),
+              ("I1-GB  atomic/convergent durable publication and bounded response-release admission — current implementation work", "I1-GB  atomic/convergent durable publication and bounded response-release admission — complete"),
+              ("I1-GB and I1-GC are distinct completion boundaries. I1-GB leaves restart-recoverable evidence; I1-GC turns one caller-selected sealed record into canonical C1-5 and B2 convergence. I1-GD classifies and cleans only proven-safe records. I1-GE validates the production sequence.", "I1-GB and I1-GC are distinct completion boundaries. I1-GB now leaves canonically durable restart evidence before protected visible release; I1-GC turns one caller-selected sealed record into canonical C1-5 and B2 convergence. I1-GD classifies and cleans only proven-safe records. I1-GE validates the production sequence."),
+              ("Thread A  I1-GB durable-finalization publication\nThread B  Phase I-4B canonical resolver, shared fence, and read-only contracts\nThread C  O1A work-source scheduling contract only", "Thread A  I1-GB durable-finalization publication — complete\nThread B  Phase I-4B canonical resolver, shared fence, and read-only contracts\nThread C  O1A work-source scheduling contract only"),
+              ("I1-GB and I-4B are independent production authorities. They may merge in either order. The later merge must rerun affected regression and reconcile shared documentation/configuration files.", "I1-GB is complete and remains independent of I-4B. When I-4B lands, rerun the affected cross-regression and reconcile shared documentation/configuration files before Wave 1."),
+              ("Completed:\n  Phase I-3 Correct\n  UI-B0 Real Home Conversation\n  O0 Local one-job runner\n  I1-GA contract / design decision / fault model\n  Phase I-4A Forget / Hide contract\n\nCurrent:\n  I1-GB || I-4B || O1A design", "Completed:\n  Phase I-3 Correct\n  UI-B0 Real Home Conversation\n  O0 Local one-job runner\n  I1-GA contract / design decision / fault model\n  I1-GB durable publication / pre-release admission\n  Phase I-4A Forget / Hide contract\n\nCurrent:\n  I-4B || O1A design"),
+              ("- I1-G records and B2 queue records remain separate state machines.", "- I1-GA and I1-GB are complete; I1-GC through I1-GE remain unimplemented and I1-G overall is in progress.\n- I1-G records and B2 queue records remain separate state machines."),
+          ])
+
+          smoke = Path("scripts/relaylm_documentation_current_boundary_smoke.py")
+          text = smoke.read_text(encoding="utf-8")
+          text = text.replace('"I1-GB  atomic or convergent durable publication boundary — complete",', '"I1-GB  atomic/convergent durable publication and bounded response-release admission — complete",')
+          text = text.replace('"I1-GC  restart replay and duplicate suppression — planned",', '"I1-GC  one-record restart replay, fencing, duplicate suppression, and completion marker",')
+          smoke.write_text(text, encoding="utf-8")
+          PY
+          rm -rf source
+          git add "${files[@]}" \
+            docs/architecture/pipeline_implementation_plan.md \
+            docs/architecture/post_i3_evaluation_work_roadmap.md \
+            scripts/relaylm_documentation_current_boundary_smoke.py
+          git diff --check
+      - name: Validate final merged tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -e .
+          python -m compileall -q relaylm scripts
+          PYTHONPATH=. python scripts/relaylm_i1g_pre_enqueue_fault_model_smoke.py
+          PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
+          PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_app_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+          PYTHONPATH=. python scripts/relaylm_o0_local_one_job_runner_contract_smoke.py
+          PYTHONPATH=. python scripts/relaylm_o0_local_one_job_runner_smoke.py
+          PYTHONPATH=. python scripts/relaylm_o0_local_one_job_runner_security_smoke.py
+          PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+      - name: Publish non-workflow feature tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: apply reconciled I1-GB implementation'
+          git push origin HEAD:tmp-i1gb-finalize

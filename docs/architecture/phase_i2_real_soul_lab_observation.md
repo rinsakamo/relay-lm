@@ -304,7 +304,7 @@ Not completed by Phase I-2:
 
 ## I1-G boundary
 
-I1-G pre-enqueue background-finalizer durability remains unresolved. Lab observation receipts are secondary evidence and cannot repair, replay, or reclassify this gap.
+I1-GB pre-release durable evidence publication is complete. Lab observation receipts remain secondary evidence and cannot perform I1-GC restart replay, completion convergence, or cleanup.
 
 <!-- phase-i3-auditable-primary-mem-correct -->
 ## Phase I-3 auditable Primary MEM Correct — complete (2026-06-24)

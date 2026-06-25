@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1-I4A, UI-B0, I1-GA, roadmap, and config documentation."""
+"""Validate current Phase 6, I1-I4A, UI-B0, I1-GA/I1-GB, roadmap, and config documentation."""
 from __future__ import annotations
 
 import ast
@@ -72,8 +72,11 @@ def main() -> None:
         "I4A Forget / Hide contract: defined target",
         "I4 production Forget runtime, M2 exclusion, and UI: unimplemented",
         "I1-GA contract / design decision / fault model: complete",
-        "I1-GB through I1-GE production durability: not implemented",
-        "I1-G pre-enqueue background-finalizer durability: unresolved",
+        "I1-GB durable-finalization publication / pre-release admission: complete",
+        "I1-GC restart replay / exact C1-5+B2 convergence / completion marker: unimplemented",
+        "I1-GD retention / cleanup: unimplemented",
+        "I1-GE full production crash-smoke: unimplemented",
+        "I1-G overall: in progress",
         "production Forget lifecycle apply, hidden-state M2 exclusion, Forget history API, or Forget UI",
         "restore / unhide",
         "hard delete, secure erase, or physical purge through Forget",
@@ -89,9 +92,9 @@ def main() -> None:
         "### I1-F / Phase I-3: auditable Primary MEM Correct — complete",
         "### I1-F2 / Phase I-4A: Primary MEM Forget / Hide contract — defined target",
         "### UI-B0: Real Home Conversation — complete",
-        "### I1-G: pre-enqueue background-finalizer durability — unresolved",
-        "I1-GA contract/design/fault-model work is complete",
-        "I1-GB through I1-GE remain planned",
+        "### I1-G: pre-enqueue durable-finalization — in progress",
+        "I1-GA contract/design/fault-model work and I1-GB pre-release durable publication are complete",
+        "I1-GC through I1-GE remain planned",
         "Phase I-4B through I-4F",
         "## O1: two-lane bounded scheduler — planned",
         "I-4C1  token/fence/revision ownership",
@@ -129,6 +132,8 @@ def main() -> None:
         "E1 is available now as an explicit operator-driven evaluation",
         "I1-G: Pre-enqueue durability",
         "I1-GA  failure-window and durable-finalization contract — complete",
+        "I1-GB  atomic/convergent durable publication and bounded response-release admission — complete",
+        "I1-GC  one-record restart replay, fencing, duplicate suppression, and completion marker",
         "O1: Queue scanner and retry scheduler",
         "O1 has two distinct work-source lanes",
         "O2: Supervised worker service",
@@ -201,9 +206,9 @@ def main() -> None:
         "auditable Correct: complete",
         "Phase I-4A Forget / Hide contract: defined target",
         "production Forget runtime, M2 exclusion, and UI: unimplemented",
-        "I1-G pre-enqueue background-finalizer durability remains unresolved",
+        "I1-GA and I1-GB are complete",
         "O0 explicit local one-job caller: complete",
-        "The next parallel work is I1-GB durable-finalization publication",
+        "The next parallel work is I1-GC one-record replay and completion convergence",
     )
 
     require(
@@ -216,8 +221,9 @@ def main() -> None:
         "phase_i4_primary_mem_forget_hide_contract.md",
         "soul_lab_ui_b0_real_home_conversation.md",
         "i1g_pre_enqueue_durable_finalization_contract.md",
-        "I1-GA defines the target turn-scoped sealed durable-finalization record",
-        "I1-G production publication, restart replay, retention/cleanup, and crash integration remain unresolved",
+        "I1-GA defines the turn-scoped sealed durable-finalization contract",
+        "I1-GB implements bounded private base/segment/seal publication",
+        "I1-GC restart replay and completion convergence",
     )
 
     require(
@@ -248,23 +254,24 @@ def main() -> None:
         "I2 real SOUL Lab observation: complete",
         "I3 auditable Primary MEM Correct: complete",
         "I-4B through I-4F",
-        "I1-G pre-enqueue background-finalizer durability remains unresolved",
+        "I1-GA contract/fault model and I1-GB pre-release durable publication are complete",
     )
 
     require(
         "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
-        "relaylm_status: target",
+        "relaylm_status: current",
         "turn-scoped sealed durable-finalization publication record",
-        "Window A — unresolved",
+        "Window A publication side — implemented by I1-GB",
+        "Window A recovery side — I1-GC unimplemented",
         "source-before-queue invariant is absolute",
         "One-record replay algorithm",
         "Required fault matrix",
-        "I1-GA — complete in this slice",
-        "I1-GB — durable-finalization publication",
+        "I1-GA — complete",
+        "I1-GB — durable-finalization publication — complete",
         "I1-GC — one-record replay and duplicate suppression",
         "I1-GD — retention, orphan reconciliation, and cleanup",
         "I1-GE — production crash-at-every-boundary integration smoke",
-        "Production pre-enqueue durability remains unresolved",
+        "I1-G overall is in progress",
     )
 
     forbid(
@@ -272,7 +279,7 @@ def main() -> None:
         "SOUL Lab real observation: next",
         "auditable Correct operation: next",
         "real SOUL Lab Home conversation remain separate work",
-        "I1-G pre-enqueue background-finalizer durability: complete",
+        "I1-G overall: complete",
         "I4 production Forget runtime, M2 exclusion, and UI: complete",
     )
     forbid(
@@ -286,7 +293,7 @@ def main() -> None:
         "docs/architecture/README.md",
         "The next boundary is Phase I-3",
         "the next Correct boundary",
-        "I1-G pre-enqueue background-finalizer production durability: complete",
+        "I1-GC restart replay / completion convergence: complete",
         "Forget runtime is complete",
     )
     forbid(

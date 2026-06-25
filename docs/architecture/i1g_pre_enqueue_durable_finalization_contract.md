@@ -1,7 +1,7 @@
 ---
 relaylm_doc_type: contract
-relaylm_authority: i1g_pre_enqueue_durable_finalization_target_contract_and_fault_model
-relaylm_status: target
+relaylm_authority: i1g_pre_enqueue_durable_finalization_contract_publication_and_replay_target
+relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: relaymem_slp
 relaylm_update_trigger:
@@ -11,7 +11,9 @@ relaylm_update_trigger:
   - I1-GE production crash-smoke evidence lands
   - I1-B finalized-turn identity or response-finalization order changes
 relaylm_not_authoritative_for:
-  - current production runtime behavior
+  - I1-GC restart replay and completion-marker production behavior
+  - I1-GD retention and cleanup production behavior
+  - I1-GE full crash-at-every-boundary proof
   - C1-5 protected-source schema or persistence semantics
   - B2 or B3 queue schema and lifecycle semantics
   - C1-0 C1-2 C2 or M3a-M3h worker and memory semantics
@@ -31,32 +33,34 @@ relaylm_related_authority:
 
 ## Status and authority
 
-I1-GA is complete as a **target contract, design decision, pure fault model, and validation boundary only**. Production pre-enqueue durability remains unresolved until I1-GB through I1-GE land. This document changes no production runtime behavior.
+I1-GA is complete as the **contract, design decision, pure fault model, and validation boundary**. I1-GB is complete for bounded durable base/segment/seal publication and response-release admission. I1-GC restart replay/completion convergence, I1-GD retention/cleanup, and I1-GE full production crash validation remain unimplemented; I1-G overall is in progress.
 
 The canonical target is one **turn-scoped sealed durable-finalization publication record**, schema `relaymem.slp_durable_finalization.v0`. It is runtime-private, bounded, integrity-bound evidence. It is not a general journal, worker outbox, second queue, or second memory lifecycle.
 
 ## Problem statement
 
-Current ordinary managed requests use:
+Current ordinary managed requests in explicit I1-GB apply mode use:
 
 ```text
 backend response
-  -> final safe visible response / observed SSE output
-  -> HTTP body or SSE delivery
+  -> final safe visible response / parsed SSE unit
+  -> exact I1-B source and A1 -> A2 -> B1 preparation
+  -> private base/segment/seal publication and canonical reread
+  -> HTTP body, protected SSE unit, or terminal completion release
   -> Starlette background finalizer
-       -> exact I1-B finalized-turn source
-       -> A1 -> A2 -> B1 exact production identity
-       -> C1-5 durable protected-source commit
-       -> B2 content-free durable enqueue
+       -> canonical C1-5 durable protected-source commit
+       -> canonical B2 content-free durable enqueue
        -> optional process-local hot cache
 ```
 
 ```text
-Window A — unresolved
-  visible response delivered
-    -> process exits before protected-source publication
-    -> no B2 queue record
-    -> deferred turn cannot be reconstructed
+Window A publication side — implemented by I1-GB
+  restart evidence is durable before protected visible release
+
+Window A recovery side — I1-GC unimplemented
+  process exits after seal but before C1-5/B2
+    -> sealed evidence exists
+    -> no production one-record restart replay/completion marker yet
 
 Window B — resolved
   C1-5 protected source committed
@@ -65,16 +69,16 @@ Window B — resolved
     -> C1-5 + B3 + C2 + C1-2 restart convergence
 ```
 
-I1-G closes only Window A. Window B, B3 lifecycle, C1-5 claim-time rehydration, C1-2, and M3a-M3h remain unchanged.
+I1-G as a whole closes Window A; I1-GB implements publication admission, while I1-GC is still required for restart replay and completion convergence. Window B, B3 lifecycle, C1-5 claim-time rehydration, C1-2, and M3a-M3h remain unchanged.
 
 ## Current versus target path
 
 ```text
-current:
-  ordinary finalization -> visible delivery -> process-local background finalizer
-    -> C1-5 source -> B2 queue
+current through I1-GB apply mode:
+  ordinary finalization -> private durable evidence -> visible delivery
+    -> process-local background finalizer -> C1-5 source -> B2 queue
 
-target:
+remaining target through I1-GC/I1-GD:
   ordinary finalization
     -> recoverable durable-finalization evidence
     -> visible response remains content-independent
@@ -126,6 +130,9 @@ request runtime
 Relevant current production modules and test seams are:
 
 ```text
+relaylm/relaymem_slp_durable_finalization_record.py
+relaylm/relaymem_slp_durable_finalization_store.py
+relaylm/relaymem_slp_durable_finalization_publication.py
 relaylm/relaymem_slp_runtime_finalization.py
 relaylm/relaymem_slp_finalized_turn_source.py
 relaylm/relaymem_slp_runtime_enqueue.py
@@ -148,7 +155,7 @@ runtime_private = true
 content_included = true
 ```
 
-One logical record consists of immutable evidence and markers:
+One logical record target consists of immutable evidence and markers. I1-GB implements base, segments, and seal only; completion and cleanup/isolation lifecycle authority remain later slices:
 
 ```text
 base record             exact run/turn/character correlation
@@ -181,7 +188,7 @@ Unknown schemas/fields, duplicate JSON keys, malformed UTF-8/JSON, noncanonical 
 
 ## Commit point and response independence
 
-A complete turn becomes restart-recoverable only after seal publication, directory durability, canonical reread, and identity/integrity validation.
+A sealed turn has restart-replay evidence only after seal publication, directory durability, canonical reread, and identity/integrity validation. Production restart replay and completion convergence are not available until I1-GC.
 
 In apply mode:
 
@@ -315,19 +322,33 @@ Forbidden everywhere public, in logs, exceptions, repr, stdout/stderr, traces, b
 
 Roots are absolute, pre-existing, runtime-private, and permission-protected. Components are opened without following symlinks and inode/type checked. Temp/final files are bounded private regular files with same-directory publication. Canonical JSON rejects duplicate keys, malformed/noncanonical data, unknown fields, and non-finite values. Filenames contain no protected content. Repr/projections omit content/private identities. Capacity is checked before accepting protected bytes. Uncertain evidence is retained rather than deleting material that may correlate to a claimable queue.
 
-## Configuration target
+## Current I1-GB configuration
 
-I1-GB may introduce default-off settings equivalent to enabled/dry-run/apply gates, absolute private root, maximum record bytes, maximum segments, bounded operation timeout, incomplete/complete retention, and maximum record count. Exact names/defaults belong to I1-GB/I1-GD. No setting enables a scanner, daemon, or retry loop.
+I1-GB adds these exact default-off top-level settings:
+
+```yaml
+relaymem_slp_durable_finalization_enabled: false
+relaymem_slp_durable_finalization_dry_run_only: true
+relaymem_slp_durable_finalization_apply_enabled: false
+relaymem_slp_durable_finalization_root:
+relaymem_slp_durable_finalization_max_record_bytes: 524288
+relaymem_slp_durable_finalization_max_segment_bytes: 65536
+relaymem_slp_durable_finalization_max_segment_count: 256
+relaymem_slp_durable_finalization_max_record_count: 1024
+relaymem_slp_durable_finalization_publication_timeout_ms: 5000
+```
+
+Apply requires the exact `true/false/true` gate combination, an absolute pre-existing non-symlink private root, and valid positive bounds. Dry-run validates/prepares but writes no evidence and does not block response release. Retention deadlines and cleanup cadence are intentionally absent until I1-GD. No setting enables a scanner, daemon, or retry loop.
 
 ## Implementation slices and dependencies
 
-### I1-GA — complete in this slice
+### I1-GA — complete
 
 Contract/design decision, authority/schema/commit/replay/retention/projection/security model, deterministic 30-point fault model, leakage smoke, and minimal documentation indexing. No production runtime behavior.
 
-### I1-GB — durable-finalization publication
+### I1-GB — durable-finalization publication — complete
 
-Implement private store, immutable base/segment/seal publication, canonical validation, bounded stream pre-yield and non-stream pre-release evidence, and content-free result. This is the only slice expected to change response-finalization production ordering. No replay/scanner/worker/C1-5/B2 semantic change.
+Implements the private record/store/publication modules, immutable base/segment/seal publication, strict canonical validation, pure exact A1/A2/B1 preparation reused by the background finalizer, bounded stream pre-yield and non-stream pre-release admission, and content-free projections. C1-5/B2 schemas and source-before-queue semantics are unchanged. No restart replay, completion marker, scanner, worker, or cleanup is added.
 
 ### I1-GC — one-record replay and duplicate suppression
 
@@ -348,6 +369,8 @@ O1 queue scanner is later. I1-G owns no polling cadence, queue selection, daemon
 ```bash
 python -m compileall relaylm scripts
 PYTHONPATH=. python scripts/relaylm_i1g_pre_enqueue_fault_model_smoke.py
+PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
+PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_app_smoke.py
 PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
 PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
@@ -360,6 +383,6 @@ PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
 
 The current canonical C2 runner replaces the proposed but nonexistent `relaylm_phase6c2_one_queued_primary_worker_integration_smoke.py` filename.
 
-## Explicit non-goals
+## Explicit non-goals after I1-GB
 
-No production writer, `app.py`/stream wiring, response-order change, C1-5/B2/B3 schema change, scanner, scheduler, daemon, supervised worker, O0 runner, arbitrary retry loop, M3a-M3h/retrieval change, SOUL Lab change, CORS/auth change, background thread/process, queue content, public private identity/path, or browser-visible protected payload is implemented here.
+I1-GB does not implement I1-GC one-record restart replay, completion markers, sealed-record discovery, directory scanning, I1-GD retention/cleanup/orphan reconciliation, I1-GE full crash proof, C1-5/B2/B3 schema changes, queue scanning, scheduling, daemon or supervised service lifecycle, inline worker execution, M3a-M3h/retrieval changes, SOUL Lab changes, CORS/auth changes, queue content, public private identities/paths, or browser-visible protected payloads.

@@ -62,9 +62,9 @@ Phase I-1 completes ordinary next-turn Primary MEM recall with exact character/n
 
 Phase I-4A defines the target Forget contract: Forget is the user-facing operation, `hidden` is the canonical retrieval-ineligible lifecycle state, and the Forget tombstone is the immutable runtime-private audit/recovery artifact. It selects an immutable hidden successor Primary page with revision `N+1` as lifecycle authority and requires one Correct/Forget shared revision fence plus one canonical current-state resolver. Production apply, M2 exclusion, historical lifecycle projection, and the SOUL Lab Forget UI remain unimplemented.
 
-I1-GA defines the target turn-scoped sealed durable-finalization record, commit point, one-record replay, cleanup classes, content-free projection, and 30-point fault model. It is contract/test-model only. I1-G production publication, restart replay, retention/cleanup, and crash integration remain unresolved.
+I1-GA defines the turn-scoped sealed durable-finalization contract and fault model. I1-GB implements bounded private base/segment/seal publication, canonical reread, exact A1/A2/B1 preparation, and non-stream/stream pre-release admission. I1-GC restart replay and completion convergence, I1-GD retention/cleanup, and I1-GE full production crash integration remain unimplemented.
 
-The next planned work is documented in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md). I1-GB through I1-GE, Phase I-4B through I-4F, O1/O2/O3 automatic and supervised operation, later memory governance, Secondary MEM, and RelaySOUL apply/rollback remain separate.
+The next planned work is documented in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md). I1-GC through I1-GE, Phase I-4B through I-4F, O1/O2/O3 automatic and supervised operation, later memory governance, Secondary MEM, and RelaySOUL apply/rollback remain separate.
 
 ## Completed Core streaming boundary
 
@@ -79,7 +79,7 @@ Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, 
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md) — current enqueue/source capture, queue lifecycle, completed C1-0 through C1-5, C2, O0, I-1 recall, I-2 observation, I-3 correction, and remaining migration boundaries.
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — store contracts, retrieval, Primary MEM formation, worker integration, recall, observation, Secondary consolidation, and Lab-ready operations.
 - [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md) — planned I-4 through I-9 work slices, SOUL Lab conversation, operational phases, parallel development, and evaluation gates.
-- [I1-G Pre-enqueue Durable-finalization Contract](i1g_pre_enqueue_durable_finalization_contract.md) — selected target design and fault model; production behavior remains unresolved.
+- [I1-G Pre-enqueue Durable-finalization Contract](i1g_pre_enqueue_durable_finalization_contract.md) — contract/fault model plus completed I1-GB publication boundary; restart replay remains I1-GC work.
 
 ## RelayMEM Primary persistence track
 
@@ -124,4 +124,4 @@ Historical and MVP documents do not override current owners. Implementation hand
 
 ## Operational alignment
 
-O0 is complete only for explicit one-shot local operation. UI-B0 does not close I1-G pre-enqueue background-finalizer durability, select queued work automatically, or create a worker service. I1-GA defines the target/fault model only. Phase I-4A defines lifecycle semantics only. I1-GB through I1-GE production durability, Phase I-4B through I-4F implementation, O1 queue scanning/scheduling, O2 supervision, and O3 always-on lifecycle remain separate roadmap slices.
+O0 is complete only for explicit one-shot local operation. UI-B0 does not own I1-G durability, queue selection, or worker service authority. I1-GA defines the target/fault model and I1-GB implements pre-release evidence publication only. Phase I-4A defines lifecycle semantics only. I1-GC through I1-GE remaining durability work, Phase I-4B through I-4F implementation, O1 queue scanning/scheduling, O2 supervision, and O3 always-on lifecycle remain separate roadmap slices.

@@ -22,7 +22,7 @@ RelayLM documentation is AI-first: documents should remain understandable when r
 
 ## Start here
 
-- [Current project status](PROJECT_STATUS.md) — concise current boundary through completed O0 and UI-B0, completed I1-GA contract/fault model, and defined Phase I-4A contract
+- [Current project status](PROJECT_STATUS.md) — concise current boundary through completed O0 and UI-B0, completed I1-GA contract/fault model and I1-GB publication boundary, and defined Phase I-4A contract
 - [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing, including explicit I1-G durability tracking
 - [Post-I3 evaluation and work roadmap](architecture/post_i3_evaluation_work_roadmap.md) — I-4 through I-9, conversation, operations, parallel work, and evaluation gates
@@ -65,11 +65,11 @@ Phase I-3 is complete: one real observed Primary MEM can be corrected through re
 
 UI-B0 is complete: SOUL Lab Home uses a single unambiguous server-projected route and the existing same-origin RelayLM `/v1/chat/completions` path for bounded non-stream and SSE conversation. Real Runtime and Local Preview sessions are explicit and separate; Stop preserves partial text, Retry does not duplicate the user message, New Conversation resets only browser-local current-session history, and stale character/session/generation/route completions are rejected.
 
-I1-GA is complete as a target contract and pure fault model only. Production durable-finalization publication, one-record restart replay, retention/cleanup, and crash integration remain unresolved.
+I1-GA and I1-GB are complete: the contract/fault model and bounded durable base/segment/seal publication now run before protected response release in explicit apply mode. I1-GC one-record restart replay and completion convergence, I1-GD retention/cleanup, and I1-GE full production crash integration remain unimplemented; I1-G overall is in progress.
 
 Phase I-4A is defined as a target contract only. The canonical user operation is Forget, the resulting lifecycle state is `hidden`, and the immutable runtime-private audit artifact is a Forget tombstone. Production Forget apply, M2 exclusion, and the SOUL Lab Forget UI remain unimplemented.
 
-UI-B0 does not create browser-owned SOUL, MEM, namespace, backend, credential, prompt, or worker authority. I1-GB through I1-GE, O1/O2/O3 automatic operation, later memory governance, Secondary MEM, RelaySOUL apply/rollback, static UI serving, TTS/audio/avatar, and always-on operation remain separate work.
+UI-B0 does not create browser-owned SOUL, MEM, namespace, backend, credential, prompt, or worker authority. I1-GC through I1-GE, O1/O2/O3 automatic operation, later memory governance, Secondary MEM, RelaySOUL apply/rollback, static UI serving, TTS/audio/avatar, and always-on operation remain separate work.
 
 The planned sequence is documented in [Post-I3 Evaluation and Work Roadmap](architecture/post_i3_evaluation_work_roadmap.md).
 
@@ -190,4 +190,4 @@ Placement rules:
 - smoke and troubleshooting -> `docs/smoke/`
 - RelaySOUL governance -> `docs/relaysoul/`
 
-The ordinary managed path is complete through observe/correct/retrieve, O0 manual one-shot execution, and the text-first Home experiment surface. I1-GA defines the durability target but production I1-G remains unresolved. Phase I-4A defines only the target Forget / Hide contract; production Forget apply, M2 exclusion, and the Forget UI remain unimplemented. O1/O2/O3 and later governance remain separate roadmap work.
+The ordinary managed path is complete through observe/correct/retrieve, O0 manual one-shot execution, and the text-first Home experiment surface. I1-GB publishes restart evidence before visible completion, but I1-GC restart replay/completion convergence and I1-GD/I1-GE remain unimplemented. Phase I-4A defines only the target Forget / Hide contract; production Forget apply, M2 exclusion, and the Forget UI remain unimplemented. O1/O2/O3 and later governance remain separate roadmap work.
