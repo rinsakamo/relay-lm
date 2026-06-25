@@ -211,7 +211,7 @@ Phase I-1 proves Turn 1 formation, Turn 2 M2 discovery, canonical page/index/log
 
 ### I1-E / Phase I-2: real SOUL Lab observation — complete
 
-Phase I-2 provides loopback-only bounded projections for latest run, validated recent Primary memories, held/blocked outcomes, actual backend-bound used-memory evidence, and content-free RelaySLP/RelayRUN/RelayCTX status.
+Phase I-2 provides loopback-only bounded projections for latest run, validated recent Primary memories, held/blocked outcomes, actual backend-bound used-memory evidence, and content-free RelaySLP/RelayRUN/RelayCTX status. Observation evidence is read-only and does not replace Primary MEM, protected source, queue, worker, or mutation authority.
 
 ### I1-F / Phase I-3: auditable Primary MEM Correct — complete
 
