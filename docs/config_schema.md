@@ -9,6 +9,7 @@ This is the active current configuration reference for `relaylm.config.RelayLMCo
 - `examples/config/openwebui_lmstudio.yaml` is the copy-ready standard setup.
 - Target architecture documents do not create current config fields by themselves.
 - A helper or runtime boundary without a `RelayLMConfig` field must not be documented as if it had a top-level enable/apply gate.
+- CLI flags do not override server/operator-owned safety gates.
 
 ## Important authority warning
 
@@ -260,6 +261,7 @@ memory:
 - `token_budget`, `chars_per_token`, `snippet_budget`, and `max_snippet_chars` must be greater than zero; `max_snippet_candidates` may be zero.
 - `chars_per_token=4` is a deterministic model-agnostic estimate, not tokenizer-exact.
 - The older `default_store` / `stores` shape is not part of the current Pydantic model.
+- O0 requires `memory.root_path` to be an absolute operator-owned root before the local worker is enabled.
 
 ## Client-message and instruction flags
 
@@ -336,7 +338,30 @@ These are the complete current top-level fields for the ordinary I1-B/C1-5 sourc
 - The registry is only a capacity/TTL-bounded process-local hot cache. At capacity, a new entry is rejected rather than evicting an existing entry. Restart rehydration uses the durable C1-5 artifact.
 - The B2 queue record remains content-free; the protected-source root contains runtime-private content-bearing artifacts.
 
-B3 claim/lease helpers, C1-2 worker execution, and the C2 one-job adapter are explicit caller-driven boundaries. They do not have separate top-level `RelayLMConfig` enable/apply fields, do not scan the queue, and do not start a scheduler or daemon.
+B3 claim/lease helpers, C1-2 worker execution, and the C2 one-job adapter remain explicit caller-driven boundaries. They do not themselves gain separate top-level `RelayLMConfig` gates, do not scan the queue, and do not start a scheduler or daemon.
+
+## O0 local one-job worker flags
+
+```yaml
+relaymem_local_worker_enabled: false
+relaymem_local_worker_dry_run_only: true
+relaymem_local_worker_apply_enabled: false
+relaymem_local_worker_claim_owner: relaylm-worker-once
+relaymem_local_worker_lease_duration_seconds: 300
+relaymem_local_worker_discovery_max_entries: 256
+```
+
+O0 is default-off. Exactly these gate combinations are valid:
+
+| Mode | enabled | dry_run_only | apply_enabled |
+|---|---:|---:|---:|
+| disabled | false | true | false |
+| dry-run | true | true | false |
+| apply | true | false | true |
+
+Every other combination is invalid configuration. The `relaylm-worker` CLI cannot elevate config to apply. When enabled, `relaymem_slp_queue_root`, `relaymem_slp_protected_source_root`, and `memory.root_path` must be absolute. `relaymem_local_worker_claim_owner` must be a bounded token. Lease duration accepts 1 through 604800 seconds. Discovery accepts 1 through 4096 entries and defaults to 256.
+
+O0 processes at most one eligible queued record per `--once` invocation. It delegates claim, lease, retry, rehydration, worker execution, terminal transition, and cleanup to existing B3/C1-5/C2/C1-2 boundaries. It does not poll or start a daemon.
 
 ## RelayINT flags
 

@@ -29,6 +29,7 @@ relaylm_related_authority:
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
   - phase6c2_one_queued_primary_worker_integration.md
+  - o0_local_one_job_runner.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i2_real_soul_lab_observation.md
   - phase_i3_auditable_primary_mem_correct.md
@@ -70,6 +71,7 @@ Phase 6 asynchronous RelaySLP orchestration:
   I1-B ordinary request-runtime enqueue/source capture: complete
   C1-0 through C1-5: complete
   C2 one-job claim/rehydrate/execute adapter: complete
+  O0 local one-job runner: complete
 
 RelayMEM Primary integration:
   M1/M2 and M3a-M3h: complete
@@ -89,7 +91,7 @@ SOUL Lab:
 Operations:
   I1-GA contract / design decision / fault model: complete
   I1-G production pre-enqueue durability: unresolved
-  O0 local one-job runner: planned in a separate slice
+  O0 local one-job runner: complete
   O1 queue scanner / retry scheduler: planned
   O2 supervised worker service: planned
   O3 always-on local operation: planned
@@ -111,6 +113,8 @@ Phase 6-C1-0 through C1-5 are complete:
 - durable claim-independent protected capture and restart rehydration.
 
 Phase 6-C2 one-job claim/rehydrate/execute adapter is complete. It accepts one exact queued canonical record, uses B3 claim, resolves source through C1-5, invokes C1-2, and preserves bounded retry/terminal behavior without adding queue scanning or a worker service.
+
+O0 local one-job operation is complete. `relaylm-worker --once --config config.yaml` performs bounded non-recursive discovery, selects at most one eligible queued record, securely rereads it, resolves the exact config-owned character partition, and delegates unchanged authority to C2/B3/C1-5/C1-2. It does not implement polling, fairness, stale scanning, supervision, or always-on service behavior.
 
 Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, and UI-B0 Real Home Conversation are complete. I1-GA contract/design/fault-model work is complete. I1-GB through I1-GE remain planned, and production pre-enqueue durability remains unresolved. Phase I-4A defines the exact Forget / Hide target contract only. Remaining sequencing is recorded in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md).
 
@@ -166,6 +170,24 @@ exact queued record
 
 C2 does not select among multiple queue records and is not a daemon.
 
+### O0: local one-job runner — complete
+
+```text
+relaylm-worker --once
+  -> exact config and default-off mode gates
+  -> bounded non-recursive canonical queue discovery
+  -> current queued / retry-time eligibility
+  -> deterministic one-candidate selection
+  -> secure canonical reread and identity/race validation
+  -> exact model-route/character/namespace relation
+  -> existing character partition resolver
+  -> one exact C2 request
+  -> bounded content-free projection and exit code
+  -> process exit
+```
+
+O0 uses a fresh empty process-local registry so restart rehydration is proven through C1-5. It never reconstructs protected content, performs claim CAS, changes retry policy, applies M3a-M3h directly, repairs corrupt records, or starts a polling loop. Two concurrent O0 invocations remain fenced by initial queue-lock handling, canonical reread, and the existing B3 claim CAS, so at most one reaches C1-2 for the same record.
+
 ## Integration Milestone I1
 
 ### I1-A: worker prerequisites — complete
@@ -178,7 +200,7 @@ The ordinary managed response path may produce the durable source and queue reco
 
 ### I1-C: one exact queued job execution — complete
 
-C2 proves claim, restart rehydration, worker execution, retry/terminal convergence, and terminal-only source cleanup for one exact queued job.
+C2 proves claim, restart rehydration, worker execution, retry/terminal convergence, and terminal-only source cleanup for one exact queued job. O0 supplies the explicit local caller that selects at most one eligible record and delegates to C2.
 
 ### I1-D: next-turn recall validation — complete
 
@@ -231,11 +253,11 @@ I1-G is not queue scanning, worker scheduling, or C2 execution. O1 may later cal
 
 ## Product evaluation sequence
 
-UI-B0 completes the browser side of the first text-first experiment. Evaluation Gate E1 may use the existing explicit C2 one-job method:
+UI-B0 and O0 complete the explicit first text-first experiment path:
 
 ```text
 Home real conversation
-  -> explicit one-job C2 execution
+  -> O0 one-job execution
   -> Primary MEM formation
   -> Phase I-2 observation
   -> Phase I-3 Correct
@@ -244,13 +266,9 @@ Home real conversation
   -> Phase I-2 used-memory evidence
 ```
 
-O0 will make one-job execution convenient and repeatable but remains a separate operations slice.
+The loop remains operator-driven. O0 does not poll or schedule retries automatically.
 
 ## Next independent work
-
-### O0: local one-job runner — planned
-
-A thin CLI may securely select one eligible queued record and invoke unchanged B3/C1-5/C2/C1-2 authority. It must not add a new queue schema or memory path.
 
 ### Phase I-4B through I-4F: Forget / Hide implementation — planned
 
@@ -270,7 +288,7 @@ Pin/Unpin adds bounded ranking influence, Merge/Supersession converges duplicate
 
 ### I1-G implementation, O1, and O2 — planned
 
-Implement I1-GB through I1-GE, then add bounded queue selection/retry scheduling and supervised worker lifecycle using existing B3/C1-5/C2 authority.
+Implement I1-GB through I1-GE, then add bounded queue selection/retry scheduling and supervised worker lifecycle using existing O0/B3/C1-5/C2 authority.
 
 ### Phase I-8 and I-9 — planned
 
@@ -283,17 +301,29 @@ Package local startup/static UI/retention/upgrade and gather multi-day soak evid
 ## Parallel ownership
 
 ```text
-O0      Python one-job CLI and selection
 I1-GB   durable-finalization publication
 I-4B    canonical Primary current-state resolver, shared fence, and read-only contracts
+O1      scanner / retry scheduler built on O0 and C2
 UI-B1   lifecycle visibility design after server projection contracts stabilize
 ```
 
-UI-B0 owns `apps/soul-lab` Home transport and browser session state. O0 and I1-G must not modify that authority to make workers browser-driven.
+UI-B0 owns `apps/soul-lab` Home transport and browser session state. O0 is complete and remains outside browser authority. I1-G and O1 must not modify UI-B0 authority to make workers browser-driven.
 
 ## Validation boundary
 
 Every phase that changes current behavior must include contract and negative-path validation, scope/stale checks, fault/crash/retry convergence where state is durable, security/content-leakage checks, documentation link/current-boundary checks, and affected integration regression runners.
+
+O0 validation includes:
+
+```bash
+python -m compileall -q relaylm scripts
+PYTHONPATH=.:scripts python scripts/relaylm_o0_local_one_job_runner_ci_runner.py
+PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
+PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+```
 
 Phase I-4A validation is documentation-only:
 
@@ -322,4 +352,4 @@ When a phase lands, review together:
 - status-checking smoke scripts,
 - stale TODO or future-tense text in related documents.
 
-UI-B0, I1-GA, and Phase I-4A change no RelayLM configuration field, so `docs/config_schema.md` remains unchanged.
+UI-B0, I1-GA, and Phase I-4A change no RelayLM configuration field. O0 adds explicit default-off local-worker gates documented in `docs/config_schema.md` and `config.example.yaml`.
