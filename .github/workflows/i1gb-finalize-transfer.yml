@@ -1,0 +1,48 @@
+name: I1-GB finalize transfer
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .i1gb-finalize/READY
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: tmp-i1gb-finalize
+          fetch-depth: 0
+      - name: Reconstruct and apply verified patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .i1gb-finalize/part-* | base64 --decode | gzip --decompress > /tmp/i1gb-final.patch
+          echo 'f10bd0d186b5a38e5f42d1527d9aa0c72304ae45ed7ea1f954895df22adeb6a4  /tmp/i1gb-final.patch' | sha256sum --check --strict
+          git apply --check /tmp/i1gb-final.patch
+          git apply --index /tmp/i1gb-final.patch
+      - name: Validate final merged tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install -e .
+          python -m compileall -q relaylm scripts
+          PYTHONPATH=. python scripts/relaylm_i1g_pre_enqueue_fault_model_smoke.py
+          PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
+          PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_app_smoke.py
+          PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+      - name: Publish non-workflow feature tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: apply reconciled I1-GB implementation'
+          git push origin HEAD:tmp-i1gb-finalize
