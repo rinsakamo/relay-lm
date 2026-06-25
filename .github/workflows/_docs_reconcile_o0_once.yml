@@ -1,6 +1,11 @@
 name: Reconcile O0 documentation once
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/_docs_reconcile_o0_once.yml
   push:
     branches:
       - docs-reconcile-o0-current-boundaries
@@ -36,7 +41,6 @@ jobs:
                   raise SystemExit(f"{path}: expected one replacement, found {count}: {old[:80]!r}")
               target.write_text(body.replace(old, new, 1), encoding="utf-8")
 
-          # UI-B0 handoff: O0 now exists and is the explicit E1 one-job boundary.
           replace_once(
               "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
               "  - docs/architecture/phase_i3_auditable_primary_mem_correct.md\n---",
@@ -85,7 +89,6 @@ jobs:
               "It does not prove automatic queue polling or retry scheduling, pre-enqueue crash durability, durable transcripts, broad memory governance, or long-running production operation.",
           )
 
-          # SOUL Lab product plan: distinguish completed manual O0 from future automation.
           replace_once(
               "docs/architecture/soul_lab_ui_mvp.md",
               "  - soul_lab_ui_b0_real_home_conversation.md\n  - integration_i1_primary_mem_two_turn_recall.md",
@@ -111,7 +114,6 @@ jobs:
               "For the first E1 evaluation, UI-B0 is combined with the completed O0 explicit one-job runner. The loop remains operator-driven; O1 automatic polling/retry scheduling and O2 supervision remain separate operations slices.",
           )
 
-          # RelayMEM/RelaySLP current-target view: add completed O0 without moving authority.
           replace_once(
               "docs/architecture/relaymem_slp_current_target.md",
               "  - phase6c2_one_queued_primary_worker_integration.md\n  - integration_i1_primary_mem_two_turn_recall.md",
@@ -165,7 +167,6 @@ jobs:
               "UI-B0 and O0 are complete. I1-GA is complete as a contract/fault model only. O1 queue scanning/retry scheduling, O2 supervision, O3 always-on operation, and Phase I-4 runtime status remain unchanged by I-4A.",
           )
 
-          # RelayMEM implementation plan: remove the stale claim that O0 is still parallel work.
           replace_once(
               "docs/architecture/relaymem_mvp_implementation_plan.md",
               "  - phase6c2_one_queued_primary_worker_integration.md\n  - integration_i1_primary_mem_two_turn_recall.md",
@@ -203,7 +204,6 @@ jobs:
               "- next-turn retrieval and RelayCTX injection: complete",
           )
 
-          # Documentation smoke: require the reconciled current state and reject stale wording.
           replace_once(
               "scripts/relaylm_documentation_current_boundary_smoke.py",
               "        \"C2 one-job claim/rehydrate/execute adapter: complete\",\n        \"I1 next-turn Primary MEM recall: complete\",",
