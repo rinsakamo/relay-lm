@@ -1,0 +1,50 @@
+name: Phase I-4B Primary current state and Forget preflight
+
+on:
+  push:
+    paths:
+      - "relaylm/relaymem_primary_current_state.py"
+      - "relaylm/relaymem_primary_mutation_coordinator.py"
+      - "relaylm/relaymem_primary_forget.py"
+      - "relaylm/relaymem_primary_correction.py"
+      - "relaylm/relaymem_primary_recall.py"
+      - "relaylm/soul_lab_observation_projection.py"
+      - "scripts/relaylm_phase_i4b_*"
+      - "scripts/_relaylm_phase_i4b_test_support.py"
+      - "docs/**"
+      - ".github/workflows/phase-i4b-primary-current-state-smoke.yml"
+  pull_request:
+    paths:
+      - "relaylm/relaymem_primary_current_state.py"
+      - "relaylm/relaymem_primary_mutation_coordinator.py"
+      - "relaylm/relaymem_primary_forget.py"
+      - "relaylm/relaymem_primary_correction.py"
+      - "relaylm/relaymem_primary_recall.py"
+      - "relaylm/soul_lab_observation_projection.py"
+      - "scripts/relaylm_phase_i4b_*"
+      - "scripts/_relaylm_phase_i4b_test_support.py"
+      - "docs/**"
+      - ".github/workflows/phase-i4b-primary-current-state-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  i4b:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4b_ci_runner.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
+      - run: PYTHONPATH=. python scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py
+      - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+      - name: Confirm clean working tree
+        run: |
+          git status --short
+          test -z "$(git status --short)"
