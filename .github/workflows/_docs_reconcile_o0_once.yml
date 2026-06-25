@@ -1,0 +1,308 @@
+name: Reconcile O0 documentation once
+
+on:
+  push:
+    branches:
+      - docs-reconcile-o0-current-boundaries
+    paths:
+      - .github/workflows/_docs_reconcile_o0_once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: docs-reconcile-o0-current-boundaries
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Apply bounded documentation reconciliation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              target = Path(path)
+              body = target.read_text(encoding="utf-8")
+              count = body.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected one replacement, found {count}: {old[:80]!r}")
+              target.write_text(body.replace(old, new, 1), encoding="utf-8")
+
+          # UI-B0 handoff: O0 now exists and is the explicit E1 one-job boundary.
+          replace_once(
+              "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
+              "  - docs/architecture/phase_i3_auditable_primary_mem_correct.md\n---",
+              "  - docs/architecture/phase_i3_auditable_primary_mem_correct.md\n"
+              "  - docs/architecture/o0_local_one_job_runner.md\n---",
+          )
+          replace_once(
+              "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
+              "## E1 evaluation path\n\n"
+              "Until O0 exists, use the existing explicit one-job C2 execution method:\n\n"
+              "```text\n"
+              "real Home conversation\n"
+              "  -> explicit one-job C2 execution\n"
+              "  -> formed Primary MEM\n"
+              "  -> Phase I-2 observation\n"
+              "  -> Phase I-3 Correct\n"
+              "  -> Home New Conversation\n"
+              "  -> corrected-memory question\n"
+              "  -> Phase I-2 used-memory evidence\n"
+              "```\n\n"
+              "UI-B0 does not claim that the complete E1 flow is automated.\n",
+              "## E1 evaluation path\n\n"
+              "O0 is complete and provides the explicit one-job execution boundary for the first E1 evaluation:\n\n"
+              "```text\n"
+              "real Home conversation\n"
+              "  -> O0 explicit one-job execution\n"
+              "  -> formed Primary MEM\n"
+              "  -> Phase I-2 observation\n"
+              "  -> Phase I-3 Correct\n"
+              "  -> Home New Conversation\n"
+              "  -> corrected-memory question\n"
+              "  -> Phase I-2 used-memory evidence\n"
+              "```\n\n"
+              "This path is operator-driven. O0 does not poll, schedule retries, or create browser worker authority, and UI-B0 does not claim that the complete E1 flow is automated.\n",
+          )
+          replace_once(
+              "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
+              "- O0 local one-job runner remains a separate parallel slice,",
+              "- O0 local one-job runner is complete as an explicit operator-invoked one-shot boundary; O1 polling and retry scheduling remain separate,",
+          )
+          replace_once(
+              "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
+              "UI-B0 proves a bounded browser client can exercise the existing real RelayLM text path with safe local session controls and explicit source separation. Combined with existing I-1/I-2/I-3 and an explicit one-job method, it enables the first hands-on E1 evaluation.\n\n"
+              "It does not prove automatic deferred-job execution, pre-enqueue crash durability, durable transcripts, broad memory governance, or long-running production operation.",
+              "UI-B0 proves a bounded browser client can exercise the existing real RelayLM text path with safe local session controls and explicit source separation. Combined with existing I-1/I-2/I-3 and the completed O0 one-job boundary, it enables the first hands-on E1 evaluation.\n\n"
+              "It does not prove automatic queue polling or retry scheduling, pre-enqueue crash durability, durable transcripts, broad memory governance, or long-running production operation.",
+          )
+
+          # SOUL Lab product plan: distinguish completed manual O0 from future automation.
+          replace_once(
+              "docs/architecture/soul_lab_ui_mvp.md",
+              "  - soul_lab_ui_b0_real_home_conversation.md\n  - integration_i1_primary_mem_two_turn_recall.md",
+              "  - soul_lab_ui_b0_real_home_conversation.md\n"
+              "  - o0_local_one_job_runner.md\n"
+              "  - integration_i1_primary_mem_two_turn_recall.md",
+          )
+          replace_once(
+              "docs/architecture/soul_lab_ui_mvp.md",
+              "UI-B0 real Home conversation: complete\nStatic UI bundle serving from RelayLM: pending",
+              "UI-B0 real Home conversation: complete\n"
+              "O0 explicit local one-job runner: complete outside browser authority\n"
+              "Static UI bundle serving from RelayLM: pending",
+          )
+          replace_once(
+              "docs/architecture/soul_lab_ui_mvp.md",
+              "- automatic queued-job selection,",
+              "- automatic queue polling, retry scheduling, or worker supervision,",
+          )
+          replace_once(
+              "docs/architecture/soul_lab_ui_mvp.md",
+              "For the first E1 evaluation, UI-B0 can be combined with the existing explicit C2 one-job execution method. O0 remains a separate convenience/operations slice.",
+              "For the first E1 evaluation, UI-B0 is combined with the completed O0 explicit one-job runner. The loop remains operator-driven; O1 automatic polling/retry scheduling and O2 supervision remain separate operations slices.",
+          )
+
+          # RelayMEM/RelaySLP current-target view: add completed O0 without moving authority.
+          replace_once(
+              "docs/architecture/relaymem_slp_current_target.md",
+              "  - phase6c2_one_queued_primary_worker_integration.md\n  - integration_i1_primary_mem_two_turn_recall.md",
+              "  - phase6c2_one_queued_primary_worker_integration.md\n"
+              "  - o0_local_one_job_runner.md\n"
+              "  - integration_i1_primary_mem_two_turn_recall.md",
+          )
+          replace_once(
+              "docs/architecture/relaymem_slp_current_target.md",
+              "The Phase 6 integration boundary is implemented through C1-5 and C2:",
+              "The Phase 6 integration boundary is implemented through C1-5 and C2, with O0 as the completed explicit local caller:",
+          )
+          replace_once(
+              "docs/architecture/relaymem_slp_current_target.md",
+              "C2 one-job claim/rehydrate/execute adapter\n```",
+              "C2 one-job claim/rehydrate/execute adapter\n"
+              "O0 one invocation -> at most one eligible queued job\n```",
+          )
+          replace_once(
+              "docs/architecture/relaymem_slp_current_target.md",
+              "C1-2 executes only one already-claimed canonical B3 job. It does not scan or select queued work. C1-5 persists protected content separately from the content-free queue and creates a fresh C1-0 source/scope for each current claim. C2 accepts one caller-selected exact queued record and connects canonical B3 claim, C1-5 preparation, and unchanged C1-2 execution.",
+              "C1-2 executes only one already-claimed canonical B3 job. It does not scan or select queued work. C1-5 persists protected content separately from the content-free queue and creates a fresh C1-0 source/scope for each current claim. C2 accepts one caller-selected exact queued record and connects canonical B3 claim, C1-5 preparation, and unchanged C1-2 execution. O0 performs bounded non-recursive discovery, canonical reread, exact character/store resolution, and one C2 delegation per operator invocation; it does not poll or schedule retries.",
+          )
+          replace_once(
+              "docs/architecture/relaymem_slp_current_target.md",
+              "A claim resolves the capture from the hot cache or durable artifact, validates identity/integrity, creates a fresh one-shot scope, and invokes the canonical C1-0 builder.\n\nI1 next-turn Primary MEM recall: complete.",
+              "A claim resolves the capture from the hot cache or durable artifact, validates identity/integrity, creates a fresh one-shot scope, and invokes the canonical C1-0 builder.\n\n"
+              "O0 local one-job operation is complete. It is default-off, operator-invoked, and delegates unchanged B3/C1-5/C2/C1-2 authority for at most one currently eligible queued record. O1 polling/retry scheduling, O2 supervision, and O3 always-on operation remain unimplemented.\n\n"
+              "I1 next-turn Primary MEM recall: complete.",
+          )
+          replace_once(
+              "docs/architecture/relaymem_slp_current_target.md",
+              "- queue scanning, daemon supervision, generalized worker pools, and retry scheduling,",
+              "- O1 automatic queue scanning and retry scheduling, O2 supervised worker service, and O3 always-on local operation,",
+          )
+          replace_once(
+              "docs/architecture/relaymem_slp_current_target.md",
+              "  -> C2 one-job claim/rehydrate/execute adapter      complete\n  -> C1-0/C1-2/C1-1/C1-3/C1-4 worker path          complete",
+              "  -> O0 explicit local selection and one C2 call    complete\n"
+              "  -> C2 one-job claim/rehydrate/execute adapter      complete\n"
+              "  -> C1-0/C1-2/C1-1/C1-3/C1-4 worker path          complete",
+          )
+          replace_once(
+              "docs/architecture/relaymem_slp_current_target.md",
+              "M3a-M3h primitives, C1-0 through C1-5, C2, I-1 recall, I-2 observation, and I-3 Correct are implemented.",
+              "M3a-M3h primitives, C1-0 through C1-5, C2, O0 explicit local one-job operation, I-1 recall, I-2 observation, and I-3 Correct are implemented.",
+          )
+          replace_once(
+              "docs/architecture/relaymem_slp_current_target.md",
+              "UI-B0 is complete. I1-GA is complete as a contract/fault model only. O0, queue scanner / daemon operation, supervised worker status, and Phase I-4 runtime status remain unchanged by I-4A.",
+              "UI-B0 and O0 are complete. I1-GA is complete as a contract/fault model only. O1 queue scanning/retry scheduling, O2 supervision, O3 always-on operation, and Phase I-4 runtime status remain unchanged by I-4A.",
+          )
+
+          # RelayMEM implementation plan: remove the stale claim that O0 is still parallel work.
+          replace_once(
+              "docs/architecture/relaymem_mvp_implementation_plan.md",
+              "  - phase6c2_one_queued_primary_worker_integration.md\n  - integration_i1_primary_mem_two_turn_recall.md",
+              "  - phase6c2_one_queued_primary_worker_integration.md\n"
+              "  - o0_local_one_job_runner.md\n"
+              "  - integration_i1_primary_mem_two_turn_recall.md",
+          )
+          replace_once(
+              "docs/architecture/relaymem_mvp_implementation_plan.md",
+              "M3a-M3h, C1-1/C1-2 execution, C1-4 fault convergence, C1-5 protected-source restart recovery, C2 one-job execution, Phase I-1 next-turn recall, Phase I-2 real Lab observation, and Phase I-3 Correct are complete. Phase I-4A defines the target Forget / Hide contract.",
+              "M3a-M3h, C1-1/C1-2 execution, C1-4 fault convergence, C1-5 protected-source restart recovery, C2 one-job execution, O0 explicit local one-job operation, Phase I-1 next-turn recall, Phase I-2 real Lab observation, and Phase I-3 Correct are complete. Phase I-4A defines the target Forget / Hide contract.",
+          )
+          replace_once(
+              "docs/architecture/relaymem_mvp_implementation_plan.md",
+              "  M3i-b one-job runtime adapter: complete as Phase 6-C2\n  M3i-c next-turn recall and scope isolation: complete as Phase I-1",
+              "  M3i-b one-job runtime adapter: complete as Phase 6-C2\n"
+              "  O0 explicit local one-job caller: complete as an operations boundary\n"
+              "  M3i-c next-turn recall and scope isolation: complete as Phase I-1",
+          )
+          replace_once(
+              "docs/architecture/relaymem_mvp_implementation_plan.md",
+              "C2 owns one caller-selected queued record and adds no scanner, scheduler, worker pool, retry sleep, or daemon lifecycle.",
+              "C2 owns one caller-selected queued record and adds no scanner, scheduler, worker pool, retry sleep, or daemon lifecycle. O0 is the completed explicit local caller that selects and delegates at most one eligible queued record without changing RelayMEM or C2 authority.",
+          )
+          replace_once(
+              "docs/architecture/relaymem_mvp_implementation_plan.md",
+              "UI-B0 is complete. O0 and I1-G implementation may proceed in parallel under their existing ownership boundaries.",
+              "UI-B0 and O0 are complete. The next parallel work is I1-GB durable-finalization publication, I-4B canonical resolver/shared-fence/read-only contracts, and O1 scanner/retry-scheduler design under their existing ownership boundaries.",
+          )
+          replace_once(
+              "docs/architecture/relaymem_mvp_implementation_plan.md",
+              "- one-job Phase 6 execution: complete\n- next-turn retrieval and RelayCTX injection: complete",
+              "- one-job Phase 6 execution: complete\n"
+              "- O0 explicit local one-job caller: complete\n"
+              "- next-turn retrieval and RelayCTX injection: complete",
+          )
+
+          # Documentation smoke: require the reconciled current state and reject stale wording.
+          replace_once(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "        \"C2 one-job claim/rehydrate/execute adapter: complete\",\n        \"I1 next-turn Primary MEM recall: complete\",",
+              "        \"C2 one-job claim/rehydrate/execute adapter: complete\",\n"
+              "        \"O0 local one-job runner: complete\",\n"
+              "        \"O1 queue scanner / retry scheduler / polling: not implemented\",\n"
+              "        \"I1 next-turn Primary MEM recall: complete\",",
+          )
+          replace_once(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "        \"Phase 6-C2 one-job claim/rehydrate/execute adapter is complete\",\n        \"### I1-D: next-turn recall validation — complete\",",
+              "        \"Phase 6-C2 one-job claim/rehydrate/execute adapter is complete\",\n"
+              "        \"### O0: local one-job runner — complete\",\n"
+              "        \"### I1-D: next-turn recall validation — complete\",",
+          )
+          replace_once(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "        \"O0: Local one-job runner\",\n        \"I1-G: Pre-enqueue durability\",",
+              "        \"### O0: Local one-job runner — complete\",\n"
+              "        \"E1 is available now as an explicit operator-driven evaluation\",\n"
+              "        \"I1-G: Pre-enqueue durability\",",
+          )
+          replace_once(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "        \"O0 local one-job runner remains a separate parallel slice\",\n        \"UI-B0 does not claim that the complete E1 flow is automated\",",
+              "        \"O0 is complete and provides the explicit one-job execution boundary\",\n"
+              "        \"O0 explicit one-job execution\",\n"
+              "        \"This path is operator-driven\",\n"
+              "        \"UI-B0 does not claim that the complete E1 flow is automated\",",
+          )
+          replace_once(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "        \"Local Preview remains available only through explicit user selection\",\n    )",
+              "        \"Local Preview remains available only through explicit user selection\",\n"
+              "        \"O0 explicit local one-job runner: complete outside browser authority\",\n"
+              "        \"combined with the completed O0 explicit one-job runner\",\n"
+              "    )",
+          )
+          replace_once(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "        \"I1-G pre-enqueue background-finalizer durability remains unresolved\",\n    )",
+              "        \"I1-G pre-enqueue background-finalizer durability remains unresolved\",\n"
+              "        \"O0 explicit local one-job caller: complete\",\n"
+              "        \"The next parallel work is I1-GB durable-finalization publication\",\n"
+              "    )",
+          )
+          replace_once(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "        \"C2 one-job claim/rehydrate/execute adapter\",\n        \"durably enqueued jobs\",",
+              "        \"C2 one-job claim/rehydrate/execute adapter\",\n"
+              "        \"O0 local one-job operation is complete\",\n"
+              "        \"O1 polling/retry scheduling, O2 supervision, and O3 always-on operation remain unimplemented\",\n"
+              "        \"durably enqueued jobs\",",
+          )
+          replace_once(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "    forbid(\n        \"docs/architecture/soul_lab_ui_mvp.md\",\n        \"Phase I-3 auditable Correct: next\",\n        \"## Phase I-3 next boundary\",\n    )",
+              "    forbid(\n"
+              "        \"docs/architecture/soul_lab_ui_mvp.md\",\n"
+              "        \"Phase I-3 auditable Correct: next\",\n"
+              "        \"## Phase I-3 next boundary\",\n"
+              "        \"O0 remains a separate convenience/operations slice\",\n"
+              "    )\n"
+              "    forbid(\n"
+              "        \"docs/architecture/soul_lab_ui_b0_real_home_conversation.md\",\n"
+              "        \"Until O0 exists\",\n"
+              "        \"O0 local one-job runner remains a separate parallel slice\",\n"
+              "    )\n"
+              "    forbid(\n"
+              "        \"docs/architecture/relaymem_mvp_implementation_plan.md\",\n"
+              "        \"O0 and I1-G implementation may proceed in parallel\",\n"
+              "    )\n"
+              "    forbid(\n"
+              "        \"docs/architecture/relaymem_slp_current_target.md\",\n"
+              "        \"O0, queue scanner / daemon operation, supervised worker status\",\n"
+              "    )",
+          )
+          PY
+      - name: Install and validate documentation boundary
+        shell: bash
+        run: |
+          python -m pip install -e .
+          python -m compileall -q relaylm scripts
+          PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase_i4_forget_hide_contract_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_o0_local_one_job_runner_contract_smoke.py
+          git diff --check
+      - name: Commit reconciled docs and remove one-shot workflow
+        shell: bash
+        run: |
+          rm .github/workflows/_docs_reconcile_o0_once.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/architecture/soul_lab_ui_b0_real_home_conversation.md \
+                  docs/architecture/soul_lab_ui_mvp.md \
+                  docs/architecture/relaymem_slp_current_target.md \
+                  docs/architecture/relaymem_mvp_implementation_plan.md \
+                  scripts/relaylm_documentation_current_boundary_smoke.py \
+                  .github/workflows/_docs_reconcile_o0_once.yml
+          git commit -m "docs: reconcile O0 current boundaries"
+          git push origin HEAD:docs-reconcile-o0-current-boundaries
