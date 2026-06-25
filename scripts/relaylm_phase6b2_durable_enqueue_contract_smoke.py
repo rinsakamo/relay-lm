@@ -35,13 +35,18 @@ def main() -> None:
     check(
         plan,
         "Phase 6-C1-0 through C1-5 are complete",
-        "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
+        "Phase 6-C2 one-job claim/rehydrate/execute adapter is complete",
     )
-    check_any(plan, "B0 through B3: complete", "B2 atomic durable enqueue: complete")
+    check_any(
+        plan,
+        "B0-B3: complete",
+        "B0 through B3: complete",
+        "B2 atomic durable enqueue: complete",
+    )
     check(
         body("docs/PROJECT_STATUS.md"),
-        "B2 atomic durable enqueue",
-        "C1-5 source-before-queue durable protected artifact publication",
+        "B0-B3 durable enqueue and fenced lifecycle",
+        "C1-5 keeps queue records content-free and persists the claim-independent protected capture before queue publication",
         "C2 one-job claim/rehydrate/execute adapter: complete",
     )
     check(body("relaylm/relaymem_slp_durable_enqueue.py"), "relaymem.slp_durable_enqueue.v0")

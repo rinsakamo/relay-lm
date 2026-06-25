@@ -1,0 +1,121 @@
+.conversation-heading {
+  align-items: center;
+}
+
+.conversation-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.segmented-control {
+  display: inline-flex;
+  padding: 0.2rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.7rem;
+  background: var(--surface-muted);
+}
+
+.segmented-control button {
+  padding: 0.45rem 0.65rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.segmented-control button.is-selected {
+  background: var(--surface-solid);
+  color: var(--primary);
+  box-shadow: 0 0.2rem 0.7rem color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.stream-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.compact-button {
+  min-height: 2.15rem;
+  margin-left: auto;
+  padding: 0.4rem 0.7rem;
+}
+
+.composer {
+  align-items: end;
+}
+
+.composer textarea {
+  min-width: 0;
+  min-height: 4.8rem;
+  resize: vertical;
+  padding: 0.72rem 0.85rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 0.7rem;
+  background: var(--surface-solid);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.composer textarea:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 45%, transparent);
+  outline-offset: 2px;
+}
+
+.composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.conversation-alert {
+  margin: 0.6rem 0;
+  color: var(--danger);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.empty-conversation {
+  margin: 0;
+  padding: 1rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.message-state {
+  display: block;
+  margin: 0.45rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 720px) {
+  .conversation-toolbar,
+  .composer,
+  .composer-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .compact-button {
+    margin-left: 0;
+  }
+}

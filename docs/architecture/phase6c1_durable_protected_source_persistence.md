@@ -22,6 +22,7 @@ relaylm_related_authority:
   - phase6c1_one_claimed_primary_worker_handoff.md
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c2_one_queued_primary_worker_integration.md
+  - i1g_pre_enqueue_durable_finalization_contract.md
 ---
 # Phase 6-C1-5 Durable Protected Source Persistence
 
@@ -123,6 +124,10 @@ visible response delivered
 
 C1-5 cannot rehydrate an artifact that was never published.
 
+## I1-GA alignment
+
+[I1-G Pre-enqueue Durable-finalization Contract and Fault Model](i1g_pre_enqueue_durable_finalization_contract.md) defines a target turn-scoped sealed record before this C1-5 boundary. I1-GA does not change the C1-5 artifact schema, publication semantics, cleanup ownership, or source-before-queue order. Production pre-enqueue durability remains unresolved until I1-GB through I1-GE are implemented.
+
 ## Retry and stale recovery
 
 Retry release, lease expiry, and stale recovery retain the durable artifact. Each new claim creates a fresh C1-0 source object and one-shot scope from the same claim-independent capture.
@@ -166,4 +171,4 @@ Dedicated smoke covers:
 
 ## Accurate completion boundary
 
-> Phase 6-C1 is restart-complete for protected worker-source recovery of durably enqueued jobs. The pre-enqueue background-finalizer window, next-turn recall and scope isolation, and SOUL Lab observation remain unimplemented; the C2 one-job queue-to-worker adapter is now complete.
+> Phase 6-C1 is restart-complete for protected worker-source recovery of durably enqueued jobs. Phase I-1 next-turn recall, Phase I-2 observation, Phase I-3 Correct, UI-B0 real Home conversation, and C2 are complete through their separate authorities. The pre-enqueue background-finalizer window remains unresolved; I1-GA defines its target contract and fault model only.

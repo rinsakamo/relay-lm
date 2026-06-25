@@ -33,12 +33,18 @@ def main() -> None:
     require(
         plan,
         "Phase 6-C1-0 through C1-5 are complete",
-        "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
+        "Phase 6-C2 one-job claim/rehydrate/execute adapter is complete",
     )
-    require_any(plan, "B0 through B3: complete", "B3 queue lifecycle helpers: complete")
+    require_any(
+        plan,
+        "B0-B3: complete",
+        "B0 through B3: complete",
+        "B3 queue lifecycle helpers: complete",
+    )
     require(
         read("docs/PROJECT_STATUS.md"),
-        "B3 fenced claim, renew, retry release, stale recovery, and terminal commit",
+        "B0-B3 durable enqueue and fenced lifecycle",
+        "B3 lifecycle: complete",
         "C2 one-job claim/rehydrate/execute adapter: complete",
     )
     require(read("relaylm/relaymem_slp_queue_state.py"), "relaymem.slp_queue_transition_request.v0")
