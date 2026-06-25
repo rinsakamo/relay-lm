@@ -33,6 +33,7 @@ relaylm_related_authority:
   - phase_i2_real_soul_lab_observation.md
   - phase_i3_auditable_primary_mem_correct.md
   - soul_lab_ui_b0_real_home_conversation.md
+  - i1g_pre_enqueue_durable_finalization_contract.md
   - post_i3_evaluation_work_roadmap.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
@@ -82,7 +83,8 @@ RelayMEM Primary integration:
   I1 next-turn recall and scope isolation: complete
   Phase I-2 observation: complete
   Phase I-3 Correct: complete
-  I1-G pre-enqueue durability: unresolved
+  I1-GA contract / design decision / fault model: complete
+  I1-G production pre-enqueue durability: unresolved
 
 SOUL Lab:
   UI-A0 through UI-A7: complete
@@ -115,7 +117,7 @@ Phase 6-C1-0 through C1-5 are complete:
 
 Phase 6-C2 one-job claim/rehydrate/execute adapter is complete. It accepts one exact queued canonical record, uses B3 claim, resolves source through C1-5, invokes C1-2, and preserves bounded retry/terminal behavior without adding queue scanning or a worker service.
 
-Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, and UI-B0 Real Home Conversation are complete. Remaining sequencing is recorded in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md).
+Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, and UI-B0 Real Home Conversation are complete. I1-GA contract/design/fault-model work is complete. I1-GB through I1-GE remain planned, and production pre-enqueue durability remains unresolved. Remaining sequencing is recorded in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md).
 
 ## Completed foundation
 
@@ -259,17 +261,32 @@ See [UI-B0 handoff](soul_lab_ui_b0_real_home_conversation.md).
 
 ### I1-G: pre-enqueue background-finalizer durability — unresolved
 
-A process may still exit after visible-response delivery but before protected-source and B2 queue publication completes. I1-G must begin with a dedicated failure-window and durability contract preserving:
+A process may still exit after visible-response delivery but before protected-source and B2 queue publication completes. C1-5 cannot rehydrate an artifact that was never published.
 
-- visible-response independence,
-- source-before-queue ordering,
-- dispatch idempotency,
-- restart replay,
-- duplicate suppression,
-- content separation,
-- bounded retention and cleanup.
+I1-GA is complete as a target contract, design decision, pure state/fault model, and validation boundary. It selects one turn-scoped sealed durable-finalization publication record and fixes:
 
-I1-G is not queue scanning, worker scheduling, or C2 execution.
+- non-stream seal before body release,
+- bounded stream-segment durability before each yield and seal before terminal completion,
+- existing I1-B identity and finalized-turn authority,
+- canonical C1-5 source publication before canonical B2 enqueue,
+- exact duplicate convergence and collision isolation,
+- one-record restart replay without scanning or worker execution,
+- incomplete/sealed/complete/isolated retention classes,
+- content-free public projection,
+- the required 30-point fault matrix.
+
+I1-GA changes no production runtime behavior and does not close the failure window.
+
+I1-GB through I1-GE remain planned:
+
+```text
+I1-GB  atomic/convergent durable-finalization publication and bounded response-release admission
+I1-GC  one-record restart replay, fencing, duplicate suppression, and completion marker
+I1-GD  retention, orphan reconciliation, and cleanup
+I1-GE  production crash-at-every-boundary integration smoke
+```
+
+I1-G is not queue scanning, worker scheduling, or C2 execution. O1 may later call the I1-GC one-record replay contract.
 
 ## Product evaluation sequence
 
@@ -312,7 +329,7 @@ Resolve exceptional held candidates through explicit review.
 
 ### I1-G implementation, O1, and O2 — planned
 
-Close the pre-enqueue crash window, then add bounded queue selection/retry scheduling and supervised worker lifecycle using existing B3/C1-5/C2 authority.
+Implement I1-GB through I1-GE, then add bounded queue selection/retry scheduling and supervised worker lifecycle using existing B3/C1-5/C2 authority.
 
 ### Phase I-8 and I-9 — planned
 
@@ -327,10 +344,10 @@ Package local startup/static UI/retention/upgrade and gather multi-day soak evid
 Low-overlap work may proceed in parallel:
 
 ```text
-O0     Python one-job CLI and selection
-I1-G   finalization durability contract and fault model
-I-4    lifecycle-state and Forget/Hide contract
-UI-B1  lifecycle visibility design after server projection contracts stabilize
+O0      Python one-job CLI and selection
+I1-GB   durable-finalization publication
+I-4     lifecycle-state and Forget/Hide contract
+UI-B1   lifecycle visibility design after server projection contracts stabilize
 ```
 
 UI-B0 owns `apps/soul-lab` Home transport and browser session state. O0 and I1-G must not modify that authority to make workers browser-driven.
@@ -366,6 +383,14 @@ PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_config_smoke.py
 PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
 ```
 
+I1-GA validation additionally includes:
+
+```bash
+PYTHONPATH=. python scripts/relaylm_i1g_pre_enqueue_fault_model_smoke.py
+PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
+PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+```
+
 ## Documentation completion rule
 
 When a phase lands, review together:
@@ -381,4 +406,4 @@ When a phase lands, review together:
 - status-checking smoke scripts,
 - stale TODO or future-tense text in related documents.
 
-UI-B0 changes no RelayLM configuration field, so `docs/config_schema.md` remains unchanged.
+UI-B0 and I1-GA change no RelayLM configuration field, so `docs/config_schema.md` remains unchanged.

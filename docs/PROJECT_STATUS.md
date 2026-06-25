@@ -31,6 +31,7 @@ relaylm_related_authority:
   - docs/architecture/phase_i2_real_soul_lab_observation.md
   - docs/architecture/phase_i3_auditable_primary_mem_correct.md
   - docs/architecture/soul_lab_ui_b0_real_home_conversation.md
+  - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
 ---
 # RelayLM Project Status
 
@@ -44,7 +45,8 @@ Status reviewed through:
 - Phase I-1 Primary MEM next-turn recall and character/namespace isolation,
 - Phase I-2 real SOUL Lab latest-run and memory observation integration,
 - Phase I-3 auditable Primary MEM Correct and later retrieval convergence,
-- SOUL Lab UI-B0 real Home non-stream and streaming conversation integration.
+- SOUL Lab UI-B0 real Home non-stream and streaming conversation integration,
+- I1-GA pre-enqueue durable-finalization contract and pure fault model only.
 
 ## Purpose and authority
 
@@ -67,6 +69,7 @@ RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and 
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, and UI-B0 complete
 Real Home conversation: same-origin RelayLM non-stream and SSE transport complete
 I1 observe/correct/retrieve product loop: complete
+I1-GA contract / design decision / fault model: complete
 I1-G pre-enqueue background-finalizer durability: unresolved
 O0 local one-job runner: separate and not implemented in UI-B0
 ```
@@ -102,7 +105,13 @@ Still separate:
 - no always-on production operation,
 - I1-G pre-enqueue background-finalizer durability: unresolved.
 
-I1-G tracks the process-exit window after visible-response delivery but before protected-source and B2 queue publication.
+I1-G tracks the process-exit window after visible-response delivery but before protected-source and B2 queue publication. I1-GA selects the target record, commit point, one-record replay, retention/cleanup classes, content-free projection, and 30-point fault model. It does not change production response delivery or close that window.
+
+## I1-GA contract and fault model
+
+I1-GA is complete as documentation and a test-only deterministic fault model. The selected canonical target is one turn-scoped sealed durable-finalization publication record that preserves I1-B, C1-5, B2, B3, C2, C1-2, and M3a-M3h authority.
+
+Production durability remains unresolved. I1-GB through I1-GE must still implement durable publication, one-record restart replay, retention/orphan cleanup, and production crash-at-every-boundary validation.
 
 ## RelayMEM Primary persistence and recall
 
@@ -182,6 +191,8 @@ UI-B0 does not claim that automatic queued-job execution or the full E1 loop is 
 - I3 auditable Primary MEM Correct: complete
 - I1 observe/correct/retrieve product loop: complete
 - UI-B0 real Home conversation: complete
+- I1-GA contract / design decision / fault model: complete
+- I1-GB through I1-GE production durability: not implemented
 - I1-G pre-enqueue background-finalizer durability: unresolved
 - O0 local one-job runner: separate
 
@@ -203,14 +214,14 @@ relaymem_slp_runtime_enqueue_dry_run_only = true
 relaymem_slp_runtime_enqueue_apply_enabled = false
 ```
 
-UI-B0 does not change these server defaults. It adds no permissive CORS policy, browser credential distribution, direct browser-to-LM-Studio connection, transcript persistence, static bundle serving, or runtime process controls.
+UI-B0 and I1-GA do not change these server defaults. I1-GA adds no production writer, response-order change, permissive CORS policy, browser credential distribution, direct browser-to-LM-Studio connection, transcript persistence, static bundle serving, or runtime process controls.
 
 ## Not yet implemented
 
 - O0 local one-job runner,
 - queue scanner and retry scheduler,
 - supervised worker service and always-on operation,
-- I1-G pre-enqueue durability,
+- I1-G durable-finalization publication, one-record replay, retention/cleanup, and production crash integration,
 - I-4 through I-9 governance and RelaySOUL slices,
 - durable transcript inspection,
 - static RelayLM serving of the SOUL Lab bundle,
