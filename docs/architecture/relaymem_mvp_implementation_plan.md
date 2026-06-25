@@ -27,6 +27,7 @@ relaylm_related_authority:
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
   - phase6c2_one_queued_primary_worker_integration.md
+  - o0_local_one_job_runner.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i2_real_soul_lab_observation.md
   - phase_i3_auditable_primary_mem_correct.md
@@ -43,7 +44,7 @@ relaylm_related_authority:
 
 This document defines the RelayMEM MVP implementation track. Repository-wide sequencing remains owned by [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
 
-M3a-M3h, C1-1/C1-2 execution, C1-4 fault convergence, C1-5 protected-source restart recovery, C2 one-job execution, Phase I-1 next-turn recall, Phase I-2 real Lab observation, and Phase I-3 Correct are complete. Phase I-4A defines the target Forget / Hide contract. The next RelayMEM governance implementation slice is I-4B, not production Forget completion.
+M3a-M3h, C1-1/C1-2 execution, C1-4 fault convergence, C1-5 protected-source restart recovery, C2 one-job execution, O0 explicit local one-job operation, Phase I-1 next-turn recall, Phase I-2 real Lab observation, and Phase I-3 Correct are complete. Phase I-4A defines the target Forget / Hide contract. The next RelayMEM governance implementation slice is I-4B, not production Forget completion.
 
 ## Core lifecycle
 
@@ -98,6 +99,7 @@ MEM-M3 Primary MEM path:
   M3h read-only recovery audit: complete
   M3i-a worker contract/fault/restart integration: complete through C1-5
   M3i-b one-job runtime adapter: complete as Phase 6-C2
+  O0 explicit local one-job caller: complete as an operations boundary
   M3i-c next-turn recall and scope isolation: complete as Phase I-1
   M3i-d real read-only Lab observation: complete as Phase I-2
   M3i-e auditable Correct: complete as Phase I-3
@@ -203,7 +205,7 @@ finalized ordinary turn
   -> verified durable Primary MEM
 ```
 
-C2 owns one caller-selected queued record and adds no scanner, scheduler, worker pool, retry sleep, or daemon lifecycle.
+C2 owns one caller-selected queued record and adds no scanner, scheduler, worker pool, retry sleep, or daemon lifecycle. O0 is the completed explicit local caller that selects and delegates at most one eligible queued record without changing RelayMEM or C2 authority.
 
 ## MEM-M3i-c: next-turn recall and scope isolation — complete
 
@@ -294,12 +296,13 @@ For Forget specifically:
 
 With Correct complete and I-4A defined, I-4B is the next bounded RelayMEM governance implementation slice. It may narrow-refactor the correction-specific resolver and lock/fence into a shared Primary mutation coordinator, but must not perform a broad generic mutation-framework rewrite.
 
-UI-B0 is complete. O0 and I1-G implementation may proceed in parallel under their existing ownership boundaries.
+UI-B0 and O0 are complete. The next parallel work is I1-GB durable-finalization publication, I-4B canonical resolver/shared-fence/read-only contracts, and O1 scanner/retry-scheduler design under their existing ownership boundaries.
 
 ## Completion status
 
 - Primary MEM formation/persistence: complete
 - one-job Phase 6 execution: complete
+- O0 explicit local one-job caller: complete
 - next-turn retrieval and RelayCTX injection: complete
 - character/namespace isolation: complete
 - real SOUL Lab observation: complete
