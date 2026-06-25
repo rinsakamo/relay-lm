@@ -18,6 +18,8 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - phase_i3_auditable_primary_mem_correct.md
   - phase_i4_primary_mem_forget_hide_contract.md
+  - soul_lab_ui_b0_real_home_conversation.md
+  - i1g_pre_enqueue_durable_finalization_contract.md
   - pipeline_implementation_plan.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
@@ -29,62 +31,65 @@ relaylm_related_authority:
 
 ## Purpose
 
-Phase I-3 auditable Primary MEM Correct is complete. Phase I-4A now defines the Forget / Hide target contract, but no Forget runtime, M2 exclusion, or UI is implemented. This document records the remaining sequence needed to evaluate RelayLM as a text-first local character product.
+Phase I-3 auditable Primary MEM Correct and UI-B0 real Home conversation are complete. I1-GA has defined the pre-enqueue durable-finalization target and pure fault model. Phase I-4A now defines the Forget / Hide target contract, but no Forget runtime, M2 exclusion, or UI exists. This document records the remaining sequence for evaluating RelayLM as a text-first local character product and then extending memory governance and operations.
 
-The roadmap combines three tracks:
+The roadmap has three tracks:
 
 ```text
 Memory governance
   -> Forget, Pin, Merge, Held review, Secondary MEM, RelaySOUL
 
 SOUL Lab experience
-  -> real Home conversation and observable memory lifecycle
+  -> real Home conversation, lifecycle visibility, evaluation evidence
 
 Operations
   -> one-job execution, pre-enqueue durability, queue selection,
-     worker supervision, and always-on operation
+     worker supervision, always-on operation
 ```
 
-Implementation must be evaluated incrementally rather than waiting for Phase I-9.
+Implementation must remain incremental. Real product evaluation begins before I-9.
 
 ## Current completed foundation
 
-Current completed boundaries:
+Complete:
 
 - ordinary managed Turn 1 Primary MEM formation through C2,
 - next-turn M2 retrieval and RelayCTX injection,
 - character and namespace isolation,
-- real SOUL Lab latest-run and memory observation,
-- auditable Primary MEM Correct with revision fencing, durable receipt, page/index/log convergence, and later corrected retrieval.
+- Phase I-2 real latest-run and memory observation,
+- Phase I-3 auditable Correct and corrected retrieval,
+- UI-B0 bounded real Home non-stream and SSE conversation,
+- explicit Real Runtime / Local Preview separation,
+- Stop, Retry, New Conversation, and stale-request fencing,
+- I1-GA durable-finalization contract, selected design, and 30-point pure fault model.
 
-Defined target boundary:
+Defined target only:
 
-- Phase I-4A Forget / Hide lifecycle-state contract.
+- Phase I-4A Forget / Hide lifecycle, persistence, concurrency, API, recovery, and fault contract.
 
-Still unresolved or unimplemented:
+Unresolved or unimplemented:
 
-- I1-G pre-enqueue durability,
-- automatic queue selection and supervised workers,
-- UI-B0 real Home conversation,
-- O0 local one-job runner,
-- Phase I-4B through I-4F runtime, M2, UI, and validation work.
+- O0 local one-job selection and execution convenience,
+- I1-GB through I1-GE production durability,
+- Phase I-4B through I-4F Forget implementation,
+- automatic queue scanning and supervised operation.
 
 ## Target product loop
 
 ```text
-SOUL Lab Home conversation
-  -> RelayLM managed request
+SOUL Lab Home real conversation
+  -> existing RelayLM managed request
   -> existing M2 retrieval and RelayCTX injection
   -> visible response
-  -> durable deferred memory processing
+  -> explicit C2 one-job execution or future O0
   -> Primary MEM formation or held/blocked result
-  -> Lab Observation
-  -> explicit memory operation when needed
-  -> fresh conversation
+  -> Phase I-2 Lab Observation
+  -> Phase I-3 or later explicit memory operation
+  -> Home New Conversation
   -> changed retrieval and response behavior
 ```
 
-Longer-term:
+The long-term loop extends this path:
 
 ```text
 Primary MEM set
@@ -98,37 +103,37 @@ Primary MEM set
 
 ### Phase I-3: Auditable Correct — complete
 
-Phase I-3 is the implemented baseline for later operations. It establishes exact character/namespace/memory/revision validation, bounded semantic diff, explicit confirmation identity, atomic authoritative update, durable audit evidence, page/index/log convergence, and later corrected M2/RelayCTX behavior.
-
-Later operations must reuse these fail-closed scope, revision, token, audit, recovery, and UI principles.
+Phase I-3 is the baseline mutation contract. Later operations must reuse exact scope, current-revision validation, bounded semantic diff, explicit confirmation, durable audit evidence, page/index/log convergence, recovery, and later retrieval validation.
 
 ### Phase I-4: Forget / Hide
 
 Goal:
 
-> Explicitly remove one memory from normal retrieval without destroying auditability.
+> Exclude one current active Primary MEM from ordinary retrieval without destroying auditability or rewriting historical use evidence.
 
 Canonical terminology fixed by I-4A:
 
 ```text
 user-facing operation: Forget
 canonical lifecycle state: hidden
-durable runtime-private audit artifact: Forget tombstone
+runtime-private audit artifact: Forget tombstone
 ```
 
-`Hide` is not a second operation and `tombstone` is not a lifecycle-state synonym. Forget is not physical deletion, secure erase, purge, restore, or unhide.
+`Hide` is not a second operation, and `tombstone` is not a lifecycle-state synonym. Forget is not physical deletion, secure erase, purge, restore, or unhide.
 
-Target lifecycle:
+Persistence decision:
 
 ```text
 revision N active
   -> exact prepared operation and fail-closed quarantine
-  -> revision N+1 hidden successor publication
-  -> index/log and M2 exclusion convergence
-  -> immutable Forget tombstone finalized
+  -> immutable successor Primary page through M3e
+revision N+1 hidden
+  -> M3f/M3g index-before-log convergence
+  -> M2 exclusion verification
+  -> immutable Forget tombstone finalization
 ```
 
-Persistence decision: Candidate A. The canonical lifecycle advances through an immutable successor Primary page with a new revision. The tombstone is audit/recovery evidence, not an independent sidecar authority. Correct and Forget must share one per-memory revision fence and canonical current-state resolver.
+The hidden successor page is lifecycle authority. The tombstone is audit/recovery evidence, not an independent sidecar authority. Correct and Forget must share one per-memory revision fence and one canonical current-state resolver.
 
 Work slices:
 
@@ -147,36 +152,36 @@ Only I-4A is defined. I-4B through I-4F are unimplemented. Physical deletion and
 
 Goal:
 
-> Let the user raise or restore retrieval priority without changing authority order.
+> Raise or restore bounded retrieval priority without changing authority order.
 
 ```text
 I-5A  pin eligibility and bounded priority contract
 I-5B  atomic pin metadata apply and audit receipt
-I-5C  unpin convergence to ordinary ranking
-I-5D  M2 ranking integration without forced unconditional injection
-I-5E  SOUL Lab Pin / Unpin UI
-I-5F  ranking, token-budget, scope-isolation, and stale-revision smoke
+I-5C  unpin convergence
+I-5D  M2 ranking integration without unconditional injection
+I-5E  SOUL Lab UI
+I-5F  ranking, budget, isolation, and stale-revision smoke
 ```
 
-Pinning must not let Primary MEM override Secondary MEM, SOUL, OUTPUT_POLICY, or RELATIONSHIP_ANCHOR. A hidden memory is ineligible unless a later contract explicitly defines otherwise.
+Pinning must not override Secondary MEM, SOUL, OUTPUT_POLICY, or RELATIONSHIP_ANCHOR. A hidden memory is ineligible unless a later contract explicitly defines otherwise.
 
 ### Phase I-6: Merge / Supersession
 
 Goal:
 
-> Merge duplicate or sequential Primary memories into one canonical representation while preserving complete lineage.
+> Converge duplicate or sequential Primary memories into one canonical representation while preserving lineage.
 
 ```text
 I-6A  multi-memory eligibility and contradiction preflight
 I-6B  bounded merged representation and semantic diff
-I-6C  multi-record optimistic concurrency and atomic apply
-I-6D  source memories marked superseded without lineage loss
-I-6E  index/log and retrieval de-duplication convergence
-I-6F  SOUL Lab multi-select and confirmation UI
+I-6C  optimistic concurrency and atomic apply
+I-6D  source memories marked superseded
+I-6E  index/log and retrieval de-duplication
+I-6F  SOUL Lab multi-select and confirmation
 I-6G  crash, retry, stale-record, and duplicate-retrieval smoke
 ```
 
-A hidden memory is not an eligible Merge source by default. A partial merge must never leave multiple active canonical answers for one completed operation.
+A hidden memory is not an eligible Merge source by default.
 
 ### Phase I-7: Held Apply / Discard
 
@@ -185,75 +190,73 @@ Goal:
 > Review exceptional held candidates and explicitly apply, correct-then-apply, or discard them.
 
 ```text
-I-7A  held-candidate identity, reason, evidence, and expiry contract
-I-7B  current policy, character, namespace, and source revalidation
-I-7C  Apply path into authoritative Primary MEM
-I-7D  Discard path into durable reviewed rejection
+I-7A  held identity, reason, evidence, and expiry contract
+I-7B  policy, character, namespace, and source revalidation
+I-7C  Apply into authoritative Primary MEM
+I-7D  Discard into durable reviewed rejection
 I-7E  optional bounded correction before Apply
 I-7F  SOUL Lab held-review UI
 I-7G  sensitive, contradictory, stale, cross-scope, and replay smoke
 ```
 
-Held review remains an exception path; ordinary safe memory formation must not become a mandatory approval queue.
+Held review remains exceptional; ordinary safe formation must not become a mandatory approval queue.
 
 ### Phase I-8: Secondary MEM Consolidation
 
 Goal:
 
-> Consolidate related Primary MEM into stable, lineage-backed Secondary MEM suited to long-term retrieval.
+> Consolidate related Primary MEM into stable lineage-backed Secondary MEM.
 
 ```text
-I-8A  grouping and consolidation-candidate discovery
+I-8A  grouping and candidate discovery
 I-8B  duplicate, supersession, contradiction, lifecycle, and namespace analysis
-I-8C  stable summary, relationship, project, concept, claim, and relation candidates
+I-8C  stable summary and relation candidates
 I-8D  SOUL-anchor validation without SOUL mutation
-I-8E  idempotent and rollback-friendly Secondary apply or hold
+I-8E  idempotent rollback-friendly apply or hold
 I-8F  M2 Secondary-priority retrieval integration
 I-8G  Lab observation and lineage inspection
 I-8H  long-horizon retrieval and contradiction smoke
 ```
 
-Hidden Primary MEM is ineligible for ordinary consolidation. Primary correction and governance must be usable before Secondary consolidation becomes the long-term path.
+Hidden Primary MEM is ineligible for ordinary consolidation.
 
 ### Phase I-9: RelaySOUL Proposal / Intervention / Rollback
 
 Goal:
 
-> Derive identity-level proposals from governed memory evidence, require explicit intervention, and support auditable rollback.
+> Derive identity-level proposals from governed evidence, require explicit intervention, and support auditable rollback.
 
 ```text
 I-9A  proposal identity, evidence, scope, and risk contract
 I-9B  bounded SOUL semantic diff and protected-anchor validation
-I-9C  explicit approval, hold, and discard decisions
+I-9C  approval, hold, and discard decisions
 I-9D  atomic SOUL revision with prior revision preservation
-I-9E  rollback contract and revision convergence
-I-9F  Pod / SOUL Intervention real UI integration
+I-9E  rollback contract and convergence
+I-9F  Pod / SOUL Intervention real UI
 I-9G  fresh-conversation behavior validation
-I-9H  stale proposal, cross-character, conflict, and rollback smoke
+I-9H  stale, cross-character, conflict, and rollback smoke
 ```
 
-RelayMEM and RelaySLP may produce proposal candidates. They must never directly mutate SOUL.
+RelayMEM and RelaySLP may produce proposals; they must never mutate SOUL directly.
 
-## Track B: SOUL Lab conversation and evaluation experience
+## Track B: SOUL Lab experience
 
-### UI-B0: Real Home Conversation
+### UI-B0: Real Home Conversation — complete
 
-Goal:
-
-> Use SOUL Lab Home as a minimal real frontend for the existing RelayLM Chat Completions path.
+Implemented:
 
 ```text
-UI-B0A  server-owned character and model-route resolution
-UI-B0B  real non-stream request path
-UI-B0C  streaming render and completion-state handling
-UI-B0D  soft stop, abort, failure, and retry behavior
-UI-B0E  character-switch request generation and stale-chunk rejection
-UI-B0F  explicit Real runtime / Local preview separation
-UI-B0G  new-conversation and session-reset control
-UI-B0H  existing M2 / RelayCTX memory-use validation
+UI-B0A  server-owned character and single unambiguous model-route resolution
+UI-B0B  bounded real non-stream request path
+UI-B0C  bounded UTF-8/SSE streaming and one-entry delta accumulation
+UI-B0D  soft stop, abort, failure, and snapshot retry
+UI-B0E  character/session/generation/route stale-response fencing
+UI-B0F  explicit Real Runtime / Local Preview separation
+UI-B0G  browser-local New Conversation
+UI-B0H  existing M2 / RelayCTX path and Phase I-2 evidence boundary
 ```
 
-Status remains planned. The browser must not create SOUL authority, filesystem paths, memory namespaces, backend credentials, hidden system prompts, or lifecycle authority.
+The browser does not create SOUL authority, filesystem paths, memory namespaces, backend IDs, credentials, or hidden system prompts. See [UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md).
 
 ### UI-B1: Memory lifecycle visibility
 
@@ -266,21 +269,16 @@ UI-B1A  conversation-to-Lab navigation and latest-run correlation
 UI-B1B  not-scheduled / queued / processing / formed / held / blocked / failed states
 UI-B1C  operation receipt, revision, and active/hidden lifecycle display
 UI-B1D  fresh-conversation verification entry point
-UI-B1E  strict separation of runtime state, observation evidence, and mutation authority
+UI-B1E  separation of runtime state, evidence, and mutation authority
 ```
 
 ### UI-B2: Evaluation scenarios and evidence
 
-Required scenarios:
+Goal:
 
-- incorrect preference corrected and used in a fresh conversation,
-- false or unwanted fact forgotten and excluded,
-- important commitment pinned without authority inversion,
-- duplicate memories merged into one retrieval result,
-- held candidate applied or discarded,
-- several active Primary memories consolidated into Secondary MEM,
-- SOUL proposal approved and rolled back,
-- character and namespace isolation across every operation.
+> Provide repeatable manual and automated product-evaluation scenarios.
+
+Required scenarios include correction, forgetting, pinning, merge, held review, Secondary consolidation, SOUL proposal/rollback, and cross-character isolation.
 
 ## Track C: Operational work phases
 
@@ -291,10 +289,6 @@ Goal:
 > Process one eligible queued job locally using existing B3, C1-5, C2, and C1-2 authority.
 
 ```text
-relaylm-worker --once
-```
-
-```text
 O0A  bounded eligible-record selection
 O0B  canonical reread before claim
 O0C  unchanged B3 claim and lease fencing
@@ -303,7 +297,7 @@ O0E  content-free result projection and exit status
 O0F  duplicate, retry-time, terminal, and corruption smoke
 ```
 
-Status remains planned. The browser must not be the worker or queue-selection authority.
+The browser must not be the worker or queue-selection authority.
 
 ### I1-G: Pre-enqueue durability
 
@@ -312,42 +306,52 @@ Goal:
 > Close the process-exit window after visible response delivery but before durable protected-source and B2 queue publication.
 
 ```text
-I1-GA  failure-window and durable-finalization contract
-I1-GB  atomic or convergent durable publication boundary
-I1-GC  restart replay and duplicate suppression
-I1-GD  retention and cleanup
-I1-GE  crash-at-every-boundary smoke
+I1-GA  failure-window and durable-finalization contract — complete
+I1-GB  atomic or convergent durable publication boundary — planned
+I1-GC  restart replay and duplicate suppression — planned
+I1-GD  retention and cleanup — planned
+I1-GE  crash-at-every-boundary smoke — planned
 ```
 
-I1-G remains unresolved and is not changed by I-4A.
+I1-GA selects one turn-scoped sealed durable-finalization publication record and a one-record replay model. Production durability remains unresolved. The implementation must preserve visible-response independence, source-before-queue ordering, dispatch idempotency, content separation, restart recovery, and no duplicate logical memory formation.
 
 ### O1: Queue scanner and retry scheduler
 
+Goal:
+
+> Select eligible queued records and invoke existing one-job execution without redefining queue or memory semantics.
+
 ```text
-O1A  secure bounded queue discovery
-O1B  deterministic eligibility and retry-time ordering
+O1A  secure bounded discovery
+O1B  deterministic eligibility and retry ordering
 O1C  canonical reread before B3 claim
 O1D  bounded idle and polling behavior
 O1E  stale, corrupt, terminal, and concurrent scanner smoke
 ```
 
-The scanner does not construct protected source, bypass leases, or call M3a-M3h directly.
-
 ### O2: Supervised worker service
 
+Goal:
+
+> Run bounded workers with controlled lifecycle and recoverable local operation.
+
 ```text
-O2A  process lifecycle and configuration contract
-O2B  bounded worker concurrency and backpressure
+O2A  lifecycle and configuration contract
+O2B  bounded concurrency and backpressure
 O2C  graceful shutdown and lease-aware cancellation
-O2D  health, content-free diagnostics, and operator status
+O2D  health and content-free diagnostics
 O2E  restart, lock, saturation, and repeated-failure smoke
 ```
 
 ### O3: Always-on local operation
 
+Goal:
+
+> Operate RelayLM, SOUL Lab, and worker processing over extended sessions with predictable startup and recovery.
+
 ```text
 O3A  local startup and shutdown integration
-O3B  static SOUL Lab bundle serving or equivalent packaged launch
+O3B  static SOUL Lab serving or packaged launch
 O3C  retention, cleanup, and disk-capacity policy
 O3D  upgrade and schema-compatibility procedure
 O3E  multi-day soak and restart testing
@@ -360,20 +364,21 @@ TTS, audio, Live2D, ASR, and public remote access are not required for the text-
 ```text
 Completed:
   Phase I-3 Correct
+  UI-B0 Real Home Conversation
+  I1-GA contract / design decision / fault model
 
 Defined target only:
   Phase I-4A Forget / Hide contract
 
-Parallel work:
-  UI-B0 Real Home Conversation
+Current parallel work:
   O0 Local one-job runner
-  I1-G contract and fault model
+  I1-GB durable-finalization publication
   Phase I-4B resolver/shared-fence/preflight work
 
-Then:
-  Evaluation Gate E1
-    conversation -> memory -> observation -> Correct -> fresh conversation
+Available now:
+  Evaluation Gate E1 using an existing explicit one-job C2 method
 
+Then:
   Phase I-4C through I-4F
   Phase I-5 Pin / Unpin
   Phase I-6 Merge / Supersession
@@ -381,9 +386,8 @@ Then:
   UI-B1 memory lifecycle visibility
 
   Evaluation Gate E2
-    Primary MEM governance and Lab usability
 
-  I1-G implementation
+  I1-GC through I1-GE
   O1 queue scanner / retry scheduler
   O2 supervised worker service
 
@@ -393,28 +397,25 @@ Then:
   O3 always-on local operation and soak
 
   Evaluation Gate E3
-    long-term memory, SOUL evolution, rollback, and operational reliability
 ```
 
-I1-G and supervised operation may move earlier in parallel. They are mandatory before long-duration memory-formation or multi-day consolidation evidence can be considered reliable.
+I1-G and operations may move earlier in parallel, but become mandatory before long-duration memory-formation or multi-day consolidation evidence is treated as reliable.
 
 ## Parallel development map
 
-Low-overlap ownership:
-
 ```text
-Thread A  UI-B0 Real Home Conversation
-Thread B  O0 Local one-job runner
-Thread C  I1-G contract and fault model
-Thread D  Phase I-4B implementation from the defined I-4A contract
+Thread A  O0 Local one-job runner
+Thread B  I1-GB durable-finalization publication
+Thread C  Phase I-4B canonical resolver, shared fence, and read-only contracts
+Thread D  UI-B1 lifecycle visibility design after stable status projections
 ```
 
-- UI-B0 owns `apps/soul-lab` Home/chat transport and browser session state.
-- O0 owns a thin CLI/runner reusing B3, C1-5, C2, and C1-2.
-- I1-G initially owns its failure matrix and durable-finalization contract.
-- I-4B owns the canonical resolver, shared mutation fence, and read-only preflight boundary; atomic apply remains I-4C.
+Ownership:
 
-Atomic hidden-state persistence and page/index/log convergence should remain under one owner.
+- UI-B0 owns Home/chat transport and browser session state and is complete.
+- O0 owns a thin Python runner reusing B3, C1-5, C2, and C1-2.
+- I1-G owns the pre-enqueue failure window and durable-finalization boundary.
+- I-4 owns lifecycle semantics and a separately reviewed authoritative apply.
 
 ## Evaluation gates
 
@@ -424,11 +425,13 @@ Required:
 
 ```text
 Phase I-3 complete
-+ UI-B0
++ UI-B0 complete
 + O0 or another explicit one-job execution method
 ```
 
-Proves real Lab conversation, real Primary formation/observation, Correct, fresh corrected retrieval, and separation from stale frontend history.
+Proves that the user can converse, form and observe a real Primary MEM, Correct it, retrieve the corrected representation in a fresh browser-local conversation, and distinguish durable memory influence from frontend history.
+
+UI-B0 is complete, so E1 may be exercised now with the existing explicit C2 method. O0 improves repeatability but is not required to begin.
 
 ### E2: Primary MEM governance product
 
@@ -440,7 +443,7 @@ Phase I-4 through I-7
 + repeatable real conversation use
 ```
 
-Proves unwanted memory exclusion, safe prioritization, duplicate convergence, held resolution, autonomous ordinary memory, and understandable intervention.
+Proves safe exclusion, bounded prioritization, duplicate convergence, held resolution, autonomous ordinary formation, and understandable intervention.
 
 ### E3: Long-term character system
 
@@ -453,25 +456,30 @@ Phase I-8 and I-9
 + O3 soak evidence
 ```
 
-Proves stable Secondary consolidation, proposal-driven identity change, rollback, and reliable restart/always-on operation.
+Proves stable consolidation, proposal-driven identity change, rollback, restart safety, and operational reliability.
 
 ## Measurement guidance
 
-Record memory formation/held/blocked/failed/lost-or-unknown counts; correction/Forget/pin/merge/held outcomes; stale and cross-scope refusals; retrieval before/after operations; injected revision and lifecycle evidence; duplicate/contradiction rates; consolidation precision; SOUL outcomes; queue/retry/restart behavior; and user effort.
+Record at least:
 
-Raw prompts, protected source, credentials, full traces, and unrestricted pages must not be copied into generic evaluation telemetry.
+- formed, held, blocked, failed, and lost-or-unknown counts,
+- correction/Forget/pin/merge/held outcomes and stale/mixed-scope refusals,
+- retrieval selection before and after each operation,
+- injected revision and lifecycle evidence,
+- duplicate and contradiction rates,
+- worker retry/restart behavior,
+- user effort required to keep memory useful.
+
+Raw prompts, protected source, credentials, full traces, and unrestricted memory pages must not be copied into generic telemetry.
 
 ## Preserved boundaries
 
-- Phase I-3 is complete and remains the implemented mutation baseline.
-- Phase I-4A is a defined target contract only.
-- Phase I-4B through I-9 require implementation and validation.
+- Phase I-3 remains the implemented baseline mutation contract.
+- UI-B0 is a client of existing route, M2, RelayCTX, backend, and RelaySLP authority.
+- I1-GA is contract/test-model only; production I1-G remains unresolved.
+- Phase I-4A is a defined target contract only; I-4B through I-4F require implementation and validation.
 - RelayMEM owns memory meaning and persistence.
-- M2 and RelayCTX own retrieval selection and backend-bound injection.
-- RelaySLP may form ordinary memory and produce held or proposal candidates.
-- SOUL Lab provides bounded observation and explicit operations through server APIs.
+- M2 and RelayCTX own selection and backend-bound injection.
 - RelaySOUL changes require explicit intervention.
-- queue scanning and worker supervision must reuse B3, C1-5, C2, and C1-2.
-- UI-B0 and O0 remain planned.
-- I1-G remains unresolved.
-- queue scanner / daemon operation remains unimplemented.
+- queue scanning and supervision must reuse B3, C1-5, C2, and C1-2.
+- text conversation does not imply TTS or avatar execution.
