@@ -13,12 +13,14 @@ relaylm_related_authority:
   - docs/PROJECT_STATUS.md
   - docs/architecture/pipeline_implementation_plan.md
   - docs/architecture/post_i3_evaluation_work_roadmap.md
+  - docs/architecture/e1_local_runtime_evaluation_2026_06_25.md
   - docs/architecture/soul_lab_ui_mvp.md
   - docs/architecture/soul_lab_ui_a7_management_projection_handoff.md
   - docs/architecture/integration_i1_primary_mem_two_turn_recall.md
   - docs/architecture/phase_i2_real_soul_lab_observation.md
   - docs/architecture/phase_i3_auditable_primary_mem_correct.md
   - docs/architecture/o0_local_one_job_runner.md
+  - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
 ---
 # SOUL Lab UI-B0 Real Home Conversation
 
@@ -78,6 +80,25 @@ The browser never adds:
 - filesystem paths,
 - queue, claim, lease, or worker identities,
 - hidden instructions or preview messages.
+
+### Persistence qualification boundary
+
+The standard UI-B0 request also does not add trusted `metadata.scene_state` evidence. This is intentional within the current bounded transport contract: the browser must not self-assert arbitrary persistence policy or high-confidence scene authority.
+
+A real workstation evaluation on 2026-06-25 confirmed the resulting boundary:
+
+```text
+Home conversation and later recall
+  -> works through the existing managed request path
+
+ordinary Home turn requiring new Primary MEM formation
+  -> RelaySCN heuristic fallback
+  -> confidence/stability below persistence thresholds
+  -> persistence fails closed
+  -> no protected source or queue record
+```
+
+An explicit operator request with bounded scene evidence successfully exercised finalized-turn publication, O0 execution, Primary MEM formation, and later Home recall. Therefore UI-B0 proves real conversation and recall transport, but it does not currently prove that an ordinary Home-origin turn is persistence-eligible. The trusted scene-admission owner remains a separate follow-up decision.
 
 Fetch uses:
 
@@ -244,6 +265,8 @@ Home real request
 
 Home never displays raw prompts, compiled context, SOUL, MEM pages, or traces. Phase I-2 remains the evidence surface for actual backend-bound memory inclusion. Phase I-3 remains the correction authority.
 
+The 2026-06-25 workstation evaluation confirmed that a Primary MEM formed through the existing worker path could later influence a Home answer under the exact character and namespace scope. The answer recalled the core user fact, but also exposed separate formation-provenance and response-grounding quality gaps documented in [E1 Local Runtime Evaluation](e1_local_runtime_evaluation_2026_06_25.md).
+
 ## Validation
 
 Frontend:
@@ -289,27 +312,33 @@ SOUL Lab Vite :5173
 6. Stop streaming and confirm partial text remains.
 7. Retry and confirm the user message is not duplicated.
 8. Switch character during streaming and confirm no old chunk appears.
-9. use New Conversation and confirm only current browser-local history and draft reset.
+9. Use New Conversation and confirm only current browser-local history and draft reset.
 10. Select Local Preview explicitly and confirm it never enters Real Runtime history.
 11. Make RelayLM unavailable and confirm no automatic mock fallback occurs.
 12. Confirm no raw prompt, SOUL, MEM, trace, credential, path, or queue identity is displayed.
+13. Do not treat a successful Home response as proof that finalized-turn persistence or queue publication occurred.
 
 A real LM Studio workstation manual smoke is environment validation and is not fabricated by CI.
 
 ## E1 evaluation path
 
-O0 is complete and provides the explicit one-job execution boundary for the first E1 evaluation:
+O0 is complete and provides the explicit one-job execution boundary for the first E1 evaluation. The current proven path separates formation admission from the Home transport:
 
 ```text
-real Home conversation
+explicit trusted scene-qualified managed request
+  -> durable protected source and queue publication
   -> O0 explicit one-job execution
   -> formed Primary MEM
   -> Phase I-2 observation
-  -> Phase I-3 Correct
-  -> Home New Conversation
-  -> corrected-memory question
+
+SOUL Lab Home real conversation
+  -> existing M2 / RelayCTX recall
+  -> remembered-fact question
   -> Phase I-2 used-memory evidence
+  -> Phase I-3 Correct when required
 ```
+
+The earlier shorthand `real Home conversation -> O0` is not currently a verified formation path because UI-B0 sends no trusted scene qualification and ordinary heuristic fallback fails persistence closed. A follow-up must add a trusted server- or route-owned admission contract before direct Home-origin formation can be claimed.
 
 This path is operator-driven. O0 does not poll, schedule retries, or create browser worker authority, and UI-B0 does not claim that the complete E1 flow is automated.
 
@@ -317,9 +346,13 @@ This path is operator-driven. O0 does not poll, schedule retries, or create brow
 
 - multiple projected routes remain fail-closed; UI-B0 adds no route priority semantics,
 - browser transcripts are process-local and non-durable,
+- Home requests do not currently carry trusted scene-admission evidence and therefore do not reliably publish new Primary MEM work,
+- the character-scoped Primary store requires explicit operator bootstrap before first apply,
+- the current formation summary can combine user and assistant text without speaker-safe factual provenance,
+- later generated answers can add unsupported details beyond retrieved evidence,
 - static SOUL Lab serving remains separate,
 - O0 local one-job runner is complete as an explicit operator-invoked one-shot boundary; O1 polling and retry scheduling remain separate,
-- I1-G pre-enqueue durability remains separate,
+- I1-GB durable-finalization publication is complete, while I1-GC replay/completion convergence, I1-GD cleanup, and I1-GE full crash validation remain separate,
 - I-4 Forget/Hide and later memory governance remain separate,
 - queue scanning, scheduling, worker supervision, and always-on operation remain separate,
 - Secondary MEM and RelaySOUL proposal/intervention/rollback remain separate,
@@ -327,6 +360,6 @@ This path is operator-driven. O0 does not poll, schedule retries, or create brow
 
 ## Proof boundary
 
-UI-B0 proves a bounded browser client can exercise the existing real RelayLM text path with safe local session controls and explicit source separation. Combined with existing I-1/I-2/I-3 and the completed O0 one-job boundary, it enables the first hands-on E1 evaluation.
+UI-B0 proves a bounded browser client can exercise the existing real RelayLM text and later-memory-recall path with safe local session controls and explicit source separation. Combined with existing I-1/I-2/I-3 and the completed O0 one-job boundary, it enabled the first hands-on E1 evaluation and exposed the remaining scene-admission, store-bootstrap, provenance, and response-grounding gaps.
 
-It does not prove automatic queue polling or retry scheduling, pre-enqueue crash durability, durable transcripts, broad memory governance, or long-running production operation.
+It does not prove direct Home-origin Primary MEM formation, automatic queue polling or retry scheduling, I1-GC restart replay/completion convergence, I1-GE full crash recovery, durable transcripts, broad memory governance, evidence-grounded generation, or long-running production operation.
