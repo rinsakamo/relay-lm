@@ -61,6 +61,8 @@ def main() -> None:
         "docs/PROJECT_STATUS.md",
         "C1-0 through C1-5 complete",
         "C2 one-job claim/rehydrate/execute adapter: complete",
+        "O0 local one-job runner: complete",
+        "O1 queue scanner / retry scheduler / polling: not implemented",
         "I1 next-turn Primary MEM recall: complete",
         "character and namespace isolation: complete",
         "I2 real SOUL Lab observation: complete",
@@ -81,6 +83,7 @@ def main() -> None:
         "docs/architecture/pipeline_implementation_plan.md",
         "Phase 6-C1-0 through C1-5 are complete",
         "Phase 6-C2 one-job claim/rehydrate/execute adapter is complete",
+        "### O0: local one-job runner — complete",
         "### I1-D: next-turn recall validation — complete",
         "### I1-E / Phase I-2: real SOUL Lab observation — complete",
         "### I1-F / Phase I-3: auditable Primary MEM Correct — complete",
@@ -107,7 +110,8 @@ def main() -> None:
         "Phase I-8: Secondary MEM Consolidation",
         "Phase I-9: RelaySOUL Proposal / Intervention / Rollback",
         "UI-B0: Real Home Conversation — complete",
-        "O0: Local one-job runner",
+        "### O0: Local one-job runner — complete",
+        "E1 is available now as an explicit operator-driven evaluation",
         "I1-G: Pre-enqueue durability",
         "I1-GA  failure-window and durable-finalization contract — complete",
         "O1: Queue scanner and retry scheduler",
@@ -135,7 +139,9 @@ def main() -> None:
         "same-origin POST /v1/chat/completions",
         "Real Runtime is the default source mode",
         "New Conversation applies only to the current character",
-        "O0 local one-job runner remains a separate parallel slice",
+        "O0 is complete and provides the explicit one-job execution boundary",
+        "O0 explicit one-job execution",
+        "This path is operator-driven",
         "UI-B0 does not claim that the complete E1 flow is automated",
     )
 
@@ -144,6 +150,8 @@ def main() -> None:
         "UI-B0 real Home conversation: complete",
         "same-origin `POST /v1/chat/completions`",
         "Local Preview remains available only through explicit user selection",
+        "O0 explicit local one-job runner: complete outside browser authority",
+        "combined with the completed O0 explicit one-job runner",
     )
 
     require(
@@ -170,6 +178,8 @@ def main() -> None:
         "Phase I-4A Forget / Hide contract: defined target",
         "production Forget runtime, M2 exclusion, and UI: unimplemented",
         "I1-G pre-enqueue background-finalizer durability remains unresolved",
+        "O0 explicit local one-job caller: complete",
+        "The next parallel work is I1-GB durable-finalization publication",
     )
 
     require(
@@ -207,6 +217,8 @@ def main() -> None:
         "Phase 6-B3 performs default-off, dry-run-first",
         "C1-5 durable claim-independent protected source and restart rehydration",
         "C2 one-job claim/rehydrate/execute adapter",
+        "O0 local one-job operation is complete",
+        "O1 polling/retry scheduling, O2 supervision, and O3 always-on operation remain unimplemented",
         "durably enqueued jobs",
         "I1 next-turn Primary MEM recall: complete",
         "I2 real SOUL Lab observation: complete",
@@ -257,6 +269,20 @@ def main() -> None:
         "docs/architecture/soul_lab_ui_mvp.md",
         "Phase I-3 auditable Correct: next",
         "## Phase I-3 next boundary",
+        "O0 remains a separate convenience/operations slice",
+    )
+    forbid(
+        "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
+        "Until O0 exists",
+        "O0 local one-job runner remains a separate parallel slice",
+    )
+    forbid(
+        "docs/architecture/relaymem_mvp_implementation_plan.md",
+        "O0 and I1-G implementation may proceed in parallel",
+    )
+    forbid(
+        "docs/architecture/relaymem_slp_current_target.md",
+        "O0, queue scanner / daemon operation, supervised worker status",
     )
     forbid(
         "docs/architecture/pipeline_implementation_plan.md",

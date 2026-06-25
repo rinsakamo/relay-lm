@@ -27,6 +27,7 @@ relaylm_related_authority:
   - phase6c1_integrated_worker_fault_smoke_handoff.md
   - phase6c1_durable_protected_source_persistence.md
   - phase6c2_one_queued_primary_worker_integration.md
+  - o0_local_one_job_runner.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i2_real_soul_lab_observation.md
   - phase_i3_auditable_primary_mem_correct.md
@@ -54,7 +55,7 @@ M3g gated index-before-log reconciliation apply
 M3h read-only receipt/store recovery audit
 ```
 
-The Phase 6 integration boundary is implemented through C1-5 and C2:
+The Phase 6 integration boundary is implemented through C1-5 and C2, with O0 as the completed explicit local caller:
 
 ```text
 C1-0 exact current-claim protected source
@@ -64,9 +65,10 @@ C1-3 pure outcome classification
 C1-4 integrated fault/crash convergence
 C1-5 durable claim-independent protected source and restart rehydration
 C2 one-job claim/rehydrate/execute adapter
+O0 one invocation -> at most one eligible queued job
 ```
 
-C1-2 executes only one already-claimed canonical B3 job. It does not scan or select queued work. C1-5 persists protected content separately from the content-free queue and creates a fresh C1-0 source/scope for each current claim. C2 accepts one caller-selected exact queued record and connects canonical B3 claim, C1-5 preparation, and unchanged C1-2 execution.
+C1-2 executes only one already-claimed canonical B3 job. It does not scan or select queued work. C1-5 persists protected content separately from the content-free queue and creates a fresh C1-0 source/scope for each current claim. C2 accepts one caller-selected exact queued record and connects canonical B3 claim, C1-5 preparation, and unchanged C1-2 execution. O0 performs bounded non-recursive discovery, canonical reread, exact character/store resolution, and one C2 delegation per operator invocation; it does not poll or schedule retries.
 
 Phase I-1 completes the ordinary second-turn path through existing M2, exact Primary page/index/log/namespace validation, bounded selected-memory construction, existing RelayCTX injection, and completed backend response generation.
 
@@ -94,6 +96,8 @@ finalized-turn protected capture
 ```
 
 A claim resolves the capture from the hot cache or durable artifact, validates identity/integrity, creates a fresh one-shot scope, and invokes the canonical C1-0 builder.
+
+O0 local one-job operation is complete. It is default-off, operator-invoked, and delegates unchanged B3/C1-5/C2/C1-2 authority for at most one currently eligible queued record. O1 polling/retry scheduling, O2 supervision, and O3 always-on operation remain unimplemented.
 
 I1 next-turn Primary MEM recall: complete. Character and namespace isolation: complete.
 
@@ -148,7 +152,7 @@ Prepared, recovery-required, corrupt, hidden, and prior physical revisions are f
 
 The current runtime still lacks:
 
-- queue scanning, daemon supervision, generalized worker pools, and retry scheduling,
+- O1 automatic queue scanning and retry scheduling, O2 supervised worker service, and O3 always-on local operation,
 - guaranteed enqueue when the process exits after visible response delivery but before the Starlette background finalizer publishes the source/queue pair,
 - I1-G durable-finalization production publication/replay/cleanup despite the completed I1-GA target contract,
 - the canonical lifecycle resolver defined by I-4A,
@@ -200,6 +204,7 @@ finalized ordinary turn
   -> I1-B request-runtime A1/A2/B1/B2              complete
   -> C1-5 durable protected source                  complete
   -> B3 queue claim/lease/retry lifecycle           complete helper boundary
+  -> O0 explicit local selection and one C2 call    complete
   -> C2 one-job claim/rehydrate/execute adapter      complete
   -> C1-0/C1-2/C1-1/C1-3/C1-4 worker path          complete
   -> verified durable Primary MEM                   complete
@@ -251,7 +256,7 @@ Forget is not a physical deletion, secure erase, purge, restore/unhide, or legal
 
 ## Completion interpretation
 
-M3a-M3h primitives, C1-0 through C1-5, C2, I-1 recall, I-2 observation, and I-3 Correct are implemented. I-4A is a defined target contract. Forget is not implemented until I-4B through I-4F provide producer, consumer, apply, retrieval exclusion, UI, and validation coverage.
+M3a-M3h primitives, C1-0 through C1-5, C2, O0 explicit local one-job operation, I-1 recall, I-2 observation, and I-3 Correct are implemented. I-4A is a defined target contract. Forget is not implemented until I-4B through I-4F provide producer, consumer, apply, retrieval exclusion, UI, and validation coverage.
 
 ## Phase I-2 / I1-G status
 
@@ -261,4 +266,4 @@ I2 real SOUL Lab observation: complete.
 I3 auditable Primary MEM Correct: complete.
 I1-G pre-enqueue background-finalizer durability remains unresolved.
 
-UI-B0 is complete. I1-GA is complete as a contract/fault model only. O0, queue scanner / daemon operation, supervised worker status, and Phase I-4 runtime status remain unchanged by I-4A.
+UI-B0 and O0 are complete. I1-GA is complete as a contract/fault model only. O1 queue scanning/retry scheduling, O2 supervision, O3 always-on operation, and Phase I-4 runtime status remain unchanged by I-4A.

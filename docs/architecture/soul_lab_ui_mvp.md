@@ -20,6 +20,7 @@ relaylm_related_authority:
   - phase_i2_real_soul_lab_observation.md
   - phase_i3_auditable_primary_mem_correct.md
   - soul_lab_ui_b0_real_home_conversation.md
+  - o0_local_one_job_runner.md
   - integration_i1_primary_mem_two_turn_recall.md
 ---
 # AITuber SOUL Lab UI MVP
@@ -56,6 +57,7 @@ UI-A7 loopback-only settings/characters projection: complete
 Phase I-2 real Lab Observation: complete
 Phase I-3 auditable Correct: complete
 UI-B0 real Home conversation: complete
+O0 explicit local one-job runner: complete outside browser authority
 Static UI bundle serving from RelayLM: pending
 Communication peer transport: pending
 RelaySOUL apply / rollback: pending
@@ -267,7 +269,7 @@ SOUL Lab currently proves:
 
 It does not prove:
 
-- automatic queued-job selection,
+- automatic queue polling, retry scheduling, or worker supervision,
 - I1-G pre-enqueue durability,
 - durable transcripts,
 - Forget/Pin/Merge/Held governance,
@@ -278,4 +280,4 @@ It does not prove:
 - TTS/audio/avatar/Live2D/ASR,
 - public or remote binding.
 
-For the first E1 evaluation, UI-B0 can be combined with the existing explicit C2 one-job execution method. O0 remains a separate convenience/operations slice.
+For the first E1 evaluation, UI-B0 is combined with the completed O0 explicit one-job runner. The loop remains operator-driven; O1 automatic polling/retry scheduling and O2 supervision remain separate operations slices.
