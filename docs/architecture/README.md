@@ -125,3 +125,7 @@ Historical and MVP documents do not override current owners. Implementation hand
 ## Operational alignment
 
 O0 is complete only for explicit one-shot local operation. UI-B0 does not close I1-G pre-enqueue background-finalizer durability, select queued work automatically, or create a worker service. I1-GA defines the target/fault model only. Phase I-4A defines lifecycle semantics only. I1-GB through I1-GE production durability, Phase I-4B through I-4F implementation, O1 queue scanning/scheduling, O2 supervision, and O3 always-on lifecycle remain separate roadmap slices.
+
+### Phase I-4B — complete
+
+The canonical `relaylm.mem.primary_current_state.v0` resolver, the existing-path shared Correct/Forget mutation fence, and read-only Forget preflight/token/zero-item history contracts are implemented. Hidden lifecycle apply, tombstones, M2 exclusion, API/UI, and full validation remain I-4C through I-4F.

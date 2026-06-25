@@ -277,3 +277,14 @@ local operator
 ```
 
 The Vite `/v1` proxy remains loopback-targeted with `changeOrigin: false`. Real runtime and preview conversations remain separate browser-local sessions. O0 remains a separate operator authority and is not callable from the browser.
+
+## Phase I-4B current boundary
+
+- I-4A Forget / Hide contract: complete.
+- I-4B canonical Primary current-state resolver, shared Correct/Forget mutation fence, and read-only Forget preflight/token/history contracts: complete.
+- I-4C hidden successor apply, prepared artifact, tombstone, and recovery: not implemented.
+- I-4D M2/RelayCTX hidden exclusion: not implemented.
+- I-4E loopback API and SOUL Lab UI: not implemented.
+- I-4F full fault/security/fresh-conversation validation: not implemented.
+
+I-4B changes no Forget lifecycle state and does not alter ordinary M2 selection, RelayCTX injection, Lab current-read output, or historical used-memory evidence. Forget remains a read-only preview/token contract until I-4C and later slices land.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1-I4A, UI-B0, I1-GA, roadmap, and config documentation."""
+"""Validate current Phase 6, I1-I4B, UI-B0, I1-GA, roadmap, and config documentation."""
 from __future__ import annotations
 
 import ast
@@ -69,8 +69,9 @@ def main() -> None:
         "I3 auditable Primary MEM Correct: complete",
         "I1 observe/correct/retrieve product loop: complete",
         "UI-B0 real Home conversation: complete",
-        "I4A Forget / Hide contract: defined target",
-        "I4 production Forget runtime, M2 exclusion, and UI: unimplemented",
+        "I-4A Forget / Hide contract: complete",
+        "I-4B canonical Primary current-state resolver, shared Correct/Forget mutation fence, and read-only Forget preflight/token/history contracts: complete",
+        "I-4C hidden successor apply, prepared artifact, tombstone, and recovery: not implemented",
         "I1-GA contract / design decision / fault model: complete",
         "I1-GB through I1-GE production durability: not implemented",
         "I1-G pre-enqueue background-finalizer durability: unresolved",
@@ -103,7 +104,8 @@ def main() -> None:
         "Phase I-3: Auditable Correct — complete",
         "Phase I-4: Forget / Hide",
         "I-4A  lifecycle, persistence, concurrency, API, recovery, and fault contract — defined target",
-        "Only I-4A is defined. I-4B through I-4F are unimplemented.",
+        "### I-4B — complete",
+        "I-4C hidden apply/tombstone/recovery, I-4D retrieval exclusion, I-4E API/UI, and I-4F full validation remain unimplemented.",
         "Phase I-5: Pin / Unpin",
         "Phase I-6: Merge / Supersession",
         "Phase I-7: Held Apply / Discard",
@@ -124,8 +126,9 @@ def main() -> None:
 
     require(
         "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md",
-        "relaylm_status: target",
-        "Defined target contract; runtime unimplemented.",
+        "relaylm_status: current_target",
+        "I-4A contract complete; I-4B resolver/shared fence/read-only contracts complete; I-4C through I-4F unimplemented.",
+        "## 20A. I-4B implemented boundary",
         "Decision: Candidate A",
         "Forget tombstone",
         "relaylm.mem.primary_current_state.v0",
@@ -175,8 +178,8 @@ def main() -> None:
         "M3i-d real read-only Lab observation: complete as Phase I-2",
         "Observation receipts",
         "auditable Correct: complete",
-        "Phase I-4A Forget / Hide contract: defined target",
-        "production Forget runtime, M2 exclusion, and UI: unimplemented",
+        "### M3i-f / Phase I-4B — complete",
+        "I-4C through I-4F remain unimplemented.",
         "I1-G pre-enqueue background-finalizer durability remains unresolved",
         "O0 explicit local one-job caller: complete",
         "The next parallel work is I1-GB durable-finalization publication",
@@ -188,6 +191,7 @@ def main() -> None:
         "Phase I-2 adds a bounded read-only observation model",
         "Phase I-3 completes auditable revision-fenced Correct",
         "Phase I-4A defines the target Forget contract",
+        "### Phase I-4B — complete",
         "UI-B0 adds a browser-local text-first client",
         "phase_i4_primary_mem_forget_hide_contract.md",
         "soul_lab_ui_b0_real_home_conversation.md",
@@ -207,7 +211,8 @@ def main() -> None:
         "soul_lab_ui_b0_real_home_conversation.md",
         "i1g_pre_enqueue_durable_finalization_contract.md",
         "post_i3_evaluation_work_roadmap.md",
-        "Production Forget apply, M2 exclusion, and the SOUL Lab Forget UI remain unimplemented",
+        "Phase I-4B implementation boundary",
+        "I-4C hidden apply/tombstone/recovery, I-4D M2 exclusion, I-4E API/UI, and I-4F full validation remain unimplemented.",
         "I1-G",
     )
 
@@ -223,7 +228,7 @@ def main() -> None:
         "I1 next-turn Primary MEM recall: complete",
         "I2 real SOUL Lab observation: complete",
         "I3 auditable Primary MEM Correct: complete",
-        "I-4B through I-4F",
+        "Phase I-4B current boundary",
         "I1-G pre-enqueue background-finalizer durability remains unresolved",
     )
 
@@ -289,7 +294,7 @@ def main() -> None:
         "I3 I3 auditable",
         "Phase I-3 auditable Correct is the next product boundary",
         "## Active priority: Phase I-3 auditable Correct",
-        "Phase I-4B through I-4F: complete",
+        "Phase I-4C through I-4F: complete",
     )
 
     run_i1g_fault_model()

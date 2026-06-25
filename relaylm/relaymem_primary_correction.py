@@ -39,6 +39,19 @@ from .relaymem_primary_page_candidate import (
 )
 from .relaymem_primary_page_writer import apply_relaymem_primary_page_write
 from .relaymem_primary_recall import _load_control_state, _load_validated_page
+from .relaymem_primary_current_state import (
+    PrimaryCorrectionStateIndex,
+    PrimaryCurrentStateError,
+    empty_primary_current_state_index,
+    load_primary_current_state_index,
+    load_primary_current_target,
+    resolve_primary_current_identity,
+)
+from .relaymem_primary_mutation_coordinator import (
+    PrimaryMutationCoordinatorError,
+    ensure_primary_memory_mutation_available,
+    primary_memory_mutation_lock,
+)
 from .relaymem_primary_write_preflight import build_relaymem_primary_write_preflight_dry_run
 from .relaymem_primary_writer_handoff import build_relaymem_primary_writer_handoff_preflight
 
@@ -65,14 +78,7 @@ class PrimaryCorrectionError(RuntimeError):
         self.code = code
 
 
-@dataclass(frozen=True)
-class CorrectionState:
-    current_by_logical: dict[str, tuple[str, int]]
-    logical_by_physical: dict[str, str]
-    superseded_physical: frozenset[str]
-    pending_physical: frozenset[str]
-    invalid_logical: frozenset[str]
-    receipts_by_logical: dict[str, tuple[dict[str, Any], ...]]
+CorrectionState = PrimaryCorrectionStateIndex
 
 
 def preflight_primary_memory_correction(
@@ -202,7 +208,13 @@ def apply_primary_memory_correction(
         if prepared is not None:
             _validate_prepared_replay(prepared, claims=claims, token_digest=token_digest)
         else:
-            _ensure_no_other_pending(root, memory_id, operation_key)
+            _ensure_no_other_pending(
+                root,
+                memory_id,
+                operation_key,
+                operation_id=operation_id,
+                binding_digest=str(claims["candidate_digest"]),
+            )
             state = load_primary_correction_state(root, namespace=namespace)
             target = _load_current_target(
                 root,
@@ -319,119 +331,20 @@ def list_primary_memory_corrections(
 def load_primary_correction_state(
     store_root: str | Path, *, namespace: str
 ) -> CorrectionState:
-    """Load validated applied/pending correction metadata for retrieval and Lab reads."""
-
-    root = _safe_store_root(str(store_root))
-    base = root / _CORRECTION_ROOT
-    if base.is_symlink():
-        return _empty_state(invalid={"*"})
-    if not base.exists():
-        return _empty_state()
-    if not base.is_dir():
-        return _empty_state(invalid={"*"})
-
-    current: dict[str, tuple[str, int]] = {}
-    logical_by_physical: dict[str, str] = {}
-    superseded: set[str] = set()
-    pending: set[str] = set()
-    invalid: set[str] = set()
-    receipts_by_logical: dict[str, tuple[dict[str, Any], ...]] = {}
+    """Compatibility wrapper over the canonical Primary current-state index."""
 
     try:
-        memory_dirs = sorted(base.iterdir(), key=lambda item: item.name)
-    except OSError:
-        return _empty_state(invalid={"*"})
-
-    for memory_dir in memory_dirs:
-        logical = memory_dir.name
-        if not is_sha256(logical) or memory_dir.is_symlink() or not memory_dir.is_dir():
-            invalid.add(logical if is_sha256(logical) else "*")
-            continue
-        prepared_by_operation: dict[str, dict[str, Any]] = {}
-        applied: list[dict[str, Any]] = []
-        try:
-            entries = sorted(memory_dir.iterdir(), key=lambda item: item.name)
-        except OSError:
-            invalid.add(logical)
-            continue
-        for path in entries:
-            if path.name == ".lock":
-                continue
-            if path.is_symlink() or not path.is_file():
-                invalid.add(logical)
-                continue
-            if path.name.endswith(".prepared.json"):
-                value = _read_json(path)
-                if not _valid_prepared(value, namespace=namespace, memory_id=logical):
-                    invalid.add(logical)
-                    continue
-                prepared_by_operation[str(value["operation_key"])] = value
-            elif path.name.endswith(".applied.json"):
-                value = _read_json(path)
-                if not _valid_applied(value, namespace=namespace, memory_id=logical):
-                    invalid.add(logical)
-                    continue
-                applied.append(value)
-            else:
-                invalid.add(logical)
-
-        applied.sort(key=lambda item: int(item["result_revision"]))
-        prior_physical = logical
-        prior_revision = 1
-        seen_operations: set[str] = set()
-        chain_ok = True
-        for item in applied:
-            operation_key = str(item["operation_key"])
-            if (
-                operation_key in seen_operations
-                or int(item["prior_revision"]) != prior_revision
-                or int(item["result_revision"]) != prior_revision + 1
-                or item["prior_physical_id"] != prior_physical
-            ):
-                chain_ok = False
-                break
-            seen_operations.add(operation_key)
-            superseded.add(prior_physical)
-            logical_by_physical[prior_physical] = logical
-            prior_physical = str(item["result_physical_id"])
-            logical_by_physical[prior_physical] = logical
-            prior_revision += 1
-        if not chain_ok:
-            invalid.add(logical)
-            continue
-        current[logical] = (prior_physical, prior_revision)
-        receipts_by_logical[logical] = tuple(applied)
-        for operation_key, item in prepared_by_operation.items():
-            if operation_key not in seen_operations:
-                successor = item.get("successor_physical_id")
-                if is_sha256(successor):
-                    pending.add(str(successor))
-                    logical_by_physical[str(successor)] = logical
-
-    return CorrectionState(
-        current_by_logical=current,
-        logical_by_physical=logical_by_physical,
-        superseded_physical=frozenset(superseded),
-        pending_physical=frozenset(pending),
-        invalid_logical=frozenset(invalid),
-        receipts_by_logical=receipts_by_logical,
-    )
+        return load_primary_current_state_index(store_root, namespace=namespace)
+    except PrimaryCurrentStateError as exc:
+        raise PrimaryCorrectionError(_shared_error_code(exc.code)) from exc
 
 
 def resolve_primary_correction_identity(
     state: CorrectionState, physical_identity: str
 ) -> tuple[str, int, bool] | None:
-    """Map one validated physical page to stable logical identity/current state."""
+    """Compatibility wrapper over canonical logical/current identity resolution."""
 
-    if not is_sha256(physical_identity):
-        return None
-    logical = state.logical_by_physical.get(physical_identity, physical_identity)
-    if "*" in state.invalid_logical or logical in state.invalid_logical:
-        return None
-    if physical_identity in state.pending_physical:
-        return None
-    current = state.current_by_logical.get(logical, (logical, 1))
-    return logical, int(current[1]), physical_identity == current[0]
+    return resolve_primary_current_identity(state, physical_identity)
 
 
 def recover_primary_memory_corrections(
@@ -738,57 +651,16 @@ def _load_current_target(
     expected_revision: int,
     state: CorrectionState,
 ) -> dict[str, Any]:
-    control = _load_scoped_control_state(
-        root, namespace=namespace, logical_memory_id=logical_memory_id
-    )
-    if "*" in state.invalid_logical or logical_memory_id in state.invalid_logical:
-        raise PrimaryCorrectionError("target_corrupt")
-    current_physical, current_revision = state.current_by_logical.get(logical_memory_id, (logical_memory_id, 1))
-    if current_revision != expected_revision:
-        raise PrimaryCorrectionError("stale_revision")
-    matches = [
-        entry
-        for entry in control["index"]
-        if entry.get("idempotency_key") == current_physical
-        and entry.get("namespace") == namespace
-    ]
-    if len(matches) != 1:
-        raise PrimaryCorrectionError("not_found_or_wrong_scope")
-    relative = matches[0].get("page_relative_path")
-    loaded, blocked = _load_validated_page(
-        root,
-        {"path": relative},
-        expected_namespace=namespace,
-        control=control,
-    )
-    if loaded is None or blocked:
-        raise PrimaryCorrectionError("target_corrupt")
-    path = root / PurePosixPath(str(relative))
-    if path.is_symlink() or not path.is_file():
-        raise PrimaryCorrectionError("target_corrupt")
+    del state
     try:
-        raw = path.read_bytes()
-    except OSError as exc:
-        raise PrimaryCorrectionError("store_unavailable") from exc
-    if not raw or len(raw) > MAX_PAGE_BYTES:
-        raise PrimaryCorrectionError("target_corrupt")
-    try:
-        markdown = raw.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise PrimaryCorrectionError("target_corrupt") from exc
-    parsed = parse_page_markdown(markdown)
-    if parsed.get("valid") is not True:
-        raise PrimaryCorrectionError("target_corrupt")
-    metadata = parsed["metadata"]
-    if set(metadata) != set(FRONT_MATTER_KEYS):
-        raise PrimaryCorrectionError("target_corrupt")
-    return {
-        "physical_id": current_physical,
-        "revision": current_revision,
-        "metadata": metadata,
-        "page_digest": sha256(raw).hexdigest(),
-        "relative_path": str(relative),
-    }
+        return load_primary_current_target(
+            root,
+            namespace=namespace,
+            memory_id=logical_memory_id,
+            expected_revision=expected_revision,
+        )
+    except PrimaryCurrentStateError as exc:
+        raise PrimaryCorrectionError(_shared_error_code(exc.code)) from exc
 
 
 def _validate_scope_tokens(character_id: str, namespace: str, memory_id: str, operation_id: str) -> None:
@@ -1046,17 +918,24 @@ def _read_operation_receipt(
 
 
 def _ensure_no_other_pending(
-    root: Path, memory_id: str, operation_key: str
+    root: Path,
+    memory_id: str,
+    operation_key: str,
+    *,
+    operation_id: str,
+    binding_digest: str,
 ) -> None:
-    memory_dir = root / _CORRECTION_ROOT / memory_id
-    _ensure_private_dir(root, memory_dir)
-    for prepared_path in memory_dir.glob("*.prepared.json"):
-        other_key = prepared_path.name.removesuffix(".prepared.json")
-        if other_key == operation_key:
-            continue
-        applied_path = memory_dir / f"{other_key}.applied.json"
-        if not applied_path.exists():
-            raise PrimaryCorrectionError("operation_conflict")
+    del operation_key
+    try:
+        ensure_primary_memory_mutation_available(
+            root,
+            memory_id=memory_id,
+            operation_kind="correct",
+            operation_id=operation_id,
+            binding_digest=binding_digest,
+        )
+    except PrimaryMutationCoordinatorError as exc:
+        raise PrimaryCorrectionError(_shared_error_code(exc.code)) from exc
 
 
 def _operation_path(root: Path, memory_id: str, operation_key: str, state: str) -> Path:
@@ -1073,18 +952,11 @@ def _operation_key(operation_id: str) -> str:
 
 @contextmanager
 def _memory_lock(root: Path, memory_id: str) -> Iterator[None]:
-    memory_dir = root / _CORRECTION_ROOT / memory_id
-    _ensure_private_dir(root, memory_dir)
-    lock_path = memory_dir / ".lock"
-    if lock_path.is_symlink():
-        raise PrimaryCorrectionError("target_corrupt")
     try:
-        with lock_path.open("a+b") as handle:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        with primary_memory_mutation_lock(root, memory_id):
             yield
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-    except OSError as exc:
-        raise PrimaryCorrectionError("store_unavailable") from exc
+    except PrimaryMutationCoordinatorError as exc:
+        raise PrimaryCorrectionError(_shared_error_code(exc.code)) from exc
 
 
 def _write_immutable_json(path: Path, value: Mapping[str, Any]) -> None:
@@ -1170,7 +1042,19 @@ def _path_has_symlink(path: Path) -> bool:
 
 
 def _empty_state(*, invalid: set[str] | None = None) -> CorrectionState:
-    return CorrectionState({}, {}, frozenset(), frozenset(), frozenset(invalid or ()), {})
+    return empty_primary_current_state_index(invalid=invalid)
+
+
+def _shared_error_code(code: str) -> str:
+    return {
+        "target_not_found": "not_found_or_wrong_scope",
+        "target_not_active": "target_not_active",
+        "target_corrupt": "target_corrupt",
+        "stale_revision": "stale_revision",
+        "operation_conflict": "operation_conflict",
+        "store_unavailable": "store_unavailable",
+        "invalid_request": "invalid_request",
+    }.get(code, "target_corrupt")
 
 
 def _canonical_json(value: Mapping[str, Any] | dict[str, Any]) -> bytes:

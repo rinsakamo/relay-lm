@@ -1,7 +1,7 @@
 ---
 relaylm_doc_type: contract
 relaylm_authority: phase_i4_primary_mem_forget_hide
-relaylm_status: target
+relaylm_status: current_target
 relaylm_volatility: medium
 relaylm_owner: relaymem_soul_lab_integration
 relaylm_update_trigger:
@@ -35,7 +35,7 @@ Last reviewed: 2026-06-25 JST
 
 ## 1. Status
 
-**Defined target contract; runtime unimplemented.**
+**I-4A contract complete; I-4B resolver/shared fence/read-only contracts complete; I-4C through I-4F unimplemented.**
 
 This document fixes the exact lifecycle, identity, persistence, concurrency, API,
 audit, recovery, and retrieval-exclusion contract for Phase I-4. It does not add
@@ -288,8 +288,8 @@ It does not become a generic all-memory mutation framework in this slice.
 | hidden input among future Merge sources | Merge | none | ineligible source; fail closed before multi-record claim |
 | hidden N | Secondary consolidation | none | ineligible; no consolidation candidate |
 
-The coordinator and common resolver are target implementation work for I-4B and
-I-4C. Phase I-4A changes no production module.
+The coordinator and common resolver are implemented in I-4B. I-4C will consume
+that authority for hidden lifecycle apply without introducing another lock path.
 
 ## 10. API and exact schemas
 
@@ -632,7 +632,7 @@ code only.
 
 ## 20. Implementation work slices I-4B through I-4F
 
-### I-4B — resolver, shared fence, and read-only contracts
+### I-4B — resolver, shared fence, and read-only contracts — complete
 
 - implement `relaylm.mem.primary_current_state.v0`;
 - refactor Phase I-3 current-revision resolution into a narrow common resolver;
@@ -669,6 +669,25 @@ code only.
 - test Correct/Forget and concurrent Forget races;
 - prove fresh-conversation M2 and RelayCTX exclusion;
 - prove historical used-memory integrity and no unrelated-ranking change.
+
+## 20A. I-4B implemented boundary
+
+I-4B implements `relaylm.mem.primary_current_state.v0`, preserves the existing
+`memory/mem/corrections/v0/{memory_id}/.lock` location as the sole Primary
+mutation lock, and centralizes pending-operation and operation-ID conflict
+inspection for Correct and future Forget apply.
+
+The production Forget surface in this slice is read-only:
+
+- exact active/current preflight;
+- five-minute integrity-protected token in a Forget-specific domain;
+- bounded zero-item history while tombstones do not exist;
+- no directory, lock, prepared artifact, hidden page, tombstone, index/log,
+  receipt, or temporary-file creation.
+
+I-4B does not implement hidden lifecycle apply, tombstones, recovery, M2/RelayCTX
+exclusion, API/UI, restore, deletion, purge, or any I1-G change. Those remain
+I-4C through I-4F as defined below.
 
 ## 21. Validation requirements
 

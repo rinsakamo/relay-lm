@@ -267,3 +267,7 @@ I3 auditable Primary MEM Correct: complete.
 I1-G pre-enqueue background-finalizer durability remains unresolved.
 
 UI-B0 and O0 are complete. I1-GA is complete as a contract/fault model only. O1 queue scanning/retry scheduling, O2 supervision, O3 always-on operation, and Phase I-4 runtime status remain unchanged by I-4A.
+
+## Phase I-4B current boundary
+
+I-4B canonical resolver/shared fence/read-only Forget preflight is complete and does not change RelaySLP, queue, lease, M2, RelayCTX, or I1-G authority. I-4C hidden apply/tombstone/recovery, I-4D M2 exclusion, I-4E API/UI, and I-4F full validation remain unimplemented.

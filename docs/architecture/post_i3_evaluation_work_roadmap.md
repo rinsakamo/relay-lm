@@ -506,3 +506,7 @@ Raw prompts, protected source, credentials, full traces, and unrestricted memory
 - RelaySOUL changes require explicit intervention.
 - O1 queue scanning and O2 supervision must reuse O0, B3, C1-5, C2, and C1-2.
 - text conversation does not imply TTS or avatar execution.
+
+### I-4B — complete
+
+The canonical current-state resolver, shared Correct/Forget mutation fence, read-only Forget preflight, five-minute token, and bounded zero-item history are complete. I-4C hidden apply/tombstone/recovery, I-4D retrieval exclusion, I-4E API/UI, and I-4F full validation remain unimplemented.

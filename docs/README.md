@@ -191,3 +191,7 @@ Placement rules:
 - RelaySOUL governance -> `docs/relaysoul/`
 
 The ordinary managed path is complete through observe/correct/retrieve, O0 manual one-shot execution, and the text-first Home experiment surface. I1-GA defines the durability target but production I1-G remains unresolved. Phase I-4A defines only the target Forget / Hide contract; production Forget apply, M2 exclusion, and the Forget UI remain unimplemented. O1/O2/O3 and later governance remain separate roadmap work.
+
+## Phase I-4B implementation boundary
+
+I-4A contract and I-4B canonical resolver/shared mutation fence/read-only Forget preflight are complete. I-4C hidden apply/tombstone/recovery, I-4D M2 exclusion, I-4E API/UI, and I-4F full validation remain unimplemented.

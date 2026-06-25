@@ -316,3 +316,7 @@ UI-B0 and O0 are complete. The next parallel work is I1-GB durable-finalization 
 M3i-c next-turn recall and scope isolation: complete as Phase I-1.
 M3i-d real read-only Lab observation: complete as Phase I-2.
 I1-G pre-enqueue background-finalizer durability remains unresolved. Observation receipts cannot repair a turn that never reached durable protected-source and B2 queue publication. I1-GA defines the target and fault model only.
+
+### M3i-f / Phase I-4B — complete
+
+Canonical Primary current-state resolution, the shared Correct/Forget mutation coordinator, and read-only Forget preflight/token/history are complete. Existing Correct artifacts, operation keys, lock path, receipts, M3e/M3f/M3g behavior, M2 output, and Lab read output remain compatible. I-4C through I-4F remain unimplemented.

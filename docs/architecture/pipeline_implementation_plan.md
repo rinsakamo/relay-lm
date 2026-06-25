@@ -353,3 +353,7 @@ When a phase lands, review together:
 - stale TODO or future-tense text in related documents.
 
 UI-B0, I1-GA, and Phase I-4A change no RelayLM configuration field. O0 adds explicit default-off local-worker gates documented in `docs/config_schema.md` and `config.example.yaml`.
+
+### I1-F3 / Phase I-4B: canonical resolver and read-only Forget contracts — complete
+
+I-4B centralizes current revision resolution, the Phase I-3 per-memory lock, pending-operation fencing, and operation lookup. It adds read-only Forget preflight, a five-minute integrity-protected token, and bounded zero-item history. I-4C hidden apply/tombstone/recovery, I-4D M2 exclusion, I-4E API/UI, and I-4F full validation remain planned.
