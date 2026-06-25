@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1-I3, UI-B0, I1-G, roadmap, and config documentation."""
+"""Validate current Phase 6, I1-I3, UI-B0, I1-GA, roadmap, and config documentation."""
 from __future__ import annotations
 import ast
 import re
 from pathlib import Path
+from relaylm_i1g_pre_enqueue_fault_model_smoke import main as run_i1g_fault_model
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -51,6 +52,8 @@ def main() -> None:
         "I1 next-turn Primary MEM recall: complete",
         "character and namespace isolation: complete",
         "I2 real SOUL Lab observation: complete",
+        "I1-GA contract / design decision / fault model: complete",
+        "I1-GB through I1-GE production durability: not implemented",
         "I1-G pre-enqueue background-finalizer durability: unresolved",
         "I3 auditable Primary MEM Correct: complete",
         "I1 observe/correct/retrieve product loop: complete",
@@ -63,6 +66,8 @@ def main() -> None:
         "### I1-F / Phase I-3: auditable Primary MEM Correct — complete",
         "### I1-G: pre-enqueue background-finalizer durability — unresolved",
         "UI-B0: Real Home Conversation",
+        "I1-GA contract/design/fault-model work is complete",
+        "I1-GB through I1-GE remain planned",
         "post_i3_evaluation_work_roadmap.md",
         "`docs/config_schema.md`",
         "stale TODO or future-tense text in related documents")
@@ -112,8 +117,9 @@ def main() -> None:
         "Phase I-3 completes auditable revision-fenced Correct",
         "UI-B0 adds a browser-local text-first client",
         "soul_lab_ui_b0_real_home_conversation.md",
-        "post_i3_evaluation_work_roadmap.md",
-        "I1-G pre-enqueue background-finalizer durability")
+        "i1g_pre_enqueue_durable_finalization_contract.md",
+        "I1-GA defines the target turn-scoped sealed durable-finalization record",
+        "I1-G production publication, restart replay, retention/cleanup, and crash integration remain unresolved")
     require("docs/README.md",
         "`config_schema.md`", "Current/Target Boundary Matrix",
         "stale TODO/future-tense text in related plans",
@@ -127,10 +133,24 @@ def main() -> None:
         "I1 next-turn Primary MEM recall: complete",
         "I2 real SOUL Lab observation: complete",
         "I1-G pre-enqueue background-finalizer durability")
+    require("docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
+        "relaylm_status: target",
+        "turn-scoped sealed durable-finalization publication record",
+        "Window A — unresolved",
+        "source-before-queue invariant is absolute",
+        "One-record replay algorithm",
+        "Required fault matrix",
+        "I1-GA — complete in this slice",
+        "I1-GB — durable-finalization publication",
+        "I1-GC — one-record replay and duplicate suppression",
+        "I1-GD — retention, orphan reconciliation, and cleanup",
+        "I1-GE — production crash-at-every-boundary integration smoke",
+        "Production pre-enqueue durability remains unresolved")
     forbid("docs/PROJECT_STATUS.md",
         "SOUL Lab real observation: next",
         "auditable Correct operation: next",
-        "real SOUL Lab Home conversation remain separate work")
+        "real SOUL Lab Home conversation remain separate work",
+        "I1-G pre-enqueue background-finalizer durability: complete")
     forbid("docs/README.md",
         "Phase I-3 next step",
         "The next product boundary is Phase I-3",
@@ -138,7 +158,8 @@ def main() -> None:
     forbid("docs/architecture/README.md",
         "The next boundary is Phase I-3",
         "the next Correct boundary",
-        "Real Home conversation, broader memory operations")
+        "Real Home conversation, broader memory operations",
+        "I1-G pre-enqueue background-finalizer production durability: complete")
     forbid("docs/architecture/soul_lab_ui_mvp.md",
         "Phase I-3 auditable Correct: next",
         "## Phase I-3 next boundary")
@@ -146,6 +167,7 @@ def main() -> None:
         "I3 I3 auditable",
         "Phase I-3 auditable Correct is the next product boundary",
         "## Active priority: Phase I-3 auditable Correct")
+    run_i1g_fault_model()
     print("RelayLM documentation current-boundary smoke passed.")
 
 
