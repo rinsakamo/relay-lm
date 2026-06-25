@@ -43,7 +43,7 @@ relaylm_related_authority:
 
 This document defines the RelayMEM MVP implementation track. Repository-wide sequencing remains owned by [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
 
-M3a-M3h, C1-1/C1-2 execution, C1-4 fault convergence, C1-5 protected-source restart recovery, C2 one-job execution, Phase I-1 next-turn recall, Phase I-2 real Lab observation, and Phase I-3 Correct are complete. Phase I-4A now defines the target Forget / Hide contract. The next RelayMEM implementation slice is I-4B, not production Forget completion.
+M3a-M3h, C1-1/C1-2 execution, C1-4 fault convergence, C1-5 protected-source restart recovery, C2 one-job execution, Phase I-1 next-turn recall, Phase I-2 real Lab observation, and Phase I-3 Correct are complete. Phase I-4A defines the target Forget / Hide contract. The next RelayMEM governance implementation slice is I-4B, not production Forget completion.
 
 ## Core lifecycle
 
@@ -168,7 +168,7 @@ SOUL / OUTPUT_POLICY / RELATIONSHIP_ANCHOR
   > latest input
 ```
 
-Phase I-3 currently adds current-revision resolution without adding a correction-specific retriever. I-4B/I-4D must replace the correction-only state view with one canonical Primary current-state resolver used by M2 and Lab reads.
+Phase I-3 adds current-revision resolution without adding a correction-specific retriever. I-4B/I-4D must replace the correction-only state view with one canonical Primary current-state resolver used by M2 and Lab reads.
 
 Target eligibility:
 
@@ -217,13 +217,13 @@ Phase I-2 provides loopback-only exact-schema APIs for latest completed run, rec
 
 M3i-d real read-only Lab observation: complete as Phase I-2.
 
-Observation receipts are read-model evidence only. They are not M1/M2 candidates, protected source, B3 records, lifecycle authority, or repair instructions.
+Observation receipts are read-model evidence only. They are not M1/M2 candidates, protected source, B3 records, lifecycle authority, or repair instructions. Observation receipt failure cannot change memory semantics or visible response behavior.
 
 ## MEM-M3i-e: auditable Correct — complete
 
 Phase I-3 provides read-only correction preflight, bounded semantic diff, short-lived token, exact revision fence, immutable successor page, M3f/M3g convergence, immutable correction receipt, recovery, exact replay, and later M2 resolution of only the corrected current revision.
 
-Past used-memory evidence preserves the representation actually injected for that run.
+Past used-memory evidence preserves the representation actually injected for that run. Durable correction audit evidence remains distinct from observation receipts.
 
 ## MEM-M4: Secondary MEM consolidation — deferred
 
@@ -241,6 +241,8 @@ The read surface observes current runtime evidence. It does not create, replace,
 
 Correct is implemented through exact loopback preflight/apply/history routes and changes later retrieval through one immutable successor revision.
 
+Required invariants remain exact current identity/scope, no browser path authority, bounded explicit input, no-clobber publication, preserved prior representation/provenance, durable audit evidence distinct from observation receipts, later M2 convergence, crash-safe recovery, and no RelaySOUL mutation.
+
 ### Forget / Hide contract — defined as Phase I-4A
 
 Canonical terms:
@@ -248,7 +250,7 @@ Canonical terms:
 ```text
 Forget            user-facing explicit operation
 hidden            canonical current retrieval-ineligible lifecycle state
-Forget tombstone  immutable runtime-private audit artifact
+Forget tombstone  immutable runtime-private audit/recovery artifact
 ```
 
 Persistence decision:
@@ -292,7 +294,7 @@ For Forget specifically:
 
 With Correct complete and I-4A defined, I-4B is the next bounded RelayMEM governance implementation slice. It may narrow-refactor the correction-specific resolver and lock/fence into a shared Primary mutation coordinator, but must not perform a broad generic mutation-framework rewrite.
 
-UI-B0, O0, and I1-G may proceed in parallel under their existing ownership boundaries.
+UI-B0 is complete. O0 and I1-G implementation may proceed in parallel under their existing ownership boundaries.
 
 ## Completion status
 
@@ -308,4 +310,6 @@ UI-B0, O0, and I1-G may proceed in parallel under their existing ownership bound
 
 ## I1-G boundary
 
-I1-G pre-enqueue background-finalizer durability remains unresolved. Observation receipts, Correct, and the Forget contract cannot recover a turn that never reached durable protected-source and B2 queue publication.
+M3i-c next-turn recall and scope isolation: complete as Phase I-1.
+M3i-d real read-only Lab observation: complete as Phase I-2.
+I1-G pre-enqueue background-finalizer durability remains unresolved. Observation receipts cannot repair a turn that never reached durable protected-source and B2 queue publication. I1-GA defines the target and fault model only.
