@@ -53,6 +53,8 @@ memory_namespace: character/default
 
 The RelaySLP enqueue and O0 worker gates were explicitly changed from their safe defaults to apply mode for the evaluation. The configured queue, protected-source, and memory roots were absolute local paths.
 
+I1-GB merged after this workstation run. Its pre-release durable-finalization publication gates were therefore not enabled or evaluated here.
+
 ## Result summary
 
 The local experiment proved the following bounded path:
