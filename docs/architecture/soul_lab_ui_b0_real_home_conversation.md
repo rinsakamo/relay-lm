@@ -18,6 +18,7 @@ relaylm_related_authority:
   - docs/architecture/integration_i1_primary_mem_two_turn_recall.md
   - docs/architecture/phase_i2_real_soul_lab_observation.md
   - docs/architecture/phase_i3_auditable_primary_mem_correct.md
+  - docs/architecture/o0_local_one_job_runner.md
 ---
 # SOUL Lab UI-B0 Real Home Conversation
 
@@ -297,11 +298,11 @@ A real LM Studio workstation manual smoke is environment validation and is not f
 
 ## E1 evaluation path
 
-Until O0 exists, use the existing explicit one-job C2 execution method:
+O0 is complete and provides the explicit one-job execution boundary for the first E1 evaluation:
 
 ```text
 real Home conversation
-  -> explicit one-job C2 execution
+  -> O0 explicit one-job execution
   -> formed Primary MEM
   -> Phase I-2 observation
   -> Phase I-3 Correct
@@ -310,14 +311,14 @@ real Home conversation
   -> Phase I-2 used-memory evidence
 ```
 
-UI-B0 does not claim that the complete E1 flow is automated.
+This path is operator-driven. O0 does not poll, schedule retries, or create browser worker authority, and UI-B0 does not claim that the complete E1 flow is automated.
 
 ## Known limitations and separate slices
 
 - multiple projected routes remain fail-closed; UI-B0 adds no route priority semantics,
 - browser transcripts are process-local and non-durable,
 - static SOUL Lab serving remains separate,
-- O0 local one-job runner remains a separate parallel slice,
+- O0 local one-job runner is complete as an explicit operator-invoked one-shot boundary; O1 polling and retry scheduling remain separate,
 - I1-G pre-enqueue durability remains separate,
 - I-4 Forget/Hide and later memory governance remain separate,
 - queue scanning, scheduling, worker supervision, and always-on operation remain separate,
@@ -326,6 +327,6 @@ UI-B0 does not claim that the complete E1 flow is automated.
 
 ## Proof boundary
 
-UI-B0 proves a bounded browser client can exercise the existing real RelayLM text path with safe local session controls and explicit source separation. Combined with existing I-1/I-2/I-3 and an explicit one-job method, it enables the first hands-on E1 evaluation.
+UI-B0 proves a bounded browser client can exercise the existing real RelayLM text path with safe local session controls and explicit source separation. Combined with existing I-1/I-2/I-3 and the completed O0 one-job boundary, it enables the first hands-on E1 evaluation.
 
-It does not prove automatic deferred-job execution, pre-enqueue crash durability, durable transcripts, broad memory governance, or long-running production operation.
+It does not prove automatic queue polling or retry scheduling, pre-enqueue crash durability, durable transcripts, broad memory governance, or long-running production operation.
