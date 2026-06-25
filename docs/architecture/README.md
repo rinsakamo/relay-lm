@@ -49,6 +49,7 @@ Canonical authority:
 - [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md)
 - [Phase I-4A Primary MEM Forget / Hide Contract](phase_i4_primary_mem_forget_hide_contract.md)
+- [Phase I-4B Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md)
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [I1-G Pre-enqueue Durable-finalization Contract and Fault Model](i1g_pre_enqueue_durable_finalization_contract.md)
 - [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md)
@@ -60,11 +61,11 @@ O0 is the thin local caller before C2. It performs bounded non-recursive discove
 
 Phase I-1 completes ordinary next-turn Primary MEM recall with exact character/namespace isolation and RelayCTX injection. Phase I-2 adds a bounded read-only observation model, loopback-only APIs, strict browser validation, and real Lab Observation rendering without changing RelayMEM, RelaySLP, RelayRUN, or RelayCTX authority. Phase I-3 completes auditable revision-fenced Correct and later corrected retrieval. UI-B0 adds a browser-local text-first client for the existing RelayLM Chat Completions path without adding a new routing, memory, SOUL, backend, or worker authority.
 
-Phase I-4A defines the target Forget contract: Forget is the user-facing operation, `hidden` is the canonical retrieval-ineligible lifecycle state, and the Forget tombstone is the immutable runtime-private audit/recovery artifact. It selects an immutable hidden successor Primary page with revision `N+1` as lifecycle authority and requires one Correct/Forget shared revision fence plus one canonical current-state resolver. Production apply, M2 exclusion, historical lifecycle projection, and the SOUL Lab Forget UI remain unimplemented.
+Phase I-4A defines the target Forget contract: Forget is the user-facing operation, `hidden` is the canonical retrieval-ineligible lifecycle state, and the Forget tombstone is the immutable runtime-private audit/recovery artifact. It selects an immutable hidden successor Primary page with revision `N+1` as lifecycle authority. Phase I-4B now implements the canonical read-only current-state resolver, preserves the Phase I-3 `.lock` path as the shared Correct/Forget mutation fence, and adds read-only Forget preflight/token/history contracts. Production hidden apply, M2 exclusion, historical lifecycle projection, and the SOUL Lab Forget UI remain unimplemented.
 
 I1-GA defines the turn-scoped sealed durable-finalization contract and fault model. I1-GB implements bounded private base/segment/seal publication, canonical reread, exact A1/A2/B1 preparation, and non-stream/stream pre-release admission. I1-GC restart replay and completion convergence, I1-GD retention/cleanup, and I1-GE full production crash integration remain unimplemented.
 
-The next planned work is documented in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md). I1-GC through I1-GE, Phase I-4B through I-4F, O1/O2/O3 automatic and supervised operation, later memory governance, Secondary MEM, and RelaySOUL apply/rollback remain separate.
+The next planned work is documented in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md). I1-GC through I1-GE, Phase I-4C through I-4F, O1/O2/O3 automatic and supervised operation, later memory governance, Secondary MEM, and RelaySOUL apply/rollback remain separate.
 
 ## Completed Core streaming boundary
 
@@ -76,6 +77,7 @@ Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, 
 
 - [Memory Lifecycle Design](memory_lifecycle_design.md) — short-term CTX, governed experience evidence, autonomous ordinary MEM formation, RelaySLP, and SOUL Lab memory operations.
 - [Phase I-4A Primary MEM Forget / Hide Contract](phase_i4_primary_mem_forget_hide_contract.md) — exact target lifecycle, revision, persistence, recovery, and retrieval-exclusion semantics.
+- [Phase I-4B Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md) — implemented read-only resolver, shared lock/fence, token, and zero-item history boundary.
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md) — current enqueue/source capture, queue lifecycle, completed C1-0 through C1-5, C2, O0, I-1 recall, I-2 observation, I-3 correction, and remaining migration boundaries.
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — store contracts, retrieval, Primary MEM formation, worker integration, recall, observation, Secondary consolidation, and Lab-ready operations.
 - [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md) — planned I-4 through I-9 work slices, SOUL Lab conversation, operational phases, parallel development, and evaluation gates.
@@ -103,11 +105,12 @@ Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, 
 - [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md)
 - [Phase I-4A Primary MEM Forget / Hide Contract](phase_i4_primary_mem_forget_hide_contract.md)
+- [Phase I-4B Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md)
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md)
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md)
 
-The browser shell is complete through UI-A7, Phase I-2 real observation, Phase I-3 Correct, and UI-B0 real Home conversation. UI-B0 uses a single unambiguous server-projected route, same-origin non-stream/SSE transport, explicit Real Runtime versus Local Preview sessions, Stop/Retry/New Conversation controls, and stale response fencing. Phase I-4A changes no browser behavior. The Forget UI, broader memory operations, RelaySOUL apply/rollback, static bundle serving, peer transport, and TTS/avatar execution remain separate.
+The browser shell is complete through UI-A7, Phase I-2 real observation, Phase I-3 Correct, and UI-B0 real Home conversation. UI-B0 uses a single unambiguous server-projected route, same-origin non-stream/SSE transport, explicit Real Runtime versus Local Preview sessions, Stop/Retry/New Conversation controls, and stale response fencing. Phase I-4A/I-4B change no browser behavior. The Forget UI, broader memory operations, RelaySOUL apply/rollback, static bundle serving, peer transport, and TTS/avatar execution remain separate.
 
 Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1` with explicit `client_instruction_source.v1` provenance. Role, wording, and message position alone are not provenance.
 
@@ -118,10 +121,11 @@ Historical and MVP documents do not override current owners. Implementation hand
 - [Primary MEM two-turn recall](integration_i1_primary_mem_two_turn_recall.md): ordinary Turn 1 durable formation, ordinary Turn 2 scoped M2 selection, canonical page/index/log validation, and bounded RelayCTX injection.
 - [Real SOUL Lab observation](phase_i2_real_soul_lab_observation.md): latest completed run, validated formed memories, durable held/blocked outcomes, and actual backend-bound used-memory evidence, all read-only and character/namespace scoped.
 - [Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md): token-gated revision-fenced correction, immutable audit evidence, recovery convergence, and later corrected retrieval.
-- [Primary MEM Forget / Hide target contract](phase_i4_primary_mem_forget_hide_contract.md): defined target only; no current runtime completion claim.
+- [Primary MEM Forget / Hide target contract](phase_i4_primary_mem_forget_hide_contract.md): target hidden lifecycle and persistence/recovery semantics.
+- [Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md): implemented I-4B resolver/fence/read-only Forget boundary.
 - [Real Home conversation](soul_lab_ui_b0_real_home_conversation.md): existing RelayLM Chat Completions transport exposed through a bounded browser-local experiment surface.
 - [O0 local one-job runner](o0_local_one_job_runner.md): one operator invocation selects and delegates at most one eligible already-durable queued job.
 
 ## Operational alignment
 
-O0 is complete only for explicit one-shot local operation. UI-B0 does not own I1-G durability, queue selection, or worker service authority. I1-GA defines the target/fault model and I1-GB implements pre-release evidence publication only. Phase I-4A defines lifecycle semantics only. I1-GC through I1-GE remaining durability work, Phase I-4B through I-4F implementation, O1 queue scanning/scheduling, O2 supervision, and O3 always-on lifecycle remain separate roadmap slices.
+O0 is complete only for explicit one-shot local operation. UI-B0 does not own I1-G durability, queue selection, or worker service authority. I1-GA defines the target/fault model and I1-GB implements pre-release evidence publication only. Phase I-4A defines lifecycle semantics and I-4B implements the read-only resolver/shared-fence boundary only. I1-GC through I1-GE remaining durability work, Phase I-4C through I-4F implementation, O1 queue scanning/scheduling, O2 supervision, and O3 always-on lifecycle remain separate roadmap slices.
