@@ -17,7 +17,9 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - phase_i3_auditable_primary_mem_correct.md
+  - phase_i4_primary_mem_forget_hide_contract.md
   - soul_lab_ui_b0_real_home_conversation.md
+  - i1g_pre_enqueue_durable_finalization_contract.md
   - pipeline_implementation_plan.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
@@ -29,7 +31,7 @@ relaylm_related_authority:
 
 ## Purpose
 
-Phase I-3 auditable Primary MEM Correct and UI-B0 real Home conversation are complete. This document records the remaining sequence for evaluating RelayLM as a text-first local character product and then extending memory governance and operations.
+Phase I-3 auditable Primary MEM Correct and UI-B0 real Home conversation are complete. I1-GA has defined the pre-enqueue durable-finalization target and pure fault model. Phase I-4A now defines the Forget / Hide target contract, but no Forget runtime, M2 exclusion, or UI exists. This document records the remaining sequence for evaluating RelayLM as a text-first local character product and then extending memory governance and operations.
 
 The roadmap has three tracks:
 
@@ -58,12 +60,18 @@ Complete:
 - Phase I-3 auditable Correct and corrected retrieval,
 - UI-B0 bounded real Home non-stream and SSE conversation,
 - explicit Real Runtime / Local Preview separation,
-- Stop, Retry, New Conversation, and stale-request fencing.
+- Stop, Retry, New Conversation, and stale-request fencing,
+- I1-GA durable-finalization contract, selected design, and 30-point pure fault model.
 
-Unresolved operational boundaries:
+Defined target only:
+
+- Phase I-4A Forget / Hide lifecycle, persistence, concurrency, API, recovery, and fault contract.
+
+Unresolved or unimplemented:
 
 - O0 local one-job selection and execution convenience,
-- I1-G pre-enqueue durability,
+- I1-GB through I1-GE production durability,
+- Phase I-4B through I-4F Forget implementation,
 - automatic queue scanning and supervised operation.
 
 ## Target product loop
@@ -101,20 +109,44 @@ Phase I-3 is the baseline mutation contract. Later operations must reuse exact s
 
 Goal:
 
-> Exclude one memory from ordinary retrieval without destroying auditability.
+> Exclude one current active Primary MEM from ordinary retrieval without destroying auditability or rewriting historical use evidence.
+
+Canonical terminology fixed by I-4A:
+
+```text
+user-facing operation: Forget
+canonical lifecycle state: hidden
+runtime-private audit artifact: Forget tombstone
+```
+
+`Hide` is not a second operation, and `tombstone` is not a lifecycle-state synonym. Forget is not physical deletion, secure erase, purge, restore, or unhide.
+
+Persistence decision:
+
+```text
+revision N active
+  -> exact prepared operation and fail-closed quarantine
+  -> immutable successor Primary page through M3e
+revision N+1 hidden
+  -> M3f/M3g index-before-log convergence
+  -> M2 exclusion verification
+  -> immutable Forget tombstone finalization
+```
+
+The hidden successor page is lifecycle authority. The tombstone is audit/recovery evidence, not an independent sidecar authority. Correct and Forget must share one per-memory revision fence and one canonical current-state resolver.
 
 Work slices:
 
 ```text
-I-4A  lifecycle-state and destructive-operation contract
-I-4B  exact revision, scope, lineage, and current-state preflight
-I-4C  atomic tombstone or hidden-state apply
-I-4D  index/log convergence and M2 exclusion
-I-4E  SOUL Lab confirmation, refusal, conflict, and receipt UI
-I-4F  fresh-conversation exclusion and recovery smoke
+I-4A  lifecycle, persistence, concurrency, API, recovery, and fault contract — defined target
+I-4B  canonical current-state resolver, shared mutation fence, exact preflight/history, and token issuance
+I-4C  immutable hidden successor apply, prepared artifact, Forget tombstone, and exact replay
+I-4D  index/log convergence, M2 exclusion, and historical used-memory lifecycle projection
+I-4E  loopback API and SOUL Lab confirmation/refusal/conflict/receipt UI
+I-4F  fresh-conversation exclusion, security, race, and crash-recovery smoke
 ```
 
-Physical deletion is not the default. Irreversible purge requires a separate future boundary.
+Only I-4A is defined. I-4B through I-4F are unimplemented. Physical deletion and restore/unhide require separate future contracts.
 
 ### Phase I-5: Pin / Unpin
 
@@ -131,7 +163,7 @@ I-5E  SOUL Lab UI
 I-5F  ranking, budget, isolation, and stale-revision smoke
 ```
 
-Pinning must not override Secondary MEM, SOUL, OUTPUT_POLICY, or RELATIONSHIP_ANCHOR.
+Pinning must not override Secondary MEM, SOUL, OUTPUT_POLICY, or RELATIONSHIP_ANCHOR. A hidden memory is ineligible unless a later contract explicitly defines otherwise.
 
 ### Phase I-6: Merge / Supersession
 
@@ -148,6 +180,8 @@ I-6E  index/log and retrieval de-duplication
 I-6F  SOUL Lab multi-select and confirmation
 I-6G  crash, retry, stale-record, and duplicate-retrieval smoke
 ```
+
+A hidden memory is not an eligible Merge source by default.
 
 ### Phase I-7: Held Apply / Discard
 
@@ -175,7 +209,7 @@ Goal:
 
 ```text
 I-8A  grouping and candidate discovery
-I-8B  duplicate, supersession, contradiction, and namespace analysis
+I-8B  duplicate, supersession, contradiction, lifecycle, and namespace analysis
 I-8C  stable summary and relation candidates
 I-8D  SOUL-anchor validation without SOUL mutation
 I-8E  idempotent rollback-friendly apply or hold
@@ -183,6 +217,8 @@ I-8F  M2 Secondary-priority retrieval integration
 I-8G  Lab observation and lineage inspection
 I-8H  long-horizon retrieval and contradiction smoke
 ```
+
+Hidden Primary MEM is ineligible for ordinary consolidation.
 
 ### Phase I-9: RelaySOUL Proposal / Intervention / Rollback
 
@@ -231,7 +267,7 @@ Goal:
 ```text
 UI-B1A  conversation-to-Lab navigation and latest-run correlation
 UI-B1B  not-scheduled / queued / processing / formed / held / blocked / failed states
-UI-B1C  operation receipt and current revision display
+UI-B1C  operation receipt, revision, and active/hidden lifecycle display
 UI-B1D  fresh-conversation verification entry point
 UI-B1E  separation of runtime state, evidence, and mutation authority
 ```
@@ -270,14 +306,14 @@ Goal:
 > Close the process-exit window after visible response delivery but before durable protected-source and B2 queue publication.
 
 ```text
-I1-GA  failure-window and durable-finalization contract
-I1-GB  atomic or convergent durable publication boundary
-I1-GC  restart replay and duplicate suppression
-I1-GD  retention and cleanup
-I1-GE  crash-at-every-boundary smoke
+I1-GA  failure-window and durable-finalization contract — complete
+I1-GB  atomic or convergent durable publication boundary — planned
+I1-GC  restart replay and duplicate suppression — planned
+I1-GD  retention and cleanup — planned
+I1-GE  crash-at-every-boundary smoke — planned
 ```
 
-The design must preserve visible-response independence, source-before-queue ordering, dispatch idempotency, content separation, restart recovery, and no duplicate logical memory formation.
+I1-GA selects one turn-scoped sealed durable-finalization publication record and a one-record replay model. Production durability remains unresolved. The implementation must preserve visible-response independence, source-before-queue ordering, dispatch idempotency, content separation, restart recovery, and no duplicate logical memory formation.
 
 ### O1: Queue scanner and retry scheduler
 
@@ -329,17 +365,21 @@ TTS, audio, Live2D, ASR, and public remote access are not required for the text-
 Completed:
   Phase I-3 Correct
   UI-B0 Real Home Conversation
+  I1-GA contract / design decision / fault model
+
+Defined target only:
+  Phase I-4A Forget / Hide contract
 
 Current parallel work:
   O0 Local one-job runner
-  I1-G contract and fault model
-  Phase I-4 contract and lifecycle-state design
+  I1-GB durable-finalization publication
+  Phase I-4B resolver/shared-fence/preflight work
 
 Available now:
   Evaluation Gate E1 using an existing explicit one-job C2 method
 
 Then:
-  Phase I-4 Forget / Hide
+  Phase I-4C through I-4F
   Phase I-5 Pin / Unpin
   Phase I-6 Merge / Supersession
   Phase I-7 Held Apply / Discard
@@ -347,7 +387,7 @@ Then:
 
   Evaluation Gate E2
 
-  I1-G implementation
+  I1-GC through I1-GE
   O1 queue scanner / retry scheduler
   O2 supervised worker service
 
@@ -365,8 +405,8 @@ I1-G and operations may move earlier in parallel, but become mandatory before lo
 
 ```text
 Thread A  O0 Local one-job runner
-Thread B  I1-G contract and fault model
-Thread C  Phase I-4 contract and lifecycle-state design
+Thread B  I1-GB durable-finalization publication
+Thread C  Phase I-4B canonical resolver, shared fence, and read-only contracts
 Thread D  UI-B1 lifecycle visibility design after stable status projections
 ```
 
@@ -423,9 +463,9 @@ Proves stable consolidation, proposal-driven identity change, rollback, restart 
 Record at least:
 
 - formed, held, blocked, failed, and lost-or-unknown counts,
-- governance outcomes and stale/mixed-scope refusals,
+- correction/Forget/pin/merge/held outcomes and stale/mixed-scope refusals,
 - retrieval selection before and after each operation,
-- injected revision and backend-bound inclusion evidence,
+- injected revision and lifecycle evidence,
 - duplicate and contradiction rates,
 - worker retry/restart behavior,
 - user effort required to keep memory useful.
@@ -434,9 +474,10 @@ Raw prompts, protected source, credentials, full traces, and unrestricted memory
 
 ## Preserved boundaries
 
-- Phase I-3 remains the baseline mutation contract.
+- Phase I-3 remains the implemented baseline mutation contract.
 - UI-B0 is a client of existing route, M2, RelayCTX, backend, and RelaySLP authority.
-- Phase I-4 through I-9 require dedicated contracts.
+- I1-GA is contract/test-model only; production I1-G remains unresolved.
+- Phase I-4A is a defined target contract only; I-4B through I-4F require implementation and validation.
 - RelayMEM owns memory meaning and persistence.
 - M2 and RelayCTX own selection and backend-bound injection.
 - RelaySOUL changes require explicit intervention.

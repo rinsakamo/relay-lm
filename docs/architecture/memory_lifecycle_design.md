@@ -19,6 +19,8 @@ relaylm_related_authority:
   - relaymem_slp_execution_design.md
   - scene_memory_scope_design.md
   - soul_lab_ui_mvp.md
+  - phase_i3_auditable_primary_mem_correct.md
+  - phase_i4_primary_mem_forget_hide_contract.md
   - ../PROJECT_STATUS.md
 ---
 # Memory Lifecycle Design
@@ -253,7 +255,7 @@ It should let the user:
 - see which memories influenced an answer,
 - inspect uncertain or held memories,
 - correct a memory,
-- forget or hide a memory,
+- perform Forget, which targets the canonical `hidden` lifecycle state,
 - pin or unpin important memories,
 - merge duplicates,
 - resolve contradictions,
@@ -356,7 +358,7 @@ User/operator intervention is required for:
 - RelaySOUL changes,
 - relationship anchor changes,
 - durable output policy changes,
-- destructive memory deletion,
+- explicit Forget lifecycle transitions and any separate physical deletion operation,
 - explicit pinning or unpinning when it changes retrieval priority,
 - sensitive personal facts,
 - low-confidence personal inference,
@@ -398,7 +400,7 @@ Memory Formation
   blocked memory operations
   memories used in latest response
   source experience summary
-  correction / forget / pin / merge controls
+  Correct / Forget / Pin / Merge controls
 ```
 
 Avoid making the primary UI a per-turn approval inbox:
@@ -456,6 +458,7 @@ This lifecycle does not make RelayLM:
 - an automatic SOUL mutation system,
 - a per-turn user approval workflow,
 - a replacement for explicit user correction,
+- a physical deletion, secure-erasure, purge, restore, or unhide system through Forget,
 - a reason to persist raw runtime traces as memory.
 
 ## Summary
@@ -465,7 +468,7 @@ RelayCTX keeps short-term continuity.
 Primary MEM captures EMO- and SCN-influenced experience.
 RelaySLP consolidates primary MEM into secondary MEM when gates pass.
 Secondary MEM stores SOUL-aligned crystallized memory for durable retrieval.
-SOUL Lab lets the user observe, correct, forget, pin, merge, and escalate.
+SOUL Lab lets the user observe, correct, Forget, pin, merge, and escalate.
 SOUL Intervention remains explicit.
 ```
 
@@ -486,4 +489,15 @@ Character/namespace isolation, stable logical memory identity, no-clobber public
 
 Authority and exact contracts: `docs/architecture/phase_i3_auditable_primary_mem_correct.md`.
 
-Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement forget, pin/unpin, merge, held apply/discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.
+Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement Forget, Pin/Unpin, Merge, Held Apply/Discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.
+
+<!-- phase-i4a-primary-mem-forget-hide-contract -->
+## Phase I-4A Primary MEM Forget / Hide contract — defined target (2026-06-25)
+
+Phase I-4A fixes distinct canonical terms: **Forget** is the user-facing operation, **`hidden`** is the resulting current retrieval-ineligible lifecycle state, and the **Forget tombstone** is an immutable runtime-private audit/recovery artifact rather than a lifecycle-state synonym.
+
+The target persistence model is an immutable successor Primary page with revision `N+1` and lifecycle `hidden`, followed by existing M3f/M3g convergence and tombstone finalization. Correct and Forget share one per-memory revision fence and one canonical current/active/retrieval-eligibility resolver. Hidden, prior, prepared, recovery-required, or corrupt state is excluded from ordinary M2 retrieval.
+
+Authority: `docs/architecture/phase_i4_primary_mem_forget_hide_contract.md`.
+
+Runtime apply, M2 exclusion, historical lifecycle projection, SOUL Lab Forget UI, physical deletion, restore/unhide, and later memory operations remain unimplemented. I1-G, UI-B0, O0, queue scanner, and daemon/service status are unchanged.

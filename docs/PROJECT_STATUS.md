@@ -30,6 +30,7 @@ relaylm_related_authority:
   - docs/architecture/integration_i1_primary_mem_two_turn_recall.md
   - docs/architecture/phase_i2_real_soul_lab_observation.md
   - docs/architecture/phase_i3_auditable_primary_mem_correct.md
+  - docs/architecture/phase_i4_primary_mem_forget_hide_contract.md
   - docs/architecture/soul_lab_ui_b0_real_home_conversation.md
   - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
 ---
@@ -45,6 +46,7 @@ Status reviewed through:
 - Phase I-1 Primary MEM next-turn recall and character/namespace isolation,
 - Phase I-2 real SOUL Lab latest-run and memory observation integration,
 - Phase I-3 auditable Primary MEM Correct and later retrieval convergence,
+- Phase I-4A Primary MEM Forget / Hide target contract definition only,
 - SOUL Lab UI-B0 real Home non-stream and streaming conversation integration,
 - I1-GA pre-enqueue durable-finalization contract and pure fault model only.
 
@@ -69,6 +71,7 @@ RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and 
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, and UI-B0 complete
 Real Home conversation: same-origin RelayLM non-stream and SSE transport complete
 I1 observe/correct/retrieve product loop: complete
+Phase I-4A Forget / Hide contract: defined target; runtime apply, M2 exclusion, and UI unimplemented
 I1-GA contract / design decision / fault model: complete
 I1-G pre-enqueue background-finalizer durability: unresolved
 O0 local one-job runner: separate and not implemented in UI-B0
@@ -124,9 +127,23 @@ Implemented:
 - bounded RelayCTX memory injection,
 - Phase I-3 immutable successor correction with durable audit evidence.
 
+Phase I-4A defines, but does not implement, the next lifecycle boundary:
+
+```text
+user-facing operation: Forget
+canonical lifecycle state: hidden
+runtime-private audit artifact: Forget tombstone
+persistence model: immutable hidden successor Primary page with revision N+1
+```
+
+The hidden successor page is the lifecycle authority. The tombstone is audit/recovery evidence, not an independently updated sidecar flag. Correct and Forget must share one per-memory revision fence and one canonical current-state resolver. Prepared, recovery-required, corrupt, hidden, and prior physical revisions must be fail-closed for ordinary retrieval.
+
 Still separate:
 
-- Forget / Hide,
+- production Forget preflight/apply/history,
+- canonical lifecycle resolver and hidden-state M2 exclusion,
+- SOUL Lab Forget UI,
+- restore / unhide and physical deletion,
 - Pin / Unpin,
 - Merge / Supersession,
 - Held Apply / Discard,
@@ -162,6 +179,8 @@ The real request continues through existing RelayLM character resolution, M2 ret
 
 The dedicated frontend typecheck, strict Home conversation Node smoke, production build, documentation checks, OpenWebUI/LM Studio proxy smokes, and Phase I-1/I-2/I-3 regression runners pass. A real LM Studio workstation manual smoke remains an environment validation step and is documented in [UI-B0 Real Home Conversation](architecture/soul_lab_ui_b0_real_home_conversation.md).
 
+Phase I-4A changes no browser behavior. The Forget UI remains unimplemented, and real mutation failure must never fall back to mock success.
+
 ## Evaluation boundary
 
 UI-B0 completes the browser-side text-first experiment surface. Together with existing I-1, I-2, I-3 and an explicit one-job C2 execution method, it enables a manual E1 evaluation:
@@ -191,6 +210,8 @@ UI-B0 does not claim that automatic queued-job execution or the full E1 loop is 
 - I3 auditable Primary MEM Correct: complete
 - I1 observe/correct/retrieve product loop: complete
 - UI-B0 real Home conversation: complete
+- I4A Forget / Hide contract: defined target
+- I4 production Forget runtime, M2 exclusion, and UI: unimplemented
 - I1-GA contract / design decision / fault model: complete
 - I1-GB through I1-GE production durability: not implemented
 - I1-G pre-enqueue background-finalizer durability: unresolved
@@ -214,7 +235,7 @@ relaymem_slp_runtime_enqueue_dry_run_only = true
 relaymem_slp_runtime_enqueue_apply_enabled = false
 ```
 
-UI-B0 and I1-GA do not change these server defaults. I1-GA adds no production writer, response-order change, permissive CORS policy, browser credential distribution, direct browser-to-LM-Studio connection, transcript persistence, static bundle serving, or runtime process controls.
+UI-B0, I1-GA, and Phase I-4A do not change these server defaults. I1-GA adds no production writer or response-order change. Phase I-4A adds no accepted runtime route/schema, Primary writer change, M2 filtering, or browser mutation capability.
 
 ## Not yet implemented
 
@@ -222,7 +243,10 @@ UI-B0 and I1-GA do not change these server defaults. I1-GA adds no production wr
 - queue scanner and retry scheduler,
 - supervised worker service and always-on operation,
 - I1-G durable-finalization publication, one-record replay, retention/cleanup, and production crash integration,
-- I-4 through I-9 governance and RelaySOUL slices,
+- production Forget lifecycle apply, hidden-state M2 exclusion, Forget history API, or Forget UI,
+- restore / unhide,
+- hard delete, secure erase, or physical purge through Forget,
+- I-5 through I-9 governance and RelaySOUL slices,
 - durable transcript inspection,
 - static RelayLM serving of the SOUL Lab bundle,
 - TTS/audio/avatar/Live2D execution,

@@ -22,7 +22,7 @@ RelayLM documentation is AI-first: documents should remain understandable when r
 
 ## Start here
 
-- [Current project status](PROJECT_STATUS.md) — concise current boundary through completed UI-B0
+- [Current project status](PROJECT_STATUS.md) — concise current boundary through completed UI-B0, completed I1-GA contract/fault model, and defined Phase I-4A contract
 - [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing, including explicit I1-G durability tracking
 - [Post-I3 evaluation and work roadmap](architecture/post_i3_evaluation_work_roadmap.md) — I-4 through I-9, conversation, operations, parallel work, and evaluation gates
@@ -34,7 +34,9 @@ RelayLM documentation is AI-first: documents should remain understandable when r
 - [Integration I1 Primary MEM two-turn recall](architecture/integration_i1_primary_mem_two_turn_recall.md)
 - [Phase I-2 real SOUL Lab observation](architecture/phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 auditable Primary MEM Correct](architecture/phase_i3_auditable_primary_mem_correct.md)
+- [Phase I-4A Primary MEM Forget / Hide contract](architecture/phase_i4_primary_mem_forget_hide_contract.md) — target lifecycle, concurrency, audit, recovery, and retrieval-exclusion contract; runtime unimplemented
 - [SOUL Lab UI-B0 real Home conversation](architecture/soul_lab_ui_b0_real_home_conversation.md)
+- [I1-G pre-enqueue durable-finalization contract and fault model](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
 - [SOUL Lab UI-A7 read-only management projection](architecture/soul_lab_ui_a7_management_projection_handoff.md)
 - [Architecture docs](architecture/README.md)
@@ -60,7 +62,11 @@ Phase I-3 is complete: one real observed Primary MEM can be corrected through re
 
 UI-B0 is complete: SOUL Lab Home uses a single unambiguous server-projected route and the existing same-origin RelayLM `/v1/chat/completions` path for bounded non-stream and SSE conversation. Real Runtime and Local Preview sessions are explicit and separate; Stop preserves partial text, Retry does not duplicate the user message, New Conversation resets only browser-local current-session history, and stale character/session/generation/route completions are rejected.
 
-UI-B0 does not create browser-owned SOUL, MEM, namespace, backend, credential, or prompt authority. O0, I1-G, automatic queue selection, broader memory governance, Secondary MEM, RelaySOUL apply/rollback, static UI serving, TTS/audio/avatar, and always-on operation remain separate work.
+I1-GA is complete as a target contract and pure fault model only. Production durable-finalization publication, one-record restart replay, retention/cleanup, and crash integration remain unresolved.
+
+Phase I-4A is defined as a target contract only. The canonical user operation is Forget, the resulting lifecycle state is `hidden`, and the immutable runtime-private audit artifact is a Forget tombstone. Production Forget apply, M2 exclusion, and the SOUL Lab Forget UI remain unimplemented.
+
+UI-B0 does not create browser-owned SOUL, MEM, namespace, backend, credential, or prompt authority. O0, I1-GB through I1-GE, automatic queue selection, later memory governance, Secondary MEM, RelaySOUL apply/rollback, static UI serving, TTS/audio/avatar, and always-on operation remain separate work.
 
 The planned sequence is documented in [Post-I3 Evaluation and Work Roadmap](architecture/post_i3_evaluation_work_roadmap.md).
 
@@ -102,7 +108,9 @@ When documents disagree:
 - [Integration I1 Primary MEM two-turn recall](architecture/integration_i1_primary_mem_two_turn_recall.md)
 - [Phase I-2 Real SOUL Lab Observation](architecture/phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 Auditable Primary MEM Correct](architecture/phase_i3_auditable_primary_mem_correct.md)
+- [Phase I-4A Primary MEM Forget / Hide Contract](architecture/phase_i4_primary_mem_forget_hide_contract.md)
 - [SOUL Lab UI-B0 Real Home Conversation](architecture/soul_lab_ui_b0_real_home_conversation.md)
+- [I1-G Pre-enqueue Durable-finalization Contract](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
 - [Completed Phase 5.5 Stream Unpack bounded slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md)
 - [Client history authority contract](architecture/client_history_authority_contract.md)
@@ -178,4 +186,4 @@ Placement rules:
 - smoke and troubleshooting -> `docs/smoke/`
 - RelaySOUL governance -> `docs/relaysoul/`
 
-The ordinary managed path is complete through observe/correct/retrieve and the text-first Home experiment surface. I1-G remains unresolved: a process exit after visible-response delivery but before protected-source and B2 queue publication may still lose that deferred turn. O0 and later governance/operations remain separate roadmap work.
+The ordinary managed path is complete through observe/correct/retrieve and the text-first Home experiment surface. I1-GA defines the durability target but production I1-G remains unresolved. Phase I-4A defines only the target Forget / Hide contract; production Forget apply, M2 exclusion, and the Forget UI remain unimplemented. O0 and later governance/operations remain separate roadmap work.
