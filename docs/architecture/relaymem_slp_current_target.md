@@ -215,7 +215,7 @@ Phase I-4A does not add an implemented runtime step to this path.
 
 The observation API exposes only bounded, exact, server-owned projections for latest completed managed run, recently formed validated Primary memories, held/blocked outcomes, and memories actually included in the latest backend-bound request.
 
-Existing durable Primary state is reused for formed memory. Minimal durable observation receipts are used only for worker outcome and used-memory evidence that otherwise would not survive restart. Receipts are not M1/M2 candidates, protected source, B3 records, lifecycle authority, or repair instructions.
+Existing durable Primary state is reused for formed memory. Minimal durable observation receipts are used only for worker outcome and used-memory evidence that otherwise would not survive restart. Observation receipts cannot authorize repair or retrieval. They are not M1/M2 candidates, protected source, B3 records, lifecycle authority, or repair instructions.
 
 ## Target migration sequence
 
