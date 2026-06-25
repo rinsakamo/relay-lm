@@ -50,7 +50,8 @@ Status reviewed through:
 - Phase I-3 auditable Primary MEM Correct and later retrieval convergence,
 - Phase I-4A Primary MEM Forget / Hide target contract definition only,
 - SOUL Lab UI-B0 real Home non-stream and streaming conversation integration,
-- I1-GA pre-enqueue durable-finalization contract and pure fault model only.
+- I1-GA pre-enqueue durable-finalization contract and pure fault model,
+- I1-GB durable-finalization publication and pre-release admission.
 
 ## Purpose and authority
 
@@ -76,7 +77,9 @@ Real Home conversation: same-origin RelayLM non-stream and SSE transport complet
 I1 observe/correct/retrieve product loop: complete
 Phase I-4A Forget / Hide contract: defined target; runtime apply, M2 exclusion, and UI unimplemented
 I1-GA contract / design decision / fault model: complete
-I1-G pre-enqueue background-finalizer durability: unresolved
+I1-GB durable-finalization publication / pre-release admission: complete
+I1-GC restart replay / downstream convergence / completion marker: unimplemented
+I1-G overall: in progress
 ```
 
 ## Core request/runtime foundation
@@ -112,15 +115,15 @@ Still separate:
 - O1 automatic queue scanner and retry scheduler,
 - O2 supervised worker service,
 - O3 always-on local operation,
-- I1-G pre-enqueue background-finalizer durability: unresolved.
+- I1-GC one-record restart replay and completion convergence, I1-GD cleanup, and I1-GE crash validation remain unimplemented.
 
-I1-G tracks the process-exit window after visible-response delivery but before protected-source and B2 queue publication. I1-GA selects the target record, commit point, one-record replay, retention/cleanup classes, content-free projection, and 30-point fault model. It does not change production response delivery or close that window. O0 begins only after durable source and queue publication and therefore cannot close I1-G.
+I1-G tracks the process-exit window after visible-response delivery but before protected-source and B2 queue publication. I1-GA selected the target record and fault model. I1-GB now publishes bounded turn-scoped restart evidence before protected response release while preserving the existing background C1-5-then-B2 finalizer. O0 begins only after durable source and queue publication and therefore does not replace I1-G recovery.
 
-## I1-GA contract and fault model
+## I1-GA / I1-GB durable-finalization boundary
 
-I1-GA is complete as documentation and a test-only deterministic fault model. The selected canonical target is one turn-scoped sealed durable-finalization publication record that preserves I1-B, C1-5, B2, B3, C2, C1-2, and M3a-M3h authority.
+I1-GA is complete as the contract and deterministic fault model. I1-GB is complete for private base/stream-segment/seal publication, canonical reread validation, exact A1/A2/B1 preparation, non-stream pre-release admission, and stream pre-yield admission. Successful JSON and concatenated SSE bytes remain unchanged.
 
-Production durability remains unresolved. I1-GB through I1-GE must still implement durable publication, one-record restart replay, retention/orphan cleanup, and production crash-at-every-boundary validation.
+Visible-release restart evidence publication is implemented in explicit apply mode. Restart-time one-record replay through canonical C1-5 and B2, exact duplicate convergence, and the durable completion marker remain I1-GC work. I1-GD retention/cleanup and I1-GE full production crash-at-every-boundary validation also remain unimplemented; I1-G overall is still in progress.
 
 ## RelayMEM Primary persistence and recall
 
@@ -223,8 +226,11 @@ This is still operator-driven. O0 does not automate queue polling or retry sched
 - I4A Forget / Hide contract: defined target
 - I4 production Forget runtime, M2 exclusion, and UI: unimplemented
 - I1-GA contract / design decision / fault model: complete
-- I1-GB through I1-GE production durability: not implemented
-- I1-G pre-enqueue background-finalizer durability: unresolved
+- I1-GB durable-finalization publication / pre-release admission: complete
+- I1-GC restart replay / exact C1-5+B2 convergence / completion marker: unimplemented
+- I1-GD retention / cleanup: unimplemented
+- I1-GE full production crash-smoke: unimplemented
+- I1-G overall: in progress
 
 ## Safe defaults and compatibility
 
@@ -242,19 +248,22 @@ relayctx_tts_adapter_handoff_runtime_dry_run_only = true
 relaymem_slp_runtime_enqueue_enabled = false
 relaymem_slp_runtime_enqueue_dry_run_only = true
 relaymem_slp_runtime_enqueue_apply_enabled = false
+relaymem_slp_durable_finalization_enabled = false
+relaymem_slp_durable_finalization_dry_run_only = true
+relaymem_slp_durable_finalization_apply_enabled = false
 relaymem_local_worker_enabled = false
 relaymem_local_worker_dry_run_only = true
 relaymem_local_worker_apply_enabled = false
 ```
 
-UI-B0, I1-GA, Phase I-4A, and O0 do not weaken existing server defaults. I1-GA adds no production writer or response-order change. Phase I-4A adds no accepted runtime route/schema, Primary writer change, M2 filtering, or browser mutation capability. O0 cannot be elevated to apply by CLI flags and performs no discovery while disabled.
+UI-B0, I1-GA/I1-GB, Phase I-4A, and O0 do not weaken existing server defaults. I1-GB is default-off and changes response ordering only in explicit apply mode. Phase I-4A adds no accepted runtime route/schema, Primary writer change, M2 filtering, or browser mutation capability. O0 cannot be elevated to apply by CLI flags and performs no discovery while disabled.
 
 ## Not yet implemented
 
 - O1 queue polling, retry scheduling, scanner fairness, or stale-claim orchestration,
 - O2 supervised worker service,
 - O3 always-on local operation,
-- I1-G durable-finalization publication, one-record replay, retention/cleanup, and production crash integration,
+- I1-GC one-record restart replay and completion marker, I1-GD retention/cleanup, and I1-GE full production crash integration,
 - production Forget lifecycle apply, hidden-state M2 exclusion, Forget history API, or Forget UI,
 - restore / unhide,
 - hard delete, secure erase, or physical purge through Forget,

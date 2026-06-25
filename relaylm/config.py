@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from pydantic import BaseModel, Field, HttpUrl, model_validator
+from pydantic import BaseModel, Field, HttpUrl, StrictBool, model_validator
 
 
 Mode = Literal["pass_through", "memory_light", "memory_full"]
@@ -122,6 +122,25 @@ class RelayLMConfig(BaseModel):
         default=256 * 1024,
         ge=1,
         le=1024 * 1024,
+    )
+    relaymem_slp_durable_finalization_enabled: StrictBool = False
+    relaymem_slp_durable_finalization_dry_run_only: StrictBool = True
+    relaymem_slp_durable_finalization_apply_enabled: StrictBool = False
+    relaymem_slp_durable_finalization_root: str | None = None
+    relaymem_slp_durable_finalization_max_record_bytes: int = Field(
+        default=512 * 1024, ge=1, le=4 * 1024 * 1024, strict=True
+    )
+    relaymem_slp_durable_finalization_max_segment_bytes: int = Field(
+        default=64 * 1024, ge=1, le=1024 * 1024, strict=True
+    )
+    relaymem_slp_durable_finalization_max_segment_count: int = Field(
+        default=256, ge=1, le=4096, strict=True
+    )
+    relaymem_slp_durable_finalization_max_record_count: int = Field(
+        default=1024, ge=1, le=100_000, strict=True
+    )
+    relaymem_slp_durable_finalization_publication_timeout_ms: int = Field(
+        default=5000, ge=1, le=60_000, strict=True
     )
     relaymem_slp_source_registry_max_entries: int = Field(default=256, ge=1)
     relaymem_slp_source_registry_ttl_seconds: int = Field(default=1800, ge=1)

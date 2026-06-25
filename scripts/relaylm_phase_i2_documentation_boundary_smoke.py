@@ -27,7 +27,9 @@ def main() -> None:
         "I2 real SOUL Lab observation: complete",
         "I3 auditable Primary MEM Correct: complete",
         "I1-G",
-        "pre-enqueue background-finalizer",
+        "I1-GA / I1-GB durable-finalization boundary",
+        "Visible-release restart evidence publication is implemented",
+        "Restart-time one-record replay",
     )
     require_text(
         "docs/architecture/pipeline_implementation_plan.md",

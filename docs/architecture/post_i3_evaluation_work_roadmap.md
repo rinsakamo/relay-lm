@@ -34,7 +34,7 @@ Last reviewed: 2026-06-25 JST
 
 ## Purpose
 
-Phase I-3 auditable Primary MEM Correct, UI-B0 real Home conversation, and O0 local one-job execution are complete. I1-GA defines the pre-enqueue durable-finalization target and pure fault model. Phase I-4A defines the Forget / Hide target contract. Production I1-G durability and production Forget remain incomplete.
+Phase I-3 auditable Primary MEM Correct, UI-B0 real Home conversation, and O0 local one-job execution are complete. I1-GA defines the pre-enqueue durable-finalization target and pure fault model, and I1-GB implements bounded pre-release publication. Phase I-4A defines the Forget / Hide target contract. Restart replay/completion convergence and production Forget remain incomplete.
 
 This roadmap records the dependency-first execution sequence for the next RelayLM work. It intentionally separates three authorities:
 
@@ -71,7 +71,8 @@ Complete:
 - UI-B0 bounded non-stream and SSE real Home conversation;
 - explicit Real Runtime / Local Preview separation;
 - Stop, Retry, New Conversation, and stale-request fencing;
-- I1-GA durable-finalization contract and deterministic fault model.
+- I1-GA durable-finalization contract and deterministic fault model;
+- I1-GB bounded private base/segment/seal publication before protected visible release.
 
 Defined target only:
 
@@ -79,7 +80,7 @@ Defined target only:
 
 Unresolved or unimplemented:
 
-- I1-GB through I1-GE production durability;
+- I1-GC through I1-GE restart replay, cleanup, and crash validation;
 - Phase I-4B through I-4F Forget implementation;
 - O1 automatic durable-finalization replay and queue scheduling;
 - O2 supervised worker operation;
@@ -351,13 +352,13 @@ Goal:
 
 ```text
 I1-GA  failure-window and durable-finalization contract — complete
-I1-GB  atomic/convergent durable publication and bounded response-release admission — current implementation work
+I1-GB  atomic/convergent durable publication and bounded response-release admission — complete
 I1-GC  one-record restart replay, fencing, duplicate suppression, and completion marker
 I1-GD  retention, orphan reconciliation, and cleanup
 I1-GE  production crash-at-every-boundary integration smoke
 ```
 
-I1-GB and I1-GC are distinct completion boundaries. I1-GB leaves restart-recoverable evidence; I1-GC turns one caller-selected sealed record into canonical C1-5 and B2 convergence. I1-GD classifies and cleans only proven-safe records. I1-GE validates the production sequence.
+I1-GB and I1-GC are distinct completion boundaries. I1-GB now leaves canonically durable restart evidence before protected visible release; I1-GC turns one caller-selected sealed record into canonical C1-5 and B2 convergence. I1-GD classifies and cleans only proven-safe records. I1-GE validates the production sequence.
 
 ### O1: Queue scanner and retry scheduler
 
@@ -431,12 +432,12 @@ TTS, audio, Live2D, ASR, and public remote access are not required for the text-
 ### Wave 0 — current parallel work
 
 ```text
-Thread A  I1-GB durable-finalization publication
+Thread A  I1-GB durable-finalization publication — complete
 Thread B  Phase I-4B canonical resolver, shared fence, and read-only contracts
 Thread C  O1A work-source scheduling contract only
 ```
 
-I1-GB and I-4B are independent production authorities. They may merge in either order. The later merge must rerun affected regression and reconcile shared documentation/configuration files.
+I1-GB is complete and remains independent of I-4B. When I-4B lands, rerun the affected cross-regression and reconcile shared documentation/configuration files before Wave 1.
 
 Required cross-regression after both land:
 
@@ -514,10 +515,11 @@ Completed:
   UI-B0 Real Home Conversation
   O0 Local one-job runner
   I1-GA contract / design decision / fault model
+  I1-GB durable publication / pre-release admission
   Phase I-4A Forget / Hide contract
 
 Current:
-  I1-GB || I-4B || O1A design
+  I-4B || O1A design
 
 Next:
   I1-GC || I-4C1
@@ -606,6 +608,7 @@ Raw prompts, protected source, credentials, full traces, and unrestricted memory
 - Phase I-3 remains the implemented baseline mutation contract.
 - Phase I-4A remains the exact target contract until production slices land.
 - I-4C1/I-4C2 are delivery subdivisions, not new lifecycle authorities.
+- I1-GA and I1-GB are complete; I1-GC through I1-GE remain unimplemented and I1-G overall is in progress.
 - I1-G records and B2 queue records remain separate state machines.
 - O1 invokes I1-GC and O0/C2; it does not absorb their semantics.
 - UI-B0 and UI-B1 do not own worker, queue, filesystem, namespace, SOUL, or mutation authority.

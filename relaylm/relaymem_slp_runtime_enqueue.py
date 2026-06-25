@@ -198,6 +198,7 @@ def apply_relaymem_slp_runtime_enqueue(
     enabled: bool = False,
     dry_run_only: bool = True,
     apply_enabled: bool = False,
+    prepared_result: RelayMEMSLPRuntimeEnqueueResult | None = None,
 ) -> RelayMEMSLPRuntimeEnqueueResult:
     """Compose exact finalized source -> A1 -> A2 -> B1 -> B2 -> registry."""
 
@@ -225,12 +226,146 @@ def apply_relaymem_slp_runtime_enqueue(
             failure_stage="gate", blocked_reasons=("apply_gate_incomplete",),
         )
 
+    preparation = (
+        _validate_prepared_runtime_enqueue(
+            prepared_result, finalized_turn_source_result
+        )
+        if prepared_result is not None
+        else prepare_relaymem_slp_runtime_enqueue(finalized_turn_source_result)
+    )
+    if preparation.status != "dry_run_ready":
+        return replace_runtime_enqueue_gates(
+            preparation,
+            enabled=True,
+            dry_run_only=dry_run_value,
+            apply_enabled=apply_value,
+        )
+
+    source_result = preparation.finalized_turn_source_result
+    source = source_result.source if source_result is not None else None
+    dispatch = preparation.dispatch_result
+    payload = preparation.protected_source_payload
+    if source is None or dispatch is None or dispatch.durable_job is None or type(payload) is not dict:
+        return _result(
+            "blocked", True, dry_run_value, apply_value,
+            failure_stage="dispatch",
+            blocked_reasons=("runtime_enqueue_preparation_invalid",),
+            finalized_turn_source_result=source_result,
+            admission_result=preparation.admission_result,
+            handoff_result=preparation.handoff_result,
+            dispatch_result=dispatch,
+        )
+
+    scope = RelayMEMSLPPrimaryWorkerSourceScope()
+    if dry_run_value:
+        return replace_runtime_enqueue_gates(
+            preparation,
+            enabled=True,
+            dry_run_only=True,
+            apply_enabled=False,
+            source_scope=scope,
+        )
+
+    if type(registry) is not RelayMEMSLPPrimaryWorkerSourceRegistry:
+        scope.close()
+        return _result(
+            "source_retention_failed", True, False, True,
+            failure_stage="source_retention",
+            blocked_reasons=("exact_source_registry_required",),
+            finalized_turn_source_result=source_result,
+            admission_result=preparation.admission_result,
+            handoff_result=preparation.handoff_result,
+            dispatch_result=dispatch,
+            protected_source_payload=payload,
+        )
+
+    enqueue = enqueue_relaymem_slp_durable_job(
+        dispatch,
+        queue_root=queue_root,
+        enabled=True,
+        dry_run_only=False,
+        apply_enabled=True,
+    )
+    if enqueue.status not in {"enqueued_new", "duplicate_existing"}:
+        scope.close()
+        return _result(
+            "enqueue_failed", True, False, True,
+            failure_stage="enqueue",
+            blocked_reasons=enqueue.blocked_reasons or ("durable_enqueue_failed",),
+            finalized_turn_source_result=source_result,
+            admission_result=preparation.admission_result,
+            handoff_result=preparation.handoff_result,
+            dispatch_result=dispatch,
+            protected_source_payload=payload,
+            enqueue_result=enqueue,
+        )
+    if type(enqueue.durable_record) is not dict:
+        scope.close()
+        return _result(
+            "source_retention_failed", True, False, True,
+            failure_stage="source_retention",
+            blocked_reasons=("durable_enqueue_record_unavailable",),
+            finalized_turn_source_result=source_result,
+            admission_result=preparation.admission_result,
+            handoff_result=preparation.handoff_result,
+            dispatch_result=dispatch,
+            protected_source_payload=payload,
+            enqueue_result=enqueue,
+        )
+
+    retention = registry.publish(
+        source_payload=payload,
+        durable_record=enqueue.durable_record,
+        request_scope=scope,
+        character_id=source.character_id,
+    )
+    if retention.status not in {"published_new", "duplicate_existing"}:
+        scope.close()
+        return _result(
+            "source_retention_failed", True, False, True,
+            failure_stage="source_retention",
+            blocked_reasons=retention.blocked_reasons or (
+                "protected_source_retention_failed",
+            ),
+            finalized_turn_source_result=source_result,
+            admission_result=preparation.admission_result,
+            handoff_result=preparation.handoff_result,
+            dispatch_result=dispatch,
+            protected_source_payload=payload,
+            enqueue_result=enqueue,
+            source_retention_result=retention,
+        )
+    if retention.status == "duplicate_existing":
+        scope.close()
+
+    return _result(
+        "enqueued" if enqueue.status == "enqueued_new" else "duplicate_existing",
+        True,
+        False,
+        True,
+        finalized_turn_source_result=source_result,
+        admission_result=preparation.admission_result,
+        handoff_result=preparation.handoff_result,
+        dispatch_result=dispatch,
+        protected_source_payload=payload,
+        source_scope=scope if retention.status == "published_new" else None,
+        enqueue_result=enqueue,
+        source_retention_result=retention,
+    )
+
+
+
+def prepare_relaymem_slp_runtime_enqueue(
+    finalized_turn_source_result: object,
+) -> RelayMEMSLPRuntimeEnqueueResult:
+    """Build exact A1/A2/B1 identity without C1-5, B2, registry, or worker I/O."""
+
     source_result, source, source_errors = _validate_finalized_source(
         finalized_turn_source_result
     )
     if source_result is None or source is None:
         return _result(
-            "blocked", True, dry_run_value, apply_value,
+            "blocked", True, True, False,
             failure_stage="source_capture", blocked_reasons=source_errors,
             finalized_turn_source_result=(
                 finalized_turn_source_result
@@ -265,7 +400,7 @@ def apply_relaymem_slp_runtime_enqueue(
             else "blocked"
         )
         return _result(
-            mapped, True, dry_run_value, apply_value,
+            mapped, True, True, False,
             failure_stage="admission",
             blocked_reasons=_mapping_reasons(admission),
             finalized_turn_source_result=source_result,
@@ -277,7 +412,7 @@ def apply_relaymem_slp_runtime_enqueue(
     )
     if handoff.status != "dry_run_candidate" or handoff.candidate is None:
         return _result(
-            "blocked", True, dry_run_value, apply_value,
+            "blocked", True, True, False,
             failure_stage="handoff",
             blocked_reasons=handoff.blocked_reasons or ("response_handoff_not_ready",),
             finalized_turn_source_result=source_result,
@@ -290,7 +425,7 @@ def apply_relaymem_slp_runtime_enqueue(
     )
     if dispatch.status != "dry_run_ready" or dispatch.durable_job is None:
         return _result(
-            "blocked", True, dry_run_value, apply_value,
+            "blocked", True, True, False,
             failure_stage="dispatch",
             blocked_reasons=dispatch.blocked_reasons or ("dispatch_preflight_not_ready",),
             finalized_turn_source_result=source_result,
@@ -299,110 +434,86 @@ def apply_relaymem_slp_runtime_enqueue(
             dispatch_result=dispatch,
         )
 
-    scope = RelayMEMSLPPrimaryWorkerSourceScope()
     job = dispatch.durable_job
     payload = source.to_protected_source_payload(
         job_id=job.job_id,
         dispatch_idempotency_key=job.dispatch_idempotency_key,
     )
-    if dry_run_value:
-        return _result(
-            "dry_run_ready", True, True, False,
-            finalized_turn_source_result=source_result,
-            admission_result=admission,
-            handoff_result=handoff,
-            dispatch_result=dispatch,
-            protected_source_payload=payload,
-            source_scope=scope,
-        )
-
-    if type(registry) is not RelayMEMSLPPrimaryWorkerSourceRegistry:
-        scope.close()
-        return _result(
-            "source_retention_failed", True, False, True,
-            failure_stage="source_retention",
-            blocked_reasons=("exact_source_registry_required",),
-            finalized_turn_source_result=source_result,
-            admission_result=admission,
-            handoff_result=handoff,
-            dispatch_result=dispatch,
-            protected_source_payload=payload,
-        )
-
-    enqueue = enqueue_relaymem_slp_durable_job(
-        dispatch,
-        queue_root=queue_root,
-        enabled=True,
-        dry_run_only=False,
-        apply_enabled=True,
-    )
-    if enqueue.status not in {"enqueued_new", "duplicate_existing"}:
-        scope.close()
-        return _result(
-            "enqueue_failed", True, False, True,
-            failure_stage="enqueue",
-            blocked_reasons=enqueue.blocked_reasons or ("durable_enqueue_failed",),
-            finalized_turn_source_result=source_result,
-            admission_result=admission,
-            handoff_result=handoff,
-            dispatch_result=dispatch,
-            protected_source_payload=payload,
-            enqueue_result=enqueue,
-        )
-    if type(enqueue.durable_record) is not dict:
-        scope.close()
-        return _result(
-            "source_retention_failed", True, False, True,
-            failure_stage="source_retention",
-            blocked_reasons=("durable_enqueue_record_unavailable",),
-            finalized_turn_source_result=source_result,
-            admission_result=admission,
-            handoff_result=handoff,
-            dispatch_result=dispatch,
-            protected_source_payload=payload,
-            enqueue_result=enqueue,
-        )
-
-    retention = registry.publish(
-        source_payload=payload,
-        durable_record=enqueue.durable_record,
-        request_scope=scope,
-        character_id=source.character_id,
-    )
-    if retention.status not in {"published_new", "duplicate_existing"}:
-        scope.close()
-        return _result(
-            "source_retention_failed", True, False, True,
-            failure_stage="source_retention",
-            blocked_reasons=retention.blocked_reasons or (
-                "protected_source_retention_failed",
-            ),
-            finalized_turn_source_result=source_result,
-            admission_result=admission,
-            handoff_result=handoff,
-            dispatch_result=dispatch,
-            protected_source_payload=payload,
-            enqueue_result=enqueue,
-            source_retention_result=retention,
-        )
-    if retention.status == "duplicate_existing":
-        scope.close()
-
     return _result(
-        "enqueued" if enqueue.status == "enqueued_new" else "duplicate_existing",
-        True,
-        False,
-        True,
+        "dry_run_ready", True, True, False,
         finalized_turn_source_result=source_result,
         admission_result=admission,
         handoff_result=handoff,
         dispatch_result=dispatch,
         protected_source_payload=payload,
-        source_scope=scope if retention.status == "published_new" else None,
-        enqueue_result=enqueue,
-        source_retention_result=retention,
     )
 
+
+def _validate_prepared_runtime_enqueue(
+    prepared_result: object,
+    finalized_turn_source_result: object,
+) -> RelayMEMSLPRuntimeEnqueueResult:
+    if type(prepared_result) is not RelayMEMSLPRuntimeEnqueueResult:
+        return _result(
+            "blocked", True, True, False,
+            failure_stage="dispatch",
+            blocked_reasons=("exact_runtime_enqueue_preparation_required",),
+        )
+    if prepared_result.source_scope is not None:
+        return _result(
+            "blocked", True, True, False,
+            failure_stage="dispatch",
+            blocked_reasons=("runtime_enqueue_preparation_scope_forbidden",),
+        )
+    if prepared_result.finalized_turn_source_result is not finalized_turn_source_result:
+        return _result(
+            "blocked", True, True, False,
+            failure_stage="dispatch",
+            blocked_reasons=("runtime_enqueue_preparation_source_mismatch",),
+        )
+    if prepared_result.status != "dry_run_ready":
+        return prepared_result
+    if (
+        prepared_result.dispatch_result is None
+        or prepared_result.dispatch_result.durable_job is None
+        or type(prepared_result.protected_source_payload) is not dict
+    ):
+        return _result(
+            "blocked", True, True, False,
+            failure_stage="dispatch",
+            blocked_reasons=("runtime_enqueue_preparation_invalid",),
+            finalized_turn_source_result=prepared_result.finalized_turn_source_result,
+            admission_result=prepared_result.admission_result,
+            handoff_result=prepared_result.handoff_result,
+            dispatch_result=prepared_result.dispatch_result,
+        )
+    return prepared_result
+
+
+def replace_runtime_enqueue_gates(
+    result: RelayMEMSLPRuntimeEnqueueResult,
+    *,
+    enabled: bool,
+    dry_run_only: bool,
+    apply_enabled: bool,
+    source_scope: RelayMEMSLPPrimaryWorkerSourceScope | None = None,
+) -> RelayMEMSLPRuntimeEnqueueResult:
+    return RelayMEMSLPRuntimeEnqueueResult(
+        status=result.status,
+        enabled=enabled,
+        dry_run_only=dry_run_only,
+        apply_enabled=apply_enabled,
+        failure_stage=result.failure_stage,
+        blocked_reasons=result.blocked_reasons,
+        finalized_turn_source_result=result.finalized_turn_source_result,
+        admission_result=result.admission_result,
+        handoff_result=result.handoff_result,
+        dispatch_result=result.dispatch_result,
+        protected_source_payload=result.protected_source_payload,
+        source_scope=source_scope,
+        enqueue_result=result.enqueue_result,
+        source_retention_result=result.source_retention_result,
+    )
 
 def build_relaymem_slp_runtime_enqueue_failure_result(
     reason_id: str = "runtime_enqueue_background_failed",
@@ -577,6 +688,7 @@ __all__ = [
     "RelayMEMSLPRuntimeEnqueueProjection",
     "RelayMEMSLPRuntimeEnqueueResult",
     "apply_relaymem_slp_runtime_enqueue",
+    "prepare_relaymem_slp_runtime_enqueue",
     "build_relaymem_slp_runtime_enqueue_failure_result",
     "build_relaymem_slp_runtime_enqueue_node_result",
     "project_relaymem_slp_runtime_enqueue",

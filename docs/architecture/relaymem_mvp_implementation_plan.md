@@ -296,7 +296,7 @@ For Forget specifically:
 
 With Correct complete and I-4A defined, I-4B is the next bounded RelayMEM governance implementation slice. It may narrow-refactor the correction-specific resolver and lock/fence into a shared Primary mutation coordinator, but must not perform a broad generic mutation-framework rewrite.
 
-UI-B0 and O0 are complete. The next parallel work is I1-GB durable-finalization publication, I-4B canonical resolver/shared-fence/read-only contracts, and O1 scanner/retry-scheduler design under their existing ownership boundaries.
+UI-B0 and O0 are complete. The next parallel work is I1-GC one-record replay and completion convergence, I-4B canonical resolver/shared-fence/read-only contracts, and O1 scanner/retry-scheduler design under their existing ownership boundaries.
 
 ## Completion status
 
@@ -315,4 +315,4 @@ UI-B0 and O0 are complete. The next parallel work is I1-GB durable-finalization 
 
 M3i-c next-turn recall and scope isolation: complete as Phase I-1.
 M3i-d real read-only Lab observation: complete as Phase I-2.
-I1-G pre-enqueue background-finalizer durability remains unresolved. Observation receipts cannot repair a turn that never reached durable protected-source and B2 queue publication. I1-GA defines the target and fault model only.
+I1-GA and I1-GB are complete: bounded restart evidence is published before protected response release. Observation receipts still cannot perform restart replay or complete C1-5/B2 convergence; those remain I1-GC work, followed by I1-GD cleanup and I1-GE full crash validation.

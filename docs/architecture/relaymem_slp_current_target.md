@@ -154,7 +154,7 @@ The current runtime still lacks:
 
 - O1 automatic queue scanning and retry scheduling, O2 supervised worker service, and O3 always-on local operation,
 - guaranteed enqueue when the process exits after visible response delivery but before the Starlette background finalizer publishes the source/queue pair,
-- I1-G durable-finalization production publication/replay/cleanup despite the completed I1-GA target contract,
+- I1-GC one-record replay/completion convergence, I1-GD cleanup, and I1-GE full crash validation despite completed I1-GA/I1-GB,
 - the canonical lifecycle resolver defined by I-4A,
 - production Forget preflight/apply/history artifacts,
 - hidden-state M2 exclusion and historical lifecycle projection,
@@ -165,7 +165,7 @@ The current runtime still lacks:
 - RelaySOUL mutation,
 - static Lab bundle serving and TTS/audio/avatar execution.
 
-C1-5 is restart-complete only for protected-source recovery of durably enqueued jobs. It does not claim to recover a turn that never reached durable source publication and B2 enqueue. I1-G pre-enqueue background-finalizer durability remains unresolved.
+C1-5 is restart-complete only for protected-source recovery of durably enqueued jobs. I1-GB now persists sealed pre-release evidence for turns that have not yet reached C1-5/B2, but restart discovery/replay and completion convergence are not implemented until I1-GC.
 
 A1/A2/B1/B2/B3 and C1 consume exact runtime-private artifacts. They must not reconstruct private evidence from public projection, frontend metadata, visible response text, generic trace, or lookalike dictionaries.
 
@@ -264,6 +264,6 @@ I1 next-turn Primary MEM recall: complete.
 Character and namespace isolation: complete.
 I2 real SOUL Lab observation: complete.
 I3 auditable Primary MEM Correct: complete.
-I1-G pre-enqueue background-finalizer durability remains unresolved.
+I1-GA contract/fault model and I1-GB pre-release durable publication are complete. I1-G overall remains in progress because I1-GC replay/completion, I1-GD cleanup, and I1-GE full crash validation are unimplemented.
 
-UI-B0 and O0 are complete. I1-GA is complete as a contract/fault model only. O1 queue scanning/retry scheduling, O2 supervision, O3 always-on operation, and Phase I-4 runtime status remain unchanged by I-4A.
+UI-B0 and O0 are complete. O1 queue scanning/retry scheduling, O2 supervision, O3 always-on operation, and Phase I-4 runtime status remain unchanged by I-4A.

@@ -132,7 +132,7 @@ Phase I-1 and I-2 do not complete:
 
 ## I1-G boundary
 
-I1-G pre-enqueue background-finalizer durability remains unresolved. Phase I-1 recall and Phase I-2 observation do not recover a turn that never reached durable source and B2 publication.
+I1-GB now publishes sealed restart evidence before protected response release, but Phase I-1 recall and Phase I-2 observation do not perform I1-GC restart replay or C1-5/B2 completion convergence.
 
 <!-- phase-i3-auditable-primary-mem-correct -->
 ## Phase I-3 auditable Primary MEM Correct — complete (2026-06-24)

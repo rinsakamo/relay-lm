@@ -88,6 +88,21 @@ relaymem_slp_runtime_enqueue_apply_enabled: false
 relaymem_slp_queue_root:
 relaymem_slp_protected_source_root:
 relaymem_slp_protected_source_max_artifact_bytes: 262144
+
+# I1-GB durable-finalization evidence is a separate runtime-private pre-release
+# record. Disabled and dry-run preserve current response ordering. Apply requires
+# the exact gate combination below, the ordinary runtime-enqueue apply gate, and
+# an absolute pre-existing private root. I1-GB does not replay or clean records.
+relaymem_slp_durable_finalization_enabled: false
+relaymem_slp_durable_finalization_dry_run_only: true
+relaymem_slp_durable_finalization_apply_enabled: false
+relaymem_slp_durable_finalization_root:
+relaymem_slp_durable_finalization_max_record_bytes: 524288
+relaymem_slp_durable_finalization_max_segment_bytes: 65536
+relaymem_slp_durable_finalization_max_segment_count: 256
+relaymem_slp_durable_finalization_max_record_count: 1024
+relaymem_slp_durable_finalization_publication_timeout_ms: 5000
+
 relaymem_slp_source_registry_max_entries: 256
 relaymem_slp_source_registry_ttl_seconds: 1800
 

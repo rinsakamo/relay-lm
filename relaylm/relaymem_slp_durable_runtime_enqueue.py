@@ -32,6 +32,7 @@ from .relaymem_slp_queue_record import dedupe, strict_bool
 from .relaymem_slp_runtime_enqueue import (
     RelayMEMSLPRuntimeEnqueueResult,
     apply_relaymem_slp_runtime_enqueue,
+    prepare_relaymem_slp_runtime_enqueue,
 )
 
 DURABLE_RUNTIME_ENQUEUE_SCHEMA = "relaymem.slp_durable_runtime_enqueue.v0"
@@ -142,6 +143,7 @@ def apply_relaymem_slp_durable_runtime_enqueue(
     enabled: bool = False,
     dry_run_only: bool = True,
     apply_enabled: bool = False,
+    prepared_result: RelayMEMSLPRuntimeEnqueueResult | None = None,
 ) -> RelayMEMSLPDurableRuntimeEnqueueResult:
     """Persist protected source before canonical B2 queue publication."""
 
@@ -187,16 +189,23 @@ def apply_relaymem_slp_durable_runtime_enqueue(
             delegated.blocked_reasons or ("apply_gate_incomplete",),
         )
 
-    preparation = apply_relaymem_slp_runtime_enqueue(
-        finalized_turn_source_result,
-        registry=registry,
-        queue_root=queue_root,
-        enabled=True,
-        dry_run_only=True,
-        apply_enabled=False,
-    )
-    if preparation.source_scope is not None:
-        preparation.source_scope.close()
+    if prepared_result is not None:
+        validated_preparation = apply_relaymem_slp_runtime_enqueue(
+            finalized_turn_source_result,
+            registry=None,
+            queue_root=None,
+            enabled=True,
+            dry_run_only=True,
+            apply_enabled=False,
+            prepared_result=prepared_result,
+        )
+        if validated_preparation.source_scope is not None:
+            validated_preparation.source_scope.close()
+        preparation = replace(validated_preparation, source_scope=None)
+    else:
+        preparation = prepare_relaymem_slp_runtime_enqueue(
+            finalized_turn_source_result
+        )
     if type(registry) is not RelayMEMSLPPrimaryWorkerSourceRegistry:
         return _result(
             "source_persistence_failed",
@@ -277,6 +286,7 @@ def apply_relaymem_slp_durable_runtime_enqueue(
         enabled=True,
         dry_run_only=False,
         apply_enabled=True,
+        prepared_result=preparation,
     )
     enqueue = applied.enqueue_result
     queue_published = bool(

@@ -340,6 +340,40 @@ These are the complete current top-level fields for the ordinary I1-B/C1-5 sourc
 
 B3 claim/lease helpers, C1-2 worker execution, and the C2 one-job adapter remain explicit caller-driven boundaries. They do not themselves gain separate top-level `RelayLMConfig` gates, do not scan the queue, and do not start a scheduler or daemon.
 
+## I1-GB durable-finalization publication flags
+
+```yaml
+relaymem_slp_durable_finalization_enabled: false
+relaymem_slp_durable_finalization_dry_run_only: true
+relaymem_slp_durable_finalization_apply_enabled: false
+relaymem_slp_durable_finalization_root:
+relaymem_slp_durable_finalization_max_record_bytes: 524288
+relaymem_slp_durable_finalization_max_segment_bytes: 65536
+relaymem_slp_durable_finalization_max_segment_count: 256
+relaymem_slp_durable_finalization_max_record_count: 1024
+relaymem_slp_durable_finalization_publication_timeout_ms: 5000
+```
+
+I1-GB is default-off. Exactly these gate combinations are valid:
+
+| Mode | enabled | dry_run_only | apply_enabled | Behavior |
+|---|---:|---:|---:|---|
+| disabled | false | true | false | no private record; current response order |
+| dry-run | true | true | false | validate/prepare only; no file mutation or response blocking |
+| apply | true | false | true | durable base/segment/seal admission before protected release |
+
+All other combinations fail closed. Apply additionally requires ordinary runtime enqueue apply mode (`relaymem_slp_runtime_enqueue_enabled=true`, `relaymem_slp_runtime_enqueue_dry_run_only=false`, `relaymem_slp_runtime_enqueue_apply_enabled=true`) and an absolute, pre-existing, non-symlink runtime-private root. Relative or missing roots are rejected in apply mode. Boolean gates are strict booleans, and numeric bounds reject booleans.
+
+Bounds and accepted ranges:
+
+- total logical record bytes: 1 through 4194304, default 524288;
+- one stream segment: 1 through 1048576 bytes, default 65536;
+- segments per record: 1 through 4096, default 256;
+- admitted record locators: 1 through 100000, default 1024;
+- one bounded publication operation: 1 through 60000 milliseconds, default 5000.
+
+The private record is content-bearing and separate from C1-5 and B2. I1-GB publishes restart evidence only; I1-GC one-record restart replay and completion markers, I1-GD retention/cleanup, and I1-GE full crash validation remain unimplemented. No retention deadline or cleanup cadence is configured in I1-GB.
+
 ## O0 local one-job worker flags
 
 ```yaml

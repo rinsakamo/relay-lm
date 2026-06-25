@@ -23,6 +23,11 @@ from relaylm.adapter import (
     open_chat_completion_stream,
 )
 from relaylm.config import RelayLMConfig, load_config
+from relaylm.relaymem_slp_durable_finalization_publication import (
+    RelayMEMSLPDurableFinalizationPreparedTurnHolder,
+    admit_relaymem_slp_durable_finalization_nonstream,
+    start_relaymem_slp_durable_finalization_stream,
+)
 from relaylm.relaymem_slp_primary_worker_source_registry import (
     RelayMEMSLPPrimaryWorkerSourceRegistry,
 )
@@ -699,32 +704,62 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 relayrun_artifact=stream_relayrun_artifact,
             )
             stream_background = None
-            if (
+            if route.mode_applied != "pass_through" and (
                 config.relaymem_slp_runtime_enqueue_enabled
-                and route.mode_applied != "pass_through"
+                or _durable_finalization_gate_relevant(config)
             ):
+                if not _durable_finalization_gate_valid(config):
+                    await _close_stream_iterator(body_iter)
+                    return _durable_finalization_server_error()
                 stream_capture = RelayMEMSLPFinalizedVisibleTextCapture()
-                body_iter = wrap_stream_with_relaymem_slp_finalized_turn_capture(
-                    body_iter,
-                    capture=stream_capture,
+                durable_holder = RelayMEMSLPDurableFinalizationPreparedTurnHolder()
+                durable_session, durable_result = (
+                    start_relaymem_slp_durable_finalization_stream(
+                        config=config,
+                        pipeline_context=pipeline_context,
+                        status_code=status_code,
+                        resolved_session_id=merged_scope.get("session_id"),
+                        relayscn_scene_policy_artifact=(
+                            relayscn_scene_policy_artifact
+                        ),
+                        relayemo_artifact=relayemo_artifact,
+                        holder=durable_holder,
+                    )
                 )
-                stream_background = BackgroundTask(
-                    run_relaymem_slp_runtime_enqueue_after_response,
-                    config=config,
-                    diagnostics=stream_diagnostics,
-                    pipeline_context=pipeline_context,
-                    registry=(
-                        app.state.relaymem_slp_primary_worker_source_registry
-                    ),
-                    status_code=status_code,
-                    resolved_session_id=merged_scope.get("session_id"),
-                    relayscn_scene_policy_artifact=(
-                        relayscn_scene_policy_artifact
-                    ),
-                    relayemo_artifact=relayemo_artifact,
-                    stream_capture=stream_capture,
-                    message_count=len(_extract_trace_messages(forwarded_payload)),
-                )
+                if (
+                    _durable_finalization_apply_mode(config)
+                    and durable_result.status not in {
+                        "published", "duplicate_existing"
+                    }
+                ):
+                    await _close_stream_iterator(body_iter)
+                    return _durable_finalization_server_error()
+                if config.relaymem_slp_runtime_enqueue_enabled:
+                    body_iter = wrap_stream_with_relaymem_slp_finalized_turn_capture(
+                        body_iter,
+                        capture=stream_capture,
+                        durable_session=durable_session,
+                    )
+                    stream_background = BackgroundTask(
+                        run_relaymem_slp_runtime_enqueue_after_response,
+                        config=config,
+                        diagnostics=stream_diagnostics,
+                        pipeline_context=pipeline_context,
+                        registry=(
+                            app.state.relaymem_slp_primary_worker_source_registry
+                        ),
+                        status_code=status_code,
+                        resolved_session_id=merged_scope.get("session_id"),
+                        relayscn_scene_policy_artifact=(
+                            relayscn_scene_policy_artifact
+                        ),
+                        relayemo_artifact=relayemo_artifact,
+                        stream_capture=stream_capture,
+                        prepared_turn_holder=(
+                            durable_holder if durable_session is not None else None
+                        ),
+                        message_count=len(_extract_trace_messages(forwarded_payload)),
+                    )
             trace_runtime_event(
                 config=config,
                 diagnostics=stream_diagnostics,
@@ -820,28 +855,64 @@ def create_app(config_path: str | None = None) -> FastAPI:
         if isinstance(body, dict) or isinstance(body, list):
             assistant_visible_text = extract_response_text(body)
             response_background = None
-            if (
+            durable_prepared = None
+            if route.mode_applied != "pass_through" and (
                 config.relaymem_slp_runtime_enqueue_enabled
-                and route.mode_applied != "pass_through"
-                and isinstance(assistant_visible_text, str)
+                or _durable_finalization_gate_relevant(config)
             ):
-                response_background = BackgroundTask(
-                    run_relaymem_slp_runtime_enqueue_after_response,
-                    config=config,
-                    diagnostics=success_diagnostics,
-                    pipeline_context=pipeline_context,
-                    registry=(
-                        app.state.relaymem_slp_primary_worker_source_registry
-                    ),
-                    status_code=status_code,
-                    resolved_session_id=merged_scope.get("session_id"),
-                    relayscn_scene_policy_artifact=(
-                        relayscn_scene_policy_artifact
-                    ),
-                    relayemo_artifact=relayemo_artifact,
-                    assistant_visible_text=assistant_visible_text,
-                    message_count=len(_extract_trace_messages(forwarded_payload)),
-                )
+                if not _durable_finalization_gate_valid(config):
+                    return _durable_finalization_server_error()
+                if not isinstance(assistant_visible_text, str):
+                    if (
+                        config.relaymem_slp_durable_finalization_enabled
+                        and config.relaymem_slp_durable_finalization_apply_enabled
+                        and not config.relaymem_slp_durable_finalization_dry_run_only
+                    ):
+                        return _durable_finalization_server_error()
+                else:
+                    durable_result = (
+                        admit_relaymem_slp_durable_finalization_nonstream(
+                            config=config,
+                            pipeline_context=pipeline_context,
+                            status_code=status_code,
+                            resolved_session_id=merged_scope.get("session_id"),
+                            relayscn_scene_policy_artifact=(
+                                relayscn_scene_policy_artifact
+                            ),
+                            relayemo_artifact=relayemo_artifact,
+                            assistant_visible_text=assistant_visible_text,
+                        )
+                    )
+                    if (
+                        _durable_finalization_apply_mode(config)
+                        and durable_result.status not in {
+                            "published", "duplicate_existing"
+                        }
+                    ):
+                        return _durable_finalization_server_error()
+                    durable_prepared = durable_result.prepared_turn
+                if (
+                    config.relaymem_slp_runtime_enqueue_enabled
+                    and isinstance(assistant_visible_text, str)
+                ):
+                    response_background = BackgroundTask(
+                        run_relaymem_slp_runtime_enqueue_after_response,
+                        config=config,
+                        diagnostics=success_diagnostics,
+                        pipeline_context=pipeline_context,
+                        registry=(
+                            app.state.relaymem_slp_primary_worker_source_registry
+                        ),
+                        status_code=status_code,
+                        resolved_session_id=merged_scope.get("session_id"),
+                        relayscn_scene_policy_artifact=(
+                            relayscn_scene_policy_artifact
+                        ),
+                        relayemo_artifact=relayemo_artifact,
+                        assistant_visible_text=assistant_visible_text,
+                        prepared_turn=durable_prepared,
+                        message_count=len(_extract_trace_messages(forwarded_payload)),
+                    )
             trace_runtime_event(
                 config=config,
                 diagnostics=success_diagnostics,
@@ -859,6 +930,53 @@ def create_app(config_path: str | None = None) -> FastAPI:
         return JSONResponse(status_code=status_code, content={"raw": body}, headers=headers)
 
     return app
+
+
+def _durable_finalization_gate_relevant(config: RelayLMConfig) -> bool:
+    return bool(
+        config.relaymem_slp_durable_finalization_enabled
+        or config.relaymem_slp_durable_finalization_apply_enabled
+        or not config.relaymem_slp_durable_finalization_dry_run_only
+    )
+
+
+def _durable_finalization_gate_valid(config: RelayLMConfig) -> bool:
+    enabled = config.relaymem_slp_durable_finalization_enabled
+    dry_run_only = config.relaymem_slp_durable_finalization_dry_run_only
+    apply_enabled = config.relaymem_slp_durable_finalization_apply_enabled
+    return (
+        (not enabled and dry_run_only and not apply_enabled)
+        or (enabled and dry_run_only and not apply_enabled)
+        or (enabled and not dry_run_only and apply_enabled)
+    )
+
+
+def _durable_finalization_apply_mode(config: RelayLMConfig) -> bool:
+    return bool(
+        config.relaymem_slp_durable_finalization_enabled
+        and not config.relaymem_slp_durable_finalization_dry_run_only
+        and config.relaymem_slp_durable_finalization_apply_enabled
+    )
+
+
+async def _close_stream_iterator(body_iter: object) -> None:
+    close = getattr(body_iter, "aclose", None)
+    if not callable(close):
+        return
+    try:
+        await close()
+    except Exception:
+        pass
+
+
+def _durable_finalization_server_error() -> JSONResponse:
+    """Return one content-free error when protected release admission fails."""
+
+    return openai_error(
+        status_code=500,
+        message="RelayLM could not safely finalize this response.",
+        error_type="server_error",
+    )
 
 
 def openai_error(

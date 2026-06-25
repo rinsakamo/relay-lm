@@ -124,9 +124,9 @@ visible response delivered
 
 C1-5 cannot rehydrate an artifact that was never published.
 
-## I1-GA alignment
+## I1-GA / I1-GB alignment
 
-[I1-G Pre-enqueue Durable-finalization Contract and Fault Model](i1g_pre_enqueue_durable_finalization_contract.md) defines a target turn-scoped sealed record before this C1-5 boundary. I1-GA does not change the C1-5 artifact schema, publication semantics, cleanup ownership, or source-before-queue order. Production pre-enqueue durability remains unresolved until I1-GB through I1-GE are implemented.
+[I1-G Pre-enqueue Durable-finalization Contract and Fault Model](i1g_pre_enqueue_durable_finalization_contract.md) defines the turn-scoped sealed record before this C1-5 boundary. I1-GB implements only pre-release base/segment/seal publication and leaves this C1-5 artifact schema, publication semantics, cleanup ownership, and source-before-queue order unchanged. I1-GC restart replay/completion convergence, I1-GD cleanup, and I1-GE full crash validation remain unimplemented.
 
 ## Retry and stale recovery
 
@@ -171,4 +171,4 @@ Dedicated smoke covers:
 
 ## Accurate completion boundary
 
-> Phase 6-C1 is restart-complete for protected worker-source recovery of durably enqueued jobs. Phase I-1 next-turn recall, Phase I-2 observation, Phase I-3 Correct, UI-B0 real Home conversation, and C2 are complete through their separate authorities. The pre-enqueue background-finalizer window remains unresolved; I1-GA defines its target contract and fault model only.
+> Phase 6-C1 is restart-complete for protected worker-source recovery of durably enqueued jobs. Phase I-1 next-turn recall, Phase I-2 observation, Phase I-3 Correct, UI-B0 real Home conversation, and C2 are complete through their separate authorities. I1-GB now preserves sealed evidence before protected response release; restart replay and completion convergence remain I1-GC work.

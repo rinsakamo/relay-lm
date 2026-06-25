@@ -6,6 +6,7 @@ protected source before queue publication, and records only content-free nodes.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
@@ -15,6 +16,12 @@ from typing import Any
 from relaylm.config import RelayLMConfig
 from relaylm.diagnostics import RequestDiagnostics
 from relaylm.pipeline_context import PipelineContext
+from relaylm.relaymem_slp_durable_finalization_publication import (
+    RelayMEMSLPDurableFinalizationError,
+    RelayMEMSLPDurableFinalizationPreparedTurn,
+    RelayMEMSLPDurableFinalizationPreparedTurnHolder,
+    RelayMEMSLPDurableFinalizationStreamSession,
+)
 from relaylm.relaymem_slp_durable_runtime_enqueue import (
     RelayMEMSLPDurableRuntimeEnqueueResult,
     apply_relaymem_slp_durable_runtime_enqueue,
@@ -103,15 +110,24 @@ def wrap_stream_with_relaymem_slp_finalized_turn_capture(
     body_iter: AsyncIterator[bytes],
     *,
     capture: RelayMEMSLPFinalizedVisibleTextCapture,
+    durable_session: RelayMEMSLPDurableFinalizationStreamSession | None = None,
 ) -> AsyncIterator[bytes]:
-    """Observe final safe OpenAI-compatible SSE without changing any byte."""
+    """Observe SSE, using pre-yield durable admission only for I1-GB apply."""
 
     if type(capture) is not RelayMEMSLPFinalizedVisibleTextCapture:
         raise TypeError("exact_stream_capture_required")
-    return _observe(body_iter, capture)
+    if durable_session is not None and type(
+        durable_session
+    ) is not RelayMEMSLPDurableFinalizationStreamSession:
+        raise TypeError("exact_durable_finalization_stream_session_required")
+    return (
+        _observe_before_yield(body_iter, capture, durable_session)
+        if durable_session is not None
+        else _observe_after_yield(body_iter, capture)
+    )
 
 
-async def _observe(
+async def _observe_after_yield(
     body_iter: AsyncIterator[bytes],
     capture: RelayMEMSLPFinalizedVisibleTextCapture,
 ) -> AsyncIterator[bytes]:
@@ -135,6 +151,77 @@ async def _observe(
         capture.finalize()
 
 
+async def _observe_before_yield(
+    body_iter: AsyncIterator[bytes],
+    capture: RelayMEMSLPFinalizedVisibleTextCapture,
+    durable_session: RelayMEMSLPDurableFinalizationStreamSession,
+) -> AsyncIterator[bytes]:
+    frame_buffer = b""
+    normal_completion = False
+    try:
+        async for chunk in body_iter:
+            if type(chunk) is not bytes:
+                raise RelayMEMSLPDurableFinalizationError(
+                    "durable_finalization_stream_chunk_type_invalid"
+                )
+            frame_buffer += chunk
+            frames, frame_buffer = _split_sse_frames(frame_buffer)
+            for frame in frames:
+                await _admit_frame_before_yield(frame, capture, durable_session)
+                yield frame
+        if frame_buffer:
+            await _admit_frame_before_yield(
+                frame_buffer, capture, durable_session
+            )
+            yield frame_buffer
+            frame_buffer = b""
+        if not durable_session.sealed:
+            durable_session.seal()
+        capture.finalize()
+        normal_completion = True
+    except asyncio.CancelledError:
+        capture.invalidate()
+        durable_session.abort()
+        raise
+    except RelayMEMSLPDurableFinalizationError:
+        capture.invalidate()
+        durable_session.abort()
+        raise
+    except Exception:
+        capture.invalidate()
+        durable_session.abort()
+        raise RelayMEMSLPDurableFinalizationError(
+            "durable_finalization_stream_backend_failed"
+        ) from None
+    finally:
+        if not normal_completion:
+            capture.invalidate()
+            durable_session.abort()
+
+
+async def _admit_frame_before_yield(
+    frame: bytes,
+    capture: RelayMEMSLPFinalizedVisibleTextCapture,
+    durable_session: RelayMEMSLPDurableFinalizationStreamSession,
+) -> None:
+    payload = _strict_sse_payload(frame)
+    if payload is None:
+        return
+    if payload == "[DONE]":
+        durable_session.seal()
+        capture.finalize()
+        return
+    data = _strict_json_object(payload)
+    fields = _extract_content_fields(data)
+    if len(fields) > 1:
+        raise RelayMEMSLPDurableFinalizationError(
+            "durable_finalization_stream_content_ambiguous"
+        )
+    if fields and fields[0]:
+        durable_session.publish_content_unit(fields[0])
+        capture.append(fields[0])
+
+
 def run_relaymem_slp_runtime_enqueue_after_response(
     *,
     config: RelayLMConfig,
@@ -147,27 +234,47 @@ def run_relaymem_slp_runtime_enqueue_after_response(
     relayemo_artifact: dict[str, Any] | None,
     assistant_visible_text: str | None = None,
     stream_capture: RelayMEMSLPFinalizedVisibleTextCapture | None = None,
+    prepared_turn: RelayMEMSLPDurableFinalizationPreparedTurn | None = None,
+    prepared_turn_holder: RelayMEMSLPDurableFinalizationPreparedTurnHolder | None = None,
     message_count: int = 0,
 ) -> RelayMEMSLPDurableRuntimeEnqueueResult:
     """Run source capture and crash-consistent enqueue after response delivery."""
 
     source_result: RelayMEMSLPFinalizedTurnSourceResult | None = None
     try:
-        visible_text: object = assistant_visible_text
-        if stream_capture is not None:
-            if type(stream_capture) is not RelayMEMSLPFinalizedVisibleTextCapture:
-                raise TypeError("exact_stream_capture_required")
-            visible_text = stream_capture.finalized_text()
-        source_result = build_relaymem_slp_finalized_turn_source(
-            pipeline_context,
-            assistant_visible_text=visible_text,
-            status_code=status_code,
-            resolved_session_id=resolved_session_id,
-            relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-            relayemo_artifact=relayemo_artifact,
-            response_finalized=True,
-            enabled=config.relaymem_slp_runtime_enqueue_enabled,
-        )
+        exact_prepared = prepared_turn
+        if prepared_turn_holder is not None:
+            if type(prepared_turn_holder) is not RelayMEMSLPDurableFinalizationPreparedTurnHolder:
+                raise TypeError("exact_durable_finalization_holder_required")
+            exact_prepared = prepared_turn_holder.get()
+        if exact_prepared is not None:
+            if type(exact_prepared) is not RelayMEMSLPDurableFinalizationPreparedTurn:
+                raise TypeError("exact_durable_finalization_prepared_turn_required")
+            source_result = exact_prepared.source_result
+        else:
+            if (
+                config.relaymem_slp_durable_finalization_enabled
+                and config.relaymem_slp_durable_finalization_apply_enabled
+                and not config.relaymem_slp_durable_finalization_dry_run_only
+            ):
+                raise RelayMEMSLPDurableFinalizationError(
+                    "durable_finalization_sealed_preparation_required"
+                )
+            visible_text: object = assistant_visible_text
+            if stream_capture is not None:
+                if type(stream_capture) is not RelayMEMSLPFinalizedVisibleTextCapture:
+                    raise TypeError("exact_stream_capture_required")
+                visible_text = stream_capture.finalized_text()
+            source_result = build_relaymem_slp_finalized_turn_source(
+                pipeline_context,
+                assistant_visible_text=visible_text,
+                status_code=status_code,
+                resolved_session_id=resolved_session_id,
+                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+                relayemo_artifact=relayemo_artifact,
+                response_finalized=True,
+                enabled=config.relaymem_slp_runtime_enqueue_enabled,
+            )
         source_store = (
             RelayMEMSLPDurableProtectedSourceStore(
                 config.relaymem_slp_protected_source_root,
@@ -186,6 +293,11 @@ def run_relaymem_slp_runtime_enqueue_after_response(
             enabled=config.relaymem_slp_runtime_enqueue_enabled,
             dry_run_only=config.relaymem_slp_runtime_enqueue_dry_run_only,
             apply_enabled=config.relaymem_slp_runtime_enqueue_apply_enabled,
+            prepared_result=(
+                exact_prepared.runtime_preparation
+                if exact_prepared is not None
+                else None
+            ),
         )
     except Exception:
         runtime_failure = build_relaymem_slp_runtime_enqueue_failure_result()
@@ -220,6 +332,47 @@ def run_relaymem_slp_runtime_enqueue_after_response(
         ):
             runtime_result.source_scope.close()
     return result
+
+
+def _strict_sse_payload(frame: bytes) -> str | None:
+    try:
+        text = frame.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise RelayMEMSLPDurableFinalizationError(
+            "durable_finalization_stream_malformed_utf8"
+        ) from None
+    return _extract_sse_data_payload(text)
+
+
+def _strict_json_object(payload: str) -> object:
+    duplicate = False
+
+    def object_pairs(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        nonlocal duplicate
+        result: dict[str, object] = {}
+        for key, value in pairs:
+            duplicate = duplicate or key in result
+            result[key] = value
+        return result
+
+    def reject_nonfinite(_: str) -> object:
+        raise ValueError("non-finite JSON")
+
+    try:
+        value = json.loads(
+            payload,
+            object_pairs_hook=object_pairs,
+            parse_constant=reject_nonfinite,
+        )
+    except (json.JSONDecodeError, RecursionError, ValueError) as exc:
+        raise RelayMEMSLPDurableFinalizationError(
+            "durable_finalization_stream_malformed_json"
+        ) from None
+    if duplicate:
+        raise RelayMEMSLPDurableFinalizationError(
+            "durable_finalization_stream_duplicate_json_key"
+        )
+    return value
 
 
 def _observe_frame(
