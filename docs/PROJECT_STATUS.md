@@ -19,6 +19,7 @@ relaylm_related_authority:
   - docs/architecture/pipeline_responsibility_design.md
   - docs/architecture/pipeline_implementation_plan.md
   - docs/architecture/post_i3_evaluation_work_roadmap.md
+  - docs/architecture/e1_local_runtime_evaluation_2026_06_25.md
   - docs/architecture/current_target_migration_guide.md
   - docs/architecture/phase6_async_relayslp_bounded_slice.md
   - docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md
@@ -51,7 +52,8 @@ Status reviewed through:
 - Phase I-4A Primary MEM Forget / Hide target contract definition only,
 - SOUL Lab UI-B0 real Home non-stream and streaming conversation integration,
 - I1-GA pre-enqueue durable-finalization contract and pure fault model,
-- I1-GB durable-finalization publication and pre-release admission.
+- I1-GB durable-finalization publication and pre-release admission,
+- first local E1 workstation evaluation through explicit-scene durable formation, O0 terminal success, and later Home recall.
 
 ## Purpose and authority
 
@@ -74,6 +76,8 @@ Local worker operation: O0 one invocation -> at most one eligible queued job com
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and scope isolation complete
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, and UI-B0 complete
 Real Home conversation: same-origin RelayLM non-stream and SSE transport complete
+Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete
+Direct Home-origin formation: not currently proven; trusted scene admission is missing
 I1 observe/correct/retrieve product loop: complete
 Phase I-4A Forget / Hide contract: defined target; runtime apply, M2 exclusion, and UI unimplemented
 I1-GA contract / design decision / fault model: complete
@@ -110,6 +114,8 @@ C1-5 keeps queue records content-free and persists the claim-independent protect
 
 O0 adds `relaylm-worker --once --config config.yaml`. It is default-off, selects and delegates at most one currently eligible queued record, uses the existing B3/C1-5/C1-2/C2 authorities unchanged, emits one bounded content-free JSON projection, and exits. It does not reconstruct protected content, repair queue records, or add a second lifecycle policy.
 
+The first workstation evaluation observed the complete successful O0 projection for one explicit scene-qualified turn: canonical reread, character-scope resolution, B3 claim, C1-5 restart rehydration, source preparation, worker invocation, `terminal_succeeded`, and no reason IDs.
+
 Still separate:
 
 - O1 automatic queue scanner and retry scheduler,
@@ -135,6 +141,15 @@ Implemented:
 - character and namespace isolation: complete,
 - bounded RelayCTX memory injection,
 - Phase I-3 immutable successor correction with durable audit evidence.
+
+The workstation evaluation formed a character-scoped `relationship_moment` page, reconciled index/log state, and later recalled the core user fact through SOUL Lab Home. This validates the bounded production-authority path, not general memory quality.
+
+The same experiment exposed two quality gaps:
+
+- the current finalized-turn summary can concatenate user and assistant text into one `trusted_in_process_summary`, allowing assistant-authored decoration to enter evidence without speaker-safe provenance,
+- the later backend answer can add unsupported details beyond the stored page.
+
+Formation must preserve speaker-level provenance, and retrieval-side response generation must distinguish evidence from inference. Prompt-only grounding cannot repair evidence that was already stored without provenance.
 
 Phase I-4A defines, but does not implement, the next lifecycle boundary:
 
@@ -186,26 +201,33 @@ UI-B0 uses only the exact `/lab/api/characters` server projection to select a co
 
 The real request continues through existing RelayLM character resolution, M2 retrieval, RelayCTX injection, backend forwarding, and deferred RelaySLP boundaries. UI-B0 does not implement memory retrieval or prompt injection itself.
 
-The dedicated frontend typecheck, strict Home conversation Node smoke, production build, documentation checks, OpenWebUI/LM Studio proxy smokes, and Phase I-1/I-2/I-3 regression runners pass. A real LM Studio workstation manual smoke remains an environment validation step and is documented in [UI-B0 Real Home Conversation](architecture/soul_lab_ui_b0_real_home_conversation.md).
+UI-B0 sends only standard Chat Completions fields and does not send trusted scene-admission metadata. During the workstation evaluation, an ordinary Home memory statement was classified by the low-confidence heuristic fallback and failed persistence closed. Existing-memory retrieval still worked. Direct Home-origin Primary MEM formation therefore remains an integration gap; the browser must not simply self-assert arbitrary high-confidence policy to close it.
+
+The dedicated frontend typecheck, strict Home conversation Node smoke, production build, documentation checks, OpenWebUI/LM Studio proxy smokes, and Phase I-1/I-2/I-3 regression runners pass. The real LM Studio workstation result is recorded in [E1 Local Runtime Evaluation](architecture/e1_local_runtime_evaluation_2026_06_25.md).
 
 Phase I-4A changes no browser behavior. The Forget UI remains unimplemented, and real mutation failure must never fall back to mock success.
 
 ## Evaluation boundary
 
-UI-B0 plus O0 completes the explicit text-first local E1 path:
+UI-B0 plus O0 makes an explicit text-first local E1 evaluation possible, but the proven formation and recall lanes are currently separate:
 
 ```text
-real Home conversation
+explicit trusted scene-qualified managed request
+  -> durable protected source and queue publication
   -> O0 explicit one-job execution
   -> formed Primary MEM
   -> Phase I-2 observation
-  -> Phase I-3 Correct
-  -> Home New Conversation
-  -> corrected-memory question
+
+real Home conversation
+  -> existing M2 / RelayCTX recall
+  -> remembered-fact question
   -> Phase I-2 used-memory evidence
+  -> Phase I-3 Correct when required
 ```
 
-This is still operator-driven. O0 does not automate queue polling or retry scheduling, and UI-B0 does not own worker authority.
+The shorthand `real Home conversation -> O0` is not currently a verified formation path because Home supplies no trusted scene qualification. This is still operator-driven. O0 does not automate queue polling or retry scheduling, and UI-B0 does not own worker authority.
+
+The evaluation also requires an operator-initialized character-scoped store. The runtime resolves an opaque per-character root but does not create its Primary directories or `# Index` / `# Log` control files automatically.
 
 ## Completion boundary (2026-06-25)
 
@@ -223,6 +245,10 @@ This is still operator-driven. O0 does not automate queue polling or retry sched
 - I3 auditable Primary MEM Correct: complete
 - I1 observe/correct/retrieve product loop: complete
 - UI-B0 real Home conversation: complete
+- local explicit-scene formation/O0/recall experiment: complete
+- direct Home-origin Primary MEM formation: not implemented
+- provenance-safe Primary MEM summary formation: not implemented
+- evidence-grounded recall response suppression: not implemented
 - I4A Forget / Hide contract: defined target
 - I4 production Forget runtime, M2 exclusion, and UI: unimplemented
 - I1-GA contract / design decision / fault model: complete
@@ -260,6 +286,10 @@ UI-B0, I1-GA/I1-GB, Phase I-4A, and O0 do not weaken existing server defaults. I
 
 ## Not yet implemented
 
+- trusted scene admission for direct ordinary Home-origin Primary MEM formation,
+- an idempotent operator-facing character-store bootstrap command or packaged startup step,
+- speaker-provenance-safe Primary MEM summary formation,
+- strict evidence-grounded response generation without unsupported remembered details,
 - O1 queue polling, retry scheduling, scanner fairness, or stale-claim orchestration,
 - O2 supervised worker service,
 - O3 always-on local operation,
@@ -281,8 +311,9 @@ SOUL Lab Vite http://127.0.0.1:5173/lab/
   -> LM Studio http://127.0.0.1:1234/v1
 
 local operator
+  -> explicit scene-qualified managed request for current formation evaluation
   -> relaylm-worker --once --config config.yaml
   -> at most one eligible queued job through existing C2
 ```
 
-The Vite `/v1` proxy remains loopback-targeted with `changeOrigin: false`. Real runtime and preview conversations remain separate browser-local sessions. O0 remains a separate operator authority and is not callable from the browser.
+The Vite `/v1` proxy remains loopback-targeted with `changeOrigin: false`. Real runtime and preview conversations remain separate browser-local sessions. O0 remains a separate operator authority and is not callable from the browser. Before first apply, the operator must initialize the resolved character-scoped Primary store structure.
