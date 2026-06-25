@@ -47,15 +47,17 @@ def main() -> None:
     require(
         plan,
         "Phase 6-C1-0 through C1-5 are complete",
-        "Phase 6-C2 one-job claim/rehydrate/execute adapter: complete",
+        "Phase 6-C2 one-job claim/rehydrate/execute adapter is complete",
     )
     require_any(
         plan,
+        "B0-B3: complete",
         "B0 through B3: complete",
         "B2 atomic durable enqueue: complete",
     )
     require_any(
         plan,
+        "B0-B3: complete",
         "B0 through B3: complete",
         "B3 queue lifecycle helpers: complete",
     )
