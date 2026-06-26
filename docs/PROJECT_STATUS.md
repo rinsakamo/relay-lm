@@ -52,7 +52,7 @@ Local worker operation: O0 one invocation -> at most one eligible queued job com
 Scheduler contract: O1A replay-before-queue round / adapter / idle contract complete
 Scheduler replay lane: O1B one bounded sealed-record discovery/reread/I1-GC adapter complete
 Scheduler queue lane: O1C one bounded discovery/reread/scope/C2 adapter complete
-Scheduler remaining production: O1D through O1F unimplemented
+Scheduler remaining production: O1D1 accepted gates/one-round coordinator, O1D2 policy, O1E recovery/shutdown, and O1F validation unimplemented
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and scope isolation complete
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, and UI-B0 complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete
@@ -120,14 +120,16 @@ The lane order is replay then queue. Replay output, locator, job identity, and d
 
 O1B is complete for one bounded sealed I1-G inventory, deterministic selection, canonical selected-record reread, and at most one existing I1-GC delegation. O1C is complete for one independent bounded queue-root inventory, due/future classification, deterministic selection, canonical reread, server-owned scope resolution, and at most one existing C2 delegation. Neither starts a scheduler round or loop.
 
-Still separate:
-- O1D ordering, fairness, retry-time, backoff, and jitter;
-- O1E stale-claim recovery, cancellation, and graceful shutdown;
-- O1F corruption, concurrency, saturation, restart, and leakage validation;
-- O2 supervised worker service;
-- O3 always-on local operation.
+The remaining production scheduler work is frozen as:
 
-O1A adds no accepted configuration fields, CLI command, scanner, polling loop, sleep, daemon, or service.
+- O1D1 accepts the five exact scheduler gates and implements one production `replay -> queue` round by invoking O1B and O1C at most once each, aggregating through O1A, and returning without sleep;
+- O1D2 owns deterministic ordering policy beyond the fixed lane order, fairness and starvation prevention, retry-time handling, bounded backoff/jitter, and saturation pacing;
+- O1E owns stale-claim recovery, cancellation checkpoints, and graceful shutdown;
+- O1F owns corruption, concurrency, saturation, restart, and leakage validation;
+- O2 owns supervised worker service lifecycle;
+- O3 owns always-on local operation.
+
+O1D1 is not a polling loop, does not choose when another round starts, and does not absorb O1B, O1C, I1-GC, C2, B3, or worker authority. O1A itself adds no accepted configuration fields; O1D1 is the phase that accepts the already-named scheduler fields into production configuration.
 
 ## I1-GA through I1-GD durable-finalization boundary
 
@@ -155,7 +157,7 @@ I1-GD publishes an immutable content-free isolation marker before deleting known
 
 Remaining I1-G work:
 
-- I1-GE full crash-at-every-boundary production validation.
+- I1-GE is validation-only: real process-exit/restart proof at every production boundary across I1-GB publication, I1-GC convergence, normal-finalizer/replay races, and I1-GD isolation/cleanup. It adds no new durable schema, replay authority, scheduler, queue lifecycle, worker execution, or memory mutation.
 
 ## RelayMEM Primary persistence and governance
 
@@ -179,6 +181,8 @@ I-4D M2/RelayCTX lifecycle and prior-revision exclusion
   -> I-4E loopback API and SOUL Lab UI
   -> I-4F crash/race/security/fresh-conversation validation
 ```
+
+I-4D is retrieval-only integration. It consumes the existing current-state authority before snippet construction, excludes hidden, prior, prepared, recovery-required, corrupt, ambiguous, unsafe, and cross-scope candidates from ordinary M2 and RelayCTX, and adds read-only historical lifecycle projection without rewriting historical receipts. It does not implement Forget apply/recovery, M3f/M3g, mutation routes, UI, restore, purge, or physical deletion.
 
 The hidden successor page is lifecycle authority. Prepared, recovery-required, corrupt, hidden, and prior physical revisions must remain retrieval-ineligible once I-4D integrates lifecycle filtering. Physical deletion, secure erase, purge, restore, and unhide remain separate future contracts.
 
@@ -213,21 +217,22 @@ The workstation evaluation exposed two quality gaps:
 ## Immediate dependency-first work
 
 ```text
-I-4D M2/RelayCTX exclusion
-|| I1-GE crash validation preparation
-|| O1D ordering / fairness / backoff
-|| O1E stale recovery / shutdown
+I1-GE validation-only full process-exit/restart proof
+|| I-4D ordinary M2/RelayCTX exclusion and historical lifecycle overlay
+|| O1D1 accepted scheduler gates and one replay-before-queue production round
 
 then
-  I1-GE crash validation completion
-  I-4E / I-4F UI and validation
+  O1D2 ordering/fairness/retry-time/backoff/jitter/pacing -> O1E recovery/shutdown
+  I-4E loopback API/UI -> I-4F full Forget validation
   O1F operational validation
   UI-B1A read-only lifecycle visibility
 ```
 
+I1-GE, I-4D, and O1D1 are independent Wave 3 tracks after W2-INT. O1D1 completion does not imply polling, fairness, recurring automatic scheduling, supervision, or always-on operation.
+
 ## Safe defaults
 
-Current mutation, worker, durable-finalization, retention, and scheduler-related paths remain default-off or dry-run-first. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1A does not add current configuration fields. I-4C2 adds no accepted browser route and deliberately leaves ordinary M2/RelayCTX lifecycle filtering to I-4D.
+Current mutation, worker, durable-finalization, retention, and scheduler-related paths remain default-off or dry-run-first. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1A does not add current configuration fields; O1D1 remains responsible for accepting the exact scheduler gates while preserving no-lane invocation for disabled or invalid combinations. I-4C2 adds no accepted browser route and deliberately leaves ordinary M2/RelayCTX lifecycle filtering to I-4D.
 
 ## Not yet implemented
 
@@ -235,9 +240,9 @@ Current mutation, worker, durable-finalization, retention, and scheduler-related
 - idempotent operator-facing character-store bootstrap;
 - speaker-provenance-safe Primary MEM summary formation;
 - strict evidence-grounded recall response generation;
-- I1-GE;
-- O1D through O1F, O2, and O3;
-- I-4D through I-4F;
+- I1-GE validation-only production crash proof;
+- O1D1 one production round, O1D2 scheduling policy, O1E recovery/shutdown, O1F validation, O2, and O3;
+- I-4D retrieval exclusion, I-4E API/UI, and I-4F validation;
 - restore/unhide or physical purge;
 - I-5 through I-9 governance and RelaySOUL slices;
 - durable transcript inspection;
@@ -252,4 +257,4 @@ O1B is complete for one bounded, non-recursive inventory of the configured I1-G 
 
 ## Wave 2 cross-slice convergence
 
-W2-INT audits the merged I1-GD, I-4C2, O1B, and O1C production boundaries. It adds no scheduler loop or retrieval exclusion. I1-GE, I-4D, and O1D1 remain the next independent implementation tracks after this audit is green.
+W2-INT audits the merged I1-GD, I-4C2, O1B, and O1C production boundaries. It adds no scheduler loop or retrieval exclusion. After the audit is green, the next independent tracks are frozen as I1-GE validation-only crash proof, I-4D retrieval-only lifecycle exclusion, and O1D1 accepted gates plus one production round.
