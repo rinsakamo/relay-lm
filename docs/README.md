@@ -21,11 +21,12 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 ## Start here
 
 - [Current project status](PROJECT_STATUS.md) — current implementation boundary through I1-GD, I-4C2, O0, O1A, O1B, O1C, UI-B0, and the local E1 result; Wave 3 is I1-GE, I-4D, and O1D1.
-- [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, and AI reading rules.
+- [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed implementation status and dependency-first sequencing.
 - [Post-I3 evaluation and work roadmap](architecture/post_i3_evaluation_work_roadmap.md) — I-4 through I-9, durability, operations, UI, and evaluation gates.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
+- [MVP evidence index](mvp/README.md) — historical snapshots and per-PR implementation completion reports.
 
 ## Current product-critical boundaries
 
@@ -86,9 +87,15 @@ These documents are target architecture only. Experimental SOUL replacement is e
 - RelaySOUL governance -> `docs/relaysoul/`
 - smoke and troubleshooting -> `docs/smoke/`
 - historical rationale -> `docs/architecture/archive/`
-- MVP snapshots -> `docs/mvp/`
+- MVP snapshots and implementation completion reports -> `docs/mvp/`
 
-When an implemented boundary changes state, update Project Status, the implementation plan, both documentation indexes, the affected dedicated contract, the post-I3 roadmap, relevant current/target documents, and status-checking smoke scripts in the same change.
+## Parallel implementation documentation rule
+
+For a declared parallel wave, each implementation PR must update only its code, tests/workflows, implementation-coupled exact schema/config docs, a unique slice-owned handoff, and one unique `docs/mvp/wave*/<slice>_completion_report.md`. It must not edit the shared status, shared plans, shared indexes, cross-slice current-target documents, previous-wave audit, or repository-wide documentation-boundary smoke merely to mark the slice complete.
+
+After the parallel PRs merge, the wave convergence thread updates Project Status, shared implementation plans, both documentation indexes, the post-phase roadmap, relevant current/target documents, completion-report links, and repository-wide documentation smoke in one PR. The next wave and release/evaluation gate remain closed until that convergence PR is green and merged.
+
+For a non-parallel slice without a reserved convergence thread, the implementation PR may still update all affected current documents atomically. The authoritative rules and reserved shared-file list are in [Documentation Model](DOCUMENTATION_MODEL.md).
 
 ## Wave 3 integrated boundary
 
