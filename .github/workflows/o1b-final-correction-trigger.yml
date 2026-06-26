@@ -6,12 +6,17 @@ on:
       - phase-o1b-sealed-i1g-replay-lane
     paths:
       - ".github/workflows/o1b-final-correction-trigger.yml"
+  pull_request:
+    types: [synchronize, reopened]
+    paths:
+      - ".github/workflows/o1b-final-correction-trigger.yml"
 
 permissions:
   contents: write
 
 jobs:
   patch:
+    if: github.head_ref == 'phase-o1b-sealed-i1g-replay-lane' || github.ref_name == 'phase-o1b-sealed-i1g-replay-lane'
     runs-on: ubuntu-latest
     steps:
       - name: Apply embedded reviewed correction
@@ -20,7 +25,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # This second commit starts the newly registered branch workflow.
           git clone -q --depth 1 --branch phase-o1b-sealed-i1g-replay-lane \
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo
           cd repo
