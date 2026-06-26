@@ -103,7 +103,7 @@ def active_corrected_and_finalized() -> None:
         runtime = corrected_result["primary_recall_runtime"]
         require(runtime["selected_count"] == 1, runtime)
         require(runtime["selected_memories"][0]["revision"] == 2, runtime)
-        require("excluded_prior_revision" in runtime["blocked_reason_ids"], runtime)
+        require("primary_recall_superseded_revision_excluded" in runtime["blocked_reason_ids"], runtime)
 
         unrelated_id = form_primary_memory(
             root, namespace=NAMESPACE, candidate_id="phase-i4d-unrelated",
