@@ -26,7 +26,7 @@ on:
       - ".github/workflows/o1b-sealed-replay-lane-smoke.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: o1b-sealed-replay-lane-${{ github.ref }}
@@ -37,37 +37,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - name: Patch fixture or run validation
+      - name: Run O1B and regression validation
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           git clone -q --depth 1 --branch phase-o1b-sealed-i1g-replay-lane \
-            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo
+            "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" repo
           cd repo
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("scripts/relaylm_o1b_sealed_replay_lane_smoke.py")
-          body = path.read_text(encoding="utf-8")
-          old = '''        first, _, _, _ = gc._publish_sealed(root, request_id="o1b-request-a")
-                  second, _, _, _ = gc._publish_sealed(root, request_id="o1b-request-b")
-          '''
-          new = '''        first, _, _, _ = gc._publish_sealed(root, request_id="o1b-request-a")
-                  with patch.object(gc.gb, "RUN_ID", f"{gc.gb.RUN_ID}-o1b-b"):
-                      second, _, _, _ = gc._publish_sealed(root, request_id="o1b-request-b")
-          '''
-          if old in body:
-              path.write_text(body.replace(old, new), encoding="utf-8")
-          PY
-          if ! git diff --quiet; then
-            git config user.name github-actions[bot]
-            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-            git add scripts/relaylm_o1b_sealed_replay_lane_smoke.py
-            git commit -m "test: use distinct O1B locator fixtures"
-            git push -q origin HEAD:phase-o1b-sealed-i1g-replay-lane
-            exit 0
-          fi
           python -m pip install -q -e .
           export PYTHONPATH=.:scripts
           python -m compileall -q relaylm scripts
