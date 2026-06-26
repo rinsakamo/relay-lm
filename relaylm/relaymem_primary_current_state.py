@@ -17,6 +17,9 @@ from .relaymem_primary_forget_finalization_artifact import FORGET_TOMBSTONE_SCHE
 from .relaymem_primary_forget_finalized_state import (
     resolve_finalized_forget_current_state,
 )
+from .relaymem_primary_i4c2_projection import (
+    load_primary_current_state_index,
+)
 from .relaymem_primary_lifecycle_page import resolve_forget_current_state
 
 PRIMARY_CURRENT_STATE_SCHEMA = _impl.PRIMARY_CURRENT_STATE_SCHEMA
@@ -27,7 +30,6 @@ PrimaryCurrentStateError = _impl.PrimaryCurrentStateError
 PrimaryCorrectionStateIndex = _impl.PrimaryCorrectionStateIndex
 PrimaryCurrentState = _impl.PrimaryCurrentState
 empty_primary_current_state_index = _impl.empty_primary_current_state_index
-load_primary_current_state_index = _impl.load_primary_current_state_index
 resolve_primary_current_identity = _impl.resolve_primary_current_identity
 
 
