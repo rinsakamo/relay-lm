@@ -38,7 +38,7 @@ I1-GA is complete as the contract, design decision, pure fault model, and valida
 
 I1-GE full production crash validation remains unimplemented. I1-G overall remains in progress until that boundary lands.
 
-O1A defines only the scheduler-side two-lane round contract. O1B is complete for one bounded eligible sealed-record discovery, canonical selected-record reread, and at most one existing I1-GC call. O1C is complete for one independent bounded B2/B3 queue discovery, canonical reread, server-owned scope resolution, and at most one existing C2 call. Neither lane owns I1-G replay, completion, C1-5, B2/B3 lifecycle, retention, cleanup, or worker execution.
+O1A defines only the scheduler-side two-lane round contract. O1B is complete for one bounded eligible sealed-record discovery, canonical selected-record reread, and at most one I1-GC call. O1C is complete for one independent bounded B2/B3 queue discovery, canonical reread, server-owned scope resolution, and at most one existing C2 call. Neither lane owns I1-G replay, completion, C1-5, B2/B3 lifecycle, retention, cleanup, or worker execution.
 
 ## Problem and resolved recovery window
 
@@ -259,7 +259,7 @@ extract job/dispatch identity for the queue lane
 scan repeatedly, sleep, retry, or execute a worker
 ```
 
-After replay, O1C independently discovers the queue root. Same-round execution of a newly converged B2 record is possible but not guaranteed or specially prioritized.
+After replay, the queue lane independently discovers the queue root through O1C. Same-round execution of a newly converged B2 record is possible but not guaranteed or specially prioritized.
 
 ## Remaining slices
 
