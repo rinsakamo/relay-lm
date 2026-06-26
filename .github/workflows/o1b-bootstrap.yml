@@ -6,7 +6,8 @@ on:
 
 permissions:
   contents: write
-  pull-requests: read
+  pull-requests: write
+  issues: write
 
 concurrency:
   group: o1b-bootstrap-${{ github.head_ref }}
@@ -24,9 +25,12 @@ jobs:
           show-progress: false
       - name: Apply staged O1B payload
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -u
           cat .relaylm_o1b_payload/part_* | base64 -d > /tmp/o1b.tar.gz
+          rm -rf /tmp/o1b
           mkdir /tmp/o1b
           tar -xzf /tmp/o1b.tar.gz -C /tmp/o1b
           set +e
@@ -36,10 +40,10 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           if [ "$status" -ne 0 ]; then
-            cp /tmp/o1b-apply.log .relaylm_o1b_payload/error.log
-            git add -A
-            git commit -m "chore: capture O1B bootstrap failure"
-            git push origin HEAD:phase-o1b-sealed-i1g-replay-lane
+            printf 'O1B bootstrap failure on `%s`:\n\n```text\n' "$GITHUB_SHA" > /tmp/o1b-comment.md
+            cat /tmp/o1b-apply.log >> /tmp/o1b-comment.md
+            printf '\n```\n' >> /tmp/o1b-comment.md
+            gh pr comment 406 --body-file /tmp/o1b-comment.md
             cat /tmp/o1b-apply.log
             exit "$status"
           fi
