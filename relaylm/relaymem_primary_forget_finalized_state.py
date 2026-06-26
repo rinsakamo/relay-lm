@@ -12,7 +12,6 @@ from .relaymem_primary_forget_artifact import (
 )
 from .relaymem_primary_forget_control_convergence import controls_are_exactly_converged
 from .relaymem_primary_forget_finalization_artifact import (
-    PrimaryForgetArtifactError as _ArtifactAlias,
     read_forget_tombstone,
     tombstone_matches_prepared,
 )
@@ -27,7 +26,6 @@ def resolve_finalized_forget_current_state(
 ) -> PrimaryCurrentState | None:
     """Return hidden/none/false only for one exact tombstone-backed chain."""
 
-    del _ArtifactAlias  # imported alias documents the shared bounded error authority
     root = Path(store_root)
     directory = root / MUTATION_ROOT / memory_id
     if not directory.exists() and not directory.is_symlink():
