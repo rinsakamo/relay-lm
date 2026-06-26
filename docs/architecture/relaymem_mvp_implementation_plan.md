@@ -25,6 +25,8 @@ relaylm_related_authority:
   - phase_i4c1_primary_forget_hidden_successor.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - i1gd_durable_finalization_retention_cleanup.md
+  - o1b_sealed_i1g_replay_lane.md
+  - o1c_eligible_b2_queue_lane.md
 ---
 # RelayMEM MVP Implementation Plan
 
@@ -36,7 +38,7 @@ This document owns the RelayMEM MVP implementation track. Repository-wide sequen
 
 M3a-M3h, worker execution, durable protected-source recovery, C2 one-job execution, O0 explicit local operation, Phase I-1 recall, Phase I-2 observation, Phase I-3 Correct, I-4B, and I-4C1 are complete. Phase I-4A defines the target Forget / Hide contract. The next RelayMEM governance implementation slice is I-4C2, not product-level Forget completion.
 
-I1-GC one-record replay and completion convergence is complete outside RelayMEM lifecycle authority. I1-GD bounded retention and isolation cleanup is also complete outside RelayMEM lifecycle authority. I1-GE and O1B through O1F remain operations work.
+I1-GC one-record replay and completion convergence is complete outside RelayMEM lifecycle authority. I1-GD bounded retention and isolation cleanup is also complete outside RelayMEM lifecycle authority. O1B and O1C are complete bounded lane adapters. I1-GE and O1D through O1F remain operations work.
 
 ## Core lifecycle
 
@@ -94,6 +96,8 @@ MEM-M3 Primary MEM path:
   M3i-b one-job runtime adapter: complete as Phase 6-C2
   O0 explicit local one-job caller: complete
   O1A two-lane round/idle contract: complete; no production scheduler
+  O1B sealed replay-lane adapter: complete
+  O1C queue-lane adapter: complete
   M3i-c next-turn recall and scope isolation: complete as Phase I-1
   M3i-d real read-only Lab observation: complete as Phase I-2
   M3i-e auditable Correct: complete as Phase I-3
@@ -225,7 +229,7 @@ I-4D is the user-visible semantic commit. I-4C1 does not claim product-level For
 
 I1-GA through I1-GD are complete. I1-GC converges one caller-selected sealed record through exact reconstruction, existing A1/A2/B1, exact C1-5, exact B2, downstream reread, and immutable completion. I1-GD applies bounded retention, content-free isolation, and marker-last cleanup without mutating downstream queue/source/memory authorities. I1-GE full crash validation remains incomplete.
 
-O1A defines a pure replay-before-queue round with at most one future I1-GC delegation and at most one future C2 delegation. O1D through O1F remain unimplemented. Replay output is never a direct queue/C2 input.
+O1A defines a pure replay-before-queue round. O1B supplies at most one existing I1-GC delegation and O1C supplies at most one existing C2 delegation through independent discovery and canonical reread. O1D through O1F remain unimplemented. Replay output is never a direct queue/C2 input.
 
 ## Safety invariants
 
@@ -257,7 +261,7 @@ I-4C2 prepared resume / recovery / tombstone
   -> I-4F validation
 ```
 
-Parallel non-RelayMEM operations work may proceed as O1B/O1C and I1-GE without moving their authorities into lifecycle code.
+Parallel non-RelayMEM operations work may proceed as I1-GE and O1D/O1E without moving their authorities into lifecycle code.
 
 ## Completion status
 
@@ -265,6 +269,8 @@ Parallel non-RelayMEM operations work may proceed as O1B/O1C and I1-GE without m
 - one-job Phase 6 execution: complete
 - O0 explicit local one-job caller: complete
 - O1A two-lane round/idle contract: complete
+- O1B sealed replay-lane adapter: complete
+- O1C queue-lane adapter: complete
 - O1D through O1F production scheduling: unimplemented
 - I1-GC one-record replay and completion convergence: complete
 - I1-GD bounded retention and isolation cleanup: complete
@@ -288,4 +294,4 @@ O1D through O1F remain unimplemented. O1C does not complete a scheduler round lo
 <!-- O1B_CURRENT_BOUNDARY -->
 ### O1B sealed replay-lane discovery — complete
 
-O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1C through O1F, O2, and O3 remain unimplemented.
+O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1D through O1F, O2, and O3 remain unimplemented.
