@@ -26,6 +26,7 @@ from _relaylm_i1ge_crash_child import (  # noqa: E402
 )
 from relaylm.relaymem_slp_durable_finalization_isolation import (  # noqa: E402
     isolation_filename,
+    parse_isolation_filename,
 )
 from relaylm.relaymem_slp_durable_finalization_replay import (  # noqa: E402
     completion_filename,
@@ -113,13 +114,25 @@ def result_status(root: Path, name: str) -> str:
 
 
 def locator(root: Path) -> str | None:
-    bases = sorted((root / "finalization").glob("durable-finalization-v0-*.base.json"))
-    if not bases:
+    finalization = root / "finalization"
+    bases = sorted(finalization.glob("durable-finalization-v0-*.base.json"))
+    if bases:
+        require(len(bases) == 1, [path.name for path in bases])
+        name = bases[0].name
+        value = name[len("durable-finalization-v0-") : -len(".base.json")]
+        require(
+            len(value) == 64 and all(char in "0123456789abcdef" for char in value),
+            value,
+        )
+        return value
+    markers = sorted(
+        finalization.glob("durable-finalization-v0-*.segment-isolation.json")
+    )
+    if not markers:
         return None
-    require(len(bases) == 1, [path.name for path in bases])
-    name = bases[0].name
-    value = name[len("durable-finalization-v0-") : -len(".base.json")]
-    require(len(value) == 64 and all(char in "0123456789abcdef" for char in value), value)
+    require(len(markers) == 1, [path.name for path in markers])
+    value = parse_isolation_filename(markers[0].name)
+    require(value is not None, markers[0].name)
     return value
 
 
