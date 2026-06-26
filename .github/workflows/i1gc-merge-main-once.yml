@@ -28,9 +28,11 @@ jobs:
         with:
           python-version: "3.12"
       - name: Merge latest main and resolve only expected documentation conflicts
+        id: merge
         shell: bash
         run: |
-          set -euo pipefail
+          exec > >(tee merge-debug.log) 2>&1
+          set -euxo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
@@ -40,6 +42,8 @@ jobs:
           set -e
 
           mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+          printf 'merge_status=%s\n' "$merge_status"
+          printf 'conflict=%s\n' "${conflicts[@]}"
           if (( merge_status != 0 )) && (( ${#conflicts[@]} == 0 )); then
             echo "merge failed without resolvable file conflicts"
             exit 1
@@ -63,6 +67,14 @@ jobs:
           rm scripts/relaylm_i1gc_merge_main_once.py
           rm .github/workflows/i1gc-merge-main-once.yml
           git add -A
+      - name: Upload merge diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: i1gc-main-merge-diagnostics
+          path: merge-debug.log
+          if-no-files-found: error
+          retention-days: 3
       - name: Install RelayLM
         run: python -m pip install -e .
       - name: Compile repository Python
