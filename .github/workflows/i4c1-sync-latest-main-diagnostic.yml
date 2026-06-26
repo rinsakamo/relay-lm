@@ -1,0 +1,61 @@
+name: Observable sync latest main into I-4C1
+
+on:
+  push:
+    branches:
+      - phase-i4c1-primary-forget-hidden-successor
+    paths:
+      - ".github/workflows/i4c1-sync-latest-main-diagnostic.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i4c1-primary-forget-hidden-successor
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Merge and validate
+        shell: bash
+        run: |
+          set -u
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          if git merge-base --is-ancestor origin/main HEAD; then
+            echo "Latest main is already contained"
+            exit 0
+          fi
+          if ! git merge --no-commit --no-ff -X ours origin/main; then
+            git status --short > /tmp/i4c1-sync.log
+            echo "merge_failed" >> /tmp/i4c1-sync.log
+            git merge --abort || true
+            cp /tmp/i4c1-sync.log .i4c1-sync-diagnostics.log
+            git add .i4c1-sync-diagnostics.log
+            git commit -m "chore: record I-4C1 main-sync diagnostics"
+            git push origin HEAD:phase-i4c1-primary-forget-hidden-successor
+            exit 0
+          fi
+          pip install -e . >/tmp/i4c1-sync.log 2>&1
+          status=0
+          python -m compileall -q relaylm scripts >>/tmp/i4c1-sync.log 2>&1 || status=$?
+          PYTHONPATH=. python scripts/relaylm_o1a_scheduler_round_contract_smoke.py >>/tmp/i4c1-sync.log 2>&1 || status=$?
+          PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py >>/tmp/i4c1-sync.log 2>&1 || status=$?
+          PYTHONPATH=. python scripts/relaylm_docs_link_check.py >>/tmp/i4c1-sync.log 2>&1 || status=$?
+          if [ "$status" -ne 0 ]; then
+            git merge --abort || true
+            cp /tmp/i4c1-sync.log .i4c1-sync-diagnostics.log
+            git add .i4c1-sync-diagnostics.log
+            git commit -m "chore: record I-4C1 main-sync diagnostics"
+            git push origin HEAD:phase-i4c1-primary-forget-hidden-successor
+            exit 0
+          fi
+          git commit -m "chore: sync latest main into I-4C1 branch"
+          git push origin HEAD:phase-i4c1-primary-forget-hidden-successor
