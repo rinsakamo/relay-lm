@@ -119,10 +119,17 @@ def test_same_round_independent_discovery() -> None:
         finalization_root = root / "finalization"
         for path in (queue_root, source_root, memory_root, finalization_root):
             path.mkdir(parents=True, exist_ok=True)
-        prepare_scoped_store(memory_root)
+        prepare_scoped_store(memory_root, gc.gb.CHARACTER_ID)
         base, seal, _, _ = gc._publish_sealed(root)
         namespace = str(seal["durable_job"]["namespace"])
-        config = build_config(queue_root, source_root, memory_root, namespace, mode="apply")
+        config = build_config(
+            queue_root,
+            source_root,
+            memory_root,
+            namespace,
+            mode="apply",
+            character_id=gc.gb.CHARACTER_ID,
+        )
         config = config.model_copy(
             update={
                 "relaymem_slp_durable_finalization_root": str(finalization_root.resolve()),
