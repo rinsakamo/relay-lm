@@ -53,12 +53,13 @@ jobs:
         run: python -m pip install -e .
       - name: Compile repository Python
         run: python -m compileall -q relaylm scripts
-      - name: Run I1-G contract, publication, and replay suites
+      - name: Run I1-GC replay convergence smoke
+        run: PYTHONPATH=. python scripts/relaylm_i1gc_durable_finalization_replay_smoke.py
+      - name: Run I1-G contract and I1-GB publication regressions
         run: |
           PYTHONPATH=. python scripts/relaylm_i1g_pre_enqueue_fault_model_smoke.py
           PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
           PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_app_smoke.py
-          PYTHONPATH=. python scripts/relaylm_i1gc_durable_finalization_replay_smoke.py
       - name: Run source-before-queue regressions
         run: |
           PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
@@ -67,8 +68,7 @@ jobs:
           PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_smoke.py
           PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
       - name: Run C2 non-regression
-        run: |
-          PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
       - name: Run documentation checks
         run: |
           PYTHONPATH=. python scripts/relaylm_docs_link_check.py
