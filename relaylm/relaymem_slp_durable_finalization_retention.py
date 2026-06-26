@@ -1,11 +1,12 @@
 """Public I1-GD bounded retention, isolation, and cleanup authority.
 
 The implementation is isolated in a private module. This facade owns safe
-configuration admission plus the pure completion-proof and inventory seams that
-must stay aligned with I1-GC and the configured I1-G record-count authority.
+configuration admission plus the pure completion-proof, inventory, and
+post-isolation consistency seams that must stay aligned with I1-GC and I1-GB.
 """
 from __future__ import annotations
 
+import os
 from types import SimpleNamespace
 from typing import Any
 
@@ -20,6 +21,26 @@ RelayMEMSLPDurableFinalizationRetentionResult = (
 )
 
 _original_inventory = _impl._inventory
+_original_classify_locator = _impl._classify_locator
+_ISOLATION_REASON_IDS = {
+    "expired_incomplete_orphan": {"incomplete_orphan_expired"},
+    "complete_retention_expired": {"completed_retention_expired"},
+    "corrupt_known_locator": {
+        "corrupt_known_record",
+        "base_missing_corrupt_orphan",
+        "segment_order_corrupt_orphan",
+        "segment_chain_corrupt_orphan",
+        "seal_evidence_mismatch",
+        "completion_without_valid_seal",
+    },
+    "unsupported_known_locator": {"unsupported_known_schema"},
+}
+_COMPONENT_FLAG_NAMES = (
+    "base_present",
+    "segment_present",
+    "seal_present",
+    "completion_present",
+)
 
 
 def _bounded_inventory(root_fd: int, settings: Any) -> Any:
@@ -37,6 +58,82 @@ def _bounded_inventory(root_fd: int, settings: Any) -> Any:
             capacity_exceeded=True,
         )
     return inventory
+
+
+def _hardened_classify_locator(
+    root_fd: int,
+    locator: str,
+    settings: Any,
+    now: float,
+) -> Any:
+    """Reject components that appeared or changed ownership after isolation."""
+
+    classified = _original_classify_locator(root_fd, locator, settings, now)
+    isolation = classified.isolation
+    if (
+        classified.blocked
+        or isolation.status != "loaded"
+        or not classified.component_names
+    ):
+        return classified
+    marker = isolation.marker
+    if type(marker) is not dict or type(isolation.mtime_ns) is not int:
+        return _impl._blocked_classification(
+            "unsafe_or_unclassifiable",
+            "durable_finalization_isolation_state_invalid",
+            classified.flags,
+            classified.component_names,
+            isolation,
+        )
+    marker_classification = marker.get("classification")
+    marker_reason = marker.get("reason_id")
+    allowed_reasons = _ISOLATION_REASON_IDS.get(marker_classification)
+    if allowed_reasons is None or marker_reason not in allowed_reasons:
+        return _impl._blocked_classification(
+            "ambiguous",
+            "durable_finalization_isolation_authority_invalid",
+            classified.flags,
+            classified.component_names,
+            isolation,
+        )
+    observed = marker.get("observed_component_flags")
+    if type(observed) is not dict:
+        return _impl._blocked_classification(
+            "unsafe_or_unclassifiable",
+            "durable_finalization_isolation_flags_invalid",
+            classified.flags,
+            classified.component_names,
+            isolation,
+        )
+    for flag_name in _COMPONENT_FLAG_NAMES:
+        if classified.flags.get(flag_name) is True and observed.get(flag_name) is not True:
+            return _impl._blocked_classification(
+                "ambiguous",
+                "durable_finalization_component_reappeared_after_isolation",
+                classified.flags,
+                classified.component_names,
+                isolation,
+            )
+    for name in classified.component_names:
+        try:
+            info = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+        except OSError:
+            return _impl._blocked_classification(
+                "unsafe_or_unclassifiable",
+                "durable_finalization_component_unreadable",
+                classified.flags,
+                classified.component_names,
+                isolation,
+            )
+        if info.st_mtime_ns > isolation.mtime_ns:
+            return _impl._blocked_classification(
+                "ambiguous",
+                "durable_finalization_component_newer_than_isolation",
+                classified.flags,
+                classified.component_names,
+                isolation,
+            )
+    return classified
 
 
 def _exact_completion_collision_reason(
@@ -118,6 +215,7 @@ def _public_bound_reasons(config: RelayLMConfig) -> tuple[str, ...]:
 # The private implementation performs global lookups at call time. These are
 # deliberate production dependency seams, analogous to the I1-GC public facade.
 _impl._inventory = _bounded_inventory
+_impl._classify_locator = _hardened_classify_locator
 _impl._completion_collision_reason = _exact_completion_collision_reason
 
 
