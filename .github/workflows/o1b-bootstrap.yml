@@ -26,7 +26,7 @@ jobs:
           mkdir /tmp/o1b
           tar -xzf /tmp/o1b.tar.gz -C /tmp/o1b
           set +e
-          python /tmp/o1b/apply.py "$GITHUB_WORKSPACE" > /tmp/o1b-apply.log 2>&1
+          python /tmp/o1b/o1b_payload/apply.py "$GITHUB_WORKSPACE" > /tmp/o1b-apply.log 2>&1
           status=$?
           set -e
           git config user.name github-actions[bot]
