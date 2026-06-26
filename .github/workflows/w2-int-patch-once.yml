@@ -6,6 +6,12 @@ on:
       - wave2-cross-slice-convergence-audit
     paths:
       - ".github/workflows/w2-int-patch-once.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/w2-int-patch-once.yml"
+      - "scripts/_w2_patch_*_once.py"
 
 permissions:
   contents: write
