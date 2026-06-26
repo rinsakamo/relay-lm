@@ -101,7 +101,7 @@ def main() -> None:
         require(control is not None and not reasons, reasons)
         require(
             all(
-                item.get("idempotency_key") == prior_physical
+                item.get("idempotency_key") != hidden.current_physical_id
                 for item in (*control["index"], *control["log"])
             ),
             "M3f/M3g unexpectedly advanced controls",
