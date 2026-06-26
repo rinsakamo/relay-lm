@@ -32,6 +32,7 @@ jobs:
           python /tmp/o1b/apply.py "$PWD"
           rm -rf .relaylm_o1b_payload
           rm -f .github/workflows/o1b-bootstrap.yml
+          rm -f .github/workflows/o1b-sealed-replay-lane-smoke.yml
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
