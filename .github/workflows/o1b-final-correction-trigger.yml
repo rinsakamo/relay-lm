@@ -1,0 +1,45 @@
+name: O1B correction trigger
+
+on:
+  push:
+    branches:
+      - phase-o1b-sealed-i1g-replay-lane
+    paths:
+      - ".github/workflows/o1b-final-correction-trigger.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply embedded reviewed correction
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git clone -q --depth 1 --branch phase-o1b-sealed-i1g-replay-lane \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo
+          cd repo
+          git fetch -q origin main --depth=1
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
+          workflow = Path(".github/workflows/o1b-sealed-replay-lane-smoke.yml").read_text(encoding="utf-8")
+          marker = "          python - <<'PY'\n"
+          start = workflow.index(marker) + len(marker)
+          end = workflow.index("\n          PY\n", start)
+          embedded = textwrap.dedent(workflow[start:end])
+          exec(compile(embedded, "o1b-final-correction", "exec"), {"__name__": "__main__"})
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add relaylm/relaymem_slp_scheduler_contract.py \
+            relaylm/relaymem_slp_scheduler_replay_lane.py \
+            scripts/relaylm_o1b_sealed_replay_lane_smoke.py \
+            docs/architecture/o1b_sealed_i1g_replay_lane.md
+          git commit -m "fix: enforce one O1B inventory and selected-only reread"
+          git push -q origin HEAD:phase-o1b-sealed-i1g-replay-lane
