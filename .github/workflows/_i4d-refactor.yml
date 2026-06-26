@@ -1,0 +1,159 @@
+name: Temporary I-4D recall isolation
+
+on:
+  push:
+    branches:
+      - phase-i4d-primary-retrieval-exclusion
+    paths:
+      - ".github/workflows/_i4d-refactor.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i4d-primary-retrieval-exclusion
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Move lifecycle filtering into ordinary recall only
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          recall = Path("relaylm/relaymem_primary_recall.py")
+          body = recall.read_text(encoding="utf-8")
+          old = '''            # Correction metadata is an audit/revision selector only. M2 remains
+                      # relevance owner and the canonical page/index/log validator remains
+                      # unchanged. The local import avoids a module cycle because the
+                      # correction apply boundary reuses these private validation helpers.
+                      from .relaymem_primary_correction import (
+                          load_primary_correction_state,
+                          resolve_primary_correction_identity,
+                      )
+
+                      correction_state = load_primary_correction_state(
+                          root, namespace=namespace
+                      )
+          '''
+          new = '''            # M2 remains relevance owner. I-4D applies one bounded,
+                      # request-scoped read-only lifecycle view before snippet construction.
+                      from .relaymem_primary_retrieval_eligibility import (
+                          load_primary_retrieval_eligibility_index,
+                      )
+
+                      lifecycle_index = load_primary_retrieval_eligibility_index(
+                          root, namespace=namespace
+                      )
+          '''
+          if old not in body:
+              raise SystemExit("recall authority import anchor missing")
+          body = body.replace(old, new, 1)
+          old = '''                resolved_identity = resolve_primary_correction_identity(
+                              correction_state, physical_identity
+                          )
+                          if resolved_identity is None:
+                              reasons.append("primary_recall_correction_state_invalid")
+                              continue
+                          identity, revision, is_current = resolved_identity
+                          if not is_current:
+                              reasons.append("primary_recall_superseded_revision_excluded")
+                              continue
+          '''
+          new = '''                eligibility = lifecycle_index.evaluate(
+                              physical_identity,
+                              candidate_namespace=loaded.get("namespace"),
+                          )
+                          if not eligibility.eligible:
+                              reasons.append(eligibility.reason_id)
+                              continue
+                          identity = eligibility.logical_memory_id
+                          revision = eligibility.current_revision
+                          if identity is None or revision is None:
+                              reasons.append("excluded_unresolved_identity")
+                              continue
+          '''
+          if old not in body:
+              raise SystemExit("recall identity anchor missing")
+          recall.write_text(body.replace(old, new, 1), encoding="utf-8")
+
+          Path("relaylm/relaymem_primary_i4c2_projection.py").write_text('''"""I-4C2 projection split between mutation governance and ordinary retrieval.
+
+          The underlying shared scanner validates the complete Correct/Forget operation
+          chain, including finalized Forget tombstones. Phase I-4C2 must not, however,
+          change ordinary M2 currentness; that lifecycle exclusion belongs to I-4D.
+          This adapter therefore preserves the scanner's corruption, pending, and physical
+          identity evidence while rebuilding only the public correction-current projection
+          from completed correction receipts.
+          """
+          from __future__ import annotations
+
+          from pathlib import Path
+
+          from . import _relaymem_primary_current_state_impl as _impl
+
+
+          def load_primary_current_state_index(
+              store_root: str | Path, *, namespace: str
+          ) -> _impl.PrimaryCorrectionStateIndex:
+              """Return the correction-only retrieval projection after full chain validation."""
+
+              combined = _impl.load_primary_current_state_index(store_root, namespace=namespace)
+              current_by_logical: dict[str, tuple[str, int]] = {}
+              logical_by_physical = dict(combined.logical_by_physical)
+              superseded_physical: set[str] = set()
+              invalid_logical = set(combined.invalid_logical)
+
+              for logical in combined.current_by_logical:
+                  physical = logical
+                  revision = 1
+                  receipts = sorted(
+                      combined.receipts_by_logical.get(logical, ()),
+                      key=lambda item: (
+                          int(item["result_revision"]),
+                          str(item["operation_key"]),
+                      ),
+                  )
+                  for receipt in receipts:
+                      if (
+                          receipt.get("prior_physical_id") != physical
+                          or receipt.get("prior_revision") != revision
+                          or receipt.get("result_revision") != revision + 1
+                      ):
+                          invalid_logical.add(logical)
+                          break
+                      superseded_physical.add(physical)
+                      logical_by_physical[physical] = logical
+                      physical = str(receipt["result_physical_id"])
+                      revision = int(receipt["result_revision"])
+                      logical_by_physical[physical] = logical
+                  else:
+                      current_by_logical[logical] = (physical, revision)
+
+              return _impl.PrimaryCorrectionStateIndex(
+                  current_by_logical=current_by_logical,
+                  logical_by_physical=logical_by_physical,
+                  superseded_physical=frozenset(superseded_physical),
+                  pending_physical=combined.pending_physical,
+                  invalid_logical=frozenset(invalid_logical),
+                  receipts_by_logical=combined.receipts_by_logical,
+                  pending_logical=combined.pending_logical,
+              )
+
+
+          __all__ = ["load_primary_current_state_index"]
+          ''', encoding="utf-8")
+          PY
+      - run: python -m compileall -q relaylm scripts
+      - name: Commit isolated integration
+        run: |
+          rm .github/workflows/_i4d-refactor.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: isolate I-4D lifecycle filtering to ordinary recall"
+          git push origin HEAD:phase-i4d-primary-retrieval-exclusion
