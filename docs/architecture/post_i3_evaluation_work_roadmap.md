@@ -363,3 +363,7 @@ Phase I-8 and I-9 + complete I1-G + O1/O2 + O3 soak evidence.
 - I-4C1/I-4C2 are delivery subdivisions, not new lifecycle authorities.
 - UI-B0/UI-B1 own no worker, queue, scheduler, filesystem, namespace, SOUL, or mutation authority.
 - Text conversation does not imply TTS, audio, avatar, or Live2D execution.
+
+### Phase I-4C2: Forget recovery and finalization — complete
+
+The bounded one-operation recovery/finalization authority is complete. Current governance work advances to Phase I-4D ordinary M2/RelayCTX lifecycle exclusion and historical projection; API/UI and full production validation remain I-4E/I-4F.

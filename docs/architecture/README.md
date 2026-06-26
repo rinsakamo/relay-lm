@@ -99,3 +99,8 @@ The browser owns no queue, scheduler, worker, filesystem, namespace, backend, cr
 - [Experimental SOUL Replacement and Memory Bootstrap](../relaysoul/experimental_soul_replacement_memory_bootstrap_design.md)
 
 These are target-only. Experimental SOUL replacement is post-MVP, non-destructive, and distinct from ordinary same-character RelaySOUL revision and rollback.
+
+## Phase I-4C2 Primary Forget Recovery and Finalization
+
+- [`phase_i4c2_primary_forget_recovery_finalization.md`](phase_i4c2_primary_forget_recovery_finalization.md)
+- I-4C2 provides caller-selected exact recovery, index-before-log convergence, tombstone finalization, and exact replay. I-4D retains ordinary M2/RelayCTX exclusion ownership.

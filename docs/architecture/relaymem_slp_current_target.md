@@ -252,4 +252,8 @@ O1F   full operational validation                                  unimplemented
 
 ## Completion interpretation
 
-M3a-M3h, C1-0 through C1-5, C2, O0, I1-GC, I-1 recall, I-2 observation, I-3 Correct, I-4B, and I-4C1 are implemented. Forget is not product-complete until I-4C2 through I-4F provide recovery/tombstone, retrieval exclusion, API/UI, and production validation.
+M3a-M3h, C1-0 through C1-5, C2, O0, I1-GC, I-1 recall, I-2 observation, I-3 Correct, I-4B, and I-4C1 are implemented. Forget is not product-complete until I-4D through I-4F provide recovery/tombstone, retrieval exclusion, API/UI, and production validation.
+
+### Phase I-4C2 exact recovery/finalization — complete
+
+One exact durable Forget operation now converges through hidden page, index/log controls, and tombstone-backed replay. Ordinary M2/RelayCTX hidden filtering is unchanged and remains Phase I-4D ownership.

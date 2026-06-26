@@ -240,3 +240,13 @@ Current mutation, worker, durable-finalization, and scheduler-related paths rema
 - static SOUL Lab bundle serving;
 - TTS/audio/avatar/Live2D execution;
 - ASR and peer communication transport.
+
+## Phase I-4C2 current boundary (2026-06-26 JST)
+
+- Phase I-4C1 hidden-successor commit: complete.
+- Phase I-4C2 exact recovery/finalization: complete.
+- One exact prepared operation resumes through deterministic hidden M3e evidence, operation-scoped index-before-log convergence, canonical reread, and immutable tombstone replay.
+- Final resolver state is `hidden / none / retrieval_eligible=false`.
+- I-4D ordinary M2/RelayCTX lifecycle exclusion and historical projection: unimplemented.
+- I-4E API/UI and I-4F full production validation: unimplemented.
+- Phase I-4 and product-complete Forget are not complete.

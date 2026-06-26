@@ -85,3 +85,8 @@ These documents are target architecture only. Experimental SOUL replacement is e
 - MVP snapshots -> `docs/mvp/`
 
 When an implemented boundary changes state, update Project Status, the implementation plan, both documentation indexes, the affected dedicated contract, the post-I3 roadmap, relevant current/target documents, and status-checking smoke scripts in the same change.
+
+## Phase I-4C2 current handoff
+
+- [`architecture/phase_i4c2_primary_forget_recovery_finalization.md`](architecture/phase_i4c2_primary_forget_recovery_finalization.md) — exact prepared resume, operation-scoped controls convergence, immutable tombstone, and exact replay.
+- Phase I-4C1 and Phase I-4C2 are complete bounded authorities; I-4D through I-4F remain.

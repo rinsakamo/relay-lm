@@ -353,3 +353,7 @@ When a phase lands, update together:
 - stale TODO or future-tense text.
 
 Current documents must state one status only. Do not preserve a stale status and append a later section saying that it supersedes earlier text.
+
+### I1-F4 / Phase I-4C2: exact Forget recovery and finalization — complete
+
+Phase I-4C2 exact recovery and tombstone finalization: complete. It owns one exact prepared-operation resume, hidden-page forward recovery, operation-scoped M3f/M3g convergence, tombstone publication, and exact response-loss replay. Phase I-4D remains the unimplemented ordinary M2/RelayCTX lifecycle exclusion slice.
