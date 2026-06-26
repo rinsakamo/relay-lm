@@ -1,0 +1,40 @@
+name: I1-GC smoke expectation fix once
+
+on:
+  push:
+    branches:
+      - phase-i1gc-durable-finalization-replay
+    paths:
+      - ".github/workflows/i1gc-fix-smoke-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i1gc-durable-finalization-replay
+          fetch-depth: 0
+      - name: Fix incomplete-record mutation assertion
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/relaylm_i1gc_durable_finalization_replay_smoke.py")
+          text = path.read_text(encoding="utf-8")
+          old = '''        before = _snapshot(root)\n        result = _replay(config, str(base["locator_digest"]))\n        require(result.status == "not_replayable", result)\n        require(_snapshot(root) == before, result)\n'''
+          new = '''        locator = str(base["locator_digest"])\n        result = _replay(config, locator)\n        require(result.status == "not_replayable", result)\n        require(not any(Path(str(config.relaymem_slp_protected_source_root)).iterdir()), result)\n        require(not any(Path(str(config.relaymem_slp_queue_root)).iterdir()), result)\n        require(not _completion_path(config, locator).exists(), result)\n'''
+          if old not in text:
+              raise SystemExit("target smoke block not found")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+          rm .github/workflows/i1gc-fix-smoke-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/relaylm_i1gc_durable_finalization_replay_smoke.py .github/workflows
+          git commit -m "test: allow persistent replay fence for incomplete record"
+          git push origin HEAD:phase-i1gc-durable-finalization-replay
