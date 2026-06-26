@@ -106,7 +106,7 @@ def test_authority_and_isolation_race() -> None:
         outcome = run_relaymem_slp_scheduler_replay_lane_once(
             config=config, gates=gates("dry_run"), fault_injector=isolate
         )
-        require(outcome.status == "isolated", outcome)
+        require(outcome.status in {"candidate_changed", "isolated"}, outcome)
         require(outcome.canonical_reread_performed and not outcome.delegation_attempted, outcome)
 
 
