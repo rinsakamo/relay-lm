@@ -559,7 +559,7 @@ def _inventory_root(
                         else max(
                             config.relaymem_slp_durable_finalization_max_record_bytes,
                             _replay_impl._MAX_COMPLETION_BYTES,
-                            _isolation_max_bytes(),
+                            ISOLATION_MAX_BYTES,
                         )
                     )
                     if info.st_size > maximum:
@@ -843,7 +843,7 @@ def _capture_signature(
     try:
         for entry in sorted(entries, key=lambda item: item.name):
             if entry.kind == "isolation":
-                digest = _read_raw_digest(root_fd, entry, _isolation_max_bytes())
+                digest = _read_raw_digest(root_fd, entry, ISOLATION_MAX_BYTES)
                 if digest is None:
                     return None
             else:
