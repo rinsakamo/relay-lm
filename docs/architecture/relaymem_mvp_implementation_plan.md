@@ -35,7 +35,7 @@ This document owns the RelayMEM MVP implementation track. Repository-wide sequen
 
 M3a-M3h, worker execution, durable protected-source recovery, C2 one-job execution, O0 explicit local operation, Phase I-1 recall, Phase I-2 observation, Phase I-3 Correct, I-4B, and I-4C1 are complete. Phase I-4A defines the target Forget / Hide contract. The next RelayMEM governance implementation slice is I-4C2, not product-level Forget completion.
 
-I1-GC one-record replay and completion convergence is complete outside RelayMEM lifecycle authority. I1-GD/I1-GE and O1B through O1F remain operations work.
+I1-GC one-record replay and completion convergence is complete outside RelayMEM lifecycle authority. I1-GD/I1-GE and O1D through O1F remain operations work.
 
 ## Core lifecycle
 
@@ -224,7 +224,7 @@ I-4D is the user-visible semantic commit. I-4C1 does not claim product-level For
 
 I1-GA, I1-GB, and I1-GC are complete. I1-GC converges one caller-selected sealed record through exact reconstruction, existing A1/A2/B1, exact C1-5, exact B2, downstream reread, and immutable completion. I1-GD cleanup and I1-GE full crash validation remain incomplete.
 
-O1A defines a pure replay-before-queue round with at most one future I1-GC delegation and at most one future C2 delegation. O1B is complete; O1C through O1F remain unimplemented. Replay output is never a direct queue/C2 input.
+O1A defines a pure replay-before-queue round with at most one future I1-GC delegation and at most one future C2 delegation. O1D through O1F remain unimplemented. Replay output is never a direct queue/C2 input.
 
 ## Safety invariants
 
@@ -257,7 +257,7 @@ Parallel non-RelayMEM operations work may proceed as I1-GD and O1B/O1C without m
 - one-job Phase 6 execution: complete
 - O0 explicit local one-job caller: complete
 - O1A two-lane round/idle contract: complete
-- O1B through O1F production scheduling: unimplemented
+- O1D through O1F production scheduling: unimplemented
 - I1-GC one-record replay and completion convergence: complete
 - I1-GD/I1-GE: unimplemented
 - next-turn retrieval and RelayCTX injection: complete
@@ -269,6 +269,12 @@ Parallel non-RelayMEM operations work may proceed as I1-GD and O1B/O1C without m
 - I-4C1 hidden-successor commit: complete
 - I-4C2 through I-4F: unimplemented
 - Secondary MEM consolidation: deferred
+
+## O1C current reconciliation
+
+O1C is complete for one bounded, non-recursive, secure B2/B3 queue inventory; due/future classification; deterministic one-candidate selection; canonical reread; server-owned character/store resolution; fresh exact C2 request construction; and at most one existing C2 delegation. O0 and O1C share one production candidate helper, while O0 CLI, projection, and exit behavior remain unchanged.
+
+O1D through O1F remain unimplemented. O1C does not complete a scheduler round loop, polling, sleep, fairness, retry-delay/backoff/jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation.
 
 <!-- O1B_CURRENT_BOUNDARY -->
 ### O1B sealed replay-lane discovery — complete

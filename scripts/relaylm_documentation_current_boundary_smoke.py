@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1-I4C1, UI-B0, I1-G, O1A/O1B, and roadmap docs."""
+"""Validate current Phase 6, I1-I4C1, UI-B0, I1-G, O1A/O1B/O1C, and roadmap docs."""
 from __future__ import annotations
 
 import ast
@@ -70,6 +70,9 @@ CURRENT_DOCS = (
     "docs/architecture/o1b_sealed_i1g_replay_lane.md",
     "docs/architecture/relaymem_mvp_implementation_plan.md",
     "docs/architecture/relaymem_slp_current_target.md",
+    "docs/architecture/o0_local_one_job_runner.md",
+    "docs/architecture/o1a_two_lane_scheduler_contract.md",
+    "docs/architecture/o1c_eligible_b2_queue_lane.md",
 )
 
 REQUIRED: dict[str, tuple[str, ...]] = {
@@ -90,7 +93,9 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "Restart-time one-record replay is implemented",
         "Direct Home-origin formation: not currently proven",
         "O1A adds no accepted configuration fields",
-        "O1B sealed I1-G record discovery and one I1-GC delegation: complete",
+        "Scheduler replay lane: O1B one bounded sealed-record discovery/reread/I1-GC adapter complete",
+        "Scheduler queue lane: O1C one bounded discovery/reread/scope/C2 adapter complete",
+        "Scheduler remaining production: O1D through O1F unimplemented",
     ),
     "docs/architecture/pipeline_implementation_plan.md": (
         "Phase 6-C1-0 through C1-5 are complete",
@@ -102,7 +107,6 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "Phase I-4C1 hidden-successor commit: complete",
         "exact read-only preflight/history/token",
         "I1-GC  one-record restart replay, exact convergence, completion    complete",
-        "O1B sealed replay-lane discovery — complete",
         "### O1A: two-lane bounded scheduler contract — complete",
         "O1A completion alone is not O1 completion.",
         "### Wave 1 — completed commit and replay authorities",
@@ -111,6 +115,8 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "I-7 Held Apply / Discard",
         "I-6 Merge / Supersession",
         "These fields are not added to `relaylm/config.py`",
+        "## O1C current reconciliation",
+        "O1B sealed replay-lane discovery — complete",
     ),
     "docs/architecture/post_i3_evaluation_work_roadmap.md": (
         "Phase I-4B: Current-state resolver and shared mutation fence — complete",
@@ -125,6 +131,7 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "### Wave 2 — current",
         "E1 does not prove direct Home-origin formation",
         "O1A completion alone does not satisfy the O1 checkpoint.",
+        "## O1C current reconciliation",
         "O1B sealed replay-lane discovery — complete",
     ),
     "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md": (
@@ -144,9 +151,10 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "M3i-f canonical current-state resolver/shared fence: complete as Phase I-4B",
         "M3i-g hidden-successor commit ownership: complete as Phase I-4C1",
         "I1-GC one-record replay and completion convergence is complete",
-        "O1B sealed replay-lane discovery — complete",
         "The next RelayMEM governance implementation slice is I-4C2",
         "No production hidden-state filtering exists yet because I-4D integration is not implemented",
+        "O1B sealed replay-lane discovery — complete",
+        "## O1C current reconciliation",
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
         "Phase 6-B2 performs atomic durable enqueue",
@@ -157,8 +165,9 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "Observation receipts cannot authorize repair or retrieval",
         "I1-GC caller-selected one-record replay",
         "Phase I-4C1 hidden-successor commit — complete",
-        "O1B sealed replay-lane discovery — complete",
         "Forget is not product-complete until I-4C2 through I-4F",
+        "O1B sealed replay-lane discovery — complete",
+        "## O1C current reconciliation",
     ),
     "docs/README.md": (
         "phase_i2_real_soul_lab_observation.md",
@@ -166,6 +175,8 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "I1-GA, I1-GB, and I1-GC are complete",
         "O1B is complete",
         "Phase I-4C1 is complete",
+        "o1c_eligible_b2_queue_lane.md",
+        "O1C is complete for one bounded B2/B3 inventory",
     ),
     "docs/architecture/README.md": (
         "phase_i2_real_soul_lab_observation.md",
@@ -173,17 +184,17 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "I1-GC provides the caller-selected one-record convergence authority",
         "O1B connects O1A",
         "Phase I-4C1 Primary Forget Hidden-Successor Commit",
+        "O1C Eligible B2/B3 Queue Lane",
     ),
     "docs/architecture/o1b_sealed_i1g_replay_lane.md": (
         "Production replay-lane adapter complete",
         "bounded non-recursive secure inventory",
         "lexicographically first sealed-pending locator",
         "existing I1-GC delegation at most once",
-        "O1C eligible B2 discovery + one C2 delegation          unimplemented",
         "content-free",
     ),
     "docs/architecture/o1a_two_lane_scheduler_contract.md": (
-        "Contract and pure deterministic aggregation model complete; production scheduler unimplemented.",
+        "O1B replay adapter and O1C queue adapter complete; production scheduler loop unimplemented.",
         "replay-lane opportunity completes or returns",
         "I1-GC delegation per round       <= 1",
         "C2 delegation per round          <= 1",
@@ -195,7 +206,14 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "relaylm.local_scheduler_round_result.v0",
         "relaylm.local_scheduler_round_projection.v0",
         "O1A performs no filesystem mutation or production scan",
-        "O1B landed handoff",
+        "O1B and O1C are complete as bounded production lane adapters",
+    ),
+    "docs/architecture/o1c_eligible_b2_queue_lane.md": (
+        "O1C is complete as one bounded production queue-lane adapter",
+        "Shared O0-compatible helper",
+        "future_retry_only",
+        "Same-round replay independence",
+        "O1D ordering, fairness, retry-delay policy, backoff, or jitter",
     ),
     "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md": (
         "relaylm_status: target",
@@ -229,10 +247,11 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "M3f or M3g",
     ),
     "docs/architecture/o0_local_one_job_runner.md": (
-        "Future O1C reuse boundary",
-        "O1C must not launch this CLI as a subprocess",
+        "Shared O0/O1C production helper boundary",
+        "O1C does not launch this CLI as a subprocess",
         "O1A target scheduler gates are design-only",
         "O1B  one sealed I1-G discovery and I1-GC delegation",
+        "O1C  one B2/B3 discovery and C2 delegation — complete",
     ),
     "docs/architecture/soul_lab_ui_b0_real_home_conversation.md": (
         "same-origin POST /v1/chat/completions",
@@ -248,6 +267,15 @@ STALE_O1B = (
     "O1B through O1F, O2, and O3",
     "O1B sealed-record discovery: unimplemented",
     "O1B sealed-record discovery — unimplemented",
+)
+
+
+STALE_O1C = (
+    "Scheduler production: O1B through O1F unimplemented",
+    "Future O1C reuse boundary",
+    "O1C will later extract or reuse",
+    "O1C  one eligible B2 record discovery and one C2 delegation",
+    "O1C queue discovery/C2 delegation remains unimplemented",
 )
 
 STALE_I1GC = (
@@ -279,6 +307,7 @@ def main() -> None:
     for path in CURRENT_DOCS:
         forbid(path, *STALE_I1GC)
         forbid(path, *STALE_O1B)
+        forbid(path, *STALE_O1C)
 
     run_i1g_fault_model()
     run_o1a_contract()
