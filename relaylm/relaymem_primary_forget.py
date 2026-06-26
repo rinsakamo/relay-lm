@@ -13,12 +13,12 @@ from .relaymem_primary_forget_commit import (
     apply_primary_memory_forget_hidden_successor,
 )
 from .relaymem_primary_forget_finalization_artifact import FORGET_TOMBSTONE_SCHEMA
+from .relaymem_primary_forget_public_apply import apply_primary_memory_forget
 from .relaymem_primary_forget_recovery import (
     FORGET_APPLY_RESULT_SCHEMA,
     FORGET_RECOVERY_RESULT_SCHEMA,
     PrimaryForgetApplyResult,
     PrimaryForgetRecoveryResult,
-    apply_primary_memory_forget,
     recover_primary_memory_forget,
 )
 
