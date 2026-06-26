@@ -399,46 +399,46 @@ def _map_c2_result(
             **common,
         )
     if result.status in {"claim_not_applied", "claim_lost_before_rehydrate"}:
-    return _lane(
-        status="candidate_changed",
-        no_immediate_work=False,
-        retryable=True,
-        reasons=reasons or ("queue_claim_conflict",),
-        **common,
-    )
-if result.status == "source_blocked":
-    return _lane(
-        status="unsafe_state",
-        no_immediate_work=True,
-        unsafe=True,
-        reasons=reasons or ("queue_source_blocked",),
-        **common,
-    )
-if result.status == "source_retryable":
-    return _lane(
-        status="failed",
-        no_immediate_work=True,
-        retryable=True,
-        reasons=reasons or ("queue_source_retryable",),
-        **common,
-    )
-if result.status == "worker_completed" and (
-    result.retryable or result.worker_status == "retry_released"
-):
-    return _lane(
-        status="retry_released",
-        no_immediate_work=False,
-        retryable=True,
-        reasons=reasons or ("queue_retry_released",),
-        **common,
-    )
-if result.status == "worker_completed" and result.worker_invoked:
-    return _lane(
-        status="executed",
-        no_immediate_work=False,
-        reasons=reasons or ("queue_worker_executed",),
-        **common,
-    )
+        return _lane(
+            status="candidate_changed",
+            no_immediate_work=False,
+            retryable=True,
+            reasons=reasons or ("queue_claim_conflict",),
+            **common,
+        )
+    if result.status == "source_blocked":
+        return _lane(
+            status="unsafe_state",
+            no_immediate_work=True,
+            unsafe=True,
+            reasons=reasons or ("queue_source_blocked",),
+            **common,
+        )
+    if result.status == "source_retryable":
+        return _lane(
+            status="failed",
+            no_immediate_work=True,
+            retryable=True,
+            reasons=reasons or ("queue_source_retryable",),
+            **common,
+        )
+    if result.status == "worker_completed" and (
+        result.retryable or result.worker_status == "retry_released"
+    ):
+        return _lane(
+            status="retry_released",
+            no_immediate_work=False,
+            retryable=True,
+            reasons=reasons or ("queue_retry_released",),
+            **common,
+        )
+    if result.status == "worker_completed" and result.worker_invoked:
+        return _lane(
+            status="executed",
+            no_immediate_work=False,
+            reasons=reasons or ("queue_worker_executed",),
+            **common,
+        )
     return _lane(
         status="failed",
         no_immediate_work=True,
