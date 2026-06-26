@@ -127,16 +127,13 @@ def apply_relaymem_primary_recall_scope(
         control, control_reasons = _load_control_state(root)
         reasons.extend(control_reasons)
         if control is not None:
-            # Correction metadata is an audit/revision selector only. M2 remains
-            # relevance owner and the canonical page/index/log validator remains
-            # unchanged. The local import avoids a module cycle because the
-            # correction apply boundary reuses these private validation helpers.
-            from .relaymem_primary_correction import (
-                load_primary_correction_state,
-                resolve_primary_correction_identity,
+            # M2 remains relevance owner. I-4D applies one bounded,
+            # request-scoped read-only lifecycle view before snippet construction.
+            from .relaymem_primary_retrieval_eligibility import (
+                load_primary_retrieval_eligibility_index,
             )
 
-            correction_state = load_primary_correction_state(
+            lifecycle_index = load_primary_retrieval_eligibility_index(
                 root, namespace=namespace
             )
             for raw_candidate in candidates:
@@ -162,15 +159,17 @@ def apply_relaymem_primary_recall_scope(
                     reasons.extend(blocked)
                     continue
                 physical_identity = loaded["idempotency_key"]
-                resolved_identity = resolve_primary_correction_identity(
-                    correction_state, physical_identity
+                eligibility = lifecycle_index.evaluate(
+                    physical_identity,
+                    candidate_namespace=loaded.get("namespace"),
                 )
-                if resolved_identity is None:
-                    reasons.append("primary_recall_correction_state_invalid")
+                if not eligibility.eligible:
+                    reasons.append(eligibility.reason_id)
                     continue
-                identity, revision, is_current = resolved_identity
-                if not is_current:
-                    reasons.append("primary_recall_superseded_revision_excluded")
+                identity = eligibility.logical_memory_id
+                revision = eligibility.current_revision
+                if identity is None or revision is None:
+                    reasons.append("excluded_unresolved_identity")
                     continue
                 loaded["physical_idempotency_key"] = physical_identity
                 loaded["idempotency_key"] = identity
