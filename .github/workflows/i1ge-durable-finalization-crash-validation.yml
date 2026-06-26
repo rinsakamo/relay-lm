@@ -32,12 +32,54 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install -e .
       - run: python -m compileall -q relaylm scripts
-      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_nonstream_crash_smoke.py
-      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_stream_crash_smoke.py
-      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_replay_crash_smoke.py
-      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_retention_crash_smoke.py
-      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_concurrency_smoke.py
-      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_security_smoke.py
+      - name: Non-stream crash smoke
+        id: nonstream
+        continue-on-error: true
+        run: mkdir -p i1ge-logs; PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_nonstream_crash_smoke.py >i1ge-logs/nonstream.log 2>&1
+      - name: Stream crash smoke
+        id: stream
+        continue-on-error: true
+        run: mkdir -p i1ge-logs; PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_stream_crash_smoke.py >i1ge-logs/stream.log 2>&1
+      - name: Replay crash smoke
+        id: replay
+        continue-on-error: true
+        run: mkdir -p i1ge-logs; PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_replay_crash_smoke.py >i1ge-logs/replay.log 2>&1
+      - name: Retention crash smoke
+        id: retention
+        continue-on-error: true
+        run: mkdir -p i1ge-logs; PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_retention_crash_smoke.py >i1ge-logs/retention.log 2>&1
+      - name: Concurrency crash smoke
+        id: concurrency
+        continue-on-error: true
+        run: mkdir -p i1ge-logs; PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_concurrency_smoke.py >i1ge-logs/concurrency.log 2>&1
+      - name: Security crash smoke
+        id: security
+        continue-on-error: true
+        run: mkdir -p i1ge-logs; PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_security_smoke.py >i1ge-logs/security.log 2>&1
+      - name: Upload I1-GE diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: i1ge-crash-smoke-logs
+          path: i1ge-logs
+          if-no-files-found: error
+      - name: Assert I1-GE smokes
+        if: always()
+        env:
+          NONSTREAM: ${{ steps.nonstream.outcome }}
+          STREAM: ${{ steps.stream.outcome }}
+          REPLAY: ${{ steps.replay.outcome }}
+          RETENTION: ${{ steps.retention.outcome }}
+          CONCURRENCY: ${{ steps.concurrency.outcome }}
+          SECURITY: ${{ steps.security.outcome }}
+        run: |
+          cat i1ge-logs/*.log
+          test "$NONSTREAM" = success
+          test "$STREAM" = success
+          test "$REPLAY" = success
+          test "$RETENTION" = success
+          test "$CONCURRENCY" = success
+          test "$SECURITY" = success
       - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
       - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gb_durable_finalization_app_smoke.py
       - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gc_durable_finalization_replay_smoke.py
@@ -51,4 +93,5 @@ jobs:
       - run: PYTHONPATH=. python scripts/relaylm_mvp_completion_report_smoke.py --check-model --check-all
       - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
       - run: PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+      - run: rm -rf i1ge-logs
       - run: test -z "$(git status --short)"
