@@ -1,6 +1,7 @@
 """I1-GD bounded retention, isolation, cleanup, and leakage smoke."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import time
@@ -19,9 +20,15 @@ from relaylm.relaymem_slp_durable_finalization_isolation import (
     publish_relaymem_slp_durable_finalization_isolation,
     read_relaymem_slp_durable_finalization_isolation,
 )
+from relaylm.relaymem_slp_durable_finalization_record import (
+    base_filename,
+    canonical_json_bytes,
+    seal_filename,
+)
 from relaylm.relaymem_slp_durable_finalization_retention import (
     maintain_relaymem_slp_durable_finalization_retention,
 )
+from relaylm.relaymem_slp_durable_finalization_replay import completion_filename
 
 LEAK_CANARY = "CANARY_I1GD_EXCEPTION_DO_NOT_LEAK"
 
@@ -97,7 +104,7 @@ def _assert_content_free(value: object, locator: str) -> None:
         LEAK_CANARY,
         "slp-job-v0:",
         "slp-dispatch-v0:",
-        str(Path("/private/runtime/path")),
+        "/private/runtime/path",
     ):
         require(private not in rendered, (private, rendered))
 
@@ -138,7 +145,7 @@ def test_incomplete_orphan_and_isolation_lifecycle() -> None:
         fresh = maintain_relaymem_slp_durable_finalization_retention(config=config)
         require(fresh.status == "maintenance_complete", fresh)
         require(fresh.retained_count == 1, fresh)
-        require((finalization / gb.base_filename(locator)).is_file(), fresh)
+        require((finalization / base_filename(locator)).is_file(), fresh)
 
         _age_all(finalization)
         expired = maintain_relaymem_slp_durable_finalization_retention(config=config)
@@ -147,7 +154,7 @@ def test_incomplete_orphan_and_isolation_lifecycle() -> None:
         require(expired.cleaned_component_count == 1, expired)
         marker = finalization / isolation_filename(locator)
         require(marker.is_file(), expired)
-        require(not (finalization / gb.base_filename(locator)).exists(), expired)
+        require(not (finalization / base_filename(locator)).exists(), expired)
         reread = read_relaymem_slp_durable_finalization_isolation(
             str(finalization), locator
         )
@@ -178,7 +185,7 @@ def test_sealed_pending_and_complete_retention() -> None:
         require(sealed.status == "maintenance_complete", sealed)
         require(sealed.retained_count == 1, sealed)
         require(not (finalization / isolation_filename(locator)).exists(), sealed)
-        require((finalization / gb.seal_filename(locator)).is_file(), sealed)
+        require((finalization / seal_filename(locator)).is_file(), sealed)
 
     with TemporaryDirectory() as directory:
         root = Path(directory)
@@ -200,7 +207,7 @@ def test_sealed_pending_and_complete_retention() -> None:
         require(cleaned.isolated_count == 1, cleaned)
         require(cleaned.cleaned_component_count >= 3, cleaned)
         require((finalization / isolation_filename(locator)).is_file(), cleaned)
-        require(not (finalization / gc.completion_filename(locator)).exists(), cleaned)
+        require(not (finalization / completion_filename(locator)).exists(), cleaned)
         require(any(Path(str(config.relaymem_slp_queue_root)).iterdir()), cleaned)
         require(any(Path(str(config.relaymem_slp_protected_source_root)).iterdir()), cleaned)
 
@@ -230,7 +237,7 @@ def test_crash_convergence_and_replay_exclusion() -> None:
         else:
             raise AssertionError("fault_not_injected")
         require((finalization / isolation_filename(locator)).is_file(), locator)
-        require((finalization / gb.seal_filename(locator)).is_file(), locator)
+        require((finalization / seal_filename(locator)).is_file(), locator)
 
         blocked_replay = gc._replay(config, locator)
         require(blocked_replay.status in {"corrupt", "blocked"}, blocked_replay)
@@ -274,9 +281,10 @@ def test_isolation_duplicate_collision() -> None:
         require(second.status == "duplicate_existing", second)
         conflict = dict(marker)
         conflict["reason_id"] = "corrupt_known_record"
-        conflict["isolation_digest"] = gb.hashlib.sha256(
-            gb.canonical_json_bytes({
-                key: value for key, value in conflict.items()
+        conflict["isolation_digest"] = hashlib.sha256(
+            canonical_json_bytes({
+                key: value
+                for key, value in conflict.items()
                 if key != "isolation_digest"
             })
         ).hexdigest()
@@ -303,7 +311,7 @@ def test_shared_fence_and_unsafe_object() -> None:
                 config=config
             )
             require(result.lock_busy_count == 1, result)
-            require((finalization / gb.base_filename(locator)).is_file(), result)
+            require((finalization / base_filename(locator)).is_file(), result)
         finally:
             fence.close()
 
@@ -314,7 +322,7 @@ def test_shared_fence_and_unsafe_object() -> None:
         locator = "b" * 64
         target = finalization / "target"
         target.write_text("unsafe", encoding="utf-8")
-        unsafe = finalization / gb.base_filename(locator)
+        unsafe = finalization / base_filename(locator)
         unsafe.symlink_to(target)
         before = _snapshot(finalization)
         result = maintain_relaymem_slp_durable_finalization_retention(config=config)
@@ -339,10 +347,10 @@ def test_bounded_pass_and_future_clock() -> None:
 
         remaining_locator = (
             str(second["locator_digest"])
-            if markers[0].name.find(str(first["locator_digest"])) >= 0
+            if str(first["locator_digest"]) in markers[0].name
             else str(first["locator_digest"])
         )
-        future_path = finalization / gb.base_filename(remaining_locator)
+        future_path = finalization / base_filename(remaining_locator)
         future = time.time() + 3600
         os.utime(future_path, (future, future))
         blocked = maintain_relaymem_slp_durable_finalization_retention(config=config)
