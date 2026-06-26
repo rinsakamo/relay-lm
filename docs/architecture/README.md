@@ -27,6 +27,13 @@ Canonical authority:
 3. Dedicated current contracts
 4. [Current / Target / Migration Guide](current_target_migration_guide.md)
 
+## Character cognition and relationship dynamics
+
+- [Character Belief, Relationship, and Social Expression Dynamics](character_belief_relationship_dynamics_design.md) — target cross-component model for observation provenance, shared versus character-conditioned belief, conversational probing, relationship-conditioned EMO gain, multi-user audience boundaries, bounded relationship leakage, and mismatch repair.
+- [ADR: Character-conditioned belief without rewriting observation](../adr/character_conditioned_belief_model.md) — durable decision to preserve a character-independent observation ledger while allowing revisable character-specific inference and expression.
+
+These documents define target architecture only. They do not claim that current RelaySLP, RelayMEM, RelaySOUL, RelaySCN, or RelayEMO implements the proposed artifacts or coupling.
+
 ## Product-critical Phase 6 and Integration boundaries
 
 - [Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md)
@@ -79,6 +86,7 @@ Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, 
 ## Memory lifecycle
 
 - [Memory Lifecycle Design](memory_lifecycle_design.md) — short-term CTX, governed experience evidence, autonomous ordinary MEM formation, RelaySLP, and SOUL Lab memory operations.
+- [Character Belief, Relationship, and Social Expression Dynamics](character_belief_relationship_dynamics_design.md) — target observation, belief, relationship, probe, repair, and multi-user expression model; not current runtime behavior.
 - [Phase I-4A Primary MEM Forget / Hide Contract](phase_i4_primary_mem_forget_hide_contract.md) — exact target lifecycle, revision, persistence, recovery, and retrieval-exclusion semantics.
 - [Phase I-4B Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md) — implemented read-only resolver, shared lock/fence, token, and zero-item history boundary.
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md) — current enqueue/source capture, queue lifecycle, completed C1-0 through C1-5, C2, O0, I-1 recall, I-2 observation, I-3 correction, O1A scheduling contract, and remaining migration boundaries.
