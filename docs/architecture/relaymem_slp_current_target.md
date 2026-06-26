@@ -81,6 +81,8 @@ Completed product integration:
 - Phase I-3 token-gated auditable Correct and corrected retrieval;
 - Phase I-4B canonical read-only current-state resolver and shared Correct/Forget mutation fence.
 
+Phase I-4B completes the canonical read-only Primary current-state resolver while preserving current active-state M2 and RelayCTX behavior.
+
 ## Compatibility status anchors
 
 Phase 6-B1 consumes the A2 runtime-private handoff and performs no queue I/O.
