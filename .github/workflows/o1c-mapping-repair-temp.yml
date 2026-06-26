@@ -7,6 +7,9 @@ on:
     paths:
       - "scripts/_fix_o1c_mapping.py"
       - ".github/workflows/o1c-mapping-repair-temp.yml"
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
