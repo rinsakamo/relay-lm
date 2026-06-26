@@ -183,8 +183,21 @@ python scripts/relaylm_docs_link_check.py
 
 AI-first maintenance rules:
 
-- add front matter to active current and target documents;
-- keep one authority per concern;
-- state current versus target explicitly;
-- link implementation handoffs back to canonical status and architecture;
-- treat `docs/mvp/` and `docs/architecture/archive/` as historical evidence only.
+- add front matter to active current/architecture/plan/contract docs,
+- include type, authority, status, volatility, owner, update trigger, and non-authority fields,
+- keep current/target/compatibility/historical status explicit,
+- do not encode source text, prompts, traces, cache bodies, or runtime-private data in metadata,
+- when an implemented handoff changes milestone state, review Project Status, the implementation plan, this index, the architecture index, `config_schema.md`, the Current/Target Boundary Matrix and affected sections, stale TODO/future-tense text in related plans, and status-checking smoke scripts together.
+
+Placement rules:
+
+- repository-wide current status -> `docs/PROJECT_STATUS.md`
+- completed or active bounded handoffs -> `docs/architecture/`
+- cross-cutting architecture and pipeline docs -> `docs/architecture/`
+- historical rationale -> `docs/architecture/archive/`
+- MVP snapshots -> `docs/mvp/`
+- schemas and contracts -> `docs/contracts/`
+- smoke and troubleshooting -> `docs/smoke/`
+- RelaySOUL governance -> `docs/relaysoul/`
+
+The ordinary managed path is complete through observe/correct/retrieve, O0 manual one-shot execution, and the text-first Home experiment surface. I1-GB publishes restart evidence before visible completion, but I1-GC restart replay/completion convergence and I1-GD/I1-GE remain unimplemented. O1A defines the bounded two-lane round and idle contract only; O1B-O1F production scheduling work remains unimplemented. Phase I-4A defines the target Forget / Hide contract and I-4B completes the read-only resolver/shared-fence boundary; I-4C through I-4F production apply, exclusion, UI, and validation remain unimplemented. O2/O3 and later governance remain separate roadmap work.
