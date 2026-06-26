@@ -1,0 +1,50 @@
+name: Wave 2 cross-slice convergence
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/relaymem_slp_durable_finalization_*.py"
+      - "relaylm/relaymem_slp_scheduler_*.py"
+      - "relaylm/relaymem_primary_forget_*.py"
+      - "relaylm/local_worker_once.py"
+      - "scripts/relaylm_wave2_cross_slice_*.py"
+      - "scripts/relaylm_o1*.py"
+      - "scripts/relaylm_i1g*.py"
+      - "scripts/relaylm_phase_i4c2*.py"
+      - "docs/**"
+      - ".github/workflows/wave2-cross-slice-convergence.yml"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  wave2-convergence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_contract_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_race_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_o1b_sealed_replay_lane_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_o1c_eligible_queue_lane_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_o1c_eligible_queue_lane_security_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_recovery_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_fault_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_concurrency_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_security_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_ownership_boundary_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_wave2_cross_slice_convergence_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_wave2_cross_slice_security_smoke.py
+      - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+      - run: test -z "$(git status --short)"
