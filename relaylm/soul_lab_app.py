@@ -38,6 +38,9 @@ from relaylm.soul_lab_observation_projection import (
     build_lab_recent_memory_projection,
     resolve_lab_observation_scope,
 )
+from relaylm.soul_lab_used_memory_lifecycle_projection import (
+    build_lab_memory_used_lifecycle_projection,
+)
 
 _MAX_MUTATION_BODY_BYTES = 16_384
 _ERROR_STATUS = {
@@ -186,6 +189,24 @@ def create_app(config_path: str | None = None) -> FastAPI:
     ) -> JSONResponse:
         require_loopback_management(request)
         projection = build_lab_memory_used_projection(
+            observation_scope(character_id, namespace)
+        )
+        return JSONResponse(
+            content=projection.model_dump(mode="json"),
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get(
+        "/lab/api/characters/{character_id}/lab/last-run/memory/used-lifecycle",
+        response_model=None,
+    )
+    async def lab_used_memory_lifecycle(
+        character_id: str,
+        request: Request,
+        namespace: str = Query(min_length=1, max_length=128),
+    ) -> JSONResponse:
+        require_loopback_management(request)
+        projection = build_lab_memory_used_lifecycle_projection(
             observation_scope(character_id, namespace)
         )
         return JSONResponse(
