@@ -65,7 +65,9 @@ RelayMEM Primary integration:
   Phase I-4B resolver/shared fence/read-only Forget boundary: complete
   Phase I-4C1 hidden-successor commit: complete
   Phase I-4C2 recovery/finalization: complete
-  Phase I-4D through I-4F: unimplemented
+  Phase I-4D retrieval exclusion: unimplemented
+  Phase I-4E API/UI: unimplemented
+  Phase I-4F full validation: unimplemented
 
 SOUL Lab:
   UI-A0 through UI-A7: complete
@@ -79,11 +81,14 @@ Durability and operations:
   I1-GB durable publication / pre-release admission: complete
   I1-GC one-record replay / exact convergence / completion: complete
   I1-GD bounded retention / isolation / orphan cleanup: complete
-  I1-GE full production crash validation: unimplemented
+  I1-GE validation-only full production crash proof: unimplemented
   O1A two-lane round / adapter / idle contract: contract complete
   O1B sealed replay-lane adapter: complete
   O1C eligible queue-lane adapter: complete
-  O1D through O1F production scheduling: unimplemented
+  O1D1 accepted gates and one production round: unimplemented
+  O1D2 fairness/retry-time/backoff/jitter/pacing policy: unimplemented
+  O1E stale recovery/cancellation/shutdown: unimplemented
+  O1F operational validation: unimplemented
   O2 supervised worker service: planned
   O3 always-on local operation: planned
 ```
@@ -201,12 +206,12 @@ Remaining:
 
 ```text
 I-4D   ordinary M2/RelayCTX lifecycle and prior-revision exclusion,
-        historical lifecycle projection
+        historical read-only lifecycle projection
 I-4E   loopback API and SOUL Lab Forget UI
 I-4F   crash/race/security/fresh-conversation validation
 ```
 
-I-4D is the user-visible semantic commit. Forget is not product-complete before ordinary retrieval exclusion is proven.
+I-4D is the user-visible semantic commit. It consumes the existing current-state resolver before M2 snippet construction, excludes every non-current or non-eligible lifecycle result, and preserves historical receipts while overlaying current lifecycle read-only. It does not reimplement Forget apply/recovery, M3f/M3g, mutation routes, UI, restore, purge, or physical deletion. Forget is not product-complete before ordinary retrieval exclusion is proven.
 
 ### UI-B0: Real Home Conversation — complete
 
@@ -219,7 +224,7 @@ I1-GA  contract / fault model                                      complete
 I1-GB  durable publication and bounded response-release admission complete
 I1-GC  one-record restart replay, exact convergence, completion    complete
 I1-GD  bounded retention, isolation, orphan cleanup               complete
-I1-GE  crash-at-every-boundary production validation              unimplemented
+I1-GE  validation-only crash-at-every-boundary production proof   unimplemented
 ```
 
 I1-GC is a caller-selected, one-record production convergence authority:
@@ -250,7 +255,7 @@ configured private root
   -> content-free result
 ```
 
-Sealed records without valid completion are retained regardless of age. I1-GD does not invoke I1-GC, discover scheduler work, poll, transition B3, execute C2/C1-2, write M3 state, or mutate C1-5/B2. I1-GE remains the full crash-at-every-boundary production proof.
+Sealed records without valid completion are retained regardless of age. I1-GD does not invoke I1-GC, discover scheduler work, poll, transition B3, execute C2/C1-2, write M3 state, or mutate C1-5/B2. I1-GE proves the existing production authorities using real process exits and fresh-process restart. It must not add a durable schema, repair path, scheduler, queue lifecycle, worker behavior, or memory mutation.
 
 ## O1 automatic-operation track
 
@@ -268,17 +273,22 @@ queue lane
   -> existing C2 handles at most one queued job
 ```
 
-The fixed v0 order is replay then queue. One lane failure does not automatically suppress the unrelated lane. Replay output is never passed directly into C2. These fields are not added to `relaylm/config.py`; O1A target field names remain design-only.
+The fixed v0 order is replay then queue. One lane failure does not automatically suppress the unrelated lane. Replay output is never passed directly into C2. O1A target field names remain design-only until O1D1 accepts them into `relaylm/config.py` and the documented configuration surface.
 
-### O1D through O1F: unimplemented
+### O1D1 through O1F: unimplemented
 
 ```text
-O1B  one eligible sealed-record discovery and I1-GC delegation
-O1C  one eligible B2 discovery and O0-compatible C2 delegation
-O1D  deterministic ordering, fairness, retry-time, backoff, jitter
-O1E  stale recovery, cancellation, graceful shutdown
-O1F  full corruption/concurrency/saturation/restart/leakage validation
+O1B   one eligible sealed-record discovery and I1-GC delegation
+O1C   one eligible B2 discovery and O0-compatible C2 delegation
+O1D1  accept the five exact scheduler gates and run one production replay-before-queue round,
+      invoking O1B and O1C at most once each, aggregating through O1A, then returning without sleep
+O1D2  deterministic ordering policy, fairness/starvation prevention, retry-time handling,
+      bounded backoff/jitter, and saturation pacing
+O1E   stale recovery, cancellation checkpoints, graceful shutdown
+O1F   full corruption/concurrency/saturation/restart/leakage validation
 ```
+
+O1D1 does not poll, sleep, start another round, implement fairness, recover stale claims, supervise a process, or become a queue/replay authority. O1D2 and O1E own the policies needed to decide and control repeated rounds; O2 and O3 remain the supervised and always-on service layers.
 
 ## Dependency-first execution waves
 
@@ -297,31 +307,33 @@ I1-GC one-record replay and completion convergence
 I1-GD retention/orphan reconciliation/isolation cleanup
 I-4C1 hidden-successor commit ownership
 I-4C2 prepared recovery and tombstone finalization
+O1B sealed replay-lane adapter
+O1C eligible queue-lane adapter
 ```
 
-### Wave 2 — current parallel implementation candidates
+### Wave 2 — completed cross-slice convergence audit
 
 ```text
-UI-B1A projection design
-I1-GE crash validation preparation
+W2-INT audit of I1-GD, I-4C2, O1B, and O1C
+phase-boundary reconciliation for the next independent tracks
 ```
 
-### Wave 3 — convergence, policy, and product surfaces
+### Wave 3 — current independent implementation tracks
 
 ```text
-I-4D M2/RelayCTX exclusion and historical lifecycle projection
-O1D fairness/retry/backoff
-O1E stale recovery/cancellation/shutdown
-I-5A and I-7A/B contracts
+I1-GE validation-only full process-exit/restart proof
+|| I-4D ordinary M2/RelayCTX exclusion and historical lifecycle projection
+|| O1D1 accepted scheduler gates and one replay-before-queue production round
 ```
 
-### Wave 4 — production proof
+### Wave 4 — policy, product surfaces, and completion validation
 
 ```text
-I1-GE crash-at-every-boundary integration smoke
+O1D2 ordering/fairness/retry-time/backoff/jitter/pacing -> O1E stale recovery/cancellation/shutdown
 I-4E API/UI -> I-4F validation
 O1F operational validation
 UI-B1A read-only lifecycle visibility
+I-5A and I-7A/B contracts
 ```
 
 ## Governance order after Phase I-4
@@ -352,7 +364,7 @@ Home real conversation
   -> Phase I-2 used-memory evidence
 ```
 
-Direct Home-origin formation remains unproven because UI-B0 does not send trusted scene-admission metadata. The loop remains operator-driven until O1D through O1F land.
+Direct Home-origin formation remains unproven because UI-B0 does not send trusted scene-admission metadata. O1D1 adds one caller-invoked production round only; it does not make the loop recurring or always-on. Repeated automatic operation still depends on O1D2/O1E policy and later O2/O3 service work.
 
 ## Documentation completion rule
 
@@ -374,9 +386,9 @@ Current documents must state one status only. Do not preserve a stale status and
 
 O1C is complete for one bounded, non-recursive, secure B2/B3 queue inventory; due/future classification; deterministic one-candidate selection; canonical reread; server-owned character/store resolution; fresh exact C2 request construction; and at most one existing C2 delegation. O0 and O1C share one production candidate helper, while O0 CLI, projection, and exit behavior remain unchanged.
 
-O1D through O1F remain unimplemented. O1C does not complete a scheduler round loop, polling, sleep, fairness, retry-delay/backoff/jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation.
+O1D1 through O1F remain unimplemented. O1C does not complete a scheduler round coordinator, polling, sleep, fairness, retry-delay/backoff/jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation.
 
 <!-- O1B_CURRENT_BOUNDARY -->
 ### O1B sealed replay-lane discovery — complete
 
-O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1D through O1F, O2, and O3 remain unimplemented.
+O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, scheduler round coordinator, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1D1 through O1F, O2, and O3 remain unimplemented.
