@@ -6,8 +6,12 @@ PATH = Path("scripts/relaylm_documentation_current_boundary_smoke.py")
 
 def replace_once(old: str, new: str) -> None:
     body = PATH.read_text(encoding="utf-8")
-    if body.count(old) != 1:
+    if old not in body:
+        if new in body:
+            return
         raise RuntimeError(f"unexpected documentation smoke drift: {old!r}")
+    if body.count(old) != 1:
+        raise RuntimeError(f"ambiguous documentation smoke text: {old!r}")
     PATH.write_text(body.replace(old, new), encoding="utf-8")
 
 
