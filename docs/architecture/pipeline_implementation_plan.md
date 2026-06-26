@@ -78,7 +78,7 @@ Durability and operations:
   I1-GD retention / cleanup: unimplemented
   I1-GE full production crash validation: unimplemented
   O1A two-lane round / adapter / idle contract: contract complete
-  O1B through O1F production scheduling: unimplemented
+  O1B and O1D through O1F production scheduling: unimplemented
   O2 supervised worker service: planned
   O3 always-on local operation: planned
 ```
@@ -247,13 +247,13 @@ replay lane
   -> existing I1-GC handles at most one replay
 
 queue lane
-  -> future O1C discovers at most one eligible B2 record
+  -> O1C discovers at most one eligible B2 record
   -> existing C2 handles at most one queued job
 ```
 
 The fixed v0 order is replay then queue. One lane failure does not automatically suppress the unrelated lane. Replay output is never passed directly into C2. These fields are not added to `relaylm/config.py`; O1A target field names remain design-only.
 
-### O1B through O1F: unimplemented
+### O1B and O1D through O1F: unimplemented
 
 ```text
 O1B  one eligible sealed-record discovery and I1-GC delegation
@@ -336,7 +336,7 @@ Home real conversation
   -> Phase I-2 used-memory evidence
 ```
 
-Direct Home-origin formation remains unproven because UI-B0 does not send trusted scene-admission metadata. The loop remains operator-driven until O1B through O1F land.
+Direct Home-origin formation remains unproven because UI-B0 does not send trusted scene-admission metadata. The loop remains operator-driven until O1B and O1D through O1F land.
 
 ## Documentation completion rule
 
@@ -353,3 +353,9 @@ When a phase lands, update together:
 - stale TODO or future-tense text.
 
 Current documents must state one status only. Do not preserve a stale status and append a later section saying that it supersedes earlier text.
+
+## O1C current reconciliation
+
+O1C is complete for one bounded, non-recursive, secure B2/B3 queue inventory; due/future classification; deterministic one-candidate selection; canonical reread; server-owned character/store resolution; fresh exact C2 request construction; and at most one existing C2 delegation. O0 and O1C share one production candidate helper, while O0 CLI, projection, and exit behavior remain unchanged.
+
+O1B and O1D through O1F remain unimplemented. O1C does not complete a scheduler round loop, polling, sleep, fairness, retry-delay/backoff/jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation.

@@ -23,6 +23,7 @@ relaylm_related_authority:
   - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
   - docs/architecture/phase_i4c1_primary_forget_hidden_successor.md
   - docs/architecture/o1a_two_lane_scheduler_contract.md
+  - docs/architecture/o1c_eligible_b2_queue_lane.md
 ---
 # RelayLM Project Status
 
@@ -47,7 +48,8 @@ Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
 Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete; C2 one-job adapter complete
 Local worker operation: O0 one invocation -> at most one eligible queued job complete
 Scheduler contract: O1A replay-before-queue round / adapter / idle contract complete
-Scheduler production: O1B through O1F unimplemented
+Scheduler queue lane: O1C one bounded discovery/reread/scope/C2 adapter complete
+Scheduler remaining production: O1B and O1D through O1F unimplemented
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and scope isolation complete
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, and UI-B0 complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete
@@ -87,7 +89,8 @@ Implemented:
 - C1-0 through C1-5 complete;
 - C2 one-job claim/rehydrate/execute adapter: complete;
 - O0 one-shot bounded queue discovery and one C2 delegation;
-- O1A pure two-lane round/result/disposition contract.
+- O1A pure two-lane round/result/disposition contract;
+- O1C one bounded eligible B2/B3 queue-lane discovery and one existing C2 delegation.
 
 B3 lifecycle: complete.
 
@@ -102,7 +105,7 @@ O1A is complete as a pure contract only:
 ```text
 validate scheduler gates
   -> replay lane: at most one future O1B discovery and one existing I1-GC delegation
-  -> queue lane: at most one future O1C discovery and one existing C2 delegation
+  -> queue lane: at most one O1C discovery and one existing C2 delegation
   -> bounded content-free aggregation
   -> stop | run_next_round | idle
   -> return without sleeping
@@ -110,10 +113,11 @@ validate scheduler gates
 
 The lane order is replay then queue. Replay output, locator, job identity, and dispatch identity are never passed directly to C2. A queue record converged by replay may be selected in the same round only through independent queue-root discovery and canonical reread.
 
+O1C is complete for one independent bounded queue-root inventory, due/future classification, deterministic selection, canonical reread, server-owned scope resolution, and at most one existing C2 delegation. It does not start a scheduler round or loop.
+
 Still separate:
 
 - O1B sealed I1-G record discovery and one I1-GC delegation;
-- O1C eligible B2 discovery and one O0-compatible C2 delegation;
 - O1D ordering, fairness, retry-time, backoff, and jitter;
 - O1E stale-claim recovery, cancellation, and graceful shutdown;
 - O1F corruption, concurrency, saturation, restart, and leakage validation;
@@ -207,7 +211,6 @@ The workstation evaluation exposed two quality gaps:
 I1-GD retention / cleanup
 || I-4C2 prepared recovery / tombstone
 || O1B sealed-record discovery
-|| O1C queue-record discovery
 
 then
   I-4D M2 exclusion
@@ -232,7 +235,7 @@ Current mutation, worker, durable-finalization, and scheduler-related paths rema
 - speaker-provenance-safe Primary MEM summary formation;
 - strict evidence-grounded recall response generation;
 - I1-GD and I1-GE;
-- O1B through O1F, O2, and O3;
+- O1B, O1D through O1F, O2, and O3;
 - I-4C2 through I-4F;
 - restore/unhide or physical purge;
 - I-5 through I-9 governance and RelaySOUL slices;

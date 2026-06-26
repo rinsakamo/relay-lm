@@ -102,7 +102,7 @@ one bounded round
        -> future O1B discovery
        -> one existing I1-GC delegation
   -> queue lane second
-       -> future O1C discovery
+       -> O1C discovery
        -> one existing C2 delegation
   -> stop | run_next_round | idle
 ```
@@ -172,7 +172,7 @@ The immutable hidden successor page is lifecycle authority. The tombstone is aud
 The current runtime still lacks:
 
 - I1-GD retention/cleanup and I1-GE full crash validation;
-- O1B through O1F automatic scheduling, O2 supervision, and O3 always-on operation;
+- O1B and O1D through O1F automatic scheduling, O2 supervision, and O3 always-on operation;
 - I-4C2 prepared resume, exact replay, forward recovery, response-loss convergence, and tombstone finalization;
 - I-4D hidden/prepared/recovery/corrupt M2 and RelayCTX exclusion;
 - I-4E loopback mutation API and SOUL Lab Forget UI;
@@ -253,3 +253,9 @@ O1F   full operational validation                                  unimplemented
 ## Completion interpretation
 
 M3a-M3h, C1-0 through C1-5, C2, O0, I1-GC, I-1 recall, I-2 observation, I-3 Correct, I-4B, and I-4C1 are implemented. Forget is not product-complete until I-4C2 through I-4F provide recovery/tombstone, retrieval exclusion, API/UI, and production validation.
+
+## O1C current reconciliation
+
+O1C is complete for one bounded, non-recursive, secure B2/B3 queue inventory; due/future classification; deterministic one-candidate selection; canonical reread; server-owned character/store resolution; fresh exact C2 request construction; and at most one existing C2 delegation. O0 and O1C share one production candidate helper, while O0 CLI, projection, and exit behavior remain unchanged.
+
+O1B and O1D through O1F remain unimplemented. O1C does not complete a scheduler round loop, polling, sleep, fairness, retry-delay/backoff/jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation.
