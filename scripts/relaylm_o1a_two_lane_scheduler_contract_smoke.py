@@ -476,6 +476,40 @@ def main() -> None:
     )
     assert encoded_projection(both_work) == encoded_projection(again)
 
+    # 21. O1B may learn replay contention only after I1-GC returns.
+    delegated_busy = LaneOutcome(
+        lane_kind="replay", status="busy", enabled=True, attempted=True,
+        candidate_observed=True, candidate_selected=True,
+        canonical_reread_performed=True, delegation_attempted=True,
+        delegation_completed=True, mutation_may_have_occurred=False,
+        no_immediate_work=True, future_work_hint_present=False,
+        contention_observed=True, retryable=True, unsafe=False,
+        terminal_for_candidate=False, bounded_reason_ids=("replay_delegate_busy",),
+    )
+    busy_after_delegate = aggregate_scheduler_round(
+        gates=gates(), invocation_order=("replay", "queue"),
+        replay_lane=delegated_busy, queue_lane=queue_no_work(),
+    )
+    assert busy_after_delegate.disposition == "idle"
+    assert busy_after_delegate.work_units_completed == 1
+
+    # 22. A returned replay dry-run delegation is complete but does not force a round.
+    delegated_dry_run = LaneOutcome(
+        lane_kind="replay", status="delegated", enabled=True, attempted=True,
+        candidate_observed=True, candidate_selected=True,
+        canonical_reread_performed=True, delegation_attempted=True,
+        delegation_completed=True, mutation_may_have_occurred=False,
+        no_immediate_work=True, future_work_hint_present=False,
+        contention_observed=False, retryable=False, unsafe=False,
+        terminal_for_candidate=False, bounded_reason_ids=("replay_delegate_dry_run",),
+    )
+    dry_round = aggregate_scheduler_round(
+        gates=gates(mode="dry_run"), invocation_order=("replay", "queue"),
+        replay_lane=delegated_dry_run, queue_lane=queue_no_work(),
+    )
+    assert dry_round.disposition == "idle"
+    assert dry_round.work_units_completed == 1
+
     print("RelayLM O1A two-lane scheduler contract smoke passed.")
 
 

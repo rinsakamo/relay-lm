@@ -44,6 +44,7 @@ Use [Documentation index](../README.md) for the complete active map and [Project
 - [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md)
 - [O0 Local One-Job Runner](o0_local_one_job_runner.md)
 - [O1A Two-Lane Scheduler and Idle Contract](o1a_two_lane_scheduler_contract.md)
+- [O1C Eligible B2/B3 Queue Lane](o1c_eligible_b2_queue_lane.md)
 - [I1-G Durable-finalization Contract and Replay Boundary](i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD Durable-finalization Retention and Isolation Cleanup](i1gd_durable_finalization_retention_cleanup.md)
 - [Integration I1 Primary MEM Two-Turn Recall](integration_i1_primary_mem_two_turn_recall.md)
@@ -100,3 +101,8 @@ The browser owns no queue, scheduler, worker, filesystem, namespace, backend, cr
 - [Experimental SOUL Replacement and Memory Bootstrap](../relaysoul/experimental_soul_replacement_memory_bootstrap_design.md)
 
 These are target-only. Experimental SOUL replacement is post-MVP, non-destructive, and distinct from ordinary same-character RelaySOUL revision and rollback.
+
+<!-- O1B_DOC_INDEX -->
+- [O1B Sealed I1-G Replay-Lane Discovery](o1b_sealed_i1g_replay_lane.md) — production bounded replay-lane adapter.
+
+O1B connects O1A's replay `LaneOutcome` to one secure I1-G discovery and one existing I1-GC call. O1C queue discovery is complete; the production round loop remains unimplemented.

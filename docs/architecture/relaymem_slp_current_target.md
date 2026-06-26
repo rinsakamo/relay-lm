@@ -107,10 +107,10 @@ O1A defines a pure scheduler contract without adding production scheduling:
 ```text
 one bounded round
   -> replay lane first
-       -> future O1B discovery
+       -> O1B discovery
        -> one existing I1-GC delegation
   -> queue lane second
-       -> future O1C discovery
+       -> O1C discovery
        -> one existing C2 delegation
   -> stop | run_next_round | idle
 ```

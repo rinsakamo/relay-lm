@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1-I4C1, UI-B0, I1-G, O1A, and roadmap docs."""
+"""Validate current Phase 6, I1-I4C1, UI-B0, I1-G, O1A/O1B/O1C, and roadmap docs."""
 from __future__ import annotations
 
 import ast
@@ -74,6 +74,9 @@ CURRENT_DOCS = (
     "docs/architecture/i1gd_durable_finalization_retention_cleanup.md",
     "docs/architecture/relaymem_mvp_implementation_plan.md",
     "docs/architecture/relaymem_slp_current_target.md",
+    "docs/architecture/o0_local_one_job_runner.md",
+    "docs/architecture/o1a_two_lane_scheduler_contract.md",
+    "docs/architecture/o1c_eligible_b2_queue_lane.md",
 )
 
 REQUIRED = {

@@ -10,7 +10,7 @@ A local operator can process at most one eligible queued job per CLI invocation 
 
 O0 does not complete automatic queue processing, queue scheduling, a worker service, always-on operation, or I1-G pre-enqueue durability.
 
-O1A now defines the future scheduler round and idle contract only. It does not change O0 production behavior. O1C will later extract or reuse a narrow O0-compatible queue discovery/reread/scope/C2-request helper while preserving the O0 CLI and smokes.
+O1A defines the scheduler round and idle contract only. O1C now consumes the same narrow queue discovery/reread/scope/C2-request helper as O0 while preserving the O0 CLI, projection, exit behavior, and smokes.
 
 ## CLI boundary
 
@@ -135,11 +135,11 @@ C2 and its existing dependencies continue to own:
 
 O0 never reconstructs source content from queue metadata, trace, frontend history, visible output, logs, Lab projections, or public node results.
 
-## Future O1C reuse boundary
+## Shared O0/O1C production helper boundary
 
-O1C must not launch this CLI as a subprocess or parse its stdout as a production interface. It must not reimplement B3 claim or change C2 request semantics.
+O1C does not launch this CLI as a subprocess or parse its stdout as a production interface. It does not reimplement B3 claim or change C2 request semantics.
 
-The intended future refactor target is a narrow production helper containing only:
+The implemented shared production helper contains only:
 
 ```text
 bounded queue discovery
@@ -163,7 +163,7 @@ O1C:
   bounded lane result returned to O1
 ```
 
-O1A does not perform this refactor. O0 CLI behavior and existing smokes remain compatibility requirements.
+O1C completes this refactor. O0 CLI behavior and existing functional/security smokes remain compatibility requirements and use the same production helper.
 
 ## Public projection
 
@@ -192,7 +192,7 @@ O0 is fail-closed for unsafe roots, symlink components, unsupported entry types,
 
 Two concurrent O0 invocations may initially contend for discovery or select the same candidate. A discovery loser may return `queue_busy`; after selection, at most one invocation can cross the existing B3 claim CAS and invoke the worker. The other stops at canonical reread or receives the existing C2/B3 claim conflict without source preparation from stale authority.
 
-The same authorities remain the concurrency fence when a future O1C queue lane races O0. O1 does not add a global queue correctness lock.
+The same authorities remain the concurrency fence when the O1C queue lane races O0. O1 does not add a global queue correctness lock.
 
 ## Non-goals
 
@@ -204,7 +204,7 @@ Future boundary:
 O0   one invocation -> at most one eligible queued job
 O1A  two-lane round / adapter / idle contract only
 O1B  one sealed I1-G discovery and I1-GC delegation
-O1C  one B2 discovery and C2 delegation
+O1C  one B2/B3 discovery and C2 delegation — complete
 O1D  ordering / fairness / retry-time / backoff / jitter
 O1E  stale recovery / cancellation / graceful shutdown
 O1F  operational validation

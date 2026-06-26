@@ -85,7 +85,7 @@ Unimplemented:
 
 - I1-GE full crash validation remains unimplemented;
 - I-4C2 through I-4F recovery/tombstone, M2 exclusion, API/UI, and validation;
-- O1B through O1F automatic bounded scheduling;
+- O1D through O1F automatic bounded scheduling;
 - O2 supervised worker operation;
 - O3 always-on local operation.
 
@@ -269,7 +269,7 @@ I1-GC does not scan, batch, poll, sleep, retry in a loop, clean up, transition B
 
 O1A fixes replay-before-queue ordering, one delegation per lane, independent queue rediscovery, lane-local failure isolation, bounded content-free results, and `stop | run_next_round | idle`. It adds no production scanner or runtime loop.
 
-### O1B through O1F: Production scheduling — unimplemented
+### O1D through O1F: Production scheduling — unimplemented
 
 ```text
 O1B  one eligible I1-G sealed-record discovery and I1-GC delegation
@@ -366,3 +366,14 @@ Phase I-8 and I-9 + complete I1-G + O1/O2 + O3 soak evidence.
 - I-4C1/I-4C2 are delivery subdivisions, not new lifecycle authorities.
 - UI-B0/UI-B1 own no worker, queue, scheduler, filesystem, namespace, SOUL, or mutation authority.
 - Text conversation does not imply TTS, audio, avatar, or Live2D execution.
+
+## O1C current reconciliation
+
+O1C is complete for one bounded, non-recursive, secure B2/B3 queue inventory; due/future classification; deterministic one-candidate selection; canonical reread; server-owned character/store resolution; fresh exact C2 request construction; and at most one existing C2 delegation. O0 and O1C share one production candidate helper, while O0 CLI, projection, and exit behavior remain unchanged.
+
+O1D through O1F remain unimplemented. O1C does not complete a scheduler round loop, polling, sleep, fairness, retry-delay/backoff/jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation.
+
+<!-- O1B_CURRENT_BOUNDARY -->
+### O1B sealed replay-lane discovery — complete
+
+O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1C through O1F, O2, and O3 remain unimplemented.

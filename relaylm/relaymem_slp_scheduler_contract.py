@@ -107,6 +107,7 @@ _IDLE_STATUSES: Final = frozenset(
         "dependency_unavailable",
         "unsafe_state",
         "isolated",
+        "delegated",
     }
 )
 
@@ -242,8 +243,10 @@ class LaneOutcome:
             raise ValueError("canonical_reread_requires_selection")
         if self.delegation_attempted and not self.canonical_reread_performed:
             raise ValueError("delegation_requires_canonical_reread")
-        if self.status in {"no_eligible_work", "future_retry_only", "busy"} and self.delegation_attempted:
+        if self.status in {"no_eligible_work", "future_retry_only"} and self.delegation_attempted:
             raise ValueError("nondelegating_status_attempted_delegation")
+        if self.status == "busy" and self.delegation_attempted and self.lane_kind != "replay":
+            raise ValueError("queue_busy_cannot_follow_delegation")
         if self.status in _PROGRESS_STATUSES and not self.delegation_completed:
             raise ValueError("progress_status_requires_completed_delegation")
         if self.status == "candidate_changed" and not self.candidate_selected:
@@ -428,7 +431,7 @@ def aggregate_scheduler_round(
         raise AssertionError("round_work_unit_bound_exceeded")
 
     progress = any(
-        lane.delegation_completed
+        lane.status in _PROGRESS_STATUSES
         or lane.mutation_may_have_occurred
         or lane.status in _IMMEDIATE_RETRY_STATUSES
         for lane in lanes
@@ -449,7 +452,7 @@ def aggregate_scheduler_round(
         status = "unsafe_state"
     elif completed and failures:
         status = "partial_progress"
-    elif completed:
+    elif completed and progress:
         status = "round_completed"
     elif failures and not retryable:
         status = "blocked"

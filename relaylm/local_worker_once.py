@@ -1,49 +1,38 @@
 """O0 local one-job runner.
 
-This module performs bounded, read-only discovery of at most one eligible durable
-RelaySLP queue record and delegates all claim, rehydration, worker, retry,
-terminal, and cleanup authority to the existing Phase 6-C2 adapter.
+This module preserves the operator-facing O0 contract while consuming the
+shared O0/O1C queue-candidate helper.  All claim, rehydration, worker, retry,
+terminal, and cleanup authority remains delegated to Phase 6-C2.
 """
 from __future__ import annotations
 
-import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Literal
 
 from .config import RelayLMConfig
-from .relaymem_primary_recall import resolve_relaymem_character_store_root
 from .relaymem_slp_one_queued_job_runner import (
-    REQUEST_SCHEMA as C2_REQUEST_SCHEMA,
-    RelayMEMSLPOneQueuedJobRunnerRequest,
     RelayMEMSLPOneQueuedJobRunnerResult,
     execute_one_queued_relaymem_slp_primary_job,
 )
-from .relaymem_slp_primary_worker_source_registry import (
-    RelayMEMSLPPrimaryWorkerSourceRegistry,
+from .relaymem_slp_queue_candidate import (
+    MAX_DISCOVERY_MAX_ENTRIES,
+    QueueCandidate,
+    build_relaymem_slp_one_queued_job_request,
+    canonical_reread_relaymem_slp_queue_candidate,
+    discover_relaymem_slp_queue_candidate,
+    resolve_relaymem_slp_queue_character_scope,
+    validate_configured_roots,
+    validate_local_worker_mode,
 )
-from .relaymem_slp_queue_record import (
-    FILENAME_PREFIX,
-    MAX_LEASE_SECONDS,
-    is_token,
-    parse_timestamp,
-)
-from .relaymem_slp_queue_storage import (
-    RecordSnapshot,
-    acquire_queue_lock,
-    open_queue_root,
-    read_record_snapshot,
-    release_queue_lock,
-)
+from .relaymem_slp_queue_record import is_token
+from .relaymem_slp_queue_storage import RecordSnapshot
 
 REQUEST_SCHEMA = "relaymem.local_worker_once_request.v0"
 RESULT_SCHEMA = "relaymem.local_worker_once_result.v0"
 PROJECTION_SCHEMA = "relaymem.local_worker_once_projection.v0"
 
-MAX_DISCOVERY_MAX_ENTRIES = 4096
-_FILENAME_RE = re.compile(rf"^{re.escape(FILENAME_PREFIX)}[0-9a-f]{{64}}\.json$")
 _REASON_RE = re.compile(r"^[a-z0-9][a-z0-9_:-]{0,127}$")
 _MAX_REASONS = 32
 
@@ -168,10 +157,9 @@ class RelayLMLocalWorkerOnceResult:
         return project_local_worker_once(self).to_log_dict()
 
 
-@dataclass(frozen=True)
-class _Candidate:
-    filename: str
-    snapshot: RecordSnapshot
+# Compatibility alias retained for the existing O0 security smoke and any
+# private test seam. Production O1C imports the shared public helper directly.
+_Candidate = QueueCandidate
 
 
 def execute_local_worker_once(request: object) -> RelayLMLocalWorkerOnceResult:
@@ -194,6 +182,7 @@ def execute_local_worker_once(request: object) -> RelayLMLocalWorkerOnceResult:
         )
     if mode == "disabled":
         return _result("disabled", "completed")
+    assert mode in {"dry_run", "apply"}
 
     roots, root_reasons = _validated_roots(config)
     if roots is None:
@@ -262,28 +251,14 @@ def execute_local_worker_once(request: object) -> RelayLMLocalWorkerOnceResult:
         )
 
     try:
-        source_registry = RelayMEMSLPPrimaryWorkerSourceRegistry(
-            max_entries=config.relaymem_slp_source_registry_max_entries,
-            ttl_seconds=config.relaymem_slp_source_registry_ttl_seconds,
-        )
-        c2_request = RelayMEMSLPOneQueuedJobRunnerRequest(
-            schema_version=C2_REQUEST_SCHEMA,
-            runtime_private=True,
-            content_included=False,
+        c2_request = build_relaymem_slp_one_queued_job_request(
+            config=config,
             queued_record=dict(current.record),
-            source_registry=source_registry,
             character_id=character_id,
             queue_root=queue_root,
             protected_source_root=protected_source_root,
             store_root=store_root,
-            claim_owner=config.relaymem_local_worker_claim_owner,
-            enabled=True,
-            dry_run_only=mode == "dry_run",
-            apply_enabled=mode == "apply",
-            lease_duration_seconds=config.relaymem_local_worker_lease_duration_seconds,
-            protected_source_max_artifact_bytes=(
-                config.relaymem_slp_protected_source_max_artifact_bytes
-            ),
+            mode=mode,
         )
         c2_result = execute_one_queued_relaymem_slp_primary_job(c2_request)
     except Exception:
@@ -371,64 +346,15 @@ def _validate_request(
 
 
 def _worker_mode(config: RelayLMConfig) -> tuple[str | None, tuple[str, ...]]:
-    gates = (
-        config.relaymem_local_worker_enabled,
-        config.relaymem_local_worker_dry_run_only,
-        config.relaymem_local_worker_apply_enabled,
-    )
-    if any(type(value) is not bool for value in gates):
-        return None, ("local_worker_gate_type_invalid",)
-    modes = {
-        (False, True, False): "disabled",
-        (True, True, False): "dry_run",
-        (True, False, True): "apply",
-    }
-    mode = modes.get(gates)
-    if mode is None:
-        return None, ("local_worker_gate_mode_invalid",)
-    if not is_token(config.relaymem_local_worker_claim_owner):
-        return None, ("local_worker_claim_owner_invalid",)
-    if (
-        type(config.relaymem_local_worker_lease_duration_seconds) is not int
-        or not 1
-        <= config.relaymem_local_worker_lease_duration_seconds
-        <= MAX_LEASE_SECONDS
-    ):
-        return None, ("local_worker_lease_duration_invalid",)
-    if (
-        type(config.relaymem_local_worker_discovery_max_entries) is not int
-        or not 1
-        <= config.relaymem_local_worker_discovery_max_entries
-        <= MAX_DISCOVERY_MAX_ENTRIES
-    ):
-        return None, ("local_worker_discovery_limit_invalid",)
-    return mode, ()
+    mode, reasons = validate_local_worker_mode(config)
+    return mode, _reason_ids(reasons)
 
 
 def _validated_roots(
     config: RelayLMConfig,
 ) -> tuple[tuple[str, str, str] | None, tuple[str, ...]]:
-    values = (
-        ("queue_root", config.relaymem_slp_queue_root),
-        ("protected_source_root", config.relaymem_slp_protected_source_root),
-        ("store_root", config.memory.root_path),
-    )
-    output: list[str] = []
-    reasons: list[str] = []
-    for name, value in values:
-        if (
-            type(value) is not str
-            or not value
-            or value != value.strip()
-            or "\x00" in value
-            or not Path(value).is_absolute()
-        ):
-            reasons.append(f"local_worker_{name}_invalid")
-        else:
-            output.append(value)
-    if reasons:
-        return None, _reason_ids(reasons)
-    return (output[0], output[1], output[2]), ()
+    roots, reasons = validate_configured_roots(config)
+    return roots, _reason_ids(reasons)
 
 
 def _discover_candidate(
@@ -437,45 +363,16 @@ def _discover_candidate(
     now: datetime,
     max_entries: int,
 ) -> tuple[_Candidate | None, str, tuple[str, ...]]:
-    root_fd, root_reasons = open_queue_root(queue_root)
-    if root_fd is None:
-        return None, "unsafe", _reason_ids(root_reasons)
-    candidates: list[_Candidate] = []
-    try:
-        lock_error = acquire_queue_lock(root_fd, exclusive=False)
-        if lock_error == "queue_lock_busy":
-            return None, "busy", (lock_error,)
-        if lock_error:
-            return None, "unsafe", (lock_error,)
-        try:
-            scanned = 0
-            try:
-                iterator = os.scandir(root_fd)
-            except OSError:
-                return None, "unsafe", ("queue_discovery_failed",)
-            with iterator:
-                for entry in iterator:
-                    scanned += 1
-                    if scanned > max_entries:
-                        return None, "unsafe", ("queue_discovery_limit_exceeded",)
-                    filename = entry.name
-                    if type(filename) is not str or _FILENAME_RE.fullmatch(filename) is None:
-                        continue
-                    snapshot, status, reasons = read_record_snapshot(root_fd, filename)
-                    if snapshot is None or status != "ok":
-                        return None, "unsafe", _reason_ids(
-                            reasons or ("queue_record_discovery_invalid",)
-                        )
-                    if _eligible(snapshot.record, now):
-                        candidates.append(_Candidate(filename, snapshot))
-        finally:
-            release_queue_lock(root_fd)
-    finally:
-        os.close(root_fd)
-    if not candidates:
-        return None, "no_work", ()
-    candidates.sort(key=lambda item: item.filename)
-    return candidates[0], "selected", ()
+    result = discover_relaymem_slp_queue_candidate(
+        queue_root,
+        now=now,
+        max_entries=max_entries,
+    )
+    if result.status == "selected":
+        return result.candidate, "selected", _reason_ids(result.reason_ids)
+    if result.status in {"no_work", "future_retry_only"}:
+        return None, "no_work", _reason_ids(result.reason_ids)
+    return None, result.status, _reason_ids(result.reason_ids)
 
 
 def _canonical_reread(
@@ -484,43 +381,12 @@ def _canonical_reread(
     *,
     now: datetime,
 ) -> tuple[RecordSnapshot | None, str, tuple[str, ...]]:
-    root_fd, root_reasons = open_queue_root(queue_root)
-    if root_fd is None:
-        return None, "unsafe", _reason_ids(root_reasons)
-    try:
-        lock_error = acquire_queue_lock(root_fd, exclusive=False)
-        if lock_error:
-            return None, "changed", ("queue_lock_busy_before_claim",)
-        try:
-            current, status, reasons = read_record_snapshot(root_fd, candidate.filename)
-        finally:
-            release_queue_lock(root_fd)
-    finally:
-        os.close(root_fd)
-    if current is None or status != "ok":
-        if status == "corrupt":
-            return None, "unsafe", _reason_ids(reasons)
-        return None, "changed", _reason_ids(reasons or ("queue_candidate_missing",))
-    if (
-        (current.device, current.inode)
-        != (candidate.snapshot.device, candidate.snapshot.inode)
-        or current.data != candidate.snapshot.data
-        or current.record != candidate.snapshot.record
-    ):
-        return None, "changed", ("queue_candidate_changed_before_claim",)
-    if not _eligible(current.record, now):
-        return None, "changed", ("queue_candidate_no_longer_eligible",)
-    return current, "ok", ()
-
-
-def _eligible(record: dict[str, object], now: datetime) -> bool:
-    if record.get("state") != "queued":
-        return False
-    retry_not_before = record.get("retry_not_before")
-    if retry_not_before is None:
-        return True
-    parsed = parse_timestamp(retry_not_before)
-    return parsed is not None and parsed <= now
+    current, status, reasons = canonical_reread_relaymem_slp_queue_candidate(
+        queue_root,
+        candidate,
+        now=now,
+    )
+    return current, status, _reason_ids(reasons)
 
 
 def _resolve_character_scope(
@@ -530,37 +396,13 @@ def _resolve_character_scope(
     explicit_character_id: str | None,
     configured_store_root: str,
 ) -> tuple[str | None, str | None, tuple[str, ...]]:
-    if not is_token(namespace):
-        return None, None, ("local_worker_namespace_invalid",)
-    pairs: set[tuple[str, str]] = set()
-    for route in config.model_routes.values():
-        character_id = route.character_id
-        memory_namespace = route.memory_namespace
-        if (
-            is_token(character_id)
-            and is_token(memory_namespace)
-            and character_id in config.characters
-        ):
-            pairs.add((character_id, memory_namespace))
-    assert type(namespace) is str
-    if explicit_character_id is not None:
-        if (explicit_character_id, namespace) not in pairs:
-            return None, None, ("local_worker_character_namespace_mismatch",)
-        character_id = explicit_character_id
-    else:
-        matches = sorted({char for char, ns in pairs if ns == namespace})
-        if not matches:
-            return None, None, ("local_worker_character_scope_not_found",)
-        if len(matches) != 1:
-            return None, None, ("local_worker_character_scope_ambiguous",)
-        character_id = matches[0]
-    store_root = resolve_relaymem_character_store_root(
-        configured_store_root,
-        character_id,
+    character_id, store_root, reasons = resolve_relaymem_slp_queue_character_scope(
+        config,
+        namespace=namespace,
+        explicit_character_id=explicit_character_id,
+        configured_store_root=configured_store_root,
     )
-    if store_root is None or not Path(store_root).is_absolute():
-        return None, None, ("local_worker_character_store_root_unavailable",)
-    return character_id, store_root, ()
+    return character_id, store_root, _reason_ids(reasons)
 
 
 def _result(
@@ -609,6 +451,7 @@ def _reason_ids(values: object) -> tuple[str, ...]:
 
 
 __all__ = [
+    "MAX_DISCOVERY_MAX_ENTRIES",
     "PROJECTION_SCHEMA",
     "REQUEST_SCHEMA",
     "RESULT_SCHEMA",

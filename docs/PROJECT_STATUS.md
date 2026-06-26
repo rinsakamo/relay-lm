@@ -24,6 +24,7 @@ relaylm_related_authority:
   - docs/architecture/i1gd_durable_finalization_retention_cleanup.md
   - docs/architecture/phase_i4c1_primary_forget_hidden_successor.md
   - docs/architecture/o1a_two_lane_scheduler_contract.md
+  - docs/architecture/o1c_eligible_b2_queue_lane.md
 ---
 # RelayLM Project Status
 
@@ -48,7 +49,9 @@ Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
 Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete; C2 one-job adapter complete
 Local worker operation: O0 one invocation -> at most one eligible queued job complete
 Scheduler contract: O1A replay-before-queue round / adapter / idle contract complete
-Scheduler production: O1B through O1F unimplemented
+Scheduler replay lane: O1B one bounded sealed-record discovery/reread/I1-GC adapter complete
+Scheduler queue lane: O1C one bounded discovery/reread/scope/C2 adapter complete
+Scheduler remaining production: O1D through O1F unimplemented
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and scope isolation complete
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, and UI-B0 complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete
@@ -88,7 +91,9 @@ Implemented:
 - C1-0 through C1-5 complete;
 - C2 one-job claim/rehydrate/execute adapter: complete;
 - O0 one-shot bounded queue discovery and one C2 delegation;
-- O1A pure two-lane round/result/disposition contract.
+- O1A pure two-lane round/result/disposition contract;
+- O1B one bounded eligible sealed I1-G replay-lane discovery and one existing I1-GC delegation;
+- O1C one bounded eligible B2/B3 queue-lane discovery and one existing C2 delegation.
 
 B3 lifecycle: complete.
 
@@ -102,8 +107,8 @@ O1A is complete as a pure contract only:
 
 ```text
 validate scheduler gates
-  -> replay lane: at most one future O1B discovery and one existing I1-GC delegation
-  -> queue lane: at most one future O1C discovery and one existing C2 delegation
+  -> replay lane: one bounded O1B discovery and at most one existing I1-GC delegation
+  -> queue lane: at most one O1C discovery and one existing C2 delegation
   -> bounded content-free aggregation
   -> stop | run_next_round | idle
   -> return without sleeping
@@ -111,10 +116,9 @@ validate scheduler gates
 
 The lane order is replay then queue. Replay output, locator, job identity, and dispatch identity are never passed directly to C2. A queue record converged by replay may be selected in the same round only through independent queue-root discovery and canonical reread.
 
-Still separate:
+O1B is complete for one bounded sealed I1-G inventory, deterministic selection, canonical selected-record reread, and at most one existing I1-GC delegation. O1C is complete for one independent bounded queue-root inventory, due/future classification, deterministic selection, canonical reread, server-owned scope resolution, and at most one existing C2 delegation. Neither starts a scheduler round or loop.
 
-- O1B sealed I1-G record discovery and one I1-GC delegation;
-- O1C eligible B2 discovery and one O0-compatible C2 delegation;
+Still separate:
 - O1D ordering, fairness, retry-time, backoff, and jitter;
 - O1E stale-claim recovery, cancellation, and graceful shutdown;
 - O1F corruption, concurrency, saturation, restart, and leakage validation;
@@ -243,3 +247,8 @@ Current mutation, worker, durable-finalization, retention, and scheduler-related
 - static SOUL Lab bundle serving;
 - TTS/audio/avatar/Live2D execution;
 - ASR and peer communication transport.
+
+<!-- O1B_CURRENT_BOUNDARY -->
+## O1B sealed replay-lane boundary
+
+O1B is complete for one bounded, non-recursive inventory of the configured I1-G root, exact canonical grouping and eligibility classification, deterministic selection of one sealed-pending locator, canonical selected-record reread, and at most one existing I1-GC delegation. It does not implement the O1C queue algorithm, a scheduler round loop, fairness, backoff, polling, shutdown, supervision, or always-on operation.
