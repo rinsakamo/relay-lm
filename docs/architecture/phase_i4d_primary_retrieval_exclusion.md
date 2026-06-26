@@ -8,7 +8,7 @@ I-4D owns ordinary Primary MEM lifecycle filtering after existing M2 relevance s
 
 The implementation reuses the I-4B/I-4C2 read-only current-state scanner. It does not duplicate correction, prepared, hidden-page, finalization, or control schemas.
 
-`relaymem_primary_i4c2_projection.py` now exposes the complete Correct/Forget current map to ordinary retrieval. A logical memory with a pending operation also marks its current physical revision pending. The existing recall compatibility seam therefore excludes the complete prepared-to-finalized interval.
+`relaymem_primary_i4c2_projection.py` retains its correction-only compatibility contract for mutation and historical observation callers. The ordinary recall integration instead builds one request-scoped `PrimaryRetrievalEligibilityIndex` directly from the complete shared Correct/Forget scanner. This isolates I-4D lifecycle semantics to `apply_relaymem_primary_recall_scope(...)` and excludes the complete prepared-to-finalized interval without changing writer, preflight, recovery, or prior observation behavior.
 
 A candidate survives only when M2 already selected it, scope matches, page and controls are canonical, physical identity maps to one logical memory, it is the canonical current physical revision, lifecycle is active, mutation state is none, and retrieval eligibility is true.
 
