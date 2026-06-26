@@ -108,4 +108,5 @@ W3-INT should record:
 
 ## Source pull request
 
-PR pending. Replace this line with the concrete PR number and URL before marking ready for review.
+- PR: #412
+- URL: https://github.com/rinsakamo/relay-lm/pull/412
