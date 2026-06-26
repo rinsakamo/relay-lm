@@ -5,6 +5,7 @@ on:
     paths:
       - "relaylm/config.py"
       - "relaylm/relaymem_slp_durable_finalization_*.py"
+      - "relaylm/_relaymem_slp_durable_finalization_*.py"
       - "scripts/relaylm_i1g_*.py"
       - "scripts/relaylm_i1gb_*.py"
       - "scripts/relaylm_i1gc_*.py"
@@ -20,6 +21,7 @@ on:
     paths:
       - "relaylm/config.py"
       - "relaylm/relaymem_slp_durable_finalization_*.py"
+      - "relaylm/_relaymem_slp_durable_finalization_*.py"
       - "scripts/relaylm_i1gd_*.py"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
       - "docs/**"
