@@ -2,7 +2,7 @@ name: O1B bootstrap
 
 on:
   pull_request:
-    types: [opened]
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
@@ -17,16 +17,30 @@ jobs:
         with:
           ref: phase-o1b-sealed-i1g-replay-lane
           fetch-depth: 0
+          show-progress: false
       - name: Apply staged O1B payload
+        shell: bash
         run: |
+          set -u
           cat .relaylm_o1b_payload/part_* | base64 -d > /tmp/o1b.tar.gz
           mkdir /tmp/o1b
           tar -xzf /tmp/o1b.tar.gz -C /tmp/o1b
-          python /tmp/o1b/apply.py "$GITHUB_WORKSPACE"
-          rm -rf .relaylm_o1b_payload
-          rm -f .github/workflows/o1b-bootstrap.yml
+          set +e
+          python /tmp/o1b/apply.py "$GITHUB_WORKSPACE" > /tmp/o1b-apply.log 2>&1
+          status=$?
+          set -e
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          if [ "$status" -ne 0 ]; then
+            cp /tmp/o1b-apply.log .relaylm_o1b_payload/error.log
+            git add -A
+            git commit -m "chore: capture O1B bootstrap failure"
+            git push origin HEAD:phase-o1b-sealed-i1g-replay-lane
+            cat /tmp/o1b-apply.log
+            exit "$status"
+          fi
+          rm -rf .relaylm_o1b_payload
+          rm -f .github/workflows/o1b-bootstrap.yml
           git add -A
           git commit -m "feat: add O1B sealed I1-G replay-lane discovery"
           git push origin HEAD:phase-o1b-sealed-i1g-replay-lane
