@@ -79,7 +79,7 @@ def write_config(path: Path, *, port: int, store: Path) -> None:
 def request(client: TestClient):
     return client.post("/v1/chat/completions", json={
         "model": "relaylm-default",
-        "messages": [{"role": "user", "content": f"{CANARY} を教えて"}],
+        "messages": [{"role": "user", "content": "好きな飲み物を教えて"}],
         "stream": False,
         "metadata": {"scene_state": {
             "schema_version": "relayscn.scene_state.v0", "scene_type": "design_talk",
@@ -103,7 +103,7 @@ def main() -> None:
             prepare_store(scoped)
             memory_id = form_primary_memory(
                 scoped, namespace=NAMESPACE, candidate_id="phase-i4d-fresh-primary",
-                title="I4D backend canary", summary=f"記憶内容は{CANARY}です。",
+                title="好きな飲み物", summary=f"好きな飲み物は紅茶です。{CANARY}",
             )
             cfg = root / "config.yaml"
             write_config(cfg, port=int(server.server_address[1]), store=store)
