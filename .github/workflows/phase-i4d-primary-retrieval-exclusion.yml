@@ -1,0 +1,128 @@
+name: Phase I-4D Primary retrieval exclusion
+
+on:
+  push:
+    paths:
+      - "relaylm/**"
+      - "scripts/relaylm_phase_i4d_*"
+      - "apps/soul-lab/**"
+      - "docs/architecture/phase_i4d_primary_retrieval_exclusion.md"
+      - "docs/mvp/wave3/i4d_completion_report.md"
+      - ".github/workflows/phase-i4d-primary-retrieval-exclusion.yml"
+  pull_request:
+    paths:
+      - "relaylm/**"
+      - "scripts/relaylm_phase_i4d_*"
+      - "apps/soul-lab/**"
+      - "docs/architecture/phase_i4d_primary_retrieval_exclusion.md"
+      - "docs/mvp/wave3/i4d_completion_report.md"
+      - ".github/workflows/phase-i4d-primary-retrieval-exclusion.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle-exclusion:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run I-4D lifecycle, prior revision, recovery, RelayCTX, history, and security smokes
+        run: |
+          set -o pipefail
+          {
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_prior_revision_exclusion_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_recovery_state_exclusion_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_relayctx_exclusion_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_historical_projection_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_security_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_fresh_conversation_smoke.py
+          } 2>&1 | tee phase-i4d-smoke.log
+      - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+      - name: Upload I-4D log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i4d-smoke-log
+          path: phase-i4d-smoke.log
+          if-no-files-found: ignore
+
+  forget-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run I-4B, I-4C1, and I-4C2 regressions
+        run: |
+          set -o pipefail
+          {
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4b_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_hidden_successor_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_corrected_revision_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_security_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_recovery_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_fault_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_concurrency_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_security_smoke.py
+          } 2>&1 | tee phase-i4d-forget-regressions.log
+      - name: Upload Forget regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i4d-forget-regression-log
+          path: phase-i4d-forget-regressions.log
+          if-no-files-found: ignore
+
+  recall-observation-correct-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run Phase I-1, I-2, I-3 regressions
+        run: |
+          set -o pipefail
+          {
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i2_lab_observation_ci_runner.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
+          } 2>&1 | tee phase-i4d-recall-regressions.log
+      - name: Upload recall regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i4d-recall-regression-log
+          path: phase-i4d-recall-regressions.log
+          if-no-files-found: ignore
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/soul-lab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - name: Run strict used-memory lifecycle browser schema smoke
+        run: |
+          rm -rf .used-memory-lifecycle-smoke
+          npx tsc src/features/lab/usedMemoryLifecycleApi.ts --target ES2022 --module ES2022 --moduleResolution Bundler --outDir .used-memory-lifecycle-smoke --skipLibCheck
+          node scripts/usedMemoryLifecycleApiSmoke.mjs
+          rm -rf .used-memory-lifecycle-smoke
+      - run: npm run build
