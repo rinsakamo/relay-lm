@@ -17,6 +17,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - phase_i3_auditable_primary_mem_correct.md
+  - phase_i4b_primary_current_state_shared_fence.md
   - memory_lifecycle_design.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
@@ -31,26 +32,19 @@ relaylm_related_authority:
 ---
 # Phase I-4A: Auditable Primary MEM Forget / Hide Contract
 
-Last reviewed: 2026-06-25 JST
+Last reviewed: 2026-06-26 JST
 
 ## 1. Status
 
-**Defined target contract; runtime unimplemented.**
+**Defined target contract; hidden-lifecycle apply remains unimplemented.**
 
-This document fixes the exact lifecycle, identity, persistence, concurrency, API,
-audit, recovery, and retrieval-exclusion contract for Phase I-4. It does not add
-a production Forget apply path, SOUL Lab Forget UI, M2 lifecycle filtering, or a
-Primary page writer change.
+This document fixes the lifecycle, identity, persistence, concurrency, API, audit, recovery, and retrieval-exclusion contract for Phase I-4. Phase I-4B now implements the canonical read-only current-state resolver, shared Correct/Forget mutation fence, read-only Forget preflight, five-minute token validation, and bounded zero-item history. It does not add hidden-successor apply, tombstone finalization, M2 lifecycle exclusion, loopback mutation routes, or SOUL Lab Forget UI.
 
-Phase I-3 Correct remains the implemented mutation baseline. Phase I-4 must not
-introduce a weaker scope check, revision fence, token, idempotency, persistence,
-recovery, or mutation-access boundary.
+Phase I-3 Correct remains the implemented mutation baseline. Phase I-4 must not introduce a weaker scope check, revision fence, token, idempotency, persistence, recovery, or mutation-access boundary.
 
 ## 2. Purpose
 
-Phase I-4 will let a user explicitly stop one current active formed Primary MEM
-from participating in normal future retrieval while preserving durable audit and
-historical evidence:
+Phase I-4 lets a user explicitly stop one current active formed Primary MEM from participating in normal future retrieval while preserving durable audit and historical evidence:
 
 ```text
 real current active Primary MEM
@@ -65,143 +59,102 @@ real current active Primary MEM
   -> RelayCTX receives no representation of it
 ```
 
-The contract guarantees that a forgotten memory is retrieval-ineligible, that
-prior physical revisions cannot reappear as candidates, that past used-memory
-evidence remains truthful, and that character and namespace boundaries do not
-change.
+The contract guarantees that a forgotten memory is retrieval-ineligible, prior physical revisions cannot reappear as candidates, past used-memory evidence remains truthful, and character/namespace boundaries do not change.
 
 ## 3. Current foundation
 
-The current implementation already provides:
+The implementation already provides:
 
 - one stable logical `memory_id` across Phase I-3 correction revisions;
-- monotonically increasing current revision;
-- immutable prior Primary pages;
+- monotonically increasing current revision and immutable prior Primary pages;
 - exact character, namespace, physical identity, and revision validation;
 - read-only preflight separated from explicit token-gated apply;
 - per-memory lock, pending-operation fence, and operation-level idempotency;
 - M3e publication plus M3f/M3g index-before-log convergence;
 - prepared/applied correction recovery;
 - existing M2 selection of only the corrected current revision;
-- historical Phase I-2 used-memory evidence that is not rewritten;
+- immutable historical Phase I-2 used-memory evidence;
 - loopback-config and actual-peer mutation restrictions;
 - no browser-supplied filesystem paths and no mock-to-real mutation fallback.
 
-The current implementation still has a correction-specific current-revision
-resolver. Phase I-4B must narrow-refactor that logic into one canonical Primary
-current-state resolver shared by Correct, Forget, Lab reads, and M2. This
-contract does not perform that refactor.
+Phase I-4B adds the canonical read-only Primary current-state resolver, preserves the Phase I-3 per-memory `.lock` path as the shared Correct/Forget mutation fence, and adds read-only Forget preflight, exact-binding five-minute token validation, and bounded zero-item history. Valid unresolved prepared evidence is classified `recovery_required` and remains retrieval-ineligible.
+
+Remaining production work begins at I-4C1.
 
 ## 4. Scope
 
-In scope for the target contract:
+In scope:
 
 - one current active formed Primary MEM;
 - one explicit user-facing Forget operation;
 - one immutable hidden successor revision;
 - one runtime-private prepared artifact and one immutable Forget tombstone;
-- one shared current-state resolver and one shared per-memory mutation fence;
+- one shared current-state resolver and per-memory mutation fence;
 - exact preflight, apply, and bounded history schemas;
 - crash-safe convergence and exact replay;
 - normal M2 and RelayCTX exclusion;
 - historical used-memory integrity;
-- target SOUL Lab behavior and error vocabulary.
+- target SOUL Lab behavior and bounded error vocabulary.
 
-Out of scope is listed in [Explicit non-claims](#22-explicit-non-claims).
+Out of scope is listed under [Explicit non-claims](#22-explicit-non-claims).
 
-## 5. Terminology
-
-The following terms are canonical and are not synonyms:
+## 5. Canonical terminology
 
 | Term | Canonical meaning |
 |---|---|
-| **Forget** | The user-facing explicit operation. It requests a lifecycle transition for one exact current active logical memory. |
-| **`hidden`** | The canonical durable lifecycle state produced by a successful Forget. A hidden logical memory is current but not active and not retrieval-eligible. |
-| **Forget tombstone** | The immutable runtime-private audit artifact proving the exact active-to-hidden transition and its convergence. A tombstone is not the lifecycle state and is not an M2 candidate. |
-| **`active`** | The canonical lifecycle state eligible for ordinary retrieval when all other M2 gates pass. |
-| **prepared** | A runtime-private operation state after the exact Forget intent is durably recorded but before the full transition is reconciled. It is not a lifecycle state exposed as current. |
+| **Forget** | Explicit user operation targeting one exact current active logical memory. |
+| **`hidden`** | Durable current lifecycle state produced by successful Forget. Hidden memory is not retrieval-eligible. |
+| **Forget tombstone** | Immutable runtime-private audit/recovery artifact proving the exact active-to-hidden transition and convergence. |
+| **`active`** | Canonical lifecycle state eligible for ordinary retrieval when all other M2 gates pass. |
+| **prepared** | Runtime-private operation state after exact intent is durable but before full convergence. |
 
-“Hide” may remain in the phase nickname for discoverability, but it is not a
-second operation name. “Tombstoned” is not a canonical lifecycle-state value.
-Physical deletion, purge, secure erase, source deletion, and transcript deletion
-are separate operations and are not implied by Forget.
+“Hide” may remain in the phase nickname, but it is not a second operation. “Tombstoned” is not a lifecycle-state value. Forget does not imply physical deletion, secure erase, source deletion, or transcript deletion.
 
 ## 6. Lifecycle state machine
 
-### 6.1 Canonical state and operation state
-
-The canonical resolver returns two orthogonal dimensions:
+The canonical resolver returns orthogonal lifecycle and mutation dimensions:
 
 ```text
+schema: relaylm.mem.primary_current_state.v0
 lifecycle_state: active | hidden
-mutation_state:  none | prepared | recovery_required | corrupt
+mutation_state: none | prepared | recovery_required | corrupt
 retrieval_eligible: true | false
 ```
 
-Only `lifecycle_state` is the durable memory lifecycle. `mutation_state` describes
-whether an exact operation is pending, recoverable, or invalid. The resolver is
-the only authority for “what is current, what is active, and what is retrieval
-eligible.”
-
-Target resolver schema:
+Normal transition:
 
 ```text
-relaylm.mem.primary_current_state.v0
-```
-
-### 6.2 Normal transition
-
-```text
-revision N, lifecycle=active, mutation=none, retrieval_eligible=true
+revision N active / none / eligible
   -> read-only preflight
-     no durable state change; revision N remains eligible
-  -> Forget prepared
-     revision N is quarantined; mutation=prepared; retrieval_eligible=false
-  -> revision N+1 hidden successor published
-     lifecycle=hidden; retrieval_eligible=false; this is the lifecycle commit point
-  -> canonical index applied / log pending
-     lifecycle=hidden; retrieval_eligible=false; recovery_required=true
+  -> exact prepared operation; revision N quarantined
+  -> revision N+1 hidden successor published through M3e
+  -> index applied / log pending when interrupted
   -> index/log converged and exclusion verified
-     lifecycle=hidden; retrieval_eligible=false
   -> Forget tombstone finalized
-     lifecycle=hidden; mutation=none; operation status=applied/reconciled
+  -> hidden / none / ineligible
 ```
 
-A valid prepared operation is fail-closed: while recovery is pending, neither the
-prior active page nor a partially published successor may participate in normal
-retrieval. This avoids re-exposure after process failure.
-
-### 6.3 Apply and recovery states
+The hidden-successor publication is the lifecycle commit point. A valid prepared operation is fail-closed. A hidden lifecycle commit never rolls back to active because tombstone finalization or HTTP response delivery failed.
 
 | Condition | Resolver result | Retrieval behavior | Required action |
 |---|---|---|---|
 | preflight only | `active / none` | eligible | no recovery |
-| prepared artifact only | `active / prepared` | excluded | resume exact operation or classify conflict |
-| hidden successor published | `hidden / recovery_required` until controls converge | excluded | resume M3f/M3g convergence |
+| prepared artifact only | `active / prepared` | excluded | resume exact operation or bounded conflict |
+| hidden successor published | `hidden / recovery_required` | excluded | resume M3f/M3g convergence |
 | index applied, log pending | `hidden / recovery_required` | excluded | apply missing log step only |
 | controls converged, tombstone missing | `hidden / recovery_required` | excluded | verify exclusion and finalize tombstone |
 | tombstone finalized | `hidden / none` | excluded | return applied result |
-| invalid or ambiguous chain | `hidden-or-unknown / corrupt` | excluded | fail closed and require bounded recovery/manual handling |
+| invalid or ambiguous chain | `unknown-or-hidden / corrupt` | excluded | fail closed |
 
-A hidden lifecycle commit is never rolled back to active merely because audit
-finalization or HTTP response delivery failed.
+Repeated Forget outcomes are distinct:
 
-### 6.4 Repeated Forget
-
-The outcomes are distinct:
-
-- **exact replay**: the same operation ID and exact binding returns the original
-  applied result with `idempotent_replay=true`; no revision or artifact is added;
-- **already hidden**: a different operation targets a canonical hidden memory;
-  return `already_hidden`, not success, and do not issue a new token;
-- **stale or conflict**: an active revision changed, a token names an old physical
-  page, or one operation ID has different binding data; return
-  `stale_revision` or `operation_conflict`.
+- exact replay returns the original applied result with `idempotent_replay=true`;
+- a different operation targeting canonical hidden state returns `already_hidden`;
+- changed revision, physical identity, lifecycle, reason, or binding returns `stale_revision` or `operation_conflict`.
 
 ## 7. Identity and revision model
 
-Forget preserves the stable logical `memory_id` and advances the canonical
-revision exactly once:
+Forget preserves the stable logical `memory_id` and advances the canonical revision exactly once:
 
 ```text
 revision 1 active
@@ -211,89 +164,49 @@ revision 2 active
 revision 3 hidden
 ```
 
-The revision 3 hidden successor is the canonical current physical page for the
-logical memory. Prior pages remain immutable audit evidence and are not current
-or retrieval-eligible.
+The hidden successor is the canonical current physical page. Prior pages remain immutable audit evidence and are neither current nor retrieval-eligible. Forget does not create new semantic assertions; the bounded user reason remains runtime-private audit content.
 
-The hidden successor preserves the original scope, layer, kind, source lineage,
-formed timestamp, and other non-semantic authority fields required by the
-canonical Primary page contract. Forget does not rewrite title or summary as a
-new semantic assertion. The bounded user reason belongs in runtime-private audit
-artifacts and never becomes retrieval content.
-
-The exact revision fence applies equally to original revision 1 memories and to
-Correct-produced successor revisions. No Correct and Forget operation may both
-successfully consume the same current revision.
+No Correct and Forget operation may both consume the same current revision.
 
 ## 8. Authoritative persistence decision
 
 ### Decision: Candidate A
 
-Phase I-4 adopts:
-
 ```text
 immutable successor Primary page
-  + canonical lifecycle metadata (`hidden`)
+  + lifecycle metadata `hidden`
   + monotonically increasing revision
   + existing M3e/M3f/M3g convergence
   + runtime-private prepared artifact and Forget tombstone
 ```
 
-The hidden successor page is the lifecycle authority. The Forget tombstone is
-audit and recovery evidence; it is not a sidecar flag that independently decides
-whether the old page is active.
+The hidden successor page is lifecycle authority. The tombstone is audit/recovery evidence, not an independent sidecar current-state flag.
 
-### Why Candidate A
+Candidate A is required because it extends the immutable correction chain, keeps one revision fence, gives M2/Lab/future operations one resolver, preserves prior revisions, and prevents a missing tombstone or response from reactivating the old page.
 
-- it extends the Phase I-3 immutable correction chain instead of creating a
-  second current-state chain;
-- Correct and Forget consume the same logical-memory revision fence;
-- M2, Lab reads, future Pin/Merge, and Secondary consolidation consult one
-  canonical resolver rather than guessing between page and sidecar state;
-- a published hidden successor cannot become active again because a tombstone or
-  response was lost;
-- prior revisions remain auditable without being candidates;
-- M3e/M3f/M3g remain publication and control-state authorities rather than being
-  duplicated.
+A bare sidecar boolean such as `hidden=true` is forbidden as the sole or independently committed current-state mechanism.
 
-### Rejected: Candidate B as independent authority
+## 9. Correct / Forget concurrency
 
-An existing page plus a separately updated lifecycle/tombstone chain would make
-page currentness and retrieval eligibility independently mutable. That creates a
-split-authority interval in which one reader could see an active page while
-another sees a tombstone. A tombstone chain may exist for audit, but it must not
-be the independent lifecycle authority.
-
-A bare sidecar boolean such as `hidden=true` is therefore forbidden as the sole
-or independently committed current-state mechanism.
-
-## 9. Correct / Forget concurrency matrix
-
-Phase I-4 adopts one narrow **Primary mutation coordinator** shared by Correct and
-Forget. It owns the existing per-memory lock namespace, one pending-operation
-fence, operation identity lookup, current-state resolution, and revision claim.
-It does not become a generic all-memory mutation framework in this slice.
+One narrow Primary mutation coordinator owns the existing per-memory lock namespace, pending-operation fence, operation lookup, current-state resolution, and revision claim. It does not become a generic mutation framework.
 
 | Starting condition | Operation A | Operation B | Required outcome |
 |---|---|---|---|
 | revision 1 active | Forget | none | revision 2 hidden |
-| revision 2 active after Correct | Forget | none | revision 3 hidden |
-| Correct preflight at N | Forget applies first at N | Correct apply | Forget wins; Correct returns `stale_revision` |
-| Forget preflight at N | Correct applies first at N | Forget apply | Correct wins; Forget returns `stale_revision` |
-| active N | concurrent Forget apply, different operations | concurrent Forget apply | one commit owner; loser is `stale_revision` or `operation_conflict` |
-| hidden N | exact prior Forget replay | none | same success result; no new revision |
-| hidden N | new Forget operation | none | `already_hidden` |
-| hidden N | Correct | none | `target_not_active` |
-| hidden N | future Pin | none | reject `target_not_active` unless a later contract explicitly defines otherwise |
-| hidden input among future Merge sources | Merge | none | ineligible source; fail closed before multi-record claim |
-| hidden N | Secondary consolidation | none | ineligible; no consolidation candidate |
+| corrected revision N active | Forget | none | revision N+1 hidden |
+| Correct preflight at N | Forget applies first | Correct apply | Forget wins; Correct `stale_revision` |
+| Forget preflight at N | Correct applies first | Forget apply | Correct wins; Forget `stale_revision` |
+| active N | concurrent different Forget operations | concurrent apply | one commit owner; loser stale/conflict |
+| hidden N | exact prior replay | none | same result; no new revision |
+| hidden N | new Forget | none | `already_hidden` |
+| hidden N | Correct or future Pin | none | `target_not_active` |
+| hidden source | future Merge or consolidation | none | ineligible; fail closed |
 
-The coordinator and common resolver are target implementation work for I-4B and
-I-4C. Phase I-4A changes no production module.
+I-4B completed the resolver/shared-fence/read-only portion. I-4C owns durable commit and recovery behavior.
 
-## 10. API and exact schemas
+## 10. Target API and exact schemas
 
-The target SOUL Lab loopback routes follow the existing Phase I-3 routing style:
+Target routes follow the Phase I-3 loopback style:
 
 ```text
 POST /lab/api/characters/{character_id}/memory/{memory_id}/forget/preflight?namespace=...
@@ -301,7 +214,7 @@ POST /lab/api/characters/{character_id}/memory/{memory_id}/forget?namespace=...
 GET  /lab/api/characters/{character_id}/memory/{memory_id}/forget-history?namespace=...
 ```
 
-### 10.1 Exact schema names
+Schema names:
 
 ```text
 relaylm.lab.memory_forget_preflight_request.v0
@@ -314,46 +227,28 @@ relaylm.mem.forget_prepared.v0
 relaylm.mem.forget_tombstone.v0
 ```
 
-All JSON request and response models are exact-key, bounded, strict models.
-Unknown fields are rejected.
+All request and response models are exact-key, bounded, and strict. Unknown fields are rejected.
 
-### 10.2 Preflight request
+### Preflight request
 
 ```text
-schema: relaylm.lab.memory_forget_preflight_request.v0
 expected_revision: integer >= 1
 expected_lifecycle_state: active
 reason: trimmed bounded text, 1..512 characters
 operation_id: trimmed opaque text, 1..128 characters
 ```
 
-Preflight is read-only. It validates:
+Preflight validates exact loopback access, character/namespace mapping, logical and physical identity, current revision/lifecycle, page/index/log convergence, current-state chain, pending mutation, operation binding, bounded reason, and mutation access policy. It writes no prepared artifact, successor, controls, tombstone, or observation receipt.
 
-- exact schema and bounds;
-- configured loopback access and actual loopback peer;
-- exact character and namespace mapping;
-- stable logical memory identity;
-- current physical identity and expected revision;
-- current lifecycle state `active`;
-- canonical page/index/log convergence;
-- complete correction/current-state chain;
-- no conflicting pending mutation;
-- operation ID availability or exact prior binding;
-- bounded reason;
-- mutation access policy.
-
-It does not write a prepared artifact, successor page, index/log entry, tombstone,
-or observation receipt and does not change retrieval eligibility.
-
-### 10.3 Preflight response
+### Preflight response
 
 ```text
 schema: relaylm.lab.memory_forget_preflight.v0
 status: ready
 read_only: true
 memory_id: stable logical identity
-memory_title: bounded current title, maximum 160 characters
-bounded_summary: bounded current summary, maximum 512 characters
+memory_title: maximum 160 characters
+bounded_summary: maximum 512 characters
 current_revision: N
 current_lifecycle_state: active
 target_revision: N+1
@@ -368,24 +263,16 @@ apply_token: opaque token
 expires_at: UTC timestamp
 ```
 
-The preview must plainly state that future normal retrieval is excluded, physical
-deletion does not occur, audit evidence remains, and past conversation evidence
-is unchanged.
-
-### 10.4 Apply request
+### Apply request and response
 
 ```text
-schema: relaylm.lab.memory_forget_apply_request.v0
+request schema: relaylm.lab.memory_forget_apply_request.v0
 operation_id: exact preflight operation ID
-apply_token: opaque token, maximum 8192 characters
+apply_token: opaque, maximum 8192 characters
 expected_revision: exact preflight revision
 expected_lifecycle_state: active
-```
 
-### 10.5 Apply response
-
-```text
-schema: relaylm.lab.memory_forget_apply.v0
+response schema: relaylm.lab.memory_forget_apply.v0
 status: applied | reconciled
 memory_id: stable logical identity
 prior_revision: N
@@ -397,7 +284,7 @@ applied_at: UTC timestamp
 idempotent_replay: boolean
 ```
 
-### 10.6 History response
+### History response
 
 ```text
 schema: relaylm.lab.memory_forget_history.v0
@@ -410,149 +297,90 @@ forget_count: integer
 items: maximum 50 bounded entries
 ```
 
-Each item contains only an opaque tombstone ID, prior/result revisions,
-`active -> hidden`, bounded reason, status, and timestamp. It excludes paths,
-roots, page/control digests, lineage, queue/lease identity, protected source,
-prompts, transcripts, credentials, and exception text.
+History excludes filesystem paths, roots, digests, lineage, queue/lease identity, protected source, prompts, transcripts, credentials, and exception text.
 
-## 11. Apply token binding
+I-4B implements only the exact read-only preflight/token models and bounded zero-item history boundary. Routes and durable applied items remain I-4E/I-4C work.
 
-Forget requires an opaque short-lived token with a target lifetime equal to the
-Phase I-3 five-minute boundary unless a later security review shortens it.
+## 11. Apply-token binding
 
-The token is integrity-protected and binds at least:
+The integrity-protected token uses the Phase I-3 five-minute lifetime and binds:
 
-- character ID;
-- namespace;
-- stable logical memory ID;
-- current physical identity;
-- current revision;
-- expected lifecycle state `active`;
-- target revision;
-- target lifecycle state `hidden`;
+- character ID and namespace;
+- stable logical memory ID and current physical identity;
+- current revision and lifecycle `active`;
+- target revision and lifecycle `hidden`;
 - bounded reason digest;
 - operation ID;
-- issue timestamp;
-- expiry timestamp.
+- issue and expiry timestamps.
 
-The browser never interprets token claims. Token reuse after successful apply is
-accepted only as an exact replay of the same operation. Tampering, expiry,
-wrong-memory, wrong-character, wrong-namespace, wrong-revision, wrong-lifecycle,
-or changed-reason use is rejected.
+The browser never interprets claims. Tampering, expiry, wrong scope, wrong memory, wrong revision/lifecycle, changed reason, or non-canonical encoding is rejected. Reuse after success is accepted only as exact replay.
 
 ## 12. Idempotency
 
-Forget operation idempotency is independent of:
-
-- Phase 6/B3 dispatch idempotency;
-- M3 memory-write idempotency;
-- observation receipt identity;
-- HTTP retry behavior.
+Forget operation idempotency is independent of Phase 6 dispatch, M3 memory-write identity, observation receipt identity, and HTTP retry behavior.
 
 Rules:
 
-1. an exact replay returns the same applied result and tombstone identity;
-2. replay never creates another revision, hidden page, prepared artifact, or
-   tombstone;
-3. one operation ID with a different target, revision, lifecycle, reason digest,
-   or token binding returns `operation_conflict`;
+1. exact replay returns the same result and tombstone identity;
+2. replay creates no new revision, page, prepared artifact, or tombstone;
+3. an operation ID with different binding returns `operation_conflict`;
 4. stale revision is never converted to success;
 5. one current revision has one commit owner across Correct and Forget;
-6. response loss after tombstone finalization converges through exact replay;
-7. recovery completion produces the same result later returned by exact replay.
+6. response loss converges through exact replay;
+7. recovery returns the same result later returned by replay.
 
 ## 13. Audit and recovery
 
-Runtime-private artifacts are scoped below the server-resolved character store
-and are never M1/M2 candidates or public filesystem references.
+Runtime-private artifacts live below the server-resolved character store and are never M1/M2 candidates or public filesystem references.
 
 ```text
 relaylm.mem.forget_prepared.v0
   -> hidden successor publication
   -> index/log reconciliation
-  -> retrieval exclusion verified
-  -> relaylm.mem.forget_tombstone.v0 finalized as applied/reconciled
+  -> retrieval exclusion verification
+  -> relaylm.mem.forget_tombstone.v0 finalized
 ```
 
-The prepared artifact contains only the bounded exact data needed for
-deterministic continuation, including the bound reason and successor candidate.
-The tombstone is immutable and contains the transition identity and bounded audit
-metadata. Neither artifact stores raw protected source, prompt, transcript,
-credential, unrestricted page content, generic trace, or exception string.
+Artifacts contain only bounded deterministic continuation and audit data. They exclude raw protected source, prompt, transcript, credentials, unrestricted page content, generic trace, and exception strings.
 
-Recovery rules:
+Recovery is forward-only after hidden publication. Index-applied/log-pending resumes the missing log step. Controls-converged/tombstone-missing finalizes the same tombstone. Corrupt, ambiguous, symlinked, path-escaping, oversized, invalid-UTF-8, or schema-drifted artifacts fail closed.
 
-- before hidden publication, a valid prepared operation quarantines the target
-  from ordinary retrieval until it completes or is safely classified;
-- after hidden publication, recovery may only converge forward; it does not
-  reactivate the prior page;
-- index-applied/log-pending resumes the missing log step rather than publishing a
-  second successor;
-- controls-converged/tombstone-missing verifies exclusion and finalizes the same
-  operation;
-- corrupt, ambiguous, symlinked, path-escaping, oversized, invalid-UTF-8, or
-  schema-drifted lifecycle artifacts fail closed;
-- successful recovery makes exact replay return the same success result.
+## 14. M2 and RelayCTX exclusion
 
-## 14. M2 retrieval exclusion
+I-4D makes existing M2 consult canonical current-state eligibility before snippet construction:
 
-The target behavior is implemented by the existing M2 path consulting the
-canonical Primary current-state resolver. No correction-specific or
-Forget-specific retriever is added.
-
-For one logical memory:
-
-- canonical `hidden` current state is excluded before snippet construction;
+- canonical hidden state is excluded;
 - every prior active physical revision is excluded;
-- prepared or recovery-required state is excluded;
-- corrupt or ambiguous lifecycle/current-state chains are excluded;
-- hidden reason, prepared metadata, and tombstone metadata never reach RelayCTX;
-- unrelated memories keep their existing candidate ranking and token-budget
-  behavior;
+- prepared and recovery-required state is excluded;
+- corrupt or ambiguous chains are excluded;
+- hidden reason and audit metadata never reach RelayCTX;
+- unrelated memories retain ranking and token-budget behavior;
 - character and namespace isolation remains exact;
 - M2 remains relevance owner for eligible active memories.
 
-Fresh-conversation validation must omit the forgotten content from frontend chat
-history and prove that exclusion comes from M2/current-state eligibility rather
-than stale conversation context.
+Fresh-conversation validation must omit forgotten content from frontend history and prove exclusion comes from M2/current-state eligibility rather than stale conversation context.
 
 ## 15. Historical used-memory integrity
 
-Phase I-2 used-memory receipts remain immutable evidence of what a past
-backend-bound request actually received.
+Phase I-2 used-memory receipts remain immutable evidence of what a past backend-bound request received.
 
-After Forget, the target read projection can express:
+A future projection may show:
 
 ```text
-injected_summary: the historical representation actually injected
-current_summary: null for a hidden current memory
+injected_summary: historical representation actually injected
+current_summary: null for hidden current memory
 current_lifecycle_state: hidden
-representation_changed: unchanged unless a semantic correction also occurred
+representation_changed: boolean
 lifecycle_changed: true
 ```
 
-A later schema may combine the two booleans into
-`representation_or_lifecycle_changed`, but it must retain the distinction between
-historical injected content and current lifecycle. The past run and conversation
-must never be rewritten as though the memory had not been used.
+Past runs and conversations are never rewritten as though the memory had not been used.
 
 ## 16. SOUL Lab target behavior
 
-Forget is shown only when every condition holds:
+Forget is offered only for real-server mode, current formed Primary MEM, canonical active lifecycle, exact scope/revision, resolvable controls/page, and no pending mutation.
 
-- real-server mode;
-- a current formed Primary MEM;
-- canonical lifecycle `active`;
-- exact character and namespace scope;
-- exact current revision;
-- non-corrupt and fully resolvable target;
-- no pending mutation.
-
-Forget is unavailable or refused for local preview/mock, held, blocked, hidden,
-superseded, prepared-only, corrupt, stale, cross-character, or cross-namespace
-targets.
-
-Target flow:
+It is unavailable or refused for local preview, held, blocked, hidden, superseded, prepared-only, corrupt, stale, cross-character, or cross-namespace targets.
 
 ```text
 select current active memory
@@ -562,155 +390,144 @@ select current active memory
   -> review destructive-effect preview
   -> explicit confirmation
   -> apply exact token
-  -> refresh current lifecycle and Forget history
+  -> refresh current lifecycle and history
 ```
 
-Required UI meaning:
+Required meaning:
 
-- “今後の通常会話では検索対象から外れます”;
-- “ファイルの物理削除ではありません”;
-- “監査履歴は保持されます”;
-- “過去の会話履歴や、当時使用された記憶の記録は書き換えられません”.
+- future ordinary retrieval is excluded;
+- this is not physical file deletion;
+- audit evidence remains;
+- past conversations and historical used-memory evidence are not rewritten.
 
-A real mutation failure must remain an error state. It must not fall back to a
-mock success or local preview mutation.
+Real mutation failure remains an error and never falls back to mock success.
 
 ## 17. Security
 
-The target wrapper preserves or strengthens Phase I-3 controls:
+The wrapper preserves or strengthens Phase I-3 controls:
 
-- the configured RelayLM listen host must be loopback;
-- the actual ASGI peer must be loopback;
+- configured listen host and actual ASGI peer must be loopback;
 - `Host`, `Origin`, and forwarding headers are not locality authority;
-- mutation accepts exact `application/json` only;
-- request body size is fixed and bounded;
-- strict schemas reject missing, unknown, or type-coerced fields;
-- character, namespace, store root, paths, and lifecycle authority are resolved
-  by the server;
-- apply requires the exact unexpired token and current revision/lifecycle;
-- no GET, form, query-only, wildcard-CORS, or browser-path mutation is allowed;
-- response and history are bounded and rendered as text, not inserted HTML;
-- public errors contain only the bounded error code;
-- raw source, prompt, transcript, credentials, paths, roots, digests, lineage,
-  queue/lease state, and exception strings are never public response fields.
+- mutation accepts exact bounded `application/json` only;
+- strict schemas reject missing, unknown, or coerced fields;
+- character, namespace, store root, paths, and lifecycle authority are server-resolved;
+- apply requires exact unexpired token and current revision/lifecycle;
+- no GET, form, query-only, wildcard-CORS, or browser-path mutation;
+- response/history are bounded and rendered as text;
+- public errors contain bounded codes only;
+- raw source, prompts, transcripts, credentials, paths, roots, digests, lineage, queue/lease state, and exceptions never appear in public responses.
 
 ## 18. Error vocabulary
 
 | Public code | HTTP | Meaning |
 |---|---:|---|
-| `invalid_request` | 422 | Exact schema, type, bound, JSON, or semantic request validation failed. Exact media-type failure remains HTTP 415 with this bounded detail. |
-| `access_refused` | 403 | Configured host, actual peer, or mutation policy refused access. |
-| `target_not_found` | 404 | No target exists in the exact server-resolved scope. Wrong scope is intentionally collapsed into this code. |
+| `invalid_request` | 422 | Exact schema, type, bounds, JSON, or semantic validation failed. |
+| `access_refused` | 403 | Configured host, actual peer, or policy refused access. |
+| `target_not_found` | 404 | No target exists in exact server-resolved scope. |
 | `target_corrupt` | 409 | Page, controls, lifecycle chain, or audit artifacts cannot be safely resolved. |
-| `target_not_active` | 409 | The target lifecycle is not active for this operation. |
-| `already_hidden` | 409 | A different operation targets a valid already-hidden memory. |
-| `stale_revision` | 409 | Current physical identity, revision, or lifecycle changed after preflight. |
-| `operation_conflict` | 409 | Operation ID or pending mutation is bound to different data. |
-| `token_invalid` | 403 | Token integrity or exact binding failed. |
+| `target_not_active` | 409 | Target lifecycle is not active. |
+| `already_hidden` | 409 | A different operation targets valid hidden state. |
+| `stale_revision` | 409 | Current identity, revision, or lifecycle changed. |
+| `operation_conflict` | 409 | Operation ID or pending mutation has different binding. |
+| `token_invalid` | 403 | Token integrity, canonical encoding, or exact binding failed. |
 | `token_expired` | 409 | Token lifetime elapsed. |
-| `store_unavailable` | 503 | The authoritative scoped store cannot be safely read or written. |
-| `reconciliation_required` | 503 | Forward recovery or index/log/audit convergence is required. |
-| `response_lost` | 503 | The operation may have committed but the response boundary failed; exact replay is required. |
-
-`response_lost` is never a signal to create a new operation. Public detail is the
-code only.
+| `store_unavailable` | 503 | Authoritative scoped store cannot be safely read or written. |
+| `reconciliation_required` | 503 | Forward recovery or convergence is required. |
+| `response_lost` | 503 | Commit may have succeeded; exact replay is required. |
 
 ## 19. Fault matrix
 
-| Fault seam | Durable/effective state | Retrieval behavior | Retry/recovery result |
+| Fault seam | Durable/effective state | Retrieval | Recovery result |
 |---|---|---|---|
-| before prepared artifact | revision N active, no operation | eligible | repeat preflight/apply; no state to recover |
-| after prepared artifact | N active plus exact prepared operation | excluded by quarantine | resume same operation or return bounded conflict |
-| after hidden successor publication | N+1 hidden is lifecycle commit; controls may lag | excluded, including prior N | converge controls forward |
-| after index apply / before log apply | N+1 hidden, index-applied/log-pending | excluded | apply missing log entry only |
-| after index/log convergence / before tombstone | N+1 hidden, exclusion verified, audit incomplete | excluded | finalize same tombstone |
-| after tombstone / before HTTP response | N+1 hidden, applied/reconciled | excluded | exact replay returns same success |
-| corrupt prepared artifact | resolver corrupt/recovery-required | excluded | fail closed; no normal retrieval |
-| corrupt hidden page or control chain | resolver corrupt | excluded | fail closed; bounded recovery/manual path |
-| corrupt tombstone after lifecycle commit | hidden plus audit recovery required | excluded | do not reactivate; repair/finalize audit only |
-| simultaneous Correct and Forget at N | one revision claimant wins | winner semantics only | loser receives stale/conflict; no fork |
+| before prepared artifact | revision N active | eligible | repeat safely |
+| after prepared artifact | N active plus prepared | excluded | resume exact operation or conflict |
+| after hidden successor | N+1 hidden, controls may lag | excluded | converge forward |
+| after index / before log | hidden, log pending | excluded | apply missing log only |
+| controls converged / before tombstone | hidden, audit incomplete | excluded | finalize same tombstone |
+| tombstone / before response | hidden, applied | excluded | exact replay returns same success |
+| corrupt prepared artifact | corrupt/recovery-required | excluded | fail closed |
+| corrupt hidden/control chain | corrupt | excluded | bounded recovery/manual path |
+| corrupt tombstone after commit | hidden, audit recovery required | excluded | never reactivate |
+| simultaneous Correct and Forget | one claimant wins | winner semantics | loser stale/conflict |
 
-## 20. Implementation work slices I-4B through I-4F
+## 20. Implementation slices
 
-### I-4B — resolver, shared fence, and read-only contracts
+### I-4B — complete read-only boundary
 
-- implement `relaylm.mem.primary_current_state.v0`;
-- refactor Phase I-3 current-revision resolution into a narrow common resolver;
-- share per-memory lock, pending-operation fence, and operation lookup between
-  Correct and Forget;
-- implement exact preflight and bounded history models/token issuance;
-- add no mutation and no M2 behavior change beyond resolver equivalence tests.
+- canonical current-state resolver;
+- shared `.lock`, pending-operation fence, and operation lookup;
+- exact read-only preflight/token validation;
+- bounded zero-item history;
+- resolver-equivalence and fail-closed prepared evidence tests;
+- no hidden mutation or M2 behavior change.
 
-### I-4C — atomic lifecycle apply and audit artifacts
+### I-4C1 — hidden-successor commit ownership
 
-- construct and publish the immutable hidden successor revision through M3e;
-- implement prepared artifact, Forget tombstone, exact replay, and one-winner
-  concurrency;
-- preserve prior pages and forward-only recovery semantics.
+- exact token/fence/revision claim;
+- prepared artifact;
+- hidden-successor candidate and M3e publication;
+- one-winner concurrency.
 
-### I-4D — convergence, M2 exclusion, and historical projection
+### I-4C2 — exact replay and forward recovery
 
-- reuse M3f/M3g index-before-log convergence;
-- make M2 and Lab current-memory reads consume the canonical resolver;
-- exclude hidden, prior, prepared, recovery-required, and corrupt states;
-- extend historical used-memory projection with current lifecycle without
-  changing historical injected content.
+- prepared-operation resume;
+- forward-only recovery;
+- exact replay;
+- tombstone finalization;
+- response-loss convergence.
 
-### I-4E — loopback wrapper and SOUL Lab UI
+### I-4D — convergence and exclusion
 
-- add exact loopback routes and bounded public error mapping;
-- add real-server-only Forget flow, explicit confirmation, refresh, and history;
-- preserve mock preview separation and stale response/token cancellation.
+- M3f/M3g convergence;
+- M2 and RelayCTX lifecycle exclusion;
+- historical lifecycle projection without rewriting past injected content.
 
-### I-4F — fault, security, and fresh-conversation validation
+### I-4E — loopback wrapper and UI
 
-- crash at every fault-matrix seam;
-- test token, scope, path, symlink, schema, bounds, and information leakage;
-- test Correct/Forget and concurrent Forget races;
-- prove fresh-conversation M2 and RelayCTX exclusion;
-- prove historical used-memory integrity and no unrelated-ranking change.
+- exact routes and bounded public errors;
+- real-server-only confirmation, refresh, receipt, and history;
+- mock-preview separation and stale cancellation.
+
+### I-4F — production validation
+
+- crash at every fault seam;
+- token, scope, path, symlink, schema, bounds, and leakage tests;
+- Correct/Forget and concurrent Forget races;
+- fresh-conversation M2/RelayCTX exclusion;
+- historical evidence and unrelated-ranking integrity.
 
 ## 21. Validation requirements
 
-Phase I-4 implementation is not complete until automated validation proves:
+Phase I-4 is not complete until validation proves:
 
-- original and Correct-produced active memories can transition to one hidden
-  successor revision;
-- Correct and Forget cannot both commit the same current revision;
+- original and corrected active memories transition to one hidden successor;
+- Correct and Forget cannot both commit one revision;
 - exact replay creates no additional revision or tombstone;
-- stale, cross-scope, already-hidden, pending, and corrupt cases fail closed;
+- stale, cross-scope, hidden, pending, and corrupt cases fail closed;
 - every fault seam converges without re-exposure;
-- M2 excludes current hidden and all prior active physical pages;
-- RelayCTX receives neither memory content nor hidden reason/tombstone metadata;
-- unrelated memory ranking and character/namespace isolation remain unchanged;
+- M2 excludes hidden and every prior active physical page;
+- RelayCTX receives no forgotten content or hidden audit metadata;
+- unrelated ranking and character/namespace isolation are unchanged;
 - historical used-memory receipts remain immutable and truthful;
-- browser mutation authority, filesystem paths, and mock fallback remain absent;
-- documentation continues to state that I-4 runtime, UI, and retrieval exclusion
-  are unimplemented until their respective slices land.
+- browser filesystem authority and mock fallback remain absent.
 
-Phase I-4A itself is validated only as a documentation contract. Its smoke must
-not import production runtime or imply that the target schemas/routes exist.
+I-4B validation proves only the read-only resolver/shared-fence/preflight-token-history boundary. It must not imply hidden apply, M2 exclusion, routes, or UI completion.
 
 ## 22. Explicit non-claims
 
-Phase I-4A does **not** implement or claim:
+Phase I-4A and the completed I-4B boundary do **not** claim:
 
-- production Forget preflight or apply;
-- production lifecycle/current-state resolver changes;
-- production M2 exclusion or RelayCTX behavior change;
-- SOUL Lab Forget UI;
-- hard delete, physical deletion, secure erase, purge, source deletion, protected
-  artifact deletion, or transcript deletion;
-- GDPR, privacy-law, or other legal erasure compliance;
-- bulk Forget;
-- restore or unhide;
-- Pin or Unpin;
-- Merge or Supersession;
-- Held Apply or Discard;
+- production hidden-successor apply or tombstone finalization;
+- production M2/RelayCTX hidden-state exclusion;
+- loopback mutation routes or SOUL Lab Forget UI;
+- hard delete, physical deletion, secure erase, purge, source deletion, protected-artifact deletion, or transcript deletion;
+- GDPR, privacy-law, or other legal-erasure compliance;
+- bulk Forget, restore, or unhide;
+- Pin/Unpin, Merge/Supersession, Held Apply/Discard;
 - Secondary MEM consolidation;
 - RelaySOUL mutation, proposal apply, or rollback;
 - queue scanner, retry scheduler, daemon, worker service, or always-on operation;
 - I1-G pre-enqueue durability;
 - static SOUL Lab serving;
 - TTS, audio, Live2D, or avatar execution;
-- a full generic memory-mutation framework refactor.
+- a broad generic memory-mutation framework refactor.
