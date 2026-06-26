@@ -62,11 +62,16 @@ def validate_model() -> None:
 
 
 def validate_report(relative_path: str) -> None:
-    if not relative_path.startswith("docs/mvp/wave"):
+    parts = Path(relative_path).parts
+    if len(parts) != 4 or parts[0:2] != ("docs", "mvp"):
         raise AssertionError(f"{relative_path}: report must be under docs/mvp/wave<N>/")
-    if not relative_path.endswith("_completion_report.md"):
+    wave = parts[2]
+    filename = parts[3]
+    if not wave.startswith("wave") or not wave[4:].isdigit():
+        raise AssertionError(f"{relative_path}: wave directory must end in digits")
+    if not filename.endswith("_completion_report.md"):
         raise AssertionError(f"{relative_path}: invalid completion report filename")
-    if ".." in Path(relative_path).parts:
+    if ".." in parts:
         raise AssertionError(f"{relative_path}: parent traversal is not allowed")
 
     require_anchors(relative_path, REPORT_ANCHORS)
@@ -84,16 +89,25 @@ def validate_report(relative_path: str) -> None:
             raise AssertionError(f"{relative_path}: unresolved placeholder {placeholder!r}")
 
 
+def all_report_paths() -> tuple[str, ...]:
+    reports = sorted((ROOT / "docs" / "mvp").glob("wave*/*_completion_report.md"))
+    return tuple(path.relative_to(ROOT).as_posix() for path in reports)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("paths", nargs="*")
     parser.add_argument("--check-model", action="store_true")
+    parser.add_argument("--check-all", action="store_true")
     args = parser.parse_args()
-    if not args.check_model and not args.paths:
-        raise AssertionError("pass --check-model and/or one report path")
+    if not args.check_model and not args.check_all and not args.paths:
+        raise AssertionError("pass --check-model, --check-all, and/or one report path")
     if args.check_model:
         validate_model()
-    for relative_path in args.paths:
+    paths = list(args.paths)
+    if args.check_all:
+        paths.extend(all_report_paths())
+    for relative_path in dict.fromkeys(paths):
         validate_report(relative_path)
     print("RelayLM MVP completion report smoke passed")
 
