@@ -92,7 +92,7 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "Same-round replay-to-queue rule",
         "Lane-local failure isolation",
         "Pure disposition contract",
-        "Target-only configuration",
+        "target-only configuration",
         "O1B-O1F handoff",
         "relaylm.local_scheduler_round_result.v0",
         "relaylm.local_scheduler_round_projection.v0",
