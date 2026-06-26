@@ -108,3 +108,5 @@ These are target-only. Experimental SOUL replacement is post-MVP, non-destructiv
 - [O1B Sealed I1-G Replay-Lane Discovery](o1b_sealed_i1g_replay_lane.md) — production bounded replay-lane adapter.
 
 O1B connects O1A's replay `LaneOutcome` to one secure I1-G discovery and one existing I1-GC call. O1C queue discovery is complete; the production round loop remains unimplemented.
+
+- [Wave 2 cross-slice convergence audit](wave2_cross_slice_convergence_audit.md) — integrated I1-GD, I-4C2, O1B, and O1C authority, race, lock/root, leakage, and next-phase boundary.

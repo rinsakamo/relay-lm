@@ -11,6 +11,7 @@ import stat
 from dataclasses import dataclass
 from typing import Any
 
+from .relaymem_slp_durable_finalization_isolation import isolation_filename
 from .relaymem_slp_durable_finalization_replay import _acquire_fence
 from .relaymem_slp_durable_finalization_store import (
     _acquire_lock,
@@ -83,7 +84,7 @@ def _preflight_locator_objects(root: str, locator: str) -> tuple[str, ...]:
     exact_names = {
         f"{record_prefix}.base.json",
         f"{record_prefix}.seal.json",
-        f"{record_prefix}.segment-isolation.json",
+        isolation_filename(locator),
         completion_name,
         lock_name,
     }

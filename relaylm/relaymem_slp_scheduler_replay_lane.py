@@ -9,7 +9,6 @@ sleeps, executes queue work, or mutates I1-G evidence directly.
 from __future__ import annotations
 
 import hashlib
-import importlib
 import os
 import re
 import stat
@@ -30,6 +29,12 @@ from .relaymem_slp_durable_finalization_record import (
 from .relaymem_slp_durable_finalization_replay import (
     replay_relaymem_slp_durable_finalization_record,
     validate_completion_marker,
+)
+from .relaymem_slp_durable_finalization_isolation import (
+    ISOLATION_MAX_BYTES,
+    is_isolation_temp_filename,
+    parse_isolation_filename,
+    read_relaymem_slp_durable_finalization_isolation_fd,
 )
 from .relaymem_slp_durable_finalization_store import (
     _open_store_root,
@@ -554,7 +559,7 @@ def _inventory_root(
                         else max(
                             config.relaymem_slp_durable_finalization_max_record_bytes,
                             _replay_impl._MAX_COMPLETION_BYTES,
-                            _isolation_max_bytes(),
+                            ISOLATION_MAX_BYTES,
                         )
                     )
                     if info.st_size > maximum:
@@ -838,7 +843,7 @@ def _capture_signature(
     try:
         for entry in sorted(entries, key=lambda item: item.name):
             if entry.kind == "isolation":
-                digest = _read_raw_digest(root_fd, entry, _isolation_max_bytes())
+                digest = _read_raw_digest(root_fd, entry, ISOLATION_MAX_BYTES)
                 if digest is None:
                     return None
             else:
@@ -906,15 +911,9 @@ def _parse_component_name(name: str) -> tuple[_ComponentKind, str, int | None] |
         if match:
             sequence = int(match.group(2)) if kind == "segment" else None
             return kind, match.group(1), sequence
-    isolation = _isolation_module()
-    if isolation is not None and name.startswith(_PREFIX):
-        candidate = name[len(_PREFIX): len(_PREFIX) + 64]
-        if _DIGEST_RE.fullmatch(candidate):
-            try:
-                if isolation.isolation_filename(candidate) == name:
-                    return "isolation", candidate, None
-            except (AttributeError, TypeError, ValueError):
-                return None
+    isolation_locator = parse_isolation_filename(name)
+    if isolation_locator is not None:
+        return "isolation", isolation_locator, None
     return None
 
 
@@ -923,41 +922,21 @@ def _control_kind(name: str) -> Literal["lock", "temp"] | None:
         return "lock"
     if _PUBLICATION_TEMP_RE.fullmatch(name) or _COMPLETION_TEMP_RE.fullmatch(name):
         return "temp"
-    if _isolation_module() is not None and re.fullmatch(
-        r"^\.durable-finalization-isolation-[0-9a-f]{32}\.tmp$", name
-    ):
+    if is_isolation_temp_filename(name):
         return "temp"
     return None
 
-def _isolation_module():
-    try:
-        return importlib.import_module(
-            ".relaymem_slp_durable_finalization_isolation", package=__package__
-        )
-    except ImportError:
-        return None
-
-
 def _read_isolation(config: RelayLMConfig, locator: str) -> str:
-    module = _isolation_module()
-    if module is None:
-        return "unsupported"
     root_fd, reasons = _open_store_root(config.relaymem_slp_durable_finalization_root)
     if root_fd is None:
         return "unsafe"
     try:
-        result = module.read_relaymem_slp_durable_finalization_isolation_fd(root_fd, locator)
+        result = read_relaymem_slp_durable_finalization_isolation_fd(root_fd, locator)
     except Exception:
         return "unsafe"
     finally:
         os.close(root_fd)
-    return "loaded" if getattr(result, "status", None) == "loaded" else "unsafe"
-
-
-def _isolation_max_bytes() -> int:
-    module = _isolation_module()
-    value = getattr(module, "ISOLATION_MAX_BYTES", 16 * 1024) if module else 16 * 1024
-    return value if type(value) is int and value > 0 else 16 * 1024
+    return "loaded" if result.status == "loaded" else "unsafe"
 
 
 def _component_max_bytes(config: RelayLMConfig, kind: _ComponentKind) -> int:
@@ -966,7 +945,7 @@ def _component_max_bytes(config: RelayLMConfig, kind: _ComponentKind) -> int:
     if kind == "completion":
         return _replay_impl._MAX_COMPLETION_BYTES
     if kind == "isolation":
-        return _isolation_max_bytes()
+        return ISOLATION_MAX_BYTES
     return config.relaymem_slp_durable_finalization_max_record_bytes
 
 
