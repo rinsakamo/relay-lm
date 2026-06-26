@@ -44,6 +44,8 @@ jobs:
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_concurrency_smoke.py
       - name: I-4C2 security smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_security_smoke.py
+      - name: I-4C2 ownership boundary smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_ownership_boundary_smoke.py
       - name: I-4C1 hidden-successor regression
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_hidden_successor_smoke.py
       - name: I-4C1 fault regression
