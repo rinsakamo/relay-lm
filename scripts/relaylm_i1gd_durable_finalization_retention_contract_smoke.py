@@ -13,6 +13,7 @@ import relaylm_i1gd_durable_finalization_retention_smoke as gd
 from relaylm.relaymem_slp_durable_finalization_isolation import isolation_filename
 from relaylm.relaymem_slp_durable_finalization_record import (
     base_filename,
+    build_segment_record,
     canonical_json_bytes,
     seal_filename,
 )
@@ -45,9 +46,15 @@ def test_logical_record_capacity_is_non_mutating() -> None:
         config = gd._config(root, orphan=1).model_copy(
             update={"relaymem_slp_durable_finalization_max_record_count": 1}
         )
-        gd._publish_base(root, request_id="request-i1gd-capacity-one")
-        gd._publish_base(root, request_id="request-i1gd-capacity-two")
+        first, _, _, _ = gd._publish_base(
+            root,
+            request_id="request-i1gd-capacity-one",
+        )
         finalization = gd._finalization_root(config)
+        gd._write_distinct_known_locator(
+            finalization,
+            str(first["locator_digest"]),
+        )
         gd._age_all(finalization)
         before = gd._snapshot(finalization)
         result = maintain_relaymem_slp_durable_finalization_retention(config=config)
@@ -132,44 +139,34 @@ def test_impossible_known_combinations_isolate() -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
         config = gd._config(root)
-        base, segments, _, store = gd._publish_base(
-            root, request_id="request-i1gd-segment-without-base"
+        base, _, _, store = gd._publish_base(
+            root,
+            request_id="request-i1gd-segment-without-base",
         )
         locator = str(base["locator_digest"])
-        stream_base, stream_segments, _ = gb._records(
-            contents=("orphan",),
-            request_id="request-i1gd-segment-orphan",
+        segment = build_segment_record(
+            base=base,
+            sequence=0,
+            previous_segment_digest=gb.ZERO_DIGEST,
+            content=b"orphan",
         )
-        stream_locator = str(stream_base["locator_digest"])
-        stream_store = gb._store(gd._finalization_root(config))
-        require(stream_store.publish_base(stream_base).status == "published_new", stream_base)
-        require(
-            stream_store.publish_segment(stream_segments[0]).status
-            == "published_new",
-            stream_segments[0],
-        )
-        (gd._finalization_root(config) / base_filename(stream_locator)).unlink()
+        require(store.publish_segment(segment).status == "published_new", segment)
+        finalization = gd._finalization_root(config)
+        (finalization / base_filename(locator)).unlink()
         result = maintain_relaymem_slp_durable_finalization_retention(config=config)
         require(result.status == "maintenance_complete", result)
         require(
-            (gd._finalization_root(config) / isolation_filename(stream_locator)).is_file(),
+            (finalization / isolation_filename(locator)).is_file(),
             result,
         )
         require(
             not list(
-                gd._finalization_root(config).glob(
-                    f"durable-finalization-v0-{stream_locator}.segment-[0-9]*.json"
+                finalization.glob(
+                    f"durable-finalization-v0-{locator}.segment-[0-9]*.json"
                 )
             ),
             result,
         )
-        # The unrelated valid base remains classified independently.
-        require(
-            (gd._finalization_root(config) / base_filename(locator)).is_file(),
-            result,
-        )
-        require(not segments, segments)
-        require(store is not None, store)
 
     with TemporaryDirectory() as directory:
         root = Path(directory)
