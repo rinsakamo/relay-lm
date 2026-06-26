@@ -26,6 +26,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed implementation status and dependency-first sequencing.
 - [Post-I3 evaluation and work roadmap](architecture/post_i3_evaluation_work_roadmap.md) — I-4 through I-9, durability, operations, UI, and evaluation gates.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
+- [E1 local runtime evaluation](architecture/e1_local_runtime_evaluation_2026_06_25.md) — workstation evidence and known product gaps.
 - [MVP evidence index](mvp/README.md) — historical snapshots and per-PR implementation completion reports.
 
 ## Current product-critical boundaries
@@ -40,7 +41,8 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [O1B sealed I1-G replay lane](architecture/o1b_sealed_i1g_replay_lane.md)
 - [O1C eligible B2/B3 queue lane](architecture/o1c_eligible_b2_queue_lane.md)
 - [O1D1 accepted scheduler gates and one production round](architecture/o1d1_production_scheduler_round.md)
-- [I1-G durable-finalization contract and completed GA-GD boundaries](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
+- [O1 manual one-round runbook](smoke/o1_manual_one_round_runbook.md)
+- [I1-G durable-finalization contract and completed GA-GE boundaries](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD durable-finalization retention and isolation lifecycle](architecture/i1gd_durable_finalization_retention_cleanup.md)
 - [I1-GE Durable-finalization Crash Validation](architecture/i1ge_durable_finalization_crash_validation.md)
 - [Integration I1 Primary MEM two-turn recall](architecture/integration_i1_primary_mem_two_turn_recall.md)
