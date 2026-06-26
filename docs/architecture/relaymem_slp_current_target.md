@@ -87,7 +87,7 @@ Phase 6-B1 consumes the A2 runtime-private handoff and performs no queue I/O.
 
 Phase 6-B2 performs atomic durable enqueue behind explicit gates.
 
-Phase 6-B3 owns default-off claim, lease renewal, retry release, stale recovery, and terminal commit. It owns queue metadata only and never executes a worker.
+Phase 6-B3 performs default-off, dry-run-first `claim`, `renew_lease`, `retry_release`, `stale_recovery`, and `commit_terminal`. It owns queue metadata only and never executes a worker.
 
 I1-B runs A1 -> A2 -> B1 -> C1-5 protected-source publication -> B2 queue publication after ordinary managed response finalization. It never claims or executes work inline.
 
