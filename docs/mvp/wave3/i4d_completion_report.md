@@ -5,17 +5,17 @@
 - Slice: Phase I-4D Primary lifecycle-aware retrieval exclusion
 - Start main SHA: `4d31f45cfba967e23bd50f01f3c3d7ce9a8d0a33`
 - Branch: `phase-i4d-primary-retrieval-exclusion`
-- PR: pending
+- PR: #413
 
 ## Implemented boundary
 
-- Ordinary retrieval now consumes the complete shared Correct/Forget current-state index.
+- Ordinary retrieval consumes the complete shared Correct/Forget current-state index.
 - Only the canonical current active physical revision remains eligible.
 - Prior, hidden, prepared, recovery-required, corrupt, ambiguous, unresolved, and unsafe candidates fail closed.
 - Existing M2 ordering, relevance, caps, budgets, and bounded handoff reconstruction remain authoritative.
 - Fresh RelayCTX/backend-bound requests cannot include forgotten content.
 - Historical used-memory receipts remain immutable.
-- A separate `relaylm.lab.memory_used_lifecycle.v1` read-only projection overlays current lifecycle without changing v0 compatibility.
+- The separate `relaylm.lab.memory_used_lifecycle.v1` projection overlays current lifecycle without changing v0 compatibility.
 
 ## Validation
 
@@ -25,10 +25,9 @@ Workflow result: pending PR execution.
 
 ## Documentation governance
 
-Per the Wave 3 convergence rule, this implementation PR adds only the dedicated architecture handoff and this completion report. Shared status and roadmap documents remain reserved for the Wave 3 integration update.
+Per the Wave 3 convergence rule, this PR adds only the dedicated architecture handoff and this completion report. Shared status documents remain reserved for the Wave 3 integration update.
 
 ## Remaining boundary
 
 - I-4E loopback API and SOUL Lab mutation UI: unimplemented.
 - I-4F full production validation: unimplemented.
-- Restore, physical removal, and later lifecycle operations: out of scope.
