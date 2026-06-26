@@ -38,7 +38,7 @@ I1-GA is complete as the contract, design decision, pure fault model, and valida
 
 I1-GE full production crash validation remains unimplemented. I1-G overall remains in progress until that boundary lands.
 
-O1A defines only the scheduler-side two-lane round contract. Future O1B discovers at most one eligible sealed record, canonically rereads eligibility, and calls I1-GC once. O1B does not own replay, completion, C1-5, B2, retention, or cleanup.
+O1A defines only the scheduler-side two-lane round contract. O1B is complete for one bounded eligible sealed-record discovery, canonical selected-record reread, and at most one existing I1-GC call. O1C is complete for one independent bounded B2/B3 queue discovery, canonical reread, server-owned scope resolution, and at most one existing C2 call. Neither lane owns I1-G replay, completion, C1-5, B2/B3 lifecycle, retention, cleanup, or worker execution.
 
 ## Problem and resolved recovery window
 
@@ -248,7 +248,7 @@ Apply requires the exact enabled/dry-run/apply gate combination, valid absolute 
 
 ## O1B caller boundary
 
-Future O1B may perform one bounded non-recursive discovery, secure eligibility classification, deterministic one-candidate selection, canonical reread, and one I1-GC call. It must not:
+O1B performs one bounded non-recursive discovery, secure eligibility classification, deterministic one-candidate selection, canonical reread, and at most one I1-GC call. It must not:
 
 ```text
 reconstruct protected content
@@ -259,7 +259,7 @@ extract job/dispatch identity for the queue lane
 scan repeatedly, sleep, retry, or execute a worker
 ```
 
-After replay, the queue lane independently discovers the queue root. Same-round execution of a newly converged B2 record is possible but not guaranteed or specially prioritized.
+After replay, O1C independently discovers the queue root. Same-round execution of a newly converged B2 record is possible but not guaranteed or specially prioritized.
 
 ## Remaining slices
 
@@ -283,9 +283,17 @@ Bounded retention, orphan reconciliation, immutable content-free isolation, shar
 
 Full production crash-at-every-boundary integration smoke across non-stream, stream, publication, visible release, C1-5, B2 ambiguity, completion, concurrency, restart, retention, and leakage.
 
-### O1B through O1F — unimplemented
+### O1B — complete
 
-Production discovery, queue-lane delegation, ordering/fairness/retry policy, stale recovery/shutdown, and operational validation.
+One bounded sealed I1-G discovery, canonical selected-record reread, and at most one existing I1-GC delegation.
+
+### O1C — complete
+
+One bounded B2/B3 discovery, due/future classification, canonical selected-record reread, server-owned scope resolution, and at most one existing C2 delegation.
+
+### O1D through O1F — unimplemented
+
+Ordering/fairness/retry policy, stale recovery/shutdown, and operational validation.
 
 ## Validation boundary
 
@@ -293,4 +301,4 @@ I1-GC validation covers sealed-only, source-only, source+queue, exact duplicate,
 
 I1-GD validation covers default-off and dry-run gates, bounded inventory, fresh/expired incomplete records, sealed-pending retention, exact completion cleanup eligibility, corrupt/unsupported isolation, marker duplicate/collision behavior, interrupted cleanup convergence, marker-last deletion, shared-fence contention, root-lock publication exclusion, unsafe-file non-mutation, future-clock retention, downstream non-mutation, replay exclusion after isolation, and leakage canaries.
 
-Current status documents must describe I1-GA through I1-GD as complete and leave I1-GE and O1B onward unimplemented.
+Current status documents must describe I1-GA through I1-GD, O1B, and O1C as complete; I1-GE and O1D onward remain unimplemented.
