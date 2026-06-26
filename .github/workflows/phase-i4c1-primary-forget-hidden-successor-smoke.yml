@@ -48,6 +48,8 @@ jobs:
       - run: python -m compileall -q relaylm scripts
       - name: I-4C1 hidden-successor smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_hidden_successor_smoke.py
+      - name: I-4C1 corrected-revision smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_corrected_revision_smoke.py
       - name: I-4C1 fault-seam smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_fault_smoke.py
       - name: I-4C1 concurrency smoke
