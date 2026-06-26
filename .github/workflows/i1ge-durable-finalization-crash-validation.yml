@@ -24,7 +24,7 @@ permissions:
 jobs:
   crash-validation:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -32,27 +32,23 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install -e .
       - run: python -m compileall -q relaylm scripts
-      - name: Replay crash smoke
-        id: replay
-        continue-on-error: true
-        run: mkdir -p i1ge-logs; PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_replay_crash_smoke.py >i1ge-logs/replay.log 2>&1
-      - name: Retention crash smoke
-        id: retention
-        continue-on-error: true
-        run: mkdir -p i1ge-logs; PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_retention_crash_smoke.py >i1ge-logs/retention.log 2>&1
-      - name: Upload diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: i1ge-final-replay-diagnostics
-          path: i1ge-logs
-          if-no-files-found: error
-      - name: Assert diagnostic smokes
-        if: always()
-        env:
-          REPLAY: ${{ steps.replay.outcome }}
-          RETENTION: ${{ steps.retention.outcome }}
-        run: |
-          cat i1ge-logs/*.log
-          test "$REPLAY" = success
-          test "$RETENTION" = success
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_nonstream_crash_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_stream_crash_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_replay_crash_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_retention_crash_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_concurrency_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_security_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gb_durable_finalization_app_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gc_durable_finalization_replay_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_contract_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_race_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_o1b_sealed_replay_lane_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_wave2_cross_slice_convergence_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_wave2_cross_slice_security_smoke.py
+      - run: PYTHONPATH=. python scripts/relaylm_mvp_completion_report_smoke.py --check-model --check-all
+      - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+      - run: test -z "$(git status --short)"
