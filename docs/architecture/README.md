@@ -78,6 +78,8 @@ I1-GA defines the turn-scoped sealed durable-finalization contract and fault mod
 
 The next planned work is documented in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md). I1-GC through I1-GE, Phase I-4C through I-4F, O1B through O1F, O2/O3 automatic and supervised operation, later memory governance, Secondary MEM, and RelaySOUL apply/rollback remain separate.
 
+Current I-4C1 exposes the hidden / recovery_required resolver state. O1B through O1F remain separate production scheduling work.
+
 ## Completed Core streaming boundary
 
 - [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md)
