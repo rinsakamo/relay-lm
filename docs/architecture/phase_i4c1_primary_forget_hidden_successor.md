@@ -1,11 +1,28 @@
+---
+relaylm_doc_type: implementation_handoff
+relaylm_authority: phase_i4c1_primary_forget_hidden_successor_commit
+relaylm_status: historical_after_merge
+relaylm_volatility: frozen
+relaylm_owner: relaymem_soul_lab_integration
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - phase_i4_primary_mem_forget_hide_contract.md
+  - phase_i4b_primary_current_state_shared_fence.md
+  - phase_i4c2_primary_forget_recovery_finalization.md
+  - phase_i4d_primary_retrieval_exclusion.md
+relaylm_not_authoritative_for:
+  - I-4C2 recovery and tombstone finalization
+  - I-4D ordinary retrieval exclusion
+  - I-4E API or UI
+  - I-4F validation
+---
 # Phase I-4C1 Primary Forget Hidden-Successor Commit
 
 Status: complete for the bounded I-4C1 commit boundary.
 
 ## Scope
 
-I-4C1 consumes one exact I-4B Forget apply token for a real current active
-Primary MEM and establishes durable lifecycle commit ownership:
+I-4C1 consumes one exact I-4B Forget apply token for a real current active Primary MEM and establishes durable lifecycle commit ownership:
 
 ```text
 exact token + exact bounded reason
@@ -20,27 +37,13 @@ exact token + exact bounded reason
   -> hidden / recovery_required / retrieval_eligible=false
 ```
 
-This phase does not run M3f or M3g, does not publish a Forget tombstone or an
-applied receipt, does not resume a prepared operation after restart, and does
-not claim ordinary M2 or RelayCTX exclusion is already enforced.
+This phase does not run M3f or M3g, does not publish a Forget tombstone or an applied receipt, does not resume a prepared operation after restart, and does not itself claim ordinary M2 or RelayCTX exclusion is enforced. Those are owned by later slices.
 
 ## Shared mutation authority
 
-Correct and Forget use
-`relaymem_primary_mutation_coordinator.primary_memory_mutation_lock` at the
-existing `memory/mem/corrections/v0/<logical-memory-id>/.lock` location.  The
-coordinator recognizes:
+Correct and Forget use `relaymem_primary_mutation_coordinator.primary_memory_mutation_lock` at the existing `memory/mem/corrections/v0/<logical-memory-id>/.lock` location. The coordinator recognizes Correct `prepared` and `applied` artifacts, Forget `prepared` artifacts, same-operation conflicts, and unknown/noncanonical/unsafe/ambiguous revision evidence as corruption.
 
-- Correct `prepared` and `applied` artifacts;
-- Forget `prepared` artifacts;
-- same operation ID with a different kind or binding as a conflict;
-- unknown, noncanonical, duplicate-key, unsafe, ambiguous, and impossible
-  revision evidence as corruption.
-
-The lock-internal sequence is token validation, exact operation inspection,
-current-state reread, revision claim, prepared publication, and hidden page
-publication.  No lock-acquisition-time read made outside the lock is commit
-authority.
+The lock-internal sequence is token validation, exact operation inspection, current-state reread, revision claim, prepared publication, and hidden page publication. No lock-acquisition-time read made outside the lock is commit authority.
 
 ## Prepared artifact
 
@@ -81,18 +84,13 @@ status
 recovery_required
 ```
 
-The bounded reason is repeated at apply time and remains runtime-private.  The
-I-4B reason digest binding is not weakened.  Publication uses canonical UTF-8
-JSON, exact keys, duplicate-key rejection, create-if-absent no-clobber
-semantics, file fsync, directory fsync, canonical reread, bounded size, and
-symlink/hardlink/unsafe-file rejection.
+The bounded reason is repeated at apply time and remains runtime-private. The I-4B reason digest binding is not weakened. Publication uses canonical UTF-8 JSON, exact keys, duplicate-key rejection, create-if-absent no-clobber semantics, file fsync, directory fsync, canonical reread, bounded size, and symlink/hardlink/unsafe-file rejection.
 
 ## Hidden lifecycle page
 
 Schema: `relaymem.primary_lifecycle_page.v0`.
 
-Existing active `relaymem.primary_page.v0` pages remain compatible.  The hidden
-schema is strict and adds canonical lifecycle metadata:
+Existing active `relaymem.primary_page.v0` pages remain compatible. The hidden schema is strict and adds canonical lifecycle metadata:
 
 ```text
 lifecycle_state = hidden
@@ -105,28 +103,19 @@ operation_key
 binding_digest
 ```
 
-It preserves character/namespace scope through the prepared binding and page
-namespace, and preserves source event, memory kind, and lineage continuity.
-Reason, token, and ordinary memory content are not copied into the hidden page.
-The page body is a fixed lifecycle projection, not a hidden marker embedded in
-free-form memory text.
+It preserves character/namespace scope through the prepared binding and page namespace, and preserves source event, memory kind, and lineage continuity. Reason, token, and ordinary memory content are not copied into the hidden page. The page body is a fixed lifecycle projection, not a hidden marker embedded in free-form memory text.
 
 ## Determinism and M3e commit point
 
-The candidate and physical identities bind the logical memory ID, prior
-physical ID and revision, result revision, namespace, character, operation key,
-binding digest, target hidden lifecycle, source event kind, memory kind, and
-lineage fingerprint.  Time and randomness are not identity authority.
+The candidate and physical identities bind the logical memory ID, prior physical ID and revision, result revision, namespace, character, operation key, binding digest, target hidden lifecycle, source event kind, memory kind, and lineage fingerprint. Time and randomness are not identity authority.
 
 The I-4C1 commit point is reached only when all are true:
 
 1. the exact Forget prepared artifact is durable;
-2. the expected hidden successor was newly published by M3e or the exact same
-   canonical page was already present;
+2. the expected hidden successor was newly published by M3e or the exact same canonical page was already present;
 3. the M3e receipt identity, path, and digest match the prepared artifact;
 4. the page was canonically reread;
-5. lifecycle, revision, prior-physical, operation, scope, and lineage linkage
-   all match.
+5. lifecycle, revision, prior-physical, operation, scope, and lineage linkage all match.
 
 After that point the resolver returns:
 
@@ -136,14 +125,11 @@ mutation_state = recovery_required
 retrieval_eligible = false
 ```
 
-Controls can still point to the prior active page because M3f/M3g are outside
-this phase.  The resolver never falls back to that prior active page after an
-exact hidden commit.
+Controls can still point to the prior active page because M3f/M3g are outside this phase. The resolver never falls back to that prior active page after an exact hidden commit.
 
 ## Prepared-only state
 
-When the prepared artifact exists and the hidden page does not, the resolver
-returns:
+When the prepared artifact exists and the hidden page does not, the resolver returns:
 
 ```text
 lifecycle_state = active
@@ -151,15 +137,11 @@ mutation_state = prepared
 retrieval_eligible = false
 ```
 
-This is durable continuation evidence for I-4C2.  I-4C1 intentionally does not
-resume the operation.
+This is durable continuation evidence for I-4C2. I-4C1 intentionally does not resume the operation.
 
 ## Content-free result
 
-`PrimaryForgetCommitResult` exposes only bounded state and revision facts.  Its
-`repr` and log projection exclude title, summary, reason, character, namespace,
-logical and physical IDs, operation identifiers, tokens, digests, lineage,
-store paths, nested prepared artifacts, nested M3e receipts, and raw exceptions.
+`PrimaryForgetCommitResult` exposes only bounded state and revision facts. Its `repr` and log projection exclude title, summary, reason, character, namespace, logical and physical IDs, operation identifiers, tokens, digests, lineage, store paths, nested prepared artifacts, nested M3e receipts, and raw exceptions.
 
 ## Fault seams
 
@@ -174,20 +156,16 @@ after_hidden_successor_publication_before_reread
 after_hidden_successor_reread_before_return
 ```
 
-A post-prepare fault leaves `active / prepared / false`.  A post-page fault
-leaves `hidden / recovery_required / false`.  Neither state is rolled back.
+A post-prepare fault leaves `active / prepared / false`. A post-page fault leaves `hidden / recovery_required / false`. Neither state is rolled back.
 
-## Still unimplemented
+## Completed continuation after I-4C1
 
-- I-4C2 exact prepared resume, operation-scoped M3f/M3g convergence,
-  forward-only recovery, response-loss replay, and tombstone authority are complete;
-- I-4D ordinary M2/RelayCTX hidden and prior-revision exclusion is unimplemented;
+I-4C2 is complete for exact prepared resume, operation-scoped M3f/M3g convergence, forward-only recovery, response-loss replay, and tombstone authority. I-4D is complete for ordinary M2/RelayCTX hidden/prior-revision exclusion and historical lifecycle overlay. These later completions do not change the I-4C1 ownership boundary.
+
+## Still unimplemented after Wave 3
+
 - I-4E loopback API and SOUL Lab UI;
-- I-4F full crash/response-loss validation;
-- restore/unhide, physical deletion, secure erase, Pin/Unpin,
-  Merge/Supersession, Held Apply/Discard, Secondary consolidation, and
-  RelaySOUL mutation.
+- I-4F full crash/race/security/fresh-conversation validation;
+- restore/unhide, physical deletion, secure erase, Pin/Unpin, Merge/Supersession, Held Apply/Discard, Secondary consolidation, and RelaySOUL mutation.
 
-I-4C1 therefore completes hidden-successor commit ownership. I-4C2 now completes
-the bounded recovery/finalization continuation, but Phase I-4 as a whole and
-product-complete Forget behavior remain incomplete until I-4D through I-4F.
+I-4C1 therefore completes hidden-successor commit ownership only. Product-complete Forget behavior still requires I-4E and I-4F.
