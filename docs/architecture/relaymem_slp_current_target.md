@@ -127,6 +127,8 @@ O0 remains default-off, operator-invoked, and one-shot.
 
 O1A is contract-only. O1B/O1C production discovery and delegation, O1D fairness/retry/backoff, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.
 
+O1 polling/retry scheduling, O2 supervision, and O3 always-on operation remain unimplemented.
+
 O1A proposed scheduler field names are target-only. `relaylm/config.py`, `docs/config_schema.md`, `config.example.yaml`, and CLI behavior do not accept or expose them.
 
 ## Current Primary mutation and lifecycle-read boundary

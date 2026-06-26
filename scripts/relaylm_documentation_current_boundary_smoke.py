@@ -257,7 +257,6 @@ FORBIDDEN: dict[str, tuple[str, ...]] = {
         "I-4B  common current-state resolver and shared Correct/Forget fence   unimplemented",
         "I-4C1 shared revision claim, prepared artifact, hidden successor         unimplemented",
         "the canonical lifecycle resolver defined by I-4A",
-        "O1 polling/retry scheduling, O2 supervision, and O3 always-on operation remain unimplemented",
     ),
     "docs/README.md": (
         "Phase I-4A is defined as a target contract only.",

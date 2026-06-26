@@ -1,10 +1,26 @@
+---
+relaylm_doc_type: documentation_index
+relaylm_authority: relaysoul_documentation_entrypoint
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: relaysoul
+relaylm_update_trigger:
+  - RelaySOUL documentation entry points change
+  - RelaySOUL current or target boundary changes
+  - experimental RelaySOUL work is added or removed
+relaylm_not_authoritative_for:
+  - current runtime behavior
+  - exact schema details
+  - implementation phase completion claims
+relaylm_current_status_source: ../PROJECT_STATUS.md
+---
 # RelaySOUL Design and Gate Docs
 
-This directory indexes RelaySOUL persona-source calibration, update cadence, dry-run/preflight chains, persistence design, and execution-gate documentation.
+This directory indexes RelaySOUL persona-source calibration, update cadence, dry-run/preflight chains, persistence design, execution-gate documentation, and explicitly post-MVP experimental SOUL replacement work.
 
 RelaySOUL artifact schemas and content-free contracts remain under `docs/contracts/`. MVP milestone summaries remain under `docs/mvp/`.
 
-The RelaySOUL design, cadence, chain, persistence architecture, and execution-gate documents tracked by this index are housed in this directory.
+The RelaySOUL design, cadence, chain, persistence architecture, execution-gate, and experimental replacement documents tracked by this index are housed in this directory.
 
 ## Current and target boundary
 
@@ -19,6 +35,10 @@ The target migration must update patch, revision, approval, apply, rollback, sto
 - [RelaySOUL persona source calibration design](relaysoul_design.md)
 - [RelaySOUL persona update cadence design](persona_update_cadence_design.md)
 - [RelaySOUL persistence storage design](relaysoul_persistence_storage_design.md)
+
+## Post-MVP experimental design
+
+- [Experimental SOUL Replacement and Memory Bootstrap Design](experimental_soul_replacement_memory_bootstrap_design.md) — future high-risk non-destructive SOUL fork, SLP-governed memory inheritance, optional provisional virtual memory from conversation history, fresh relationship state, and explicit rollback. This is not part of the MVP or ordinary same-character SOUL revision.
 
 ## Chain summaries
 
@@ -41,4 +61,4 @@ The target migration must update patch, revision, approval, apply, rollback, sto
 
 ## Placement rule
 
-Create RelaySOUL design, cadence, chain, persistence architecture, and execution-gate docs directly under `docs/relaysoul/`. Keep schemas and artifact contracts under `docs/contracts/`.
+Create RelaySOUL design, cadence, chain, persistence architecture, execution-gate, and experimental replacement docs directly under `docs/relaysoul/`. Keep schemas and artifact contracts under `docs/contracts/`.

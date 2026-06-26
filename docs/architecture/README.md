@@ -27,6 +27,14 @@ Canonical authority:
 3. Dedicated current contracts
 4. [Current / Target / Migration Guide](current_target_migration_guide.md)
 
+## Character cognition and relationship dynamics
+
+- [Character Belief, Relationship, and Social Expression Dynamics](character_belief_relationship_dynamics_design.md) — target cross-component model for observation provenance, shared versus character-conditioned belief, conversational probing, relationship-conditioned EMO gain, multi-user audience boundaries, bounded relationship leakage, and mismatch repair.
+- [ADR: Character-conditioned belief without rewriting observation](../adr/character_conditioned_belief_model.md) — durable decision to preserve a character-independent observation ledger while allowing revisable character-specific inference and expression.
+- [Experimental SOUL Replacement and Memory Bootstrap](../relaysoul/experimental_soul_replacement_memory_bootstrap_design.md) — explicitly post-MVP high-risk SOUL fork with SLP-governed memory inheritance, optional provisional virtual memory from conversation history, fresh relationship state, and non-destructive rollback.
+
+These documents define target architecture only. They do not claim that current RelaySLP, RelayMEM, RelaySOUL, RelaySCN, or RelayEMO implements the proposed artifacts or coupling. Experimental SOUL replacement is not part of MVP completion or ordinary same-character RelaySOUL revision.
+
 ## Product-critical Phase 6 and Integration boundaries
 
 - [Phase 6 Asynchronous RelaySLP Bounded Slice](phase6_async_relayslp_bounded_slice.md)
@@ -71,6 +79,8 @@ I1-GA defines the turn-scoped sealed durable-finalization contract and fault mod
 
 The next planned work is documented in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md). I1-GC through I1-GE, Phase I-4C2 through I-4F, O1/O2/O3 automatic and supervised operation, later memory governance, Secondary MEM, and RelaySOUL apply/rollback remain separate.
 
+Phase I-4C1 exposes the hidden / recovery_required resolver state. O1B through O1F remain unimplemented production scheduling work.
+
 ## Completed Core streaming boundary
 
 - [Phase 5.5 Stream Unpack Bounded Slice](phase5_5_stream_unpack_bounded_slice.md)
@@ -80,6 +90,7 @@ Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, 
 ## Memory lifecycle
 
 - [Memory Lifecycle Design](memory_lifecycle_design.md) — short-term CTX, governed experience evidence, autonomous ordinary MEM formation, RelaySLP, and SOUL Lab memory operations.
+- [Character Belief, Relationship, and Social Expression Dynamics](character_belief_relationship_dynamics_design.md) — target observation, belief, relationship, probe, repair, and multi-user expression model; not current runtime behavior.
 - [Phase I-4A Primary MEM Forget / Hide Contract](phase_i4_primary_mem_forget_hide_contract.md) — exact target lifecycle, revision, persistence, recovery, and retrieval-exclusion semantics.
 - [Phase I-4B Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md) — implemented read-only resolver, shared lock/fence, token, and zero-item history boundary.
 - [Phase I-4C1 Primary Forget Hidden-Successor Commit](phase_i4c1_primary_forget_hidden_successor.md) — implemented exact prepare, deterministic hidden page, M3e commit, and recovery-required resolver boundary.
