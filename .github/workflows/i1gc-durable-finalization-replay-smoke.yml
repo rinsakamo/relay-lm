@@ -54,7 +54,22 @@ jobs:
       - name: Compile repository Python
         run: python -m compileall -q relaylm scripts
       - name: Run I1-GC replay convergence smoke
-        run: PYTHONPATH=. python scripts/relaylm_i1gc_durable_finalization_replay_smoke.py
+        id: i1gc
+        shell: bash
+        run: |
+          set +e
+          PYTHONPATH=. python scripts/relaylm_i1gc_durable_finalization_replay_smoke.py > i1gc-smoke.log 2>&1
+          exit_code=$?
+          cat i1gc-smoke.log
+          exit "$exit_code"
+      - name: Upload I1-GC smoke output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: i1gc-smoke-output
+          path: i1gc-smoke.log
+          if-no-files-found: error
+          retention-days: 3
       - name: Run I1-G contract and I1-GB publication regressions
         run: |
           PYTHONPATH=. python scripts/relaylm_i1g_pre_enqueue_fault_model_smoke.py
