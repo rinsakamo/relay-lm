@@ -26,6 +26,8 @@ Phase I-3 per-memory `.lock` path as the shared Correct/Forget mutation fence,
 and defines read-only Forget preflight, five-minute token validation, and bounded
 zero-item history behavior.
 
+The bounded zero-item history behavior is read-only and creates no durable Forget artifact.
+
 The resolver returns one stable logical identity, current physical identity,
 current revision, lifecycle state, mutation state, retrieval eligibility,
 validated control/page status, and bounded content-free reasons. Valid unresolved

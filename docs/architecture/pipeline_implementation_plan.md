@@ -34,6 +34,7 @@ relaylm_related_authority:
   - phase_i2_real_soul_lab_observation.md
   - phase_i3_auditable_primary_mem_correct.md
   - phase_i4_primary_mem_forget_hide_contract.md
+  - phase_i4b_primary_current_state_shared_fence.md
   - soul_lab_ui_b0_real_home_conversation.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - post_i3_evaluation_work_roadmap.md
@@ -44,7 +45,7 @@ relaylm_related_authority:
 ---
 # RelayLM Pipeline Implementation Plan
 
-Last reviewed: 2026-06-25 JST
+Last reviewed: 2026-06-26 JST
 
 ## Purpose
 
@@ -82,7 +83,8 @@ RelayMEM Primary integration:
   Phase I-2 observation: complete
   Phase I-3 Correct: complete
   Phase I-4A Forget / Hide contract: defined target
-  Phase I-4B through I-4F runtime, M2, UI, and validation: unimplemented
+  Phase I-4B resolver/shared fence/read-only Forget boundary: complete
+  Phase I-4C through I-4F hidden apply, M2, UI, and validation: unimplemented
 
 SOUL Lab:
   UI-A0 through UI-A7: complete
@@ -121,7 +123,7 @@ Phase 6-C2 one-job claim/rehydrate/execute adapter is complete. It accepts one e
 
 O0 local one-job operation is complete. `relaylm-worker --once --config config.yaml` performs bounded non-recursive discovery, selects at most one eligible queued record, securely rereads it, resolves the exact config-owned character partition, and delegates unchanged authority to C2/B3/C1-5/C1-2.
 
-Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, and UI-B0 Real Home Conversation are complete. I1-GA contract/design/fault-model work and I1-GB pre-release durable publication are complete. I1-GC through I1-GE remain planned; restart replay/completion convergence, cleanup, and full crash validation are unimplemented. Phase I-4A defines the exact Forget / Hide target contract only.
+Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, UI-B0 Real Home Conversation, and the I-4B read-only resolver/shared-fence boundary are complete. I1-GA contract/design/fault-model work and I1-GB pre-release durable publication are complete. I1-GC through I1-GE remain planned; restart replay/completion convergence, cleanup, and full crash validation are unimplemented. Phase I-4A remains the exact Forget / Hide target contract, while I-4C through I-4F remain unimplemented.
 
 ## Completed foundation
 
@@ -230,7 +232,7 @@ Forget tombstone  immutable runtime-private audit/recovery artifact
 
 Candidate A is selected: revision `N active` advances to one immutable successor Primary page at revision `N+1 hidden`, followed by M3f/M3g convergence, retrieval-exclusion verification, and tombstone finalization. The page is lifecycle authority; the tombstone is not an independent sidecar flag.
 
-Correct and Forget must share one per-memory lock namespace, pending-operation fence, operation identity lookup, and revision claim. Production routes, apply, M2 exclusion, history projection, and UI are unimplemented.
+Correct and Forget must share one per-memory lock namespace, pending-operation fence, operation identity lookup, and revision claim. I-4B now implements the canonical read-only resolver, shared `.lock`/fence, preflight, token validation, and bounded zero-item history. Hidden-successor apply, durable history artifacts/projection, M2 exclusion, loopback routes, and UI remain unimplemented.
 
 ### UI-B0: Real Home Conversation — complete
 
@@ -252,17 +254,17 @@ I1-GB prevents RelayLM from intentionally releasing protected non-stream content
 
 I1-G is not queue scanning, worker scheduling, or C2 execution. O1 may later call the I1-GC one-record replay contract.
 
-## Phase I-4B through I-4F: Forget / Hide implementation — planned
+## Phase I-4B through I-4F: Forget / Hide implementation
 
 ```text
 I-4B  canonical resolver, shared Correct/Forget fence,
-      exact read-only preflight/history/token
+       exact read-only preflight/history/token — complete
 
 I-4C  immutable hidden successor, prepared artifact,
-      tombstone, exact replay, and forward-only recovery
+       tombstone, exact replay, and forward-only recovery
 
 I-4D  index/log convergence, M2 exclusion,
-      historical lifecycle projection
+       historical lifecycle projection
 
 I-4E  loopback API and SOUL Lab Forget UI
 
@@ -342,17 +344,17 @@ UI-B1A is read-only and remains outside queue, worker, and mutation authority.
 
 ## Dependency-first execution waves
 
-### Wave 0 — current parallel work
+### Wave 0 — completed implementation foundation
 
 ```text
 Thread A  I1-GB durable-finalization publication — complete
-Thread B  I-4B resolver/shared fence/read-only Forget
-Thread C  O1A scheduling contract only
+Thread B  I-4B resolver/shared fence/read-only Forget — complete
+Thread C  O1A scheduling contract only — remains planned
 ```
 
-I1-GB is complete. After I-4B lands, rerun response/I1-B/C1-5/B2/UI-B0 regressions and I-3 Correct/resolver/M2-equivalence regressions before entering the shared Wave 1 work.
+I1-GB and I-4B are complete, and their response/I1-B/C1-5/B2/UI-B0 plus I-3 Correct/resolver/M2-equivalence regressions passed on the final I-4B head. Wave 1 is now the active implementation boundary.
 
-### Wave 1 — one-record recovery and lifecycle commit ownership
+### Wave 1 — current: one-record recovery and lifecycle commit ownership
 
 ```text
 Thread A  I1-GC one-record replay
@@ -417,18 +419,23 @@ E2  governed Primary MEM product
 
 ## Product evaluation sequence
 
-The explicit E1 path is complete:
+The explicit E1 evaluation is complete across two proven lanes:
 
 ```text
-Home real conversation
+explicit trusted scene-qualified managed request
   -> O0 one-job execution
   -> Primary MEM formation
   -> Phase I-2 observation
   -> Phase I-3 Correct
+
+Home real conversation
+  -> existing M2 / RelayCTX recall
   -> Home New Conversation
   -> corrected-memory question
   -> Phase I-2 used-memory evidence
 ```
+
+Direct Home-origin formation remains unproven because UI-B0 does not send trusted scene-admission metadata.
 
 The loop remains operator-driven until O1 lands.
 
@@ -436,16 +443,13 @@ Recommended next sequence:
 
 ```text
 completed:
-  I1-GB
+  I1-GB || I-4B
 
 current:
-  I-4B || O1A design
+  I1-GC || I-4C1 || O1A design
 
 next:
-  I1-GC || I-4C1
-
-then:
-  I1-GD || I-4C2 -> I-4D || O1
+  I1-GD || I-4C2 -> I-4D || O1 implementation
 
 then:
   I1-GE || I-4E -> I-4F || UI-B1A
@@ -501,7 +505,7 @@ PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
 PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
 ```
 
-Phase I-4A validation remains documentation-only and must not imply that target routes or schemas already exist.
+Phase I-4A remains the target contract. I-4B validation must prove only the read-only resolver/shared-fence/preflight-token-history boundary and must not imply hidden apply, M2 exclusion, loopback mutation routes, or UI completion.
 
 ## Documentation completion rule
 
