@@ -12,8 +12,12 @@ def append_once(path: str, anchor: str, section: str) -> None:
 def replace_once(path: str, old: str, new: str) -> None:
     target = Path(path)
     body = target.read_text(encoding="utf-8")
-    if body.count(old) != 1:
+    if old not in body:
+        if new in body:
+            return
         raise RuntimeError(f"unexpected documentation drift: {path}: {old!r}")
+    if body.count(old) != 1:
+        raise RuntimeError(f"ambiguous documentation text: {path}: {old!r}")
     target.write_text(body.replace(old, new), encoding="utf-8")
 
 
