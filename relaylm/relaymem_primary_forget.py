@@ -1,4 +1,4 @@
-"""Public Phase I-4B Forget boundary with canonical token encoding checks."""
+"""Public Primary Forget boundary through I-4C1 hidden-successor commit."""
 from __future__ import annotations
 
 import base64
@@ -6,6 +6,12 @@ import binascii
 from datetime import datetime
 
 from . import _relaymem_primary_forget_impl as _impl
+from .relaymem_primary_forget_artifact import FORGET_PREPARED_SCHEMA
+from .relaymem_primary_forget_commit import (
+    FORGET_COMMIT_RESULT_SCHEMA,
+    PrimaryForgetCommitResult,
+    apply_primary_memory_forget_hidden_successor,
+)
 
 PREFLIGHT_REQUEST_SCHEMA = _impl.PREFLIGHT_REQUEST_SCHEMA
 PREFLIGHT_RESPONSE_SCHEMA = _impl.PREFLIGHT_RESPONSE_SCHEMA
@@ -41,7 +47,7 @@ def validate_primary_memory_forget_token(
     apply_token: str,
     now: datetime | None = None,
 ):
-    """Validate exact Forget token claims and require canonical base64url form."""
+    """Validate exact Forget token claims and canonical base64url form."""
 
     if not isinstance(apply_token, str):
         raise PrimaryForgetError("token_invalid")
@@ -66,11 +72,15 @@ def validate_primary_memory_forget_token(
 
 
 __all__ = [
+    "FORGET_COMMIT_RESULT_SCHEMA",
+    "FORGET_PREPARED_SCHEMA",
     "HISTORY_SCHEMA",
     "PREFLIGHT_REQUEST_SCHEMA",
     "PREFLIGHT_RESPONSE_SCHEMA",
     "TOKEN_DOMAIN",
+    "PrimaryForgetCommitResult",
     "PrimaryForgetError",
+    "apply_primary_memory_forget_hidden_successor",
     "list_primary_memory_forget_history",
     "preflight_primary_memory_forget",
     "validate_primary_memory_forget_token",

@@ -30,11 +30,13 @@ relaylm_related_authority:
   - phase6c1_durable_protected_source_persistence.md
   - phase6c2_one_queued_primary_worker_integration.md
   - o0_local_one_job_runner.md
+  - o1a_two_lane_scheduler_contract.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i2_real_soul_lab_observation.md
   - phase_i3_auditable_primary_mem_correct.md
   - phase_i4_primary_mem_forget_hide_contract.md
   - phase_i4b_primary_current_state_shared_fence.md
+  - phase_i4c1_primary_forget_hidden_successor.md
   - soul_lab_ui_b0_real_home_conversation.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - post_i3_evaluation_work_roadmap.md
@@ -51,11 +53,12 @@ Last reviewed: 2026-06-26 JST
 
 This document owns implementation status, phase sequencing, dependency boundaries, and active integration priority. Component ownership remains in [Pipeline Responsibility Design](pipeline_responsibility_design.md), exact schemas remain in dedicated contracts, current/target interpretation remains in [Current / Target / Migration Guide](current_target_migration_guide.md), and the dependency-first post-I3 sequence remains in [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md).
 
-RelayLM is integration-first. Helper-only or mock-only slices are justified only when they unblock an end-to-end milestone or close a demonstrated safety defect.
+RelayLM is integration-first. Helper-only or mock-only slices are justified only when they unblock an end-to-end milestone or close a demonstrated safety defect. O1A is a contract slice because it fixes authority and fail-closed orchestration before production scanners can safely exist.
 
 ## Status legend
 
 - **complete**: bounded contract and intended wiring exist with smoke coverage;
+- **contract complete**: exact pure contract/model/smoke exists, but production producer/consumer/delegation remains incomplete;
 - **defined target**: exact contract exists, but production producer/consumer/apply/UI behavior is incomplete;
 - **integration pending**: components exist but the ordinary product path is not connected;
 - **planned**: design or need exists without a complete producer/consumer/apply/validation path;
@@ -84,7 +87,8 @@ RelayMEM Primary integration:
   Phase I-3 Correct: complete
   Phase I-4A Forget / Hide contract: defined target
   Phase I-4B resolver/shared fence/read-only Forget boundary: complete
-  Phase I-4C through I-4F hidden apply, M2, UI, and validation: unimplemented
+  Phase I-4C1 hidden-successor commit: complete
+  Phase I-4C2 through I-4F recovery/replay/tombstone, M2, UI, and validation: unimplemented
 
 SOUL Lab:
   UI-A0 through UI-A7: complete
@@ -99,7 +103,8 @@ Operations:
   I1-GC/GD/GE replay, cleanup, and full crash validation: unimplemented
   I1-G overall: in progress
   O0 local one-job runner: complete
-  O1 durable-finalization replay and queue scheduler: planned
+  O1A two-lane scheduler/adapter/idle contract: complete
+  O1B-O1F production discovery, delegation, fairness, recovery, shutdown, validation: unimplemented
   O2 supervised worker service: planned
   O3 always-on local operation: planned
 ```
@@ -123,7 +128,7 @@ Phase 6-C2 one-job claim/rehydrate/execute adapter is complete. It accepts one e
 
 O0 local one-job operation is complete. `relaylm-worker --once --config config.yaml` performs bounded non-recursive discovery, selects at most one eligible queued record, securely rereads it, resolves the exact config-owned character partition, and delegates unchanged authority to C2/B3/C1-5/C1-2.
 
-Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, UI-B0 Real Home Conversation, and the I-4B read-only resolver/shared-fence boundary are complete. I1-GA contract/design/fault-model work and I1-GB pre-release durable publication are complete. I1-GC through I1-GE remain planned; restart replay/completion convergence, cleanup, and full crash validation are unimplemented. Phase I-4A remains the exact Forget / Hide target contract, while I-4C through I-4F remain unimplemented.
+Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, UI-B0 Real Home Conversation, the I-4B read-only resolver/shared-fence boundary, and I-4C1 hidden-successor commit ownership are complete. I1-GA contract/design/fault-model work and I1-GB pre-release durable publication are complete. I1-GC through I1-GE remain planned; restart replay/completion convergence, cleanup, and full crash validation are unimplemented. Phase I-4A remains the exact Forget / Hide target contract, while I-4C2 through I-4F remain unimplemented.
 
 ## Completed foundation
 
@@ -232,7 +237,7 @@ Forget tombstone  immutable runtime-private audit/recovery artifact
 
 Candidate A is selected: revision `N active` advances to one immutable successor Primary page at revision `N+1 hidden`, followed by M3f/M3g convergence, retrieval-exclusion verification, and tombstone finalization. The page is lifecycle authority; the tombstone is not an independent sidecar flag.
 
-Correct and Forget must share one per-memory lock namespace, pending-operation fence, operation identity lookup, and revision claim. I-4B now implements the canonical read-only resolver, shared `.lock`/fence, preflight, token validation, and bounded zero-item history. Hidden-successor apply, durable history artifacts/projection, M2 exclusion, loopback routes, and UI remain unimplemented.
+Correct and Forget share one per-memory lock namespace, pending-operation fence, operation identity lookup, and revision claim. I-4B implements the canonical read-only resolver, shared `.lock`/fence, preflight, token validation, and bounded zero-item history. I-4C1 now adds exact token/reason revalidation, immutable prepared evidence, deterministic hidden successor publication through M3e, canonical reread, one-winner concurrency, and recovery-required projection. I-4C2 durable applied/tombstone history, M2 exclusion, loopback routes, and UI remain unimplemented.
 
 ### UI-B0: Real Home Conversation — complete
 
@@ -240,7 +245,7 @@ UI-B0 connects SOUL Lab Home to the existing RelayLM Chat Completions route usin
 
 ### I1-G: pre-enqueue durable-finalization — in progress
 
-I1-GA is complete as the target contract, design decision, pure state/fault model, and validation boundary. I1-GB is complete for default-off bounded private base/stream-segment/seal publication, canonical reread validation, exact A1/A2/B1 preparation, non-stream pre-release admission, and stream pre-yield admission. The existing background finalizer remains the only C1-5-then-B2 writer.
+I1-GA is complete as the target contract, design decision, pure state/fault model, and validation boundary. I1-GB is complete for default-off bounded private base/stream-segment/seal publication, canonical reread validation, exact A1/A2/B1 preparation, non-stream pre-release admission, and stream pre-yield admission. The existing background finalizer remains the current C1-5-then-B2 writer.
 
 ```text
 I1-GA  contract / fault model                                      complete
@@ -252,7 +257,7 @@ I1-GE  full production crash-at-every-boundary integration smoke   unimplemented
 
 I1-GB prevents RelayLM from intentionally releasing protected non-stream content, protected SSE units, or terminal stream completion before corresponding restart evidence is canonically durable. It does not discover or replay sealed records after restart, and therefore does not by itself complete Window A recovery.
 
-I1-G is not queue scanning, worker scheduling, or C2 execution. O1 may later call the I1-GC one-record replay contract.
+I1-G is not queue scanning, worker scheduling, or C2 execution. Future O1B will discover at most one record and call the I1-GC one-record authority; it will not implement replay itself.
 
 ## Phase I-4B through I-4F: Forget / Hide implementation
 
@@ -260,8 +265,11 @@ I1-G is not queue scanning, worker scheduling, or C2 execution. O1 may later cal
 I-4B  canonical resolver, shared Correct/Forget fence,
        exact read-only preflight/history/token — complete
 
-I-4C  immutable hidden successor, prepared artifact,
-       tombstone, exact replay, and forward-only recovery
+I-4C1 immutable hidden successor, prepared artifact,
+       shared revision claim and M3e commit — complete
+
+I-4C2 tombstone, exact replay, response-loss convergence,
+       prepared resume and forward-only recovery
 
 I-4D  index/log convergence, M2 exclusion,
        historical lifecycle projection
@@ -275,7 +283,7 @@ The official I-4C contract remains one phase, but delivery should use:
 
 ```text
 I-4C1  token/fence/revision ownership, prepared artifact,
-       hidden successor and M3e publication
+       hidden successor and M3e publication — complete
 
 I-4C2  exact replay, prepared resume, forward recovery,
        tombstone finalization and response-loss convergence
@@ -285,43 +293,80 @@ I-4D is the user-visible semantic commit. Forget must not be described as produc
 
 Physical deletion, secure erase, purge, restore, and unhide remain separate future boundaries.
 
-## O1: two-lane bounded scheduler — planned
+## O1A: two-lane bounded scheduler contract — complete
 
-O1 must schedule two distinct sources without merging their state machines:
+O1A schedules no production work. It defines how future adapters are invoked and aggregated without merging their state machines:
 
 ```text
-durable-finalization replay lane
-  discover one sealed I1-G record
-    -> secure reread
-    -> one I1-GC call
-    -> C1-5/B2 convergence only
-
-queue execution lane
-  discover one eligible B2 record
-    -> reuse O0 primitives where compatible
-    -> one C2 execution
+validate scheduler-level gates
+  -> replay lane opportunity first
+       -> O1B discovers at most one eligible sealed I1-G record
+       -> I1-GC replays at most one caller-selected record
+       -> C1-5/B2/I1-G completion only
+  -> queue lane opportunity second
+       -> O1C discovers at most one eligible B2 record
+       -> O0-compatible secure reread/scope/C2 request
+       -> C2 executes at most one queue job
+  -> aggregate bounded lane outcomes
+  -> stop | run_next_round | idle
+  -> return without sleeping
 ```
 
-Implementation slices:
+Round limits:
 
 ```text
-O1A  bounded work-source scheduling and idle contract
+I1-GC delegation <= 1
+C2 delegation    <= 1
+total work units <= 2
+```
+
+The queue lane must independently open and discover the queue root after replay. It may select a B2 record newly converged by replay, but the scheduler cannot pass replay output, job identity, dispatch identity, locator, or nested I1-GC result directly to the queue lane.
+
+O1A owns only scheduler enablement, fixed v0 lane order, per-round budget, lane invocation eligibility, bounded aggregation, disposition, and content-free projection. It does not own I1-G schemas/replay, C1-5, B2/B3, C2, C1-2, M3, record repair, cleanup, or service lifecycle.
+
+O1A supplies a pure deterministic module and smoke. It imports no filesystem, clock, sleep, queue, I1-GC, C2, config, or CLI integration.
+
+### O1A disposition
+
+| Disposition | Meaning | O1A action |
+|---|---|---|
+| `stop` | disabled, invalid gates, unsupported schema, required capability unavailable, fatal scheduler-level state | invoke no further lane and return |
+| `run_next_round` | bounded work/progress occurred or a candidate changed | recommend another round; do not schedule it |
+| `idle` | no immediate eligible work, future retry only, contention, or bounded transient lane failure | return normally; do not sleep or calculate delay |
+
+### O1A lane failure isolation
+
+Known lane-local no-work, contention, candidate change, claim conflict, retry release, isolated candidate, or bounded delegated failure does not automatically suppress or roll back the unrelated lane. Invalid exact input, invalid scheduler gate combination, unsupported schema, unsafe shared server configuration, missing required capability, unknown status/type, or process-integrity-unknown exception stops the round.
+
+### O1A target-only configuration
+
+The contract reserves target names only:
+
+```yaml
+relaymem_local_scheduler_enabled: false
+relaymem_local_scheduler_dry_run_only: true
+relaymem_local_scheduler_apply_enabled: false
+relaymem_local_scheduler_replay_lane_enabled: true
+relaymem_local_scheduler_queue_lane_enabled: true
+```
+
+These fields are not added to `relaylm/config.py`, `docs/config_schema.md`, `config.example.yaml`, or CLI parsing in O1A. Scheduler gates never elevate I1-GC/O0/C2 apply gates.
+
+## O1B through O1F: production scheduling — unimplemented
+
+```text
 O1B  one eligible I1-G sealed-record discovery and I1-GC delegation
 O1C  one eligible B2 discovery and O0/C2 delegation
-O1D  ordering, fairness, retry-time, and bounded backoff
-O1E  stale-claim orchestration and graceful shutdown
-O1F  corruption, concurrency, saturation, restart, and leakage smoke
+O1D  ordering, fairness, retry-time, bounded backoff, jitter
+O1E  stale-claim orchestration, cancellation, graceful shutdown
+O1F  corruption, concurrency, saturation, restart, leakage smoke
 ```
 
-Recommended scheduler order:
+O1B must consume the merged I1-GC interface and cannot copy or depend directly on a parallel implementation branch. O1C must not launch the O0 CLI or parse stdout; it should later extract a narrow production helper for bounded discovery, canonical reread, character/store resolution, and exact C2 request construction while preserving O0 behavior and smoke compatibility.
 
-```text
-bounded sealed replay
-  -> bounded queue execution
-  -> idle/backoff
-```
+O1D owns record ordering, fairness, starvation policy, retry-time handling, exact delays, bounded backoff, and jitter. O1A's replay-before-queue order is only lane order.
 
-O1 must not execute a worker during I1-G replay or treat a durable-finalization record as a queue record.
+O1E owns stale-claim recovery orchestration, cancellation checkpoints, and graceful shutdown. O1F owns full operational validation. No global correctness lock is introduced; concurrent rounds rely on I1-GC per-record fencing, queue advisory locking, B3 claim CAS, and C2 exact claim validation.
 
 ## UI-B1 delivery split — planned
 
@@ -340,7 +385,7 @@ UI-B1B  after I-5 through I-7
          evidence/runtime/mutation authority separation
 ```
 
-UI-B1A is read-only and remains outside queue, worker, and mutation authority.
+UI-B1A is read-only and remains outside queue, scheduler, worker, and mutation authority.
 
 ## Dependency-first execution waves
 
@@ -349,16 +394,16 @@ UI-B1A is read-only and remains outside queue, worker, and mutation authority.
 ```text
 Thread A  I1-GB durable-finalization publication — complete
 Thread B  I-4B resolver/shared fence/read-only Forget — complete
-Thread C  O1A scheduling contract only — remains planned
+Thread C  O1A scheduling contract — complete
 ```
 
-I1-GB and I-4B are complete, and their response/I1-B/C1-5/B2/UI-B0 plus I-3 Correct/resolver/M2-equivalence regressions passed on the final I-4B head. Wave 1 is now the active implementation boundary.
+I1-GB and I-4B are complete, and their response/I1-B/C1-5/B2/UI-B0 plus I-3 Correct/resolver/M2-equivalence regressions passed on the final I-4B head. O1A adds no production behavior and must preserve these regressions.
 
-### Wave 1 — current: one-record recovery and lifecycle commit ownership
+### Wave 1 — in progress: one-record recovery and lifecycle commit ownership
 
 ```text
 Thread A  I1-GC one-record replay
-Thread B  I-4C1 hidden-successor commit ownership
+Thread B  I-4C1 hidden-successor commit ownership — complete
 Thread C  O1 lane contract refinement
 Thread D  UI-B1A projection design
 ```
@@ -369,7 +414,8 @@ Thread D  UI-B1A projection design
 Thread A  I1-GD retention/orphan reconciliation/cleanup
 Thread B  I-4C2 forward recovery/tombstone
           -> I-4D M2 exclusion/historical projection
-Thread C  O1 implementation
+Thread C  O1D fairness/retry/backoff
+          -> O1E stale recovery/cancellation/shutdown
 Thread D  I-5A and I-7A/B contract work
 ```
 
@@ -378,7 +424,7 @@ Thread D  I-5A and I-7A/B contract work
 ```text
 Thread A  I1-GE production crash integration
 Thread B  I-4E UI/API -> I-4F validation
-Thread C  O1 completion
+Thread C  O1F operational validation and O1 completion
 Thread D  UI-B1A read-only visibility
 ```
 
@@ -410,12 +456,15 @@ M4  Phase I-4 complete
       -> historical evidence preserved
 
 O1  automatic bounded local processing complete
+    O1A contract + O1B/O1C adapters + O1D/O1E policy/recovery + O1F proof
     replay lane + queue lane
     without changing I1-G/B3/C2/M3 authority
 
 E2  governed Primary MEM product
     I-4 through I-7 + UI-B1 + repeatable real conversation
 ```
+
+O1A completion alone is not O1 completion.
 
 ## Product evaluation sequence
 
@@ -437,22 +486,23 @@ Home real conversation
 
 Direct Home-origin formation remains unproven because UI-B0 does not send trusted scene-admission metadata.
 
-The loop remains operator-driven until O1 lands.
+The loop remains operator-driven until O1B through O1F land. O1A does not automate it.
 
 Recommended next sequence:
 
 ```text
 completed:
-  I1-GB || I-4B
+  I1-GB || I-4B || O1A
 
 current:
-  I1-GC || I-4C1 || O1A design
+  I1-GC || I-4C1
+  O1B/O1C after exact dependency readiness
 
 next:
-  I1-GD || I-4C2 -> I-4D || O1 implementation
+  I1-GD || I-4C2 -> I-4D || O1D -> O1E
 
 then:
-  I1-GE || I-4E -> I-4F || UI-B1A
+  I1-GE || I-4E -> I-4F || O1F || UI-B1A
 
 then:
   I-5 -> I-7 -> I-6 -> UI-B1B
@@ -467,14 +517,18 @@ I1-G and O1/O2 are mandatory before long-duration formation, multi-day consolida
 
 ```text
 I1-G    pre-enqueue durable evidence, one-record replay, completion, retention
-O1      bounded discovery/scheduling across separate replay and queue lanes
+O1A     bounded round/gates/adapter results/disposition/projection only
+O1B     one sealed-record discovery and one I1-GC delegation
+O1C     one queue-record discovery and one O0-compatible C2 delegation
+O1D/E   fairness/retry/backoff and stale recovery/cancellation/shutdown
+O1F     operational proof
 O0/C2   one queued-record execution authority
 I-4     lifecycle and Forget mutation semantics
 M2      retrieval eligibility and ranking for eligible memory
 UI-B1   read-only visibility until exact operation routes separately land
 ```
 
-UI-B0 owns Home transport and browser session state. No operations phase may move worker or queue authority into the browser.
+UI-B0 owns Home transport and browser session state. No operations phase may move worker, queue, scheduler, filesystem, or mutation authority into the browser.
 
 ## Validation boundary
 
@@ -496,14 +550,19 @@ PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
 git diff --check
 ```
 
-O0 validation also includes:
+O1A validation includes:
 
 ```bash
+PYTHONPATH=. python scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_o0_local_one_job_runner_ci_runner.py
 PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
 PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
 PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
+PYTHONPATH=. python scripts/relaylm_i1g_pre_enqueue_fault_model_smoke.py
+PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
 ```
+
+O1A's pure model must prove fixed order, per-lane and total delegation bounds, idle/future/busy dispositions, lane failure isolation, disabled/invalid no-invocation, independent queue input, content-free projection, bounded reasons, strict types, unknown-status fail-closed behavior, and deterministic output.
 
 Phase I-4A remains the target contract. I-4B validation must prove only the read-only resolver/shared-fence/preflight-token-history boundary and must not imply hidden apply, M2 exclusion, loopback mutation routes, or UI completion.
 
@@ -517,12 +576,12 @@ When a phase lands, review together:
 - `docs/architecture/README.md`;
 - the dedicated handoff/contract;
 - [Post-I3 roadmap](post_i3_evaluation_work_roadmap.md);
-- `docs/config_schema.md` when configuration changes;
+- `docs/config_schema.md` only when current configuration changes;
 - the Current/Target Boundary Matrix when responsibility changes;
 - status-checking smoke scripts;
 - stale TODO or future-tense text in related documents.
 
-I1-GB adds default-off durable-finalization publication gates, an explicit private root, and bounded capacity/timeout fields documented in `docs/config_schema.md` and `config.example.yaml`. The roadmap sequencing itself does not change M2 eligibility, queue semantics, or browser authority.
+I1-GB adds default-off durable-finalization publication gates, an explicit private root, and bounded capacity/timeout fields documented in `docs/config_schema.md` and `config.example.yaml`. O1A adds no current config field. Its scheduler field names are target-only and must not appear as accepted configuration until a later production phase.
 
 ## I1-GC durable-finalization replay current boundary (2026-06-26)
 
@@ -534,13 +593,22 @@ I1-GA contract
   -> I1-GC one-record restart replay and completion convergence  [complete]
 ```
 
-The next durability work remains:
+The operations boundary now separates the completed O1A contract from production work:
+
+```text
+O1A pure replay-then-queue round / idle contract  [complete]
+  -> O1B sealed-record discovery / one I1-GC delegation
+  -> O1C B2 discovery / one O0-compatible C2 delegation
+  -> O1D ordering / fairness / retry-time / backoff / jitter
+  -> O1E stale recovery / cancellation / graceful shutdown
+  -> O1F production validation
+```
+
+The remaining I1-G durability work is:
 
 ```text
 I1-GD retention / orphan reconciliation / cleanup
   -> I1-GE full production crash validation
-  -> O1 discovery / scanner / scheduler
-  -> O2 supervised service
 ```
 
 This section supersedes earlier roadmap entries that list I1-GC itself as pending.

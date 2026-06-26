@@ -22,21 +22,25 @@ RelayLM documentation is AI-first: documents should remain understandable when r
 
 ## Start here
 
-- [Current project status](PROJECT_STATUS.md) — concise current boundary through completed O0 and UI-B0, completed I1-GA/I1-GB, defined Phase I-4A, and completed I-4B read-only resolver/fence boundary
+- [Current project status](PROJECT_STATUS.md) — concise current boundary through completed O0 and UI-B0, completed I1-GA/I1-GB, defined Phase I-4A, completed I-4B read-only resolver/fence boundary, and completed I-4C1 hidden-successor commit
 - [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
-- [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing, including explicit I1-G durability tracking
+- [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing, including explicit I1-G and O1 durability/operations tracking
 - [Post-I3 evaluation and work roadmap](architecture/post_i3_evaluation_work_roadmap.md) — I-4 through I-9, conversation, operations, parallel work, and evaluation gates
+- [Character belief, relationship, and social expression dynamics](architecture/character_belief_relationship_dynamics_design.md) — target observation, belief, relationship, SCN/EMO gain, probing, repair, and multi-user expression model
+- [Experimental SOUL replacement and memory bootstrap](relaysoul/experimental_soul_replacement_memory_bootstrap_design.md) — explicitly post-MVP non-destructive SOUL fork with governed memory inheritance and optional provisional virtual memory
 - [Phase 6 I1-B runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md)
 - [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md)
 - [Phase 6-C1-2 one-claimed worker](architecture/phase6c1_one_claimed_primary_worker_handoff.md)
 - [Phase 6-C1-5 durable protected source persistence](architecture/phase6c1_durable_protected_source_persistence.md)
 - [Phase 6-C2 one queued-job integration](architecture/phase6c2_one_queued_primary_worker_integration.md)
 - [O0 local one-job runner](architecture/o0_local_one_job_runner.md) — bounded one-shot local selection and unchanged C2 delegation
+- [O1A two-lane scheduler contract](architecture/o1a_two_lane_scheduler_contract.md) — pure replay-then-queue round, idle disposition, target-only gates, and content-free projection; no production scheduler
 - [Integration I1 Primary MEM two-turn recall](architecture/integration_i1_primary_mem_two_turn_recall.md)
 - [Phase I-2 real SOUL Lab observation](architecture/phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 auditable Primary MEM Correct](architecture/phase_i3_auditable_primary_mem_correct.md)
 - [Phase I-4A Primary MEM Forget / Hide contract](architecture/phase_i4_primary_mem_forget_hide_contract.md) — target lifecycle, concurrency, audit, recovery, and retrieval-exclusion contract
 - [Phase I-4B Primary Current State and Shared Mutation Fence](architecture/phase_i4b_primary_current_state_shared_fence.md) — implemented read-only resolver, shared lock/fence, token, and zero-item history boundary
+- [Phase I-4C1 Primary Forget Hidden-Successor Commit](architecture/phase_i4c1_primary_forget_hidden_successor.md) — implemented exact prepare, deterministic hidden page, M3e commit, and recovery-required resolution
 - [SOUL Lab UI-B0 real Home conversation](architecture/soul_lab_ui_b0_real_home_conversation.md)
 - [I1-G pre-enqueue durable-finalization contract and fault model](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
@@ -58,7 +62,9 @@ Phase 5.5 Stream Unpack / TTS handoff preparation is complete for RelayLM Core. 
 
 Integration Milestone I1 is complete through ordinary runtime enqueue, B3 lifecycle, C1-0 through C1-5, C2 one-job execution, and Phase I-1 next-turn Primary MEM recall with character/namespace isolation and bounded RelayCTX injection.
 
-O0 is complete: `relaylm-worker --once --config config.yaml` performs bounded non-recursive discovery, selects at most one eligible queued record, securely rereads it, resolves the exact config-owned character partition, and delegates unchanged authority to C2/B3/C1-5/C1-2. O1 polling/scheduling, O2 supervision, and O3 always-on operation remain unimplemented.
+O0 is complete: `relaylm-worker --once --config config.yaml` performs bounded non-recursive discovery, selects at most one eligible queued record, securely rereads it, resolves the exact config-owned character partition, and delegates unchanged authority to C2/B3/C1-5/C1-2.
+
+O1A is complete only as a contract and pure deterministic model. It fixes replay-before-queue ordering, at most one delegation per lane, independent queue discovery after replay, lane-local failure isolation, `stop | run_next_round | idle` semantics, and a content-free projection. O1B sealed-record discovery, O1C queue discovery/C2 delegation, O1D fairness/backoff, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented. O1A adds no scheduler config fields, CLI command, polling, sleep, or runtime behavior.
 
 Phase I-2 is complete: SOUL Lab can read the latest completed managed run, validated recent Primary memories, durable held/blocked outcomes, and memories actually included in backend-bound context through loopback-only exact-schema APIs.
 
@@ -68,9 +74,9 @@ UI-B0 is complete: SOUL Lab Home uses a single unambiguous server-projected rout
 
 I1-GA and I1-GB are complete: the contract/fault model and bounded durable base/segment/seal publication now run before protected response release in explicit apply mode. I1-GC one-record restart replay and completion convergence, I1-GD retention/cleanup, and I1-GE full production crash integration remain unimplemented; I1-G overall is in progress.
 
-Phase I-4A defines the target contract. Phase I-4B is complete for the canonical read-only current-state resolver, shared Correct/Forget mutation fence, Forget preflight, five-minute token validation, and bounded zero-item history. Hidden-successor apply, tombstone/recovery, M2 exclusion, the loopback mutation API, and the SOUL Lab Forget UI remain unimplemented.
+Phase I-4A defines the target contract. Phase I-4B is complete for the canonical read-only current-state resolver, shared Correct/Forget mutation fence, Forget preflight, five-minute token validation, and bounded zero-item history. Phase I-4C1 is complete for exact token/reason revalidation, shared revision claim, immutable Forget prepare, deterministic hidden successor, existing M3c/M3d/M3e publication, canonical reread, one-winner concurrency, and `hidden / recovery_required / false` resolution. I-4C2 recovery/replay/tombstone, I-4D M3f/M3g and M2 exclusion, the loopback mutation API, and the SOUL Lab Forget UI remain unimplemented.
 
-UI-B0 does not create browser-owned SOUL, MEM, namespace, backend, credential, prompt, or worker authority. I1-GC through I1-GE, Phase I-4C through I-4F, O1/O2/O3 automatic operation, later memory governance, Secondary MEM, RelaySOUL apply/rollback, static UI serving, TTS/audio/avatar, and always-on operation remain separate work.
+UI-B0 does not create browser-owned SOUL, MEM, namespace, backend, credential, prompt, or worker authority. I1-GC through I1-GE, Phase I-4C2 through I-4F, O1/O2/O3 automatic operation, later memory governance, Secondary MEM, RelaySOUL apply/rollback, static UI serving, TTS/audio/avatar, and always-on operation remain separate work.
 
 The planned sequence is documented in [Post-I3 Evaluation and Work Roadmap](architecture/post_i3_evaluation_work_roadmap.md).
 
@@ -94,6 +100,8 @@ When documents disagree:
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md)
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md)
 - [Post-I3 evaluation and work roadmap](architecture/post_i3_evaluation_work_roadmap.md)
+- [Character belief, relationship, and social expression dynamics](architecture/character_belief_relationship_dynamics_design.md)
+- [Experimental SOUL replacement and memory bootstrap](relaysoul/experimental_soul_replacement_memory_bootstrap_design.md)
 - [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md)
 - [Phase 6-A1 Job admission](architecture/phase6a1_relayslp_job_admission_contract.md)
 - [Phase 6-A2 Response-finalization handoff](architecture/phase6a2_relayslp_response_handoff_contract.md)
@@ -110,11 +118,13 @@ When documents disagree:
 - [Phase 6-C1-5 Durable protected source persistence](architecture/phase6c1_durable_protected_source_persistence.md)
 - [Phase 6-C2 One queued-job Primary worker integration](architecture/phase6c2_one_queued_primary_worker_integration.md)
 - [O0 Local one-job runner](architecture/o0_local_one_job_runner.md)
+- [O1A Two-Lane Scheduler Contract](architecture/o1a_two_lane_scheduler_contract.md)
 - [Integration I1 Primary MEM two-turn recall](architecture/integration_i1_primary_mem_two_turn_recall.md)
 - [Phase I-2 Real SOUL Lab Observation](architecture/phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 Auditable Primary MEM Correct](architecture/phase_i3_auditable_primary_mem_correct.md)
 - [Phase I-4A Primary MEM Forget / Hide Contract](architecture/phase_i4_primary_mem_forget_hide_contract.md)
 - [Phase I-4B Primary Current State and Shared Mutation Fence](architecture/phase_i4b_primary_current_state_shared_fence.md)
+- [Phase I-4C1 Primary Forget Hidden-Successor Commit](architecture/phase_i4c1_primary_forget_hidden_successor.md)
 - [SOUL Lab UI-B0 Real Home Conversation](architecture/soul_lab_ui_b0_real_home_conversation.md)
 - [I1-G Pre-enqueue Durable-finalization Contract](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
 - [Completed Phase 5.5 Stream Unpack bounded slice](architecture/phase5_5_stream_unpack_bounded_slice.md)
@@ -192,7 +202,7 @@ Placement rules:
 - smoke and troubleshooting -> `docs/smoke/`
 - RelaySOUL governance -> `docs/relaysoul/`
 
-The ordinary managed path is complete through observe/correct/retrieve, O0 manual one-shot execution, and the text-first Home experiment surface. I1-GB publishes restart evidence before visible completion, but I1-GC restart replay/completion convergence and I1-GD/I1-GE remain unimplemented. Phase I-4A defines the target Forget / Hide contract and I-4B completes the read-only resolver/shared-fence boundary; I-4C through I-4F production apply, exclusion, UI, and validation remain unimplemented. O1/O2/O3 and later governance remain separate roadmap work.
+The ordinary managed path is complete through observe/correct/retrieve, O0 manual one-shot execution, and the text-first Home experiment surface. I1-GB publishes restart evidence before visible completion, but I1-GC restart replay/completion convergence and I1-GD/I1-GE remain unimplemented. O1A defines the bounded two-lane round and idle contract only; O1B-O1F production scheduling work remains unimplemented. Phase I-4A defines the target Forget / Hide contract, I-4B completes the read-only resolver/shared-fence boundary, and I-4C1 completes hidden-successor commit ownership; I-4C2 through I-4F recovery, exclusion, UI, and validation remain unimplemented. O2/O3 and later governance remain separate roadmap work.
 
 ## I1-GC durable-finalization replay current boundary (2026-06-26)
 
@@ -203,4 +213,5 @@ immutable content-free completion marker under a nonblocking cross-process per-r
 fence. The normal I1-GB finalizer uses the same authority.
 
 This section supersedes earlier I1-GC pending statements in this file. I1-GD, I1-GE,
-O1 discovery/scanning/scheduling, and O2 supervision remain incomplete.
+O1B discovery/delegation and O1C through O1F scheduling production work remain
+incomplete. O1A is a completed contract-only boundary, not an automatic scheduler.
