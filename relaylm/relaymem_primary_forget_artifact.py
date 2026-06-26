@@ -15,6 +15,7 @@ from hashlib import sha256
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
+from . import _relaymem_primary_current_state_impl as _current_impl
 from ._relaymem_primary_page_writer_common import bad_text, is_sha256, stable_hash
 
 FORGET_PREPARED_SCHEMA = "relaylm.mem.forget_prepared.v0"
@@ -167,7 +168,10 @@ def read_forget_prepared(
     root = _safe_root(store_root)
     if not is_sha256(memory_id) or not is_sha256(operation_key):
         raise PrimaryForgetArtifactError("invalid_request")
-    path = root / MUTATION_ROOT / memory_id / f"{operation_key}.prepared.json"
+    directory = root / MUTATION_ROOT / memory_id
+    if _descendant_has_symlink(root, directory):
+        raise PrimaryForgetArtifactError("target_corrupt")
+    path = directory / f"{operation_key}.prepared.json"
     if not path.exists() and not path.is_symlink():
         return None
     value = _read_exact_json(path)
@@ -185,6 +189,8 @@ def scan_forget_prepared(
     if not is_sha256(memory_id):
         raise PrimaryForgetArtifactError("target_not_found")
     directory = root / MUTATION_ROOT / memory_id
+    if _descendant_has_symlink(root, directory):
+        return None, True
     if not directory.exists() and not directory.is_symlink():
         return None, False
     if directory.is_symlink() or not directory.is_dir():
@@ -212,10 +218,28 @@ def scan_forget_prepared(
             else:
                 forget.append(value)
         elif schema == CORRECTION_PREPARED_SCHEMA:
-            if not path.name.endswith(".prepared.json"):
+            namespace = value.get("namespace")
+            logical_id = value.get("memory_id")
+            if (
+                not path.name.endswith(".prepared.json")
+                or not isinstance(namespace, str)
+                or not isinstance(logical_id, str)
+                or not _current_impl._valid_prepared(
+                    value, namespace=namespace, memory_id=logical_id
+                )
+            ):
                 corrupt = True
         elif schema == CORRECTION_RECEIPT_SCHEMA:
-            if not path.name.endswith(".applied.json"):
+            namespace = value.get("namespace")
+            logical_id = value.get("memory_id")
+            if (
+                not path.name.endswith(".applied.json")
+                or not isinstance(namespace, str)
+                or not isinstance(logical_id, str)
+                or not _current_impl._valid_applied(
+                    value, namespace=namespace, memory_id=logical_id
+                )
+            ):
                 corrupt = True
         else:
             corrupt = True
@@ -359,6 +383,19 @@ def _fsync_directory(directory: Path) -> None:
 def _path_has_symlink(path: Path) -> bool:
     current = Path(path.anchor) if path.is_absolute() else Path()
     for part in path.parts[1:] if path.is_absolute() else path.parts:
+        current = current / part
+        if current.is_symlink():
+            return True
+    return False
+
+
+def _descendant_has_symlink(root: Path, path: Path) -> bool:
+    try:
+        relative = path.relative_to(root)
+    except ValueError:
+        return True
+    current = root
+    for part in relative.parts:
         current = current / part
         if current.is_symlink():
             return True
