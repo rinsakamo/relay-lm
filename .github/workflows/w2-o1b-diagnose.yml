@@ -18,20 +18,21 @@ jobs:
         with:
           ref: wave2-cross-slice-convergence-audit
           fetch-depth: 0
-      - name: Apply one-line authority repair
+      - name: Apply authority repair
         run: |
           python - <<'PY'
           from pathlib import Path
           path = Path("relaylm/relaymem_slp_scheduler_replay_lane.py")
           text = path.read_text(encoding="utf-8")
           old = "_isolation_max_bytes()"
-          if text.count(old) != 1:
-              raise SystemExit(f"expected one stale isolation size reference, found {text.count(old)}")
+          if old not in text:
+              raise SystemExit("stale isolation size reference not found")
           path.write_text(text.replace(old, "ISOLATION_MAX_BYTES"), encoding="utf-8")
           PY
       - name: Validate O1B security
         run: |
           python -m pip install -q -e .
+          python -m compileall -q relaylm scripts
           PYTHONPATH=.:scripts python scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py
       - name: Commit repair
         run: |
