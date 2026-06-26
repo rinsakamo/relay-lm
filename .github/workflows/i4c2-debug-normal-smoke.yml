@@ -1,0 +1,40 @@
+name: I4C2 debug normal smoke
+
+on:
+  push:
+    branches:
+      - phase-i4c2-primary-forget-recovery-finalization
+    paths:
+      - .github/workflows/i4c2-debug-normal-smoke.yml
+
+permissions:
+  contents: write
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i4c2-primary-forget-recovery-finalization
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: Capture normal smoke output
+        shell: bash
+        run: |
+          set +e
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_recovery_smoke.py > i4c2-debug.log 2>&1
+          status=$?
+          echo "exit_status=$status" >> i4c2-debug.log
+          exit 0
+      - name: Publish temporary diagnostic
+        run: |
+          rm .github/workflows/i4c2-debug-normal-smoke.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: capture I-4C2 normal smoke diagnostic"
+          git push origin HEAD:phase-i4c2-primary-forget-recovery-finalization
