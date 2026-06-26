@@ -48,7 +48,7 @@ O1A does not scan either root, select a production record, invoke I1-GC, invoke 
 The following remain unimplemented:
 
 ```text
-O1B  one eligible sealed I1-G record discovery and one I1-GC delegation
+O1B  one eligible sealed I1-G record discovery and one I1-GC delegation — complete
 O1C  one eligible B2 record discovery and one C2 delegation
 O1D  deterministic within-lane ordering, fairness, retry-time and backoff policy
 O1E  stale-claim recovery orchestration, cancellation, graceful shutdown
@@ -134,7 +134,7 @@ O1 uses two explicit adapters. It does not introduce a generic plugin framework,
 
 ### 4.1 Replay lane
 
-Future O1B eligibility:
+O1B eligibility:
 
 ```text
 valid canonical I1-G record
@@ -270,7 +270,7 @@ probe / discover at most one
   -> return one bounded lane result
 ```
 
-O1A defines the result contract but not production adapters.
+O1A defines the result contract. O1B now provides the production replay adapter; O1C remains unimplemented.
 
 Schema:
 
@@ -788,3 +788,8 @@ systemd Windows service Docker supervision
 SOUL Lab control or browser scheduling
 fairness priority quotas distributed coordination leader election
 ```
+
+<!-- O1B_LANDED_HANDOFF -->
+## O1B landed handoff
+
+`relaylm/relaymem_slp_scheduler_replay_lane.py` now performs one bounded replay-lane opportunity and returns the existing `LaneOutcome`. A replay `busy` may be learned only after I1-GC returns from a completed delegation; a completed dry-run `delegated` result is an idle disposition and does not force another round. The pure O1A module still performs no filesystem scan or lane invocation.

@@ -224,7 +224,7 @@ I-4D is the user-visible semantic commit. I-4C1 does not claim product-level For
 
 I1-GA, I1-GB, and I1-GC are complete. I1-GC converges one caller-selected sealed record through exact reconstruction, existing A1/A2/B1, exact C1-5, exact B2, downstream reread, and immutable completion. I1-GD cleanup and I1-GE full crash validation remain incomplete.
 
-O1A defines a pure replay-before-queue round with at most one future I1-GC delegation and at most one future C2 delegation. O1B through O1F remain unimplemented. Replay output is never a direct queue/C2 input.
+O1A defines a pure replay-before-queue round with at most one future I1-GC delegation and at most one future C2 delegation. O1B is complete; O1C through O1F remain unimplemented. Replay output is never a direct queue/C2 input.
 
 ## Safety invariants
 
@@ -269,3 +269,8 @@ Parallel non-RelayMEM operations work may proceed as I1-GD and O1B/O1C without m
 - I-4C1 hidden-successor commit: complete
 - I-4C2 through I-4F: unimplemented
 - Secondary MEM consolidation: deferred
+
+<!-- O1B_CURRENT_BOUNDARY -->
+### O1B sealed replay-lane discovery — complete
+
+O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1C through O1F, O2, and O3 remain unimplemented.

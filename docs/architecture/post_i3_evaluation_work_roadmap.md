@@ -357,9 +357,14 @@ Phase I-8 and I-9 + complete I1-G + O1/O2 + O3 soak evidence.
 ## Preserved boundaries
 
 - I1-GA, I1-GB, and I1-GC are complete; I1-GD and I1-GE remain incomplete.
-- O1A is contract-only; O1B through O1F remain unimplemented.
+- O1A is contract-only; O1B is complete; O1C through O1F remain unimplemented.
 - I1-G records and B2 queue records remain separate state machines.
 - O1 invokes I1-GC and O0/C2; it does not absorb their semantics.
 - I-4C1/I-4C2 are delivery subdivisions, not new lifecycle authorities.
 - UI-B0/UI-B1 own no worker, queue, scheduler, filesystem, namespace, SOUL, or mutation authority.
 - Text conversation does not imply TTS, audio, avatar, or Live2D execution.
+
+<!-- O1B_CURRENT_BOUNDARY -->
+### O1B sealed replay-lane discovery — complete
+
+O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1C through O1F, O2, and O3 remain unimplemented.

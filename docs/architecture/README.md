@@ -99,3 +99,8 @@ The browser owns no queue, scheduler, worker, filesystem, namespace, backend, cr
 - [Experimental SOUL Replacement and Memory Bootstrap](../relaysoul/experimental_soul_replacement_memory_bootstrap_design.md)
 
 These are target-only. Experimental SOUL replacement is post-MVP, non-destructive, and distinct from ordinary same-character RelaySOUL revision and rollback.
+
+<!-- O1B_DOC_INDEX -->
+- [O1B Sealed I1-G Replay-Lane Discovery](o1b_sealed_i1g_replay_lane.md) — production bounded replay-lane adapter.
+
+O1B connects O1A's replay `LaneOutcome` to one secure I1-G discovery and one existing I1-GC call. O1C queue discovery and the production round loop remain unimplemented.

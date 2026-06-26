@@ -47,7 +47,7 @@ Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
 Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete; C2 one-job adapter complete
 Local worker operation: O0 one invocation -> at most one eligible queued job complete
 Scheduler contract: O1A replay-before-queue round / adapter / idle contract complete
-Scheduler production: O1B through O1F unimplemented
+Scheduler production: O1B replay-lane adapter complete; O1C through O1F unimplemented
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and scope isolation complete
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, and UI-B0 complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete
@@ -101,7 +101,7 @@ O1A is complete as a pure contract only:
 
 ```text
 validate scheduler gates
-  -> replay lane: at most one future O1B discovery and one existing I1-GC delegation
+  -> replay lane: one bounded O1B discovery and at most one existing I1-GC delegation
   -> queue lane: at most one future O1C discovery and one existing C2 delegation
   -> bounded content-free aggregation
   -> stop | run_next_round | idle
@@ -112,7 +112,7 @@ The lane order is replay then queue. Replay output, locator, job identity, and d
 
 Still separate:
 
-- O1B sealed I1-G record discovery and one I1-GC delegation;
+- O1B sealed I1-G record discovery and one I1-GC delegation: complete;
 - O1C eligible B2 discovery and one O0-compatible C2 delegation;
 - O1D ordering, fairness, retry-time, backoff, and jitter;
 - O1E stale-claim recovery, cancellation, and graceful shutdown;
@@ -206,7 +206,6 @@ The workstation evaluation exposed two quality gaps:
 ```text
 I1-GD retention / cleanup
 || I-4C2 prepared recovery / tombstone
-|| O1B sealed-record discovery
 || O1C queue-record discovery
 
 then
@@ -232,7 +231,7 @@ Current mutation, worker, durable-finalization, and scheduler-related paths rema
 - speaker-provenance-safe Primary MEM summary formation;
 - strict evidence-grounded recall response generation;
 - I1-GD and I1-GE;
-- O1B through O1F, O2, and O3;
+- O1C through O1F, O2, and O3;
 - I-4C2 through I-4F;
 - restore/unhide or physical purge;
 - I-5 through I-9 governance and RelaySOUL slices;
@@ -240,3 +239,8 @@ Current mutation, worker, durable-finalization, and scheduler-related paths rema
 - static SOUL Lab bundle serving;
 - TTS/audio/avatar/Live2D execution;
 - ASR and peer communication transport.
+
+<!-- O1B_CURRENT_BOUNDARY -->
+## O1B sealed replay-lane boundary
+
+O1B is complete for one bounded, non-recursive inventory of the configured I1-G root, exact canonical grouping and eligibility classification, deterministic selection of one sealed-pending locator, canonical selected-record reread, and at most one existing I1-GC delegation. It does not implement O1C queue discovery, a scheduler round loop, fairness, backoff, polling, shutdown, supervision, or always-on operation.
