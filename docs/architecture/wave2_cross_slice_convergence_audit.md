@@ -1,6 +1,6 @@
 # Wave 2 cross-slice convergence audit
 
-Status: review candidate on `wave2-cross-slice-convergence-audit`.
+Status: W2-INT implementation and regression validation complete on `wave2-cross-slice-convergence-audit`; pending review and merge.
 
 Authority: this handoff records the combined latest-main boundary after PR #403, #404, #405, and #406. Lower dedicated contracts remain authoritative for their own schemas and mutations.
 
@@ -25,7 +25,7 @@ Authority: this handoff records the combined latest-main boundary after PR #403,
 
 ## Isolation and replay convergence
 
-O1B imports the I1-GD isolation parser, maximum size, temporary-name recognizer, and secure reader directly. A marker appearing before canonical reread maps to `isolated`; an already isolated record is not eligible. I1-GC still fails closed on the reserved component. I1-GD and I1-GC share the exact record fence. Retention owns marker creation/removal and never delegates replay; O1B never mutates isolation.
+O1B imports the I1-GD isolation parser, maximum size, temporary-name recognizer, and secure reader directly. A marker appearing after selection but before canonical reread maps to `candidate_changed` or `isolated`, depending on whether the canonical reread first observes the changed component set or validates the marker; both outcomes prohibit I1-GC delegation. An already isolated record is not eligible. I1-GC still fails closed on the reserved component. I1-GD and I1-GC share the exact record fence. Retention owns marker creation/removal and never delegates replay; O1B never mutates isolation.
 
 ## Lane and same-round convergence
 
@@ -60,13 +60,17 @@ I1-GD accepted configuration remains default-off, dry-run-first, strictly typed,
 
 No O1B root lock is held across I1-GC, no O1C discovery lock is held across C2, and no cross-root global correctness lock exists.
 
-## Security and leakage
+## Security, leakage, and regression proof
 
-The combined security smoke checks authoritative isolation parsing, symlink/hardlink rejection through dedicated suites, invalid gate and filename failure, root separation, and content-free `repr`, log dictionaries, node results, O1A projections, and exception mapping. Dedicated I1-GD, O1B, O1C, O0, C2, and I-4C2 security suites remain mandatory in the W2 workflow.
+The W2 integration workflow runs compileall; I1-GD contract, functional, and race smokes; O1A; O1B and O1C functional/security suites; I-4C2 recovery, fault, concurrency, security, and ownership suites; the W2 functional/security smokes; documentation checks; and a clean-tree check.
+
+The repository's existing path-triggered workflows remain the dedicated authorities for O0 CLI/security compatibility, B2/B3 queue state, C1/C2 worker behavior, I1-GB/I1-GC, I-3/I-4B/I-4C1, and related UI/runtime regressions. The final W2-INT head passed both the integration workflow and all of those triggered dedicated workflows.
+
+The combined security smoke checks authoritative isolation parsing, unsafe filesystem replacement, root separation, and content-free `repr`, node results, O1A projections, and bounded error mapping. Dedicated lower security suites retain symlink, hardlink, malformed-record, capacity, and ownership coverage.
 
 ## Frozen next-phase inputs
 
-- I1-GE may start after combined I1-GA/B/C/D regressions and isolation/replay race tests are green; it owns full process-exit/restart validation only.
+- I1-GE may start after W2-INT is merged; it owns full process-exit/restart validation only.
 - I-4D may start with I-4C2 complete, tombstone replay stable, and read-only lifecycle/current-identity authority frozen; it owns ordinary M2/RelayCTX exclusion only.
 - O1D1 may start with O1A pure, O1B/O1C stable, manual aggregation green, and scheduler config still unaccepted; it owns accepted gates and one replay-before-queue production round returning without sleep.
 - I-5A, I-7A/B, and UI-B1A may rely on the shared Primary mutation fence and frozen current-state schemas, but add no behavior in W2-INT.
