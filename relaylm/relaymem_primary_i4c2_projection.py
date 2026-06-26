@@ -2,7 +2,7 @@
 
 The shared scanner remains the only parser for correction receipts, prepared
 operations, hidden successors, controls, and finalized tombstones. I-4D exposes
-that complete fail-closed currentness to ordinary Primary recall. M2 still owns
+the complete fail-closed currentness to ordinary Primary recall. M2 still owns
 candidate discovery, relevance ordering, caps, and budgets.
 """
 from __future__ import annotations
@@ -97,6 +97,10 @@ def _bounded_files(directory: Path, *, suffix: str | None) -> list[Path] | None:
                 continue
             if not stat.S_ISREG(info.st_mode):
                 return None
+            if suffix is None and path.name == ".lock":
+                if info.st_nlink != 1 or info.st_size > _MAX_ARTIFACT_BYTES:
+                    return None
+                continue
             if suffix is None or path.name.endswith(suffix):
                 output.append(path)
     except OSError:
