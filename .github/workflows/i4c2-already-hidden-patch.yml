@@ -1,0 +1,34 @@
+name: I4C2 finalized hidden patch
+
+on:
+  push:
+    branches:
+      - phase-i4c2-primary-forget-recovery-finalization
+    paths:
+      - .github/workflows/i4c2-already-hidden-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i4c2-primary-forget-recovery-finalization
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/_phase_i4c2_already_hidden_patch.py
+      - run: pip install -e .
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_recovery_smoke.py
+      - run: |
+          rm scripts/_phase_i4c2_already_hidden_patch.py
+          rm .github/workflows/i4c2-already-hidden-patch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: return already-hidden for finalized Forget target"
+          git push origin HEAD:phase-i4c2-primary-forget-recovery-finalization
