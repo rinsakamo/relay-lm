@@ -19,31 +19,36 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   crash-validation:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Apply completion seam patch
-        if: github.event_name == 'pull_request'
-        run: |
-          git apply --check scripts/i1ge_completion_seam_fix.patch
-          git apply scripts/i1ge_completion_seam_fix.patch
-          python -m py_compile scripts/_relaylm_i1ge_crash_child.py
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scripts/_relaylm_i1ge_crash_child.py
-          git commit -m "test: bind completion crash seams to no-clobber publication"
-          git push origin HEAD:${{ github.head_ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: python -m pip install -e .
       - run: python -m compileall -q relaylm scripts
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_nonstream_crash_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_stream_crash_smoke.py
       - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_replay_crash_smoke.py
       - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_retention_crash_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_concurrency_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_security_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gb_durable_finalization_app_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gc_durable_finalization_replay_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_contract_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_race_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_o1b_sealed_replay_lane_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_wave2_cross_slice_convergence_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_wave2_cross_slice_security_smoke.py
+      - run: PYTHONPATH=. python scripts/relaylm_mvp_completion_report_smoke.py --check-model --check-all
+      - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+      - run: test -z "$(git status --short)"
