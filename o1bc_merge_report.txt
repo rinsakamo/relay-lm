@@ -29,4 +29,4 @@ Traceback (most recent call last):
   File "/home/runner/work/relay-lm/relay-lm/scripts/_merge_o1b_o1c.py", line 281, in main
     raise AssertionError(f"{path}: missing merged anchors {missing!r}")
 AssertionError: docs/architecture/o1a_two_lane_scheduler_contract.md: missing merged anchors ['O1C is complete as one bounded production queue-lane adapter']
-HEAD is now at a66ce78 chore: record bounded O1B O1C merge result
+HEAD is now at a81c706 chore: serialize O1B O1C merge validation
