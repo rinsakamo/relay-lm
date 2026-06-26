@@ -137,13 +137,20 @@ def publish_forget_prepared(
                 os.close(descriptor)
             except OSError:
                 pass
+        temporary_removed = False
         try:
             temporary.unlink()
+            temporary_removed = True
         except FileNotFoundError:
             pass
         except OSError:
             if linked:
                 raise PrimaryForgetArtifactError("publication_ambiguous") from None
+        if temporary_removed:
+            try:
+                _fsync_directory(path.parent)
+            except OSError as exc:
+                raise PrimaryForgetArtifactError("publication_ambiguous") from exc
 
     reread = _read_exact_json(path)
     if reread != dict(artifact):
