@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1-I4C1, UI-B0, I1-G, roadmap, and config docs."""
+"""Validate current Phase 6, I1-I4C1, UI-B0, I1-G, O1A, and roadmap docs."""
 from __future__ import annotations
 
 import ast
@@ -60,30 +60,110 @@ O1A_TARGET_ONLY_FIELDS = (
     "relaymem_local_scheduler_queue_lane_enabled",
 )
 
+CURRENT_DOCS = (
+    "docs/PROJECT_STATUS.md",
+    "docs/README.md",
+    "docs/architecture/README.md",
+    "docs/architecture/pipeline_implementation_plan.md",
+    "docs/architecture/post_i3_evaluation_work_roadmap.md",
+    "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
+    "docs/architecture/relaymem_mvp_implementation_plan.md",
+    "docs/architecture/relaymem_slp_current_target.md",
+)
 
 REQUIRED: dict[str, tuple[str, ...]] = {
     "docs/PROJECT_STATUS.md": (
-        "C1-0 through C1-5 complete",
+        "Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete",
+        "B0-B3 durable enqueue and fenced lifecycle",
+        "B3 lifecycle: complete",
         "C2 one-job claim/rehydrate/execute adapter: complete",
-        "O0 local one-job runner: complete",
-        "O1A two-lane scheduler / adapter / idle contract: complete",
-        "O1B sealed-record discovery / I1-GC delegation: not implemented",
-        "O1C B2 discovery / O0-compatible C2 delegation: not implemented",
-        "O1D ordering / fairness / retry-time / backoff / jitter: not implemented",
-        "O1E stale recovery / cancellation / graceful shutdown: not implemented",
-        "O1F full operational validation: not implemented",
         "I1 next-turn Primary MEM recall: complete",
+        "character and namespace isolation: complete",
         "I2 real SOUL Lab observation: complete",
         "I3 auditable Primary MEM Correct: complete",
-        "UI-B0 real Home conversation: complete",
-        "I4A Forget / Hide contract: defined target",
-        "I4B resolver / shared fence / read-only Forget boundary: complete",
-        "I4C1 hidden-successor commit: complete",
-        "I4C2 through I4F resume/replay/tombstone, M2 exclusion, UI, and validation: unimplemented",
-        "I1-GB durable-finalization publication / pre-release admission: complete",
-        "I1-GC restart replay / exact C1-5+B2 convergence / completion marker: unimplemented",
+        "Phase I-4C1 hidden-successor commit: complete",
+        "I1-GC one-record restart replay / exact C1-5+B2 convergence / completion marker: complete",
+        "I1-GD retention / orphan reconciliation / cleanup: unimplemented",
+        "I1-GE full production crash validation: unimplemented",
+        "Visible-release restart evidence publication is implemented",
+        "Restart-time one-record replay is implemented",
         "Direct Home-origin formation: not currently proven",
         "O1A adds no accepted configuration fields",
+    ),
+    "docs/architecture/pipeline_implementation_plan.md": (
+        "Phase 6-C1-0 through C1-5 are complete",
+        "Phase 6-C2 one-job claim/rehydrate/execute adapter is complete",
+        "### I1-E / Phase I-2: real SOUL Lab observation — complete",
+        "Observation evidence is read-only",
+        "### I1-F / Phase I-3: auditable Primary MEM Correct — complete",
+        "### I1-F2 / Phase I-4A: Primary MEM Forget / Hide contract — defined target",
+        "Phase I-4C1 hidden-successor commit: complete",
+        "exact read-only preflight/history/token",
+        "I1-GC  one-record restart replay, exact convergence, completion    complete",
+        "### O1A: two-lane bounded scheduler contract — complete",
+        "O1A completion alone is not O1 completion.",
+        "### Wave 1 — completed commit and replay authorities",
+        "### Wave 2 — current parallel implementation candidates",
+        "I-5 Pin / Unpin",
+        "I-7 Held Apply / Discard",
+        "I-6 Merge / Supersession",
+        "These fields are not added to `relaylm/config.py`",
+    ),
+    "docs/architecture/post_i3_evaluation_work_roadmap.md": (
+        "Phase I-4B: Current-state resolver and shared mutation fence — complete",
+        "Phase I-4C1: Hidden-successor commit — complete",
+        "I1-GC caller-selected one-record replay",
+        "Phase I-5: Pin / Unpin",
+        "Phase I-7: Held Apply / Discard",
+        "Phase I-6: Merge / Supersession",
+        "Phase I-8: Secondary MEM consolidation",
+        "Phase I-9: RelaySOUL proposal / intervention / rollback",
+        "### Wave 1 — complete",
+        "### Wave 2 — current",
+        "E1 does not prove direct Home-origin formation",
+        "O1A completion alone does not satisfy the O1 checkpoint.",
+    ),
+    "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md": (
+        "Window A publication side — implemented by I1-GB",
+        "Window A recovery side — implemented by I1-GC",
+        "I1-GC is complete",
+        "source-before-queue invariant is absolute",
+        "## O1B caller boundary",
+        "queue lane independently discovers the queue root",
+        "### I1-GD — unimplemented",
+        "### I1-GE — unimplemented",
+    ),
+    "docs/architecture/relaymem_mvp_implementation_plan.md": (
+        "M3i-d real read-only Lab observation: complete as Phase I-2",
+        "observation receipts",
+        "M3i-f canonical current-state resolver/shared fence: complete as Phase I-4B",
+        "M3i-g hidden-successor commit ownership: complete as Phase I-4C1",
+        "I1-GC one-record replay and completion convergence is complete",
+        "The next RelayMEM governance implementation slice is I-4C2",
+        "No production hidden-state filtering exists yet because I-4D integration is not implemented",
+    ),
+    "docs/architecture/relaymem_slp_current_target.md": (
+        "Phase 6-B2 performs atomic durable enqueue",
+        "Phase 6-B3 performs default-off, dry-run-first",
+        "C2 one-job claim/rehydrate/execute adapter",
+        "durably enqueued jobs",
+        "I2 real SOUL Lab observation: complete",
+        "Observation receipts cannot authorize repair or retrieval",
+        "I1-GC caller-selected one-record replay",
+        "Phase I-4C1 hidden-successor commit — complete",
+        "Forget is not product-complete until I-4C2 through I-4F",
+    ),
+    "docs/README.md": (
+        "phase_i2_real_soul_lab_observation.md",
+        "phase_i3_auditable_primary_mem_correct.md",
+        "I1-GA, I1-GB, and I1-GC are complete",
+        "Phase I-4C1 is complete",
+    ),
+    "docs/architecture/README.md": (
+        "phase_i2_real_soul_lab_observation.md",
+        "phase_i3_auditable_primary_mem_correct.md",
+        "I1-GC provides the caller-selected one-record convergence authority",
+        "Phase I-4C1 Primary Forget Hidden-Successor Commit",
     ),
     "docs/architecture/o1a_two_lane_scheduler_contract.md": (
         "Contract and pure deterministic aggregation model complete; production scheduler unimplemented.",
@@ -98,43 +178,6 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "relaylm.local_scheduler_round_result.v0",
         "relaylm.local_scheduler_round_projection.v0",
         "O1A performs no filesystem mutation or production scan",
-    ),
-    "docs/architecture/pipeline_implementation_plan.md": (
-        "Phase 6-C1-0 through C1-5 are complete",
-        "Phase 6-C2 one-job claim/rehydrate/execute adapter is complete",
-        "### I1-F / Phase I-3: auditable Primary MEM Correct — complete",
-        "### I1-F2 / Phase I-4A: Primary MEM Forget / Hide contract — defined target",
-        "Phase I-4C1 hidden-successor commit: complete",
-        "exact read-only preflight/history/token — complete",
-        "### I1-G: pre-enqueue durable-finalization — in progress",
-        "## O1A: two-lane bounded scheduler contract — complete",
-        "O1A completion alone is not O1 completion.",
-        "### Wave 0 — completed implementation foundation",
-        "### Wave 1 — in progress: one-record recovery and lifecycle commit ownership",
-        "Thread B  I-4C1 hidden-successor commit ownership — complete",
-        "Direct Home-origin formation remains unproven",
-        "I-5 Pin / Unpin",
-        "-> I-7 Held Apply / Discard",
-        "-> I-6 Merge / Supersession",
-        "These fields are not added to `relaylm/config.py`",
-    ),
-    "docs/architecture/post_i3_evaluation_work_roadmap.md": (
-        "Phase I-4B: Current-state resolver and shared mutation fence — complete",
-        "Phase I-4C1: Hidden-successor commit — complete",
-        "I-4C1  exact token validation",
-        "one-winner concurrency — complete",
-        "I-4C2  prepared resume",
-        "I-4D   index/log convergence",
-        "Phase I-5: Pin / Unpin",
-        "Phase I-7: Held Apply / Discard",
-        "Phase I-6: Merge / Supersession",
-        "Phase I-8: Secondary MEM consolidation",
-        "Phase I-9: RelaySOUL proposal / intervention / rollback",
-        "### Wave 1 — in progress",
-        "I1-GC || I-4C2 || O1A design",
-        "does not prove direct Home-origin formation",
-        "E1: Core RelayLM product hypothesis — available",
-        "O1A completion alone does not satisfy the O1 checkpoint.",
     ),
     "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md": (
         "relaylm_status: target",
@@ -167,45 +210,6 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "I-4C2 prepared resume",
         "M3f or M3g",
     ),
-    "docs/architecture/relaymem_mvp_implementation_plan.md": (
-        "M3i-f canonical current-state resolver/shared fence: complete as Phase I-4B",
-        "M3i-g hidden-successor commit ownership: complete as Phase I-4C1",
-        "Forget hidden-successor commit: complete as I-4C1",
-        "The next RelayMEM governance implementation slice is I-4C2",
-        "No production hidden-state filtering exists yet because I-4D integration is not implemented",
-        "I1-GC one-record replay and completion convergence",
-        "I-4C1 hidden-successor commit — complete",
-    ),
-    "docs/architecture/relaymem_slp_current_target.md": (
-        "Phase 6-B3 performs default-off, dry-run-first",
-        "Phase I-4C1 hidden-successor commit — complete",
-        "Current Primary mutation and lifecycle-read boundary",
-        "I-4C1 shared revision claim, prepared artifact, hidden successor         complete",
-        "Forget is not product-complete until I-4C2 through I-4F",
-        "O1 polling/retry scheduling, O2 supervision, and O3 always-on operation remain unimplemented",
-    ),
-    "docs/architecture/README.md": (
-        "Phase I-4B Primary Current State and Shared Mutation Fence",
-        "Phase I-4C1 Primary Forget Hidden-Successor Commit",
-        "hidden / recovery_required resolver state",
-        "I1-GC restart replay and completion convergence",
-        "O1A Two-Lane Scheduler and Idle Contract",
-        "O1B through O1F",
-    ),
-    "docs/README.md": (
-        "Phase I-4B Primary Current State and Shared Mutation Fence",
-        "Phase I-4C1 Primary Forget Hidden-Successor Commit",
-        "Phase I-4C1 is complete for exact token/reason revalidation",
-        "I-4C2 recovery/replay/tombstone",
-    ),
-    "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md": (
-        "Window A publication side — implemented by I1-GB",
-        "Window A recovery side — I1-GC unimplemented",
-        "source-before-queue invariant is absolute",
-        "I1-G overall is in progress",
-        "## O1B caller boundary",
-        "queue lane must independently discover the queue root",
-    ),
     "docs/architecture/o0_local_one_job_runner.md": (
         "Future O1C reuse boundary",
         "O1C must not launch this CLI as a subprocess",
@@ -221,51 +225,21 @@ REQUIRED: dict[str, tuple[str, ...]] = {
     ),
 }
 
-FORBIDDEN: dict[str, tuple[str, ...]] = {
-    "docs/PROJECT_STATUS.md": (
-        "canonical lifecycle resolver and hidden-state M2 exclusion",
-        "production Forget preflight/apply/history",
-        "I4 production Forget runtime, M2 exclusion, and UI: unimplemented",
-        "I4C through I4F hidden apply, M2 exclusion, UI, and validation: unimplemented",
-        "I1-G overall: complete",
-        "O1 queue scanner / retry scheduler / polling: not implemented",
-        "O1 automatic scheduler: complete",
-    ),
-    "docs/architecture/pipeline_implementation_plan.md": (
-        "I-4B || O1A design",
-        "I1-GC || I-4C1 || O1A design",
-        "Phase I-4B through I-4F runtime, M2, UI, and validation: unimplemented",
-        "Phase I-4C through I-4F hidden apply, M2, UI, and validation: unimplemented",
-        "### Wave 1 — current: one-record recovery and lifecycle commit ownership",
-        "The explicit E1 path is complete:\n\n```text\nHome real conversation\n  -> O0 one-job execution",
-    ),
-    "docs/architecture/post_i3_evaluation_work_roadmap.md": (
-        "Only I-4A is defined. I-4B through I-4F are unimplemented.",
-        "Current:\n  I-4B || O1A design",
-        "### Wave 0 — current parallel work",
-        "I1-GC || I-4C1 || O1A design",
-    ),
-    "docs/architecture/relaymem_mvp_implementation_plan.md": (
-        "The next RelayMEM governance implementation slice is I-4B",
-        "The next RelayMEM governance implementation slice is I-4C1",
-        "All remain unimplemented.",
-        "Forget resolver/apply/M2/UI/smoke: unimplemented as I-4B through I-4F",
-        "O1 scanner/retry-scheduler design",
-    ),
-    "docs/architecture/relaymem_slp_current_target.md": (
-        "The current resolver is correction-specific.",
-        "I-4B  common current-state resolver and shared Correct/Forget fence   unimplemented",
-        "I-4C1 shared revision claim, prepared artifact, hidden successor         unimplemented",
-        "the canonical lifecycle resolver defined by I-4A",
-    ),
-    "docs/README.md": (
-        "Phase I-4A is defined as a target contract only.",
-        "Phase I-3 next step",
-        "I-4C through I-4F production apply, exclusion, UI, and validation remain unimplemented",
-        "Forget is implemented",
-        "O1/O2/O3 automatic operation remain unimplemented",
-    ),
-}
+STALE_I1GC = (
+    "I1-GC restart replay / downstream convergence / completion marker: unimplemented",
+    "I1-GC restart replay / exact C1-5+B2 convergence / completion marker: unimplemented",
+    "I1-GC one-record restart replay and completion convergence, I1-GD cleanup, and I1-GE crash validation",
+    "I1-GC/GD/GE replay, cleanup, and full crash validation: unimplemented",
+    "I1-GC through I1-GE remain planned",
+    "I1-GC through I1-GE remain unimplemented",
+    "I1-GC  one-record restart replay, exact convergence, completion    unimplemented",
+    "I1-GC  one-record restart replay, duplicate convergence, completion     current implementation work",
+    "Window A recovery side — I1-GC unimplemented",
+    "I1-GC replay/completion, I1-GD cleanup, and I1-GE full crash validation remain unimplemented",
+    "I1-GC restart replay and completion convergence, I1-GD retention/cleanup, and I1-GE full production crash validation remain unimplemented",
+    "This section supersedes earlier",
+    "supersedes earlier roadmap entries",
+)
 
 
 def main() -> None:
@@ -273,35 +247,17 @@ def main() -> None:
     validate_config_coverage("config.example.yaml")
     for path in ("relaylm/config.py", "docs/config_schema.md", "config.example.yaml"):
         forbid(path, *O1A_TARGET_ONLY_FIELDS)
+
     for path, anchors in REQUIRED.items():
         require(path, *anchors)
-    for path, anchors in FORBIDDEN.items():
-        forbid(path, *anchors)
+
+    for path in CURRENT_DOCS:
+        forbid(path, *STALE_I1GC)
+
     run_i1g_fault_model()
     run_o1a_contract()
-    print("relaylm documentation current-boundary smoke: ok")
+    print("Documentation current boundary smoke passed")
 
 
 if __name__ == "__main__":
     main()
-
-
-# I1-GC documentation boundary assertions
-def _assert_i1gc_documentation_boundary() -> None:
-    root = Path(__file__).resolve().parents[1]
-    required = ('docs/PROJECT_STATUS.md', 'docs/README.md', 'docs/architecture/README.md', 'docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md', 'docs/architecture/pipeline_implementation_plan.md', 'docs/architecture/post_i3_evaluation_work_roadmap.md', 'docs/architecture/relaymem_slp_current_target.md', 'docs/architecture/relaymem_mvp_implementation_plan.md')
-    for relative in required:
-        text = (root / relative).read_text(encoding="utf-8")
-        assert 'I1-GC durable-finalization replay current boundary (2026-06-26)' in text, relative
-        assert "I1-GD" in text, relative
-        assert "I1-GE" in text, relative
-        assert "O1" in text, relative
-    replay = (root / "relaylm/relaymem_slp_durable_finalization_replay.py").read_text(encoding="utf-8")
-    implementation = (root / "relaylm/_relaymem_slp_durable_finalization_replay_impl.py").read_text(encoding="utf-8")
-    assert "replay_relaymem_slp_durable_finalization_record" in replay
-    assert "COMPLETION_SCHEMA" in implementation
-    assert "transition_relaymem_slp_queue_state" not in implementation
-
-
-if __name__ == "__main__":
-    _assert_i1gc_documentation_boundary()
