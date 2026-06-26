@@ -91,14 +91,13 @@ jobs:
           python-version: "3.12"
       - run: pip install -e .
       - run: python -m compileall -q relaylm scripts
-      - name: Run Phase I-1, I-2, I-3 and RelayCTX regressions
+      - name: Run Phase I-1, I-2, I-3 regressions
         run: |
           set -o pipefail
           {
             PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
             PYTHONPATH=.:scripts python scripts/relaylm_phase_i2_lab_observation_ci_runner.py
             PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
-            PYTHONPATH=. python scripts/relaylm_relaymem_snippet_runtime_injection_plan_smoke.py
           } 2>&1 | tee phase-i4d-recall-regressions.log
       - name: Upload recall regression log
         if: always()

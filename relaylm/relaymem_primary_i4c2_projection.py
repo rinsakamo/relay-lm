@@ -1,7 +1,7 @@
 """I-4C2 projection split between mutation governance and ordinary retrieval.
 
 The underlying shared scanner validates the complete Correct/Forget operation
-chain, including finalized Forget tombstones. Phase I-4C2 must not, however,
+chain, including finalized Forget tombstones.  Phase I-4C2 must not, however,
 change ordinary M2 currentness; that lifecycle exclusion belongs to I-4D.
 This adapter therefore preserves the scanner's corruption, pending, and physical
 identity evidence while rebuilding only the public correction-current projection
