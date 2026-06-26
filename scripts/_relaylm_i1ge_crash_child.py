@@ -23,6 +23,7 @@ import relaylm.app as app_module  # noqa: E402
 import relaylm._relaymem_slp_durable_finalization_replay_impl as replay_impl  # noqa: E402
 import relaylm._relaymem_slp_durable_finalization_retention_impl as retention_impl  # noqa: E402
 import relaylm.relaymem_slp_durable_finalization_store as store_module  # noqa: E402
+import relaylm.relaymem_slp_durable_enqueue as durable_enqueue_module  # noqa: E402
 import relaylm_i1gb_durable_finalization_app_smoke as app_smoke  # noqa: E402
 import relaylm_i1gc_durable_finalization_replay_smoke as gc  # noqa: E402
 import relaylm_i1gd_durable_finalization_retention_smoke as gd  # noqa: E402
@@ -363,18 +364,31 @@ def _run_replay(root: Path, seam: str) -> None:
                 )
             )
 
-        if seam in {"during_b2_publication", "after_b2_publication_before_canonical_reread"}:
-            original = replay_impl.apply_relaymem_slp_runtime_enqueue
-
-            def queue_apply(*args: Any, **kwargs: Any):
-                if seam == "during_b2_publication":
-                    _crash(seam)
-                result = original(*args, **kwargs)
+        if seam == "during_b2_publication":
+            def queue_link_before(*args: Any, **kwargs: Any) -> None:
+                del args, kwargs
                 _crash(seam)
-                return result
 
             stack.enter_context(
-                patch.object(replay_impl, "apply_relaymem_slp_runtime_enqueue", new=queue_apply)
+                patch.object(durable_enqueue_module.os, "link", new=queue_link_before)
+            )
+        elif seam == "after_b2_publication_before_canonical_reread":
+            original_inspect = durable_enqueue_module._inspect_existing
+            inspect_calls = 0
+
+            def queue_inspect_before(*args: Any, **kwargs: Any):
+                nonlocal inspect_calls
+                inspect_calls += 1
+                if inspect_calls >= 2:
+                    _crash(seam)
+                return original_inspect(*args, **kwargs)
+
+            stack.enter_context(
+                patch.object(
+                    durable_enqueue_module,
+                    "_inspect_existing",
+                    new=queue_inspect_before,
+                )
             )
 
         if seam == "after_exact_b2_reread_before_downstream_verification":

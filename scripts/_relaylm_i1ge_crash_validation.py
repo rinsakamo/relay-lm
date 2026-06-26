@@ -208,6 +208,7 @@ def _recover_and_assert(root: Path, *, expect_complete: bool, name: str) -> None
 def run_publication_matrix(*, stream: bool) -> None:
     seams = STREAM_SEAMS if stream else NONSTREAM_SEAMS
     sealed = {
+        "after_seal_publication_before_canonical_reread",
         "after_seal_canonical_reread_before_http_body_release",
         "after_protected_body_release_before_normal_finalizer",
         "during_normal_finalizer_before_c1_5",
@@ -264,8 +265,14 @@ def run_replay_matrix() -> None:
             require(production_snapshot(root) == before, (seam, before, production_snapshot(root)))
 
 
-def _assert_downstream_unchanged(root: Path, before: tuple[int, int, int]) -> None:
-    require(downstream_counts(root) == before, (before, downstream_counts(root)))
+def _assert_external_downstream_unchanged(
+    root: Path,
+    before: tuple[int, int, int],
+    *,
+    seam: str,
+) -> None:
+    current = downstream_counts(root)
+    require(current[:2] == before[:2], (seam, before, current))
 
 
 def run_retention_matrix() -> None:
@@ -283,7 +290,11 @@ def run_retention_matrix() -> None:
             )
             run_child(prepare, root, result_name="prepare")
             before = downstream_counts(root)
-            require(before == (1, 1, 1), (seam, before))
+            require(before[:2] == (1, 1), (seam, before))
+            require(
+                before[2] == (0 if seam in marker_delete_seams else 1),
+                (seam, before),
+            )
             value = locator(root)
             require(value is not None, seam)
             crashed = run_child(
@@ -293,13 +304,14 @@ def run_retention_matrix() -> None:
                 expected=EXIT_CODES[seam],
             )
             assert_content_free_process(crashed)
-            _assert_downstream_unchanged(root, before)
+            _assert_external_downstream_unchanged(root, before, seam=seam)
             run_child("retention-normal", root, result_name="restart")
             require(
                 result_status(root, "restart") in {"maintenance_complete", "blocked"},
                 (seam, result_status(root, "restart")),
             )
-            _assert_downstream_unchanged(root, before)
+            _assert_external_downstream_unchanged(root, before, seam=seam)
+            require(downstream_counts(root)[2] == 0, (seam, downstream_counts(root)))
             lock = root / "finalization" / f".durable-finalization-replay-v0-{value}.lock"
             require(lock.is_file(), (seam, [path.name for path in (root / "finalization").iterdir()]))
             marker = root / "finalization" / isolation_filename(value)
