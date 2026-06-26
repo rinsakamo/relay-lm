@@ -18,19 +18,22 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - o1a_two_lane_scheduler_contract.md
+  - o1c_eligible_b2_queue_lane.md
+  - o1d1_production_scheduler_round.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - o0_local_one_job_runner.md
   - phase6c1_durable_protected_source_persistence.md
   - phase6b2_relayslp_atomic_durable_enqueue.md
   - phase6c2_one_queued_primary_worker_integration.md
+  - wave3_cross_slice_convergence_audit.md
 ---
 # O1B: Bounded Sealed I1-G Replay-Lane Discovery
 
-Last reviewed: 2026-06-26 JST
+Last reviewed: 2026-06-27 JST
 
 ## Status and authority
 
-**Production replay-lane adapter complete. O1C queue-lane adapter is also complete; O1D1 production round coordination, O1D2 scheduling policy, polling, recovery/shutdown, and service operation remain unimplemented.**
+**Production replay-lane adapter complete.** O1C queue-lane adapter and O1D1 one production round are also complete. O1D2 scheduling policy, O1E recovery/shutdown, O1F operational validation, polling, supervision, and always-on service operation remain unimplemented.
 
 O1B owns exactly one bounded replay-lane opportunity:
 
@@ -47,6 +50,8 @@ configured durable-finalization root
 ```
 
 O1B does not reconstruct finalized turns, publish protected sources or queue records, decide durable completion, claim B3 work, invoke C2, execute a worker, or form Primary MEM. Those remain I1-GC, C1-5, B2/B3, C2, C1-2, and M3 authorities.
+
+O1D1 may call O1B at most once in a single caller-invoked round, before O1C. That does not change O1B semantics and does not make O1B a scheduler loop.
 
 ## Root and inventory bounds
 
@@ -85,48 +90,11 @@ Recognized components are grouped by locator. Segment sequences must be unique, 
 
 O1B does not independently prove downstream completion. A valid completion marker only excludes discovery; I1-GC remains the final replay/completion authority after its per-record fence and canonical reread.
 
-## Secure classification
-
-Classification uses the current I1-G canonical JSON decoder and record validators. Component reads are bounded and dirfd-relative with `O_NOFOLLOW` where available. Before/open/after identity checks require one regular link and stable device, inode, size, and modification metadata. The base/segment/seal chain, locator/correlation fields, digests, sealed finalized source, and sealed durable-job identity are validated by existing production validators.
-
-Any recognized corrupt, unsupported, or unsafe logical record makes the bounded v0 inventory unsafe. O1B does not skip it to choose another record and does not repair, rename, unlink, or isolate it.
-
-## Deterministic selection
-
-Eligible locator digests are sorted in ascending lexical order and the first is selected. This is stable bounded v0 selection only. It is not FIFO, age priority, fairness, starvation prevention, backoff, or retry policy; those remain O1D2.
-
-## Canonical reread
+## Canonical reread and delegation
 
 After selection, O1B does not inventory the directory again. It verifies that the root directory identity is unchanged from the single bounded inventory, then rereads only the selected locator components captured by that inventory. The reread verifies exact filenames, device/inode identity, sizes, and content digests and reclassifies the locator as sealed pending. Component addition/removal, inode replacement, byte change, completion appearance, isolation appearance, or unsupported/unsafe state prevents delegation.
 
-O1B does not acquire or hold a second per-record correctness lock. The race after this reread is resolved by I1-GC's existing nonblocking replay fence and canonical reread.
-
-## I1-GC delegation and mapping
-
-O1B passes only the selected locator and an exact process-local source registry to:
-
-```python
-replay_relaymem_slp_durable_finalization_record(
-    config,
-    locator_digest=selected_locator,
-    registry=registry,
-)
-```
-
-It never pre-registers record content and never calls C1-5, B2, B3, C2, worker, or M3 directly. One O1B invocation performs at most one I1-GC call and never falls back to a second candidate.
-
-Mapping preserves bounded meaning:
-
-| I1-GC | O1B `LaneOutcome` |
-|---|---|
-| `dry_run_ready` | `delegated`, completed delegation, no mutation |
-| `completed` / `exact_duplicate` | `completed`, terminal candidate |
-| `already_complete` | `already_complete`, terminal candidate |
-| `replay_lock_busy` | `busy`, contention observed, retryable |
-| `record_missing` / `not_replayable` | `not_replayable`, retryable |
-| corruption/collision/invariant/unsafe | `unsafe_state` |
-| pending/ambiguous/blocked/failed | bounded `failed` or dependency result |
-| disabled dependency | `dependency_unavailable` |
+O1B passes only the selected locator and an exact process-local source registry to `replay_relaymem_slp_durable_finalization_record(...)`. It never pre-registers record content and never calls C1-5, B2, B3, C2, worker, or M3 directly. One O1B invocation performs at most one I1-GC call and never falls back to a second candidate.
 
 A scheduler dry-run never authorizes an apply-configured I1-GC. Scheduler apply also never elevates disabled or dry-run I1-GC gates.
 
@@ -149,17 +117,17 @@ The projection contains no user/assistant text, governed content, character/name
 ```text
 O0    local one-job queue runner                              complete
 O1A   pure two-lane scheduler contract                        complete
-O1B   sealed I1-G discovery + one I1-GC delegation           complete
+O1B   sealed I1-G discovery + one I1-GC delegation            complete
 O1C   eligible B2 discovery + one C2 delegation               complete
-O1D1  accepted scheduler gates + one production round         unimplemented
+O1D1  accepted scheduler gates + one production round         complete
 O1D2  ordering/fairness/retry-time/backoff/jitter/pacing      unimplemented
 O1E   stale recovery/cancellation/graceful shutdown           unimplemented
 O1F   operational validation                                  unimplemented
-O2    supervised service                                      unimplemented
-O3    always-on operation                                     unimplemented
+O2    supervised service                                      planned/unimplemented
+O3    always-on operation                                     planned/unimplemented
 ```
 
-O1B adds no scheduler CLI, browser route, accepted scheduler configuration, polling interval, daemon, service unit, queue scan, queue execution, or automatic operation. O1D1 may call O1B at most once in one round but does not change O1B semantics.
+O1B adds no scheduler CLI, browser route, accepted scheduler configuration, polling interval, daemon, service unit, queue scan, queue execution, or automatic operation.
 
 ## Validation
 
