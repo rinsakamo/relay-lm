@@ -13,7 +13,7 @@ relaylm_update_trigger:
   - I1-B finalized-turn identity or response-finalization order changes
 relaylm_not_authoritative_for:
   - I1-GD exact production behavior beyond the dedicated handoff
-  - I1-GE full crash-at-every-boundary proof
+  - I1-GE exact crash-validation harness beyond the dedicated handoff
   - O1 scheduler discovery polling fairness or service lifecycle
   - C1-5 protected-source schema or persistence semantics
   - B2 or B3 queue schema and lifecycle semantics
@@ -21,12 +21,15 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - i1gd_durable_finalization_retention_cleanup.md
+  - i1ge_durable_finalization_crash_validation.md
   - phase6_i1b_runtime_enqueue_source_capture_handoff.md
   - phase6c1_durable_protected_source_persistence.md
   - phase6b2_relayslp_atomic_durable_enqueue.md
   - phase6b3_relayslp_queue_state_helpers.md
   - phase6c2_one_queued_primary_worker_integration.md
   - o1a_two_lane_scheduler_contract.md
+  - o1d1_production_scheduler_round.md
+  - wave3_cross_slice_convergence_audit.md
   - pipeline_implementation_plan.md
   - post_i3_evaluation_work_roadmap.md
 ---
@@ -34,11 +37,17 @@ relaylm_related_authority:
 
 ## Status and authority
 
-I1-GA is complete as the contract, design decision, pure fault model, and validation boundary. I1-GB is complete for bounded durable base/segment/seal publication and response-release admission. I1-GC is complete for caller-selected one-record restart replay, exact C1-5/B2 convergence, duplicate suppression, cross-process fencing, canonical downstream verification, and immutable completion markers. I1-GD is complete for bounded retention, orphan reconciliation, content-free isolation, and crash-convergent cleanup.
+I1-GA through I1-GE are complete:
 
-I1-GE remains unimplemented and is validation-only. It must prove the existing I1-GB through I1-GD production authorities with real process exits and fresh-process restart; it must not add a durable schema, replay authority, scheduler, queue lifecycle, worker behavior, or memory mutation. I1-G overall remains in progress until that proof lands.
+- I1-GA is complete as the contract, design decision, pure fault model, and validation boundary.
+- I1-GB is complete for bounded durable base/segment/seal publication and response-release admission.
+- I1-GC is complete for caller-selected one-record restart replay, exact C1-5/B2 convergence, duplicate suppression, cross-process fencing, canonical downstream verification, and immutable completion markers.
+- I1-GD is complete for bounded retention, orphan reconciliation, content-free isolation, and crash-convergent cleanup.
+- I1-GE is complete as validation-only real process-exit/fresh-restart proof across the existing I1-GB through I1-GD production authorities.
 
-O1A defines only the scheduler-side two-lane round contract. O1B is complete for one bounded eligible sealed-record discovery, canonical selected-record reread, and at most one I1-GC call. O1C is complete for one independent bounded B2/B3 queue discovery, canonical reread, server-owned scope resolution, and at most one existing C2 call. Neither lane owns I1-G replay, completion, C1-5, B2/B3 lifecycle, retention, cleanup, or worker execution.
+I1-G overall is complete only for sealed durable-finalization evidence, exact C1-5 source, exact B2 queue correlation, durable completion, retention/isolation lifecycle, and crash-at-every-boundary validation. It does not imply B3 terminal success, C2 execution, worker execution, Primary MEM formation, semantic quality, retrieval use, automatic scheduling, polling, supervision, or always-on operation.
+
+O1A defines only the scheduler-side two-lane round contract. O1B is complete for one bounded eligible sealed-record discovery, canonical selected-record reread, and at most one I1-GC call. O1C is complete for one independent bounded B2/B3 queue discovery, canonical reread, server-owned scope resolution, and at most one existing C2 call. O1D1 is complete for accepted scheduler gates and one caller-invoked replay-before-queue round. None of O1A through O1D1 owns I1-G replay, completion, C1-5, B2/B3 lifecycle, retention, cleanup, or worker execution.
 
 ## Problem and resolved recovery window
 
@@ -57,7 +66,7 @@ backend response
        -> immutable completion marker
 ```
 
-Window A is now split into completed publication and replay boundaries:
+Window A is resolved by completed publication, replay, retention, and crash-validation boundaries:
 
 ```text
 Window A publication side — implemented by I1-GB
@@ -68,6 +77,12 @@ Window A recovery side — implemented by I1-GC
     -> one caller-selected sealed record is replayable
     -> exact C1-5 then exact B2 convergence
     -> durable completion marker
+
+Window A retention/isolation side — implemented by I1-GD
+  complete or invalid records converge through retain | isolate | cleanup | block
+
+Window A validation side — implemented by I1-GE
+  real process exits and fresh-process restarts prove the existing authorities
 ```
 
 Window B remains resolved by C1-5 + B3 + C2 + C1-2 restart convergence after durable source and queue publication.
@@ -93,20 +108,14 @@ isolation marker        I1-GD content-free forward-only cleanup evidence
 per-record replay fence shared by I1-GC and I1-GD
 ```
 
-The isolation schema is:
-
-```text
-relaymem.slp_durable_finalization_isolation.v0
-```
-
-Its exact behavior belongs to [I1-GD Durable-finalization Retention and Cleanup](i1gd_durable_finalization_retention_cleanup.md).
+The isolation schema is `relaymem.slp_durable_finalization_isolation.v0`; its exact behavior belongs to [I1-GD Durable-finalization Retention and Cleanup](i1gd_durable_finalization_retention_cleanup.md).
 
 ## Authority diagram
 
 ```text
 request runtime
   -> I1-B finalized-turn meaning and exact B1 identity
-  -> I1-G durable evidence / replay / completion / retention
+  -> I1-G durable evidence / replay / completion / retention / crash proof
   -> C1-5 protected-source persistence
   -> B2 content-free queue publication
   -> B3 queue lifecycle
@@ -122,9 +131,11 @@ I1-G completion means only:
 - exact C1-5 protected source is canonically valid;
 - exact B2 queue record is canonically valid and correlated;
 - source-before-queue is preserved;
-- the immutable completion marker is durably published and reread.
+- the immutable completion marker is durably published and reread;
+- retention/isolation lifecycle is bounded and marker-last;
+- real process-exit/fresh-restart proof covers the production boundaries.
 
-It does not mean B3 terminal success, worker execution, Primary MEM formation, semantic quality, or retrieval use. I1-GD does not broaden that meaning.
+It does not mean B3 terminal success, worker execution, Primary MEM formation, semantic quality, or retrieval use.
 
 ## Commit and release ordering
 
@@ -190,6 +201,12 @@ No discovery, directory scanner, polling, sleep, retry loop, scheduler, B3 trans
 12. Never remove the per-record lock file and never mutate C1-5, B2, B3, C2, worker, or M3 state.
 13. Return one bounded content-free result without polling or sleeping.
 
+## I1-GE validation boundary
+
+I1-GE proves the existing production authorities with real child-process `os._exit` seams and fresh child interpreters for restart convergence. It covers non-stream publication/visible release, stream publication/protected yield/terminal release, I1-GC reconstruction/C1-5/B2/completion, normal-finalizer/restart replay races, same-locator replay concurrency, O1B discovery integration, and I1-GD retention/isolation/cleanup.
+
+I1-GE changes no durable schema, replay algorithm, accepted configuration, scheduler, queue lifecycle, worker behavior, memory lifecycle, daemon, service supervision, or SOUL Lab UI.
+
 ## Idempotency, duplicate, and race convergence
 
 - Exact repeated replay produces no new source, queue record, or completion marker.
@@ -244,56 +261,13 @@ relaymem_slp_durable_finalization_cleanup_max_records_per_pass: 64
 relaymem_slp_durable_finalization_cleanup_timeout_ms: 5000
 ```
 
-Apply requires the exact enabled/dry-run/apply gate combination, valid absolute private roots, and positive bounds. No setting enables a scanner loop, polling loop, retry scheduler, daemon, or service. O1A scheduler names remain target-only and are not accepted configuration until O1D1.
+Apply requires the exact enabled/dry-run/apply gate combination, valid absolute private roots, and positive bounds. No setting enables a scanner loop, polling loop, retry scheduler, daemon, or service.
 
-## O1B caller boundary
+## O1 caller boundary
 
-O1B performs one bounded non-recursive discovery, secure eligibility classification, deterministic one-candidate selection, canonical reread, and at most one I1-GC call. It must not:
+O1B performs one bounded non-recursive discovery, secure eligibility classification, deterministic one-candidate selection, canonical reread, and at most one I1-GC call. It must not reconstruct protected content, call C1-5/B2 directly, decide completion independently, pass replay output directly to C2, extract job/dispatch identity for the queue lane, scan repeatedly, sleep, retry, or execute a worker.
 
-```text
-reconstruct protected content
-call C1-5 or B2 directly
-decide completion independently
-pass replay output directly to C2
-extract job/dispatch identity for the queue lane
-scan repeatedly, sleep, retry, or execute a worker
-```
-
-After replay, the queue lane independently discovers the queue root through O1C. Same-round execution of a newly converged B2 record is possible but not guaranteed or specially prioritized.
-
-## Remaining slices
-
-### I1-GA — complete
-
-Contract, authority, record, fault, projection, security, and validation model.
-
-### I1-GB — complete
-
-Durable base/segment/seal publication, canonical reread, exact preparation, and pre-release/pre-yield admission.
-
-### I1-GC — complete
-
-One caller-selected sealed-record replay through existing A1/A2/B1, C1-5, and B2 authorities; cross-process fencing; exact duplicate convergence; downstream reread; immutable completion marker; normal-finalizer integration.
-
-### I1-GD — complete
-
-Bounded retention, orphan reconciliation, immutable content-free isolation, shared fencing, secure known-component cleanup, marker-last retention, crash-forward convergence, and content-free projection for incomplete, sealed, complete, corrupt, unsupported, and isolated records.
-
-### I1-GE — unimplemented
-
-Validation-only full production crash-at-every-boundary proof across non-stream, stream, publication, visible release, C1-5, B2 ambiguity, completion, concurrency, restart, retention, and leakage. It changes no production authority.
-
-### O1B — complete
-
-One bounded sealed I1-G discovery, canonical selected-record reread, and at most one existing I1-GC delegation.
-
-### O1C — complete
-
-One bounded B2/B3 discovery, due/future classification, canonical selected-record reread, server-owned scope resolution, and at most one existing C2 delegation.
-
-### O1D1 through O1F — unimplemented
-
-O1D1 accepts exact scheduler gates and runs one replay-before-queue production round without sleeping. O1D2 owns ordering/fairness/retry-time/backoff/jitter/pacing. O1E owns stale recovery/cancellation/shutdown. O1F owns operational validation.
+O1D1 may call O1B at most once and then O1C at most once in one round. After replay, the queue lane independently discovers the queue root through O1C. Same-round execution of a newly converged B2 record is possible but not guaranteed or specially prioritized.
 
 ## Validation boundary
 
@@ -301,4 +275,4 @@ I1-GC validation covers sealed-only, source-only, source+queue, exact duplicate,
 
 I1-GD validation covers default-off and dry-run gates, bounded inventory, fresh/expired incomplete records, sealed-pending retention, exact completion cleanup eligibility, corrupt/unsupported isolation, marker duplicate/collision behavior, interrupted cleanup convergence, marker-last deletion, shared-fence contention, root-lock publication exclusion, unsafe-file non-mutation, future-clock retention, downstream non-mutation, replay exclusion after isolation, and leakage canaries.
 
-Current status documents must describe I1-GA through I1-GD, O1B, and O1C as complete; I1-GE, O1D1, O1D2, O1E, and O1F remain unimplemented.
+I1-GE validation covers real process-exit/fresh-restart proof at the existing publication, replay, completion, concurrency, retention, and leakage boundaries.
