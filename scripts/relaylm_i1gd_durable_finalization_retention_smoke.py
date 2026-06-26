@@ -25,10 +25,10 @@ from relaylm.relaymem_slp_durable_finalization_record import (
     canonical_json_bytes,
     seal_filename,
 )
+from relaylm.relaymem_slp_durable_finalization_replay import completion_filename
 from relaylm.relaymem_slp_durable_finalization_retention import (
     maintain_relaymem_slp_durable_finalization_retention,
 )
-from relaylm.relaymem_slp_durable_finalization_replay import completion_filename
 
 LEAK_CANARY = "CANARY_I1GD_EXCEPTION_DO_NOT_LEAK"
 
@@ -51,16 +51,18 @@ def _config(
     timeout_ms: int = 5000,
 ) -> RelayLMConfig:
     base = gc._config(root)
-    return base.model_copy(update={
-        "relaymem_slp_durable_finalization_retention_enabled": enabled,
-        "relaymem_slp_durable_finalization_retention_dry_run_only": dry,
-        "relaymem_slp_durable_finalization_retention_apply_enabled": apply,
-        "relaymem_slp_durable_finalization_completed_retention_seconds": completed,
-        "relaymem_slp_durable_finalization_orphan_grace_seconds": orphan,
-        "relaymem_slp_durable_finalization_isolated_retention_seconds": isolated,
-        "relaymem_slp_durable_finalization_cleanup_max_records_per_pass": max_per_pass,
-        "relaymem_slp_durable_finalization_cleanup_timeout_ms": timeout_ms,
-    })
+    return base.model_copy(
+        update={
+            "relaymem_slp_durable_finalization_retention_enabled": enabled,
+            "relaymem_slp_durable_finalization_retention_dry_run_only": dry,
+            "relaymem_slp_durable_finalization_retention_apply_enabled": apply,
+            "relaymem_slp_durable_finalization_completed_retention_seconds": completed,
+            "relaymem_slp_durable_finalization_orphan_grace_seconds": orphan,
+            "relaymem_slp_durable_finalization_isolated_retention_seconds": isolated,
+            "relaymem_slp_durable_finalization_cleanup_max_records_per_pass": max_per_pass,
+            "relaymem_slp_durable_finalization_cleanup_timeout_ms": timeout_ms,
+        }
+    )
 
 
 def _finalization_root(config: RelayLMConfig) -> Path:
@@ -68,11 +70,10 @@ def _finalization_root(config: RelayLMConfig) -> Path:
 
 
 def _snapshot(root: Path) -> tuple[tuple[str, int, int], ...]:
-    rows: list[tuple[str, int, int]] = []
-    for path in sorted(root.iterdir()):
-        info = path.lstat()
-        rows.append((path.name, info.st_mode, info.st_size))
-    return tuple(rows)
+    return tuple(
+        (path.name, path.lstat().st_mode, path.lstat().st_size)
+        for path in sorted(root.iterdir())
+    )
 
 
 def _age_all(root: Path, seconds: int = 3600) -> None:
@@ -160,9 +161,9 @@ def test_incomplete_orphan_and_isolation_lifecycle() -> None:
         )
         require(reread.status == "loaded", reread)
 
-        again = maintain_relaymem_slp_durable_finalization_retention(config=config)
-        require(again.status == "maintenance_complete", again)
-        require(marker.is_file(), again)
+        repeated = maintain_relaymem_slp_durable_finalization_retention(config=config)
+        require(repeated.status == "maintenance_complete", repeated)
+        require(marker.is_file(), repeated)
 
         _age_all(finalization)
         removed = maintain_relaymem_slp_durable_finalization_retention(config=config)
@@ -282,11 +283,13 @@ def test_isolation_duplicate_collision() -> None:
         conflict = dict(marker)
         conflict["reason_id"] = "corrupt_known_record"
         conflict["isolation_digest"] = hashlib.sha256(
-            canonical_json_bytes({
-                key: value
-                for key, value in conflict.items()
-                if key != "isolation_digest"
-            })
+            canonical_json_bytes(
+                {
+                    key: value
+                    for key, value in conflict.items()
+                    if key != "isolation_digest"
+                }
+            )
         ).hexdigest()
         third = publish_relaymem_slp_durable_finalization_isolation(
             str(finalization), conflict
@@ -335,22 +338,24 @@ def test_bounded_pass_and_future_clock() -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
         config = _config(root, orphan=1, max_per_pass=1)
-        first, _, _, _ = _publish_base(root, request_id="request-i1gd-one")
-        second, _, _, _ = _publish_base(root, request_id="request-i1gd-two")
+        _publish_base(root, request_id="request-i1gd-one")
+        _publish_base(root, request_id="request-i1gd-two")
         finalization = _finalization_root(config)
         _age_all(finalization)
         result = maintain_relaymem_slp_durable_finalization_retention(config=config)
         require(result.processed_record_count == 1, result)
         require(result.bounded_record_count == 2, result)
-        markers = list(finalization.glob("*.segment-isolation.json"))
-        require(len(markers) == 1, markers)
-
-        remaining_locator = (
-            str(second["locator_digest"])
-            if str(first["locator_digest"]) in markers[0].name
-            else str(first["locator_digest"])
+        require(
+            len(list(finalization.glob("*.segment-isolation.json"))) == 1,
+            result,
         )
-        future_path = finalization / base_filename(remaining_locator)
+
+    with TemporaryDirectory() as directory:
+        root = Path(directory)
+        config = _config(root, orphan=1)
+        base, _, _, _ = _publish_base(root, request_id="request-i1gd-future")
+        locator = str(base["locator_digest"])
+        future_path = _finalization_root(config) / base_filename(locator)
         future = time.time() + 3600
         os.utime(future_path, (future, future))
         blocked = maintain_relaymem_slp_durable_finalization_retention(config=config)
