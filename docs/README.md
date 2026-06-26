@@ -26,6 +26,8 @@ RelayLM documentation is AI-first: documents should remain understandable when r
 - [Documentation model](DOCUMENTATION_MODEL.md) — AI-first document types, metadata, and authority labels
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed status and sequencing, including explicit I1-G and O1 durability/operations tracking
 - [Post-I3 evaluation and work roadmap](architecture/post_i3_evaluation_work_roadmap.md) — I-4 through I-9, conversation, operations, parallel work, and evaluation gates
+- [Character belief, relationship, and social expression dynamics](architecture/character_belief_relationship_dynamics_design.md) — target observation, belief, relationship, SCN/EMO gain, probing, repair, and multi-user expression model
+- [Experimental SOUL replacement and memory bootstrap](relaysoul/experimental_soul_replacement_memory_bootstrap_design.md) — explicitly post-MVP non-destructive SOUL fork with governed memory inheritance and optional provisional virtual memory
 - [Phase 6 I1-B runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md)
 - [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md)
 - [Phase 6-C1-2 one-claimed worker](architecture/phase6c1_one_claimed_primary_worker_handoff.md)
@@ -97,6 +99,8 @@ When documents disagree:
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md)
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md)
 - [Post-I3 evaluation and work roadmap](architecture/post_i3_evaluation_work_roadmap.md)
+- [Character belief, relationship, and social expression dynamics](architecture/character_belief_relationship_dynamics_design.md)
+- [Experimental SOUL replacement and memory bootstrap](relaysoul/experimental_soul_replacement_memory_bootstrap_design.md)
 - [Phase 6 Asynchronous RelaySLP bounded slice](architecture/phase6_async_relayslp_bounded_slice.md)
 - [Phase 6-A1 Job admission](architecture/phase6a1_relayslp_job_admission_contract.md)
 - [Phase 6-A2 Response-finalization handoff](architecture/phase6a2_relayslp_response_handoff_contract.md)
@@ -179,21 +183,8 @@ python scripts/relaylm_docs_link_check.py
 
 AI-first maintenance rules:
 
-- add front matter to active current/architecture/plan/contract docs,
-- include type, authority, status, volatility, owner, update trigger, and non-authority fields,
-- keep current/target/compatibility/historical status explicit,
-- do not encode source text, prompts, traces, cache bodies, or runtime-private data in metadata,
-- when an implemented handoff changes milestone state, review Project Status, the implementation plan, this index, the architecture index, `config_schema.md`, the Current/Target Boundary Matrix and affected sections, stale TODO/future-tense text in related plans, and status-checking smoke scripts together.
-
-Placement rules:
-
-- repository-wide current status -> `docs/PROJECT_STATUS.md`
-- completed or active bounded handoffs -> `docs/architecture/`
-- cross-cutting architecture and pipeline docs -> `docs/architecture/`
-- historical rationale -> `docs/architecture/archive/`
-- MVP snapshots -> `docs/mvp/`
-- schemas and contracts -> `docs/contracts/`
-- smoke and troubleshooting -> `docs/smoke/`
-- RelaySOUL governance -> `docs/relaysoul/`
-
-The ordinary managed path is complete through observe/correct/retrieve, O0 manual one-shot execution, and the text-first Home experiment surface. I1-GB publishes restart evidence before visible completion, but I1-GC restart replay/completion convergence and I1-GD/I1-GE remain unimplemented. O1A defines the bounded two-lane round and idle contract only; O1B-O1F production scheduling work remains unimplemented. Phase I-4A defines the target Forget / Hide contract and I-4B completes the read-only resolver/shared-fence boundary; I-4C through I-4F production apply, exclusion, UI, and validation remain unimplemented. O2/O3 and later governance remain separate roadmap work.
+- add front matter to active current and target documents;
+- keep one authority per concern;
+- state current versus target explicitly;
+- link implementation handoffs back to canonical status and architecture;
+- treat `docs/mvp/` and `docs/architecture/archive/` as historical evidence only.
