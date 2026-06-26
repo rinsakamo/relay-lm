@@ -97,7 +97,7 @@ Eligible locator digests are sorted in ascending lexical order and the first is 
 
 ## Canonical reread
 
-After selection, O1B performs a second bounded selected-locator comparison before delegation. It verifies the same canonical component set, filenames, device/inode identity, sizes, and content digests, and reclassifies the locator as sealed pending. Component addition/removal, inode replacement, byte change, completion appearance, isolation appearance, or unsupported/unsafe state prevents delegation.
+After selection, O1B does not inventory the directory again. It verifies that the root directory identity is unchanged from the single bounded inventory, then rereads only the selected locator components captured by that inventory. The reread verifies exact filenames, device/inode identity, sizes, and content digests and reclassifies the locator as sealed pending. Component addition/removal, inode replacement, byte change, completion appearance, isolation appearance, or unsupported/unsafe state prevents delegation.
 
 O1B does not acquire or hold a second per-record correctness lock. The race after this reread is resolved by I1-GC's existing nonblocking replay fence and canonical reread.
 
@@ -140,7 +140,7 @@ A scheduler dry-run never authorizes an apply-configured I1-GC. Scheduler apply 
 
 ## Content-free projection
 
-`LaneOutcome`, `repr`, the O1B node result, and scheduler projections expose only bounded statuses, booleans, counts, and approved reason IDs. Candidate snapshots and the raw I1-GC result are private and excluded from equality and representation.
+The public surface is strictly content-free. `LaneOutcome`, `repr`, the O1B node result, and scheduler projections expose only bounded statuses, booleans, counts, and approved reason IDs. Candidate snapshots and the raw I1-GC result are private and excluded from equality and representation.
 
 The projection contains no user/assistant text, governed content, character/namespace, runtime IDs, locator, filename, path, digest, timestamp, registry content, raw exception, or nested C1-5/B2 result.
 

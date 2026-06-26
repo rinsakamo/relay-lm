@@ -99,6 +99,9 @@ class _Inventory:
     groups: Mapping[str, tuple[_EntrySnapshot, ...]] = field(repr=False)
     unsafe: bool
     reason_ids: tuple[str, ...]
+    root_identity: tuple[int, int, int, int] | None = field(
+        default=None, repr=False, compare=False
+    )
 
 
 @dataclass(frozen=True, repr=False)
@@ -301,7 +304,9 @@ def run_relaymem_slp_scheduler_replay_lane_once(
     selected = eligible[0]
     try:
         _fault(fault_injector, "after_selection_before_reread")
-        current, reread_status = _canonical_reread(config, selected, limit, fault_injector)
+        current, reread_status = _canonical_reread(
+            config, selected, inventory, fault_injector
+        )
     except Exception:
         return _outcome(
             "failed",
@@ -496,7 +501,15 @@ def _inventory_root(
     groups: dict[str, list[_EntrySnapshot]] = {}
     reasons: list[str] = []
     count = 0
+    root_identity: tuple[int, int, int, int] | None = None
     try:
+        try:
+            root_before = os.fstat(root_fd)
+        except OSError:
+            return _Inventory(False, 0, {}, True, ("replay_root_unavailable",))
+        if not stat.S_ISDIR(root_before.st_mode):
+            return _Inventory(False, 0, {}, True, ("replay_root_integrity_unsafe",))
+        root_identity = _directory_identity(root_before)
         if inject_root_open_stage:
             _fault(fault_injector, "after_root_open_before_inventory")
         try:
@@ -555,13 +568,43 @@ def _inventory_root(
                         mtime_ns=info.st_mtime_ns, mode=info.st_mode,
                     )
                 )
+        try:
+            root_after = os.fstat(root_fd)
+        except OSError:
+            return _Inventory(False, count, {}, True, ("replay_root_unavailable",))
+        if _directory_identity(root_after) != root_identity:
+            return _Inventory(
+                False, count,
+                {key: tuple(value) for key, value in groups.items()},
+                True, ("replay_root_changed_during_inventory",),
+                root_identity=root_identity,
+            )
     finally:
         os.close(root_fd)
     return _Inventory(
         True, count,
         {key: tuple(sorted(value, key=lambda item: item.name)) for key, value in groups.items()},
-        bool(reasons), _reasons(reasons),
+        bool(reasons), _reasons(reasons), root_identity=root_identity,
     )
+
+
+def _directory_identity(info: os.stat_result) -> tuple[int, int, int, int]:
+    return (info.st_dev, info.st_ino, info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _read_root_identity(config: RelayLMConfig) -> tuple[int, int, int, int] | None:
+    root_fd, _ = _open_store_root(config.relaymem_slp_durable_finalization_root)
+    if root_fd is None:
+        return None
+    try:
+        info = os.fstat(root_fd)
+        if not stat.S_ISDIR(info.st_mode):
+            return None
+        return _directory_identity(info)
+    except OSError:
+        return None
+    finally:
+        os.close(root_fd)
 
 def _classify_inventory(config: RelayLMConfig, inventory: _Inventory) -> tuple[_GroupSnapshot, ...]:
     output: list[_GroupSnapshot] = []
@@ -676,23 +719,27 @@ def _classify_group(
 def _canonical_reread(
     config: RelayLMConfig,
     selected: _GroupSnapshot,
-    limit: int,
+    inventory: _Inventory,
     fault_injector: FaultInjector | None,
 ) -> tuple[_GroupSnapshot | None, str]:
     _fault(fault_injector, "during_selected_reread")
-    inventory = _inventory_root(
-        config, limit, fault_injector=None, inject_root_open_stage=False
-    )
-    if not inventory.complete or inventory.unsafe:
+    expected_root = inventory.root_identity
+    root_before = _read_root_identity(config)
+    if expected_root is None or root_before is None:
         return None, "unsafe"
+    if root_before != expected_root:
+        return None, "changed"
     entries = inventory.groups.get(selected.locator)
     if entries is None:
         return None, "changed"
     current = _classify_group(config, selected.locator, entries)
+    root_after = _read_root_identity(config)
+    if root_after is None:
+        return None, "unsafe"
+    if root_after != root_before or root_after != expected_root:
+        return None, "changed"
     if current.state == "isolated":
         return None, "isolated"
-    if current.state in {"corrupt", "unsupported", "unsafe"}:
-        return None, "unsafe"
     if current.state != "sealed_pending":
         return None, "changed"
     if _entry_identity(current.entries) != _entry_identity(selected.entries):

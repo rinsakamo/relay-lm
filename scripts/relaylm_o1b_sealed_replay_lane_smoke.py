@@ -354,6 +354,10 @@ def test_non_goals_and_fault_seams() -> None:
         "relaymem_slp_queue_root",
     ):
         require(forbidden not in source, forbidden)
+    require(
+        source.count("inventory = _inventory_root(") == 1,
+        "root_inventory_must_be_single",
+    )
     for stage in (
         "after_root_open_before_inventory",
         "during_inventory",
