@@ -25,6 +25,8 @@ relaylm_related_authority:
   - i1gd_durable_finalization_retention_cleanup.md
   - o0_local_one_job_runner.md
   - o1a_two_lane_scheduler_contract.md
+  - o1b_sealed_i1g_replay_lane.md
+  - o1c_eligible_b2_queue_lane.md
   - phase_i4b_primary_current_state_shared_fence.md
   - phase_i4c1_primary_forget_hidden_successor.md
   - relaymem_mvp_implementation_plan.md
@@ -117,7 +119,7 @@ one bounded round
 
 Replay and queue remain independent state machines. A B2 record converged by replay may be selected in the same round only through independent queue-root discovery and canonical reread. Replay output is never a C2 input.
 
-O1A is contract-only. O1B/O1C production discovery and delegation, O1D fairness/retry/backoff, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.
+O1A is contract-only. O1B and O1C bounded production discovery and delegation are complete. O1D fairness/retry/backoff, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.
 
 O1A proposed scheduler field names are target-only. `relaylm/config.py`, `docs/config_schema.md`, `config.example.yaml`, and CLI behavior do not accept or expose them.
 
@@ -182,7 +184,7 @@ Forget is not product-complete until I-4C2 through I-4F provide prepared recover
 The current runtime still lacks:
 
 - I1-GE full crash validation;
-- O1B through O1F automatic scheduling, O2 supervision, and O3 always-on operation;
+- O1D through O1F automatic scheduling, O2 supervision, and O3 always-on operation;
 - I-4C2 prepared resume, exact replay, forward recovery, response-loss convergence, and tombstone finalization;
 - I-4D hidden/prepared/recovery/corrupt M2 and RelayCTX exclusion;
 - I-4E loopback mutation API and SOUL Lab Forget UI;
@@ -256,8 +258,8 @@ I-4E  loopback API and SOUL Lab Forget UI                          unimplemented
 I-4F  crash/race/security/fresh-conversation validation            unimplemented
 
 O1A   two-lane round/adapter/idle contract                         complete
-O1B   sealed-record discovery/I1-GC delegation                    unimplemented
-O1C   B2 discovery/O0-compatible C2 delegation                    unimplemented
+O1B   sealed-record discovery/I1-GC delegation                    complete
+O1C   B2 discovery/O0-compatible C2 delegation                    complete
 O1D   ordering/fairness/retry-time/backoff/jitter                  unimplemented
 O1E   stale recovery/cancellation/graceful shutdown               unimplemented
 O1F   full operational validation                                  unimplemented
@@ -265,4 +267,4 @@ O1F   full operational validation                                  unimplemented
 
 ## Completion interpretation
 
-M3a-M3h, C1-0 through C1-5, C2, O0, I1-GC, I1-GD, I-1 recall, I-2 observation, I-3 Correct, I-4B, and I-4C1 are implemented. Forget is not product-complete until I-4C2 through I-4F provide recovery/tombstone, retrieval exclusion, API/UI, and production validation.
+M3a-M3h, C1-0 through C1-5, C2, O0, I1-GC, I1-GD, O1B, O1C, I-1 recall, I-2 observation, I-3 Correct, I-4B, and I-4C1 are implemented. O1B and O1C are bounded lane adapters only; O1D through O1F, O2, and O3 remain incomplete. Forget is not product-complete until I-4C2 through I-4F provide recovery/tombstone, retrieval exclusion, API/UI, and production validation.
