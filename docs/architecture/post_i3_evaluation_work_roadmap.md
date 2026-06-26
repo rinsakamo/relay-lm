@@ -30,7 +30,7 @@ Last reviewed: 2026-06-26 JST
 
 ## Purpose
 
-Phase I-3 Correct, UI-B0 real Home conversation, O0 local one-job execution, I1-GA through I1-GD, I-4B, I-4C1, and O1A are complete at their bounded boundaries. Phase I-4A remains the target Forget / Hide contract. I1-GE, I-4C2 through I-4F, and O1B through O1F remain incomplete.
+Phase I-3 Correct, UI-B0 real Home conversation, O0 local one-job execution, I1-GA through I1-GD, I-4B, I-4C1, O1A, O1B, and O1C are complete at their bounded boundaries. Phase I-4A remains the target Forget / Hide contract. I1-GE, I-4C2 through I-4F, and O1D through O1F remain incomplete.
 
 This roadmap separates four authorities:
 
@@ -65,6 +65,8 @@ Complete:
 - ordinary managed Turn 1 Primary MEM formation through C2;
 - O0 explicit execution of at most one eligible durable queued job;
 - O1A pure replay-before-queue round/idle contract;
+- O1B one bounded sealed-record replay-lane adapter;
+- O1C one bounded queue-lane adapter;
 - next-turn M2 retrieval and RelayCTX injection;
 - character and namespace isolation;
 - Phase I-2 real read-only Lab observation;
@@ -122,7 +124,7 @@ SOUL Lab Home real conversation
   -> I1-GB durable-finalization evidence before protected release
   -> I1-GC exact C1-5/B2 convergence when caller-selected replay is needed
   -> I1-GD bounded retention / isolation cleanup when operator-invoked
-  -> O0 or later O1C queue execution
+  -> O0 or O1C queue execution
   -> Primary MEM formed / held / blocked / failed
   -> Phase I-2 observation
   -> explicit memory operation
@@ -269,11 +271,18 @@ I1-GC does not scan, batch, poll, sleep, retry in a loop, clean up, transition B
 
 O1A fixes replay-before-queue ordering, one delegation per lane, independent queue rediscovery, lane-local failure isolation, bounded content-free results, and `stop | run_next_round | idle`. It adds no production scanner or runtime loop.
 
+### O1B and O1C: Bounded production lane adapters — complete
+
+```text
+O1B  one eligible I1-G sealed-record discovery and existing I1-GC delegation
+O1C  one eligible B2/B3 discovery and existing C2 delegation
+```
+
+O1B and O1C each perform one bounded inventory, deterministic selection, canonical reread, and at most one delegation. Replay output is never passed directly into the queue lane.
+
 ### O1D through O1F: Production scheduling — unimplemented
 
 ```text
-O1B  one eligible I1-G sealed-record discovery and I1-GC delegation
-O1C  one eligible B2 discovery and O0/C2 delegation
 O1D  deterministic ordering, fairness, retry-time, backoff, jitter
 O1E  stale-claim recovery, cancellation, graceful shutdown
 O1F  corruption, concurrency, saturation, restart, leakage smoke
@@ -295,15 +304,14 @@ I1-GB, I-4B, and O1A.
 
 ### Wave 1 — complete
 
-I1-GC, I1-GD, and I-4C1.
+I1-GC, I1-GD, I-4C1, O1B, and O1C.
 
 ### Wave 2 — current
 
 ```text
 I-4C2
-|| O1B
-|| O1C
 || UI-B1A projection design
+|| I1-GE crash validation preparation
 ```
 
 ### Wave 3 — next
@@ -360,7 +368,7 @@ Phase I-8 and I-9 + complete I1-G + O1/O2 + O3 soak evidence.
 ## Preserved boundaries
 
 - I1-GA through I1-GD are complete; I1-GE remains incomplete.
-- O1A is contract-only; O1B through O1F remain unimplemented.
+- O1A is contract-only; O1B and O1C bounded lane adapters are complete; O1D through O1F remain unimplemented.
 - I1-G records and B2 queue records remain separate state machines.
 - O1 invokes I1-GC and O0/C2; it does not absorb their semantics.
 - I-4C1/I-4C2 are delivery subdivisions, not new lifecycle authorities.
@@ -376,4 +384,4 @@ O1D through O1F remain unimplemented. O1C does not complete a scheduler round lo
 <!-- O1B_CURRENT_BOUNDARY -->
 ### O1B sealed replay-lane discovery — complete
 
-O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1C through O1F, O2, and O3 remain unimplemented.
+O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1D through O1F, O2, and O3 remain unimplemented.
