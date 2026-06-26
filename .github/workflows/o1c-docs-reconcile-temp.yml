@@ -1,0 +1,40 @@
+name: Temporary O1C docs reconciliation
+
+on:
+  push:
+    branches:
+      - phase-o1c-eligible-b2-queue-lane
+    paths:
+      - "scripts/_o1c_docs_patch.py"
+      - ".github/workflows/o1c-docs-reconcile-temp.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: o1c-docs-reconcile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-o1c-eligible-b2-queue-lane
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Apply bounded documentation replacements
+        run: python scripts/_o1c_docs_patch.py
+      - name: Commit reconciled documents
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs
+          if git diff --cached --quiet; then
+            echo "No documentation changes"
+            exit 0
+          fi
+          git commit -m "docs: reconcile O1C current boundary"
+          git push origin HEAD:phase-o1c-eligible-b2-queue-lane
