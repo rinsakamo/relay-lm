@@ -8,15 +8,15 @@ from relaylm.relaymem_primary_forget import (
     apply_primary_memory_forget,
     preflight_primary_memory_forget,
 )
-from relaylm.soul_lab_observation_projection import (
-    LabObservationScope,
-    build_lab_memory_used_projection,
-)
+from relaylm.soul_lab_observation_projection import LabObservationScope
 from relaylm.soul_lab_observation_store import (
     RUN_RECEIPT_SCHEMA,
     USED_RECEIPT_SCHEMA,
     write_run_receipt,
     write_used_receipt,
+)
+from relaylm.soul_lab_used_memory_lifecycle_projection import (
+    build_lab_memory_used_lifecycle_projection,
 )
 
 NOW = datetime(2026, 6, 27, 0, 0, tzinfo=timezone.utc)
@@ -74,7 +74,8 @@ def main() -> None:
             known=True, available=True, character_id=CHARACTER,
             namespace=NAMESPACE, store_root=str(root), reason_ids=(),
         )
-        active = build_lab_memory_used_projection(scope)
+        active = build_lab_memory_used_lifecycle_projection(scope)
+        require(active.schema == "relaylm.lab.memory_used_lifecycle.v1", active)
         item = active.items[0]
         require(item.injected_summary == INJECTED, item)
         require(item.current_summary == INJECTED, item)
@@ -95,7 +96,7 @@ def main() -> None:
             operation_id="i4d-history-forget",
             apply_token=str(preflight["apply_token"]), now=NOW,
         )
-        hidden = build_lab_memory_used_projection(scope)
+        hidden = build_lab_memory_used_lifecycle_projection(scope)
         item = hidden.items[0]
         require(item.injected_summary == INJECTED, item)
         require(item.current_summary is None, item)
