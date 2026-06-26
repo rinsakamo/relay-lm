@@ -20,6 +20,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # This second commit starts the newly registered branch workflow.
           git clone -q --depth 1 --branch phase-o1b-sealed-i1g-replay-lane \
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo
           cd repo
