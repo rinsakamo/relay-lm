@@ -29,7 +29,7 @@ SOUL replacement is intentionally treated as a high-risk experimental capability
 
 This capability is outside the RelayLM MVP and outside the Phase I-9 ordinary RelaySOUL proposal/revision/rollback path. It must not be implemented before ordinary SOUL revision, memory governance, durability, rollback, and evaluation are stable.
 
-## Core distinction
+## SOUL revision versus SOUL replacement
 
 ### SOUL revision
 
@@ -48,7 +48,7 @@ Expected properties:
 
 - character identity remains continuous,
 - relationship state may remain valid unless the revision invalidates it,
-- prior SOUL revision remains available for rollback,
+- the prior SOUL revision remains available for rollback,
 - continuity is an intended product property,
 - incompatibility is treated as a migration or calibration failure.
 
@@ -71,7 +71,7 @@ Expected properties:
 - some semantic and behavioral inconsistency is expected,
 - the new SOUL must not silently inherit the old character's intimacy or affective state,
 - the old character branch remains intact,
-- rollback means returning to the old branch rather than trying to reverse every new interpretation.
+- rollback means returning to the old branch rather than reversing every new interpretation.
 
 The default interpretation is "a different personality receiving inherited records," not "the same mind with a skin change."
 
@@ -87,7 +87,7 @@ SOUL replacement is not required for:
 - supervised or always-on operation,
 - E1, E2, or E3 evaluation completion.
 
-It should remain disabled and undocumented as a normal user-facing operation until the following are proven:
+It remains disabled as a normal user-facing operation until all of the following are proven:
 
 - stable SLP-governed memory formation,
 - reliable lifecycle exclusion and Forget enforcement,
@@ -99,38 +99,48 @@ It should remain disabled and undocumented as a normal user-facing operation unt
 
 ## Transfer principle
 
-The initial implementation should inherit only memory that has already passed through RelaySLP and the applicable persistence gates.
+The initial implementation inherits only memory that has passed through RelaySLP and the applicable persistence gates.
 
 ```text
-Eligible baseline:
-  governed durable MEM
+Eligible positive content:
+  current retrieval-eligible governed MEM
   + explicit correction state
-  + Forget / Hide lifecycle state
   + source lineage
   + namespace and character-independent subject scope
   + disclosure and audience constraints
+
+Eligible negative authority:
+  Forget / Hide exclusion identity
+  + supersession state
+  + corruption or recovery-required state
+  + deletion or disclosure prohibition
 ```
 
-Raw conversation history is not transferred directly into the new runtime context.
+Positive content and negative authority are different transfer classes.
+
+- Retrieval-eligible memory content may be selected for the destination branch.
+- Hidden, forgotten, superseded-ineligible, corrupt, or recovery-required memory bodies are not transferred as content.
+- Their lifecycle identities and exclusion constraints must still be carried or consulted so that the new branch cannot revive or regenerate them.
+
+Raw conversation history is never transferred directly into the new runtime context.
 
 Old runtime trace, current SCN, current EMO state, working RelayCTX, pending probes, and old character-conditioned beliefs are not the transfer baseline.
 
 ## Transfer eligibility classes
 
-### Class A: transferable governed memory
+### Class A: transferable governed content
 
 Examples:
 
-- user-origin claims preserved with provenance,
+- current active user-origin claims preserved with provenance,
 - project decisions and durable state,
 - explicit user preferences with source lineage and uncertainty,
 - user corrections,
 - stable definitions and concepts,
-- bounded Secondary MEM summaries whose source set remains eligible,
-- explicit disclosure constraints,
-- active / hidden / superseded lifecycle state.
+- bounded Secondary MEM summaries whose complete source set remains eligible,
+- explicit disclosure constraints associated with eligible content.
 
-Transfer does not change the proposition into objective truth. The new SOUL receives the same governed evidence or memory representation under the same uncertainty and scope.
+Transfer does not turn a proposition into objective truth. The new SOUL receives the same governed representation under the same uncertainty and scope.
 
 ### Class B: transferable only as low-authority interpretation material
 
@@ -139,11 +149,24 @@ Examples:
 - preference predictions,
 - character-neutral shared evidence assessments,
 - context-dependent likely-response models,
-- relationship-relevant observations that do not contain private content but were interpreted by the previous character.
+- relationship-relevant observations that do not contain excluded or private content.
 
 These may be supplied for re-evaluation, not injected as new-character truth.
 
-### Class C: non-transferable character state
+### Class C: negative authority without content transfer
+
+Examples:
+
+- hidden or forgotten logical memory identity,
+- superseded-ineligible identity,
+- explicit user prohibition,
+- disclosure restriction,
+- corruption or recovery-required state,
+- source ranges that must not be used for virtual-memory generation.
+
+Class C exists to prevent resurrection. It does not authorize retrieval or disclosure of the excluded body.
+
+### Class D: non-transferable character state
 
 The initial implementation must not transfer:
 
@@ -153,7 +176,7 @@ The initial implementation must not transfer:
 - teasing, intimacy, vulnerability, or public-familiarity permissions,
 - old relationship-conditioned EMO gains,
 - current or historical assistant affect state as new-character affect,
-- jealousy, rejection sensitivity activation, or unresolved emotional impulses,
+- jealousy, rejection-sensitivity activation, or unresolved emotional impulses,
 - current SCN state,
 - pending action or probe proposals,
 - old character's repair obligations as if experienced by the new character.
@@ -179,9 +202,9 @@ The following remain binding across the replacement:
 
 Core invariant:
 
-> A new SOUL may reinterpret eligible content. It may not revive excluded content or relax who is allowed to know or disclose it.
+> A new SOUL may reinterpret eligible content. It may not receive, revive, infer from, or regenerate excluded content, and it may not relax who is allowed to know or disclose it.
 
-If transfer eligibility or disclosure authority is ambiguous, transfer fails closed.
+If transfer eligibility, source lineage, or disclosure authority is ambiguous, transfer fails closed.
 
 ## Non-destructive branch model
 
@@ -199,6 +222,7 @@ experimental branch B
   identity B or explicit successor identity
   SOUL B
   selected inherited governed MEM references
+  exclusion-authority manifest
   optional virtual memories
   fresh character beliefs B
   fresh relationship state B
@@ -223,20 +247,21 @@ The preferred baseline is:
 ```text
 current eligible RelayMEM state
   -> lifecycle and disclosure revalidation
-  -> transfer classification
+  -> positive-content and negative-authority classification
   -> bounded inherited-memory manifest
-  -> new branch retrieval eligibility
+  -> destination-branch retrieval eligibility
 ```
 
-The manifest should reference existing authoritative memory revisions where safe rather than copy unbounded page bodies into a new opaque profile.
+The manifest should reference existing authoritative current memory revisions where safe rather than copy unbounded page bodies into an opaque user profile.
 
-A transfer operation must record, in protected form:
+A transfer operation records, in protected form:
 
 - source character/branch,
 - destination character/branch,
 - transfer policy version,
-- included memory identities and revisions,
-- excluded reason classes,
+- included current memory identities and revisions,
+- excluded identities and reason classes,
+- prohibited source ranges for reconstruction,
 - disclosure and lifecycle validation result,
 - operator/user approval,
 - rollback target.
@@ -245,16 +270,17 @@ Generic diagnostics remain content-free.
 
 ## Conversation-history virtual memory
 
-Past conversation history may optionally be used to create provisional virtual memory for the new SOUL.
+Past conversation history may optionally create provisional virtual memory for the new SOUL.
 
 This is a reconstruction path, not direct history injection and not a claim that the new personality lived those conversations.
 
 ```text
 approved past conversation sources
   -> speaker / subject / quotation / role-play separation
+  -> lifecycle and exclusion-authority filter
   -> SLP evidence extraction
   -> contradiction and temporal analysis
-  -> Forget and disclosure filtering
+  -> disclosure filtering
   -> virtual-memory candidates
   -> bounded bootstrap pack
 ```
@@ -279,17 +305,19 @@ Exact schemas remain future contract work.
 
 ### Required rules
 
-- use only approved, governed source history,
+- use only approved governed source history,
 - preserve speaker and source provenance,
 - do not treat assistant-origin suggestions as user facts,
-- respect Forget / Hide and disclosure constraints before generation,
+- exclude hidden, forgotten, superseded-ineligible, corrupt, and recovery-required memory bodies before candidate generation,
+- exclude conversation source ranges linked to those bodies,
+- when independence from excluded content cannot be proven, exclude the candidate,
 - keep virtual memory distinct from ordinary Primary and Secondary MEM,
 - prohibit automatic promotion merely because the new SOUL repeats it,
 - allow user inspection, correction, rejection, or discard,
 - decay or revalidate character-specific interpretation as new interactions accumulate,
 - fall back to SLP-governed durable MEM only when virtual-memory generation fails.
 
-## Experience claim boundary
+## Experience-claim boundary
 
 The new SOUL must not falsely claim direct experiential continuity by default.
 
@@ -306,9 +334,9 @@ Safer initial framing:
 "I have a reconstructed memory that you may prefer this."
 ```
 
-Product presentation may later offer an explicit fictional-continuity mode, but the internal provenance must remain intact and the mode must not authorize false memory persistence or scope relaxation.
+A future explicit fictional-continuity mode may alter presentation, but internal provenance remains intact and the mode does not authorize false-memory persistence or scope relaxation.
 
-The character may gradually stop foregrounding the reconstruction mechanism after sufficient new interaction, but the provenance does not disappear.
+The character may gradually stop foregrounding reconstruction mechanics after sufficient new interaction, but provenance does not disappear.
 
 ## Fresh relationship initialization
 
@@ -316,9 +344,9 @@ The initial replacement model creates a fresh relationship state.
 
 ```text
 Inherited:
-  governed user memory
-  explicit boundaries
-  disclosure permissions that are user-owned and character-independent
+  eligible governed user memory
+  explicit user-owned boundaries
+  negative lifecycle and disclosure authority
 
 Reset:
   intimacy
@@ -330,15 +358,15 @@ Reset:
   relationship-conditioned EMO gain
 ```
 
-The new relationship may use conservative priors from the new SOUL and explicit user settings. It must not assume the old character's earned intimacy.
+The new relationship uses conservative priors from the new SOUL and explicit user settings. It must not assume the old character's earned intimacy.
 
 A future opt-in relationship-informed bootstrap may use old interaction evidence as low-authority calibration material, but it remains separate from full continuity and requires explicit user approval.
 
 ## Expected inconsistency
 
-SOUL replacement is allowed to produce bounded non-authority inconsistency while experimental:
+SOUL replacement may produce bounded non-authority inconsistency while experimental:
 
-- different interpretation of the same memory,
+- different interpretation of the same eligible memory,
 - changed conversational style,
 - reduced familiarity,
 - failure to understand an old inside joke,
@@ -348,9 +376,9 @@ SOUL replacement is allowed to produce bounded non-authority inconsistency while
 
 These are not automatically migration defects.
 
-The following are defects, not acceptable inconsistency:
+The following are defects:
 
-- reviving forgotten or hidden memory,
+- transferring, reviving, or regenerating forgotten or hidden content,
 - leaking private memory to a new audience,
 - presenting old character inference as user assertion,
 - claiming old intimacy as newly earned trust,
@@ -370,6 +398,7 @@ explicit experimental request
   -> select new SOUL
   -> compile and validate new branch
   -> transfer eligible SLP-governed MEM
+  -> attach negative-authority manifest
   -> optionally generate virtual memories
   -> initialize fresh relationship and EMO state
   -> present bounded preview and warnings
@@ -378,11 +407,11 @@ explicit experimental request
   -> keep, deactivate, or return to previous branch
 ```
 
-Rollback returns the active character pointer to the prior intact branch. It does not attempt to erase conversations that occurred with the experimental branch or merge their relationship state automatically.
+Rollback returns the active character pointer to the prior intact branch. It does not erase conversations that occurred with the experimental branch or merge their relationship state automatically.
 
 New observations produced during the experiment require an explicit retention policy:
 
-- retain with experimental branch only,
+- retain with the experimental branch only,
 - offer governed export as ordinary evidence,
 - discard according to user request and retention policy.
 
@@ -390,7 +419,7 @@ New observations produced during the experiment require an explicit retention po
 
 - transfer validation failure creates no active replacement branch,
 - virtual-memory generation failure does not block a governed-MEM-only bootstrap,
-- disclosure ambiguity excludes the item,
+- disclosure or exclusion ambiguity rejects the item,
 - invalid or stale source revisions require re-resolution,
 - branch activation failure leaves the old branch active,
 - rollback failure is a blocking integrity incident,
@@ -403,8 +432,10 @@ SOUL replacement requires dedicated evaluation separate from ordinary SOUL revis
 
 Measure at least:
 
-- transfer-manifest correctness,
+- positive-content transfer-manifest correctness,
+- negative-authority manifest correctness,
 - lifecycle and disclosure preservation,
+- hidden-content resurrection or regeneration rate,
 - old-character belief contamination rate,
 - old relationship-state contamination rate,
 - virtual-memory provenance correctness,
@@ -424,7 +455,7 @@ same governed MEM + SOUL A versus SOUL B
 same SOUL B + governed MEM only versus virtual-memory bootstrap
 same replacement + private scene versus multi-user scene
 same replacement + retained old relationship state fixture, which must be rejected
-same source set + one hidden memory, which must never transfer or regenerate
+same source set + one hidden memory, whose body must never transfer or regenerate
 ```
 
 ## Candidate post-MVP implementation slices
@@ -433,7 +464,7 @@ The following names are planning placeholders and not current phase identifiers:
 
 ```text
 SR-A  replacement threat model, continuity contract, and branch identity
-SR-B  governed-memory transfer eligibility and manifest
+SR-B  governed-memory transfer eligibility and positive/negative manifests
 SR-C  conversation-history virtual-memory generation and provenance
 SR-D  non-destructive branch activation, deactivation, and rollback
 SR-E  SOUL Lab experimental UI, warnings, preview, and memory selection
@@ -476,11 +507,12 @@ This design does not:
 ```text
 old character branch remains intact
   -> new experimental SOUL branch
-  -> SLP-governed eligible memory only
+  -> SLP-governed current eligible memory only
+  -> negative lifecycle/disclosure authority preserved without excluded bodies
   -> optional SLP-generated provisional virtual memory
   -> fresh relationship / EMO / SCN state
   -> explicit activation and observation
   -> keep experimental branch or return to old branch
 ```
 
-SOUL replacement should remain a post-MVP experimental capability. Its safest first form is not personality continuity, but a reversible new character branch that receives governed memory records without inheriting the old character's relationship, affect, or unreviewed interpretations.
+SOUL replacement should remain a post-MVP experimental capability. Its safest first form is not personality continuity, but a reversible new character branch that receives governed eligible memory records without inheriting excluded content, the old character's relationship, affect, or unreviewed interpretations.
