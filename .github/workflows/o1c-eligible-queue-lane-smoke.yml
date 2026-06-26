@@ -1,0 +1,81 @@
+name: O1C eligible queue-lane smoke
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/relaymem_slp_queue_candidate.py"
+      - "relaylm/relaymem_slp_scheduler_queue_lane.py"
+      - "relaylm/relaymem_slp_scheduler_contract.py"
+      - "relaylm/local_worker_once.py"
+      - "relaylm/config.py"
+      - "relaylm/relaymem_slp_one_queued_job_runner.py"
+      - "relaylm/relaymem_slp_queue_*.py"
+      - "relaylm/relaymem_slp_protected_source_store.py"
+      - "relaylm/relaymem_slp_primary_worker*.py"
+      - "relaylm/relaymem_primary_*.py"
+      - "scripts/_relaylm_o0_local_worker_support.py"
+      - "scripts/relaylm_o1c_eligible_queue_lane_*.py"
+      - "scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py"
+      - "scripts/relaylm_o0_local_one_job_runner_*.py"
+      - "scripts/relaylm_phase6b2_*.py"
+      - "scripts/relaylm_phase6b3_*.py"
+      - "scripts/relaylm_phase6c1_*.py"
+      - "scripts/relaylm_phase6c2_*.py"
+      - "scripts/relaylm_documentation_current_boundary_smoke.py"
+      - "docs/PROJECT_STATUS.md"
+      - "docs/README.md"
+      - "docs/architecture/*.md"
+      - ".github/workflows/o1c-eligible-queue-lane-smoke.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/relaymem_slp_queue_candidate.py"
+      - "relaylm/relaymem_slp_scheduler_queue_lane.py"
+      - "relaylm/local_worker_once.py"
+      - "scripts/relaylm_o1c_eligible_queue_lane_*.py"
+      - "docs/architecture/o1c_eligible_b2_queue_lane.md"
+      - ".github/workflows/o1c-eligible-queue-lane-smoke.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: o1c-queue-lane-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install RelayLM runtime dependencies
+        run: python -m pip install -e .
+      - name: Compile repository Python
+        run: python -m compileall -q relaylm scripts
+      - name: Run O1C functional and security smokes
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_o1c_eligible_queue_lane_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_o1c_eligible_queue_lane_security_smoke.py
+      - name: Run O0 and O1A compatibility smokes
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_o0_local_one_job_runner_ci_runner.py
+          PYTHONPATH=. python scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py
+      - name: Run Phase 6 queue and C2 regressions
+        run: |
+          PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+      - name: Run Phase 6-C1 worker and durable-source regressions
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
+      - name: Run documentation boundary and link checks
+        run: |
+          PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+          PYTHONPATH=. python scripts/relaylm_docs_link_check.py

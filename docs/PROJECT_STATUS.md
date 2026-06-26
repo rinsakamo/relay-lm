@@ -21,8 +21,10 @@ relaylm_related_authority:
   - docs/architecture/post_i3_evaluation_work_roadmap.md
   - docs/architecture/current_target_migration_guide.md
   - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
+  - docs/architecture/i1gd_durable_finalization_retention_cleanup.md
   - docs/architecture/phase_i4c1_primary_forget_hidden_successor.md
   - docs/architecture/o1a_two_lane_scheduler_contract.md
+  - docs/architecture/o1c_eligible_b2_queue_lane.md
 ---
 # RelayLM Project Status
 
@@ -47,7 +49,9 @@ Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
 Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete; C2 one-job adapter complete
 Local worker operation: O0 one invocation -> at most one eligible queued job complete
 Scheduler contract: O1A replay-before-queue round / adapter / idle contract complete
-Scheduler production: O1B through O1F unimplemented
+Scheduler replay lane: O1B one bounded sealed-record discovery/reread/I1-GC adapter complete
+Scheduler queue lane: O1C one bounded discovery/reread/scope/C2 adapter complete
+Scheduler remaining production: O1D through O1F unimplemented
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and scope isolation complete
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, and UI-B0 complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete
@@ -59,7 +63,7 @@ Phase I-4C2 through I-4F recovery, exclusion, UI, and validation: unimplemented
 I1-GA contract / fault model: complete
 I1-GB durable-finalization publication / pre-release admission: complete
 I1-GC one-record restart replay / exact C1-5+B2 convergence / completion marker: complete
-I1-GD retention / orphan reconciliation / cleanup: unimplemented
+I1-GD retention / orphan reconciliation / isolation lifecycle / cleanup: complete
 I1-GE full production crash validation: unimplemented
 I1-G overall: in progress
 ```
@@ -87,7 +91,9 @@ Implemented:
 - C1-0 through C1-5 complete;
 - C2 one-job claim/rehydrate/execute adapter: complete;
 - O0 one-shot bounded queue discovery and one C2 delegation;
-- O1A pure two-lane round/result/disposition contract.
+- O1A pure two-lane round/result/disposition contract;
+- O1B one bounded eligible sealed I1-G replay-lane discovery and one existing I1-GC delegation;
+- O1C one bounded eligible B2/B3 queue-lane discovery and one existing C2 delegation.
 
 B3 lifecycle: complete.
 
@@ -101,8 +107,8 @@ O1A is complete as a pure contract only:
 
 ```text
 validate scheduler gates
-  -> replay lane: at most one future O1B discovery and one existing I1-GC delegation
-  -> queue lane: at most one future O1C discovery and one existing C2 delegation
+  -> replay lane: one bounded O1B discovery and at most one existing I1-GC delegation
+  -> queue lane: at most one O1C discovery and one existing C2 delegation
   -> bounded content-free aggregation
   -> stop | run_next_round | idle
   -> return without sleeping
@@ -110,10 +116,9 @@ validate scheduler gates
 
 The lane order is replay then queue. Replay output, locator, job identity, and dispatch identity are never passed directly to C2. A queue record converged by replay may be selected in the same round only through independent queue-root discovery and canonical reread.
 
-Still separate:
+O1B is complete for one bounded sealed I1-G inventory, deterministic selection, canonical selected-record reread, and at most one existing I1-GC delegation. O1C is complete for one independent bounded queue-root inventory, due/future classification, deterministic selection, canonical reread, server-owned scope resolution, and at most one existing C2 delegation. Neither starts a scheduler round or loop.
 
-- O1B sealed I1-G record discovery and one I1-GC delegation;
-- O1C eligible B2 discovery and one O0-compatible C2 delegation;
+Still separate:
 - O1D ordering, fairness, retry-time, backoff, and jitter;
 - O1E stale-claim recovery, cancellation, and graceful shutdown;
 - O1F corruption, concurrency, saturation, restart, and leakage validation;
@@ -122,9 +127,9 @@ Still separate:
 
 O1A adds no accepted configuration fields, CLI command, scanner, polling loop, sleep, daemon, or service.
 
-## I1-GA / I1-GB durable-finalization boundary and I1-GC replay
+## I1-GA through I1-GD durable-finalization boundary
 
-Visible-release restart evidence publication is implemented by I1-GB in explicit apply mode. Restart-time one-record replay is implemented by I1-GC.
+Visible-release restart evidence publication is implemented by I1-GB in explicit apply mode. Restart-time one-record replay is implemented by I1-GC. Durable-finalization bounded retention and cleanup is implemented by I1-GD.
 
 ```text
 ordinary finalized turn
@@ -137,15 +142,17 @@ ordinary finalized turn
   -> canonical B2 queue convergence
   -> exact downstream reread and correlation verification
   -> immutable content-free completion marker
+  -> bounded I1-GD retention / isolation / cleanup pass
 ```
 
-The normal I1-GB finalizer and restart replay use the same nonblocking cross-process per-record fence and the same completion authority. Duplicate, race, ambiguous-write, and restart paths converge only through canonical reread. Queue-without-source, identity mismatch, collision, corruption, unsupported schema, symlink, hardlink, and unsafe file type fail closed.
+I1-GC and I1-GD use the same nonblocking cross-process per-record fence. I1-GD additionally holds the existing I1-GB store-root mutation lock while it rereads and cleans a record, so base/segment/seal publication cannot overlap maintenance. Duplicate, race, ambiguous-write, and restart paths converge only through canonical reread. Queue-without-source, identity mismatch, collision, corruption, unsupported schema, symlink, hardlink, and unsafe file type fail closed.
 
 I1-G completion means exact sealed evidence, exact C1-5 source, exact B2 queue correlation, and a durable completion marker. It does not mean B3 terminal success, C2 execution, worker execution, or Primary MEM formation.
 
+I1-GD publishes an immutable content-free isolation marker before deleting known record components, rereads it canonically, deletes the isolation marker last after its own retention horizon, never deletes the per-record lock file, and never mutates C1-5, B2, B3, C2, worker, or M3 state. Sealed records without completion remain replay candidates and are never deleted because of age or capacity pressure.
+
 Remaining I1-G work:
 
-- I1-GD retention, orphan reconciliation, isolation lifecycle, and cleanup;
 - I1-GE full crash-at-every-boundary production validation.
 
 ## RelayMEM Primary persistence and governance
@@ -204,10 +211,8 @@ The workstation evaluation exposed two quality gaps:
 ## Immediate dependency-first work
 
 ```text
-I1-GD retention / cleanup
-|| I-4C2 prepared recovery / tombstone
-|| O1B sealed-record discovery
-|| O1C queue-record discovery
+I-4C2 prepared recovery / tombstone
+|| I1-GE crash validation preparation
 
 then
   I-4D M2 exclusion
@@ -215,7 +220,7 @@ then
   O1E stale recovery / shutdown
 
 then
-  I1-GE crash validation
+  I1-GE crash validation completion
   I-4E / I-4F UI and validation
   O1F operational validation
   UI-B1A read-only lifecycle visibility
@@ -223,7 +228,7 @@ then
 
 ## Safe defaults
 
-Current mutation, worker, durable-finalization, and scheduler-related paths remain default-off or dry-run-first. I1-GC does not add a scanner or automatic retry loop. O1A does not add current configuration fields. I-4C1 adds no accepted browser route and does not change ordinary M2 retrieval behavior.
+Current mutation, worker, durable-finalization, retention, and scheduler-related paths remain default-off or dry-run-first. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1A does not add current configuration fields. I-4C1 adds no accepted browser route and does not change ordinary M2 retrieval behavior.
 
 ## Not yet implemented
 
@@ -231,8 +236,8 @@ Current mutation, worker, durable-finalization, and scheduler-related paths rema
 - idempotent operator-facing character-store bootstrap;
 - speaker-provenance-safe Primary MEM summary formation;
 - strict evidence-grounded recall response generation;
-- I1-GD and I1-GE;
-- O1B through O1F, O2, and O3;
+- I1-GE;
+- O1D through O1F, O2, and O3;
 - I-4C2 through I-4F;
 - restore/unhide or physical purge;
 - I-5 through I-9 governance and RelaySOUL slices;
@@ -241,12 +246,7 @@ Current mutation, worker, durable-finalization, and scheduler-related paths rema
 - TTS/audio/avatar/Live2D execution;
 - ASR and peer communication transport.
 
-## Phase I-4C2 current boundary (2026-06-26 JST)
+<!-- O1B_CURRENT_BOUNDARY -->
+## O1B sealed replay-lane boundary
 
-- Phase I-4C1 hidden-successor commit: complete.
-- Phase I-4C2 exact recovery/finalization: complete.
-- One exact prepared operation resumes through deterministic hidden M3e evidence, operation-scoped index-before-log convergence, canonical reread, and immutable tombstone replay.
-- Final resolver state is `hidden / none / retrieval_eligible=false`.
-- I-4D ordinary M2/RelayCTX lifecycle exclusion and historical projection: unimplemented.
-- I-4E API/UI and I-4F full production validation: unimplemented.
-- Phase I-4 and product-complete Forget are not complete.
+O1B is complete for one bounded, non-recursive inventory of the configured I1-G root, exact canonical grouping and eligibility classification, deterministic selection of one sealed-pending locator, canonical selected-record reread, and at most one existing I1-GC delegation. It does not implement the O1C queue algorithm, a scheduler round loop, fairness, backoff, polling, shutdown, supervision, or always-on operation.

@@ -372,7 +372,24 @@ Bounds and accepted ranges:
 - admitted record locators: 1 through 100000, default 1024;
 - one bounded publication operation: 1 through 60000 milliseconds, default 5000.
 
-The private record is content-bearing and separate from C1-5 and B2. I1-GB publishes restart evidence only; I1-GC one-record restart replay and completion markers, I1-GD retention/cleanup, and I1-GE full crash validation remain unimplemented. No retention deadline or cleanup cadence is configured in I1-GB.
+The private record is content-bearing and separate from C1-5 and B2. I1-GB publishes restart evidence only. I1-GC one-record replay/completion and I1-GD retention/isolation cleanup are complete; I1-GE full crash validation remains unimplemented.
+
+## I1-GD durable-finalization retention flags
+
+```yaml
+relaymem_slp_durable_finalization_retention_enabled: false
+relaymem_slp_durable_finalization_retention_dry_run_only: true
+relaymem_slp_durable_finalization_retention_apply_enabled: false
+relaymem_slp_durable_finalization_completed_retention_seconds: 604800
+relaymem_slp_durable_finalization_orphan_grace_seconds: 86400
+relaymem_slp_durable_finalization_isolated_retention_seconds: 2592000
+relaymem_slp_durable_finalization_cleanup_max_records_per_pass: 64
+relaymem_slp_durable_finalization_cleanup_timeout_ms: 5000
+```
+
+I1-GD is separately default-off and dry-run-first. Valid operating modes are disabled (`false/true/false`), dry-run (`true/true/false`), and apply (`true/false/true`). Apply additionally requires the same absolute pre-existing private durable-finalization root. One call performs one bounded non-recursive maintenance pass; it does not poll, invoke I1-GC replay, or mutate C1-5, B2, B3, C2, worker, or M3 state.
+
+Retention age uses stable filesystem `mtime` as a private operational clock. Completed retention defaults to 604800 seconds, orphan grace to 86400 seconds, isolated-marker retention to 2592000 seconds, records per pass to 64, and timeout to 5000 milliseconds. All are strict positive bounded integers. Sealed records without completion are retained regardless of age.
 
 ## O0 local one-job worker flags
 

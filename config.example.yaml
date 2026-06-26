@@ -103,6 +103,18 @@ relaymem_slp_durable_finalization_max_segment_count: 256
 relaymem_slp_durable_finalization_max_record_count: 1024
 relaymem_slp_durable_finalization_publication_timeout_ms: 5000
 
+# I1-GD retention is a separate default-off, dry-run-first maintenance gate.
+# Apply performs one bounded non-recursive pass only. It does not poll, invoke
+# replay, execute workers, or mutate C1-5/B2/B3/C2/M3 authorities.
+relaymem_slp_durable_finalization_retention_enabled: false
+relaymem_slp_durable_finalization_retention_dry_run_only: true
+relaymem_slp_durable_finalization_retention_apply_enabled: false
+relaymem_slp_durable_finalization_completed_retention_seconds: 604800
+relaymem_slp_durable_finalization_orphan_grace_seconds: 86400
+relaymem_slp_durable_finalization_isolated_retention_seconds: 2592000
+relaymem_slp_durable_finalization_cleanup_max_records_per_pass: 64
+relaymem_slp_durable_finalization_cleanup_timeout_ms: 5000
+
 relaymem_slp_source_registry_max_entries: 256
 relaymem_slp_source_registry_ttl_seconds: 1800
 
