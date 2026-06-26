@@ -1,0 +1,56 @@
+name: Sync latest main into I-4C1 branch
+
+on:
+  push:
+    branches:
+      - phase-i4c1-primary-forget-hidden-successor
+    paths:
+      - ".github/workflows/i4c1-sync-latest-main.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i4c1-primary-forget-hidden-successor
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Merge latest main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          if git merge-base --is-ancestor origin/main HEAD; then
+            echo "Latest main is already contained"
+            exit 0
+          fi
+          git merge --no-commit --no-ff -X ours origin/main
+      - name: Install project
+        run: pip install -e .
+      - name: Validate merged documentation authorities
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall -q relaylm scripts
+          PYTHONPATH=. python scripts/relaylm_o1a_scheduler_round_contract_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+          PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+      - name: Commit and push merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+            git commit -m "chore: sync latest main into I-4C1 branch"
+            git push origin HEAD:phase-i4c1-primary-forget-hidden-successor
+          else
+            echo "No merge commit required"
+          fi
