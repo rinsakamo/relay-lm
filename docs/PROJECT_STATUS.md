@@ -363,3 +363,15 @@ local operator
 ```
 
 The Vite `/v1` proxy remains loopback-targeted with `changeOrigin: false`. Real runtime and preview conversations remain separate browser-local sessions. O0 remains a separate operator authority and is not callable from the browser. O1A adds no callable runtime surface. Before first apply, the operator must initialize the resolved character-scoped Primary store structure.
+
+## I1-GC durable-finalization replay current boundary (2026-06-26)
+
+I1-GC is complete at the one-record replay boundary. The production path reconstructs
+one sealed finalized turn, verifies its sealed A1/A2/B1 identity, converges existing
+C1-5 before existing B2, canonically rereads both artifacts, and publishes one
+immutable content-free completion marker under a nonblocking cross-process per-record
+fence. The normal I1-GB finalizer uses the same authority.
+
+This section supersedes earlier I1-GC pending statements in this file. I1-GD, I1-GE,
+O1B discovery/delegation and O1C through O1F scheduling production work remain
+incomplete. O1A is a completed contract-only boundary, not an automatic scheduler.

@@ -203,3 +203,15 @@ Placement rules:
 - RelaySOUL governance -> `docs/relaysoul/`
 
 The ordinary managed path is complete through observe/correct/retrieve, O0 manual one-shot execution, and the text-first Home experiment surface. I1-GB publishes restart evidence before visible completion, but I1-GC restart replay/completion convergence and I1-GD/I1-GE remain unimplemented. O1A defines the bounded two-lane round and idle contract only; O1B-O1F production scheduling work remains unimplemented. Phase I-4A defines the target Forget / Hide contract, I-4B completes the read-only resolver/shared-fence boundary, and I-4C1 completes hidden-successor commit ownership; I-4C2 through I-4F recovery, exclusion, UI, and validation remain unimplemented. O2/O3 and later governance remain separate roadmap work.
+
+## I1-GC durable-finalization replay current boundary (2026-06-26)
+
+I1-GC is complete at the one-record replay boundary. The production path reconstructs
+one sealed finalized turn, verifies its sealed A1/A2/B1 identity, converges existing
+C1-5 before existing B2, canonically rereads both artifacts, and publishes one
+immutable content-free completion marker under a nonblocking cross-process per-record
+fence. The normal I1-GB finalizer uses the same authority.
+
+This section supersedes earlier I1-GC pending statements in this file. I1-GD, I1-GE,
+O1B discovery/delegation and O1C through O1F scheduling production work remain
+incomplete. O1A is a completed contract-only boundary, not an automatic scheduler.

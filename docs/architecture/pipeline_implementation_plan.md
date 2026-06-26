@@ -582,3 +582,35 @@ When a phase lands, review together:
 - stale TODO or future-tense text in related documents.
 
 I1-GB adds default-off durable-finalization publication gates, an explicit private root, and bounded capacity/timeout fields documented in `docs/config_schema.md` and `config.example.yaml`. O1A adds no current config field. Its scheduler field names are target-only and must not appear as accepted configuration until a later production phase.
+
+## I1-GC durable-finalization replay current boundary (2026-06-26)
+
+Completed dependency edge:
+
+```text
+I1-GA contract
+  -> I1-GB pre-release sealed publication
+  -> I1-GC one-record restart replay and completion convergence  [complete]
+```
+
+The operations boundary now separates the completed O1A contract from production work:
+
+```text
+O1A pure replay-then-queue round / idle contract  [complete]
+  -> O1B sealed-record discovery / one I1-GC delegation
+  -> O1C B2 discovery / one O0-compatible C2 delegation
+  -> O1D ordering / fairness / retry-time / backoff / jitter
+  -> O1E stale recovery / cancellation / graceful shutdown
+  -> O1F production validation
+```
+
+The remaining I1-G durability work is:
+
+```text
+I1-GD retention / orphan reconciliation / cleanup
+  -> I1-GE full production crash validation
+```
+
+This section supersedes earlier roadmap entries that list I1-GC itself as pending.
+I1-GC does not add discovery, batch replay, retry loops, cleanup, B3 transitions,
+C2 execution, workers, M3 writes, or UI.

@@ -22,6 +22,11 @@ from relaylm.relaymem_slp_durable_finalization_publication import (
     RelayMEMSLPDurableFinalizationPreparedTurnHolder,
     RelayMEMSLPDurableFinalizationStreamSession,
 )
+from relaylm.relaymem_slp_durable_finalization_record import derive_locator_digest
+from relaylm.relaymem_slp_durable_finalization_replay import (
+    build_relaymem_slp_durable_finalization_replay_node_result,
+    replay_relaymem_slp_durable_finalization_record,
+)
 from relaylm.relaymem_slp_durable_runtime_enqueue import (
     RelayMEMSLPDurableRuntimeEnqueueResult,
     apply_relaymem_slp_durable_runtime_enqueue,
@@ -238,67 +243,108 @@ def run_relaymem_slp_runtime_enqueue_after_response(
     prepared_turn_holder: RelayMEMSLPDurableFinalizationPreparedTurnHolder | None = None,
     message_count: int = 0,
 ) -> RelayMEMSLPDurableRuntimeEnqueueResult:
-    """Run source capture and crash-consistent enqueue after response delivery."""
+    """Converge source, queue, and I1-G completion after response delivery."""
 
     source_result: RelayMEMSLPFinalizedTurnSourceResult | None = None
+    replay_node = None
     try:
         exact_prepared = prepared_turn
         if prepared_turn_holder is not None:
             if type(prepared_turn_holder) is not RelayMEMSLPDurableFinalizationPreparedTurnHolder:
                 raise TypeError("exact_durable_finalization_holder_required")
             exact_prepared = prepared_turn_holder.get()
-        if exact_prepared is not None:
-            if type(exact_prepared) is not RelayMEMSLPDurableFinalizationPreparedTurn:
-                raise TypeError("exact_durable_finalization_prepared_turn_required")
+        if exact_prepared is not None and type(
+            exact_prepared
+        ) is not RelayMEMSLPDurableFinalizationPreparedTurn:
+            raise TypeError("exact_durable_finalization_prepared_turn_required")
+
+        durable_replay_enabled = bool(
+            exact_prepared is not None
+            and config.relaymem_slp_durable_finalization_enabled
+            and config.relaymem_slp_durable_finalization_apply_enabled
+            and not config.relaymem_slp_durable_finalization_dry_run_only
+        )
+        if durable_replay_enabled:
+            assert exact_prepared is not None
             source_result = exact_prepared.source_result
-        else:
-            if (
-                config.relaymem_slp_durable_finalization_enabled
-                and config.relaymem_slp_durable_finalization_apply_enabled
-                and not config.relaymem_slp_durable_finalization_dry_run_only
-            ):
+            source = source_result.source
+            if source is None:
                 raise RelayMEMSLPDurableFinalizationError(
-                    "durable_finalization_sealed_preparation_required"
+                    "durable_finalization_sealed_source_required"
                 )
-            visible_text: object = assistant_visible_text
-            if stream_capture is not None:
-                if type(stream_capture) is not RelayMEMSLPFinalizedVisibleTextCapture:
-                    raise TypeError("exact_stream_capture_required")
-                visible_text = stream_capture.finalized_text()
-            source_result = build_relaymem_slp_finalized_turn_source(
-                pipeline_context,
-                assistant_visible_text=visible_text,
-                status_code=status_code,
-                resolved_session_id=resolved_session_id,
-                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-                relayemo_artifact=relayemo_artifact,
-                response_finalized=True,
-                enabled=config.relaymem_slp_runtime_enqueue_enabled,
+            locator = derive_locator_digest(
+                run_id=source.run_id,
+                turn_index=source.turn_index,
+                character_id=source.character_id,
             )
-        source_store = (
-            RelayMEMSLPDurableProtectedSourceStore(
-                config.relaymem_slp_protected_source_root,
-                max_artifact_bytes=(
-                    config.relaymem_slp_protected_source_max_artifact_bytes
+            replay = replay_relaymem_slp_durable_finalization_record(
+                config,
+                locator_digest=locator,
+                registry=registry,
+            )
+            replay_node = build_relaymem_slp_durable_finalization_replay_node_result(
+                replay
+            )
+            result = replay.durable_runtime_result
+            if result is None:
+                runtime_failure = build_relaymem_slp_runtime_enqueue_failure_result(
+                    "durable_finalization_replay_not_converged"
+                )
+                result = build_relaymem_slp_durable_runtime_enqueue_failure_result(
+                    runtime_failure,
+                    "durable_finalization_replay_not_converged",
+                )
+        else:
+            if exact_prepared is not None:
+                source_result = exact_prepared.source_result
+            else:
+                if (
+                    config.relaymem_slp_durable_finalization_enabled
+                    and config.relaymem_slp_durable_finalization_apply_enabled
+                    and not config.relaymem_slp_durable_finalization_dry_run_only
+                ):
+                    raise RelayMEMSLPDurableFinalizationError(
+                        "durable_finalization_sealed_preparation_required"
+                    )
+                visible_text: object = assistant_visible_text
+                if stream_capture is not None:
+                    if type(stream_capture) is not RelayMEMSLPFinalizedVisibleTextCapture:
+                        raise TypeError("exact_stream_capture_required")
+                    visible_text = stream_capture.finalized_text()
+                source_result = build_relaymem_slp_finalized_turn_source(
+                    pipeline_context,
+                    assistant_visible_text=visible_text,
+                    status_code=status_code,
+                    resolved_session_id=resolved_session_id,
+                    relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+                    relayemo_artifact=relayemo_artifact,
+                    response_finalized=True,
+                    enabled=config.relaymem_slp_runtime_enqueue_enabled,
+                )
+            source_store = (
+                RelayMEMSLPDurableProtectedSourceStore(
+                    config.relaymem_slp_protected_source_root,
+                    max_artifact_bytes=(
+                        config.relaymem_slp_protected_source_max_artifact_bytes
+                    ),
+                )
+                if config.relaymem_slp_protected_source_root is not None
+                else None
+            )
+            result = apply_relaymem_slp_durable_runtime_enqueue(
+                source_result,
+                registry=registry,
+                source_store=source_store,
+                queue_root=config.relaymem_slp_queue_root,
+                enabled=config.relaymem_slp_runtime_enqueue_enabled,
+                dry_run_only=config.relaymem_slp_runtime_enqueue_dry_run_only,
+                apply_enabled=config.relaymem_slp_runtime_enqueue_apply_enabled,
+                prepared_result=(
+                    exact_prepared.runtime_preparation
+                    if exact_prepared is not None
+                    else None
                 ),
             )
-            if config.relaymem_slp_protected_source_root is not None
-            else None
-        )
-        result = apply_relaymem_slp_durable_runtime_enqueue(
-            source_result,
-            registry=registry,
-            source_store=source_store,
-            queue_root=config.relaymem_slp_queue_root,
-            enabled=config.relaymem_slp_runtime_enqueue_enabled,
-            dry_run_only=config.relaymem_slp_runtime_enqueue_dry_run_only,
-            apply_enabled=config.relaymem_slp_runtime_enqueue_apply_enabled,
-            prepared_result=(
-                exact_prepared.runtime_preparation
-                if exact_prepared is not None
-                else None
-            ),
-        )
     except Exception:
         runtime_failure = build_relaymem_slp_runtime_enqueue_failure_result()
         result = build_relaymem_slp_durable_runtime_enqueue_failure_result(
@@ -311,6 +357,8 @@ def run_relaymem_slp_runtime_enqueue_after_response(
             nodes.append(
                 build_relaymem_slp_finalized_turn_source_node_result(source_result)
             )
+        if replay_node is not None:
+            nodes.append(replay_node)
         nodes.append(build_relaymem_slp_durable_runtime_enqueue_node_result(result))
         for node in nodes:
             pipeline_context.record_node_result(node)

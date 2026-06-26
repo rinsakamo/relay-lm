@@ -421,3 +421,46 @@ The current canonical C2 runner replaces the proposed but nonexistent `relaylm_p
 I1-GB does not implement I1-GC one-record restart replay, completion markers, sealed-record discovery, directory scanning, I1-GD retention/cleanup/orphan reconciliation, I1-GE full crash proof, C1-5/B2/B3 schema changes, queue scanning, scheduling, daemon or supervised service lifecycle, inline worker execution, M3a-M3h/retrieval changes, SOUL Lab changes, CORS/auth changes, queue content, public private identities/paths, or browser-visible protected payloads.
 
 O1A does not implement O1B/O1C production discovery or delegation, O1D fairness/backoff/jitter, O1E stale recovery/cancellation/shutdown, O1F operational validation, a scheduler loop, config/CLI wiring, a daemon, or always-on operation.
+
+## I1-GC durable-finalization replay current boundary (2026-06-26)
+
+This section supersedes earlier statements in this file that describe I1-GC as pending.
+
+I1-GC is implemented as a caller-selected, one-record production convergence authority:
+
+```text
+sealed I1-G evidence
+  -> exact finalized-turn source reconstruction
+  -> existing A1 / A2 / B1 preparation
+  -> exact sealed job / dispatch identity verification
+  -> canonical C1-5 protected-source convergence
+  -> canonical B2 queue convergence
+  -> exact downstream reread and correlation verification
+  -> immutable completion marker
+  -> content-free replay result
+```
+
+The normal I1-GB background finalizer and restart replay share the same nonblocking,
+cross-process, deterministic per-locator fence. Completion is published only after
+canonical reread proves exact C1-5 source-before-B2 queue correlation. A terminal B3
+record may satisfy that downstream proof without mutation, but I1-G completion does
+not mean B3 terminal success, worker execution, or Primary MEM formation.
+
+Duplicate, race, uncertain-write, and restart paths converge by canonical reread.
+`queue exists / source absent`, identity mismatch, collision, corruption, unsupported
+schema, symlink, hardlink, and unsafe file type fail closed. Public projections remain
+content-free and omit locator, digest, path, namespace, job, dispatch, lineage,
+timestamp, lease token, protected payload, and raw exception values.
+
+O1A remains the completed pure replay-then-queue scheduler-round contract. It does not
+discover records or invoke I1-GC. Future O1B may discover and delegate one exact sealed
+record to this authority without owning completion semantics.
+
+Still incomplete and intentionally out of scope:
+
+- I1-GD retention, orphan reconciliation, isolation lifecycle, and cleanup
+- I1-GE full crash-at-every-boundary production validation
+- O1B sealed-record discovery and one I1-GC delegation
+- O1C through O1F production queue discovery, ordering, fairness, recovery, and validation
+- O2 supervised always-on worker service
+- B3 transition, C2/worker execution, M3a-M3h, and SOUL Lab UI from replay

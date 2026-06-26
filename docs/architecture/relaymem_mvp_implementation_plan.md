@@ -372,3 +372,35 @@ O1D through O1F remain later operational slices and must not be pulled into Rela
 ## I1-G boundary
 
 I1-GA and I1-GB are complete. I1-GC replay/completion, I1-GD cleanup, and I1-GE full crash validation remain unimplemented. RelayMEM lifecycle work must not absorb I1-G durable-finalization or O1 scheduling authority. O1A defines only how future lane outcomes are bounded and aggregated.
+
+## I1-GC durable-finalization replay current boundary (2026-06-26)
+
+Completed dependency edge:
+
+```text
+I1-GA contract
+  -> I1-GB pre-release sealed publication
+  -> I1-GC one-record restart replay and completion convergence  [complete]
+```
+
+The operations boundary now separates the completed O1A contract from production work:
+
+```text
+O1A pure replay-then-queue round / idle contract  [complete]
+  -> O1B sealed-record discovery / one I1-GC delegation
+  -> O1C B2 discovery / one O0-compatible C2 delegation
+  -> O1D ordering / fairness / retry-time / backoff / jitter
+  -> O1E stale recovery / cancellation / graceful shutdown
+  -> O1F production validation
+```
+
+The remaining I1-G durability work is:
+
+```text
+I1-GD retention / orphan reconciliation / cleanup
+  -> I1-GE full production crash validation
+```
+
+This section supersedes earlier roadmap entries that list I1-GC itself as pending.
+I1-GC does not add discovery, batch replay, retry loops, cleanup, B3 transitions,
+C2 execution, workers, M3 writes, or UI.
