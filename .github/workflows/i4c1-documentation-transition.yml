@@ -1,0 +1,43 @@
+name: Apply I-4C1 documentation transition
+
+on:
+  push:
+    branches:
+      - phase-i4c1-primary-forget-hidden-successor
+    paths:
+      - "scripts/relaylm_phase_i4c1_doc_patch_status.py"
+      - "scripts/relaylm_phase_i4c1_doc_patch_indexes_contracts.py"
+      - "scripts/relaylm_phase_i4c1_doc_patch_plans.py"
+      - "scripts/relaylm_phase_i4c1_doc_patch_relaymem.py"
+      - ".github/workflows/i4c1-documentation-transition.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i4c1-primary-forget-hidden-successor
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/relaylm_phase_i4c1_doc_patch_status.py
+      - run: python scripts/relaylm_phase_i4c1_doc_patch_indexes_contracts.py
+      - run: python scripts/relaylm_phase_i4c1_doc_patch_plans.py
+      - run: python scripts/relaylm_phase_i4c1_doc_patch_relaymem.py
+      - name: Commit documentation transition
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/PROJECT_STATUS.md docs/README.md docs/architecture
+          if git diff --cached --quiet; then
+            echo "No documentation changes required"
+            exit 0
+          fi
+          git commit -m "docs: record completed I-4C1 hidden-successor boundary"
+          git push origin HEAD:phase-i4c1-primary-forget-hidden-successor
