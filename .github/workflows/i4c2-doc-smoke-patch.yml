@@ -1,0 +1,31 @@
+name: I4C2 documentation smoke patch
+
+on:
+  push:
+    branches:
+      - phase-i4c2-primary-forget-recovery-finalization
+    paths:
+      - .github/workflows/i4c2-doc-smoke-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i4c2-primary-forget-recovery-finalization
+          fetch-depth: 0
+      - run: python scripts/_phase_i4c2_documentation_smoke_patch.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+      - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+      - run: |
+          rm scripts/_phase_i4c2_documentation_smoke_patch.py
+          rm .github/workflows/i4c2-doc-smoke-patch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "test: update I-4C2 documentation boundary smoke"
+          git push origin HEAD:phase-i4c2-primary-forget-recovery-finalization
