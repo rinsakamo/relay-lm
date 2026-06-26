@@ -16,6 +16,7 @@ on:
   push:
     branches:
       - main
+      - phase-i1gd-durable-finalization-retention-cleanup
     paths:
       - "relaylm/config.py"
       - "relaylm/relaymem_slp_durable_finalization_*.py"
