@@ -1,3 +1,19 @@
+---
+relaylm_doc_type: documentation_index
+relaylm_authority: relaysoul_documentation_entrypoint
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: relaysoul
+relaylm_update_trigger:
+  - RelaySOUL documentation entry points change
+  - RelaySOUL current or target boundary changes
+  - experimental RelaySOUL work is added or removed
+relaylm_not_authoritative_for:
+  - current runtime behavior
+  - exact schema details
+  - implementation phase completion claims
+relaylm_current_status_source: ../PROJECT_STATUS.md
+---
 # RelaySOUL Design and Gate Docs
 
 This directory indexes RelaySOUL persona-source calibration, update cadence, dry-run/preflight chains, persistence design, execution-gate documentation, and explicitly post-MVP experimental SOUL replacement work.
