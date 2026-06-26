@@ -61,7 +61,7 @@ Use [Documentation index](../README.md) for the complete active map and [Project
 
 Phase 6 is complete through C1-5 and C2. O0 is the default-off operator-invoked one-job caller. I1-GA defines the fault model, I1-GB publishes bounded restart evidence before protected visible release, and I1-GC provides the caller-selected one-record convergence authority through exact C1-5, exact B2, canonical downstream reread, and an immutable completion marker.
 
-I1-GC owns replay and completion but not discovery, batch replay, retry loops, cleanup, B3 transitions, C2 execution, workers, M3 writes, or UI. I1-GD and I1-GE remain durability work. O1A remains the pure replay-before-queue round/idle contract. O1C now implements one bounded queue-lane opportunity using an O0-compatible shared candidate helper and one existing C2 delegation. O1B and O1D through O1F remain production scheduling work; no scheduler loop, fairness policy, stale recovery, supervision, or always-on operation is complete.
+I1-GC owns replay and completion but not discovery, batch replay, retry loops, cleanup, B3 transitions, C2 execution, workers, M3 writes, or UI. I1-GD and I1-GE remain durability work. O1A remains the pure replay-before-queue round/idle contract. O1B now implements one bounded sealed-record replay-lane opportunity using the existing I1-GC authority. O1C implements one bounded queue-lane opportunity using an O0-compatible shared candidate helper and one existing C2 delegation. O1D through O1F remain production scheduling work; no scheduler loop, fairness policy, stale recovery, supervision, or always-on operation is complete.
 
 Phase I-4A defines lifecycle semantics. I-4B implements the read-only resolver/shared-fence boundary. I-4C1 implements hidden-successor commit ownership without M3f/M3g convergence, Forget tombstone, exact applied replay, M2 exclusion, API/UI, or full validation. Those remain I-4C2 through I-4F.
 
@@ -100,3 +100,8 @@ The browser owns no queue, scheduler, worker, filesystem, namespace, backend, cr
 - [Experimental SOUL Replacement and Memory Bootstrap](../relaysoul/experimental_soul_replacement_memory_bootstrap_design.md)
 
 These are target-only. Experimental SOUL replacement is post-MVP, non-destructive, and distinct from ordinary same-character RelaySOUL revision and rollback.
+
+<!-- O1B_DOC_INDEX -->
+- [O1B Sealed I1-G Replay-Lane Discovery](o1b_sealed_i1g_replay_lane.md) — production bounded replay-lane adapter.
+
+O1B connects O1A's replay `LaneOutcome` to one secure I1-G discovery and one existing I1-GC call. O1C queue discovery is complete; the production round loop remains unimplemented.

@@ -53,7 +53,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 
 Phase 6 is complete through B3, C1-0 through C1-5, C2, and the operator-invoked O0 runner. I1-GA, I1-GB, and I1-GC are complete: explicit apply mode publishes sealed restart evidence before protected release, and one caller-selected sealed record can converge through exact C1-5, exact B2, and an immutable content-free completion marker. I1-GD retention/cleanup and I1-GE full production crash validation remain incomplete.
 
-O1A is complete as the pure replay-before-queue round and idle contract. O1C is complete for one bounded B2/B3 inventory, due/future classification, canonical reread, server-owned scope resolution, and at most one existing C2 delegation. O1B sealed-record discovery, O1D fairness/backoff, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented. No production scheduler loop or automatic continuous processing is complete.
+O1A is complete as the pure replay-before-queue round and idle contract. O1B is complete for one bounded sealed I1-G inventory, canonical selected-record reread, and at most one existing I1-GC delegation. O1C is complete for one bounded B2/B3 inventory, due/future classification, canonical reread, server-owned scope resolution, and at most one existing C2 delegation. O1D fairness/backoff, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented. No production scheduler loop or automatic continuous processing is complete.
 
 Phase I-2 observation, Phase I-3 Correct, and UI-B0 real Home conversation are complete. Phase I-4A defines the target Forget lifecycle. I-4B completes the read-only resolver/shared-fence/preflight-token-history boundary. Phase I-4C1 is complete for exact token/reason revalidation, immutable prepared evidence, deterministic hidden successor, M3e publication, and hidden/recovery-required resolution. I-4C2 recovery/tombstone, I-4D M2 exclusion, I-4E API/UI, and I-4F production validation remain incomplete.
 
@@ -86,3 +86,8 @@ These documents are target architecture only. Experimental SOUL replacement is e
 - MVP snapshots -> `docs/mvp/`
 
 When an implemented boundary changes state, update Project Status, the implementation plan, both documentation indexes, the affected dedicated contract, the post-I3 roadmap, relevant current/target documents, and status-checking smoke scripts in the same change.
+
+<!-- O1B_DOC_INDEX -->
+- [O1B Sealed I1-G Replay-Lane Discovery](architecture/o1b_sealed_i1g_replay_lane.md) — bounded secure discovery, canonical reread, and one I1-GC delegation.
+
+O1B is complete. O1D through O1F, O2, and O3 remain unimplemented; O1B is not a scheduler loop or always-on service.

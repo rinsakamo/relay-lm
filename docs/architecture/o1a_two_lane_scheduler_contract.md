@@ -21,6 +21,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - o0_local_one_job_runner.md
+  - o1b_sealed_i1g_replay_lane.md
   - o1c_eligible_b2_queue_lane.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - phase6b2_relayslp_atomic_durable_enqueue.md
@@ -37,7 +38,7 @@ Last reviewed: 2026-06-26 JST
 
 ## 1. Status
 
-**Contract and pure deterministic aggregation model complete; O1C queue adapter complete; production scheduler loop unimplemented.**
+**Contract and pure deterministic aggregation model complete; O1B replay adapter and O1C queue adapter complete; production scheduler loop unimplemented.**
 
 O1A defines one bounded scheduler round across two distinct work sources:
 
@@ -46,10 +47,9 @@ O1A defines one bounded scheduler round across two distinct work sources:
 
 O1A does not scan either root, select a production record, invoke I1-GC, invoke C2, poll, sleep, compute backoff, recover stale claims, supervise a process, or mutate a filesystem. The pure module `relaylm/relaymem_slp_scheduler_contract.py` validates already-bounded lane outcomes and derives only a scheduler result, a `stop | run_next_round | idle` disposition, and a content-free projection.
 
-O1C is complete as one bounded production queue-lane adapter. The following remain unimplemented:
+O1B and O1C are complete as bounded production lane adapters. The following remain unimplemented:
 
 ```text
-O1B  one eligible sealed I1-G record discovery and one I1-GC delegation
 O1D  deterministic within-lane ordering, fairness, retry-time and backoff policy
 O1E  stale-claim recovery orchestration, cancellation, graceful shutdown
 O1F  corruption, concurrency, saturation, restart, leakage, operational validation
@@ -64,7 +64,7 @@ O0 provides one operator invocation that discovers and processes at most one eli
 ```text
 one bounded scheduler round
   -> replay lane opportunity
-       -> future O1B bounded discovery
+       -> O1B bounded discovery
        -> existing I1-GC one-record replay
        -> C1-5 / B2 / I1-G completion convergence only
   -> queue lane opportunity
@@ -134,7 +134,7 @@ O1 uses two explicit adapters. It does not introduce a generic plugin framework,
 
 ### 4.1 Replay lane
 
-Future O1B eligibility:
+O1B eligibility:
 
 ```text
 valid canonical I1-G record
@@ -270,7 +270,7 @@ probe / discover at most one
   -> return one bounded lane result
 ```
 
-O1A defines the result contract. O1C implements the production queue adapter; O1B replay-lane production remains unimplemented.
+O1A defines the result contract. O1B implements the production replay adapter and O1C implements the production queue adapter.
 
 Schema:
 
@@ -308,7 +308,7 @@ Replay adapters must distinguish at least: no sealed candidate, selected candida
 
 Queue adapters must distinguish at least: no queued candidate, future retry only, busy, selected candidate, changed candidate, dry-run ready, C2 invoked, claim conflict, retry released, terminal, cleanup required, and unsafe queue state.
 
-O1B may discover and classify but cannot implement replay convergence. O1C now discovers, canonically rereads, resolves scope, and constructs the existing exact C2 request, but it cannot implement B3 transitions or worker execution.
+O1B discovers, classifies, canonically rereads, and delegates once to I1-GC but cannot implement replay convergence. O1C discovers, canonically rereads, resolves scope, and constructs the existing exact C2 request, but it cannot implement B3 transitions or worker execution.
 
 ## 7. Bounded status vocabulary
 
@@ -788,3 +788,8 @@ systemd Windows service Docker supervision
 SOUL Lab control or browser scheduling
 fairness priority quotas distributed coordination leader election
 ```
+
+<!-- O1B_LANDED_HANDOFF -->
+## O1B landed handoff
+
+`relaylm/relaymem_slp_scheduler_replay_lane.py` now performs one bounded replay-lane opportunity and returns the existing `LaneOutcome`. A replay `busy` may be learned only after I1-GC returns from a completed delegation; a completed dry-run `delegated` result is an idle disposition and does not force another round. The pure O1A module still performs no filesystem scan or lane invocation.

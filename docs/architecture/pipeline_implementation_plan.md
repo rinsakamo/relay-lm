@@ -78,7 +78,9 @@ Durability and operations:
   I1-GD retention / cleanup: unimplemented
   I1-GE full production crash validation: unimplemented
   O1A two-lane round / adapter / idle contract: contract complete
-  O1B and O1D through O1F production scheduling: unimplemented
+  O1B sealed replay-lane adapter: complete
+  O1C eligible queue-lane adapter: complete
+  O1D through O1F production scheduling: unimplemented
   O2 supervised worker service: planned
   O3 always-on local operation: planned
 ```
@@ -243,7 +245,7 @@ O1A completion alone is not O1 completion.
 
 ```text
 replay lane
-  -> future O1B discovers at most one sealed record
+  -> O1B discovers at most one sealed record
   -> existing I1-GC handles at most one replay
 
 queue lane
@@ -253,7 +255,7 @@ queue lane
 
 The fixed v0 order is replay then queue. One lane failure does not automatically suppress the unrelated lane. Replay output is never passed directly into C2. These fields are not added to `relaylm/config.py`; O1A target field names remain design-only.
 
-### O1B and O1D through O1F: unimplemented
+### O1D through O1F: unimplemented
 
 ```text
 O1B  one eligible sealed-record discovery and I1-GC delegation
@@ -285,8 +287,6 @@ I-4C1 hidden-successor commit ownership
 ```text
 I1-GD retention/orphan reconciliation/cleanup
 I-4C2 prepared resume/forward recovery/tombstone
-O1B sealed-record discovery/delegation
-O1C queue-record discovery/delegation
 UI-B1A projection design
 ```
 
@@ -336,7 +336,7 @@ Home real conversation
   -> Phase I-2 used-memory evidence
 ```
 
-Direct Home-origin formation remains unproven because UI-B0 does not send trusted scene-admission metadata. The loop remains operator-driven until O1B and O1D through O1F land.
+Direct Home-origin formation remains unproven because UI-B0 does not send trusted scene-admission metadata. The loop remains operator-driven until O1D through O1F land.
 
 ## Documentation completion rule
 
@@ -358,4 +358,9 @@ Current documents must state one status only. Do not preserve a stale status and
 
 O1C is complete for one bounded, non-recursive, secure B2/B3 queue inventory; due/future classification; deterministic one-candidate selection; canonical reread; server-owned character/store resolution; fresh exact C2 request construction; and at most one existing C2 delegation. O0 and O1C share one production candidate helper, while O0 CLI, projection, and exit behavior remain unchanged.
 
-O1B and O1D through O1F remain unimplemented. O1C does not complete a scheduler round loop, polling, sleep, fairness, retry-delay/backoff/jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation.
+O1D through O1F remain unimplemented. O1C does not complete a scheduler round loop, polling, sleep, fairness, retry-delay/backoff/jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation.
+
+<!-- O1B_CURRENT_BOUNDARY -->
+### O1B sealed replay-lane discovery — complete
+
+O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1C through O1F, O2, and O3 remain unimplemented.
