@@ -400,17 +400,22 @@ def _run_replay(root: Path, seam: str) -> None:
             "during_completion_marker_publication",
             "after_completion_marker_publication_before_canonical_reread",
         }:
-            original = replay_impl._publish_completion
+            original = replay_public._rename_noreplace
 
-            def publish_completion(*args: Any, **kwargs: Any):
+            def completion_rename(
+                root_fd: int,
+                temporary: str,
+                final: str,
+            ) -> str:
                 if seam == "during_completion_marker_publication":
                     _crash(seam)
-                result = original(*args, **kwargs)
-                _crash(seam)
+                result = original(root_fd, temporary, final)
+                if result == "published":
+                    _crash(seam)
                 return result
 
             stack.enter_context(
-                patch.object(replay_impl, "_publish_completion", new=publish_completion)
+                patch.object(replay_public, "_rename_noreplace", new=completion_rename)
             )
 
         gc._replay(config, locator, fault=fault if fault_stage else None)
