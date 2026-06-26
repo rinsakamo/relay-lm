@@ -1,6 +1,6 @@
 """Public I1-GD bounded retention, isolation, and cleanup authority.
 
-The implementation is isolated in a private module.  This facade owns safe
+The implementation is isolated in a private module. This facade owns safe
 configuration admission plus the pure completion-proof and inventory seams that
 must stay aligned with I1-GC and the configured I1-G record-count authority.
 """
@@ -45,35 +45,31 @@ def _exact_completion_collision_reason(
 ) -> str | None:
     """Rebuild the exact I1-GC completion proof from validated sealed evidence."""
 
-    source_result, source_reasons = _replay._reconstruct_source(
-        SimpleNamespace(seal=seal)
-    )
+    evidence = SimpleNamespace(seal=seal)
+    source_result, source_reasons = _replay._reconstruct_source(evidence)
     if source_result is None or source_reasons:
         return "durable_finalization_completion_identity_collision"
     preparation = _replay.prepare_relaymem_slp_runtime_enqueue(source_result)
     if preparation.status != "dry_run_ready":
         return "durable_finalization_completion_identity_collision"
-    identity_reasons = _replay._verify_identity(preparation, seal)
+    identity_reasons = _replay._verify_identity(evidence, preparation)
     if identity_reasons:
         return "durable_finalization_completion_identity_collision"
     dispatch = preparation.dispatch_result
     payload = preparation.protected_source_payload
     source = source_result.source
-    if dispatch is None or payload is None or source is None:
-        return "durable_finalization_completion_identity_collision"
-    durable_job = dispatch.durable_job_record
-    if type(durable_job) is not dict:
+    if dispatch is None or dispatch.durable_job is None or payload is None or source is None:
         return "durable_finalization_completion_identity_collision"
     try:
         source_digest = _replay._source_digest(
             payload,
-            durable_job,
+            dispatch.durable_job,
             source.character_id,
         )
         expected = _replay._completion_marker(
             str(seal["locator_digest"]),
             seal,
-            durable_job,
+            preparation,
             source_digest,
         )
         if canonical_json_bytes(completion) != canonical_json_bytes(expected):
@@ -83,7 +79,7 @@ def _exact_completion_collision_reason(
     return None
 
 
-# The private implementation performs global lookups at call time.  These are
+# The private implementation performs global lookups at call time. These are
 # deliberate production dependency seams, analogous to the I1-GC public facade.
 _impl._inventory = _bounded_inventory
 _impl._completion_collision_reason = _exact_completion_collision_reason
