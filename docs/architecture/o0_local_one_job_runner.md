@@ -137,7 +137,7 @@ O0 never reconstructs source content from queue metadata, trace, frontend histor
 
 ## Shared O0/O1C production helper boundary
 
-O1C does not launch this CLI as a subprocess or parse its stdout as a production interface. It does not reimplement B3 claim or change C2 request semantics.
+The earlier Future O1C reuse boundary is now implemented by the shared helper described below. O1C must not launch this CLI as a subprocess or parse its stdout as a production interface. It does not reimplement B3 claim or change C2 request semantics.
 
 The implemented shared production helper contains only:
 

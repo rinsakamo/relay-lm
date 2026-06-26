@@ -22,8 +22,11 @@ relaylm_related_authority:
   - phase6c1_durable_protected_source_persistence.md
   - phase6c2_one_queued_primary_worker_integration.md
   - i1g_pre_enqueue_durable_finalization_contract.md
+  - i1gd_durable_finalization_retention_cleanup.md
   - o0_local_one_job_runner.md
   - o1a_two_lane_scheduler_contract.md
+  - o1b_sealed_i1g_replay_lane.md
+  - o1c_eligible_b2_queue_lane.md
   - phase_i4b_primary_current_state_shared_fence.md
   - phase_i4c1_primary_forget_hidden_successor.md
   - relaymem_mvp_implementation_plan.md
@@ -74,7 +77,7 @@ C1-5 and C2 provide restart recovery for durably enqueued jobs. O0 remains defau
 
 ## I1-G durable-finalization boundary
 
-I1-GA, I1-GB, and I1-GC are complete:
+I1-GA through I1-GD are complete:
 
 ```text
 I1-GA contract / fault model
@@ -86,11 +89,18 @@ I1-GA contract / fault model
        -> exact B2 queue
        -> canonical downstream reread
        -> immutable completion marker
+  -> I1-GD one bounded maintenance pass
+       -> complete bounded inventory
+       -> shared per-record fence and existing root mutation lock
+       -> retain sealed pending | isolate | clean known components | block
+       -> isolation marker removed last
 ```
 
-The normal finalizer and restart replay use the same nonblocking cross-process per-record fence and completion authority. I1-GC adds no scanner, batch replay, polling, retry loop, cleanup, B3 transition, C2 execution, worker execution, M3 write, or UI.
+The normal finalizer and restart replay use the same nonblocking cross-process per-record fence and completion authority. I1-GD uses that exact per-record fence and additionally holds the existing I1-GB store-root mutation lock while classifying and cleaning. It adds no scheduler, polling, replay invocation, B3 transition, C2 execution, worker execution, M3 write, or UI.
 
-I1-GD retention/orphan reconciliation/cleanup and I1-GE full production crash validation remain unimplemented.
+I1-GD never deletes valid sealed evidence without completion. It publishes `relaymem.slp_durable_finalization_isolation.v0`, fsyncs and canonically rereads it before removing stable known components, and deletes the marker last after isolated retention. C1-5 protected sources and B2/B3 records are outside cleanup authority.
+
+I1-GE full production crash validation remains unimplemented.
 
 ## O1 scheduler boundary
 
@@ -109,7 +119,7 @@ one bounded round
 
 Replay and queue remain independent state machines. A B2 record converged by replay may be selected in the same round only through independent queue-root discovery and canonical reread. Replay output is never a C2 input.
 
-O1A is contract-only. O1B/O1C production discovery and delegation, O1D fairness/retry/backoff, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.
+O1A is contract-only. O1B and O1C bounded production discovery and delegation are complete. O1D fairness/retry/backoff, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.
 
 O1A proposed scheduler field names are target-only. `relaylm/config.py`, `docs/config_schema.md`, `config.example.yaml`, and CLI behavior do not accept or expose them.
 
@@ -167,11 +177,13 @@ revision N+1 hidden
 
 The immutable hidden successor page is lifecycle authority. The tombstone is audit/recovery evidence. Correct and Forget share one current-state resolver and one per-memory mutation fence.
 
+Forget is not product-complete until I-4C2 through I-4F provide prepared recovery, tombstone finalization, ordinary retrieval exclusion, API/UI, and production validation.
+
 ## Current limitations
 
 The current runtime still lacks:
 
-- I1-GD retention/cleanup and I1-GE full crash validation;
+- I1-GE full crash validation;
 - O1D through O1F automatic scheduling, O2 supervision, and O3 always-on operation;
 - I-4C2 prepared resume, exact replay, forward recovery, response-loss convergence, and tombstone finalization;
 - I-4D hidden/prepared/recovery/corrupt M2 and RelayCTX exclusion;
@@ -189,7 +201,7 @@ RelayMEM owns memory meaning, lifecycle, source lineage, current-state resolutio
 
 Phase 6 owns dispatch admission and identity, response-finalization handoff, durable queue lifecycle, claim/lease/retry/terminal control, worker invocation, and restart/checkpoint integration.
 
-I1-G owns durable-finalization evidence, one-record replay, completion, and future retention classification. O1 owns only bounded scheduling and lane aggregation. B3 owns queue lifecycle. C2 owns one queued-record coordination. C1-2 owns worker execution. RelayCTX owns backend-bound packing. SOUL Lab owns bounded read models and explicit user-operation surfaces without filesystem, queue, scheduler, or worker authority.
+I1-G owns durable-finalization evidence, one-record replay, completion, retention classification, isolation, and evidence cleanup. O1 owns only bounded scheduling and lane aggregation. B3 owns queue lifecycle. C2 owns one queued-record coordination. C1-2 owns worker execution. RelayCTX owns backend-bound packing. SOUL Lab owns bounded read models and explicit user-operation surfaces without filesystem, queue, scheduler, or worker authority.
 
 ## Idempotency boundary
 
@@ -205,6 +217,9 @@ Primary mutation operation idempotency
 
 I1-G finalization replay idempotency
   converges one sealed record to exact C1-5/B2 and completion
+
+I1-G retention idempotency
+  converges one expired record through immutable isolation to marker-last cleanup
 
 O1 scheduler round identity
   is not a durable job or mutation identity
@@ -231,8 +246,8 @@ Phase I-4C1 adds durable hidden-lifecycle evidence, but no implemented ordinary 
 ## Target migration sequence
 
 ```text
-I1-GD retention / cleanup                                         unimplemented
-I1-GE full production crash validation                            unimplemented
+I1-GD bounded retention / isolation cleanup                         complete
+I1-GE full production crash validation                              unimplemented
 
 I-4A  lifecycle/persistence/concurrency/API/fault contract         defined target
 I-4B  current-state resolver/shared Correct/Forget fence           complete
@@ -243,8 +258,8 @@ I-4E  loopback API and SOUL Lab Forget UI                          unimplemented
 I-4F  crash/race/security/fresh-conversation validation            unimplemented
 
 O1A   two-lane round/adapter/idle contract                         complete
-O1B   sealed-record discovery/I1-GC delegation                    unimplemented
-O1C   B2 discovery/O0-compatible C2 delegation                    unimplemented
+O1B   sealed-record discovery/I1-GC delegation                    complete
+O1C   B2 discovery/O0-compatible C2 delegation                    complete
 O1D   ordering/fairness/retry-time/backoff/jitter                  unimplemented
 O1E   stale recovery/cancellation/graceful shutdown               unimplemented
 O1F   full operational validation                                  unimplemented
@@ -252,15 +267,4 @@ O1F   full operational validation                                  unimplemented
 
 ## Completion interpretation
 
-M3a-M3h, C1-0 through C1-5, C2, O0, I1-GC, I-1 recall, I-2 observation, I-3 Correct, I-4B, and I-4C1 are implemented. Forget is not product-complete until I-4C2 through I-4F provide recovery/tombstone, retrieval exclusion, API/UI, and production validation.
-
-## O1C current reconciliation
-
-O1C is complete for one bounded, non-recursive, secure B2/B3 queue inventory; due/future classification; deterministic one-candidate selection; canonical reread; server-owned character/store resolution; fresh exact C2 request construction; and at most one existing C2 delegation. O0 and O1C share one production candidate helper, while O0 CLI, projection, and exit behavior remain unchanged.
-
-O1D through O1F remain unimplemented. O1C does not complete a scheduler round loop, polling, sleep, fairness, retry-delay/backoff/jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation.
-
-<!-- O1B_CURRENT_BOUNDARY -->
-### O1B sealed replay-lane discovery — complete
-
-O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1C through O1F, O2, and O3 remain unimplemented.
+M3a-M3h, C1-0 through C1-5, C2, O0, I1-GC, I1-GD, O1B, O1C, I-1 recall, I-2 observation, I-3 Correct, I-4B, and I-4C1 are implemented. O1B and O1C are bounded lane adapters only; O1D through O1F, O2, and O3 remain incomplete. Forget is not product-complete until I-4C2 through I-4F provide recovery/tombstone, retrieval exclusion, API/UI, and production validation.

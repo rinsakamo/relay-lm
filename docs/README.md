@@ -20,7 +20,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 
 ## Start here
 
-- [Current project status](PROJECT_STATUS.md) — current implementation boundary through I1-GC, I-4C1, O0, O1A, O1C, UI-B0, and the local E1 result.
+- [Current project status](PROJECT_STATUS.md) — current implementation boundary through I1-GD, I-4C1, O0, O1A, O1B, O1C, UI-B0, and the local E1 result.
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, and AI reading rules.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed implementation status and dependency-first sequencing.
@@ -37,7 +37,8 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [O0 local one-job runner](architecture/o0_local_one_job_runner.md)
 - [O1A two-lane scheduler contract](architecture/o1a_two_lane_scheduler_contract.md)
 - [O1C eligible B2/B3 queue lane](architecture/o1c_eligible_b2_queue_lane.md)
-- [I1-G durable-finalization contract, publication, replay, and remaining retention boundary](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
+- [I1-G durable-finalization contract and completed GA-GD boundaries](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
+- [I1-GD durable-finalization retention and isolation lifecycle](architecture/i1gd_durable_finalization_retention_cleanup.md)
 - [Integration I1 Primary MEM two-turn recall](architecture/integration_i1_primary_mem_two_turn_recall.md)
 - [Phase I-2 real SOUL Lab observation](architecture/phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 auditable Primary MEM Correct](architecture/phase_i3_auditable_primary_mem_correct.md)
@@ -51,7 +52,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 
 ## Current status summary
 
-Phase 6 is complete through B3, C1-0 through C1-5, C2, and the operator-invoked O0 runner. I1-GA, I1-GB, and I1-GC are complete: explicit apply mode publishes sealed restart evidence before protected release, and one caller-selected sealed record can converge through exact C1-5, exact B2, and an immutable content-free completion marker. I1-GD retention/cleanup and I1-GE full production crash validation remain incomplete.
+Phase 6 is complete through B3, C1-0 through C1-5, C2, and the operator-invoked O0 runner. I1-GA through I1-GD are complete: explicit apply mode publishes sealed restart evidence before protected release; one caller-selected sealed record converges through exact C1-5, exact B2, and an immutable content-free completion marker; and one bounded caller-invoked maintenance pass provides retention, orphan isolation, and marker-last lifecycle convergence. I1-GE full production crash validation remains incomplete.
 
 O1A is complete as the pure replay-before-queue round and idle contract. O1B is complete for one bounded sealed I1-G inventory, canonical selected-record reread, and at most one existing I1-GC delegation. O1C is complete for one bounded B2/B3 inventory, due/future classification, canonical reread, server-owned scope resolution, and at most one existing C2 delegation. O1D fairness/backoff, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented. No production scheduler loop or automatic continuous processing is complete.
 

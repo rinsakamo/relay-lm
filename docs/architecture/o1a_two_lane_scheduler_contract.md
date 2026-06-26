@@ -38,7 +38,7 @@ Last reviewed: 2026-06-26 JST
 
 ## 1. Status
 
-**Contract and pure deterministic aggregation model complete; O1B replay adapter and O1C queue adapter complete; production scheduler loop unimplemented.**
+**Contract and pure deterministic aggregation model complete; production scheduler unimplemented.** O1B replay adapter and O1C queue adapter are complete; the scheduler loop remains unimplemented.
 
 O1A defines one bounded scheduler round across two distinct work sources:
 

@@ -30,7 +30,7 @@ Last reviewed: 2026-06-26 JST
 
 ## Status and authority
 
-**Production replay-lane adapter complete. Production scheduler round, queue lane, polling, fairness, and service operation remain unimplemented.**
+**Production replay-lane adapter complete. O1C queue-lane adapter is also complete; production scheduler round, polling, fairness, and service operation remain unimplemented.**
 
 O1B owns exactly one bounded replay-lane opportunity:
 
@@ -150,7 +150,7 @@ The projection contains no user/assistant text, governed content, character/name
 O0  local one-job queue runner                         complete
 O1A pure two-lane scheduler contract                   complete
 O1B sealed I1-G discovery + one I1-GC delegation      complete
-O1C eligible B2 discovery + one C2 delegation          unimplemented
+O1C eligible B2 discovery + one C2 delegation          complete
 O1D ordering/fairness/retry-time/backoff                unimplemented
 O1E stale recovery/cancellation/graceful shutdown      unimplemented
 O1F operational validation                             unimplemented
