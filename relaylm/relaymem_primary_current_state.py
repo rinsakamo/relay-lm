@@ -1,15 +1,18 @@
 """Canonical public Primary current-state resolver compatibility boundary.
 
-The Phase I-4B implementation remains source-compatible with the original
-resolver implementation while classifying any valid unresolved prepared
-mutation as recovery-required for fail-closed consumers.
+Phase I-4C1 extends the read-only I-4B authority with exact Forget prepared and
+hidden-successor evidence.  Active ``relaymem.primary_page.v0`` and completed
+Phase I-3 correction chains keep their existing behavior.
 """
 from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 from . import _relaymem_primary_current_state_impl as _impl
+from .relaymem_primary_forget_artifact import FORGET_PREPARED_SCHEMA
+from .relaymem_primary_lifecycle_page import resolve_forget_current_state
 
 PRIMARY_CURRENT_STATE_SCHEMA = _impl.PRIMARY_CURRENT_STATE_SCHEMA
 CORRECTION_PREPARED_SCHEMA = _impl.CORRECTION_PREPARED_SCHEMA
@@ -21,7 +24,6 @@ PrimaryCurrentState = _impl.PrimaryCurrentState
 empty_primary_current_state_index = _impl.empty_primary_current_state_index
 load_primary_current_state_index = _impl.load_primary_current_state_index
 resolve_primary_current_identity = _impl.resolve_primary_current_identity
-load_primary_current_target = _impl.load_primary_current_target
 
 
 def resolve_primary_current_state(
@@ -31,12 +33,34 @@ def resolve_primary_current_state(
     memory_id: str,
     expected_revision: int | None = None,
 ) -> PrimaryCurrentState:
-    """Resolve one logical Primary memory and normalize recovery evidence.
+    """Resolve one logical Primary memory including I-4C1 lifecycle evidence."""
 
-    A valid, unapplied prepared mutation is durable continuation evidence rather
-    than an ordinary active state. Public consumers therefore receive the
-    canonical ``recovery_required`` classification and retrieval remains closed.
-    """
+    if expected_revision is not None and (
+        type(expected_revision) is not int or expected_revision < 1
+    ):
+        raise PrimaryCurrentStateError("invalid_request")
+
+    forget = resolve_forget_current_state(
+        store_root,
+        namespace=namespace,
+        memory_id=memory_id,
+    )
+    if forget is not None:
+        if expected_revision is not None and forget.current_revision != expected_revision:
+            raise PrimaryCurrentStateError("stale_revision")
+        if forget.mutation_state != "forget_prepared":
+            return forget
+        reasons = tuple(
+            dict.fromkeys(
+                (*forget.bounded_reason_ids, "primary_mutation_recovery_required")
+            )
+        )[:32]
+        return replace(
+            forget,
+            mutation_state="prepared",
+            retrieval_eligible=False,
+            bounded_reason_ids=reasons,
+        )
 
     state = _impl.resolve_primary_current_state(
         store_root,
@@ -59,10 +83,41 @@ def resolve_primary_current_state(
     )
 
 
+def load_primary_current_target(
+    store_root: str | Path,
+    *,
+    namespace: str,
+    memory_id: str,
+    expected_revision: int,
+) -> dict[str, Any]:
+    """Return one exact active mutation target; never fall back from hidden state."""
+
+    state = resolve_primary_current_state(
+        store_root,
+        namespace=namespace,
+        memory_id=memory_id,
+        expected_revision=expected_revision,
+    )
+    if state.mutation_state == "corrupt" or not state.controls_valid or not state.page_valid:
+        raise PrimaryCurrentStateError("target_corrupt")
+    if state.lifecycle_state != "active":
+        raise PrimaryCurrentStateError("target_not_active")
+    if state.mutation_state != "none" or not state.retrieval_eligible:
+        raise PrimaryCurrentStateError("operation_conflict")
+    return {
+        "physical_id": state.current_physical_id,
+        "revision": state.current_revision,
+        "metadata": dict(state.metadata),
+        "page_digest": state.page_digest,
+        "relative_path": state.relative_path,
+    }
+
+
 __all__ = [
     "PRIMARY_CURRENT_STATE_SCHEMA",
     "CORRECTION_PREPARED_SCHEMA",
     "CORRECTION_RECEIPT_SCHEMA",
+    "FORGET_PREPARED_SCHEMA",
     "CORRECTION_ROOT",
     "PrimaryCurrentStateError",
     "PrimaryCorrectionStateIndex",
