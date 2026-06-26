@@ -251,3 +251,8 @@ Production discovery, queue-lane delegation, ordering/fairness/retry policy, sta
 I1-GC validation covers sealed-only, source-only, source+queue, exact duplicate, repeated replay, two-process contention, normal-finalizer/restart race, C1-5-to-B2 interruption, B2-to-completion interruption, ambiguous mutation outcomes, terminal B3 preservation, corrupt/noncanonical/unsupported evidence, unsafe links/types, dry-run/nonexecution, and content-leakage canaries.
 
 Current status documents must describe I1-GC as complete and must not retain a contradictory pending statement followed by a later superseding section.
+
+<!-- O1B_CURRENT_BOUNDARY -->
+### O1B sealed replay-lane discovery — complete
+
+O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1C through O1F, O2, and O3 remain unimplemented.

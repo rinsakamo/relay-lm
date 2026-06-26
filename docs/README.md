@@ -85,3 +85,8 @@ These documents are target architecture only. Experimental SOUL replacement is e
 - MVP snapshots -> `docs/mvp/`
 
 When an implemented boundary changes state, update Project Status, the implementation plan, both documentation indexes, the affected dedicated contract, the post-I3 roadmap, relevant current/target documents, and status-checking smoke scripts in the same change.
+
+<!-- O1B_DOC_INDEX -->
+- [O1B Sealed I1-G Replay-Lane Discovery](architecture/o1b_sealed_i1g_replay_lane.md) — bounded secure discovery, canonical reread, and one I1-GC delegation.
+
+O1B is complete. O1C through O1F, O2, and O3 remain unimplemented; O1B is not a scheduler loop or always-on service.

@@ -1,7 +1,7 @@
 """Pure O1A two-lane scheduler-round contract.
 
 This module contains no filesystem, clock, sleep, queue, replay, worker, or
-configuration integration.  It validates already-bounded lane outcomes and
+configuration integration. It validates already-bounded lane outcomes and
 produces a deterministic content-free scheduler result/projection.
 """
 from __future__ import annotations
@@ -20,95 +20,44 @@ _REASON_RE: Final = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
 LaneKind = Literal["replay", "queue"]
 Disposition = Literal["stop", "run_next_round", "idle"]
 SchedulerStatus = Literal[
-    "disabled",
-    "invalid_input",
-    "invalid_configuration",
-    "round_completed",
-    "partial_progress",
-    "idle",
-    "blocked",
-    "unsafe_state",
-    "unexpected_failure",
+    "disabled", "invalid_input", "invalid_configuration", "round_completed",
+    "partial_progress", "idle", "blocked", "unsafe_state", "unexpected_failure",
 ]
 ReplayLaneStatus = Literal[
-    "dependency_unavailable",
-    "no_eligible_work",
-    "busy",
-    "candidate_changed",
-    "delegated",
-    "completed",
-    "already_complete",
-    "not_replayable",
-    "isolated",
-    "unsafe_state",
-    "failed",
+    "dependency_unavailable", "no_eligible_work", "busy", "candidate_changed",
+    "delegated", "completed", "already_complete", "not_replayable", "isolated",
+    "unsafe_state", "failed",
 ]
 QueueLaneStatus = Literal[
-    "no_eligible_work",
-    "future_retry_only",
-    "busy",
-    "candidate_changed",
-    "dry_run_ready",
-    "delegated",
-    "executed",
-    "retry_released",
-    "terminal",
-    "cleanup_required",
-    "unsafe_state",
-    "failed",
+    "no_eligible_work", "future_retry_only", "busy", "candidate_changed",
+    "dry_run_ready", "delegated", "executed", "retry_released", "terminal",
+    "cleanup_required", "unsafe_state", "failed",
 ]
 LaneStatus = ReplayLaneStatus | QueueLaneStatus
 
-REPLAY_LANE_STATUSES: Final = frozenset(
-    {
-        "dependency_unavailable",
-        "no_eligible_work",
-        "busy",
-        "candidate_changed",
-        "delegated",
-        "completed",
-        "already_complete",
-        "not_replayable",
-        "isolated",
-        "unsafe_state",
-        "failed",
-    }
-)
-QUEUE_LANE_STATUSES: Final = frozenset(
-    {
-        "no_eligible_work",
-        "future_retry_only",
-        "busy",
-        "candidate_changed",
-        "dry_run_ready",
-        "delegated",
-        "executed",
-        "retry_released",
-        "terminal",
-        "cleanup_required",
-        "unsafe_state",
-        "failed",
-    }
-)
-
-_PROGRESS_STATUSES: Final = frozenset(
-    {"completed", "already_complete", "dry_run_ready", "executed", "retry_released", "terminal"}
-)
-_FAILURE_STATUSES: Final = frozenset({"dependency_unavailable", "failed", "unsafe_state", "isolated"})
+REPLAY_LANE_STATUSES: Final = frozenset({
+    "dependency_unavailable", "no_eligible_work", "busy", "candidate_changed",
+    "delegated", "completed", "already_complete", "not_replayable", "isolated",
+    "unsafe_state", "failed",
+})
+QUEUE_LANE_STATUSES: Final = frozenset({
+    "no_eligible_work", "future_retry_only", "busy", "candidate_changed",
+    "dry_run_ready", "delegated", "executed", "retry_released", "terminal",
+    "cleanup_required", "unsafe_state", "failed",
+})
+_PROGRESS_STATUSES: Final = frozenset({
+    "completed", "already_complete", "dry_run_ready", "executed",
+    "retry_released", "terminal",
+})
+_FAILURE_STATUSES: Final = frozenset({
+    "dependency_unavailable", "failed", "unsafe_state", "isolated",
+})
 _IMMEDIATE_RETRY_STATUSES: Final = frozenset({"candidate_changed"})
-_IDLE_STATUSES: Final = frozenset(
-    {
-        "no_eligible_work",
-        "future_retry_only",
-        "busy",
-        "not_replayable",
-        "cleanup_required",
-        "failed",
-        "dependency_unavailable",
-        "unsafe_state",
-        "isolated",
-    }
-)
+_IDLE_STATUSES: Final = frozenset({
+    "no_eligible_work", "future_retry_only", "busy", "not_replayable",
+    "cleanup_required", "failed", "dependency_unavailable", "unsafe_state",
+    "isolated", "delegated",
+})
 
 
 def _require_exact_bool(name: str, value: object) -> bool:
@@ -117,7 +66,9 @@ def _require_exact_bool(name: str, value: object) -> bool:
     return value
 
 
-def _validate_reason_ids(values: Sequence[str], *, maximum: int, name: str) -> tuple[str, ...]:
+def _validate_reason_ids(
+    values: Sequence[str], *, maximum: int, name: str
+) -> tuple[str, ...]:
     if isinstance(values, (str, bytes)):
         raise TypeError(f"{name}_must_be_sequence")
     result = tuple(values)
@@ -143,13 +94,8 @@ class SchedulerGates:
 
     def __post_init__(self) -> None:
         for name in (
-            "enabled",
-            "dry_run_only",
-            "apply_enabled",
-            "replay_lane_enabled",
-            "queue_lane_enabled",
-            "required_dependency_available",
-            "supported_schema",
+            "enabled", "dry_run_only", "apply_enabled", "replay_lane_enabled",
+            "queue_lane_enabled", "required_dependency_available", "supported_schema",
         ):
             _require_exact_bool(name, getattr(self, name))
 
@@ -205,20 +151,11 @@ class LaneOutcome:
         if type(self.status) is not str or self.status not in allowed:
             raise ValueError("unknown_lane_status")
         for name in (
-            "enabled",
-            "attempted",
-            "candidate_observed",
-            "candidate_selected",
-            "canonical_reread_performed",
-            "delegation_attempted",
-            "delegation_completed",
-            "mutation_may_have_occurred",
-            "no_immediate_work",
-            "future_work_hint_present",
-            "contention_observed",
-            "retryable",
-            "unsafe",
-            "terminal_for_candidate",
+            "enabled", "attempted", "candidate_observed", "candidate_selected",
+            "canonical_reread_performed", "delegation_attempted",
+            "delegation_completed", "mutation_may_have_occurred",
+            "no_immediate_work", "future_work_hint_present", "contention_observed",
+            "retryable", "unsafe", "terminal_for_candidate",
         ):
             _require_exact_bool(name, getattr(self, name))
         object.__setattr__(
@@ -242,8 +179,10 @@ class LaneOutcome:
             raise ValueError("canonical_reread_requires_selection")
         if self.delegation_attempted and not self.canonical_reread_performed:
             raise ValueError("delegation_requires_canonical_reread")
-        if self.status in {"no_eligible_work", "future_retry_only", "busy"} and self.delegation_attempted:
+        if self.status in {"no_eligible_work", "future_retry_only"} and self.delegation_attempted:
             raise ValueError("nondelegating_status_attempted_delegation")
+        if self.status == "busy" and self.delegation_attempted and self.lane_kind != "replay":
+            raise ValueError("queue_busy_cannot_follow_delegation")
         if self.status in _PROGRESS_STATUSES and not self.delegation_completed:
             raise ValueError("progress_status_requires_completed_delegation")
         if self.status == "candidate_changed" and not self.candidate_selected:
@@ -276,29 +215,22 @@ class SchedulerRoundResult:
 
     def __post_init__(self) -> None:
         if self.status not in {
-            "disabled",
-            "invalid_input",
-            "invalid_configuration",
-            "round_completed",
-            "partial_progress",
-            "idle",
-            "blocked",
-            "unsafe_state",
-            "unexpected_failure",
+            "disabled", "invalid_input", "invalid_configuration", "round_completed",
+            "partial_progress", "idle", "blocked", "unsafe_state", "unexpected_failure",
         }:
             raise ValueError("unknown_scheduler_status")
         if self.disposition not in {"stop", "run_next_round", "idle"}:
             raise ValueError("unknown_scheduler_disposition")
         if type(self.work_units_attempted) is not int or not 0 <= self.work_units_attempted <= 2:
             raise ValueError("invalid_work_units_attempted")
-        if type(self.work_units_completed) is not int or not 0 <= self.work_units_completed <= self.work_units_attempted:
+        if (
+            type(self.work_units_completed) is not int
+            or not 0 <= self.work_units_completed <= self.work_units_attempted
+        ):
             raise ValueError("invalid_work_units_completed")
         for name in (
-            "idle_recommended",
-            "immediate_next_round_recommended",
-            "future_work_hint_present",
-            "retryable",
-            "unsafe",
+            "idle_recommended", "immediate_next_round_recommended",
+            "future_work_hint_present", "retryable", "unsafe",
         ):
             _require_exact_bool(name, getattr(self, name))
         if self.idle_recommended != (self.disposition == "idle"):
@@ -352,12 +284,7 @@ def aggregate_scheduler_round(
     replay_lane: LaneOutcome | None,
     queue_lane: LaneOutcome | None,
 ) -> SchedulerRoundResult:
-    """Validate one already-bounded round and derive a content-free result.
-
-    The function never invokes a lane.  ``invocation_order`` is explicit so the
-    contract smoke can prove that a caller did not invert or duplicate the v0
-    replay-then-queue order.
-    """
+    """Validate one already-bounded round and derive a content-free result."""
 
     reasons = gates.validation_reason_ids()
     if reasons:
@@ -369,17 +296,10 @@ def aggregate_scheduler_round(
             else "blocked"
         )
         return SchedulerRoundResult(
-            status=status,
-            disposition="stop",
-            replay_lane=None,
-            queue_lane=None,
-            work_units_attempted=0,
-            work_units_completed=0,
-            idle_recommended=False,
-            immediate_next_round_recommended=False,
-            future_work_hint_present=False,
-            retryable=False,
-            unsafe=status != "invalid_configuration",
+            status=status, disposition="stop", replay_lane=None, queue_lane=None,
+            work_units_attempted=0, work_units_completed=0, idle_recommended=False,
+            immediate_next_round_recommended=False, future_work_hint_present=False,
+            retryable=False, unsafe=status != "invalid_configuration",
             bounded_reason_ids=reasons,
         )
 
@@ -387,18 +307,10 @@ def aggregate_scheduler_round(
         if replay_lane is not None or queue_lane is not None or tuple(invocation_order):
             raise ValueError("disabled_scheduler_must_not_invoke_lanes")
         return SchedulerRoundResult(
-            status="disabled",
-            disposition="stop",
-            replay_lane=None,
-            queue_lane=None,
-            work_units_attempted=0,
-            work_units_completed=0,
-            idle_recommended=False,
-            immediate_next_round_recommended=False,
-            future_work_hint_present=False,
-            retryable=False,
-            unsafe=False,
-            bounded_reason_ids=("scheduler_disabled",),
+            status="disabled", disposition="stop", replay_lane=None, queue_lane=None,
+            work_units_attempted=0, work_units_completed=0, idle_recommended=False,
+            immediate_next_round_recommended=False, future_work_hint_present=False,
+            retryable=False, unsafe=False, bounded_reason_ids=("scheduler_disabled",),
         )
 
     expected_order: tuple[LaneKind, ...] = tuple(
@@ -411,14 +323,17 @@ def aggregate_scheduler_round(
     )
     if tuple(invocation_order) != expected_order:
         raise ValueError("invalid_lane_invocation_order")
-
     if gates.replay_lane_enabled != (replay_lane is not None):
         raise ValueError("replay_lane_presence_mismatch")
     if gates.queue_lane_enabled != (queue_lane is not None):
         raise ValueError("queue_lane_presence_mismatch")
-    if replay_lane is not None and (replay_lane.lane_kind != "replay" or not replay_lane.enabled):
+    if replay_lane is not None and (
+        replay_lane.lane_kind != "replay" or not replay_lane.enabled
+    ):
         raise ValueError("invalid_replay_lane_result")
-    if queue_lane is not None and (queue_lane.lane_kind != "queue" or not queue_lane.enabled):
+    if queue_lane is not None and (
+        queue_lane.lane_kind != "queue" or not queue_lane.enabled
+    ):
         raise ValueError("invalid_queue_lane_result")
 
     lanes = tuple(lane for lane in (replay_lane, queue_lane) if lane is not None)
@@ -428,7 +343,7 @@ def aggregate_scheduler_round(
         raise AssertionError("round_work_unit_bound_exceeded")
 
     progress = any(
-        lane.delegation_completed
+        lane.status in _PROGRESS_STATUSES
         or lane.mutation_may_have_occurred
         or lane.status in _IMMEDIATE_RETRY_STATUSES
         for lane in lanes
@@ -441,7 +356,9 @@ def aggregate_scheduler_round(
     if progress:
         disposition: Disposition = "run_next_round"
     else:
-        if not all(lane.no_immediate_work or lane.status in _IDLE_STATUSES for lane in lanes):
+        if not all(
+            lane.no_immediate_work or lane.status in _IDLE_STATUSES for lane in lanes
+        ):
             raise ValueError("lane_outcome_has_no_disposition")
         disposition = "idle"
 
@@ -449,7 +366,7 @@ def aggregate_scheduler_round(
         status = "unsafe_state"
     elif completed and failures:
         status = "partial_progress"
-    elif completed:
+    elif completed and progress:
         status = "round_completed"
     elif failures and not retryable:
         status = "blocked"
@@ -462,22 +379,20 @@ def aggregate_scheduler_round(
             if reason not in combined_reasons:
                 combined_reasons.append(reason)
     combined = _validate_reason_ids(
-        combined_reasons,
-        maximum=MAX_ROUND_REASON_IDS,
-        name="round_reason_ids",
+        combined_reasons, maximum=MAX_ROUND_REASON_IDS, name="round_reason_ids"
     )
-
     return SchedulerRoundResult(
-        status=status,
-        disposition=disposition,
-        replay_lane=replay_lane,
-        queue_lane=queue_lane,
-        work_units_attempted=attempted,
-        work_units_completed=completed,
-        idle_recommended=disposition == "idle",
+        status=status, disposition=disposition, replay_lane=replay_lane,
+        queue_lane=queue_lane, work_units_attempted=attempted,
+        work_units_completed=completed, idle_recommended=disposition == "idle",
         immediate_next_round_recommended=disposition == "run_next_round",
-        future_work_hint_present=future_hint,
-        retryable=retryable,
-        unsafe=unsafe,
+        future_work_hint_present=future_hint, retryable=retryable, unsafe=unsafe,
         bounded_reason_ids=combined,
     )
+
+
+__all__ = [
+    "LANE_RESULT_SCHEMA", "MAX_REASON_IDS_PER_LANE", "MAX_ROUND_REASON_IDS",
+    "ROUND_PROJECTION_SCHEMA", "ROUND_RESULT_SCHEMA", "LaneOutcome",
+    "SchedulerGates", "SchedulerRoundResult", "aggregate_scheduler_round",
+]
