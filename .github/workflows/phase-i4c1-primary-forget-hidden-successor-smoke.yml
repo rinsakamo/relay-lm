@@ -46,7 +46,28 @@ jobs:
           python-version: "3.12"
       - run: pip install -e .
       - run: python -m compileall -q relaylm scripts
-      - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_ci_runner.py
+      - name: I-4C1 hidden-successor smoke
+        shell: bash
+        run: |
+          set -o pipefail
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_hidden_successor_smoke.py 2>&1 | tee i4c1-hidden.log
+      - name: I-4C1 concurrency smoke
+        shell: bash
+        run: |
+          set -o pipefail
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_concurrency_smoke.py 2>&1 | tee i4c1-concurrency.log
+      - name: I-4C1 security smoke
+        shell: bash
+        run: |
+          set -o pipefail
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_security_smoke.py 2>&1 | tee i4c1-security.log
+      - name: Upload I-4C1 diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: i4c1-diagnostics
+          path: i4c1-*.log
+          if-no-files-found: ignore
       - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4b_ci_runner.py
       - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
       - run: PYTHONPATH=. python scripts/relaylm_m3e_atomic_primary_page_writer_smoke.py
