@@ -15,6 +15,7 @@ from relaylm.relaymem_slp_durable_finalization_fence import (
 from relaylm.relaymem_slp_durable_finalization_isolation import isolation_filename
 from relaylm.relaymem_slp_durable_finalization_record import (
     base_filename,
+    canonical_json_bytes,
     seal_filename,
     segment_filename,
 )
@@ -146,7 +147,7 @@ def test_post_isolation_republication_is_blocked() -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
         config = gd._config(root, orphan=1, isolated=3600)
-        base, _, _, store = gd._publish_base(
+        base, _, _, _ = gd._publish_base(
             root,
             request_id="request-i1gd-post-isolation-republish",
         )
@@ -158,9 +159,13 @@ def test_post_isolation_republication_is_blocked() -> None:
         marker = finalization / isolation_filename(locator)
         require(marker.is_file(), isolated)
 
-        republished = store.publish_base(base)
-        require(republished.status == "published_new", republished)
+        # Simulate a later writer or external recovery path reintroducing a
+        # canonical component after the immutable isolation decision. The
+        # ordinary I1-GB store already rejects the isolation ancillary file;
+        # this direct fixture proves I1-GD also fails closed on reread.
         base_path = finalization / base_filename(locator)
+        base_path.write_bytes(canonical_json_bytes(base))
+        os.chmod(base_path, 0o600)
         marker_mtime = marker.stat().st_mtime_ns
         newer = (marker_mtime + 2_000_000_000) / 1_000_000_000
         os.utime(base_path, (newer, newer))
