@@ -1,11 +1,9 @@
-"""I-4C2 projection split between mutation governance and ordinary retrieval.
+"""I-4D unified Correct/Forget current-state projection for ordinary retrieval.
 
-The underlying shared scanner validates the complete Correct/Forget operation
-chain, including finalized Forget tombstones.  Phase I-4C2 must not, however,
-change ordinary M2 currentness; that lifecycle exclusion belongs to I-4D.
-This adapter therefore preserves the scanner's corruption, pending, and physical
-identity evidence while rebuilding only the public correction-current projection
-from completed correction receipts.
+The shared scanner remains the only parser for correction receipts, prepared
+operations, hidden successors, controls, and finalized tombstones.  I-4D exposes
+that complete fail-closed currentness to ordinary Primary recall.  M2 still owns
+candidate discovery, relevance ordering, caps, and budgets.
 """
 from __future__ import annotations
 
@@ -17,46 +15,28 @@ from . import _relaymem_primary_current_state_impl as _impl
 def load_primary_current_state_index(
     store_root: str | Path, *, namespace: str
 ) -> _impl.PrimaryCorrectionStateIndex:
-    """Return the correction-only retrieval projection after full chain validation."""
+    """Return one read-only Correct/Forget lifecycle index for retrieval.
 
-    combined = _impl.load_primary_current_state_index(store_root, namespace=namespace)
-    current_by_logical: dict[str, tuple[str, int]] = {}
-    logical_by_physical = dict(combined.logical_by_physical)
-    superseded_physical: set[str] = set()
-    invalid_logical = set(combined.invalid_logical)
+    A prepared operation makes the current physical revision pending as well as
+    any declared successor.  The compatibility identity resolver therefore
+    returns no eligible identity throughout the prepared-to-finalized window.
+    Finalized Forget state keeps the hidden successor as canonical current state,
+    so every prior active physical revision remains non-current without fallback.
+    """
 
-    for logical in combined.current_by_logical:
-        physical = logical
-        revision = 1
-        receipts = sorted(
-            combined.receipts_by_logical.get(logical, ()),
-            key=lambda item: (
-                int(item["result_revision"]),
-                str(item["operation_key"]),
-            ),
-        )
-        for receipt in receipts:
-            if (
-                receipt.get("prior_physical_id") != physical
-                or receipt.get("prior_revision") != revision
-                or receipt.get("result_revision") != revision + 1
-            ):
-                invalid_logical.add(logical)
-                break
-            superseded_physical.add(physical)
-            logical_by_physical[physical] = logical
-            physical = str(receipt["result_physical_id"])
-            revision = int(receipt["result_revision"])
-            logical_by_physical[physical] = logical
-        else:
-            current_by_logical[logical] = (physical, revision)
-
+    combined = _impl.load_primary_current_state_index(
+        store_root, namespace=namespace
+    )
+    pending_physical = set(combined.pending_physical)
+    for logical in combined.pending_logical:
+        current = combined.current_by_logical.get(logical, (logical, 1))
+        pending_physical.add(current[0])
     return _impl.PrimaryCorrectionStateIndex(
-        current_by_logical=current_by_logical,
-        logical_by_physical=logical_by_physical,
-        superseded_physical=frozenset(superseded_physical),
-        pending_physical=combined.pending_physical,
-        invalid_logical=frozenset(invalid_logical),
+        current_by_logical=combined.current_by_logical,
+        logical_by_physical=combined.logical_by_physical,
+        superseded_physical=combined.superseded_physical,
+        pending_physical=frozenset(pending_physical),
+        invalid_logical=combined.invalid_logical,
         receipts_by_logical=combined.receipts_by_logical,
         pending_logical=combined.pending_logical,
     )
