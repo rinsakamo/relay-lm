@@ -59,6 +59,12 @@ _PREFIX = "durable-finalization-v0-"
 _SUFFIX = ".segment-isolation.json"
 _TOKEN = re.compile(r"^[a-z][a-z0-9_]{0,95}$")
 _DIGEST = re.compile(r"^[0-9a-f]{64}$")
+_ISOLATION_FILENAME_RE = re.compile(
+    rf"^{re.escape(_PREFIX)}([0-9a-f]{{64}}){re.escape(_SUFFIX)}$"
+)
+_ISOLATION_TEMP_RE = re.compile(
+    r"^\.durable-finalization-isolation-([0-9a-f]{32})\.tmp$"
+)
 _MAX_REASONS = 16
 
 IsolationStatus = Literal[
@@ -96,6 +102,23 @@ def isolation_filename(locator_digest: str) -> str:
     if not _is_digest(locator_digest):
         raise ValueError("durable_finalization_isolation_locator_invalid")
     return f"{_PREFIX}{locator_digest}{_SUFFIX}"
+
+
+def parse_isolation_filename(name: object) -> str | None:
+    if type(name) is not str:
+        return None
+    match = _ISOLATION_FILENAME_RE.fullmatch(name)
+    return match.group(1) if match is not None else None
+
+
+def isolation_temp_filename(token: str) -> str:
+    if type(token) is not str or re.fullmatch(r"[0-9a-f]{32}", token) is None:
+        raise ValueError("durable_finalization_isolation_temp_token_invalid")
+    return f".durable-finalization-isolation-{token}.tmp"
+
+
+def is_isolation_temp_filename(name: object) -> bool:
+    return type(name) is str and _ISOLATION_TEMP_RE.fullmatch(name) is not None
 
 
 def build_isolation_marker(
@@ -258,7 +281,7 @@ def publish_relaymem_slp_durable_finalization_isolation(
     root_fd, root_reasons = _open_store_root(root)
     if root_fd is None:
         return _result("failed", root_reasons)
-    temp = f".durable-finalization-isolation-{secrets.token_hex(16)}.tmp"
+    temp = isolation_temp_filename(secrets.token_hex(16))
     temp_exists = False
     try:
         current = read_relaymem_slp_durable_finalization_isolation_fd(
@@ -506,7 +529,10 @@ __all__ = [
     "OBSERVED_COMPONENT_FIELDS",
     "RelayMEMSLPDurableFinalizationIsolationResult",
     "build_isolation_marker",
+    "is_isolation_temp_filename",
     "isolation_filename",
+    "isolation_temp_filename",
+    "parse_isolation_filename",
     "publish_relaymem_slp_durable_finalization_isolation",
     "read_relaymem_slp_durable_finalization_isolation",
     "read_relaymem_slp_durable_finalization_isolation_fd",

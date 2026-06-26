@@ -93,3 +93,10 @@ When an implemented boundary changes state, update Project Status, the implement
 - [O1B Sealed I1-G Replay-Lane Discovery](architecture/o1b_sealed_i1g_replay_lane.md) — bounded secure discovery, canonical reread, and one I1-GC delegation.
 
 O1B is complete. O1D through O1F, O2, and O3 remain unimplemented; O1B is not a scheduler loop or always-on service.
+
+## Wave 2 integrated boundary
+
+- I1-GD is complete; I1-GE full crash validation remains unimplemented.
+- Phase I-4C2 is complete; ordinary M2/RelayCTX lifecycle exclusion remains I-4D.
+- O1B and O1C are complete; the production round, policy, recovery, and validation remain O1D-O1F.
+- The W2-INT authority map and frozen next-phase inputs are in [Wave 2 cross-slice convergence audit](architecture/wave2_cross_slice_convergence_audit.md).

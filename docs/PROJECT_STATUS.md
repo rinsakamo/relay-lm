@@ -249,3 +249,7 @@ Current mutation, worker, durable-finalization, retention, and scheduler-related
 ## O1B sealed replay-lane boundary
 
 O1B is complete for one bounded, non-recursive inventory of the configured I1-G root, exact canonical grouping and eligibility classification, deterministic selection of one sealed-pending locator, canonical selected-record reread, and at most one existing I1-GC delegation. It does not implement the O1C queue algorithm, a scheduler round loop, fairness, backoff, polling, shutdown, supervision, or always-on operation.
+
+## Wave 2 cross-slice convergence
+
+W2-INT audits the merged I1-GD, I-4C2, O1B, and O1C production boundaries. It adds no scheduler loop or retrieval exclusion. I1-GE, I-4D, and O1D1 remain the next independent implementation tracks after this audit is green.
