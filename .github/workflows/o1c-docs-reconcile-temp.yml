@@ -7,6 +7,9 @@ on:
     paths:
       - "scripts/_o1c_docs_patch.py"
       - ".github/workflows/o1c-docs-reconcile-temp.yml"
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
