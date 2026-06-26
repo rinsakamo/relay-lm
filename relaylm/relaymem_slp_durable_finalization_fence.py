@@ -1,24 +1,26 @@
 """Shared I1-G per-record maintenance fence.
 
-I1-GC remains the owner of the exact per-record lock filename and flock
-semantics. I1-GD acquires that exact fence and, while it is held, also acquires
-the existing I1-GB store-root exclusive flock. The second lock is not a new
-I1-GD authority: it is the pre-existing publication lock needed to exclude an
-I1-GB base/segment/seal mutation that predates the per-record fence.
+I1-GD uses the exact I1-GC per-record fence and the existing I1-GB root
+publication lock. Unsafe locator-owned objects are rejected before a new lock
+file is created.
 """
 from __future__ import annotations
 
+import os
+import stat
 from dataclasses import dataclass
 from typing import Any
 
 from .relaymem_slp_durable_finalization_replay import _acquire_fence
-from .relaymem_slp_durable_finalization_store import _acquire_lock, _release_lock
+from .relaymem_slp_durable_finalization_store import (
+    _acquire_lock,
+    _open_store_root,
+    _release_lock,
+)
 
 
 @dataclass(repr=False)
 class RelayMEMSLPDurableFinalizationMaintenanceFence:
-    """Exact I1-GC record fence plus the existing I1-GB root mutation lock."""
-
     _record_fence: Any
     _closed: bool = False
 
@@ -36,8 +38,6 @@ class RelayMEMSLPDurableFinalizationMaintenanceFence:
         if self._closed:
             return
         self._closed = True
-        # Release in reverse acquisition order. The underlying record-fence
-        # close then unlocks the exact I1-GC lock file and closes both fds.
         _release_lock(self.root_fd)
         self._record_fence.close()
 
@@ -50,14 +50,11 @@ def acquire_relaymem_slp_durable_finalization_fence(
     bool,
     tuple[str, ...],
 ]:
-    """Acquire the I1-GC record fence and existing I1-GB publication lock.
+    """Acquire the exact I1-GC fence plus the existing root mutation lock."""
 
-    Lock order is always per-record fence first, store-root flock second. I1-GC
-    already uses per-record then store read-lock; I1-GB uses only the store-root
-    mutation lock. All locks are nonblocking, so contention is a bounded skip and
-    cannot deadlock. The per-record lock file is never unlinked.
-    """
-
+    preflight = _preflight_locator_objects(root, locator_digest)
+    if preflight:
+        return None, False, preflight
     record_fence, busy, reasons = _acquire_fence(root, locator_digest)
     if record_fence is None:
         return None, busy, reasons
@@ -70,6 +67,61 @@ def acquire_relaymem_slp_durable_finalization_fence(
             (root_reason,),
         )
     return RelayMEMSLPDurableFinalizationMaintenanceFence(record_fence), False, ()
+
+
+def _preflight_locator_objects(root: str, locator: str) -> tuple[str, ...]:
+    if type(locator) is not str or len(locator) != 64 or any(
+        char not in "0123456789abcdef" for char in locator
+    ):
+        return ("durable_finalization_locator_invalid",)
+    root_fd, reasons = _open_store_root(root)
+    if root_fd is None:
+        return reasons
+    record_prefix = f"durable-finalization-v0-{locator}"
+    completion_name = f"durable-finalization-completion-v0-{locator}.json"
+    lock_name = f".durable-finalization-replay-v0-{locator}.lock"
+    exact_names = {
+        f"{record_prefix}.base.json",
+        f"{record_prefix}.seal.json",
+        f"{record_prefix}.segment-isolation.json",
+        completion_name,
+        lock_name,
+    }
+    try:
+        count = 0
+        with os.scandir(root_fd) as entries:
+            for entry in entries:
+                count += 1
+                if count > 1_000_000:
+                    return (
+                        "durable_finalization_retention_inventory_capacity_exceeded",
+                    )
+                name = entry.name
+                if locator not in name or not name.startswith(
+                    ("durable-finalization", ".durable-finalization")
+                ):
+                    continue
+                is_segment = (
+                    name.startswith(f"{record_prefix}.segment-")
+                    and name.endswith(".json")
+                    and len(name) == len(record_prefix) + len(".segment-000000.json")
+                    and name[-11:-5].isdigit()
+                )
+                if name not in exact_names and not is_segment:
+                    return ("durable_finalization_noncanonical_filename",)
+                try:
+                    info = entry.stat(follow_symlinks=False)
+                except OSError:
+                    return ("durable_finalization_component_unreadable",)
+                if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
+                    return ("durable_finalization_unsafe_file_type",)
+                if info.st_nlink != 1:
+                    return ("durable_finalization_hardlink_invalid",)
+        return ()
+    except OSError:
+        return ("durable_finalization_retention_inventory_failed",)
+    finally:
+        os.close(root_fd)
 
 
 __all__ = [
