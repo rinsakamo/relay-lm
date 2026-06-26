@@ -212,8 +212,6 @@ The workstation evaluation exposed two quality gaps:
 
 ```text
 I-4C2 prepared recovery / tombstone
-|| O1B sealed-record discovery
-|| O1C queue-record discovery
 || I1-GE crash validation preparation
 
 then
@@ -239,7 +237,7 @@ Current mutation, worker, durable-finalization, retention, and scheduler-related
 - speaker-provenance-safe Primary MEM summary formation;
 - strict evidence-grounded recall response generation;
 - I1-GE;
-- O1B through O1F, O2, and O3;
+- O1D through O1F, O2, and O3;
 - I-4C2 through I-4F;
 - restore/unhide or physical purge;
 - I-5 through I-9 governance and RelaySOUL slices;
