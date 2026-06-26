@@ -23,24 +23,31 @@ CURRENT_DOCS = (
     "docs/PROJECT_STATUS.md",
     "docs/README.md",
     "docs/architecture/README.md",
+    "docs/architecture/current_target_migration_guide.md",
     "docs/architecture/pipeline_implementation_plan.md",
     "docs/architecture/post_i3_evaluation_work_roadmap.md",
     "docs/architecture/relaymem_mvp_implementation_plan.md",
     "docs/architecture/relaymem_slp_current_target.md",
+    "docs/architecture/wave2_cross_slice_convergence_audit.md",
     "docs/architecture/wave3_cross_slice_convergence_audit.md",
     "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
     "docs/architecture/i1gd_durable_finalization_retention_cleanup.md",
     "docs/architecture/i1ge_durable_finalization_crash_validation.md",
+    "docs/architecture/memory_lifecycle_design.md",
+    "docs/architecture/phase_i2_real_soul_lab_observation.md",
+    "docs/architecture/phase_i3_auditable_primary_mem_correct.md",
     "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md",
     "docs/architecture/phase_i4b_primary_current_state_shared_fence.md",
     "docs/architecture/phase_i4c1_primary_forget_hidden_successor.md",
     "docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md",
     "docs/architecture/phase_i4d_primary_retrieval_exclusion.md",
+    "docs/architecture/soul_lab_runtime_mvp.md",
     "docs/architecture/o0_local_one_job_runner.md",
     "docs/architecture/o1a_two_lane_scheduler_contract.md",
     "docs/architecture/o1b_sealed_i1g_replay_lane.md",
     "docs/architecture/o1c_eligible_b2_queue_lane.md",
     "docs/architecture/o1d1_production_scheduler_round.md",
+    "docs/smoke/o1_manual_one_round_runbook.md",
 )
 
 REQUIRED = {
@@ -63,6 +70,8 @@ Wave 4 not open while W3-INT is unmerged
 I1-GA through I1-GE are complete
 O1D1 is complete for accepted scheduler gates plus one bounded production round
 I-4D ordinary M2/RelayCTX lifecycle and prior-revision exclusion plus read-only historical lifecycle projection is complete
+E1 local runtime evaluation
+O1 manual one-round runbook
 W3-INT complete only after its PR is merged
 """,
     "docs/mvp/README.md": """
@@ -76,8 +85,17 @@ Wave 3 Cross-Slice Convergence Audit
 I1-GE Durable-finalization Crash Validation
 O1D1 Accepted Scheduler Gates and One Production Round
 Phase I-4D Primary Retrieval Exclusion
+E1 Local Runtime Evaluation
 Wave 3 Cross-Slice Convergence Audit
 W3-INT complete only after its PR is merged
+""",
+    "docs/architecture/current_target_migration_guide.md": """
+Detailed RelayMEM/RelaySLP status lives in [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
+I1-GA through I1-GE are complete at the durable-finalization boundary.
+O1D1 is complete as one accepted-gate replay-before-queue production round.
+relaymem_slp_durable_finalization_enabled=false
+relaymem_local_worker_enabled=false
+relaymem_local_scheduler_enabled=false
 """,
     "docs/architecture/pipeline_implementation_plan.md": """
 I1-G overall: complete
@@ -104,6 +122,12 @@ O1D1 accepts the five exact scheduler gates
 I-4D consumes the complete shared current-state authority before snippet construction
 Forget is not product-complete until I-4E
 """,
+    "docs/architecture/wave2_cross_slice_convergence_audit.md": """
+relaylm_status: historical_after_merge
+Status: W2-INT implementation and regression validation complete after merge.
+Current post-Wave-3 status belongs to [Project Status](../PROJECT_STATUS.md)
+The public concurrent-loser normalization merged through PR #407
+""",
     "docs/architecture/wave3_cross_slice_convergence_audit.md": """
 Wave 3 source PR inventory
 I1-G overall complete
@@ -119,20 +143,64 @@ I1-GA through I1-GE are complete
 I1-G overall is complete only for sealed durable-finalization evidence
 I1-GE is complete as validation-only real process-exit/fresh-restart proof
 """,
+    "docs/architecture/i1gd_durable_finalization_retention_cleanup.md": """
+relaylm_status: historical_after_merge
+Current I1-G status is **complete** after I1-GE.
+I1-GD remains only retention/cleanup authority
+""",
     "docs/architecture/i1ge_durable_finalization_crash_validation.md": """
 I1-GE is complete as validation-only production evidence
 real child-process `os._exit` seams
 It does not mean B3 terminal success, C2 execution, worker execution, Primary MEM formation
+""",
+    "docs/architecture/memory_lifecycle_design.md": """
+This document is target architecture. It does not carry date-stamped completion appendices.
+A hidden current successor is the lifecycle authority.
+Exact current implementation status for I-4B/I-4C1/I-4C2/I-4D/I-4E/I-4F belongs to [Project Status](../PROJECT_STATUS.md)
+""",
+    "docs/architecture/phase_i2_real_soul_lab_observation.md": """
+relaylm_status: historical_after_merge
+Status: complete for the bounded Phase I-2 real observation boundary.
+I-4D later adds the separate read-only lifecycle overlay without rewriting these v0 receipts.
+""",
+    "docs/architecture/phase_i3_auditable_primary_mem_correct.md": """
+relaylm_status: historical_after_merge
+Implemented on the Phase I-3 feature boundary.
+current repository-wide status belongs to [Project Status](../PROJECT_STATUS.md)
 """,
     "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md": """
 I-4B, I-4C1, I-4C2, and I-4D are implemented
 I-4E still owns loopback mutation API and SOUL Lab Forget UI
 I-4F still owns crash/race/security/fresh-conversation validation
 """,
+    "docs/architecture/phase_i4c1_primary_forget_hidden_successor.md": """
+relaylm_status: historical_after_merge
+I-4C2 is complete for exact prepared resume
+I-4D is complete for ordinary M2/RelayCTX hidden/prior-revision exclusion
+## Still unimplemented after Wave 3
+""",
+    "docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md": """
+relaylm_status: historical_after_merge
+## PR #407 concurrent-loser normalization
+finalized `hidden / none` from another winner
+`already_hidden`
+hidden prepared or hidden recovery-required
+`target_not_active`
+""",
     "docs/architecture/phase_i4d_primary_retrieval_exclusion.md": """
 A candidate survives only when M2 already selected it
 A hidden successor remains lifecycle authority; retrieval never falls back to a prior active revision.
 I-4E remains the loopback API and SOUL Lab mutation UI. I-4F remains the full production validation slice.
+""",
+    "docs/architecture/soul_lab_runtime_mvp.md": """
+This document defines product and ownership boundaries.
+this design document does not carry phase-completion appendices.
+Voice/avatar Runtime MVP remains later and independent.
+""",
+    "docs/architecture/o0_local_one_job_runner.md": """
+relaylm_status: historical_after_merge
+O1D1 scheduler gates are accepted by `RelayLMConfig` for one scheduler round
+O0 does not complete automatic queue processing
 """,
     "docs/architecture/o1a_two_lane_scheduler_contract.md": """
 O1B replay adapter, O1C queue adapter, and O1D1 one production round are complete.
@@ -148,20 +216,30 @@ relaymem_local_scheduler_replay_lane_enabled: true
 relaymem_local_scheduler_queue_lane_enabled: true
 The coordinator passes no replay result, locator, job/dispatch identity, candidate object, or priority hint into O1C.
 """,
+    "docs/smoke/o1_manual_one_round_runbook.md": """
+O1D1 can execute one accepted-gate production round and return without sleep.
+`run_next_round` is only a recommendation.
+O1D1 does not implement fairness, retry-time policy, backoff, jitter, shutdown, supervision, or recurring automatic processing.
+""",
 }
 
 STALE = tuple(
     line.strip()
     for line in """
+pending review and merge
 I1-GE full production crash validation: unimplemented
 I1-GE validation-only full production crash proof: unimplemented
 I1-GE remains unimplemented
 I1-G overall: in progress
+I1-G pre-enqueue finalizer durability plus queue scanning/scheduling/daemon lifecycle
 Phase I-4D through I-4F exclusion, UI, and validation: unimplemented
 Phase I-4D retrieval exclusion: unimplemented
 I-4D ordinary M2/RelayCTX lifecycle exclusion: unimplemented
+I-4D ordinary M2/RelayCTX hidden and prior-revision exclusion is unimplemented
 No production hidden-state filtering exists yet because I-4D integration is not implemented
 I-4D M2/RelayCTX lifecycle exclusion, loopback mutation routes, and SOUL Lab Forget UI remain unimplemented
+Runtime apply, M2 exclusion, historical lifecycle projection, SOUL Lab Forget UI, physical deletion, restore/unhide, and later memory operations remain unimplemented
+The next text-first product boundary is Phase I-3 auditable Correct.
 O1D1 accepted gates and one production round: unimplemented
 O1D1 through O1F: unimplemented
 O1D1 remains unimplemented
