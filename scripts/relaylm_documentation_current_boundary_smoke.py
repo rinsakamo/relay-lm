@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1-I4C2, UI-B0, I1-G, O1A/O1B/O1C, and roadmap docs."""
+"""Validate current Phase 6, I1-I4D, UI-B0, I1-G, O1A-O1D1, and roadmap docs."""
 from __future__ import annotations
 
 import ast
@@ -96,14 +96,17 @@ Phase I-4C2 prepared recovery / operation-scoped M3f-M3g / tombstone finalizatio
 I1-GC one-record restart replay / exact C1-5+B2 convergence / completion marker: complete
 I1-GD retention / orphan reconciliation / isolation lifecycle / cleanup: complete
 I1-GE full production crash validation: unimplemented
+I1-GE is validation-only
 Visible-release restart evidence publication is implemented
 Restart-time one-record replay is implemented
 Durable-finalization bounded retention and cleanup is implemented
 Direct Home-origin formation: not currently proven
 Scheduler replay lane: O1B one bounded sealed-record discovery/reread/I1-GC adapter complete
 Scheduler queue lane: O1C one bounded discovery/reread/scope/C2 adapter complete
-Scheduler remaining production: O1D through O1F unimplemented
-O1A adds no accepted configuration fields
+Scheduler remaining production: O1D1 accepted gates/one-round coordinator, O1D2 policy, O1E recovery/shutdown, and O1F validation unimplemented
+O1A itself adds no accepted configuration fields
+I-4D is retrieval-only integration
+I1-GE, I-4D, and O1D1 are independent Wave 3 tracks after W2-INT
 """,
     "docs/architecture/pipeline_implementation_plan.md": """
 Phase 6-C1-0 through C1-5 are complete
@@ -117,18 +120,20 @@ Phase I-4C2 recovery/finalization: complete
 exact read-only preflight/history/token
 I1-GC  one-record restart replay, exact convergence, completion    complete
 I1-GD  bounded retention, isolation, orphan cleanup               complete
-I1-GE  crash-at-every-boundary production validation              unimplemented
+I1-GE  validation-only crash-at-every-boundary production proof   unimplemented
 ### O1A: two-lane bounded scheduler contract — complete
 O1B sealed replay-lane adapter: complete
 O1C eligible queue-lane adapter: complete
-O1D through O1F production scheduling: unimplemented
+O1D1 accepted gates and one production round: unimplemented
+O1D2 fairness/retry-time/backoff/jitter/pacing policy: unimplemented
 O1A completion alone is not O1 completion.
 ### Wave 1 — completed commit, replay, and retention authorities
-### Wave 2 — current parallel implementation candidates
+### Wave 2 — completed cross-slice convergence audit
+### Wave 3 — current independent implementation tracks
 I-5 Pin / Unpin
 I-7 Held Apply / Discard
 I-6 Merge / Supersession
-These fields are not added to `relaylm/config.py`
+O1A target field names remain design-only until O1D1 accepts them
 """,
     "docs/architecture/post_i3_evaluation_work_roadmap.md": """
 Phase I-4B: Current-state resolver and shared mutation fence — complete
@@ -136,18 +141,20 @@ Phase I-4C1: Hidden-successor commit — complete
 Phase I-4C2: Prepared recovery and tombstone finalization — complete
 I1-GC caller-selected one-record replay
 I1-GD bounded retention and isolation cleanup — complete
-I1-GE full crash validation remains unimplemented
+I1-GE validation-only full crash proof
 O1B and O1C: Bounded production lane adapters — complete
-O1D through O1F: Production scheduling — unimplemented
+O1D1 through O1F: Production scheduling — unimplemented
 Phase I-5: Pin / Unpin
 Phase I-7: Held Apply / Discard
 Phase I-6: Merge / Supersession
 Phase I-8: Secondary MEM consolidation
 Phase I-9: RelaySOUL proposal / intervention / rollback
 ### Wave 1 — complete
-### Wave 2 — current
+### Wave 2 — complete
+### Wave 3 — current independent implementation tracks
 E1 does not prove direct Home-origin formation
 O1A completion alone does not satisfy the O1 checkpoint.
+O1D1 completion also does not satisfy it
 """,
     "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md": """
 Window A publication side — implemented by I1-GB
@@ -235,7 +242,7 @@ relaymem_slp_durable_finalization_cleanup_max_records_per_pass
 relaymem_slp_durable_finalization_cleanup_timeout_ms
 """,
     "docs/architecture/o1a_two_lane_scheduler_contract.md": """
-Contract and pure deterministic aggregation model complete; production scheduler unimplemented.
+Contract and pure deterministic aggregation model complete; production round coordination and recurring scheduler behavior unimplemented.
 O1B replay adapter and O1C queue adapter are complete
 replay-lane opportunity completes or returns
 I1-GC delegation per round       <= 1
@@ -245,9 +252,12 @@ Lane-local failure isolation
 Pure disposition contract
 target-only configuration
 O1B-O1F handoff
+O1D1
+O1D2
 relaylm.local_scheduler_round_result.v0
 relaylm.local_scheduler_round_projection.v0
 O1A performs no filesystem mutation or production scan
+O1D1 invokes each enabled lane at most once and always returns without sleep or recursion
 """,
     "docs/architecture/o1b_sealed_i1g_replay_lane.md": """
 Production replay-lane adapter complete
@@ -342,6 +352,8 @@ O1C   B2 discovery/O0-compatible C2 delegation                    unimplemented
 Phase I-4C2 through I-4F recovery, exclusion, UI, and validation: unimplemented
 The next RelayMEM governance implementation slice is I-4C2
 Forget is not product-complete until I-4C2 through I-4F
+### Wave 2 — current
+### Wave 2 — current parallel implementation candidates
 This section supersedes earlier
 supersedes earlier roadmap entries
 """)
