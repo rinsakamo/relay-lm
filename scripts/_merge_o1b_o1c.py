@@ -265,7 +265,7 @@ def main() -> None:
         "docs/architecture/o1a_two_lane_scheduler_contract.md": (
             "O1B replay adapter and O1C queue adapter complete",
             "O1B landed handoff",
-            "O1C is complete as one bounded production queue-lane adapter",
+            "O1B and O1C are complete as bounded production lane adapters",
         ),
         "scripts/relaylm_documentation_current_boundary_smoke.py": (
             "STALE_O1B",
