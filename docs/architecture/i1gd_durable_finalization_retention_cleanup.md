@@ -1,3 +1,22 @@
+---
+relaylm_doc_type: implementation_handoff
+relaylm_authority: i1gd_durable_finalization_retention_cleanup
+relaylm_status: historical_after_merge
+relaylm_volatility: frozen
+relaylm_owner: relaymem_slp
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - i1g_pre_enqueue_durable_finalization_contract.md
+  - i1ge_durable_finalization_crash_validation.md
+  - o1b_sealed_i1g_replay_lane.md
+  - wave3_cross_slice_convergence_audit.md
+relaylm_not_authoritative_for:
+  - I1-GE crash-validation harness
+  - I1-G replay algorithm
+  - queue lifecycle
+  - worker execution
+  - Primary MEM mutation
+---
 # I1-GD Durable-finalization retention and cleanup
 
 Status: **implemented production boundary**
