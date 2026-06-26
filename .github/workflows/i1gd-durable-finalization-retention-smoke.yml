@@ -82,6 +82,24 @@ jobs:
           PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_app_smoke.py
           PYTHONPATH=.:scripts python scripts/relaylm_i1gc_durable_finalization_replay_smoke.py
       - name: Run documentation checks
+        id: docs
+        shell: bash
         run: |
-          PYTHONPATH=. python scripts/relaylm_docs_link_check.py
-          PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+          set +e
+          PYTHONPATH=. python scripts/relaylm_docs_link_check.py > documentation-smoke.log 2>&1
+          links_exit=$?
+          PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py >> documentation-smoke.log 2>&1
+          boundary_exit=$?
+          cat documentation-smoke.log
+          if [ "$links_exit" -ne 0 ]; then
+            exit "$links_exit"
+          fi
+          exit "$boundary_exit"
+      - name: Upload documentation smoke output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-smoke-output
+          path: documentation-smoke.log
+          if-no-files-found: error
+          retention-days: 3
