@@ -18,6 +18,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - phase_i3_auditable_primary_mem_correct.md
   - phase_i4b_primary_current_state_shared_fence.md
+  - phase_i4c1_primary_forget_hidden_successor.md
   - memory_lifecycle_design.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
@@ -36,9 +37,9 @@ Last reviewed: 2026-06-26 JST
 
 ## 1. Status
 
-**Defined target contract; hidden-lifecycle apply remains unimplemented.**
+**Defined target contract; I-4C1 hidden-successor commit is implemented.**
 
-This document fixes the lifecycle, identity, persistence, concurrency, API, audit, recovery, and retrieval-exclusion contract for Phase I-4. Phase I-4B now implements the canonical read-only current-state resolver, shared Correct/Forget mutation fence, read-only Forget preflight, five-minute token validation, and bounded zero-item history. It does not add hidden-successor apply, tombstone finalization, M2 lifecycle exclusion, loopback mutation routes, or SOUL Lab Forget UI.
+This document fixes the lifecycle, identity, persistence, concurrency, API, audit, recovery, and retrieval-exclusion contract for Phase I-4. Phase I-4B implements the canonical read-only current-state resolver, shared Correct/Forget mutation fence, read-only Forget preflight, five-minute token validation, and bounded zero-item history. Phase I-4C1 implements exact intent preparation, shared revision claim, deterministic hidden successor publication through M3e, canonical reread, and `hidden / recovery_required / false` resolution. It does not add I-4C2 prepared resume/exact replay/tombstone finalization, I-4D M2 lifecycle exclusion, loopback mutation routes, or SOUL Lab Forget UI.
 
 Phase I-3 Correct remains the implemented mutation baseline. Phase I-4 must not introduce a weaker scope check, revision fence, token, idempotency, persistence, recovery, or mutation-access boundary.
 
@@ -79,7 +80,7 @@ The implementation already provides:
 
 Phase I-4B adds the canonical read-only Primary current-state resolver, preserves the Phase I-3 per-memory `.lock` path as the shared Correct/Forget mutation fence, and adds read-only Forget preflight, exact-binding five-minute token validation, and bounded zero-item history. Valid unresolved prepared evidence is classified `recovery_required` and remains retrieval-ineligible.
 
-Remaining production work begins at I-4C1.
+The remaining production work begins at I-4C2 and I-4D; I-4C1 is complete.
 
 ## 4. Scope
 
@@ -202,7 +203,7 @@ One narrow Primary mutation coordinator owns the existing per-memory lock namesp
 | hidden N | Correct or future Pin | none | `target_not_active` |
 | hidden source | future Merge or consolidation | none | ineligible; fail closed |
 
-I-4B completed the resolver/shared-fence/read-only portion. I-4C owns durable commit and recovery behavior.
+I-4B completed the resolver/shared-fence/read-only portion. I-4C1 now owns the durable prepared artifact and hidden-page lifecycle commit; I-4C2 still owns resume, exact replay, forward recovery, response-loss convergence, and tombstone finalization.
 
 ## 10. Target API and exact schemas
 
@@ -299,7 +300,7 @@ items: maximum 50 bounded entries
 
 History excludes filesystem paths, roots, digests, lineage, queue/lease identity, protected source, prompts, transcripts, credentials, and exception text.
 
-I-4B implements only the exact read-only preflight/token models and bounded zero-item history boundary. Routes and durable applied items remain I-4E/I-4C work.
+I-4B implements the exact read-only preflight/token models and bounded zero-item history boundary. I-4C1 consumes the exact bounded reason again at apply time and stores it only in runtime-private prepared evidence. Routes and durable applied/tombstone history items remain I-4E/I-4C2 work.
 
 ## 11. Apply-token binding
 

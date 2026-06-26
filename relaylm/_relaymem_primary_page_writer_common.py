@@ -9,6 +9,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 PAGE_SCHEMA = "relaymem.primary_page.v0"
+HIDDEN_PAGE_SCHEMA = "relaymem.primary_lifecycle_page.v0"
 EVENT_KINDS = {"turn", "session", "communication", "manual_import"}
 KIND_TARGET = {
     "recent_project_event": "primary_projects",
@@ -37,6 +38,16 @@ FRONT_MATTER_KEYS = (
     "summary_origin",
     "content_role",
     "title",
+)
+HIDDEN_FRONT_MATTER_KEYS = FRONT_MATTER_KEYS + (
+    "lifecycle_state",
+    "memory_id",
+    "revision",
+    "prior_revision",
+    "prior_physical_id",
+    "operation_kind",
+    "operation_key",
+    "binding_digest",
 )
 MAX_TOKEN = 128
 MAX_TITLE = 160
@@ -88,7 +99,12 @@ def parse_page_markdown(markdown: str) -> dict[str, Any]:
             return invalid("primary_writer_handoff_page_front_matter_invalid")
         keys.append(key)
         metadata[key] = parsed_value
-    if tuple(keys) != FRONT_MATTER_KEYS:
+    expected = (
+        HIDDEN_FRONT_MATTER_KEYS
+        if metadata.get("schema_version") == HIDDEN_PAGE_SCHEMA
+        else FRONT_MATTER_KEYS
+    )
+    if tuple(keys) != expected:
         return invalid("primary_writer_handoff_page_front_matter_keys_invalid")
     return {"valid": True, "metadata": metadata, "body": body, "blocked_reasons": []}
 
