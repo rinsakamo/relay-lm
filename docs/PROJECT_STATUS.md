@@ -35,6 +35,7 @@ relaylm_related_authority:
   - docs/architecture/phase_i3_auditable_primary_mem_correct.md
   - docs/architecture/phase_i4_primary_mem_forget_hide_contract.md
   - docs/architecture/phase_i4b_primary_current_state_shared_fence.md
+  - docs/architecture/phase_i4c1_primary_forget_hidden_successor.md
   - docs/architecture/soul_lab_ui_b0_real_home_conversation.md
   - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
 ---
@@ -54,6 +55,7 @@ Status reviewed through:
 - Phase I-3 auditable Primary MEM Correct and later retrieval convergence,
 - Phase I-4A Primary MEM Forget / Hide target contract,
 - Phase I-4B canonical current-state resolver, shared mutation fence, and read-only Forget boundary,
+- Phase I-4C1 exact Forget preparation and hidden-successor commit,
 - SOUL Lab UI-B0 real Home non-stream and streaming conversation integration,
 - I1-GA pre-enqueue durable-finalization contract and pure fault model,
 - I1-GB durable-finalization publication and pre-release admission,
@@ -87,7 +89,8 @@ Direct Home-origin formation: not currently proven; trusted scene admission is m
 I1 observe/correct/retrieve product loop: complete
 Phase I-4A Forget / Hide contract: defined target
 Phase I-4B resolver / shared fence / read-only preflight-token-history: complete
-Phase I-4C through I-4F hidden apply, M2 exclusion, UI, and validation: unimplemented
+Phase I-4C1 hidden-successor commit: complete
+Phase I-4C2 through I-4F resume/replay/tombstone, M2 exclusion, UI, and validation: unimplemented
 I1-GA contract / design decision / fault model: complete
 I1-GB durable-finalization publication / pre-release admission: complete
 I1-GC restart replay / downstream convergence / completion marker: unimplemented
@@ -169,7 +172,8 @@ Implemented:
 - character and namespace isolation: complete,
 - bounded RelayCTX memory injection,
 - Phase I-3 immutable successor correction with durable audit evidence,
-- Phase I-4B canonical read-only current-state resolution and shared Correct/Forget mutation fencing.
+- Phase I-4B canonical read-only current-state resolution and shared Correct/Forget mutation fencing,
+- Phase I-4C1 immutable Forget prepared artifact, deterministic hidden successor, M3e publication, and hidden/recovery-required resolution.
 
 The workstation evaluation formed a character-scoped `relationship_moment` page, reconciled index/log state, and later recalled the core user fact through SOUL Lab Home. This validates the bounded production-authority path, not general memory quality.
 
@@ -180,7 +184,7 @@ The same experiment exposed two quality gaps:
 
 Formation must preserve speaker-level provenance, and retrieval-side response generation must distinguish evidence from inference. Prompt-only grounding cannot repair evidence that was already stored without provenance.
 
-Phase I-4A defines the lifecycle boundary, and Phase I-4B now implements its canonical read-only resolver and shared mutation fence:
+Phase I-4A defines the lifecycle boundary, Phase I-4B implements its canonical read-only resolver and shared mutation fence, and Phase I-4C1 implements hidden-successor commit ownership:
 
 ```text
 user-facing operation: Forget
@@ -189,11 +193,11 @@ runtime-private audit artifact: Forget tombstone
 persistence model: immutable hidden successor Primary page with revision N+1
 ```
 
-The hidden successor page is the lifecycle authority. The tombstone is audit/recovery evidence, not an independently updated sidecar flag. I-4B now supplies the canonical current-state resolver, preserves the Phase I-3 per-memory `.lock` as the shared Correct/Forget mutation fence, and implements read-only Forget preflight, five-minute token validation, and bounded zero-item history. Prepared and recovery-required evidence remains retrieval-ineligible.
+The hidden successor page is the lifecycle authority. The tombstone is audit/recovery evidence, not an independently updated sidecar flag. I-4B supplies the canonical current-state resolver, preserves the Phase I-3 per-memory `.lock` as the shared Correct/Forget mutation fence, and implements read-only Forget preflight, five-minute token validation, and bounded zero-item history. I-4C1 validates the exact token and reason again under that lock, publishes immutable `relaylm.mem.forget_prepared.v0`, deterministically builds `relaymem.primary_lifecycle_page.v0`, publishes it through M3c/M3d/M3e, canonically rereads it, and exposes `hidden / recovery_required / false`. Prepared and recovery-required evidence remains retrieval-ineligible.
 
 Still separate:
 
-- I-4C hidden-successor apply, prepared artifact, tombstone, exact replay, and forward-only recovery,
+- I-4C2 prepared resume, exact replay, forward-only recovery, response-loss convergence, and Forget tombstone finalization,
 - I-4D hidden/prepared/recovery/corrupt M2 and RelayCTX exclusion plus historical lifecycle projection,
 - I-4E loopback API and SOUL Lab Forget UI,
 - I-4F crash/race/security/fresh-conversation validation,
@@ -235,7 +239,7 @@ UI-B0 sends only standard Chat Completions fields and does not send trusted scen
 
 The dedicated frontend typecheck, strict Home conversation Node smoke, production build, documentation checks, OpenWebUI/LM Studio proxy smokes, and Phase I-1/I-2/I-3 regression runners pass. The real LM Studio workstation result is recorded in [E1 Local Runtime Evaluation](architecture/e1_local_runtime_evaluation_2026_06_25.md).
 
-Phase I-4A/I-4B and O1A change no browser behavior. The Forget UI and scheduler control remain unimplemented, and real mutation/operation failure must never fall back to mock success.
+Phase I-4A/I-4B/I-4C1 change no browser behavior. The Forget UI remains unimplemented, and real mutation failure must never fall back to mock success.
 
 ## Evaluation boundary
 
@@ -286,7 +290,8 @@ The evaluation also requires an operator-initialized character-scoped store. The
 - evidence-grounded recall response suppression: not implemented
 - I4A Forget / Hide contract: defined target
 - I4B resolver / shared fence / read-only Forget boundary: complete
-- I4C through I4F hidden apply, M2 exclusion, UI, and validation: unimplemented
+- I4C1 hidden-successor commit: complete
+- I4C2 through I4F resume/replay/tombstone, M2 exclusion, UI, and validation: unimplemented
 - I1-GA contract / design decision / fault model: complete
 - I1-GB durable-finalization publication / pre-release admission: complete
 - I1-GC restart replay / exact C1-5+B2 convergence / completion marker: unimplemented
@@ -318,7 +323,7 @@ relaymem_local_worker_dry_run_only = true
 relaymem_local_worker_apply_enabled = false
 ```
 
-UI-B0, I1-GA/I1-GB, Phase I-4A/I-4B, O0, and O1A do not weaken existing server defaults. I1-GB is default-off and changes response ordering only in explicit apply mode. Phase I-4B adds no accepted loopback route, hidden-lifecycle write, M2 filtering change, or browser mutation capability. O0 cannot be elevated to apply by CLI flags and performs no discovery while disabled. O1A adds no accepted configuration fields, CLI command, production scanner, or runtime invocation path; its proposed scheduler fields remain target-only.
+UI-B0, I1-GA/I1-GB, Phase I-4A/I-4B/I-4C1, O0, and O1A do not weaken existing server defaults. I1-GB is default-off and changes response ordering only in explicit apply mode. Phase I-4C1 adds no accepted loopback route, M3f/M3g convergence, tombstone, M2 filtering change, or browser mutation capability. O0 cannot be elevated to apply by CLI flags and performs no discovery while disabled. O1A adds no accepted configuration fields, CLI command, production scanner, or runtime invocation path.
 
 ## Not yet implemented
 
@@ -335,7 +340,7 @@ UI-B0, I1-GA/I1-GB, Phase I-4A/I-4B, O0, and O1A do not weaken existing server d
 - O2 supervised worker service,
 - O3 always-on local operation,
 - I1-GC one-record restart replay and completion marker, I1-GD retention/cleanup, and I1-GE full production crash integration,
-- I-4C hidden-lifecycle apply/recovery and tombstone finalization, I-4D M2 exclusion, I-4E Forget API/UI, or I-4F production validation,
+- I-4C2 prepared resume/recovery/replay and tombstone finalization, I-4D M3f/M3g plus M2 exclusion, I-4E Forget API/UI, or I-4F production validation,
 - restore / unhide,
 - hard delete, secure erase, or physical purge through Forget,
 - I-5 through I-9 governance and RelaySOUL slices,

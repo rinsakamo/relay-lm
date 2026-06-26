@@ -1,0 +1,81 @@
+name: Phase I-4C1 Primary Forget hidden successor
+
+on:
+  push:
+    paths:
+      - "relaylm/relaymem_primary_forget.py"
+      - "relaylm/relaymem_primary_forget_*.py"
+      - "relaylm/relaymem_primary_lifecycle_page.py"
+      - "relaylm/relaymem_primary_current_state.py"
+      - "relaylm/relaymem_primary_mutation_coordinator.py"
+      - "relaylm/relaymem_primary_page_candidate.py"
+      - "relaylm/relaymem_primary_writer_handoff.py"
+      - "relaylm/relaymem_primary_page_writer.py"
+      - "relaylm/_relaymem_primary_lifecycle_page_writer.py"
+      - "relaylm/_relaymem_primary_page_writer_common.py"
+      - "scripts/relaylm_phase_i4c1_*"
+      - "docs/**"
+      - ".github/workflows/phase-i4c1-primary-forget-hidden-successor-smoke.yml"
+  pull_request:
+    paths:
+      - "relaylm/relaymem_primary_forget.py"
+      - "relaylm/relaymem_primary_forget_*.py"
+      - "relaylm/relaymem_primary_lifecycle_page.py"
+      - "relaylm/relaymem_primary_current_state.py"
+      - "relaylm/relaymem_primary_mutation_coordinator.py"
+      - "relaylm/relaymem_primary_page_candidate.py"
+      - "relaylm/relaymem_primary_writer_handoff.py"
+      - "relaylm/relaymem_primary_page_writer.py"
+      - "relaylm/_relaymem_primary_lifecycle_page_writer.py"
+      - "relaylm/_relaymem_primary_page_writer_common.py"
+      - "scripts/relaylm_phase_i4c1_*"
+      - "docs/**"
+      - ".github/workflows/phase-i4c1-primary-forget-hidden-successor-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  i4c1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: I-4C1 hidden-successor smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_hidden_successor_smoke.py
+      - name: I-4C1 corrected-revision smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_corrected_revision_smoke.py
+      - name: I-4C1 fault-seam smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_fault_smoke.py
+      - name: I-4C1 concurrency smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_concurrency_smoke.py
+      - name: I-4C1 security smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_security_smoke.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4b_ci_runner.py
+      - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
+      - run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_smoke.py
+      - run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_security_smoke.py
+      - run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_atomicity_smoke.py
+      - run: PYTHONPATH=. python scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py
+      - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+      - name: Documentation current boundary
+        shell: bash
+        run: |
+          set -o pipefail
+          PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py 2>&1 | tee documentation-current-boundary.log
+      - name: Upload documentation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: i4c1-documentation-diagnostics
+          path: documentation-current-boundary.log
+          if-no-files-found: error
+      - name: Confirm clean working tree
+        run: |
+          git status --short
+          test -z "$(git status --short)"

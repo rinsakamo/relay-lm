@@ -19,6 +19,7 @@ relaylm_related_authority:
   - phase_i3_auditable_primary_mem_correct.md
   - phase_i4_primary_mem_forget_hide_contract.md
   - phase_i4b_primary_current_state_shared_fence.md
+  - phase_i4c1_primary_forget_hidden_successor.md
   - soul_lab_ui_b0_real_home_conversation.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - o0_local_one_job_runner.md
@@ -36,7 +37,7 @@ Last reviewed: 2026-06-26 JST
 
 ## Purpose
 
-Phase I-3 Correct, UI-B0 real Home conversation, O0 local one-job execution, I1-GB pre-release durable-finalization publication, the I-4B read-only current-state/shared-fence boundary, and the O1A two-lane scheduler/idle contract are complete. Phase I-4A remains the target Forget / Hide contract. Restart replay/completion convergence, production lane discovery/delegation, and production hidden-lifecycle apply/exclusion remain incomplete.
+Phase I-3 Correct, UI-B0 real Home conversation, O0 local one-job execution, I1-GB pre-release durable-finalization publication, the I-4B read-only current-state/shared-fence boundary, and I-4C1 hidden-successor commit ownership are complete. Phase I-4A remains the target Forget / Hide contract. Restart replay/completion convergence, I-4C2 recovery/tombstone, and I-4D production exclusion remain incomplete.
 
 This roadmap records dependency-first work after I-3 while keeping four authorities separate:
 
@@ -80,7 +81,8 @@ Complete:
 - UI-B0 bounded non-stream and SSE real Home conversation;
 - I1-GA durable-finalization contract and deterministic fault model;
 - I1-GB bounded private base/segment/seal publication before protected visible release;
-- I-4B canonical read-only current-state resolver, shared Correct/Forget fence, Forget preflight/token validation, and bounded zero-item history.
+- I-4B canonical read-only current-state resolver, shared Correct/Forget fence, Forget preflight/token validation, and bounded zero-item history;
+- I-4C1 exact Forget prepare, shared revision claim, deterministic hidden successor, M3e commit, and hidden/recovery-required resolution.
 
 Defined target:
 
@@ -89,11 +91,8 @@ Defined target:
 Unresolved or unimplemented:
 
 - I1-GC through I1-GE restart replay, cleanup, and crash validation;
-- Phase I-4C through I-4F hidden apply, M2 exclusion, API/UI, and validation;
-- O1B one eligible sealed-record discovery and I1-GC delegation;
-- O1C one eligible queue-record discovery and O0-compatible C2 delegation;
-- O1D fairness/retry/backoff, O1E stale recovery/shutdown, and O1F operational validation;
-- any production O1 polling/sleep loop, scheduler configuration, or CLI;
+- Phase I-4C2 through I-4F recovery/replay/tombstone, M2 exclusion, API/UI, and validation;
+- O1 automatic durable-finalization replay and queue scheduling;
 - O2 supervised worker operation;
 - O3 always-on local operation.
 
@@ -188,11 +187,15 @@ I-4B implements:
 
 I-4B does not write hidden successors, prepared Forget artifacts, tombstones, index/log changes, API routes, or UI state. Ordinary M2 and RelayCTX behavior remains unchanged in this slice.
 
-### Phase I-4C through I-4F: Remaining Forget work
+### Phase I-4C1: Hidden-successor commit — complete
+
+I-4C1 consumes the I-4B token and shared fence, publishes immutable prepared evidence before the deterministic hidden page, uses existing M3c/M3d/M3e authority, canonically rereads the page, enforces one-winner concurrency, and resolves committed state as `hidden / recovery_required / false`. It intentionally stops before M3f/M3g, tombstone, exact replay, and M2 exclusion.
+
+### Phase I-4C2 through I-4F: Remaining Forget work
 
 ```text
 I-4C1  exact token validation, shared revision claim, prepared artifact,
-       hidden-successor candidate, M3e publication, one-winner concurrency
+       hidden-successor candidate, M3e publication, one-winner concurrency — complete
 
 I-4C2  prepared resume, forward-only recovery, exact replay,
        tombstone finalization, response-loss convergence
@@ -418,7 +421,7 @@ Thread C  O1A scheduling and idle contract — complete
 
 The final I-4B head passed the affected I1-G, response, I1-B, C1-5, B2, UI-B0, I-3 Correct, resolver, and M2-equivalence regressions. O1A adds a pure contract and documentation boundary without changing those production paths.
 
-### Wave 1 — current
+### Wave 1 — in progress
 
 ```text
 Thread A  I1-GC one-record replay
@@ -485,8 +488,7 @@ Completed:
   O1A two-lane scheduler/idle contract
 
 Current:
-  I1-GC || I-4C1
-  O1B/O1C only after their exact dependencies are ready
+  I1-GC || I-4C2 || O1A design
 
 Next:
   I1-GD || I-4C2 -> I-4D || O1D -> O1E

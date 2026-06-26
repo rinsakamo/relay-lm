@@ -1,20 +1,21 @@
 """Shared Primary MEM mutation lock, operation fence, and revision reread.
 
-The coordinator deliberately preserves the Phase I-3 correction directory and
-``.lock`` path.  Read-only inspection never creates the directory or lock.
-Future Forget apply work can use the same narrow interface without introducing
-a second lock namespace.
+Correct and Forget deliberately share the Phase I-3 correction directory and
+``.lock`` path.  This module recognizes both exact artifact families and fails
+closed on unknown, unsafe, ambiguous, or impossible operation evidence.
 """
 from __future__ import annotations
 
 import fcntl
 import json
+import stat
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterator, Mapping
 
 from ._relaymem_primary_page_writer_common import is_sha256
+from . import _relaymem_primary_current_state_impl as _current_impl
 from .relaymem_primary_current_state import (
     CORRECTION_PREPARED_SCHEMA,
     CORRECTION_RECEIPT_SCHEMA,
@@ -22,6 +23,10 @@ from .relaymem_primary_current_state import (
     PrimaryCurrentState,
     PrimaryCurrentStateError,
     resolve_primary_current_state,
+)
+from .relaymem_primary_forget_artifact import (
+    FORGET_PREPARED_SCHEMA,
+    validate_forget_prepared,
 )
 
 _MAX_ARTIFACT_BYTES = 32_768
@@ -88,8 +93,6 @@ class PrimaryMutationInspection:
 def primary_memory_mutation_lock_path(
     store_root: str | Path, memory_id: str
 ) -> Path:
-    """Return the existing canonical lock location without creating it."""
-
     root = _safe_root(store_root)
     _validate_memory_id(memory_id)
     return root / CORRECTION_ROOT / memory_id / ".lock"
@@ -99,7 +102,7 @@ def primary_memory_mutation_lock_path(
 def primary_memory_mutation_lock(
     store_root: str | Path, memory_id: str
 ) -> Iterator[None]:
-    """Acquire the Phase I-3 per-memory lock for any Primary mutation kind."""
+    """Acquire the sole per-memory Correct/Forget mutation lock."""
 
     root = _safe_root(store_root)
     _validate_memory_id(memory_id)
@@ -111,8 +114,12 @@ def primary_memory_mutation_lock(
     try:
         with lock_path.open("a+b") as handle:
             fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-            yield
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            try:
+                yield
+            finally:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    except PrimaryMutationCoordinatorError:
+        raise
     except OSError as exc:
         raise PrimaryMutationCoordinatorError("store_unavailable") from exc
 
@@ -120,12 +127,12 @@ def primary_memory_mutation_lock(
 def inspect_primary_memory_operations(
     store_root: str | Path, *, memory_id: str
 ) -> PrimaryMutationInspection:
-    """Inspect known mutation artifacts without filesystem mutation."""
+    """Inspect exact known mutation artifacts without mutating the store."""
 
     root = _safe_root(store_root)
     _validate_memory_id(memory_id)
     memory_dir = root / CORRECTION_ROOT / memory_id
-    if not memory_dir.exists():
+    if not memory_dir.exists() and not memory_dir.is_symlink():
         return PrimaryMutationInspection((), (), False, ())
     if memory_dir.is_symlink() or not memory_dir.is_dir():
         return PrimaryMutationInspection((), (), True, ("primary_mutation_dir_invalid",))
@@ -144,10 +151,6 @@ def inspect_primary_memory_operations(
                 corrupt = True
                 reasons.append("primary_mutation_lock_invalid")
             continue
-        if path.is_symlink() or not path.is_file():
-            corrupt = True
-            reasons.append("primary_mutation_artifact_not_regular")
-            continue
         value = _read_json(path)
         operation = _operation_from_artifact(value)
         if operation is None:
@@ -157,43 +160,77 @@ def inspect_primary_memory_operations(
         expected_suffix = (
             ".prepared.json" if operation.state == "prepared" else ".applied.json"
         )
-        if not path.name.endswith(expected_suffix):
+        if not path.name.endswith(expected_suffix) or path.name != (
+            f"{operation.operation_key}{expected_suffix}"
+        ):
             corrupt = True
             reasons.append("primary_mutation_artifact_name_invalid")
             continue
         operations.append(operation)
 
+    by_kind_id: dict[tuple[str, str], list[PrimaryMutationOperation]] = {}
     seen_state: set[tuple[str, str, str]] = set()
-    by_operation: dict[tuple[str, str], list[PrimaryMutationOperation]] = {}
     for operation in operations:
         state_key = (operation.operation_kind, operation.operation_id, operation.state)
         if state_key in seen_state:
             corrupt = True
             reasons.append("primary_mutation_operation_ambiguous")
         seen_state.add(state_key)
-        by_operation.setdefault(
-            (operation.operation_kind, operation.operation_id), []
-        ).append(operation)
+        by_kind_id.setdefault((operation.operation_kind, operation.operation_id), []).append(
+            operation
+        )
 
     pending: list[PrimaryMutationOperation] = []
-    for grouped in by_operation.values():
+    applied: list[PrimaryMutationOperation] = []
+    for grouped in by_kind_id.values():
         prepared = [item for item in grouped if item.state == "prepared"]
-        applied = [item for item in grouped if item.state == "applied"]
-        if len(prepared) > 1 or len(applied) > 1:
+        completed = [item for item in grouped if item.state == "applied"]
+        if len(prepared) > 1 or len(completed) > 1:
             corrupt = True
             reasons.append("primary_mutation_operation_ambiguous")
             continue
-        if prepared and applied:
+        if prepared and completed:
             if (
-                prepared[0].operation_key != applied[0].operation_key
-                or prepared[0].binding_digest != applied[0].binding_digest
-                or prepared[0].prior_revision != applied[0].prior_revision
-                or prepared[0].result_revision != applied[0].result_revision
+                prepared[0].operation_key != completed[0].operation_key
+                or prepared[0].binding_digest != completed[0].binding_digest
+                or prepared[0].prior_revision != completed[0].prior_revision
+                or prepared[0].result_revision != completed[0].result_revision
             ):
                 corrupt = True
                 reasons.append("primary_mutation_operation_conflicting_artifacts")
+            applied.append(completed[0])
+        elif completed:
+            applied.append(completed[0])
         elif prepared:
             pending.append(prepared[0])
+
+    # There can be only one operation ID meaning.  A repeated ID with a different
+    # kind or binding is a conflict at lookup time, not a second valid operation.
+    by_id: dict[str, list[PrimaryMutationOperation]] = {}
+    for operation in operations:
+        by_id.setdefault(operation.operation_id, []).append(operation)
+    for grouped in by_id.values():
+        meanings = {
+            (item.operation_kind, item.operation_key, item.binding_digest)
+            for item in grouped
+        }
+        if len(meanings) > 1:
+            reasons.append("primary_mutation_operation_id_conflict")
+
+    applied.sort(key=lambda item: (item.result_revision, item.operation_key))
+    expected_prior = 1
+    for operation in applied:
+        if operation.prior_revision != expected_prior:
+            corrupt = True
+            reasons.append("primary_mutation_revision_chain_impossible")
+            break
+        expected_prior = operation.result_revision
+    if len(pending) > 1:
+        corrupt = True
+        reasons.append("primary_mutation_pending_ambiguous")
+    elif pending and pending[0].prior_revision != expected_prior:
+        corrupt = True
+        reasons.append("primary_mutation_pending_revision_impossible")
 
     operations.sort(
         key=lambda item: (
@@ -205,11 +242,7 @@ def inspect_primary_memory_operations(
         )
     )
     pending.sort(
-        key=lambda item: (
-            item.prior_revision,
-            item.operation_kind,
-            item.operation_id,
-        )
+        key=lambda item: (item.prior_revision, item.operation_kind, item.operation_id)
     )
     return PrimaryMutationInspection(
         tuple(operations),
@@ -227,19 +260,13 @@ def lookup_primary_memory_operation(
     operation_id: str,
     binding_digest: str,
 ) -> str:
-    """Return absent/exact/conflict and fail closed on corrupt evidence."""
+    """Return ``absent``/``exact``/``conflict`` for one operation identity."""
 
     _validate_operation_request(operation_kind, operation_id, binding_digest)
-    inspection = inspect_primary_memory_operations(
-        store_root, memory_id=memory_id
-    )
+    inspection = inspect_primary_memory_operations(store_root, memory_id=memory_id)
     if inspection.corrupt:
         raise PrimaryMutationCoordinatorError("target_corrupt")
-    matches = [
-        item
-        for item in inspection.operations
-        if item.operation_id == operation_id
-    ]
+    matches = [item for item in inspection.operations if item.operation_id == operation_id]
     if not matches:
         return "absent"
     if any(
@@ -259,7 +286,7 @@ def ensure_primary_memory_mutation_available(
     operation_id: str,
     binding_digest: str,
 ) -> str:
-    """Apply the shared operation-id and pending-operation fence read-only."""
+    """Apply the shared operation-ID and pending-operation fence."""
 
     state = lookup_primary_memory_operation(
         store_root,
@@ -270,10 +297,7 @@ def ensure_primary_memory_mutation_available(
     )
     if state == "conflict":
         raise PrimaryMutationCoordinatorError("operation_conflict")
-
-    inspection = inspect_primary_memory_operations(
-        store_root, memory_id=memory_id
-    )
+    inspection = inspect_primary_memory_operations(store_root, memory_id=memory_id)
     if inspection.corrupt:
         raise PrimaryMutationCoordinatorError("target_corrupt")
     for pending in inspection.pending:
@@ -298,7 +322,7 @@ def reread_primary_memory_for_mutation(
     operation_id: str,
     binding_digest: str,
 ) -> PrimaryCurrentState:
-    """Shared current-state reread/revision claim used under the canonical lock."""
+    """Reread and claim one exact revision under the canonical lock."""
 
     ensure_primary_memory_mutation_available(
         store_root,
@@ -331,14 +355,34 @@ def _operation_from_artifact(
     if not isinstance(value, Mapping):
         return None
     schema = value.get("schema_version")
+    namespace = value.get("namespace")
+    memory_id = value.get("memory_id")
     if schema == CORRECTION_PREPARED_SCHEMA:
+        if not isinstance(namespace, str) or not isinstance(memory_id, str):
+            return None
+        if not _current_impl._valid_prepared(
+            dict(value), namespace=namespace, memory_id=memory_id
+        ):
+            return None
         kind = "correct"
         state = "prepared"
         binding = value.get("candidate_digest")
     elif schema == CORRECTION_RECEIPT_SCHEMA:
+        if not isinstance(namespace, str) or not isinstance(memory_id, str):
+            return None
+        if not _current_impl._valid_applied(
+            dict(value), namespace=namespace, memory_id=memory_id
+        ):
+            return None
         kind = "correct"
         state = "applied"
         binding = value.get("candidate_digest")
+    elif schema == FORGET_PREPARED_SCHEMA:
+        if not validate_forget_prepared(value):
+            return None
+        kind = "forget"
+        state = "prepared"
+        binding = value.get("binding_digest")
     else:
         return None
     operation_id = value.get("operation_id")
@@ -371,16 +415,18 @@ def _operation_from_artifact(
 
 def _read_json(path: Path) -> dict[str, Any] | None:
     try:
+        info = path.lstat()
         if (
-            path.is_symlink()
-            or not path.is_file()
-            or path.stat().st_size <= 0
-            or path.stat().st_size > _MAX_ARTIFACT_BYTES
+            stat.S_ISLNK(info.st_mode)
+            or not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
+            or info.st_size <= 0
+            or info.st_size > _MAX_ARTIFACT_BYTES
         ):
             return None
         raw = path.read_bytes()
-        value = json.loads(raw.decode("utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        value = json.loads(raw.decode("utf-8"), object_pairs_hook=_unique_object)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError):
         return None
     canonical = json.dumps(
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
@@ -388,6 +434,15 @@ def _read_json(path: Path) -> dict[str, Any] | None:
     if not isinstance(value, dict) or canonical + b"\n" != raw:
         return None
     return value
+
+
+def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate key")
+        result[key] = value
+    return result
 
 
 def _validate_operation_request(
