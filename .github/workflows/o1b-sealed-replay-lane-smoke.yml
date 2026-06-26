@@ -1,398 +1,60 @@
-name: O1B final correction
+name: O1B sealed replay lane smoke
 
 on:
   push:
     branches:
       - phase-o1b-sealed-i1g-replay-lane
     paths:
+      - "relaylm/relaymem_slp_scheduler_replay_lane.py"
+      - "relaylm/relaymem_slp_scheduler_contract.py"
+      - "scripts/relaylm_o1b_sealed_replay_lane_smoke.py"
+      - "scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py"
+      - "scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py"
+      - "scripts/relaylm_documentation_current_boundary_smoke.py"
+      - "docs/**"
+      - ".github/workflows/o1b-sealed-replay-lane-smoke.yml"
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "relaylm/relaymem_slp_scheduler_replay_lane.py"
+      - "relaylm/relaymem_slp_scheduler_contract.py"
+      - "scripts/relaylm_o1b_sealed_replay_lane_smoke.py"
+      - "scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py"
+      - "scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py"
+      - "scripts/relaylm_documentation_current_boundary_smoke.py"
+      - "docs/**"
       - ".github/workflows/o1b-sealed-replay-lane-smoke.yml"
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: o1b-sealed-replay-lane-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  patch:
+  o1b-smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
-      - name: Apply reviewed O1B corrections
+      - name: Run O1B and regression validation
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           git clone -q --depth 1 --branch phase-o1b-sealed-i1g-replay-lane \
-            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo
+            "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" repo
           cd repo
-          git fetch -q origin main --depth=1
-          python - <<'PY'
-          from pathlib import Path
-          import subprocess
-
-          def replace_once(text: str, old: str, new: str, label: str) -> str:
-              count = text.count(old)
-              if count != 1:
-                  raise RuntimeError(f"{label}: expected one match, got {count}")
-              return text.replace(old, new, 1)
-
-          scheduler_path = Path("relaylm/relaymem_slp_scheduler_contract.py")
-          scheduler = subprocess.check_output(
-              ["git", "show", "origin/main:relaylm/relaymem_slp_scheduler_contract.py"],
-              text=True,
-          )
-          scheduler = replace_once(
-              scheduler,
-              '        "isolated",\n    }\n)',
-              '        "isolated",\n        "delegated",\n    }\n)',
-              "scheduler delegated idle",
-          )
-          scheduler = replace_once(
-              scheduler,
-              '        if self.status in {"no_eligible_work", "future_retry_only", "busy"} and self.delegation_attempted:\n            raise ValueError("nondelegating_status_attempted_delegation")\n',
-              '        if self.status in {"no_eligible_work", "future_retry_only"} and self.delegation_attempted:\n            raise ValueError("nondelegating_status_attempted_delegation")\n        if self.status == "busy" and self.delegation_attempted and self.lane_kind != "replay":\n            raise ValueError("queue_busy_cannot_follow_delegation")\n',
-              "scheduler replay busy",
-          )
-          scheduler = replace_once(
-              scheduler,
-              '        lane.delegation_completed\n        or lane.mutation_may_have_occurred\n',
-              '        lane.status in _PROGRESS_STATUSES\n        or lane.mutation_may_have_occurred\n',
-              "scheduler progress semantics",
-          )
-          scheduler = replace_once(
-              scheduler,
-              '    elif completed:\n        status = "round_completed"\n',
-              '    elif completed and progress:\n        status = "round_completed"\n',
-              "scheduler completed status",
-          )
-          scheduler_path.write_text(scheduler, encoding="utf-8")
-
-          replay_path = Path("relaylm/relaymem_slp_scheduler_replay_lane.py")
-          replay = replay_path.read_text(encoding="utf-8")
-          replay = replace_once(
-              replay,
-              '''@dataclass(frozen=True, repr=False)
-          class _Inventory:
-              complete: bool
-              entry_count: int
-              groups: Mapping[str, tuple[_EntrySnapshot, ...]] = field(repr=False)
-              unsafe: bool
-              reason_ids: tuple[str, ...]
-          ''',
-              '''@dataclass(frozen=True, repr=False)
-          class _Inventory:
-              complete: bool
-              entry_count: int
-              groups: Mapping[str, tuple[_EntrySnapshot, ...]] = field(repr=False)
-              unsafe: bool
-              reason_ids: tuple[str, ...]
-              root_identity: tuple[int, int, int, int] | None = field(
-                  default=None, repr=False, compare=False
-              )
-          ''',
-              "inventory root identity field",
-          )
-          replay = replace_once(
-              replay,
-              '        current, reread_status = _canonical_reread(config, selected, limit, fault_injector)\n',
-              '        current, reread_status = _canonical_reread(\n            config, selected, inventory, fault_injector\n        )\n',
-              "canonical reread call",
-          )
-          old_inventory = '''def _inventory_root(
-              config: RelayLMConfig,
-              limit: int,
-              *,
-              fault_injector: FaultInjector | None,
-              inject_root_open_stage: bool,
-          ) -> _Inventory:
-              root_fd, root_reasons = _open_store_root(
-                  config.relaymem_slp_durable_finalization_root
-              )
-              if root_fd is None:
-                  return _Inventory(False, 0, {}, True, _reasons(root_reasons) or ("replay_root_unavailable",))
-              groups: dict[str, list[_EntrySnapshot]] = {}
-              reasons: list[str] = []
-              count = 0
-              try:
-                  if inject_root_open_stage:
-                      _fault(fault_injector, "after_root_open_before_inventory")
-                  try:
-                      iterator = os.scandir(root_fd)
-                  except OSError:
-                      return _Inventory(False, 0, {}, True, ("replay_inventory_failed",))
-                  with iterator:
-                      for entry in iterator:
-                          count += 1
-                          if count > limit:
-                              return _Inventory(
-                                  False, limit,
-                                  {key: tuple(value) for key, value in groups.items()},
-                                  True, ("replay_inventory_limit_exceeded",),
-                              )
-                          _fault(fault_injector, "during_inventory")
-                          name = entry.name
-                          if type(name) is not str:
-                              reasons.append("replay_root_integrity_unsafe")
-                              continue
-                          parsed = _parse_component_name(name)
-                          control = _control_kind(name)
-                          try:
-                              info = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
-                          except OSError:
-                              reasons.append("replay_root_integrity_unsafe")
-                              continue
-                          if (
-                              stat.S_ISLNK(info.st_mode)
-                              or not stat.S_ISREG(info.st_mode)
-                              or info.st_nlink != 1
-                          ):
-                              reasons.append("replay_root_integrity_unsafe")
-                              continue
-                          if parsed is None:
-                              if control is None:
-                                  reasons.append("replay_unknown_root_entry")
-                                  continue
-                              maximum = (
-                                  4096
-                                  if control == "lock"
-                                  else max(
-                                      config.relaymem_slp_durable_finalization_max_record_bytes,
-                                      _replay_impl._MAX_COMPLETION_BYTES,
-                                      _isolation_max_bytes(),
-                                  )
-                              )
-                              if info.st_size > maximum:
-                                  reasons.append("replay_control_object_unsafe")
-                              continue
-                          kind, locator, sequence = parsed
-                          groups.setdefault(locator, []).append(
-                              _EntrySnapshot(
-                                  name=name, kind=kind, locator=locator, sequence=sequence,
-                                  device=info.st_dev, inode=info.st_ino, size=info.st_size,
-                                  mtime_ns=info.st_mtime_ns, mode=info.st_mode,
-                              )
-                          )
-              finally:
-                  os.close(root_fd)
-              return _Inventory(
-                  True, count,
-                  {key: tuple(sorted(value, key=lambda item: item.name)) for key, value in groups.items()},
-                  bool(reasons), _reasons(reasons),
-              )
-          '''
-          new_inventory = '''def _inventory_root(
-              config: RelayLMConfig,
-              limit: int,
-              *,
-              fault_injector: FaultInjector | None,
-              inject_root_open_stage: bool,
-          ) -> _Inventory:
-              root_fd, root_reasons = _open_store_root(
-                  config.relaymem_slp_durable_finalization_root
-              )
-              if root_fd is None:
-                  return _Inventory(False, 0, {}, True, _reasons(root_reasons) or ("replay_root_unavailable",))
-              groups: dict[str, list[_EntrySnapshot]] = {}
-              reasons: list[str] = []
-              count = 0
-              root_identity: tuple[int, int, int, int] | None = None
-              try:
-                  try:
-                      root_before = os.fstat(root_fd)
-                  except OSError:
-                      return _Inventory(False, 0, {}, True, ("replay_root_unavailable",))
-                  if not stat.S_ISDIR(root_before.st_mode):
-                      return _Inventory(False, 0, {}, True, ("replay_root_integrity_unsafe",))
-                  root_identity = _directory_identity(root_before)
-                  if inject_root_open_stage:
-                      _fault(fault_injector, "after_root_open_before_inventory")
-                  try:
-                      iterator = os.scandir(root_fd)
-                  except OSError:
-                      return _Inventory(False, 0, {}, True, ("replay_inventory_failed",))
-                  with iterator:
-                      for entry in iterator:
-                          count += 1
-                          if count > limit:
-                              return _Inventory(
-                                  False, limit,
-                                  {key: tuple(value) for key, value in groups.items()},
-                                  True, ("replay_inventory_limit_exceeded",),
-                              )
-                          _fault(fault_injector, "during_inventory")
-                          name = entry.name
-                          if type(name) is not str:
-                              reasons.append("replay_root_integrity_unsafe")
-                              continue
-                          parsed = _parse_component_name(name)
-                          control = _control_kind(name)
-                          try:
-                              info = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
-                          except OSError:
-                              reasons.append("replay_root_integrity_unsafe")
-                              continue
-                          if (
-                              stat.S_ISLNK(info.st_mode)
-                              or not stat.S_ISREG(info.st_mode)
-                              or info.st_nlink != 1
-                          ):
-                              reasons.append("replay_root_integrity_unsafe")
-                              continue
-                          if parsed is None:
-                              if control is None:
-                                  reasons.append("replay_unknown_root_entry")
-                                  continue
-                              maximum = (
-                                  4096
-                                  if control == "lock"
-                                  else max(
-                                      config.relaymem_slp_durable_finalization_max_record_bytes,
-                                      _replay_impl._MAX_COMPLETION_BYTES,
-                                      _isolation_max_bytes(),
-                                  )
-                              )
-                              if info.st_size > maximum:
-                                  reasons.append("replay_control_object_unsafe")
-                              continue
-                          kind, locator, sequence = parsed
-                          groups.setdefault(locator, []).append(
-                              _EntrySnapshot(
-                                  name=name, kind=kind, locator=locator, sequence=sequence,
-                                  device=info.st_dev, inode=info.st_ino, size=info.st_size,
-                                  mtime_ns=info.st_mtime_ns, mode=info.st_mode,
-                              )
-                          )
-                  try:
-                      root_after = os.fstat(root_fd)
-                  except OSError:
-                      return _Inventory(False, count, {}, True, ("replay_root_unavailable",))
-                  if _directory_identity(root_after) != root_identity:
-                      return _Inventory(
-                          False, count,
-                          {key: tuple(value) for key, value in groups.items()},
-                          True, ("replay_root_changed_during_inventory",),
-                          root_identity=root_identity,
-                      )
-              finally:
-                  os.close(root_fd)
-              return _Inventory(
-                  True, count,
-                  {key: tuple(sorted(value, key=lambda item: item.name)) for key, value in groups.items()},
-                  bool(reasons), _reasons(reasons), root_identity=root_identity,
-              )
-
-
-          def _directory_identity(info: os.stat_result) -> tuple[int, int, int, int]:
-              return (info.st_dev, info.st_ino, info.st_mtime_ns, info.st_ctime_ns)
-
-
-          def _read_root_identity(config: RelayLMConfig) -> tuple[int, int, int, int] | None:
-              root_fd, _ = _open_store_root(config.relaymem_slp_durable_finalization_root)
-              if root_fd is None:
-                  return None
-              try:
-                  info = os.fstat(root_fd)
-                  if not stat.S_ISDIR(info.st_mode):
-                      return None
-                  return _directory_identity(info)
-              except OSError:
-                  return None
-              finally:
-                  os.close(root_fd)
-          '''
-          replay = replace_once(replay, old_inventory, new_inventory, "single bounded inventory")
-          old_reread = '''def _canonical_reread(
-              config: RelayLMConfig,
-              selected: _GroupSnapshot,
-              limit: int,
-              fault_injector: FaultInjector | None,
-          ) -> tuple[_GroupSnapshot | None, str]:
-              _fault(fault_injector, "during_selected_reread")
-              inventory = _inventory_root(
-                  config, limit, fault_injector=None, inject_root_open_stage=False
-              )
-              if not inventory.complete or inventory.unsafe:
-                  return None, "unsafe"
-              entries = inventory.groups.get(selected.locator)
-              if entries is None:
-                  return None, "changed"
-              current = _classify_group(config, selected.locator, entries)
-              if current.state == "isolated":
-                  return None, "isolated"
-              if current.state in {"corrupt", "unsupported", "unsafe"}:
-                  return None, "unsafe"
-              if current.state != "sealed_pending":
-                  return None, "changed"
-              if _entry_identity(current.entries) != _entry_identity(selected.entries):
-                  return None, "changed"
-              if current.content_signature != selected.content_signature:
-                  return None, "changed"
-              return current, "ok"
-          '''
-          new_reread = '''def _canonical_reread(
-              config: RelayLMConfig,
-              selected: _GroupSnapshot,
-              inventory: _Inventory,
-              fault_injector: FaultInjector | None,
-          ) -> tuple[_GroupSnapshot | None, str]:
-              _fault(fault_injector, "during_selected_reread")
-              expected_root = inventory.root_identity
-              root_before = _read_root_identity(config)
-              if expected_root is None or root_before is None:
-                  return None, "unsafe"
-              if root_before != expected_root:
-                  return None, "changed"
-              entries = inventory.groups.get(selected.locator)
-              if entries is None:
-                  return None, "changed"
-              current = _classify_group(config, selected.locator, entries)
-              root_after = _read_root_identity(config)
-              if root_after is None:
-                  return None, "unsafe"
-              if root_after != root_before or root_after != expected_root:
-                  return None, "changed"
-              if current.state == "isolated":
-                  return None, "isolated"
-              if current.state != "sealed_pending":
-                  return None, "changed"
-              if _entry_identity(current.entries) != _entry_identity(selected.entries):
-                  return None, "changed"
-              if current.content_signature != selected.content_signature:
-                  return None, "changed"
-              return current, "ok"
-          '''
-          replay = replace_once(replay, old_reread, new_reread, "selected-only canonical reread")
-          replay_path.write_text(replay, encoding="utf-8")
-
-          smoke_path = Path("scripts/relaylm_o1b_sealed_replay_lane_smoke.py")
-          smoke = smoke_path.read_text(encoding="utf-8")
-          smoke = replace_once(
-              smoke,
-              '        require(forbidden not in source, forbidden)\n    for stage in (\n',
-              '        require(forbidden not in source, forbidden)\n    require(\n        source.count("inventory = _inventory_root(") == 1,\n        "root_inventory_must_be_single",\n    )\n    for stage in (\n',
-              "single inventory smoke",
-          )
-          smoke_path.write_text(smoke, encoding="utf-8")
-
-          doc_path = Path("docs/architecture/o1b_sealed_i1g_replay_lane.md")
-          doc = doc_path.read_text(encoding="utf-8")
-          doc = replace_once(
-              doc,
-              'After selection, O1B performs a second bounded selected-locator comparison before delegation. It verifies the same canonical component set, filenames, device/inode identity, sizes, and content digests, and reclassifies the locator as sealed pending. Component addition/removal, inode replacement, byte change, completion appearance, isolation appearance, or unsupported/unsafe state prevents delegation.',
-              'After selection, O1B does not inventory the directory again. It verifies that the root directory identity is unchanged from the single bounded inventory, then rereads only the selected locator components captured by that inventory. The reread verifies exact filenames, device/inode identity, sizes, and content digests and reclassifies the locator as sealed pending. Component addition/removal, inode replacement, byte change, completion appearance, isolation appearance, or unsupported/unsafe state prevents delegation.',
-              "documentation reread model",
-          )
-          doc = replace_once(
-              doc,
-              '`LaneOutcome`, `repr`, the O1B node result, and scheduler projections expose only bounded statuses, booleans, counts, and approved reason IDs.',
-              'The public surface is strictly content-free. `LaneOutcome`, `repr`, the O1B node result, and scheduler projections expose only bounded statuses, booleans, counts, and approved reason IDs.',
-              "documentation content-free anchor",
-          )
-          doc_path.write_text(doc, encoding="utf-8")
-          PY
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add relaylm/relaymem_slp_scheduler_contract.py \
-            relaylm/relaymem_slp_scheduler_replay_lane.py \
-            scripts/relaylm_o1b_sealed_replay_lane_smoke.py \
-            docs/architecture/o1b_sealed_i1g_replay_lane.md
-          git commit -m "fix: enforce one O1B inventory and selected-only reread"
-          git push -q origin HEAD:phase-o1b-sealed-i1g-replay-lane
+          python -m pip install -q -e .
+          export PYTHONPATH=.:scripts
+          python -m compileall -q relaylm scripts
+          python scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py
+          python scripts/relaylm_o1b_sealed_replay_lane_smoke.py
+          python scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py
+          python scripts/relaylm_i1g_pre_enqueue_fault_model_smoke.py
+          python scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
+          python scripts/relaylm_i1gb_durable_finalization_app_smoke.py
+          python scripts/relaylm_i1gc_durable_finalization_replay_smoke.py
+          python scripts/relaylm_o0_local_one_job_runner_smoke.py
+          python scripts/relaylm_o0_local_one_job_runner_security_smoke.py
+          python scripts/relaylm_documentation_current_boundary_smoke.py
+          python scripts/relaylm_docs_link_check.py
