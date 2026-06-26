@@ -67,6 +67,7 @@ CURRENT_DOCS = (
     "docs/architecture/pipeline_implementation_plan.md",
     "docs/architecture/post_i3_evaluation_work_roadmap.md",
     "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
+    "docs/architecture/i1gd_durable_finalization_retention_cleanup.md",
     "docs/architecture/relaymem_mvp_implementation_plan.md",
     "docs/architecture/relaymem_slp_current_target.md",
 )
@@ -83,10 +84,11 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "I3 auditable Primary MEM Correct: complete",
         "Phase I-4C1 hidden-successor commit: complete",
         "I1-GC one-record restart replay / exact C1-5+B2 convergence / completion marker: complete",
-        "I1-GD retention / orphan reconciliation / cleanup: unimplemented",
+        "I1-GD retention / orphan reconciliation / isolation lifecycle / cleanup: complete",
         "I1-GE full production crash validation: unimplemented",
         "Visible-release restart evidence publication is implemented",
         "Restart-time one-record replay is implemented",
+        "Durable-finalization bounded retention and cleanup is implemented",
         "Direct Home-origin formation: not currently proven",
         "O1A adds no accepted configuration fields",
     ),
@@ -100,6 +102,8 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "Phase I-4C1 hidden-successor commit: complete",
         "exact read-only preflight/history/token",
         "I1-GC  one-record restart replay, exact convergence, completion    complete",
+        "I1-GD  bounded retention, isolation, orphan cleanup               complete",
+        "I1-GE  crash-at-every-boundary production validation              unimplemented",
         "### O1A: two-lane bounded scheduler contract — complete",
         "O1A completion alone is not O1 completion.",
         "### Wave 1 — completed commit and replay authorities",
@@ -113,6 +117,8 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "Phase I-4B: Current-state resolver and shared mutation fence — complete",
         "Phase I-4C1: Hidden-successor commit — complete",
         "I1-GC caller-selected one-record replay",
+        "I1-GD bounded retention and isolation cleanup — complete",
+        "I1-GE full crash validation remains unimplemented",
         "Phase I-5: Pin / Unpin",
         "Phase I-7: Held Apply / Discard",
         "Phase I-6: Merge / Supersession",
@@ -130,8 +136,18 @@ REQUIRED: dict[str, tuple[str, ...]] = {
         "source-before-queue invariant is absolute",
         "## O1B caller boundary",
         "queue lane independently discovers the queue root",
-        "### I1-GD — unimplemented",
+        "### I1-GD — complete",
+        "relaymem.slp_durable_finalization_isolation.v0",
         "### I1-GE — unimplemented",
+    ),
+    "docs/architecture/i1gd_durable_finalization_retention_cleanup.md": (
+        "Status: **implemented production boundary**",
+        "relaymem.slp_durable_finalization_isolation.v0",
+        "sealed_pending",
+        "shared I1-GC nonblocking per-record fence",
+        "delete isolation marker last",
+        "I1-GE full crash-at-every-boundary production validation",
+        "O1B replay discovery and delegation",
     ),
     "docs/architecture/relaymem_mvp_implementation_plan.md": (
         "M3i-d real read-only Lab observation: complete as Phase I-2",
@@ -156,14 +172,27 @@ REQUIRED: dict[str, tuple[str, ...]] = {
     "docs/README.md": (
         "phase_i2_real_soul_lab_observation.md",
         "phase_i3_auditable_primary_mem_correct.md",
-        "I1-GA, I1-GB, and I1-GC are complete",
+        "i1gd_durable_finalization_retention_cleanup.md",
+        "I1-GA through I1-GD are complete",
         "Phase I-4C1 is complete",
     ),
     "docs/architecture/README.md": (
         "phase_i2_real_soul_lab_observation.md",
         "phase_i3_auditable_primary_mem_correct.md",
+        "i1gd_durable_finalization_retention_cleanup.md",
         "I1-GC provides the caller-selected one-record convergence authority",
+        "I1-GD provides bounded retention and isolation cleanup",
         "Phase I-4C1 Primary Forget Hidden-Successor Commit",
+    ),
+    "docs/config_schema.md": (
+        "relaymem_slp_durable_finalization_retention_enabled",
+        "relaymem_slp_durable_finalization_retention_dry_run_only",
+        "relaymem_slp_durable_finalization_retention_apply_enabled",
+        "relaymem_slp_durable_finalization_completed_retention_seconds",
+        "relaymem_slp_durable_finalization_orphan_grace_seconds",
+        "relaymem_slp_durable_finalization_isolated_retention_seconds",
+        "relaymem_slp_durable_finalization_cleanup_max_records_per_pass",
+        "relaymem_slp_durable_finalization_cleanup_timeout_ms",
     ),
     "docs/architecture/o1a_two_lane_scheduler_contract.md": (
         "Contract and pure deterministic aggregation model complete; production scheduler unimplemented.",
@@ -225,9 +254,10 @@ REQUIRED: dict[str, tuple[str, ...]] = {
     ),
 }
 
-STALE_I1GC = (
+STALE_I1G = (
     "I1-GC restart replay / downstream convergence / completion marker: unimplemented",
     "I1-GC restart replay / exact C1-5+B2 convergence / completion marker: unimplemented",
+    "I1-GD retention / orphan reconciliation / cleanup: unimplemented",
     "I1-GC one-record restart replay and completion convergence, I1-GD cleanup, and I1-GE crash validation",
     "I1-GC/GD/GE replay, cleanup, and full crash validation: unimplemented",
     "I1-GC through I1-GE remain planned",
@@ -237,6 +267,7 @@ STALE_I1GC = (
     "Window A recovery side — I1-GC unimplemented",
     "I1-GC replay/completion, I1-GD cleanup, and I1-GE full crash validation remain unimplemented",
     "I1-GC restart replay and completion convergence, I1-GD retention/cleanup, and I1-GE full production crash validation remain unimplemented",
+    "### I1-GD — unimplemented",
     "This section supersedes earlier",
     "supersedes earlier roadmap entries",
 )
@@ -252,7 +283,7 @@ def main() -> None:
         require(path, *anchors)
 
     for path in CURRENT_DOCS:
-        forbid(path, *STALE_I1GC)
+        forbid(path, *STALE_I1G)
 
     run_i1g_fault_model()
     run_o1a_contract()
