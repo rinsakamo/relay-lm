@@ -1,4 +1,4 @@
-name: W2 O1B diagnostic
+name: W2 O1B repair
 
 on:
   pull_request:
@@ -6,17 +6,37 @@ on:
       - ".github/workflows/w2-o1b-diagnose.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  diagnose:
+  repair:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Clone branch
-        run: git clone --depth 1 --branch wave2-cross-slice-convergence-audit https://github.com/rinsakamo/relay-lm.git repo
-      - name: Run O1B security only
+      - uses: actions/checkout@v4
+        with:
+          ref: wave2-cross-slice-convergence-audit
+          fetch-depth: 0
+      - name: Apply one-line authority repair
         run: |
-          cd repo
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("relaylm/relaymem_slp_scheduler_replay_lane.py")
+          text = path.read_text(encoding="utf-8")
+          old = "_isolation_max_bytes()"
+          if text.count(old) != 1:
+              raise SystemExit(f"expected one stale isolation size reference, found {text.count(old)}")
+          path.write_text(text.replace(old, "ISOLATION_MAX_BYTES"), encoding="utf-8")
+          PY
+      - name: Validate O1B security
+        run: |
           python -m pip install -q -e .
           PYTHONPATH=.:scripts python scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py
+      - name: Commit repair
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add relaylm/relaymem_slp_scheduler_replay_lane.py
+          git commit -m "fix: use authoritative isolation size in O1B inventory"
+          git push origin HEAD:wave2-cross-slice-convergence-audit
