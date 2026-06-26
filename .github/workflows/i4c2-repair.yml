@@ -3,6 +3,8 @@ on:
   push:
     branches: [phase-i4c2-primary-forget-recovery-finalization]
     paths: [.github/workflows/i4c2-repair.yml]
+  pull_request:
+    paths: [.github/workflows/i4c2-repair.yml]
 permissions:
   contents: write
 jobs:
