@@ -19,7 +19,8 @@ This report is evidence for one implementation pull request. It is not repositor
 - Slice: Phase I-4D Primary lifecycle-aware retrieval exclusion
 - Base branch: `main`
 - Start main SHA: `4d31f45cfba967e23bd50f01f3c3d7ce9a8d0a33`
-- Branch: `phase-i4d-primary-retrieval-exclusion`
+- Final integration base: `9b6349236f1a01f3cdccbe9e3c2c874ae1137475`
+- Branch: `phase-i4d-primary-retrieval-exclusion-v2`
 
 ## Implemented production boundary
 
@@ -33,11 +34,11 @@ This report is evidence for one implementation pull request. It is not repositor
 
 ## Preserved authorities and non-goals
 
-M2 remains the relevance owner. I-4B/I-4C1/I-4C2 remain mutation, hidden-successor, recovery, control, and finalization authorities. This PR adds no Forget mutation route, SOUL Lab mutation UI, restore path, bulk operation, scheduler change, or I1-G change. I-4E and I-4F remain unimplemented.
+M2 remains the relevance owner. I-4B/I-4C1/I-4C2 remain mutation, hidden-successor, recovery, control, and finalization authorities. The I-4C2 compatibility projection is unchanged from `main`. This PR adds no Forget mutation route, SOUL Lab mutation UI, restore path, bulk operation, scheduler change, or I1-G change. I-4E and I-4F remain unimplemented.
 
 ## Changed files
 
-- `relaylm/relaymem_primary_i4c2_projection.py`
+- `relaylm/relaymem_primary_recall.py`
 - `relaylm/relaymem_primary_retrieval_eligibility.py`
 - `relaylm/soul_lab_used_memory_lifecycle_projection.py`
 - `relaylm/soul_lab_app.py`
@@ -50,9 +51,9 @@ M2 remains the relevance owner. I-4B/I-4C1/I-4C2 remain mutation, hidden-success
 
 ## Validation evidence
 
-The dedicated workflow runs lifecycle, prior-revision, recovery-state, RelayCTX, fresh-conversation, historical projection, frontend schema, and leakage smokes. It also runs I-4B/I-4C1/I-4C2/I-1/I-2/I-3 regressions, RelayCTX injection, frontend typecheck/build, documentation links, and compileall.
+The dedicated workflow runs lifecycle, prior-revision, recovery-state, RelayCTX, fresh-conversation, historical projection, frontend schema, and leakage smokes. It also runs I-4B/I-4C1/I-4C2/I-1/I-2/I-3 regressions, frontend typecheck/build, documentation links, and compileall.
 
-Final workflow state is recorded on PR #413.
+Final workflow state is recorded on PR #414.
 
 ## Known limitations
 
@@ -69,5 +70,5 @@ I-4E loopback mutation API and SOUL Lab controls are not implemented. I-4F full 
 
 ## Source pull request
 
-- PR: #413
-- URL: https://github.com/rinsakamo/relay-lm/pull/413
+- PR: #414
+- URL: https://github.com/rinsakamo/relay-lm/pull/414
