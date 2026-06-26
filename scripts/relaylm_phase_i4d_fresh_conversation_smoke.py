@@ -79,7 +79,7 @@ def write_config(path: Path, *, port: int, store: Path) -> None:
 def request(client: TestClient):
     return client.post("/v1/chat/completions", json={
         "model": "relaylm-default",
-        "messages": [{"role": "user", "content": "好きな飲み物を教えて"}],
+        "messages": [{"role": "user", "content": "好きな飲み物 を教えてください。"}],
         "stream": False,
         "metadata": {"scene_state": {
             "schema_version": "relayscn.scene_state.v0", "scene_type": "design_talk",
