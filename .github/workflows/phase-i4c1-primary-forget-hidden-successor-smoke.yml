@@ -26,7 +26,6 @@ on:
       - "relaylm/relaymem_primary_page_candidate.py"
       - "relaylm/relaymem_primary_writer_handoff.py"
       - "relaylm/relaymem_primary_page_writer.py"
-      - "relaylm/relaymem_primary_page_writer.py"
       - "relaylm/_relaymem_primary_lifecycle_page_writer.py"
       - "relaylm/_relaymem_primary_page_writer_common.py"
       - "scripts/relaylm_phase_i4c1_*"
@@ -76,9 +75,9 @@ jobs:
           if-no-files-found: ignore
       - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4b_ci_runner.py
       - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
-      - run: PYTHONPATH=. python scripts/relaylm_primary_page_writer_smoke.py
-      - run: PYTHONPATH=. python scripts/relaylm_primary_page_writer_security_smoke.py
-      - run: PYTHONPATH=. python scripts/relaylm_primary_page_writer_atomicity_smoke.py
+      - run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_smoke.py
+      - run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_security_smoke.py
+      - run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_atomicity_smoke.py
       - run: PYTHONPATH=. python scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py
       - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
       - run: PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
