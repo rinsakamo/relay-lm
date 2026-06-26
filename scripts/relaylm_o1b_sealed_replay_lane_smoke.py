@@ -229,7 +229,8 @@ def test_deterministic_selection_and_single_delegate() -> None:
         root = Path(directory)
         config = gc._config(root, dry_run=True)
         first, _, _, _ = gc._publish_sealed(root, request_id="o1b-request-a")
-        second, _, _, _ = gc._publish_sealed(root, request_id="o1b-request-b")
+        with patch.object(gc.gb, "RUN_ID", f"{gc.gb.RUN_ID}-o1b-b"):
+            second, _, _, _ = gc._publish_sealed(root, request_id="o1b-request-b")
         expected = min(str(first["locator_digest"]), str(second["locator_digest"]))
         calls: list[str] = []
 
