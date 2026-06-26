@@ -1,10 +1,36 @@
 # RelayLM MVP Summaries
 
-This directory is the index for RelayLM MVP milestone summaries and MVP-focused implementation notes.
+This directory is the index for RelayLM MVP milestone summaries, MVP-focused implementation notes, and per-PR implementation completion reports.
 
-All MVP summary and MVP-focused implementation note files are now housed in this directory.
+> For the current phase, implemented boundaries, default-off/preflight-only behavior, and immediate next work, use [Project Status](../PROJECT_STATUS.md). The files in this directory are historical evidence rather than the current-state source of truth.
 
-> For the current phase, implemented boundaries, default-off/preflight-only behavior, and immediate next work, use [Project Status](../PROJECT_STATUS.md). The files in this directory are historical implementation snapshots rather than the current-state source of truth.
+## Implementation completion reports
+
+Declared parallel waves use unique completion reports as the handoff from each implementation PR to the later convergence/documentation thread.
+
+Path convention:
+
+```text
+docs/mvp/wave<N>/<slice>_completion_report.md
+```
+
+Examples for Wave 3:
+
+```text
+docs/mvp/wave3/i1ge_completion_report.md
+docs/mvp/wave3/i4d_completion_report.md
+docs/mvp/wave3/o1d1_completion_report.md
+```
+
+Each implementation PR creates only its own report. It must not edit this central index, another slice's report, or shared current-state documents merely to mark completion. The wave convergence PR links the merged reports here after verifying the source PRs and merge commits.
+
+A completion report is evidence for one PR only. It is not authoritative for repository-wide current status, other slice completion, next-wave readiness, or release/evaluation readiness. Use [the template](IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md) and validate the report with:
+
+```bash
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave3/<slice>_completion_report.md
+```
+
+The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.
 
 ## Current pipeline milestones
 
@@ -89,7 +115,8 @@ These older summaries are kept indexed for discoverability while the documentati
 
 ## Maintenance rule
 
-- Create future MVP summaries and focused implementation notes directly under `docs/mvp/`.
-- Link each new document from this index.
-- Treat existing MVP documents as historical snapshots; change them only to repair broken links or make an explicit factual correction.
-- Use [Project Status](../PROJECT_STATUS.md) for the current implementation state and immediate next boundary.
+- Create historical MVP summaries and focused implementation notes directly under `docs/mvp/` unless a declared parallel wave uses a `docs/mvp/wave<N>/` completion-report directory.
+- A parallel implementation PR creates one uniquely named completion report and does not update this index.
+- The wave convergence PR adds links to the merged reports and updates shared current-state documents.
+- Treat existing MVP documents and completion reports as historical snapshots; change them only to repair broken links or make an explicit factual correction.
+- Use [Project Status](../PROJECT_STATUS.md) for repository-wide current implementation state and immediate next boundaries.
