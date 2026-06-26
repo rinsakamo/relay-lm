@@ -2,7 +2,7 @@
 
 Status: W2-INT implementation and regression validation complete on `wave2-cross-slice-convergence-audit`; pending review and merge.
 
-Authority: this handoff records the combined latest-main boundary after PR #403, #404, #405, and #406. Lower dedicated contracts remain authoritative for their own schemas and mutations.
+Authority: this handoff records the combined latest-main boundary after PR #403, #404, #405, and #406, plus the I-4C2 follow-up correction merged as PR #407 while this audit was in progress. Lower dedicated contracts remain authoritative for their own schemas and mutations.
 
 ## Integrated inventory
 
@@ -11,6 +11,7 @@ Authority: this handoff records the combined latest-main boundary after PR #403,
 - O1C: PR #405, merge `969a9e8ae1753ea5b6d0a803967e6ec03b18fde6`.
 - O1B: PR #406, merge `4efea62c14de2babed9b1340c5b9c8f7c21459a1`.
 - W2-INT start: `97e5a1060bface993bb4382f9a50074aca1ec37d`.
+- Latest-main synchronization: PR #407, merge `c23b82da89853947eb5a2269760e24d7c25829c0`, containing the reviewed I-4C2 concurrent-loser normalization and documentation correction. W2-INT treats that merged result as upstream authority and does not duplicate the production file in its final diff.
 
 ## Cross-slice authority map
 
@@ -39,7 +40,7 @@ O0 and O1C continue to share `relaymem_slp_queue_candidate`. O1C-specific lane m
 
 ## I-4C2 / I-4D ownership freeze
 
-I-4C2 owns exact prepared resume, deterministic hidden-successor continuation, operation-scoped M3f/M3g convergence, canonical page/control correlation, immutable tombstone publication, and exact response-loss replay. The public concurrent-loser normalization is: finalized hidden/none -> `already_hidden`; hidden prepared/recovery-required -> `target_not_active`; hidden/corrupt -> `target_corrupt`; active stale target -> `stale_revision`.
+I-4C2 owns exact prepared resume, deterministic hidden-successor continuation, operation-scoped M3f/M3g convergence, canonical page/control correlation, immutable tombstone publication, and exact response-loss replay. The public concurrent-loser normalization merged through PR #407 is: finalized hidden/none -> `already_hidden`; hidden prepared/recovery-required -> `target_not_active`; hidden/corrupt -> `target_corrupt`; active stale target -> `stale_revision`.
 
 I-4D alone owns ordinary M2 lifecycle filtering, prior physical-revision exclusion, RelayCTX hidden exclusion, historical used-memory lifecycle projection, and fresh-conversation proof. Before I-4D, ordinary M2 behavior is unchanged and no hidden-exclusion completion is claimed.
 
@@ -64,7 +65,7 @@ No O1B root lock is held across I1-GC, no O1C discovery lock is held across C2, 
 
 The W2 integration workflow runs compileall; I1-GD contract, functional, and race smokes; O1A; O1B and O1C functional/security suites; I-4C2 recovery, fault, concurrency, security, and ownership suites; the W2 functional/security smokes; documentation checks; and a clean-tree check.
 
-The repository's existing path-triggered workflows remain the dedicated authorities for O0 CLI/security compatibility, B2/B3 queue state, C1/C2 worker behavior, I1-GB/I1-GC, I-3/I-4B/I-4C1, and related UI/runtime regressions. The final W2-INT head passed both the integration workflow and all of those triggered dedicated workflows.
+The repository's existing path-triggered workflows remain the dedicated authorities for O0 CLI/security compatibility, B2/B3 queue state, C1/C2 worker behavior, I1-GB/I1-GC, I-3/I-4B/I-4C1, and related UI/runtime regressions. The latest-main-synchronized W2-INT head must pass both the integration workflow and all triggered dedicated workflows.
 
 The combined security smoke checks authoritative isolation parsing, unsafe filesystem replacement, root separation, and content-free `repr`, node results, O1A projections, and bounded error mapping. Dedicated lower security suites retain symlink, hardlink, malformed-record, capacity, and ownership coverage.
 
