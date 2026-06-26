@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = (
     "relaylm_phase_i4c1_primary_forget_hidden_successor_smoke.py",
+    "relaylm_phase_i4c1_primary_forget_fault_smoke.py",
     "relaylm_phase_i4c1_primary_forget_concurrency_smoke.py",
     "relaylm_phase_i4c1_primary_forget_security_smoke.py",
 )
