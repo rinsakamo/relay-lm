@@ -157,6 +157,7 @@ O1A completion alone does not satisfy the O1 checkpoint.
 O1D1 completion also does not satisfy it
 """,
     "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md": """
+I1-GE remains unimplemented and is validation-only
 Window A publication side — implemented by I1-GB
 Window A recovery side — implemented by I1-GC
 I1-GC is complete
@@ -166,9 +167,10 @@ queue lane independently discovers the queue root
 ### I1-GD — complete
 relaymem.slp_durable_finalization_isolation.v0
 ### I1-GE — unimplemented
+Validation-only full production crash-at-every-boundary proof
 ### O1B — complete
 ### O1C — complete
-### O1D through O1F — unimplemented
+### O1D1 through O1F — unimplemented
 """,
     "docs/architecture/i1gd_durable_finalization_retention_cleanup.md": """
 Status: **implemented production boundary**
@@ -184,12 +186,17 @@ M3i-d real read-only Lab observation: complete as Phase I-2
 observation receipts
 M3i-f canonical current-state resolver/shared fence: complete as Phase I-4B
 M3i-g hidden-successor commit ownership: complete as Phase I-4C1
+M3i-h prepared recovery/M3f-M3g/tombstone finalization: complete as Phase I-4C2
 I1-GC one-record replay and completion convergence is complete
 The next RelayMEM governance implementation slice is I-4D
+## MEM-M3i: Runtime integration — complete through I-4C2
+### I-4C2 recovery and finalization — complete
 No production hidden-state filtering exists yet because I-4D integration is not implemented
+A hidden current successor must never allow fallback to a prior active revision.
 O1B sealed replay-lane adapter: complete
 O1C queue-lane adapter: complete
-O1D through O1F production scheduling: unimplemented
+O1D1 accepted gates and one production round: unimplemented
+I-4C2 recovery/finalization: complete
 """,
     "docs/architecture/relaymem_slp_current_target.md": """
 Phase 6-B2 performs atomic durable enqueue
@@ -199,23 +206,28 @@ durably enqueued jobs
 I2 real SOUL Lab observation: complete
 Observation receipts cannot authorize repair or retrieval
 I1-GC caller-selected one-record replay
+I1-GE remains unimplemented and is validation-only
 Phase I-4C1 hidden-successor commit — complete
 Phase I-4C2 recovery/finalization — complete
-Forget is not product-complete until I-4D through I-4F
+Forget is not product-complete until I-4D provides ordinary retrieval exclusion
 O1B and O1C bounded production discovery and delegation are complete
-O1D fairness/retry/backoff
+O1D1 remains unimplemented
+O1D2 fairness/retry-time/backoff/jitter/pacing
+I-4D  ordinary M2/RelayCTX exclusion/historical projection
 """,
     "docs/README.md": """
 phase_i2_real_soul_lab_observation.md
 phase_i3_auditable_primary_mem_correct.md
 i1gd_durable_finalization_retention_cleanup.md
+o1b_sealed_i1g_replay_lane.md
 o1c_eligible_b2_queue_lane.md
 I1-GA through I1-GD are complete
-O1B is complete
-O1C is complete
+I1-GE remains an unimplemented validation-only full production crash proof
+O1D1 must accept the exact scheduler gates and execute one production round without sleeping
 Phase I-4C1 is complete
 Phase I-4C2 is complete
 phase_i4c2_primary_forget_recovery_finalization.md
+## Wave 3 integrated boundary
 """,
     "docs/architecture/README.md": """
 phase_i2_real_soul_lab_observation.md
@@ -230,6 +242,8 @@ O1C is complete for one bounded queue-lane opportunity
 Phase I-4C1 Primary Forget Hidden-Successor Commit
 Phase I-4C2 Primary Forget Recovery and Finalization
 I-4C2 implements bounded prepared recovery
+## Wave 3 boundary
+O1D1 owns accepted gates and one bounded `replay -> queue` production round
 """,
     "docs/config_schema.md": """
 relaymem_slp_durable_finalization_retention_enabled
@@ -350,8 +364,12 @@ O1C through O1F, O2, and O3 remain unimplemented
 O1B   sealed-record discovery/I1-GC delegation                    unimplemented
 O1C   B2 discovery/O0-compatible C2 delegation                    unimplemented
 Phase I-4C2 through I-4F recovery, exclusion, UI, and validation: unimplemented
+Forget recovery/tombstone/M2/UI/full validation: unimplemented as I-4C2 through I-4F
 The next RelayMEM governance implementation slice is I-4C2
 Forget is not product-complete until I-4C2 through I-4F
+## MEM-M3i: Runtime integration — complete through I-4C1
+I-4C2 through I-4F: unimplemented
+I-4D  M3 convergence/M2 exclusion/historical projection
 ### Wave 2 — current
 ### Wave 2 — current parallel implementation candidates
 This section supersedes earlier
