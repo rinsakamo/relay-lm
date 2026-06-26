@@ -71,8 +71,12 @@ def validate_report(relative_path: str) -> None:
 
     require_anchors(relative_path, REPORT_ANCHORS)
     body = read_text(relative_path)
-    if "- PR: #" not in body:
-        raise AssertionError(f"{relative_path}: concrete source PR number required")
+    pr_lines = [line for line in body.splitlines() if line.startswith("- PR: #")]
+    if len(pr_lines) != 1:
+        raise AssertionError(f"{relative_path}: one source PR line required")
+    pr_value = pr_lines[0].split("#", 1)[1].strip()
+    if not pr_value.isdigit() or pr_value.startswith("0"):
+        raise AssertionError(f"{relative_path}: source PR must be positive digits")
     if "- URL: https://github.com/" not in body:
         raise AssertionError(f"{relative_path}: concrete source PR URL required")
     for placeholder in ("<slice>", "<number>", "TBD", "TO BE FILLED"):
