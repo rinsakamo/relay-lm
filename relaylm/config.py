@@ -142,6 +142,24 @@ class RelayLMConfig(BaseModel):
     relaymem_slp_durable_finalization_publication_timeout_ms: int = Field(
         default=5000, ge=1, le=60_000, strict=True
     )
+    relaymem_slp_durable_finalization_retention_enabled: StrictBool = False
+    relaymem_slp_durable_finalization_retention_dry_run_only: StrictBool = True
+    relaymem_slp_durable_finalization_retention_apply_enabled: StrictBool = False
+    relaymem_slp_durable_finalization_completed_retention_seconds: int = Field(
+        default=604800, ge=1, le=10 * 365 * 24 * 60 * 60, strict=True
+    )
+    relaymem_slp_durable_finalization_orphan_grace_seconds: int = Field(
+        default=86400, ge=1, le=365 * 24 * 60 * 60, strict=True
+    )
+    relaymem_slp_durable_finalization_isolated_retention_seconds: int = Field(
+        default=2592000, ge=1, le=10 * 365 * 24 * 60 * 60, strict=True
+    )
+    relaymem_slp_durable_finalization_cleanup_max_records_per_pass: int = Field(
+        default=64, ge=1, le=4096, strict=True
+    )
+    relaymem_slp_durable_finalization_cleanup_timeout_ms: int = Field(
+        default=5000, ge=1, le=60_000, strict=True
+    )
     relaymem_slp_source_registry_max_entries: int = Field(default=256, ge=1)
     relaymem_slp_source_registry_ttl_seconds: int = Field(default=1800, ge=1)
     relaymem_local_worker_enabled: bool = False
