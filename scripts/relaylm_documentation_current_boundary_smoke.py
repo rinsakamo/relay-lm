@@ -56,7 +56,7 @@ def validate_config_coverage(path: str) -> None:
     assert not missing, f"{path}: missing config fields: {missing!r}"
 
 
-O1A_TARGET_ONLY_FIELDS = (
+O1D1_ACCEPTED_FIELDS = (
     "relaymem_local_scheduler_enabled",
     "relaymem_local_scheduler_dry_run_only",
     "relaymem_local_scheduler_apply_enabled",
@@ -397,7 +397,7 @@ def main() -> None:
     validate_config_coverage("docs/config_schema.md")
     validate_config_coverage("config.example.yaml")
     for path in ("relaylm/config.py", "docs/config_schema.md", "config.example.yaml"):
-        forbid(path, O1A_TARGET_ONLY_FIELDS)
+        require(path, "\n".join(O1D1_ACCEPTED_FIELDS))
     for path, block in REQUIRED.items():
         require(path, block)
     for path in CURRENT_DOCS:
