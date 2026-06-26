@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
-"""Validate the Phase I-4A Forget / Hide documentation contract only."""
+"""Validate the Phase I-4A target contract and completed I-4B foundation."""
 from __future__ import annotations
 
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = ROOT / "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md"
-
-
-def read(path: Path) -> str:
-    return path.read_text(encoding="utf-8")
 
 
 def require(body: str, *anchors: str) -> None:
@@ -23,18 +19,18 @@ def forbid(body: str, *anchors: str) -> None:
 
 
 def main() -> None:
-    body = read(CONTRACT)
+    body = CONTRACT.read_text(encoding="utf-8")
     require(
         body,
         "relaylm_doc_type: contract",
         "relaylm_authority: phase_i4_primary_mem_forget_hide",
         "relaylm_status: target",
-        "Defined target contract; runtime unimplemented.",
-        "**Forget**",
-        "**`hidden`**",
-        "**Forget tombstone**",
+        "Defined target contract; hidden-lifecycle apply remains unimplemented.",
+        "Forget            user-facing explicit operation",
+        "hidden            canonical current retrieval-ineligible lifecycle state",
+        "Forget tombstone  immutable runtime-private audit/recovery artifact",
         "Decision: Candidate A",
-        "Rejected: Candidate B as independent authority",
+        "A bare sidecar boolean",
         "relaylm.mem.primary_current_state.v0",
         "revision 2 active\n  -> Forget\nrevision 3 hidden",
         "/forget/preflight?namespace=...",
@@ -54,15 +50,17 @@ def main() -> None:
         "historical_used_memory_unchanged: true",
         "already_hidden",
         "response_lost",
-        "after index apply / before log apply",
-        "I-4B — resolver, shared fence, and read-only contracts",
-        "I-4C — atomic lifecycle apply and audit artifacts",
-        "I-4D — convergence, M2 exclusion, and historical projection",
-        "I-4E — loopback wrapper and SOUL Lab UI",
-        "I-4F — fault, security, and fresh-conversation validation",
-        "restore or unhide",
-        "GDPR, privacy-law, or other legal erasure compliance",
+        "I-4B — complete read-only boundary",
+        "I-4C1 — hidden-successor commit ownership",
+        "I-4C2 — exact replay and forward recovery",
+        "I-4D — convergence and exclusion",
+        "I-4E — loopback wrapper and UI",
+        "I-4F — production validation",
+        "restore",
+        "unhide",
+        "GDPR, privacy-law, or other legal-erasure compliance",
         "I1-G pre-enqueue durability",
+        "I-4B validation proves only the read-only resolver/shared-fence/preflight-token-history boundary",
     )
     forbid(
         body,
@@ -70,6 +68,7 @@ def main() -> None:
         "Forget runtime is implemented",
         "physical deletion is performed",
         "restore is implemented",
+        "production hidden-successor apply or tombstone finalization;\n- production M2/RelayCTX hidden-state exclusion;\n- loopback mutation routes or SOUL Lab Forget UI;\n\n## Completed",
     )
     print("RelayLM Phase I-4A Forget / Hide contract smoke passed.")
 
