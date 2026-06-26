@@ -25,4 +25,12 @@ jobs:
       - name: Validate integrated documentation boundaries
         env:
           PYTHONPATH: .:scripts
-        run: python scripts/relaylm_documentation_current_boundary_smoke_v2.py
+        run: |
+          set -o pipefail
+          python scripts/relaylm_documentation_current_boundary_smoke_v2.py 2>&1 | tee documentation-current-boundary-v2.log
+      - name: Upload integrated documentation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-current-boundary-v2-log
+          path: documentation-current-boundary-v2.log
