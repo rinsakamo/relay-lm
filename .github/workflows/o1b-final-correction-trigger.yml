@@ -29,6 +29,7 @@ jobs:
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repo
           cd repo
           git fetch -q origin main --depth=1
+          git update-ref refs/remotes/origin/main FETCH_HEAD
           python - <<'PY'
           from pathlib import Path
           import textwrap
