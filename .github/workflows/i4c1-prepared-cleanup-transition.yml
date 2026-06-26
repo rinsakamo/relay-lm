@@ -1,0 +1,35 @@
+name: Apply I-4C1 prepared cleanup durability patch
+
+on:
+  push:
+    branches:
+      - phase-i4c1-primary-forget-hidden-successor
+    paths:
+      - "scripts/_i4c1_patch_prepared_cleanup.py"
+      - ".github/workflows/i4c1-prepared-cleanup-transition.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i4c1-primary-forget-hidden-successor
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python scripts/_i4c1_patch_prepared_cleanup.py
+      - name: Commit cleanup durability fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add relaylm/relaymem_primary_forget_artifact.py
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "fix: fsync prepared artifact temp cleanup"
+          git push origin HEAD:phase-i4c1-primary-forget-hidden-successor
