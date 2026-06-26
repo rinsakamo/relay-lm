@@ -1,0 +1,124 @@
+O1C branch validation: FAIL:o1c-functional:1
+head=a290589e9afee9295552ab692545faa1c266c37c
+commands=install,compileall,o1c-functional,o1c-security,o0-compat,o1a-contract,b2-regression,b3-regression,c2-regression,c1-worker,c1-integration,c1-source,docs-boundary,docs-links
+--- bounded log tail ---
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+Collecting fastapi>=0.110 (from relay-lm==0.1.0)
+  Downloading fastapi-0.138.1-py3-none-any.whl.metadata (27 kB)
+Collecting httpx>=0.27 (from relay-lm==0.1.0)
+  Downloading httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+Collecting pydantic>=2.0 (from relay-lm==0.1.0)
+  Downloading pydantic-2.13.4-py3-none-any.whl.metadata (109 kB)
+Collecting pyyaml>=6.0 (from relay-lm==0.1.0)
+  Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (2.4 kB)
+Collecting uvicorn>=0.27 (from uvicorn[standard]>=0.27->relay-lm==0.1.0)
+  Downloading uvicorn-0.49.0-py3-none-any.whl.metadata (6.7 kB)
+Collecting starlette>=0.46.0 (from fastapi>=0.110->relay-lm==0.1.0)
+  Downloading starlette-1.3.1-py3-none-any.whl.metadata (6.4 kB)
+Collecting typing-extensions>=4.8.0 (from fastapi>=0.110->relay-lm==0.1.0)
+  Downloading typing_extensions-4.15.0-py3-none-any.whl.metadata (3.3 kB)
+Collecting typing-inspection>=0.4.2 (from fastapi>=0.110->relay-lm==0.1.0)
+  Downloading typing_inspection-0.4.2-py3-none-any.whl.metadata (2.6 kB)
+Collecting annotated-doc>=0.0.2 (from fastapi>=0.110->relay-lm==0.1.0)
+  Downloading annotated_doc-0.0.4-py3-none-any.whl.metadata (6.6 kB)
+Collecting anyio (from httpx>=0.27->relay-lm==0.1.0)
+  Downloading anyio-4.14.1-py3-none-any.whl.metadata (4.6 kB)
+Collecting certifi (from httpx>=0.27->relay-lm==0.1.0)
+  Downloading certifi-2026.6.17-py3-none-any.whl.metadata (2.5 kB)
+Collecting httpcore==1.* (from httpx>=0.27->relay-lm==0.1.0)
+  Downloading httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+Collecting idna (from httpx>=0.27->relay-lm==0.1.0)
+  Downloading idna-3.18-py3-none-any.whl.metadata (6.1 kB)
+Collecting h11>=0.16 (from httpcore==1.*->httpx>=0.27->relay-lm==0.1.0)
+  Downloading h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+Collecting annotated-types>=0.6.0 (from pydantic>=2.0->relay-lm==0.1.0)
+  Downloading annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+Collecting pydantic-core==2.46.4 (from pydantic>=2.0->relay-lm==0.1.0)
+  Downloading pydantic_core-2.46.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.6 kB)
+Collecting click>=7.0 (from uvicorn>=0.27->uvicorn[standard]>=0.27->relay-lm==0.1.0)
+  Downloading click-8.4.2-py3-none-any.whl.metadata (2.6 kB)
+Collecting httptools>=0.8.0 (from uvicorn[standard]>=0.27->relay-lm==0.1.0)
+  Downloading httptools-0.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (3.5 kB)
+Collecting python-dotenv>=0.13 (from uvicorn[standard]>=0.27->relay-lm==0.1.0)
+  Downloading python_dotenv-1.2.2-py3-none-any.whl.metadata (27 kB)
+Collecting uvloop>=0.15.1 (from uvicorn[standard]>=0.27->relay-lm==0.1.0)
+  Downloading uvloop-0.22.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (4.9 kB)
+Collecting watchfiles>=0.20 (from uvicorn[standard]>=0.27->relay-lm==0.1.0)
+  Downloading watchfiles-1.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (4.9 kB)
+Collecting websockets>=10.4 (from uvicorn[standard]>=0.27->relay-lm==0.1.0)
+  Downloading websockets-16.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl.metadata (6.8 kB)
+Downloading fastapi-0.138.1-py3-none-any.whl (129 kB)
+Downloading annotated_doc-0.0.4-py3-none-any.whl (5.3 kB)
+Downloading httpx-0.28.1-py3-none-any.whl (73 kB)
+Downloading httpcore-1.0.9-py3-none-any.whl (78 kB)
+Downloading h11-0.16.0-py3-none-any.whl (37 kB)
+Downloading pydantic-2.13.4-py3-none-any.whl (472 kB)
+Downloading pydantic_core-2.46.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 24.6 MB/s  0:00:00
+Downloading annotated_types-0.7.0-py3-none-any.whl (13 kB)
+Downloading pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (807 kB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 807.9/807.9 kB 33.9 MB/s  0:00:00
+Downloading starlette-1.3.1-py3-none-any.whl (73 kB)
+Downloading anyio-4.14.1-py3-none-any.whl (124 kB)
+Downloading idna-3.18-py3-none-any.whl (65 kB)
+Downloading typing_extensions-4.15.0-py3-none-any.whl (44 kB)
+Downloading typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+Downloading uvicorn-0.49.0-py3-none-any.whl (71 kB)
+Downloading click-8.4.2-py3-none-any.whl (119 kB)
+Downloading httptools-0.8.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (523 kB)
+Downloading python_dotenv-1.2.2-py3-none-any.whl (22 kB)
+Downloading uvloop-0.22.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (4.4 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.4/4.4 MB 62.1 MB/s  0:00:00
+Downloading watchfiles-1.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (456 kB)
+Downloading websockets-16.0-cp312-cp312-manylinux1_x86_64.manylinux_2_28_x86_64.manylinux_2_5_x86_64.whl (184 kB)
+Downloading certifi-2026.6.17-py3-none-any.whl (133 kB)
+Building wheels for collected packages: relay-lm
+  Building editable for relay-lm (pyproject.toml): started
+  Building editable for relay-lm (pyproject.toml): finished with status 'done'
+  Created wheel for relay-lm: filename=relay_lm-0.1.0-0.editable-py3-none-any.whl size=15154 sha256=01389a427765750020867743f3f06178492637ab5e0787d9f9a94822282a3557
+  Stored in directory: /tmp/pip-ephem-wheel-cache-e22ed4j2/wheels/c7/c5/00/2c6488e241aa062a41e3e456250042ffc84f1e6cc6a44f07bd
+Successfully built relay-lm
+Installing collected packages: websockets, uvloop, typing-extensions, pyyaml, python-dotenv, idna, httptools, h11, click, certifi, annotated-types, annotated-doc, uvicorn, typing-inspection, pydantic-core, httpcore, anyio, watchfiles, starlette, pydantic, httpx, fastapi, relay-lm
+
+Successfully installed annotated-doc-0.0.4 annotated-types-0.7.0 anyio-4.14.1 certifi-2026.6.17 click-8.4.2 fastapi-0.138.1 h11-0.16.0 httpcore-1.0.9 httptools-0.8.0 httpx-0.28.1 idna-3.18 pydantic-2.13.4 pydantic-core-2.46.4 python-dotenv-1.2.2 pyyaml-6.0.3 relay-lm-0.1.0 starlette-1.3.1 typing-extensions-4.15.0 typing-inspection-0.4.2 uvicorn-0.49.0 uvloop-0.22.1 watchfiles-1.2.0 websockets-16.0
+== compileall ==
+== o1c-functional ==
+Traceback (most recent call last):
+  File "/home/runner/work/relay-lm/relay-lm/scripts/relaylm_o1c_eligible_queue_lane_smoke.py", line 376, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/home/runner/work/relay-lm/relay-lm/scripts/relaylm_o1c_eligible_queue_lane_smoke.py", line 369, in main
+    bounded_result_mapping_and_faults()
+  File "/home/runner/work/relay-lm/relay-lm/scripts/relaylm_o1c_eligible_queue_lane_smoke.py", line 304, in bounded_result_mapping_and_faults
+    require(result.status == expected, (expected, result))
+  File "/home/runner/work/relay-lm/relay-lm/scripts/relaylm_phase6c1_primary_worker_test_support.py", line 50, in require
+    raise AssertionError(message)
+AssertionError: ('failed', LaneOutcome(lane_kind='queue', status='retry_released', enabled=True, attempted=True, candidate_observed=True, candidate_selected=True, canonical_reread_performed=True, delegation_attempted=True, delegation_completed=True, mutation_may_have_occurred=True, no_immediate_work=False, future_work_hint_present=False, contention_observed=False, retryable=True, unsafe=False, terminal_for_candidate=False, bounded_reason_ids=('queue_retry_released',), schema_version='relaylm.local_scheduler_lane_result.v0'))
+== o1c-security ==
+O1C eligible queue-lane security smoke: OK
+== o0-compat ==
+O0 local one-job runner suite: OK
+== o1a-contract ==
+RelayLM O1A two-lane scheduler contract smoke passed.
+== b2-regression ==
+Phase 6-B2 durable enqueue contract smoke: ok
+== b3-regression ==
+Phase 6-B3 queue state smoke: ok
+== c2-regression ==
+Phase 6-C2 one queued-job integration suite: OK
+== c1-worker ==
+Phase 6-C1 one-claimed-job worker functional smoke: OK
+Phase 6-C1 one-claimed-job worker security smoke: OK
+Phase 6-C1 worker result validation smoke: OK
+Phase 6-C1 one-claimed-job worker fault smoke: OK
+Phase 6-C1 final-review fix smoke: OK
+== c1-integration ==
+Phase 6-C1 integrated worker fault suite: OK
+== c1-source ==
+Phase 6-C1-5 durable protected source smoke: OK
+== docs-boundary ==
+RelayLM I1-GA pre-enqueue fault model smoke passed.
+RelayLM O1A two-lane scheduler contract smoke passed.
+Documentation current boundary smoke passed
+== docs-links ==
+ok documentation links (219 Markdown files, 493 local links)
