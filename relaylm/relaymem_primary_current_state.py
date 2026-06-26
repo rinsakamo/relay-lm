@@ -1,8 +1,9 @@
 """Canonical public Primary current-state resolver compatibility boundary.
 
-Phase I-4C1 extends the read-only I-4B authority with exact Forget prepared and
-hidden-successor evidence.  Active ``relaymem.primary_page.v0`` and completed
-Phase I-3 correction chains keep their existing behavior.
+Phase I-4C2 extends the read-only I-4B/I-4C1 authority with exact Forget
+tombstone evidence. Active ``relaymem.primary_page.v0`` and completed Phase I-3
+correction chains keep their existing behavior. The resolver never writes or
+attempts recovery.
 """
 from __future__ import annotations
 
@@ -12,6 +13,10 @@ from typing import Any
 
 from . import _relaymem_primary_current_state_impl as _impl
 from .relaymem_primary_forget_artifact import FORGET_PREPARED_SCHEMA
+from .relaymem_primary_forget_finalization_artifact import FORGET_TOMBSTONE_SCHEMA
+from .relaymem_primary_forget_finalized_state import (
+    resolve_finalized_forget_current_state,
+)
 from .relaymem_primary_lifecycle_page import resolve_forget_current_state
 
 PRIMARY_CURRENT_STATE_SCHEMA = _impl.PRIMARY_CURRENT_STATE_SCHEMA
@@ -33,12 +38,22 @@ def resolve_primary_current_state(
     memory_id: str,
     expected_revision: int | None = None,
 ) -> PrimaryCurrentState:
-    """Resolve one logical Primary memory including I-4C1 lifecycle evidence."""
+    """Resolve one logical Primary memory including finalized Forget evidence."""
 
     if expected_revision is not None and (
         type(expected_revision) is not int or expected_revision < 1
     ):
         raise PrimaryCurrentStateError("invalid_request")
+
+    finalized = resolve_finalized_forget_current_state(
+        store_root,
+        namespace=namespace,
+        memory_id=memory_id,
+    )
+    if finalized is not None:
+        if expected_revision is not None and finalized.current_revision != expected_revision:
+            raise PrimaryCurrentStateError("stale_revision")
+        return finalized
 
     forget = resolve_forget_current_state(
         store_root,
@@ -118,6 +133,7 @@ __all__ = [
     "CORRECTION_PREPARED_SCHEMA",
     "CORRECTION_RECEIPT_SCHEMA",
     "FORGET_PREPARED_SCHEMA",
+    "FORGET_TOMBSTONE_SCHEMA",
     "CORRECTION_ROOT",
     "PrimaryCurrentStateError",
     "PrimaryCorrectionStateIndex",
