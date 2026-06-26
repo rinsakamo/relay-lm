@@ -176,6 +176,11 @@ class RelayLMConfig(BaseModel):
         ge=1,
         le=4096,
     )
+    relaymem_local_scheduler_enabled: StrictBool = False
+    relaymem_local_scheduler_dry_run_only: StrictBool = True
+    relaymem_local_scheduler_apply_enabled: StrictBool = False
+    relaymem_local_scheduler_replay_lane_enabled: StrictBool = True
+    relaymem_local_scheduler_queue_lane_enabled: StrictBool = True
     client_message_canonicalization_dry_run_enabled: bool = False
     client_history_exclusion_preflight_enabled: bool = False
     client_history_exclusion_apply_enabled: bool = False
@@ -250,6 +255,26 @@ class RelayLMConfig(BaseModel):
     relayrun_visible_recovery_apply_preflight_dry_run_only: bool = True
     relayrun_user_action_dry_run_enabled: bool = False
     relayrun_user_action_dry_run_only: bool = True
+
+    @model_validator(mode="after")
+    def _validate_local_scheduler_mode(self) -> "RelayLMConfig":
+        triple = (
+            self.relaymem_local_scheduler_enabled,
+            self.relaymem_local_scheduler_dry_run_only,
+            self.relaymem_local_scheduler_apply_enabled,
+        )
+        if triple not in {
+            (False, True, False),
+            (True, True, False),
+            (True, False, True),
+        }:
+            raise ValueError("invalid_relaymem_local_scheduler_gate_combination")
+        if self.relaymem_local_scheduler_enabled and not (
+            self.relaymem_local_scheduler_replay_lane_enabled
+            or self.relaymem_local_scheduler_queue_lane_enabled
+        ):
+            raise ValueError("relaymem_local_scheduler_requires_enabled_lane")
+        return self
 
 
 def default_config_path() -> Path:
