@@ -1,15 +1,16 @@
 name: O1B bootstrap
 
 on:
-  push:
-    paths:
-      - ".github/workflows/o1b-bootstrap.yml"
+  pull_request:
+    types: [opened]
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
   apply:
+    if: github.head_ref == 'phase-o1b-sealed-i1g-replay-lane'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
