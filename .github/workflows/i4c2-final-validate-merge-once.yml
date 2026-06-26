@@ -1,0 +1,89 @@
+name: I-4C2 final validation and merge
+
+on:
+  push:
+    branches:
+      - phase-i4c2-primary-forget-recovery-finalization
+    paths:
+      - ".github/workflows/i4c2-final-validate-merge-once.yml"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  validate-and-merge:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i4c2-primary-forget-recovery-finalization
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install RelayLM
+        run: python -m pip install -e .
+      - name: Compile repository Python
+        run: python -m compileall -q relaylm scripts
+      - name: Run I-4C2 recovery and finalization validation
+        run: |
+          set -euo pipefail
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_recovery_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_fault_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_concurrency_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_security_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_ownership_boundary_smoke.py
+      - name: Run I-4C1, I-4B, and I-3 regressions
+        run: |
+          set -euo pipefail
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_hidden_successor_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_fault_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_concurrency_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_security_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4b_ci_runner.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
+      - name: Run M3 persistence regressions
+        run: |
+          set -euo pipefail
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_reconciliation_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_apply_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
+      - name: Run documentation validation
+        run: |
+          set -euo pipefail
+          PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+      - name: Confirm validation left a clean tree
+        run: |
+          git status --short
+          test -z "$(git status --short)"
+      - name: Remove one-shot workflow and push validated head
+        id: validated
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/i4c2-final-validate-merge-once.yml
+          git commit -m "chore: remove one-shot I-4C2 final validation workflow"
+          git push origin HEAD:phase-i4c2-primary-forget-recovery-finalization
+          echo "head_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Mark ready and squash merge validated head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATED_HEAD: ${{ steps.validated.outputs.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh pr ready 404 --repo "$GITHUB_REPOSITORY"
+          gh pr merge 404 \
+            --repo "$GITHUB_REPOSITORY" \
+            --squash \
+            --admin \
+            --match-head-commit "$VALIDATED_HEAD" \
+            --subject "feat: add Phase I-4C2 Forget recovery and finalization (#404)" \
+            --body "Complete bounded exact prepared recovery, operation-scoped M3f/M3g convergence, canonical tombstone finalization, exact replay, ownership-boundary validation, and current documentation reconciliation."
