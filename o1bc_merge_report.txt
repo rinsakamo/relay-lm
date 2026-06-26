@@ -24,6 +24,7 @@ Auto-merging scripts/relaylm_documentation_current_boundary_smoke.py
 CONFLICT (content): Merge conflict in scripts/relaylm_documentation_current_boundary_smoke.py
 Automatic merge failed; fix conflicts and then commit the result.
 O1B/O1C documentation merge reconciliation complete
+combined O1A documentation anchor updated
 == python -m compileall -q relaylm scripts ==
 == python scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py ==
 RelayLM O1A two-lane scheduler contract smoke passed.
@@ -62,5 +63,5 @@ Traceback (most recent call last):
   File "/home/runner/work/relay-lm/relay-lm/scripts/relaylm_documentation_current_boundary_smoke.py", line 22, in require
     assert not missing, f"{path}: missing anchors: {missing!r}"
            ^^^^^^^^^^^
-AssertionError: docs/architecture/o1a_two_lane_scheduler_contract.md: missing anchors: ['O1C is complete as one bounded production queue-lane adapter']
-HEAD is now at 3341605 fix: align merged O1A validation anchor
+AssertionError: docs/architecture/o1c_eligible_b2_queue_lane.md: missing anchors: ['O1B and O1C are complete as bounded production lane adapters']
+HEAD is now at 0657c1d fix: apply combined documentation anchor during merge
