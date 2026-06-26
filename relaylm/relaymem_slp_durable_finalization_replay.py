@@ -1,6 +1,6 @@
 """Public I1-GC one-record durable-finalization replay authority.
 
-The convergence implementation is isolated in a private module.  This boundary
+The convergence implementation is isolated in a private module. This boundary
 owns the nonblocking per-record fence, late-outcome adaptation, and explicit
 dependency seams used by production fault-injection smoke coverage.
 """
@@ -156,6 +156,106 @@ def _wrap_runtime(
     )
 
 
+def _read_completion_fd(
+    root_fd: int,
+    locator: str,
+    expected: Mapping[str, object],
+) -> _impl._Inspect:
+    """Read one completion and distinguish invalid bytes from valid collisions."""
+
+    name = _impl.completion_filename(locator)
+    try:
+        before = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return _impl._Inspect("absent")
+    except OSError:
+        return _impl._Inspect(
+            "retryable", ("durable_finalization_completion_unreadable",)
+        )
+    if stat.S_ISLNK(before.st_mode):
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_symlink_blocked",)
+        )
+    if not stat.S_ISREG(before.st_mode):
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_unsafe_file_type",)
+        )
+    if before.st_nlink != 1:
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_hardlink_invalid",)
+        )
+    if before.st_size > _impl._MAX_COMPLETION_BYTES:
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_size_exceeded",)
+        )
+    try:
+        fd = os.open(
+            name,
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            dir_fd=root_fd,
+        )
+    except FileNotFoundError:
+        return _impl._Inspect("absent")
+    except OSError:
+        return _impl._Inspect(
+            "retryable", ("durable_finalization_completion_unreadable",)
+        )
+    try:
+        info = os.fstat(fd)
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
+            or (before.st_dev, before.st_ino) != (info.st_dev, info.st_ino)
+        ):
+            return _impl._Inspect(
+                "corrupt",
+                ("durable_finalization_completion_changed_during_read",),
+            )
+        data = _impl._read_bounded(fd, _impl._MAX_COMPLETION_BYTES)
+    finally:
+        os.close(fd)
+    if data is None:
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_size_exceeded",)
+        )
+    try:
+        after = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+    except OSError:
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_changed_during_read",)
+        )
+    if (
+        stat.S_ISLNK(after.st_mode)
+        or not stat.S_ISREG(after.st_mode)
+        or after.st_nlink != 1
+        or (after.st_dev, after.st_ino) != (info.st_dev, info.st_ino)
+        or after.st_size != info.st_size
+    ):
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_changed_during_read",)
+        )
+    value, reason = _impl.decode_canonical_json(data)
+    if value is None or reason:
+        return _impl._Inspect(
+            "corrupt",
+            (reason or "durable_finalization_completion_decode_failed",),
+        )
+    _, reasons = _impl.validate_completion_marker(
+        value,
+        expected_locator=locator,
+        expected=expected,
+    )
+    if reasons:
+        collision_reason = "durable_finalization_completion_identity_collision"
+        return _impl._Inspect(
+            "collision" if reasons == (collision_reason,) else "corrupt",
+            reasons,
+        )
+    return _impl._Inspect("exact")
+
+
 def _publish_completion(
     root: str,
     locator: str,
@@ -174,7 +274,7 @@ def _publish_completion(
     temp = f".durable-finalization-completion-{secrets.token_hex(16)}.tmp"
     temp_exists = False
     try:
-        current = _impl._read_completion_fd(root_fd, locator, expected)
+        current = _read_completion_fd(root_fd, locator, expected)
         if current.kind == "exact":
             return current
         if current.kind != "absent":
@@ -224,7 +324,7 @@ def _publish_completion(
                 os.fsync(root_fd)
             except OSError:
                 fsync_failed = True
-            reread = _impl._read_completion_fd(root_fd, locator, expected)
+            reread = _read_completion_fd(root_fd, locator, expected)
             if reread.kind != "exact":
                 return reread
             if fsync_failed:
@@ -236,9 +336,9 @@ def _publish_completion(
                 )
             return _impl._Inspect("created")
         if outcome == "exists":
-            return _impl._read_completion_fd(root_fd, locator, expected)
+            return _read_completion_fd(root_fd, locator, expected)
 
-        reread = _impl._read_completion_fd(root_fd, locator, expected)
+        reread = _read_completion_fd(root_fd, locator, expected)
         if reread.kind == "exact":
             try:
                 os.fsync(root_fd)
@@ -271,6 +371,7 @@ def _sync_dependency_seams() -> None:
     _impl._rename_noreplace = _rename_noreplace
     _impl._acquire_fence = _acquire_fence
     _impl._wrap_runtime = _wrap_runtime
+    _impl._read_completion_fd = _read_completion_fd
     _impl._publish_completion = _publish_completion
 
 
