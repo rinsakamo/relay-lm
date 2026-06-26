@@ -523,3 +523,26 @@ When a phase lands, review together:
 - stale TODO or future-tense text in related documents.
 
 I1-GB adds default-off durable-finalization publication gates, an explicit private root, and bounded capacity/timeout fields documented in `docs/config_schema.md` and `config.example.yaml`. The roadmap sequencing itself does not change M2 eligibility, queue semantics, or browser authority.
+
+## I1-GC durable-finalization replay current boundary (2026-06-26)
+
+Completed dependency edge:
+
+```text
+I1-GA contract
+  -> I1-GB pre-release sealed publication
+  -> I1-GC one-record restart replay and completion convergence  [complete]
+```
+
+The next durability work remains:
+
+```text
+I1-GD retention / orphan reconciliation / cleanup
+  -> I1-GE full production crash validation
+  -> O1 discovery / scanner / scheduler
+  -> O2 supervised service
+```
+
+This section supersedes earlier roadmap entries that list I1-GC itself as pending.
+I1-GC does not add discovery, batch replay, retry loops, cleanup, B3 transitions,
+C2 execution, workers, M3 writes, or UI.

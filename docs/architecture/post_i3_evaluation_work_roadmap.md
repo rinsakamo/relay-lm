@@ -537,3 +537,26 @@ Raw prompts, protected source, credentials, full traces, and unrestricted memory
 - UI-B0 and UI-B1 do not own worker, queue, filesystem, namespace, SOUL, or mutation authority.
 - Physical deletion, secure erase, purge, restore, and unhide remain separate future contracts.
 - Text conversation does not imply TTS, audio, avatar, or Live2D execution.
+
+## I1-GC durable-finalization replay current boundary (2026-06-26)
+
+Completed dependency edge:
+
+```text
+I1-GA contract
+  -> I1-GB pre-release sealed publication
+  -> I1-GC one-record restart replay and completion convergence  [complete]
+```
+
+The next durability work remains:
+
+```text
+I1-GD retention / orphan reconciliation / cleanup
+  -> I1-GE full production crash validation
+  -> O1 discovery / scanner / scheduler
+  -> O2 supervised service
+```
+
+This section supersedes earlier roadmap entries that list I1-GC itself as pending.
+I1-GC does not add discovery, batch replay, retry loops, cleanup, B3 transitions,
+C2 execution, workers, M3 writes, or UI.

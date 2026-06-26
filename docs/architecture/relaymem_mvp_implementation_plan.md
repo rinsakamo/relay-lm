@@ -303,3 +303,26 @@ I1-GC one-record replay and completion convergence
 ## I1-G boundary
 
 I1-GA and I1-GB are complete. I1-GC replay/completion, I1-GD cleanup, and I1-GE full crash validation remain unimplemented. RelayMEM lifecycle work must not absorb I1-G durable-finalization or O1 scheduling authority.
+
+## I1-GC durable-finalization replay current boundary (2026-06-26)
+
+Completed dependency edge:
+
+```text
+I1-GA contract
+  -> I1-GB pre-release sealed publication
+  -> I1-GC one-record restart replay and completion convergence  [complete]
+```
+
+The next durability work remains:
+
+```text
+I1-GD retention / orphan reconciliation / cleanup
+  -> I1-GE full production crash validation
+  -> O1 discovery / scanner / scheduler
+  -> O2 supervised service
+```
+
+This section supersedes earlier roadmap entries that list I1-GC itself as pending.
+I1-GC does not add discovery, batch replay, retry loops, cleanup, B3 transitions,
+C2 execution, workers, M3 writes, or UI.

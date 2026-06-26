@@ -207,3 +207,24 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+# I1-GC documentation boundary assertions
+def _assert_i1gc_documentation_boundary() -> None:
+    root = Path(__file__).resolve().parents[1]
+    required = ('docs/PROJECT_STATUS.md', 'docs/README.md', 'docs/architecture/README.md', 'docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md', 'docs/architecture/pipeline_implementation_plan.md', 'docs/architecture/post_i3_evaluation_work_roadmap.md', 'docs/architecture/relaymem_slp_current_target.md', 'docs/architecture/relaymem_mvp_implementation_plan.md')
+    for relative in required:
+        text = (root / relative).read_text(encoding="utf-8")
+        assert 'I1-GC durable-finalization replay current boundary (2026-06-26)' in text, relative
+        assert "I1-GD" in text, relative
+        assert "I1-GE" in text, relative
+        assert "O1" in text, relative
+    replay = (root / "relaylm/relaymem_slp_durable_finalization_replay.py").read_text(encoding="utf-8")
+    implementation = (root / "relaylm/_relaymem_slp_durable_finalization_replay_impl.py").read_text(encoding="utf-8")
+    assert "replay_relaymem_slp_durable_finalization_record" in replay
+    assert "COMPLETION_SCHEMA" in implementation
+    assert "transition_relaymem_slp_queue_state" not in implementation
+
+
+if __name__ == "__main__":
+    _assert_i1gc_documentation_boundary()

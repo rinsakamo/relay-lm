@@ -253,3 +253,14 @@ Forget is not physical deletion, secure erase, purge, restore/unhide, or legal e
 M3a-M3h, C1-0 through C1-5, C2, O0, I-1 recall, I-2 observation, I-3 Correct, and I-4B read-only current-state/fence/preflight-token-history are implemented. I-4A is the target contract. Forget is not product-complete until I-4C through I-4F provide hidden apply/recovery, retrieval exclusion, API/UI, and production validation.
 
 I1-GA and I1-GB are complete. I1-GC replay/completion, I1-GD cleanup, and I1-GE full crash validation remain unimplemented. UI-B0 and O0 are complete; O1/O2/O3 and I-4C through I-4F remain separate work.
+
+## I1-GC durable-finalization replay current boundary (2026-06-26)
+
+I1-GC is complete at the one-record replay boundary. The production path reconstructs
+one sealed finalized turn, verifies its sealed A1/A2/B1 identity, converges existing
+C1-5 before existing B2, canonically rereads both artifacts, and publishes one
+immutable content-free completion marker under a nonblocking cross-process per-record
+fence. The normal I1-GB finalizer uses the same authority.
+
+This section supersedes earlier I1-GC pending statements in this file. I1-GD, I1-GE,
+O1 discovery/scanning/scheduling, and O2 supervision remain incomplete.

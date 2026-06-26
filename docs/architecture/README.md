@@ -129,3 +129,14 @@ Historical and MVP documents do not override current owners. Implementation hand
 ## Operational alignment
 
 O0 is complete only for explicit one-shot local operation. UI-B0 does not own I1-G durability, queue selection, or worker service authority. I1-GA defines the target/fault model and I1-GB implements pre-release evidence publication only. Phase I-4A defines lifecycle semantics and I-4B implements the read-only resolver/shared-fence boundary only. I1-GC through I1-GE remaining durability work, Phase I-4C through I-4F implementation, O1 queue scanning/scheduling, O2 supervision, and O3 always-on lifecycle remain separate roadmap slices.
+
+## I1-GC durable-finalization replay current boundary (2026-06-26)
+
+I1-GC is complete at the one-record replay boundary. The production path reconstructs
+one sealed finalized turn, verifies its sealed A1/A2/B1 identity, converges existing
+C1-5 before existing B2, canonically rereads both artifacts, and publishes one
+immutable content-free completion marker under a nonblocking cross-process per-record
+fence. The normal I1-GB finalizer uses the same authority.
+
+This section supersedes earlier I1-GC pending statements in this file. I1-GD, I1-GE,
+O1 discovery/scanning/scheduling, and O2 supervision remain incomplete.
