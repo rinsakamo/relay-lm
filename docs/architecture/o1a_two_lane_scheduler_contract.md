@@ -24,22 +24,20 @@ relaylm_related_authority:
   - o0_local_one_job_runner.md
   - o1b_sealed_i1g_replay_lane.md
   - o1c_eligible_b2_queue_lane.md
+  - o1d1_production_scheduler_round.md
   - i1g_pre_enqueue_durable_finalization_contract.md
-  - phase6b2_relayslp_atomic_durable_enqueue.md
-  - phase6b3_relayslp_queue_state_helpers.md
-  - phase6c1_durable_protected_source_persistence.md
-  - phase6c2_one_queued_primary_worker_integration.md
+  - wave3_cross_slice_convergence_audit.md
   - post_i3_evaluation_work_roadmap.md
   - pipeline_implementation_plan.md
   - relaymem_slp_current_target.md
 ---
 # O1A: Bounded Two-Lane Work-Source Scheduling and Idle-State Contract
 
-Last reviewed: 2026-06-26 JST
+Last reviewed: 2026-06-27 JST
 
 ## 1. Status
 
-**Contract and pure deterministic aggregation model complete; production round coordination and recurring scheduler behavior unimplemented.** O1B replay adapter and O1C queue adapter are complete.
+**Contract and pure deterministic aggregation model complete.** O1B replay adapter, O1C queue adapter, and O1D1 one production round are complete. Recurring scheduler behavior, fairness/retry-time/backoff/jitter/pacing, stale recovery, graceful shutdown, supervision, and always-on operation remain unimplemented.
 
 O1A defines one bounded scheduler round across two distinct work sources:
 
@@ -48,21 +46,21 @@ O1A defines one bounded scheduler round across two distinct work sources:
 
 O1A does not scan either root, select a production record, invoke I1-GC, invoke C2, poll, sleep, compute backoff, recover stale claims, supervise a process, or mutate a filesystem. The pure module `relaylm/relaymem_slp_scheduler_contract.py` validates already-bounded lane outcomes and derives only a scheduler result, a `stop | run_next_round | idle` disposition, and a content-free projection.
 
-O1B and O1C are complete as bounded production lane adapters. The remaining production phases are frozen as:
+O1D1 is now the production wiring for exactly one such round. It accepts the exact scheduler gates, invokes O1B then O1C at most once each, aggregates through O1A, validates content-free projection, and returns without sleep. O1A or O1D1 completion must not be described as recurring automatic queue processing, a production polling loop, supervision, or always-on operation.
+
+The remaining phases are:
 
 ```text
-O1D1  accept exact scheduler gates and execute one replay-before-queue production round
 O1D2  deterministic ordering policy, fairness/starvation prevention, retry-time,
       bounded backoff/jitter, and saturation pacing
 O1E   stale-claim recovery orchestration, cancellation checkpoints, graceful shutdown
 O1F   corruption, concurrency, saturation, restart, leakage, operational validation
+O2/O3 supervised and always-on local operation
 ```
 
-O1D1 is one caller-invoked round and returns without sleep. O1A or O1D1 completion must not be described as recurring automatic queue processing, a production polling loop, supervision, or always-on operation.
+## 2. Purpose and path
 
-## 2. Purpose and target path
-
-O0 provides one operator invocation that discovers and processes at most one eligible queue record. I1-GC is designed as one caller-selected sealed-record replay that converges C1-5 and B2 and writes the I1-G completion marker. Neither boundary owns automatic work-source scheduling.
+O0 provides one operator invocation that discovers and processes at most one eligible queue record. I1-GC provides one caller-selected sealed-record replay that converges C1-5 and B2 and writes the I1-G completion marker. Neither boundary owns automatic work-source scheduling.
 
 ```text
 one bounded scheduler round
@@ -74,12 +72,12 @@ one bounded scheduler round
        -> O1C bounded discovery
        -> O0-compatible canonical reread and scope resolution
        -> existing C2 one queued-record execution
-  -> aggregate bounded content-free outcomes
+  -> aggregate bounded content-free outcomes through O1A
   -> derive stop / run_next_round / idle
   -> return without sleeping
 ```
 
-The scheduler coordinates opportunities. It does not absorb either underlying state machine. O1D1 owns the production wiring for exactly one such round; O1D2 and O1E own the later policy and controls required to start or stop subsequent rounds.
+The scheduler coordinates opportunities. It does not absorb either underlying state machine. O1D2 and O1E own the later policy and controls required to start, delay, cancel, or stop subsequent rounds.
 
 ## 3. Authority map
 
@@ -102,42 +100,15 @@ C1-2 owns one claimed worker execution
 O1 owns only bounded scheduling between work sources
 ```
 
-O1 owns only:
+O1 owns only server-owned scheduler enablement, fixed v0 lane order, one-opportunity-per-lane round budget, lane invocation eligibility, lane-local bounded outcome aggregation, `stop | run_next_round | idle` disposition, and content-free scheduler projection.
 
-```text
-server-owned scheduler enablement
-fixed v0 lane order
-one-opportunity-per-lane round budget
-lane invocation eligibility
-lane-local bounded outcome aggregation
-stop / run_next_round / idle disposition
-content-free scheduler projection
-```
-
-O1 does not own:
-
-```text
-I1-G schema, seal, replay, completion, isolation, retention, cleanup
-C1-5 protected-source persistence, identity, rehydration, cleanup
-B2 publication or duplicate/collision semantics
-B3 claim, lease, retry release, stale recovery, terminal transition
-C2 exact request and one-job execution coordination
-C1-2 worker execution
-M3a-M3h memory formation or lifecycle
-queue or finalization repair
-service process lifecycle
-browser or SOUL Lab authority
-```
-
-No scheduler status replaces an I1-G, B3, C2, worker, or Primary MEM status.
+O1 does not own I1-G schema/seal/replay/completion/isolation/retention/cleanup, C1-5 protected-source persistence, B2 publication, B3 claim/lease/retry/stale/terminal lifecycle, C2 exact request coordination, C1-2 worker execution, M3a-M3h memory formation or lifecycle, queue/finalization repair, service process lifecycle, browser authority, or SOUL Lab authority. No scheduler status replaces an I1-G, B3, C2, worker, or Primary MEM status.
 
 ## 4. Two independent lane state machines
 
 O1 uses two explicit adapters. It does not introduce a generic plugin framework, generic job schema, shared durable state enum, or common storage format. Only the scheduler-level bounded result shape, one-round ordering, work-unit counters, disposition, and content-free projection are shared.
 
-### 4.1 Replay lane
-
-O1B eligibility:
+Replay lane eligibility and delegation remain O1B/I1-GC authority:
 
 ```text
 valid canonical I1-G record
@@ -145,72 +116,21 @@ state = sealed
 completion absent
 isolation absent
 securely replayable now
+  -> one caller-selected locator -> I1-GC
 ```
 
-Delegation:
+Forbidden replay-lane effects include B3 claim, C2 invocation, worker execution, M3 mutation, retry-time modification, and queue-record repair.
 
-```text
-one caller-selected locator -> I1-GC
-```
-
-Permitted effects are owned by I1-GC and existing dependencies:
-
-```text
-C1-5 protected source absent -> canonical persistence
-C1-5 exact duplicate -> convergence
-B2 queue absent -> canonical enqueue
-B2 exact duplicate -> convergence
-exact downstream reread and correlation verification
-I1-G completion marker commit and reread
-```
-
-Forbidden replay-lane effects:
-
-```text
-B3 claim
-C2 invocation
-worker execution
-M3 mutation
-retry-time modification
-queue-record repair
-```
-
-### 4.2 Queue lane
-
-O1C eligibility:
+Queue lane eligibility and delegation remain O1C/C2 authority:
 
 ```text
 valid canonical B2/B3 queue record
 state = queued
 retry_not_before absent or due
+  -> O0-compatible bounded helper -> existing C2
 ```
 
-Delegation:
-
-```text
-O0-compatible bounded helper -> existing C2
-```
-
-Permitted effects are owned by B3/C1-5/C2/C1-2:
-
-```text
-B3 claim
-C1-5 rehydration
-C1-2 worker execution
-retry release or terminal transition
-terminal-only protected-source cleanup
-```
-
-Forbidden queue-lane effects:
-
-```text
-I1-G record mutation
-I1-G completion publication
-sealed-record reconstruction
-use of replay-private output as queue authority
-```
-
-An I1-G record is never treated as a queue record.
+Forbidden queue-lane effects include I1-G record mutation, I1-G completion publication, sealed-record reconstruction, and use of replay-private output as queue authority. An I1-G record is never treated as a queue record.
 
 ## 5. Canonical one-round model
 
@@ -237,7 +157,7 @@ total delegated work units       <= 2
 
 A lane must not loop over multiple candidates. A round must not recurse, rescan in a loop, retry internally, sleep, or begin another round.
 
-### 5.1 Same-round replay-to-queue rule
+## 6. Same-round replay-to-queue rule
 
 A replay opportunity may converge a new canonical B2 record. The later queue opportunity may independently discover that record in the same round.
 
@@ -262,123 +182,9 @@ special priority for a queue record created by replay
 
 The newly converged record may be selected, but O1 does not guarantee or privilege it.
 
-## 6. Explicit lane adapter contracts
+## 7. Scheduler gates and accepted configuration
 
-The target interfaces are `ReplayLaneAdapter` and `QueueLaneAdapter`, not a generic plugin system. Each invocation is bounded to:
-
-```text
-probe / discover at most one
-  -> canonical reread
-  -> delegate at most one
-  -> return one bounded lane result
-```
-
-O1A defines the result contract. O1B implements the production replay adapter and O1C implements the production queue adapter.
-
-Schema:
-
-```text
-relaylm.local_scheduler_lane_result.v0
-```
-
-Internal fields:
-
-```text
-schema_version
-lane_kind
-status
-enabled
-attempted
-candidate_observed
-candidate_selected
-canonical_reread_performed
-delegation_attempted
-delegation_completed
-mutation_may_have_occurred
-no_immediate_work
-future_work_hint_present
-contention_observed
-retryable
-unsafe
-terminal_for_candidate
-bounded_reason_ids
-private_delegate_result
-```
-
-`private_delegate_result` is excluded from equality, `repr`, and public projection. The result exposes no locator, queue identity, path, source, claim, or exact timestamp.
-
-Replay adapters must distinguish at least: no sealed candidate, selected candidate, changed candidate, lock busy, not replayable, already complete, delegated, completed, isolated/corrupt, and ambiguous/failed result.
-
-Queue adapters must distinguish at least: no queued candidate, future retry only, busy, selected candidate, changed candidate, dry-run ready, C2 invoked, claim conflict, retry released, terminal, cleanup required, and unsafe queue state.
-
-O1B discovers, classifies, canonically rereads, and delegates once to I1-GC but cannot implement replay convergence. O1C discovers, canonically rereads, resolves scope, and constructs the existing exact C2 request, but it cannot implement B3 transitions or worker execution.
-
-## 7. Bounded status vocabulary
-
-Replay lane:
-
-```text
-dependency_unavailable
-no_eligible_work
-busy
-candidate_changed
-delegated
-completed
-already_complete
-not_replayable
-isolated
-unsafe_state
-failed
-```
-
-Queue lane:
-
-```text
-no_eligible_work
-future_retry_only
-busy
-candidate_changed
-dry_run_ready
-delegated
-executed
-retry_released
-terminal
-cleanup_required
-unsafe_state
-failed
-```
-
-Scheduler:
-
-```text
-disabled
-invalid_input
-invalid_configuration
-round_completed
-partial_progress
-idle
-blocked
-unsafe_state
-unexpected_failure
-```
-
-The scheduler preserves lane meaning and aggregates only scheduler-relevant properties.
-
-| Lane observation | Scheduler may derive | Scheduler must not claim |
-|---|---|---|
-| replay `completed` | bounded replay work completed | worker completed or MEM formed |
-| queue `terminal` | queue delegation completed with terminal candidate result | semantic quality or MEM correctness |
-| `retry_released` | bounded queue work completed and later work may remain | exact retry time or retry policy |
-| `candidate_changed` | immediate next round may be useful | corruption or success |
-| `busy` | later retry may be useful | no work exists |
-| `no_eligible_work` | no immediate work observed in this attempt | root permanently empty |
-| `isolated` / `unsafe_state` | lane-local unsafe outcome | other lane must roll back |
-
-Unknown status values fail closed before projection.
-
-## 8. Scheduler gates and target-only configuration
-
-O1 is default-off. O1A records target names only and does not add them to `RelayLMConfig`, `docs/config_schema.md`, `config.example.yaml`, or CLI parsing. O1D1 is the phase that accepts these exact names into the production configuration surface and wires them to one production round.
+O1 is default-off. O1D1 accepts exactly these names into the production configuration surface and wires them to one production round:
 
 ```yaml
 relaymem_local_scheduler_enabled: false
@@ -400,150 +206,7 @@ Scheduler gates never elevate I1-GC, O0, C2, B3, or durable-finalization gates. 
 
 The pure `SchedulerGates` type uses exact booleans and rejects integer/string coercion.
 
-## 9. Scheduler state model
-
-These states describe orchestration only:
-
-```text
-disabled
-invalid_configuration
-ready
-round_running
-round_completed
-idle
-blocked
-unsafe
-stop_required
-```
-
-```text
-ready
-  -> round_running
-       -> replay opportunity
-       -> queue opportunity
-  -> round_completed
-       -> run_next_round
-       -> idle
-       -> stop_required
-```
-
-| State | O1 mutation | Typical disposition | Retryability |
-|---|---|---|---|
-| `disabled` | none | `stop` | no |
-| `invalid_configuration` | none | `stop` | after correction |
-| `ready` | none | external caller may begin one round | yes |
-| `round_running` | only delegated lower-authority work | pending | lane-defined |
-| `round_completed` | none after aggregation | `run_next_round` or `idle` | yes |
-| `idle` | none | `idle` | later |
-| `blocked` | none | scheduler-level dependency failure uses `stop` | cause-defined |
-| `unsafe` | no scheduler repair | lane-local may aggregate; scheduler-level stops | fail closed |
-| `stop_required` | none | `stop` | no until corrected |
-
-Forbidden conflation:
-
-```text
-scheduler idle          != queue permanently empty
-scheduler completed     != B3 terminal
-replay completed        != worker completed
-queue terminal          != Primary MEM formed
-no eligible work        != healthy forever
-lane busy               != no work
-```
-
-## 10. Pure disposition contract
-
-### `stop`
-
-Used for scheduler disabled, invalid gates, enabled scheduler with no lane, unsupported contract version, required capability unavailable, unsafe shared configuration, fatal scheduler state, or a future graceful-shutdown request. O1A does not implement shutdown signaling.
-
-### `run_next_round`
-
-Recommended when one or both delegations completed, a mutation may have occurred, a candidate changed during canonical reread, or bounded progress suggests more immediate work. O1A does not choose when the next round starts. O1D1 returns this recommendation to its caller but does not act on it.
-
-### `idle`
-
-Normal later-retry result when both lanes report no immediate eligible work, only future retry work exists, a root is transiently busy, or a bounded lane-local retryable failure needs a later attempt. `idle` is not an error and does not imply permanent emptiness.
-
-O1A never sleeps, registers timers, watches a filesystem, busy-loops, calculates delays, computes minimum retry timestamps, applies exponential backoff, or adds jitter. O1D1 must preserve the same one-round return boundary.
-
-A future queue adapter may retain a runtime-private typed earliest `retry_not_before` hint. The exact timestamp is not identity, is not projected, does not make a record eligible, and is not converted to a delay by O1A or O1D1. Replay does not invent a retry timestamp. Public output exposes only `future_work_hint_present`, `idle_recommended`, and `immediate_next_round_recommended`.
-
-## 11. Lane-local failure isolation
-
-A bounded lane-local failure does not automatically suppress the unrelated lane or roll back completed work:
-
-```text
-replay busy                -> queue may run
-replay no work             -> queue may run
-replay isolated/corrupt    -> queue may run when shared configuration is safe
-queue busy                 -> completed replay remains valid
-queue unsafe record        -> queue performs no mutation; replay is not rolled back
-queue claim conflict       -> replay remains valid
-```
-
-Round-fatal scheduler-level failures include invalid request schema, invalid gates, unsupported scheduler schema, unsafe shared root/config relation, missing required adapter capability, projection invariant failure, unknown lane status or type, and an adapter exception whose process integrity is unknown.
-
-Isolatable failures include known nonblocking lock contention, candidate changes, canonical no-work/future-retry results, bounded I1-GC result failures, bounded C2/B3 claim conflicts or retry releases, and candidate-local corruption when root integrity remains established.
-
-Raw exception text is never projected. Catch-all continuation is forbidden. An adapter may continue only after an exception classifier proves the failure is lane-local.
-
-Cancellation before or between lanes is not implemented. O1E must preserve any completed replay result and prevent queue start when a shutdown checkpoint requires stop.
-
-## 12. O0 reuse strategy
-
-O1 does not launch `relaylm-worker` as a subprocess and does not parse CLI stdout as a production result. O1C must not reimplement B3 claim, change C2 request semantics, accept browser-owned identity/roots, or copy the CLI process-exit model into a scheduler loop.
-
-Future safe reuse target:
-
-```text
-extract from O0 into a narrow production helper:
-  one bounded queue discovery
-  deterministic candidate selection
-  canonical reread
-  character/store scope resolution
-  exact C2 request construction
-```
-
-O1A performs no refactor.
-
-```text
-O0:
-  one operator invocation
-  at most one queue job
-  compact projection and process exit
-
-O1C:
-  one queue-lane opportunity inside one scheduler round
-  same B3/C2 authority
-  bounded lane result returned to scheduler
-```
-
-O0 CLI and smoke compatibility must remain intact after future O1C extraction.
-
-## 13. I1-GC dependency strategy
-
-O1B is the caller of I1-GC and is not part of I1-GC.
-
-```text
-I1-GC:
-  accepts one caller-selected locator
-  performs no scan or polling
-  performs no worker execution
-  owns exact replay, downstream convergence, and completion marker
-
-O1B:
-  performs bounded sealed-record discovery
-  classifies secure eligibility
-  deterministically selects one candidate under its current policy
-  performs canonical reread
-  delegates to I1-GC once
-```
-
-O1D2 may later refine ordering and fairness across eligible work, but it does not change I1-GC semantics or authorize O1D1 to pass replay-private output into the queue lane.
-
-O1A/O1B never decide completion independently and never call C1-5 or B2 directly. At O1A completion I1-GC is still an independently developed dependency. This contract references only its target one-record interface and adds no production stub or fake success.
-
-## 14. Internal result and public projection
+## 8. Internal result and public projection
 
 Internal schema:
 
@@ -551,59 +214,13 @@ Internal schema:
 relaylm.local_scheduler_round_result.v0
 ```
 
-```text
-schema_version
-status
-disposition
-replay_lane          private nested LaneOutcome
-queue_lane           private nested LaneOutcome
-work_units_attempted
-work_units_completed
-idle_recommended
-immediate_next_round_recommended
-future_work_hint_present
-retryable
-unsafe
-bounded_reason_ids
-```
-
-Nested lane outcomes are `repr=False`; nested delegate results are also `repr=False`.
-
 Public/log schema:
 
 ```text
 relaylm.local_scheduler_round_projection.v0
 ```
 
-Allowed fields:
-
-```text
-schema_version
-status
-disposition
-replay_lane_enabled
-replay_lane_attempted
-replay_lane_status
-replay_candidate_selected
-replay_delegated
-replay_completed
-queue_lane_enabled
-queue_lane_attempted
-queue_lane_status
-queue_candidate_selected
-queue_delegated
-queue_completed
-work_units_attempted
-work_units_completed
-idle_recommended
-immediate_next_round_recommended
-future_work_hint_present
-retryable
-unsafe
-bounded_reason_ids
-```
-
-Reason IDs are unique lowercase ASCII identifiers, bounded to eight per lane and sixteen per round.
+`private_delegate_result` is excluded from equality, `repr`, and public projection. Nested lane outcomes are `repr=False`; nested delegate results are also `repr=False`.
 
 Forbidden projection data:
 
@@ -626,7 +243,7 @@ nested I1-GC result
 nested C2 result
 ```
 
-## 15. Deterministic invariants
+## 9. Deterministic invariants
 
 1. One round delegates to I1-GC at most once.
 2. One round delegates to C2 at most once.
@@ -654,77 +271,27 @@ nested C2 result
 24. Identical valid input yields an identical projection.
 25. O1D1 invokes each enabled lane at most once and always returns without sleep or recursion.
 
-## 16. Fault and race matrix
+## 10. Pure disposition contract
 
-### Scheduler-level
+`stop` is used for scheduler disabled, invalid gates, enabled scheduler with no lane, unsupported contract version, required capability unavailable, unsafe shared configuration, fatal scheduler state, or a future graceful-shutdown request. O1A does not implement shutdown signaling.
 
-| Event | Required behavior |
-|---|---|
-| invalid gate combination | `invalid_configuration`, `stop`, no lane |
-| both lanes disabled while enabled | `invalid_configuration`, `stop`, no lane |
-| missing required capability | `blocked`, `stop`, no lane |
-| safely lane-local adapter exception | bounded `failed`; unrelated lane may run |
-| process-integrity-unknown exception | `unexpected_failure`; no further lane |
-| projection invariant failure | fail closed; emit no leaking projection |
-| cancelled before first lane | future O1E: `stop`, no lane |
-| cancelled between lanes | future O1E: preserve replay, skip queue, `stop` |
+`run_next_round` is recommended when one or both delegations completed, a mutation may have occurred, a candidate changed during canonical reread, or bounded progress suggests more immediate work. O1A does not choose when the next round starts. O1D1 returns this recommendation to its caller but does not act on it.
 
-### Replay lane
+`idle` is the normal later-retry result when both lanes report no immediate eligible work, only future retry work exists, a root is transiently busy, or a bounded lane-local retryable failure needs a later attempt. `idle` is not an error and does not imply permanent emptiness.
 
-| Event | Owning authority | Outcome / continuation |
-|---|---|---|
-| no sealed record | O1B | `no_eligible_work`; queue may run |
-| incomplete only | O1B/I1-G reader | `not_replayable` or no work; queue may run |
-| completed only | O1B/I1-G reader | `already_complete` or no work; queue may run |
-| replay lock busy | I1-GC | `busy`; queue may run |
-| candidate replaced | O1B reread | `candidate_changed`; queue may run |
-| becomes complete | I1-GC/reread | `already_complete`; queue may run |
-| exact duplicate | I1-GC/C1-5/B2 | `completed`; queue may run |
-| completion success | I1-GC | `completed`; queue may run |
-| invariant violation | I1-GC | `unsafe_state`; queue only if shared integrity safe |
-| isolated/corrupt | I1-G store/I1-GC | `isolated`; queue only if candidate-local |
-| ambiguous replay | I1-GC | `failed` after reread; no invented success |
+O1A and O1D1 never sleep, register timers, watch a filesystem, busy-loop, calculate delays, compute minimum retry timestamps, apply exponential backoff, or add jitter. A future queue adapter may retain a runtime-private typed earliest `retry_not_before` hint, but the exact timestamp is not projected or converted to delay before O1D2.
 
-### Queue lane
+## 11. Fault and race matrix
 
-| Event | Owning authority | Outcome |
-|---|---|---|
-| no queue record | O1C | `no_eligible_work` |
-| future retry only | O1C | `future_retry_only`; private hint optional |
-| advisory lock busy | O1C/O0 helper | `busy` |
-| candidate replaced | O1C reread | `candidate_changed` |
-| claimed elsewhere | B3/C2 | changed/conflict bounded result |
-| C2 dry-run ready | C2 | `dry_run_ready` |
-| claim conflict | B3/C2 | bounded retryable result |
-| retry release | B3/C2 | `retry_released` |
-| terminal success/failure | B3/C2 | `terminal` |
-| cleanup incomplete | C1-5/C2 | `cleanup_required` |
-| unsafe queue record | O1C/B3 reader | `unsafe_state`; no mutation |
+Lane-local failures do not automatically suppress the unrelated lane or roll back completed work. A replay busy/no-work/candidate-local isolated result may still allow the queue lane. Queue busy or failure never rolls back completed replay work.
 
-### Cross-lane/concurrent actors
+Round-fatal scheduler-level failures include invalid request schema, invalid gates, unsupported scheduler schema, unsafe shared root/config relation, missing required adapter capability, projection invariant failure, unknown lane status or type, and an adapter exception whose process integrity is unknown.
 
-| Race | Required behavior |
-|---|---|
-| replay creates B2 before queue discovery | independent canonical queue discovery; no direct handoff |
-| replay busy while queue work exists | queue still receives one opportunity |
-| replay corrupt while queue work exists | queue may run only if corruption is candidate-local |
-| queue busy while replay succeeds | replay remains committed; later-retry disposition |
-| both no work | `idle` |
-| both have work | replay then queue; at most two delegations |
-| both fail independently | preserve both bounded results; no invented rollback/success |
-| concurrent scheduler rounds | rely on I1-GC lock, queue lock, B3 CAS, C2 validation |
-| O0 races O1 queue lane | existing queue lock/reread/B3 CAS decides |
-| original finalizer races replay | I1-GC duplicate convergence/per-record lock decides |
+Cancellation before or between lanes is not implemented. O1E must preserve any completed replay result and prevent queue start when a shutdown checkpoint requires stop.
 
-O1 adds no global correctness lock.
+O1 adds no global correctness lock. Multiple processes may begin rounds concurrently; safety remains delegated to the I1-GC per-record lock, queue discovery advisory lock, B3 claim CAS, and C2 exact current-claim validation. A service-level single-instance policy belongs to O2.
 
-## 17. Concurrency model
-
-O1 v0 is single-threaded and sequential: the replay adapter returns before the queue adapter starts. Parallel lanes, scheduler threads, worker pools, per-character concurrency, distributed scheduling, leader election, and cross-host coordination are not implemented.
-
-Multiple processes may begin rounds concurrently. Safety remains delegated to the I1-GC per-record lock, queue discovery advisory lock, B3 claim CAS, and C2 exact current-claim validation. A service-level single-instance policy belongs to O2.
-
-## 18. Pure deterministic model and smoke
+## 12. Pure deterministic model and smoke
 
 `relaylm/relaymem_slp_scheduler_contract.py` imports only standard-library dataclass/type/regex support. It has no filesystem, clock, sleep, network, queue, I1-GC, C2, config, or CLI integration. It validates gates, explicit lane order, work-unit bounds, status/flag consistency, reason bounds, and deterministic projection.
 
@@ -734,11 +301,9 @@ Dedicated smoke:
 PYTHONPATH=. python scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py
 ```
 
-It validates the required twenty cases: fixed order, one delegation per lane, total two work units, all work/no-work combinations, idle/future/busy handling, lane failure isolation, disabled/invalid gates, independent queue input, private-result and leakage canaries, bounded reasons, unknown status rejection, strict booleans, and deterministic output.
+The model does not by itself prove production round coordination. O1D1 supplies that proof for one caller-invoked round; O1F must still supply operational validation. O0, O1B, O1C, C2, B2, B3, I1-G, compile, documentation-link, and current-boundary checks remain regressions.
 
-The model does not prove production round coordination. O1D1 and O1F must supply that proof. O0, O1B, O1C, C2, B2, B3, I1-G, compile, documentation-link, and current-boundary checks remain regressions.
-
-## 19. O1B-O1F handoff
+## 13. O1B-O1F handoff
 
 ```text
 O1A
@@ -782,9 +347,9 @@ O1F
   restart, leakage, operational regression
 ```
 
-O1A does not preselect O1D2 delay/fairness values or O1E shutdown behavior. O1D1 must use the O1A contract unchanged rather than introducing a second scheduler result model.
+O1A does not preselect O1D2 delay/fairness values or O1E shutdown behavior. O1D1 uses the O1A contract unchanged rather than introducing a second scheduler result model.
 
-## 20. Explicit non-goals
+## 14. Explicit non-goals
 
 ```text
 production polling loop or automatic repeated-round launcher
@@ -795,14 +360,9 @@ queue directory scan or B2 candidate implementation inside O1A
 C2 execution semantics or B3 transition ownership
 stale-claim recovery
 O0 behavior changes
-accepted config.py config-schema or config-example changes before O1D1
+new accepted scheduler config beyond the five O1D1 fields
 CLI daemon service worker pool health endpoint metrics
 systemd Windows service Docker supervision
 SOUL Lab control or browser scheduling
 fairness priority quotas distributed coordination leader election before O1D2/O2
 ```
-
-<!-- O1B_LANDED_HANDOFF -->
-## O1B landed handoff
-
-`relaylm/relaymem_slp_scheduler_replay_lane.py` now performs one bounded replay-lane opportunity and returns the existing `LaneOutcome`. A replay `busy` may be learned only after I1-GC returns from a completed delegation; a completed dry-run `delegated` result is an idle disposition and does not force another round. The pure O1A module still performs no filesystem scan or lane invocation.
