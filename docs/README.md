@@ -20,7 +20,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 
 ## Start here
 
-- [Current project status](PROJECT_STATUS.md) — current implementation boundary through I1-GD, I-4C1, O0, O1A, O1B, O1C, UI-B0, and the local E1 result.
+- [Current project status](PROJECT_STATUS.md) — current implementation boundary through I1-GD, I-4C2, O0, O1A, O1B, O1C, UI-B0, and the local E1 result.
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, and AI reading rules.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed implementation status and dependency-first sequencing.
@@ -45,6 +45,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Phase I-4A Primary MEM Forget / Hide contract](architecture/phase_i4_primary_mem_forget_hide_contract.md)
 - [Phase I-4B Primary Current State and Shared Mutation Fence](architecture/phase_i4b_primary_current_state_shared_fence.md)
 - [Phase I-4C1 Primary Forget Hidden-Successor Commit](architecture/phase_i4c1_primary_forget_hidden_successor.md)
+- [Phase I-4C2 Primary Forget Recovery and Finalization](architecture/phase_i4c2_primary_forget_recovery_finalization.md)
 - [SOUL Lab UI-B0 real Home conversation](architecture/soul_lab_ui_b0_real_home_conversation.md)
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
 - [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md)
@@ -56,7 +57,7 @@ Phase 6 is complete through B3, C1-0 through C1-5, C2, and the operator-invoked 
 
 O1A is complete as the pure replay-before-queue round and idle contract. O1B is complete for one bounded sealed I1-G inventory, canonical selected-record reread, and at most one existing I1-GC delegation. O1C is complete for one bounded B2/B3 inventory, due/future classification, canonical reread, server-owned scope resolution, and at most one existing C2 delegation. O1D fairness/backoff, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented. No production scheduler loop or automatic continuous processing is complete.
 
-Phase I-2 observation, Phase I-3 Correct, and UI-B0 real Home conversation are complete. Phase I-4A defines the target Forget lifecycle. I-4B completes the read-only resolver/shared-fence/preflight-token-history boundary. Phase I-4C1 is complete for exact token/reason revalidation, immutable prepared evidence, deterministic hidden successor, M3e publication, and hidden/recovery-required resolution. I-4C2 recovery/tombstone, I-4D M2 exclusion, I-4E API/UI, and I-4F production validation remain incomplete.
+Phase I-2 observation, Phase I-3 Correct, and UI-B0 real Home conversation are complete. Phase I-4A defines the target Forget lifecycle. I-4B completes the read-only resolver/shared-fence/preflight-token-history boundary. Phase I-4C1 is complete for exact token/reason revalidation, immutable prepared evidence, deterministic hidden successor, and M3e publication. I-4C2 is complete for exact prepared resume, operation-scoped M3f/M3g convergence, response-loss replay, and tombstone finalization. I-4D M2/RelayCTX exclusion, I-4E API/UI, and I-4F production validation remain incomplete.
 
 The first E1 workstation result proves explicit trusted-scene formation through O0 and separate real Home recall. It does not prove direct Home-origin formation or automatic scheduling.
 

@@ -20,6 +20,7 @@ relaylm_related_authority:
   - phase_i4_primary_mem_forget_hide_contract.md
   - phase_i4b_primary_current_state_shared_fence.md
   - phase_i4c1_primary_forget_hidden_successor.md
+  - phase_i4c2_primary_forget_recovery_finalization.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - i1gd_durable_finalization_retention_cleanup.md
   - o1a_two_lane_scheduler_contract.md
@@ -30,7 +31,7 @@ Last reviewed: 2026-06-26 JST
 
 ## Purpose
 
-Phase I-3 Correct, UI-B0 real Home conversation, O0 local one-job execution, I1-GA through I1-GD, I-4B, I-4C1, O1A, O1B, and O1C are complete at their bounded boundaries. Phase I-4A remains the target Forget / Hide contract. I1-GE, I-4C2 through I-4F, and O1D through O1F remain incomplete.
+Phase I-3 Correct, UI-B0 real Home conversation, O0 local one-job execution, I1-GA through I1-GD, I-4B, I-4C1, I-4C2, O1A, O1B, and O1C are complete at their bounded boundaries. Phase I-4A remains the target Forget / Hide contract. I1-GE, I-4D through I-4F, and O1D through O1F remain incomplete.
 
 This roadmap separates four authorities:
 
@@ -77,7 +78,8 @@ Complete:
 - I1-GC caller-selected one-record replay, exact C1-5/B2 convergence, duplicate suppression, and immutable completion marker;
 - I1-GD bounded retention and isolation cleanup — complete;
 - Phase I-4B: Current-state resolver and shared mutation fence — complete;
-- Phase I-4C1: Hidden-successor commit — complete.
+- Phase I-4C1: Hidden-successor commit — complete;
+- Phase I-4C2: Prepared recovery and tombstone finalization — complete.
 
 Defined target:
 
@@ -86,7 +88,7 @@ Defined target:
 Unimplemented:
 
 - I1-GE full crash validation remains unimplemented;
-- I-4C2 through I-4F recovery/tombstone, M2 exclusion, API/UI, and validation;
+- I-4D through I-4F M2/RelayCTX exclusion, API/UI, and validation;
 - O1D through O1F automatic bounded scheduling;
 - O2 supervised worker operation;
 - O3 always-on local operation.
@@ -156,12 +158,14 @@ I-4B implements `relaylm.mem.primary_current_state.v0`, stable logical/current p
 
 I-4C1 consumes the I-4B token and shared fence, publishes immutable prepared evidence, commits the deterministic hidden page through M3c/M3d/M3e, canonically rereads it, enforces one-winner concurrency, and resolves `hidden / recovery_required / false`.
 
-### Phase I-4C2 through I-4F: Remaining Forget work
+### Phase I-4C2: Recovery and finalization — complete
+
+I-4C2 resumes one exact prepared operation, continues the deterministic hidden successor, converges one operation through existing M3f/M3g authorities, canonically rereads page/control correlation, publishes one immutable tombstone, and supports exact response-loss replay. It deliberately leaves ordinary retrieval filtering to I-4D.
+
+### Phase I-4D through I-4F: Remaining Forget work
 
 ```text
-I-4C2  prepared resume, exact replay, forward-only recovery,
-        tombstone finalization, response-loss convergence
-I-4D   index/log convergence, M2/RelayCTX exclusion,
+I-4D   M2/RelayCTX lifecycle and prior-revision exclusion,
         historical used-memory lifecycle projection
 I-4E   loopback API and SOUL Lab confirmation/refusal/conflict/receipt UI
 I-4F   fresh-conversation exclusion, security, race, and crash-recovery smoke
@@ -304,12 +308,12 @@ I1-GB, I-4B, and O1A.
 
 ### Wave 1 — complete
 
-I1-GC, I1-GD, I-4C1, O1B, and O1C.
+I1-GC, I1-GD, I-4C1, I-4C2, O1B, and O1C.
 
 ### Wave 2 — current
 
 ```text
-I-4C2
+I-4D design and integration preparation
 || UI-B1A projection design
 || I1-GE crash validation preparation
 ```

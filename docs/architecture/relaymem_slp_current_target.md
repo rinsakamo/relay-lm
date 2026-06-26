@@ -29,6 +29,7 @@ relaylm_related_authority:
   - o1c_eligible_b2_queue_lane.md
   - phase_i4b_primary_current_state_shared_fence.md
   - phase_i4c1_primary_forget_hidden_successor.md
+  - phase_i4c2_primary_forget_recovery_finalization.md
   - relaymem_mvp_implementation_plan.md
   - pipeline_implementation_plan.md
   - ../PROJECT_STATUS.md
@@ -39,7 +40,7 @@ Last reviewed: 2026-06-26 JST
 
 ## Current implemented boundary
 
-RelayMEM currently provides bounded store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, gated RelayCTX injection, auditable Correct, canonical read-only Primary current-state resolution, and I-4C1 hidden-successor lifecycle commit ownership.
+RelayMEM currently provides bounded store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, gated RelayCTX injection, auditable Correct, canonical read-only Primary current-state resolution, I-4C1 hidden-successor lifecycle commit ownership, and bounded I-4C2 recovery/finalization.
 
 The Primary MEM persistence chain is implemented through M3a-M3h. The Phase 6 execution boundary is implemented through C1-5 and C2, with O0 as the explicit local caller:
 
@@ -130,7 +131,8 @@ O1A proposed scheduler field names are target-only. `relaylm/config.py`, `docs/c
 - I2 real SOUL Lab observation: complete;
 - Phase I-3 token-gated auditable Correct and corrected retrieval;
 - Phase I-4B canonical read-only current-state resolver and shared Correct/Forget mutation fence;
-- Phase I-4C1 immutable Forget prepare and deterministic hidden-successor M3e commit.
+- Phase I-4C1 immutable Forget prepare and deterministic hidden-successor M3e commit;
+- Phase I-4C2 exact prepared recovery, operation-scoped M3f/M3g convergence, tombstone finalization, and replay.
 
 Observation receipts cannot authorize repair or retrieval. They are secondary read-only evidence only.
 
@@ -155,6 +157,10 @@ I-4C1 revalidates the exact token/reason under the shared lock, publishes immuta
 
 It stops before M3f/M3g, tombstone finalization, exact applied replay, prepared resume, and ordinary M2 exclusion.
 
+### Phase I-4C2 recovery/finalization — complete
+
+I-4C2 resumes one exact durable prepare, reuses the shared mutation fence and deterministic I-4C1 successor, performs operation-scoped index-before-log convergence through existing M3f/M3g authorities, canonically verifies page/control correlation, publishes `relaylm.mem.forget_tombstone.v0`, and supports exact replay. The public governance resolver reaches `hidden / none / false`; the ordinary correction-only M2 projection remains unchanged until I-4D.
+
 ## Defined target: Phase I-4A Forget / Hide
 
 ```text
@@ -177,7 +183,7 @@ revision N+1 hidden
 
 The immutable hidden successor page is lifecycle authority. The tombstone is audit/recovery evidence. Correct and Forget share one current-state resolver and one per-memory mutation fence.
 
-Forget is not product-complete until I-4C2 through I-4F provide prepared recovery, tombstone finalization, ordinary retrieval exclusion, API/UI, and production validation.
+Forget is not product-complete until I-4D through I-4F provide ordinary retrieval exclusion, API/UI, and production validation.
 
 ## Current limitations
 
@@ -185,8 +191,7 @@ The current runtime still lacks:
 
 - I1-GE full crash validation;
 - O1D through O1F automatic scheduling, O2 supervision, and O3 always-on operation;
-- I-4C2 prepared resume, exact replay, forward recovery, response-loss convergence, and tombstone finalization;
-- I-4D hidden/prepared/recovery/corrupt M2 and RelayCTX exclusion;
+- I-4D hidden/prepared/recovery/corrupt and prior-revision M2/RelayCTX exclusion;
 - I-4E loopback mutation API and SOUL Lab Forget UI;
 - I-4F production crash/race/security/fresh-conversation validation;
 - trusted scene admission for direct Home-origin formation;
@@ -239,9 +244,10 @@ finalized ordinary turn
   -> audited correction and corrected retrieval      complete as I-3
   -> canonical read-only lifecycle resolution        complete as I-4B
   -> hidden-successor lifecycle commit                complete as I-4C1
+  -> prepared recovery and tombstone finalization       complete as I-4C2
 ```
 
-Phase I-4C1 adds durable hidden-lifecycle evidence, but no implemented ordinary M2/RelayCTX exclusion step exists until I-4D.
+Phase I-4C2 adds durable recovery/finalization evidence and governance convergence, but no implemented ordinary M2/RelayCTX exclusion step exists until I-4D.
 
 ## Target migration sequence
 
@@ -252,7 +258,7 @@ I1-GE full production crash validation                              unimplemente
 I-4A  lifecycle/persistence/concurrency/API/fault contract         defined target
 I-4B  current-state resolver/shared Correct/Forget fence           complete
 I-4C1 shared revision claim/prepared artifact/hidden successor     complete
-I-4C2 exact replay/forward recovery/tombstone                      unimplemented
+I-4C2 exact replay/forward recovery/tombstone                      complete
 I-4D  M3 convergence/M2 exclusion/historical projection           unimplemented
 I-4E  loopback API and SOUL Lab Forget UI                          unimplemented
 I-4F  crash/race/security/fresh-conversation validation            unimplemented
@@ -267,4 +273,4 @@ O1F   full operational validation                                  unimplemented
 
 ## Completion interpretation
 
-M3a-M3h, C1-0 through C1-5, C2, O0, I1-GC, I1-GD, O1B, O1C, I-1 recall, I-2 observation, I-3 Correct, I-4B, and I-4C1 are implemented. O1B and O1C are bounded lane adapters only; O1D through O1F, O2, and O3 remain incomplete. Forget is not product-complete until I-4C2 through I-4F provide recovery/tombstone, retrieval exclusion, API/UI, and production validation.
+M3a-M3h, C1-0 through C1-5, C2, O0, I1-GC, I1-GD, O1B, O1C, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, and I-4C2 are implemented. O1B and O1C are bounded lane adapters only; O1D through O1F, O2, and O3 remain incomplete. Forget is not product-complete until I-4D through I-4F provide retrieval exclusion, API/UI, and production validation.

@@ -53,6 +53,7 @@ Use [Documentation index](../README.md) for the complete active map and [Project
 - [Phase I-4A Primary MEM Forget / Hide Contract](phase_i4_primary_mem_forget_hide_contract.md)
 - [Phase I-4B Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md)
 - [Phase I-4C1 Primary Forget Hidden-Successor Commit](phase_i4c1_primary_forget_hidden_successor.md)
+- [Phase I-4C2 Primary Forget Recovery and Finalization](phase_i4c2_primary_forget_recovery_finalization.md)
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
@@ -64,7 +65,7 @@ Phase 6 is complete through C1-5 and C2. O0 is the default-off operator-invoked 
 
 I1-GD provides bounded retention and isolation cleanup while preserving sealed-pending replay evidence, using the same per-record fence as I1-GC plus the existing I1-GB root mutation lock, and leaving I1-GE full crash validation unimplemented. O1A remains the pure replay-before-queue round/idle contract. O1B is complete for one bounded sealed-record replay-lane opportunity, and O1C is complete for one bounded queue-lane opportunity. O1D through O1F remain production scheduling work; no scheduler loop, fairness policy, stale recovery, supervision, or always-on operation is complete.
 
-Phase I-4A defines lifecycle semantics. I-4B implements the read-only resolver/shared-fence boundary. I-4C1 implements hidden-successor commit ownership without M3f/M3g convergence, Forget tombstone, exact applied replay, M2 exclusion, API/UI, or full validation. Those remain I-4C2 through I-4F.
+Phase I-4A defines lifecycle semantics. I-4B implements the read-only resolver/shared-fence boundary. I-4C1 implements hidden-successor commit ownership. I-4C2 implements bounded prepared recovery, operation-scoped M3f/M3g convergence, exact replay, and tombstone finalization without changing ordinary M2/RelayCTX behavior. I-4D through I-4F remain retrieval exclusion, API/UI, and full validation work.
 
 ## Memory lifecycle
 
@@ -74,6 +75,7 @@ Phase I-4A defines lifecycle semantics. I-4B implements the read-only resolver/s
 - [Phase I-4A Primary MEM Forget / Hide Contract](phase_i4_primary_mem_forget_hide_contract.md)
 - [Phase I-4B Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md)
 - [Phase I-4C1 Primary Forget Hidden-Successor Commit](phase_i4c1_primary_forget_hidden_successor.md)
+- [Phase I-4C2 Primary Forget Recovery and Finalization](phase_i4c2_primary_forget_recovery_finalization.md)
 
 The completed observation/correction path does not make Forget product-complete. I-4D is the user-visible semantic commit because ordinary M2 and RelayCTX must exclude hidden, prepared, recovery-required, corrupt, and prior physical revisions.
 

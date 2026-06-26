@@ -23,6 +23,7 @@ relaylm_related_authority:
   - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
   - docs/architecture/i1gd_durable_finalization_retention_cleanup.md
   - docs/architecture/phase_i4c1_primary_forget_hidden_successor.md
+  - docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md
   - docs/architecture/o1a_two_lane_scheduler_contract.md
   - docs/architecture/o1c_eligible_b2_queue_lane.md
 ---
@@ -59,7 +60,8 @@ Direct Home-origin formation: not currently proven; trusted scene admission is m
 Phase I-4A Forget / Hide contract: defined target
 Phase I-4B resolver / shared fence / read-only preflight-token-history: complete
 Phase I-4C1 hidden-successor commit: complete
-Phase I-4C2 through I-4F recovery, exclusion, UI, and validation: unimplemented
+Phase I-4C2 prepared recovery / operation-scoped M3f-M3g / tombstone finalization: complete
+Phase I-4D through I-4F exclusion, UI, and validation: unimplemented
 I1-GA contract / fault model: complete
 I1-GB durable-finalization publication / pre-release admission: complete
 I1-GC one-record restart replay / exact C1-5+B2 convergence / completion marker: complete
@@ -167,13 +169,13 @@ Implemented:
 - I2 real SOUL Lab observation: complete;
 - I3 auditable Primary MEM Correct: complete;
 - I-4B canonical current-state resolution and shared Correct/Forget mutation fence;
-- I-4C1 immutable Forget prepared evidence and deterministic hidden-successor M3e commit.
+- I-4C1 immutable Forget prepared evidence and deterministic hidden-successor M3e commit;
+- I-4C2 exact prepared resume, operation-scoped M3f/M3g convergence, tombstone finalization, and exact replay.
 
-Phase I-4C1 establishes durable lifecycle commit ownership only. Forget is not product-complete until:
+Phase I-4C2 completes bounded one-operation recovery/finalization while preserving I-4D ownership of ordinary retrieval behavior. Forget is not product-complete until:
 
 ```text
-I-4C2 prepared resume / exact replay / forward recovery / tombstone
-  -> I-4D M3f/M3g convergence and M2/RelayCTX exclusion
+I-4D M2/RelayCTX lifecycle and prior-revision exclusion
   -> I-4E loopback API and SOUL Lab UI
   -> I-4F crash/race/security/fresh-conversation validation
 ```
@@ -211,13 +213,10 @@ The workstation evaluation exposed two quality gaps:
 ## Immediate dependency-first work
 
 ```text
-I-4C2 prepared recovery / tombstone
+I-4D M2/RelayCTX exclusion
 || I1-GE crash validation preparation
-
-then
-  I-4D M2 exclusion
-  O1D ordering / fairness / backoff
-  O1E stale recovery / shutdown
+|| O1D ordering / fairness / backoff
+|| O1E stale recovery / shutdown
 
 then
   I1-GE crash validation completion
@@ -228,7 +227,7 @@ then
 
 ## Safe defaults
 
-Current mutation, worker, durable-finalization, retention, and scheduler-related paths remain default-off or dry-run-first. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1A does not add current configuration fields. I-4C1 adds no accepted browser route and does not change ordinary M2 retrieval behavior.
+Current mutation, worker, durable-finalization, retention, and scheduler-related paths remain default-off or dry-run-first. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1A does not add current configuration fields. I-4C2 adds no accepted browser route and deliberately leaves ordinary M2/RelayCTX lifecycle filtering to I-4D.
 
 ## Not yet implemented
 
@@ -238,7 +237,7 @@ Current mutation, worker, durable-finalization, retention, and scheduler-related
 - strict evidence-grounded recall response generation;
 - I1-GE;
 - O1D through O1F, O2, and O3;
-- I-4C2 through I-4F;
+- I-4D through I-4F;
 - restore/unhide or physical purge;
 - I-5 through I-9 governance and RelaySOUL slices;
 - durable transcript inspection;

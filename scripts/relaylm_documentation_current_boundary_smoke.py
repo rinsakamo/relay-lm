@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1-I4C1, UI-B0, I1-G, O1A/O1B/O1C, and roadmap docs."""
+"""Validate current Phase 6, I1-I4C2, UI-B0, I1-G, O1A/O1B/O1C, and roadmap docs."""
 from __future__ import annotations
 
 import ast
@@ -72,6 +72,7 @@ CURRENT_DOCS = (
     "docs/architecture/post_i3_evaluation_work_roadmap.md",
     "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
     "docs/architecture/i1gd_durable_finalization_retention_cleanup.md",
+    "docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md",
     "docs/architecture/relaymem_mvp_implementation_plan.md",
     "docs/architecture/relaymem_slp_current_target.md",
     "docs/architecture/o0_local_one_job_runner.md",
@@ -91,6 +92,7 @@ character and namespace isolation: complete
 I2 real SOUL Lab observation: complete
 I3 auditable Primary MEM Correct: complete
 Phase I-4C1 hidden-successor commit: complete
+Phase I-4C2 prepared recovery / operation-scoped M3f-M3g / tombstone finalization: complete
 I1-GC one-record restart replay / exact C1-5+B2 convergence / completion marker: complete
 I1-GD retention / orphan reconciliation / isolation lifecycle / cleanup: complete
 I1-GE full production crash validation: unimplemented
@@ -111,6 +113,7 @@ Observation evidence is read-only
 ### I1-F / Phase I-3: auditable Primary MEM Correct — complete
 ### I1-F2 / Phase I-4A: Primary MEM Forget / Hide contract — defined target
 Phase I-4C1 hidden-successor commit: complete
+Phase I-4C2 recovery/finalization: complete
 exact read-only preflight/history/token
 I1-GC  one-record restart replay, exact convergence, completion    complete
 I1-GD  bounded retention, isolation, orphan cleanup               complete
@@ -130,6 +133,7 @@ These fields are not added to `relaylm/config.py`
     "docs/architecture/post_i3_evaluation_work_roadmap.md": """
 Phase I-4B: Current-state resolver and shared mutation fence — complete
 Phase I-4C1: Hidden-successor commit — complete
+Phase I-4C2: Prepared recovery and tombstone finalization — complete
 I1-GC caller-selected one-record replay
 I1-GD bounded retention and isolation cleanup — complete
 I1-GE full crash validation remains unimplemented
@@ -174,7 +178,7 @@ observation receipts
 M3i-f canonical current-state resolver/shared fence: complete as Phase I-4B
 M3i-g hidden-successor commit ownership: complete as Phase I-4C1
 I1-GC one-record replay and completion convergence is complete
-The next RelayMEM governance implementation slice is I-4C2
+The next RelayMEM governance implementation slice is I-4D
 No production hidden-state filtering exists yet because I-4D integration is not implemented
 O1B sealed replay-lane adapter: complete
 O1C queue-lane adapter: complete
@@ -189,7 +193,8 @@ I2 real SOUL Lab observation: complete
 Observation receipts cannot authorize repair or retrieval
 I1-GC caller-selected one-record replay
 Phase I-4C1 hidden-successor commit — complete
-Forget is not product-complete until I-4C2 through I-4F
+Phase I-4C2 recovery/finalization — complete
+Forget is not product-complete until I-4D through I-4F
 O1B and O1C bounded production discovery and delegation are complete
 O1D fairness/retry/backoff
 """,
@@ -202,6 +207,8 @@ I1-GA through I1-GD are complete
 O1B is complete
 O1C is complete
 Phase I-4C1 is complete
+Phase I-4C2 is complete
+phase_i4c2_primary_forget_recovery_finalization.md
 """,
     "docs/architecture/README.md": """
 phase_i2_real_soul_lab_observation.md
@@ -214,6 +221,8 @@ I1-GD provides bounded retention and isolation cleanup
 O1B is complete for one bounded sealed-record replay-lane opportunity
 O1C is complete for one bounded queue-lane opportunity
 Phase I-4C1 Primary Forget Hidden-Successor Commit
+Phase I-4C2 Primary Forget Recovery and Finalization
+I-4C2 implements bounded prepared recovery
 """,
     "docs/config_schema.md": """
 relaymem_slp_durable_finalization_retention_enabled
@@ -257,11 +266,11 @@ O1D ordering, fairness, retry-delay policy, backoff, or jitter
 """,
     "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md": """
 relaylm_status: target
-I-4C1 hidden-successor commit is implemented
+I-4C1 hidden-successor commit and bounded I-4C2 recovery/finalization are implemented
 Decision: Candidate A
 Forget tombstone
 relaylm.mem.primary_current_state.v0
-I-4C2 prepared resume/exact replay/tombstone finalization
+I-4C2 implements exact prepared resume
 restore
 unhide
 physical deletion
@@ -273,18 +282,25 @@ canonical Primary current-state resolver
 shared Correct/Forget mutation fence
 five-minute token validation
 bounded zero-item history behavior
-I-4C1 consumer boundary
+I-4C1 and I-4C2 consume the shared fence
 relaylm.mem.forget_prepared.v0
-I-4C2: prepared resume
-I-4D: M3f/M3g convergence
+I-4C2: complete for exact prepared resume
+I-4D: unimplemented ordinary M2/RelayCTX lifecycle exclusion
 """,
     "docs/architecture/phase_i4c1_primary_forget_hidden_successor.md": """
 Status: complete for the bounded I-4C1 commit boundary.
 relaylm.mem.forget_prepared.v0
 relaymem.primary_lifecycle_page.v0
 hidden / recovery_required / retrieval_eligible=false
-I-4C2 prepared resume
-M3f or M3g
+I-4C2 exact prepared resume
+operation-scoped M3f/M3g convergence
+""",
+    "docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md": """
+Status: complete for the bounded I-4C2 one-operation recovery/finalization boundary.
+relaylm.mem.forget_tombstone.v0
+retrieval_exclusion_claimed
+I-4D:
+ordinary M2 lifecycle eligibility enforcement
 """,
     "docs/architecture/o0_local_one_job_runner.md": """
 Shared O0/O1C production helper boundary
@@ -323,6 +339,9 @@ O1B/O1C production discovery and delegation
 O1C through O1F, O2, and O3 remain unimplemented
 O1B   sealed-record discovery/I1-GC delegation                    unimplemented
 O1C   B2 discovery/O0-compatible C2 delegation                    unimplemented
+Phase I-4C2 through I-4F recovery, exclusion, UI, and validation: unimplemented
+The next RelayMEM governance implementation slice is I-4C2
+Forget is not product-complete until I-4C2 through I-4F
 This section supersedes earlier
 supersedes earlier roadmap entries
 """)
