@@ -8,6 +8,10 @@ permissions:
   contents: write
   pull-requests: read
 
+concurrency:
+  group: o1b-bootstrap-${{ github.head_ref }}
+  cancel-in-progress: true
+
 jobs:
   apply:
     if: github.head_ref == 'phase-o1b-sealed-i1g-replay-lane'
