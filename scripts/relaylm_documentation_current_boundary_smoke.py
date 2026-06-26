@@ -25,6 +25,8 @@ CURRENT_DOCS = (
     "docs/architecture/README.md",
     "docs/architecture/pipeline_implementation_plan.md",
     "docs/architecture/post_i3_evaluation_work_roadmap.md",
+    "docs/architecture/relaymem_mvp_implementation_plan.md",
+    "docs/architecture/relaymem_slp_current_target.md",
     "docs/architecture/wave3_cross_slice_convergence_audit.md",
     "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
     "docs/architecture/i1gd_durable_finalization_retention_cleanup.md",
@@ -90,6 +92,18 @@ I1-GA through I1-GE
 I-4E, I-4F, O1D2, O1E, and O1F remain incomplete
 Wave 4 not open while W3-INT is unmerged
 """,
+    "docs/architecture/relaymem_mvp_implementation_plan.md": """
+I-4D retrieval exclusion/history projection: complete
+I-4E API/UI and I-4F validation: unimplemented
+O1D1 accepted gates and one production round: complete
+O1 overall remains in progress
+""",
+    "docs/architecture/relaymem_slp_current_target.md": """
+I1-GA through I1-GE are complete
+O1D1 accepts the five exact scheduler gates
+I-4D consumes the complete shared current-state authority before snippet construction
+Forget is not product-complete until I-4E
+""",
     "docs/architecture/wave3_cross_slice_convergence_audit.md": """
 Wave 3 source PR inventory
 I1-G overall complete
@@ -100,15 +114,30 @@ O1D2
 I-4E
 UI-B1A
 """,
+    "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md": """
+I1-GA through I1-GE are complete
+I1-G overall is complete only for sealed durable-finalization evidence
+I1-GE is complete as validation-only real process-exit/fresh-restart proof
+""",
     "docs/architecture/i1ge_durable_finalization_crash_validation.md": """
 I1-GE is complete as validation-only production evidence
 real child-process `os._exit` seams
 It does not mean B3 terminal success, C2 execution, worker execution, Primary MEM formation
 """,
+    "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md": """
+I-4B, I-4C1, I-4C2, and I-4D are implemented
+I-4E still owns loopback mutation API and SOUL Lab Forget UI
+I-4F still owns crash/race/security/fresh-conversation validation
+""",
     "docs/architecture/phase_i4d_primary_retrieval_exclusion.md": """
 A candidate survives only when M2 already selected it
 A hidden successor remains lifecycle authority; retrieval never falls back to a prior active revision.
 I-4E remains the loopback API and SOUL Lab mutation UI. I-4F remains the full production validation slice.
+""",
+    "docs/architecture/o1a_two_lane_scheduler_contract.md": """
+O1B replay adapter, O1C queue adapter, and O1D1 one production round are complete.
+O1D1 is now the production wiring for exactly one such round.
+O1D2 and O1E own the later policy and controls required to start, delay, cancel, or stop subsequent rounds.
 """,
     "docs/architecture/o1d1_production_scheduler_round.md": """
 O1D1 implements one accepted, server-configured, single-threaded production scheduler round.
@@ -132,11 +161,13 @@ Phase I-4D through I-4F exclusion, UI, and validation: unimplemented
 Phase I-4D retrieval exclusion: unimplemented
 I-4D ordinary M2/RelayCTX lifecycle exclusion: unimplemented
 No production hidden-state filtering exists yet because I-4D integration is not implemented
+I-4D M2/RelayCTX lifecycle exclusion, loopback mutation routes, and SOUL Lab Forget UI remain unimplemented
 O1D1 accepted gates and one production round: unimplemented
 O1D1 through O1F: unimplemented
 O1D1 remains unimplemented
 O1A target field names remain design-only until O1D1 accepts them
 O1D1 is the phase that will accept those exact scheduler gates
+accepted config.py config-schema or config-example changes before O1D1
 I1-GC through I1-GE remain planned
 I1-GC through I1-GE remain unimplemented
 O1B through O1F remain unimplemented
