@@ -1,0 +1,32 @@
+O1B/O1C merge validation: FAIL
+merge_code=1
+reconcile_code=1
+validation_code=1
+unresolved=none
+--- bounded log tail ---
+From https://github.com/rinsakamo/relay-lm
+ * branch            main       -> FETCH_HEAD
+Auto-merging docs/PROJECT_STATUS.md
+CONFLICT (content): Merge conflict in docs/PROJECT_STATUS.md
+Auto-merging docs/README.md
+Auto-merging docs/architecture/README.md
+Auto-merging docs/architecture/o1a_two_lane_scheduler_contract.md
+CONFLICT (content): Merge conflict in docs/architecture/o1a_two_lane_scheduler_contract.md
+Auto-merging docs/architecture/pipeline_implementation_plan.md
+CONFLICT (content): Merge conflict in docs/architecture/pipeline_implementation_plan.md
+Auto-merging docs/architecture/post_i3_evaluation_work_roadmap.md
+CONFLICT (content): Merge conflict in docs/architecture/post_i3_evaluation_work_roadmap.md
+Auto-merging docs/architecture/relaymem_mvp_implementation_plan.md
+CONFLICT (content): Merge conflict in docs/architecture/relaymem_mvp_implementation_plan.md
+Auto-merging docs/architecture/relaymem_slp_current_target.md
+CONFLICT (content): Merge conflict in docs/architecture/relaymem_slp_current_target.md
+Auto-merging scripts/relaylm_documentation_current_boundary_smoke.py
+CONFLICT (content): Merge conflict in scripts/relaylm_documentation_current_boundary_smoke.py
+Automatic merge failed; fix conflicts and then commit the result.
+Traceback (most recent call last):
+  File "/home/runner/work/relay-lm/relay-lm/scripts/_merge_o1b_o1c.py", line 287, in <module>
+    main()
+  File "/home/runner/work/relay-lm/relay-lm/scripts/_merge_o1b_o1c.py", line 281, in main
+    raise AssertionError(f"{path}: missing merged anchors {missing!r}")
+AssertionError: docs/architecture/o1a_two_lane_scheduler_contract.md: missing merged anchors ['O1C is complete as one bounded production queue-lane adapter']
+HEAD is now at a66ce78 chore: record bounded O1B O1C merge result
