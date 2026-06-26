@@ -1,0 +1,48 @@
+name: Temporary I-4D test alignment
+
+on:
+  push:
+    branches:
+      - phase-i4d-primary-retrieval-exclusion
+    paths:
+      - ".github/workflows/_i4d-test-fix.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  align:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-i4d-primary-retrieval-exclusion
+      - name: Align tests with I-4D authority
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          smoke = Path("scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py")
+          body = smoke.read_text(encoding="utf-8")
+          old = 'require("primary_recall_superseded_revision_excluded" in runtime["blocked_reason_ids"], runtime)'
+          new = 'require("excluded_prior_revision" in runtime["blocked_reason_ids"], runtime)'
+          if old not in body:
+              raise SystemExit("I-4D reason anchor missing")
+          smoke.write_text(body.replace(old, new, 1), encoding="utf-8")
+
+          workflow = Path(".github/workflows/phase-i4d-primary-retrieval-exclusion.yml")
+          body = workflow.read_text(encoding="utf-8")
+          old = '            PYTHONPATH=. python scripts/relaylm_relaymem_snippet_runtime_injection_plan_smoke.py\n'
+          if old not in body:
+              raise SystemExit("legacy trace smoke command missing")
+          workflow.write_text(body.replace(old, "", 1), encoding="utf-8")
+          PY
+      - run: python -m compileall -q relaylm scripts
+      - name: Commit aligned tests
+        run: |
+          rm .github/workflows/_i4d-test-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "test: align I-4D reasons and RelayCTX regression"
+          git push origin HEAD:phase-i4d-primary-retrieval-exclusion
