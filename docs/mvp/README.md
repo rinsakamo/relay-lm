@@ -24,6 +24,16 @@ docs/mvp/wave3/o1d1_completion_report.md
 
 Each implementation PR creates only its own report. It must not edit this central index, another slice's report, or shared current-state documents merely to mark completion. The wave convergence PR links the merged reports here after verifying the source PRs and merge commits.
 
+### Wave 3 merged completion reports
+
+W3-INT verified the source PR numbers, merge commits, final heads, changed-file inventories, and dedicated handoffs for these historical reports:
+
+- [I1-GE completion report](wave3/i1ge_completion_report.md) — source PR #411, merge `e2caa1bdb53468ca282e8f374ba8ceebf839c976`.
+- [I-4D completion report](wave3/i4d_completion_report.md) — source PR #414, merge `48e890f05f76196b73267559b079f4a05c441077`.
+- [O1D1 completion report](wave3/o1d1_completion_report.md) — source PR #412, merge `9b6349236f1a01f3cdccbe9e3c2c874ae1137475`.
+
+The cross-slice convergence record is [Wave 3 Cross-Slice Convergence Audit](../architecture/wave3_cross_slice_convergence_audit.md). W3-INT is complete only after that convergence PR merges.
+
 A completion report is evidence for one PR only. It is not authoritative for repository-wide current status, other slice completion, next-wave readiness, or release/evaluation readiness. Use [the template](IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md) and validate the report with:
 
 ```bash
