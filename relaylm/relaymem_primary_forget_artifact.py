@@ -217,6 +217,16 @@ def scan_forget_prepared(
                 corrupt = True
             else:
                 forget.append(value)
+        elif schema == "relaylm.mem.forget_tombstone.v0":
+            from .relaymem_primary_forget_finalization_artifact import (
+                validate_forget_tombstone,
+            )
+
+            if (
+                not path.name.endswith(".tombstone.json")
+                or not validate_forget_tombstone(value)
+            ):
+                corrupt = True
         elif schema == CORRECTION_PREPARED_SCHEMA:
             namespace = value.get("namespace")
             logical_id = value.get("memory_id")

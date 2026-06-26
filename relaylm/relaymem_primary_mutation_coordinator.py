@@ -28,6 +28,10 @@ from .relaymem_primary_forget_artifact import (
     FORGET_PREPARED_SCHEMA,
     validate_forget_prepared,
 )
+from .relaymem_primary_forget_finalization_artifact import (
+    FORGET_TOMBSTONE_SCHEMA,
+    validate_forget_tombstone,
+)
 
 _MAX_ARTIFACT_BYTES = 32_768
 _MUTATION_KINDS = frozenset({"correct", "forget"})
@@ -158,7 +162,11 @@ def inspect_primary_memory_operations(
             reasons.append("primary_mutation_artifact_invalid")
             continue
         expected_suffix = (
-            ".prepared.json" if operation.state == "prepared" else ".applied.json"
+            ".prepared.json"
+            if operation.state == "prepared"
+            else ".tombstone.json"
+            if operation.operation_kind == "forget"
+            else ".applied.json"
         )
         if not path.name.endswith(expected_suffix) or path.name != (
             f"{operation.operation_key}{expected_suffix}"
@@ -382,6 +390,12 @@ def _operation_from_artifact(
             return None
         kind = "forget"
         state = "prepared"
+        binding = value.get("binding_digest")
+    elif schema == FORGET_TOMBSTONE_SCHEMA:
+        if not validate_forget_tombstone(value):
+            return None
+        kind = "forget"
+        state = "applied"
         binding = value.get("binding_digest")
     else:
         return None
