@@ -262,10 +262,12 @@ def test_incomplete_dry_run_and_missing() -> None:
         config = _config(root)
         base, _, _ = gb._records()
         require(gb._store(root / "finalization").publish_base(base).status == "published_new", base)
-        before = _snapshot(root)
-        result = _replay(config, str(base["locator_digest"]))
+        locator = str(base["locator_digest"])
+        result = _replay(config, locator)
         require(result.status == "not_replayable", result)
-        require(_snapshot(root) == before, result)
+        require(not any(Path(str(config.relaymem_slp_protected_source_root)).iterdir()), result)
+        require(not any(Path(str(config.relaymem_slp_queue_root)).iterdir()), result)
+        require(not _completion_path(config, locator).exists(), result)
 
     with TemporaryDirectory() as directory:
         root = Path(directory)
