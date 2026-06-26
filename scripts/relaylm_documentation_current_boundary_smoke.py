@@ -56,7 +56,7 @@ def validate_config_coverage(path: str) -> None:
     assert not missing, f"{path}: missing config fields: {missing!r}"
 
 
-O1A_TARGET_ONLY_FIELDS = (
+O1D1_ACCEPTED_FIELDS = (
     "relaymem_local_scheduler_enabled",
     "relaymem_local_scheduler_dry_run_only",
     "relaymem_local_scheduler_apply_enabled",
@@ -105,7 +105,7 @@ Scheduler replay lane: O1B one bounded sealed-record discovery/reread/I1-GC adap
 Scheduler queue lane: O1C one bounded discovery/reread/scope/C2 adapter complete
 Scheduler remaining production: O1D1 accepted gates/one-round coordinator, O1D2 policy, O1E recovery/shutdown, and O1F validation unimplemented
 O1A itself adds no accepted configuration fields
-I-4D is retrieval-only integration
+I-4D is retrieval-only
 I1-GE, I-4D, and O1D1 are independent Wave 3 tracks after W2-INT
 """,
     "docs/architecture/pipeline_implementation_plan.md": """
@@ -397,7 +397,7 @@ def main() -> None:
     validate_config_coverage("docs/config_schema.md")
     validate_config_coverage("config.example.yaml")
     for path in ("relaylm/config.py", "docs/config_schema.md", "config.example.yaml"):
-        forbid(path, O1A_TARGET_ONLY_FIELDS)
+        require(path, "\n".join(O1D1_ACCEPTED_FIELDS))
     for path, block in REQUIRED.items():
         require(path, block)
     for path in CURRENT_DOCS:
