@@ -15,7 +15,11 @@ replacements = (
     ),
 )
 for old, new in replacements:
-    if body.count(old) != 1:
+    if old not in body:
+        if new in body:
+            continue
         raise RuntimeError("unexpected I-4C2 recovery drift")
+    if body.count(old) != 1:
+        raise RuntimeError("ambiguous I-4C2 recovery text")
     body = body.replace(old, new)
 PATH.write_text(body, encoding="utf-8")
