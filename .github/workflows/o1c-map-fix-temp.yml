@@ -4,8 +4,9 @@ on:
   push:
     branches:
       - phase-o1c-eligible-b2-queue-lane
-    paths:
-      - ".github/workflows/o1c-map-fix-temp.yml"
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
