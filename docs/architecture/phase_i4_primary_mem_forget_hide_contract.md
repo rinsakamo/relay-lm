@@ -19,6 +19,7 @@ relaylm_related_authority:
   - phase_i3_auditable_primary_mem_correct.md
   - phase_i4b_primary_current_state_shared_fence.md
   - phase_i4c1_primary_forget_hidden_successor.md
+  - phase_i4c2_primary_forget_recovery_finalization.md
   - memory_lifecycle_design.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
@@ -37,9 +38,9 @@ Last reviewed: 2026-06-26 JST
 
 ## 1. Status
 
-**Defined target contract; I-4C1 hidden-successor commit is implemented.**
+**Defined target contract; I-4C1 hidden-successor commit and bounded I-4C2 recovery/finalization are implemented.**
 
-This document fixes the lifecycle, identity, persistence, concurrency, API, audit, recovery, and retrieval-exclusion contract for Phase I-4. Phase I-4B implements the canonical read-only current-state resolver, shared Correct/Forget mutation fence, read-only Forget preflight, five-minute token validation, and bounded zero-item history. Phase I-4C1 implements exact intent preparation, shared revision claim, deterministic hidden successor publication through M3e, canonical reread, and `hidden / recovery_required / false` resolution. It does not add I-4C2 prepared resume/exact replay/tombstone finalization, I-4D M2 lifecycle exclusion, loopback mutation routes, or SOUL Lab Forget UI.
+This document fixes the lifecycle, identity, persistence, concurrency, API, audit, recovery, and retrieval-exclusion contract for Phase I-4. Phase I-4B implements the canonical read-only current-state resolver, shared Correct/Forget mutation fence, read-only Forget preflight, five-minute token validation, and bounded zero-item history. Phase I-4C1 implements exact intent preparation, shared revision claim, deterministic hidden successor publication through M3e, canonical reread, and `hidden / recovery_required / false` resolution. Phase I-4C2 implements exact prepared resume, operation-scoped M3f/M3g control convergence, response-loss replay, and tombstone-backed `hidden / none / false` finalization. I-4D M2/RelayCTX lifecycle exclusion, loopback mutation routes, and SOUL Lab Forget UI remain unimplemented.
 
 Phase I-3 Correct remains the implemented mutation baseline. Phase I-4 must not introduce a weaker scope check, revision fence, token, idempotency, persistence, recovery, or mutation-access boundary.
 
@@ -80,7 +81,7 @@ The implementation already provides:
 
 Phase I-4B adds the canonical read-only Primary current-state resolver, preserves the Phase I-3 per-memory `.lock` path as the shared Correct/Forget mutation fence, and adds read-only Forget preflight, exact-binding five-minute token validation, and bounded zero-item history. Valid unresolved prepared evidence is classified `recovery_required` and remains retrieval-ineligible.
 
-The remaining production work begins at I-4C2 and I-4D; I-4C1 is complete.
+The remaining production work begins at I-4D; I-4C1 and bounded I-4C2 recovery/finalization are complete.
 
 ## 4. Scope
 
@@ -203,7 +204,7 @@ One narrow Primary mutation coordinator owns the existing per-memory lock namesp
 | hidden N | Correct or future Pin | none | `target_not_active` |
 | hidden source | future Merge or consolidation | none | ineligible; fail closed |
 
-I-4B completed the resolver/shared-fence/read-only portion. I-4C1 now owns the durable prepared artifact and hidden-page lifecycle commit; I-4C2 still owns resume, exact replay, forward recovery, response-loss convergence, and tombstone finalization.
+I-4B completed the resolver/shared-fence/read-only portion. I-4C1 owns the durable prepared artifact and hidden-page lifecycle commit. I-4C2 now implements exact resume, one-operation M3f/M3g convergence, forward recovery, response-loss replay, and tombstone finalization. I-4D owns ordinary M2/RelayCTX lifecycle exclusion.
 
 ## 10. Target API and exact schemas
 

@@ -36,7 +36,7 @@ Last reviewed: 2026-06-26 JST
 
 This document owns the RelayMEM MVP implementation track. Repository-wide sequencing remains owned by [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
 
-M3a-M3h, worker execution, durable protected-source recovery, C2 one-job execution, O0 explicit local operation, Phase I-1 recall, Phase I-2 observation, Phase I-3 Correct, I-4B, and I-4C1 are complete. Phase I-4A defines the target Forget / Hide contract. The next RelayMEM governance implementation slice is I-4C2, not product-level Forget completion.
+M3a-M3h, worker execution, durable protected-source recovery, C2 one-job execution, O0 explicit local operation, Phase I-1 recall, Phase I-2 observation, Phase I-3 Correct, I-4B, and I-4C1 are complete. Phase I-4A defines the target Forget / Hide contract. The next RelayMEM governance implementation slice is I-4D, not product-level Forget completion.
 
 I1-GC one-record replay and completion convergence is complete outside RelayMEM lifecycle authority. I1-GD bounded retention and isolation cleanup is also complete outside RelayMEM lifecycle authority. O1B and O1C are complete bounded lane adapters. I1-GE and O1D through O1F remain operations work.
 

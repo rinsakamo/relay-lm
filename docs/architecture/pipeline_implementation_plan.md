@@ -22,6 +22,7 @@ relaylm_related_authority:
   - i1g_pre_enqueue_durable_finalization_contract.md
   - i1gd_durable_finalization_retention_cleanup.md
   - phase_i4c1_primary_forget_hidden_successor.md
+  - phase_i4c2_primary_forget_recovery_finalization.md
   - o1a_two_lane_scheduler_contract.md
 ---
 # RelayLM Pipeline Implementation Plan
@@ -63,7 +64,8 @@ RelayMEM Primary integration:
   Phase I-4A Forget / Hide contract: defined target
   Phase I-4B resolver/shared fence/read-only Forget boundary: complete
   Phase I-4C1 hidden-successor commit: complete
-  Phase I-4C2 through I-4F: unimplemented
+  Phase I-4C2 recovery/finalization: complete
+  Phase I-4D through I-4F: unimplemented
 
 SOUL Lab:
   UI-A0 through UI-A7: complete
@@ -193,14 +195,12 @@ hidden            canonical current retrieval-ineligible lifecycle state
 Forget tombstone  immutable runtime-private audit/recovery artifact
 ```
 
-Phase I-4B completes exact read-only preflight/history/token and the shared Correct/Forget mutation fence. Phase I-4C1 completes exact token/reason revalidation, immutable prepared evidence, deterministic hidden successor publication through M3e, canonical reread, one-winner concurrency, and recovery-required projection.
+Phase I-4B completes exact read-only preflight/history/token and the shared Correct/Forget mutation fence. Phase I-4C1 completes exact token/reason revalidation, immutable prepared evidence, deterministic hidden successor publication through M3e, canonical reread, one-winner concurrency, and recovery-required projection. Phase I-4C2 completes exact prepared resume, operation-scoped M3f/M3g convergence, response-loss replay, canonical correlation, and immutable tombstone finalization.
 
 Remaining:
 
 ```text
-I-4C2  prepared resume, exact replay, forward recovery,
-        tombstone finalization, response-loss convergence
-I-4D   M3f/M3g convergence, M2/RelayCTX exclusion,
+I-4D   ordinary M2/RelayCTX lifecycle and prior-revision exclusion,
         historical lifecycle projection
 I-4E   loopback API and SOUL Lab Forget UI
 I-4F   crash/race/security/fresh-conversation validation
@@ -296,13 +296,14 @@ O1A scheduling and idle contract
 I1-GC one-record replay and completion convergence
 I1-GD retention/orphan reconciliation/isolation cleanup
 I-4C1 hidden-successor commit ownership
+I-4C2 prepared recovery and tombstone finalization
 ```
 
 ### Wave 2 — current parallel implementation candidates
 
 ```text
-I-4C2 prepared resume/forward recovery/tombstone
 UI-B1A projection design
+I1-GE crash validation preparation
 ```
 
 ### Wave 3 — convergence, policy, and product surfaces

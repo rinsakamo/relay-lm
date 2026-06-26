@@ -153,6 +153,7 @@ def load_primary_current_state_index(
 
         prepared_by_operation: dict[str, dict[str, Any]] = {}
         applied: list[dict[str, Any]] = []
+        correction_applied: list[dict[str, Any]] = []
         try:
             entries = sorted(memory_dir.iterdir(), key=lambda item: item.name)
         except OSError:
@@ -169,7 +170,25 @@ def load_primary_current_state_index(
                 continue
             if path.name.endswith(".prepared.json"):
                 value = _read_json(path)
-                if not _valid_prepared(value, namespace=namespace, memory_id=logical):
+                schema = value.get("schema_version") if isinstance(value, dict) else None
+                if schema == CORRECTION_PREPARED_SCHEMA:
+                    valid = _valid_prepared(
+                        value, namespace=namespace, memory_id=logical
+                    )
+                elif schema == "relaylm.mem.forget_prepared.v0":
+                    from .relaymem_primary_forget_artifact import (
+                        validate_forget_prepared,
+                    )
+
+                    valid = validate_forget_prepared(value)
+                    valid = bool(
+                        valid
+                        and value.get("namespace") == namespace
+                        and value.get("memory_id") == logical
+                    )
+                else:
+                    valid = False
+                if not valid:
                     invalid.add(logical)
                     continue
                 operation_key = str(value["operation_key"])
@@ -180,6 +199,21 @@ def load_primary_current_state_index(
             elif path.name.endswith(".applied.json"):
                 value = _read_json(path)
                 if not _valid_applied(value, namespace=namespace, memory_id=logical):
+                    invalid.add(logical)
+                    continue
+                applied.append(value)
+                correction_applied.append(value)
+            elif path.name.endswith(".tombstone.json"):
+                value = _read_json(path)
+                from .relaymem_primary_forget_finalization_artifact import (
+                    validate_forget_tombstone,
+                )
+
+                if (
+                    not validate_forget_tombstone(value)
+                    or value.get("namespace") != namespace
+                    or value.get("memory_id") != logical
+                ):
                     invalid.add(logical)
                     continue
                 applied.append(value)
@@ -241,7 +275,7 @@ def load_primary_current_state_index(
 
         current[logical] = (prior_physical, prior_revision)
         logical_by_physical.setdefault(logical, logical)
-        receipts_by_logical[logical] = tuple(applied)
+        receipts_by_logical[logical] = tuple(correction_applied)
 
     return PrimaryCorrectionStateIndex(
         current_by_logical=current,

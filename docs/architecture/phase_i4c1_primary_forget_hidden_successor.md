@@ -179,14 +179,15 @@ leaves `hidden / recovery_required / false`.  Neither state is rolled back.
 
 ## Still unimplemented
 
-- I-4C2 prepared resume, forward-only recovery, exact replay, response-loss
-  convergence, Forget tombstone, and applied receipt;
-- I-4D M3f/M3g convergence and actual M2/RelayCTX hidden exclusion;
+- I-4C2 exact prepared resume, operation-scoped M3f/M3g convergence,
+  forward-only recovery, response-loss replay, and tombstone authority are complete;
+- I-4D ordinary M2/RelayCTX hidden and prior-revision exclusion is unimplemented;
 - I-4E loopback API and SOUL Lab UI;
 - I-4F full crash/response-loss validation;
 - restore/unhide, physical deletion, secure erase, Pin/Unpin,
   Merge/Supersession, Held Apply/Discard, Secondary consolidation, and
   RelaySOUL mutation.
 
-I-4C1 therefore completes hidden-successor commit ownership, not Phase I-4 as a
-whole and not product-complete Forget behavior.
+I-4C1 therefore completes hidden-successor commit ownership. I-4C2 now completes
+the bounded recovery/finalization continuation, but Phase I-4 as a whole and
+product-complete Forget behavior remain incomplete until I-4D through I-4F.

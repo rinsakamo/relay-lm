@@ -6,7 +6,7 @@ relaylm_volatility: medium
 relaylm_owner: relaymem_soul_lab_integration
 relaylm_update_trigger:
   - Phase I-4B implementation changes
-  - Phase I-4C1 consumes the shared fence
+  - Phase I-4C1 and I-4C2 consume the shared fence
 relaylm_not_authoritative_for:
   - post-M3e Forget recovery, replay, and tombstone finalization
   - M2 hidden-state exclusion
@@ -60,9 +60,9 @@ change I-4B token semantics or ordinary M2 behavior.
 
 ## Remaining work
 
-- I-4C2: prepared resume, exact replay, forward-only recovery, response-loss
-  convergence, and Forget tombstone finalization.
-- I-4D: M3f/M3g convergence and canonical hidden/prepared/recovery/corrupt
-  exclusion in M2 and RelayCTX.
+- I-4C2: complete for exact prepared resume, forward-only hidden continuation,
+  operation-scoped M3f/M3g convergence, response-loss replay, and tombstone finalization.
+- I-4D: unimplemented ordinary M2/RelayCTX lifecycle exclusion, prior physical
+  revision exclusion, and historical lifecycle projection.
 - I-4E: loopback-only API and SOUL Lab Forget UI.
 - I-4F: full fault/security/fresh-conversation validation.
