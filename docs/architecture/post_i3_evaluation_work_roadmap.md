@@ -22,6 +22,7 @@ relaylm_related_authority:
   - soul_lab_ui_b0_real_home_conversation.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - o0_local_one_job_runner.md
+  - o1a_two_lane_scheduler_contract.md
   - pipeline_implementation_plan.md
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
@@ -35,9 +36,9 @@ Last reviewed: 2026-06-26 JST
 
 ## Purpose
 
-Phase I-3 Correct, UI-B0 real Home conversation, O0 local one-job execution, I1-GB pre-release durable-finalization publication, and the I-4B read-only current-state/shared-fence boundary are complete. Phase I-4A remains the target Forget / Hide contract. Restart replay/completion convergence and production hidden-lifecycle apply/exclusion remain incomplete.
+Phase I-3 Correct, UI-B0 real Home conversation, O0 local one-job execution, I1-GB pre-release durable-finalization publication, the I-4B read-only current-state/shared-fence boundary, and the O1A two-lane scheduler/idle contract are complete. Phase I-4A remains the target Forget / Hide contract. Restart replay/completion convergence, production lane discovery/delegation, and production hidden-lifecycle apply/exclusion remain incomplete.
 
-This roadmap records dependency-first work after I-3 while keeping three authorities separate:
+This roadmap records dependency-first work after I-3 while keeping four authorities separate:
 
 ```text
 Memory governance
@@ -50,10 +51,16 @@ SOUL Lab experience
   -> lifecycle and operation visibility
   -> repeatable evaluation evidence
 
+Durability
+  -> pre-release durable-finalization evidence
+  -> one-record restart replay and completion
+  -> retention and crash proof
+
 Operations
   -> O0 one-job execution
-  -> durable-finalization replay
-  -> bounded scheduling
+  -> O1A two-lane round/idle contract
+  -> O1B/O1C bounded production lane adapters
+  -> O1D/O1E/O1F policy, recovery, shutdown, and validation
   -> supervised and always-on operation
 ```
 
@@ -65,6 +72,7 @@ Complete:
 
 - ordinary managed Turn 1 Primary MEM formation through C2;
 - O0 explicit selection and execution of at most one eligible durable queued job;
+- O1A pure replay-before-queue round, adapter-result, disposition, and content-free projection contract;
 - next-turn M2 retrieval and RelayCTX injection;
 - character and namespace isolation;
 - Phase I-2 latest-run, memory, and used-memory observation;
@@ -82,7 +90,10 @@ Unresolved or unimplemented:
 
 - I1-GC through I1-GE restart replay, cleanup, and crash validation;
 - Phase I-4C through I-4F hidden apply, M2 exclusion, API/UI, and validation;
-- O1 automatic durable-finalization replay and queue scheduling;
+- O1B one eligible sealed-record discovery and I1-GC delegation;
+- O1C one eligible queue-record discovery and O0-compatible C2 delegation;
+- O1D fairness/retry/backoff, O1E stale recovery/shutdown, and O1F operational validation;
+- any production O1 polling/sleep loop, scheduler configuration, or CLI;
 - O2 supervised worker operation;
 - O3 always-on local operation.
 
@@ -107,7 +118,7 @@ recall lane
     -> Phase I-2 used-memory evidence
 ```
 
-Direct Home-origin Primary MEM formation is not proven because UI-B0 sends standard Chat Completions fields and does not self-assert trusted scene-admission metadata.
+E1 does not prove direct Home-origin formation because UI-B0 sends standard Chat Completions fields and does not self-assert trusted scene-admission metadata. It also does not prove automatic scheduling; O1A is a pure contract only.
 
 ## Target product loop
 
@@ -117,8 +128,8 @@ SOUL Lab Home real conversation
   -> existing M2 retrieval and RelayCTX injection
   -> visible response
   -> durable-finalization evidence
-  -> C1-5 protected source and B2 queue convergence
-  -> O0 or later O1 execution
+  -> I1-GC canonical C1-5 and B2 convergence after restart when needed
+  -> O0 or later O1C execution
   -> Primary MEM formed / held / blocked / failed
   -> Phase I-2 observation
   -> explicit memory operation
@@ -281,7 +292,7 @@ RelayMEM and RelaySLP may produce proposals; they never mutate SOUL directly.
 
 ### UI-B0: Real Home Conversation — complete
 
-UI-B0 provides server-owned character/model route resolution, bounded real non-stream/SSE transport, Stop/Retry/New Conversation, stale-response fencing, and explicit Real Runtime / Local Preview separation. The browser owns no queue, worker, SOUL, filesystem, credential, namespace, or memory mutation authority.
+UI-B0 provides server-owned character/model route resolution, bounded real non-stream/SSE transport, Stop/Retry/New Conversation, stale-response fencing, and explicit Real Runtime / Local Preview separation. The browser owns no queue, worker, scheduler, SOUL, filesystem, credential, namespace, or memory mutation authority.
 
 ### UI-B1: Memory lifecycle visibility — planned
 
@@ -301,7 +312,7 @@ UI-B1B  after I-5 through I-7
           evidence/runtime/mutation authority separation
 ```
 
-UI-B1A remains read-only and outside queue, worker, and mutation authority.
+UI-B1A remains read-only and outside queue, scheduler, worker, and mutation authority.
 
 ### UI-B2: Evaluation scenarios and evidence — planned
 
@@ -322,40 +333,56 @@ One invocation processes at most one eligible queued record through existing C2 
 ```text
 I1-GA  failure-window and durable-finalization contract                 complete
 I1-GB  durable publication and bounded response-release admission       complete
-I1-GC  one-record restart replay, duplicate convergence, completion     current next
+I1-GC  one-record restart replay, duplicate convergence, completion     current implementation work
 I1-GD  retention, orphan reconciliation, and cleanup                    planned
 I1-GE  production crash-at-every-boundary integration smoke             planned
 ```
 
 I1-GB leaves canonical restart evidence before protected visible release. I1-GC must turn one caller-selected sealed record into canonical C1-5 and B2 convergence without executing a worker.
 
-### O1: Two-lane bounded scheduler — planned
+### O1A: Two-lane scheduler and idle contract — complete
+
+O1A fixes the scheduler authority without implementing production work discovery:
 
 ```text
-durable-finalization replay lane
-  discover one eligible sealed I1-G record
-    -> secure reread
-    -> one I1-GC replay
-    -> C1-5/B2 convergence only
-
-queue execution lane
-  discover one eligible B2 record
-    -> reuse O0 primitives where compatible
-    -> one existing C2 execution
+validate scheduler gates
+  -> replay-lane opportunity
+       -> at most one future I1-GC delegation
+  -> queue-lane opportunity
+       -> at most one future C2 delegation
+  -> aggregate bounded content-free results
+  -> stop | run_next_round | idle
+  -> return without sleeping
 ```
 
-Implementation slices:
+The order is fixed as replay then queue. A newly converged B2 record may be discovered in the same round, but only through independent queue discovery and canonical reread. Scheduler code must not pass replay output, job identity, or dispatch identity directly to C2.
+
+O1A defines:
+
+- separate `ReplayLaneAdapter` and `QueueLaneAdapter` contracts;
+- at most one delegation per lane and two per round;
+- lane-local failure isolation;
+- scheduler-level fatal gate/dependency/configuration classification;
+- target-only default-off configuration names;
+- `stop`, `run_next_round`, and `idle` disposition semantics;
+- bounded content-free result/projection schemas;
+- pure deterministic contract smoke.
+
+O1A adds no production scan, I1-GC/C2 invocation, polling, sleep, fairness, stale recovery, shutdown, config field, CLI, daemon, or service.
+
+### O1B through O1F: Production scheduling — unimplemented
 
 ```text
-O1A  bounded work-source scheduling and idle contract
 O1B  one eligible I1-G sealed-record discovery and I1-GC delegation
 O1C  one eligible B2 discovery and O0/C2 delegation
-O1D  deterministic ordering, fairness, retry-time, bounded backoff
-O1E  stale-claim recovery orchestration and graceful shutdown
+O1D  deterministic ordering, fairness, retry-time, bounded backoff, jitter
+O1E  stale-claim recovery orchestration, cancellation, graceful shutdown
 O1F  corruption, concurrency, saturation, restart, and leakage smoke
 ```
 
 The two lanes remain separate state machines. O1 never treats an I1-G record as a queue record or executes a worker during replay.
+
+O1D owns record ordering and fairness; O1A's fixed lane order is not a fairness policy. O1E owns cancellation and shutdown. O1F owns full operational proof.
 
 ### O2: Supervised worker service — planned
 
@@ -386,19 +413,21 @@ TTS, audio, Live2D, ASR, and public remote access are not required for text-firs
 ```text
 Thread A  I1-GB durable-finalization publication — complete
 Thread B  I-4B resolver/shared fence/read-only Forget — complete
-Thread C  O1A scheduling contract only — remains planned
+Thread C  O1A scheduling and idle contract — complete
 ```
 
-The final I-4B head passed the affected I1-G, response, I1-B, C1-5, B2, UI-B0, I-3 Correct, resolver, and M2-equivalence regressions.
+The final I-4B head passed the affected I1-G, response, I1-B, C1-5, B2, UI-B0, I-3 Correct, resolver, and M2-equivalence regressions. O1A adds a pure contract and documentation boundary without changing those production paths.
 
 ### Wave 1 — current
 
 ```text
 Thread A  I1-GC one-record replay
 Thread B  I-4C1 hidden-successor commit ownership
-Thread C  O1 lane-contract refinement
+Thread C  O1B/O1C production lane adapters after exact dependency readiness
 Thread D  UI-B1A projection design
 ```
+
+O1B must consume the merged I1-GC one-record interface and must not copy a parallel branch implementation. O1C may extract a narrow O0-compatible helper while preserving O0 CLI/smoke behavior and unchanged C2/B3 authority.
 
 ### Wave 2 — forward convergence and bounded automation
 
@@ -406,7 +435,8 @@ Thread D  UI-B1A projection design
 Thread A  I1-GD retention/orphan reconciliation/cleanup
 Thread B  I-4C2 forward recovery/tombstone
           -> I-4D M2 exclusion/historical projection
-Thread C  O1 implementation using I1-GC and O0/C2
+Thread C  O1D fairness/retry/backoff
+          -> O1E stale recovery/cancellation/shutdown
 Thread D  I-5A and I-7A/B contract work
 ```
 
@@ -416,7 +446,7 @@ Thread D  I-5A and I-7A/B contract work
 Thread A  I1-GE crash-at-every-boundary integration smoke
 Thread B  I-4E loopback API and SOUL Lab UI
           -> I-4F fault/security/race/fresh-conversation smoke
-Thread C  O1 completion and operational regression
+Thread C  O1F operational regression and production scheduling completion
 Thread D  UI-B1A read-only lifecycle visibility
 ```
 
@@ -432,12 +462,15 @@ M4  Phase I-4 complete
     -> M2/RelayCTX exclusion -> historical evidence preserved
 
 O1  automatic bounded local processing complete
+    O1A contract + O1B/O1C adapters + O1D/O1E policy/recovery + O1F proof
     sealed replay lane + queue execution lane
     without redefining I1-G, B3, C2, or M3 semantics
 
 E2  governed Primary MEM product
     I-4 through I-7 + UI-B1 + repeatable real conversation use
 ```
+
+O1A completion alone does not satisfy the O1 checkpoint.
 
 ## Recommended overall order
 
@@ -449,15 +482,17 @@ Completed:
   I1-GA / I1-GB
   Phase I-4A target contract
   Phase I-4B read-only resolver/shared-fence boundary
+  O1A two-lane scheduler/idle contract
 
 Current:
-  I1-GC || I-4C1 || O1A design
+  I1-GC || I-4C1
+  O1B/O1C only after their exact dependencies are ready
 
 Next:
-  I1-GD || I-4C2 -> I-4D || O1 implementation
+  I1-GD || I-4C2 -> I-4D || O1D -> O1E
 
 Then:
-  I1-GE || I-4E -> I-4F || UI-B1A
+  I1-GE || I-4E -> I-4F || O1F || UI-B1A
 
 Governance after I-4:
   I-5 -> I-7 -> I-6 -> UI-B1B
@@ -472,7 +507,10 @@ I1-G and O1/O2 become mandatory before long-duration memory formation or multi-d
 
 - UI-B0 owns Home/chat transport and browser-local session state.
 - I1-G owns pre-enqueue evidence, one-record replay, completion, and retention classification.
-- O1 owns bounded discovery and scheduling across separate I1-G and B2 lanes.
+- O1A owns only round/gate/adapter-result/disposition/projection contracts.
+- O1B owns sealed-record discovery and one I1-GC call.
+- O1C owns queue discovery and one O0-compatible C2 call.
+- O1D/O1E own policy/recovery/shutdown; O1F owns operational proof.
 - O0/C2/B3/C1-5/C1-2 remain queue execution authorities.
 - I-4 owns Primary lifecycle semantics and the separately reviewed Forget mutation.
 - M2 and RelayCTX own retrieval eligibility and backend-bound injection.
@@ -517,6 +555,7 @@ Record at least:
 
 - formed, held, blocked, failed, and lost-or-unknown counts;
 - durable-finalization pending/replayed/isolated/complete counts;
+- scheduler lane no-work/busy/changed/delegated/completed counts without private identity;
 - correction/Forget/pin/held/merge outcomes and stale/mixed-scope refusals;
 - retrieval selection before and after each operation;
 - injected revision and lifecycle evidence;
@@ -524,7 +563,7 @@ Record at least:
 - worker retry/restart behavior;
 - user effort required to keep memory useful.
 
-Raw prompts, protected source, credentials, full traces, and unrestricted memory pages must not be copied into generic telemetry.
+Raw prompts, protected source, credentials, full traces, exact job/dispatch/locator/claim identity, exact retry timestamps, paths, and unrestricted memory pages must not be copied into generic telemetry.
 
 ## Preserved boundaries
 
@@ -532,8 +571,9 @@ Raw prompts, protected source, credentials, full traces, and unrestricted memory
 - Phase I-4A remains the exact target contract; I-4B is the completed read-only resolver/shared-fence consumer boundary.
 - I-4C1/I-4C2 are delivery subdivisions, not new lifecycle authorities.
 - I1-GA and I1-GB are complete; I1-GC through I1-GE remain unimplemented and I1-G overall is in progress.
+- O1A is complete only as a pure scheduler contract; O1B through O1F remain unimplemented.
 - I1-G records and B2 queue records remain separate state machines.
 - O1 invokes I1-GC and O0/C2; it does not absorb their semantics.
-- UI-B0 and UI-B1 do not own worker, queue, filesystem, namespace, SOUL, or mutation authority.
+- UI-B0 and UI-B1 do not own worker, queue, scheduler, filesystem, namespace, SOUL, or mutation authority.
 - Physical deletion, secure erase, purge, restore, and unhide remain separate future contracts.
 - Text conversation does not imply TTS, audio, avatar, or Live2D execution.
