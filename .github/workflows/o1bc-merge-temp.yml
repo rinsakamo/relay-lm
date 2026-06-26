@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: o1bc-merge-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   merge-validate:
     runs-on: ubuntu-latest
@@ -93,6 +97,7 @@ jobs:
 
           if [ $reconcile_code -eq 0 ] && [ -z "$unresolved" ] && [ $validation_code -eq 0 ]; then
             git rm .github/workflows/o1bc-merge-temp.yml scripts/_merge_o1b_o1c.py >>"$log" 2>&1
+            rm -f o1bc_merge_report.txt
             git add -A >>"$log" 2>&1
             git commit -m "merge: integrate O1B replay and O1C queue lanes" >>"$log" 2>&1
             git push origin HEAD:phase-o1c-eligible-b2-queue-lane >>"$log" 2>&1
