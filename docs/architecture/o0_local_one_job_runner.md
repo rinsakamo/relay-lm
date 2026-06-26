@@ -1,3 +1,21 @@
+---
+relaylm_doc_type: implementation_handoff
+relaylm_authority: o0_local_one_job_runner
+relaylm_status: historical_after_merge
+relaylm_volatility: frozen
+relaylm_owner: relaymem_slp_operations
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - o1a_two_lane_scheduler_contract.md
+  - o1c_eligible_b2_queue_lane.md
+  - o1d1_production_scheduler_round.md
+  - phase6c2_one_queued_primary_worker_integration.md
+relaylm_not_authoritative_for:
+  - O1 scheduler policy
+  - recurring processing
+  - daemon or service supervision
+  - queue lifecycle semantics
+---
 # O0 Local One-Job Runner
 
 Status: complete in this slice
@@ -10,7 +28,7 @@ A local operator can process at most one eligible queued job per CLI invocation 
 
 O0 does not complete automatic queue processing, queue scheduling, a worker service, always-on operation, or I1-G pre-enqueue durability.
 
-O1A defines the scheduler round and idle contract only. O1C now consumes the same narrow queue discovery/reread/scope/C2-request helper as O0 while preserving the O0 CLI, projection, exit behavior, and smokes. O1D1 remains the future one-round coordinator; it does not change O0 behavior.
+O1C consumes the same narrow queue discovery/reread/scope/C2-request helper as O0 while preserving the O0 CLI, projection, exit behavior, and smokes. O1D1 may invoke the O1C lane once in a scheduler round; it does not change O0 behavior.
 
 ## CLI boundary
 
@@ -55,7 +73,7 @@ Every other combination is invalid configuration. CLI flags cannot elevate disab
 
 When enabled, `relaymem_slp_queue_root`, `relaymem_slp_protected_source_root`, and `memory.root_path` must be absolute. O0 never derives these roots from queue metadata, browser input, namespace text, or a filename.
 
-O1A target scheduler gates are design-only and are not accepted by `RelayLMConfig`, this CLI, `docs/config_schema.md`, or `config.example.yaml` in the current boundary. O1D1 is the phase that will accept those exact scheduler gates; it must not add them as O0 CLI options.
+O1D1 scheduler gates are accepted by `RelayLMConfig` for one scheduler round, but they are not O0 CLI options and do not change O0's worker-gate boundary.
 
 ## Bounded discovery and eligibility
 
@@ -67,17 +85,7 @@ Only the exact existing B2 filename grammar is parsed:
 slp-dispatch-v0-<64 lowercase hex>.json
 ```
 
-Each grammar-matching entry must pass the existing B3 storage reader, including:
-
-- no symlink following;
-- regular file only;
-- single hard-link count;
-- bounded record bytes using the existing queue-record maximum;
-- strict UTF-8;
-- strict canonical JSON object with duplicate-key and non-finite rejection;
-- exact durable-job schema validation;
-- derived dispatch key, job ID, and canonical filename agreement;
-- stable device/inode during read.
+Each grammar-matching entry must pass the existing B3 storage reader, including no symlink following, regular file only, single hard-link count, bounded record bytes, strict UTF-8, strict canonical JSON object with duplicate-key and non-finite rejection, exact durable-job schema validation, derived dispatch key, job ID, canonical filename agreement, and stable device/inode during read.
 
 An eligible O0 record is an exact valid durable record whose state is `queued` and whose `retry_not_before` is absent or not later than the current UTC instant. Claimed and terminal records are ignored as work. Future retry records are ignored as work. Discovery never mutates a record and never attempts stale recovery.
 
@@ -87,15 +95,7 @@ For this local experiment only, eligible records are sorted by canonical filenam
 
 ## Canonical reread before claim
 
-The discovery snapshot is never passed directly to C2. After selection, O0 reopens the same secure queue root, rereads the exact canonical filename through the existing storage helper, and requires:
-
-- the same device and inode;
-- byte-for-byte identity;
-- exact mapping identity;
-- a still-valid schema and derived identity;
-- current `state == queued`;
-- current revision and claim generation represented by the reread record;
-- a currently eligible retry time.
+The discovery snapshot is never passed directly to C2. After selection, O0 reopens the same secure queue root, rereads the exact canonical filename through the existing storage helper, and requires stable device/inode, byte-for-byte identity, exact mapping identity, valid schema/derived identity, `state == queued`, current revision/claim generation, and an eligible retry time.
 
 An inode, byte, state, revision, generation, retry-time, schema, or identity change stops O0 before C2. O0 does not repair or rewrite the record. B3 still performs the final claim CAS after this reread, so a race after reread remains fenced by the existing authority.
 
@@ -113,43 +113,15 @@ After the pair is resolved, O0 calls the existing `resolve_relaymem_character_st
 
 ## C2 delegation
 
-O0 constructs one exact `RelayMEMSLPOneQueuedJobRunnerRequest` from:
-
-- the canonical reread queued record;
-- a fresh empty process-local source registry;
-- the exact resolved character ID;
-- configured absolute queue and protected-source roots;
-- the existing character-partitioned store root;
-- configured claim owner, lease duration, artifact bound, and exact dry-run/apply gates.
+O0 constructs one exact `RelayMEMSLPOneQueuedJobRunnerRequest` from the canonical reread queued record, a fresh empty process-local source registry, exact resolved character ID, configured absolute queue and protected-source roots, character-partitioned store root, configured claim owner, lease duration, artifact bound, and exact dry-run/apply gates.
 
 It calls `execute_one_queued_relaymem_slp_primary_job(...)` at most once.
-
-C2 and its existing dependencies continue to own:
-
-- B3 claim CAS, revision fence, generation, owner, lease token, expiry, retry release, and terminal transition;
-- current exact claim reread;
-- C1-5 durable protected-source lookup, integrity/identity validation, and restart rehydration;
-- fresh C1-0 source and one-shot scope;
-- unchanged C1-2 worker and M3a-M3h path;
-- terminal-only protected-source cleanup.
 
 O0 never reconstructs source content from queue metadata, trace, frontend history, visible output, logs, Lab projections, or public node results.
 
 ## Shared O0/O1C production helper boundary
 
-The earlier Future O1C reuse boundary is now implemented by the shared helper described below. O1C must not launch this CLI as a subprocess or parse its stdout as a production interface. It does not reimplement B3 claim or change C2 request semantics.
-
-The implemented shared production helper contains only:
-
-```text
-bounded queue discovery
-canonical single-candidate selection
-canonical reread
-character/store scope resolution
-exact C2 request construction
-```
-
-Boundary distinction:
+O0 and O1C share only the production helper for bounded queue discovery, canonical single-candidate selection, canonical reread, character/store scope resolution, and exact C2 request construction.
 
 ```text
 O0:
@@ -197,32 +169,3 @@ The same authorities remain the concurrency fence when the O1C queue lane races 
 ## Non-goals
 
 O0 does not implement polling, sleeping, a filesystem watcher, scheduling fairness, priority, retry scheduling, stale-claim scanning, automatic stale recovery orchestration, concurrency greater than one per invocation, a worker pool, service supervision, health serving, systemd/Windows service integration, Docker orchestration, browser worker authority, SOUL Lab controls, UI-B0 conversation, I1-G durability, Phase I-4, TTS/audio/avatar/ASR, or public remote access.
-
-Future boundary:
-
-```text
-O0    one invocation -> at most one eligible queued job
-O1A   two-lane round / adapter / idle contract only
-O1B   one sealed I1-G discovery and I1-GC delegation
-O1C   one B2/B3 discovery and C2 delegation — complete
-O1D1  accepted scheduler gates + one replay-before-queue round
-O1D2  ordering / fairness / retry-time / backoff / jitter / pacing
-O1E   stale recovery / cancellation / graceful shutdown
-O1F   operational validation
-O2    supervised worker service
-O3    always-on local operation
-```
-
-## Verification
-
-Dedicated verification:
-
-```text
-python -m compileall relaylm scripts
-python scripts/relaylm_o0_local_one_job_runner_smoke.py
-python scripts/relaylm_o0_local_one_job_runner_security_smoke.py
-```
-
-The functional smoke covers one restart-rehydrated success, terminal cleanup, Primary MEM formation, dry-run non-mutation, no-work states, discovery contention, claim competition, retry retention, and later fresh-generation success. The security smoke covers gates, roots, symlink and unsupported file types, malformed/corrupt/oversized/collision records, discovery caps, claimed no-work, canonical reread races, character isolation, C2 failure conversion, cleanup-required projection, CLI error output, and content-leakage canaries.
-
-Related O1A pure-contract, C2, C1-2, C1-5, B2/B3, I-1, I-2, I-3, and documentation boundary smokes remain regression requirements.
