@@ -76,6 +76,7 @@ CURRENT_DOCS = (
     "docs/architecture/relaymem_slp_current_target.md",
     "docs/architecture/o0_local_one_job_runner.md",
     "docs/architecture/o1a_two_lane_scheduler_contract.md",
+    "docs/architecture/o1b_sealed_i1g_replay_lane.md",
     "docs/architecture/o1c_eligible_b2_queue_lane.md",
 )
 
@@ -97,6 +98,9 @@ Visible-release restart evidence publication is implemented
 Restart-time one-record replay is implemented
 Durable-finalization bounded retention and cleanup is implemented
 Direct Home-origin formation: not currently proven
+Scheduler replay lane: O1B one bounded sealed-record discovery/reread/I1-GC adapter complete
+Scheduler queue lane: O1C one bounded discovery/reread/scope/C2 adapter complete
+Scheduler remaining production: O1D through O1F unimplemented
 O1A adds no accepted configuration fields
 """,
     "docs/architecture/pipeline_implementation_plan.md": """
@@ -112,6 +116,9 @@ I1-GC  one-record restart replay, exact convergence, completion    complete
 I1-GD  bounded retention, isolation, orphan cleanup               complete
 I1-GE  crash-at-every-boundary production validation              unimplemented
 ### O1A: two-lane bounded scheduler contract — complete
+O1B sealed replay-lane adapter: complete
+O1C eligible queue-lane adapter: complete
+O1D through O1F production scheduling: unimplemented
 O1A completion alone is not O1 completion.
 ### Wave 1 — completed commit, replay, and retention authorities
 ### Wave 2 — current parallel implementation candidates
@@ -126,6 +133,8 @@ Phase I-4C1: Hidden-successor commit — complete
 I1-GC caller-selected one-record replay
 I1-GD bounded retention and isolation cleanup — complete
 I1-GE full crash validation remains unimplemented
+O1B and O1C: Bounded production lane adapters — complete
+O1D through O1F: Production scheduling — unimplemented
 Phase I-5: Pin / Unpin
 Phase I-7: Held Apply / Discard
 Phase I-6: Merge / Supersession
@@ -146,6 +155,9 @@ queue lane independently discovers the queue root
 ### I1-GD — complete
 relaymem.slp_durable_finalization_isolation.v0
 ### I1-GE — unimplemented
+### O1B — complete
+### O1C — complete
+### O1D through O1F — unimplemented
 """,
     "docs/architecture/i1gd_durable_finalization_retention_cleanup.md": """
 Status: **implemented production boundary**
@@ -164,6 +176,9 @@ M3i-g hidden-successor commit ownership: complete as Phase I-4C1
 I1-GC one-record replay and completion convergence is complete
 The next RelayMEM governance implementation slice is I-4C2
 No production hidden-state filtering exists yet because I-4D integration is not implemented
+O1B sealed replay-lane adapter: complete
+O1C queue-lane adapter: complete
+O1D through O1F production scheduling: unimplemented
 """,
     "docs/architecture/relaymem_slp_current_target.md": """
 Phase 6-B2 performs atomic durable enqueue
@@ -175,20 +190,29 @@ Observation receipts cannot authorize repair or retrieval
 I1-GC caller-selected one-record replay
 Phase I-4C1 hidden-successor commit — complete
 Forget is not product-complete until I-4C2 through I-4F
+O1B and O1C bounded production discovery and delegation are complete
+O1D fairness/retry/backoff
 """,
     "docs/README.md": """
 phase_i2_real_soul_lab_observation.md
 phase_i3_auditable_primary_mem_correct.md
 i1gd_durable_finalization_retention_cleanup.md
+o1c_eligible_b2_queue_lane.md
 I1-GA through I1-GD are complete
+O1B is complete
+O1C is complete
 Phase I-4C1 is complete
 """,
     "docs/architecture/README.md": """
 phase_i2_real_soul_lab_observation.md
 phase_i3_auditable_primary_mem_correct.md
 i1gd_durable_finalization_retention_cleanup.md
+o1b_sealed_i1g_replay_lane.md
+o1c_eligible_b2_queue_lane.md
 I1-GC provides the caller-selected one-record convergence authority
 I1-GD provides bounded retention and isolation cleanup
+O1B is complete for one bounded sealed-record replay-lane opportunity
+O1C is complete for one bounded queue-lane opportunity
 Phase I-4C1 Primary Forget Hidden-Successor Commit
 """,
     "docs/config_schema.md": """
@@ -203,6 +227,7 @@ relaymem_slp_durable_finalization_cleanup_timeout_ms
 """,
     "docs/architecture/o1a_two_lane_scheduler_contract.md": """
 Contract and pure deterministic aggregation model complete; production scheduler unimplemented.
+O1B replay adapter and O1C queue adapter are complete
 replay-lane opportunity completes or returns
 I1-GC delegation per round       <= 1
 C2 delegation per round          <= 1
@@ -214,6 +239,21 @@ O1B-O1F handoff
 relaylm.local_scheduler_round_result.v0
 relaylm.local_scheduler_round_projection.v0
 O1A performs no filesystem mutation or production scan
+""",
+    "docs/architecture/o1b_sealed_i1g_replay_lane.md": """
+Production replay-lane adapter complete
+bounded non-recursive secure inventory
+lexicographically first sealed-pending locator
+existing I1-GC delegation at most once
+O1C eligible B2 discovery + one C2 delegation          complete
+content-free
+""",
+    "docs/architecture/o1c_eligible_b2_queue_lane.md": """
+O1C is complete as one bounded production queue-lane adapter
+Shared O0-compatible helper
+future_retry_only
+Same-round replay independence
+O1D ordering, fairness, retry-delay policy, backoff, or jitter
 """,
     "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md": """
 relaylm_status: target
@@ -247,10 +287,11 @@ I-4C2 prepared resume
 M3f or M3g
 """,
     "docs/architecture/o0_local_one_job_runner.md": """
-Future O1C reuse boundary
+Shared O0/O1C production helper boundary
 O1C must not launch this CLI as a subprocess
 O1A target scheduler gates are design-only
 O1B  one sealed I1-G discovery and I1-GC delegation
+O1C  one B2/B3 discovery and C2 delegation — complete
 """,
     "docs/architecture/soul_lab_ui_b0_real_home_conversation.md": """
 same-origin POST /v1/chat/completions
@@ -275,6 +316,13 @@ Window A recovery side — I1-GC unimplemented
 I1-GC replay/completion, I1-GD cleanup, and I1-GE full crash validation remain unimplemented
 I1-GC restart replay and completion convergence, I1-GD retention/cleanup, and I1-GE full production crash validation remain unimplemented
 ### I1-GD — unimplemented
+O1B through O1F remain incomplete
+O1B through O1F remain unimplemented
+O1B through O1F remain operations work
+O1B/O1C production discovery and delegation
+O1C through O1F, O2, and O3 remain unimplemented
+O1B   sealed-record discovery/I1-GC delegation                    unimplemented
+O1C   B2 discovery/O0-compatible C2 delegation                    unimplemented
 This section supersedes earlier
 supersedes earlier roadmap entries
 """)
