@@ -44,6 +44,7 @@ Use [Documentation index](../README.md) for the complete active map and [Project
 - [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md)
 - [O0 Local One-Job Runner](o0_local_one_job_runner.md)
 - [O1A Two-Lane Scheduler and Idle Contract](o1a_two_lane_scheduler_contract.md)
+- [O1B Sealed I1-G Replay Lane](o1b_sealed_i1g_replay_lane.md)
 - [O1C Eligible B2/B3 Queue Lane](o1c_eligible_b2_queue_lane.md)
 - [I1-G Durable-finalization Contract and Replay Boundary](i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD Durable-finalization Retention and Isolation Cleanup](i1gd_durable_finalization_retention_cleanup.md)
@@ -63,9 +64,9 @@ Use [Documentation index](../README.md) for the complete active map and [Project
 
 Phase 6 is complete through C1-5 and C2. O0 is the default-off operator-invoked one-job caller. I1-GA defines the fault model, I1-GB publishes bounded restart evidence before protected visible release, and I1-GC provides the caller-selected one-record convergence authority through exact C1-5, exact B2, canonical downstream reread, and an immutable completion marker.
 
-I1-GD provides bounded retention and isolation cleanup while preserving sealed-pending replay evidence, using the same per-record fence as I1-GC plus the existing I1-GB root mutation lock, and leaving I1-GE full crash validation unimplemented. O1A remains the pure replay-before-queue round/idle contract. O1B is complete for one bounded sealed-record replay-lane opportunity, and O1C is complete for one bounded queue-lane opportunity. O1D through O1F remain production scheduling work; no scheduler loop, fairness policy, stale recovery, supervision, or always-on operation is complete.
+I1-GD provides bounded retention and isolation cleanup while preserving sealed-pending replay evidence, using the same per-record fence as I1-GC plus the existing I1-GB root mutation lock. I1-GE remains validation-only full process-exit/fresh-restart proof. O1A remains the pure replay-before-queue round/idle contract. O1B is complete for one bounded sealed-record replay-lane opportunity, and O1C is complete for one bounded queue-lane opportunity. O1D1 must accept the exact scheduler gates and run one production round without sleeping. O1D2 fairness/retry/backoff/jitter/pacing, O1E stale recovery/shutdown, O1F operational validation, supervision, and always-on operation remain incomplete.
 
-Phase I-4A defines lifecycle semantics. I-4B implements the read-only resolver/shared-fence boundary. I-4C1 implements hidden-successor commit ownership. I-4C2 implements bounded prepared recovery, operation-scoped M3f/M3g convergence, exact replay, and tombstone finalization without changing ordinary M2/RelayCTX behavior. I-4D through I-4F remain retrieval exclusion, API/UI, and full validation work.
+Phase I-4A defines lifecycle semantics. I-4B implements the read-only resolver/shared-fence boundary. I-4C1 implements hidden-successor commit ownership. I-4C2 implements bounded prepared recovery, operation-scoped M3f/M3g convergence, exact replay, and tombstone finalization without changing ordinary M2/RelayCTX behavior. I-4D owns ordinary retrieval exclusion and read-only historical lifecycle projection only; I-4E and I-4F own API/UI and full validation.
 
 ## Memory lifecycle
 
@@ -77,7 +78,7 @@ Phase I-4A defines lifecycle semantics. I-4B implements the read-only resolver/s
 - [Phase I-4C1 Primary Forget Hidden-Successor Commit](phase_i4c1_primary_forget_hidden_successor.md)
 - [Phase I-4C2 Primary Forget Recovery and Finalization](phase_i4c2_primary_forget_recovery_finalization.md)
 
-The completed observation/correction path does not make Forget product-complete. I-4D is the user-visible semantic commit because ordinary M2 and RelayCTX must exclude hidden, prepared, recovery-required, corrupt, and prior physical revisions.
+The completed observation/correction path does not make Forget product-complete. I-4D is the user-visible semantic commit because ordinary M2 and RelayCTX must exclude hidden, prepared, recovery-required, corrupt, ambiguous, unsafe, cross-scope, and prior physical revisions before snippet construction, while historical receipts remain immutable.
 
 ## SOUL Lab product layers
 
@@ -104,9 +105,10 @@ The browser owns no queue, scheduler, worker, filesystem, namespace, backend, cr
 
 These are target-only. Experimental SOUL replacement is post-MVP, non-destructive, and distinct from ordinary same-character RelaySOUL revision and rollback.
 
-<!-- O1B_DOC_INDEX -->
-- [O1B Sealed I1-G Replay-Lane Discovery](o1b_sealed_i1g_replay_lane.md) — production bounded replay-lane adapter.
+## Wave 3 boundary
 
-O1B connects O1A's replay `LaneOutcome` to one secure I1-G discovery and one existing I1-GC call. O1C queue discovery is complete; the production round loop remains unimplemented.
-
-- [Wave 2 cross-slice convergence audit](wave2_cross_slice_convergence_audit.md) — integrated I1-GD, I-4C2, O1B, and O1C authority, race, lock/root, leakage, and next-phase boundary.
+- [Wave 2 cross-slice convergence audit](wave2_cross_slice_convergence_audit.md) freezes the independent Wave 3 inputs.
+- I1-GE is validation-only and adds no durable or replay authority.
+- I-4D owns retrieval-only lifecycle exclusion and historical lifecycle overlay.
+- O1D1 owns accepted gates and one bounded `replay -> queue` production round, then returns without sleep.
+- O1D2/O1E/O1F remain scheduling policy, recovery/shutdown, and operational validation.
