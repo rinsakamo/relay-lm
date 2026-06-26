@@ -85,7 +85,7 @@ def build_relaymem_primary_hidden_page_candidate(
         source_event_kind=str(prepared_artifact.get("source_event_kind", "")),
         namespace=str(prepared_artifact.get("namespace", "")),
         summary_text=HIDDEN_PAGE_SUMMARY,
-        title="",
+        title=None,
     )
     result = build_relaymem_primary_page_candidate_dry_run(
         preflight_artifact=preflight_artifact,
