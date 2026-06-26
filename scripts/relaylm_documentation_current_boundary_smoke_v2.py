@@ -117,7 +117,7 @@ def main() -> None:
         ),
         "docs/architecture/relaymem_slp_current_target.md": (
             "I1-GD one bounded maintenance pass",
-            "O1C delegation",
+            "one existing C2 delegation",
             "Forget is not product-complete until I-4C2 through I-4F",
         ),
         "docs/architecture/o0_local_one_job_runner.md": (
