@@ -6,6 +6,7 @@ on:
       - phase-o1c-eligible-b2-queue-lane
     paths:
       - "scripts/_merge_o1b_o1c.py"
+      - "scripts/_merge_o1b_o1c_fix.py"
       - ".github/workflows/o1bc-merge-temp.yml"
 
 permissions:
@@ -57,6 +58,10 @@ jobs:
 
           python scripts/_merge_o1b_o1c.py >>"$log" 2>&1
           reconcile_code=$?
+          if [ $reconcile_code -eq 0 ]; then
+            python scripts/_merge_o1b_o1c_fix.py >>"$log" 2>&1
+            reconcile_code=$?
+          fi
           git add -A >>"$log" 2>&1
           unresolved=$(git diff --name-only --diff-filter=U)
 
@@ -96,7 +101,7 @@ jobs:
           fi
 
           if [ $reconcile_code -eq 0 ] && [ -z "$unresolved" ] && [ $validation_code -eq 0 ]; then
-            git rm .github/workflows/o1bc-merge-temp.yml scripts/_merge_o1b_o1c.py >>"$log" 2>&1
+            git rm .github/workflows/o1bc-merge-temp.yml scripts/_merge_o1b_o1c.py scripts/_merge_o1b_o1c_fix.py >>"$log" 2>&1
             rm -f o1bc_merge_report.txt
             git add -A >>"$log" 2>&1
             git commit -m "merge: integrate O1B replay and O1C queue lanes" >>"$log" 2>&1
