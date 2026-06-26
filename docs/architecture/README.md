@@ -60,6 +60,7 @@ Use [Documentation index](../README.md) for the complete active map and [Project
 - [Phase I-4D Primary Retrieval Exclusion](phase_i4d_primary_retrieval_exclusion.md)
 - [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md)
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
+- [E1 Local Runtime Evaluation](e1_local_runtime_evaluation_2026_06_25.md)
 - [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md)
@@ -101,6 +102,10 @@ The completed observation/correction/hidden-successor/recovery/retrieval-exclusi
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md)
 
 The browser owns no queue, scheduler, worker, filesystem, namespace, backend, credential, SOUL, or mutation authority. The Forget UI remains unimplemented.
+
+## Evaluation evidence
+
+- [E1 Local Runtime Evaluation](e1_local_runtime_evaluation_2026_06_25.md) records explicit trusted-scene formation through O0, separate real Home recall, and the known gaps around direct Home-origin formation, store bootstrap, provenance, and grounding.
 
 ## Character cognition and RelaySOUL targets
 
