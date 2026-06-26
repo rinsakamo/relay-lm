@@ -45,6 +45,7 @@ Use [Documentation index](../README.md) for the complete active map and [Project
 - [O0 Local One-Job Runner](o0_local_one_job_runner.md)
 - [O1A Two-Lane Scheduler and Idle Contract](o1a_two_lane_scheduler_contract.md)
 - [I1-G Durable-finalization Contract and Replay Boundary](i1g_pre_enqueue_durable_finalization_contract.md)
+- [I1-GD Durable-finalization Retention and Isolation Cleanup](i1gd_durable_finalization_retention_cleanup.md)
 - [Integration I1 Primary MEM Two-Turn Recall](integration_i1_primary_mem_two_turn_recall.md)
 - [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md)
@@ -60,7 +61,7 @@ Use [Documentation index](../README.md) for the complete active map and [Project
 
 Phase 6 is complete through C1-5 and C2. O0 is the default-off operator-invoked one-job caller. I1-GA defines the fault model, I1-GB publishes bounded restart evidence before protected visible release, and I1-GC provides the caller-selected one-record convergence authority through exact C1-5, exact B2, canonical downstream reread, and an immutable completion marker.
 
-I1-GC owns replay and completion but not discovery, batch replay, retry loops, cleanup, B3 transitions, C2 execution, workers, M3 writes, or UI. I1-GD and I1-GE remain durability work. O1B through O1F remain production scheduling work. O1A is only the pure replay-before-queue round/idle contract.
+I1-GC provides the caller-selected one-record convergence authority. I1-GD provides bounded retention and isolation cleanup while preserving sealed-pending replay evidence, using the same per-record fence as I1-GC plus the existing I1-GB root mutation lock, and leaving I1-GE full crash validation unimplemented. O1B through O1F remain production scheduling work. O1A is only the pure replay-before-queue round/idle contract.
 
 Phase I-4A defines lifecycle semantics. I-4B implements the read-only resolver/shared-fence boundary. I-4C1 implements hidden-successor commit ownership without M3f/M3g convergence, Forget tombstone, exact applied replay, M2 exclusion, API/UI, or full validation. Those remain I-4C2 through I-4F.
 
