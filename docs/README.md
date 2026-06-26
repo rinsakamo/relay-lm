@@ -20,7 +20,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 
 ## Start here
 
-- [Current project status](PROJECT_STATUS.md) — current implementation boundary through I1-GD, I-4C1, O0, O1A, UI-B0, and the local E1 result.
+- [Current project status](PROJECT_STATUS.md) — current implementation boundary through I1-GD, I-4C1, O0, O1A, O1B, O1C, UI-B0, and the local E1 result.
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, and AI reading rules.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed implementation status and dependency-first sequencing.
@@ -36,6 +36,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Phase 6-C2 one queued-job integration](architecture/phase6c2_one_queued_primary_worker_integration.md)
 - [O0 local one-job runner](architecture/o0_local_one_job_runner.md)
 - [O1A two-lane scheduler contract](architecture/o1a_two_lane_scheduler_contract.md)
+- [O1C eligible B2/B3 queue lane](architecture/o1c_eligible_b2_queue_lane.md)
 - [I1-G durable-finalization contract and completed GA-GD boundaries](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD durable-finalization retention and isolation lifecycle](architecture/i1gd_durable_finalization_retention_cleanup.md)
 - [Integration I1 Primary MEM two-turn recall](architecture/integration_i1_primary_mem_two_turn_recall.md)
