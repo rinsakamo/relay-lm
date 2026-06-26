@@ -31,8 +31,9 @@ Canonical authority:
 
 - [Character Belief, Relationship, and Social Expression Dynamics](character_belief_relationship_dynamics_design.md) — target cross-component model for observation provenance, shared versus character-conditioned belief, conversational probing, relationship-conditioned EMO gain, multi-user audience boundaries, bounded relationship leakage, and mismatch repair.
 - [ADR: Character-conditioned belief without rewriting observation](../adr/character_conditioned_belief_model.md) — durable decision to preserve a character-independent observation ledger while allowing revisable character-specific inference and expression.
+- [Experimental SOUL Replacement and Memory Bootstrap](../relaysoul/experimental_soul_replacement_memory_bootstrap_design.md) — explicitly post-MVP high-risk SOUL fork with SLP-governed memory inheritance, optional provisional virtual memory from conversation history, fresh relationship state, and non-destructive rollback.
 
-These documents define target architecture only. They do not claim that current RelaySLP, RelayMEM, RelaySOUL, RelaySCN, or RelayEMO implements the proposed artifacts or coupling.
+These documents define target architecture only. They do not claim that current RelaySLP, RelayMEM, RelaySOUL, RelaySCN, or RelayEMO implements the proposed artifacts or coupling. Experimental SOUL replacement is not part of MVP completion or ordinary same-character RelaySOUL revision.
 
 ## Product-critical Phase 6 and Integration boundaries
 
