@@ -5,6 +5,7 @@ on:
     paths:
       - "relaylm/app.py"
       - "relaylm/config.py"
+      - "relaylm/_relaymem_slp_durable_finalization_replay_impl.py"
       - "relaylm/relaymem_slp_durable_finalization_*.py"
       - "relaylm/relaymem_slp_durable_runtime_enqueue.py"
       - "relaylm/relaymem_slp_runtime_enqueue.py"
@@ -27,6 +28,7 @@ on:
     branches:
       - main
     paths:
+      - "relaylm/_relaymem_slp_durable_finalization_replay_impl.py"
       - "relaylm/relaymem_slp_durable_finalization_*.py"
       - "relaylm/relaymem_slp_runtime_finalization.py"
       - "scripts/relaylm_i1gc_*.py"
