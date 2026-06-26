@@ -10,6 +10,8 @@ A local operator can process at most one eligible queued job per CLI invocation 
 
 O0 does not complete automatic queue processing, queue scheduling, a worker service, always-on operation, or I1-G pre-enqueue durability.
 
+O1A now defines the future scheduler round and idle contract only. It does not change O0 production behavior. O1C will later extract or reuse a narrow O0-compatible queue discovery/reread/scope/C2-request helper while preserving the O0 CLI and smokes.
+
 ## CLI boundary
 
 The only execution form introduced by O0 is:
@@ -53,6 +55,8 @@ Every other combination is invalid configuration. CLI flags cannot elevate disab
 
 When enabled, `relaymem_slp_queue_root`, `relaymem_slp_protected_source_root`, and `memory.root_path` must be absolute. O0 never derives these roots from queue metadata, browser input, namespace text, or a filename.
 
+O1A target scheduler gates are design-only and are not accepted by `RelayLMConfig`, this CLI, `docs/config_schema.md`, or `config.example.yaml` in the current boundary.
+
 ## Bounded discovery and eligibility
 
 O0 opens the queue root through the existing secure dirfd helper and performs one non-recursive scan. It counts every directory entry against `relaymem_local_worker_discovery_max_entries`; exceeding the cap fails closed.
@@ -79,7 +83,7 @@ An eligible O0 record is an exact valid durable record whose state is `queued` a
 
 If the queue's existing advisory lock is already held when discovery begins, O0 returns bounded `queue_busy` status with the normal `completed` exit category. It does not misreport lock contention as no eligible work, retry the scan, sleep, or enter a polling loop. A non-contention lock failure is fail-closed as unsafe queue state.
 
-For this local experiment only, eligible records are sorted by canonical filename and the first one is selected. This is a stable deterministic order, not a fairness, priority, backoff, multi-worker, or future O1 scheduling policy.
+For this local experiment only, eligible records are sorted by canonical filename and the first one is selected. This is a stable deterministic order, not a fairness, priority, backoff, multi-worker, or future O1D scheduling policy.
 
 ## Canonical reread before claim
 
@@ -131,6 +135,36 @@ C2 and its existing dependencies continue to own:
 
 O0 never reconstructs source content from queue metadata, trace, frontend history, visible output, logs, Lab projections, or public node results.
 
+## Future O1C reuse boundary
+
+O1C must not launch this CLI as a subprocess or parse its stdout as a production interface. It must not reimplement B3 claim or change C2 request semantics.
+
+The intended future refactor target is a narrow production helper containing only:
+
+```text
+bounded queue discovery
+canonical single-candidate selection
+canonical reread
+character/store scope resolution
+exact C2 request construction
+```
+
+Boundary distinction:
+
+```text
+O0:
+  one operator invocation
+  at most one queue job
+  process exits
+
+O1C:
+  one queue-lane opportunity in one scheduler round
+  same B3/C2 authority
+  bounded lane result returned to O1
+```
+
+O1A does not perform this refactor. O0 CLI behavior and existing smokes remain compatibility requirements.
+
 ## Public projection
 
 Schema: `relaymem.local_worker_once_projection.v0`
@@ -158,6 +192,8 @@ O0 is fail-closed for unsafe roots, symlink components, unsupported entry types,
 
 Two concurrent O0 invocations may initially contend for discovery or select the same candidate. A discovery loser may return `queue_busy`; after selection, at most one invocation can cross the existing B3 claim CAS and invoke the worker. The other stops at canonical reread or receives the existing C2/B3 claim conflict without source preparation from stale authority.
 
+The same authorities remain the concurrency fence when a future O1C queue lane races O0. O1 does not add a global queue correctness lock.
+
 ## Non-goals
 
 O0 does not implement polling, sleeping, a filesystem watcher, scheduling fairness, priority, retry scheduling, stale-claim scanning, automatic stale recovery orchestration, concurrency greater than one per invocation, a worker pool, service supervision, health serving, systemd/Windows service integration, Docker orchestration, browser worker authority, SOUL Lab controls, UI-B0 conversation, I1-G durability, Phase I-4, TTS/audio/avatar/ASR, or public remote access.
@@ -165,10 +201,15 @@ O0 does not implement polling, sleeping, a filesystem watcher, scheduling fairne
 Future boundary:
 
 ```text
-O0  one invocation -> at most one eligible queued job
-O1  scanner / retry scheduler / polling
-O2  supervised worker service
-O3  always-on local operation
+O0   one invocation -> at most one eligible queued job
+O1A  two-lane round / adapter / idle contract only
+O1B  one sealed I1-G discovery and I1-GC delegation
+O1C  one B2 discovery and C2 delegation
+O1D  ordering / fairness / retry-time / backoff / jitter
+O1E  stale recovery / cancellation / graceful shutdown
+O1F  operational validation
+O2   supervised worker service
+O3   always-on local operation
 ```
 
 ## Verification
@@ -183,4 +224,4 @@ python scripts/relaylm_o0_local_one_job_runner_security_smoke.py
 
 The functional smoke covers one restart-rehydrated success, terminal cleanup, Primary MEM formation, dry-run non-mutation, no-work states, discovery contention, claim competition, retry retention, and later fresh-generation success. The security smoke covers gates, roots, symlink and unsupported file types, malformed/corrupt/oversized/collision records, discovery caps, claimed no-work, canonical reread races, character isolation, C2 failure conversion, cleanup-required projection, CLI error output, and content-leakage canaries.
 
-Related C2, C1-2, C1-5, B2/B3, I-1, I-2, I-3, and documentation boundary smokes remain regression requirements.
+Related O1A pure-contract, C2, C1-2, C1-5, B2/B3, I-1, I-2, I-3, and documentation boundary smokes remain regression requirements.

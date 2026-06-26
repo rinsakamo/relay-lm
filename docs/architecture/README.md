@@ -45,6 +45,7 @@ Canonical authority:
 - [Phase 6-C1-5 Durable Protected Source Persistence](phase6c1_durable_protected_source_persistence.md)
 - [Phase 6-C2 One Queued Primary Worker Integration](phase6c2_one_queued_primary_worker_integration.md)
 - [O0 Local One-Job Runner](o0_local_one_job_runner.md)
+- [O1A Two-Lane Scheduler and Idle Contract](o1a_two_lane_scheduler_contract.md)
 - [Integration I1 Primary MEM Two-Turn Recall](integration_i1_primary_mem_two_turn_recall.md)
 - [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)
 - [Phase I-3 Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md)
@@ -58,7 +59,9 @@ Canonical authority:
 
 Phase 6-A1/A2 and B0-B3 own deferred admission, finalized-turn handoff, durable queue publication, and fenced queue lifecycle. I1-B wires ordinary managed response finalization to post-response enqueue. C1-0 owns exact current-claim source construction, C1-1 composes M3a-M3h, C1-2 executes one already-claimed job, C1-3 classifies outcomes, C1-4 verifies integrated fault convergence, C1-5 durably persists and restart-rehydrates the claim-independent protected capture, and C2 connects one exact queued record through canonical claim, rehydrate, and C1-2 execution.
 
-O0 is the thin local caller before C2. It performs bounded non-recursive discovery, deterministic selection of at most one currently eligible queued record, a secure canonical reread, and exact config-owned character/store resolution before delegating unchanged lifecycle and worker authority to C2/B3/C1-5/C1-2. It is default-off, operator-invoked, and one-shot; it does not define O1 scheduling, O2 service supervision, or O3 always-on operation.
+O0 is the thin local caller before C2. It performs bounded non-recursive discovery, deterministic selection of at most one currently eligible queued record, a secure canonical reread, and exact config-owned character/store resolution before delegating unchanged lifecycle and worker authority to C2/B3/C1-5/C1-2. It is default-off, operator-invoked, and one-shot.
+
+O1A now defines the future automatic-operation round contract only: replay-lane opportunity first, queue-lane opportunity second, at most one delegation per lane, independent queue rediscovery after replay, and pure `stop | run_next_round | idle` aggregation. O1B sealed-record discovery, O1C queue discovery/C2 delegation, O1D fairness/backoff, O1E stale recovery/shutdown, and O1F operational validation remain unimplemented. No production scheduler, polling loop, sleep, config field, or CLI command is added by O1A.
 
 Phase I-1 completes ordinary next-turn Primary MEM recall with exact character/namespace isolation and RelayCTX injection. Phase I-2 adds a bounded read-only observation model, loopback-only APIs, strict browser validation, and real Lab Observation rendering without changing RelayMEM, RelaySLP, RelayRUN, or RelayCTX authority. Phase I-3 completes auditable revision-fenced Correct and later corrected retrieval. UI-B0 adds a browser-local text-first client for the existing RelayLM Chat Completions path without adding a new routing, memory, SOUL, backend, or worker authority.
 
@@ -84,6 +87,7 @@ Phase 5.5 is complete for RelayLM Core. Concrete TTS execution, audio queueing, 
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — store contracts, retrieval, Primary MEM formation, worker integration, recall, observation, Secondary consolidation, and Lab-ready operations.
 - [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md) — planned I-4 through I-9 work slices, SOUL Lab conversation, operational phases, parallel development, and evaluation gates.
 - [I1-G Pre-enqueue Durable-finalization Contract](i1g_pre_enqueue_durable_finalization_contract.md) — contract/fault model plus completed I1-GB publication boundary; restart replay remains I1-GC work.
+- [O1A Two-Lane Scheduler Contract](o1a_two_lane_scheduler_contract.md) — bounded replay-then-queue round, lane separation, idle disposition, target-only gates, and content-free projection; production discovery and scheduling remain unimplemented.
 
 ## RelayMEM Primary persistence track
 
@@ -119,7 +123,7 @@ Current instruction-bearing actual apply uses `client_history_exclusion_apply.v1
 
 Historical and MVP documents do not override current owners. Implementation handoffs are bounded slice records; they do not override Project Status, the implementation plan, or dedicated current contracts.
 
-## Integration I1 through UI-B0 and O0
+## Integration I1 through UI-B0 and O0/O1A
 
 - [Primary MEM two-turn recall](integration_i1_primary_mem_two_turn_recall.md): ordinary Turn 1 durable formation, ordinary Turn 2 scoped M2 selection, canonical page/index/log validation, and bounded RelayCTX injection.
 - [Real SOUL Lab observation](phase_i2_real_soul_lab_observation.md): latest completed run, validated formed memories, durable held/blocked outcomes, and actual backend-bound used-memory evidence, all read-only and character/namespace scoped.
@@ -129,6 +133,7 @@ Historical and MVP documents do not override current owners. Implementation hand
 - [Primary Forget Hidden-Successor Commit](phase_i4c1_primary_forget_hidden_successor.md): implemented I-4C1 prepare, M3e hidden commit, and recovery-required state.
 - [Real Home conversation](soul_lab_ui_b0_real_home_conversation.md): existing RelayLM Chat Completions transport exposed through a bounded browser-local experiment surface.
 - [O0 local one-job runner](o0_local_one_job_runner.md): one operator invocation selects and delegates at most one eligible already-durable queued job.
+- [O1A two-lane scheduler contract](o1a_two_lane_scheduler_contract.md): pure replay-then-queue round aggregation and idle semantics only.
 
 ## Operational alignment
 

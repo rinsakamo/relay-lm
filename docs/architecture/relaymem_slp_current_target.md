@@ -9,6 +9,7 @@ relaylm_update_trigger:
   - Phase 6 deferred orchestration slice lands
   - durable MEM persistence apply state changes
   - ordinary-runtime worker integration changes
+  - O1 scheduler contract or production boundary changes
 relaylm_not_authoritative_for:
   - repository-wide phase sequencing
   - exact RelayMEM or RelaySLP schemas
@@ -28,6 +29,7 @@ relaylm_related_authority:
   - phase6c1_durable_protected_source_persistence.md
   - phase6c2_one_queued_primary_worker_integration.md
   - o0_local_one_job_runner.md
+  - o1a_two_lane_scheduler_contract.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i2_real_soul_lab_observation.md
   - phase_i3_auditable_primary_mem_correct.md
@@ -74,6 +76,21 @@ O0 one invocation -> at most one eligible queued job
 
 C1-2 executes one already-claimed canonical B3 job. C1-5 persists protected content separately from the content-free queue. C2 accepts one caller-selected queued record and connects B3 claim, C1-5 preparation, and C1-2 execution. O0 adds bounded discovery and one C2 delegation without polling or retry scheduling.
 
+O1A now defines a pure scheduler contract without adding production scheduling:
+
+```text
+one bounded round
+  -> replay lane opportunity first
+       -> future O1B discovery
+       -> one future I1-GC replay
+  -> queue lane opportunity second
+       -> future O1C discovery
+       -> one existing C2 execution
+  -> stop | run_next_round | idle
+```
+
+Each lane may delegate at most once, for at most two total delegated work units. Replay and queue remain independent state machines. A queue record converged by replay may be selected in the same round only through an independent queue-root discovery and canonical reread. Replay output is never a C2 input.
+
 Completed product integration:
 
 - Phase I-1 ordinary next-turn M2 recall and RelayCTX injection;
@@ -106,7 +123,11 @@ finalized-turn protected capture
   -> optional process-local hot cache
 ```
 
-O0 remains default-off, operator-invoked, and one-shot. O1 polling/retry scheduling, O2 supervision, and O3 always-on operation remain unimplemented.
+O0 remains default-off, operator-invoked, and one-shot.
+
+O1A is contract-only. O1B/O1C production discovery and delegation, O1D fairness/retry/backoff, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.
+
+O1A proposed scheduler field names are target-only. `relaylm/config.py`, `docs/config_schema.md`, `config.example.yaml`, and CLI behavior do not accept or expose them.
 
 ## Current Primary mutation and lifecycle-read boundary
 
@@ -176,7 +197,7 @@ The current runtime still lacks:
 - Secondary MEM consolidation and RelaySOUL mutation;
 - static Lab bundle serving and TTS/audio/avatar execution.
 
-C1-5 is restart-complete only for protected-source recovery of durably enqueued jobs. I1-GB persists sealed pre-release evidence for turns not yet converged to C1-5/B2, but restart discovery/replay and completion are I1-GC work.
+C1-5 is restart-complete only for protected-source recovery of durably enqueued jobs. I1-GB persists sealed pre-release evidence for turns not yet converged to C1-5/B2, but restart discovery/replay and completion are I1-GC work. O1A does not fill that gap; future O1B only selects and calls I1-GC.
 
 ## Ownership boundary
 
@@ -184,7 +205,9 @@ RelayMEM owns memory meaning, lifecycle, source lineage, current-state resolutio
 
 Phase 6 / RelayRUN owns dispatch admission and identity, response-finalization handoff, durable-finalization publication, durable queue lifecycle, claim/lease/retry/terminal control, worker invocation, and restart/checkpoint integration.
 
-RelayCTX owns backend-bound packing and injection. SOUL Lab owns bounded read models and explicit user-operation surfaces without filesystem, queue, or worker authority. RelaySLP may read SOUL as a protected anchor and may later emit separately governed proposals; it never mutates SOUL directly.
+O1 owns only bounded work-source scheduling and lane-level operational aggregation. I1-GC owns finalization replay and completion, B3 owns queue lifecycle, C2 owns one queued-record coordination, and C1-2 owns worker execution.
+
+RelayCTX owns backend-bound packing and injection. SOUL Lab owns bounded read models and explicit user-operation surfaces without filesystem, queue, scheduler, or worker authority. RelaySLP may read SOUL as a protected anchor and may later emit separately governed proposals; it never mutates SOUL directly.
 
 ## Idempotency boundary
 
@@ -198,11 +221,17 @@ RelayMEM memory-write idempotency
 Primary mutation operation idempotency
   prevents duplicate Correct or Forget revisions and audit artifacts
 
+I1-G finalization replay idempotency
+  converges one sealed record to exact C1-5/B2 and completion
+
+O1 scheduler round identity
+  is not a new durable job or mutation identity
+
 Lab observation receipt identity
   prevents duplicate read-model evidence without changing authority
 ```
 
-Worker retry, memory write, observation receipt, correction replay, Forget replay, and durable-finalization replay remain separate identities.
+Worker retry, memory write, observation receipt, correction replay, Forget replay, durable-finalization replay, and scheduler round aggregation remain separate identities.
 
 ## Completed Primary MEM integration
 
@@ -232,9 +261,18 @@ I-4C2 exact replay, forward recovery, tombstone finalization             unimple
 I-4D  M3 convergence, M2/RelayCTX exclusion, historical projection      unimplemented
 I-4E  loopback API and SOUL Lab Forget UI                                unimplemented
 I-4F  crash/race/security/fresh-conversation validation                  unimplemented
+
+O1A   two-lane round / adapter / idle contract                           complete
+O1B   one eligible sealed I1-G record discovery / I1-GC delegation      unimplemented
+O1C   one eligible B2 discovery / O0-compatible C2 delegation            unimplemented
+O1D   ordering / fairness / retry-time / backoff / jitter                unimplemented
+O1E   stale recovery / cancellation / graceful shutdown                 unimplemented
+O1F   full operational validation                                        unimplemented
 ```
 
 I-4B completed the narrow resolver/fence refactor and I-4C1 consumed it for the hidden lifecycle commit while preserving M2 relevance ownership and avoiding a broad generic mutation framework. I-4C2 and I-4D continue from this boundary without absorbing queue or worker semantics.
+
+O1A completes only the scheduling contract. O1B/O1C must consume existing I1-GC/O0/C2 boundaries without merging finalization and queue state machines.
 
 ## Historical evidence target
 
@@ -251,7 +289,7 @@ The past request is never rewritten to imply the memory was not used.
 
 ## Preserved invariants
 
-Every migration step preserves visible-response independence, exact scope and lineage, protected content domains, bounded public projections, separate idempotency domains, fail-closed corruption handling, no browser filesystem/lifecycle authority, no mock mutation fallback, no direct RelaySOUL mutation, and no re-exposure of a prepared or committed hidden memory.
+Every migration step preserves visible-response independence, exact scope and lineage, protected content domains, bounded public projections, separate idempotency domains, fail-closed corruption handling, no browser filesystem/lifecycle/scheduler authority, no mock mutation fallback, no direct RelaySOUL mutation, and no re-exposure of a prepared or committed hidden memory.
 
 Forget is not physical deletion, secure erase, purge, restore/unhide, or legal erasure.
 
