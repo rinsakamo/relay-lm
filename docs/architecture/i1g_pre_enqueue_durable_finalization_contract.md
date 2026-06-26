@@ -36,7 +36,7 @@ relaylm_related_authority:
 
 I1-GA is complete as the contract, design decision, pure fault model, and validation boundary. I1-GB is complete for bounded durable base/segment/seal publication and response-release admission. I1-GC is complete for caller-selected one-record restart replay, exact C1-5/B2 convergence, duplicate suppression, cross-process fencing, canonical downstream verification, and immutable completion markers. I1-GD is complete for bounded retention, orphan reconciliation, content-free isolation, and crash-convergent cleanup.
 
-I1-GE full production crash validation remains unimplemented. I1-G overall remains in progress until that boundary lands.
+I1-GE remains unimplemented and is validation-only. It must prove the existing I1-GB through I1-GD production authorities with real process exits and fresh-process restart; it must not add a durable schema, replay authority, scheduler, queue lifecycle, worker behavior, or memory mutation. I1-G overall remains in progress until that proof lands.
 
 O1A defines only the scheduler-side two-lane round contract. O1B is complete for one bounded eligible sealed-record discovery, canonical selected-record reread, and at most one I1-GC call. O1C is complete for one independent bounded B2/B3 queue discovery, canonical reread, server-owned scope resolution, and at most one existing C2 call. Neither lane owns I1-G replay, completion, C1-5, B2/B3 lifecycle, retention, cleanup, or worker execution.
 
@@ -244,7 +244,7 @@ relaymem_slp_durable_finalization_cleanup_max_records_per_pass: 64
 relaymem_slp_durable_finalization_cleanup_timeout_ms: 5000
 ```
 
-Apply requires the exact enabled/dry-run/apply gate combination, valid absolute private roots, and positive bounds. No setting enables a scanner loop, polling loop, retry scheduler, daemon, or service. O1A scheduler names remain target-only and are not accepted configuration.
+Apply requires the exact enabled/dry-run/apply gate combination, valid absolute private roots, and positive bounds. No setting enables a scanner loop, polling loop, retry scheduler, daemon, or service. O1A scheduler names remain target-only and are not accepted configuration until O1D1.
 
 ## O1B caller boundary
 
@@ -281,7 +281,7 @@ Bounded retention, orphan reconciliation, immutable content-free isolation, shar
 
 ### I1-GE — unimplemented
 
-Full production crash-at-every-boundary integration smoke across non-stream, stream, publication, visible release, C1-5, B2 ambiguity, completion, concurrency, restart, retention, and leakage.
+Validation-only full production crash-at-every-boundary proof across non-stream, stream, publication, visible release, C1-5, B2 ambiguity, completion, concurrency, restart, retention, and leakage. It changes no production authority.
 
 ### O1B — complete
 
@@ -291,9 +291,9 @@ One bounded sealed I1-G discovery, canonical selected-record reread, and at most
 
 One bounded B2/B3 discovery, due/future classification, canonical selected-record reread, server-owned scope resolution, and at most one existing C2 delegation.
 
-### O1D through O1F — unimplemented
+### O1D1 through O1F — unimplemented
 
-Ordering/fairness/retry policy, stale recovery/shutdown, and operational validation.
+O1D1 accepts exact scheduler gates and runs one replay-before-queue production round without sleeping. O1D2 owns ordering/fairness/retry-time/backoff/jitter/pacing. O1E owns stale recovery/cancellation/shutdown. O1F owns operational validation.
 
 ## Validation boundary
 
@@ -301,4 +301,4 @@ I1-GC validation covers sealed-only, source-only, source+queue, exact duplicate,
 
 I1-GD validation covers default-off and dry-run gates, bounded inventory, fresh/expired incomplete records, sealed-pending retention, exact completion cleanup eligibility, corrupt/unsupported isolation, marker duplicate/collision behavior, interrupted cleanup convergence, marker-last deletion, shared-fence contention, root-lock publication exclusion, unsafe-file non-mutation, future-clock retention, downstream non-mutation, replay exclusion after isolation, and leakage canaries.
 
-Current status documents must describe I1-GA through I1-GD, O1B, and O1C as complete; I1-GE and O1D onward remain unimplemented.
+Current status documents must describe I1-GA through I1-GD, O1B, and O1C as complete; I1-GE, O1D1, O1D2, O1E, and O1F remain unimplemented.

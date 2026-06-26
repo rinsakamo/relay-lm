@@ -7,7 +7,8 @@ relaylm_owner: relaymem_slp_operations
 relaylm_update_trigger:
   - O1B replay-lane discovery or I1-GC delegation lands
   - O1C queue-lane discovery or O0 primitive extraction lands
-  - O1D fairness retry-time or backoff policy lands
+  - O1D1 scheduler-gate acceptance or production round coordination lands
+  - O1D2 fairness retry-time backoff jitter or pacing policy lands
   - O1E stale-recovery cancellation or shutdown orchestration lands
   - O1F operational validation evidence lands
   - scheduler gate or projection schema changes
@@ -38,7 +39,7 @@ Last reviewed: 2026-06-26 JST
 
 ## 1. Status
 
-**Contract and pure deterministic aggregation model complete; production scheduler unimplemented.** O1B replay adapter and O1C queue adapter are complete; the scheduler loop remains unimplemented.
+**Contract and pure deterministic aggregation model complete; production round coordination and recurring scheduler behavior unimplemented.** O1B replay adapter and O1C queue adapter are complete.
 
 O1A defines one bounded scheduler round across two distinct work sources:
 
@@ -47,15 +48,17 @@ O1A defines one bounded scheduler round across two distinct work sources:
 
 O1A does not scan either root, select a production record, invoke I1-GC, invoke C2, poll, sleep, compute backoff, recover stale claims, supervise a process, or mutate a filesystem. The pure module `relaylm/relaymem_slp_scheduler_contract.py` validates already-bounded lane outcomes and derives only a scheduler result, a `stop | run_next_round | idle` disposition, and a content-free projection.
 
-O1B and O1C are complete as bounded production lane adapters. The following remain unimplemented:
+O1B and O1C are complete as bounded production lane adapters. The remaining production phases are frozen as:
 
 ```text
-O1D  deterministic within-lane ordering, fairness, retry-time and backoff policy
-O1E  stale-claim recovery orchestration, cancellation, graceful shutdown
-O1F  corruption, concurrency, saturation, restart, leakage, operational validation
+O1D1  accept exact scheduler gates and execute one replay-before-queue production round
+O1D2  deterministic ordering policy, fairness/starvation prevention, retry-time,
+      bounded backoff/jitter, and saturation pacing
+O1E   stale-claim recovery orchestration, cancellation checkpoints, graceful shutdown
+O1F   corruption, concurrency, saturation, restart, leakage, operational validation
 ```
 
-O1A completion must not be described as automatic queue processing, a production scheduler loop, or always-on operation.
+O1D1 is one caller-invoked round and returns without sleep. O1A or O1D1 completion must not be described as recurring automatic queue processing, a production polling loop, supervision, or always-on operation.
 
 ## 2. Purpose and target path
 
@@ -76,7 +79,7 @@ one bounded scheduler round
   -> return without sleeping
 ```
 
-The scheduler coordinates opportunities. It does not absorb either underlying state machine.
+The scheduler coordinates opportunities. It does not absorb either underlying state machine. O1D1 owns the production wiring for exactly one such round; O1D2 and O1E own the later policy and controls required to start or stop subsequent rounds.
 
 ## 3. Authority map
 
@@ -375,7 +378,7 @@ Unknown status values fail closed before projection.
 
 ## 8. Scheduler gates and target-only configuration
 
-O1 is default-off. O1A records target names only and does not add them to `RelayLMConfig`, `docs/config_schema.md`, `config.example.yaml`, or CLI parsing.
+O1 is default-off. O1A records target names only and does not add them to `RelayLMConfig`, `docs/config_schema.md`, `config.example.yaml`, or CLI parsing. O1D1 is the phase that accepts these exact names into the production configuration surface and wires them to one production round.
 
 ```yaml
 relaymem_local_scheduler_enabled: false
@@ -393,7 +396,7 @@ relaymem_local_scheduler_queue_lane_enabled: true
 
 Every other combination is invalid and stops before lane invocation. An enabled scheduler with both lanes disabled is also invalid.
 
-Scheduler gates never elevate I1-GC, O0, C2, B3, or durable-finalization gates. Replay apply requires future I1-GC explicit gates. Queue apply reuses current O0/C2 gates and server-owned roots. CLI and browser input cannot provide roots, locators, job IDs, dispatch IDs, or claims. Roots are never derived from a record. Interval, retry-time, fairness, backoff, and jitter remain O1D; concurrency and worker-count settings remain O2.
+Scheduler gates never elevate I1-GC, O0, C2, B3, or durable-finalization gates. Replay apply requires the existing I1-GC/durable-finalization explicit gates. Queue apply reuses current O0/C2 gates and server-owned roots. CLI and browser input cannot provide roots, locators, job IDs, dispatch IDs, or claims. Roots are never derived from a record. Interval, retry-time, fairness, backoff, jitter, and saturation pacing remain O1D2; concurrency and worker-count settings remain O2.
 
 The pure `SchedulerGates` type uses exact booleans and rejects integer/string coercion.
 
@@ -455,15 +458,15 @@ Used for scheduler disabled, invalid gates, enabled scheduler with no lane, unsu
 
 ### `run_next_round`
 
-Recommended when one or both delegations completed, a mutation may have occurred, a candidate changed during canonical reread, or bounded progress suggests more immediate work. O1A does not choose when the next round starts.
+Recommended when one or both delegations completed, a mutation may have occurred, a candidate changed during canonical reread, or bounded progress suggests more immediate work. O1A does not choose when the next round starts. O1D1 returns this recommendation to its caller but does not act on it.
 
 ### `idle`
 
 Normal later-retry result when both lanes report no immediate eligible work, only future retry work exists, a root is transiently busy, or a bounded lane-local retryable failure needs a later attempt. `idle` is not an error and does not imply permanent emptiness.
 
-O1A never sleeps, registers timers, watches a filesystem, busy-loops, calculates delays, computes minimum retry timestamps, applies exponential backoff, or adds jitter.
+O1A never sleeps, registers timers, watches a filesystem, busy-loops, calculates delays, computes minimum retry timestamps, applies exponential backoff, or adds jitter. O1D1 must preserve the same one-round return boundary.
 
-A future queue adapter may retain a runtime-private typed earliest `retry_not_before` hint. The exact timestamp is not identity, is not projected, does not make a record eligible, and is not converted to a delay by O1A. Replay does not invent a retry timestamp. Public output exposes only `future_work_hint_present`, `idle_recommended`, and `immediate_next_round_recommended`.
+A future queue adapter may retain a runtime-private typed earliest `retry_not_before` hint. The exact timestamp is not identity, is not projected, does not make a record eligible, and is not converted to a delay by O1A or O1D1. Replay does not invent a retry timestamp. Public output exposes only `future_work_hint_present`, `idle_recommended`, and `immediate_next_round_recommended`.
 
 ## 11. Lane-local failure isolation
 
@@ -531,10 +534,12 @@ I1-GC:
 O1B:
   performs bounded sealed-record discovery
   classifies secure eligibility
-  deterministically selects one candidate under future O1D policy
+  deterministically selects one candidate under its current policy
   performs canonical reread
   delegates to I1-GC once
 ```
+
+O1D2 may later refine ordering and fairness across eligible work, but it does not change I1-GC semantics or authorize O1D1 to pass replay-private output into the queue lane.
 
 O1A/O1B never decide completion independently and never call C1-5 or B2 directly. At O1A completion I1-GC is still an independently developed dependency. This contract references only its target one-record interface and adds no production stub or fake success.
 
@@ -640,13 +645,14 @@ nested C2 result
 15. Scheduler never repairs an unsafe record.
 16. Scheduler never converts failure into success.
 17. No-work never starts a busy loop.
-18. Exact delay policy does not exist before O1D.
+18. Exact delay and fairness policy does not exist before O1D2.
 19. O1A performs no filesystem mutation or production scan.
 20. Public result is content-free.
 21. Disabled/invalid scheduler invokes no lane.
 22. Dry-run never elevates a lower authority to apply.
 23. Unknown status, boolean coercion, and reason overflow fail closed.
 24. Identical valid input yields an identical projection.
+25. O1D1 invokes each enabled lane at most once and always returns without sleep or recursion.
 
 ## 16. Fault and race matrix
 
@@ -730,7 +736,7 @@ PYTHONPATH=. python scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py
 
 It validates the required twenty cases: fixed order, one delegation per lane, total two work units, all work/no-work combinations, idle/future/busy handling, lane failure isolation, disabled/invalid gates, independent queue input, private-result and leakage canaries, bounded reasons, unknown status rejection, strict booleans, and deterministic output.
 
-The model does not prove production discovery. O1B/O1C/O1F must supply that proof. O0, C2, B2, B3, I1-G, compile, documentation-link, and current-boundary checks remain regressions.
+The model does not prove production round coordination. O1D1 and O1F must supply that proof. O0, O1B, O1C, C2, B2, B3, I1-G, compile, documentation-link, and current-boundary checks remain regressions.
 
 ## 19. O1B-O1F handoff
 
@@ -751,9 +757,16 @@ O1C
   canonical reread and character/store resolution
   one C2 delegation
 
-O1D
-  within-lane deterministic ordering
-  fairness and starvation policy
+O1D1
+  accept the five exact scheduler gates
+  validate disabled / dry-run / apply combinations
+  invoke O1B at most once, then O1C at most once
+  aggregate through O1A
+  return without sleep, recursion, or another round
+
+O1D2
+  deterministic ordering policy beyond the fixed lane order
+  fairness and starvation prevention
   retry-time handling
   bounded backoff and jitter
   saturation pacing
@@ -769,24 +782,24 @@ O1F
   restart, leakage, operational regression
 ```
 
-O1A does not preselect O1D delay values or O1E shutdown behavior.
+O1A does not preselect O1D2 delay/fairness values or O1E shutdown behavior. O1D1 must use the O1A contract unchanged rather than introducing a second scheduler result model.
 
 ## 20. Explicit non-goals
 
 ```text
-production scheduler loop
+production polling loop or automatic repeated-round launcher
 while loop polling sleep backoff jitter filesystem watch
-sealed-record directory scan or I1-G eligibility implementation
-I1-GC production invocation or completion cleanup
-queue directory scan or B2 candidate implementation
-C2 invocation or B3 transition
+sealed-record directory scan or I1-G eligibility implementation inside O1A
+I1-GC replay semantics or completion cleanup
+queue directory scan or B2 candidate implementation inside O1A
+C2 execution semantics or B3 transition ownership
 stale-claim recovery
-O0 refactor
-config.py config-schema or config-example changes
-CLI command daemon service worker pool health endpoint metrics
+O0 behavior changes
+accepted config.py config-schema or config-example changes before O1D1
+CLI daemon service worker pool health endpoint metrics
 systemd Windows service Docker supervision
 SOUL Lab control or browser scheduling
-fairness priority quotas distributed coordination leader election
+fairness priority quotas distributed coordination leader election before O1D2/O2
 ```
 
 <!-- O1B_LANDED_HANDOFF -->

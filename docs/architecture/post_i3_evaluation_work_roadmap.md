@@ -31,7 +31,7 @@ Last reviewed: 2026-06-26 JST
 
 ## Purpose
 
-Phase I-3 Correct, UI-B0 real Home conversation, O0 local one-job execution, I1-GA through I1-GD, I-4B, I-4C1, I-4C2, O1A, O1B, and O1C are complete at their bounded boundaries. Phase I-4A remains the target Forget / Hide contract. I1-GE, I-4D through I-4F, and O1D through O1F remain incomplete.
+Phase I-3 Correct, UI-B0 real Home conversation, O0 local one-job execution, I1-GA through I1-GD, I-4B, I-4C1, I-4C2, O1A, O1B, and O1C are complete at their bounded boundaries. Phase I-4A remains the target Forget / Hide contract. I1-GE, I-4D through I-4F, O1D1, O1D2, O1E, and O1F remain incomplete.
 
 This roadmap separates four authorities:
 
@@ -49,13 +49,16 @@ Durability
   -> pre-release evidence
   -> one-record restart replay and completion
   -> bounded retention and isolation cleanup
-  -> full crash proof
+  -> validation-only full crash proof
 
 Operations
   -> O0 one-job execution
   -> O1A round/idle contract
   -> O1B/O1C bounded production lane adapters
-  -> O1D/O1E/O1F policy, recovery, shutdown, validation
+  -> O1D1 accepted gates and one production round
+  -> O1D2 ordering/fairness/retry-time/backoff/jitter/pacing policy
+  -> O1E recovery/cancellation/shutdown
+  -> O1F operational validation
   -> O2/O3 supervised and always-on operation
 ```
 
@@ -87,9 +90,9 @@ Defined target:
 
 Unimplemented:
 
-- I1-GE full crash validation remains unimplemented;
-- I-4D through I-4F M2/RelayCTX exclusion, API/UI, and validation;
-- O1D through O1F automatic bounded scheduling;
+- I1-GE validation-only full crash proof;
+- I-4D retrieval exclusion, I-4E API/UI, and I-4F validation;
+- O1D1 one production round, O1D2 scheduling policy, O1E recovery/shutdown, and O1F validation;
 - O2 supervised worker operation;
 - O3 always-on local operation.
 
@@ -165,13 +168,15 @@ I-4C2 resumes one exact prepared operation, continues the deterministic hidden s
 ### Phase I-4D through I-4F: Remaining Forget work
 
 ```text
-I-4D   M2/RelayCTX lifecycle and prior-revision exclusion,
+I-4D   ordinary M2/RelayCTX lifecycle and prior-revision exclusion,
         historical used-memory lifecycle projection
 I-4E   loopback API and SOUL Lab confirmation/refusal/conflict/receipt UI
 I-4F   fresh-conversation exclusion, security, race, and crash-recovery smoke
 ```
 
-I-4D is the user-visible semantic commit. Physical deletion, secure erase, purge, restore, and unhide remain separate.
+I-4D is the user-visible semantic commit and is retrieval-only integration. It must consume the existing current-state authority before M2 snippet construction, exclude hidden, prior, prepared, recovery-required, corrupt, ambiguous, unsafe, and cross-scope candidates, keep forgotten content out of RelayCTX/backend-bound context, and overlay current lifecycle on historical used-memory evidence without rewriting past receipts. Forget apply/recovery, M3f/M3g, routes, UI, restore, purge, and physical deletion are not I-4D work.
+
+Physical deletion, secure erase, purge, restore, and unhide remain separate.
 
 ### Phase I-5: Pin / Unpin
 
@@ -262,14 +267,16 @@ Required scenarios include correction, forgetting, pinning, held review, merge, 
 ### I1-G: Pre-enqueue durability — in progress overall
 
 ```text
-I1-GA contract / fault model                                  complete
-I1-GB durable publication / response-release admission       complete
-I1-GC one-record replay / exact convergence / completion     complete
-I1-GD bounded retention / isolation / orphan cleanup         complete
-I1-GE production crash-at-every-boundary integration smoke   unimplemented
+I1-GA contract / fault model                                      complete
+I1-GB durable publication / response-release admission           complete
+I1-GC one-record replay / exact convergence / completion         complete
+I1-GD bounded retention / isolation / orphan cleanup             complete
+I1-GE validation-only production crash-at-every-boundary proof   unimplemented
 ```
 
 I1-GC does not scan, batch, poll, sleep, retry in a loop, clean up, transition B3, execute workers, or write memory. I1-GD performs one bounded caller-invoked non-recursive maintenance pass, shares the I1-GC record fence, holds the existing I1-GB root mutation lock, retains sealed-pending evidence, isolates before cleanup, deletes the marker last, and does not invoke replay or mutate downstream authorities.
+
+I1-GE must use real process exit and fresh-process restart to prove the existing I1-GB, I1-GC, normal-finalizer race, and I1-GD boundaries. It adds no new durable schema, replay algorithm, scheduler, queue lifecycle, worker behavior, or memory mutation.
 
 ### O1A: Two-lane scheduler and idle contract — complete
 
@@ -284,13 +291,18 @@ O1C  one eligible B2/B3 discovery and existing C2 delegation
 
 O1B and O1C each perform one bounded inventory, deterministic selection, canonical reread, and at most one delegation. Replay output is never passed directly into the queue lane.
 
-### O1D through O1F: Production scheduling — unimplemented
+### O1D1 through O1F: Production scheduling — unimplemented
 
 ```text
-O1D  deterministic ordering, fairness, retry-time, backoff, jitter
-O1E  stale-claim recovery, cancellation, graceful shutdown
-O1F  corruption, concurrency, saturation, restart, leakage smoke
+O1D1  accept the five exact scheduler gates and execute one production replay-before-queue round,
+      invoking O1B and O1C at most once each, aggregating through O1A, then returning without sleep
+O1D2  deterministic ordering policy, fairness/starvation prevention, retry-time handling,
+      bounded backoff/jitter, and saturation pacing
+O1E   stale-claim recovery, cancellation checkpoints, graceful shutdown
+O1F   corruption, concurrency, saturation, restart, leakage smoke
 ```
+
+O1D1 is the production one-round coordinator only. It does not poll, sleep, choose a later start time, implement fairness, recover stale claims, supervise a service, or become the replay/queue authority. O1D2 and O1E own repeated-round policy and control.
 
 ### O2: Supervised worker service — planned
 
@@ -310,29 +322,30 @@ I1-GB, I-4B, and O1A.
 
 I1-GC, I1-GD, I-4C1, I-4C2, O1B, and O1C.
 
-### Wave 2 — current
+### Wave 2 — complete
 
 ```text
-I-4D design and integration preparation
-|| UI-B1A projection design
-|| I1-GE crash validation preparation
+W2-INT cross-slice convergence audit
+  -> I1-GD / I-4C2 / O1B / O1C boundary reconciliation
+  -> no new scheduler loop, retrieval exclusion, or durability authority
 ```
 
-### Wave 3 — next
+### Wave 3 — current independent implementation tracks
 
 ```text
-I-4D
-|| O1D -> O1E
-|| I-5A and I-7A/B contracts
+I1-GE validation-only full process-exit/restart proof
+|| I-4D ordinary M2/RelayCTX exclusion and historical lifecycle projection
+|| O1D1 accepted scheduler gates and one replay-before-queue production round
 ```
 
-### Wave 4 — production proof and product surfaces
+### Wave 4 — policy, product surfaces, and completion validation
 
 ```text
-I1-GE
+O1D2 -> O1E
 || I-4E -> I-4F
 || O1F
 || UI-B1A implementation
+|| I-5A and I-7A/B contracts
 ```
 
 ## Integration checkpoints
@@ -340,20 +353,20 @@ I1-GE
 ```text
 G1  I1-G complete
     sealed evidence -> exact replay -> C1-5/B2 completion
-    -> retention -> crash proof
+    -> retention -> validation-only crash proof
 
 M4  Phase I-4 complete
     active current memory -> hidden successor
     -> M2/RelayCTX exclusion -> historical evidence preserved
 
 O1  automatic bounded local processing complete
-    O1A + O1B/O1C + O1D/O1E + O1F
+    O1A + O1B/O1C + O1D1/O1D2/O1E + O1F
 
 E2  governed Primary MEM product
     I-4 through I-7 + UI-B1 + repeatable real conversation use
 ```
 
-O1A completion alone does not satisfy the O1 checkpoint.
+O1A completion alone does not satisfy the O1 checkpoint. O1D1 completion also does not satisfy it because one caller-invoked round is not recurring automatic processing.
 
 ## Evaluation gates
 
@@ -371,8 +384,9 @@ Phase I-8 and I-9 + complete I1-G + O1/O2 + O3 soak evidence.
 
 ## Preserved boundaries
 
-- I1-GA through I1-GD are complete; I1-GE remains incomplete.
-- O1A is contract-only; O1B and O1C bounded lane adapters are complete; O1D through O1F remain unimplemented.
+- I1-GA through I1-GD are complete; I1-GE remains a validation-only incomplete phase.
+- I-4D owns ordinary retrieval exclusion and historical lifecycle overlay only; I-4E owns routes/UI and I-4F owns full validation.
+- O1A is contract-only; O1B and O1C bounded lane adapters are complete; O1D1, O1D2, O1E, and O1F remain unimplemented.
 - I1-G records and B2 queue records remain separate state machines.
 - O1 invokes I1-GC and O0/C2; it does not absorb their semantics.
 - I-4C1/I-4C2 are delivery subdivisions, not new lifecycle authorities.
@@ -383,9 +397,9 @@ Phase I-8 and I-9 + complete I1-G + O1/O2 + O3 soak evidence.
 
 O1C is complete for one bounded, non-recursive, secure B2/B3 queue inventory; due/future classification; deterministic one-candidate selection; canonical reread; server-owned character/store resolution; fresh exact C2 request construction; and at most one existing C2 delegation. O0 and O1C share one production candidate helper, while O0 CLI, projection, and exit behavior remain unchanged.
 
-O1D through O1F remain unimplemented. O1C does not complete a scheduler round loop, polling, sleep, fairness, retry-delay/backoff/jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation.
+O1D1 through O1F remain unimplemented. O1C does not complete a scheduler round coordinator, polling, sleep, fairness, retry-delay/backoff/jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation.
 
 <!-- O1B_CURRENT_BOUNDARY -->
 ### O1B sealed replay-lane discovery — complete
 
-O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1D through O1F, O2, and O3 remain unimplemented.
+O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, scheduler round coordinator, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1D1 through O1F, O2, and O3 remain unimplemented.

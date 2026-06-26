@@ -101,7 +101,7 @@ The normal finalizer and restart replay use the same nonblocking cross-process p
 
 I1-GD never deletes valid sealed evidence without completion. It publishes `relaymem.slp_durable_finalization_isolation.v0`, fsyncs and canonically rereads it before removing stable known components, and deletes the marker last after isolated retention. C1-5 protected sources and B2/B3 records are outside cleanup authority.
 
-I1-GE full production crash validation remains unimplemented.
+I1-GE remains unimplemented and is validation-only: it must prove the existing I1-GB through I1-GD production boundaries with real process exits and fresh-process restart without adding a durable schema, replay path, scheduler, queue lifecycle, worker behavior, or memory mutation.
 
 ## O1 scheduler boundary
 
@@ -120,9 +120,9 @@ one bounded round
 
 Replay and queue remain independent state machines. A B2 record converged by replay may be selected in the same round only through independent queue-root discovery and canonical reread. Replay output is never a C2 input.
 
-O1A is contract-only. O1B and O1C bounded production discovery and delegation are complete. O1D fairness/retry/backoff, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.
+O1A is contract-only. O1B and O1C bounded production discovery and delegation are complete. O1D1 remains unimplemented and must accept the five exact scheduler gates, invoke O1B then O1C at most once each, aggregate through O1A, and return without sleeping. O1D2 fairness/retry-time/backoff/jitter/pacing, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.
 
-O1A proposed scheduler field names are target-only. `relaylm/config.py`, `docs/config_schema.md`, `config.example.yaml`, and CLI behavior do not accept or expose them.
+O1A proposed scheduler field names are target-only. `relaylm/config.py`, `docs/config_schema.md`, `config.example.yaml`, and CLI behavior do not accept or expose them until O1D1 lands.
 
 ## Completed product integration
 
@@ -183,15 +183,15 @@ revision N+1 hidden
 
 The immutable hidden successor page is lifecycle authority. The tombstone is audit/recovery evidence. Correct and Forget share one current-state resolver and one per-memory mutation fence.
 
-Forget is not product-complete until I-4D through I-4F provide ordinary retrieval exclusion, API/UI, and production validation.
+Forget is not product-complete until I-4D provides ordinary retrieval exclusion and historical lifecycle overlay, I-4E provides API/UI, and I-4F provides production validation.
 
 ## Current limitations
 
 The current runtime still lacks:
 
-- I1-GE full crash validation;
-- O1D through O1F automatic scheduling, O2 supervision, and O3 always-on operation;
-- I-4D hidden/prepared/recovery/corrupt and prior-revision M2/RelayCTX exclusion;
+- I1-GE validation-only full crash proof;
+- O1D1 one production round, O1D2 scheduling policy, O1E recovery/shutdown, O1F validation, O2 supervision, and O3 always-on operation;
+- I-4D hidden/prepared/recovery/corrupt/ambiguous/unsafe/cross-scope and prior-revision M2/RelayCTX exclusion plus historical lifecycle overlay;
 - I-4E loopback mutation API and SOUL Lab Forget UI;
 - I-4F production crash/race/security/fresh-conversation validation;
 - trusted scene admission for direct Home-origin formation;
@@ -234,17 +234,17 @@ O1 scheduler round identity
 
 ```text
 finalized ordinary turn
-  -> I1-B request-runtime A1/A2/B1                   complete
-  -> C1-5 protected source then B2 queue             complete
-  -> B3 queue claim/lease/retry lifecycle            complete
-  -> O0 explicit local selection and one C2 call     complete
-  -> C2/C1 worker path and verified Primary MEM      complete
-  -> later M2 / RelayCTX recall                      complete as I-1
-  -> real Lab observation                            complete as I-2
-  -> audited correction and corrected retrieval      complete as I-3
-  -> canonical read-only lifecycle resolution        complete as I-4B
-  -> hidden-successor lifecycle commit                complete as I-4C1
-  -> prepared recovery and tombstone finalization       complete as I-4C2
+  -> I1-B request-runtime A1/A2/B1                     complete
+  -> C1-5 protected source then B2 queue               complete
+  -> B3 queue claim/lease/retry lifecycle              complete
+  -> O0 explicit local selection and one C2 call       complete
+  -> C2/C1 worker path and verified Primary MEM        complete
+  -> later M2 / RelayCTX recall                        complete as I-1
+  -> real Lab observation                              complete as I-2
+  -> audited correction and corrected retrieval        complete as I-3
+  -> canonical read-only lifecycle resolution          complete as I-4B
+  -> hidden-successor lifecycle commit                 complete as I-4C1
+  -> prepared recovery and tombstone finalization      complete as I-4C2
 ```
 
 Phase I-4C2 adds durable recovery/finalization evidence and governance convergence, but no implemented ordinary M2/RelayCTX exclusion step exists until I-4D.
@@ -253,24 +253,25 @@ Phase I-4C2 adds durable recovery/finalization evidence and governance convergen
 
 ```text
 I1-GD bounded retention / isolation cleanup                         complete
-I1-GE full production crash validation                              unimplemented
+I1-GE validation-only full production crash proof                  unimplemented
 
 I-4A  lifecycle/persistence/concurrency/API/fault contract         defined target
 I-4B  current-state resolver/shared Correct/Forget fence           complete
 I-4C1 shared revision claim/prepared artifact/hidden successor     complete
 I-4C2 exact replay/forward recovery/tombstone                      complete
-I-4D  M3 convergence/M2 exclusion/historical projection           unimplemented
+I-4D  ordinary M2/RelayCTX exclusion/historical projection        unimplemented
 I-4E  loopback API and SOUL Lab Forget UI                          unimplemented
 I-4F  crash/race/security/fresh-conversation validation            unimplemented
 
 O1A   two-lane round/adapter/idle contract                         complete
 O1B   sealed-record discovery/I1-GC delegation                    complete
 O1C   B2 discovery/O0-compatible C2 delegation                    complete
-O1D   ordering/fairness/retry-time/backoff/jitter                  unimplemented
+O1D1  accepted scheduler gates/one production round               unimplemented
+O1D2  ordering/fairness/retry-time/backoff/jitter/pacing          unimplemented
 O1E   stale recovery/cancellation/graceful shutdown               unimplemented
-O1F   full operational validation                                  unimplemented
+O1F   full operational validation                                 unimplemented
 ```
 
 ## Completion interpretation
 
-M3a-M3h, C1-0 through C1-5, C2, O0, I1-GC, I1-GD, O1B, O1C, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, and I-4C2 are implemented. O1B and O1C are bounded lane adapters only; O1D through O1F, O2, and O3 remain incomplete. Forget is not product-complete until I-4D through I-4F provide retrieval exclusion, API/UI, and production validation.
+M3a-M3h, C1-0 through C1-5, C2, O0, I1-GC, I1-GD, O1B, O1C, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, and I-4C2 are implemented. I1-GE, I-4D, and O1D1 are the independent Wave 3 tracks. O1D1 is a bounded one-round coordinator only; O1D2, O1E, O1F, O2, and O3 remain incomplete. Forget is not product-complete until I-4D through I-4F provide retrieval exclusion, API/UI, and production validation.

@@ -10,7 +10,7 @@ A local operator can process at most one eligible queued job per CLI invocation 
 
 O0 does not complete automatic queue processing, queue scheduling, a worker service, always-on operation, or I1-G pre-enqueue durability.
 
-O1A defines the scheduler round and idle contract only. O1C now consumes the same narrow queue discovery/reread/scope/C2-request helper as O0 while preserving the O0 CLI, projection, exit behavior, and smokes.
+O1A defines the scheduler round and idle contract only. O1C now consumes the same narrow queue discovery/reread/scope/C2-request helper as O0 while preserving the O0 CLI, projection, exit behavior, and smokes. O1D1 remains the future one-round coordinator; it does not change O0 behavior.
 
 ## CLI boundary
 
@@ -55,7 +55,7 @@ Every other combination is invalid configuration. CLI flags cannot elevate disab
 
 When enabled, `relaymem_slp_queue_root`, `relaymem_slp_protected_source_root`, and `memory.root_path` must be absolute. O0 never derives these roots from queue metadata, browser input, namespace text, or a filename.
 
-O1A target scheduler gates are design-only and are not accepted by `RelayLMConfig`, this CLI, `docs/config_schema.md`, or `config.example.yaml` in the current boundary.
+O1A target scheduler gates are design-only and are not accepted by `RelayLMConfig`, this CLI, `docs/config_schema.md`, or `config.example.yaml` in the current boundary. O1D1 is the phase that will accept those exact scheduler gates; it must not add them as O0 CLI options.
 
 ## Bounded discovery and eligibility
 
@@ -83,7 +83,7 @@ An eligible O0 record is an exact valid durable record whose state is `queued` a
 
 If the queue's existing advisory lock is already held when discovery begins, O0 returns bounded `queue_busy` status with the normal `completed` exit category. It does not misreport lock contention as no eligible work, retry the scan, sleep, or enter a polling loop. A non-contention lock failure is fail-closed as unsafe queue state.
 
-For this local experiment only, eligible records are sorted by canonical filename and the first one is selected. This is a stable deterministic order, not a fairness, priority, backoff, multi-worker, or future O1D scheduling policy.
+For this local experiment only, eligible records are sorted by canonical filename and the first one is selected. This is a stable deterministic order, not a fairness, priority, backoff, multi-worker, or O1D2 scheduling policy.
 
 ## Canonical reread before claim
 
@@ -201,15 +201,16 @@ O0 does not implement polling, sleeping, a filesystem watcher, scheduling fairne
 Future boundary:
 
 ```text
-O0   one invocation -> at most one eligible queued job
-O1A  two-lane round / adapter / idle contract only
-O1B  one sealed I1-G discovery and I1-GC delegation
-O1C  one B2/B3 discovery and C2 delegation — complete
-O1D  ordering / fairness / retry-time / backoff / jitter
-O1E  stale recovery / cancellation / graceful shutdown
-O1F  operational validation
-O2   supervised worker service
-O3   always-on local operation
+O0    one invocation -> at most one eligible queued job
+O1A   two-lane round / adapter / idle contract only
+O1B   one sealed I1-G discovery and I1-GC delegation
+O1C   one B2/B3 discovery and C2 delegation — complete
+O1D1  accepted scheduler gates + one replay-before-queue round
+O1D2  ordering / fairness / retry-time / backoff / jitter / pacing
+O1E   stale recovery / cancellation / graceful shutdown
+O1F   operational validation
+O2    supervised worker service
+O3    always-on local operation
 ```
 
 ## Verification
