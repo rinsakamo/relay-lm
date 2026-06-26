@@ -35,6 +35,7 @@ relaylm_related_authority:
   - phase_i3_auditable_primary_mem_correct.md
   - phase_i4_primary_mem_forget_hide_contract.md
   - phase_i4b_primary_current_state_shared_fence.md
+  - phase_i4c1_primary_forget_hidden_successor.md
   - soul_lab_ui_b0_real_home_conversation.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - post_i3_evaluation_work_roadmap.md
@@ -84,7 +85,8 @@ RelayMEM Primary integration:
   Phase I-3 Correct: complete
   Phase I-4A Forget / Hide contract: defined target
   Phase I-4B resolver/shared fence/read-only Forget boundary: complete
-  Phase I-4C through I-4F hidden apply, M2, UI, and validation: unimplemented
+  Phase I-4C1 hidden-successor commit: complete
+  Phase I-4C2 through I-4F recovery/replay/tombstone, M2, UI, and validation: unimplemented
 
 SOUL Lab:
   UI-A0 through UI-A7: complete
@@ -123,7 +125,7 @@ Phase 6-C2 one-job claim/rehydrate/execute adapter is complete. It accepts one e
 
 O0 local one-job operation is complete. `relaylm-worker --once --config config.yaml` performs bounded non-recursive discovery, selects at most one eligible queued record, securely rereads it, resolves the exact config-owned character partition, and delegates unchanged authority to C2/B3/C1-5/C1-2.
 
-Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, UI-B0 Real Home Conversation, and the I-4B read-only resolver/shared-fence boundary are complete. I1-GA contract/design/fault-model work and I1-GB pre-release durable publication are complete. I1-GC through I1-GE remain planned; restart replay/completion convergence, cleanup, and full crash validation are unimplemented. Phase I-4A remains the exact Forget / Hide target contract, while I-4C through I-4F remain unimplemented.
+Phase I-1 next-turn recall and scope isolation, Phase I-2 real SOUL Lab observation, Phase I-3 auditable Correct, UI-B0 Real Home Conversation, the I-4B read-only resolver/shared-fence boundary, and I-4C1 hidden-successor commit ownership are complete. I1-GA contract/design/fault-model work and I1-GB pre-release durable publication are complete. I1-GC through I1-GE remain planned; restart replay/completion convergence, cleanup, and full crash validation are unimplemented. Phase I-4A remains the exact Forget / Hide target contract, while I-4C2 through I-4F remain unimplemented.
 
 ## Completed foundation
 
@@ -232,7 +234,7 @@ Forget tombstone  immutable runtime-private audit/recovery artifact
 
 Candidate A is selected: revision `N active` advances to one immutable successor Primary page at revision `N+1 hidden`, followed by M3f/M3g convergence, retrieval-exclusion verification, and tombstone finalization. The page is lifecycle authority; the tombstone is not an independent sidecar flag.
 
-Correct and Forget must share one per-memory lock namespace, pending-operation fence, operation identity lookup, and revision claim. I-4B now implements the canonical read-only resolver, shared `.lock`/fence, preflight, token validation, and bounded zero-item history. Hidden-successor apply, durable history artifacts/projection, M2 exclusion, loopback routes, and UI remain unimplemented.
+Correct and Forget share one per-memory lock namespace, pending-operation fence, operation identity lookup, and revision claim. I-4B implements the canonical read-only resolver, shared `.lock`/fence, preflight, token validation, and bounded zero-item history. I-4C1 now adds exact token/reason revalidation, immutable prepared evidence, deterministic hidden successor publication through M3e, canonical reread, one-winner concurrency, and recovery-required projection. I-4C2 durable applied/tombstone history, M2 exclusion, loopback routes, and UI remain unimplemented.
 
 ### UI-B0: Real Home Conversation — complete
 
@@ -260,8 +262,11 @@ I1-G is not queue scanning, worker scheduling, or C2 execution. O1 may later cal
 I-4B  canonical resolver, shared Correct/Forget fence,
        exact read-only preflight/history/token — complete
 
-I-4C  immutable hidden successor, prepared artifact,
-       tombstone, exact replay, and forward-only recovery
+I-4C1 immutable hidden successor, prepared artifact,
+       shared revision claim and M3e commit — complete
+
+I-4C2 tombstone, exact replay, response-loss convergence,
+       prepared resume and forward-only recovery
 
 I-4D  index/log convergence, M2 exclusion,
        historical lifecycle projection
@@ -275,7 +280,7 @@ The official I-4C contract remains one phase, but delivery should use:
 
 ```text
 I-4C1  token/fence/revision ownership, prepared artifact,
-       hidden successor and M3e publication
+       hidden successor and M3e publication — complete
 
 I-4C2  exact replay, prepared resume, forward recovery,
        tombstone finalization and response-loss convergence
@@ -354,11 +359,11 @@ Thread C  O1A scheduling contract only — remains planned
 
 I1-GB and I-4B are complete, and their response/I1-B/C1-5/B2/UI-B0 plus I-3 Correct/resolver/M2-equivalence regressions passed on the final I-4B head. Wave 1 is now the active implementation boundary.
 
-### Wave 1 — current: one-record recovery and lifecycle commit ownership
+### Wave 1 — in progress: one-record recovery and lifecycle commit ownership
 
 ```text
 Thread A  I1-GC one-record replay
-Thread B  I-4C1 hidden-successor commit ownership
+Thread B  I-4C1 hidden-successor commit ownership — complete
 Thread C  O1 lane contract refinement
 Thread D  UI-B1A projection design
 ```
