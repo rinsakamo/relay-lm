@@ -133,6 +133,21 @@ relaymem_local_worker_claim_owner: relaylm-worker-once
 relaymem_local_worker_lease_duration_seconds: 300
 relaymem_local_worker_discovery_max_entries: 256
 
+# O1D1 local scheduler is a default-off, dry-run-first upper gate for one
+# replay-before-queue production round. It does not poll, sleep, retry, calculate
+# fairness/backoff/jitter, recover stale claims, or supervise a service.
+# All five values are strict booleans. Valid mode triples are exactly:
+#   disabled: enabled=false, dry_run_only=true,  apply_enabled=false
+#   dry-run:  enabled=true,  dry_run_only=true,  apply_enabled=false
+#   apply:    enabled=true,  dry_run_only=false, apply_enabled=true
+# When enabled, at least one lane must remain enabled. Scheduler apply never
+# elevates the existing I1-G replay or O0/C2/B3 lower apply authorities.
+relaymem_local_scheduler_enabled: false
+relaymem_local_scheduler_dry_run_only: true
+relaymem_local_scheduler_apply_enabled: false
+relaymem_local_scheduler_replay_lane_enabled: true
+relaymem_local_scheduler_queue_lane_enabled: true
+
 # Client message canonicalization dry-run is default-off, diagnostics-only, and
 # content-free. When enabled, RelayLM inspects PipelineContext.original_payload
 # for current-request message shape, records a pipeline node result, and never
