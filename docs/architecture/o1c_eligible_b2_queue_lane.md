@@ -90,7 +90,7 @@ scheduler apply + lower apply
   -> C2 apply
 ```
 
-The scheduler gate cannot elevate a lower dry-run gate. O1C adds no scheduler configuration fields; O1B or a later integration slice must own shared scheduler configuration.
+The scheduler gate cannot elevate a lower dry-run gate. O1C adds no scheduler configuration fields; O1D1 owns acceptance of the five exact scheduler gates and one-round invocation.
 
 ## Root and inventory security
 
@@ -120,7 +120,7 @@ When no due candidate exists but at least one future queued record exists, O1C r
 
 ## Deterministic v0 selection
 
-Due candidates are sorted by canonical queue filename in ascending lexicographic order and the first is selected. This is a stable O0-compatible v0 ordering only. It is not FIFO, fairness, age priority, starvation prevention, semantic priority, or retry priority.
+Due candidates are sorted by canonical queue filename in ascending lexicographic order and the first is selected. This is a stable O0-compatible v0 ordering only. It is not FIFO, fairness, age priority, starvation prevention, semantic priority, or retry priority. O1D2 owns future ordering/fairness/retry-time policy.
 
 ## Canonical reread
 
@@ -195,11 +195,12 @@ The O1C workflow also runs O0, O1A, B2, B3, C1-5, C1-2, C2, compileall, document
 O1C does not implement:
 
 - O1B sealed I1-G discovery and one I1-GC replay delegation;
-- O1D ordering, fairness, retry-delay policy, backoff, or jitter;
+- O1D1 scheduler-gate acceptance, replay-lane invocation, or one-round aggregation;
+- O1D2 ordering, fairness, retry-delay policy, backoff, jitter, or saturation pacing;
 - O1E stale recovery, cancellation, or graceful shutdown;
 - O1F operational crash, concurrency, saturation, and leakage validation;
 - O2 supervised worker service;
 - O3 always-on operation;
 - polling, sleeping, scheduler-round recursion, worker pools, daemon lifecycle, browser API, or new CLI authority.
 
-O1C completion therefore does not mean the production scheduler, automatic continuous processing, fair scheduling, stale recovery, supervised service, or always-on operation is complete.
+O1C completion therefore does not mean the production one-round coordinator, recurring automatic processing, fair scheduling, stale recovery, supervised service, or always-on operation is complete.
