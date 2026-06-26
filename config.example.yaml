@@ -103,6 +103,19 @@ relaymem_slp_durable_finalization_max_segment_count: 256
 relaymem_slp_durable_finalization_max_record_count: 1024
 relaymem_slp_durable_finalization_publication_timeout_ms: 5000
 
+# I1-GD retention maintenance is a separate default-off, dry-run-first gate.
+# Apply requires enabled=true, dry_run_only=false, apply_enabled=true and the
+# same absolute pre-existing durable-finalization root. One call is bounded and
+# non-recursive; it never polls, replays, executes work, or mutates C1-5/B2/B3.
+relaymem_slp_durable_finalization_retention_enabled: false
+relaymem_slp_durable_finalization_retention_dry_run_only: true
+relaymem_slp_durable_finalization_retention_apply_enabled: false
+relaymem_slp_durable_finalization_completed_retention_seconds: 604800
+relaymem_slp_durable_finalization_orphan_grace_seconds: 86400
+relaymem_slp_durable_finalization_isolated_retention_seconds: 2592000
+relaymem_slp_durable_finalization_cleanup_max_records_per_pass: 64
+relaymem_slp_durable_finalization_cleanup_timeout_ms: 5000
+
 relaymem_slp_source_registry_max_entries: 256
 relaymem_slp_source_registry_ttl_seconds: 1800
 
@@ -259,164 +272,4 @@ characters:
     scene_state: examples/profiles/default/SCENE_STATE.md
     # Legacy alias used only when scene_state is unset.
     room_state:
-    # unset -> falls back to memory.token_policy_shadow_enabled
     token_policy_shadow_enabled:
-
-# RelayEMO MVP initial (default off, diagnostics/preview first)
-# relayemo_enabled=true emits diagnostics/trace artifacts.
-# relayemo_text_marker_enabled=true is still gated by apply mode.
-relayemo_enabled: false
-relayemo_dry_run: true
-relayemo_text_marker_enabled: false
-relayemo_text_marker_apply_mode: diagnostics_only
-relayemo_marker_open_threshold: 0.65
-relayemo_marker_close_threshold: 0.45
-relayemo_max_markers: 3
-relayemo_scene_gate_enabled: true
-relayemo_session_state_enabled: false
-relayemo_session_state_ttl_seconds: 1800
-relayemo_session_state_max_entries: 256
-
-# RelayEMO LLM affect probe remains heuristic-active by default.
-# llm_structured_dry_run exposes LLM candidates in diagnostics only.
-# Runtime invocation should stay dry-run, budgeted, fail-closed, and protected
-# from recursive RelayLM calls before any candidate apply gate is introduced.
-relayemo_affect_probe_mode: heuristic
-relayemo_llm_affect_probe_enabled: false
-relayemo_llm_affect_probe_dry_run: true
-relayemo_llm_affect_probe_max_input_chars: 2000
-relayemo_llm_affect_probe_timeout_ms: 1500
-relayemo_llm_affect_probe_max_output_tokens: 160
-relayemo_llm_affect_probe_skip_when_busy: true
-relayemo_llm_affect_probe_every_n_turns: 1
-
-# RelayRUN checkpoint writer is default-off.
-# The writer only persists a content-free checkpoint envelope when explicitly enabled
-# and dry-run mode is disabled. It never stores backend payloads, raw user content,
-# response text, or prompt text.
-relayrun_checkpoint_write_enabled: false
-relayrun_checkpoint_root: .relayrun/checkpoints
-relayrun_checkpoint_dry_run_only: true
-
-# RelayRUN resume preflight is diagnostics-only and default-off.
-# It may validate content-free checkpoint envelopes when explicitly enabled,
-# but it never applies resume/retry/recovery transitions.
-relayrun_resume_preflight_enabled: false
-relayrun_resume_dry_run_only: true
-
-# RelayRUN checkpoint index/listing diagnostics are default-off.
-# When enabled and not dry-run-only, RelayLM scans only checkpoint-root .json envelopes
-# and indexes content-free metadata summaries without applying resume/retry/recovery.
-relayrun_checkpoint_index_enabled: false
-relayrun_checkpoint_index_dry_run_only: true
-relayrun_checkpoint_index_max_files: 100
-
-# RelayRUN recovery transition artifacts are diagnostics-only and default-off.
-# They never generate direct user-visible output or apply resume/retry/recovery transitions.
-relayrun_recovery_transition_enabled: false
-relayrun_recovery_transition_dry_run_only: true
-
-# RelayRUN waiting_user contract artifacts are diagnostics-only and default-off.
-# They structure future user-confirmation needs but never emit user-visible output.
-relayrun_waiting_user_contract_enabled: false
-relayrun_waiting_user_contract_dry_run_only: true
-
-# RelayRUN recovery apply preflight artifacts are diagnostics-only and default-off.
-# They define future apply gates without applying resume/retry/recovery or visible output.
-relayrun_recovery_apply_preflight_enabled: false
-relayrun_recovery_apply_dry_run_only: true
-
-# RelayRUN recovery response draft artifacts are diagnostics-only and default-off.
-# They draft output-pipeline instructions without generating final user-visible text.
-relayrun_recovery_response_draft_enabled: false
-relayrun_recovery_response_draft_dry_run_only: true
-
-# RelayRUN visible recovery response preflight artifacts are diagnostics-only and default-off.
-# They require the full output pipeline before any future user-visible recovery text.
-relayrun_visible_recovery_preflight_enabled: false
-relayrun_visible_recovery_dry_run_only: true
-
-# RelayRUN recovery response generator artifacts are diagnostics-only and default-off.
-# They model a future generator contract without producing final user-visible text.
-relayrun_recovery_response_generator_enabled: false
-relayrun_recovery_response_generator_dry_run_only: true
-
-# RelayRUN output RelaySCN recovery gate artifacts are diagnostics-only and default-off.
-# They model an output-side scene/safety gate for future visible recovery with no final user-visible text.
-relayrun_output_relayscn_recovery_gate_enabled: false
-relayrun_output_relayscn_recovery_gate_dry_run_only: true
-
-# RelayRUN visible recovery apply preflight artifacts are diagnostics-only and default-off.
-# They model future visible recovery response apply without response body mutation or final user-visible text.
-relayrun_visible_recovery_apply_preflight_enabled: false
-relayrun_visible_recovery_apply_preflight_dry_run_only: true
-
-# RelayRUN user action contract artifacts are diagnostics-only and default-off.
-# They model future user confirmation / clarification action contracts without resume, retry, or visible recovery apply.
-relayrun_user_action_dry_run_enabled: false
-relayrun_user_action_dry_run_only: true
-
-# Optional OpenWebUI + LM Studio MVP route example (docs-only reference).
-# This commented block does not change defaults unless you opt in.
-# backends:
-#   lmstudio_backend:
-#     type: openai_compatible
-#     base_url: http://127.0.0.1:1234/v1
-#     api_key: relaylm
-#     default_model: local-model
-#     timeout_seconds: 60.0
-#
-# model_routes:
-#   relaylm-companion:
-#     backend: lmstudio_backend
-#     backend_model: local-model
-#     character_id: companion
-#     mode: memory_light
-#     cache_namespace: character/companion
-#     memory_namespace: character/companion
-#     user_id:
-#     user_type:
-#     room_id:
-#     scene_id:
-#     session_id:
-#
-#   relaylm-work-assistant:
-#     backend: lmstudio_backend
-#     backend_model: local-model
-#     character_id: work_assistant
-#     mode: memory_light
-#     cache_namespace: character/work-assistant
-#     memory_namespace: character/work-assistant
-#
-#   relaylm-code-reviewer:
-#     backend: lmstudio_backend
-#     backend_model: local-model
-#     character_id: code_reviewer
-#     mode: memory_light
-#     cache_namespace: character/code-reviewer
-#     memory_namespace: character/code-reviewer
-#
-# characters:
-#   companion:
-#     common_runtime_policy:
-#     soul: examples/profiles/companion/SOUL.md
-#     output_policy: examples/profiles/companion/OUTPUT_POLICY.md
-#     room_anchor:
-#     memory_seed_path: examples/memory/companion_memories.yaml
-#     relationship_anchor:
-#     stable_memory_summary:
-#     scene_state: examples/profiles/default/SCENE_STATE.md
-#     room_state:
-#     token_policy_shadow_enabled:
-#
-#   work_assistant:
-#     soul: examples/profiles/work_assistant/SOUL.md
-#     output_policy: examples/profiles/work_assistant/OUTPUT_POLICY.md
-#     memory_seed_path: examples/memory/work_assistant_memories.yaml
-#     scene_state: examples/profiles/default/SCENE_STATE.md
-#
-#   code_reviewer:
-#     soul: examples/profiles/code_reviewer/SOUL.md
-#     output_policy: examples/profiles/code_reviewer/OUTPUT_POLICY.md
-#     memory_seed_path: examples/memory/code_reviewer_memories.yaml
-#     scene_state: examples/profiles/default/SCENE_STATE.md
