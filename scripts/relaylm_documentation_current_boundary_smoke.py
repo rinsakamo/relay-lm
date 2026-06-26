@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1-I4A, UI-B0, I1-GA/I1-GB, roadmap, and config documentation."""
+"""Validate current Phase 6, I1-I4B, UI-B0, I1-GA/I1-GB, roadmap, and config documentation."""
 from __future__ import annotations
 
 import ast
@@ -64,22 +64,17 @@ def main() -> None:
         "O0 local one-job runner: complete",
         "O1 queue scanner / retry scheduler / polling: not implemented",
         "I1 next-turn Primary MEM recall: complete",
-        "character and namespace isolation: complete",
         "I2 real SOUL Lab observation: complete",
         "I3 auditable Primary MEM Correct: complete",
-        "I1 observe/correct/retrieve product loop: complete",
         "UI-B0 real Home conversation: complete",
         "I4A Forget / Hide contract: defined target",
-        "I4 production Forget runtime, M2 exclusion, and UI: unimplemented",
+        "I4B resolver / shared fence / read-only Forget boundary: complete",
+        "I4C through I4F hidden apply, M2 exclusion, UI, and validation: unimplemented",
         "I1-GA contract / design decision / fault model: complete",
         "I1-GB durable-finalization publication / pre-release admission: complete",
         "I1-GC restart replay / exact C1-5+B2 convergence / completion marker: unimplemented",
-        "I1-GD retention / cleanup: unimplemented",
-        "I1-GE full production crash-smoke: unimplemented",
-        "I1-G overall: in progress",
-        "production Forget lifecycle apply, hidden-state M2 exclusion, Forget history API, or Forget UI",
-        "restore / unhide",
-        "hard delete, secure erase, or physical purge through Forget",
+        "Direct Home-origin formation: not currently proven",
+        "I-4C hidden-lifecycle apply/recovery",
     )
 
     require(
@@ -91,70 +86,51 @@ def main() -> None:
         "### I1-E / Phase I-2: real SOUL Lab observation — complete",
         "### I1-F / Phase I-3: auditable Primary MEM Correct — complete",
         "### I1-F2 / Phase I-4A: Primary MEM Forget / Hide contract — defined target",
+        "I-4B now implements the canonical read-only resolver",
+        "exact read-only preflight/history/token — complete",
         "### UI-B0: Real Home Conversation — complete",
         "### I1-G: pre-enqueue durable-finalization — in progress",
-        "I1-GA contract/design/fault-model work and I1-GB pre-release durable publication are complete",
-        "I1-GC through I1-GE remain planned",
-        "Phase I-4B through I-4F",
-        "## O1: two-lane bounded scheduler — planned",
-        "I-4C1  token/fence/revision ownership",
-        "I-4C2  exact replay, prepared resume, forward recovery",
-        "UI-B1A  after I1-GC and I-4D",
-        "### Wave 0 — current parallel work",
-        "### Wave 3 — production proof and product surfaces",
+        "### Wave 0 — completed implementation foundation",
+        "### Wave 1 — current: one-record recovery and lifecycle commit ownership",
+        "I1-GC || I-4C1 || O1A design",
+        "Direct Home-origin formation remains unproven",
         "I-5 Pin / Unpin",
         "-> I-7 Held Apply / Discard",
         "-> I-6 Merge / Supersession",
         "G1  I1-G complete",
         "M4  Phase I-4 complete",
-        "post_i3_evaluation_work_roadmap.md",
-        "`docs/config_schema.md`",
-        "stale TODO or future-tense text in related documents",
     )
 
     require(
         "docs/architecture/post_i3_evaluation_work_roadmap.md",
-        "Phase I-3: Auditable Correct — complete",
-        "Phase I-4: Forget / Hide",
-        "I-4A  lifecycle, persistence, concurrency, API, recovery, and fault contract — defined target",
-        "Only I-4A is defined. I-4B through I-4F are unimplemented.",
-        "I-4C delivery subdivision",
-        "I-4C1  exact token validation, shared revision claim, prepared artifact",
-        "I-4C2  prepared-operation resume, forward-only recovery, exact replay",
+        "Phase I-4B: Current-state resolver and shared mutation fence — complete",
+        "I-4B canonical read-only current-state resolver",
+        "I-4C1  exact token validation",
+        "I-4C2  prepared resume",
+        "I-4D   index/log convergence",
         "Phase I-5: Pin / Unpin",
-        "Phase I-6: Merge / Supersession",
         "Phase I-7: Held Apply / Discard",
-        "Phase I-8: Secondary MEM Consolidation",
-        "Phase I-9: RelaySOUL Proposal / Intervention / Rollback",
+        "Phase I-6: Merge / Supersession",
+        "Phase I-8: Secondary MEM consolidation",
+        "Phase I-9: RelaySOUL proposal / intervention / rollback",
         "UI-B0: Real Home Conversation — complete",
-        "UI-B1A  after I1-GC and I-4D",
-        "### O0: Local one-job runner — complete",
-        "E1 is available now as an explicit operator-driven evaluation",
-        "I1-G: Pre-enqueue durability",
-        "I1-GA  failure-window and durable-finalization contract — complete",
-        "I1-GB  atomic/convergent durable publication and bounded response-release admission — complete",
-        "I1-GC  one-record restart replay, fencing, duplicate suppression, and completion marker",
-        "O1: Queue scanner and retry scheduler",
-        "O1 has two distinct work-source lanes",
-        "O2: Supervised worker service",
-        "O3: Always-on local operation",
-        "Dependency-first implementation waves",
-        "### Wave 0 — current parallel work",
-        "### Wave 3 — production proof and product surfaces",
-        "I-5 Pin / Unpin",
-        "-> I-7 Held Apply / Discard",
-        "-> I-6 Merge / Supersession",
-        "G1  I1-G complete",
-        "M4  Phase I-4 complete",
-        "E1: Core RelayLM product hypothesis",
-        "E2: Primary MEM governance product",
-        "E3: Long-term character system",
+        "UI-B1: Memory lifecycle visibility — planned",
+        "O0: Local one-job runner — complete",
+        "I1-G: Pre-enqueue durability — in progress",
+        "O1: Two-lane bounded scheduler — planned",
+        "O2: Supervised worker service — planned",
+        "O3: Always-on local operation — planned",
+        "### Wave 1 — current",
+        "I1-GC || I-4C1 || O1A design",
+        "does not prove direct Home-origin formation",
+        "E1: Core RelayLM product hypothesis — available",
+        "E2: Primary MEM governance product — future",
+        "E3: Long-term character system — future",
     )
 
     require(
         "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md",
         "relaylm_status: target",
-        "Defined target contract; runtime unimplemented.",
         "Decision: Candidate A",
         "Forget tombstone",
         "relaylm.mem.primary_current_state.v0",
@@ -164,172 +140,108 @@ def main() -> None:
     )
 
     require(
-        "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
-        "same-origin POST /v1/chat/completions",
-        "Real Runtime is the default source mode",
-        "New Conversation applies only to the current character",
-        "O0 is complete and provides the explicit one-job execution boundary",
-        "O0 explicit one-job execution",
-        "This path is operator-driven",
-        "UI-B0 does not claim that the complete E1 flow is automated",
-    )
-
-    require(
-        "docs/architecture/soul_lab_ui_mvp.md",
-        "UI-B0 real Home conversation: complete",
-        "same-origin `POST /v1/chat/completions`",
-        "Local Preview remains available only through explicit user selection",
-        "O0 explicit local one-job runner: complete outside browser authority",
-        "combined with the completed O0 explicit one-job runner",
-    )
-
-    require(
-        "apps/soul-lab/README.md",
-        "real Home conversation through the existing RelayLM `/v1/chat/completions` path",
-        "npm run smoke:home-conversation",
-        "Conversation transcripts remain browser-process-local",
-    )
-
-    require(
-        "docs/architecture/current_target_migration_guide.md",
-        "A1/A2/B0-B3, ordinary I1-B source-before-queue publication",
-        "Phase I-1 verifies the later-turn retrieval path",
-        "I1-G pre-enqueue durability",
-        "relaymem_slp_runtime_enqueue_apply_enabled=false",
+        "docs/architecture/phase_i4b_primary_current_state_shared_fence.md",
+        "Complete for the I-4B read-only boundary.",
+        "canonical Primary current-state resolver",
+        "shared Correct/Forget mutation fence",
+        "five-minute token validation",
+        "bounded zero-item history behavior",
+        "I-4C: hidden successor apply",
+        "I-4D: canonical hidden/prepared/recovery/corrupt exclusion",
     )
 
     require(
         "docs/architecture/relaymem_mvp_implementation_plan.md",
-        "M3i-c next-turn recall and scope isolation: complete as Phase I-1",
-        "M3i-d real read-only Lab observation: complete as Phase I-2",
-        "Observation receipts",
-        "auditable Correct: complete",
-        "Phase I-4A Forget / Hide contract: defined target",
-        "production Forget runtime, M2 exclusion, and UI: unimplemented",
-        "I1-GA and I1-GB are complete",
-        "O0 explicit local one-job caller: complete",
-        "The next parallel work is I1-GC one-record replay and completion convergence",
+        "M3i-f canonical current-state resolver/shared fence: complete as Phase I-4B",
+        "Forget resolver/shared fence/read-only preflight-token-history: complete as I-4B",
+        "The next RelayMEM governance implementation slice is I-4C1",
+        "No production hidden-state filtering exists yet",
+        "I1-GC one-record replay and completion convergence",
+        "I-4C1 hidden-successor commit ownership",
+    )
+
+    require(
+        "docs/architecture/relaymem_slp_current_target.md",
+        "Phase I-4B completes the canonical read-only Primary current-state resolver",
+        "Current Primary mutation and lifecycle-read boundary",
+        "I-4B  current-state resolver and shared Correct/Forget fence            complete",
+        "Forget is not product-complete until I-4C through I-4F",
+        "O1 polling/retry scheduling, O2 supervision, and O3 always-on operation remain unimplemented",
     )
 
     require(
         "docs/architecture/README.md",
-        "Phase I-1 completes ordinary next-turn Primary MEM recall",
-        "Phase I-2 adds a bounded read-only observation model",
-        "Phase I-3 completes auditable revision-fenced Correct",
-        "Phase I-4A defines the target Forget contract",
-        "UI-B0 adds a browser-local text-first client",
-        "phase_i4_primary_mem_forget_hide_contract.md",
-        "soul_lab_ui_b0_real_home_conversation.md",
-        "i1g_pre_enqueue_durable_finalization_contract.md",
-        "I1-GA defines the turn-scoped sealed durable-finalization contract",
-        "I1-GB implements bounded private base/segment/seal publication",
+        "Phase I-4B now implements the canonical read-only current-state resolver",
+        "Phase I-4B Primary Current State and Shared Mutation Fence",
         "I1-GC restart replay and completion convergence",
     )
 
     require(
         "docs/README.md",
-        "`config_schema.md`",
-        "Current/Target Boundary Matrix",
-        "stale TODO/future-tense text in related plans",
-        "phase_i2_real_soul_lab_observation.md",
-        "phase_i3_auditable_primary_mem_correct.md",
-        "phase_i4_primary_mem_forget_hide_contract.md",
-        "soul_lab_ui_b0_real_home_conversation.md",
-        "i1g_pre_enqueue_durable_finalization_contract.md",
+        "Phase I-4B Primary Current State and Shared Mutation Fence",
+        "Phase I-4B is complete for the canonical read-only current-state resolver",
+        "I-4C through I-4F production apply, exclusion, UI, and validation remain unimplemented",
         "post_i3_evaluation_work_roadmap.md",
-        "Production Forget apply, M2 exclusion, and the SOUL Lab Forget UI remain unimplemented",
-        "I1-G",
-    )
-
-    require(
-        "docs/architecture/relaymem_slp_current_target.md",
-        "Phase 6-B2 performs atomic durable enqueue",
-        "Phase 6-B3 performs default-off, dry-run-first",
-        "C1-5 durable claim-independent protected source and restart rehydration",
-        "C2 one-job claim/rehydrate/execute adapter",
-        "O0 local one-job operation is complete",
-        "O1 polling/retry scheduling, O2 supervision, and O3 always-on operation remain unimplemented",
-        "durably enqueued jobs",
-        "I1 next-turn Primary MEM recall: complete",
-        "I2 real SOUL Lab observation: complete",
-        "I3 auditable Primary MEM Correct: complete",
-        "I-4B through I-4F",
-        "I1-GA contract/fault model and I1-GB pre-release durable publication are complete",
     )
 
     require(
         "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
         "relaylm_status: current",
-        "turn-scoped sealed durable-finalization publication record",
         "Window A publication side — implemented by I1-GB",
         "Window A recovery side — I1-GC unimplemented",
         "source-before-queue invariant is absolute",
-        "One-record replay algorithm",
-        "Required fault matrix",
-        "I1-GA — complete",
-        "I1-GB — durable-finalization publication — complete",
-        "I1-GC — one-record replay and duplicate suppression",
-        "I1-GD — retention, orphan reconciliation, and cleanup",
-        "I1-GE — production crash-at-every-boundary integration smoke",
         "I1-G overall is in progress",
+    )
+
+    require(
+        "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
+        "same-origin POST /v1/chat/completions",
+        "Real Runtime is the default source mode",
+        "New Conversation applies only to the current character",
+        "This path is operator-driven",
+        "UI-B0 does not claim that the complete E1 flow is automated",
     )
 
     forbid(
         "docs/PROJECT_STATUS.md",
-        "SOUL Lab real observation: next",
-        "auditable Correct operation: next",
-        "real SOUL Lab Home conversation remain separate work",
+        "canonical lifecycle resolver and hidden-state M2 exclusion",
+        "production Forget preflight/apply/history",
+        "I4 production Forget runtime, M2 exclusion, and UI: unimplemented",
         "I1-G overall: complete",
-        "I4 production Forget runtime, M2 exclusion, and UI: complete",
-    )
-    forbid(
-        "docs/README.md",
-        "Phase I-3 next step",
-        "The next product boundary is Phase I-3",
-        "real SOUL Lab Home conversation remain separate work",
-        "Forget is implemented",
-    )
-    forbid(
-        "docs/architecture/README.md",
-        "The next boundary is Phase I-3",
-        "the next Correct boundary",
-        "I1-GC restart replay / completion convergence: complete",
-        "Forget runtime is complete",
-    )
-    forbid(
-        "docs/architecture/soul_lab_ui_mvp.md",
-        "Phase I-3 auditable Correct: next",
-        "## Phase I-3 next boundary",
-        "O0 remains a separate convenience/operations slice",
-    )
-    forbid(
-        "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
-        "Until O0 exists",
-        "O0 local one-job runner remains a separate parallel slice",
-    )
-    forbid(
-        "docs/architecture/relaymem_mvp_implementation_plan.md",
-        "O0 and I1-G implementation may proceed in parallel",
-    )
-    forbid(
-        "docs/architecture/relaymem_slp_current_target.md",
-        "O0, queue scanner / daemon operation, supervised worker status",
     )
     forbid(
         "docs/architecture/pipeline_implementation_plan.md",
-        "I3 I3 auditable",
-        "Phase I-3 auditable Correct is the next product boundary",
-        "## Active priority: Phase I-3 auditable Correct",
-        "Phase I-4B through I-4F: complete",
-        "I-5 -> I-6 -> I-7",
+        "I-4B || O1A design",
+        "Phase I-4B through I-4F runtime, M2, UI, and validation: unimplemented",
+        "The explicit E1 path is complete:\n\n```text\nHome real conversation\n  -> O0 one-job execution",
     )
     forbid(
         "docs/architecture/post_i3_evaluation_work_roadmap.md",
-        "I-5 -> I-6 -> I-7",
+        "Only I-4A is defined. I-4B through I-4F are unimplemented.",
+        "Current:\n  I-4B || O1A design",
+        "### Wave 0 — current parallel work",
+    )
+    forbid(
+        "docs/architecture/relaymem_mvp_implementation_plan.md",
+        "The next RelayMEM governance implementation slice is I-4B",
+        "All remain unimplemented.",
+        "Forget resolver/apply/M2/UI/smoke: unimplemented as I-4B through I-4F",
+    )
+    forbid(
+        "docs/architecture/relaymem_slp_current_target.md",
+        "The current resolver is correction-specific.",
+        "I-4B  common current-state resolver and shared Correct/Forget fence   unimplemented",
+        "the canonical lifecycle resolver defined by I-4A",
+    )
+    forbid(
+        "docs/README.md",
+        "Phase I-4A is defined as a target contract only.",
+        "Phase I-3 next step",
+        "Forget is implemented",
     )
 
     run_i1g_fault_model()
-    print("RelayLM documentation current-boundary smoke passed.")
+    print("relaylm documentation current-boundary smoke: ok")
 
 
 if __name__ == "__main__":
