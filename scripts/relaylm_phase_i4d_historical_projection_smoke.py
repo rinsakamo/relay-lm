@@ -27,7 +27,7 @@ REASON = "I4D_HISTORY_REASON_CANARY"
 def main() -> None:
     with prepared_store() as (root, memory_id):
         run_id = "i4d-historical-run"
-        require(write_run_receipt(root, {
+        require(write_run_receipt(str(root), {
             "schema": RUN_RECEIPT_SCHEMA,
             "runtime_private": True,
             "read_model_only": True,
@@ -47,7 +47,7 @@ def main() -> None:
             "recovery_required": False,
             "reason_ids": [],
         }), "run receipt")
-        require(write_used_receipt(root, {
+        require(write_used_receipt(str(root), {
             "schema": USED_RECEIPT_SCHEMA,
             "runtime_private": True,
             "read_model_only": True,
