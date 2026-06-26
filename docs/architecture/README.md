@@ -62,7 +62,7 @@ Use [Documentation index](../README.md) for the complete active map and [Project
 
 Phase 6 is complete through C1-5 and C2. O0 is the default-off operator-invoked one-job caller. I1-GA defines the fault model, I1-GB publishes bounded restart evidence before protected visible release, and I1-GC provides the caller-selected one-record convergence authority through exact C1-5, exact B2, canonical downstream reread, and an immutable completion marker.
 
-I1-GC provides the caller-selected one-record convergence authority. I1-GD provides bounded retention and isolation cleanup while preserving sealed-pending replay evidence, using the same per-record fence as I1-GC plus the existing I1-GB root mutation lock, and leaving I1-GE full crash validation unimplemented. O1B through O1F remain production scheduling work. O1A is only the pure replay-before-queue round/idle contract.
+I1-GD provides bounded retention and isolation cleanup while preserving sealed-pending replay evidence, using the same per-record fence as I1-GC plus the existing I1-GB root mutation lock, and leaving I1-GE full crash validation unimplemented. O1A remains the pure replay-before-queue round/idle contract. O1B is complete for one bounded sealed-record replay-lane opportunity, and O1C is complete for one bounded queue-lane opportunity. O1D through O1F remain production scheduling work; no scheduler loop, fairness policy, stale recovery, supervision, or always-on operation is complete.
 
 Phase I-4A defines lifecycle semantics. I-4B implements the read-only resolver/shared-fence boundary. I-4C1 implements hidden-successor commit ownership without M3f/M3g convergence, Forget tombstone, exact applied replay, M2 exclusion, API/UI, or full validation. Those remain I-4C2 through I-4F.
 
