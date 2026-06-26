@@ -58,7 +58,12 @@ def _exact_completion_collision_reason(
     dispatch = preparation.dispatch_result
     payload = preparation.protected_source_payload
     source = source_result.source
-    if dispatch is None or dispatch.durable_job is None or payload is None or source is None:
+    if (
+        dispatch is None
+        or dispatch.durable_job is None
+        or payload is None
+        or source is None
+    ):
         return "durable_finalization_completion_identity_collision"
     try:
         source_digest = _replay._source_digest(
@@ -77,6 +82,37 @@ def _exact_completion_collision_reason(
     except (KeyError, TypeError, ValueError, RecursionError, OverflowError):
         return "durable_finalization_completion_identity_collision"
     return None
+
+
+def _public_bound_reasons(config: RelayLMConfig) -> tuple[str, ...]:
+    limits = (
+        (
+            "relaymem_slp_durable_finalization_completed_retention_seconds",
+            10 * 365 * 24 * 60 * 60,
+        ),
+        (
+            "relaymem_slp_durable_finalization_orphan_grace_seconds",
+            365 * 24 * 60 * 60,
+        ),
+        (
+            "relaymem_slp_durable_finalization_isolated_retention_seconds",
+            10 * 365 * 24 * 60 * 60,
+        ),
+        (
+            "relaymem_slp_durable_finalization_cleanup_max_records_per_pass",
+            4096,
+        ),
+        (
+            "relaymem_slp_durable_finalization_cleanup_timeout_ms",
+            60_000,
+        ),
+    )
+    reasons: list[str] = []
+    for field_name, maximum in limits:
+        value = getattr(config, field_name)
+        if type(value) is not int or not 1 <= value <= maximum:
+            reasons.append(f"{field_name}_invalid")
+    return tuple(reasons)
 
 
 # The private implementation performs global lookups at call time. These are
@@ -112,6 +148,15 @@ def maintain_relaymem_slp_durable_finalization_retention(
                 bool(dry),
                 bool(apply),
                 ("durable_finalization_retention_gate_invalid",),
+            )
+        bound_reasons = _public_bound_reasons(config)
+        if bound_reasons:
+            return _impl._empty_result(
+                "invalid_input",
+                bool(enabled),
+                bool(dry),
+                bool(apply),
+                bound_reasons,
             )
     return _impl.maintain_relaymem_slp_durable_finalization_retention(
         config=config,
