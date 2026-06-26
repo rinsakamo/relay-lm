@@ -8,7 +8,7 @@ relaylm_update_trigger:
   - I1-G record grammar or completion schema changes
   - I1-GD isolation filename or validator changes
   - I1-GC result vocabulary changes
-  - O1C/O1D/O1E scheduler integration lands
+  - O1C O1D1 O1D2 or O1E scheduler integration lands
 relaylm_not_authoritative_for:
   - I1-G replay or completion convergence
   - I1-GD retention isolation cleanup or orphan policy
@@ -30,7 +30,7 @@ Last reviewed: 2026-06-26 JST
 
 ## Status and authority
 
-**Production replay-lane adapter complete. O1C queue-lane adapter is also complete; production scheduler round, polling, fairness, and service operation remain unimplemented.**
+**Production replay-lane adapter complete. O1C queue-lane adapter is also complete; O1D1 production round coordination, O1D2 scheduling policy, polling, recovery/shutdown, and service operation remain unimplemented.**
 
 O1B owns exactly one bounded replay-lane opportunity:
 
@@ -93,7 +93,7 @@ Any recognized corrupt, unsupported, or unsafe logical record makes the bounded 
 
 ## Deterministic selection
 
-Eligible locator digests are sorted in ascending lexical order and the first is selected. This is stable bounded v0 selection only. It is not FIFO, age priority, fairness, starvation prevention, backoff, or retry policy; those remain O1D.
+Eligible locator digests are sorted in ascending lexical order and the first is selected. This is stable bounded v0 selection only. It is not FIFO, age priority, fairness, starvation prevention, backoff, or retry policy; those remain O1D2.
 
 ## Canonical reread
 
@@ -147,18 +147,19 @@ The projection contains no user/assistant text, governed content, character/name
 ## Non-goals and next boundaries
 
 ```text
-O0  local one-job queue runner                         complete
-O1A pure two-lane scheduler contract                   complete
-O1B sealed I1-G discovery + one I1-GC delegation      complete
-O1C eligible B2 discovery + one C2 delegation          complete
-O1D ordering/fairness/retry-time/backoff                unimplemented
-O1E stale recovery/cancellation/graceful shutdown      unimplemented
-O1F operational validation                             unimplemented
-O2  supervised service                                 unimplemented
-O3  always-on operation                                unimplemented
+O0    local one-job queue runner                              complete
+O1A   pure two-lane scheduler contract                        complete
+O1B   sealed I1-G discovery + one I1-GC delegation           complete
+O1C   eligible B2 discovery + one C2 delegation               complete
+O1D1  accepted scheduler gates + one production round         unimplemented
+O1D2  ordering/fairness/retry-time/backoff/jitter/pacing      unimplemented
+O1E   stale recovery/cancellation/graceful shutdown           unimplemented
+O1F   operational validation                                  unimplemented
+O2    supervised service                                      unimplemented
+O3    always-on operation                                     unimplemented
 ```
 
-O1B adds no scheduler CLI, browser route, polling interval, daemon, service unit, queue scan, queue execution, or automatic operation.
+O1B adds no scheduler CLI, browser route, accepted scheduler configuration, polling interval, daemon, service unit, queue scan, queue execution, or automatic operation. O1D1 may call O1B at most once in one round but does not change O1B semantics.
 
 ## Validation
 
