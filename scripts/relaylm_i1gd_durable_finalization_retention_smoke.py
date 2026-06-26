@@ -90,6 +90,18 @@ def _publish_base(root: Path, *, request_id: str = gb.REQUEST_ID):
     return base, segments, seal, store
 
 
+def _write_distinct_known_locator(root: Path, existing_locator: str) -> str:
+    locator = "0" * 64
+    if locator == existing_locator:
+        locator = "f" * 64
+    (root / base_filename(locator)).write_bytes(
+        canonical_json_bytes(
+            {"schema_version": "relaymem.slp_durable_finalization.v999"}
+        )
+    )
+    return locator
+
+
 def _assert_content_free(value: object, locator: str) -> None:
     rendered = repr(value) + "\n" + json.dumps(
         value.to_log_dict(), ensure_ascii=False, sort_keys=True, default=str
@@ -338,9 +350,12 @@ def test_bounded_pass_and_future_clock() -> None:
     with TemporaryDirectory() as directory:
         root = Path(directory)
         config = _config(root, orphan=1, max_per_pass=1)
-        _publish_base(root, request_id="request-i1gd-one")
-        _publish_base(root, request_id="request-i1gd-two")
+        first, _, _, _ = _publish_base(root, request_id="request-i1gd-one")
         finalization = _finalization_root(config)
+        _write_distinct_known_locator(
+            finalization,
+            str(first["locator_digest"]),
+        )
         _age_all(finalization)
         result = maintain_relaymem_slp_durable_finalization_retention(config=config)
         require(result.processed_record_count == 1, result)
