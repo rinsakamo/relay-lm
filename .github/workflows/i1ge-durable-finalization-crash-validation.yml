@@ -32,6 +32,14 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install -e .
       - run: python -m compileall -q relaylm scripts
+      - name: Upload harness source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: i1ge-harness-source-snapshot
+          path: |
+            scripts/_relaylm_i1ge_crash_child.py
+            scripts/_relaylm_i1ge_crash_validation.py
+          if-no-files-found: error
       - name: Non-stream crash smoke
         id: nonstream
         continue-on-error: true
