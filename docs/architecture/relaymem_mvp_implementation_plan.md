@@ -156,7 +156,7 @@ memory/
     log.md
 ```
 
-Observation receipts, correction artifacts, current-state operation evidence, and future Forget prepared/tombstone artifacts remain runtime-private non-candidates.
+Phase I-2 observation receipts, correction artifacts, current-state operation evidence, and future Forget prepared/tombstone artifacts remain runtime-private non-candidates.
 
 ## MEM-M2: Retrieval foundation — complete for active current memory
 
