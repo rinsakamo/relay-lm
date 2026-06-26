@@ -414,6 +414,30 @@ Every other combination is invalid configuration. The `relaylm-worker` CLI canno
 
 O0 processes at most one eligible queued record per `--once` invocation. It delegates claim, lease, retry, rehydration, worker execution, terminal transition, and cleanup to existing B3/C1-5/C2/C1-2 boundaries. It does not poll or start a daemon.
 
+## O1D1 local production scheduler flags
+
+```yaml
+relaymem_local_scheduler_enabled: false
+relaymem_local_scheduler_dry_run_only: true
+relaymem_local_scheduler_apply_enabled: false
+relaymem_local_scheduler_replay_lane_enabled: true
+relaymem_local_scheduler_queue_lane_enabled: true
+```
+
+All five fields are strict booleans. Integer values, strings, and null are rejected instead of being coerced. The exact accepted scheduler modes are:
+
+| Mode | enabled | dry_run_only | apply_enabled |
+|---|---:|---:|---:|
+| disabled | false | true | false |
+| dry-run | true | true | false |
+| apply | true | false | true |
+
+Every other mode triple is invalid configuration. An enabled scheduler must enable at least one lane. The default remains disabled and dry-run-first, while both lane selectors default to enabled so an operator can opt into the bounded round without introducing a hidden single-lane default.
+
+The scheduler gate is an upper gate only. Scheduler apply does not elevate the I1-G replay/durable-finalization authority or the O0/C2/B3 local-worker authority. Roots, character scope, locators, jobs, dispatch records, and claims continue to resolve from existing server-owned configuration and lower authorities; O1D1 adds no interval, polling, fairness, backoff, jitter, worker-count, or shutdown-timeout field.
+
+One call to `run_relaymem_slp_scheduler_round_once(...)` invokes the replay lane at most once, then the queue lane at most once, aggregates through O1A, validates the content-free projection, and returns without sleep. It is not an always-on scheduler, polling loop, daemon, or service-supervision boundary.
+
 ## RelayINT flags
 
 ```yaml
