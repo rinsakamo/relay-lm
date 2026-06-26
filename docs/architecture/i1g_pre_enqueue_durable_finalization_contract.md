@@ -9,15 +9,16 @@ relaylm_update_trigger:
   - I1-GC one-record replay lands
   - I1-GD retention or cleanup semantics change
   - I1-GE production crash-smoke evidence lands
+  - O1B sealed-record discovery lands
   - I1-B finalized-turn identity or response-finalization order changes
 relaylm_not_authoritative_for:
   - I1-GC restart replay and completion-marker production behavior
   - I1-GD retention and cleanup production behavior
   - I1-GE full crash-at-every-boundary proof
+  - O1 scheduler discovery polling fairness or service lifecycle
   - C1-5 protected-source schema or persistence semantics
   - B2 or B3 queue schema and lifecycle semantics
   - C1-0 C1-2 C2 or M3a-M3h worker and memory semantics
-  - queue scanning scheduling daemon or supervised-service lifecycle
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - phase6_i1b_runtime_enqueue_source_capture_handoff.md
@@ -26,6 +27,7 @@ relaylm_related_authority:
   - phase6b3_relayslp_queue_state_helpers.md
   - phase6c2_one_queued_primary_worker_integration.md
   - phase6c1_integrated_worker_fault_smoke_handoff.md
+  - o1a_two_lane_scheduler_contract.md
   - pipeline_implementation_plan.md
   - post_i3_evaluation_work_roadmap.md
 ---
@@ -34,6 +36,8 @@ relaylm_related_authority:
 ## Status and authority
 
 I1-GA is complete as the **contract, design decision, pure fault model, and validation boundary**. I1-GB is complete for bounded durable base/segment/seal publication and response-release admission. I1-GC restart replay/completion convergence, I1-GD retention/cleanup, and I1-GE full production crash validation remain unimplemented; I1-G overall is in progress.
+
+O1A now defines only the scheduler-side two-lane round contract. Future O1B will discover at most one eligible sealed record, canonically reread it, and call I1-GC once. O1A/O1B do not own replay/completion and do not call C1-5 or B2 directly.
 
 The canonical target is one **turn-scoped sealed durable-finalization publication record**, schema `relaymem.slp_durable_finalization.v0`. It is runtime-private, bounded, integrity-bound evidence. It is not a general journal, worker outbox, second queue, or second memory lifecycle.
 
@@ -126,6 +130,7 @@ request runtime
 | C2 | one selected exact queued record | one claim/rehydrate/execute result | coordination only | discovery/scanner/service lifecycle |
 | C1-0/C1-2 | current claim and fresh source/scope | one fenced worker outcome | source correlation and execution | selection and memory meaning |
 | M3a-M3h | validated worker source | page/index/log/recovery evidence | Primary MEM formation/persistence | dispatch and finalization replay |
+| O1A/O1B | bounded scheduler opportunity and selected locator | one bounded replay-lane result | scheduling/discovery only | replay, C1-5, B2, B3, worker, MEM |
 
 Relevant current production modules and test seams are:
 
@@ -247,6 +252,21 @@ claimable canonical B2 queue record
 
 No retry loop, sleep, polling, scanner, daemon, or worker execution belongs in this helper.
 
+## O1B caller boundary
+
+Future O1B is outside I1-GC. It may perform one bounded non-recursive discovery, secure eligibility classification, deterministic one-candidate selection, canonical reread, and one I1-GC call. It must not:
+
+```text
+reconstruct protected content
+call C1-5 or B2 directly
+decide completion independently
+pass replay output directly to C2
+extract job/dispatch identity for the queue lane
+scan repeatedly, sleep, retry, or execute a worker
+```
+
+O1A orders replay before queue. After replay, the queue lane must independently discover the queue root. Same-round execution of a newly converged B2 record is possible but neither guaranteed nor specially prioritized.
+
 ## Idempotency and duplicate convergence
 
 - Exact replay uses the same I1-B/B1 identity and converges to one C1-5 artifact and one B2 record.
@@ -282,6 +302,8 @@ cleanup_required bounded_segment_count bounded_attempt_count
 ```
 
 Forbidden everywhere public, in logs, exceptions, repr, stdout/stderr, traces, browser, and SOUL Lab: user/assistant text; governed title/summary/body; namespace; run/session/job/dispatch/lineage/idempotency identities; paths; digests; lease token; exact timestamps; raw exception; nested protected result.
+
+O1 scheduler projections may expose only bounded replay-lane status/booleans. They do not embed this projection, the locator, or the private I1-GC result.
 
 ## Required fault matrix
 
@@ -340,6 +362,8 @@ relaymem_slp_durable_finalization_publication_timeout_ms: 5000
 
 Apply requires the exact `true/false/true` gate combination, an absolute pre-existing non-symlink private root, and valid positive bounds. Dry-run validates/prepares but writes no evidence and does not block response release. Retention deadlines and cleanup cadence are intentionally absent until I1-GD. No setting enables a scanner, daemon, or retry loop.
 
+O1A target scheduler field names are contract-only. They are not current `RelayLMConfig` fields and do not elevate these I1-G gates.
+
 ## Implementation slices and dependencies
 
 ### I1-GA — complete
@@ -352,7 +376,15 @@ Implements the private record/store/publication modules, immutable base/segment/
 
 ### I1-GC — one-record replay and duplicate suppression
 
-Implement one caller-selected sealed-record replay through existing I1-B builders, C1-5, and B2; add per-record fencing, canonical reread, exact duplicate convergence, and completion marker. No discovery or service lifecycle. O1 may call it later.
+Implement one caller-selected sealed-record replay through existing I1-B builders, C1-5, and B2; add per-record fencing, canonical reread, exact duplicate convergence, and completion marker. No discovery or service lifecycle.
+
+### O1A — two-lane scheduler contract — complete as contract only
+
+Defines replay-before-queue round ordering, one opportunity/delegation per lane, independent queue rediscovery after replay, lane-local failure isolation, pure idle/run-next/stop disposition, target-only scheduler gates, and content-free projection. It adds no production scan, I1-GC invocation, polling, sleep, config, CLI, or runtime behavior.
+
+### O1B — sealed-record discovery — unimplemented
+
+Will perform bounded secure discovery, deterministic one-candidate selection, canonical reread, and one I1-GC delegation. It will not own replay convergence.
 
 ### I1-GD — retention, orphan reconciliation, and cleanup
 
@@ -362,12 +394,13 @@ Implement bounded classification/cleanup for incomplete, sealed, complete, orpha
 
 Add deterministic production fault injection around base/segment/seal, visible release, C1-5, B2 ambiguity, completion, concurrency, restart, retention, and leakage for non-stream and stream. Depends on I1-GB through I1-GD.
 
-O1 queue scanner is later. I1-G owns no polling cadence, queue selection, daemon, or supervised execution.
+O1C through O1F remain later operations slices. I1-G owns no polling cadence, queue selection, fairness, daemon, or supervised execution.
 
 ## Validation plan
 
 ```bash
 python -m compileall relaylm scripts
+PYTHONPATH=. python scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py
 PYTHONPATH=. python scripts/relaylm_i1g_pre_enqueue_fault_model_smoke.py
 PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
 PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_app_smoke.py
@@ -383,6 +416,8 @@ PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
 
 The current canonical C2 runner replaces the proposed but nonexistent `relaylm_phase6c2_one_queued_primary_worker_integration_smoke.py` filename.
 
-## Explicit non-goals after I1-GB
+## Explicit non-goals after I1-GB / O1A
 
 I1-GB does not implement I1-GC one-record restart replay, completion markers, sealed-record discovery, directory scanning, I1-GD retention/cleanup/orphan reconciliation, I1-GE full crash proof, C1-5/B2/B3 schema changes, queue scanning, scheduling, daemon or supervised service lifecycle, inline worker execution, M3a-M3h/retrieval changes, SOUL Lab changes, CORS/auth changes, queue content, public private identities/paths, or browser-visible protected payloads.
+
+O1A does not implement O1B/O1C production discovery or delegation, O1D fairness/backoff/jitter, O1E stale recovery/cancellation/shutdown, O1F operational validation, a scheduler loop, config/CLI wiring, a daemon, or always-on operation.
