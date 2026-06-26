@@ -52,9 +52,14 @@ jobs:
         run: |
           set +e
           PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_smoke.py > i1gd-smoke.log 2>&1
-          exit_code=$?
+          first_exit=$?
+          PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_contract_smoke.py >> i1gd-smoke.log 2>&1
+          second_exit=$?
           cat i1gd-smoke.log
-          exit "$exit_code"
+          if [ "$first_exit" -ne 0 ]; then
+            exit "$first_exit"
+          fi
+          exit "$second_exit"
       - name: Upload I1-GD smoke output
         if: always()
         uses: actions/upload-artifact@v4
