@@ -105,7 +105,7 @@ Scheduler replay lane: O1B one bounded sealed-record discovery/reread/I1-GC adap
 Scheduler queue lane: O1C one bounded discovery/reread/scope/C2 adapter complete
 Scheduler remaining production: O1D1 accepted gates/one-round coordinator, O1D2 policy, O1E recovery/shutdown, and O1F validation unimplemented
 O1A itself adds no accepted configuration fields
-I-4D is retrieval-only
+I-4D is retrieval-only integration
 I1-GE, I-4D, and O1D1 are independent Wave 3 tracks after W2-INT
 """,
     "docs/architecture/pipeline_implementation_plan.md": """
