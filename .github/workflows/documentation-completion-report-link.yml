@@ -1,0 +1,10 @@
+name: Completion report link smoke
+
+on: pull_request
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
