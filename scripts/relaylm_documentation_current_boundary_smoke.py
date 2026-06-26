@@ -275,10 +275,13 @@ O1D1 invokes each enabled lane at most once and always returns without sleep or 
 """,
     "docs/architecture/o1b_sealed_i1g_replay_lane.md": """
 Production replay-lane adapter complete
+O1D1 production round coordination
 bounded non-recursive secure inventory
 lexicographically first sealed-pending locator
 existing I1-GC delegation at most once
-O1C eligible B2 discovery + one C2 delegation          complete
+those remain O1D2
+O1D1  accepted scheduler gates + one production round
+O1D1 may call O1B at most once in one round
 content-free
 """,
     "docs/architecture/o1c_eligible_b2_queue_lane.md": """
@@ -286,7 +289,10 @@ O1C is complete as one bounded production queue-lane adapter
 Shared O0-compatible helper
 future_retry_only
 Same-round replay independence
-O1D ordering, fairness, retry-delay policy, backoff, or jitter
+O1D1 owns acceptance of the five exact scheduler gates
+O1D2 owns future ordering/fairness/retry-time policy
+O1D1 scheduler-gate acceptance, replay-lane invocation, or one-round aggregation
+O1D2 ordering, fairness, retry-delay policy, backoff, jitter, or saturation pacing
 """,
     "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md": """
 relaylm_status: target
@@ -330,8 +336,12 @@ ordinary M2 lifecycle eligibility enforcement
 Shared O0/O1C production helper boundary
 O1C must not launch this CLI as a subprocess
 O1A target scheduler gates are design-only
-O1B  one sealed I1-G discovery and I1-GC delegation
-O1C  one B2/B3 discovery and C2 delegation — complete
+O1D1 remains the future one-round coordinator
+O1D1 is the phase that will accept those exact scheduler gates
+not a fairness, priority, backoff, multi-worker, or O1D2 scheduling policy
+O1B   one sealed I1-G discovery and I1-GC delegation
+O1C   one B2/B3 discovery and C2 delegation — complete
+O1D1  accepted scheduler gates + one replay-before-queue round
 """,
     "docs/architecture/soul_lab_ui_b0_real_home_conversation.md": """
 same-origin POST /v1/chat/completions
@@ -372,6 +382,12 @@ I-4C2 through I-4F: unimplemented
 I-4D  M3 convergence/M2 exclusion/historical projection
 ### Wave 2 — current
 ### Wave 2 — current parallel implementation candidates
+those remain O1D.
+O1D ordering, fairness, retry-delay policy, backoff, or jitter
+O1D  ordering / fairness / retry-time / backoff / jitter
+O1B or a later integration slice must own shared scheduler configuration.
+future O1D scheduling policy
+O1D ordering/fairness/retry-time/backoff
 This section supersedes earlier
 supersedes earlier roadmap entries
 """)
