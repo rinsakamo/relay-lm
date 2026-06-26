@@ -51,6 +51,11 @@ jobs:
         run: |
           set -o pipefail
           PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_hidden_successor_smoke.py 2>&1 | tee i4c1-hidden.log
+      - name: I-4C1 bounded candidate diagnostic
+        if: failure()
+        shell: bash
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_candidate_diagnostic.py 2>&1 | tee i4c1-candidate.log
       - name: I-4C1 concurrency smoke
         shell: bash
         run: |
