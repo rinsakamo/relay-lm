@@ -107,11 +107,13 @@ def check_o1d1_static_boundary() -> None:
         assert re.search(rf"{field}: StrictBool", config), field
 
     round_code = read("relaylm/relaymem_slp_scheduler_round.py")
-    assert round_code.index("run_relaymem_slp_scheduler_replay_lane_once") < round_code.index(
-        "run_relaymem_slp_scheduler_queue_lane_once"
-    )
+    replay_call = "replay_lane = run_relaymem_slp_scheduler_replay_lane_once"
+    queue_call = "queue_lane = run_relaymem_slp_scheduler_queue_lane_once"
+    assert round_code.index(replay_call) < round_code.index(queue_call)
     require(
         "relaylm/relaymem_slp_scheduler_round.py",
+        replay_call,
+        queue_call,
         "invocation_order.append(\"replay\")",
         "invocation_order.append(\"queue\")",
         "return result",
@@ -202,6 +204,19 @@ def check_shared_docs() -> None:
         "I1-GE Durable-finalization Crash Validation",
         "Wave 3 Cross-Slice Convergence Audit",
         "W3-INT complete only after its PR is merged",
+    )
+    require(
+        "docs/architecture/pipeline_implementation_plan.md",
+        "I1-G overall: complete",
+        "Phase I-4 overall: in progress",
+        "O1D1 accepted gates and one production round: complete",
+        "Wave 4 not open while W3-INT is unmerged",
+    )
+    require(
+        "docs/architecture/post_i3_evaluation_work_roadmap.md",
+        "I1-GA through I1-GE",
+        "I-4E, I-4F, O1D2, O1E, and O1F remain incomplete",
+        "Wave 4 not open while W3-INT is unmerged",
     )
     require(
         "docs/architecture/wave3_cross_slice_convergence_audit.md",
