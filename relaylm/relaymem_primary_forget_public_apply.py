@@ -12,14 +12,18 @@ from .relaymem_primary_forget_recovery import (
 
 
 def apply_primary_memory_forget(**kwargs: Any) -> PrimaryForgetApplyResult:
-    """Return bounded ``already_hidden`` for a different valid finalized retry.
+    """Normalize a valid stale retry only after a fresh canonical lifecycle reread.
 
     The lower-level I-4C1 token validation resolves the caller's expected active
-    revision before it can observe the finalized lifecycle state, so a different
-    pre-issued Forget operation can surface ``stale_revision``.  I-4C2 owns the
-    final lifecycle result and translates that code only after a fresh canonical
-    resolver reread proves ``hidden / none``.  Active stale revisions retain the
-    original failure.
+    revision before it can observe the winner's lifecycle transition, so a
+    different valid pre-issued Forget operation can surface ``stale_revision``.
+    I-4C2 owns the public lifecycle result:
+
+    - finalized ``hidden / none`` becomes bounded ``already_hidden``;
+    - in-flight ``hidden / prepared|recovery_required`` becomes
+      ``target_not_active``;
+    - ``hidden / corrupt`` remains a corruption failure;
+    - an active stale revision retains the original ``stale_revision``.
     """
 
     try:
@@ -35,7 +39,13 @@ def apply_primary_memory_forget(**kwargs: Any) -> PrimaryForgetApplyResult:
             )
         except Exception:
             raise exc
-        if state.lifecycle_state != "hidden" or state.mutation_state != "none":
+        if state.lifecycle_state != "hidden":
+            raise exc
+        if state.mutation_state == "corrupt":
+            raise PrimaryForgetError("target_corrupt") from exc
+        if state.mutation_state in {"prepared", "recovery_required"}:
+            raise PrimaryForgetError("target_not_active") from exc
+        if state.mutation_state != "none":
             raise exc
         return PrimaryForgetApplyResult(
             status="already_hidden",
