@@ -17,10 +17,8 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../DOCUMENTATION_MODEL.md
   - pipeline_responsibility_design.md
-  - pipeline_implementation_plan.md
+  - project_execution_plan.md
   - relaymem_slp_current_target.md
-  - relaymem_mvp_implementation_plan.md
-  - post_i3_evaluation_work_roadmap.md
   - wave3_cross_slice_convergence_audit.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - phase_i4d_primary_retrieval_exclusion.md
@@ -32,7 +30,7 @@ Last reviewed: 2026-06-27 JST
 
 ## Purpose
 
-This guide distinguishes implemented runtime behavior from target architecture. It is intentionally compact: Detailed RelayMEM/RelaySLP status lives in [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md), sequencing lives in [Pipeline Implementation Plan](pipeline_implementation_plan.md), and repository-wide current status lives in [Project Status](../PROJECT_STATUS.md).
+This guide distinguishes implemented runtime behavior from target architecture. It is intentionally compact: Detailed RelayMEM/RelaySLP status lives in [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md), MVP sequencing and roadmap ordering live in [Project Execution Plan](project_execution_plan.md), and repository-wide current status lives in [Project Status](../PROJECT_STATUS.md).
 
 ## Interpretation rule
 
