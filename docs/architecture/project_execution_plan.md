@@ -20,6 +20,7 @@ relaylm_related_authority:
   - pipeline_responsibility_design.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
+  - wave4_cross_slice_convergence_audit.md
   - wave3_cross_slice_convergence_audit.md
 ---
 # RelayLM Project Execution Plan
@@ -65,18 +66,17 @@ MVP must provide:
 - real SOUL Lab Home conversation through the existing OpenAI-compatible RelayLM path;
 - Primary MEM formation from trusted scene-qualified managed requests;
 - later-turn Primary MEM retrieval and RelayCTX injection;
-- read-only observation of latest runs, formed memory, held or blocked outcomes, and used-memory evidence;
+- read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence;
 - explicit auditable Correct;
 - explicit Forget / Hide through API/UI plus validation;
 - ordinary retrieval exclusion for hidden, prepared, recovery-required, corrupt, ambiguous, unsafe, cross-scope, and prior physical revisions;
 - durable finalization evidence before protected visible release;
 - one-record restart replay, retention/isolation cleanup, and crash validation;
-- bounded local operation that can drain eligible replay and queue work through explicit caller-invoked rounds;
-- read-only lifecycle and operation visibility sufficient for evaluation.
+- bounded local operation that can drain eligible replay and queue work through explicit caller-invoked rounds.
 
 MVP does not include:
 
-- always-on daemon/service supervision;
+- always-on daemon/service supervision unless a later explicit MVP gate proves it is required;
 - voice, TTS execution, avatar, Live2D, ASR, or peer communication transport;
 - Secondary MEM consolidation;
 - Merge / Supersession runtime apply unless explicitly pulled into MVP later;
@@ -87,18 +87,19 @@ MVP does not include:
 
 ```text
 Memory governance
-  I-4E Forget API/UI
-    -> I-4F Forget validation
-    -> UI-B1A lifecycle visibility
-    -> I-5A Pin / Unpin contract and preflight
-    -> I-7A/B Held Apply / Discard contract and preflight
+  I-4E Forget API/UI                         complete
+    -> I-4F Forget validation                next
+    -> I-5A Pin / Unpin contract/preflight   complete
+    -> I-5B or apply/API/UI/ranking work     candidate
+    -> I-7A/B Held Apply/Discard preflight   complete
+    -> I-7C or runtime governance work       candidate
 
 Operations
-  O1D2 ordering, fairness, retry-time, backoff, jitter, pacing
-    -> O1E stale recovery, cancellation checkpoints, graceful shutdown
+  O1D2 ordering/fairness/retry/backoff/pacing complete
+    -> O1E stale recovery/cancellation/shutdown
     -> O1F operational validation
-    -> O2 supervised worker service
-    -> O3 always-on local operation, if still required for MVP evaluation
+    -> O2 supervised worker service, if required
+    -> O3 always-on local operation, if required
 
 Evaluation
   E1 evidence consolidation
@@ -107,7 +108,7 @@ Evaluation
     -> evidence-grounded recall quality work
 
 SOUL Lab product
-  UI-B1A lifecycle and operation visibility
+  UI-B1A lifecycle and operation visibility   complete
     -> operator-facing evaluation flow
     -> static bundle serving, if required for local MVP packaging
 ```
@@ -116,28 +117,31 @@ SOUL Lab product
 
 ### Foundation already available for MVP planning
 
-The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4D, and O1A through O1D1.
+The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4E, O1A through O1D2, UI-B1A, I-5A, and I-7A/B.
 
-### Wave 4 follow-up queue
+### Wave 4 completed
 
 ```text
-O1D2 ordering/fairness/retry-time/backoff/jitter/pacing
-  -> O1E stale recovery/cancellation/shutdown
-  -> O1F operational validation
-
+O1D2 bounded scheduler policy/fairness/pacing
 I-4E loopback API and SOUL Lab Forget UI
-  -> I-4F crash/race/security/fresh-conversation validation
-
 UI-B1A read-only lifecycle visibility
 I-5A Pin / Unpin contract/preflight
 I-7A/B Held Apply / Discard contract/preflight
 ```
 
-The frozen Wave 4 start contracts are recorded in [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md).
+The frozen Wave 4 completion record is [Wave 4 Cross-Slice Convergence Audit](wave4_cross_slice_convergence_audit.md). The frozen Wave 4 start contracts remain recorded in [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md).
 
-### Later MVP hardening candidates
+### Post-Wave-4 next candidates
 
 ```text
+O1E stale recovery/cancellation/shutdown
+  -> O1F operational validation
+
+I-4F crash/race/security/fresh-conversation validation
+
+I-5B or Pin/Unpin apply/API/UI/ranking work, if defined
+I-7C or Held Apply/Discard runtime/API/UI/durable evidence work, if defined
+
 E1 evaluation consolidation
   -> direct Home-origin formation admission decision
   -> character-store bootstrap ergonomics
@@ -148,7 +152,7 @@ O2 supervised worker service
   -> O3 always-on local operation
 ```
 
-O2/O3 should remain after O1D2/O1E/O1F unless a concrete evaluation requirement proves that supervised or always-on operation is necessary before the remaining governance UI/validation work.
+O2/O3 should remain after O1E/O1F unless a concrete evaluation requirement proves that supervised or always-on operation is necessary before the remaining governance UI/validation work.
 
 ## MVP completion criteria
 
@@ -209,4 +213,8 @@ Experimental SOUL replacement and memory bootstrap
 - Do not move a post-MVP item into MVP without naming the evaluation gate it unlocks.
 - Do not allow operations work to absorb I1-G replay, B3 queue lifecycle, C2 worker execution, RelayMEM lifecycle, or SOUL Lab mutation authority.
 - Do not allow memory-governance work to absorb scheduler, queue, durable-finalization, or worker authority.
+- Do not mark O1E/O1F/O2/O3 complete through O1D2.
+- Do not mark I-4F complete through I-4E.
+- Do not mark Pin/Unpin runtime apply complete through I-5A.
+- Do not mark Held Apply/Discard runtime complete through I-7A/B.
 - During a declared parallel wave, implementation PRs update only their unique handoff/completion report and implementation-coupled docs; the convergence PR updates this plan, Project Status, indexes, current-target documents, and smoke together.
