@@ -138,9 +138,12 @@ After the selected implementation PRs merge, the wave convergence thread must:
 1. reread each merged PR, its unique completion report, and its dedicated handoff;
 2. verify merge commits and cross-slice authority, race, security, and non-goal compatibility;
 3. update `docs/PROJECT_STATUS.md`, `docs/architecture/project_execution_plan.md`, shared indexes, current-target documents, and repository-wide documentation smoke in one PR;
-4. add central links to the completion reports and dedicated handoffs where appropriate;
-5. record any divergence between a report and the merged implementation;
-6. keep the next wave and release/evaluation gate closed until this convergence PR is green and merged.
+4. sweep directly affected feature-family master/contract documents named by `relaylm_update_trigger`, `relaylm_related_authority`, completion-report shared-doc inputs, or grep hits for the completed phase names;
+5. add central links to the completion reports and dedicated handoffs where appropriate;
+6. record any divergence between a report and the merged implementation;
+7. keep the next wave and release/evaluation gate closed until this convergence PR is green and merged.
+
+The feature-family sweep is mandatory. A convergence PR must not leave a non-frozen master or contract document saying that an already completed subphase such as `I-4E`, `I-4F`, `O1D2`, `O1E`, `O1F`, or `UI-B1A` remains unimplemented, future work, or outside the proven boundary unless that sentence is explicitly about a different downstream capability such as O2/O3, Pin/Unpin runtime apply, or Held Apply/Discard runtime.
 
 A temporary status lag between an implementation merge and the convergence merge is allowed only for a declared parallel wave. The completion report and source PR are the bounded evidence during that interval, while `docs/PROJECT_STATUS.md` remains the repository-wide current-status authority and must be reconciled promptly by the convergence PR.
 
