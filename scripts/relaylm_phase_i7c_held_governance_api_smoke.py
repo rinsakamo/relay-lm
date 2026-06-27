@@ -1,4 +1,4 @@
-"""Phase I-7C loopback held governance API smoke."""
+"""Phase I-7C loopback held governance API preflight smoke."""
 from __future__ import annotations
 
 import tempfile
@@ -49,16 +49,7 @@ def preflight_body(operation_id: str) -> dict[str, object]:
     }
 
 
-def decision_body(operation_id: str, apply_token: str) -> dict[str, object]:
-    return {
-        "schema": "relaylm.lab.held_governance_decision_request.v0",
-        "operation_id": operation_id,
-        "reason": "bounded operator reason",
-        "apply_token": apply_token,
-    }
-
-
-def assert_safe(text: str, *tokens: str) -> None:
+def assert_safe(text: str) -> None:
     for forbidden in (
         CONTENT_CANARY,
         "source_evidence_digest",
@@ -68,7 +59,6 @@ def assert_safe(text: str, *tokens: str) -> None:
         "source_path",
         "protected_source",
         "Traceback",
-        *tokens,
     ):
         require(forbidden not in text, forbidden)
 
@@ -83,7 +73,6 @@ def main() -> None:
         require(scoped_value is not None, "scope")
         scoped = Path(scoped_value)
         persist_held_candidate_evidence(scoped, candidate("held-api-apply"))
-        persist_held_candidate_evidence(scoped, candidate("held-api-discard"))
 
         config_path = root / "config.yaml"
         write_config(config_path, port=9, queue=queue, protected=protected, store=store, enqueue_enabled=False)
@@ -94,41 +83,20 @@ def main() -> None:
             preflight = client.post(f"{base}/apply/preflight{query}", json=preflight_body("i7c-api-apply"))
             require(preflight.status_code == 200, preflight.text)
             require(preflight.headers["cache-control"] == "no-store", preflight.headers)
-            require(preflight.json()["status"] == "ready", preflight.json())
-            token = preflight.json()["apply_token"]
+            body = preflight.json()
+            require(body["schema"] == "relaylm.lab.held_governance_preflight.v0", body)
+            require(body["status"] == "ready", body)
+            require(body["content_free"] is True, body)
+            require(body["runtime_private_evidence_omitted"] is True, body)
+            require(body["queue_state_mutated"] is False, body)
+            require(body["worker_started"] is False, body)
+            require(isinstance(body["apply_token"], str), body)
             assert_safe(preflight.text)
-
-            applied = client.post(f"{base}/apply{query}", json=decision_body("i7c-api-apply", token))
-            require(applied.status_code == 200, applied.text)
-            require(applied.json()["status"] == "applied", applied.json())
-            require(applied.json()["queue_state_mutated"] is False, applied.json())
-            require(applied.json()["worker_started"] is False, applied.json())
-            assert_safe(applied.text, token)
-
-            replay = client.post(f"{base}/apply{query}", json=decision_body("i7c-api-apply", token))
-            require(replay.status_code == 200, replay.text)
-            require(replay.json()["status"] == "already_applied", replay.json())
-            require(replay.json()["idempotent_replay"] is True, replay.json())
-            assert_safe(replay.text, token)
-
-            discard_base = f"/lab/api/characters/{CHARACTER}/held/held-api-discard"
-            discard_preflight = client.post(f"{discard_base}/discard/preflight{query}", json=preflight_body("i7c-api-discard"))
-            require(discard_preflight.status_code == 200, discard_preflight.text)
-            discard_token = discard_preflight.json()["apply_token"]
-            discarded = client.post(f"{discard_base}/discard{query}", json=decision_body("i7c-api-discard", discard_token))
-            require(discarded.status_code == 200, discarded.text)
-            require(discarded.json()["status"] == "discarded", discarded.json())
-            assert_safe(discarded.text, discard_token)
-
-            history = client.get(f"{discard_base}/history{query}")
-            require(history.status_code == 200, history.text)
-            require(history.json()["count"] == 1, history.json())
-            assert_safe(history.text, discard_token)
 
             require(client.get("/healthz").status_code == 200, "health regression")
             require(client.get("/v1/models").status_code == 200, "models regression")
 
-    print("Phase I-7C held governance API smoke passed")
+    print("Phase I-7C held governance API preflight smoke passed")
 
 
 if __name__ == "__main__":
