@@ -24,6 +24,7 @@ from relaylm.relaymem_slp_primary_worker_source_registry import (
 from relaylm.relaymem_slp_runtime_finalization import (
     run_relaymem_slp_runtime_enqueue_after_response,
 )
+from relaylm.request_scope import extract_request_scope_identity
 from relaylm.routing import resolve_route
 from relaylm.trusted_home_scene_admission import (
     resolve_trusted_home_scene_admission,
@@ -119,7 +120,12 @@ def _route(config: RelayLMConfig):
     return resolve_route(config, "relaylm-home")
 
 
-def _context(config: RelayLMConfig, payload: dict[str, object]) -> PipelineContext:
+def _context(
+    config: RelayLMConfig,
+    payload: dict[str, object],
+    *,
+    request_headers: dict[str, str] | None = None,
+) -> PipelineContext:
     route = _route(config)
     return PipelineContext(
         request_id="request-e1r1",
@@ -128,14 +134,21 @@ def _context(config: RelayLMConfig, payload: dict[str, object]) -> PipelineConte
         forwarded_payload=dict(payload),
         route=route,
         stream_enabled=False,
+        request_headers=request_headers or {},
     )
 
 
 def _run_runtime(
     config: RelayLMConfig,
     payload: dict[str, object] | None = None,
+    *,
+    request_headers: dict[str, str] | None = None,
 ):
-    context = _context(config, payload or _payload())
+    context = _context(
+        config,
+        payload or _payload(),
+        request_headers=request_headers,
+    )
     return run_relaymem_slp_runtime_enqueue_after_response(
         config=config,
         diagnostics=RequestDiagnostics(request_id=context.request_id, trace_enabled=False),
@@ -300,6 +313,45 @@ def test_runtime_admission_and_existing_lane() -> None:
         node_dump = context.node_results_to_log_dicts()
         require("rejected_browser_owned_trust" in repr(node_dump), node_dump)
         _assert_public_content_free(node_dump)
+
+        browser_header = _config(root / "browser-header", admission_mode="apply")
+        result, context = _run_runtime(
+            browser_header,
+            request_headers={"x-relaylm-trusted-home-scene-admission": "apply"},
+        )
+        require(result.status == "disabled", result)
+        require(
+            _files(root / "browser-header") == ([], []),
+            _files(root / "browser-header"),
+        )
+        node_dump = context.node_results_to_log_dicts()
+        require("rejected_browser_owned_trust" in repr(node_dump), node_dump)
+        _assert_public_content_free(node_dump)
+
+        app_like = _config(root / "request-scope", admission_mode="apply")
+        context = _context(app_like, _payload())
+        extract_request_scope_identity(
+            {"x-relaylm-trusted-home-scene-admission": "apply"},
+            context.original_payload,
+        )
+        require(
+            "x-relaylm-trusted-home-scene-admission" in context.request_headers,
+            context.request_headers,
+        )
+        result = run_relaymem_slp_runtime_enqueue_after_response(
+            config=app_like,
+            diagnostics=RequestDiagnostics(request_id=context.request_id, trace_enabled=False),
+            pipeline_context=context,
+            registry=RelayMEMSLPPrimaryWorkerSourceRegistry(max_entries=16, ttl_seconds=60),
+            status_code=200,
+            resolved_session_id="e1r1-session",
+            relayscn_scene_policy_artifact=_scene(),
+            relayemo_artifact=None,
+            assistant_visible_text=ASSISTANT_CANARY,
+            message_count=1,
+        )
+        require(result.status == "disabled", result)
+        require(_files(root / "request-scope") == ([], []), _files(root / "request-scope"))
 
         explicit = _config(root / "explicit", admission_mode="disabled", global_enqueue=True)
         result, context = _run_runtime(explicit)
