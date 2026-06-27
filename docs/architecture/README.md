@@ -56,6 +56,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [O1D1 Accepted Scheduler Gates and One Production Round](o1d1_production_scheduler_round.md)
 - [O1D2 Deterministic Scheduler Policy](o1d2_scheduler_policy.md)
 - [O1E Scheduler Operational Controls](o1e_scheduler_operational_controls.md)
+- [O1F Operational Validation](o1f_operational_validation.md)
 - [I1-G Durable-finalization Contract and Replay Boundary](i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD Durable-finalization Retention and Isolation Cleanup](i1gd_durable_finalization_retention_cleanup.md)
 - [I1-GE Durable-finalization Crash Validation](i1ge_durable_finalization_crash_validation.md)
@@ -117,6 +118,11 @@ The current Product and RelayMEM status is intentionally not summarized here. Re
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md)
 
 The browser owns no queue, scheduler, worker, storage root, namespace, backend, SOUL, or route authority. Forget mutation authority remains in the existing I-4B/I-4C1/I-4C2 production chain. E1 does not change that authority and does not prove direct Home-origin trusted memory formation.
+
+## Wave 6 / O1F evidence
+
+- [O1F completion report](../mvp/wave6/o1f_completion_report.md)
+- [O1F Operational Validation](o1f_operational_validation.md)
 
 ## Wave 5 / E1 evaluation evidence
 
