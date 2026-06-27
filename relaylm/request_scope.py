@@ -51,6 +51,7 @@ def extract_request_scope_identity(
     payload: Mapping[str, Any] | None,
 ) -> RequestScopeIdentity:
     headers_map = headers or {}
+    _capture_request_headers_for_active_context(headers_map)
     metadata: Mapping[str, Any] = {}
     if isinstance(payload, Mapping):
         raw_meta = payload.get("metadata")
@@ -150,3 +151,16 @@ def build_scope_resolution_diagnostics(
         missing_fields=missing_fields,
         source=request_scope.source,
     )
+
+
+def _capture_request_headers_for_active_context(
+    headers: Mapping[str, str],
+) -> None:
+    try:
+        from relaylm.pipeline_context import get_active_pipeline_context
+
+        pipeline_context = get_active_pipeline_context()
+        if pipeline_context is not None:
+            pipeline_context.set_request_headers(headers)
+    except Exception:
+        return
