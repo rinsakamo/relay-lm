@@ -16,9 +16,11 @@ relaylm_not_authoritative_for:
   - exact RelayMEM or RelaySLP schemas
   - RelaySOUL approval contracts
 relaylm_related_authority:
+  - o1e_scheduler_operational_controls.md
   - phase_i4f_forget_validation.md
   - phase_i4e_forget_api_ui.md
   - e1_evaluation_consolidation.md
+  - wave5_cross_slice_convergence_audit.md
   - wave4_cross_slice_convergence_audit.md
   - ../PROJECT_STATUS.md
 ---
@@ -63,7 +65,9 @@ O1A defines a pure scheduler contract. O1B and O1C bounded production discovery 
 
 O1D2 is current implemented as a bounded policy wrapper around the existing O1D1 one-round scheduler coordinator. O1D2 does not poll, sleep, run a second round, recover stale claims, handle cancellation, supervise services, or create a durable scheduler journal.
 
-O1E stale recovery/cancellation/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.
+O1E is current implemented as a bounded caller-invoked operational-control layer. One explicit call may check cancellation, optionally orchestrate at most one B3 stale-recovery transition through existing B3 authority, invoke at most one O1D2/O1D1 scheduler round, and return a bounded content-free projection. O1E does not poll, sleep, loop, daemonize, supervise, create background workers, start timers, or rewrite queue records directly.
+
+O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.
 
 ## Current Primary mutation and lifecycle-read boundary
 
@@ -95,8 +99,9 @@ finalized ordinary turn
   -> Pin / Unpin read-only preflight                   complete as I-5A
   -> Held Apply / Discard read-only preflight          complete as I-7A/B
   -> E1 evidence consolidation                         complete as E1
+  -> bounded scheduler operational controls            complete as O1E
 ```
 
 ## Completion interpretation
 
-M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1D2, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-7A/B, and E1 evaluation consolidation are implemented. E1 is docs/evidence only and adds no runtime behavior. O1D2 is a bounded policy wrapper only; O1E, O1F, O2, and O3 remain incomplete. I-5A does not complete Pin/Unpin runtime apply. I-7A/B does not complete Held Apply/Discard runtime. Direct Home-origin trusted memory formation remains unimplemented.
+M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1E, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-7A/B, and E1 evaluation consolidation are implemented. E1 is docs/evidence only and adds no runtime behavior. O1E is bounded caller-invoked operational control only; O1F, O2, and O3 remain incomplete. I-5A does not complete Pin/Unpin runtime apply. I-7A/B does not complete Held Apply/Discard runtime. Direct Home-origin trusted memory formation remains unimplemented.
