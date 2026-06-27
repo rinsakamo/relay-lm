@@ -148,6 +148,22 @@ relaymem_local_scheduler_apply_enabled: false
 relaymem_local_scheduler_replay_lane_enabled: true
 relaymem_local_scheduler_queue_lane_enabled: true
 
+# O1D2 local scheduler policy is a separate default-off, dry-run-first wrapper
+# for deterministic ordering hints, bounded fairness counters, retry-window
+# rounding, and pacing recommendations for an external caller. It returns
+# immediately and does not poll, sleep, start a timer, retry internally,
+# supervise a service, recover stale claims, or change O1B/O1C discovery.
+# Valid policy mode triples are exactly the same disabled/dry-run/apply shape.
+relaymem_local_scheduler_policy_enabled: false
+relaymem_local_scheduler_policy_dry_run_only: true
+relaymem_local_scheduler_policy_apply_enabled: false
+relaymem_local_scheduler_policy_fairness_streak_limit: 3
+relaymem_local_scheduler_pacing_base_delay_ms: 250
+relaymem_local_scheduler_pacing_max_delay_ms: 5000
+relaymem_local_scheduler_pacing_jitter_ms: 0
+relaymem_local_scheduler_policy_short_retry_window_ms: 30000
+relaymem_local_scheduler_policy_later_retry_window_ms: 300000
+
 # Client message canonicalization dry-run is default-off, diagnostics-only, and
 # content-free. When enabled, RelayLM inspects PipelineContext.original_payload
 # for current-request message shape, records a pipeline node result, and never

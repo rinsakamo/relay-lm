@@ -434,9 +434,48 @@ All five fields are strict booleans. Integer values, strings, and null are rejec
 
 Every other mode triple is invalid configuration. An enabled scheduler must enable at least one lane. The default remains disabled and dry-run-first, while both lane selectors default to enabled so an operator can opt into the bounded round without introducing a hidden single-lane default.
 
-The scheduler gate is an upper gate only. Scheduler apply does not elevate the I1-G replay/durable-finalization authority or the O0/C2/B3 local-worker authority. Roots, character scope, locators, jobs, dispatch records, and claims continue to resolve from existing server-owned configuration and lower authorities; O1D1 adds no interval, polling, fairness, backoff, jitter, worker-count, or shutdown-timeout field.
+The scheduler gate is an upper gate only. Scheduler apply does not elevate the I1-G replay/durable-finalization authority or the O0/C2/B3 local-worker authority. Roots, character scope, locators, jobs, dispatch records, and claims continue to resolve from existing server-owned configuration and lower authorities. O1D1 itself adds no interval, polling, fairness, backoff, jitter, worker-count, or shutdown-timeout field.
 
 One call to `run_relaymem_slp_scheduler_round_once(...)` invokes the replay lane at most once, then the queue lane at most once, aggregates through O1A, validates the content-free projection, and returns without sleep. It is not an always-on scheduler, polling loop, daemon, or service-supervision boundary.
+
+## O1D2 local scheduler policy flags
+
+```yaml
+relaymem_local_scheduler_policy_enabled: false
+relaymem_local_scheduler_policy_dry_run_only: true
+relaymem_local_scheduler_policy_apply_enabled: false
+relaymem_local_scheduler_policy_fairness_streak_limit: 3
+relaymem_local_scheduler_pacing_base_delay_ms: 250
+relaymem_local_scheduler_pacing_max_delay_ms: 5000
+relaymem_local_scheduler_pacing_jitter_ms: 0
+relaymem_local_scheduler_policy_short_retry_window_ms: 30000
+relaymem_local_scheduler_policy_later_retry_window_ms: 300000
+```
+
+O1D2 is a default-off, dry-run-first policy wrapper for one caller invocation. It does not change O1D1's five scheduler booleans and does not elevate O1B/O1C/I1-GC/C2/B3 authority. It adds only content-free policy state, fairness preference hints, retry-window rounding, and pacing recommendations for an external caller.
+
+The exact accepted policy modes are:
+
+| Mode | enabled | dry_run_only | apply_enabled |
+|---|---:|---:|---:|
+| disabled | false | true | false |
+| dry-run | true | true | false |
+| apply | true | false | true |
+
+Every other policy mode triple is invalid configuration. All three gate fields are strict booleans. Numeric fields reject booleans, strings, null, and out-of-range values.
+
+Accepted numeric ranges:
+
+- `relaymem_local_scheduler_policy_fairness_streak_limit`: 1 through 100, default 3.
+- `relaymem_local_scheduler_pacing_base_delay_ms`: 0 through 60000, default 250.
+- `relaymem_local_scheduler_pacing_max_delay_ms`: 0 through 60000, default 5000.
+- `relaymem_local_scheduler_pacing_jitter_ms`: 0 through 60000, default 0, and must not exceed the max delay.
+- `relaymem_local_scheduler_policy_short_retry_window_ms`: 1 through 3600000, default 30000.
+- `relaymem_local_scheduler_policy_later_retry_window_ms`: 1 through 86400000, default 300000, and must not be smaller than the short retry window.
+
+`relaymem_local_scheduler_pacing_base_delay_ms` must not exceed `relaymem_local_scheduler_pacing_max_delay_ms`. The policy wrapper returns `pacing_recommendation`, `next_delay_ms`, `retry_window`, `fairness_lane_preference`, and bounded reason IDs only. It does not sleep, poll, retry internally, create timers, start background tasks, recover stale claims, coordinate shutdown, supervise a service, or persist a durable scheduler journal.
+
+Retry-time handling is public only as a rounded class: `none`, `immediate`, `short`, `later`, or `unknown`. Raw retry timestamps, queue roots, job IDs, dispatch IDs, claim tokens, locators, paths, protected content, raw exception text, and nested delegate results must not appear in policy projection.
 
 ## RelayINT flags
 
