@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current documentation boundary anchors after Wave 4 convergence."""
+"""Validate current documentation boundary anchors after Wave 4 and E1 convergence."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,6 +14,7 @@ CURRENT_DOCS = (
     "docs/architecture/current_target_migration_guide.md",
     "docs/architecture/project_execution_plan.md",
     "docs/architecture/relaymem_slp_current_target.md",
+    "docs/architecture/e1_evaluation_consolidation.md",
     "docs/architecture/wave2_cross_slice_convergence_audit.md",
     "docs/architecture/wave3_cross_slice_convergence_audit.md",
     "docs/architecture/wave4_cross_slice_convergence_audit.md",
@@ -38,7 +39,9 @@ REQUIRED = {
         "I-7A/B Held Apply / Discard contract and read-only preflight: complete",
         "I-7 runtime apply/discard/API/UI/durable governance evidence: unimplemented",
         "Wave 4 implementation tracks complete",
-        "W4-INT in progress until the convergence PR merges",
+        "W4-INT merged",
+        "E1 evaluation consolidation: complete",
+        "Direct Home-origin formation: not currently proven; trusted scene admission is missing",
         "Post-Wave-4 next candidates:",
     ),
     "docs/README.md": (
@@ -49,9 +52,13 @@ REQUIRED = {
         "Phase I-5A Pin / Unpin contract and read-only preflight",
         "Phase I-7A/B Held Apply / Discard contract and read-only preflight",
         "Wave 4 Cross-Slice Convergence Audit",
+        "E1 MVP evaluation consolidation",
+        "E1 completion report",
         "The next wave and release/evaluation gate remain closed",
     ),
     "docs/mvp/README.md": (
+        "Wave 5 / E1 evaluation evidence",
+        "E1 completion report",
         "Wave 4 merged completion reports",
         "O1D2 completion report",
         "I-4E completion report",
@@ -68,6 +75,7 @@ REQUIRED = {
         "Phase I-5A Pin / Unpin Contract",
         "Phase I-7A/B Held Apply / Discard Contract",
         "Wave 4 Cross-Slice Convergence Audit",
+        "E1 MVP Evaluation Evidence Consolidation",
     ),
     "docs/DOCUMENTATION_MODEL.md": (
         "`implementation_plan` | MVP boundary, dependency sequencing, and post-MVP roadmap",
@@ -85,19 +93,23 @@ REQUIRED = {
         "UI-B1A is current implemented read-only visibility.",
         "I-5A is current implemented contract/read-only preflight only.",
         "I-7A/B is current implemented contract/read-only preflight only.",
+        "E1 evaluation consolidation is current docs/evidence only.",
+        "Direct Home-origin trusted scene admission remains target work.",
     ),
     "docs/architecture/project_execution_plan.md": (
         "This document is the single plan and roadmap authority for RelayLM execution.",
         "MVP boundary",
         "MVP execution lanes",
         "### Wave 4 completed",
+        "### E1 evaluation consolidation completed",
         "### Post-Wave-4 next candidates",
         "O1D2 bounded scheduler policy/fairness/pacing",
         "I-4E loopback API and SOUL Lab Forget UI",
         "UI-B1A read-only lifecycle visibility",
         "I-5A Pin / Unpin contract/preflight",
         "I-7A/B Held Apply / Discard contract/preflight",
-        "E1 evaluation consolidation",
+        "E1 evaluation consolidation                    complete",
+        "direct Home-origin formation decision           Option A for current MVP",
         "MVP completion criteria",
         "Post-MVP roadmap",
     ),
@@ -109,12 +121,23 @@ REQUIRED = {
         "UI-B1A is current implemented read-only visibility.",
         "I-5A is current implemented contract/read-only preflight only.",
         "I-7A/B is current implemented contract/read-only preflight only.",
+        "E1 evaluation consolidation is current as an evidence/documentation boundary.",
+    ),
+    "docs/architecture/e1_evaluation_consolidation.md": (
+        "# E1 MVP Evaluation Evidence Consolidation",
+        "## Direct Home-origin formation decision record",
+        "Recommended for the current MVP boundary.",
+        "E1-R1 trusted Home scene-admission path",
+        "E1-R2 idempotent character-store bootstrap command",
+        "E1-R3 provenance-preserving Primary MEM formation summary",
+        "E1-R4 retrieval-response grounding and unsupported-detail suppression",
     ),
     "docs/architecture/wave4_cross_slice_convergence_audit.md": (
         "# Wave 4 Cross-Slice Convergence Audit",
         "## Source PR inventory",
         "## Merge commit inventory",
         "## Frozen next inputs",
+        "W4-INT is merged",
     ),
 }
 
@@ -134,6 +157,9 @@ STALE = tuple(
     Wave 4 follow-up queue
     I-4E API/UI and I-4F validation
     O1D2 scheduling policy, O1E recovery/shutdown
+    W4-INT in progress until the convergence PR merges
+    W4-INT is complete only after that convergence PR merges
+    W4-INT completes only after the convergence PR containing this audit is merged
     """.splitlines()
     if line.strip()
 )

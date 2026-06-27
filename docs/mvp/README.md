@@ -16,6 +16,14 @@ docs/mvp/wave<N>/<slice>_completion_report.md
 
 Each implementation PR creates only its own report. It must not edit this central index, another slice's report, or shared current-state documents merely to mark completion. The wave convergence PR links the merged reports here after verifying the source PRs and merge commits.
 
+### Wave 5 / E1 evaluation evidence
+
+E1 records the current MVP evaluation evidence inventory and direct Home-origin formation decision. It is docs/evidence-only and does not change runtime behavior.
+
+- [E1 completion report](wave5/e1_completion_report.md).
+- [E1 MVP evaluation consolidation](../architecture/e1_evaluation_consolidation.md).
+- [E1 local runtime evaluation](../architecture/e1_local_runtime_evaluation_2026_06_25.md).
+
 ### Wave 4 merged completion reports
 
 W4-INT verified the source PR numbers, merge commits, and dedicated handoffs for these historical reports:
@@ -26,7 +34,7 @@ W4-INT verified the source PR numbers, merge commits, and dedicated handoffs for
 - [I-5A completion report](wave4/i5a_completion_report.md) — source PR #417, merge `2f8597911774b70f1c001db8332b3dfcc18d23ca`.
 - [I-7A/B completion report](wave4/i7ab_completion_report.md) — source PR #423, merge `5e0f866e959ab2bc5af00e0502b2026f4b52a779`.
 
-The Wave 4 cross-slice convergence record is [Wave 4 Cross-Slice Convergence Audit](../architecture/wave4_cross_slice_convergence_audit.md). W4-INT is complete only after that convergence PR merges.
+The Wave 4 cross-slice convergence record is [Wave 4 Cross-Slice Convergence Audit](../architecture/wave4_cross_slice_convergence_audit.md). W4-INT is merged.
 
 Wave 4 dedicated handoffs:
 
@@ -44,12 +52,12 @@ W3-INT verified the source PR numbers, merge commits, final heads, changed-file 
 - [I-4D completion report](wave3/i4d_completion_report.md) — source PR #414, merge `48e890f05f76196b73267559b079f4a05c441077`.
 - [O1D1 completion report](wave3/o1d1_completion_report.md) — source PR #412, merge `9b6349236f1a01f3cdccbe9e3c2c874ae1137475`.
 
-The cross-slice convergence record is [Wave 3 Cross-Slice Convergence Audit](../architecture/wave3_cross_slice_convergence_audit.md). W3-INT is complete only after that convergence PR merges.
+The cross-slice convergence record is [Wave 3 Cross-Slice Convergence Audit](../architecture/wave3_cross_slice_convergence_audit.md). W3-INT is merged.
 
 A completion report is evidence for one PR only. It is not authoritative for repository-wide current status, other slice completion, next-wave readiness, or release/evaluation readiness. Use [the template](IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md) and validate the report with:
 
 ```bash
-python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave4/<slice>_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/e1_completion_report.md
 ```
 
 The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.
@@ -132,7 +140,6 @@ These older summaries are kept indexed for discoverability while the documentati
 - [MVP-30 summary](mvp30_summary.md)
 - [MVP-31 summary](mvp31_summary.md)
 - [MVP-32 summary](mvp32_summary.md)
-- [MVP-33 summary](mvp33_summary.md)
 - [MVP-37 summary](mvp37_summary.md)
 
 ## Maintenance rule

@@ -25,6 +25,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
+- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and direct Home-origin formation decision.
 - [E1 local runtime evaluation](architecture/e1_local_runtime_evaluation_2026_06_25.md) — workstation evidence and known product gaps.
 - [MVP evidence index](mvp/README.md) — historical snapshots and per-PR implementation completion reports.
 
@@ -58,12 +59,13 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Phase I-7A/B Held Apply / Discard contract and read-only preflight](architecture/phase_i7ab_held_apply_discard_contract.md)
 - [SOUL Lab UI-B0 real Home conversation](architecture/soul_lab_ui_b0_real_home_conversation.md)
 - [SOUL Lab UI-B1A lifecycle visibility](architecture/soul_lab_ui_b1a_lifecycle_visibility.md)
+- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md)
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
 - [Architecture documentation index](architecture/README.md)
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 4 implementation tracks are complete and W4-INT is in progress until the convergence PR merges. The frozen convergence record is [Wave 4 cross-slice convergence audit](architecture/wave4_cross_slice_convergence_audit.md).
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 4 implementation tracks and W4-INT are merged. E1 consolidation is docs/evidence-only and does not add runtime behavior.
 
 ## Wave 4 implementation evidence
 
@@ -73,6 +75,12 @@ Current runtime and implementation status is intentionally not summarized here. 
 - [UI-B1A completion report](mvp/wave4/ui_b1a_completion_report.md)
 - [I-5A completion report](mvp/wave4/i5a_completion_report.md)
 - [I-7A/B completion report](mvp/wave4/i7ab_completion_report.md)
+
+## Wave 5 / E1 evaluation evidence
+
+- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md)
+- [E1 local runtime evaluation](architecture/e1_local_runtime_evaluation_2026_06_25.md)
+- [E1 completion report](mvp/wave5/e1_completion_report.md)
 
 ## Target architecture and post-MVP design
 
@@ -89,7 +97,7 @@ These documents are target architecture only. Experimental SOUL replacement is e
 3. `pipeline_responsibility_design.md` owns component responsibility and canonical target order.
 4. Dedicated current contracts own exact bounded behavior.
 5. `current_target_migration_guide.md` owns current/target/compatibility interpretation.
-6. `docs/mvp/` and `docs/architecture/archive/` are historical evidence.
+6. `docs/mvp/` and `docs/architecture/` evaluation records are historical or bounded evidence unless listed as current authorities above.
 
 ## Placement rules
 

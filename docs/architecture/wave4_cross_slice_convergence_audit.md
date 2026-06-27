@@ -21,7 +21,7 @@ relaylm_related_authority:
 
 Last reviewed: 2026-06-27 JST.
 
-This audit is the frozen convergence record for the merged Wave 4 implementation PRs. It reconciles shared documentation, current status, current/target guidance, index links, and documentation smoke after the individual PRs merged. It does not add production runtime behavior.
+This audit is the frozen convergence record for the merged Wave 4 implementation PRs and the merged W4-INT convergence PR. It reconciles shared documentation, current status, current/target guidance, index links, and documentation smoke after the individual PRs merged. It does not add production runtime behavior.
 
 ## Source PR inventory
 
@@ -32,6 +32,7 @@ This audit is the frozen convergence record for the merged Wave 4 implementation
 | #420 | I-4E | Loopback Forget API and SOUL Lab UI |
 | #421 | UI-B1A | Read-only lifecycle and operation visibility |
 | #423 | I-7A/B | Held Apply / Discard contract and read-only preflight |
+| #424 | W4-INT | Wave 4 cross-slice convergence audit and shared documentation reconciliation |
 
 PR #422 is not a Wave 4 implementation slice. It is the docs execution-plan / roadmap consolidation prerequisite that W4-INT builds on.
 
@@ -45,8 +46,9 @@ PR #422 is not a Wave 4 implementation slice. It is the docs execution-plan / ro
 | #421 UI-B1A | `5736636da839486140f72c731f18a4a85c39b13c` |
 | #422 docs consolidation prerequisite | `ff255b47ca8b1ef87837f65aa185dac1fa3faf56` |
 | #423 I-7A/B | `5e0f866e959ab2bc5af00e0502b2026f4b52a779` |
+| #424 W4-INT convergence | `be0872edea46cb67fd5269bfaa8c7cb8048fb2c4` |
 
-W4-INT work started only after main contained all commits above.
+W4-INT work started only after main contained all commits above through #423, and W4-INT is now merged.
 
 ## Wave 4 implemented boundary
 
@@ -60,7 +62,7 @@ I-5A Pin / Unpin contract and read-only preflight: complete
 I-7A/B Held Apply / Discard contract and read-only preflight: complete
 ```
 
-The Wave 4 completion statement does not complete O1, I-4, I-5, or I-7 overall. W4-INT completes only after the convergence PR containing this audit is merged.
+The Wave 4 completion statement does not complete O1, I-4, I-5, or I-7 overall. W4-INT is merged and this audit is frozen historical evidence.
 
 ## Cross-slice authority map
 
@@ -133,7 +135,7 @@ Wave 4 does not add new production mutation paths beyond the already merged I-4E
 
 ## Documentation convergence changes
 
-W4-INT updates these shared current documents after the Wave 4 implementation PRs merged:
+W4-INT updated these shared current documents after the Wave 4 implementation PRs merged:
 
 ```text
 docs/PROJECT_STATUS.md
@@ -147,7 +149,7 @@ scripts/relaylm_documentation_current_boundary_smoke.py
 scripts/relaylm_mvp_completion_report_smoke.py
 ```
 
-W4-INT also adds this audit and a dedicated cross-slice smoke/workflow.
+W4-INT also added this audit and a dedicated cross-slice smoke/workflow.
 
 ## Smoke / validation coverage
 
@@ -176,6 +178,8 @@ Held Apply / Discard runtime, API/UI, and durable governance evidence
 E1 evaluation consolidation
 O2/O3 only after O1E/O1F or explicit MVP need
 ```
+
+E1 evaluation consolidation is now handled by the later E1 docs/evidence PR and remains outside this frozen Wave 4 implementation scope.
 
 ## Frozen next inputs
 

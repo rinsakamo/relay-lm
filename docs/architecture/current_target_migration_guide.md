@@ -19,6 +19,7 @@ relaylm_related_authority:
   - pipeline_responsibility_design.md
   - project_execution_plan.md
   - relaymem_slp_current_target.md
+  - e1_evaluation_consolidation.md
   - wave4_cross_slice_convergence_audit.md
   - phase_i4e_forget_api_ui.md
   - o1d2_scheduler_policy.md
@@ -55,13 +56,14 @@ Historical material under `docs/mvp/` or `docs/architecture/archive/` is evidenc
 | Runtime Compile Gate | `CompileApplyDecision`, content-free diagnostics, bounded history-apply exact-forward gate | route-authority-aware plan/result/decision projections and managed fallback | source tracking, fallback builder, complete state taxonomy |
 | RelayMEM Retrieval | M2 retrieval, strict Primary current-state verification, I-4D lifecycle/prior-revision exclusion, and gated bounded RelayCTX injection | typed RelayINT handoff and separate runtime-private/content-free projections | RelayINT API and consumer migration; Phase I-1 recall and I-4D filtering are complete |
 | RelaySLP / Phase 6 / I1-G / O1 | A1/A2/B0-B3, I1-B, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A/B/C/D1, and O1D2 bounded policy wrapper; see `relaymem_slp_current_target.md` for exact state | durable deferred orchestration with automatic operational scheduling and bounded observation/correction | O1E/O1F, O2/O3, and quality/evaluation work; completed C1/C2/I-1/I1-G/O0/O1D1/O1D2 behavior does not require remigration |
-| SOUL Lab text product | UI-A0 through UI-A7, Phase I-2 observation, Phase I-3 Correct, UI-B0 real Home conversation, I-4D read-only lifecycle overlay, I-4E loopback Forget API/UI, and UI-B1A read-only lifecycle visibility | full management product for observation, Correct, Forget, Pin, Held review, Merge, and RelaySOUL intervention | I-4F, Pin/Unpin runtime API/UI/ranking, Held runtime API/UI/evidence, I-6/I-8/I-9; completed I-2/I-3/UI-B0/I-4D/I-4E/UI-B1A/I-5A/I-7A/B behavior does not require remigration |
+| SOUL Lab text product | UI-A0 through UI-A7, Phase I-2 observation, Phase I-3 Correct, UI-B0 real Home conversation, I-4D read-only lifecycle overlay, I-4E loopback Forget API/UI, UI-B1A read-only lifecycle visibility, and E1 evaluation consolidation | full management product for observation, Correct, Forget, Pin, Held review, Merge, RelaySOUL intervention, and optionally trusted Home scene admission | I-4F, Pin/Unpin runtime API/UI/ranking, Held runtime API/UI/evidence, I-6/I-8/I-9; completed I-2/I-3/UI-B0/I-4D/I-4E/UI-B1A/I-5A/I-7A/B/E1 behavior does not require remigration |
+| E1 evaluation | E1 evaluation consolidation is current docs/evidence only | local MVP evaluation flow with repeatable bootstrap, provenance-safe formation, and evidence-grounded recall; direct Home trusted scene admission only if later accepted | Direct Home-origin trusted scene admission remains target work; E1-R2/E1-R3/E1-R4 remain quality/ergonomics migrations |
 | Pin / Unpin governance | I-5A contract and read-only preflight only | durable Pin / Unpin apply, API/UI, retrieval policy, and ranking behavior | I-5B or equivalent runtime apply/API/UI/ranking work |
 | Held outcome governance | I-7A/B contract and read-only Apply / Discard preflight only | explicit Apply / Discard runtime, API/UI, and durable governance evidence | I-7C or equivalent runtime/API/UI/evidence work |
 | Streaming / Phase 5.5 | default-compatible forwarding plus gated B2 suppression and C0-C4 handoff metadata construction | complete default-on output pipeline and runtime adapter delivery | RelayREF/output-SCN consumers, adapter delivery, partial recovery |
 | RelaySOUL | compatibility dry-run/preflight governance | three durable persona sources with explicit approval/apply/rollback | schema and storage migration |
 
-## Current Wave 4 compatibility interpretation
+## Current Wave 4 and E1 compatibility interpretation
 
 Wave 4 adds current implemented boundaries but does not silently promote their follow-on runtime targets:
 
@@ -73,6 +75,8 @@ I-4F remains target/unimplemented validation.
 UI-B1A is current implemented read-only visibility.
 I-5A is current implemented contract/read-only preflight only.
 I-7A/B is current implemented contract/read-only preflight only.
+E1 evaluation consolidation is current docs/evidence only.
+Direct Home-origin trusted scene admission remains target work.
 ```
 
 ## Client history exclusion apply
@@ -108,6 +112,7 @@ ordinary finalized turn
   -> I-4E loopback Forget API/UI over existing authorities
   -> UI-B1A read-only lifecycle visibility
   -> I-5A/I-7A/B read-only governance preflight
+  -> E1 evidence consolidation over the proven local lane
   -> RelayCTX bounded injection
 ```
 
@@ -125,6 +130,7 @@ Completed behavior must not be re-listed as migration work:
 - UI-B1A read-only lifecycle visibility is complete.
 - I-5A contract/read-only Pin / Unpin preflight is complete.
 - I-7A/B contract/read-only Held Apply / Discard preflight is complete.
+- E1 evaluation consolidation is complete as docs/evidence.
 
 Remaining migration is deliberately narrower:
 
@@ -138,6 +144,11 @@ I-4F Forget validation
 
 Pin/Unpin runtime apply/API/UI/ranking work
 Held Apply/Discard runtime/API/UI/durable evidence work
+
+E1-R1 trusted Home scene-admission path
+E1-R2 idempotent character-store bootstrap command
+E1-R3 provenance-preserving Primary MEM formation summary
+E1-R4 retrieval-response grounding and unsupported-detail suppression
 
 RelayINT / RelayREF / RelaySCN ownership migrations
 TTS/audio/avatar runtime adapter execution
@@ -174,4 +185,4 @@ relaymem_local_scheduler_dry_run_only=true
 relaymem_local_scheduler_apply_enabled=false
 ```
 
-No migration step may silently enable actual apply, restore raw history after failure, treat client instruction evidence as RelaySOUL authority, expose content-bearing runtime state in generic diagnostics, reconstruct incomplete tool transactions without a dedicated contract, or imply recurring scheduling/TTS/avatar execution from helper or handoff metadata alone.
+No migration step may silently enable actual apply, restore raw history after failure, treat client instruction evidence as RelaySOUL authority, expose content-bearing runtime state in generic diagnostics, reconstruct incomplete tool transactions without a dedicated contract, imply recurring scheduling/TTS/avatar execution from helper or handoff metadata alone, or treat Home-origin browser metadata as trusted scene admission without a dedicated trust-boundary phase.

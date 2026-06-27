@@ -12,6 +12,7 @@ SOURCE_PRS = {
     "#420": "3e3d2570ecdfcde4c8bfdee06c5607cb6632c133",
     "#421": "5736636da839486140f72c731f18a4a85c39b13c",
     "#423": "5e0f866e959ab2bc5af00e0502b2026f4b52a779",
+    "#424": "be0872edea46cb67fd5269bfaa8c7cb8048fb2c4",
 }
 
 REQUIRED = {
@@ -33,6 +34,7 @@ REQUIRED = {
         "UI-B1A read-only lifecycle visibility: complete",
         "I-5A Pin / Unpin contract and read-only preflight: complete",
         "I-7A/B Held Apply / Discard contract and read-only preflight: complete",
+        "W4-INT is merged",
     ),
     "docs/PROJECT_STATUS.md": (
         "O1D2 bounded scheduler policy/fairness/pacing: complete",
@@ -48,7 +50,7 @@ REQUIRED = {
         "I-7A/B Held Apply / Discard contract and read-only preflight: complete",
         "I-7 runtime apply/discard/API/UI/durable governance evidence: unimplemented",
         "Wave 4 implementation tracks complete",
-        "W4-INT in progress until the convergence PR merges",
+        "W4-INT merged",
         "Post-Wave-4 next candidates:",
     ),
     "docs/architecture/project_execution_plan.md": (
@@ -64,7 +66,7 @@ REQUIRED = {
         "I-4F crash/race/security/fresh-conversation validation",
         "I-5B or Pin/Unpin apply/API/UI/ranking work, if defined",
         "I-7C or Held Apply/Discard runtime/API/UI/durable evidence work, if defined",
-        "E1 evaluation consolidation",
+        "E1-R1 trusted Home scene-admission path",
         "O2/O3 should remain after O1E/O1F",
     ),
     "docs/architecture/current_target_migration_guide.md": (
@@ -104,6 +106,9 @@ STALE = (
     "Phase I-4E loopback API and SOUL Lab Forget UI: unimplemented",
     "Current Wave 4 follow-up work:",
     "Wave 4 follow-up queue",
+    "W4-INT in progress until the convergence PR merges",
+    "W4-INT is complete only after that convergence PR merges",
+    "W4-INT completes only after the convergence PR containing this audit is merged",
 )
 
 FALSE_COMPLETION = (

@@ -20,6 +20,7 @@ relaylm_related_authority:
   - docs/architecture/pipeline_responsibility_design.md
   - docs/architecture/project_execution_plan.md
   - docs/architecture/current_target_migration_guide.md
+  - docs/architecture/e1_evaluation_consolidation.md
   - docs/architecture/wave4_cross_slice_convergence_audit.md
   - docs/architecture/wave3_cross_slice_convergence_audit.md
   - docs/architecture/phase_i4e_forget_api_ui.md
@@ -63,6 +64,7 @@ RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and 
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0, and UI-B1A complete
 UI-B1A read-only lifecycle visibility: complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete
+E1 evaluation consolidation: complete
 Direct Home-origin formation: not currently proven; trusted scene admission is missing
 
 Phase I-4A Forget / Hide contract: defined target
@@ -90,7 +92,7 @@ I1-G overall: complete
 Wave 3 implementation tracks complete
 W3-INT merged
 Wave 4 implementation tracks complete
-W4-INT in progress until the convergence PR merges
+W4-INT merged
 ```
 
 ## Phase 6 RelaySLP orchestration and O0
@@ -159,6 +161,10 @@ I-7A/B is complete only for Held Apply / Discard contract and read-only prefligh
 
 UI-B0 real Home conversation is complete. UI-B1A read-only lifecycle and operation visibility is complete. The browser uses server-projected routes and the existing same-origin RelayLM Chat Completions path. It owns no backend, SOUL, namespace, storage-root, queue, worker, scheduler, or mutation authority.
 
+E1 evaluation consolidation is complete as a docs/evidence boundary. It records the evidence inventory, direct Home-origin formation decision, character-store bootstrap ergonomics, speaker-provenance quality requirements, evidence-grounded recall quality requirements, and docs-only validation.
+
+Current MVP decision: Home is conversation, recall, observation, and governance evaluation unless a future trusted scene-admission phase changes that boundary. Primary MEM formation remains operator/trusted-admission-path driven for MVP evaluation.
+
 Direct Home-origin formation remains unproven because UI-B0 sends standard Chat Completions fields and does not self-assert trusted scene-admission metadata. The workstation E1 proof still separates a trusted formation lane from the Home recall lane.
 
 ## Immediate dependency-first work
@@ -170,15 +176,18 @@ Post-Wave-4 next candidates:
   I-4F full Forget validation
   I-5B or Pin/Unpin runtime apply/API/UI/ranking work, if defined
   I-7C or Held Apply/Discard runtime/API/UI/durable evidence work, if defined
-  E1 evaluation consolidation
+  E1-R1 trusted Home scene-admission path
+  E1-R2 idempotent character-store bootstrap command
+  E1-R3 provenance-preserving Primary MEM formation summary
+  E1-R4 retrieval-response grounding and unsupported-detail suppression
   O2/O3 only after O1E/O1F or explicit MVP need
 ```
 
-The Wave 4 implementation audit is [Wave 4 Cross-Slice Convergence Audit](architecture/wave4_cross_slice_convergence_audit.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
+The Wave 4 implementation audit is [Wave 4 Cross-Slice Convergence Audit](architecture/wave4_cross_slice_convergence_audit.md). The E1 consolidation record is [E1 MVP Evaluation Evidence Consolidation](architecture/e1_evaluation_consolidation.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 
 ## Safe defaults
 
-Current mutation, worker, durable-finalization, retention, and scheduler-related paths remain default-off or dry-run-first. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1D1 accepts exact scheduler gates but runs only one caller-invoked round and returns without sleep. O1D2 returns bounded policy hints only and does not sleep or schedule another round by itself. I-4E adds a loopback product surface but preserves I-4B/I-4C1/I-4C2/I-4D authority boundaries.
+Current mutation, worker, durable-finalization, retention, scheduler-related paths, and E1 evaluation paths remain default-off or docs-only. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1D1 accepts exact scheduler gates but runs only one caller-invoked round and returns without sleep. O1D2 returns bounded policy hints only and does not sleep or schedule another round by itself. I-4E adds a loopback product surface but preserves I-4B/I-4C1/I-4C2/I-4D authority boundaries. E1 adds no runtime behavior changes.
 
 ## Not yet implemented
 
@@ -211,4 +220,8 @@ Wave 3 implementation tracks are complete: I1-GE, I-4D, and O1D1. W3-INT records
 
 ## Wave 4 cross-slice convergence
 
-Wave 4 implementation tracks are complete: O1D2, I-4E, UI-B1A, I-5A, and I-7A/B. W4-INT records their source PRs, merge commits, completion reports, handoffs, authority map, leakage review, and frozen post-Wave-4 inputs. W4-INT is in progress until the convergence PR merges.
+Wave 4 implementation tracks are complete: O1D2, I-4E, UI-B1A, I-5A, and I-7A/B. W4-INT records their source PRs, merge commits, completion reports, handoffs, authority map, leakage review, and frozen post-Wave-4 inputs. W4-INT is merged.
+
+## E1 evaluation consolidation
+
+E1 records the post-Wave-4 evidence inventory and MVP decision that direct Home-origin formation is not required for current MVP evaluation. Home remains the real conversation, recall, observation, and governance evaluation surface. A future trusted Home scene-admission path must be designed explicitly before Home-origin Primary MEM formation can be claimed.
