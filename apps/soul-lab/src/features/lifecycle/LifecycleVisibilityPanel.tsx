@@ -134,7 +134,7 @@ export function LifecycleVisibilityPanel({
             )}
           </div>
 
-          <section className="surface-panel" aria-label={text(language, "Fresh Conversation検証", "Fresh Conversation verification")}> 
+          <section className="surface-panel" aria-label={text(language, "Fresh Conversation検証", "Fresh Conversation verification")}>
             <h3>{text(language, "Fresh Conversation の意味", "Fresh Conversation meaning")}</h3>
             <p>
               {text(
