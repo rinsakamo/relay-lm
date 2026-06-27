@@ -32,7 +32,7 @@ W4-INT verified the source PR numbers, merge commits, and dedicated handoffs for
 - [I-4E completion report](wave4/i4e_completion_report.md) — source PR #420, merge `3e3d2570ecdfcde4c8bfdee06c5607cb6632c133`.
 - [UI-B1A completion report](wave4/ui_b1a_completion_report.md) — source PR #421, merge `5736636da839486140f72c731f18a4a85c39b13c`.
 - [I-5A completion report](wave4/i5a_completion_report.md) — source PR #417, merge `2f8597911774b70f1c001db8332b3dfcc18d23ca`.
-- [I-7A/B completion report](wave4/i7ab_completion_report.md) — source PR #423, merge `5e0f866e959ab2bc5af00e0502b3dfcc18d23ca`.
+- [I-7A/B completion report](wave4/i7ab_completion_report.md) — source PR #423, merge `5e0f866e959ab2bc5af00e0502b2026f4b52a779`.
 
 The Wave 4 cross-slice convergence record is [Wave 4 Cross-Slice Convergence Audit](../architecture/wave4_cross_slice_convergence_audit.md). W4-INT is merged.
 
@@ -67,7 +67,7 @@ The source PR number must be concrete before final review. The convergence threa
 ### RelayCTX short-term context
 
 - [MVP-40: RelayCTX short-term extraction dry-run](mvp40_relayctx_short_term_extraction_dry_run.md)
-- [MVP-41: RelayCTX short-term block assembly dry-run](mvp41_relayctx_short_term_block_assembly_dry_run.md)
+- [MVP-41: RelayCTX short-term block assembly dry-run](mvp41_relayctx_short_term_block_assembly.md)
 - [MVP-42: RelayCTX short-term runtime injection preflight](mvp42_relayctx_short_term_runtime_injection_preflight.md)
 - [MVP-43: RelayCTX short-term runtime injection apply gate](mvp43_relayctx_short_term_runtime_injection_apply_gate.md)
 
