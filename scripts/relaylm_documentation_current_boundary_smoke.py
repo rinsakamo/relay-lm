@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current documentation boundary anchors after Wave 4 and E1 convergence."""
+"""Validate current documentation boundary anchors after I-4F completion."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,6 +15,7 @@ CURRENT_DOCS = (
     "docs/architecture/project_execution_plan.md",
     "docs/architecture/relaymem_slp_current_target.md",
     "docs/architecture/e1_evaluation_consolidation.md",
+    "docs/architecture/phase_i4f_forget_validation.md",
     "docs/architecture/wave2_cross_slice_convergence_audit.md",
     "docs/architecture/wave3_cross_slice_convergence_audit.md",
     "docs/architecture/wave4_cross_slice_convergence_audit.md",
@@ -31,8 +32,8 @@ REQUIRED = {
         "O1F operational validation: unimplemented",
         "O1 overall: in progress",
         "Phase I-4E loopback Forget API and SOUL Lab UI: complete",
-        "Phase I-4F full Forget validation: unimplemented",
-        "Phase I-4 overall: in progress",
+        "Phase I-4F full Forget validation: complete",
+        "Phase I-4 overall: complete",
         "UI-B1A read-only lifecycle visibility: complete",
         "I-5A Pin / Unpin contract and read-only preflight: complete",
         "I-5 runtime apply/API/UI/ranking behavior: unimplemented",
@@ -42,7 +43,7 @@ REQUIRED = {
         "W4-INT merged",
         "E1 evaluation consolidation: complete",
         "Direct Home-origin formation: not currently proven; trusted scene admission is missing",
-        "Post-Wave-4 next candidates:",
+        "Post-I-4F next candidates:",
     ),
     "docs/README.md": (
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
@@ -77,19 +78,12 @@ REQUIRED = {
         "Wave 4 Cross-Slice Convergence Audit",
         "E1 MVP Evaluation Evidence Consolidation",
     ),
-    "docs/DOCUMENTATION_MODEL.md": (
-        "`implementation_plan` | MVP boundary, dependency sequencing, and post-MVP roadmap",
-        "`redirect_stub` | Compatibility pointer from an older authority path",
-        "Read `docs/PROJECT_STATUS.md` first.",
-        "Use `docs/architecture/project_execution_plan.md` for MVP boundary, dependency sequencing, and post-MVP roadmap ordering.",
-        "MVP execution plan and post-MVP roadmap -> `docs/architecture/project_execution_plan.md`",
-    ),
     "docs/architecture/current_target_migration_guide.md": (
         "MVP sequencing and roadmap ordering live in [Project Execution Plan](project_execution_plan.md)",
         "O1D2 is current implemented as bounded policy wrapper.",
         "O1E/O1F remain target/unimplemented.",
         "I-4E is current implemented as loopback Forget API/UI.",
-        "I-4F remains target/unimplemented validation.",
+        "I-4F is current implemented as validation-only Forget product completion.",
         "UI-B1A is current implemented read-only visibility.",
         "I-5A is current implemented contract/read-only preflight only.",
         "I-7A/B is current implemented contract/read-only preflight only.",
@@ -118,6 +112,7 @@ REQUIRED = {
         "O1D1 accepts the five exact scheduler gates",
         "O1D2 is current implemented as a bounded policy wrapper",
         "I-4E is current implemented as loopback Forget API/UI.",
+        "I-4F is current implemented as validation-only Forget product completion.",
         "UI-B1A is current implemented read-only visibility.",
         "I-5A is current implemented contract/read-only preflight only.",
         "I-7A/B is current implemented contract/read-only preflight only.",
@@ -131,6 +126,12 @@ REQUIRED = {
         "E1-R2 idempotent character-store bootstrap command",
         "E1-R3 provenance-preserving Primary MEM formation summary",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression",
+    ),
+    "docs/architecture/phase_i4f_forget_validation.md": (
+        "# Phase I-4F Forget Product Completion Validation",
+        "## Validation matrix",
+        "## Non-goals preserved",
+        "## Validation commands",
     ),
     "docs/architecture/wave4_cross_slice_convergence_audit.md": (
         "# Wave 4 Cross-Slice Convergence Audit",
@@ -160,9 +161,18 @@ STALE = tuple(
     W4-INT in progress until the convergence PR merges
     W4-INT is complete only after that convergence PR merges
     W4-INT completes only after the convergence PR containing this audit is merged
+    Phase I-4F full Forget validation: unimplemented
+    Phase I-4 overall: in progress
     """.splitlines()
     if line.strip()
 )
+
+FROZEN_ALLOWLIST = {
+    "docs/architecture/wave4_cross_slice_convergence_audit.md": (
+        "Phase I-4F full Forget validation: unimplemented",
+        "Phase I-4 overall: in progress",
+    ),
+}
 
 
 def read(path: str) -> str:
@@ -177,7 +187,8 @@ def require(path: str, anchors: tuple[str, ...]) -> None:
 
 def forbid(path: str, values: tuple[str, ...]) -> None:
     body = read(path)
-    stale = [anchor for anchor in values if anchor in body]
+    allowed = FROZEN_ALLOWLIST.get(path, ())
+    stale = [anchor for anchor in values if anchor not in allowed and anchor in body]
     assert not stale, f"{path}: stale anchors: {stale!r}"
 
 
