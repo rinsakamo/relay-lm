@@ -14,7 +14,7 @@ relaylm_not_authoritative_for:
 
 ## Status and authority
 
-W3-INT audits the merged Wave 3 implementation tracks and reconciles shared documentation. This PR is unmerged; Wave 4 is not open until the W3-INT PR merges. Wave 4 not open while this PR is unmerged.
+W3-INT audited the merged Wave 3 implementation tracks, reconciled shared documentation, and was merged through PR #415. Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs.
 
 This audit is historical evidence for the Wave 3 convergence point. It records verified source PR inventory, cross-slice authority boundaries, documentation reconciliation, and frozen Wave 4 inputs. Dedicated handoffs and production modules remain authoritative for lower-level behavior.
 
@@ -147,7 +147,7 @@ The audit may name abstract identity classes such as locator, job, dispatch, cla
 
 ## Documentation reconciliation
 
-W3-INT updates the repository-wide current documents and indexes to state:
+W3-INT updated the repository-wide current documents and indexes to state:
 
 ```text
 I1-GA complete
@@ -156,7 +156,6 @@ I1-GC complete
 I1-GD complete
 I1-GE complete
 I1-G overall complete
-I1-G overall complete
 
 I-4B complete
 I-4C1 complete
@@ -164,7 +163,6 @@ I-4C2 complete
 I-4D complete
 I-4E unimplemented
 I-4F unimplemented
-Phase I-4 overall in progress
 Phase I-4 overall in progress
 
 O1A contract complete
@@ -175,13 +173,12 @@ O1D2 unimplemented
 O1E unimplemented
 O1F unimplemented
 O1 overall in progress
-O1 overall in progress
 O2 planned/unimplemented
 O3 planned/unimplemented
 
 Wave 3 implementation tracks complete
-W3-INT complete only after this PR is merged
-Wave 4 not open while this PR is unmerged
+W3-INT merged
+Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs
 ```
 
 Completion reports remain frozen historical evidence. `docs/mvp/README.md` links them centrally after W3-INT verifies their source PRs.
