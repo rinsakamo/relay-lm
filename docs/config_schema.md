@@ -81,6 +81,24 @@ characters:
     memory_seed_path: examples/memory/companion_memories.yaml
 ```
 
+## Current history-authority limitation
+
+The default `memory_light` compatibility compiler may preserve prior client user/assistant history after the RelayLM-owned compiled system message.
+
+```yaml
+client_history_exclusion_apply_enabled: false
+client_history_exclusion_apply_dry_run_only: true
+```
+
+Implemented bounded apply contracts:
+
+- `client_history_exclusion_apply.v0` supports managed `memory_light` requests with no client `system` or `developer` messages.
+- `client_history_exclusion_apply.v1` supports instruction-bearing managed requests only when an exact `client_instruction_source.v1` provenance envelope selects the current instruction candidates.
+- Missing, invalid, unordered, duplicated, out-of-range, post-user, non-instruction, or identity-mismatched v1 provenance fails closed.
+- Failure never restores raw prior history or treats all client instruction messages as current evidence.
+
+Do not claim current-turn-only managed reconstruction unless the exact request shape and apply gates are verified. Active tool-chain reconstruction and broader compatibility shapes remain incomplete.
+
 ## Core top-level fields
 
 ### `mode`
@@ -354,7 +372,7 @@ Bounds and accepted ranges:
 - admitted record locators: 1 through 100000, default 1024;
 - one bounded publication operation: 1 through 60000 milliseconds, default 5000.
 
-The private record is content-bearing and separate from C1-5 and B2. I1-GB publishes restart evidence only. I1-GC one-record replay/completion, I1-GD retention/isolation cleanup, and I1-GE full crash validation are complete.
+The private record is content-bearing and separate from C1-5 and B2. I1-GB publishes restart evidence only. I1-GC one-record replay/completion and I1-GD retention/isolation cleanup are complete; I1-GE full crash validation remains unimplemented.
 
 ## I1-GD durable-finalization retention flags
 
@@ -416,7 +434,7 @@ All five fields are strict booleans. Integer values, strings, and null are rejec
 
 Every other mode triple is invalid configuration. An enabled scheduler must enable at least one lane. The default remains disabled and dry-run-first, while both lane selectors default to enabled so an operator can opt into the bounded round without introducing a hidden single-lane default.
 
-The scheduler gate is an upper gate only. Scheduler apply does not elevate the I1-G replay/durable-finalization authority or the O0/C2/B3 local-worker authority. Roots, character scope, locators, jobs, dispatch records, and claims continue to resolve from existing server-owned configuration and lower authorities.
+The scheduler gate is an upper gate only. Scheduler apply does not elevate the I1-G replay/durable-finalization authority or the O0/C2/B3 local-worker authority. Roots, character scope, locators, jobs, dispatch records, and claims continue to resolve from existing server-owned configuration and lower authorities. O1D1 itself adds no interval, polling, fairness, backoff, jitter, worker-count, or shutdown-timeout field.
 
 One call to `run_relaymem_slp_scheduler_round_once(...)` invokes the replay lane at most once, then the queue lane at most once, aggregates through O1A, validates the content-free projection, and returns without sleep. It is not an always-on scheduler, polling loop, daemon, or service-supervision boundary.
 
