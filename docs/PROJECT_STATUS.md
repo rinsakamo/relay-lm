@@ -76,8 +76,8 @@ I1-GD retention / orphan reconciliation / isolation lifecycle / cleanup: complet
 I1-GE full production crash validation: complete
 I1-G overall: complete
 Wave 3 implementation tracks complete
-W3-INT complete only after this PR is merged
-Wave 4 not open while W3-INT is unmerged
+W3-INT merged
+Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs
 ```
 
 ## Core request/runtime foundation
@@ -228,7 +228,7 @@ After W3-INT merge:
   I-7A/B Held Apply / Discard contract/preflight
 ```
 
-Wave 4 not open while W3-INT is unmerged. The Wave 4 start contracts are frozen in [Wave 3 Cross-Slice Convergence Audit](architecture/wave3_cross_slice_convergence_audit.md).
+The Wave 4 start contracts are frozen in [Wave 3 Cross-Slice Convergence Audit](architecture/wave3_cross_slice_convergence_audit.md) and may be used for follow-up implementation planning after the W3-INT merge.
 
 ## Safe defaults
 
@@ -260,4 +260,4 @@ W2-INT audits the merged I1-GD, I-4C2, O1B, and O1C production boundaries. It ad
 
 ## Wave 3 cross-slice convergence
 
-Wave 3 implementation tracks are complete: I1-GE, I-4D, and O1D1. W3-INT records their source PRs, merge commits, completion reports, handoffs, lock/root/config map, leakage proof, and frozen Wave 4 inputs. W3-INT complete only after this PR is merged; Wave 4 not open while W3-INT is unmerged.
+Wave 3 implementation tracks are complete: I1-GE, I-4D, and O1D1. W3-INT records their source PRs, merge commits, completion reports, handoffs, lock/root/config map, leakage proof, and frozen Wave 4 inputs. W3-INT is merged; Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs.

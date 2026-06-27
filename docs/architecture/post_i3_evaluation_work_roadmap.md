@@ -34,7 +34,7 @@ Last reviewed: 2026-06-27 JST
 
 ## Purpose
 
-Phase I-3 Correct, UI-B0 real Home conversation, O0 local one-job execution, I1-GA through I1-GE, I-4B, I-4C1, I-4C2, I-4D, O1A, O1B, O1C, and O1D1 are complete at their bounded boundaries. Phase I-4A remains the target Forget / Hide contract. I-4E, I-4F, O1D2, O1E, and O1F remain incomplete. W3-INT complete only after its PR is merged; Wave 4 not open while W3-INT is unmerged.
+Phase I-3 Correct, UI-B0 real Home conversation, O0 local one-job execution, I1-GA through I1-GE, I-4B, I-4C1, I-4C2, I-4D, O1A, O1B, O1C, and O1D1 are complete at their bounded boundaries. Phase I-4A remains the target Forget / Hide contract. I-4E, I-4F, O1D2, O1E, and O1F remain incomplete. W3-INT is merged, and Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs.
 
 This roadmap separates four authorities:
 
@@ -101,7 +101,7 @@ O1D1 complete means one caller-invoked production round accepts exact server-own
 
 ## Wave 4 start sequence
 
-After W3-INT merges, the dependency-first next work is:
+After W3-INT merge, the dependency-first next work is:
 
 ```text
 O1D2 ordering/fairness/retry-time/backoff/jitter/pacing
