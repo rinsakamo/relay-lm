@@ -10,10 +10,13 @@ This document is a docs-only consistency review across RelaySOUL gate design doc
 - RelaySOUL Rollback Execution Gate Design
 - RelaySOUL Storage Writer Gate Design
 - RelaySOUL Persistence Execution Gate Design
+- RelaySOUL Explicit Approval Artifact Contract
+- RelaySOUL Preflight Lineage Freshness Policy
+- RelaySOUL Gate Dry-run CLI Design
 
 ## Consistent concepts
 
-Across all four gate docs, the following concepts are aligned:
+Across the gate docs, the following concepts are aligned:
 
 - gate artifact naming is explicit per gate:
   - `relaysoul_apply_execution_gate_decision`
@@ -30,6 +33,8 @@ Across all four gate docs, the following concepts are aligned:
   - `true` remains future-only with explicit approval
 - content-free boundary is required across all gates
 - explicit user/operator approval is required across all gates
+- stale preflight and lineage freshness are documented as gate inputs
+- gate dry-run CLI behavior is documented as design-only evidence
 - fail-closed posture is consistent across all gates
 
 ## Relationship matrix
@@ -61,16 +66,12 @@ Across all four gate docs, the following concepts are aligned:
 
 ## Remaining gaps before implementation
 
-- no gate dry-run CLI yet
-- no actual gate decision artifacts emitted yet
+- no actual gate decision artifacts emitted by runtime yet
 - no real persistence writer
 - no real apply / rollback
-- explicit approval artifact format is still future work
-- stale preflight definition is still future work
+- no runtime execution gate has moved beyond docs-only design
 
 ## Next phase
 
-- gate dry-run CLI design
-- explicit approval artifact contract
-- stale preflight / lineage freshness policy
-- only then consider real persistence writer
+- keep RelaySOUL gates docs-only until a dedicated implementation phase proves explicit approval artifacts, stale-preflight freshness, dry-run CLI behavior, and persistence writer authority together
+- only then consider real persistence writer, apply, or rollback execution
