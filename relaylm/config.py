@@ -1,5 +1,4 @@
 """RelayLM runtime config loading."""
-
 from __future__ import annotations
 
 import os
@@ -8,7 +7,6 @@ from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, HttpUrl, StrictBool, model_validator
-
 
 Mode = Literal["pass_through", "memory_light", "memory_full"]
 
@@ -118,64 +116,32 @@ class RelayLMConfig(BaseModel):
     relaymem_slp_runtime_enqueue_apply_enabled: bool = False
     relaymem_slp_queue_root: str | None = None
     relaymem_slp_protected_source_root: str | None = None
-    relaymem_slp_protected_source_max_artifact_bytes: int = Field(
-        default=256 * 1024,
-        ge=1,
-        le=1024 * 1024,
-    )
+    relaymem_slp_protected_source_max_artifact_bytes: int = Field(default=256 * 1024, ge=1, le=1024 * 1024)
     relaymem_slp_durable_finalization_enabled: StrictBool = False
     relaymem_slp_durable_finalization_dry_run_only: StrictBool = True
     relaymem_slp_durable_finalization_apply_enabled: StrictBool = False
     relaymem_slp_durable_finalization_root: str | None = None
-    relaymem_slp_durable_finalization_max_record_bytes: int = Field(
-        default=512 * 1024, ge=1, le=4 * 1024 * 1024, strict=True
-    )
-    relaymem_slp_durable_finalization_max_segment_bytes: int = Field(
-        default=64 * 1024, ge=1, le=1024 * 1024, strict=True
-    )
-    relaymem_slp_durable_finalization_max_segment_count: int = Field(
-        default=256, ge=1, le=4096, strict=True
-    )
-    relaymem_slp_durable_finalization_max_record_count: int = Field(
-        default=1024, ge=1, le=100_000, strict=True
-    )
-    relaymem_slp_durable_finalization_publication_timeout_ms: int = Field(
-        default=5000, ge=1, le=60_000, strict=True
-    )
+    relaymem_slp_durable_finalization_max_record_bytes: int = Field(default=512 * 1024, ge=1, le=4 * 1024 * 1024, strict=True)
+    relaymem_slp_durable_finalization_max_segment_bytes: int = Field(default=64 * 1024, ge=1, le=1024 * 1024, strict=True)
+    relaymem_slp_durable_finalization_max_segment_count: int = Field(default=256, ge=1, le=4096, strict=True)
+    relaymem_slp_durable_finalization_max_record_count: int = Field(default=1024, ge=1, le=100_000, strict=True)
+    relaymem_slp_durable_finalization_publication_timeout_ms: int = Field(default=5000, ge=1, le=60_000, strict=True)
     relaymem_slp_durable_finalization_retention_enabled: StrictBool = False
     relaymem_slp_durable_finalization_retention_dry_run_only: StrictBool = True
     relaymem_slp_durable_finalization_retention_apply_enabled: StrictBool = False
-    relaymem_slp_durable_finalization_completed_retention_seconds: int = Field(
-        default=604800, ge=1, le=10 * 365 * 24 * 60 * 60, strict=True
-    )
-    relaymem_slp_durable_finalization_orphan_grace_seconds: int = Field(
-        default=86400, ge=1, le=365 * 24 * 60 * 60, strict=True
-    )
-    relaymem_slp_durable_finalization_isolated_retention_seconds: int = Field(
-        default=2592000, ge=1, le=10 * 365 * 24 * 60 * 60, strict=True
-    )
-    relaymem_slp_durable_finalization_cleanup_max_records_per_pass: int = Field(
-        default=64, ge=1, le=4096, strict=True
-    )
-    relaymem_slp_durable_finalization_cleanup_timeout_ms: int = Field(
-        default=5000, ge=1, le=60_000, strict=True
-    )
+    relaymem_slp_durable_finalization_completed_retention_seconds: int = Field(default=604800, ge=1, le=10 * 365 * 24 * 60 * 60, strict=True)
+    relaymem_slp_durable_finalization_orphan_grace_seconds: int = Field(default=86400, ge=1, le=365 * 24 * 60 * 60, strict=True)
+    relaymem_slp_durable_finalization_isolated_retention_seconds: int = Field(default=2592000, ge=1, le=10 * 365 * 24 * 60 * 60, strict=True)
+    relaymem_slp_durable_finalization_cleanup_max_records_per_pass: int = Field(default=64, ge=1, le=4096, strict=True)
+    relaymem_slp_durable_finalization_cleanup_timeout_ms: int = Field(default=5000, ge=1, le=60_000, strict=True)
     relaymem_slp_source_registry_max_entries: int = Field(default=256, ge=1)
     relaymem_slp_source_registry_ttl_seconds: int = Field(default=1800, ge=1)
     relaymem_local_worker_enabled: bool = False
     relaymem_local_worker_dry_run_only: bool = True
     relaymem_local_worker_apply_enabled: bool = False
     relaymem_local_worker_claim_owner: str = "relaylm-worker-once"
-    relaymem_local_worker_lease_duration_seconds: int = Field(
-        default=300,
-        ge=1,
-        le=7 * 24 * 60 * 60,
-    )
-    relaymem_local_worker_discovery_max_entries: int = Field(
-        default=256,
-        ge=1,
-        le=4096,
-    )
+    relaymem_local_worker_lease_duration_seconds: int = Field(default=300, ge=1, le=7 * 24 * 60 * 60)
+    relaymem_local_worker_discovery_max_entries: int = Field(default=256, ge=1, le=4096)
     relaymem_local_scheduler_enabled: StrictBool = False
     relaymem_local_scheduler_dry_run_only: StrictBool = True
     relaymem_local_scheduler_apply_enabled: StrictBool = False
@@ -184,24 +150,19 @@ class RelayLMConfig(BaseModel):
     relaymem_local_scheduler_policy_enabled: StrictBool = False
     relaymem_local_scheduler_policy_dry_run_only: StrictBool = True
     relaymem_local_scheduler_policy_apply_enabled: StrictBool = False
-    relaymem_local_scheduler_policy_fairness_streak_limit: int = Field(
-        default=3, ge=1, le=100, strict=True
-    )
-    relaymem_local_scheduler_pacing_base_delay_ms: int = Field(
-        default=250, ge=0, le=60_000, strict=True
-    )
-    relaymem_local_scheduler_pacing_max_delay_ms: int = Field(
-        default=5000, ge=0, le=60_000, strict=True
-    )
-    relaymem_local_scheduler_pacing_jitter_ms: int = Field(
-        default=0, ge=0, le=60_000, strict=True
-    )
-    relaymem_local_scheduler_policy_short_retry_window_ms: int = Field(
-        default=30_000, ge=1, le=3_600_000, strict=True
-    )
-    relaymem_local_scheduler_policy_later_retry_window_ms: int = Field(
-        default=300_000, ge=1, le=86_400_000, strict=True
-    )
+    relaymem_local_scheduler_policy_fairness_streak_limit: int = Field(default=3, ge=1, le=100, strict=True)
+    relaymem_local_scheduler_pacing_base_delay_ms: int = Field(default=250, ge=0, le=60_000, strict=True)
+    relaymem_local_scheduler_pacing_max_delay_ms: int = Field(default=5000, ge=0, le=60_000, strict=True)
+    relaymem_local_scheduler_pacing_jitter_ms: int = Field(default=0, ge=0, le=60_000, strict=True)
+    relaymem_local_scheduler_policy_short_retry_window_ms: int = Field(default=30_000, ge=1, le=3_600_000, strict=True)
+    relaymem_local_scheduler_policy_later_retry_window_ms: int = Field(default=300_000, ge=1, le=86_400_000, strict=True)
+    relaymem_local_scheduler_operational_controls_enabled: StrictBool = False
+    relaymem_local_scheduler_operational_controls_dry_run_only: StrictBool = True
+    relaymem_local_scheduler_operational_controls_apply_enabled: StrictBool = False
+    relaymem_local_scheduler_stale_recovery_enabled: StrictBool = False
+    relaymem_local_scheduler_stale_recovery_dry_run_only: StrictBool = True
+    relaymem_local_scheduler_stale_recovery_apply_enabled: StrictBool = False
+    relaymem_local_scheduler_stale_recovery_max_scan_entries: int = Field(default=256, ge=1, le=4096, strict=True)
     client_message_canonicalization_dry_run_enabled: bool = False
     client_history_exclusion_preflight_enabled: bool = False
     client_history_exclusion_apply_enabled: bool = False
@@ -209,11 +170,7 @@ class RelayLMConfig(BaseModel):
     client_instruction_extraction_dry_run_enabled: bool = False
     client_instruction_cache_lookup_enabled: bool = False
     client_instruction_cache_root: str | None = None
-    client_instruction_cache_max_entry_bytes: int = Field(
-        default=65536,
-        ge=1,
-        le=1048576,
-    )
+    client_instruction_cache_max_entry_bytes: int = Field(default=65536, ge=1, le=1048576)
     client_instruction_typed_parse_enabled: bool = False
     client_instruction_cache_write_enabled: bool = False
     client_instruction_cache_write_dry_run_only: bool = True
@@ -232,9 +189,7 @@ class RelayLMConfig(BaseModel):
     relayemo_enabled: bool = False
     relayemo_dry_run: bool = True
     relayemo_text_marker_enabled: bool = False
-    relayemo_text_marker_apply_mode: Literal["diagnostics_only", "preview", "apply"] = (
-        "diagnostics_only"
-    )
+    relayemo_text_marker_apply_mode: Literal["diagnostics_only", "preview", "apply"] = "diagnostics_only"
     relayemo_marker_open_threshold: float = 0.65
     relayemo_marker_close_threshold: float = 0.45
     relayemo_max_markers: int = Field(default=3, ge=1, le=3)
@@ -279,16 +234,12 @@ class RelayLMConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_local_scheduler_mode(self) -> "RelayLMConfig":
-        triple = (
+        scheduler_triple = (
             self.relaymem_local_scheduler_enabled,
             self.relaymem_local_scheduler_dry_run_only,
             self.relaymem_local_scheduler_apply_enabled,
         )
-        if triple not in {
-            (False, True, False),
-            (True, True, False),
-            (True, False, True),
-        }:
+        if scheduler_triple not in _VALID_GATE_TRIPLES:
             raise ValueError("invalid_relaymem_local_scheduler_gate_combination")
         if self.relaymem_local_scheduler_enabled and not (
             self.relaymem_local_scheduler_replay_lane_enabled
@@ -301,28 +252,47 @@ class RelayLMConfig(BaseModel):
             self.relaymem_local_scheduler_policy_dry_run_only,
             self.relaymem_local_scheduler_policy_apply_enabled,
         )
-        if policy_triple not in {
-            (False, True, False),
-            (True, True, False),
-            (True, False, True),
-        }:
+        if policy_triple not in _VALID_GATE_TRIPLES:
             raise ValueError("invalid_relaymem_local_scheduler_policy_gate_combination")
-        if (
-            self.relaymem_local_scheduler_pacing_base_delay_ms
-            > self.relaymem_local_scheduler_pacing_max_delay_ms
-        ):
+        if self.relaymem_local_scheduler_pacing_base_delay_ms > self.relaymem_local_scheduler_pacing_max_delay_ms:
             raise ValueError("relaymem_local_scheduler_pacing_base_delay_exceeds_max")
-        if (
-            self.relaymem_local_scheduler_pacing_jitter_ms
-            > self.relaymem_local_scheduler_pacing_max_delay_ms
-        ):
+        if self.relaymem_local_scheduler_pacing_jitter_ms > self.relaymem_local_scheduler_pacing_max_delay_ms:
             raise ValueError("relaymem_local_scheduler_pacing_jitter_exceeds_max")
-        if (
-            self.relaymem_local_scheduler_policy_short_retry_window_ms
-            > self.relaymem_local_scheduler_policy_later_retry_window_ms
-        ):
+        if self.relaymem_local_scheduler_policy_short_retry_window_ms > self.relaymem_local_scheduler_policy_later_retry_window_ms:
             raise ValueError("relaymem_local_scheduler_policy_retry_windows_inverted")
+
+        operations_triple = (
+            self.relaymem_local_scheduler_operational_controls_enabled,
+            self.relaymem_local_scheduler_operational_controls_dry_run_only,
+            self.relaymem_local_scheduler_operational_controls_apply_enabled,
+        )
+        stale_triple = (
+            self.relaymem_local_scheduler_stale_recovery_enabled,
+            self.relaymem_local_scheduler_stale_recovery_dry_run_only,
+            self.relaymem_local_scheduler_stale_recovery_apply_enabled,
+        )
+        if operations_triple not in _VALID_GATE_TRIPLES:
+            raise ValueError("invalid_relaymem_local_scheduler_operational_controls_gate_combination")
+        if stale_triple not in _VALID_GATE_TRIPLES:
+            raise ValueError("invalid_relaymem_local_scheduler_stale_recovery_gate_combination")
+        if operations_triple == _DISABLED_GATE_TRIPLE and stale_triple != _DISABLED_GATE_TRIPLE:
+            raise ValueError("relaymem_local_scheduler_stale_recovery_requires_operational_controls")
+        if stale_triple == _APPLY_GATE_TRIPLE and operations_triple != _APPLY_GATE_TRIPLE:
+            raise ValueError("relaymem_local_scheduler_stale_recovery_apply_requires_operational_apply")
+        if operations_triple == _DRY_RUN_GATE_TRIPLE and any((
+            self.relaymem_local_scheduler_policy_apply_enabled,
+            self.relaymem_local_scheduler_apply_enabled,
+            self.relaymem_local_worker_apply_enabled,
+            self.relaymem_slp_durable_finalization_apply_enabled,
+        )):
+            raise ValueError("relaymem_local_scheduler_operational_dry_run_lower_apply_enabled")
         return self
+
+
+_DISABLED_GATE_TRIPLE = (False, True, False)
+_DRY_RUN_GATE_TRIPLE = (True, True, False)
+_APPLY_GATE_TRIPLE = (True, False, True)
+_VALID_GATE_TRIPLES = {_DISABLED_GATE_TRIPLE, _DRY_RUN_GATE_TRIPLE, _APPLY_GATE_TRIPLE}
 
 
 def default_config_path() -> Path:
@@ -340,7 +310,6 @@ def load_config(path: str | Path | None = None) -> RelayLMConfig:
             "Set RELAYLM_CONFIG or create config.yaml. "
             "Use config.example.yaml as a starting point."
         )
-
     with config_path.open("r", encoding="utf-8") as f:
         raw: dict[str, Any] = yaml.safe_load(f) or {}
     return RelayLMConfig.model_validate(raw)

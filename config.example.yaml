@@ -1,7 +1,5 @@
 # Exhaustive RelayLMConfig example.
-# Every current Pydantic config field is listed at least once. Optional fields
-# may be left empty to resolve to null. Runtime defaults remain defined by
-# relaylm/config.py; comments below describe current behavior and safety gates.
+# Runtime defaults remain defined by relaylm/config.py.
 
 mode: pass_through
 
@@ -15,84 +13,31 @@ trace:
   enabled: false
   path: traces/relaylm_trace.jsonl
 
-# RelayCTX short-term source diagnostics are default-off and content-free.
-# When enabled, RelayLM records OpenWebUI message counts/source metadata only;
-# it never stores, restores, rewrites, compresses, or injects short-term CTX.
 relayctx_short_term_source_diagnostics_enabled: false
-
-# RelayCTX short-term extraction dry-run is default-off, diagnostics-only,
-# deterministic, and content-free. When enabled, RelayLM classifies aggregate
-# OpenWebUI short-term CTX candidate counts only; it does not store/restore CTX,
-# inject runtime context, mutate backend payloads, or mutate response bodies.
 relayctx_short_term_extraction_dry_run_enabled: false
-
-# RelayCTX short-term block assembly dry-run is default-off, diagnostics-only,
-# and content-free. When enabled, RelayLM plans internal short-term CTX block
-# metadata from extraction counts only; it does not store/restore CTX, inject
-# runtime context, mutate backend payloads, mutate responses, or rewrite messages.
 relayctx_short_term_block_assembly_dry_run_enabled: false
-
-# RelayCTX short-term runtime injection preflight is default-off and content-free.
-# Even when enabled, dry-run-only remains true by default: RelayLM only emits
-# future insertion metadata and never mutates backend payloads, responses,
-# OpenWebUI messages, persisted CTX, or restored cross-thread CTX.
 relayctx_short_term_runtime_injection_preflight_enabled: false
-
-# RelayCTX short-term runtime injection gated apply is default-off. Backend
-# payload mutation can occur only when apply_enabled=true and dry_run_only=false
-# are both explicitly set. The inserted system message is a content-free count
-# summary only; RelayLM still does not persist/restore CTX, mutate responses, or
-# compress/rewrite OpenWebUI messages.
 relayctx_short_term_runtime_injection_apply_enabled: false
 relayctx_short_term_runtime_injection_dry_run_only: true
 relayctx_short_term_runtime_injection_token_budget: 400
-
-# RelayCTX non-stream Unpack is default-off. Setting enabled=true runs the strict
-# trailing relayctx_working_update.v0 parser and records content-free diagnostics.
-# Response mutation occurs only when apply_enabled=true and dry_run_only=false.
-# Accepted ctx_working_update remains request-local and is never persisted to
-# CTX, MEM, SOUL, or SLP by this phase. Streaming responses are unchanged.
 relayctx_unpack_enabled: false
 relayctx_unpack_apply_enabled: false
 relayctx_unpack_dry_run_only: true
 relayctx_unpack_max_update_chars: 4096
-
-# RelayCTX Stream Unpack sentinel/suppression is default-off. Phase 5.5-B2 wraps
-# backend SSE bytes only when relayctx_stream_unpack_dry_run_enabled=true. With
-# dry_run_only=true, bytes remain pass-through; with dry_run_only=false, safe
-# visible output is preserved while internal RelayCTX material is suppressed.
 relayctx_stream_unpack_dry_run_enabled: false
 relayctx_stream_unpack_dry_run_only: true
 relayctx_stream_unpack_max_buffer_chars: 256
-
-# RelayCTX runtime TTS adapter handoff is default-off and depends on B2 apply
-# mode. When enabled, RelayLM observes only B2 safe visible output and records
-# C0/C1 content-free node results. It never mutates stream bytes, executes TTS,
-# generates audio, controls avatars, or persists CTX/MEM/SOUL/SLP state.
 relayctx_tts_adapter_handoff_runtime_enabled: false
 relayctx_tts_adapter_handoff_runtime_dry_run_only: true
 relayctx_tts_adapter_handoff_max_segment_chars: 120
 relayctx_tts_adapter_handoff_min_segment_chars: 8
 
-# Phase 6 I1-B ordinary managed-turn deferred enqueue is default-off. Dry-run
-# captures exact request-local protected source evidence after visible response
-# delivery but performs no B2 queue I/O or durable source publication.
-# Apply requires enabled=true, dry_run_only=false, apply_enabled=true, an
-# absolute existing queue root, and an absolute existing runtime-private
-# protected-source root. C1-5 commits the protected capture before B2 publishes
-# the content-free queue record. The process-local registry remains only a hot
-# cache; restart rehydration uses the durable artifact. No worker is started here.
 relaymem_slp_runtime_enqueue_enabled: false
 relaymem_slp_runtime_enqueue_dry_run_only: true
 relaymem_slp_runtime_enqueue_apply_enabled: false
 relaymem_slp_queue_root:
 relaymem_slp_protected_source_root:
 relaymem_slp_protected_source_max_artifact_bytes: 262144
-
-# I1-GB durable-finalization evidence is a separate runtime-private pre-release
-# record. Disabled and dry-run preserve current response ordering. Apply requires
-# the exact gate combination below, the ordinary runtime-enqueue apply gate, and
-# an absolute pre-existing private root. I1-GB does not replay or clean records.
 relaymem_slp_durable_finalization_enabled: false
 relaymem_slp_durable_finalization_dry_run_only: true
 relaymem_slp_durable_finalization_apply_enabled: false
@@ -102,10 +47,6 @@ relaymem_slp_durable_finalization_max_segment_bytes: 65536
 relaymem_slp_durable_finalization_max_segment_count: 256
 relaymem_slp_durable_finalization_max_record_count: 1024
 relaymem_slp_durable_finalization_publication_timeout_ms: 5000
-
-# I1-GD retention is a separate default-off, dry-run-first maintenance gate.
-# Apply performs one bounded non-recursive pass only. It does not poll, invoke
-# replay, execute workers, or mutate C1-5/B2/B3/C2/M3 authorities.
 relaymem_slp_durable_finalization_retention_enabled: false
 relaymem_slp_durable_finalization_retention_dry_run_only: true
 relaymem_slp_durable_finalization_retention_apply_enabled: false
@@ -114,18 +55,9 @@ relaymem_slp_durable_finalization_orphan_grace_seconds: 86400
 relaymem_slp_durable_finalization_isolated_retention_seconds: 2592000
 relaymem_slp_durable_finalization_cleanup_max_records_per_pass: 64
 relaymem_slp_durable_finalization_cleanup_timeout_ms: 5000
-
 relaymem_slp_source_registry_max_entries: 256
 relaymem_slp_source_registry_ttl_seconds: 1800
 
-# O0 local one-job worker is default-off and processes at most one eligible
-# queued record per `relaylm-worker --once --config ...` invocation. When O0 is
-# enabled, relaymem_slp_queue_root, relaymem_slp_protected_source_root, and
-# memory.root_path must be absolute. CLI flags cannot elevate config to apply.
-# Valid modes are exactly:
-#   disabled: enabled=false, dry_run_only=true,  apply_enabled=false
-#   dry-run:  enabled=true,  dry_run_only=true,  apply_enabled=false
-#   apply:    enabled=true,  dry_run_only=false, apply_enabled=true
 relaymem_local_worker_enabled: false
 relaymem_local_worker_dry_run_only: true
 relaymem_local_worker_apply_enabled: false
@@ -133,27 +65,11 @@ relaymem_local_worker_claim_owner: relaylm-worker-once
 relaymem_local_worker_lease_duration_seconds: 300
 relaymem_local_worker_discovery_max_entries: 256
 
-# O1D1 local scheduler is a default-off, dry-run-first upper gate for one
-# replay-before-queue production round. It does not poll, sleep, retry, calculate
-# fairness/backoff/jitter, recover stale claims, or supervise a service.
-# All five values are strict booleans. Valid mode triples are exactly:
-#   disabled: enabled=false, dry_run_only=true,  apply_enabled=false
-#   dry-run:  enabled=true,  dry_run_only=true,  apply_enabled=false
-#   apply:    enabled=true,  dry_run_only=false, apply_enabled=true
-# When enabled, at least one lane must remain enabled. Scheduler apply never
-# elevates the existing I1-G replay or O0/C2/B3 lower apply authorities.
 relaymem_local_scheduler_enabled: false
 relaymem_local_scheduler_dry_run_only: true
 relaymem_local_scheduler_apply_enabled: false
 relaymem_local_scheduler_replay_lane_enabled: true
 relaymem_local_scheduler_queue_lane_enabled: true
-
-# O1D2 local scheduler policy is a separate default-off, dry-run-first wrapper
-# for deterministic ordering hints, bounded fairness counters, retry-window
-# rounding, and pacing recommendations for an external caller. It returns
-# immediately and does not poll, sleep, start a timer, retry internally,
-# supervise a service, recover stale claims, or change O1B/O1C discovery.
-# Valid policy mode triples are exactly the same disabled/dry-run/apply shape.
 relaymem_local_scheduler_policy_enabled: false
 relaymem_local_scheduler_policy_dry_run_only: true
 relaymem_local_scheduler_policy_apply_enabled: false
@@ -164,70 +80,34 @@ relaymem_local_scheduler_pacing_jitter_ms: 0
 relaymem_local_scheduler_policy_short_retry_window_ms: 30000
 relaymem_local_scheduler_policy_later_retry_window_ms: 300000
 
-# Client message canonicalization dry-run is default-off, diagnostics-only, and
-# content-free. When enabled, RelayLM inspects PipelineContext.original_payload
-# for current-request message shape, records a pipeline node result, and never
-# mutates forwarded/backend payloads, excludes history, caches instructions, or
-# persists CTX/MEM/SOUL/SLP state.
+# O1E operational controls are caller-invoked, default-off, and dry-run-first.
+# They may checkpoint cancellation, perform at most one B3 stale-recovery
+# delegation, and run at most one O1D2/O1D1 scheduler round. They never sleep,
+# poll, loop, supervise, or start an always-on service.
+relaymem_local_scheduler_operational_controls_enabled: false
+relaymem_local_scheduler_operational_controls_dry_run_only: true
+relaymem_local_scheduler_operational_controls_apply_enabled: false
+relaymem_local_scheduler_stale_recovery_enabled: false
+relaymem_local_scheduler_stale_recovery_dry_run_only: true
+relaymem_local_scheduler_stale_recovery_apply_enabled: false
+relaymem_local_scheduler_stale_recovery_max_scan_entries: 256
+
 client_message_canonicalization_dry_run_enabled: false
-
-# Managed-route client-history exclusion preflight.
-# Identifies a detached current-turn reconstruction candidate and emits
-# content-free diagnostics only. It does not mutate backend payloads.
 client_history_exclusion_preflight_enabled: false
-
-# Managed-route no-instruction history-exclusion apply is default-off and
-# dry-run-only by default. The current v0 apply supports managed memory_light
-# requests only when no client system/developer messages are present. Actual
-# apply requires enabled=true and dry_run_only=false. Unsupported managed
-# requests fail closed before backend forwarding; pass_through is exempt.
-# Enabling apply automatically enables its required preflight in routing;
-# canonicalization remains an optional diagnostics setting.
 client_history_exclusion_apply_enabled: false
 client_history_exclusion_apply_dry_run_only: true
-
-# Client instruction extraction dry-run is default-off, diagnostics-only, and
-# content-free. When enabled, RelayLM inspects PipelineContext.original_payload
-# for system/developer instruction candidate shape, records a pipeline node
-# result, and never mutates forwarded/backend payloads, excludes history,
-# computes cache keys, writes cache state, or persists CTX/MEM/SOUL/SLP state.
 client_instruction_extraction_dry_run_enabled: false
-
-# Client instruction cache lookup remains default-off.
-# Enabling it performs bounded read-only lookup for managed routes only.
-# It does not mutate backend payloads, apply RelaySCN state, or write cache files.
 client_instruction_cache_lookup_enabled: false
 client_instruction_cache_root:
 client_instruction_cache_max_entry_bytes: 65536
-
-# Client instruction typed parse and cache-write remain default-off.
-# With dry_run_only=true, RelayLM validates request-local parse candidates and
-# plans cache writes only. C5b adds a direct helper for gated atomic writes when
-# an explicit caller supplies dry_run_only=false and client_instruction_cache_root.
-# The current runtime still does not parse backend responses, mutate backend
-# payloads, apply RelaySCN state, or invoke cache writes automatically.
 client_instruction_typed_parse_enabled: false
 client_instruction_cache_write_enabled: false
 client_instruction_cache_write_dry_run_only: true
-
-# RelayINT fast path dry-run is default-off, diagnostics-only, and content-free.
-# It uses deterministic heuristics only: no LLM call, no MEM lookup, and no
-# backend payload or response mutation.
 relayint_fast_path_dry_run_enabled: false
 relayint_fast_path_high_confidence_threshold: 0.80
 relayint_fast_path_low_confidence_threshold: 0.55
-
-# RelayINT quick clarification preflight is default-off and diagnostics-only.
-# It only emits content-free metadata when Fast Path would ask clarification; it
-# does not generate user-visible text, call LLM/MEM, or mutate payload/response.
 relayint_quick_clarification_preflight_enabled: false
 relayint_quick_clarification_dry_run_only: true
-
-# RelayINT quick clarification apply planning is also default-off and
-# dry-run-only by default. MVP-47 is diagnostics-only / plan-only: enabling this
-# emits relayint_quick_clarification_apply_plan.v0 metadata for preflight smoke,
-# but does not short-circuit backend forwarding, mutate payloads, or mutate
-# response bodies.
 relayint_quick_clarification_apply_enabled: false
 relayint_quick_clarification_apply_dry_run_only: true
 relayint_quick_clarification_response_max_chars: 120
@@ -238,24 +118,12 @@ memory:
   character_budget: 1200
   token_budget:
   chars_per_token: 4
-  # Global shadow policy switch for token-policy diagnostics.
-  # false keeps policy_mode=disabled unless a character override enables shadow mode.
   token_policy_shadow_enabled: false
-  # Hard token-budget truncation is default-off.
   token_budget_truncation_enabled: false
-  # RelayMEM file-backed store MVP is read-only and diagnostics-first.
-  # Disabled by default; enabling it only inspects layout and does not inject CTX.
   root_path: .
   store_enabled: false
   retrieval_dry_run_only: true
   ctx_block_apply_enabled: false
-  # Bounded snippet-bearing runtime injection is default-off.
-  # With snippet_runtime_injection_enabled=false and snippet_runtime_dry_run_only=true,
-  # RelayMEM may still produce diagnostics, but snippet text is not sent to the backend.
-  # Only when all explicit gates pass for an eligible request can RelayLM insert a
-  # bounded [RelayMEM Snippet Context] message. When that happens, the metadata-only
-  # [RelayMEM Context] message is skipped to avoid duplicate RelayMEM context.
-  # Retrieval does not mutate MEM or SOUL state.
   snippet_extraction_enabled: false
   snippet_dry_run_only: true
   snippet_apply_enabled: false
@@ -292,22 +160,14 @@ characters:
     common_runtime_policy:
     soul: examples/profiles/default/SOUL.md
     output_policy: examples/profiles/default/style.md
-    # Optional legacy compatibility field for fixed durable room constraints.
-    # The standard profile no longer uses a room-anchor file; its former content
-    # now belongs to common_runtime_policy.md and SCENE_STATE.md.
     room_anchor:
     memory_seed_path: examples/memory/default_memories.yaml
     relationship_anchor:
     stable_memory_summary:
     scene_state: examples/profiles/default/SCENE_STATE.md
-    # Legacy alias used only when scene_state is unset.
     room_state:
-    # unset -> falls back to memory.token_policy_shadow_enabled
     token_policy_shadow_enabled:
 
-# RelayEMO MVP initial (default off, diagnostics/preview first)
-# relayemo_enabled=true emits diagnostics/trace artifacts.
-# relayemo_text_marker_enabled=true is still gated by apply mode.
 relayemo_enabled: false
 relayemo_dry_run: true
 relayemo_text_marker_enabled: false
@@ -319,11 +179,6 @@ relayemo_scene_gate_enabled: true
 relayemo_session_state_enabled: false
 relayemo_session_state_ttl_seconds: 1800
 relayemo_session_state_max_entries: 256
-
-# RelayEMO LLM affect probe remains heuristic-active by default.
-# llm_structured_dry_run exposes LLM candidates in diagnostics only.
-# Runtime invocation should stay dry-run, budgeted, fail-closed, and protected
-# from recursive RelayLM calls before any candidate apply gate is introduced.
 relayemo_affect_probe_mode: heuristic
 relayemo_llm_affect_probe_enabled: false
 relayemo_llm_affect_probe_dry_run: true
@@ -333,133 +188,29 @@ relayemo_llm_affect_probe_max_output_tokens: 160
 relayemo_llm_affect_probe_skip_when_busy: true
 relayemo_llm_affect_probe_every_n_turns: 1
 
-# RelayRUN checkpoint writer is default-off.
-# The writer only persists a content-free checkpoint envelope when explicitly enabled
-# and dry-run mode is disabled. It never stores backend payloads, raw user content,
-# response text, or prompt text.
 relayrun_checkpoint_write_enabled: false
 relayrun_checkpoint_root: .relayrun/checkpoints
 relayrun_checkpoint_dry_run_only: true
-
-# RelayRUN resume preflight is diagnostics-only and default-off.
-# It may validate content-free checkpoint envelopes when explicitly enabled,
-# but it never applies resume/retry/recovery transitions.
 relayrun_resume_preflight_enabled: false
 relayrun_resume_dry_run_only: true
-
-# RelayRUN checkpoint index/listing diagnostics are default-off.
-# When enabled and not dry-run-only, RelayLM scans only checkpoint-root .json envelopes
-# and indexes content-free metadata summaries without applying resume/retry/recovery.
 relayrun_checkpoint_index_enabled: false
 relayrun_checkpoint_index_dry_run_only: true
 relayrun_checkpoint_index_max_files: 100
-
-# RelayRUN recovery transition artifacts are diagnostics-only and default-off.
-# They never generate direct user-visible output or apply resume/retry/recovery transitions.
 relayrun_recovery_transition_enabled: false
 relayrun_recovery_transition_dry_run_only: true
-
-# RelayRUN waiting_user contract artifacts are diagnostics-only and default-off.
-# They structure future user-confirmation needs but never emit user-visible output.
 relayrun_waiting_user_contract_enabled: false
 relayrun_waiting_user_contract_dry_run_only: true
-
-# RelayRUN recovery apply preflight artifacts are diagnostics-only and default-off.
-# They define future apply gates without applying resume/retry/recovery or visible output.
 relayrun_recovery_apply_preflight_enabled: false
 relayrun_recovery_apply_dry_run_only: true
-
-# RelayRUN recovery response draft artifacts are diagnostics-only and default-off.
-# They draft output-pipeline instructions without generating final user-visible text.
 relayrun_recovery_response_draft_enabled: false
 relayrun_recovery_response_draft_dry_run_only: true
-
-# RelayRUN visible recovery response preflight artifacts are diagnostics-only and default-off.
-# They require the full output pipeline before any future user-visible recovery text.
 relayrun_visible_recovery_preflight_enabled: false
 relayrun_visible_recovery_dry_run_only: true
-
-# RelayRUN recovery response generator artifacts are diagnostics-only and default-off.
-# They model a future generator contract without producing final user-visible text.
 relayrun_recovery_response_generator_enabled: false
 relayrun_recovery_response_generator_dry_run_only: true
-
-# RelayRUN output RelaySCN recovery gate artifacts are diagnostics-only and default-off.
-# They model an output-side scene/safety gate for future visible recovery with no final user-visible text.
 relayrun_output_relayscn_recovery_gate_enabled: false
 relayrun_output_relayscn_recovery_gate_dry_run_only: true
-
-# RelayRUN visible recovery apply preflight artifacts are diagnostics-only and default-off.
-# They model future visible recovery response apply without response body mutation or final user-visible text.
 relayrun_visible_recovery_apply_preflight_enabled: false
 relayrun_visible_recovery_apply_preflight_dry_run_only: true
-
-# RelayRUN user action contract artifacts are diagnostics-only and default-off.
-# They model future user confirmation / clarification action contracts without resume, retry, or visible recovery apply.
 relayrun_user_action_dry_run_enabled: false
 relayrun_user_action_dry_run_only: true
-
-# Optional OpenWebUI + LM Studio MVP route example (docs-only reference).
-# This commented block does not change defaults unless you opt in.
-# backends:
-#   lmstudio_backend:
-#     type: openai_compatible
-#     base_url: http://127.0.0.1:1234/v1
-#     api_key: relaylm
-#     default_model: local-model
-#     timeout_seconds: 60.0
-#
-# model_routes:
-#   relaylm-companion:
-#     backend: lmstudio_backend
-#     backend_model: local-model
-#     character_id: companion
-#     mode: memory_light
-#     cache_namespace: character/companion
-#     memory_namespace: character/companion
-#     user_id:
-#     user_type:
-#     room_id:
-#     scene_id:
-#     session_id:
-#
-#   relaylm-work-assistant:
-#     backend: lmstudio_backend
-#     backend_model: local-model
-#     character_id: work_assistant
-#     mode: memory_light
-#     cache_namespace: character/work-assistant
-#     memory_namespace: character/work-assistant
-#
-#   relaylm-code-reviewer:
-#     backend: lmstudio_backend
-#     backend_model: local-model
-#     character_id: code_reviewer
-#     mode: memory_light
-#     cache_namespace: character/code-reviewer
-#     memory_namespace: character/code-reviewer
-#
-# characters:
-#   companion:
-#     common_runtime_policy:
-#     soul: examples/profiles/companion/SOUL.md
-#     output_policy: examples/profiles/companion/OUTPUT_POLICY.md
-#     room_anchor:
-#     memory_seed_path: examples/memory/companion_memories.yaml
-#     relationship_anchor:
-#     stable_memory_summary:
-#     scene_state: examples/profiles/default/SCENE_STATE.md
-#     room_state:
-#     token_policy_shadow_enabled:
-#
-#   work_assistant:
-#     soul: examples/profiles/work_assistant/SOUL.md
-#     output_policy: examples/profiles/work_assistant/OUTPUT_POLICY.md
-#     memory_seed_path: examples/memory/work_assistant_memories.yaml
-#     scene_state: examples/profiles/default/SCENE_STATE.md
-#
-#   code_reviewer:
-#     soul: examples/profiles/code_reviewer/SOUL.md
-#     output_policy: examples/profiles/code_reviewer/OUTPUT_POLICY.md
-#     memory_seed_path: examples/memory/code_reviewer_memories.yaml
-#     scene_state: examples/profiles/default/SCENE_STATE.md
