@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the Wave 4 cross-slice documentation convergence boundary."""
+"""Validate the frozen Wave 4 cross-slice documentation convergence boundary."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -12,78 +12,46 @@ SOURCE_PRS = {
     "#420": "3e3d2570ecdfcde4c8bfdee06c5607cb6632c133",
     "#421": "5736636da839486140f72c731f18a4a85c39b13c",
     "#423": "5e0f866e959ab2bc5af00e0502b2026f4b52a779",
-    "#424": "be0872edea46cb67fd5269bfaa8c7cb8048fb2c4",
 }
 
-REQUIRED = {
-    "docs/architecture/wave4_cross_slice_convergence_audit.md": (
-        "# Wave 4 Cross-Slice Convergence Audit",
-        "## Source PR inventory",
-        "## Merge commit inventory",
-        "## Wave 4 implemented boundary",
-        "## Cross-slice authority map",
-        "## Preserved non-goals",
-        "## Security and content-leakage review",
-        "## Concurrency / race / stale-token review",
-        "## Documentation convergence changes",
-        "## Smoke / validation coverage",
-        "## Remaining post-Wave-4 work",
-        "## Frozen next inputs",
-        "O1D2 bounded scheduler policy/fairness/pacing: complete",
-        "Phase I-4E loopback Forget API and SOUL Lab UI: complete",
-        "UI-B1A read-only lifecycle visibility: complete",
-        "I-5A Pin / Unpin contract and read-only preflight: complete",
-        "I-7A/B Held Apply / Discard contract and read-only preflight: complete",
-        "W4-INT is merged",
-    ),
+WAVE4_REQUIRED = (
+    "# Wave 4 Cross-Slice Convergence Audit",
+    "## Source PR inventory",
+    "## Merge commit inventory",
+    "## Wave 4 implemented boundary",
+    "## Cross-slice authority map",
+    "## Preserved non-goals",
+    "## Security and content-leakage review",
+    "## Concurrency / race / stale-token review",
+    "## Documentation convergence changes",
+    "## Smoke / validation coverage",
+    "## Remaining post-Wave-4 work",
+    "## Frozen next inputs",
+    "O1D2 bounded scheduler policy/fairness/pacing: complete",
+    "Phase I-4E loopback Forget API and SOUL Lab UI: complete",
+    "UI-B1A read-only lifecycle visibility: complete",
+    "I-5A Pin / Unpin contract and read-only preflight: complete",
+    "I-7A/B Held Apply / Discard contract and read-only preflight: complete",
+)
+
+CURRENT_REQUIRED = {
     "docs/PROJECT_STATUS.md": (
-        "O1D2 bounded scheduler policy/fairness/pacing: complete",
-        "O1E stale recovery/cancellation/shutdown: unimplemented",
-        "O1F operational validation: unimplemented",
-        "O1 overall: in progress",
-        "Phase I-4E loopback Forget API and SOUL Lab UI: complete",
-        "Phase I-4F full Forget validation: unimplemented",
-        "Phase I-4 overall: in progress",
-        "UI-B1A read-only lifecycle visibility: complete",
-        "I-5A Pin / Unpin contract and read-only preflight: complete",
-        "I-5 runtime apply/API/UI/ranking behavior: unimplemented",
-        "I-7A/B Held Apply / Discard contract and read-only preflight: complete",
-        "I-7 runtime apply/discard/API/UI/durable governance evidence: unimplemented",
         "Wave 4 implementation tracks complete",
         "W4-INT merged",
-        "Post-Wave-4 next candidates:",
-    ),
-    "docs/architecture/project_execution_plan.md": (
-        "### Wave 4 completed",
-        "O1D2 bounded scheduler policy/fairness/pacing",
-        "I-4E loopback API and SOUL Lab Forget UI",
-        "UI-B1A read-only lifecycle visibility",
-        "I-5A Pin / Unpin contract/preflight",
-        "I-7A/B Held Apply / Discard contract/preflight",
-        "### Post-Wave-4 next candidates",
-        "O1E stale recovery/cancellation/shutdown",
-        "O1F operational validation",
-        "I-4F crash/race/security/fresh-conversation validation",
-        "I-5B or Pin/Unpin apply/API/UI/ranking work, if defined",
-        "I-7C or Held Apply/Discard runtime/API/UI/durable evidence work, if defined",
-        "E1-R1 trusted Home scene-admission path",
-        "O2/O3 should remain after O1E/O1F",
+        "O1D2 bounded scheduler policy/fairness/pacing: complete",
+        "Phase I-4E loopback Forget API and SOUL Lab UI: complete",
+        "I-5A Pin / Unpin contract and read-only preflight: complete",
+        "I-7A/B Held Apply / Discard contract and read-only preflight: complete",
     ),
     "docs/architecture/current_target_migration_guide.md": (
         "O1D2 is current implemented as bounded policy wrapper.",
-        "O1E/O1F remain target/unimplemented.",
         "I-4E is current implemented as loopback Forget API/UI.",
-        "I-4F remains target/unimplemented validation.",
-        "UI-B1A is current implemented read-only visibility.",
         "I-5A is current implemented contract/read-only preflight only.",
         "I-7A/B is current implemented contract/read-only preflight only.",
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
         "O1D2 is current implemented as a bounded policy wrapper",
-        "O1E stale recovery/cancellation/shutdown, O1F operational validation",
         "I-4E is current implemented as loopback Forget API/UI.",
-        "I-4F remains target/unimplemented validation.",
-        "UI-B1A is current implemented read-only visibility.",
         "I-5A is current implemented contract/read-only preflight only.",
         "I-7A/B is current implemented contract/read-only preflight only.",
     ),
@@ -106,15 +74,11 @@ STALE = (
     "Phase I-4E loopback API and SOUL Lab Forget UI: unimplemented",
     "Current Wave 4 follow-up work:",
     "Wave 4 follow-up queue",
-    "W4-INT in progress until the convergence PR merges",
-    "W4-INT is complete only after that convergence PR merges",
-    "W4-INT completes only after the convergence PR containing this audit is merged",
 )
 
 FALSE_COMPLETION = (
     "O1E stale recovery/cancellation/shutdown: complete",
     "O1F operational validation: complete",
-    "Phase I-4F full Forget validation: complete",
     "I-5 runtime apply/API/UI/ranking behavior: complete",
     "I-7 runtime apply/discard/API/UI/durable governance evidence: complete",
 )
@@ -171,7 +135,8 @@ def validate_links() -> None:
 
 
 def main() -> None:
-    for path, anchors in REQUIRED.items():
+    require("docs/architecture/wave4_cross_slice_convergence_audit.md", WAVE4_REQUIRED)
+    for path, anchors in CURRENT_REQUIRED.items():
         require(path, anchors)
     for path in TOUCHED_DOCS:
         forbid(path, STALE)
