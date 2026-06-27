@@ -16,12 +16,21 @@ docs/mvp/wave<N>/<slice>_completion_report.md
 
 Each implementation PR creates only its own report. It must not edit this central index, another slice's report, or shared current-state documents merely to mark completion. The wave convergence PR links the merged reports here after verifying the source PRs and merge commits.
 
-### Wave 5 / E1 evaluation evidence
+### Wave 5 merged completion reports
 
-E1 records the current MVP evaluation evidence inventory and direct Home-origin formation decision. It is docs/evidence-only and does not change runtime behavior.
+W5-INT verifies the source PR numbers, merge commits, and dedicated handoffs for these historical reports:
 
-- [E1 completion report](wave5/e1_completion_report.md).
+- [E1 completion report](wave5/e1_completion_report.md) — source PR #425, merge `95c159ff747a167cd6cf99c7c5df656fd01e345d`.
+- [O1E completion report](wave5/o1e_completion_report.md) — source PR #426, merge `49750ccb693ab6ebca1f5a0947c69c06a4a03d31`.
+- [I-4F completion report](wave5/i4f_completion_report.md) — source PR #427, merge `937718dcb328fda5e3e37bb951b39fc66629f57a`.
+
+The Wave 5 cross-slice convergence record is [Wave 5 Cross-Slice Convergence Audit](../architecture/wave5_cross_slice_convergence_audit.md). W5-INT is in progress until the convergence PR merges.
+
+Wave 5 dedicated handoffs:
+
 - [E1 MVP evaluation consolidation](../architecture/e1_evaluation_consolidation.md).
+- [O1E scheduler operational controls](../architecture/o1e_scheduler_operational_controls.md).
+- [Phase I-4F Forget product validation](../architecture/phase_i4f_forget_validation.md).
 - [E1 local runtime evaluation](../architecture/e1_local_runtime_evaluation_2026_06_25.md).
 
 ### Wave 4 merged completion reports
@@ -58,6 +67,8 @@ A completion report is evidence for one PR only. It is not authoritative for rep
 
 ```bash
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/e1_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/o1e_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/i4f_completion_report.md
 ```
 
 The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.
