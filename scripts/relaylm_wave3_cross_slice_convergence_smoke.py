@@ -80,7 +80,7 @@ def relaylm_config_fields() -> tuple[str, ...]:
 def check_reports_and_handoffs() -> None:
     audit = read("docs/architecture/wave3_cross_slice_convergence_audit.md")
     assert "relaylm_authority: wave3_cross_slice_convergence_record" in audit
-    assert "Wave 4 is not open" in audit
+    assert "W3-INT merged" in audit
     assert "Divergence found and corrected" in audit
     for slice_name, data in REPORTS.items():
         report = read(data["path"])
@@ -184,7 +184,7 @@ def check_shared_docs() -> None:
         "O1D1 accepted gates/one-round coordinator: complete",
         "O1 overall: in progress",
         "Wave 3 implementation tracks complete",
-        "Wave 4 not open while W3-INT is unmerged",
+        "W3-INT merged",
     )
     require(
         "docs/mvp/README.md",
@@ -198,32 +198,34 @@ def check_shared_docs() -> None:
         "I1-GA through I1-GE are complete",
         "O1D1 is complete for accepted scheduler gates plus one bounded production round",
         "I-4D ordinary M2/RelayCTX lifecycle and prior-revision exclusion plus read-only historical lifecycle projection is complete",
+        "W3-INT is merged",
     )
     require(
         "docs/architecture/README.md",
         "I1-GE Durable-finalization Crash Validation",
         "Wave 3 Cross-Slice Convergence Audit",
-        "W3-INT complete only after its PR is merged",
+        "W3-INT is merged",
     )
     require(
         "docs/architecture/pipeline_implementation_plan.md",
         "I1-G overall: complete",
         "Phase I-4 overall: in progress",
         "O1D1 accepted gates and one production round: complete",
-        "Wave 4 not open while W3-INT is unmerged",
+        "W3-INT merged",
     )
     require(
         "docs/architecture/post_i3_evaluation_work_roadmap.md",
         "I1-GA through I1-GE",
         "I-4E, I-4F, O1D2, O1E, and O1F remain incomplete",
-        "Wave 4 not open while W3-INT is unmerged",
+        "W3-INT is merged",
     )
     require(
         "docs/architecture/wave3_cross_slice_convergence_audit.md",
         "I1-G overall complete",
         "Phase I-4 overall in progress",
         "O1 overall in progress",
-        "Wave 4 not open while this PR is unmerged",
+        "W3-INT merged",
+        "Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs",
     )
 
 
