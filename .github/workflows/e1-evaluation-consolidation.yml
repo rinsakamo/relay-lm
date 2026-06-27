@@ -1,0 +1,50 @@
+name: E1 evaluation consolidation
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "scripts/relaylm_e1_evaluation_consolidation_smoke.py"
+      - "scripts/relaylm_documentation_current_boundary_smoke.py"
+      - "scripts/relaylm_mvp_completion_report_smoke.py"
+      - "scripts/relaylm_mvp_completion_report_pr_link_smoke.py"
+      - "scripts/relaylm_docs_link_check.py"
+      - ".github/workflows/e1-evaluation-consolidation.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "scripts/relaylm_e1_evaluation_consolidation_smoke.py"
+      - "scripts/relaylm_documentation_current_boundary_smoke.py"
+      - "scripts/relaylm_mvp_completion_report_smoke.py"
+      - "scripts/relaylm_mvp_completion_report_pr_link_smoke.py"
+      - "scripts/relaylm_docs_link_check.py"
+      - ".github/workflows/e1-evaluation-consolidation.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e1-evaluation-consolidation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile repository Python
+        run: python -m compileall -q relaylm scripts
+      - name: Run E1 evaluation consolidation smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_e1_evaluation_consolidation_smoke.py
+      - name: Run documentation boundary checks
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/e1_completion_report.md
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
