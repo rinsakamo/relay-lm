@@ -181,6 +181,27 @@ class RelayLMConfig(BaseModel):
     relaymem_local_scheduler_apply_enabled: StrictBool = False
     relaymem_local_scheduler_replay_lane_enabled: StrictBool = True
     relaymem_local_scheduler_queue_lane_enabled: StrictBool = True
+    relaymem_local_scheduler_policy_enabled: StrictBool = False
+    relaymem_local_scheduler_policy_dry_run_only: StrictBool = True
+    relaymem_local_scheduler_policy_apply_enabled: StrictBool = False
+    relaymem_local_scheduler_policy_fairness_streak_limit: int = Field(
+        default=3, ge=1, le=100, strict=True
+    )
+    relaymem_local_scheduler_pacing_base_delay_ms: int = Field(
+        default=250, ge=0, le=60_000, strict=True
+    )
+    relaymem_local_scheduler_pacing_max_delay_ms: int = Field(
+        default=5000, ge=0, le=60_000, strict=True
+    )
+    relaymem_local_scheduler_pacing_jitter_ms: int = Field(
+        default=0, ge=0, le=60_000, strict=True
+    )
+    relaymem_local_scheduler_policy_short_retry_window_ms: int = Field(
+        default=30_000, ge=1, le=3_600_000, strict=True
+    )
+    relaymem_local_scheduler_policy_later_retry_window_ms: int = Field(
+        default=300_000, ge=1, le=86_400_000, strict=True
+    )
     client_message_canonicalization_dry_run_enabled: bool = False
     client_history_exclusion_preflight_enabled: bool = False
     client_history_exclusion_apply_enabled: bool = False
@@ -274,6 +295,33 @@ class RelayLMConfig(BaseModel):
             or self.relaymem_local_scheduler_queue_lane_enabled
         ):
             raise ValueError("relaymem_local_scheduler_requires_enabled_lane")
+
+        policy_triple = (
+            self.relaymem_local_scheduler_policy_enabled,
+            self.relaymem_local_scheduler_policy_dry_run_only,
+            self.relaymem_local_scheduler_policy_apply_enabled,
+        )
+        if policy_triple not in {
+            (False, True, False),
+            (True, True, False),
+            (True, False, True),
+        }:
+            raise ValueError("invalid_relaymem_local_scheduler_policy_gate_combination")
+        if (
+            self.relaymem_local_scheduler_pacing_base_delay_ms
+            > self.relaymem_local_scheduler_pacing_max_delay_ms
+        ):
+            raise ValueError("relaymem_local_scheduler_pacing_base_delay_exceeds_max")
+        if (
+            self.relaymem_local_scheduler_pacing_jitter_ms
+            > self.relaymem_local_scheduler_pacing_max_delay_ms
+        ):
+            raise ValueError("relaymem_local_scheduler_pacing_jitter_exceeds_max")
+        if (
+            self.relaymem_local_scheduler_policy_short_retry_window_ms
+            > self.relaymem_local_scheduler_policy_later_retry_window_ms
+        ):
+            raise ValueError("relaymem_local_scheduler_policy_retry_windows_inverted")
         return self
 
 
