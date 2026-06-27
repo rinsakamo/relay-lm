@@ -110,6 +110,7 @@ Implemented:
 - O1D2 bounded scheduler policy wrapper.
 
 B3 lifecycle: complete.
+C1-5 keeps queue records content-free and persists the claim-independent protected capture before queue publication.
 
 I1 next-turn Primary MEM recall: complete.
 character and namespace isolation: complete.
