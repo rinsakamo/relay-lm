@@ -10,6 +10,7 @@ relaylm_update_trigger:
   - durable MEM persistence apply state changes
   - ordinary-runtime worker integration changes
   - I1-G or O1 boundary changes
+  - E1 evaluation evidence boundary changes
 relaylm_not_authoritative_for:
   - repository-wide phase sequencing
   - exact RelayMEM or RelaySLP schemas
@@ -33,6 +34,7 @@ relaylm_related_authority:
   - phase_i4e_forget_api_ui.md
   - phase_i5_pin_unpin_contract.md
   - phase_i7ab_held_apply_discard_contract.md
+  - e1_evaluation_consolidation.md
   - wave4_cross_slice_convergence_audit.md
   - ../PROJECT_STATUS.md
 ---
@@ -62,6 +64,8 @@ O0 one invocation -> at most one eligible queued job
 ```
 
 Phase 6-B2 performs atomic durable enqueue of durably enqueued jobs through the existing content-free queue record authority. Phase 6-B3 performs default-off, dry-run-first fenced queue lifecycle transitions. C1-2 executes one already-claimed canonical B3 job. C1-5 persists protected content separately from the content-free queue. C2 accepts one caller-selected queued record and connects B3 claim, C1-5 preparation, and C1-2 execution. O0 adds bounded discovery and one C2 delegation without polling or retry scheduling.
+
+E1 evaluation consolidation is current as an evidence/documentation boundary. It records that the explicit trusted formation lane can reach durable Primary MEM formation and later Home recall, while Direct Home-origin trusted memory formation remains unimplemented.
 
 ## I1-G durable-finalization boundary
 
@@ -172,9 +176,10 @@ finalized ordinary turn
   -> read-only lifecycle visibility                    complete as UI-B1A
   -> Pin / Unpin read-only preflight                   complete as I-5A
   -> Held Apply / Discard read-only preflight          complete as I-7A/B
+  -> E1 evidence consolidation                         complete as E1
 ```
 
-I2 real SOUL Lab observation is complete. It is read-only evidence only and cannot authorize repair or retrieval.
+I2 real SOUL Lab observation is complete. It is read-only evidence only and cannot authorize repair or retrieval. E1 is also read-only/docs-only evidence and cannot authorize Home-origin formation.
 
 ## Target migration sequence
 
@@ -206,8 +211,14 @@ O1D1  accepted scheduler gates/one production round                   complete
 O1D2  ordering/fairness/retry-time/backoff/jitter/pacing              complete
 O1E   stale recovery/cancellation/graceful shutdown                   unimplemented
 O1F   full operational validation                                     unimplemented
+
+E1    evaluation evidence consolidation                               complete
+E1-R1 trusted Home scene-admission path                               unimplemented
+E1-R2 idempotent character-store bootstrap command                    unimplemented
+E1-R3 provenance-preserving Primary MEM formation summary             unimplemented
+E1-R4 retrieval-response grounding and unsupported-detail suppression unimplemented
 ```
 
 ## Completion interpretation
 
-M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1D2, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, UI-B1A, I-5A, and I-7A/B are implemented. O1D2 is a bounded policy wrapper only; O1E, O1F, O2, and O3 remain incomplete. Forget is not fully validated until I-4F. I-5A does not complete Pin/Unpin runtime apply. I-7A/B does not complete Held Apply/Discard runtime.
+M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1D2, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, UI-B1A, I-5A, I-7A/B, and E1 evaluation consolidation are implemented. E1 is docs/evidence only and adds no runtime behavior. O1D2 is a bounded policy wrapper only; O1E, O1F, O2, and O3 remain incomplete. Forget is not fully validated until I-4F. I-5A does not complete Pin/Unpin runtime apply. I-7A/B does not complete Held Apply/Discard runtime. Direct Home-origin trusted memory formation remains unimplemented.
