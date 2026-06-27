@@ -8,11 +8,11 @@ from pathlib import Path
 import yaml
 from fastapi.testclient import TestClient
 
-from _relaylm_phase_i4b_test_support import CHARACTER, NAMESPACE, require
+from _relaylm_phase_i4b_test_support import require
 from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
 from relaylm.soul_lab_app import create_app
 from relaylm_phase6c1_primary_worker_test_support import prepare_store
-from relaylm_phase_i1_two_turn_primary_recall_smoke import write_config
+from relaylm_phase_i1_two_turn_primary_recall_smoke import CHARACTER, NAMESPACE, write_config
 
 PRIVATE_CANARIES = (
     "好きな飲み物は紅茶です。",
@@ -42,7 +42,14 @@ def main() -> None:
         prepare_store(scoped)
 
         config_path = root / "config.yaml"
-        write_config(config_path, port=9, queue=queue, protected=protected, store=store, enqueue_enabled=False)
+        write_config(
+            config_path,
+            port=9,
+            queue=queue,
+            protected=protected,
+            store=store,
+            enqueue_enabled=False,
+        )
         cfg = yaml.safe_load(config_path.read_text(encoding="utf-8"))
         cfg["relaymem_slp_durable_finalization_root"] = str(durable.resolve())
         config_path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
