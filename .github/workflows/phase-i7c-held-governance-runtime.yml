@@ -44,7 +44,16 @@ jobs:
       - name: I-7C runtime smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_runtime_smoke.py
       - name: I-7C API smoke
-        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_api_smoke.py
+        run: |
+          set -o pipefail
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_api_smoke.py 2>&1 | tee i7c-api-smoke.log
+      - name: Upload I-7C API smoke log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: i7c-api-smoke-log
+          path: i7c-api-smoke.log
+          if-no-files-found: ignore
       - name: I-7C concurrency smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_concurrency_smoke.py
       - name: I-7C security smoke
