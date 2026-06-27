@@ -157,14 +157,14 @@ Replay completion is not memory formation. Queue terminal state is not a semanti
 
 ## Sequencing rule
 
-The next RelayMEM governance work after W3-INT merge is:
+The current RelayMEM governance follow-up work is:
 
 ```text
 I-4E API/UI
   -> I-4F validation
 ```
 
-I-5A Pin / Unpin and I-7A/B Held Apply / Discard contract/preflight work may begin after W3-INT merge as long as they preserve the shared Primary mutation fence and do not add runtime apply behavior beyond their exact slices.
+I-5A Pin / Unpin and I-7A/B Held Apply / Discard contract/preflight work may begin as Wave 4 follow-up as long as they preserve the shared Primary mutation fence and do not add runtime apply behavior beyond their exact slices.
 
 ## O1 boundary
 

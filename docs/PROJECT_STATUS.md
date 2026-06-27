@@ -219,7 +219,7 @@ The workstation evaluation exposed two quality gaps:
 ## Immediate dependency-first work
 
 ```text
-After W3-INT merge:
+Current Wave 4 follow-up work:
   O1D2 ordering/fairness/retry-time/backoff/jitter/pacing -> O1E recovery/shutdown
   I-4E loopback API/UI -> I-4F full Forget validation
   O1F operational validation
@@ -228,7 +228,7 @@ After W3-INT merge:
   I-7A/B Held Apply / Discard contract/preflight
 ```
 
-The Wave 4 start contracts are frozen in [Wave 3 Cross-Slice Convergence Audit](architecture/wave3_cross_slice_convergence_audit.md) and may be used for follow-up implementation planning after the W3-INT merge.
+The Wave 4 start contracts are frozen in [Wave 3 Cross-Slice Convergence Audit](architecture/wave3_cross_slice_convergence_audit.md) and may be used for current follow-up implementation planning.
 
 ## Safe defaults
 

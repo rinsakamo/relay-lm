@@ -77,7 +77,7 @@ SOUL Lab:
   Phase I-2 real Observation: complete
   Phase I-3 auditable Correct: complete
   UI-B0 real Home conversation: complete
-  UI-B1A lifecycle visibility: planned after W3-INT
+  UI-B1A lifecycle visibility: planned as Wave 4 follow-up
 
 Durability and operations:
   I1-GA contract / fault model: complete
@@ -193,7 +193,7 @@ I1-GE validation-only full process-exit/restart proof
 -> W3-INT cross-slice convergence audit and shared documentation integration
 ```
 
-### Wave 4 — follow-up work after W3-INT merge
+### Wave 4 — current follow-up work
 
 ```text
 O1D2 ordering/fairness/retry-time/backoff/jitter/pacing -> O1E stale recovery/cancellation/shutdown

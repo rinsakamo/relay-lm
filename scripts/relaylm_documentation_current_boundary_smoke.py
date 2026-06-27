@@ -65,6 +65,7 @@ O3 always-on local operation: planned/unimplemented
 Wave 3 implementation tracks complete
 W3-INT merged
 Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs
+Current Wave 4 follow-up work:
 """,
     "docs/README.md": """
 I1-GA through I1-GE are complete
@@ -105,17 +106,22 @@ O1D1 accepted gates and one production round: complete
 O1 overall: in progress
 W3-INT merged
 Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs
+UI-B1A lifecycle visibility: planned as Wave 4 follow-up
+### Wave 4 — current follow-up work
 """,
     "docs/architecture/post_i3_evaluation_work_roadmap.md": """
 I1-GA through I1-GE
 I-4E, I-4F, O1D2, O1E, and O1F remain incomplete
 W3-INT is merged
+Current dependency-first follow-up work is:
 """,
     "docs/architecture/relaymem_mvp_implementation_plan.md": """
 I-4D retrieval exclusion/history projection: complete
 I-4E API/UI and I-4F validation: unimplemented
 O1D1 accepted gates and one production round: complete
 O1 overall remains in progress
+The current RelayMEM governance follow-up work is:
+I-5A Pin / Unpin and I-7A/B Held Apply / Discard contract/preflight work may begin as Wave 4 follow-up
 """,
     "docs/architecture/relaymem_slp_current_target.md": """
 I1-GA through I1-GE are complete
@@ -136,6 +142,7 @@ Phase I-4 overall in progress
 O1 overall in progress
 W3-INT merged
 Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs
+Contract/preflight work may begin as Wave 4 follow-up.
 O1D2
 I-4E
 UI-B1A
@@ -233,6 +240,13 @@ W3-INT complete only after this PR is merged
 W3-INT complete only after its PR is merged
 Wave 4 not open while W3-INT is unmerged
 Wave 4 not open while this PR is unmerged
+After W3-INT merge:
+After W3-INT merge,
+after W3-INT merge
+planned after W3-INT
+### Wave 4 — follow-up work after W3-INT merge
+The next RelayMEM governance work after W3-INT merge is:
+may begin after W3-INT merge
 I1-GE full production crash validation: unimplemented
 I1-GE validation-only full production crash proof: unimplemented
 I1-GE remains unimplemented
