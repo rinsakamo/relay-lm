@@ -164,6 +164,8 @@ finalized ordinary turn
   -> ordinary retrieval exclusion and lifecycle overlay complete as I-4D
 ```
 
+I2 real SOUL Lab observation: complete. It is read-only evidence only and cannot authorize repair or retrieval.
+
 ## Target migration sequence
 
 ```text
