@@ -51,7 +51,18 @@ jobs:
       - name: Compile repository Python
         run: python -m compileall -q relaylm scripts
       - name: Run E1-R2 bootstrap smoke
-        run: PYTHONPATH=.:scripts python scripts/relaylm_e1r2_character_store_bootstrap_smoke.py
+        run: |
+          set +e
+          PYTHONPATH=.:scripts python scripts/relaylm_e1r2_character_store_bootstrap_smoke.py > e1r2-smoke.log 2>&1
+          status=$?
+          cat e1r2-smoke.log
+          exit ${status}
+      - name: Upload E1-R2 smoke log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e1r2-smoke-log
+          path: e1r2-smoke.log
       - name: Run documentation checks
         run: |
           PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r2_completion_report.md
