@@ -101,7 +101,7 @@ O1D1 complete means one caller-invoked production round accepts exact server-own
 
 ## Wave 4 start sequence
 
-After W3-INT merge, the dependency-first next work is:
+Current dependency-first follow-up work is:
 
 ```text
 O1D2 ordering/fairness/retry-time/backoff/jitter/pacing
