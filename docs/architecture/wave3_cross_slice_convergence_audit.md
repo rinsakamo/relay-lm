@@ -14,17 +14,17 @@ relaylm_not_authoritative_for:
 
 ## Status and authority
 
-W3-INT audits the merged Wave 3 implementation tracks and reconciles shared documentation. This branch is pending review and merge; until the W3-INT PR merges, Wave 4 is not open.
+W3-INT audits the merged Wave 3 implementation tracks and reconciles shared documentation. This PR is unmerged; until the W3-INT PR merges, Wave 4 is not open.
 
 This audit is historical evidence for the Wave 3 convergence point. It records verified source PR inventory, cross-slice authority boundaries, documentation reconciliation, and frozen Wave 4 inputs. Dedicated handoffs and production modules remain authoritative for lower-level behavior.
 
-## Source PR inventory
+## Wave 3 source PR inventory
 
 | Slice | Source PR | Merged | Merge commit | Final head | Completion report | Dedicated handoff |
 |---|---:|---|---|---|---|---|
 | I1-GE full production crash validation | #411 | 2026-06-27 07:41:44 JST | `e2caa1bdb53468ca282e8f374ba8ceebf839c976` | `6cb461cb614d14965f5a49c1c4b517755f44f4a6` | `docs/mvp/wave3/i1ge_completion_report.md` | `docs/architecture/i1ge_durable_finalization_crash_validation.md` |
 | I-4D lifecycle-aware retrieval exclusion | #414 | 2026-06-27 07:34:39 JST | `48e890f05f76196b73267559b079f4a05c441077` | `81c58516a4ba04c6e439ff17d633575bb193f843` | `docs/mvp/wave3/i4d_completion_report.md` | `docs/architecture/phase_i4d_primary_retrieval_exclusion.md` |
-| O1D1 accepted scheduler gates and one round | #412 | 2026-06-27 02:02:51 JST | `9b6349236f1a01f3cdccbe9e3c2c874ae1137475` | `7aa051abe6a9e49a2f67c193b7e742f9406ec54f` | `docs/mvp/wave3/o1d1_completion_report.md` | `docs/architecture/o1d1_production_scheduler_round.md` |
+| O1D1 accepted scheduler gates and one round | #412 | 2026-06-27 02:02:51 JST | `9b6349236f1a01f3cdccbe9e3c2c874ae1137475` | `7aa051abe6a9e49a2f67b7e742f9406ec54f` | `docs/mvp/wave3/o1d1_completion_report.md` | `docs/architecture/o1d1_production_scheduler_round.md` |
 
 The W3-INT start main SHA is `e2caa1bdb53468ca282e8f374ba8ceebf839c976`, which includes the documentation-governance PR #410 merge commit `4d31f45cfba967e23bd50f01f3c3d7ce9a8d0a33` and the three Wave 3 source PR merge commits.
 
