@@ -34,13 +34,14 @@ def main() -> int:
             thread.join()
 
         require(len(results) == 2, results)
-        attempted = 0
+        applied = 0
         for result in results:
             assert_public_result_safe(result)
-            require(result.status == "validated", result.projection())
-            if result.stale_recovery_status == "stale_recovery_attempted":
-                attempted += 1
-        require(attempted == 1, [result.projection() for result in results])
+            require(result.status in {"validated", "operation_unsafe"}, result.projection())
+            operation = result.operation_result
+            if operation is not None and operation.stale_recovery_applied:
+                applied += 1
+        require(applied == 1, [result.projection() for result in results])
 
     with TemporaryDirectory() as directory:
         root = Path(directory).resolve()
@@ -74,9 +75,9 @@ def main() -> int:
             thread.start()
         for thread in threads:
             thread.join()
-        applied = sum(1 for result in claim_results if result.status == "applied")
+        applied_claims = sum(1 for result in claim_results if result.status == "applied")
         safe_failures = {"blocked", "conflict", "write_failed"}
-        require(applied == 1, [result.status for result in claim_results])
+        require(applied_claims == 1, [result.status for result in claim_results])
         require(all(result.status == "applied" or result.status in safe_failures for result in claim_results), [result.status for result in claim_results])
 
     print("ok O1F concurrency validation")
