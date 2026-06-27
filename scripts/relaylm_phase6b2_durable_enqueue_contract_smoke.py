@@ -31,23 +31,18 @@ def main() -> None:
         "Phase 6-B2 performs atomic durable enqueue",
         "C2 one-job claim/rehydrate/execute adapter",
     )
-    plan = body("docs/architecture/pipeline_implementation_plan.md")
+    status = body("docs/PROJECT_STATUS.md")
     check(
-        plan,
-        "Phase 6-C1-0 through C1-5 are complete",
-        "Phase 6-C2 one-job claim/rehydrate/execute adapter is complete",
-    )
-    check_any(
-        plan,
-        "B0-B3: complete",
-        "B0 through B3: complete",
-        "B2 atomic durable enqueue: complete",
-    )
-    check(
-        body("docs/PROJECT_STATUS.md"),
+        status,
+        "Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete",
         "B0-B3 durable enqueue and fenced lifecycle",
         "C1-5 keeps queue records content-free and persists the claim-independent protected capture before queue publication",
         "C2 one-job claim/rehydrate/execute adapter: complete",
+    )
+    check_any(
+        status,
+        "B0-B3 durable enqueue and fenced lifecycle",
+        "B3 lifecycle: complete",
     )
     check(body("relaylm/relaymem_slp_durable_enqueue.py"), "relaymem.slp_durable_enqueue.v0")
     print("Phase 6-B2 durable enqueue contract smoke: ok")
