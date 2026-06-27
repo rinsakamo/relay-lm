@@ -47,8 +47,8 @@ jobs:
         run: PYTHONPATH=. python scripts/relaylm_i7ab_held_apply_discard_contract_smoke.py
       - name: Run B3 queue contract regression smoke
         run: PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_contract_smoke.py
-      - name: Run C2 one queued worker integration regression smoke
-        run: PYTHONPATH=. python scripts/relaylm_phase6c2_one_queued_primary_worker_integration_smoke.py
+      - name: Run C2 regression smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_smoke.py
       - name: Run I-4D retrieval exclusion regression smoke
         run: PYTHONPATH=. python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
       - name: Run O1A scheduler contract regression smoke
