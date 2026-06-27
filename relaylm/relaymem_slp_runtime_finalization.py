@@ -48,6 +48,11 @@ from relaylm.relaymem_slp_runtime_enqueue import (
     build_relaymem_slp_runtime_enqueue_failure_result,
 )
 from relaylm.trace_runtime import trace_runtime_event
+from relaylm.trusted_home_scene_admission import (
+    build_trusted_home_scene_admission_node_result,
+    resolve_trusted_home_scene_admission,
+    trusted_home_scene_runtime_gate,
+)
 
 _MAX_VISIBLE_CHARS = 32_768
 _SSE_SEPARATORS = (b"\r\n\r\n", b"\n\n")
@@ -247,7 +252,25 @@ def run_relaymem_slp_runtime_enqueue_after_response(
 
     source_result: RelayMEMSLPFinalizedTurnSourceResult | None = None
     replay_node = None
+    admission_node = None
+    enqueue_enabled = config.relaymem_slp_runtime_enqueue_enabled
+    enqueue_dry_run_only = config.relaymem_slp_runtime_enqueue_dry_run_only
+    enqueue_apply_enabled = config.relaymem_slp_runtime_enqueue_apply_enabled
     try:
+        admission_decision = resolve_trusted_home_scene_admission(
+            config=config,
+            route=pipeline_context.route,
+            payload=pipeline_context.original_payload,
+        )
+        admission_node = build_trusted_home_scene_admission_node_result(
+            admission_decision
+        )
+        (
+            enqueue_enabled,
+            enqueue_dry_run_only,
+            enqueue_apply_enabled,
+        ) = trusted_home_scene_runtime_gate(config, admission_decision)
+
         exact_prepared = prepared_turn
         if prepared_turn_holder is not None:
             if type(prepared_turn_holder) is not RelayMEMSLPDurableFinalizationPreparedTurnHolder:
@@ -319,7 +342,7 @@ def run_relaymem_slp_runtime_enqueue_after_response(
                     relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
                     relayemo_artifact=relayemo_artifact,
                     response_finalized=True,
-                    enabled=config.relaymem_slp_runtime_enqueue_enabled,
+                    enabled=enqueue_enabled,
                 )
             source_store = (
                 RelayMEMSLPDurableProtectedSourceStore(
@@ -336,9 +359,9 @@ def run_relaymem_slp_runtime_enqueue_after_response(
                 registry=registry,
                 source_store=source_store,
                 queue_root=config.relaymem_slp_queue_root,
-                enabled=config.relaymem_slp_runtime_enqueue_enabled,
-                dry_run_only=config.relaymem_slp_runtime_enqueue_dry_run_only,
-                apply_enabled=config.relaymem_slp_runtime_enqueue_apply_enabled,
+                enabled=enqueue_enabled,
+                dry_run_only=enqueue_dry_run_only,
+                apply_enabled=enqueue_apply_enabled,
                 prepared_result=(
                     exact_prepared.runtime_preparation
                     if exact_prepared is not None
@@ -353,6 +376,8 @@ def run_relaymem_slp_runtime_enqueue_after_response(
 
     nodes = []
     try:
+        if admission_node is not None:
+            nodes.append(admission_node)
         if source_result is not None:
             nodes.append(
                 build_relaymem_slp_finalized_turn_source_node_result(source_result)
