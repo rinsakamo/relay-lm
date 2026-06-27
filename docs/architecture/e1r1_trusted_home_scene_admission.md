@@ -46,7 +46,7 @@ model_routes:
 
 The route-owned mode defaults to `disabled`. When any route is configured for `dry_run` or `apply`, RelayLM enables only the minimal post-response runtime trigger needed to call the existing finalization/enqueue authority. The per-request gate then decides whether this specific route may actually build a source and enqueue.
 
-Browser-provided trust claims in top-level payload fields, `metadata`, or trust-specific headers are rejected by the E1-R1 decision. They are not interpreted as authority and cannot upgrade a disabled or unsupported route into an admitted one.
+Browser-provided trust claims in top-level payload fields, `metadata`, or trust-specific headers are rejected by the E1-R1 decision. They are not interpreted as authority and cannot upgrade a disabled or unsupported route into an admitted one. Request-local header capture keeps only the trust-relevant header names, never full header values or unrelated headers.
 
 ## Admission statuses
 
@@ -78,7 +78,7 @@ downstream_existing_admission_failure
   Apply mode was requested, but existing downstream source/queue prerequisites are not available.
 ```
 
-Public projections are content-free. They do not include user text, assistant text, memory summaries, raw source, queue/protected-source paths, job IDs, dispatch IDs, lease tokens, private namespace values, raw exceptions, or exact private timestamps.
+Public projections are content-free. They do not include user text, assistant text, memory summaries, raw source, queue/protected-source paths, job IDs, dispatch IDs, lease tokens, private namespace values, raw exceptions, request header values, unrelated request headers, or exact private timestamps.
 
 ## Existing authority reuse
 
