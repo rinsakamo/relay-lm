@@ -1,8 +1,8 @@
 ---
 relaylm_doc_type: cross_slice_convergence_audit
 relaylm_authority: wave5_cross_slice_convergence
-relaylm_status: current_until_merged
-relaylm_volatility: frozen_after_merge
+relaylm_status: historical_after_merge
+relaylm_volatility: frozen
 relaylm_owner: architecture
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
@@ -47,14 +47,15 @@ This audit is documentation-only. It does not add production runtime behavior, n
 | E1 | #425 | `95c159ff747a167cd6cf99c7c5df656fd01e345d` |
 | O1E | #426 | `49750ccb693ab6ebca1f5a0947c69c06a4a03d31` |
 | I-4F | #427 | `937718dcb328fda5e3e37bb951b39fc66629f57a` |
+| W5-INT | #428 | `668d0e403102d342f44bf6299cd4dbe0d5f4eaaa` |
 
-## Converged current boundary
+## Converged current boundary at W5-INT merge
 
 ```text
 O1D2 bounded policy/fairness/pacing                  complete
   -> O1E stale recovery/cancellation/shutdown        complete
   -> O1E bounded operational controls                complete
-  -> O1F operational validation                      unimplemented
+  -> O1F operational validation                      next input after W5
 
 I-4E loopback Forget API/UI                          complete
   -> I-4F Forget product-completion validation       complete
@@ -63,7 +64,7 @@ I-4E loopback Forget API/UI                          complete
 
 E1 evidence consolidation                            complete
   -> direct Home-origin formation decision           Option A for current MVP
-  -> E1-R1 trusted Home scene-admission path         unimplemented
+  -> E1-R1 trusted Home scene-admission path         next input after W5
 ```
 
 ## Authority map
@@ -82,7 +83,7 @@ The merged Wave 5 tracks preserve content-free public projections:
 - I-4F validates bounded Forget receipts/history/lifecycle visibility and leakage boundaries without exposing private paths, token claims/digests, raw tombstone content, reason bodies, raw exceptions, or memory content in errors.
 - E1 adds no runtime projection and does not expose new content-bearing runtime state.
 
-## Frozen next inputs
+## Frozen next inputs at W5-INT merge
 
 ```text
 O1F operational validation
@@ -97,4 +98,4 @@ O2/O3 only after O1F or explicit MVP need
 
 ## W5-INT merge interpretation
 
-W5-INT is in progress until the convergence PR containing this audit is merged. After merge, repository-wide current status may mark W5-INT merged and treat the post-Wave-5 next inputs above as the active dependency-first queue.
+W5-INT is merged. Repository-wide current status may mark W5-INT merged and treat the frozen post-Wave-5 next inputs above as the historical dependency-first queue at the moment W5-INT landed. Later documents such as [Project Status](../PROJECT_STATUS.md) and [Project Execution Plan](project_execution_plan.md) own current post-O1F status.
