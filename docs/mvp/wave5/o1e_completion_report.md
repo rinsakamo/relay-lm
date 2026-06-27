@@ -1,56 +1,102 @@
+---
+relaylm_doc_type: implementation_completion_report
+relaylm_authority: o1e_scheduler_operational_controls_completion
+relaylm_status: historical_after_merge
+relaylm_volatility: frozen
+relaylm_owner: relaymem_slp_operations
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_not_authoritative_for:
+  - repository-wide current implementation status
+  - cross-slice sequencing
+  - other phase completion
+relaylm_related_authority:
+  - docs/architecture/o1e_scheduler_operational_controls.md
+  - docs/architecture/o1d2_scheduler_policy.md
+  - docs/architecture/o1d1_production_scheduler_round.md
+---
 # O1E Completion Report
 
-Generated: 2026-06-27 JST
+This report is evidence for one implementation pull request. It is not repository-wide current-status authority and does not open O1F, O2/O3, the next wave, or a release/evaluation gate.
 
-PR: #426  
-URL: https://github.com/rinsakamo/relay-lm/pull/426
+## Scope
 
-## Implemented files
+O1E implements bounded scheduler operational controls around the existing O1D2/O1D1 stack: cancellation checkpoints, opt-in signal-to-cancellation adaptation, and optional one-record stale-claim recovery orchestration through existing B3 authority.
 
-- `relaylm/relaymem_slp_scheduler_operations.py`
-- `relaylm/config.py`
-- `config.example.yaml`
-- `docs/architecture/o1e_scheduler_operational_controls.md`
-- `scripts/relaylm_o1e_scheduler_operational_controls_smoke.py`
-- `scripts/relaylm_o1e_scheduler_operational_controls_config_smoke.py`
-- `scripts/relaylm_o1e_scheduler_operational_controls_fault_smoke.py`
-- `scripts/relaylm_o1e_scheduler_operational_controls_security_smoke.py`
-- `.github/workflows/o1e-scheduler-operational-controls.yml`
-- `docs/mvp/wave5/o1e_completion_report.md`
+Base branch: `main`.
 
-## Exact boundary
+The intended completed boundary is:
 
-O1E is a bounded, explicit caller-invoked operational-control layer. One invocation may:
-
-1. validate O1E config gates;
-2. check cancellation before mutation-capable delegated work;
-3. optionally discover at most one expired claimed queue record;
-4. delegate stale recovery to the existing B3 `stale_recovery` transition helper;
-5. check cancellation before the scheduler round;
-6. invoke at most one O1D2/O1D1 scheduler round;
-7. return a content-free bounded projection.
-
-O1E does not poll, sleep, loop, retry internally, daemonize, start background workers, supervise a service, mutate queue records directly, change O1B/O1C discovery, change I1-GC replay, or change C2/B3 worker semantics outside existing B3 transition helpers.
-
-## Config gates
-
-New gates are default-off and dry-run-first:
-
-```yaml
-relaymem_local_scheduler_operational_controls_enabled: false
-relaymem_local_scheduler_operational_controls_dry_run_only: true
-relaymem_local_scheduler_operational_controls_apply_enabled: false
-relaymem_local_scheduler_stale_recovery_enabled: false
-relaymem_local_scheduler_stale_recovery_dry_run_only: true
-relaymem_local_scheduler_stale_recovery_apply_enabled: false
-relaymem_local_scheduler_stale_recovery_max_scan_entries: 256
+```text
+one explicit caller invocation
+  -> accepted O1E operational gates
+  -> cancellation checkpoint
+  -> optional at-most-one B3 stale_recovery delegation
+  -> cancellation checkpoint
+  -> at-most-one O1D2/O1D1 scheduler round
+  -> cancellation checkpoint
+  -> bounded content-free operational projection
+  -> return immediately without sleep
 ```
 
-Invalid triples fail closed. Stale recovery cannot be enabled while O1E is disabled. Stale-recovery apply requires O1E apply. O1E dry-run cannot wrap lower apply-capable scheduler, policy, local-worker, or durable-finalization apply gates.
+## Implemented production boundary
 
-## Validation commands
+Implemented:
 
-Focused validation expected for this slice:
+- `SchedulerCancellationToken` explicit cancellation probe wrapper;
+- `SchedulerSignalCancellationAdapter` opt-in SIGINT/SIGTERM cancellation adapter;
+- `SchedulerOperationalControlsResult` and `relaylm.local_scheduler_operational_controls_projection.v0`;
+- `run_relaymem_slp_scheduler_operational_controls_once(...)` wrapper;
+- default-off, dry-run-first O1E operational-control gates;
+- subordinate stale-recovery gates with one bounded queue scan;
+- exact B3 `stale_recovery` transition delegation for at most one expired claimed record;
+- fail-closed invalid config before stale recovery or scheduler round invocation;
+- leakage, fault, config, cancellation, and no-loop/no-supervision smoke coverage.
+
+O1E does not modify the public behavior of `run_relaymem_slp_scheduler_round_once(...)` or `run_relaymem_slp_scheduler_round_once_with_policy(...)`. The existing O1D1 and O1D2 entrypoints remain the direct one-round scheduler authorities.
+
+## Preserved authorities and non-goals
+
+Preserved authorities:
+
+- O1D2 remains the owner of fairness, retry-window, backoff, jitter, and pacing hints.
+- O1D1 remains the owner of one replay-before-queue production round.
+- O1B remains the sole sealed I1-G replay-lane discovery and delegation owner.
+- O1C remains the sole eligible B2 queue-lane discovery and C2 delegation owner.
+- B3 remains the queue claim, lease, retry, stale-recovery, and terminal-transition authority.
+- I1-GC, C2, C1-5, and the worker stack retain replay, claim, lease, source, and convergence semantics.
+
+O1E does not add:
+
+- scheduler polling loop;
+- recurring automatic scheduling;
+- sleep, timer, thread, or background task;
+- service supervision or daemonization;
+- global scheduler lock;
+- durable scheduler journal;
+- repeated stale recovery;
+- queue-state mutation outside B3 transition helpers;
+- O1B/O1C discovery algorithm changes;
+- I1-GC, C2, B3, or worker semantic changes;
+- raw private identity, path, timestamp, exception, or content projection.
+
+## Changed files
+
+```text
+relaylm/config.py
+relaylm/relaymem_slp_scheduler_operations.py
+config.example.yaml
+docs/architecture/o1e_scheduler_operational_controls.md
+docs/mvp/wave5/o1e_completion_report.md
+scripts/relaylm_o1e_scheduler_operational_controls_smoke.py
+scripts/relaylm_o1e_scheduler_operational_controls_config_smoke.py
+scripts/relaylm_o1e_scheduler_operational_controls_fault_smoke.py
+scripts/relaylm_o1e_scheduler_operational_controls_security_smoke.py
+.github/workflows/o1e-scheduler-operational-controls.yml
+```
+
+## Validation evidence
+
+The intended validation set is:
 
 ```bash
 python -m compileall relaylm scripts
@@ -59,31 +105,31 @@ PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_c
 PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_fault_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_security_smoke.py
 python -c 'from relaylm.config import load_config; load_config("config.example.yaml")'
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/o1e_completion_report.md
+python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+python scripts/relaylm_docs_link_check.py
 ```
 
-Key regressions to run before merge:
-
-```bash
-python scripts/relaylm_o1a_scheduler_contract_smoke.py
-python scripts/relaylm_o1b_sealed_replay_lane_smoke.py
-python scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py
-python scripts/relaylm_o1c_eligible_queue_lane_smoke.py
-python scripts/relaylm_o1c_eligible_queue_lane_security_smoke.py
-python scripts/relaylm_o1d1_config_smoke.py
-python scripts/relaylm_o1d1_production_round_smoke.py
-python scripts/relaylm_o1d1_production_round_fault_smoke.py
-python scripts/relaylm_o1d1_production_round_concurrency_smoke.py
-python scripts/relaylm_o1d1_production_round_security_smoke.py
-python scripts/relaylm_o1d2_scheduler_policy_smoke.py
-python scripts/relaylm_o1d2_scheduler_policy_config_smoke.py
-python scripts/relaylm_o1d2_scheduler_policy_fault_smoke.py
-python scripts/relaylm_o1d2_scheduler_policy_security_smoke.py
-```
+Key regression evidence expected from CI includes O1B, O1C, O1D1, O1D2, O0, B3/I1-G, documentation current-boundary, documentation links, and completion-report model workflows.
 
 ## Known limitations
 
-- Connector preparation could not execute the repository's local Python smoke suite in this environment.
-- O1F remains responsible for full corruption, concurrency, saturation, restart, leakage, and operational validation.
-- O2/O3 remain unimplemented.
-- O1E does not create a durable scheduler journal and does not perform repeated stale recovery.
-- O1E signal handling is opt-in and maps signals to the same cancellation token only; it is not service supervision.
+O1E is not O1F, O2, or O3. It is a bounded caller-invoked operational-control layer, not a daemon, supervisor, always-on scheduler, durable scheduler journal, worker pool, or repeated maintenance loop. Signal handling is opt-in and maps SIGINT/SIGTERM to the same cancellation token only.
+
+Connector preparation could not execute the repository's local Python smoke suite in this environment; CI evidence is supplied by the pull request workflows.
+
+## Shared documentation update inputs
+
+Wave convergence should record:
+
+- completion wording: O1E adds bounded caller-invoked operational controls around O1D2/O1D1 while preserving no-loop/no-sleep semantics;
+- handoff path: `docs/architecture/o1e_scheduler_operational_controls.md`;
+- config/schema changes: `relaymem_local_scheduler_operational_controls_*` and `relaymem_local_scheduler_stale_recovery_*` fields in `RelayLMConfig` and `config.example.yaml`;
+- remaining boundaries: O1F owns full corruption, concurrency, saturation, restart, leakage, and operational validation;
+- cross-slice risk: do not treat O1E as authorization for automatic polling or service supervision;
+- recommended next phase: O1F only after O1E has merged cleanly.
+
+## Source pull request
+
+- PR: #426
+- URL: https://github.com/rinsakamo/relay-lm/pull/426
