@@ -154,7 +154,7 @@ def check_i4d_static_boundary() -> None:
     )
     require(
         "relaylm/relaymem_primary_recall.py",
-        "PrimaryRetrievalEligibilityIndex",
+        "load_primary_retrieval_eligibility_index",
         "apply_relaymem_primary_recall_scope",
     )
 
