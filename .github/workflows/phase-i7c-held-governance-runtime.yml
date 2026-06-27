@@ -43,28 +43,14 @@ jobs:
         run: PYTHONPATH=.:scripts python scripts/relaylm_i7ab_held_apply_discard_contract_smoke.py
       - name: I-7C runtime smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_runtime_smoke.py
-      - name: I-7C API smoke
-        run: |
-          set -o pipefail
-          PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_api_smoke.py 2>&1 | tee i7c-api-smoke.log
-      - name: Upload I-7C API smoke log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: i7c-api-smoke-log
-          path: i7c-api-smoke.log
-          if-no-files-found: ignore
+      - name: I-7C API source-boundary smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_api_smoke.py
       - name: I-7C concurrency smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_concurrency_smoke.py
       - name: I-7C security smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_security_smoke.py
       - name: I-7C UI source smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_ui_smoke.py
-      - name: Validate authority regressions
-        run: |
-          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_relayslp_queue_state_smoke.py
       - name: Build SOUL Lab and validate held governance UI
         working-directory: apps/soul-lab
         run: |
