@@ -24,6 +24,7 @@ CURRENT_DOCS = (
     "docs/README.md",
     "docs/architecture/README.md",
     "docs/architecture/current_target_migration_guide.md",
+    "docs/architecture/project_execution_plan.md",
     "docs/architecture/pipeline_implementation_plan.md",
     "docs/architecture/post_i3_evaluation_work_roadmap.md",
     "docs/architecture/relaymem_mvp_implementation_plan.md",
@@ -52,6 +53,8 @@ CURRENT_DOCS = (
 
 REQUIRED = {
     "docs/PROJECT_STATUS.md": """
+This page owns current implementation status and active caveats.
+[Project Execution Plan](architecture/project_execution_plan.md) owns MVP boundary, dependency sequencing, and roadmap ordering.
 I1-GE full production crash validation: complete
 I1-G overall: complete
 Phase I-4D ordinary retrieval lifecycle exclusion: complete
@@ -66,12 +69,12 @@ Wave 3 implementation tracks complete
 W3-INT merged
 Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs
 Current Wave 4 follow-up work:
+Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 """,
     "docs/README.md": """
-I1-GA through I1-GE are complete
-O1D1 is complete for accepted scheduler gates plus one bounded production round
-I-4D ordinary M2/RelayCTX lifecycle and prior-revision exclusion plus read-only historical lifecycle projection is complete
-E1 local runtime evaluation
+[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.
+[Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.
+Current runtime and implementation status is intentionally not summarized here.
 O1 manual one-round runbook
 W3-INT is merged
 """,
@@ -83,45 +86,56 @@ O1D1 completion report
 Wave 3 Cross-Slice Convergence Audit
 """,
     "docs/architecture/README.md": """
-I1-GE Durable-finalization Crash Validation
-O1D1 Accepted Scheduler Gates and One Production Round
-Phase I-4D Primary Retrieval Exclusion
-E1 Local Runtime Evaluation
-Wave 3 Cross-Slice Convergence Audit
-W3-INT is merged
+[Project Execution Plan](project_execution_plan.md)
+The current Product and RelayMEM status is intentionally not summarized here.
+[RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — compatibility stub
+Wave 4 follow-up planning may use the frozen W3-INT authority map and [Project Execution Plan](project_execution_plan.md).
+""",
+    "docs/DOCUMENTATION_MODEL.md": """
+`implementation_plan` | MVP boundary, dependency sequencing, and post-MVP roadmap
+`redirect_stub` | Compatibility pointer from an older authority path
+Read `docs/PROJECT_STATUS.md` first.
+Use `docs/architecture/project_execution_plan.md` for MVP boundary, dependency sequencing, and post-MVP roadmap ordering.
+MVP execution plan and post-MVP roadmap -> `docs/architecture/project_execution_plan.md`
+The legacy plan and roadmap stub files are not sequencing authorities and normally change only when their redirect target changes.
 """,
     "docs/architecture/current_target_migration_guide.md": """
-Detailed RelayMEM/RelaySLP status lives in [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
-I1-GA through I1-GE are complete at the durable-finalization boundary.
-O1D1 is complete as one accepted-gate replay-before-queue production round.
-relaymem_slp_durable_finalization_enabled=false
-relaymem_local_worker_enabled=false
-relaymem_local_scheduler_enabled=false
+MVP sequencing and roadmap ordering live in [Project Execution Plan](project_execution_plan.md)
+I1-GA through I1-GE, O1A/B/C/D1
+relaymem_slp_current_target.md
+""",
+    "docs/architecture/project_execution_plan.md": """
+This document is the single plan and roadmap authority for RelayLM execution.
+PROJECT_STATUS.md
+MVP boundary
+MVP execution lanes
+Wave 4 follow-up queue
+O1D2 ordering/fairness/retry-time/backoff/jitter/pacing
+I-4E loopback API and SOUL Lab Forget UI
+MVP completion criteria
+Post-MVP roadmap
+I-6 Merge / Supersession
+I-8 Secondary MEM consolidation
+I-9 RelaySOUL proposal / intervention / rollback
 """,
     "docs/architecture/pipeline_implementation_plan.md": """
-I1-G overall: complete
-Phase I-4D retrieval exclusion: complete
-Phase I-4 overall: in progress
-O1D1 accepted gates and one production round: complete
-O1 overall: in progress
-W3-INT merged
-Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs
-UI-B1A lifecycle visibility: planned as Wave 4 follow-up
-### Wave 4 — current follow-up work
+relaylm_doc_type: redirect_stub
+This file is a compatibility stub.
+[RelayLM Project Execution Plan](project_execution_plan.md)
+Do not add new phase status, Wave status, or roadmap sections here.
 """,
     "docs/architecture/post_i3_evaluation_work_roadmap.md": """
-I1-GA through I1-GE
-I-4E, I-4F, O1D2, O1E, and O1F remain incomplete
-W3-INT is merged
-Current dependency-first follow-up work is:
+relaylm_doc_type: redirect_stub
+This file is a compatibility stub.
+[RelayLM Project Execution Plan](project_execution_plan.md)
+Do not add new current-state, next-wave, or post-I3 roadmap sections here.
 """,
     "docs/architecture/relaymem_mvp_implementation_plan.md": """
-I-4D retrieval exclusion/history projection: complete
-I-4E API/UI and I-4F validation: unimplemented
-O1D1 accepted gates and one production round: complete
-O1 overall remains in progress
-The current RelayMEM governance follow-up work is:
-I-5A Pin / Unpin and I-7A/B Held Apply / Discard contract/preflight work may begin as Wave 4 follow-up
+relaylm_doc_type: redirect_stub
+This file is a compatibility stub.
+[RelayLM Project Execution Plan](project_execution_plan.md)
+[RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
+Do not add new RelayMEM phase status or sequencing sections here.
 """,
     "docs/architecture/relaymem_slp_current_target.md": """
 I1-GA through I1-GE are complete
@@ -247,6 +261,10 @@ planned after W3-INT
 ### Wave 4 — follow-up work after W3-INT merge
 The next RelayMEM governance work after W3-INT merge is:
 may begin after W3-INT merge
+[Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md) owns implementation status and sequencing.
+`pipeline_implementation_plan.md` owns implementation status and sequencing.
+Phase sequencing and implementation status | `docs/architecture/pipeline_implementation_plan.md`
+shared implementation plans, shared indexes, roadmaps
 I1-GE full production crash validation: unimplemented
 I1-GE validation-only full production crash proof: unimplemented
 I1-GE remains unimplemented
