@@ -42,6 +42,7 @@ _FORBIDDEN_PUBLIC_TOKENS = (
     "reason_digest",
     "token_digest",
     "source_path",
+    "protected_source",
 )
 
 
