@@ -49,6 +49,8 @@ O0 one invocation -> at most one eligible queued job
 
 Phase 6-B2 performs atomic durable enqueue of durably enqueued jobs through the existing content-free queue record authority. Phase 6-B3 performs default-off, dry-run-first fenced queue lifecycle transitions. C1-2 executes one already-claimed canonical B3 job. C1-5 persists protected content separately from the content-free queue. C2 one-job claim/rehydrate/execute adapter accepts one caller-selected queued record and connects B3 claim, C1-5 preparation, and C1-2 execution. O0 adds bounded discovery and one C2 delegation without polling or retry scheduling.
 
+I2 real SOUL Lab observation is complete. It is read-only evidence only and cannot authorize repair or retrieval.
+
 E1 evaluation consolidation is current as an evidence/documentation boundary. It records that the explicit trusted formation lane can reach durable Primary MEM formation and later Home recall, while Direct Home-origin trusted memory formation remains unimplemented.
 
 ## I1-G durable-finalization boundary
