@@ -37,7 +37,18 @@ jobs:
       - run: python -m compileall -q relaylm scripts
       - run: PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-model --check-all
       - run: PYTHONPATH=. python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
-      - run: PYTHONPATH=.:scripts python scripts/relaylm_wave3_cross_slice_convergence_smoke.py
+      - name: Run Wave 3 convergence smoke
+        run: |
+          set +e
+          PYTHONPATH=.:scripts python scripts/relaylm_wave3_cross_slice_convergence_smoke.py 2>&1 | tee wave3-convergence.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+      - name: Upload Wave 3 convergence diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wave3-convergence-diagnostics
+          path: wave3-convergence.log
       - run: PYTHONPATH=.:scripts python scripts/relaylm_wave3_cross_slice_security_smoke.py
       - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_security_smoke.py
       - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_security_smoke.py
