@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit --pretty false",
     "smoke:home-conversation": "node scripts/homeConversationSmoke.mjs",
     "smoke:lifecycle-visibility": "node scripts/lifecycleVisibilitySmoke.mjs",
+    "smoke:forget-ui": "node scripts/forgetUiSmoke.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "engines": {

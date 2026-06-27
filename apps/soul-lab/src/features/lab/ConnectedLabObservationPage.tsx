@@ -3,12 +3,17 @@ import type { CharacterSummary, Language } from "../../domain/lab";
 import { MemoryInspectorPage } from "../memory-inspector/MemoryInspectorPage";
 import { loadLabManagementProjections } from "../settings/managementApi";
 import { PrimaryMemoryCorrectPanel } from "./PrimaryMemoryCorrectPanel";
+import { PrimaryMemoryForgetPanel } from "./PrimaryMemoryForgetPanel";
 import {
   LabObservationError,
   loadLabObservation,
   type LabObservationBundle,
   type LabRecentMemoryItem,
 } from "./observationApi";
+import {
+  loadUsedMemoryLifecycle,
+  type UsedMemoryLifecycleProjection,
+} from "./usedMemoryLifecycleApi";
 import "../memory-inspector/memoryInspector.css";
 
 interface ConnectedLabObservationPageProps {
@@ -19,8 +24,12 @@ interface ConnectedLabObservationPageProps {
 
 type LoadState =
   | { kind: "loading" }
-  | { kind: "real"; namespace: string; bundle: LabObservationBundle }
+  | { kind: "real"; namespace: string; bundle: LabObservationBundle; usedLifecycle: UsedMemoryLifecycleProjection }
   | { kind: "error"; code: string };
+
+type SelectedOperation =
+  | { kind: "correct"; memory: LabRecentMemoryItem }
+  | { kind: "forget"; memory: LabRecentMemoryItem };
 
 function text(language: Language, ja: string, en: string): string {
   return language === "ja" ? ja : en;
@@ -37,12 +46,12 @@ export function ConnectedLabObservationPage({
 }: ConnectedLabObservationPageProps) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [mockFallback, setMockFallback] = useState(false);
-  const [selectedMemory, setSelectedMemory] = useState<LabRecentMemoryItem | null>(null);
+  const [selectedOperation, setSelectedOperation] = useState<SelectedOperation | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const generation = useRef(0);
 
   useEffect(() => {
-    setSelectedMemory(null);
+    setSelectedOperation(null);
   }, [activeCharacter.characterId]);
 
   useEffect(() => {
@@ -62,20 +71,27 @@ export function ConnectedLabObservationPage({
         if (!namespace) {
           throw new LabObservationError("lab_observation_namespace_unavailable");
         }
-        const bundle = await loadLabObservation(
-          activeCharacter.characterId,
-          namespace,
-          controller.signal,
-        );
+        const [bundle, usedLifecycle] = await Promise.all([
+          loadLabObservation(
+            activeCharacter.characterId,
+            namespace,
+            controller.signal,
+          ),
+          loadUsedMemoryLifecycle(
+            activeCharacter.characterId,
+            namespace,
+            controller.signal,
+          ),
+        ]);
         if (!controller.signal.aborted && generation.current === requestGeneration) {
-          setSelectedMemory((current) =>
-            current === null
-              ? null
-              : bundle.recent.items.find(
-                  (item) => item.memory_id === current.memory_id,
-                ) ?? null,
-          );
-          setState({ kind: "real", namespace, bundle });
+          setSelectedOperation((current) => {
+            if (current === null) return null;
+            const refreshed = bundle.recent.items.find(
+              (item) => item.memory_id === current.memory.memory_id,
+            );
+            return refreshed ? { kind: current.kind, memory: refreshed } : null;
+          });
+          setState({ kind: "real", namespace, bundle, usedLifecycle });
         }
       } catch (error) {
         if (controller.signal.aborted || generation.current !== requestGeneration) return;
@@ -99,8 +115,8 @@ export function ConnectedLabObservationPage({
           <p>
             {text(
               language,
-              "サーバー実データとは混在していません。Correctを含む操作はpreview-onlyで永続化されません。",
-              "This view is not mixed with server data. Correct and all other actions are preview-only and are not persisted.",
+              "サーバー実データとは混在していません。Correct / Forgetを含む操作はpreview-onlyで永続化されません。",
+              "This view is not mixed with server data. Correct, Forget, and all other actions are preview-only and are not persisted.",
             )}
           </p>
         </section>
@@ -145,6 +161,7 @@ export function ConnectedLabObservationPage({
   }
 
   const { latestRun, recent, held, used } = state.bundle;
+  const { usedLifecycle } = state;
   const empty =
     latestRun.availability === "empty" &&
     recent.items.length === 0 &&
@@ -155,9 +172,9 @@ export function ConnectedLabObservationPage({
     <div className="memory-inspector-page">
       <section className="memory-inspector-hero panel-grid-surface">
         <div>
-          <p className="eyebrow">REAL LAB OBSERVATION + CORRECT</p>
+          <p className="eyebrow">REAL LAB OBSERVATION + CORRECT / FORGET</p>
           <h1>Lab Observation</h1>
-          <p>{text(language, "実run、Primary MEM、RelayCTX注入証拠を観測し、formed Primary MEMだけを監査可能にCorrectします。", "Observe real runs, Primary MEM, and RelayCTX evidence, and audibly correct formed Primary MEM only.")}</p>
+          <p>{text(language, "実run、Primary MEM、RelayCTX注入証拠を観測し、formed Primary MEMだけを監査可能にCorrect / Forgetします。", "Observe real runs, Primary MEM, and RelayCTX evidence, and auditable Correct / Forget formed Primary MEM only.")}</p>
         </div>
         <div className="memory-inspector-boundary-card">
           <span className="mock-pill">Source: RelayLM runtime</span>
@@ -210,17 +227,26 @@ export function ConnectedLabObservationPage({
                   <strong>{item.title || item.memory_id}</strong>
                   <span className="memory-inspector-record-summary">{item.bounded_summary}</span>
                   <span className="memory-inspector-record-meta">{item.source_kind} · {item.scope_label} · revision {item.revision}</span>
-                  <button
-                    className="button button-secondary"
-                    type="button"
-                    onClick={() => setSelectedMemory(item)}
-                  >
-                    Correct
-                  </button>
+                  <span className="memory-inspector-actions">
+                    <button
+                      className="button button-secondary"
+                      type="button"
+                      onClick={() => setSelectedOperation({ kind: "correct", memory: item })}
+                    >
+                      Correct
+                    </button>
+                    <button
+                      className="button button-secondary"
+                      type="button"
+                      onClick={() => setSelectedOperation({ kind: "forget", memory: item })}
+                    >
+                      Forget
+                    </button>
+                  </span>
                 </span>
               </article>
             ))}
-            {recent.items.length === 0 && <p>{text(language, "formed memoryはありません。", "No formed memory.")}</p>}
+            {recent.items.length === 0 && <p>{text(language, "active formed memoryはありません。", "No active formed memory.")}</p>}
           </div>
         </section>
 
@@ -237,12 +263,24 @@ export function ConnectedLabObservationPage({
         </section>
       </div>
 
-      {selectedMemory && (
+      {selectedOperation?.kind === "correct" && (
         <PrimaryMemoryCorrectPanel
           language={language}
           characterId={activeCharacter.characterId}
           namespace={state.namespace}
-          memory={selectedMemory}
+          memory={selectedOperation.memory}
+          onApplied={() => {
+            setRefreshKey((value) => value + 1);
+          }}
+        />
+      )}
+
+      {selectedOperation?.kind === "forget" && (
+        <PrimaryMemoryForgetPanel
+          language={language}
+          characterId={activeCharacter.characterId}
+          namespace={state.namespace}
+          memory={selectedOperation.memory}
           onApplied={() => {
             setRefreshKey((value) => value + 1);
           }}
@@ -268,14 +306,30 @@ export function ConnectedLabObservationPage({
       </section>
 
       <section className="surface-panel">
+        <div className="section-heading"><div><p className="eyebrow">USED MEMORY LIFECYCLE</p><h2>{text(language, "現在lifecycle overlay", "Current lifecycle overlay")}</h2></div></div>
+        {usedLifecycle.items.map((item) => (
+          <article className={`memory-inspector-record memory-record-${item.current_lifecycle_state === "active" ? "formed" : "blocked"}`} key={item.memory_id}>
+            <span>
+              <strong>{item.memory_id}</strong>
+              <span className="memory-inspector-record-summary">{item.injected_summary}</span>
+              <span className="memory-inspector-record-meta">
+                current={item.current_lifecycle_state} · lifecycle-changed={String(item.lifecycle_changed)} · representation-changed={String(item.representation_changed)}
+              </span>
+            </span>
+          </article>
+        ))}
+        {usedLifecycle.items.length === 0 && <p>{text(language, "最新応答で使用されたmemory lifecycle証拠はありません。", "No used-memory lifecycle evidence for the latest response.")}</p>}
+      </section>
+
+      <section className="surface-panel">
         <h2>{text(language, "このPhaseの操作境界", "Operation boundary for this phase")}</h2>
         <div className="memory-inspector-actions">
-          <button className="button button-secondary" type="button" disabled>forget</button>
+          <button className="button button-secondary" type="button" disabled>forget: active formed item row</button>
           <button className="button button-secondary" type="button" disabled>pin / unpin</button>
           <button className="button button-secondary" type="button" disabled>merge</button>
           <button className="button button-secondary" type="button" disabled>apply / discard held</button>
         </div>
-        <p>{text(language, "I-3はformed Primary MEMのCorrect一操作だけです。", "I-3 implements only Correct for formed Primary MEM.")}</p>
+        <p>{text(language, "I-4Eはactiveなformed Primary MEMのForget API/UIだけを追加します。restore / purge / unhideはまだ実装しません。", "I-4E adds only the Forget API/UI for active formed Primary MEM. Restore, purge, and unhide remain unimplemented.")}</p>
       </section>
     </div>
   );

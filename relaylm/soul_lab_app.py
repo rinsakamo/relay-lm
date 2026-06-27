@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -18,6 +19,12 @@ from relaylm.relaymem_primary_correction import (
     list_primary_memory_corrections,
     preflight_primary_memory_correction,
 )
+from relaylm.relaymem_primary_forget import (
+    PrimaryForgetError,
+    apply_primary_memory_forget,
+    list_primary_memory_forget_history,
+    preflight_primary_memory_forget,
+)
 from relaylm.soul_lab_lifecycle_visibility_projection import (
     build_lab_lifecycle_visibility_projection,
 )
@@ -29,6 +36,10 @@ from relaylm.soul_lab_management import (
 from relaylm.soul_lab_memory_correction import (
     LabMemoryCorrectApplyRequest,
     LabMemoryCorrectPreflightRequest,
+)
+from relaylm.soul_lab_memory_forget import (
+    LabMemoryForgetApplyRequest,
+    LabMemoryForgetPreflightRequest,
 )
 from relaylm.soul_lab_observation import (
     LabObservationResponseMiddleware,
@@ -48,8 +59,10 @@ from relaylm.soul_lab_used_memory_lifecycle_projection import (
 _MAX_MUTATION_BODY_BYTES = 16_384
 _ERROR_STATUS = {
     "invalid_request": 422,
+    "target_not_found": 404,
     "not_found_or_wrong_scope": 404,
     "stale_revision": 409,
+    "target_not_active": 409,
     "operation_conflict": 409,
     "preflight_required": 409,
     "token_expired": 409,
@@ -59,6 +72,14 @@ _ERROR_STATUS = {
     "store_unavailable": 503,
     "access_refused": 403,
     "response_lost": 503,
+    "already_hidden": 409,
+}
+_FORGET_EFFECT_KEYS = {
+    "ordinary_retrieval_excluded",
+    "relayctx_injection_excluded",
+    "physical_deletion",
+    "audit_evidence_retained",
+    "historical_used_memory_unchanged",
 }
 
 
@@ -113,6 +134,62 @@ def create_app(config_path: str | None = None) -> FastAPI:
     def correction_failure(error: PrimaryCorrectionError) -> HTTPException:
         code = error.code if error.code in _ERROR_STATUS else "store_unavailable"
         return HTTPException(status_code=_ERROR_STATUS[code], detail=code)
+
+    def forget_failure(error: PrimaryForgetError) -> HTTPException:
+        code = error.code if error.code in _ERROR_STATUS else "store_unavailable"
+        return HTTPException(status_code=_ERROR_STATUS[code], detail=code)
+
+    def safe_forget_preflight_projection(result: dict[str, Any]) -> dict[str, Any]:
+        try:
+            effects = result["effects"]
+            if not isinstance(effects, dict):
+                raise KeyError("effects")
+            return {
+                "schema": "relaylm.lab.memory_forget_preflight.v0",
+                "status": result["status"],
+                "read_only": result["read_only"],
+                "memory_id": result["memory_id"],
+                "current_revision": result["current_revision"],
+                "current_lifecycle_state": result["current_lifecycle_state"],
+                "target_revision": result["target_revision"],
+                "target_lifecycle_state": result["target_lifecycle_state"],
+                "effects": {
+                    key: bool(effects.get(key)) for key in sorted(_FORGET_EFFECT_KEYS)
+                },
+                "apply_token": result["apply_token"],
+                "expires_at": result["expires_at"],
+            }
+        except (KeyError, TypeError, ValueError):
+            raise HTTPException(status_code=503, detail="store_unavailable") from None
+
+    def safe_forget_apply_projection(memory_id: str, result: Any) -> dict[str, Any]:
+        try:
+            raw = result.to_log_dict()
+            return {
+                "schema": "relaylm.lab.memory_forget_apply.v0",
+                "status": raw["status"],
+                "memory_id": memory_id,
+                "prior_revision": raw["prior_revision"],
+                "result_revision": raw["result_revision"],
+                "lifecycle_state": raw["lifecycle_state"],
+                "mutation_state": raw["mutation_state"],
+                "retrieval_eligible": raw["retrieval_eligible"],
+                "ordinary_retrieval_excluded": raw["retrieval_eligible"] is False,
+                "relayctx_injection_excluded": raw["retrieval_eligible"] is False,
+                "physical_deletion": False,
+                "audit_evidence_retained": True,
+                "historical_used_memory_unchanged": True,
+                "page_converged": raw["page_converged"],
+                "index_converged": raw["index_converged"],
+                "log_converged": raw["log_converged"],
+                "tombstone_present": raw["tombstone_present"],
+                "tombstone_created": raw["tombstone_created"],
+                "idempotent_replay": raw["idempotent_replay"],
+                "recovery_required": raw["recovery_required"],
+                "reason_ids": list(raw["reason_ids"]),
+            }
+        except (AttributeError, KeyError, TypeError, ValueError):
+            raise HTTPException(status_code=503, detail="store_unavailable") from None
 
     @app.get("/lab/api/characters", response_model=None)
     async def lab_characters(request: Request) -> JSONResponse:
@@ -310,6 +387,85 @@ def create_app(config_path: str | None = None) -> FastAPI:
             )
         except PrimaryCorrectionError as error:
             raise correction_failure(error) from None
+        return JSONResponse(content=result, headers={"Cache-Control": "no-store"})
+
+    @app.post(
+        "/lab/api/characters/{character_id}/memory/{memory_id}/forget/preflight",
+        response_model=None,
+    )
+    async def lab_memory_forget_preflight(
+        character_id: str,
+        memory_id: str,
+        request: Request,
+        namespace: str = Query(min_length=1, max_length=128),
+    ) -> JSONResponse:
+        payload = await exact_json(request, LabMemoryForgetPreflightRequest)
+        scope = correction_scope(character_id, namespace)
+        try:
+            result = preflight_primary_memory_forget(
+                store_root=scope.store_root,
+                character_id=character_id,
+                namespace=namespace,
+                memory_id=memory_id,
+                expected_revision=payload.expected_revision,
+                expected_lifecycle_state=payload.expected_lifecycle_state,
+                reason=payload.reason,
+                operation_id=payload.operation_id,
+            )
+        except PrimaryForgetError as error:
+            raise forget_failure(error) from None
+        projection = safe_forget_preflight_projection(result)
+        return JSONResponse(content=projection, headers={"Cache-Control": "no-store"})
+
+    @app.post(
+        "/lab/api/characters/{character_id}/memory/{memory_id}/forget",
+        response_model=None,
+    )
+    async def lab_memory_forget_apply(
+        character_id: str,
+        memory_id: str,
+        request: Request,
+        namespace: str = Query(min_length=1, max_length=128),
+    ) -> JSONResponse:
+        payload = await exact_json(request, LabMemoryForgetApplyRequest)
+        scope = correction_scope(character_id, namespace)
+        try:
+            result = apply_primary_memory_forget(
+                store_root=scope.store_root,
+                character_id=character_id,
+                namespace=namespace,
+                memory_id=memory_id,
+                expected_revision=payload.expected_revision,
+                expected_lifecycle_state=payload.expected_lifecycle_state,
+                reason=payload.reason,
+                operation_id=payload.operation_id,
+                apply_token=payload.apply_token,
+            )
+        except PrimaryForgetError as error:
+            raise forget_failure(error) from None
+        projection = safe_forget_apply_projection(memory_id, result)
+        return JSONResponse(content=projection, headers={"Cache-Control": "no-store"})
+
+    @app.get(
+        "/lab/api/characters/{character_id}/memory/{memory_id}/forget-history",
+        response_model=None,
+    )
+    async def lab_memory_forget_history(
+        character_id: str,
+        memory_id: str,
+        request: Request,
+        namespace: str = Query(min_length=1, max_length=128),
+    ) -> JSONResponse:
+        require_loopback_management(request)
+        scope = correction_scope(character_id, namespace)
+        try:
+            result = list_primary_memory_forget_history(
+                store_root=scope.store_root,
+                namespace=namespace,
+                memory_id=memory_id,
+            )
+        except PrimaryForgetError as error:
+            raise forget_failure(error) from None
         return JSONResponse(content=result, headers={"Cache-Control": "no-store"})
 
     return app
