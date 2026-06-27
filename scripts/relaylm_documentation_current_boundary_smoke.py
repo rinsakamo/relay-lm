@@ -288,6 +288,7 @@ STALE_WORDS = (
 )
 
 ALLOWED_STALE_LINE_SUBSTRINGS = (
+    "must not leave",
     "O2",
     "O3",
     "Pin/Unpin runtime apply",
