@@ -58,7 +58,7 @@ REQUIRED = {
         "E1 MVP Evaluation Evidence Consolidation",
     ),
     "docs/mvp/README.md": (
-        "Wave 5 / E1 evaluation evidence",
+        "Wave 5 merged completion reports",
         "E1 completion report",
     ),
     "docs/mvp/wave5/e1_completion_report.md": (
