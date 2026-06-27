@@ -1,1 +1,1 @@
-export { HomeConversationPage as App } from "../features/home/HomeConversationPage";
+export { LifecycleAwareHomeConversationPage as App } from "../features/lifecycle/LifecycleAwareHomeConversationPage";
