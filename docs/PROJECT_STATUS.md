@@ -144,7 +144,7 @@ O1D1 is not a polling loop, does not choose when another round starts, and does 
 
 ## I1-G durable-finalization boundary
 
-I1-GA through I1-GE are complete. Visible-release restart evidence publication is implemented by I1-GB in explicit apply mode. Restart-time one-record replay is implemented by I1-GC. Durable-finalization bounded retention and cleanup is implemented by I1-GD. I1-GE proves real process-exit and fresh-process restart across the existing I1-GB/I1-GC/I1-GD production boundaries.
+The I1-GA through I1-GD durable-finalization boundary is complete and remains the production authority chain. I1-GA through I1-GE are complete. Visible-release restart evidence publication is implemented by I1-GB in explicit apply mode. Restart-time one-record replay is implemented by I1-GC. Durable-finalization bounded retention and cleanup is implemented by I1-GD. I1-GE proves real process-exit and fresh-process restart across the existing I1-GB/I1-GC/I1-GD production boundaries.
 
 ```text
 ordinary finalized turn
