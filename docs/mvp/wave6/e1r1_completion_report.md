@@ -37,7 +37,28 @@ disabled | dry_run | apply
 
 Default remains disabled. Dry-run mode reports a content-free preview without source/queue mutation. Apply mode delegates to the existing source/queue authority.
 
-## Files changed
+## Preserved authorities and non-goals
+
+Preserved authorities:
+
+- Existing Chat Completions request handling remains the Home conversation path.
+- Existing finalized-turn source builder remains source authority.
+- Existing durable protected-source and B2 durable queue publication remain admission authority.
+- Existing O0/O1/C2 worker path remains drain authority.
+- Existing content-free public projection rules remain in force.
+
+Non-goals preserved:
+
+- No E1-R2 bootstrap command.
+- No E1-R3 provenance-preserving summary-quality implementation.
+- No E1-R4 evidence-grounded generation behavior.
+- No O2/O3 supervision or always-on operation.
+- No TTS/audio/avatar/Live2D/ASR/peer transport.
+- No new client-owned trust authority.
+- No scheduler loop, polling loop, timer, daemon, service supervision, or background worker.
+- No new queue format.
+
+## Changed files
 
 ```text
 relaylm/config.py
@@ -71,26 +92,23 @@ python -m py_compile relaylm/config.py relaylm/pipeline_context.py relaylm/reque
 
 The full repository checkout was unavailable in this connector environment, so the branch relies on the added GitHub Actions workflow for full in-repo smoke execution.
 
-## Preserved authorities and non-goals
+## Known limitations
 
-Preserved authorities:
+- E1-R1 proves only trusted Home scene admission into the existing source/queue path; it does not prove E1-R2 bootstrap, E1-R3 speaker-provenance quality, or E1-R4 grounded recall behavior.
+- E1-R1 does not start a worker, scheduler, service, daemon, polling loop, or always-on process.
+- Shared current-status docs remain convergence-thread inputs after this implementation PR is merged.
 
-- Existing Chat Completions request handling remains the Home conversation path.
-- Existing finalized-turn source builder remains source authority.
-- Existing durable protected-source and B2 durable queue publication remain admission authority.
-- Existing O0/O1/C2 worker path remains drain authority.
-- Existing content-free public projection rules remain in force.
+## Shared documentation update inputs
 
-Non-goals preserved:
+After merge, shared docs should continue to state:
 
-- No E1-R2 bootstrap command.
-- No E1-R3 provenance-preserving summary-quality implementation.
-- No E1-R4 evidence-grounded generation behavior.
-- No O2/O3 supervision or always-on operation.
-- No TTS/audio/avatar/Live2D/ASR/peer transport.
-- No new client-owned trust authority.
-- No scheduler loop, polling loop, timer, daemon, service supervision, or background worker.
-- No new queue format.
+```text
+E1-R1 trusted Home scene admission: complete
+E1-R2 character-store bootstrap: pending
+E1-R3 speaker-provenance-safe formation: pending
+E1-R4 evidence-grounded recall response behavior: pending
+Direct Home-origin formation now has a bounded server-owned route-admission path, but remains dependent on existing O0/O1/C2 drain operation for actual Primary MEM formation.
+```
 
 ## Source pull request
 
