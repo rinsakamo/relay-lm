@@ -234,6 +234,7 @@ def main() -> None:
     check_o1d1_static_boundary()
     check_shared_docs()
     print("Wave 3 cross-slice convergence smoke passed")
+    Path("wave3-convergence.log").unlink(missing_ok=True)
 
 
 if __name__ == "__main__":
