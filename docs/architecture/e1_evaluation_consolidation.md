@@ -24,6 +24,10 @@ relaylm_related_authority:
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i2_real_soul_lab_observation.md
   - phase_i4d_primary_retrieval_exclusion.md
+  - phase_i4e_forget_api_ui.md
+  - phase_i4f_forget_validation.md
+  - o1e_scheduler_operational_controls.md
+  - o1f_operational_validation.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - i1ge_durable_finalization_crash_validation.md
 ---
@@ -33,7 +37,7 @@ Last reviewed: 2026-06-27 JST.
 
 ## Purpose
 
-This document consolidates the MVP E1 evaluation evidence after Wave 4. It makes the direct Home-origin Primary MEM formation decision explicit and records the remaining quality and ergonomics work needed before a trustworthy local MVP evaluation.
+This document consolidates the MVP E1 evaluation evidence after Wave 4 and the later O1F horizontal status sweep. It makes the direct Home-origin Primary MEM formation decision explicit and records the remaining quality and ergonomics work needed before a trustworthy local MVP evaluation.
 
 E1 is evidence-first. It does not implement trusted scene admission, speaker-provenance summarization, evidence-grounded generation, bootstrap automation, polling, daemonization, service supervision, TTS/audio/avatar, ASR, peer transport, or any memory mutation authority.
 
@@ -67,11 +71,11 @@ Home conversation is real, but Home-origin trusted memory formation is not prove
 | Real Home conversation | Implemented | `docs/architecture/soul_lab_ui_b0_real_home_conversation.md`, `docs/architecture/e1_local_runtime_evaluation_2026_06_25.md` | SOUL Lab Home can use the existing same-origin Chat Completions path for real text conversation. |
 | Trusted formation lane | Implemented through a separate admission path | `docs/architecture/e1_local_runtime_evaluation_2026_06_25.md`, `docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md` | Explicit scene-qualified managed requests can enter the existing formation pipeline. |
 | Durable source and queue evidence | Implemented | `docs/architecture/phase6c1_durable_protected_source_persistence.md`, `docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md`, `docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md`, `docs/architecture/i1ge_durable_finalization_crash_validation.md` | Durable protected-source, queue, and durable-finalization evidence exist through the completed authorities. |
-| Local operation drain | Implemented as explicit bounded invocation | `docs/architecture/o0_local_one_job_runner.md`, `docs/architecture/phase6c2_one_queued_primary_worker_integration.md`, `scripts/relaylm_o0_local_one_job_runner_ci_runner.py`, `scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py` | Operator-invoked local drain can process at most one eligible job. This is not polling or service supervision. |
+| Local operation drain | Implemented as explicit bounded invocation | `docs/architecture/o0_local_one_job_runner.md`, `docs/architecture/phase6c2_one_queued_primary_worker_integration.md`, `scripts/relaylm_o0_local_one_job_runner_ci_runner.py`, `scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py` | Operator-invoked local drain can process at most one eligible job. O1E/O1F add caller-invoked controls and validation but still no polling or service supervision. |
 | Primary MEM durable formation | Implemented | `docs/architecture/phase6c1_primary_mem_worker_contract.md`, `docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md`, `docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md`, `scripts/relaylm_phase6c1_primary_worker_smoke.py`, `scripts/relaylm_phase6c1_worker_crash_convergence_smoke.py` | M3a-M3h durable formation, index/log convergence, and worker fault convergence are covered by existing production smokes. |
 | Later Home recall | Implemented for eligible current Primary MEM | `docs/architecture/integration_i1_primary_mem_two_turn_recall.md`, `docs/architecture/e1_local_runtime_evaluation_2026_06_25.md`, `docs/architecture/phase_i4d_primary_retrieval_exclusion.md` | Later SOUL Lab Home requests can retrieve current eligible Primary MEM through M2 and RelayCTX. |
 | Lab observation | Implemented read-only | `docs/architecture/phase_i2_real_soul_lab_observation.md`, `docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md` | SOUL Lab can observe formed memory, latest run evidence, lifecycle state, and operation status without gaining mutation authority. |
-| Lifecycle exclusion | Implemented for ordinary retrieval | `docs/architecture/phase_i4d_primary_retrieval_exclusion.md`, `docs/architecture/phase_i4b_primary_current_state_shared_fence.md` | Hidden, prior, prepared, recovery-required, corrupt, ambiguous, unsafe, cross-scope, unresolved, and prior physical revisions are excluded from ordinary M2/RelayCTX. |
+| Lifecycle exclusion and Forget governance | Implemented | `docs/architecture/phase_i4d_primary_retrieval_exclusion.md`, `docs/architecture/phase_i4e_forget_api_ui.md`, `docs/architecture/phase_i4f_forget_validation.md` | Hidden, prior, prepared, recovery-required, corrupt, ambiguous, unsafe, cross-scope, unresolved, and prior physical revisions are excluded from ordinary M2/RelayCTX; Forget API/UI and validation are complete. |
 
 ## Implemented evidence vs assumptions
 
@@ -80,8 +84,8 @@ Implemented evidence:
 - UI-B0 real Home conversation is complete.
 - UI-B1A lifecycle and operation visibility is complete and read-only.
 - I1-GA through I1-GE are complete.
-- O0 and O1A through O1D2 are complete at their bounded caller-invoked boundaries.
-- I-4B through I-4E are complete, with I-4F validation still unimplemented.
+- O0 and O1A through O1F are complete at their bounded caller-invoked or validation-only boundaries.
+- I-4B through I-4F are complete.
 - I-5A and I-7A/B are complete only for contract and read-only preflight.
 - The local E1 proof demonstrates explicit scene-qualified trusted request -> O0 terminal success -> Primary MEM -> later Home recall.
 
@@ -92,7 +96,7 @@ Assumptions and future work:
 - Character-store bootstrap remains operator-facing and brittle for local evaluation.
 - Speaker-provenance-safe Primary MEM summary formation remains quality work.
 - Strict evidence-grounded response behavior remains quality work.
-- O1E/O1F, O2/O3, I-4F, Pin runtime behavior, Held runtime behavior, Merge/Supersession, Secondary MEM, and RelaySOUL proposal/intervention/rollback remain outside this E1 consolidation.
+- O2/O3, Pin runtime behavior, Held runtime behavior, Merge/Supersession, Secondary MEM, and RelaySOUL proposal/intervention/rollback remain outside this E1 consolidation.
 
 ## Direct Home-origin formation decision record
 
