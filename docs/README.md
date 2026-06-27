@@ -108,5 +108,5 @@ For a non-parallel slice without a reserved convergence thread, the implementati
 - I1-GA through I1-GE are complete; I1-G overall is complete only for sealed durable-finalization evidence through exact C1-5/B2 correlation, durable completion, retention/isolation lifecycle, and crash-at-every-boundary validation.
 - I-4D is complete for ordinary M2/RelayCTX lifecycle and prior-revision exclusion plus read-only historical lifecycle projection; I-4E and I-4F remain unimplemented.
 - O1D1 is complete for accepted scheduler gates plus one bounded `replay -> queue` production round, then returns without sleep; O1D2/O1E/O1F remain scheduling policy, recovery/shutdown, and operational validation.
-- W3-INT complete only after its PR is merged; Wave 4 not open while W3-INT is unmerged.
+- W3-INT is merged; Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs.
 - The W3-INT authority map and frozen Wave 4 inputs are in [Wave 3 cross-slice convergence audit](architecture/wave3_cross_slice_convergence_audit.md).
