@@ -39,21 +39,18 @@ jobs:
           node-version: '22.12.0'
       - name: Compile Python sources
         run: python -m compileall relaylm scripts
-      - name: Validate held governance runtime
-        run: |
-          set -euxo pipefail
-          echo i7ab-contract
-          PYTHONPATH=.:scripts python scripts/relaylm_i7ab_held_apply_discard_contract_smoke.py
-          echo i7c-runtime
-          PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_runtime_smoke.py
-          echo i7c-api
-          PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_api_smoke.py
-          echo i7c-concurrency
-          PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_concurrency_smoke.py
-          echo i7c-security
-          PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_security_smoke.py
-          echo i7c-ui-source
-          PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_ui_smoke.py
+      - name: I-7A/B contract baseline
+        run: PYTHONPATH=.:scripts python scripts/relaylm_i7ab_held_apply_discard_contract_smoke.py
+      - name: I-7C runtime smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_runtime_smoke.py
+      - name: I-7C API smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_api_smoke.py
+      - name: I-7C concurrency smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_concurrency_smoke.py
+      - name: I-7C security smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_security_smoke.py
+      - name: I-7C UI source smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_ui_smoke.py
       - name: Validate authority regressions
         run: |
           PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
