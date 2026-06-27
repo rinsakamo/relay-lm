@@ -43,41 +43,17 @@ M3a-M3h, worker execution, durable protected-source recovery, C2 one-job executi
 
 I1-GA through I1-GE are complete outside RelayMEM lifecycle authority. O1A, O1B, O1C, and O1D1 are complete at their bounded boundaries; O1D2/O1E/O1F and O2/O3 remain operations work.
 
-## Core lifecycle
-
-```text
-Short-term CTX
-  -> governed experience evidence
-  -> Primary MEM / Experience MEM
-  -> RelaySLP consolidation
-  -> Secondary MEM / Crystallized MEM
-  -> SOUL Lab observation and explicit governed operations
-```
-
-Completed product loop:
+## Completed product loop
 
 ```text
 ordinary turn
-  -> autonomous safe Primary MEM formation
+  -> Primary MEM formation
   -> durable page/index/log result
   -> later-turn retrieval and RelayCTX injection
-  -> bounded real Lab observation
+  -> bounded real Lab observation and observation receipts
   -> explicit Correct
   -> immutable successor revision and audit receipt
   -> later retrieval of corrected current revision
-```
-
-Forget / Hide progress:
-
-```text
-current active Primary MEM
-  -> I-4B read-only current-state resolution and preflight             complete
-  -> I-4C1 prepared evidence and hidden-successor M3e commit           complete
-  -> I-4C2 resume/replay/recovery/M3f-M3g/tombstone finalization       complete
-  -> I-4D ordinary M2/RelayCTX lifecycle and prior-revision exclusion  complete
-       + historical lifecycle read-only projection                     complete
-  -> I-4E loopback API and SOUL Lab UI                                 unimplemented
-  -> I-4F fresh-conversation and crash/race/security proof             unimplemented
 ```
 
 ## Current implementation position
@@ -189,19 +165,6 @@ I-4E API/UI
 ```
 
 I-5A Pin / Unpin and I-7A/B Held Apply / Discard contract/preflight work may begin after W3-INT merge as long as they preserve the shared Primary mutation fence and do not add runtime apply behavior beyond their exact slices.
-
-## Safety invariants
-
-All RelayMEM slices preserve source lineage, exact character/namespace isolation, bounded content, fail-closed corruption handling, separate idempotency domains, explicit user action for lifecycle mutation, no authority inversion over Secondary/SOUL, no generic trace leakage, and no direct RelaySOUL mutation.
-
-For Forget:
-
-- hidden lifecycle commit never rolls back to active because HTTP or audit finalization failed;
-- prepared/recovery/corrupt state remains retrieval-ineligible;
-- prior physical revisions never re-enter ordinary retrieval after a hidden successor exists;
-- exact replay creates no new revision or tombstone;
-- historical used-memory evidence is never rewritten;
-- Forget is not legal erasure or physical deletion.
 
 ## O1 boundary
 
