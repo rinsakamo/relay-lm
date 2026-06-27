@@ -77,12 +77,12 @@ def _assert_projection_safe(result: Any, *, root: Path) -> None:
     text = _public_json(result)
     require(str(root) not in text, text)
     forbidden = (
-        "queue_job_id",
-        "dispatch_id",
-        "lease_token",
-        "source_text",
-        "snippet_text",
-        "raw_exception",
+        '"queue_job_id"',
+        '"dispatch_id"',
+        '"lease_token"',
+        '"source_text"',
+        '"snippet_text"',
+        '"raw_exception"',
     )
     for item in forbidden:
         require(item not in text, text)
@@ -93,6 +93,7 @@ def _assert_projection_safe(result: Any, *, root: Path) -> None:
         "character_value_included",
         "namespace_value_included",
         "timestamp_values_included",
+        "raw_exception_included",
         "queue_authority_used",
         "worker_authority_used",
         "scheduler_authority_used",
