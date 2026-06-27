@@ -183,7 +183,7 @@ def check_shared_docs() -> None:
         "Phase I-4F full Forget validation: complete",
         "Phase I-4 overall: complete",
         "O1D1 accepted gates/one-round coordinator: complete",
-        "O1 overall: in progress",
+        "O1 overall: complete through validation-only caller-invoked local scheduler boundary",
         "Wave 3 implementation tracks complete",
         "W3-INT merged",
         "This page owns current implementation status and active caveats.",
@@ -192,7 +192,7 @@ def check_shared_docs() -> None:
         "docs/architecture/project_execution_plan.md",
         "This document is the single plan and roadmap authority for RelayLM execution.",
         "### Wave 4 completed",
-        "### Post-Wave-4 next candidates",
+        "### Post-O1F next candidates",
         "O1D2 bounded scheduler policy/fairness/pacing",
         "I-4E loopback API and SOUL Lab Forget UI",
     )
