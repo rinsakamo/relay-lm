@@ -73,6 +73,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Wave 4 Cross-Slice Convergence Audit](wave4_cross_slice_convergence_audit.md)
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [SOUL Lab UI-B1A Lifecycle Visibility](soul_lab_ui_b1a_lifecycle_visibility.md)
+- [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md)
 - [E1 Local Runtime Evaluation](e1_local_runtime_evaluation_2026_06_25.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
 
@@ -107,9 +108,10 @@ The current Product and RelayMEM status is intentionally not summarized here. Re
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [Phase I-4E Forget API and SOUL Lab UI](phase_i4e_forget_api_ui.md)
 - [SOUL Lab UI-B1A Lifecycle Visibility](soul_lab_ui_b1a_lifecycle_visibility.md)
+- [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md)
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md)
 
-The browser owns no queue, scheduler, worker, storage root, namespace, backend, SOUL, or route authority. Forget mutation authority remains in the existing I-4B/I-4C1/I-4C2 production chain.
+The browser owns no queue, scheduler, worker, storage root, namespace, backend, SOUL, or route authority. Forget mutation authority remains in the existing I-4B/I-4C1/I-4C2 production chain. E1 does not change that authority and does not prove direct Home-origin trusted memory formation.
 
 ## Wave 4 implementation evidence
 
@@ -122,6 +124,7 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 
 ## Evaluation evidence
 
+- [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md) records the current evidence inventory and Option A decision for MVP evaluation.
 - [E1 Local Runtime Evaluation](e1_local_runtime_evaluation_2026_06_25.md) records explicit trusted-scene formation through O0, separate real Home recall, and the known gaps around direct Home-origin formation, store bootstrap, provenance, and grounding.
 
 ## Character cognition and RelaySOUL targets
