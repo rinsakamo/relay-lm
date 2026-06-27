@@ -94,5 +94,5 @@ Held Apply runtime, Held Discard runtime, durable governance evidence, queue tra
 
 ## Source pull request
 
-- PR: to be assigned before merge
-- URL: to be assigned before merge
+- PR: #423
+- URL: https://github.com/rinsakamo/relay-lm/pull/423
