@@ -1,0 +1,90 @@
+name: Phase I-5A Pin Unpin contract
+
+on:
+  push:
+    paths:
+      - "relaylm/relaymem_primary_pin.py"
+      - "relaylm/relaymem_primary_current_state.py"
+      - "relaylm/relaymem_primary_mutation_coordinator.py"
+      - "relaylm/relaymem_primary_forget.py"
+      - "scripts/relaylm_phase_i5a_pin_unpin_*"
+      - "scripts/relaylm_phase_i3_primary_mem_correct_smoke.py"
+      - "scripts/relaylm_phase_i3_primary_mem_correct_security_smoke.py"
+      - "scripts/relaylm_phase_i4b_primary_forget_preflight_smoke.py"
+      - "scripts/relaylm_phase_i4c1_primary_forget_concurrency_smoke.py"
+      - "scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py"
+      - "docs/architecture/phase_i5_pin_unpin_contract.md"
+      - "docs/mvp/wave4/i5a_completion_report.md"
+      - ".github/workflows/phase-i5a-pin-unpin-contract.yml"
+  pull_request:
+    paths:
+      - "relaylm/relaymem_primary_pin.py"
+      - "relaylm/relaymem_primary_current_state.py"
+      - "relaylm/relaymem_primary_mutation_coordinator.py"
+      - "relaylm/relaymem_primary_forget.py"
+      - "scripts/relaylm_phase_i5a_pin_unpin_*"
+      - "scripts/relaylm_phase_i3_primary_mem_correct_smoke.py"
+      - "scripts/relaylm_phase_i3_primary_mem_correct_security_smoke.py"
+      - "scripts/relaylm_phase_i4b_primary_forget_preflight_smoke.py"
+      - "scripts/relaylm_phase_i4c1_primary_forget_concurrency_smoke.py"
+      - "scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py"
+      - "docs/architecture/phase_i5_pin_unpin_contract.md"
+      - "docs/mvp/wave4/i5a_completion_report.md"
+      - ".github/workflows/phase-i5a-pin-unpin-contract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pin-unpin-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run I-5A Pin / Unpin contract smokes
+        run: |
+          set -o pipefail
+          {
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i5a_pin_unpin_contract_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i5a_pin_unpin_token_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i5a_pin_unpin_concurrency_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i5a_pin_unpin_security_smoke.py
+          } 2>&1 | tee phase-i5a-pin-unpin-smoke.log
+      - name: Upload I-5A log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i5a-pin-unpin-smoke-log
+          path: phase-i5a-pin-unpin-smoke.log
+          if-no-files-found: ignore
+
+  current-governance-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m compileall -q relaylm scripts
+      - name: Run I-3 / I-4 governance regressions
+        run: |
+          set -o pipefail
+          {
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_security_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4b_primary_forget_preflight_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_concurrency_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
+          } 2>&1 | tee phase-i5a-governance-regressions.log
+      - name: Upload governance regression log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-i5a-governance-regression-log
+          path: phase-i5a-governance-regressions.log
+          if-no-files-found: ignore
