@@ -93,6 +93,27 @@ Wave 4 implementation tracks complete
 W4-INT in progress until the convergence PR merges
 ```
 
+## Phase 6 RelaySLP orchestration and O0
+
+Implemented:
+
+- A1/A2 deferred admission and finalized-turn handoff;
+- B0-B3 durable enqueue and fenced lifecycle;
+- I1-B ordinary runtime source publication and enqueue;
+- C1-0 through C1-5 complete;
+- C2 one-job claim/rehydrate/execute adapter: complete;
+- O0 one-shot bounded queue discovery and one C2 delegation;
+- O1A pure two-lane round/result/disposition contract;
+- O1B one bounded eligible sealed I1-G replay-lane discovery and one existing I1-GC delegation;
+- O1C one bounded eligible B2/B3 queue-lane discovery and one existing C2 delegation;
+- O1D1 accepted scheduler gates and one production `replay -> queue` round;
+- O1D2 bounded scheduler policy wrapper.
+
+B3 lifecycle: complete.
+
+I1 next-turn Primary MEM recall: complete.
+character and namespace isolation: complete.
+
 ## O1 operations boundary
 
 O1A, O1B, O1C, and O1D1 are complete through one caller-invoked `replay -> queue` round. O1D2 is now current implemented as a bounded policy wrapper around one O1D1 round:
