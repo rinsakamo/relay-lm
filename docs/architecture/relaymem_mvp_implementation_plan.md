@@ -24,58 +24,36 @@ relaylm_related_authority:
   - phase_i4b_primary_current_state_shared_fence.md
   - phase_i4c1_primary_forget_hidden_successor.md
   - phase_i4c2_primary_forget_recovery_finalization.md
+  - phase_i4d_primary_retrieval_exclusion.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - i1gd_durable_finalization_retention_cleanup.md
-  - o1b_sealed_i1g_replay_lane.md
-  - o1c_eligible_b2_queue_lane.md
+  - i1ge_durable_finalization_crash_validation.md
+  - o1d1_production_scheduler_round.md
+  - wave3_cross_slice_convergence_audit.md
 ---
 # RelayMEM MVP Implementation Plan
 
-Last reviewed: 2026-06-26 JST
+Last reviewed: 2026-06-27 JST
 
 ## Purpose
 
 This document owns the RelayMEM MVP implementation track. Repository-wide sequencing remains owned by [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
 
-M3a-M3h, worker execution, durable protected-source recovery, C2 one-job execution, O0 explicit local operation, Phase I-1 recall, Phase I-2 observation, Phase I-3 Correct, I-4B, I-4C1, and I-4C2 are complete. Phase I-4A defines the target Forget / Hide contract. The next RelayMEM governance implementation slice is I-4D, not product-level Forget completion.
+M3a-M3h, worker execution, durable protected-source recovery, C2 one-job execution, O0 explicit local operation, Phase I-1 recall, Phase I-2 observation, Phase I-3 Correct, I-4B, I-4C1, I-4C2, and I-4D are complete. Phase I-4A defines the target Forget / Hide contract. I-4D is the user-visible retrieval semantic commit, but product-level Forget remains in progress until I-4E API/UI and I-4F validation land.
 
-I1-GC one-record replay and completion convergence is complete outside RelayMEM lifecycle authority. I1-GD bounded retention and isolation cleanup is also complete outside RelayMEM lifecycle authority. O1B and O1C are complete bounded lane adapters. I1-GE validation-only crash proof, O1D1 one-round coordination, O1D2 scheduling policy, O1E recovery/shutdown, and O1F validation remain operations work.
+I1-GA through I1-GE are complete outside RelayMEM lifecycle authority. O1A, O1B, O1C, and O1D1 are complete at their bounded boundaries; O1D2/O1E/O1F and O2/O3 remain operations work.
 
-## Core lifecycle
-
-```text
-Short-term CTX
-  -> governed experience evidence
-  -> Primary MEM / Experience MEM
-  -> RelaySLP consolidation
-  -> Secondary MEM / Crystallized MEM
-  -> SOUL Lab observation and explicit governed operations
-```
-
-Completed product loop:
+## Completed product loop
 
 ```text
 ordinary turn
-  -> autonomous safe Primary MEM formation
+  -> Primary MEM formation
   -> durable page/index/log result
   -> later-turn retrieval and RelayCTX injection
-  -> bounded real Lab observation
+  -> bounded real Lab observation and observation receipts
   -> explicit Correct
   -> immutable successor revision and audit receipt
   -> later retrieval of corrected current revision
-```
-
-Target Forget loop:
-
-```text
-current active Primary MEM
-  -> I-4B read-only current-state resolution and preflight
-  -> I-4C1 prepared evidence and hidden-successor M3e commit
-  -> I-4C2 resume/replay/recovery/M3f-M3g/tombstone finalization
-  -> I-4D ordinary M2/RelayCTX lifecycle and prior-revision exclusion
-       + historical lifecycle read-only projection
-  -> I-4E loopback API and SOUL Lab UI
-  -> I-4F fresh-conversation and crash/race/security proof
 ```
 
 ## Current implementation position
@@ -83,7 +61,7 @@ current active Primary MEM
 ```text
 MEM-M0 lifecycle and terminology: complete baseline; I-4A target defined
 MEM-M1 store-layout compatibility/read-only diagnostics: complete
-MEM-M2 retrieval priority/snippet/injection foundations: complete for active current memory
+MEM-M2 retrieval priority/snippet/injection foundations: complete for current eligible memory
 
 MEM-M3 Primary MEM path:
   M3a formation candidate: complete
@@ -97,15 +75,18 @@ MEM-M3 Primary MEM path:
   M3i-a worker contract/fault/restart integration: complete through C1-5
   M3i-b one-job runtime adapter: complete as Phase 6-C2
   O0 explicit local one-job caller: complete
-  O1A two-lane round/idle contract: complete; no production coordinator
+  O1A two-lane round/idle contract: complete
   O1B sealed replay-lane adapter: complete
   O1C queue-lane adapter: complete
+  O1D1 accepted gates and one production round: complete
+  O1D2/O1E/O1F: unimplemented
   M3i-c next-turn recall and scope isolation: complete as Phase I-1
   M3i-d real read-only Lab observation: complete as Phase I-2
   M3i-e auditable Correct: complete as Phase I-3
   M3i-f canonical current-state resolver/shared fence: complete as Phase I-4B
   M3i-g hidden-successor commit ownership: complete as Phase I-4C1
   M3i-h prepared recovery/M3f-M3g/tombstone finalization: complete as Phase I-4C2
+  M3i-i ordinary retrieval exclusion/history projection: complete as Phase I-4D
 
 MEM-M4 Secondary MEM consolidation: deferred
 
@@ -116,46 +97,14 @@ MEM-M5 Lab-ready operations:
   Forget resolver/shared fence/read-only preflight-token-history: complete as I-4B
   Forget hidden-successor commit: complete as I-4C1
   Forget prepared recovery/M3f-M3g/tombstone/replay: complete as I-4C2
-  Forget ordinary retrieval exclusion/history projection: unimplemented as I-4D
+  Forget ordinary retrieval exclusion/history projection: complete as I-4D
   Forget API/UI and full validation: unimplemented as I-4E/I-4F
   Pin/Merge/Held review: later
 ```
 
-## Independence and integration
+## M2 and I-4D retrieval boundary
 
-```text
-Phase 6 owns queue and worker control
-I1-G owns pre-release finalization evidence, one-record replay, completion, retention
-O1 owns bounded scheduling between replay and queue work sources
-RelayMEM owns memory meaning, lifecycle, and persistence
-RelayCTX owns later-turn packing
-SOUL Lab owns bounded observation and explicit operations through server APIs
-```
-
-Replay completion is not memory formation. Queue terminal state is not a semantic quality claim. Retention cleanup is not queue or memory cleanup. RelayMEM lifecycle code must not absorb I1-G, B3, C2, or scheduler authority.
-
-## MEM-M1: Store contract — complete
-
-The local file-backed store recognizes Primary/Secondary classes, bounded paths, layer/scope/lineage metadata, index/log controls, layout compatibility, secure traversal, bounded scans/reads, UTF-8 validation, and content-free diagnostics.
-
-Observation receipts, correction artifacts, current-state operation evidence, Forget prepared evidence, and tombstones remain runtime-private non-candidates.
-
-## MEM-M2: Retrieval foundation — complete for active current memory
-
-M2 supports bounded candidate selection by namespace, layer, scope metadata, summary/tag matching, runtime-private snippet extraction, content-free projection, and gated RelayCTX injection.
-
-Authority order remains:
-
-```text
-SOUL / OUTPUT_POLICY / RELATIONSHIP_ANCHOR
-  > Secondary MEM
-  > RelaySCN
-  > Primary MEM
-  > Short-term CTX
-  > latest input
-```
-
-I-4B adds the canonical read-only current-state resolver, I-4C1 adds committed hidden lifecycle evidence, and I-4C2 completes operation-scoped control convergence and tombstone finalization while preserving current ordinary M2 behavior. I-4D must integrate lifecycle eligibility before snippet construction:
+M2 supports bounded candidate selection by namespace, layer, scope metadata, summary/tag matching, runtime-private snippet extraction, content-free projection, and gated RelayCTX injection. I-4D now consumes the shared I-4B/I-4C2 current-state authority before snippet construction:
 
 ```text
 active + mutation none + current physical revision
@@ -167,112 +116,20 @@ unsafe or cross-scope candidate              -> excluded fail-closed
 prior physical revision                      -> excluded
 ```
 
-No production hidden-state filtering exists yet because I-4D integration is not implemented. A hidden current successor must never allow fallback to a prior active revision.
+A hidden current successor must never allow fallback to a prior active revision. Historical used-memory evidence is never rewritten; I-4D adds a read-only current lifecycle overlay.
 
-## MEM-M3: Formation and persistence — complete
-
-M3a-M3d provide governed input validation, safety classification, RelaySCN policy use, bounded RelayEMO salience, lineage, memory-write idempotency, deterministic page construction, and exact writer handoff.
-
-M3e publishes one exact Primary page with no-clobber secure publication and immediate revalidation. M3f/M3g derive and apply canonical index-before-log reconciliation. M3h audits receipt/store convergence read-only.
-
-## MEM-M3i: Runtime integration — complete through I-4C2
-
-Completed integration includes:
-
-- exact worker-to-M3a evidence;
-- dispatch/memory idempotency separation;
-- lease-fenced one-claim execution;
-- crash/lock/stale/corrupt convergence;
-- durable protected-source restart rehydration;
-- one-job C2 and O0 invocation;
-- later-turn scoped recall and RelayCTX injection;
-- real read-only Lab observation;
-- auditable Correct and corrected retrieval;
-- canonical current-state resolution and shared Correct/Forget fence;
-- exact Forget prepared artifact and deterministic hidden-successor M3e commit;
-- exact prepared resume, operation-scoped M3f/M3g convergence, tombstone finalization, and applied replay.
-
-C2 and O0 do not schedule continuously. O1A changes no RelayMEM production behavior. I1-GD removes only expired durable-finalization evidence under its own isolation authority and does not touch RelayMEM pages, indexes, logs, or operation artifacts.
-
-## MEM-M5: Lab-ready operations
-
-### Read surface — complete as Phase I-2
-
-The read surface observes current runtime evidence. It does not create, replace, hide, pin, merge, repair, schedule, or execute memory. Lab observation receipts are secondary read-only evidence only.
-
-### Correct — complete as Phase I-3
-
-Correct provides exact scope/current-revision validation, bounded semantic diff, short-lived token, immutable successor page, M3f/M3g convergence, immutable correction receipt, recovery, exact replay, and later M2 resolution of only the corrected current revision.
-
-### Forget / Hide target — Phase I-4A
+## Independence and integration
 
 ```text
-Forget            user-facing explicit operation
-hidden            canonical current retrieval-ineligible lifecycle state
-Forget tombstone  immutable runtime-private audit/recovery artifact
+Phase 6 owns queue and worker control
+I1-G owns pre-release finalization evidence, one-record replay, completion, retention, and crash validation
+O1 owns bounded scheduling between replay and queue work sources
+RelayMEM owns memory meaning, lifecycle, and persistence
+RelayCTX owns later-turn packing
+SOUL Lab owns bounded observation and explicit operations through server APIs
 ```
 
-### I-4B read-only boundary — complete
-
-I-4B provides stable logical/current physical identity, current revision/lifecycle/mutation/retrieval eligibility, page/control validation, reuse of the existing `.lock`, read-only preflight, five-minute exact-binding token validation, bounded zero-item history, and fail-closed `recovery_required` handling.
-
-### I-4C1 hidden-successor commit — complete
-
-I-4C1 revalidates the exact token and reason under the shared lock, publishes immutable `relaylm.mem.forget_prepared.v0`, constructs deterministic `relaymem.primary_lifecycle_page.v0`, delegates publication to M3c/M3d/M3e, canonically rereads the page, and resolves `hidden / recovery_required / false`.
-
-### I-4C2 recovery and finalization — complete
-
-I-4C2 resumes one exact prepared operation, continues the deterministic hidden successor, performs operation-scoped M3f/M3g index-before-log convergence, canonically verifies page/control correlation, publishes `relaylm.mem.forget_tombstone.v0`, supports response-loss replay, and reaches `hidden / none / false` in the governance resolver. It deliberately leaves ordinary retrieval behavior unchanged.
-
-### Remaining I-4 slices
-
-```text
-I-4D   ordinary M2/RelayCTX lifecycle and prior-revision exclusion,
-        historical lifecycle read-only projection
-I-4E   loopback API and SOUL Lab Forget UI
-I-4F   crash/race/security/fresh-conversation validation
-```
-
-I-4D is the user-visible semantic commit and retrieval-only integration. It consumes existing current-state authority and does not reimplement Forget apply/recovery, M3f/M3g, routes, UI, restore, purge, or physical deletion.
-
-## I1-G and O1 boundary
-
-I1-GA through I1-GD are complete. I1-GC converges one caller-selected sealed record through exact reconstruction, existing A1/A2/B1, exact C1-5, exact B2, downstream reread, and immutable completion. I1-GD applies bounded retention, content-free isolation, and marker-last cleanup without mutating downstream queue/source/memory authorities. I1-GE remains validation-only full crash proof.
-
-O1A defines a pure replay-before-queue round. O1B supplies at most one existing I1-GC delegation and O1C supplies at most one existing C2 delegation through independent discovery and canonical reread. O1D1 must accept exact gates and invoke each lane at most once before returning without sleep. O1D2, O1E, and O1F remain policy, recovery/shutdown, and operational validation. Replay output is never a direct queue/C2 input.
-
-## Safety invariants
-
-All RelayMEM slices preserve source lineage, exact character/namespace isolation, bounded content, fail-closed corruption handling, separate idempotency domains, explicit user action for lifecycle mutation, no authority inversion over Secondary/SOUL, no generic trace leakage, and no direct RelaySOUL mutation.
-
-For Forget:
-
-- hidden lifecycle commit never rolls back to active because HTTP or audit finalization failed;
-- prepared/recovery/corrupt state remains retrieval-ineligible;
-- prior physical revisions never re-enter ordinary retrieval after a hidden successor exists;
-- exact replay creates no new revision or tombstone;
-- historical used-memory evidence is never rewritten;
-- Forget is not legal erasure or physical deletion.
-
-For I1-GD:
-
-- sealed-pending records are retained regardless of age;
-- isolation is durable and canonically reread before component reclamation;
-- the isolation marker is deleted last;
-- C1-5, B2, B3, C2, worker, and M3 are never mutated.
-
-## Sequencing rule
-
-The next RelayMEM governance work is:
-
-```text
-I-4D M2/RelayCTX lifecycle and prior-revision exclusion
-  + historical lifecycle read-only projection
-  -> I-4E API/UI
-  -> I-4F validation
-```
-
-Parallel independent Wave 3 operations work may proceed as I1-GE validation-only crash proof and O1D1 one production round without moving their authorities into lifecycle code. O1D2/O1E remain later scheduling policy and control.
+Replay completion is not memory formation. Queue terminal state is not a semantic quality claim. Retention cleanup is not queue or memory cleanup. RelayMEM lifecycle code must not absorb I1-G, B3, C2, or scheduler authority.
 
 ## Completion status
 
@@ -282,11 +139,9 @@ Parallel independent Wave 3 operations work may proceed as I1-GE validation-only
 - O1A two-lane round/idle contract: complete
 - O1B sealed replay-lane adapter: complete
 - O1C queue-lane adapter: complete
-- O1D1 accepted gates and one production round: unimplemented
+- O1D1 accepted gates and one production round: complete
 - O1D2 scheduling policy, O1E recovery/shutdown, and O1F validation: unimplemented
-- I1-GC one-record replay and completion convergence: complete
-- I1-GD bounded retention and isolation cleanup: complete
-- I1-GE validation-only full production crash proof: unimplemented
+- I1-GA through I1-GE durable-finalization: complete
 - next-turn retrieval and RelayCTX injection: complete
 - character/namespace isolation: complete
 - real SOUL Lab observation: complete
@@ -295,16 +150,22 @@ Parallel independent Wave 3 operations work may proceed as I1-GE validation-only
 - Phase I-4B resolver/shared fence/read-only Forget boundary: complete
 - I-4C1 hidden-successor commit: complete
 - I-4C2 recovery/finalization: complete
-- I-4D retrieval exclusion/history projection, I-4E API/UI, and I-4F validation: unimplemented
+- I-4D retrieval exclusion/history projection: complete
+- I-4E API/UI and I-4F validation: unimplemented
+- Phase I-4 overall: in progress
 - Secondary MEM consolidation: deferred
 
-## O1C current reconciliation
+## Sequencing rule
 
-O1C is complete for one bounded, non-recursive, secure B2/B3 queue inventory; due/future classification; deterministic one-candidate selection; canonical reread; server-owned character/store resolution; fresh exact C2 request construction; and at most one existing C2 delegation. O0 and O1C share one production candidate helper, while O0 CLI, projection, and exit behavior remain unchanged.
+The next RelayMEM governance work after W3-INT merge is:
 
-O1D1 through O1F remain unimplemented. O1C does not complete a scheduler round coordinator, polling, sleep, fairness, retry-delay/backoff/jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation.
+```text
+I-4E API/UI
+  -> I-4F validation
+```
 
-<!-- O1B_CURRENT_BOUNDARY -->
-### O1B sealed replay-lane discovery — complete
+I-5A Pin / Unpin and I-7A/B Held Apply / Discard contract/preflight work may begin after W3-INT merge as long as they preserve the shared Primary mutation fence and do not add runtime apply behavior beyond their exact slices.
 
-O1B owns one bounded secure inventory of the configured durable-finalization root, exact grouping and eligibility classification, lexicographic selection of one sealed-pending locator, canonical selected-locator reread, and at most one delegation to the existing I1-GC authority. It owns no replay algorithm, completion publication, queue lane, C2/worker execution, scheduler round coordination, polling, fairness, backoff, shutdown, supervision, or always-on operation. O1D1 through O1F, O2, and O3 remain unimplemented.
+## O1 boundary
+
+O1D1 is one bounded caller-invoked production round. It does not complete polling, recurring automatic processing, fairness, retry-time handling, backoff, jitter, stale recovery, cancellation, graceful shutdown, supervision, or always-on operation. O1 overall remains in progress.

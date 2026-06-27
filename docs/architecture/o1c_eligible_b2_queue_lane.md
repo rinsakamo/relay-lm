@@ -7,14 +7,17 @@ relaylm_owner: relaymem_slp_operations
 relaylm_related_authority:
   - docs/architecture/o0_local_one_job_runner.md
   - docs/architecture/o1a_two_lane_scheduler_contract.md
+  - docs/architecture/o1b_sealed_i1g_replay_lane.md
+  - docs/architecture/o1d1_production_scheduler_round.md
   - docs/architecture/phase6b3_relayslp_queue_state_helpers.md
   - docs/architecture/phase6c2_one_queued_primary_worker_integration.md
+  - docs/architecture/wave3_cross_slice_convergence_audit.md
 ---
 # O1C Eligible B2/B3 Queue-Lane Discovery
 
 ## Status
 
-O1C is complete as one bounded production queue-lane adapter. It connects the O1A queue-lane opportunity to the existing Phase 6-C2 one queued-job adapter without creating a scheduler round, polling loop, daemon, or second queue lifecycle.
+O1C is complete as one bounded production queue-lane adapter. It connects the O1A queue-lane opportunity to the existing Phase 6-C2 one queued-job adapter without creating a scheduler polling loop, daemon, or second queue lifecycle. O1D1 is also complete and may invoke O1C at most once after O1B in one caller-invoked production round.
 
 ```text
 configured B2/B3 queue root
@@ -48,7 +51,7 @@ O0 remains the explicit operator command boundary. It owns CLI parsing, content-
 
 O1A remains the pure deterministic replay-before-queue round contract. It validates already-bounded lane outcomes and derives `stop`, `run_next_round`, or `idle`; it does not invoke O1C itself.
 
-O1C owns only queue inventory, eligibility classification, deterministic selection, canonical reread, server-owned scope resolution, exact C2 request construction, one C2 call, and bounded queue-lane mapping.
+O1B owns the replay lane. O1D1 owns the one-round coordinator. O1C owns only queue inventory, eligibility classification, deterministic selection, canonical reread, server-owned scope resolution, exact C2 request construction, one C2 call, and bounded queue-lane mapping.
 
 B3 remains sole authority for claim CAS, record revision, claim generation and owner, lease state, retry release, stale recovery, and terminal transition.
 
@@ -56,18 +59,9 @@ C2 remains sole integration authority for B3 claim, C1-5 durable protected-sourc
 
 ## Shared O0-compatible helper
 
-`relaylm/relaymem_slp_queue_candidate.py` is the single production source for:
+`relaylm/relaymem_slp_queue_candidate.py` is the single production source for lower O0 worker-gate validation, configured absolute-root validation, secure bounded queue discovery, future-retry observation, lexicographic candidate selection, canonical selected-record reread, namespace-to-character and character-store resolution, and fresh source-registry/exact C2 request construction.
 
-- lower O0 worker-gate validation;
-- configured absolute-root validation;
-- secure bounded queue discovery;
-- future-retry observation;
-- lexicographic candidate selection;
-- canonical selected-record reread;
-- namespace-to-character and character-store resolution;
-- fresh source-registry and exact C2 request construction.
-
-`relaylm/local_worker_once.py` now consumes this helper while retaining its existing request schema, CLI options, optional explicit character assertion, projection fields, exit categories, exit codes, and private test seams. The shared helper owns no CLI behavior, scheduler aggregation, C2 invocation loop, or queue mutation.
+`relaylm/local_worker_once.py` consumes this helper while retaining its existing request schema, CLI options, optional explicit character assertion, projection fields, exit categories, exit codes, and private test seams. The shared helper owns no CLI behavior, scheduler aggregation, C2 invocation loop, or queue mutation.
 
 ## Gate intersection
 
@@ -90,7 +84,7 @@ scheduler apply + lower apply
   -> C2 apply
 ```
 
-The scheduler gate cannot elevate a lower dry-run gate. O1C adds no scheduler configuration fields; O1D1 owns acceptance of the five exact scheduler gates and one-round invocation.
+The scheduler gate cannot elevate a lower dry-run gate. O1D1 owns acceptance of the five exact scheduler gates and one-round invocation.
 
 ## Root and inventory security
 
@@ -142,35 +136,19 @@ The namespace is never used as a character ID or path component.
 
 ## Exact C2 request
 
-Every delegation constructs a fresh `RelayMEMSLPPrimaryWorkerSourceRegistry` using the existing configured bounds and builds one exact `RelayMEMSLPOneQueuedJobRunnerRequest` containing:
-
-- the exact canonical reread record;
-- server-resolved character and character-partitioned store root;
-- configured queue and protected-source roots;
-- existing local-worker claim owner, lease duration, and protected-source artifact bound;
-- effective dry-run/apply gates from the safe intersection.
+Every delegation constructs a fresh `RelayMEMSLPPrimaryWorkerSourceRegistry` using the existing configured bounds and builds one exact `RelayMEMSLPOneQueuedJobRunnerRequest` containing the exact canonical reread record, server-resolved character and character-partitioned store root, configured queue and protected-source roots, existing local-worker claim owner, lease duration, protected-source artifact bound, and effective dry-run/apply gates from the safe intersection.
 
 O1C reconstructs no source content. C1-5 durable protected-source persistence remains restart authority.
 
 ## C2 result mapping
 
-O1C maps C2 result booleans and bounded reason IDs into the O1A queue status vocabulary.
+O1C maps C2 result booleans and bounded reason IDs into the O1A queue status vocabulary. Raw C2 results remain runtime-private and are excluded from equality, repr, and public projection.
 
-- `dry_run_ready` -> `dry_run_ready`;
-- terminal worker result -> `terminal`;
-- retry release or retryable worker result -> `retry_released`;
-- nonterminal invoked worker -> `executed`;
-- cleanup still required -> `cleanup_required`;
-- bounded claim conflict or lost claim -> `candidate_changed`;
-- retryable source failure -> `failed` with `retryable=true`;
-- blocked/unsafe source state -> bounded `unsafe_state` or `failed`;
-- invalid, disabled, or worker failure -> `failed`.
-
-`mutation_may_have_occurred` is true when C2 reports a performed claim, worker invocation, queue transition, terminal state, or cleanup requirement. Raw C2 results remain runtime-private and are excluded from equality, repr, and public projection.
+`mutation_may_have_occurred` is true when C2 reports a performed claim, worker invocation, queue transition, terminal state, or cleanup requirement.
 
 ## Same-round replay independence
 
-O1A orders replay before queue, but O1B output is never handed directly to O1C. When replay converges a new B2 record, O1C may observe it only by independently opening and scanning the queue root, applying the normal selection rule, performing canonical reread, and constructing its own C2 request.
+O1A/O1D1 order replay before queue, but O1B output is never handed directly to O1C. When replay converges a new B2 record, O1C may observe it only by independently opening and scanning the queue root, applying the normal selection rule, performing canonical reread, and constructing its own C2 request.
 
 Same-round execution is possible but not guaranteed, and replay-created records receive no special priority.
 
@@ -192,15 +170,6 @@ The O1C workflow also runs O0, O1A, B2, B3, C1-5, C1-2, C2, compileall, document
 
 ## Non-goals and next boundaries
 
-O1C does not implement:
+O1C does not implement O1B sealed I1-G discovery, O1D1 one-round aggregation, O1D2 ordering/fairness/retry-delay/backoff/jitter/saturation, O1E stale recovery/cancellation/graceful shutdown, O1F operational validation, O2 supervised worker service, O3 always-on operation, polling, sleeping, scheduler-round recursion, worker pools, daemon lifecycle, browser API, or new CLI authority.
 
-- O1B sealed I1-G discovery and one I1-GC replay delegation;
-- O1D1 scheduler-gate acceptance, replay-lane invocation, or one-round aggregation;
-- O1D2 ordering, fairness, retry-delay policy, backoff, jitter, or saturation pacing;
-- O1E stale recovery, cancellation, or graceful shutdown;
-- O1F operational crash, concurrency, saturation, and leakage validation;
-- O2 supervised worker service;
-- O3 always-on operation;
-- polling, sleeping, scheduler-round recursion, worker pools, daemon lifecycle, browser API, or new CLI authority.
-
-O1C completion therefore does not mean the production one-round coordinator, recurring automatic processing, fair scheduling, stale recovery, supervised service, or always-on operation is complete.
+O1C completion plus O1D1 completion still does not mean recurring automatic processing, fair scheduling, stale recovery, supervised service, or always-on operation is complete.

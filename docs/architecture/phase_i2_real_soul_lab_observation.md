@@ -1,12 +1,28 @@
+---
+relaylm_doc_type: implementation_handoff
+relaylm_authority: phase_i2_real_soul_lab_observation
+relaylm_status: historical_after_merge
+relaylm_volatility: frozen
+relaylm_owner: relaymem_soul_lab_integration
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - integration_i1_primary_mem_two_turn_recall.md
+  - phase_i3_auditable_primary_mem_correct.md
+  - phase_i4d_primary_retrieval_exclusion.md
+  - soul_lab_ui_b0_real_home_conversation.md
+relaylm_not_authoritative_for:
+  - current repository-wide implementation status
+  - memory mutation
+  - queue scheduling
+  - runtime adapter execution
+---
 # Phase I-2 Real SOUL Lab Observation
 
-Status: implemented on the Phase I-2 feature branch; pending review and merge.
+Status: complete for the bounded Phase I-2 real observation boundary.
 
 ## Purpose
 
-Phase I-2 connects the existing SOUL Lab Observation surface to real RelayLM
-runtime evidence produced by the completed Phase I-1 two-turn Primary MEM path.
-The slice is observe-only. It does not add any memory or SOUL mutation.
+Phase I-2 connects the existing SOUL Lab Observation surface to real RelayLM runtime evidence produced by the completed Phase I-1 two-turn Primary MEM path. The slice is observe-only. It does not add any memory or SOUL mutation.
 
 The production flow is:
 
@@ -32,29 +48,17 @@ Phase I-2 does not change the existing authorities:
 - RelayCTX remains backend-bound context authority.
 - Lab observation receipts are secondary read-only evidence only.
 
-Observation receipts must never repair a queue, recreate protected source,
-publish a Primary page, change retrieval, or drive a retry/terminal transition.
-Receipt capture is best-effort and must not fail the visible response, roll back
-Primary MEM, or change the worker result.
+Observation receipts must never repair a queue, recreate protected source, publish a Primary page, change retrieval, or drive a retry/terminal transition. Receipt capture is best-effort and must not fail the visible response, roll back Primary MEM, or change the worker result.
 
 ## Explicit scope
 
-There is no global server-owned active character. Every observation route uses
-an explicit `character_id` path segment and an explicit `namespace` query
-parameter. The pair must already exist in canonical model-route configuration.
-The configured RelayMEM root is resolved through the existing opaque character
-partition resolver; a request never constructs a filesystem path directly from
-the browser-provided character value.
+There is no global server-owned active character. Every observation route uses an explicit `character_id` path segment and an explicit `namespace` query parameter. The pair must already exist in canonical model-route configuration. The configured RelayMEM root is resolved through the existing opaque character partition resolver; a request never constructs a filesystem path directly from the browser-provided character value.
 
-Unknown characters return not found. Known characters with an unmapped
-namespace, unavailable store, or incomplete scope fail closed and return an
-explicit unavailable projection without guessing another partition.
+Unknown characters return not found. Known characters with an unmapped namespace, unavailable store, or incomplete scope fail closed and return an explicit unavailable projection without guessing another partition.
 
 ## Read APIs
 
-All routes are owned by `relaylm.soul_lab_app`, require both a loopback listen
-configuration and an actual loopback ASGI peer, and return
-`Cache-Control: no-store`.
+All routes are owned by `relaylm.soul_lab_app`, require both a loopback listen configuration and an actual loopback ASGI peer, and return `Cache-Control: no-store`.
 
 ```text
 GET /lab/api/characters/{character_id}/lab/last-run?namespace=...
@@ -70,8 +74,7 @@ GET /lab/api/settings
 GET /lab/api/characters
 ```
 
-POST, PUT, PATCH, and DELETE are not implemented for observation resources and
-therefore return the existing method-not-allowed response without mutation.
+POST, PUT, PATCH, and DELETE are not implemented for observation resources and therefore return the existing method-not-allowed response without mutation.
 
 ## Public schemas
 
@@ -82,190 +85,77 @@ The public browser contracts are exact and versioned:
 - `relaylm.lab.memory_held.v0`
 - `relaylm.lab.memory_used.v0`
 
-Every response includes:
+Every response includes `source: relaylm_runtime`, `read_only: true`, explicit availability, explicit capability, exact character/namespace scope, bounded reason IDs, and only allowlisted keys.
 
-- `source: relaylm_runtime`
-- `read_only: true`
-- an explicit availability state
-- an explicit capability marker
-- exact character and namespace scope
-- bounded reason IDs
-- only allowlisted keys
-
-Raw dataclasses, Pydantic `repr`, queue records, protected sources, traces,
-exceptions, prompts, transcripts, backend payloads, paths, credentials, digests,
-lease metadata, and full memory pages are never serialized.
+Raw dataclasses, Pydantic `repr`, queue records, protected sources, traces, exceptions, prompts, transcripts, backend payloads, paths, credentials, digests, lease metadata, and full memory pages are never serialized.
 
 ## Latest completed run
 
-The latest-run projection is based only on completed run receipts. Partial or
-in-progress captures are not promoted to a completed run. Ordering uses the
-canonical UTC completion timestamp and an opaque run-id tiebreaker, never
-filesystem modification time or incidental directory/dictionary order.
+The latest-run projection is based only on completed run receipts. Partial or in-progress captures are not promoted to a completed run. Ordering uses the canonical UTC completion timestamp and an opaque run-id tiebreaker, never filesystem modification time or incidental directory/dictionary order.
 
-The projection includes bounded statuses and counts for:
-
-- RelaySLP
-- RelayRUN
-- RelayCTX Repack
-- RelayCTX Unpack observation availability
-- formed, held, and blocked worker outcomes correlated to that run
-- memories actually included in backend-bound context
-- bounded recovery/reason state
+The projection includes bounded statuses and counts for RelaySLP, RelayRUN, RelayCTX Repack, RelayCTX Unpack observation availability, formed/held/blocked worker outcomes correlated to that run, memories actually included in backend-bound context, and bounded recovery/reason state.
 
 ## Recently formed Primary memories
 
-The recent-memory projection reads the actual character partition and reuses
-the existing Phase I-1 Primary page, canonical index, canonical log, namespace,
-digest, lineage, and index/log-link validation. It does not introduce a second
-memory parser.
+The recent-memory projection reads the actual character partition and reuses the existing Phase I-1 Primary page, canonical index, canonical log, namespace, digest, lineage, and index/log-link validation. It does not introduce a second memory parser.
 
-Ordering follows canonical durable log order. Each page is validated before any
-bounded summary is exposed. A malformed page, unsafe file, symlink, path escape,
-namespace mismatch, or index/log inconsistency is omitted fail-closed and
-reported only through a stable reason ID.
-
-The endpoint returns at most 50 records and currently exposes only fields that
-can be safely proven from the existing Primary schema. `formed_at` remains null
-and confidence remains `not_recorded` when the authoritative schema does not
-record those values; the projection does not invent them.
+Ordering follows canonical durable log order. Each page is validated before any bounded summary is exposed. A malformed page, unsafe file, symlink, path escape, namespace mismatch, or index/log inconsistency is omitted fail-closed and reported only through a stable reason ID.
 
 ## Held and blocked outcomes
 
-Held and blocked outcomes are not Primary memories and are never placed in the
-retrieval store. Existing durable artifacts did not preserve enough bounded
-human-facing evidence across restart, so Phase I-2 adds the minimum secondary
-receipt:
+Held and blocked outcomes are not Primary memories and are never placed in the retrieval store. Existing durable artifacts did not preserve enough bounded human-facing evidence across restart, so Phase I-2 adds the minimum secondary receipt:
 
 ```text
 relaylm.lab.memory_outcome_receipt.v0
 ```
 
-The receipt is written after the worker result is known and contains only:
+The receipt is written after the worker result is known and contains exact run/namespace/turn correlation, a runtime-private opaque job correlation digest, formed/held/blocked classification copied from the authoritative worker result, bounded title/summary from the already validated governed experience, stable bounded reason IDs, and observation timestamp.
 
-- exact run/namespace/turn correlation
-- a runtime-private opaque job correlation digest
-- formed/held/blocked classification copied from the authoritative worker result
-- bounded title and summary from the already validated governed experience
-- stable bounded reason IDs
-- observation timestamp
-
-Retry-released and transition-failed attempts are not misrepresented as a
-terminal held/blocked result. Receipt failure is swallowed after the worker has
-produced its authoritative result.
+Retry-released and transition-failed attempts are not misrepresented as a terminal held/blocked result. Receipt failure is swallowed after the worker has produced its authoritative result.
 
 ## Used-memory evidence
 
-Phase I-2 records evidence at the existing RelayCTX runtime injection boundary,
-after selection and payload mutation have been decided. The receipt schema is:
+Phase I-2 records evidence at the existing RelayCTX runtime injection boundary, after selection and payload mutation have been decided. The receipt schema is:
 
 ```text
 relaylm.lab.used_memory_receipt.v0
 ```
 
-It distinguishes:
+It distinguishes retrieval attempted, candidate discovered, selected, RelayCTX injection performed, backend-bound payload included the memory, and response generation completed. Only actually injected identities are included in the public item list. Selected-but-not-injected candidates are represented by stage booleans, not as used items.
 
-- retrieval attempted
-- candidate discovered
-- selected
-- RelayCTX injection performed
-- backend-bound payload included the memory
-- response generation completed, proven separately by the completed run receipt
+Each used item stores an opaque Primary memory identity and the bounded summary that was injected for that run. At read time the current representation is resolved again through the validated Primary store. The API therefore keeps `injected_summary` separate from `current_summary` and reports whether the representation changed, preserving audit boundaries.
 
-Only actually injected identities are included in the public item list.
-Selected-but-not-injected candidates are represented by stage booleans, not as
-used items.
-
-Each used item stores an opaque Primary memory identity and the bounded summary
-that was injected for that run. At read time the current representation is
-resolved again through the validated Primary store. The API therefore keeps
-`injected_summary` separate from `current_summary` and reports whether the
-representation changed, preserving the future I-3 audit boundary.
+I-4D later adds the separate read-only lifecycle overlay without rewriting these v0 receipts.
 
 ## Durable observation store
 
-Receipts live below the already resolved character store partition in a
-dedicated `.relaylm-lab-observation-v0` directory. They are not memory pages and
-are not indexed by M1/M2.
+Receipts live below the already resolved character store partition in a dedicated `.relaylm-lab-observation-v0` directory. They are not memory pages and are not indexed by M1/M2.
 
-Storage properties:
+Storage uses canonical UTF-8 JSON, exact envelope/payload keys, versioned payload schemas, SHA-256 payload integrity checks, fixed byte/read bounds, atomic temporary write plus no-clobber hard-link publication, idempotent same-content replay, symlink/unsafe/path-escape rejection, and corrupt-record isolation.
 
-- canonical UTF-8 JSON
-- exact envelope and payload keys
-- versioned payload schemas
-- SHA-256 payload integrity check
-- 64 KiB per receipt bound
-- 256 receipts per kind read bound
-- atomic temporary write plus no-clobber hard-link publication
-- idempotent same-content replay
-- symlink, unsafe file, and path-escape rejection
-- corrupt-record isolation so one bad receipt does not hide valid siblings
-
-Receipt filenames are derived from stable opaque correlations. Public APIs do
-not expose receipt paths, filenames, payload digests, request IDs, or job
-correlations.
+Receipt filenames are derived from stable opaque correlations. Public APIs do not expose receipt paths, filenames, payload digests, request IDs, or job correlations.
 
 ## Runtime capture
 
-`relaylm.soul_lab_observation` installs one narrow wrapper around the existing
-runtime injection function only in the canonical Lab ASGI application. It does
-not replace M2 or RelayCTX behavior. A bounded process-local pending map links
-the already existing request/run identifiers to ASGI response completion.
+`relaylm.soul_lab_observation` installs one narrow wrapper around the existing runtime injection function only in the canonical Lab ASGI application. It does not replace M2 or RelayCTX behavior. A bounded process-local pending map links the already existing request/run identifiers to ASGI response completion.
 
-`LabObservationResponseMiddleware` finalizes a run only after the final ASGI
-response body is sent. Streaming responses are not marked complete at header
-creation. Pending state is bounded and is not an authority; if the process dies
-before response completion, no completed receipt is fabricated.
+`LabObservationResponseMiddleware` finalizes a run only after the final ASGI response body is sent. Streaming responses are not marked complete at header creation. Pending state is bounded and is not an authority; if the process dies before response completion, no completed receipt is fabricated.
 
-The Primary worker public seam invokes a best-effort observation capture only
-after the authoritative worker result returns. The original result is returned
-unchanged.
+The Primary worker public seam invokes a best-effort observation capture only after the authoritative worker result returns. The original result is returned unchanged.
 
 ## Browser boundary
 
-`apps/soul-lab/src/features/lab/observationApi.ts` validates exact keys, schema
-versions, enums, booleans, non-negative counts, list bounds, title/summary
-bounds, opaque identities, reason IDs, character/namespace equality, and
-latest-run/used-run correlation.
+`apps/soul-lab/src/features/lab/observationApi.ts` validates exact keys, schema versions, enums, booleans, non-negative counts, list bounds, title/summary bounds, opaque identities, reason IDs, character/namespace equality, and latest-run/used-run correlation.
 
-The connected page uses `AbortController` plus a monotonically increasing
-request generation. A delayed response from the previously selected character
-is discarded and cannot be rendered under a new character.
+The connected page uses `AbortController` plus a monotonically increasing request generation. A delayed response from the previously selected character is discarded and cannot be rendered under a new character.
 
-UI states are explicit:
+UI states are explicit: loading, real server-owned data, valid empty state, access refused, invalid schema, runtime unavailable, and explicit local-preview fallback. Server data and preview data are never mixed. Real mode is labeled `Source: RelayLM runtime`.
 
-- loading
-- real server-owned data
-- valid empty state
-- access refused
-- invalid schema
-- runtime unavailable
-- explicit local-preview fallback
-
-Server data and preview data are never mixed. The preview is shown only after a
-user explicitly selects it and is labeled `Source: Local preview data`. Real
-mode is labeled `Source: RelayLM runtime`.
-
-Correct, forget, pin, merge, apply-held, and discard-held controls are disabled
-and labeled as the next phase. React text rendering is used; no observation
-content is inserted as HTML.
+Correct, forget, pin, merge, apply-held, and discard-held controls are disabled in this slice. React text rendering is used; no observation content is inserted as HTML.
 
 ## Verification
 
-The Phase I-2 smoke proves:
-
-1. Turn 1 ordinary enqueue and C2 worker formation.
-2. Turn 2 existing M2 selection and RelayCTX/backend-bound injection.
-3. latest-run, recent-memory, held/blocked, and used-memory reads.
-4. restart reconstruction from the durable Primary store and receipts.
-5. wrong-character and wrong-namespace isolation.
-6. loopback config plus actual peer enforcement.
-7. POST/PUT/PATCH/DELETE refusal.
-8. bounded lists and summaries.
-9. corrupt receipt isolation and fail-closed behavior.
-10. response leakage exclusions.
-11. existing UI-A7 management routes, Phase 6 worker integration, and Phase I-1 regressions.
-12. frontend typecheck and production build.
+The Phase I-2 smoke proves ordinary enqueue/C2 worker formation, next-turn M2/RelayCTX injection, latest-run/recent-memory/held-blocked/used-memory reads, restart reconstruction, character/namespace isolation, loopback enforcement, method refusal, bounds, corrupt receipt isolation, response leakage exclusions, UI-A7 regressions, frontend typecheck, and production build.
 
 CI entrypoints:
 
@@ -276,43 +166,6 @@ cd apps/soul-lab && npm run typecheck && npm run build
 
 ## Completion boundary
 
-After merge, the implementation status is:
+Phase I-2 completes real SOUL Lab observation only. Later completed slices include Phase I-3 Correct, I-4B/I-4C1/I-4C2/I-4D lifecycle work, and UI-B0 real Home conversation. Their current status belongs to [Project Status](../PROJECT_STATUS.md) and their dedicated handoffs.
 
-- I1-B producer: complete
-- B3 lifecycle: complete
-- C1-0 through C1-5: complete
-- C2 one-job integration: complete
-- I-1 next-turn Primary MEM recall: complete
-- I-1 character/namespace isolation: complete
-- I-2 real SOUL Lab observation: complete
-- I-3 auditable Correct operation: next
-
-Not completed by Phase I-2:
-
-- memory Correct mutation
-- forget
-- pin/unpin
-- merge
-- held-memory apply/discard
-- RelaySOUL mutation
-- queue scanner/scheduler
-- daemon/service lifecycle
-- pre-enqueue background-finalizer crash recovery
-- Secondary MEM consolidation
-- static UI bundle serving
-- TTS/audio/Live2D execution
-
-## I1-G boundary
-
-I1-GB pre-release durable evidence publication is complete. Lab observation receipts remain secondary evidence and cannot perform I1-GC restart replay, completion convergence, or cleanup.
-
-<!-- phase-i3-auditable-primary-mem-correct -->
-## Phase I-3 auditable Primary MEM Correct — complete (2026-06-24)
-
-Phase I-3 completes the first real observe/correct/retrieve loop. A formed Primary MEM observed through Phase I-2 can be corrected through read-only preflight, bounded semantic diff, explicit short-lived-token apply, immutable successor-page publication through the existing M3e boundary, canonical M3f/M3g index/log convergence, and immutable audit receipt finalization. Existing M2 retrieval resolves only the corrected current revision and existing RelayCTX injection remains the sole prompt path.
-
-Character/namespace isolation, stable logical memory identity, no-clobber publication, exact operation idempotency, one-winner revision fencing, crash recovery, and historical used-memory integrity are preserved. Correction reason, audit receipt, paths, digests, lineage, queue/lease state, and prior full pages are not retrieval inputs or public prompt content.
-
-Authority and exact contracts: `docs/architecture/phase_i3_auditable_primary_mem_correct.md`.
-
-Still separate and unresolved: the I1-G process-exit window after visible-response delivery but before background-finalizer protected-source and B2 queue publication. Phase I-3 does not implement forget, pin/unpin, merge, held apply/discard, Secondary MEM consolidation, RelaySOUL mutation, queue scanner/scheduler/daemon, static UI serving, or TTS/audio/avatar execution.
+Phase I-2 does not implement memory mutation, Forget, Pin/Unpin, Merge, Held Apply/Discard, RelaySOUL mutation, queue scanner/scheduler, daemon/service lifecycle, I1-G durable-finalization replay, Secondary MEM consolidation, static UI bundle serving, or TTS/audio/Live2D execution.

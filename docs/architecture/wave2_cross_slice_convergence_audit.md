@@ -1,8 +1,25 @@
+---
+relaylm_doc_type: implementation_handoff
+relaylm_authority: wave2_cross_slice_convergence_record
+relaylm_status: historical_after_merge
+relaylm_volatility: frozen
+relaylm_owner: implementation
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - wave3_cross_slice_convergence_audit.md
+  - i1gd_durable_finalization_retention_cleanup.md
+  - phase_i4c2_primary_forget_recovery_finalization.md
+  - o1b_sealed_i1g_replay_lane.md
+  - o1c_eligible_b2_queue_lane.md
+relaylm_not_authoritative_for:
+  - current repository-wide implementation status after Wave 2
+  - Wave 3 or Wave 4 completion
+---
 # Wave 2 cross-slice convergence audit
 
-Status: W2-INT implementation and regression validation complete on `wave2-cross-slice-convergence-audit`; pending review and merge.
+Status: W2-INT implementation and regression validation complete after merge. This document is frozen historical evidence for the Wave 2 boundary and Wave 3 start inputs.
 
-Authority: this handoff records the combined latest-main boundary after PR #403, #404, #405, and #406, plus the I-4C2 follow-up correction merged as PR #407 while this audit was in progress. Lower dedicated contracts remain authoritative for their own schemas and mutations.
+Authority: this handoff records the combined latest-main boundary after PR #403, #404, #405, and #406, plus the I-4C2 follow-up correction merged as PR #407 while this audit was in progress. Lower dedicated contracts remain authoritative for their own schemas and mutations. Current post-Wave-3 status belongs to [Project Status](../PROJECT_STATUS.md) and [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md).
 
 ## Integrated inventory
 
@@ -48,7 +65,7 @@ I-4D may consume only read-only authority that resolves logical identity, canoni
 
 ## Configuration boundary
 
-I1-GD accepted configuration remains default-off, dry-run-first, strictly typed, bounded, and rooted in an absolute server-owned private directory. O1 scheduler field names remain target-only: O1B/O1C receive typed `SchedulerGates`; O1D1 owns any future accepted scheduler configuration and one production round coordinator. No polling, sleep, fairness, backoff, or scheduler loop is introduced here.
+I1-GD accepted configuration remains default-off, dry-run-first, strictly typed, bounded, and rooted in an absolute server-owned private directory. At the Wave 2 boundary, O1 scheduler field names are target-only and O1D1 is a future owner of accepted scheduler configuration. Current post-Wave-3 scheduler status belongs to the Wave 3 audit.
 
 ## Root and lock map
 
@@ -71,11 +88,13 @@ The combined security smoke checks authoritative isolation parsing, unsafe files
 
 ## Frozen next-phase inputs
 
+At the Wave 2 boundary:
+
 - I1-GE may start after W2-INT is merged; it owns full process-exit/restart validation only.
 - I-4D may start with I-4C2 complete, tombstone replay stable, and read-only lifecycle/current-identity authority frozen; it owns ordinary M2/RelayCTX exclusion only.
 - O1D1 may start with O1A pure, O1B/O1C stable, manual aggregation green, and scheduler config still unaccepted; it owns accepted gates and one replay-before-queue production round returning without sleep.
 - I-5A, I-7A/B, and UI-B1A may rely on the shared Primary mutation fence and frozen current-state schemas, but add no behavior in W2-INT.
 
-## Remaining non-goals
+## Remaining non-goals at Wave 2
 
-I1-GE crash-at-every-boundary proof, I-4D retrieval exclusion, Forget API/UI, production scheduler round/loop, fairness/backoff, stale-claim orchestration, shutdown, soak, supervised service, always-on operation, and Pin/Held/Merge behavior remain unimplemented.
+I1-GE crash-at-every-boundary proof, I-4D retrieval exclusion, Forget API/UI, production scheduler round/loop, fairness/backoff, stale-claim orchestration, shutdown, soak, supervised service, always-on operation, and Pin/Held/Merge behavior remain outside Wave 2. Later completion is recorded by later wave documents.

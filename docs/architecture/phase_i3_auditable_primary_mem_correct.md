@@ -1,14 +1,15 @@
 ---
 relaylm_doc_type: implementation_handoff
 relaylm_authority: phase_i3_primary_mem_correct
-relaylm_status: implemented
-relaylm_volatility: medium
+relaylm_status: historical_after_merge
+relaylm_volatility: frozen
 relaylm_owner: relaymem_soul_lab_integration
 relaylm_update_trigger:
   - Primary MEM correction schema changes
   - correction revision or recovery semantics change
   - SOUL Lab mutation access policy changes
   - M2 current-revision resolution changes
+relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - docs/PROJECT_STATUS.md
   - docs/architecture/relaymem_m3e_atomic_primary_page_writer.md
@@ -17,6 +18,11 @@ relaylm_related_authority:
   - docs/architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
   - docs/architecture/integration_i1_primary_mem_two_turn_recall.md
   - docs/architecture/phase_i2_real_soul_lab_observation.md
+  - docs/architecture/phase_i4b_primary_current_state_shared_fence.md
+relaylm_not_authoritative_for:
+  - current repository-wide implementation status after Phase I-3
+  - Forget / Hide lifecycle
+  - scheduler or durable-finalization status
 ---
 # Phase I-3: Auditable Primary MEM Correct
 
@@ -24,7 +30,7 @@ Last reviewed: 2026-06-24 JST
 
 ## Status
 
-Implemented on the Phase I-3 feature boundary.
+Implemented on the Phase I-3 feature boundary. This is a historical-after-merge handoff; current repository-wide status belongs to [Project Status](../PROJECT_STATUS.md).
 
 This slice closes the first observe/correct/retrieve product loop for one real formed Primary MEM:
 
@@ -54,7 +60,7 @@ Implemented:
 - bounded correction history projection,
 - later-turn convergence through the existing M2 and RelayCTX path.
 
-Not implemented:
+Not implemented by this slice:
 
 - forget,
 - pin or unpin,
@@ -134,16 +140,7 @@ Request schema:
 relaylm.lab.memory_correct_apply_request.v0
 ```
 
-Apply requires the exact token and expected revision. The token binds:
-
-- character,
-- namespace,
-- logical memory identity,
-- current physical page identity,
-- current and candidate revision,
-- candidate semantic digest,
-- operation ID,
-- issue and expiry timestamps.
+Apply requires the exact token and expected revision. The token binds character, namespace, logical memory identity, current physical page identity, current and candidate revision, candidate semantic digest, operation ID, issue and expiry timestamps.
 
 The browser does not interpret the token.
 
@@ -231,27 +228,11 @@ Character or memory changes abort/discard pending reads and tokens. Apply loadin
 
 ## Validation
 
-The Phase I-3 workflow covers:
-
-- normal correction and Lab refresh,
-- later ordinary M2/RelayCTX retrieval convergence,
-- old revision exclusion and stable logical identity,
-- wrong character and namespace isolation,
-- stale and concurrent revision fencing,
-- exact idempotent replay,
-- token tampering and missing-token rejection,
-- corrupt/symlink/path fail-closed behavior through canonical validators,
-- crash and response-loss recovery seams,
-- historical used-memory integrity,
-- request/response bounds and exact schemas,
-- loopback config and peer enforcement,
-- forbidden-information leakage checks,
-- M3e through M3h, Phase 6-C1/C2, Phase I-1, Phase I-2, and SOUL Lab regressions,
-- frontend typecheck, strict browser schema smokes, and production build.
+The Phase I-3 workflow covers normal correction and Lab refresh, later ordinary M2/RelayCTX retrieval convergence, old revision exclusion and stable logical identity, wrong character/namespace isolation, stale and concurrent revision fencing, exact idempotent replay, token tampering and missing-token rejection, corrupt/symlink/path fail-closed behavior, crash and response-loss recovery seams, historical used-memory integrity, request/response bounds and exact schemas, loopback config and peer enforcement, forbidden-information leakage checks, M3e through M3h, Phase 6-C1/C2, Phase I-1, Phase I-2, and SOUL Lab regressions, frontend typecheck, strict browser schema smokes, and production build.
 
 ## Next separate boundary
 
-The next implementation priority must be selected from the existing architecture plan. Phase I-3 does not change this unresolved durability window:
+The next implementation priority must be selected from the existing architecture plan. Phase I-3 did not change this durability window:
 
 ```text
 visible response delivery
@@ -259,4 +240,4 @@ visible response delivery
   -> B2 queue publication
 ```
 
-A process exit before source/queue publication remains the I1-G pre-enqueue background-finalizer durability boundary and must not be reported as solved by Correct.
+A process exit before source/queue publication is the I1-G pre-enqueue background-finalizer durability boundary and must not be reported as solved by Correct. Current status for that later track belongs to [Project Status](../PROJECT_STATUS.md).

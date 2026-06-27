@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current Phase 6, I1-I4D, UI-B0, I1-G, O1A-O1D1, and roadmap docs."""
+"""Validate current post-Wave-3 documentation boundaries."""
 from __future__ import annotations
 
 import ast
@@ -10,6 +10,250 @@ from relaylm_i1g_pre_enqueue_fault_model_smoke import main as run_i1g_fault_mode
 from relaylm_o1a_two_lane_scheduler_contract_smoke import main as run_o1a_contract
 
 ROOT = Path(__file__).resolve().parents[1]
+
+O1D1_ACCEPTED_FIELDS = (
+    "relaymem_local_scheduler_enabled",
+    "relaymem_local_scheduler_dry_run_only",
+    "relaymem_local_scheduler_apply_enabled",
+    "relaymem_local_scheduler_replay_lane_enabled",
+    "relaymem_local_scheduler_queue_lane_enabled",
+)
+
+CURRENT_DOCS = (
+    "docs/PROJECT_STATUS.md",
+    "docs/README.md",
+    "docs/architecture/README.md",
+    "docs/architecture/current_target_migration_guide.md",
+    "docs/architecture/pipeline_implementation_plan.md",
+    "docs/architecture/post_i3_evaluation_work_roadmap.md",
+    "docs/architecture/relaymem_mvp_implementation_plan.md",
+    "docs/architecture/relaymem_slp_current_target.md",
+    "docs/architecture/wave2_cross_slice_convergence_audit.md",
+    "docs/architecture/wave3_cross_slice_convergence_audit.md",
+    "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
+    "docs/architecture/i1gd_durable_finalization_retention_cleanup.md",
+    "docs/architecture/i1ge_durable_finalization_crash_validation.md",
+    "docs/architecture/memory_lifecycle_design.md",
+    "docs/architecture/phase_i2_real_soul_lab_observation.md",
+    "docs/architecture/phase_i3_auditable_primary_mem_correct.md",
+    "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md",
+    "docs/architecture/phase_i4b_primary_current_state_shared_fence.md",
+    "docs/architecture/phase_i4c1_primary_forget_hidden_successor.md",
+    "docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md",
+    "docs/architecture/phase_i4d_primary_retrieval_exclusion.md",
+    "docs/architecture/soul_lab_runtime_mvp.md",
+    "docs/architecture/o0_local_one_job_runner.md",
+    "docs/architecture/o1a_two_lane_scheduler_contract.md",
+    "docs/architecture/o1b_sealed_i1g_replay_lane.md",
+    "docs/architecture/o1c_eligible_b2_queue_lane.md",
+    "docs/architecture/o1d1_production_scheduler_round.md",
+    "docs/smoke/o1_manual_one_round_runbook.md",
+)
+
+REQUIRED = {
+    "docs/PROJECT_STATUS.md": """
+I1-GE full production crash validation: complete
+I1-G overall: complete
+Phase I-4D ordinary retrieval lifecycle exclusion: complete
+Phase I-4E loopback API and SOUL Lab Forget UI: unimplemented
+Phase I-4F full Forget validation: unimplemented
+Phase I-4 overall: in progress
+O1D1 accepted gates/one-round coordinator: complete
+O1 overall: in progress
+O2 supervised worker service: planned/unimplemented
+O3 always-on local operation: planned/unimplemented
+Wave 3 implementation tracks complete
+W3-INT complete only after this PR is merged
+Wave 4 not open while W3-INT is unmerged
+""",
+    "docs/README.md": """
+I1-GA through I1-GE are complete
+O1D1 is complete for accepted scheduler gates plus one bounded production round
+I-4D ordinary M2/RelayCTX lifecycle and prior-revision exclusion plus read-only historical lifecycle projection is complete
+E1 local runtime evaluation
+O1 manual one-round runbook
+W3-INT complete only after its PR is merged
+""",
+    "docs/mvp/README.md": """
+Wave 3 merged completion reports
+I1-GE completion report
+I-4D completion report
+O1D1 completion report
+Wave 3 Cross-Slice Convergence Audit
+""",
+    "docs/architecture/README.md": """
+I1-GE Durable-finalization Crash Validation
+O1D1 Accepted Scheduler Gates and One Production Round
+Phase I-4D Primary Retrieval Exclusion
+E1 Local Runtime Evaluation
+Wave 3 Cross-Slice Convergence Audit
+W3-INT complete only after its PR is merged
+""",
+    "docs/architecture/current_target_migration_guide.md": """
+Detailed RelayMEM/RelaySLP status lives in [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
+I1-GA through I1-GE are complete at the durable-finalization boundary.
+O1D1 is complete as one accepted-gate replay-before-queue production round.
+relaymem_slp_durable_finalization_enabled=false
+relaymem_local_worker_enabled=false
+relaymem_local_scheduler_enabled=false
+""",
+    "docs/architecture/pipeline_implementation_plan.md": """
+I1-G overall: complete
+Phase I-4D retrieval exclusion: complete
+Phase I-4 overall: in progress
+O1D1 accepted gates and one production round: complete
+O1 overall: in progress
+Wave 4 not open while W3-INT is unmerged
+""",
+    "docs/architecture/post_i3_evaluation_work_roadmap.md": """
+I1-GA through I1-GE
+I-4E, I-4F, O1D2, O1E, and O1F remain incomplete
+Wave 4 not open while W3-INT is unmerged
+""",
+    "docs/architecture/relaymem_mvp_implementation_plan.md": """
+I-4D retrieval exclusion/history projection: complete
+I-4E API/UI and I-4F validation: unimplemented
+O1D1 accepted gates and one production round: complete
+O1 overall remains in progress
+""",
+    "docs/architecture/relaymem_slp_current_target.md": """
+I1-GA through I1-GE are complete
+O1D1 accepts the five exact scheduler gates
+I-4D consumes the complete shared current-state authority before snippet construction
+Forget is not product-complete until I-4E
+""",
+    "docs/architecture/wave2_cross_slice_convergence_audit.md": """
+relaylm_status: historical_after_merge
+Status: W2-INT implementation and regression validation complete after merge.
+Current post-Wave-3 status belongs to [Project Status](../PROJECT_STATUS.md)
+The public concurrent-loser normalization merged through PR #407
+""",
+    "docs/architecture/wave3_cross_slice_convergence_audit.md": """
+Wave 3 source PR inventory
+I1-G overall complete
+Phase I-4 overall in progress
+O1 overall in progress
+Wave 4 not open while this PR is unmerged
+O1D2
+I-4E
+UI-B1A
+""",
+    "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md": """
+I1-GA through I1-GE are complete
+I1-G overall is complete only for sealed durable-finalization evidence
+I1-GE is complete as validation-only real process-exit/fresh-restart proof
+""",
+    "docs/architecture/i1gd_durable_finalization_retention_cleanup.md": """
+relaylm_status: historical_after_merge
+Current I1-G status is **complete** after I1-GE.
+I1-GD remains only retention/cleanup authority
+""",
+    "docs/architecture/i1ge_durable_finalization_crash_validation.md": """
+I1-GE is complete as validation-only production evidence
+real child-process `os._exit` seams
+It does not mean B3 terminal success, C2 execution, worker execution, Primary MEM formation
+""",
+    "docs/architecture/memory_lifecycle_design.md": """
+This document is target architecture. It does not carry date-stamped completion appendices.
+A hidden current successor is the lifecycle authority.
+Exact current implementation status for I-4B/I-4C1/I-4C2/I-4D/I-4E/I-4F belongs to [Project Status](../PROJECT_STATUS.md)
+""",
+    "docs/architecture/phase_i2_real_soul_lab_observation.md": """
+relaylm_status: historical_after_merge
+Status: complete for the bounded Phase I-2 real observation boundary.
+I-4D later adds the separate read-only lifecycle overlay without rewriting these v0 receipts.
+""",
+    "docs/architecture/phase_i3_auditable_primary_mem_correct.md": """
+relaylm_status: historical_after_merge
+Implemented on the Phase I-3 feature boundary.
+current repository-wide status belongs to [Project Status](../PROJECT_STATUS.md)
+""",
+    "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md": """
+I-4B, I-4C1, I-4C2, and I-4D are implemented
+I-4E still owns loopback mutation API and SOUL Lab Forget UI
+I-4F still owns crash/race/security/fresh-conversation validation
+""",
+    "docs/architecture/phase_i4c1_primary_forget_hidden_successor.md": """
+relaylm_status: historical_after_merge
+I-4C2 is complete for exact prepared resume
+I-4D is complete for ordinary M2/RelayCTX hidden/prior-revision exclusion
+## Still unimplemented after Wave 3
+""",
+    "docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md": """
+relaylm_status: historical_after_merge
+## PR #407 concurrent-loser normalization
+finalized `hidden / none` from another winner
+`already_hidden`
+hidden prepared or hidden recovery-required
+`target_not_active`
+""",
+    "docs/architecture/phase_i4d_primary_retrieval_exclusion.md": """
+A candidate survives only when M2 already selected it
+A hidden successor remains lifecycle authority; retrieval never falls back to a prior active revision.
+I-4E remains the loopback API and SOUL Lab mutation UI. I-4F remains the full production validation slice.
+""",
+    "docs/architecture/soul_lab_runtime_mvp.md": """
+This document defines product and ownership boundaries.
+this design document does not carry phase-completion appendices.
+Voice/avatar Runtime MVP remains later and independent.
+""",
+    "docs/architecture/o0_local_one_job_runner.md": """
+relaylm_status: historical_after_merge
+O1D1 scheduler gates are accepted by `RelayLMConfig` for one scheduler round
+O0 does not complete automatic queue processing
+""",
+    "docs/architecture/o1a_two_lane_scheduler_contract.md": """
+O1B replay adapter, O1C queue adapter, and O1D1 one production round are complete.
+O1D1 is now the production wiring for exactly one such round.
+O1D2 and O1E own the later policy and controls required to start, delay, cancel, or stop subsequent rounds.
+""",
+    "docs/architecture/o1d1_production_scheduler_round.md": """
+O1D1 implements one accepted, server-configured, single-threaded production scheduler round.
+relaymem_local_scheduler_enabled: false
+relaymem_local_scheduler_dry_run_only: true
+relaymem_local_scheduler_apply_enabled: false
+relaymem_local_scheduler_replay_lane_enabled: true
+relaymem_local_scheduler_queue_lane_enabled: true
+The coordinator passes no replay result, locator, job/dispatch identity, candidate object, or priority hint into O1C.
+""",
+    "docs/smoke/o1_manual_one_round_runbook.md": """
+O1D1 can execute one accepted-gate production round and return without sleep.
+`run_next_round` is only a recommendation.
+O1D1 does not implement fairness, retry-time policy, backoff, jitter, shutdown, supervision, or recurring automatic processing.
+""",
+}
+
+STALE = tuple(
+    line.strip()
+    for line in """
+pending review and merge
+I1-GE full production crash validation: unimplemented
+I1-GE validation-only full production crash proof: unimplemented
+I1-GE remains unimplemented
+I1-G overall: in progress
+I1-G pre-enqueue finalizer durability plus queue scanning/scheduling/daemon lifecycle
+Phase I-4D through I-4F exclusion, UI, and validation: unimplemented
+Phase I-4D retrieval exclusion: unimplemented
+I-4D ordinary M2/RelayCTX lifecycle exclusion: unimplemented
+I-4D ordinary M2/RelayCTX hidden and prior-revision exclusion is unimplemented
+No production hidden-state filtering exists yet because I-4D integration is not implemented
+I-4D M2/RelayCTX lifecycle exclusion, loopback mutation routes, and SOUL Lab Forget UI remain unimplemented
+Runtime apply, M2 exclusion, historical lifecycle projection, SOUL Lab Forget UI, physical deletion, restore/unhide, and later memory operations remain unimplemented
+The next text-first product boundary is Phase I-3 auditable Correct.
+O1D1 accepted gates and one production round: unimplemented
+O1D1 through O1F: unimplemented
+O1D1 remains unimplemented
+O1A target field names remain design-only until O1D1 accepts them
+O1D1 is the phase that will accept those exact scheduler gates
+accepted config.py config-schema or config-example changes before O1D1
+I1-GC through I1-GE remain planned
+I1-GC through I1-GE remain unimplemented
+O1B through O1F remain unimplemented
+O1C through O1F, O2, and O3 remain unimplemented
+### Wave 3 — current independent implementation tracks
+""".splitlines()
+    if line.strip()
+)
 
 
 def read(path: str) -> str:
@@ -56,343 +300,6 @@ def validate_config_coverage(path: str) -> None:
     assert not missing, f"{path}: missing config fields: {missing!r}"
 
 
-O1D1_ACCEPTED_FIELDS = (
-    "relaymem_local_scheduler_enabled",
-    "relaymem_local_scheduler_dry_run_only",
-    "relaymem_local_scheduler_apply_enabled",
-    "relaymem_local_scheduler_replay_lane_enabled",
-    "relaymem_local_scheduler_queue_lane_enabled",
-)
-
-CURRENT_DOCS = (
-    "docs/PROJECT_STATUS.md",
-    "docs/README.md",
-    "docs/architecture/README.md",
-    "docs/architecture/pipeline_implementation_plan.md",
-    "docs/architecture/post_i3_evaluation_work_roadmap.md",
-    "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md",
-    "docs/architecture/i1gd_durable_finalization_retention_cleanup.md",
-    "docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md",
-    "docs/architecture/relaymem_mvp_implementation_plan.md",
-    "docs/architecture/relaymem_slp_current_target.md",
-    "docs/architecture/o0_local_one_job_runner.md",
-    "docs/architecture/o1a_two_lane_scheduler_contract.md",
-    "docs/architecture/o1b_sealed_i1g_replay_lane.md",
-    "docs/architecture/o1c_eligible_b2_queue_lane.md",
-)
-
-REQUIRED = {
-    "docs/PROJECT_STATUS.md": """
-Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete
-B0-B3 durable enqueue and fenced lifecycle
-B3 lifecycle: complete
-C2 one-job claim/rehydrate/execute adapter: complete
-I1 next-turn Primary MEM recall: complete
-character and namespace isolation: complete
-I2 real SOUL Lab observation: complete
-I3 auditable Primary MEM Correct: complete
-Phase I-4C1 hidden-successor commit: complete
-Phase I-4C2 prepared recovery / operation-scoped M3f-M3g / tombstone finalization: complete
-I1-GC one-record restart replay / exact C1-5+B2 convergence / completion marker: complete
-I1-GD retention / orphan reconciliation / isolation lifecycle / cleanup: complete
-I1-GE full production crash validation: unimplemented
-I1-GE is validation-only
-Visible-release restart evidence publication is implemented
-Restart-time one-record replay is implemented
-Durable-finalization bounded retention and cleanup is implemented
-Direct Home-origin formation: not currently proven
-Scheduler replay lane: O1B one bounded sealed-record discovery/reread/I1-GC adapter complete
-Scheduler queue lane: O1C one bounded discovery/reread/scope/C2 adapter complete
-Scheduler remaining production: O1D1 accepted gates/one-round coordinator, O1D2 policy, O1E recovery/shutdown, and O1F validation unimplemented
-O1A itself adds no accepted configuration fields
-I-4D is retrieval-only integration
-I1-GE, I-4D, and O1D1 are independent Wave 3 tracks after W2-INT
-""",
-    "docs/architecture/pipeline_implementation_plan.md": """
-Phase 6-C1-0 through C1-5 are complete
-Phase 6-C2 one-job claim/rehydrate/execute adapter is complete
-### I1-E / Phase I-2: real SOUL Lab observation — complete
-Observation evidence is read-only
-### I1-F / Phase I-3: auditable Primary MEM Correct — complete
-### I1-F2 / Phase I-4A: Primary MEM Forget / Hide contract — defined target
-Phase I-4C1 hidden-successor commit: complete
-Phase I-4C2 recovery/finalization: complete
-exact read-only preflight/history/token
-I1-GC  one-record restart replay, exact convergence, completion    complete
-I1-GD  bounded retention, isolation, orphan cleanup               complete
-I1-GE  validation-only crash-at-every-boundary production proof   unimplemented
-### O1A: two-lane bounded scheduler contract — complete
-O1B sealed replay-lane adapter: complete
-O1C eligible queue-lane adapter: complete
-O1D1 accepted gates and one production round: unimplemented
-O1D2 fairness/retry-time/backoff/jitter/pacing policy: unimplemented
-O1A completion alone is not O1 completion.
-### Wave 1 — completed commit, replay, and retention authorities
-### Wave 2 — completed cross-slice convergence audit
-### Wave 3 — current independent implementation tracks
-I-5 Pin / Unpin
-I-7 Held Apply / Discard
-I-6 Merge / Supersession
-O1A target field names remain design-only until O1D1 accepts them
-""",
-    "docs/architecture/post_i3_evaluation_work_roadmap.md": """
-Phase I-4B: Current-state resolver and shared mutation fence — complete
-Phase I-4C1: Hidden-successor commit — complete
-Phase I-4C2: Prepared recovery and tombstone finalization — complete
-I1-GC caller-selected one-record replay
-I1-GD bounded retention and isolation cleanup — complete
-I1-GE validation-only full crash proof
-O1B and O1C: Bounded production lane adapters — complete
-O1D1 through O1F: Production scheduling — unimplemented
-Phase I-5: Pin / Unpin
-Phase I-7: Held Apply / Discard
-Phase I-6: Merge / Supersession
-Phase I-8: Secondary MEM consolidation
-Phase I-9: RelaySOUL proposal / intervention / rollback
-### Wave 1 — complete
-### Wave 2 — complete
-### Wave 3 — current independent implementation tracks
-E1 does not prove direct Home-origin formation
-O1A completion alone does not satisfy the O1 checkpoint.
-O1D1 completion also does not satisfy it
-""",
-    "docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md": """
-I1-GE remains unimplemented and is validation-only
-Window A publication side — implemented by I1-GB
-Window A recovery side — implemented by I1-GC
-I1-GC is complete
-source-before-queue invariant is absolute
-## O1B caller boundary
-queue lane independently discovers the queue root
-### I1-GD — complete
-relaymem.slp_durable_finalization_isolation.v0
-### I1-GE — unimplemented
-Validation-only full production crash-at-every-boundary proof
-### O1B — complete
-### O1C — complete
-### O1D1 through O1F — unimplemented
-""",
-    "docs/architecture/i1gd_durable_finalization_retention_cleanup.md": """
-Status: **implemented production boundary**
-relaymem.slp_durable_finalization_isolation.v0
-sealed_pending
-shared I1-GC nonblocking per-record fence
-delete isolation marker last
-I1-GE full crash-at-every-boundary production validation
-O1B replay discovery and delegation
-""",
-    "docs/architecture/relaymem_mvp_implementation_plan.md": """
-M3i-d real read-only Lab observation: complete as Phase I-2
-observation receipts
-M3i-f canonical current-state resolver/shared fence: complete as Phase I-4B
-M3i-g hidden-successor commit ownership: complete as Phase I-4C1
-M3i-h prepared recovery/M3f-M3g/tombstone finalization: complete as Phase I-4C2
-I1-GC one-record replay and completion convergence is complete
-The next RelayMEM governance implementation slice is I-4D
-## MEM-M3i: Runtime integration — complete through I-4C2
-### I-4C2 recovery and finalization — complete
-No production hidden-state filtering exists yet because I-4D integration is not implemented
-A hidden current successor must never allow fallback to a prior active revision.
-O1B sealed replay-lane adapter: complete
-O1C queue-lane adapter: complete
-O1D1 accepted gates and one production round: unimplemented
-I-4C2 recovery/finalization: complete
-""",
-    "docs/architecture/relaymem_slp_current_target.md": """
-Phase 6-B2 performs atomic durable enqueue
-Phase 6-B3 performs default-off, dry-run-first
-C2 one-job claim/rehydrate/execute adapter
-durably enqueued jobs
-I2 real SOUL Lab observation: complete
-Observation receipts cannot authorize repair or retrieval
-I1-GC caller-selected one-record replay
-I1-GE remains unimplemented and is validation-only
-Phase I-4C1 hidden-successor commit — complete
-Phase I-4C2 recovery/finalization — complete
-Forget is not product-complete until I-4D provides ordinary retrieval exclusion
-O1B and O1C bounded production discovery and delegation are complete
-O1D1 remains unimplemented
-O1D2 fairness/retry-time/backoff/jitter/pacing
-I-4D  ordinary M2/RelayCTX exclusion/historical projection
-""",
-    "docs/README.md": """
-phase_i2_real_soul_lab_observation.md
-phase_i3_auditable_primary_mem_correct.md
-i1gd_durable_finalization_retention_cleanup.md
-o1b_sealed_i1g_replay_lane.md
-o1c_eligible_b2_queue_lane.md
-I1-GA through I1-GD are complete
-I1-GE remains an unimplemented validation-only full production crash proof
-O1D1 must accept the exact scheduler gates and execute one production round without sleeping
-Phase I-4C1 is complete
-Phase I-4C2 is complete
-phase_i4c2_primary_forget_recovery_finalization.md
-## Wave 3 integrated boundary
-""",
-    "docs/architecture/README.md": """
-phase_i2_real_soul_lab_observation.md
-phase_i3_auditable_primary_mem_correct.md
-i1gd_durable_finalization_retention_cleanup.md
-o1b_sealed_i1g_replay_lane.md
-o1c_eligible_b2_queue_lane.md
-I1-GC provides the caller-selected one-record convergence authority
-I1-GD provides bounded retention and isolation cleanup
-O1B is complete for one bounded sealed-record replay-lane opportunity
-O1C is complete for one bounded queue-lane opportunity
-Phase I-4C1 Primary Forget Hidden-Successor Commit
-Phase I-4C2 Primary Forget Recovery and Finalization
-I-4C2 implements bounded prepared recovery
-## Wave 3 boundary
-O1D1 owns accepted gates and one bounded `replay -> queue` production round
-""",
-    "docs/config_schema.md": """
-relaymem_slp_durable_finalization_retention_enabled
-relaymem_slp_durable_finalization_retention_dry_run_only
-relaymem_slp_durable_finalization_retention_apply_enabled
-relaymem_slp_durable_finalization_completed_retention_seconds
-relaymem_slp_durable_finalization_orphan_grace_seconds
-relaymem_slp_durable_finalization_isolated_retention_seconds
-relaymem_slp_durable_finalization_cleanup_max_records_per_pass
-relaymem_slp_durable_finalization_cleanup_timeout_ms
-""",
-    "docs/architecture/o1a_two_lane_scheduler_contract.md": """
-Contract and pure deterministic aggregation model complete; production round coordination and recurring scheduler behavior unimplemented.
-O1B replay adapter and O1C queue adapter are complete
-replay-lane opportunity completes or returns
-I1-GC delegation per round       <= 1
-C2 delegation per round          <= 1
-Same-round replay-to-queue rule
-Lane-local failure isolation
-Pure disposition contract
-target-only configuration
-O1B-O1F handoff
-O1D1
-O1D2
-relaylm.local_scheduler_round_result.v0
-relaylm.local_scheduler_round_projection.v0
-O1A performs no filesystem mutation or production scan
-O1D1 invokes each enabled lane at most once and always returns without sleep or recursion
-""",
-    "docs/architecture/o1b_sealed_i1g_replay_lane.md": """
-Production replay-lane adapter complete
-O1D1 production round coordination
-bounded non-recursive secure inventory
-lexicographically first sealed-pending locator
-existing I1-GC delegation at most once
-those remain O1D2
-O1D1  accepted scheduler gates + one production round
-O1D1 may call O1B at most once in one round
-content-free
-""",
-    "docs/architecture/o1c_eligible_b2_queue_lane.md": """
-O1C is complete as one bounded production queue-lane adapter
-Shared O0-compatible helper
-future_retry_only
-Same-round replay independence
-O1D1 owns acceptance of the five exact scheduler gates
-O1D2 owns future ordering/fairness/retry-time policy
-O1D1 scheduler-gate acceptance, replay-lane invocation, or one-round aggregation
-O1D2 ordering, fairness, retry-delay policy, backoff, jitter, or saturation pacing
-""",
-    "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md": """
-relaylm_status: target
-I-4C1 hidden-successor commit and bounded I-4C2 recovery/finalization are implemented
-Decision: Candidate A
-Forget tombstone
-relaylm.mem.primary_current_state.v0
-I-4C2 implements exact prepared resume
-restore
-unhide
-physical deletion
-I1-G pre-enqueue durability
-""",
-    "docs/architecture/phase_i4b_primary_current_state_shared_fence.md": """
-Complete for the I-4B read-only boundary.
-canonical Primary current-state resolver
-shared Correct/Forget mutation fence
-five-minute token validation
-bounded zero-item history behavior
-I-4C1 and I-4C2 consume the shared fence
-relaylm.mem.forget_prepared.v0
-I-4C2: complete for exact prepared resume
-I-4D: unimplemented ordinary M2/RelayCTX lifecycle exclusion
-""",
-    "docs/architecture/phase_i4c1_primary_forget_hidden_successor.md": """
-Status: complete for the bounded I-4C1 commit boundary.
-relaylm.mem.forget_prepared.v0
-relaymem.primary_lifecycle_page.v0
-hidden / recovery_required / retrieval_eligible=false
-I-4C2 exact prepared resume
-operation-scoped M3f/M3g convergence
-""",
-    "docs/architecture/phase_i4c2_primary_forget_recovery_finalization.md": """
-Status: complete for the bounded I-4C2 one-operation recovery/finalization boundary.
-relaylm.mem.forget_tombstone.v0
-retrieval_exclusion_claimed
-I-4D:
-ordinary M2 lifecycle eligibility enforcement
-""",
-    "docs/architecture/o0_local_one_job_runner.md": """
-Shared O0/O1C production helper boundary
-O1C must not launch this CLI as a subprocess
-O1A target scheduler gates are design-only
-O1D1 remains the future one-round coordinator
-O1D1 is the phase that will accept those exact scheduler gates
-not a fairness, priority, backoff, multi-worker, or O1D2 scheduling policy
-O1B   one sealed I1-G discovery and I1-GC delegation
-O1C   one B2/B3 discovery and C2 delegation — complete
-O1D1  accepted scheduler gates + one replay-before-queue round
-""",
-    "docs/architecture/soul_lab_ui_b0_real_home_conversation.md": """
-same-origin POST /v1/chat/completions
-Real Runtime is the default source mode
-New Conversation applies only to the current character
-This path is operator-driven
-UI-B0 does not claim that the complete E1 flow is automated
-""",
-}
-
-STALE_I1G = anchors("""
-I1-GC restart replay / downstream convergence / completion marker: unimplemented
-I1-GC restart replay / exact C1-5+B2 convergence / completion marker: unimplemented
-I1-GD retention / orphan reconciliation / cleanup: unimplemented
-I1-GC one-record restart replay and completion convergence, I1-GD cleanup, and I1-GE crash validation
-I1-GC/GD/GE replay, cleanup, and full crash validation: unimplemented
-I1-GC through I1-GE remain planned
-I1-GC through I1-GE remain unimplemented
-I1-GC  one-record restart replay, exact convergence, completion    unimplemented
-I1-GC  one-record restart replay, duplicate convergence, completion     current implementation work
-Window A recovery side — I1-GC unimplemented
-I1-GC replay/completion, I1-GD cleanup, and I1-GE full crash validation remain unimplemented
-I1-GC restart replay and completion convergence, I1-GD retention/cleanup, and I1-GE full production crash validation remain unimplemented
-### I1-GD — unimplemented
-O1B through O1F remain incomplete
-O1B through O1F remain unimplemented
-O1B through O1F remain operations work
-O1B/O1C production discovery and delegation
-O1C through O1F, O2, and O3 remain unimplemented
-O1B   sealed-record discovery/I1-GC delegation                    unimplemented
-O1C   B2 discovery/O0-compatible C2 delegation                    unimplemented
-Phase I-4C2 through I-4F recovery, exclusion, UI, and validation: unimplemented
-Forget recovery/tombstone/M2/UI/full validation: unimplemented as I-4C2 through I-4F
-The next RelayMEM governance implementation slice is I-4C2
-Forget is not product-complete until I-4C2 through I-4F
-## MEM-M3i: Runtime integration — complete through I-4C1
-I-4C2 through I-4F: unimplemented
-I-4D  M3 convergence/M2 exclusion/historical projection
-### Wave 2 — current
-### Wave 2 — current parallel implementation candidates
-those remain O1D.
-O1D ordering, fairness, retry-delay policy, backoff, or jitter
-O1D  ordering / fairness / retry-time / backoff / jitter
-O1B or a later integration slice must own shared scheduler configuration.
-future O1D scheduling policy
-O1D ordering/fairness/retry-time/backoff
-This section supersedes earlier
-supersedes earlier roadmap entries
-""")
-
-
 def main() -> None:
     validate_config_coverage("docs/config_schema.md")
     validate_config_coverage("config.example.yaml")
@@ -401,7 +308,7 @@ def main() -> None:
     for path, block in REQUIRED.items():
         require(path, block)
     for path in CURRENT_DOCS:
-        forbid(path, STALE_I1G)
+        forbid(path, STALE)
     run_i1g_fault_model()
     run_o1a_contract()
     print("Documentation current boundary smoke passed")
