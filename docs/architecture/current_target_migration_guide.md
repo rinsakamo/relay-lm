@@ -14,12 +14,13 @@ Last reviewed: 2026-06-27 JST
 
 This guide distinguishes implemented runtime behavior from target architecture. Detailed RelayMEM/RelaySLP status lives in [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md), MVP sequencing and roadmap ordering live in [Project Execution Plan](project_execution_plan.md), and repository-wide current status lives in [Project Status](../PROJECT_STATUS.md).
 
-## Current Wave 5 compatibility interpretation
+## Current Wave 6 compatibility interpretation
 
 ```text
 O1D2 is current implemented as bounded policy wrapper.
 O1E is current implemented as bounded caller-invoked operational controls.
-O1F remains target/unimplemented.
+O1F is current implemented as validation-only operational hardening.
+O2/O3 remain target/unimplemented.
 I-4E is current implemented as loopback Forget API/UI.
 I-4F is current implemented as validation-only Forget product completion.
 UI-B1A is current implemented read-only visibility.
@@ -37,6 +38,7 @@ ordinary finalized turn
   -> C2 / C1 worker path or O0 / O1D1 caller path
   -> O1D2 bounded policy hints for later caller decisions
   -> O1E bounded caller-invoked recovery/cancellation/shutdown controls
+  -> O1F validation-only operational hardening
   -> M3a-M3h Primary MEM formation
   -> Phase I-1 later-turn M2 retrieval
   -> I-4D current-state lifecycle filtering
@@ -48,13 +50,12 @@ ordinary finalized turn
   -> RelayCTX bounded injection
 ```
 
-Completed behavior must not be re-listed as migration work: Phase I-1, I-2, I-3, I1-GA through I1-GE, O0, O1D1, O1D2, O1E, I-4D, I-4E, I-4F, UI-B1A, I-5A read-only preflight, I-7A/B read-only preflight, and E1 evaluation consolidation are complete.
+Completed behavior must not be re-listed as migration work: Phase I-1, I-2, I-3, I1-GA through I1-GE, O0, O1D1, O1D2, O1E, O1F, I-4D, I-4E, I-4F, UI-B1A, I-5A read-only preflight, I-7A/B read-only preflight, and E1 evaluation consolidation are complete.
 
 Remaining migration is deliberately narrower:
 
 ```text
-O1F operational validation
-  -> O2 supervised worker service, if required
+O2 supervised worker service, if required
   -> O3 always-on operation, if required
 
 Pin/Unpin runtime apply/API/UI/ranking work
@@ -71,4 +72,4 @@ TTS/audio/avatar runtime adapter execution
 
 ## Safe defaults
 
-Current apply, worker, durable-finalization, retention, and scheduler settings remain default-off or dry-run-first where applicable. O1E operational controls do not authorize polling, sleep, loops, service supervision, or always-on processing. No migration step may silently enable actual apply, expose content-bearing runtime state in generic diagnostics, or imply recurring scheduling/TTS/avatar execution from helper or handoff metadata alone.
+Current apply, worker, durable-finalization, retention, and scheduler settings remain default-off or dry-run-first where applicable. O1E operational controls and O1F validation do not authorize polling, sleep, loops, service supervision, or always-on processing. No migration step may silently enable actual apply, expose content-bearing runtime state in generic diagnostics, or imply recurring scheduling/TTS/avatar execution from helper or handoff metadata alone.

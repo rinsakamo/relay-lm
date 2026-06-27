@@ -4,10 +4,14 @@ relaylm_authority: o1d1_production_scheduler_round
 relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: relaymem_slp_operations
+relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - docs/architecture/o1a_two_lane_scheduler_contract.md
   - docs/architecture/o1b_sealed_i1g_replay_lane.md
   - docs/architecture/o1c_eligible_b2_queue_lane.md
+  - docs/architecture/o1d2_scheduler_policy.md
+  - docs/architecture/o1e_scheduler_operational_controls.md
+  - docs/architecture/o1f_operational_validation.md
   - docs/architecture/o0_local_one_job_runner.md
   - docs/architecture/wave2_cross_slice_convergence_audit.md
 ---
@@ -15,7 +19,7 @@ relaylm_related_authority:
 
 ## Status
 
-O1D1 implements one accepted, server-configured, single-threaded production scheduler round. It does not implement a scheduler loop, polling, sleep, fairness, retry delay, stale recovery, shutdown, daemonization, or service supervision.
+O1D1 implements one accepted, server-configured, single-threaded production scheduler round. Later O1D2 policy, O1E stale-recovery/cancellation/shutdown controls, and O1F operational validation are complete at their bounded caller-invoked boundaries. O1D1 itself still does not implement a scheduler loop, polling, sleep, daemonization, service supervision, worker pools, or always-on operation.
 
 ```text
 one exact RelayLMConfig
@@ -98,6 +102,8 @@ O1C remains sole owner of bounded queue inventory, eligibility, deterministic se
 
 B3/C2/I1-GC/C1-5 retain mutation, claim, lease, replay-fence, source, and convergence authority. O1D1 adds no global scheduler lock, cross-root lock, durable round journal, or leader election.
 
+O1D2 may add bounded policy hints around one O1D1 round. O1E may add caller-invoked cancellation, stale recovery, and shutdown controls around one O1D2/O1D1 invocation. O1F may validate the public operational boundary. None of those later slices moves O1D1 into polling, service supervision, or always-on operation.
+
 ## Same-round replay-to-queue rule
 
 A completed replay may publish a new B2 record that the same round's queue lane can observe. The only supported path is:
@@ -170,15 +176,13 @@ scripts/relaylm_o1d1_production_round_security_smoke.py
 
 The workflow also runs O1A/O1B/O1C, Wave 2, O0, I1-GC/I1-GD, B2/B3, C2, config loading, completion-report, compile, and documentation-link regressions.
 
-## Deferred scope
-
-The following remain unimplemented and owned by later phases:
+## Completed downstream and deferred scope
 
 ```text
-O1D2: fairness, retry-time policy, backoff, jitter, pacing
-O1E: stale recovery, cancellation, graceful shutdown, signal handling
-O1F: operational/soak validation
-O2/O3: supervised and broader automatic operation
+O1D2: fairness, retry-time policy, backoff, jitter, pacing      complete
+O1E: stale recovery, cancellation, graceful shutdown controls   complete
+O1F: operational/soak validation                               complete
+O2/O3: supervised and broader automatic operation               planned/unimplemented
 ```
 
-O1D1 completion must not be described as an always-on scheduler, polling service, fairness completion, or automatic production operation completion.
+O1D1 completion must not be described as an always-on scheduler, polling service, fairness completion, recovery/shutdown completion, operational-validation completion, or automatic production operation completion. Repository-wide current O1 status lives in [Project Status](../PROJECT_STATUS.md).

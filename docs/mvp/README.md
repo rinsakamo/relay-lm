@@ -16,6 +16,12 @@ docs/mvp/wave<N>/<slice>_completion_report.md
 
 Each implementation PR creates only its own report. It must not edit this central index, another slice's report, or shared current-state documents merely to mark completion. The wave convergence PR links the merged reports here after verifying the source PRs and merge commits.
 
+### Wave 6 completion reports
+
+- [O1F completion report](wave6/o1f_completion_report.md) — source PR #429, merge `961fff2d935cd764e81e577887328e86363e56d5`.
+
+The O1F report is evidence for validation-only operational hardening over the existing caller-invoked O1E/O1D2/O1D1 stack. It does not implement O2 supervision, O3 always-on operation, polling, sleep, daemon behavior, service supervision, worker pools, or Primary MEM mutation.
+
 ### Wave 5 merged completion reports
 
 W5-INT verifies the source PR numbers, merge commits, and dedicated handoffs for these historical reports:
@@ -24,7 +30,7 @@ W5-INT verifies the source PR numbers, merge commits, and dedicated handoffs for
 - [O1E completion report](wave5/o1e_completion_report.md) — source PR #426, merge `49750ccb693ab6ebca1f5a0947c69c06a4a03d31`.
 - [I-4F completion report](wave5/i4f_completion_report.md) — source PR #427, merge `937718dcb328fda5e3e37bb951b39fc66629f57a`.
 
-The Wave 5 cross-slice convergence record is [Wave 5 Cross-Slice Convergence Audit](../architecture/wave5_cross_slice_convergence_audit.md). W5-INT is in progress until the convergence PR merges.
+The Wave 5 cross-slice convergence record is [Wave 5 Cross-Slice Convergence Audit](../architecture/wave5_cross_slice_convergence_audit.md). W5-INT is merged.
 
 Wave 5 dedicated handoffs:
 
@@ -66,6 +72,7 @@ The cross-slice convergence record is [Wave 3 Cross-Slice Convergence Audit](../
 A completion report is evidence for one PR only. It is not authoritative for repository-wide current status, other slice completion, next-wave readiness, or release/evaluation readiness. Use [the template](IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md) and validate the report with:
 
 ```bash
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/o1f_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/e1_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/o1e_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/i4f_completion_report.md

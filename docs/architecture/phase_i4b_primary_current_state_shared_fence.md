@@ -7,19 +7,21 @@ relaylm_owner: relaymem_soul_lab_integration
 relaylm_update_trigger:
   - Phase I-4B implementation changes
   - Phase I-4C1 and I-4C2 consume the shared fence
+  - Later I-4D/I-4E/I-4F convergence updates the downstream status summary
 relaylm_not_authoritative_for:
   - post-M3e Forget recovery, replay, and tombstone finalization
   - M2 hidden-state exclusion
   - SOUL Lab mutation API or UI
+  - repository-wide current implementation status
 relaylm_current_status_source: ../PROJECT_STATUS.md
 ---
 # Phase I-4B Primary Current State and Shared Mutation Fence
 
-Last reviewed: 2026-06-26 JST
+Last reviewed: 2026-06-27 JST
 
 ## Status
 
-**Complete for the I-4B read-only boundary.**
+**Complete for the I-4B read-only boundary.** Downstream Phase I-4 continuation is also now complete through I-4F, but this handoff remains authoritative only for the I-4B resolver, shared mutation fence, read-only Forget preflight, apply-token validation, and bounded read-only history behavior.
 
 I-4B adds the canonical Primary current-state resolver, preserves the existing
 Phase I-3 per-memory `.lock` path as the shared Correct/Forget mutation fence,
@@ -51,18 +53,25 @@ require canonical unpadded base64url encoding in addition to integrity validatio
 
 ## I-4C1 consumer boundary
 
-I-4C1 now consumes this exact resolver and `.lock` authority. It adds immutable
+I-4C1 consumes this exact resolver and `.lock` authority. It adds immutable
 `relaylm.mem.forget_prepared.v0`, deterministic
 `relaymem.primary_lifecycle_page.v0`, existing M3c/M3d/M3e publication, canonical
 page reread, one-winner Correct/Forget and Forget/Forget concurrency, and
 `hidden / recovery_required / retrieval_eligible=false` resolution. It does not
 change I-4B token semantics or ordinary M2 behavior.
 
-## Remaining work
+## Downstream completion map
 
-- I-4C2: complete for exact prepared resume, forward-only hidden continuation,
-  operation-scoped M3f/M3g convergence, response-loss replay, and tombstone finalization.
-- I-4D: unimplemented ordinary M2/RelayCTX lifecycle exclusion, prior physical
-  revision exclusion, and historical lifecycle projection.
-- I-4E: loopback-only API and SOUL Lab Forget UI.
-- I-4F: full fault/security/fresh-conversation validation.
+The following downstream slices consume I-4B but are not owned by this handoff:
+
+```text
+I-4C1: complete for hidden-successor commit ownership
+I-4C2: complete for exact prepared resume, forward-only hidden continuation,
+       operation-scoped M3f/M3g convergence, response-loss replay, and tombstone finalization
+I-4D:  complete for ordinary M2/RelayCTX lifecycle exclusion, prior physical
+       revision exclusion, and historical lifecycle projection
+I-4E:  complete for loopback-only API and SOUL Lab Forget UI
+I-4F:  complete for full fault/security/fresh-conversation validation
+```
+
+Current repository-wide Phase I-4 status lives in [Project Status](../PROJECT_STATUS.md). This file must not be read as the current authority for the completed downstream I-4 product surface.

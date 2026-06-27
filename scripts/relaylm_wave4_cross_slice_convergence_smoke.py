@@ -39,18 +39,24 @@ CURRENT_REQUIRED = {
         "Wave 4 implementation tracks complete",
         "W4-INT merged",
         "O1D2 bounded scheduler policy/fairness/pacing: complete",
+        "O1E stale recovery/cancellation/shutdown: complete",
+        "O1F operational validation: complete",
         "Phase I-4E loopback Forget API and SOUL Lab UI: complete",
         "I-5A Pin / Unpin contract and read-only preflight: complete",
         "I-7A/B Held Apply / Discard contract and read-only preflight: complete",
     ),
     "docs/architecture/current_target_migration_guide.md": (
         "O1D2 is current implemented as bounded policy wrapper.",
+        "O1E is current implemented as bounded caller-invoked operational controls.",
+        "O1F is current implemented as validation-only operational hardening.",
         "I-4E is current implemented as loopback Forget API/UI.",
         "I-5A is current implemented contract/read-only preflight only.",
         "I-7A/B is current implemented contract/read-only preflight only.",
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
         "O1D2 is current implemented as a bounded policy wrapper",
+        "O1E is current implemented as a bounded caller-invoked operational-control layer.",
+        "O1F is current implemented as validation-only hardening",
         "I-4E is current implemented as loopback Forget API/UI.",
         "I-5A is current implemented contract/read-only preflight only.",
         "I-7A/B is current implemented contract/read-only preflight only.",
@@ -77,8 +83,6 @@ STALE = (
 )
 
 FALSE_COMPLETION = (
-    "O1E stale recovery/cancellation/shutdown: complete",
-    "O1F operational validation: complete",
     "I-5 runtime apply/API/UI/ranking behavior: complete",
     "I-7 runtime apply/discard/API/UI/durable governance evidence: complete",
 )

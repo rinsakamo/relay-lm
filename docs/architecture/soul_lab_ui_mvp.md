@@ -20,6 +20,9 @@ relaylm_related_authority:
   - phase_i2_real_soul_lab_observation.md
   - phase_i3_auditable_primary_mem_correct.md
   - soul_lab_ui_b0_real_home_conversation.md
+  - soul_lab_ui_b1a_lifecycle_visibility.md
+  - phase_i4e_forget_api_ui.md
+  - phase_i4f_forget_validation.md
   - o0_local_one_job_runner.md
   - integration_i1_primary_mem_two_turn_recall.md
 ---
@@ -37,7 +40,7 @@ create or adopt
   -> existing RelayLM memory retrieval and context injection
   -> deferred experience processing
   -> observe formed / held / blocked outcomes in Lab
-  -> explicitly correct or later govern memory
+  -> explicitly correct or govern memory
   -> intervene in Pod only for SOUL-level change
   -> begin a fresh Home conversation
 ```
@@ -57,14 +60,21 @@ UI-A7 loopback-only settings/characters projection: complete
 Phase I-2 real Lab Observation: complete
 Phase I-3 auditable Correct: complete
 UI-B0 real Home conversation: complete
+Phase I-4E loopback Forget API and SOUL Lab UI: complete
+Phase I-4F Forget product validation: complete
+UI-B1A read-only lifecycle and operation visibility: complete
 O0 explicit local one-job runner: complete outside browser authority
 Static UI bundle serving from RelayLM: pending
 Communication peer transport: pending
+Pin/Unpin runtime API/UI/ranking behavior: pending
+Held Apply/Discard runtime API/UI/durable evidence: pending
 RelaySOUL apply / rollback: pending
 TTS/audio/avatar Runtime execution: pending
 ```
 
 UI-B0 replaces the Home mock-only submit path with a bounded client of the existing RelayLM Chat Completions path. Local Preview remains available only through explicit user selection and is never mixed with a real conversation session.
+
+I-4E adds the real Forget API/UI product surface. I-4F validates product completion, fresh conversation exclusion, security, crash/race behavior, and leakage boundaries over the existing I-4 authorities. UI-B1A adds read-only lifecycle and operation visibility. These do not make the browser a mutation authority beyond the explicit loopback contracts.
 
 ## Deployment shape
 
@@ -102,6 +112,9 @@ Lab Observation
 Memory Correct
   explicit revision-fenced memory intervention with audit
 
+Memory Forget
+  explicit token-gated loopback lifecycle governance with audit
+
 Pod
   future intentional RelaySOUL intervention
 ```
@@ -130,7 +143,7 @@ For Home conversation:
 - multiple distinct routes -> `ambiguous_route`,
 - browser code does not choose backend IDs or infer route priority.
 
-For observation and correction, every request remains character and namespace scoped through server-owned projections and exact API contracts.
+For observation, correction, and Forget, every request remains character and namespace scoped through server-owned projections and exact API contracts.
 
 Character switching must abort or invalidate active requests and reject delayed responses, SSE chunks, errors, and finalizers from the prior character.
 
@@ -142,7 +155,7 @@ A built-in Lab Assistant may guide creation, adoption, or persona-source import.
 
 ### Character Selector
 
-The selector changes the browser-active character. Character-specific Home sessions, observation state, memory evidence, and later governance operations remain isolated.
+The selector changes the browser-active character. Character-specific Home sessions, observation state, memory evidence, and governance operations remain isolated.
 
 ### Home — real text conversation connected
 
@@ -195,11 +208,17 @@ Used-memory evidence is the authority for whether durable memory entered the bac
 
 Phase I-3 provides read-only preflight, bounded semantic diff, short-lived confirmation token, revision-fenced apply, immutable successor publication, index/log convergence, durable audit receipt, and later corrected M2 retrieval.
 
-Forget, Pin, Merge, Held Apply/Discard, Secondary MEM, and RelaySOUL mutation remain disabled or preview-only until their dedicated phases.
+### Memory Forget — real mutation connected
+
+Phase I-4E provides loopback-only Forget preflight, confirmation, apply, receipt/history, and SOUL Lab UI behavior over the existing I-4B/I-4C1/I-4C2/I-4D authority chain. Phase I-4F validates the product completion boundary. Forget does not provide restore, unhide, purge, batch mutation, Pin/Unpin runtime apply, Held Apply/Discard runtime behavior, or RelaySOUL mutation.
+
+### Pin / Held / Merge previews
+
+Pin/Unpin runtime behavior, Held Apply/Discard runtime governance, and Merge/Supersession remain separate future implementation work unless explicitly pulled into MVP later. UI labels must not imply those actions are active apply paths before their dedicated phases land.
 
 ### Pod / SOUL Intervention
 
-Pod remains the intentional SOUL-level concept. Candidate comparison, Hold, Discard, Apply, and Rollback are previews only. No RelaySOUL mutation is implied by UI-B0.
+Pod remains the intentional SOUL-level concept. Candidate comparison, Hold, Discard, Apply, and Rollback are previews only. No RelaySOUL mutation is implied by UI-B0, I-4E, I-4F, or UI-B1A.
 
 ### Settings / Runtime Boundary
 
@@ -235,7 +254,7 @@ Conversation transcripts are process-local and are not persisted to `localStorag
 
 ## Security
 
-Lab management, observation, and correction APIs remain loopback protected according to their dedicated contracts. Host, Origin, forwarded headers, browser claims, and query parameters are not locality proof.
+Lab management, observation, correction, and Forget APIs remain loopback protected according to their dedicated contracts. Host, Origin, forwarded headers, browser claims, and query parameters are not locality proof.
 
 Core `/v1/chat/completions` behavior is unchanged. UI-B0 uses same-origin fetch with `credentials: "same-origin"`, `cache: "no-store"`, and `AbortSignal`.
 
@@ -255,7 +274,7 @@ npm run build
 
 The UI-B0 smoke verifies standard request shape, no authority-bearing extra fields, non-stream validation, SSE chunk/UTF-8 boundaries, role-only and empty deltas, `[DONE]`, finish reasons, abort, malformed/truncated/oversized streams, route ambiguity, source/session separation, reset behavior, and stale-generation rejection.
 
-Repository regressions include Phase I-1, Phase I-2, Phase I-3, documentation boundary, and OpenWebUI/LM Studio proxy/configuration smokes.
+Repository regressions include Phase I-1, Phase I-2, Phase I-3, Phase I-4E/I-4F, UI-B1A, documentation boundary, and OpenWebUI/LM Studio proxy/configuration smokes.
 
 ## Current completion boundary
 
@@ -264,15 +283,18 @@ SOUL Lab currently proves:
 - one real text conversation path from Home to RelayLM,
 - real observation of durable memory outcomes and used-memory evidence,
 - one real auditable Correct operation,
+- one real explicit Forget API/UI path plus product-completion validation,
+- read-only lifecycle and operation visibility,
 - browser-local fresh-conversation reset distinct from durable M2 memory,
 - explicit separation between real runtime and preview data.
 
 It does not prove:
 
 - automatic queue polling, retry scheduling, or worker supervision,
-- I1-G pre-enqueue durability,
 - durable transcripts,
-- Forget/Pin/Merge/Held governance,
+- Pin/Unpin runtime apply/API/UI/ranking behavior,
+- Held Apply/Discard runtime API/UI/durable evidence,
+- Merge/Supersession runtime apply,
 - Secondary MEM consolidation,
 - RelaySOUL apply/rollback,
 - static bundle serving,
@@ -280,4 +302,4 @@ It does not prove:
 - TTS/audio/avatar/Live2D/ASR,
 - public or remote binding.
 
-For the first E1 evaluation, UI-B0 is combined with the completed O0 explicit one-job runner. The loop remains operator-driven; O1 automatic polling/retry scheduling and O2 supervision remain separate operations slices.
+For the first E1 evaluation, UI-B0 is combined with the completed O0 explicit one-job runner and the completed O1D1/O1D2/O1E/O1F caller-invoked local scheduler boundary. The loop remains operator-driven unless a later O2/O3 phase explicitly proves supervised or always-on operation is required.
