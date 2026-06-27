@@ -22,7 +22,6 @@ def require_any(text: str, *alternatives: str) -> None:
 def main() -> None:
     b0 = read("docs/architecture/phase6b0_relayslp_durable_queue_contract.md")
     current = read("docs/architecture/relaymem_slp_current_target.md")
-    plan = read("docs/architecture/pipeline_implementation_plan.md")
     status = read("docs/PROJECT_STATUS.md")
     b1 = read("relaylm/relaymem_slp_dispatch_preflight.py")
     b2 = read("relaylm/relaymem_slp_durable_enqueue.py")
@@ -45,28 +44,17 @@ def main() -> None:
         "durably enqueued jobs",
     )
     require(
-        plan,
-        "Phase 6-C1-0 through C1-5 are complete",
-        "Phase 6-C2 one-job claim/rehydrate/execute adapter is complete",
-    )
-    require_any(
-        plan,
-        "B0-B3: complete",
-        "B0 through B3: complete",
-        "B2 atomic durable enqueue: complete",
-    )
-    require_any(
-        plan,
-        "B0-B3: complete",
-        "B0 through B3: complete",
-        "B3 queue lifecycle helpers: complete",
-    )
-    require(
         status,
         "Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete",
+        "B0-B3 durable enqueue and fenced lifecycle",
         "C2 one-job claim/rehydrate/execute adapter: complete",
         "I1 next-turn Primary MEM recall: complete",
         "character and namespace isolation: complete",
+    )
+    require_any(
+        status,
+        "B0-B3 durable enqueue and fenced lifecycle",
+        "B3 lifecycle: complete",
     )
     require(b1, "relaymem.slp_dispatch_preflight.v0", "relaymem.slp_durable_job.v0")
     require(b2, "relaymem.slp_durable_enqueue.v0", "exact_b1_preflight_result_required")
