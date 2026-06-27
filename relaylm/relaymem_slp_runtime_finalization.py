@@ -261,6 +261,7 @@ def run_relaymem_slp_runtime_enqueue_after_response(
             config=config,
             route=pipeline_context.route,
             payload=pipeline_context.original_payload,
+            headers=pipeline_context.request_headers,
         )
         admission_node = build_trusted_home_scene_admission_node_result(
             admission_decision
