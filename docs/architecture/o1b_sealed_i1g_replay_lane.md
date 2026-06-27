@@ -37,7 +37,7 @@ Last reviewed: 2026-06-27 JST
 
 ## Status and authority
 
-**Production replay-lane adapter complete.** O1C queue-lane adapter, O1D1 one production round, O1D2 scheduling policy, O1E recovery/shutdown controls, and O1F operational validation are also complete at their bounded caller-invoked boundaries. O2 supervision and O3 always-on service operation remain planned/unimplemented.
+**Production replay-lane adapter complete.** O1C queue-lane adapter, O1D1 one production round, O1D2 bounded policy, O1E operational controls, and O1F operational validation are also complete at their bounded caller-invoked boundaries. O2 supervision and O3 always-on service operation remain planned/unimplemented.
 
 O1B owns exactly one bounded replay-lane opportunity:
 
