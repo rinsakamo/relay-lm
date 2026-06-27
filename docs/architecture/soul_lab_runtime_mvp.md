@@ -50,7 +50,7 @@ RelayLM Core request and memory runtime
   -> strict browser validation
 ```
 
-None of these text-first boundaries implements the Runtime MVP adapter layer. Observation receipts and lifecycle overlays are secondary read-model evidence only; they are not TTS, audio, avatar, scheduling, or durable character-state events.
+Phase I-2 does not implement the Runtime MVP adapter layer. None of these text-first boundaries implements the Runtime MVP adapter layer. Observation receipts and lifecycle overlays are secondary read-model evidence only; they are not TTS, audio, avatar, scheduling, or durable character-state events.
 
 The canonical management/observation ASGI ownership is `relaylm.soul_lab_app`. It preserves Core route behavior while adding local-only Lab reads and explicit user-operation surfaces. Observation capture is best-effort and cannot fail a visible response, roll back Primary MEM, change B3 terminal state, or authorize runtime execution.
 
@@ -78,41 +78,11 @@ Phase 5.5 closes the RelayLM Core side of stream safety and TTS handoff preparat
 
 ## Ownership boundary
 
-RelayLM Core owns:
+RelayLM Core owns safe visible stream approval, visible/internal output separation, TTS-safe segmentation hints, runtime-private TTS adapter handoff plans, runtime-private adapter-facing transport envelopes, Return-side RelayEMO engine-neutral hints, RelayRUN emission decisions, recovery state, duplicate-emission prevention metadata, and content-free diagnostics and adapter telemetry projections.
 
-- safe visible stream approval;
-- visible/internal output separation;
-- TTS-safe segmentation hints;
-- runtime-private TTS adapter handoff plans;
-- runtime-private adapter-facing transport envelopes;
-- Return-side RelayEMO engine-neutral hints;
-- RelayRUN emission decisions, recovery state, and duplicate-emission prevention metadata;
-- content-free diagnostics and adapter telemetry projections.
+The text-first SOUL Lab management app owns loopback-only settings and character projections, loopback-only observation and lifecycle reads, exact browser-facing schemas, character/namespace-scoped read projection, explicit separation of real data and local preview data, and no adapter execution.
 
-The text-first SOUL Lab management app owns:
-
-- loopback-only settings and character projections;
-- loopback-only observation and lifecycle reads;
-- exact browser-facing schemas;
-- character/namespace-scoped read projection;
-- explicit separation of real data and local preview data;
-- no adapter execution.
-
-SOUL Lab Runtime MVP owns:
-
-- adapter bridge consumption of RelayLM runtime-private handoff metadata;
-- concrete TTS adapter mapping and execution;
-- audio queueing;
-- speech interruption and cancellation;
-- caption/voice timing coordination;
-- runtime-private audio-feature or viseme extraction when used for lip-sync;
-- Live2D or avatar expression mapping;
-- avatar motion scheduling;
-- lip-sync timing when supported;
-- mouth-state smoothing and audio/avatar clock synchronization;
-- blink, gaze, idle-motion, and render-frame scheduling;
-- runtime preview, calibration, and mapping UI;
-- adapter failure handling and user-facing runtime status.
+SOUL Lab Runtime MVP owns adapter bridge consumption of RelayLM runtime-private handoff metadata, concrete TTS adapter mapping and execution, audio queueing, speech interruption and cancellation, caption/voice timing coordination, runtime-private audio-feature or viseme extraction when used for lip-sync, Live2D or avatar expression mapping, avatar motion scheduling, lip-sync timing when supported, mouth-state smoothing and audio/avatar clock synchronization, blink/gaze/idle-motion/render-frame scheduling, runtime preview/calibration/mapping UI, and adapter failure handling.
 
 RelayLM Core and Phase I-2 observation must not directly call TTS engines, Live2D runtimes, avatar motion systems, audio playback queues, or OBS/streaming integrations.
 
@@ -200,20 +170,7 @@ Observation receipt failure is different: it affects only later Lab inspection a
 
 ## Non-goals
 
-SOUL Lab Runtime MVP does not implement:
-
-- new RelayLM Core semantic rewriting;
-- RelaySOUL automatic mutation;
-- universal content moderation;
-- ASR ownership;
-- OBS or public streaming integration;
-- multi-avatar rendering;
-- cloud sync;
-- frontend-independent always-on background communication;
-- avatar asset authoring workflows;
-- a common engine-specific mouth-tracking asset format;
-- RelayLM-side audio analysis or viseme extraction;
-- engine-specific configuration as RelayLM architecture authority.
+SOUL Lab Runtime MVP does not implement new RelayLM Core semantic rewriting, RelaySOUL automatic mutation, universal content moderation, ASR ownership, OBS or public streaming integration, multi-avatar rendering, cloud sync, frontend-independent always-on background communication, avatar asset authoring workflows, a common engine-specific mouth-tracking asset format, RelayLM-side audio analysis or viseme extraction, or engine-specific configuration as RelayLM architecture authority.
 
 Text-first Lab slices additionally do not complete TTS/audio/avatar adapter delivery or execution.
 
