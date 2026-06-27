@@ -123,4 +123,4 @@ These are target-only. Experimental SOUL replacement is post-MVP, non-destructiv
 - I-4D owns retrieval-only lifecycle exclusion and historical lifecycle overlay.
 - O1D1 owns accepted gates and one bounded `replay -> queue` production round, then returns without sleep.
 - O1D2/O1E/O1F remain scheduling policy, recovery/shutdown, and operational validation.
-- W3-INT complete only after its PR is merged; Wave 4 not open while W3-INT is unmerged.
+- W3-INT is merged; Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs.
