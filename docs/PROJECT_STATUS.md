@@ -21,6 +21,7 @@ relaylm_related_authority:
   - docs/architecture/project_execution_plan.md
   - docs/architecture/current_target_migration_guide.md
   - docs/architecture/e1_evaluation_consolidation.md
+  - docs/architecture/phase_i4f_forget_validation.md
   - docs/architecture/wave4_cross_slice_convergence_audit.md
   - docs/architecture/wave3_cross_slice_convergence_audit.md
   - docs/architecture/phase_i4e_forget_api_ui.md
@@ -40,6 +41,8 @@ This page is the concise current-state view. When documents disagree:
 4. Dedicated current contracts and handoffs own exact bounded behavior.
 5. [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) owns compatibility interpretation.
 6. `docs/mvp/` and archived documents are historical evidence only.
+
+This page owns current implementation status and active caveats. [Project Execution Plan](architecture/project_execution_plan.md) owns MVP boundary, dependency sequencing, and roadmap ordering.
 
 ## Current implementation position
 
@@ -73,8 +76,8 @@ Phase I-4C1 hidden-successor commit: complete
 Phase I-4C2 prepared recovery / operation-scoped M3f-M3g / tombstone finalization: complete
 Phase I-4D ordinary retrieval lifecycle exclusion: complete
 Phase I-4E loopback Forget API and SOUL Lab UI: complete
-Phase I-4F full Forget validation: unimplemented
-Phase I-4 overall: in progress
+Phase I-4F full Forget validation: complete
+Phase I-4 overall: complete
 
 I-5A Pin / Unpin contract and read-only preflight: complete
 I-5 runtime apply/API/UI/ranking behavior: unimplemented
@@ -142,16 +145,15 @@ Implemented governance boundaries now include:
 - I-4C2 exact prepared resume, operation-scoped M3f/M3g convergence, tombstone finalization, and exact replay;
 - I-4D ordinary M2/RelayCTX lifecycle and prior-revision exclusion plus read-only historical lifecycle projection;
 - I-4E loopback-only Forget API and SOUL Lab UI;
+- I-4F crash/race/security/fresh-conversation validation;
 - I-5A Pin / Unpin contract and read-only preflight;
 - I-7A/B Held Apply / Discard contract and read-only preflight.
 
-I-4E preserves the I-4B/I-4C1/I-4C2/I-4D authorities. It adds the loopback product surface only. It does not add restore, purge, unhide, repair, automatic recovery control, retrieval-filtering changes, M2 ranking changes, snippet changes, queue/scheduler/worker durability changes, or I-4F validation.
+I-4E preserves the I-4B/I-4C1/I-4C2/I-4D authorities. It adds the loopback product surface only. It does not add restore, purge, unhide, repair, automatic recovery control, retrieval-filtering changes, M2 ranking changes, snippet changes, or queue/scheduler/worker durability changes.
 
-Forget is not product-complete until:
+Forget product-complete means one real current active Primary MEM can be hidden through the loopback/SOUL Lab API/UI surface, with explicit token confirmation, bounded receipt/history/lifecycle visibility, restart-safe recovery, fresh-process reread, fresh ordinary conversation exclusion, stale-browser fencing, multi-scope isolation, and no private-content leakage.
 
-```text
-I-4F crash/race/security/fresh-conversation validation
-```
+Forget product-complete does not mean restore, unhide, purge, physical deletion, batch Forget, Secondary MEM consolidation, RelaySOUL mutation, Pin / Unpin runtime behavior, Held Apply / Discard runtime behavior, scheduler/worker changes, or direct Home-origin Primary MEM formation.
 
 I-5A is complete only for Pin / Unpin contract and read-only preflight. It does not implement Pin apply, Unpin apply, SOUL Lab API/UI, durable Pin state, M2 ranking changes, hidden-memory retrieval, semantic content mutation, physical deletion, queue/worker/scheduler changes, or durable-finalization changes.
 
@@ -170,10 +172,9 @@ Direct Home-origin formation remains unproven because UI-B0 sends standard Chat 
 ## Immediate dependency-first work
 
 ```text
-Post-Wave-4 next candidates:
+Post-I-4F next candidates:
   O1E stale recovery/cancellation/shutdown
   O1F operational validation
-  I-4F full Forget validation
   I-5B or Pin/Unpin runtime apply/API/UI/ranking work, if defined
   I-7C or Held Apply/Discard runtime/API/UI/durable evidence work, if defined
   E1-R1 trusted Home scene-admission path
@@ -183,11 +184,11 @@ Post-Wave-4 next candidates:
   O2/O3 only after O1E/O1F or explicit MVP need
 ```
 
-The Wave 4 implementation audit is [Wave 4 Cross-Slice Convergence Audit](architecture/wave4_cross_slice_convergence_audit.md). The E1 consolidation record is [E1 MVP Evaluation Evidence Consolidation](architecture/e1_evaluation_consolidation.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
+The Wave 4 implementation audit is [Wave 4 Cross-Slice Convergence Audit](architecture/wave4_cross_slice_convergence_audit.md). The E1 consolidation record is [E1 MVP Evaluation Evidence Consolidation](architecture/e1_evaluation_consolidation.md). The I-4F validation handoff is [Phase I-4F Forget Validation](architecture/phase_i4f_forget_validation.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 
 ## Safe defaults
 
-Current mutation, worker, durable-finalization, retention, scheduler-related paths, and E1 evaluation paths remain default-off or docs-only. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1D1 accepts exact scheduler gates but runs only one caller-invoked round and returns without sleep. O1D2 returns bounded policy hints only and does not sleep or schedule another round by itself. I-4E adds a loopback product surface but preserves I-4B/I-4C1/I-4C2/I-4D authority boundaries. E1 adds no runtime behavior changes.
+Current mutation, worker, durable-finalization, retention, scheduler-related paths, and E1 evaluation paths remain default-off or docs-only. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1D1 accepts exact scheduler gates but runs only one caller-invoked round and returns without sleep. O1D2 returns bounded policy hints only and does not sleep or schedule another round by itself. I-4E/I-4F preserve I-4B/I-4C1/I-4C2/I-4D authority boundaries. E1 adds no runtime behavior changes.
 
 ## Not yet implemented
 
@@ -196,7 +197,6 @@ Current mutation, worker, durable-finalization, retention, scheduler-related pat
 - speaker-provenance-safe Primary MEM summary formation;
 - strict evidence-grounded recall response generation;
 - O1E recovery/shutdown, O1F validation, O2, and O3;
-- I-4F validation;
 - restore/unhide or physical purge;
 - Pin / Unpin runtime apply, API/UI, durable Pin state, and M2 ranking behavior;
 - Held Apply / Discard runtime, API/UI, and durable governance evidence;
