@@ -190,8 +190,9 @@ def check_shared_docs() -> None:
     require(
         "docs/architecture/project_execution_plan.md",
         "This document is the single plan and roadmap authority for RelayLM execution.",
-        "Wave 4 follow-up queue",
-        "O1D2 ordering/fairness/retry-time/backoff/jitter/pacing",
+        "### Wave 4 completed",
+        "### Post-Wave-4 next candidates",
+        "O1D2 bounded scheduler policy/fairness/pacing",
         "I-4E loopback API and SOUL Lab Forget UI",
     )
     require(
@@ -206,13 +207,13 @@ def check_shared_docs() -> None:
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
         "[Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.",
         "Current runtime and implementation status is intentionally not summarized here.",
-        "W3-INT is merged",
+        "Wave 4 implementation evidence",
     )
     require(
         "docs/architecture/README.md",
         "[Project Execution Plan](project_execution_plan.md)",
         "Wave 3 Cross-Slice Convergence Audit",
-        "W3-INT is merged",
+        "Wave 4 Cross-Slice Convergence Audit",
     )
     require(
         "docs/architecture/pipeline_implementation_plan.md",
