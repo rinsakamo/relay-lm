@@ -20,16 +20,15 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 
 ## Start here
 
-- [Current project status](PROJECT_STATUS.md) — current implementation boundary after Wave 3: I1-G overall complete, I-4D complete while Phase I-4 remains in progress, and O1D1 complete while O1 remains in progress.
+- [Current project status](PROJECT_STATUS.md) — the single current implementation status authority.
+- [Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
-- [Pipeline implementation plan](architecture/pipeline_implementation_plan.md) — detailed implementation status and dependency-first sequencing.
-- [Post-I3 evaluation and work roadmap](architecture/post_i3_evaluation_work_roadmap.md) — I-4 through I-9, durability, operations, UI, and evaluation gates.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
 - [E1 local runtime evaluation](architecture/e1_local_runtime_evaluation_2026_06_25.md) — workstation evidence and known product gaps.
 - [MVP evidence index](mvp/README.md) — historical snapshots and per-PR implementation completion reports.
 
-## Current product-critical boundaries
+## Product-critical boundaries
 
 - [Phase 6 I1-B runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md)
 - [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md)
@@ -56,18 +55,11 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Wave 3 Cross-Slice Convergence Audit](architecture/wave3_cross_slice_convergence_audit.md)
 - [SOUL Lab UI-B0 real Home conversation](architecture/soul_lab_ui_b0_real_home_conversation.md)
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
-- [RelayMEM MVP implementation plan](architecture/relaymem_mvp_implementation_plan.md)
 - [Architecture documentation index](architecture/README.md)
 
-## Current status summary
+## Current status pointer
 
-Phase 6 is complete through B3, C1-0 through C1-5, C2, and the operator-invoked O0 runner. I1-GA through I1-GE are complete for durable-finalization: explicit apply mode publishes sealed restart evidence before protected release; one caller-selected sealed record converges through exact C1-5, exact B2, and an immutable content-free completion marker; bounded maintenance provides retention/orphan isolation/marker-last cleanup; and I1-GE proves real process-exit/fresh-restart behavior across the production boundaries. I1-G completion does not imply B3 terminal success, C2 execution, worker execution, Primary MEM formation, semantic quality, retrieval use, or automatic scheduling.
-
-O1A is complete as the pure replay-before-queue round and idle contract. O1B is complete for one bounded sealed I1-G inventory, canonical selected-record reread, and at most one existing I1-GC delegation. O1C is complete for one bounded B2/B3 inventory, due/future classification, canonical reread, server-owned scope resolution, and at most one existing C2 delegation. O1D1 is complete for accepted scheduler gates plus one bounded production round, invoking replay then queue at most once each and returning without sleep. O1D2 fairness/retry-time/backoff/jitter/pacing, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented. No recurring scheduler loop or automatic continuous processing is complete.
-
-Phase I-2 observation, Phase I-3 Correct, and UI-B0 real Home conversation are complete. Phase I-4A defines the target Forget lifecycle. I-4B completes the read-only resolver/shared-fence/preflight-token-history boundary. Phase I-4C1 is complete for exact token/reason revalidation, immutable prepared evidence, deterministic hidden successor, and M3e publication. Phase I-4C2 is complete for exact prepared resume, operation-scoped M3f/M3g convergence, response-loss replay, and tombstone finalization. I-4D ordinary M2/RelayCTX lifecycle and prior-revision exclusion plus read-only historical lifecycle projection is complete. I-4E API/UI and I-4F production validation remain incomplete, so Phase I-4 remains in progress.
-
-The first E1 workstation result proves explicit trusted-scene formation through O0 and separate real Home recall. It does not prove direct Home-origin formation or automatic scheduling.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, W3-INT is merged and Wave 4 planning uses [Project execution plan](architecture/project_execution_plan.md) plus the frozen [Wave 3 cross-slice convergence audit](architecture/wave3_cross_slice_convergence_audit.md).
 
 ## Target architecture and post-MVP design
 
@@ -79,15 +71,17 @@ These documents are target architecture only. Experimental SOUL replacement is e
 
 ## Canonical precedence
 
-1. `pipeline_responsibility_design.md` owns component responsibility and canonical target order.
-2. `pipeline_implementation_plan.md` owns implementation status and sequencing.
-3. Dedicated current contracts own exact bounded behavior.
-4. `current_target_migration_guide.md` owns current/target/compatibility interpretation.
-5. `docs/mvp/` and `docs/architecture/archive/` are historical evidence.
+1. `docs/PROJECT_STATUS.md` owns current implementation status and active caveats.
+2. `architecture/project_execution_plan.md` owns MVP boundary, dependency sequencing, and roadmap ordering.
+3. `pipeline_responsibility_design.md` owns component responsibility and canonical target order.
+4. Dedicated current contracts own exact bounded behavior.
+5. `current_target_migration_guide.md` owns current/target/compatibility interpretation.
+6. `docs/mvp/` and `docs/architecture/archive/` are historical evidence.
 
 ## Placement rules
 
 - repository-wide current status -> `docs/PROJECT_STATUS.md`
+- MVP execution plan and post-MVP roadmap -> `docs/architecture/project_execution_plan.md`
 - active and completed bounded handoffs -> `docs/architecture/`
 - schemas and contracts -> `docs/contracts/`
 - RelaySOUL governance -> `docs/relaysoul/`
@@ -97,16 +91,12 @@ These documents are target architecture only. Experimental SOUL replacement is e
 
 ## Parallel implementation documentation rule
 
-For a declared parallel wave, each implementation PR must update only its code, tests/workflows, implementation-coupled exact schema/config docs, a unique slice-owned handoff, and one unique `docs/mvp/wave*/<slice>_completion_report.md`. It must not edit the shared status, shared plans, shared indexes, cross-slice current-target documents, previous-wave audit, or repository-wide documentation-boundary smoke merely to mark the slice complete.
+For a declared parallel wave, each implementation PR must update only its code, tests/workflows, implementation-coupled exact schema/config docs, a unique slice-owned handoff, and one unique `docs/mvp/wave*/<slice>_completion_report.md`. It must not edit the shared status, execution plan, indexes, cross-slice current-target documents, previous-wave audit, or repository-wide documentation-boundary smoke merely to mark the slice complete.
 
-After the parallel PRs merge, the wave convergence thread updates Project Status, shared implementation plans, both documentation indexes, the post-phase roadmap, relevant current/target documents, completion-report links, and repository-wide documentation smoke in one PR. The next wave and release/evaluation gate remain closed until that convergence PR is green and merged.
+After the parallel PRs merge, the wave convergence thread updates Project Status, Project Execution Plan, both documentation indexes, relevant current/target documents, completion-report links, and repository-wide documentation smoke in one PR. The next wave and release/evaluation gate remain closed until that convergence PR is green and merged.
 
 For a non-parallel slice without a reserved convergence thread, the implementation PR may still update all affected current documents atomically. The authoritative rules and reserved shared-file list are in [Documentation Model](DOCUMENTATION_MODEL.md).
 
 ## Wave 3 integrated boundary
 
-- I1-GA through I1-GE are complete; I1-G overall is complete only for sealed durable-finalization evidence through exact C1-5/B2 correlation, durable completion, retention/isolation lifecycle, and crash-at-every-boundary validation.
-- I-4D is complete for ordinary M2/RelayCTX lifecycle and prior-revision exclusion plus read-only historical lifecycle projection; I-4E and I-4F remain unimplemented.
-- O1D1 is complete for accepted scheduler gates plus one bounded `replay -> queue` production round, then returns without sleep; O1D2/O1E/O1F remain scheduling policy, recovery/shutdown, and operational validation.
-- W3-INT is merged; Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs.
-- The W3-INT authority map and frozen Wave 4 inputs are in [Wave 3 cross-slice convergence audit](architecture/wave3_cross_slice_convergence_audit.md).
+The W3-INT authority map and frozen Wave 4 inputs are in [Wave 3 cross-slice convergence audit](architecture/wave3_cross_slice_convergence_audit.md). W3-INT is merged; Wave 4 follow-up planning may use that frozen authority map and [Project execution plan](architecture/project_execution_plan.md).

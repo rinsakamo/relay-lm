@@ -185,6 +185,14 @@ def check_shared_docs() -> None:
         "O1 overall: in progress",
         "Wave 3 implementation tracks complete",
         "W3-INT merged",
+        "This page owns current implementation status and active caveats.",
+    )
+    require(
+        "docs/architecture/project_execution_plan.md",
+        "This document is the single plan and roadmap authority for RelayLM execution.",
+        "Wave 4 follow-up queue",
+        "O1D2 ordering/fairness/retry-time/backoff/jitter/pacing",
+        "I-4E loopback API and SOUL Lab Forget UI",
     )
     require(
         "docs/mvp/README.md",
@@ -195,29 +203,28 @@ def check_shared_docs() -> None:
     )
     require(
         "docs/README.md",
-        "I1-GA through I1-GE are complete",
-        "O1D1 is complete for accepted scheduler gates plus one bounded production round",
-        "I-4D ordinary M2/RelayCTX lifecycle and prior-revision exclusion plus read-only historical lifecycle projection is complete",
+        "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
+        "[Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.",
+        "Current runtime and implementation status is intentionally not summarized here.",
         "W3-INT is merged",
     )
     require(
         "docs/architecture/README.md",
-        "I1-GE Durable-finalization Crash Validation",
+        "[Project Execution Plan](project_execution_plan.md)",
         "Wave 3 Cross-Slice Convergence Audit",
         "W3-INT is merged",
     )
     require(
         "docs/architecture/pipeline_implementation_plan.md",
-        "I1-G overall: complete",
-        "Phase I-4 overall: in progress",
-        "O1D1 accepted gates and one production round: complete",
-        "W3-INT merged",
+        "relaylm_doc_type: redirect_stub",
+        "This file is a compatibility stub.",
+        "Do not add new phase status, Wave status, or roadmap sections here.",
     )
     require(
         "docs/architecture/post_i3_evaluation_work_roadmap.md",
-        "I1-GA through I1-GE",
-        "I-4E, I-4F, O1D2, O1E, and O1F remain incomplete",
-        "W3-INT is merged",
+        "relaylm_doc_type: redirect_stub",
+        "This file is a compatibility stub.",
+        "Do not add new current-state, next-wave, or post-I3 roadmap sections here.",
     )
     require(
         "docs/architecture/wave3_cross_slice_convergence_audit.md",

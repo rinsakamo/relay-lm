@@ -12,13 +12,13 @@ relaylm_update_trigger:
   - active integration milestone changes state
 relaylm_not_authoritative_for:
   - component responsibility and canonical target order
+  - MVP boundary and roadmap sequencing
   - exact schema details
   - historical implementation evidence
 relaylm_related_authority:
   - docs/DOCUMENTATION_MODEL.md
   - docs/architecture/pipeline_responsibility_design.md
-  - docs/architecture/pipeline_implementation_plan.md
-  - docs/architecture/post_i3_evaluation_work_roadmap.md
+  - docs/architecture/project_execution_plan.md
   - docs/architecture/current_target_migration_guide.md
   - docs/architecture/wave3_cross_slice_convergence_audit.md
   - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
@@ -36,10 +36,11 @@ Last reviewed: 2026-06-27 JST
 This page is the concise current-state view. When documents disagree:
 
 1. [Pipeline Responsibility Design](architecture/pipeline_responsibility_design.md) owns component responsibility and canonical target order.
-2. [Pipeline Implementation Plan](architecture/pipeline_implementation_plan.md) owns implementation status and sequencing.
-3. Dedicated current contracts and handoffs own exact bounded behavior.
-4. [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) owns compatibility interpretation.
-5. `docs/mvp/` and archived documents are historical evidence only.
+2. This page owns current implementation status and active caveats.
+3. [Project Execution Plan](architecture/project_execution_plan.md) owns MVP boundary, dependency sequencing, and roadmap ordering.
+4. Dedicated current contracts and handoffs own exact bounded behavior.
+5. [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) owns compatibility interpretation.
+6. `docs/mvp/` and archived documents are historical evidence only.
 
 ## Current implementation position
 
@@ -228,7 +229,7 @@ Current Wave 4 follow-up work:
   I-7A/B Held Apply / Discard contract/preflight
 ```
 
-The Wave 4 start contracts are frozen in [Wave 3 Cross-Slice Convergence Audit](architecture/wave3_cross_slice_convergence_audit.md) and may be used for current follow-up implementation planning.
+The Wave 4 start contracts are frozen in [Wave 3 Cross-Slice Convergence Audit](architecture/wave3_cross_slice_convergence_audit.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 
 ## Safe defaults
 

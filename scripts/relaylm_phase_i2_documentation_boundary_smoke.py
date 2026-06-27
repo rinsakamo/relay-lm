@@ -32,14 +32,19 @@ def main() -> None:
         "Restart-time one-record replay",
     )
     require_text(
+        "docs/architecture/project_execution_plan.md",
+        "read-only observation of latest runs, formed memory, held or blocked outcomes, and used-memory evidence",
+        "MVP completion criteria",
+    )
+    require_text(
         "docs/architecture/pipeline_implementation_plan.md",
-        "### I1-E / Phase I-2: real SOUL Lab observation — complete",
-        "Observation evidence is read-only",
+        "relaylm_doc_type: redirect_stub",
+        "This file is a compatibility stub.",
     )
     require_text(
         "docs/architecture/relaymem_mvp_implementation_plan.md",
-        "M3i-d real read-only Lab observation: complete as Phase I-2",
-        "observation receipts",
+        "relaylm_doc_type: redirect_stub",
+        "This file is a compatibility stub.",
     )
     require_text(
         "docs/architecture/relaymem_slp_current_target.md",
@@ -79,6 +84,7 @@ def main() -> None:
         "docs/PROJECT_STATUS.md",
         "docs/README.md",
         "docs/architecture/README.md",
+        "docs/architecture/project_execution_plan.md",
         "docs/architecture/pipeline_implementation_plan.md",
         "docs/architecture/relaymem_mvp_implementation_plan.md",
         "docs/architecture/relaymem_slp_current_target.md",

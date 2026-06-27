@@ -16,14 +16,21 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 ---
 # RelayLM Architecture Docs
 
-Use [Documentation index](../README.md) for the complete active map and [Project Status](../PROJECT_STATUS.md) for current implementation state.
+Use [Documentation index](../README.md) for the complete active map, [Project Status](../PROJECT_STATUS.md) for current implementation state, and [Project Execution Plan](project_execution_plan.md) for MVP sequencing and post-MVP roadmap ordering.
 
 ## Canonical authority
 
-1. [Pipeline Responsibility Design](pipeline_responsibility_design.md)
-2. [Pipeline Implementation Plan](pipeline_implementation_plan.md)
-3. Dedicated current contracts and handoffs
-4. [Current / Target / Migration Guide](current_target_migration_guide.md)
+1. [Project Status](../PROJECT_STATUS.md)
+2. [Project Execution Plan](project_execution_plan.md)
+3. [Pipeline Responsibility Design](pipeline_responsibility_design.md)
+4. Dedicated current contracts and handoffs
+5. [Current / Target / Migration Guide](current_target_migration_guide.md)
+
+## Execution and roadmap
+
+- [Project Execution Plan](project_execution_plan.md)
+- [Pipeline Implementation Plan](pipeline_implementation_plan.md) — compatibility stub
+- [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md) — compatibility stub
 
 ## Product-critical Phase 6 and Integration boundaries
 
@@ -61,30 +68,20 @@ Use [Documentation index](../README.md) for the complete active map and [Project
 - [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md)
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [E1 Local Runtime Evaluation](e1_local_runtime_evaluation_2026_06_25.md)
-- [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
-- [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md)
-
-## Current operational alignment
-
-Phase 6 is complete through C1-5 and C2. O0 is the default-off operator-invoked one-job caller. I1-GA defines the fault model, I1-GB publishes bounded restart evidence before protected visible release, I1-GC provides caller-selected one-record convergence through exact C1-5/B2/canonical downstream reread/completion, I1-GD provides bounded retention and isolation cleanup, and I1-GE proves the complete I1-G authority chain across real process exit and fresh restart. I1-G overall is complete only for durable-finalization evidence through completion and retention validation; it does not imply worker execution or Primary MEM formation.
-
-O1A remains the pure replay-before-queue round/idle contract. O1B is complete for one bounded sealed-record replay-lane opportunity, and O1C is complete for one bounded queue-lane opportunity. O1D1 is complete for accepted scheduler gates and one bounded production round that invokes replay then queue at most once each and returns without sleeping. O1D2 fairness/retry/backoff/jitter/pacing, O1E stale recovery/shutdown, O1F operational validation, supervision, and always-on operation remain incomplete.
-
-Phase I-4A defines lifecycle semantics. I-4B implements the read-only resolver/shared-fence boundary. I-4C1 implements hidden-successor commit ownership. I-4C2 implements bounded prepared recovery, operation-scoped M3f/M3g convergence, exact replay, and tombstone finalization. I-4D is complete for ordinary retrieval exclusion and read-only historical lifecycle projection only; I-4E and I-4F own API/UI and full validation. Phase I-4 overall remains in progress.
 
 ## Memory lifecycle
 
 - [Memory Lifecycle Design](memory_lifecycle_design.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
-- [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md)
+- [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — compatibility stub
 - [Phase I-4A Primary MEM Forget / Hide Contract](phase_i4_primary_mem_forget_hide_contract.md)
 - [Phase I-4B Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md)
 - [Phase I-4C1 Primary Forget Hidden-Successor Commit](phase_i4c1_primary_forget_hidden_successor.md)
 - [Phase I-4C2 Primary Forget Recovery and Finalization](phase_i4c2_primary_forget_recovery_finalization.md)
 - [Phase I-4D Primary Retrieval Exclusion](phase_i4d_primary_retrieval_exclusion.md)
 
-The completed observation/correction/hidden-successor/recovery/retrieval-exclusion path does not make Forget product-complete. I-4D is the user-visible semantic commit because ordinary M2 and RelayCTX exclude hidden, prepared, recovery-required, corrupt, ambiguous, unsafe, cross-scope, and prior physical revisions before snippet construction while historical receipts remain immutable. I-4E and I-4F remain required for product API/UI and validation.
+The current Product and RelayMEM status is intentionally not summarized here. Read [Project Status](../PROJECT_STATUS.md) for current state and [Project Execution Plan](project_execution_plan.md) for MVP sequencing.
 
 ## SOUL Lab product layers
 
@@ -119,8 +116,4 @@ These are target-only. Experimental SOUL replacement is post-MVP, non-destructiv
 
 - [Wave 2 cross-slice convergence audit](wave2_cross_slice_convergence_audit.md) remains frozen historical evidence for the Wave 3 start inputs.
 - [Wave 3 cross-slice convergence audit](wave3_cross_slice_convergence_audit.md) records the verified Wave 3 PR inventory, cross-slice authority map, combined security/convergence proof, and frozen Wave 4 inputs.
-- I1-GE is validation-only and adds no durable or replay authority.
-- I-4D owns retrieval-only lifecycle exclusion and historical lifecycle overlay.
-- O1D1 owns accepted gates and one bounded `replay -> queue` production round, then returns without sleep.
-- O1D2/O1E/O1F remain scheduling policy, recovery/shutdown, and operational validation.
-- W3-INT is merged; Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs.
+- W3-INT is merged; Wave 4 follow-up planning may use the frozen W3-INT authority map and [Project Execution Plan](project_execution_plan.md).

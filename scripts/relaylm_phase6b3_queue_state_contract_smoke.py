@@ -29,23 +29,18 @@ def main() -> None:
         "Phase 6-B3 performs default-off, dry-run-first",
         "C2 one-job claim/rehydrate/execute adapter",
     )
-    plan = read("docs/architecture/pipeline_implementation_plan.md")
+    status = read("docs/PROJECT_STATUS.md")
     require(
-        plan,
-        "Phase 6-C1-0 through C1-5 are complete",
-        "Phase 6-C2 one-job claim/rehydrate/execute adapter is complete",
-    )
-    require_any(
-        plan,
-        "B0-B3: complete",
-        "B0 through B3: complete",
-        "B3 queue lifecycle helpers: complete",
-    )
-    require(
-        read("docs/PROJECT_STATUS.md"),
+        status,
+        "Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete",
         "B0-B3 durable enqueue and fenced lifecycle",
         "B3 lifecycle: complete",
         "C2 one-job claim/rehydrate/execute adapter: complete",
+    )
+    require_any(
+        status,
+        "B0-B3 durable enqueue and fenced lifecycle",
+        "B3 lifecycle: complete",
     )
     require(read("relaylm/relaymem_slp_queue_state.py"), "relaymem.slp_queue_transition_request.v0")
     print("Phase 6-B3 queue state contract smoke: ok")
