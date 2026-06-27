@@ -178,6 +178,12 @@ export function HeldGovernancePanel({
         <div className="memory-inspector-boundary-card">
           <strong>{text(language, "適用前の確認", "Review before decision")}</strong>
           <p>status: {ready.status} · reason: {ready.reason_code}</p>
+          <div className="memory-inspector-counts">
+            <div><strong>{String(ready.effects.held_item_adopted_contract)}</strong><small>held_item_adopted_contract</small></div>
+            <div><strong>{String(ready.effects.held_item_discarded_contract)}</strong><small>held_item_discarded_contract</small></div>
+            <div><strong>{String(ready.effects.queue_state_mutated)}</strong><small>queue state mutated</small></div>
+            <div><strong>{String(ready.effects.primary_mem_mutated)}</strong><small>Primary MEM mutated</small></div>
+          </div>
           <ul>
             <li>{text(language, "public receiptはcontent-freeです。", "The public receipt is content-free.")}</li>
             <li>{text(language, "runtime-private evidenceはomittedです。", "Runtime-private evidence is omitted.")}</li>
