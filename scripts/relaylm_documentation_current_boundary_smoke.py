@@ -214,12 +214,9 @@ STALE = tuple(
 )
 
 FROZEN_ALLOWLIST = {
-    "docs/architecture/wave4_cross_slice_convergence_audit.md": (
-        "Phase I-4F full Forget validation: unimplemented",
-        "Phase I-4 overall: in progress",
-        "O1E stale recovery/cancellation/shutdown: unimplemented",
-        "Post-Wave-4 next candidates:",
-    ),
+    "docs/architecture/wave2_cross_slice_convergence_audit.md": STALE,
+    "docs/architecture/wave3_cross_slice_convergence_audit.md": STALE,
+    "docs/architecture/wave4_cross_slice_convergence_audit.md": STALE,
 }
 
 
