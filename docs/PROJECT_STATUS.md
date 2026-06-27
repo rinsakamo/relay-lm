@@ -22,6 +22,7 @@ relaylm_related_authority:
   - docs/architecture/current_target_migration_guide.md
   - docs/architecture/relaymem_slp_current_target.md
   - docs/architecture/o1e_scheduler_operational_controls.md
+  - docs/architecture/o1f_operational_validation.md
   - docs/architecture/e1_evaluation_consolidation.md
   - docs/architecture/phase_i4f_forget_validation.md
   - docs/architecture/wave5_cross_slice_convergence_audit.md
@@ -61,19 +62,19 @@ Scheduler queue lane: O1C one bounded discovery/reread/scope/C2 adapter complete
 O1D1 accepted gates/one-round coordinator: complete
 O1D2 bounded scheduler policy/fairness/pacing: complete
 O1E stale recovery/cancellation/shutdown: complete
-O1F operational validation: unimplemented
-O1 overall: in progress
+O1F operational validation: complete
+O1 overall: complete through validation-only caller-invoked local scheduler boundary
 O2 supervised worker service: planned/unimplemented
 O3 always-on local operation: planned/unimplemented
 
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and scope isolation complete
-SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0, and UI-B1A complete
+SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0, UI-B1A, and I-4E Forget UI complete
 UI-B1A read-only lifecycle visibility: complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete
 E1 evaluation consolidation: complete
 Direct Home-origin formation: not currently proven; trusted scene admission is missing
 
-Phase I-4A Forget / Hide contract: defined target
+Phase I-4A Forget / Hide contract: defined target contract; completed by I-4B through I-4F implementation slices
 Phase I-4B resolver / shared fence / read-only preflight-token-history: complete
 Phase I-4C1 hidden-successor commit: complete
 Phase I-4C2 prepared recovery / operation-scoped M3f-M3g / tombstone finalization: complete
@@ -100,7 +101,8 @@ W3-INT merged
 Wave 4 implementation tracks complete
 W4-INT merged
 Post-Wave-4 / Wave 5 implementation tracks complete
-W5-INT in progress until the convergence PR merges
+W5-INT merged
+O1F validation slice merged after W5-INT
 ```
 
 ## Phase 6 RelaySLP orchestration and O0
@@ -118,13 +120,12 @@ Implemented:
 - O1C one bounded eligible B2/B3 queue-lane discovery and one existing C2 delegation;
 - O1D1 accepted scheduler gates and one production `replay -> queue` round;
 - O1D2 bounded scheduler policy wrapper;
-- O1E bounded caller-invoked operational controls.
+- O1E bounded caller-invoked operational controls;
+- O1F validation-only operational hardening.
 
-B3 lifecycle: complete.
-C1-5 keeps queue records content-free and persists the claim-independent protected capture before queue publication.
+B3 lifecycle: complete. C1-5 keeps queue records content-free and persists the claim-independent protected capture before queue publication.
 
-I1 next-turn Primary MEM recall: complete.
-character and namespace isolation: complete.
+I1 next-turn Primary MEM recall: complete. character and namespace isolation: complete.
 
 ## O1 operations boundary
 
@@ -142,7 +143,9 @@ O1D1 one-round result
 
 O1E is current implemented as a bounded caller-invoked operational-control layer around the existing O1D2/O1D1 stack. One explicit call may check cancellation, optionally orchestrate at most one B3 stale-recovery transition through existing B3 authority, invoke at most one O1D2/O1D1 scheduler round, check cancellation again, and return a bounded content-free projection. O1E does not poll, sleep, loop, daemonize, supervise, create background workers, start timers, or rewrite queue state directly.
 
-O1F owns corruption/concurrency/saturation/restart/leakage/operational validation. O2/O3 remain planned/unimplemented.
+O1F is current implemented as validation-only hardening over the caller-invoked O1E/O1D2/O1D1 stack. It validates corruption, concurrency, saturation/boundedness, restart reread, cancellation/shutdown projection, and leakage boundaries. O1F does not poll, sleep, loop, daemonize, supervise, create a worker pool, or implement O2/O3.
+
+O2/O3 remain planned/unimplemented.
 
 ## RelayMEM Primary persistence and governance
 
@@ -157,8 +160,6 @@ Implemented governance boundaries now include:
 - I-5A Pin / Unpin contract and read-only preflight;
 - I-7A/B Held Apply / Discard contract and read-only preflight.
 
-I-4E preserves the I-4B/I-4C1/I-4C2/I-4D authorities. It adds the loopback product surface only. It does not add restore, purge, unhide, repair, automatic recovery control, retrieval-filtering changes, M2 ranking changes, snippet changes, or queue/scheduler/worker durability changes.
-
 Forget product-complete means one real current active Primary MEM can be hidden through the loopback/SOUL Lab API/UI surface, with explicit token confirmation, bounded receipt/history/lifecycle visibility, restart-safe recovery, fresh-process reread, fresh ordinary conversation exclusion, stale-browser fencing, multi-scope isolation, and no private-content leakage.
 
 Forget product-complete does not mean restore, unhide, purge, physical deletion, batch Forget, Secondary MEM consolidation, RelaySOUL mutation, Pin / Unpin runtime behavior, Held Apply / Discard runtime behavior, scheduler/worker changes, or direct Home-origin Primary MEM formation.
@@ -169,7 +170,7 @@ I-7A/B is complete only for Held Apply / Discard contract and read-only prefligh
 
 ## SOUL Lab and E1 evaluation
 
-UI-B0 real Home conversation is complete. UI-B1A read-only lifecycle and operation visibility is complete. The browser uses server-projected routes and the existing same-origin RelayLM Chat Completions path. It owns no backend, SOUL, namespace, storage-root, queue, worker, scheduler, or mutation authority.
+UI-B0 real Home conversation is complete. UI-B1A read-only lifecycle and operation visibility is complete. I-4E Forget API/UI is complete. The browser uses server-projected routes and the existing same-origin RelayLM Chat Completions path. It owns no backend, SOUL, namespace, storage-root, queue, worker, scheduler, or mutation authority.
 
 E1 evaluation consolidation is complete as a docs/evidence boundary. It records the evidence inventory, direct Home-origin formation decision, character-store bootstrap ergonomics, speaker-provenance quality requirements, evidence-grounded recall quality requirements, and docs-only validation.
 
@@ -180,22 +181,21 @@ Direct Home-origin formation remains unproven because UI-B0 sends standard Chat 
 ## Immediate dependency-first work
 
 ```text
-Post-W5-INT next candidates:
-  O1F operational validation
+Post-O1F next candidates:
   I-5B or Pin/Unpin runtime apply/API/UI/ranking work, if defined
   I-7C or Held Apply/Discard runtime/API/UI/durable evidence work, if defined
   E1-R1 trusted Home scene-admission path
   E1-R2 idempotent character-store bootstrap command
   E1-R3 provenance-preserving Primary MEM formation summary
   E1-R4 retrieval-response grounding and unsupported-detail suppression
-  O2/O3 only after O1F or explicit MVP need
+  O2/O3 only after explicit MVP need
 ```
 
-The Wave 4 implementation audit is [Wave 4 Cross-Slice Convergence Audit](architecture/wave4_cross_slice_convergence_audit.md). The Wave 5 convergence record is [Wave 5 Cross-Slice Convergence Audit](architecture/wave5_cross_slice_convergence_audit.md). The O1E operational-control handoff is [O1E Scheduler Operational Controls](architecture/o1e_scheduler_operational_controls.md). The E1 consolidation record is [E1 MVP Evaluation Evidence Consolidation](architecture/e1_evaluation_consolidation.md). The I-4F validation handoff is [Phase I-4F Forget Validation](architecture/phase_i4f_forget_validation.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
+The Wave 4 implementation audit is [Wave 4 Cross-Slice Convergence Audit](architecture/wave4_cross_slice_convergence_audit.md). The Wave 5 convergence record is [Wave 5 Cross-Slice Convergence Audit](architecture/wave5_cross_slice_convergence_audit.md). The O1E operational-control handoff is [O1E Scheduler Operational Controls](architecture/o1e_scheduler_operational_controls.md). The O1F validation handoff is [O1F Operational Validation](architecture/o1f_operational_validation.md). The E1 consolidation record is [E1 MVP Evaluation Evidence Consolidation](architecture/e1_evaluation_consolidation.md). The I-4F validation handoff is [Phase I-4F Forget Validation](architecture/phase_i4f_forget_validation.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 
 ## Safe defaults
 
-Current mutation, worker, durable-finalization, retention, scheduler-related paths, and E1 evaluation paths remain default-off or docs-only. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1D1 accepts exact scheduler gates but runs only one caller-invoked round and returns without sleep. O1D2 returns bounded policy hints only and does not sleep or schedule another round by itself. O1E returns bounded operational-control projections only and does not loop, poll, sleep, or supervise. I-4E/I-4F preserve I-4B/I-4C1/I-4C2/I-4D authority boundaries. E1 adds no runtime behavior changes.
+Current mutation, worker, durable-finalization, retention, scheduler-related paths, and E1 evaluation paths remain default-off or docs-only. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1D1 accepts exact scheduler gates but runs only one caller-invoked round and returns without sleep. O1D2 returns bounded policy hints only and does not sleep or schedule another round by itself. O1E returns bounded operational-control projections only and does not loop, poll, sleep, or supervise. O1F validates operational edges but does not loop, poll, sleep, supervise, or run always-on. I-4E/I-4F preserve I-4B/I-4C1/I-4C2/I-4D authority boundaries. E1 adds no runtime behavior changes.
 
 ## Not yet implemented
 
@@ -203,7 +203,7 @@ Current mutation, worker, durable-finalization, retention, scheduler-related pat
 - idempotent operator-facing character-store bootstrap;
 - speaker-provenance-safe Primary MEM summary formation;
 - strict evidence-grounded recall response generation;
-- O1F validation, O2, and O3;
+- O2 supervised worker service and O3 always-on local operation;
 - restore/unhide or physical purge;
 - Pin / Unpin runtime apply, API/UI, durable Pin state, and M2 ranking behavior;
 - Held Apply / Discard runtime, API/UI, and durable governance evidence;
@@ -231,7 +231,7 @@ Wave 4 implementation tracks are complete: O1D2, I-4E, UI-B1A, I-5A, and I-7A/B.
 
 ## Wave 5 cross-slice convergence
 
-Post-Wave-4 / Wave 5 implementation tracks are complete: E1 evaluation consolidation, O1E scheduler operational controls, and I-4F Forget product-completion validation. W5-INT records their source PRs, merge commits, completion reports, handoffs, authority map, leakage review, and frozen next inputs. W5-INT is in progress until the convergence PR merges.
+Post-Wave-4 / Wave 5 implementation tracks are complete: E1 evaluation consolidation, O1E scheduler operational controls, and I-4F Forget product-completion validation. W5-INT records their source PRs, merge commits, completion reports, handoffs, authority map, leakage review, and frozen next inputs. W5-INT is merged.
 
 ## E1 evaluation consolidation
 
