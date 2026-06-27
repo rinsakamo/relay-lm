@@ -96,5 +96,5 @@ For the Wave 6 convergence PR:
 
 ## Source pull request
 
-- PR: #429
-- URL: https://github.com/rinsakamo/relay-lm/pull/429
+- PR: #431
+- URL: https://github.com/rinsakamo/relay-lm/pull/431
