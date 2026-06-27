@@ -106,6 +106,8 @@ Wave 4 not open while W3-INT is unmerged
 
 Phase 5-C, Phase 5-D, Phase 5.5, Phase 6 A0-A2, B0-B3, I1-B, C1-0 through C1-5, C2, O0, Phase I-1, Phase I-2, Phase I-3, UI-B0, I-4B, I-4C1, I-4C2, I1-GA through I1-GE, O1A, O1B, O1C, and O1D1 are complete at their bounded production or contract boundaries.
 
+Phase 6-C1-0 through C1-5 are complete. Phase 6-C2 one-job claim/rehydrate/execute adapter is complete.
+
 C2 proves one exact queued record claim/rehydrate/execute integration. O0 supplies an explicit local caller and remains one-shot. O1D1 supplies one production scheduler round and remains one-shot: it does not poll, sleep, recursively launch rounds, supervise, recover stale claims, or implement fairness/backoff/jitter.
 
 ## I1-G durable-finalization track
