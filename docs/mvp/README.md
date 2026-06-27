@@ -14,15 +14,27 @@ Path convention:
 docs/mvp/wave<N>/<slice>_completion_report.md
 ```
 
-Examples for Wave 3:
-
-```text
-docs/mvp/wave3/i1ge_completion_report.md
-docs/mvp/wave3/i4d_completion_report.md
-docs/mvp/wave3/o1d1_completion_report.md
-```
-
 Each implementation PR creates only its own report. It must not edit this central index, another slice's report, or shared current-state documents merely to mark completion. The wave convergence PR links the merged reports here after verifying the source PRs and merge commits.
+
+### Wave 4 merged completion reports
+
+W4-INT verified the source PR numbers, merge commits, and dedicated handoffs for these historical reports:
+
+- [O1D2 completion report](wave4/o1d2_completion_report.md) — source PR #418, merge `49fb43130155826fcc8b2b951d77484ff8ddaddf`.
+- [I-4E completion report](wave4/i4e_completion_report.md) — source PR #420, merge `3e3d2570ecdfcde4c8bfdee06c5607cb6632c133`.
+- [UI-B1A completion report](wave4/ui_b1a_completion_report.md) — source PR #421, merge `5736636da839486140f72c731f18a4a85c39b13c`.
+- [I-5A completion report](wave4/i5a_completion_report.md) — source PR #417, merge `2f8597911774b70f1c001db8332b3dfcc18d23ca`.
+- [I-7A/B completion report](wave4/i7ab_completion_report.md) — source PR #423, merge `5e0f866e959ab2bc5af00e0502b2026f4b52a779`.
+
+The Wave 4 cross-slice convergence record is [Wave 4 Cross-Slice Convergence Audit](../architecture/wave4_cross_slice_convergence_audit.md). W4-INT is complete only after that convergence PR merges.
+
+Wave 4 dedicated handoffs:
+
+- [O1D2 deterministic scheduler policy](../architecture/o1d2_scheduler_policy.md)
+- [Phase I-4E Forget API and SOUL Lab UI](../architecture/phase_i4e_forget_api_ui.md)
+- [SOUL Lab UI-B1A lifecycle visibility](../architecture/soul_lab_ui_b1a_lifecycle_visibility.md)
+- [Phase I-5A Pin / Unpin contract and read-only preflight](../architecture/phase_i5_pin_unpin_contract.md)
+- [Phase I-7A/B Held Apply / Discard contract and read-only preflight](../architecture/phase_i7ab_held_apply_discard_contract.md)
 
 ### Wave 3 merged completion reports
 
@@ -37,7 +49,7 @@ The cross-slice convergence record is [Wave 3 Cross-Slice Convergence Audit](../
 A completion report is evidence for one PR only. It is not authoritative for repository-wide current status, other slice completion, next-wave readiness, or release/evaluation readiness. Use [the template](IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md) and validate the report with:
 
 ```bash
-python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave3/<slice>_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave4/<slice>_completion_report.md
 ```
 
 The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.
