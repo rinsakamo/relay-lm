@@ -147,8 +147,8 @@ assert.match(panelSource, /state\.kind === "apply-loading"/);
 assert.match(panelSource, /requiresCurrentMemoryRefresh/);
 assert.match(panelSource, /code === "stale_revision"/);
 assert.match(panelSource, /code === "operation_conflict"/);
-assert.match(connectedSource, /setSelectedMemory\(\(current\) =>/);
-assert.doesNotMatch(connectedSource, /onApplied=.*setSelectedMemory\(null\)/s);
+assert.match(connectedSource, /setSelected(?:Memory|Operation)\(\(current\) =>/);
+assert.doesNotMatch(connectedSource, /onApplied=.*setSelected(?:Memory|Operation)\(null\)/s);
 assert.match(panelSource, /Confirm apply/);
 assert.doesNotMatch(connectedSource + panelSource, /dangerouslySetInnerHTML|innerHTML/);
 
