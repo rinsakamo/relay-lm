@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current documentation boundary anchors after I-4F completion."""
+"""Validate current documentation boundary anchors after Wave 5 convergence."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,11 +14,13 @@ CURRENT_DOCS = (
     "docs/architecture/current_target_migration_guide.md",
     "docs/architecture/project_execution_plan.md",
     "docs/architecture/relaymem_slp_current_target.md",
+    "docs/architecture/o1e_scheduler_operational_controls.md",
     "docs/architecture/e1_evaluation_consolidation.md",
     "docs/architecture/phase_i4f_forget_validation.md",
     "docs/architecture/wave2_cross_slice_convergence_audit.md",
     "docs/architecture/wave3_cross_slice_convergence_audit.md",
     "docs/architecture/wave4_cross_slice_convergence_audit.md",
+    "docs/architecture/wave5_cross_slice_convergence_audit.md",
 )
 
 REQUIRED = {
@@ -28,7 +30,7 @@ REQUIRED = {
         "I1-GE full production crash validation: complete",
         "I1-G overall: complete",
         "O1D2 bounded scheduler policy/fairness/pacing: complete",
-        "O1E stale recovery/cancellation/shutdown: unimplemented",
+        "O1E stale recovery/cancellation/shutdown: complete",
         "O1F operational validation: unimplemented",
         "O1 overall: in progress",
         "Phase I-4E loopback Forget API and SOUL Lab UI: complete",
@@ -41,25 +43,34 @@ REQUIRED = {
         "I-7 runtime apply/discard/API/UI/durable governance evidence: unimplemented",
         "Wave 4 implementation tracks complete",
         "W4-INT merged",
+        "Post-Wave-4 / Wave 5 implementation tracks complete",
+        "W5-INT in progress until the convergence PR merges",
         "E1 evaluation consolidation: complete",
         "Direct Home-origin formation: not currently proven; trusted scene admission is missing",
-        "Post-I-4F next candidates:",
+        "Post-W5-INT next candidates:",
     ),
     "docs/README.md": (
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
         "[Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.",
         "Current runtime and implementation status is intentionally not summarized here.",
         "O1D2 deterministic scheduler policy",
+        "O1E scheduler operational controls",
+        "Phase I-4F Forget product validation",
         "Phase I-5A Pin / Unpin contract and read-only preflight",
         "Phase I-7A/B Held Apply / Discard contract and read-only preflight",
-        "Wave 4 Cross-Slice Convergence Audit",
+        "Wave 5 Cross-Slice Convergence Audit",
+        "O1E completion report",
+        "I-4F completion report",
         "E1 MVP evaluation consolidation",
         "E1 completion report",
         "The next wave and release/evaluation gate remain closed",
     ),
     "docs/mvp/README.md": (
-        "Wave 5 / E1 evaluation evidence",
+        "Wave 5 merged completion reports",
         "E1 completion report",
+        "O1E completion report",
+        "I-4F completion report",
+        "Wave 5 Cross-Slice Convergence Audit",
         "Wave 4 merged completion reports",
         "O1D2 completion report",
         "I-4E completion report",
@@ -73,15 +84,19 @@ REQUIRED = {
         "The current Product and RelayMEM status is intentionally not summarized here.",
         "[RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — compatibility stub",
         "O1D2 Deterministic Scheduler Policy",
+        "O1E Scheduler Operational Controls",
+        "Phase I-4F Forget Product Validation",
         "Phase I-5A Pin / Unpin Contract",
         "Phase I-7A/B Held Apply / Discard Contract",
+        "Wave 5 Cross-Slice Convergence Audit",
         "Wave 4 Cross-Slice Convergence Audit",
         "E1 MVP Evaluation Evidence Consolidation",
     ),
     "docs/architecture/current_target_migration_guide.md": (
         "MVP sequencing and roadmap ordering live in [Project Execution Plan](project_execution_plan.md)",
         "O1D2 is current implemented as bounded policy wrapper.",
-        "O1E/O1F remain target/unimplemented.",
+        "O1E is current implemented as bounded caller-invoked operational controls.",
+        "O1F remains target/unimplemented.",
         "I-4E is current implemented as loopback Forget API/UI.",
         "I-4F is current implemented as validation-only Forget product completion.",
         "UI-B1A is current implemented read-only visibility.",
@@ -95,10 +110,13 @@ REQUIRED = {
         "MVP boundary",
         "MVP execution lanes",
         "### Wave 4 completed",
+        "### Wave 5 completed",
         "### E1 evaluation consolidation completed",
-        "### Post-Wave-4 next candidates",
+        "### Post-Wave-5 next candidates",
         "O1D2 bounded scheduler policy/fairness/pacing",
+        "O1E stale recovery/cancellation/shutdown complete",
         "I-4E loopback API and SOUL Lab Forget UI",
+        "I-4F crash/race/security/fresh-conversation validation",
         "UI-B1A read-only lifecycle visibility",
         "I-5A Pin / Unpin contract/preflight",
         "I-7A/B Held Apply / Discard contract/preflight",
@@ -111,12 +129,23 @@ REQUIRED = {
         "I1-GA through I1-GE are complete",
         "O1D1 accepts the five exact scheduler gates",
         "O1D2 is current implemented as a bounded policy wrapper",
+        "O1E is current implemented as a bounded caller-invoked operational-control layer.",
+        "O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.",
         "I-4E is current implemented as loopback Forget API/UI.",
         "I-4F is current implemented as validation-only Forget product completion.",
         "UI-B1A is current implemented read-only visibility.",
         "I-5A is current implemented contract/read-only preflight only.",
         "I-7A/B is current implemented contract/read-only preflight only.",
         "E1 evaluation consolidation is current as an evidence/documentation boundary.",
+        "bounded scheduler operational controls            complete as O1E",
+    ),
+    "docs/architecture/o1e_scheduler_operational_controls.md": (
+        "# O1E Scheduler Operational Controls",
+        "Status: implemented in this slice.",
+        "optional one stale-claim recovery orchestration through B3",
+        "Cancellation and shutdown boundary",
+        "Stale recovery",
+        "O1F remains responsible for full corruption, concurrency, saturation, restart, leakage, and operational validation.",
     ),
     "docs/architecture/e1_evaluation_consolidation.md": (
         "# E1 MVP Evaluation Evidence Consolidation",
@@ -139,6 +168,19 @@ REQUIRED = {
         "## Merge commit inventory",
         "## Frozen next inputs",
         "W4-INT is merged",
+    ),
+    "docs/architecture/wave5_cross_slice_convergence_audit.md": (
+        "# Wave 5 Cross-Slice Convergence Audit",
+        "## Source PR inventory",
+        "## Merge commit inventory",
+        "## Converged current boundary",
+        "E1 evaluation consolidation",
+        "O1E scheduler operational controls",
+        "I-4F Forget product-completion validation",
+        "O1E stale recovery/cancellation/shutdown",
+        "I-4F crash/race/security/fresh-conversation validation",
+        "## Frozen next inputs",
+        "W5-INT is in progress until the convergence PR containing this audit is merged.",
     ),
 }
 
@@ -163,6 +205,10 @@ STALE = tuple(
     W4-INT completes only after the convergence PR containing this audit is merged
     Phase I-4F full Forget validation: unimplemented
     Phase I-4 overall: in progress
+    O1E stale recovery/cancellation/shutdown: unimplemented
+    O1E/O1F remain target/unimplemented.
+    Post-I-4F next candidates:
+    Post-Wave-4 next candidates:
     """.splitlines()
     if line.strip()
 )
@@ -171,6 +217,8 @@ FROZEN_ALLOWLIST = {
     "docs/architecture/wave4_cross_slice_convergence_audit.md": (
         "Phase I-4F full Forget validation: unimplemented",
         "Phase I-4 overall: in progress",
+        "O1E stale recovery/cancellation/shutdown: unimplemented",
+        "Post-Wave-4 next candidates:",
     ),
 }
 
