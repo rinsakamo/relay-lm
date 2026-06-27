@@ -1,0 +1,57 @@
+name: E1-R2 character store bootstrap
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/character_store_bootstrap.py"
+      - "relaylm/character_store_bootstrap_cli.py"
+      - "pyproject.toml"
+      - "scripts/relaylm_e1r2_character_store_bootstrap_smoke.py"
+      - "docs/architecture/e1r2_character_store_bootstrap.md"
+      - "docs/mvp/wave6/e1r2_completion_report.md"
+      - "scripts/relaylm_mvp_completion_report_smoke.py"
+      - "scripts/relaylm_mvp_completion_report_pr_link_smoke.py"
+      - "scripts/relaylm_docs_link_check.py"
+      - ".github/workflows/e1r2-character-store-bootstrap.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/character_store_bootstrap.py"
+      - "relaylm/character_store_bootstrap_cli.py"
+      - "pyproject.toml"
+      - "scripts/relaylm_e1r2_character_store_bootstrap_smoke.py"
+      - "docs/architecture/e1r2_character_store_bootstrap.md"
+      - "docs/mvp/wave6/e1r2_completion_report.md"
+      - "scripts/relaylm_mvp_completion_report_smoke.py"
+      - "scripts/relaylm_mvp_completion_report_pr_link_smoke.py"
+      - "scripts/relaylm_docs_link_check.py"
+      - ".github/workflows/e1r2-character-store-bootstrap.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e1r2-character-store-bootstrap-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Compile repository Python
+        run: python -m compileall -q relaylm scripts
+      - name: Run E1-R2 bootstrap smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_e1r2_character_store_bootstrap_smoke.py
+      - name: Run documentation checks
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r2_completion_report.md
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
