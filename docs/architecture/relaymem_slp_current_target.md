@@ -46,9 +46,13 @@ Last reviewed: 2026-06-27 JST
 
 RelayMEM currently provides bounded store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, gated RelayCTX injection, auditable Correct, canonical read-only Primary current-state resolution, I-4C1 hidden-successor lifecycle commit ownership, bounded I-4C2 recovery/finalization, and I-4D ordinary retrieval lifecycle exclusion plus historical lifecycle overlay.
 
-The Primary MEM persistence chain is implemented through M3a-M3h. The Phase 6 execution boundary is implemented through C1-5 and C2, with O0 as the explicit local caller:
+The Primary MEM persistence chain is implemented through M3a-M3h. The Phase 6 execution boundary is implemented through B0-B3, C1-5, and C2, with O0 as the explicit local caller:
 
 ```text
+B0 durable queue contract
+B1 dispatch preflight
+B2 atomic durable enqueue
+B3 queue claim/lease/retry/terminal lifecycle
 C1-0 exact current-claim protected source
 C1-1 canonical M3a-M3h compose
 C1-2 lease-fenced one-already-claimed worker
@@ -59,7 +63,7 @@ C2 one-job claim/rehydrate/execute adapter
 O0 one invocation -> at most one eligible queued job
 ```
 
-Phase 6-B3 performs default-off, dry-run-first fenced queue lifecycle transitions. C1-2 executes one already-claimed canonical B3 job. C1-5 persists protected content separately from the content-free queue. C2 accepts one caller-selected queued record and connects B3 claim, C1-5 preparation, and C1-2 execution. O0 adds bounded discovery and one C2 delegation without polling or retry scheduling.
+Phase 6-B2 performs atomic durable enqueue of durably enqueued jobs through the existing content-free queue record authority. Phase 6-B3 performs default-off, dry-run-first fenced queue lifecycle transitions. C1-2 executes one already-claimed canonical B3 job. C1-5 persists protected content separately from the content-free queue. C2 accepts one caller-selected queued record and connects B3 claim, C1-5 preparation, and C1-2 execution. O0 adds bounded discovery and one C2 delegation without polling or retry scheduling.
 
 ## I1-G durable-finalization boundary
 
@@ -188,4 +192,4 @@ O1F   full operational validation                                     unimplemen
 
 ## Completion interpretation
 
-M3a-M3h, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1D1, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, and I-4D are implemented. O1D1 is a bounded one-round coordinator only; O1D2, O1E, O1F, O2, and O3 remain incomplete. Forget is not product-complete until I-4E and I-4F provide API/UI and production validation.
+M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1D1, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, and I-4D are implemented. O1D1 is a bounded one-round coordinator only; O1D2, O1E, O1F, O2, and O3 remain incomplete. Forget is not product-complete until I-4E and I-4F provide API/UI and production validation.
