@@ -67,7 +67,7 @@ The source PR number must be concrete before final review. The convergence threa
 ### RelayCTX short-term context
 
 - [MVP-40: RelayCTX short-term extraction dry-run](mvp40_relayctx_short_term_extraction_dry_run.md)
-- [MVP-41: RelayCTX short-term block assembly dry-run](mvp41_relayctx_short_term_block_assembly.md)
+- [MVP-41: RelayCTX short-term block assembly dry-run](mvp41_relayctx_short_term_block_assembly_dry_run.md)
 - [MVP-42: RelayCTX short-term runtime injection preflight](mvp42_relayctx_short_term_runtime_injection_preflight.md)
 - [MVP-43: RelayCTX short-term runtime injection apply gate](mvp43_relayctx_short_term_runtime_injection_apply_gate.md)
 
