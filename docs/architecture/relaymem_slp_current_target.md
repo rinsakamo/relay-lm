@@ -29,13 +29,11 @@ relaylm_related_authority:
   - o1b_sealed_i1g_replay_lane.md
   - o1c_eligible_b2_queue_lane.md
   - o1d1_production_scheduler_round.md
-  - phase_i4b_primary_current_state_shared_fence.md
-  - phase_i4c1_primary_forget_hidden_successor.md
-  - phase_i4c2_primary_forget_recovery_finalization.md
-  - phase_i4d_primary_retrieval_exclusion.md
-  - relaymem_mvp_implementation_plan.md
-  - pipeline_implementation_plan.md
-  - wave3_cross_slice_convergence_audit.md
+  - o1d2_scheduler_policy.md
+  - phase_i4e_forget_api_ui.md
+  - phase_i5_pin_unpin_contract.md
+  - phase_i7ab_held_apply_discard_contract.md
+  - wave4_cross_slice_convergence_audit.md
   - ../PROJECT_STATUS.md
 ---
 # RelayMEM / RelaySLP Current / Target Boundary
@@ -44,7 +42,7 @@ Last reviewed: 2026-06-27 JST
 
 ## Current implemented boundary
 
-RelayMEM currently provides bounded store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, gated RelayCTX injection, auditable Correct, canonical read-only Primary current-state resolution, I-4C1 hidden-successor lifecycle commit ownership, bounded I-4C2 recovery/finalization, and I-4D ordinary retrieval lifecycle exclusion plus historical lifecycle overlay.
+RelayMEM currently provides bounded store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, gated RelayCTX injection, auditable Correct, canonical read-only Primary current-state resolution, I-4C1 hidden-successor lifecycle commit ownership, bounded I-4C2 recovery/finalization, I-4D ordinary retrieval lifecycle exclusion plus historical lifecycle overlay, I-4E loopback Forget API/UI, I-5A Pin / Unpin read-only preflight, and I-7A/B Held Apply / Discard read-only preflight.
 
 The Primary MEM persistence chain is implemented through M3a-M3h. The Phase 6 execution boundary is implemented through B0-B3, C1-5, and C2, with O0 as the explicit local caller:
 
@@ -105,9 +103,11 @@ one bounded round
   -> return without sleep
 ```
 
-Replay and queue remain independent state machines. A B2 record converged by replay may be selected in the same round only through independent queue-root discovery and canonical reread. Replay output is never a C2 input. O1D2 fairness/retry-time/backoff/jitter/pacing, O1E stale recovery/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.
+O1D2 is current implemented as a bounded policy wrapper around the existing O1D1 one-round scheduler coordinator. It adds content-free policy state, deterministic fairness preference hints, retry-window rounding, bounded deterministic jitter without private identity inputs, bounded backoff, and pacing recommendation. O1D2 does not poll, sleep, run a second round, recover stale claims, handle cancellation, supervise services, or create a durable scheduler journal.
 
-The accepted O1D1 scheduler fields are in `relaylm/config.py`, `docs/config_schema.md`, and `config.example.yaml`:
+O1E stale recovery/cancellation/shutdown, O1F operational validation, O2 supervision, and O3 always-on operation remain unimplemented.
+
+The accepted scheduler fields are in `relaylm/config.py`, `docs/config_schema.md`, and `config.example.yaml`:
 
 ```yaml
 relaymem_local_scheduler_enabled: false
@@ -136,7 +136,13 @@ I-4C2 resumes one exact durable prepare, reuses the shared mutation fence and de
 
 I-4D consumes the complete shared current-state authority before snippet construction. It excludes hidden, prepared, recovery-required, corrupt, ambiguous, unsafe, cross-scope, unresolved, and prior physical revisions from ordinary M2/RelayCTX and backend-bound request construction. It does not rewrite historical used-memory receipts and adds the separate read-only `relaylm.lab.memory_used_lifecycle.v1` overlay.
 
-Forget is not product-complete until I-4E provides loopback API/SOUL Lab UI and I-4F provides production crash/race/security/fresh-conversation validation.
+I-4E is current implemented as loopback Forget API/UI. It adds strict SOUL Lab request models, loopback-only preflight/apply/history routes, bounded preflight projection, bounded hidden receipt, SOUL Lab API client, explicit confirmation panel, row-level Forget action, lifecycle refresh, backend functional/security smokes, and browser API/UI smoke. I-4B remains resolver/fence/token/history authority; I-4C1 remains hidden-successor commit authority; I-4C2 remains recovery/tombstone/finalization/public apply authority; I-4D remains ordinary retrieval exclusion authority. I-4F remains target/unimplemented validation.
+
+UI-B1A is current implemented read-only visibility. It provides bounded Primary MEM lifecycle visibility, content-free durable-finalization status visibility, content-free queue/worker status visibility, Home and Lab Observation lifecycle panels, and Fresh Conversation explanation. It adds no mutation or operation-run control.
+
+I-5A is current implemented contract/read-only preflight only. It does not implement Pin apply, Unpin apply, durable Pin state, API/UI, or ranking behavior.
+
+I-7A/B is current implemented contract/read-only preflight only. It does not implement Held Apply runtime, Held Discard runtime, B3 queue mutation, retry release, terminal commit, Primary MEM page/index/log writes, C2 worker invocation, O1 scheduler invocation, or SOUL Lab mutation UI.
 
 ## Ownership boundary
 
@@ -144,7 +150,7 @@ RelayMEM owns memory meaning, lifecycle, source lineage, current-state resolutio
 
 Phase 6 owns dispatch admission and identity, response-finalization handoff, durable queue lifecycle, claim/lease/retry/terminal control, worker invocation, and restart/checkpoint integration.
 
-I1-G owns durable-finalization evidence, one-record replay, completion, retention classification, isolation, crash validation, and evidence cleanup. O1 owns only bounded scheduling and lane aggregation. B3 owns queue lifecycle. C2 owns one queued-record coordination. C1-2 owns worker execution. RelayCTX owns backend-bound packing. SOUL Lab owns bounded read models and explicit user-operation surfaces without filesystem, queue, scheduler, or worker authority.
+I1-G owns durable-finalization evidence, one-record replay, completion, retention classification, isolation, crash validation, and evidence cleanup. O1 owns only bounded scheduling and lane aggregation. B3 owns queue lifecycle. C2 owns one queued-record coordination. C1-2 owns worker execution. RelayCTX owns backend-bound packing. SOUL Lab owns bounded read models and explicit user-operation surfaces without storage-root, queue, scheduler, or worker authority.
 
 ## Completed Primary MEM integration
 
@@ -162,9 +168,13 @@ finalized ordinary turn
   -> hidden-successor lifecycle commit                 complete as I-4C1
   -> prepared recovery and tombstone finalization      complete as I-4C2
   -> ordinary retrieval exclusion and lifecycle overlay complete as I-4D
+  -> loopback Forget API/UI over existing authorities  complete as I-4E
+  -> read-only lifecycle visibility                    complete as UI-B1A
+  -> Pin / Unpin read-only preflight                   complete as I-5A
+  -> Held Apply / Discard read-only preflight          complete as I-7A/B
 ```
 
-I2 real SOUL Lab observation: complete. It is read-only evidence only and cannot authorize repair or retrieval.
+I2 real SOUL Lab observation is complete. It is read-only evidence only and cannot authorize repair or retrieval.
 
 ## Target migration sequence
 
@@ -180,18 +190,24 @@ I-4B  current-state resolver/shared Correct/Forget fence              complete
 I-4C1 shared revision claim/prepared artifact/hidden successor        complete
 I-4C2 exact replay/forward recovery/tombstone                         complete
 I-4D  ordinary M2/RelayCTX exclusion/historical projection            complete
-I-4E  loopback API and SOUL Lab Forget UI                             unimplemented
+I-4E  loopback API and SOUL Lab Forget UI                             complete
 I-4F  crash/race/security/fresh-conversation validation               unimplemented
+
+I-5A  Pin / Unpin contract and read-only preflight                    complete
+I-5B  Pin / Unpin runtime apply/API/UI/ranking work, if defined       unimplemented
+
+I-7A/B Held Apply / Discard contract and read-only preflight          complete
+I-7C   Held Apply / Discard runtime/API/UI/evidence work, if defined  unimplemented
 
 O1A   two-lane round/adapter/idle contract                            complete
 O1B   sealed-record discovery/I1-GC delegation                        complete
 O1C   B2 discovery/O0-compatible C2 delegation                        complete
 O1D1  accepted scheduler gates/one production round                   complete
-O1D2  ordering/fairness/retry-time/backoff/jitter/pacing              unimplemented
+O1D2  ordering/fairness/retry-time/backoff/jitter/pacing              complete
 O1E   stale recovery/cancellation/graceful shutdown                   unimplemented
 O1F   full operational validation                                     unimplemented
 ```
 
 ## Completion interpretation
 
-M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1D1, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, and I-4D are implemented. O1D1 is a bounded one-round coordinator only; O1D2, O1E, O1F, O2, and O3 remain incomplete. Forget is not product-complete until I-4E and I-4F provide API/UI and production validation.
+M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1D2, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, UI-B1A, I-5A, and I-7A/B are implemented. O1D2 is a bounded policy wrapper only; O1E, O1F, O2, and O3 remain incomplete. Forget is not fully validated until I-4F. I-5A does not complete Pin/Unpin runtime apply. I-7A/B does not complete Held Apply/Discard runtime.

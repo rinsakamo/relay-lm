@@ -35,6 +35,12 @@ MODEL_ANCHORS = {
     ),
     "docs/mvp/README.md": (
         "## Implementation completion reports",
+        "Wave 4 merged completion reports",
+        "O1D2 completion report",
+        "I-4E completion report",
+        "UI-B1A completion report",
+        "I-5A completion report",
+        "I-7A/B completion report",
         "The wave convergence PR links the merged reports",
     ),
     "docs/mvp/IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md": REPORT_ANCHORS[4:],
@@ -100,8 +106,11 @@ def main() -> None:
     parser.add_argument("--check-model", action="store_true")
     parser.add_argument("--check-all", action="store_true")
     args = parser.parse_args()
+
     if not args.check_model and not args.check_all and not args.paths:
-        raise AssertionError("pass --check-model, --check-all, and/or one report path")
+        args.check_model = True
+        args.check_all = True
+
     if args.check_model:
         validate_model()
     paths = list(args.paths)

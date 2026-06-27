@@ -24,16 +24,17 @@ def main() -> None:
     handoff = "phase_i2_real_soul_lab_observation.md"
     require_text(
         "docs/PROJECT_STATUS.md",
-        "I2 real SOUL Lab observation: complete",
-        "I3 auditable Primary MEM Correct: complete",
-        "I1-G",
-        "I1-GA through I1-GD durable-finalization boundary",
-        "Visible-release restart evidence publication is implemented",
-        "Restart-time one-record replay",
+        "SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3",
+        "I1-G overall: complete",
+        "I1-GA contract / fault model: complete",
+        "I1-GB durable-finalization publication / pre-release admission: complete",
+        "I1-GC one-record restart replay / exact C1-5+B2 convergence / completion marker: complete",
+        "I1-GD retention / orphan reconciliation / isolation lifecycle / cleanup: complete",
+        "I1-GE full production crash validation: complete",
     )
     require_text(
         "docs/architecture/project_execution_plan.md",
-        "read-only observation of latest runs, formed memory, held or blocked outcomes, and used-memory evidence",
+        "read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence",
         "MVP completion criteria",
     )
     require_text(
@@ -48,7 +49,7 @@ def main() -> None:
     )
     require_text(
         "docs/architecture/relaymem_slp_current_target.md",
-        "I2 real SOUL Lab observation: complete",
+        "I2 real SOUL Lab observation is complete",
         "cannot authorize repair or retrieval",
     )
     require_text(

@@ -19,10 +19,9 @@ relaylm_related_authority:
   - pipeline_responsibility_design.md
   - project_execution_plan.md
   - relaymem_slp_current_target.md
-  - wave3_cross_slice_convergence_audit.md
-  - i1g_pre_enqueue_durable_finalization_contract.md
-  - phase_i4d_primary_retrieval_exclusion.md
-  - o1d1_production_scheduler_round.md
+  - wave4_cross_slice_convergence_audit.md
+  - phase_i4e_forget_api_ui.md
+  - o1d2_scheduler_policy.md
 ---
 # RelayLM Current / Target / Migration Guide
 
@@ -45,10 +44,6 @@ A helper, diagnostics projection, or gated writer may be current without implyin
 
 Historical material under `docs/mvp/` or `docs/architecture/archive/` is evidence, not current authority.
 
-## Current pipeline boundary
-
-The canonical target order remains defined by [Pipeline Responsibility Design](pipeline_responsibility_design.md). Current runtime still contains compatibility ordering, default-off gates, and diagnostics-only helpers. Do not infer complete target ownership solely from function names or trace order.
-
 ## Boundary matrix
 
 | Boundary | Current implemented or compatibility | Target architecture | Required migration |
@@ -59,54 +54,36 @@ The canonical target order remains defined by [Pipeline Responsibility Design](p
 | Instruction cache | strict read-only lookup, C4b content-free RelaySCN-facing diagnostics projection, C5 runtime-private typed-parse validation and gated writer wiring | validated scene interpretation with typed producer, semantic RelaySCN apply, versioned lookup/write | trusted control-artifact producer, parser-version compatibility, semantic apply |
 | Runtime Compile Gate | `CompileApplyDecision`, content-free diagnostics, bounded history-apply exact-forward gate | route-authority-aware plan/result/decision projections and managed fallback | source tracking, fallback builder, complete state taxonomy |
 | RelayMEM Retrieval | M2 retrieval, strict Primary current-state verification, I-4D lifecycle/prior-revision exclusion, and gated bounded RelayCTX injection | typed RelayINT handoff and separate runtime-private/content-free projections | RelayINT API and consumer migration; Phase I-1 recall and I-4D filtering are complete |
-| RelaySLP / Phase 6 / I1-G / O1 | A1/A2/B0-B3, I1-B, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A/B/C/D1; see `relaymem_slp_current_target.md` for exact state | durable deferred orchestration with automatic operational scheduling and bounded observation/correction | O1D2/O1E/O1F, O2/O3, and quality/evaluation work; completed C1/C2/I-1/I1-G/O0/O1D1 behavior does not require remigration |
-| SOUL Lab text product | UI-A0 through UI-A7, Phase I-2 observation, Phase I-3 Correct, UI-B0 real Home conversation, and I-4D read-only lifecycle overlay | full management product for observation, Correct, Forget, Pin, Held review, Merge, and RelaySOUL intervention | I-4E/I-4F, UI-B1A, I-5/I-7/I-6/I-8/I-9; completed I-2/I-3/UI-B0/I-4D behavior does not require remigration |
+| RelaySLP / Phase 6 / I1-G / O1 | A1/A2/B0-B3, I1-B, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A/B/C/D1, and O1D2 bounded policy wrapper; see `relaymem_slp_current_target.md` for exact state | durable deferred orchestration with automatic operational scheduling and bounded observation/correction | O1E/O1F, O2/O3, and quality/evaluation work; completed C1/C2/I-1/I1-G/O0/O1D1/O1D2 behavior does not require remigration |
+| SOUL Lab text product | UI-A0 through UI-A7, Phase I-2 observation, Phase I-3 Correct, UI-B0 real Home conversation, I-4D read-only lifecycle overlay, I-4E loopback Forget API/UI, and UI-B1A read-only lifecycle visibility | full management product for observation, Correct, Forget, Pin, Held review, Merge, and RelaySOUL intervention | I-4F, Pin/Unpin runtime API/UI/ranking, Held runtime API/UI/evidence, I-6/I-8/I-9; completed I-2/I-3/UI-B0/I-4D/I-4E/UI-B1A/I-5A/I-7A/B behavior does not require remigration |
+| Pin / Unpin governance | I-5A contract and read-only preflight only | durable Pin / Unpin apply, API/UI, retrieval policy, and ranking behavior | I-5B or equivalent runtime apply/API/UI/ranking work |
+| Held outcome governance | I-7A/B contract and read-only Apply / Discard preflight only | explicit Apply / Discard runtime, API/UI, and durable governance evidence | I-7C or equivalent runtime/API/UI/evidence work |
 | Streaming / Phase 5.5 | default-compatible forwarding plus gated B2 suppression and C0-C4 handoff metadata construction | complete default-on output pipeline and runtime adapter delivery | RelayREF/output-SCN consumers, adapter delivery, partial recovery |
-| RelayRUN recovery | checkpoint/recovery foundations and diagnostics | runtime orchestration with gated visible recovery generation | output gates and user-action handling |
 | RelaySOUL | compatibility dry-run/preflight governance | three durable persona sources with explicit approval/apply/rollback | schema and storage migration |
+
+## Current Wave 4 compatibility interpretation
+
+Wave 4 adds current implemented boundaries but does not silently promote their follow-on runtime targets:
+
+```text
+O1D2 is current implemented as bounded policy wrapper.
+O1E/O1F remain target/unimplemented.
+I-4E is current implemented as loopback Forget API/UI.
+I-4F remains target/unimplemented validation.
+UI-B1A is current implemented read-only visibility.
+I-5A is current implemented contract/read-only preflight only.
+I-7A/B is current implemented contract/read-only preflight only.
+```
 
 ## Client history exclusion apply
 
-### Current no-instruction contract
-
-```text
-schema:
-  client_history_exclusion_apply.v0
-
-request class:
-  bounded managed request with no client system/developer messages
-```
-
-### Current instruction-bearing contract
-
-```text
-schema:
-  client_history_exclusion_apply.v1
-
-source provenance:
-  client_instruction_source.v1
-```
-
-Instruction-bearing actual apply is explicit-only. A request must carry the reserved `relaylm.instruction_evidence` control envelope with selected message indices. Role, content, and position do not establish provenance. Unselected system/developer messages are excluded, including frontend summaries, memory notes, and replayed persona material.
-
-Both v0 and v1 remain default-off and dry-run-only by default. Active tool transactions remain blocked until a minimum-chain reconstruction contract exists.
+Current no-instruction schema remains `client_history_exclusion_apply.v0`. Current instruction-bearing schema remains `client_history_exclusion_apply.v1` with `client_instruction_source.v1` provenance. Both remain default-off and dry-run-only by default. Active tool transactions remain blocked until a minimum-chain reconstruction contract exists.
 
 ## Client instruction cache and typed parse
 
-Current accepted cache-entry schema remains `relaylm.client_instruction_cache.v0` with strict read-only lookup validation.
+Current accepted cache-entry schema remains `relaylm.client_instruction_cache.v0` with strict read-only lookup validation. Current bounded implementation also includes Phase 5-C4b `client_instruction_relayscn_projection.v0`, typed-parse candidate validation and content-free node results, runtime-private one-shot typed-parse source consumption, and gated cache-writer planning/apply behind explicit default-off flags.
 
-Current bounded implementation also includes:
-
-- Phase 5-C4b `client_instruction_relayscn_projection.v0`, a detached content-free diagnostics summary from a validated hit;
-- typed-parse candidate validation and content-free node results;
-- runtime-private one-shot typed-parse source consumption;
-- gated cache-writer planning and apply behind explicit default-off flags.
-
-Current implementation does **not** parse arbitrary backend visible responses, trust frontend metadata as a typed-parse source, inject opaque cache bodies into backend context, apply cache projection semantics to RelaySCN, support parser-versioned lookup/write compatibility, or make cache writing default-on.
-
-## Runtime Compile Gate
-
-Current typed apply decision remains `CompileApplyDecision`, with content-free diagnostics and a narrow managed history-apply exact-forward gate. v1 plan/result/decision projections, explicit route authority, forwarded-payload source taxonomy, managed fallback, and a complete blocked taxonomy remain target work.
+Current implementation does not parse arbitrary backend visible responses, trust frontend metadata as a typed-parse source, inject opaque cache bodies into backend context, apply cache projection semantics to RelaySCN, support parser-versioned lookup/write compatibility, or make cache writing default-on.
 
 ## Streaming boundary
 
@@ -124,9 +101,13 @@ The current detailed boundary is owned by [RelayMEM / RelaySLP Current / Target 
 ordinary finalized turn
   -> I1-B source-before-queue publication and B2 enqueue
   -> C2 / C1 worker path or O0 / O1D1 caller path
+  -> O1D2 bounded policy hints for later caller decisions
   -> M3a-M3h Primary MEM formation
   -> Phase I-1 later-turn M2 retrieval
   -> I-4D current-state lifecycle filtering
+  -> I-4E loopback Forget API/UI over existing authorities
+  -> UI-B1A read-only lifecycle visibility
+  -> I-5A/I-7A/B read-only governance preflight
   -> RelayCTX bounded injection
 ```
 
@@ -138,25 +119,31 @@ Completed behavior must not be re-listed as migration work:
 - I1-GA through I1-GE are complete at the durable-finalization boundary.
 - O0 is complete as one operator-invoked queue job.
 - O1D1 is complete as one accepted-gate replay-before-queue production round.
+- O1D2 is complete as bounded scheduler policy/fairness/pacing.
 - I-4D retrieval exclusion and historical lifecycle overlay are complete.
+- I-4E loopback Forget API/UI is complete.
+- UI-B1A read-only lifecycle visibility is complete.
+- I-5A contract/read-only Pin / Unpin preflight is complete.
+- I-7A/B contract/read-only Held Apply / Discard preflight is complete.
 
 Remaining migration is deliberately narrower:
 
 ```text
-O1D2 ordering/fairness/retry-time/backoff/jitter/pacing
-  -> O1E stale recovery/cancellation/shutdown
+O1E stale recovery/cancellation/shutdown
   -> O1F operational validation
-  -> O2 supervised worker service
-  -> O3 always-on operation
+  -> O2 supervised worker service, if required
+  -> O3 always-on operation, if required
 
-I-4E Forget API/UI
-  -> I-4F product validation
+I-4F Forget validation
+
+Pin/Unpin runtime apply/API/UI/ranking work
+Held Apply/Discard runtime/API/UI/durable evidence work
 
 RelayINT / RelayREF / RelaySCN ownership migrations
 TTS/audio/avatar runtime adapter execution
 ```
 
-Queue creation, helper availability, or one-round scheduling is not evidence for recurring automatic processing. O1D1 returns after one round without sleeping.
+Queue creation, helper availability, one-round scheduling, or O1D2 policy output is not evidence for recurring automatic processing. O1D1 returns after one round without sleeping, and O1D2 returns recommendations without executing another round.
 
 ## Safe defaults
 
