@@ -55,7 +55,10 @@ class LabLifecycleMemoryItem(_ExactModel):
 
 class LabDurableFinalizationVisibility(_ExactModel):
     availability: Availability
-    status: Literal["pending", "complete", "isolated", "mixed", "none", "unknown", "unavailable", "not_connected"]
+    status: Literal[
+        "pending", "complete", "isolated", "mixed", "none", "unknown",
+        "unavailable", "not_connected",
+    ]
     pending_count: int = Field(ge=0)
     complete_count: int = Field(ge=0)
     isolated_count: int = Field(ge=0)
@@ -68,7 +71,8 @@ class LabDurableFinalizationVisibility(_ExactModel):
 class LabQueueWorkerVisibility(_ExactModel):
     availability: Availability
     status: Literal[
-        "queued", "processing", "formed", "held", "blocked", "failed", "mixed", "none", "unknown", "unavailable", "not_connected"
+        "queued", "processing", "formed", "held", "blocked", "failed", "mixed",
+        "none", "unknown", "unavailable", "not_connected",
     ]
     queued_count: int = Field(ge=0)
     processing_count: int = Field(ge=0)
@@ -95,7 +99,9 @@ class LabFreshConversationVisibility(_ExactModel):
 
 
 class LabLifecycleVisibilityProjection(_ExactModel):
-    schema: Literal["relaylm.lab.lifecycle_visibility.v0"] = "relaylm.lab.lifecycle_visibility.v0"
+    schema: Literal["relaylm.lab.lifecycle_visibility.v0"] = (
+        "relaylm.lab.lifecycle_visibility.v0"
+    )
     source: Literal["relaylm_runtime"] = "relaylm_runtime"
     read_only: Literal[True] = True
     availability: Availability
@@ -130,14 +136,27 @@ def build_lab_lifecycle_visibility_projection(
     durable = _durable_finalization_visibility(config)
     queue = _queue_worker_visibility(config)
     all_reasons = normalize_reason_ids(
-        [*scope.reason_ids, *memory_reasons, *durable.bounded_reason_ids, *queue.bounded_reason_ids]
+        [
+            *scope.reason_ids,
+            *memory_reasons,
+            *durable.bounded_reason_ids,
+            *queue.bounded_reason_ids,
+        ]
     )
     availability: Availability
     if not scope.available:
         availability = "unavailable"
-    elif memory_availability == "available" or durable.availability == "available" or queue.availability == "available":
+    elif (
+        memory_availability == "available"
+        or durable.availability == "available"
+        or queue.availability == "available"
+    ):
         availability = "available"
-    elif memory_availability == "empty" or durable.availability == "empty" or queue.availability == "empty":
+    elif (
+        memory_availability == "empty"
+        or durable.availability == "empty"
+        or queue.availability == "empty"
+    ):
         availability = "empty"
     elif durable.availability == "not_connected" and queue.availability == "not_connected":
         availability = "not_connected"
@@ -165,7 +184,7 @@ def _memory_visibility(
         return [], "unavailable", normalize_reason_ids(reasons)
     try:
         state_index = load_primary_current_state_index(root, namespace=scope.namespace)
-    except Exception:  # defensive: do not leak exception text through lab projection
+    except Exception:
         return [], "unavailable", ["primary_current_state_index_unavailable"]
 
     logical_ids: set[str] = set()
@@ -213,16 +232,28 @@ def _memory_visibility(
 def _durable_finalization_visibility(config: RelayLMConfig) -> LabDurableFinalizationVisibility:
     root_value = config.relaymem_slp_durable_finalization_root
     if not isinstance(root_value, str) or not root_value:
-        return _durable_result("not_connected", "not_connected", ("durable_finalization_root_not_configured",))
+        return _durable_result(
+            "not_connected",
+            "not_connected",
+            ("durable_finalization_root_not_configured",),
+        )
     root = Path(root_value)
     if not root.is_absolute() or root.is_symlink() or not root.is_dir():
-        return _durable_result("unavailable", "unavailable", ("durable_finalization_root_unavailable",))
+        return _durable_result(
+            "unavailable",
+            "unavailable",
+            ("durable_finalization_root_unavailable",),
+        )
     groups: dict[str, set[str]] = {}
     reasons: list[str] = []
     try:
         entries = sorted(root.iterdir(), key=lambda item: item.name)
     except OSError:
-        return _durable_result("unavailable", "unavailable", ("durable_finalization_scan_failed",))
+        return _durable_result(
+            "unavailable",
+            "unavailable",
+            ("durable_finalization_scan_failed",),
+        )
     for index, path in enumerate(entries):
         if index >= _MAX_SCAN_ENTRIES:
             reasons.append("durable_finalization_scan_limit_reached")
@@ -233,7 +264,7 @@ def _durable_finalization_visibility(config: RelayLMConfig) -> LabDurableFinaliz
         if match is None:
             continue
         locator = match.group(1)
-        if ".segment-isolation." in path.name:
+        if path.name.endswith(".segment-isolation.json"):
             component = "isolation"
         elif path.name.startswith("durable-finalization-completion-v0-"):
             component = "completion"
@@ -362,7 +393,9 @@ def _dominant_status(counters: dict[str, int]) -> str:
     return active[0] if len(active) == 1 else "mixed"
 
 
-def _durable_result(availability: Availability, status: str, reasons: tuple[str, ...]) -> LabDurableFinalizationVisibility:
+def _durable_result(
+    availability: Availability, status: str, reasons: tuple[str, ...]
+) -> LabDurableFinalizationVisibility:
     return LabDurableFinalizationVisibility(
         availability=availability,
         status=status,  # type: ignore[arg-type]
@@ -373,7 +406,9 @@ def _durable_result(availability: Availability, status: str, reasons: tuple[str,
     )
 
 
-def _queue_result(availability: Availability, status: str, reasons: tuple[str, ...]) -> LabQueueWorkerVisibility:
+def _queue_result(
+    availability: Availability, status: str, reasons: tuple[str, ...]
+) -> LabQueueWorkerVisibility:
     return LabQueueWorkerVisibility(
         availability=availability,
         status=status,  # type: ignore[arg-type]
