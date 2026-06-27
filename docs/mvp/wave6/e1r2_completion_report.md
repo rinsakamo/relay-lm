@@ -112,5 +112,5 @@ Remaining E1 follow-ups: E1-R1, E1-R3, E1-R4
 
 ## Source pull request
 
-- PR: #430
-- URL: https://github.com/rinsakamo/relay-lm/pull/430
+- PR: #432
+- URL: https://github.com/rinsakamo/relay-lm/pull/432
