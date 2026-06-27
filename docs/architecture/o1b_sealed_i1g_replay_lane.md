@@ -8,18 +8,22 @@ relaylm_update_trigger:
   - I1-G record grammar or completion schema changes
   - I1-GD isolation filename or validator changes
   - I1-GC result vocabulary changes
-  - O1C O1D1 O1D2 or O1E scheduler integration lands
+  - O1C O1D1 O1D2 O1E or O1F scheduler integration lands
 relaylm_not_authoritative_for:
   - I1-G replay or completion convergence
   - I1-GD retention isolation cleanup or orphan policy
   - C1-5 protected-source persistence
   - B2/B3/C2/worker/M3 execution
-  - scheduler polling fairness backoff shutdown or service lifecycle
+  - scheduler polling fairness backoff shutdown validation or service lifecycle
+  - repository-wide current implementation status
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - o1a_two_lane_scheduler_contract.md
   - o1c_eligible_b2_queue_lane.md
   - o1d1_production_scheduler_round.md
+  - o1d2_scheduler_policy.md
+  - o1e_scheduler_operational_controls.md
+  - o1f_operational_validation.md
   - i1g_pre_enqueue_durable_finalization_contract.md
   - o0_local_one_job_runner.md
   - phase6c1_durable_protected_source_persistence.md
@@ -33,7 +37,7 @@ Last reviewed: 2026-06-27 JST
 
 ## Status and authority
 
-**Production replay-lane adapter complete.** O1C queue-lane adapter and O1D1 one production round are also complete. O1D2 scheduling policy, O1E recovery/shutdown, O1F operational validation, polling, supervision, and always-on service operation remain unimplemented.
+**Production replay-lane adapter complete.** O1C queue-lane adapter, O1D1 one production round, O1D2 scheduling policy, O1E recovery/shutdown controls, and O1F operational validation are also complete at their bounded caller-invoked boundaries. O2 supervision and O3 always-on service operation remain planned/unimplemented.
 
 O1B owns exactly one bounded replay-lane opportunity:
 
@@ -51,7 +55,7 @@ configured durable-finalization root
 
 O1B does not reconstruct finalized turns, publish protected sources or queue records, decide durable completion, claim B3 work, invoke C2, execute a worker, or form Primary MEM. Those remain I1-GC, C1-5, B2/B3, C2, C1-2, and M3 authorities.
 
-O1D1 may call O1B at most once in a single caller-invoked round, before O1C. That does not change O1B semantics and does not make O1B a scheduler loop.
+O1D1 may call O1B at most once in a single caller-invoked round, before O1C. O1D2 may wrap that round with bounded policy hints, O1E may wrap it with caller-invoked operational controls, and O1F may validate the operational boundary. None of those downstream slices changes O1B semantics or makes O1B a scheduler loop.
 
 ## Root and inventory bounds
 
@@ -120,9 +124,9 @@ O1A   pure two-lane scheduler contract                        complete
 O1B   sealed I1-G discovery + one I1-GC delegation            complete
 O1C   eligible B2 discovery + one C2 delegation               complete
 O1D1  accepted scheduler gates + one production round         complete
-O1D2  ordering/fairness/retry-time/backoff/jitter/pacing      unimplemented
-O1E   stale recovery/cancellation/graceful shutdown           unimplemented
-O1F   operational validation                                  unimplemented
+O1D2  ordering/fairness/retry-time/backoff/jitter/pacing      complete
+O1E   stale recovery/cancellation/graceful shutdown           complete
+O1F   operational validation                                  complete
 O2    supervised service                                      planned/unimplemented
 O3    always-on operation                                     planned/unimplemented
 ```
