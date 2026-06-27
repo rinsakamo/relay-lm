@@ -1,0 +1,65 @@
+name: Phase I-7C held governance runtime
+
+on:
+  pull_request:
+    paths:
+      - 'relaylm/relaymem_held_governance.py'
+      - 'relaylm/soul_lab_held_governance.py'
+      - 'relaylm/lab_held_governance_api.py'
+      - 'relaylm/soul_lab_app.py'
+      - 'apps/soul-lab/**'
+      - 'scripts/relaylm_phase_i7c_held_governance_*.py'
+      - 'docs/architecture/phase_i7c_held_apply_discard_runtime.md'
+      - 'docs/mvp/wave6/i7c_completion_report.md'
+      - '.github/workflows/phase-i7c-held-governance-runtime.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'relaylm/relaymem_held_governance.py'
+      - 'relaylm/soul_lab_held_governance.py'
+      - 'relaylm/lab_held_governance_api.py'
+      - 'relaylm/soul_lab_app.py'
+      - 'apps/soul-lab/**'
+      - 'scripts/relaylm_phase_i7c_held_governance_*.py'
+      - 'docs/architecture/phase_i7c_held_apply_discard_runtime.md'
+      - 'docs/mvp/wave6/i7c_completion_report.md'
+      - '.github/workflows/phase-i7c-held-governance-runtime.yml'
+
+jobs:
+  held-governance-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+      - name: Compile Python sources
+        run: python -m compileall relaylm scripts
+      - name: Validate held governance runtime
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_i7ab_held_apply_discard_contract_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_runtime_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_api_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_concurrency_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_security_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_ui_smoke.py
+      - name: Validate authority regressions
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_relayslp_queue_state_smoke.py
+      - name: Build SOUL Lab and validate held governance UI
+        working-directory: apps/soul-lab
+        run: |
+          npm install
+          npm run build
+          npm run smoke:held-governance-ui
+      - name: Validate docs
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/i7c_completion_report.md
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
