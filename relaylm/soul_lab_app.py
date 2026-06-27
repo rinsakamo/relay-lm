@@ -18,6 +18,9 @@ from relaylm.relaymem_primary_correction import (
     list_primary_memory_corrections,
     preflight_primary_memory_correction,
 )
+from relaylm.soul_lab_lifecycle_visibility_projection import (
+    build_lab_lifecycle_visibility_projection,
+)
 from relaylm.soul_lab_management import (
     build_lab_characters_projection,
     build_lab_settings_projection,
@@ -208,6 +211,25 @@ def create_app(config_path: str | None = None) -> FastAPI:
         require_loopback_management(request)
         projection = build_lab_memory_used_lifecycle_projection(
             observation_scope(character_id, namespace)
+        )
+        return JSONResponse(
+            content=projection.model_dump(mode="json"),
+            headers={"Cache-Control": "no-store"},
+        )
+
+    @app.get(
+        "/lab/api/characters/{character_id}/lab/lifecycle-visibility",
+        response_model=None,
+    )
+    async def lab_lifecycle_visibility(
+        character_id: str,
+        request: Request,
+        namespace: str = Query(min_length=1, max_length=128),
+    ) -> JSONResponse:
+        require_loopback_management(request)
+        projection = build_lab_lifecycle_visibility_projection(
+            observation_scope(character_id, namespace),
+            config=config,
         )
         return JSONResponse(
             content=projection.model_dump(mode="json"),

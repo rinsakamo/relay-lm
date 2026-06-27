@@ -1,0 +1,43 @@
+name: SOUL Lab UI-B1A Lifecycle Visibility
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/soul_lab_app.py"
+      - "relaylm/soul_lab_lifecycle_visibility_projection.py"
+      - "scripts/relaylm_ui_b1a_lifecycle_visibility_*.py"
+      - "apps/soul-lab/src/features/lifecycle/**"
+      - "apps/soul-lab/src/app/App.tsx"
+      - "apps/soul-lab/src/app/RootApp.tsx"
+      - "apps/soul-lab/scripts/lifecycleVisibilitySmoke.mjs"
+      - "apps/soul-lab/package.json"
+      - ".github/workflows/soul-lab-ui-b1a-lifecycle-visibility.yml"
+  workflow_dispatch:
+
+jobs:
+  ui-b1a-lifecycle-visibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install RelayLM
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: Python lifecycle visibility smokes
+        run: |
+          python -m compileall relaylm scripts
+          python scripts/relaylm_ui_b1a_lifecycle_visibility_api_smoke.py
+          python scripts/relaylm_ui_b1a_lifecycle_visibility_security_smoke.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: SOUL Lab lifecycle visibility
+        working-directory: apps/soul-lab
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
+          npm run smoke:lifecycle-visibility
+          npm run build

@@ -3,7 +3,7 @@ import type { ChangeEvent } from "react";
 import type { CharacterSummary, LabRoute, Language, Theme } from "../domain/lab";
 import { AdoptionPage } from "../features/adoption/AdoptionPage";
 import { CommunicationPage } from "../features/communication/CommunicationPage";
-import { ConnectedLabObservationPage } from "../features/lab/ConnectedLabObservationPage";
+import { ConnectedLifecycleLabObservationPage } from "../features/lifecycle/ConnectedLifecycleLabObservationPage";
 import { PodPage } from "../features/pod/PodPage";
 import { ConnectedSettingsPage } from "../features/settings/ConnectedSettingsPage";
 import {
@@ -25,11 +25,11 @@ const navigation: Array<{ route: LabRoute; label: MessageKey; marker: string }> 
 ];
 
 const footerLabels: Record<LabRoute, string> = {
-  home: "UI-B0 · Real Home Conversation",
+  home: "UI-B0 / UI-B1A · Real Home Conversation / Lifecycle Visibility",
   adoption: "UI-A2 · Adoption / First Launch",
   communication: "UI-A3 · Character Communication",
   pod: "UI-A4 · Pod / SOUL Intervention",
-  observation: "Phase I-2 / I-3 · Observation / Correct",
+  observation: "Phase I-2 / I-3 / UI-B1A · Observation / Correct / Lifecycle Visibility",
   settings: "UI-A6 / UI-A7 · Shared Shell / Management Projection",
 };
 
@@ -269,7 +269,7 @@ export function RootApp() {
             />
           )}
           {route === "adoption" && <AdoptionPage language={language} onBackHome={() => navigate("home")} />}
-          {route === "observation" && <ConnectedLabObservationPage key={activeCharacter.characterId} language={language} activeCharacter={activeCharacter} onInspectorLockChange={handleInspectorLockChange} />}
+          {route === "observation" && <ConnectedLifecycleLabObservationPage key={activeCharacter.characterId} language={language} activeCharacter={activeCharacter} onInspectorLockChange={handleInspectorLockChange} />}
           {route === "communication" && <CommunicationPage key={activeCharacter.characterId} language={language} activeCharacter={activeCharacter} characters={characters} onSessionLockChange={handleCommunicationLockChange} />}
           {route === "pod" && <PodPage key={activeCharacter.characterId} language={language} activeCharacter={activeCharacter} onInterventionLockChange={handleInterventionLockChange} />}
           {route === "settings" && <ConnectedSettingsPage language={language} theme={theme} activeCharacterId={activeCharacter.characterId} characters={characters} />}
