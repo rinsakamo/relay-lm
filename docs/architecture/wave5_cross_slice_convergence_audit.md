@@ -57,6 +57,7 @@ O1D2 bounded policy/fairness/pacing                  complete
 
 I-4E loopback Forget API/UI                          complete
   -> I-4F Forget product-completion validation       complete
+  -> I-4F crash/race/security/fresh-conversation validation complete
   -> Phase I-4 overall                               complete
 
 E1 evidence consolidation                            complete
