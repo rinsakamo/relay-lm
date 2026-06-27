@@ -40,6 +40,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [O1B sealed I1-G replay lane](architecture/o1b_sealed_i1g_replay_lane.md)
 - [O1C eligible B2/B3 queue lane](architecture/o1c_eligible_b2_queue_lane.md)
 - [O1D1 accepted scheduler gates and one production round](architecture/o1d1_production_scheduler_round.md)
+- [O1D2 deterministic scheduler policy](architecture/o1d2_scheduler_policy.md)
 - [O1 manual one-round runbook](smoke/o1_manual_one_round_runbook.md)
 - [I1-G durable-finalization contract and completed GA-GE boundaries](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD durable-finalization retention and isolation lifecycle](architecture/i1gd_durable_finalization_retention_cleanup.md)
@@ -52,14 +53,26 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Phase I-4C1 Primary Forget Hidden-Successor Commit](architecture/phase_i4c1_primary_forget_hidden_successor.md)
 - [Phase I-4C2 Primary Forget Recovery and Finalization](architecture/phase_i4c2_primary_forget_recovery_finalization.md)
 - [Phase I-4D Primary retrieval exclusion](architecture/phase_i4d_primary_retrieval_exclusion.md)
-- [Wave 3 Cross-Slice Convergence Audit](architecture/wave3_cross_slice_convergence_audit.md)
+- [Phase I-4E Forget API and SOUL Lab UI](architecture/phase_i4e_forget_api_ui.md)
+- [Phase I-5A Pin / Unpin contract and read-only preflight](architecture/phase_i5_pin_unpin_contract.md)
+- [Phase I-7A/B Held Apply / Discard contract and read-only preflight](architecture/phase_i7ab_held_apply_discard_contract.md)
 - [SOUL Lab UI-B0 real Home conversation](architecture/soul_lab_ui_b0_real_home_conversation.md)
+- [SOUL Lab UI-B1A lifecycle visibility](architecture/soul_lab_ui_b1a_lifecycle_visibility.md)
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
 - [Architecture documentation index](architecture/README.md)
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, W3-INT is merged and Wave 4 planning uses [Project execution plan](architecture/project_execution_plan.md) plus the frozen [Wave 3 cross-slice convergence audit](architecture/wave3_cross_slice_convergence_audit.md).
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 4 implementation tracks are complete and W4-INT is in progress until the convergence PR merges. The frozen convergence record is [Wave 4 cross-slice convergence audit](architecture/wave4_cross_slice_convergence_audit.md).
+
+## Wave 4 implementation evidence
+
+- [Wave 4 Cross-Slice Convergence Audit](architecture/wave4_cross_slice_convergence_audit.md)
+- [O1D2 completion report](mvp/wave4/o1d2_completion_report.md)
+- [I-4E completion report](mvp/wave4/i4e_completion_report.md)
+- [UI-B1A completion report](mvp/wave4/ui_b1a_completion_report.md)
+- [I-5A completion report](mvp/wave4/i5a_completion_report.md)
+- [I-7A/B completion report](mvp/wave4/i7ab_completion_report.md)
 
 ## Target architecture and post-MVP design
 
@@ -96,7 +109,3 @@ For a declared parallel wave, each implementation PR must update only its code, 
 After the parallel PRs merge, the wave convergence thread updates Project Status, Project Execution Plan, both documentation indexes, relevant current/target documents, completion-report links, and repository-wide documentation smoke in one PR. The next wave and release/evaluation gate remain closed until that convergence PR is green and merged.
 
 For a non-parallel slice without a reserved convergence thread, the implementation PR may still update all affected current documents atomically. The authoritative rules and reserved shared-file list are in [Documentation Model](DOCUMENTATION_MODEL.md).
-
-## Wave 3 integrated boundary
-
-The W3-INT authority map and frozen Wave 4 inputs are in [Wave 3 cross-slice convergence audit](architecture/wave3_cross_slice_convergence_audit.md). W3-INT is merged; Wave 4 follow-up planning may use that frozen authority map and [Project execution plan](architecture/project_execution_plan.md).
