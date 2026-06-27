@@ -92,5 +92,5 @@ Non-goals preserved:
 
 ## Source pull request
 
-- PR: pending
-- URL: pending
+- PR: #433
+- URL: https://github.com/rinsakamo/relay-lm/pull/433
