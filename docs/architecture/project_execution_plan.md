@@ -8,6 +8,7 @@ relaylm_update_trigger:
   - MVP boundary changes
   - dependency sequencing changes
   - a wave opens or closes through a convergence PR
+  - evaluation decision changes
   - post-MVP roadmap ordering changes
 relaylm_not_authoritative_for:
   - current implemented runtime status
@@ -20,6 +21,7 @@ relaylm_related_authority:
   - pipeline_responsibility_design.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
+  - e1_evaluation_consolidation.md
   - wave4_cross_slice_convergence_audit.md
   - wave3_cross_slice_convergence_audit.md
 ---
@@ -72,10 +74,12 @@ MVP must provide:
 - ordinary retrieval exclusion for hidden, prepared, recovery-required, corrupt, ambiguous, unsafe, cross-scope, and prior physical revisions;
 - durable finalization evidence before protected visible release;
 - one-record restart replay, retention/isolation cleanup, and crash validation;
-- bounded local operation that can drain eligible replay and queue work through explicit caller-invoked rounds.
+- bounded local operation that can drain eligible replay and queue work through explicit caller-invoked rounds;
+- E1 evidence consolidation with an explicit direct Home-origin formation decision.
 
 MVP does not include:
 
+- direct Home-origin trusted scene admission unless a later E1-R1 gate explicitly adds it;
 - always-on daemon/service supervision unless a later explicit MVP gate proves it is required;
 - voice, TTS execution, avatar, Live2D, ASR, or peer communication transport;
 - Secondary MEM consolidation;
@@ -102,10 +106,12 @@ Operations
     -> O3 always-on local operation, if required
 
 Evaluation
-  E1 evidence consolidation
-    -> direct Home-origin formation decision
-    -> speaker-provenance-safe formation quality work
-    -> evidence-grounded recall quality work
+  E1 evaluation consolidation                    complete
+    -> direct Home-origin formation decision           Option A for current MVP
+    -> E1-R1 trusted Home scene-admission path         candidate
+    -> E1-R2 idempotent character-store bootstrap command
+    -> E1-R3 provenance-preserving Primary MEM formation summary
+    -> E1-R4 retrieval-response grounding and unsupported-detail suppression
 
 SOUL Lab product
   UI-B1A lifecycle and operation visibility   complete
@@ -117,7 +123,7 @@ SOUL Lab product
 
 ### Foundation already available for MVP planning
 
-The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4E, O1A through O1D2, UI-B1A, I-5A, and I-7A/B.
+The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4E, O1A through O1D2, UI-B1A, I-5A, I-7A/B, and E1 evaluation consolidation.
 
 ### Wave 4 completed
 
@@ -131,6 +137,20 @@ I-7A/B Held Apply / Discard contract/preflight
 
 The frozen Wave 4 completion record is [Wave 4 Cross-Slice Convergence Audit](wave4_cross_slice_convergence_audit.md). The frozen Wave 4 start contracts remain recorded in [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md).
 
+### E1 evaluation consolidation completed
+
+E1 records the current MVP evaluation decision:
+
+```text
+Option A for current MVP
+  -> Primary MEM formation remains operator/trusted-admission-path driven
+  -> SOUL Lab Home remains real conversation, recall, observation, and governance evaluation
+  -> direct Home-origin trusted memory formation remains unproven
+  -> Option B trusted Home scene-admission is deferred to E1-R1
+```
+
+This decision avoids browser-owned trusted admission metadata and lets MVP evaluation proceed against the already proven local lane. It does not prevent a future bounded Home trusted scene-admission phase.
+
 ### Post-Wave-4 next candidates
 
 ```text
@@ -142,11 +162,10 @@ I-4F crash/race/security/fresh-conversation validation
 I-5B or Pin/Unpin apply/API/UI/ranking work, if defined
 I-7C or Held Apply/Discard runtime/API/UI/durable evidence work, if defined
 
-E1 evaluation consolidation
-  -> direct Home-origin formation admission decision
-  -> character-store bootstrap ergonomics
-  -> provenance-safe memory summary formation
-  -> stricter evidence-grounded recall behavior
+E1-R1 trusted Home scene-admission path
+E1-R2 idempotent character-store bootstrap command
+E1-R3 provenance-preserving Primary MEM formation summary
+E1-R4 retrieval-response grounding and unsupported-detail suppression
 
 O2 supervised worker service
   -> O3 always-on local operation
@@ -181,7 +200,7 @@ operations lane
   -> no runtime-private content leakage in projections or docs
 ```
 
-The direct Home-origin formation gap may be resolved either by adding a trusted scene-admission path to Home-origin requests or by documenting that MVP formation remains operator/admission-path driven while Home is used for recall and governance evaluation.
+The direct Home-origin formation gap is resolved for current MVP evaluation by the E1 Option A decision: MVP formation remains operator/admission-path driven while Home is used for conversation, recall, observation, and governance evaluation. A future E1-R1 phase may replace that decision only by adding a documented trusted scene-admission path.
 
 ## Post-MVP roadmap
 
@@ -213,6 +232,7 @@ Experimental SOUL replacement and memory bootstrap
 - Do not move a post-MVP item into MVP without naming the evaluation gate it unlocks.
 - Do not allow operations work to absorb I1-G replay, B3 queue lifecycle, C2 worker execution, RelayMEM lifecycle, or SOUL Lab mutation authority.
 - Do not allow memory-governance work to absorb scheduler, queue, durable-finalization, or worker authority.
+- Do not allow a Home-origin request to become persistence-eligible through browser-owned hidden trusted metadata.
 - Do not mark O1E/O1F/O2/O3 complete through O1D2.
 - Do not mark I-4F complete through I-4E.
 - Do not mark Pin/Unpin runtime apply complete through I-5A.
