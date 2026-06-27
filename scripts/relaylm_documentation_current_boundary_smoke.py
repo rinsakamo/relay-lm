@@ -63,8 +63,8 @@ O1 overall: in progress
 O2 supervised worker service: planned/unimplemented
 O3 always-on local operation: planned/unimplemented
 Wave 3 implementation tracks complete
-W3-INT complete only after this PR is merged
-Wave 4 not open while W3-INT is unmerged
+W3-INT merged
+Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs
 """,
     "docs/README.md": """
 I1-GA through I1-GE are complete
@@ -72,7 +72,7 @@ O1D1 is complete for accepted scheduler gates plus one bounded production round
 I-4D ordinary M2/RelayCTX lifecycle and prior-revision exclusion plus read-only historical lifecycle projection is complete
 E1 local runtime evaluation
 O1 manual one-round runbook
-W3-INT complete only after its PR is merged
+W3-INT is merged
 """,
     "docs/mvp/README.md": """
 Wave 3 merged completion reports
@@ -87,7 +87,7 @@ O1D1 Accepted Scheduler Gates and One Production Round
 Phase I-4D Primary Retrieval Exclusion
 E1 Local Runtime Evaluation
 Wave 3 Cross-Slice Convergence Audit
-W3-INT complete only after its PR is merged
+W3-INT is merged
 """,
     "docs/architecture/current_target_migration_guide.md": """
 Detailed RelayMEM/RelaySLP status lives in [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
@@ -103,12 +103,13 @@ Phase I-4D retrieval exclusion: complete
 Phase I-4 overall: in progress
 O1D1 accepted gates and one production round: complete
 O1 overall: in progress
-Wave 4 not open while W3-INT is unmerged
+W3-INT merged
+Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs
 """,
     "docs/architecture/post_i3_evaluation_work_roadmap.md": """
 I1-GA through I1-GE
 I-4E, I-4F, O1D2, O1E, and O1F remain incomplete
-Wave 4 not open while W3-INT is unmerged
+W3-INT is merged
 """,
     "docs/architecture/relaymem_mvp_implementation_plan.md": """
 I-4D retrieval exclusion/history projection: complete
@@ -133,7 +134,8 @@ Wave 3 source PR inventory
 I1-G overall complete
 Phase I-4 overall in progress
 O1 overall in progress
-Wave 4 not open while this PR is unmerged
+W3-INT merged
+Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs
 O1D2
 I-4E
 UI-B1A
@@ -227,6 +229,10 @@ STALE = tuple(
     line.strip()
     for line in """
 pending review and merge
+W3-INT complete only after this PR is merged
+W3-INT complete only after its PR is merged
+Wave 4 not open while W3-INT is unmerged
+Wave 4 not open while this PR is unmerged
 I1-GE full production crash validation: unimplemented
 I1-GE validation-only full production crash proof: unimplemented
 I1-GE remains unimplemented
