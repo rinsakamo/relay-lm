@@ -1,0 +1,46 @@
+name: O1E scheduler operational controls
+
+on:
+  pull_request:
+    paths:
+      - "relaylm/relaymem_slp_scheduler_operations.py"
+      - "relaylm/config.py"
+      - "config.example.yaml"
+      - "docs/architecture/o1e_scheduler_operational_controls.md"
+      - "docs/mvp/wave5/o1e_completion_report.md"
+      - "scripts/relaylm_o1e_scheduler_operational_controls_*.py"
+      - ".github/workflows/o1e-scheduler-operational-controls.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "relaylm/relaymem_slp_scheduler_operations.py"
+      - "relaylm/config.py"
+      - "config.example.yaml"
+      - "docs/architecture/o1e_scheduler_operational_controls.md"
+      - "docs/mvp/wave5/o1e_completion_report.md"
+      - "scripts/relaylm_o1e_scheduler_operational_controls_*.py"
+      - ".github/workflows/o1e-scheduler-operational-controls.yml"
+
+jobs:
+  o1e-scheduler-operational-controls:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Compile focused files
+        run: python -m compileall relaylm scripts
+      - name: O1E smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_smoke.py
+      - name: O1E config smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_config_smoke.py
+      - name: O1E fault smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_fault_smoke.py
+      - name: O1E security smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_security_smoke.py
+      - name: Config example loads
+        run: python -c 'from relaylm.config import load_config; load_config("config.example.yaml")'
