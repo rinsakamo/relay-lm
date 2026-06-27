@@ -11,7 +11,7 @@ relaylm_update_trigger:
   - M2 retrieval eligibility or historical used-memory projection changes
 relaylm_not_authoritative_for:
   - current Forget runtime availability
-  - physical deletion secure erase or legal erasure
+  - non-retrieval archival policy
   - Pin Merge Held Secondary MEM or RelaySOUL mutation contracts
   - queue scheduling worker supervision or I1-G durability
 relaylm_current_status_source: ../PROJECT_STATUS.md
@@ -55,7 +55,7 @@ Phase I-4 lets a user explicitly stop one current active formed Primary MEM from
 ```text
 real current active Primary MEM
   -> read-only Forget preflight
-  -> bounded destructive-effect preview
+  -> bounded effect preview
   -> explicit short-lived-token confirmation
   -> revision-fenced authoritative lifecycle transition
   -> page/index/log and retrieval-exclusion convergence
@@ -71,37 +71,13 @@ The contract guarantees that a forgotten memory is retrieval-ineligible, prior p
 
 ## 3. Current foundation
 
-The implementation provides:
-
-- one stable logical `memory_id` across Phase I-3 correction revisions;
-- monotonically increasing current revision and immutable prior Primary pages;
-- exact character, namespace, physical identity, and revision validation;
-- read-only preflight separated from explicit token-gated apply;
-- per-memory lock, pending-operation fence, and operation-level idempotency;
-- M3e publication plus M3f/M3g index-before-log convergence;
-- prepared/applied correction recovery;
-- existing M2 selection of only the corrected current revision;
-- immutable historical Phase I-2 used-memory evidence;
-- loopback-config and actual-peer mutation restrictions;
-- no browser-supplied filesystem paths and no mock-to-real mutation fallback;
-- I-4D ordinary M2/RelayCTX lifecycle filtering before snippet and backend-bound construction.
+The implementation provides exact character, namespace, physical identity, and revision validation; read-only preflight separated from explicit token-gated apply; per-memory lock, pending-operation fence, and operation-level idempotency; M3e publication plus M3f/M3g index-before-log convergence; immutable historical Phase I-2 used-memory evidence; and I-4D ordinary M2/RelayCTX lifecycle filtering before snippet and backend-bound construction.
 
 ## 4. Scope
 
-In scope:
+In scope: one current active formed Primary MEM, one explicit user-facing Forget operation, one immutable hidden successor revision, one runtime-private prepared artifact, one immutable Forget tombstone, one shared current-state resolver, exact preflight/apply/history schemas, crash-safe convergence, normal M2 and RelayCTX exclusion, and historical used-memory integrity.
 
-- one current active formed Primary MEM;
-- one explicit user-facing Forget operation;
-- one immutable hidden successor revision;
-- one runtime-private prepared artifact and one immutable Forget tombstone;
-- one shared current-state resolver and per-memory mutation fence;
-- exact preflight, apply, and bounded history schemas;
-- crash-safe convergence and exact replay;
-- normal M2 and RelayCTX exclusion;
-- historical used-memory integrity;
-- target SOUL Lab behavior and bounded error vocabulary.
-
-Out of scope: restore/unhide, purge/physical deletion, legal erasure guarantees, batch mutation, cross-character mutation, Secondary MEM consolidation, RelaySOUL mutation, queue scheduling, worker supervision, and I1-G durability semantics.
+Out of scope: restore/unhide, purge, batch mutation, cross-character mutation, Secondary MEM consolidation, RelaySOUL mutation, queue scheduling, worker supervision, and I1-G durability semantics.
 
 ## 5. Canonical terminology
 
@@ -113,7 +89,7 @@ Out of scope: restore/unhide, purge/physical deletion, legal erasure guarantees,
 | **`active`** | Canonical lifecycle state eligible for ordinary retrieval when all other M2 gates pass. |
 | **prepared** | Runtime-private operation state after exact intent is durable but before full convergence. |
 
-“Hide” may remain in the phase nickname, but it is not a second operation. “Tombstoned” is not a lifecycle-state value. Forget does not imply physical deletion, secure erase, source deletion, or transcript deletion.
+“Hide” may remain in the phase nickname, but it is not a second operation.
 
 ## 6. Lifecycle state machine
 
@@ -168,6 +144,8 @@ revision 3 hidden
 The hidden successor is the canonical current physical page. Prior pages remain immutable audit evidence and are neither current nor retrieval-eligible. Forget does not create new semantic assertions; the bounded user reason remains runtime-private audit content. No Correct and Forget operation may both consume the same current revision.
 
 ## 8. Persistence decision
+
+Decision: Candidate A.
 
 Phase I-4 uses Candidate A:
 
@@ -225,10 +203,54 @@ POST /lab/api/characters/{character_id}/memory/{memory_id}/forget?namespace=...
 GET  /lab/api/characters/{character_id}/memory/{memory_id}/forget-history?namespace=...
 ```
 
+Target request and history schema anchors:
+
+```text
+relaylm.lab.memory_forget_preflight_request.v0
+relaylm.lab.memory_forget_apply_request.v0
+relaylm.lab.memory_forget_history.v0
+```
+
 I-4E owns loopback-only mutation API and SOUL Lab Forget preflight/confirm/refusal/conflict/receipt UI. It must consume I-4B current-state/token authority, I-4C1/I-4C2 mutation/recovery authority, and I-4D read-only lifecycle result. It does not own the retrieval filtering algorithm, restore, or purge.
 
 I-4F starts after I-4E product surface is stable. It owns fresh-conversation exclusion validation, crash/race/security validation, and product-level Forget completion proof.
 
-## 12. Explicit non-claims
+## 19. Fault matrix
 
-Phase I-4 does not provide legal erasure, secure physical deletion, source deletion, transcript deletion, restore/unhide, purge, Secondary MEM consolidation, RelaySOUL mutation, scheduler control, worker supervision, or automatic repair.
+| Interruption point | Required resolver result | Required recovery behavior |
+|---|---|---|
+| after prepared artifact | `active / prepared / false` | exact resume or bounded conflict; retrieval remains fail-closed |
+| after hidden successor | `hidden / recovery_required / false` | resume M3f/M3g convergence for the same operation |
+| after index / before log | `hidden / recovery_required / false` | apply only the missing log step and then finalize tombstone |
+
+The fault matrix is target architecture for I-4E/I-4F product completion and current implementation evidence for I-4C1/I-4C2/I-4D boundaries. It does not authorize automatic repair outside the exact operation authority.
+
+## 20. Implemented and remaining sub-slices
+
+### I-4B — complete read-only boundary
+
+I-4B validation proves only the read-only resolver/shared-fence/preflight-token-history boundary.
+
+### I-4C1 — hidden-successor commit ownership
+
+I-4C1 owns durable intent preparation and hidden-successor publication through M3e.
+
+### I-4C2 — exact replay and forward recovery
+
+I-4C2 owns exact prepared resume, operation-scoped M3f/M3g convergence, response-loss replay, and tombstone finalization.
+
+### I-4D — convergence and exclusion
+
+I-4D owns ordinary M2/RelayCTX lifecycle and prior-revision exclusion plus historical lifecycle overlay.
+
+### I-4E — loopback wrapper and UI
+
+I-4E remains unimplemented. It owns the loopback-only API wrapper and SOUL Lab Forget UI.
+
+### I-4F — production validation
+
+I-4F remains unimplemented. It owns crash/race/security/fresh-conversation validation.
+
+## 22. Explicit non-claims
+
+Phase I-4 does not provide restore/unhide, purge, Secondary MEM consolidation, RelaySOUL mutation, scheduler control, worker supervision, or automatic repair.
