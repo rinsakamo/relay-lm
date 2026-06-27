@@ -9,6 +9,7 @@ import yaml
 from pydantic import BaseModel, Field, HttpUrl, StrictBool, model_validator
 
 Mode = Literal["pass_through", "memory_light", "memory_full"]
+TrustedHomeSceneAdmissionMode = Literal["disabled", "dry_run", "apply"]
 
 
 class ListenConfig(BaseModel):
@@ -86,6 +87,8 @@ class ModelRoute(BaseModel):
     room_id: str | None = None
     scene_id: str | None = None
     session_id: str | None = None
+    trusted_home_scene_admission_mode: TrustedHomeSceneAdmissionMode = "disabled"
+    trusted_home_scene_admission_scene_id: str = "home"
 
 
 class RelayLMConfig(BaseModel):
@@ -114,6 +117,7 @@ class RelayLMConfig(BaseModel):
     relaymem_slp_runtime_enqueue_enabled: bool = False
     relaymem_slp_runtime_enqueue_dry_run_only: bool = True
     relaymem_slp_runtime_enqueue_apply_enabled: bool = False
+    trusted_home_scene_admission_runtime_trigger_enabled: StrictBool = False
     relaymem_slp_queue_root: str | None = None
     relaymem_slp_protected_source_root: str | None = None
     relaymem_slp_protected_source_max_artifact_bytes: int = Field(default=256 * 1024, ge=1, le=1024 * 1024)
@@ -234,6 +238,7 @@ class RelayLMConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_local_scheduler_mode(self) -> "RelayLMConfig":
+        self._enable_route_owned_home_admission_trigger()
         scheduler_triple = (
             self.relaymem_local_scheduler_enabled,
             self.relaymem_local_scheduler_dry_run_only,
@@ -287,6 +292,20 @@ class RelayLMConfig(BaseModel):
         )):
             raise ValueError("relaymem_local_scheduler_operational_dry_run_lower_apply_enabled")
         return self
+
+    def _enable_route_owned_home_admission_trigger(self) -> None:
+        route_admission_requested = any(
+            route.trusted_home_scene_admission_mode != "disabled"
+            for route in self.model_routes.values()
+        )
+        if not route_admission_requested:
+            self.trusted_home_scene_admission_runtime_trigger_enabled = False
+            return
+        if not self.relaymem_slp_runtime_enqueue_enabled:
+            self.relaymem_slp_runtime_enqueue_enabled = True
+            self.trusted_home_scene_admission_runtime_trigger_enabled = True
+        else:
+            self.trusted_home_scene_admission_runtime_trigger_enabled = False
 
 
 _DISABLED_GATE_TRIPLE = (False, True, False)
