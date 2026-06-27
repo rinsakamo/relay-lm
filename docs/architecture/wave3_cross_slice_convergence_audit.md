@@ -211,7 +211,7 @@ Read-only only. It may show durable-finalization pending/complete/isolated, queu
 
 ### I-5A and I-7A/B
 
-Contract/preflight work may begin after W3-INT merge. It must preserve the shared Primary mutation fence and must not add runtime Pin/Held apply behavior beyond each exact slice.
+Contract/preflight work may begin as Wave 4 follow-up. It must preserve the shared Primary mutation fence and must not add runtime Pin/Held apply behavior beyond each exact slice.
 
 ## Remaining non-goals
 
