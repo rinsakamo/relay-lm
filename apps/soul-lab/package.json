@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit --pretty false",
     "smoke:home-conversation": "node scripts/homeConversationSmoke.mjs",
+    "smoke:lifecycle-visibility": "node scripts/lifecycleVisibilitySmoke.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "engines": {
