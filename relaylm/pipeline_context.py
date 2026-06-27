@@ -29,6 +29,12 @@ if TYPE_CHECKING:
     )
     from relaylm.compiler import ContextBlock
 
+_E1R1_RELEVANT_REQUEST_HEADERS = frozenset({
+    "x-relaylm-trusted-scene-admission",
+    "x-relaylm-trusted-home-scene-admission",
+    "x-relaylm-memory-persistence-trust",
+})
+
 
 @dataclass
 class PipelineContext:
@@ -40,6 +46,7 @@ class PipelineContext:
     forwarded_payload: dict[str, Any] = field(repr=False)
     route: ResolvedRoute
     stream_enabled: bool
+    request_headers: Mapping[str, str] = field(default_factory=dict, repr=False)
     last_mutating_step: str | None = None
     node_results: list[PipelineNodeResult] = field(default_factory=list)
     ctx_working_update_candidate: dict[str, Any] | None = field(
@@ -102,6 +109,9 @@ class PipelineContext:
             consume_compiled_context_blocks_runtime_private,
         )
 
+        self.request_headers = _sanitized_relevant_request_headers(
+            self.request_headers
+        )
         self._compiled_context_blocks = (
             consume_compiled_context_blocks_runtime_private()
         )
@@ -295,6 +305,11 @@ class PipelineContext:
 
         self.node_results.append(result)
 
+    def set_request_headers(self, headers: Mapping[str, str] | None) -> None:
+        """Retain only E1-R1 trust-relevant request header names."""
+
+        self.request_headers = _sanitized_relevant_request_headers(headers)
+
     def set_ctx_working_update_candidate(
         self,
         candidate: Mapping[str, Any] | None,
@@ -444,3 +459,18 @@ def replace_pipeline_forwarded_payload(
 
     pipeline_context.replace_forwarded_payload(new_payload, mutating_step)
     return pipeline_context.forwarded_payload
+
+
+def _sanitized_relevant_request_headers(
+    headers: Mapping[str, str] | None,
+) -> dict[str, str]:
+    if not isinstance(headers, Mapping):
+        return {}
+    retained: dict[str, str] = {}
+    for raw_key in headers:
+        if not isinstance(raw_key, str):
+            continue
+        key = raw_key.strip().lower()
+        if key in _E1R1_RELEVANT_REQUEST_HEADERS:
+            retained[key] = "present"
+    return retained
