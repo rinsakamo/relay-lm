@@ -41,6 +41,8 @@ Default remains disabled. Dry-run mode reports a content-free preview without so
 
 ```text
 relaylm/config.py
+relaylm/pipeline_context.py
+relaylm/request_scope.py
 relaylm/trusted_home_scene_admission.py
 relaylm/relaymem_slp_runtime_finalization.py
 scripts/relaylm_e1r1_trusted_home_scene_admission_smoke.py
@@ -64,7 +66,7 @@ PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.
 Connector preparation validation performed in this environment:
 
 ```bash
-python -m py_compile relaylm/config.py relaylm/trusted_home_scene_admission.py relaylm/relaymem_slp_runtime_finalization.py scripts/relaylm_e1r1_trusted_home_scene_admission_smoke.py
+python -m py_compile relaylm/config.py relaylm/pipeline_context.py relaylm/request_scope.py relaylm/trusted_home_scene_admission.py relaylm/relaymem_slp_runtime_finalization.py scripts/relaylm_e1r1_trusted_home_scene_admission_smoke.py
 ```
 
 The full repository checkout was unavailable in this connector environment, so the branch relies on the added GitHub Actions workflow for full in-repo smoke execution.
