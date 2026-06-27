@@ -42,6 +42,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [O1C eligible B2/B3 queue lane](architecture/o1c_eligible_b2_queue_lane.md)
 - [O1D1 accepted scheduler gates and one production round](architecture/o1d1_production_scheduler_round.md)
 - [O1D2 deterministic scheduler policy](architecture/o1d2_scheduler_policy.md)
+- [O1E scheduler operational controls](architecture/o1e_scheduler_operational_controls.md)
 - [O1 manual one-round runbook](smoke/o1_manual_one_round_runbook.md)
 - [I1-G durable-finalization contract and completed GA-GE boundaries](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD durable-finalization retention and isolation lifecycle](architecture/i1gd_durable_finalization_retention_cleanup.md)
@@ -55,6 +56,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Phase I-4C2 Primary Forget Recovery and Finalization](architecture/phase_i4c2_primary_forget_recovery_finalization.md)
 - [Phase I-4D Primary retrieval exclusion](architecture/phase_i4d_primary_retrieval_exclusion.md)
 - [Phase I-4E Forget API and SOUL Lab UI](architecture/phase_i4e_forget_api_ui.md)
+- [Phase I-4F Forget product validation](architecture/phase_i4f_forget_validation.md)
 - [Phase I-5A Pin / Unpin contract and read-only preflight](architecture/phase_i5_pin_unpin_contract.md)
 - [Phase I-7A/B Held Apply / Discard contract and read-only preflight](architecture/phase_i7ab_held_apply_discard_contract.md)
 - [SOUL Lab UI-B0 real Home conversation](architecture/soul_lab_ui_b0_real_home_conversation.md)
@@ -65,7 +67,18 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 4 implementation tracks and W4-INT are merged. E1 consolidation is docs/evidence-only and does not add runtime behavior.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 4 implementation tracks, W4-INT, E1, O1E, and I-4F are merged. E1 consolidation is docs/evidence-only and does not add runtime behavior.
+
+## Wave 5 / E1 evaluation evidence
+
+- [Wave 5 Cross-Slice Convergence Audit](architecture/wave5_cross_slice_convergence_audit.md)
+- [O1E completion report](mvp/wave5/o1e_completion_report.md)
+- [I-4F completion report](mvp/wave5/i4f_completion_report.md)
+- [E1 completion report](mvp/wave5/e1_completion_report.md)
+- [O1E scheduler operational controls](architecture/o1e_scheduler_operational_controls.md)
+- [Phase I-4F Forget product validation](architecture/phase_i4f_forget_validation.md)
+- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md)
+- [E1 local runtime evaluation](architecture/e1_local_runtime_evaluation_2026_06_25.md)
 
 ## Wave 4 implementation evidence
 
@@ -75,12 +88,6 @@ Current runtime and implementation status is intentionally not summarized here. 
 - [UI-B1A completion report](mvp/wave4/ui_b1a_completion_report.md)
 - [I-5A completion report](mvp/wave4/i5a_completion_report.md)
 - [I-7A/B completion report](mvp/wave4/i7ab_completion_report.md)
-
-## Wave 5 / E1 evaluation evidence
-
-- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md)
-- [E1 local runtime evaluation](architecture/e1_local_runtime_evaluation_2026_06_25.md)
-- [E1 completion report](mvp/wave5/e1_completion_report.md)
 
 ## Target architecture and post-MVP design
 

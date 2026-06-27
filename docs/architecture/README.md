@@ -55,6 +55,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [O1C Eligible B2/B3 Queue Lane](o1c_eligible_b2_queue_lane.md)
 - [O1D1 Accepted Scheduler Gates and One Production Round](o1d1_production_scheduler_round.md)
 - [O1D2 Deterministic Scheduler Policy](o1d2_scheduler_policy.md)
+- [O1E Scheduler Operational Controls](o1e_scheduler_operational_controls.md)
 - [I1-G Durable-finalization Contract and Replay Boundary](i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD Durable-finalization Retention and Isolation Cleanup](i1gd_durable_finalization_retention_cleanup.md)
 - [I1-GE Durable-finalization Crash Validation](i1ge_durable_finalization_crash_validation.md)
@@ -67,10 +68,12 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Phase I-4C2 Primary Forget Recovery and Finalization](phase_i4c2_primary_forget_recovery_finalization.md)
 - [Phase I-4D Primary Retrieval Exclusion](phase_i4d_primary_retrieval_exclusion.md)
 - [Phase I-4E Forget API and SOUL Lab UI](phase_i4e_forget_api_ui.md)
+- [Phase I-4F Forget Product Validation](phase_i4f_forget_validation.md)
 - [Phase I-5A Pin / Unpin Contract](phase_i5_pin_unpin_contract.md)
 - [Phase I-7A/B Held Apply / Discard Contract](phase_i7ab_held_apply_discard_contract.md)
 - [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md)
 - [Wave 4 Cross-Slice Convergence Audit](wave4_cross_slice_convergence_audit.md)
+- [Wave 5 Cross-Slice Convergence Audit](wave5_cross_slice_convergence_audit.md)
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [SOUL Lab UI-B1A Lifecycle Visibility](soul_lab_ui_b1a_lifecycle_visibility.md)
 - [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md)
@@ -88,6 +91,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Phase I-4C2 Primary Forget Recovery and Finalization](phase_i4c2_primary_forget_recovery_finalization.md)
 - [Phase I-4D Primary Retrieval Exclusion](phase_i4d_primary_retrieval_exclusion.md)
 - [Phase I-4E Forget API and SOUL Lab UI](phase_i4e_forget_api_ui.md)
+- [Phase I-4F Forget Product Validation](phase_i4f_forget_validation.md)
 - [Phase I-5A Pin / Unpin Contract](phase_i5_pin_unpin_contract.md)
 - [Phase I-7A/B Held Apply / Discard Contract](phase_i7ab_held_apply_discard_contract.md)
 
@@ -107,11 +111,22 @@ The current Product and RelayMEM status is intentionally not summarized here. Re
 - [Phase I-3 Auditable Primary MEM Correct](phase_i3_auditable_primary_mem_correct.md)
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [Phase I-4E Forget API and SOUL Lab UI](phase_i4e_forget_api_ui.md)
+- [Phase I-4F Forget Product Validation](phase_i4f_forget_validation.md)
 - [SOUL Lab UI-B1A Lifecycle Visibility](soul_lab_ui_b1a_lifecycle_visibility.md)
 - [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md)
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md)
 
 The browser owns no queue, scheduler, worker, storage root, namespace, backend, SOUL, or route authority. Forget mutation authority remains in the existing I-4B/I-4C1/I-4C2 production chain. E1 does not change that authority and does not prove direct Home-origin trusted memory formation.
+
+## Wave 5 / E1 evaluation evidence
+
+- [Wave 5 Cross-Slice Convergence Audit](wave5_cross_slice_convergence_audit.md)
+- [O1E completion report](../mvp/wave5/o1e_completion_report.md)
+- [I-4F completion report](../mvp/wave5/i4f_completion_report.md)
+- [E1 completion report](../mvp/wave5/e1_completion_report.md)
+- [O1E Scheduler Operational Controls](o1e_scheduler_operational_controls.md)
+- [Phase I-4F Forget Product Validation](phase_i4f_forget_validation.md)
+- [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md)
 
 ## Wave 4 implementation evidence
 

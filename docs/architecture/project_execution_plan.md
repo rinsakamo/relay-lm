@@ -21,7 +21,10 @@ relaylm_related_authority:
   - pipeline_responsibility_design.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
+  - o1e_scheduler_operational_controls.md
   - e1_evaluation_consolidation.md
+  - phase_i4f_forget_validation.md
+  - wave5_cross_slice_convergence_audit.md
   - wave4_cross_slice_convergence_audit.md
   - wave3_cross_slice_convergence_audit.md
 ---
@@ -75,6 +78,7 @@ MVP must provide:
 - durable finalization evidence before protected visible release;
 - one-record restart replay, retention/isolation cleanup, and crash validation;
 - bounded local operation that can drain eligible replay and queue work through explicit caller-invoked rounds;
+- caller-invoked O1E stale-recovery/cancellation/shutdown controls;
 - E1 evidence consolidation with an explicit direct Home-origin formation decision.
 
 MVP does not include:
@@ -92,7 +96,7 @@ MVP does not include:
 ```text
 Memory governance
   I-4E Forget API/UI                         complete
-    -> I-4F Forget validation                next
+    -> I-4F Forget validation                complete
     -> I-5A Pin / Unpin contract/preflight   complete
     -> I-5B or apply/API/UI/ranking work     candidate
     -> I-7A/B Held Apply/Discard preflight   complete
@@ -100,8 +104,8 @@ Memory governance
 
 Operations
   O1D2 ordering/fairness/retry/backoff/pacing complete
-    -> O1E stale recovery/cancellation/shutdown
-    -> O1F operational validation
+    -> O1E stale recovery/cancellation/shutdown complete
+    -> O1F operational validation               candidate
     -> O2 supervised worker service, if required
     -> O3 always-on local operation, if required
 
@@ -123,7 +127,7 @@ SOUL Lab product
 
 ### Foundation already available for MVP planning
 
-The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4E, O1A through O1D2, UI-B1A, I-5A, I-7A/B, and E1 evaluation consolidation.
+The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1E, UI-B1A, I-5A, I-7A/B, and E1 evaluation consolidation.
 
 ### Wave 4 completed
 
@@ -136,6 +140,16 @@ I-7A/B Held Apply / Discard contract/preflight
 ```
 
 The frozen Wave 4 completion record is [Wave 4 Cross-Slice Convergence Audit](wave4_cross_slice_convergence_audit.md). The frozen Wave 4 start contracts remain recorded in [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md).
+
+### Wave 5 completed
+
+```text
+E1 evaluation consolidation
+O1E stale recovery/cancellation/shutdown
+I-4F crash/race/security/fresh-conversation validation
+```
+
+The Wave 5 convergence record is [Wave 5 Cross-Slice Convergence Audit](wave5_cross_slice_convergence_audit.md). Wave 5 closes the immediate post-Wave-4 validation/evaluation/operational-control gap without opening polling, service supervision, Pin/Unpin runtime apply, Held Apply/Discard runtime, direct Home-origin trusted formation, or O2/O3.
 
 ### E1 evaluation consolidation completed
 
@@ -151,13 +165,10 @@ Option A for current MVP
 
 This decision avoids browser-owned trusted admission metadata and lets MVP evaluation proceed against the already proven local lane. It does not prevent a future bounded Home trusted scene-admission phase.
 
-### Post-Wave-4 next candidates
+### Post-Wave-5 next candidates
 
 ```text
-O1E stale recovery/cancellation/shutdown
-  -> O1F operational validation
-
-I-4F crash/race/security/fresh-conversation validation
+O1F operational validation
 
 I-5B or Pin/Unpin apply/API/UI/ranking work, if defined
 I-7C or Held Apply/Discard runtime/API/UI/durable evidence work, if defined
@@ -171,7 +182,7 @@ O2 supervised worker service
   -> O3 always-on local operation
 ```
 
-O2/O3 should remain after O1E/O1F unless a concrete evaluation requirement proves that supervised or always-on operation is necessary before the remaining governance UI/validation work.
+O2/O3 should remain after O1F unless a concrete evaluation requirement proves that supervised or always-on operation is necessary before the remaining governance UI/validation work.
 
 ## MVP completion criteria
 
@@ -233,8 +244,7 @@ Experimental SOUL replacement and memory bootstrap
 - Do not allow operations work to absorb I1-G replay, B3 queue lifecycle, C2 worker execution, RelayMEM lifecycle, or SOUL Lab mutation authority.
 - Do not allow memory-governance work to absorb scheduler, queue, durable-finalization, or worker authority.
 - Do not allow a Home-origin request to become persistence-eligible through browser-owned hidden trusted metadata.
-- Do not mark O1E/O1F/O2/O3 complete through O1D2.
-- Do not mark I-4F complete through I-4E.
+- Do not mark O1F/O2/O3 complete through O1E.
 - Do not mark Pin/Unpin runtime apply complete through I-5A.
 - Do not mark Held Apply/Discard runtime complete through I-7A/B.
 - During a declared parallel wave, implementation PRs update only their unique handoff/completion report and implementation-coupled docs; the convergence PR updates this plan, Project Status, indexes, current-target documents, and smoke together.
