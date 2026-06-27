@@ -52,6 +52,7 @@ This audit is documentation-only. It does not add production runtime behavior, n
 
 ```text
 O1D2 bounded policy/fairness/pacing                  complete
+  -> O1E stale recovery/cancellation/shutdown        complete
   -> O1E bounded operational controls                complete
   -> O1F operational validation                      unimplemented
 
