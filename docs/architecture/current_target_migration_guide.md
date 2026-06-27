@@ -32,7 +32,7 @@ Last reviewed: 2026-06-27 JST
 
 ## Purpose
 
-This guide distinguishes implemented runtime behavior from target architecture. It is intentionally compact: detailed RelayMEM/RelaySLP status lives in [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md), sequencing lives in [Pipeline Implementation Plan](pipeline_implementation_plan.md), and repository-wide current status lives in [Project Status](../PROJECT_STATUS.md).
+This guide distinguishes implemented runtime behavior from target architecture. It is intentionally compact: Detailed RelayMEM/RelaySLP status lives in [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md), sequencing lives in [Pipeline Implementation Plan](pipeline_implementation_plan.md), and repository-wide current status lives in [Project Status](../PROJECT_STATUS.md).
 
 ## Interpretation rule
 
