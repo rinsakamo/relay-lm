@@ -43,6 +43,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [O1D1 accepted scheduler gates and one production round](architecture/o1d1_production_scheduler_round.md)
 - [O1D2 deterministic scheduler policy](architecture/o1d2_scheduler_policy.md)
 - [O1E scheduler operational controls](architecture/o1e_scheduler_operational_controls.md)
+- [O1F operational validation](architecture/o1f_operational_validation.md)
 - [O1 manual one-round runbook](smoke/o1_manual_one_round_runbook.md)
 - [I1-G durable-finalization contract and completed GA-GE boundaries](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD durable-finalization retention and isolation lifecycle](architecture/i1gd_durable_finalization_retention_cleanup.md)
@@ -67,7 +68,12 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 4 implementation tracks, W4-INT, E1, O1E, and I-4F are merged. E1 consolidation is docs/evidence-only and does not add runtime behavior.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 4 implementation tracks, W4-INT, Wave 5 implementation tracks, W5-INT, O1F, E1, O1E, and I-4F are merged. E1 consolidation is docs/evidence-only and does not add runtime behavior. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+
+## Wave 6 / O1F evidence
+
+- [O1F completion report](mvp/wave6/o1f_completion_report.md)
+- [O1F operational validation](architecture/o1f_operational_validation.md)
 
 ## Wave 5 / E1 evaluation evidence
 
