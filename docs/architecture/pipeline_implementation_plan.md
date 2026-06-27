@@ -98,8 +98,8 @@ Durability and operations:
   O3 always-on local operation: planned/unimplemented
 
 Wave 3 implementation tracks complete
-W3-INT complete only after this PR is merged
-Wave 4 not open while W3-INT is unmerged
+W3-INT merged
+Wave 4 follow-up planning may use the frozen W3-INT authority map and inputs
 ```
 
 ## Completed foundation
@@ -184,7 +184,7 @@ W2-INT audit of I1-GD, I-4C2, O1B, and O1C
 phase-boundary reconciliation for Wave 3 inputs
 ```
 
-### Wave 3 — implementation tracks complete, W3-INT pending merge
+### Wave 3 — implementation tracks complete and W3-INT merged
 
 ```text
 I1-GE validation-only full process-exit/restart proof
@@ -193,7 +193,7 @@ I1-GE validation-only full process-exit/restart proof
 -> W3-INT cross-slice convergence audit and shared documentation integration
 ```
 
-### Wave 4 — not open until W3-INT merge
+### Wave 4 — follow-up work after W3-INT merge
 
 ```text
 O1D2 ordering/fairness/retry-time/backoff/jitter/pacing -> O1E stale recovery/cancellation/shutdown
