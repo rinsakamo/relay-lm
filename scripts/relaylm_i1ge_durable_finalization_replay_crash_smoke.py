@@ -9,7 +9,7 @@ _PUBLIC_RECONSTRUCT_CHILD = "._relaylm_i1ge_crash_child_public_reconstruct.py"
 
 
 def _run_replay_matrix_with_public_reconstruct_seam() -> None:
-    """Run the replay crash matrix with the reconstruction seam patched at facade level."""
+    """Run replay crash validation against the public replay facade seam."""
 
     original_child = validation.CHILD
     original_text = original_child.read_text("utf-8")
