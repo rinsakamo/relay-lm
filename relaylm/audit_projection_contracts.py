@@ -45,6 +45,7 @@ def install_audit_projection_contracts(ap: Any) -> None:
             "content_free": ap._optional(ap._bool),
         }
     )
+    _install_primary_recall_projection(ap)
 
     reference = ap.PIPELINE_NODE_PROJECTORS["relayint_reference_repair"]
     ap.PIPELINE_NODE_PROJECTORS["relayint_reference_repair"] = ap.NodeProjector(
@@ -115,6 +116,51 @@ def _scoped_uuid_id(ap: Any, suffix: str):
         return ap._drop()
 
     return validate
+
+
+def _install_primary_recall_projection(ap: Any) -> None:
+    ap.TOP_LEVEL_PROJECTORS["relaymem_primary_recall_projection"] = ap._mapping(
+        {
+            "schema_version": ap._enum("relaymem.primary_recall_projection.v0"),
+            "diagnostics_only": ap._bool,
+            "content_free": ap._bool,
+            "content_included": ap._bool,
+            "memory_text_included": ap._bool,
+            "title_or_summary_included": ap._bool,
+            "character_value_included": ap._bool,
+            "namespace_value_included": ap._bool,
+            "runtime_identifier_values_included": ap._bool,
+            "path_values_included": ap._bool,
+            "digest_values_included": ap._bool,
+            "lineage_values_included": ap._bool,
+            "idempotency_values_included": ap._bool,
+            "backend_prompt_included": ap._bool,
+            "retrieval_attempted": ap._bool,
+            "scene_type": ap._bounded_token,
+            "retrieval_scope": ap._bounded_token,
+            "fallback_reason": ap._optional(ap._lower_token),
+            "persistence_block": ap._bool,
+            "ctx_block_present": ap._bool,
+            "primary_candidate_discovery_attempted": ap._bool,
+            "primary_candidate_count": ap._non_negative_int,
+            "grounding_enabled": ap._bool,
+            "grounded_item_count": ap._non_negative_int,
+            "unsupported_detail_policy": ap._enum("suppress"),
+            "evidence_content_included": ap._bool,
+            "runtime_private_evidence_omitted": ap._bool,
+            "selected_count": ap._non_negative_int,
+            "selected_layer_counts": ap._PRIMARY_RECALL_LAYER_COUNTS,
+            "character_scope_resolved": ap._bool,
+            "namespace_scope_valid": ap._bool,
+            "scope_matched": ap._bool,
+            "injection_candidate_present": ap._bool,
+            "injection_performed": ap._optional(ap._bool),
+            "estimated_chars": ap._non_negative_int,
+            "estimated_tokens": ap._non_negative_int,
+            "memory_used": ap._bool,
+            "blocked_reason_ids": ap._REASON_LIST,
+        }
+    )
 
 
 def _client_history_exclusion_apply_diagnostics(ap: Any):
