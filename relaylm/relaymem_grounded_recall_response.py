@@ -45,6 +45,9 @@ _REL_QUERY_RE = re.compile(r"\b(relationship|related|friend|family|coworker)\b|�
 _REL_LIKE_RE = re.compile(r"\b(friend|family|parent|child|coworker|relationship)\b|友人|家族|同僚|関係", re.I)
 _CAUSE_QUERY_RE = re.compile(r"\b(why|because|cause|reason)\b|なぜ|理由|原因", re.I)
 _CAUSE_LIKE_RE = re.compile(r"\b(because|reason|cause|due to)\b|理由|原因|なぜなら", re.I)
+_PREFERENCE_QUERY_RE = re.compile(r"\b(favorite|favourite|prefer|preference|like|love|dislike|hobby|taste)\b|好き|好み|お気に入り|嫌い", re.I)
+_PREFERENCE_LIKE_RE = re.compile(r"\b(favorite|favourite|prefer|preference|like|love|dislike|hobby|taste)\b|好き|好み|お気に入り|嫌い", re.I)
+_FAVORITE_DETAIL_RE = re.compile(r"\bfavo[u]?rite\s+([A-Za-z][A-Za-z0-9_-]{0,32})", re.I)
 
 
 @dataclass(frozen=True)
@@ -165,6 +168,7 @@ def classify_grounded_recall_support(memory: Mapping[str, object]) -> SupportSta
 
 def _context(items: list[dict[str, object]], excluded: list[dict[str, object]], query: str, policy: str, unsupported: int, ambiguous: int, *, no_evidence: bool) -> dict[str, object]:
     instruction = _instruction(no_evidence=no_evidence, unsupported=unsupported, policy=policy)
+    content = _backend_message_content(instruction, items, unsupported)
     return {
         "schema_version": GROUNDED_RECALL_CONTEXT_SCHEMA,
         "runtime_private": True,
@@ -176,8 +180,29 @@ def _context(items: list[dict[str, object]], excluded: list[dict[str, object]], 
         "ambiguous_evidence_count": ambiguous,
         "query_detail_types": _query_detail_types(query),
         "instruction": instruction,
-        "backend_messages": [{"role": "system", "content": instruction}],
+        "backend_messages": [{"role": "system", "content": content}],
     }
+
+
+def _backend_message_content(instruction: str, items: Sequence[Mapping[str, object]], unsupported: int) -> str:
+    lines = [
+        "[RelayMEM Grounded Recall Context]",
+        instruction,
+        "",
+        "Evidence items:",
+    ]
+    if not items:
+        lines.append("- none")
+    for index, item in enumerate(items, start=1):
+        lines.append(
+            f"- {index}. support={item.get('support_level')}; ref={item.get('memory_ref')}; text={item.get('fact_text')}"
+        )
+    lines.extend([
+        "",
+        f"unsupported_detail_count={unsupported}",
+        "Do not mention this block unless asked about context handling.",
+    ])
+    return "\n".join(lines)
 
 
 def _instruction(*, no_evidence: bool, unsupported: int, policy: str) -> str:
@@ -272,7 +297,14 @@ def _safe_revision(value: object) -> str:
 
 
 def _query_detail_types(query: str) -> list[str]:
-    checks = (("date_or_time", _DATE_QUERY_RE), ("name", _NAME_QUERY_RE), ("quantity", _QUANTITY_QUERY_RE), ("relationship", _REL_QUERY_RE), ("cause", _CAUSE_QUERY_RE))
+    checks = (
+        ("date_or_time", _DATE_QUERY_RE),
+        ("name", _NAME_QUERY_RE),
+        ("quantity", _QUANTITY_QUERY_RE),
+        ("relationship", _REL_QUERY_RE),
+        ("cause", _CAUSE_QUERY_RE),
+        ("preference", _PREFERENCE_QUERY_RE),
+    )
     return [name for name, pattern in checks if pattern.search(query)]
 
 
@@ -284,7 +316,22 @@ def _unsupported_detail_count(query: str, items: Sequence[Mapping[str, object]])
         bool(_NAME_QUERY_RE.search(query) and not _NAME_LIKE_RE.search(facts)),
         bool(_REL_QUERY_RE.search(query) and not _REL_LIKE_RE.search(facts)),
         bool(_CAUSE_QUERY_RE.search(query) and not _CAUSE_LIKE_RE.search(facts)),
+        _preference_detail_missing(query, facts),
     ))
+
+
+def _preference_detail_missing(query: str, facts: str) -> bool:
+    if not _PREFERENCE_QUERY_RE.search(query):
+        return False
+    query_lower = query.lower()
+    facts_lower = facts.lower()
+    requested_details = [match.group(1).lower() for match in _FAVORITE_DETAIL_RE.finditer(query_lower)]
+    if requested_details:
+        return not any(
+            f"favorite {detail}" in facts_lower or f"favourite {detail}" in facts_lower
+            for detail in requested_details
+        )
+    return not _PREFERENCE_LIKE_RE.search(facts)
 
 
 def _excluded(index: int, status: str, reason: str) -> dict[str, object]:
