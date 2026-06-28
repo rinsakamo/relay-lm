@@ -32,6 +32,8 @@ The existing M2 candidate path remains the preferred relevance owner. The E1-R5 
 
 The bridge remains fail-closed when `query_summary.term_hints` is absent or empty. In that case it records `primary_candidate_query_terms_missing` and does not promote the first scoped Primary MEM from the index fallback.
 
+Fallback relevance is evaluated only against memory content fields (`summary` and `title`), not storage metadata such as page path or memory kind. Discovery scans the loaded bounded control index before namespace and relevance filtering so later eligible entries are not skipped by a pre-filter cap.
+
 Primary recall now accepts the same namespace token shape used by queue/worker formation, including slash-style namespace tokens such as `character/default`, while keeping exact namespace values runtime-private.
 
 ## Preserved authorities and non-goals
@@ -52,6 +54,7 @@ Tests / smokes:
 - `scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py`
 - `scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py`
 - `scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py`
+- `scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py`
 
 Documentation:
 
@@ -66,6 +69,7 @@ New validation coverage:
 PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
 PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
 PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py
 ```
 
 Regression targets carried in the PR body:
@@ -87,13 +91,15 @@ PYTHONPATH=. python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
 
 Review follow-up on PR #439 added fail-closed coverage for empty `query_summary.term_hints` after automated review identified that empty query terms could otherwise promote an unrelated first scoped Primary MEM.
 
+A later review follow-up tightened fallback relevance so storage metadata cannot satisfy query matching and removed the pre-filter 128-entry index scan cap.
+
 The execution environment used for the initial PR preparation did not contain a local checkout of `rinsakamo/relay-lm`, so full repository smoke execution remains a PR/CI gate.
 
 ## Known limitations
 
 E1-R5 does not implement a broader retrieval ranking engine. It only bridges the missing character-scoped Primary MEM candidate handoff when bounded query hints are available.
 
-E1-R5 does not make unbounded memory scans, does not depend on a `runtime/memory/memory` symlink workaround, and does not migrate older flat-store memory layouts.
+E1-R5 does not make filesystem scans, does not depend on a `runtime/memory/memory` symlink workaround, and does not migrate older flat-store memory layouts.
 
 ## Shared documentation update inputs
 
@@ -113,7 +119,7 @@ docs/mvp/wave7/e1r5_completion_report.md
 Cross-slice risk:
 
 ```text
-The bridge must remain bounded, exact-namespace, lifecycle-aware, content-free in public projections, and fail-closed without query hints.
+The bridge must remain bounded, exact-namespace, lifecycle-aware, content-free in public projections, content-only for relevance, and fail-closed without query hints.
 ```
 
 Recommended next phase:
