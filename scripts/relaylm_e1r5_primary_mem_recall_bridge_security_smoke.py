@@ -21,13 +21,18 @@ QUESTION = "天体をいつ初めて聴いた？"
 
 
 def artifact(namespace_terms: list[str] | None = None) -> dict[str, object]:
+    term_hints = (
+        ["天体", "初めて聴いた", "いつ"]
+        if namespace_terms is None
+        else namespace_terms
+    )
     return {
         "scene_type": "design_talk",
         "retrieval_scope": "long_term_memory",
         "snippet_apply_decision": "eligible_but_not_applied",
         "query_summary": {
             "source": "latest_user_message",
-            "term_hints": namespace_terms or ["天体", "初めて聴いた", "いつ"],
+            "term_hints": term_hints,
         },
         "selected_mem_candidates": [],
     }
@@ -87,7 +92,31 @@ def main() -> None:
             wrong_namespace,
         )
 
-        public_values = [bridged["primary_recall_projection"], projection, wrong_namespace["primary_recall_projection"]]
+        no_query_terms = apply_relaymem_primary_recall_scope(
+            artifact([]),
+            scoped_store_root=str(scoped),
+            expected_namespace=NAMESPACE,
+            max_snippet_chars=512,
+            max_snippet_candidates=3,
+            snippet_budget=512,
+        )
+        no_query_runtime = no_query_terms["primary_recall_runtime"]
+        require(no_query_runtime["selected_count"] == 0, no_query_terms)
+        require(
+            "primary_candidate_query_terms_missing" in no_query_runtime["blocked_reason_ids"],
+            no_query_terms,
+        )
+        require(
+            "primary_recall_no_scoped_match" in no_query_runtime["blocked_reason_ids"],
+            no_query_terms,
+        )
+
+        public_values = [
+            bridged["primary_recall_projection"],
+            projection,
+            wrong_namespace["primary_recall_projection"],
+            no_query_terms["primary_recall_projection"],
+        ]
         public = json.dumps(public_values, ensure_ascii=False)
         for forbidden in (SUMMARY, "RAY", "天体", str(scoped), str(configured_root), memory_id, "page_digest", "lineage_fingerprint"):
             require(forbidden not in public, ("public leak", forbidden, public))
