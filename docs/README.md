@@ -25,8 +25,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
-- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and direct Home-origin formation decision.
-- [E1 local runtime evaluation](architecture/e1_local_runtime_evaluation_2026_06_25.md) — workstation evidence and known product gaps.
+- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and remaining E1-R3/R4 quality work.
 - [MVP evidence index](mvp/README.md) — historical snapshots and per-PR implementation completion reports.
 
 ## Product-critical boundaries
@@ -59,21 +58,34 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Phase I-4E Forget API and SOUL Lab UI](architecture/phase_i4e_forget_api_ui.md)
 - [Phase I-4F Forget product validation](architecture/phase_i4f_forget_validation.md)
 - [Phase I-5A Pin / Unpin contract and read-only preflight](architecture/phase_i5_pin_unpin_contract.md)
+- [Phase I-5B Pin / Unpin apply and ranking behavior](architecture/phase_i5b_pin_unpin_apply.md)
 - [Phase I-7A/B Held Apply / Discard contract and read-only preflight](architecture/phase_i7ab_held_apply_discard_contract.md)
+- [Phase I-7C Held Apply / Discard runtime governance](architecture/phase_i7c_held_apply_discard_runtime.md)
 - [SOUL Lab UI-B0 real Home conversation](architecture/soul_lab_ui_b0_real_home_conversation.md)
 - [SOUL Lab UI-B1A lifecycle visibility](architecture/soul_lab_ui_b1a_lifecycle_visibility.md)
 - [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md)
+- [E1-R1 trusted Home scene admission](architecture/e1r1_trusted_home_scene_admission.md)
+- [E1-R2 character-store bootstrap command](architecture/e1r2_character_store_bootstrap.md)
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
 - [Architecture documentation index](architecture/README.md)
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 4 implementation tracks, W4-INT, Wave 5 implementation tracks, W5-INT, O1F, E1, O1E, and I-4F are merged. E1 consolidation is docs/evidence-only and does not add runtime behavior. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 6 implementation tracks and W3-INT through W6-INT are merged. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
 
-## Wave 6 / O1F evidence
+## Wave 6 implementation evidence
 
+- [Wave 6 Cross-Slice Convergence Audit](architecture/wave6_cross_slice_convergence_audit.md)
 - [O1F completion report](mvp/wave6/o1f_completion_report.md)
+- [I-5B completion report](mvp/wave6/i5b_completion_report.md)
+- [I-7C completion report](mvp/wave6/i7c_completion_report.md)
+- [E1-R1 completion report](mvp/wave6/e1r1_completion_report.md)
+- [E1-R2 completion report](mvp/wave6/e1r2_completion_report.md)
 - [O1F operational validation](architecture/o1f_operational_validation.md)
+- [Phase I-5B Pin / Unpin apply and ranking behavior](architecture/phase_i5b_pin_unpin_apply.md)
+- [Phase I-7C Held Apply / Discard runtime governance](architecture/phase_i7c_held_apply_discard_runtime.md)
+- [E1-R1 trusted Home scene admission](architecture/e1r1_trusted_home_scene_admission.md)
+- [E1-R2 character-store bootstrap command](architecture/e1r2_character_store_bootstrap.md)
 
 ## Wave 5 / E1 evaluation evidence
 

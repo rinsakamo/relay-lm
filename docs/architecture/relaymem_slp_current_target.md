@@ -16,22 +16,23 @@ relaylm_not_authoritative_for:
   - exact RelayMEM or RelaySLP schemas
   - RelaySOUL approval contracts
 relaylm_related_authority:
-  - o1e_scheduler_operational_controls.md
   - o1f_operational_validation.md
+  - phase_i5b_pin_unpin_apply.md
+  - phase_i7c_held_apply_discard_runtime.md
+  - e1r1_trusted_home_scene_admission.md
+  - e1r2_character_store_bootstrap.md
   - phase_i4f_forget_validation.md
-  - phase_i4e_forget_api_ui.md
   - e1_evaluation_consolidation.md
-  - wave5_cross_slice_convergence_audit.md
-  - wave4_cross_slice_convergence_audit.md
+  - wave6_cross_slice_convergence_audit.md
   - ../PROJECT_STATUS.md
 ---
 # RelayMEM / RelaySLP Current / Target Boundary
 
-Last reviewed: 2026-06-27 JST
+Last reviewed: 2026-06-28 JST
 
 ## Current implemented boundary
 
-RelayMEM currently provides bounded store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, gated RelayCTX injection, auditable Correct, canonical read-only Primary current-state resolution, I-4C1 hidden-successor lifecycle commit ownership, bounded I-4C2 recovery/finalization, I-4D ordinary retrieval lifecycle exclusion plus historical lifecycle overlay, I-4E loopback Forget API/UI, I-4F full Forget validation, I-5A Pin / Unpin read-only preflight, and I-7A/B Held Apply / Discard read-only preflight.
+RelayMEM currently provides bounded store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, gated RelayCTX injection, auditable Correct, canonical read-only Primary current-state resolution, I-4C1 hidden-successor lifecycle commit ownership, bounded I-4C2 recovery/finalization, I-4D ordinary retrieval lifecycle exclusion plus historical lifecycle overlay, I-4E loopback Forget API/UI, I-4F full Forget validation, I-5A Pin / Unpin read-only preflight, I-5B Pin / Unpin apply/API/UI/ranking behavior, I-7A/B Held Apply / Discard read-only preflight, and I-7C Held Apply / Discard runtime/API/UI/durable governance evidence.
 
 The Primary MEM persistence chain is implemented through M3a-M3h. The Phase 6 execution boundary is implemented through B0-B3, C1-5, and C2, with O0 as the explicit local caller:
 
@@ -54,7 +55,7 @@ Phase 6-B2 performs atomic durable enqueue of durably enqueued jobs through the 
 
 I2 real SOUL Lab observation is complete. It is read-only evidence only and cannot authorize repair or retrieval.
 
-E1 evaluation consolidation is current as an evidence/documentation boundary. It records that the explicit trusted formation lane can reach durable Primary MEM formation and later Home recall, while Direct Home-origin trusted memory formation remains unimplemented.
+E1 evaluation consolidation is current as an evidence/documentation boundary. E1-R1 route-owned trusted Home scene admission is current implemented. E1-R2 dry-run-first character-store bootstrap is current implemented. E1-R3 provenance-preserving summary formation and E1-R4 evidence-grounded recall behavior remain quality work.
 
 ## I1-G durable-finalization boundary
 
@@ -78,7 +79,9 @@ I-4E is current implemented as loopback Forget API/UI.
 
 I-4F is current implemented as validation-only Forget product completion. It proves crash/fault recovery, one-winner races, Correct/Forget stale races, strict token binding, loopback/security leakage boundaries, stale-browser response fencing, no implicit UI apply triggers, fresh process reread, fresh ordinary conversation exclusion, and multi-scope isolation over the existing I-4B/I-4C1/I-4C2/I-4D/I-4E authorities. I-4F does not create new mutation authority.
 
-UI-B1A is current implemented read-only visibility. I-5A is current implemented contract/read-only preflight only. I-7A/B is current implemented contract/read-only preflight only.
+UI-B1A is current implemented read-only visibility. I-5A is current implemented contract/read-only preflight only. I-5B is current implemented as Pin / Unpin apply/API/UI/ranking behavior. I-7A/B is current implemented contract/read-only preflight only. I-7C is current implemented as Held Apply / Discard runtime/API/UI/durable governance evidence.
+
+I-5B Pin state remains governance metadata and a ranking hint. It never admits hidden, prepared, recovery-required, corrupt, cross-scope, or prior physical revisions. I-7C persists content-free decision evidence for already-held candidates and does not start workers, schedulers, retry loops, C2, O1, or B3 transitions from the UI.
 
 ## Completed Primary MEM integration
 
@@ -100,12 +103,16 @@ finalized ordinary turn
   -> full Forget product validation                    complete as I-4F
   -> read-only lifecycle visibility                    complete as UI-B1A
   -> Pin / Unpin read-only preflight                   complete as I-5A
+  -> Pin / Unpin apply and ranking hint                complete as I-5B
   -> Held Apply / Discard read-only preflight          complete as I-7A/B
+  -> Held Apply / Discard runtime governance           complete as I-7C
   -> E1 evidence consolidation                         complete as E1
+  -> route-owned trusted Home admission                complete as E1-R1
+  -> dry-run-first character-store bootstrap           complete as E1-R2
   -> bounded scheduler operational controls            complete as O1E
   -> operational validation hardening                  complete as O1F
 ```
 
 ## Completion interpretation
 
-M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1F, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-7A/B, and E1 evaluation consolidation are implemented. E1 is docs/evidence only and adds no runtime behavior. O1F is validation-only caller-invoked operational hardening; O2 and O3 remain incomplete. I-5A does not complete Pin/Unpin runtime apply. I-7A/B does not complete Held Apply/Discard runtime. Direct Home-origin trusted memory formation remains unimplemented.
+M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1F, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-5B, I-7A/B, I-7C, E1, E1-R1, and E1-R2 are implemented. O1F is validation-only caller-invoked operational hardening; O2 and O3 remain incomplete. E1-R1 is route-owned and defaults disabled; it does not permit browser-owned trust. E1-R2 is dry-run-first and does not create semantic memory content. E1-R3 and E1-R4 remain incomplete quality/evaluation work.

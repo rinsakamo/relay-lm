@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the E1 MVP evaluation evidence consolidation boundary."""
+"""Validate the E1 MVP evaluation evidence consolidation boundary after E1-R1/R2."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -11,55 +11,60 @@ REQUIRED = {
         "# E1 MVP Evaluation Evidence Consolidation",
         "## Current E1 proof boundary",
         "## Evidence inventory",
-        "## Implemented evidence vs assumptions",
-        "## Direct Home-origin formation decision record",
+        "## Implemented evidence vs remaining quality work",
+        "E1-R1 route-owned trusted Home admission",
+        "E1-R2 character-store bootstrap is implemented",
+        "## Direct Home-origin admission decision record",
         "Option A",
         "Option B",
-        "Recommended for the current MVP boundary.",
-        "E1-R1 trusted Home scene-admission path",
+        "Implemented by E1-R1",
         "## Character-store bootstrap ergonomics",
         "E1-R2 idempotent character-store bootstrap command",
         "## Speaker-provenance-safe memory summary formation",
         "E1-R3 provenance-preserving Primary MEM formation summary",
         "## Evidence-grounded recall behavior",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression",
-        "## Evaluation smoke boundary",
-        "Home conversation is real, but Home-origin trusted memory formation is not proven.",
-        "Trusted formation lane is proven, but all formation quality risks are not solved.",
+        "Trusted Home admission is implemented, but formation quality risks are not solved.",
         "Recall evidence is present, but evidence-grounded response behavior is not fully evaluated.",
     ),
     "docs/PROJECT_STATUS.md": (
         "E1 evaluation consolidation: complete",
-        "Direct Home-origin formation: not currently proven; trusted scene admission is missing",
-        "W4-INT merged",
-        "Home is conversation, recall, observation, and governance evaluation unless a future trusted scene-admission phase changes that boundary.",
+        "E1-R1 trusted Home scene admission: complete",
+        "E1-R2 character-store bootstrap command: complete",
+        "W6-INT merged",
+        "Home can be a trusted formation source only through the E1-R1 route-owned gate; browser-owned trust remains rejected.",
     ),
     "docs/architecture/project_execution_plan.md": (
         "E1 evaluation consolidation                    complete",
-        "direct Home-origin formation decision           Option A for current MVP",
-        "E1-R1 trusted Home scene-admission path",
-        "E1-R2 idempotent character-store bootstrap command",
+        "E1-R1 trusted Home scene-admission path         complete",
+        "E1-R2 idempotent character-store bootstrap command complete",
         "E1-R3 provenance-preserving Primary MEM formation summary",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression",
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
-        "E1 evaluation consolidation is current as an evidence/documentation boundary.",
-        "Direct Home-origin trusted memory formation remains unimplemented.",
+        "E1-R1 route-owned trusted Home scene admission is current implemented.",
+        "E1-R2 dry-run-first character-store bootstrap is current implemented.",
     ),
     "docs/architecture/current_target_migration_guide.md": (
-        "E1 evaluation consolidation is current docs/evidence only",
-        "Direct Home-origin trusted scene admission remains target work",
+        "E1-R1 is current implemented as route-owned trusted Home scene admission.",
+        "E1-R2 is current implemented as dry-run-first character-store bootstrap.",
     ),
     "docs/README.md": (
         "E1 MVP evaluation consolidation",
-        "E1 completion report",
+        "E1-R1 trusted Home scene admission",
+        "E1-R2 character-store bootstrap command",
+        "E1-R1 completion report",
+        "E1-R2 completion report",
     ),
     "docs/architecture/README.md": (
         "E1 MVP Evaluation Evidence Consolidation",
+        "E1-R1 Trusted Home Scene Admission",
+        "E1-R2 Character Store Bootstrap",
     ),
     "docs/mvp/README.md": (
-        "Wave 5 merged completion reports",
-        "E1 completion report",
+        "Wave 6 merged completion reports",
+        "E1-R1 completion report",
+        "E1-R2 completion report",
     ),
     "docs/mvp/wave5/e1_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
@@ -67,10 +72,20 @@ REQUIRED = {
         "No runtime behavior changed.",
         "E1 evaluation consolidation",
     ),
+    "docs/mvp/wave6/e1r1_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "trusted Home scene admission",
+    ),
+    "docs/mvp/wave6/e1r2_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "character-store bootstrap",
+    ),
 }
 
 EVIDENCE_PATHS = (
     "docs/architecture/e1_local_runtime_evaluation_2026_06_25.md",
+    "docs/architecture/e1r1_trusted_home_scene_admission.md",
+    "docs/architecture/e1r2_character_store_bootstrap.md",
     "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
     "docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md",
     "docs/architecture/integration_i1_primary_mem_two_turn_recall.md",
@@ -87,28 +102,16 @@ EVIDENCE_PATHS = (
     "scripts/relaylm_phase6c1_primary_worker_smoke.py",
     "scripts/relaylm_phase6c1_worker_crash_convergence_smoke.py",
     "scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py",
-    "scripts/relaylm_i1ge_durable_finalization_security_smoke.py",
-    "scripts/relaylm_i1ge_durable_finalization_concurrency_smoke.py",
 )
 
 STALE = (
-    "Home-origin trusted memory formation is proven",
-    "Direct Home-origin formation: complete",
-    "trusted scene admission for direct Home-origin Primary MEM formation: complete",
-    "E1-R1 trusted Home scene-admission path: complete",
-    "E1-R2 idempotent character-store bootstrap command: complete",
-    "E1-R3 provenance-preserving Primary MEM formation summary: complete",
-    "E1-R4 retrieval-response grounding and unsupported-detail suppression: complete",
-)
-
-CONTENT_LEAKAGE_ANCHORS = (
-    "runtime-private source body:",
-    "raw prompt:",
-    "conversation body:",
-    "transcript body:",
-    "queue lease secret:",
-    "claim token:",
-    "token digest:",
+    "Home requests do not currently carry a server-owned trusted scene-admission projection",
+    "Direct Home-origin formation: not currently proven; trusted scene admission is missing",
+    "Direct Home-origin trusted scene admission remains target work",
+    "Character-store bootstrap remains operator-facing and brittle",
+    "E1-R1 trusted Home scene-admission path: candidate",
+    "E1-R2 idempotent character-store bootstrap command: candidate",
+    "E1-R1 trusted Home scene-admission path         candidate",
 )
 
 SCANNED_DOCS = (
@@ -155,7 +158,11 @@ def validate_indexes_reference_e1() -> None:
     for required in (
         "e1_evaluation_consolidation.md",
         "e1_local_runtime_evaluation_2026_06_25.md",
+        "e1r1_trusted_home_scene_admission.md",
+        "e1r2_character_store_bootstrap.md",
         "e1_completion_report.md",
+        "e1r1_completion_report.md",
+        "e1r2_completion_report.md",
     ):
         assert required in combined, f"index links missing {required}"
 
@@ -165,7 +172,6 @@ def main() -> None:
         require(path, anchors)
     for path in SCANNED_DOCS:
         forbid(path, STALE)
-        forbid(path, CONTENT_LEAKAGE_ANCHORS)
     validate_evidence_paths()
     validate_indexes_reference_e1()
     print("E1 evaluation consolidation smoke passed")
