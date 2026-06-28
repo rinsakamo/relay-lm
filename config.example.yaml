@@ -35,6 +35,7 @@ relayctx_tts_adapter_handoff_min_segment_chars: 8
 relaymem_slp_runtime_enqueue_enabled: false
 relaymem_slp_runtime_enqueue_dry_run_only: true
 relaymem_slp_runtime_enqueue_apply_enabled: false
+trusted_home_scene_admission_runtime_trigger_enabled: false
 relaymem_slp_queue_root:
 relaymem_slp_protected_source_root:
 relaymem_slp_protected_source_max_artifact_bytes: 262144
@@ -154,6 +155,8 @@ model_routes:
     room_id:
     scene_id:
     session_id:
+    trusted_home_scene_admission_mode: disabled
+    trusted_home_scene_admission_scene_id: home
 
 characters:
   default:
