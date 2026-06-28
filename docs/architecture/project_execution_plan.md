@@ -29,6 +29,7 @@ relaylm_related_authority:
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
   - e1r4_retrieval_response_grounding.md
   - e1_evaluation_consolidation.md
+  - wave7_cross_slice_convergence_audit.md
   - wave6_cross_slice_convergence_audit.md
   - wave5_cross_slice_convergence_audit.md
 ---
@@ -173,15 +174,15 @@ The O1F completion report is [O1F completion report](../mvp/wave6/o1f_completion
 
 ### Post-O1F next candidates
 
-This historical transition anchor records the candidate set that existed after O1F and before the later Wave 6 implementation merges. It is kept so frozen Wave 3/Wave 5 convergence smokes can verify the transition while the current next-work list remains Post-E1-R4.
+This historical transition anchor records the candidate set that existed after O1F and before the later Wave 6 and Wave 7 implementation merges. It is kept so frozen convergence smokes can verify the transition while the current next-work list remains Post-E1-R4 / Post-Wave-7.
 
 ```text
 I-5B Pin / Unpin apply/API/UI/ranking work                 complete in Wave 6
 I-7C Held Apply/Discard runtime/API/UI/durable evidence    complete in Wave 6
 E1-R1 trusted Home scene-admission path                    complete in Wave 6
 E1-R2 idempotent character-store bootstrap command         complete in Wave 6
-E1-R3 provenance-preserving Primary MEM formation summary  complete
-E1-R4 retrieval-response grounding and unsupported-detail suppression complete
+E1-R3 provenance-preserving Primary MEM formation summary  complete in Wave 7
+E1-R4 retrieval-response grounding and unsupported-detail suppression complete in Wave 7
 O2/O3 only after explicit MVP need
 ```
 
@@ -194,9 +195,9 @@ E1-R1 trusted Home scene-admission path
 E1-R2 idempotent character-store bootstrap command
 ```
 
-The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](wave6_cross_slice_convergence_audit.md). Wave 6 closes the primary remaining user-governance and local-evaluation ergonomics gaps without adding O2/O3, browser-owned trust, semantic summary-quality changes, RelaySOUL mutation, or media runtime execution. Evidence-grounded response behavior is now handled by E1-R4.
+The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](wave6_cross_slice_convergence_audit.md). Wave 6 closes the primary remaining user-governance and local-evaluation ergonomics gaps without adding O2/O3, browser-owned trust, semantic summary-quality changes, RelaySOUL mutation, or media runtime execution.
 
-### E1-R3 completed
+### Wave 7 completed
 
 ```text
 E1-R3 provenance-preserving Primary MEM formation summary
@@ -204,22 +205,18 @@ E1-R3 provenance-preserving Primary MEM formation summary
   -> assistant acknowledgement/speculation is not promoted to user fact
   -> scene/trust evidence remains qualification metadata
   -> public diagnostics remain content-free
-```
 
-The E1-R3 handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md). The completion report is [E1-R3 completion report](../mvp/wave7/e1r3_completion_report.md).
-
-### E1-R4 completed
-
-```text
 E1-R4 retrieval-response grounding and unsupported-detail suppression
   -> backend-bound grounded recall context
   -> unsupported date/name/preference/quantity/relationship/cause suppression
   -> public diagnostics remain content-free
 ```
 
-The E1-R4 handoff is [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md). The completion report is [E1-R4 completion report](../mvp/wave7/e1r4_completion_report.md).
+The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](wave7_cross_slice_convergence_audit.md). The E1-R3 handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md) and the completion report is [E1-R3 completion report](../mvp/wave7/e1r3_completion_report.md). The E1-R4 handoff is [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md) and the completion report is [E1-R4 completion report](../mvp/wave7/e1r4_completion_report.md).
 
-### Post-E1-R4 next candidates
+Wave 7 closes the post-Wave-6 E1 evidence-quality lane without adding O2/O3, post-hoc visible response rewriting, browser-owned trust, semantic mutation authority, RelaySOUL mutation, or media runtime execution.
+
+### Post-E1-R4 / Post-Wave-7 next candidates
 
 ```text
 O2 supervised worker service, only if required
@@ -228,7 +225,7 @@ O2 supervised worker service, only if required
 Static SOUL Lab bundle serving, only if required for local MVP packaging
 ```
 
-O2/O3 should remain after the evidence-quality gates unless a concrete evaluation requirement proves that supervised or always-on operation is necessary before the remaining quality work.
+O2/O3 should remain after the evidence-quality gates unless a concrete evaluation requirement proves that supervised or always-on operation is necessary before local MVP evaluation.
 
 ## MVP completion criteria
 
