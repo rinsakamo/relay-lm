@@ -1,52 +1,56 @@
----
-relaylm_doc_type: mvp_completion_report
-relaylm_authority: historical_evidence
-relaylm_status: current
-relaylm_owner: mvp_wave6
----
 # I-5B completion report: Pin / Unpin apply phase
 
-Date: 2026-06-27 JST
+relaylm_doc_type: implementation_completion_report
+relaylm_status: historical_after_merge
+relaylm_volatility: frozen
+relaylm_current_status_source: ../../PROJECT_STATUS.md
 
 ## Scope
 
-I-5B adds durable Pin / Unpin apply evidence, bounded SOUL Lab API/UI contracts, production SOUL Lab route/panel wiring, and a deterministic Pin-aware ranking helper for already eligible Primary MEM candidates.
+I-5B implements explicit Pin / Unpin apply behavior for one current active Primary MEM after I-5A token preflight. The slice connects token-confirmed durable runtime-private Pin / Unpin evidence, loopback SOUL Lab API routes, SOUL Lab UI controls, a bounded Pin-aware ranking helper, and smoke/workflow validation.
 
-## Runtime behavior
+## Implemented production boundary
 
-- One current active Primary MEM can be pinned and unpinned through an explicit token-confirmed apply path.
-- Pin / Unpin receipts are runtime-private, content-free governance evidence.
-- Effective state can be derived from the latest valid receipt if `state.json` is missing after a crash.
-- Same-operation replay returns an idempotent result and refreshes the state projection.
-- Correct / Forget / Pin / Unpin share the per-memory mutation lock and existing Correct / Forget operation inspection.
+- Added `relaylm/relaymem_primary_pin_apply.py` as the durable Primary MEM Pin / Unpin apply authority.
+- Added runtime-private Pin / Unpin receipts under `memory/mem/pins/v0/<memory_id>/` and a bounded `state.json` projection.
+- Added receipt-derived state convergence when `state.json` is absent after a crash window.
+- Added explicit same-operation idempotent replay handling that republishes the state projection from the existing valid receipt.
+- Added a Pin-aware ranking helper that only reorders already eligible candidates and preserves original order as deterministic tie-break.
+- Added strict loopback-only SOUL Lab Pin / Unpin request contracts, route wiring, browser client parsing, and `PrimaryMemoryPinPanel` controls.
+- Added dedicated apply, idempotency, ranking, security, UI source, and UI TypeScript smoke coverage.
 
-## API/UI behavior
+## Preserved authorities and non-goals
 
-- Added strict Pin / Unpin browser request/response contracts.
-- Browser request schemas do not accept store roots, paths, physical ids, route authority, or token claims.
-- Mounted loopback-only Pin / Unpin routes from the existing SOUL Lab app via `relaylm/soul_lab_memory_pin_routes.py`.
-- Mounted `PrimaryMemoryPinPanel` from active formed Primary MEM rows in `ConnectedLabObservationPage.tsx`.
-- UI client parsing rejects private fields and requires explicit confirmation for apply.
-- History projections are read-only, bounded, and content-free.
-
-## Ranking behavior
-
-Pin state is implemented as a ranking hint for candidates that are already selected and still eligible under Primary retrieval lifecycle rules. It does not expand eligibility and does not expose private Pin artifacts.
-
-## Preserved authorities
-
-- I-4B current-state resolver / shared mutation fence remains the mutation coordination authority.
+- I-4B current-state resolver remains the current active Primary MEM authority.
 - I-4D lifecycle exclusion remains the ordinary retrieval eligibility authority.
-- I-4E loopback-only management boundary remains the API authority for production route wiring.
-- I-5A token binding remains the preflight/apply contract authority.
+- I-5A token validation remains the Pin / Unpin token authority.
+- Correct / Forget / Pin / Unpin share the existing per-memory mutation lock and shared operation inspection fence.
+- Pin state is a ranking hint only; it does not expand retrieval eligibility and does not bypass lifecycle exclusion.
+- No hidden-memory retrieval, restore, unhide, purge, physical deletion, semantic memory rewrite, Secondary MEM consolidation, Merge/Supersession, Held Apply / Discard runtime, queue/worker/scheduler change, or automatic ranking learning is added.
 
-## Security and leakage boundary
+## Changed files
 
-Public projections exclude raw reason text, reason digest, token digest, token claims, store root, filesystem path, physical id, raw exception text, and semantic memory content beyond existing bounded memory list displays.
+- `.github/workflows/phase-i5b-pin-unpin-apply.yml`
+- `apps/soul-lab/package.json`
+- `apps/soul-lab/scripts/pinUnpinUiSmoke.mjs`
+- `apps/soul-lab/src/features/lab/ConnectedLabObservationPage.tsx`
+- `apps/soul-lab/src/features/lab/PrimaryMemoryPinPanel.tsx`
+- `apps/soul-lab/src/features/lab/pinApi.ts`
+- `docs/architecture/phase_i5b_pin_unpin_apply.md`
+- `docs/mvp/wave6/i5b_completion_report.md`
+- `relaylm/relaymem_primary_pin_apply.py`
+- `relaylm/relaymem_primary_pin_ranking.py`
+- `relaylm/soul_lab_app.py`
+- `relaylm/soul_lab_memory_pin.py`
+- `relaylm/soul_lab_memory_pin_routes.py`
+- `scripts/relaylm_phase_i5b_pin_unpin_apply_smoke.py`
+- `scripts/relaylm_phase_i5b_pin_unpin_concurrency_smoke.py`
+- `scripts/relaylm_phase_i5b_pin_unpin_ranking_smoke.py`
+- `scripts/relaylm_phase_i5b_pin_unpin_security_smoke.py`
 
-## Validation
+## Validation evidence
 
-Implemented smoke coverage:
+Expected PR validation:
 
 ```bash
 python -m compileall relaylm scripts
@@ -55,11 +59,36 @@ PYTHONPATH=.:scripts python scripts/relaylm_phase_i5b_pin_unpin_apply_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_phase_i5b_pin_unpin_ranking_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_phase_i5b_pin_unpin_concurrency_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_phase_i5b_pin_unpin_security_smoke.py
-cd apps/soul-lab && npm run build && npm run smoke:pin-unpin-ui
+cd apps/soul-lab
+npm install
+npm run build
+npm run smoke:pin-unpin-ui
+cd ../..
+PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/i5b_completion_report.md
+PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
 ```
 
-Connector-side local validation was limited to syntax compilation of the generated new Python route module before commit. Full repository CI should run the listed commands on the PR branch.
+Connector-side authoring was performed through the GitHub connector because a local checkout is unavailable in this environment. GitHub Actions is the execution source of truth for the full listed validation.
 
-## PR
+## Known limitations
 
-PR: #430.
+- Pin / Unpin is not exposed as a background operation and does not run from a scheduler, retry loop, daemon, or worker.
+- Pin state affects only deterministic ordering among already eligible Primary MEM candidates.
+- The ranking helper does not make hidden, stale, corrupt, or lifecycle-excluded memories eligible.
+- Public projections remain content-free and path-free for Pin / Unpin artifacts; receipt bodies are runtime-private.
+- Shared `PROJECT_STATUS.md`, execution plan, indexes, and cross-slice current-target docs are intentionally left for the Wave 6 convergence PR unless a link-smoke requires a minimal link.
+
+## Shared documentation update inputs
+
+For the Wave 6 convergence PR:
+
+- Mark `I-5B Pin / Unpin apply/API/UI/durable governance evidence/ranking hint` complete.
+- Link `docs/architecture/phase_i5b_pin_unpin_apply.md`.
+- Link `docs/mvp/wave6/i5b_completion_report.md`.
+- Preserve that Pin state is ranking-hint-only and never an eligibility expansion authority.
+
+## Source pull request
+
+- PR: #430
+- URL: https://github.com/rinsakamo/relay-lm/pull/430
