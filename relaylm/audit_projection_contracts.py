@@ -306,24 +306,15 @@ def _artifact_projectors(ap: Any) -> dict[str, Any]:
         "relayctx_unpack_runtime_result": ap._mapping(
             {
                 "artifact_name": ap._enum("relayctx_unpack_runtime_result"),
-                "schema_version": ap._enum("relayctx_unpack_result.v0"),
+                "schema_version": ap._optional(
+                    ap._enum("relayctx_unpack_runtime.v0")
+                ),
                 "present": ap._bool,
-                "diagnostics_only": ap._bool,
-                "content_free": ap._bool,
-                "applied": ap._bool,
-                "applied_to_response": ap._bool,
-                "candidate_present": ap._bool,
-                "persistence_allowed": ap._bool,
+                "content_free": ap._optional(ap._bool),
+                "applied_to_response": ap._optional(ap._bool),
+                "candidate_present": ap._optional(ap._bool),
+                "persistence_allowed": ap._optional(ap._bool),
             }
-        ),
-        "relaymem_slp_finalized_turn_source": artifact(
-            "relaymem_slp_finalized_turn_source",
-            "relaymem.slp_finalized_turn_source_projection.v0",
-        ),
-        "relaymem_slp_protected_source_capture": artifact(
-            "relaymem_slp_protected_source_capture",
-            "relaymem.slp_runtime_enqueue_projection.v0",
-            extras={"dry_run_only": ap._optional(ap._bool)},
         ),
     }
 
@@ -333,6 +324,3 @@ def _reject_non_none(ap: Any):
         return ap._drop()
 
     return validate
-
-
-__all__ = ["install_audit_projection_contracts"]
