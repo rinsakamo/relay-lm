@@ -22,8 +22,10 @@ relaylm_related_authority:
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
+  - e1r4_retrieval_response_grounding.md
   - phase_i4f_forget_validation.md
   - e1_evaluation_consolidation.md
+  - wave7_cross_slice_convergence_audit.md
   - wave6_cross_slice_convergence_audit.md
   - ../PROJECT_STATUS.md
 ---
@@ -56,7 +58,7 @@ Phase 6-B2 performs atomic durable enqueue of durably enqueued jobs through the 
 
 I2 real SOUL Lab observation is complete. It is read-only evidence only and cannot authorize repair or retrieval.
 
-E1 evaluation consolidation is current as an evidence/documentation boundary. E1-R1 route-owned trusted Home scene admission is current implemented. E1-R2 dry-run-first character-store bootstrap is current implemented. E1-R3 provenance-preserving summary formation is current implemented. E1-R4 evidence-grounded recall behavior remains quality work.
+E1 evaluation consolidation is current as an evidence/documentation boundary. E1-R1 route-owned trusted Home scene admission is current implemented. E1-R2 dry-run-first character-store bootstrap is current implemented. E1-R3 provenance-preserving summary formation is current implemented. E1-R4 request-side evidence-grounded recall behavior is current implemented.
 
 ## I1-G durable-finalization boundary
 
@@ -83,6 +85,12 @@ I-4F is current implemented as validation-only Forget product completion. It pro
 UI-B1A is current implemented read-only visibility. I-5A is current implemented contract/read-only preflight only. I-5B is current implemented as Pin / Unpin apply/API/UI/ranking behavior. I-7A/B is current implemented contract/read-only preflight only. I-7C is current implemented as Held Apply / Discard runtime/API/UI/durable governance evidence.
 
 I-5B Pin state remains governance metadata and a ranking hint. It never admits hidden, prepared, recovery-required, corrupt, cross-scope, or prior physical revisions. I-7C persists content-free decision evidence for already-held candidates and does not start workers, schedulers, retry loops, C2, O1, or B3 transitions from the UI.
+
+## E1 evidence-quality boundary
+
+E1-R3 is current implemented as speaker-provenance-safe Primary MEM formation summary construction. It keeps user assertion evidence separate from assistant acknowledgement/speculation and route-owned scene/trust qualification.
+
+E1-R4 is current implemented as request-side retrieval-response grounding and unsupported-detail suppression for eligible retrieved Primary MEM evidence. It consumes existing M2/RelayCTX-selected Primary MEM evidence, preserves I-4D lifecycle/scope exclusions, creates backend-bound grounding instructions, keeps public projections content-free, and does not mutate memory, create retrieval authority, rewrite visible responses, or expose runtime-private evidence publicly.
 
 ## Completed Primary MEM integration
 
@@ -111,10 +119,11 @@ finalized ordinary turn
   -> route-owned trusted Home admission                complete as E1-R1
   -> dry-run-first character-store bootstrap           complete as E1-R2
   -> provenance-preserving formation summary           complete as E1-R3
+  -> request-side grounded recall response             complete as E1-R4
   -> bounded scheduler operational controls            complete as O1E
   -> operational validation hardening                  complete as O1F
 ```
 
 ## Completion interpretation
 
-M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1F, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-5B, I-7A/B, I-7C, E1, E1-R1, E1-R2, and E1-R3 are implemented. O1F is validation-only caller-invoked operational hardening; O2 and O3 remain incomplete. E1-R1 is route-owned and defaults disabled; it does not permit browser-owned trust. E1-R2 is dry-run-first and does not create semantic memory content. E1-R3 is speaker-provenance-safe formation summary work and does not implement retrieval-response grounding. E1-R4 remains incomplete quality/evaluation work.
+M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1F, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-5B, I-7A/B, I-7C, E1, E1-R1, E1-R2, E1-R3, and E1-R4 are implemented. O1F is validation-only caller-invoked operational hardening; O2 and O3 remain incomplete. E1-R1 is route-owned and defaults disabled; it does not permit browser-owned trust. E1-R2 is dry-run-first and does not create semantic memory content. E1-R3 is speaker-provenance-safe formation summary work. E1-R4 is request-side retrieval-response grounding and does not perform post-hoc visible response rewriting or create a new memory mutation authority.
