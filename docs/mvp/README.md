@@ -96,7 +96,7 @@ The source PR number must be concrete before final review. The convergence threa
 
 ## Earlier milestone summaries
 
-These older summaries are kept indexed for discoverability while the documentation tree is being reorganized.
+These older summaries are kept indexed for discoverability while the documentation tree is being reorganized. They are historical snapshots, not current-state authority.
 
 - [MVP-0: pass-through proxy](mvp0_pass_through_proxy.md)
 - [MVP-1 summary](mvp1_summary.md)
@@ -104,6 +104,37 @@ These older summaries are kept indexed for discoverability while the documentati
 - [MVP-3 summary](mvp3_summary.md)
 - [MVP-4 summary](mvp4_summary.md)
 - [MVP-5 summary](mvp5_summary.md)
+- [MVP-6 summary](mvp6_summary.md)
+- [MVP-7 summary](mvp7_summary.md)
+- [MVP-8 summary](mvp8_summary.md)
+- [MVP-9 summary](mvp9_summary.md)
+- [MVP-10 summary](mvp10_summary.md)
+- [MVP-11 summary](mvp11_summary.md)
+- [MVP-12 summary](mvp12_summary.md)
+- [MVP-13 summary](mvp13_summary.md)
+- [MVP-14 summary](mvp14_summary.md)
+- [MVP-15 summary](mvp15_summary.md)
+- [MVP-16 summary](mvp16_summary.md)
+- [MVP-17 summary](mvp17_summary.md)
+- [MVP-18 summary](mvp18_summary.md)
+- [MVP-19 summary](mvp19_summary.md)
+- [MVP-20 summary](mvp20_summary.md)
+- [MVP-21 summary](mvp21_summary.md)
+- [MVP-22 summary](mvp22_summary.md)
+- [MVP-23 summary](mvp23_summary.md)
+- [MVP-24 summary](mvp24_summary.md)
+- [MVP-25 summary](mvp25_summary.md)
+- [MVP-26 summary](mvp26_summary.md)
+- [MVP-27 summary](mvp27_summary.md)
+- [MVP-28 summary](mvp28_summary.md)
+- [MVP-29 summary](mvp29_summary.md)
+- [MVP-30 summary](mvp30_summary.md)
+- [MVP-31 summary](mvp31_summary.md)
+- [MVP-32 summary](mvp32_summary.md)
+- [MVP-33 summary](mvp33_summary.md)
+- [MVP-37 summary](mvp37_summary.md)
+
+Focused historical notes: [MVP-1 runtime diagnostics](mvp1_runtime_diagnostics_smoke.md), [MVP-2 profile loading](mvp2_profile_file_loading.md), [MVP-40 extraction](mvp40_relayctx_short_term_extraction_dry_run.md), [MVP-41 assembly](mvp41_relayctx_short_term_block_assembly_dry_run.md), [MVP-42 injection preflight](mvp42_relayctx_short_term_runtime_injection_preflight.md), [MVP-43 apply gate](mvp43_relayctx_short_term_runtime_injection_apply_gate.md), [MVP-45 fast path](mvp45_relayint_fast_path_dry_run.md), [MVP-46 clarification preflight](mvp46_relayint_quick_clarification_preflight.md), [MVP-47 clarification apply plan](mvp47_relayint_quick_clarification_apply_plan.md), and [MVP-48 node result scaffold](mvp48_pipeline_node_result_scaffold.md).
 
 ## Maintenance rule
 
