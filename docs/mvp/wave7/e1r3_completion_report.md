@@ -8,7 +8,7 @@ relaylm_current_status_source: ../../PROJECT_STATUS.md
 ---
 # E1-R3 Completion Report
 
-Source PR: TBD by this PR before merge.
+Source PR: #436.
 
 ## Scope
 
