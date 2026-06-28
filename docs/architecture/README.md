@@ -71,14 +71,18 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Phase I-4E Forget API and SOUL Lab UI](phase_i4e_forget_api_ui.md)
 - [Phase I-4F Forget Product Validation](phase_i4f_forget_validation.md)
 - [Phase I-5A Pin / Unpin Contract](phase_i5_pin_unpin_contract.md)
+- [Phase I-5B Pin / Unpin Apply](phase_i5b_pin_unpin_apply.md)
 - [Phase I-7A/B Held Apply / Discard Contract](phase_i7ab_held_apply_discard_contract.md)
+- [Phase I-7C Held Apply / Discard Runtime](phase_i7c_held_apply_discard_runtime.md)
+- [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md)
+- [E1-R1 Trusted Home Scene Admission](e1r1_trusted_home_scene_admission.md)
+- [E1-R2 Character Store Bootstrap](e1r2_character_store_bootstrap.md)
 - [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md)
 - [Wave 4 Cross-Slice Convergence Audit](wave4_cross_slice_convergence_audit.md)
 - [Wave 5 Cross-Slice Convergence Audit](wave5_cross_slice_convergence_audit.md)
+- [Wave 6 Cross-Slice Convergence Audit](wave6_cross_slice_convergence_audit.md)
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [SOUL Lab UI-B1A Lifecycle Visibility](soul_lab_ui_b1a_lifecycle_visibility.md)
-- [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md)
-- [E1 Local Runtime Evaluation](e1_local_runtime_evaluation_2026_06_25.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
 
 ## Memory lifecycle
@@ -94,7 +98,9 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Phase I-4E Forget API and SOUL Lab UI](phase_i4e_forget_api_ui.md)
 - [Phase I-4F Forget Product Validation](phase_i4f_forget_validation.md)
 - [Phase I-5A Pin / Unpin Contract](phase_i5_pin_unpin_contract.md)
+- [Phase I-5B Pin / Unpin Apply](phase_i5b_pin_unpin_apply.md)
 - [Phase I-7A/B Held Apply / Discard Contract](phase_i7ab_held_apply_discard_contract.md)
+- [Phase I-7C Held Apply / Discard Runtime](phase_i7c_held_apply_discard_runtime.md)
 
 The current Product and RelayMEM status is intentionally not summarized here. Read [Project Status](../PROJECT_STATUS.md) for current state and [Project Execution Plan](project_execution_plan.md) for MVP sequencing.
 
@@ -114,15 +120,28 @@ The current Product and RelayMEM status is intentionally not summarized here. Re
 - [Phase I-4E Forget API and SOUL Lab UI](phase_i4e_forget_api_ui.md)
 - [Phase I-4F Forget Product Validation](phase_i4f_forget_validation.md)
 - [SOUL Lab UI-B1A Lifecycle Visibility](soul_lab_ui_b1a_lifecycle_visibility.md)
+- [Phase I-5B Pin / Unpin Apply](phase_i5b_pin_unpin_apply.md)
+- [Phase I-7C Held Apply / Discard Runtime](phase_i7c_held_apply_discard_runtime.md)
 - [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md)
+- [E1-R1 Trusted Home Scene Admission](e1r1_trusted_home_scene_admission.md)
+- [E1-R2 Character Store Bootstrap](e1r2_character_store_bootstrap.md)
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md)
 
-The browser owns no queue, scheduler, worker, storage root, namespace, backend, SOUL, or route authority. Forget mutation authority remains in the existing I-4B/I-4C1/I-4C2 production chain. E1 does not change that authority and does not prove direct Home-origin trusted memory formation.
+The browser owns no queue, scheduler, worker, storage root, namespace, backend, SOUL, or route authority. Forget, Pin / Unpin, and Held Governance mutation boundaries remain in explicit loopback contracts and server-side authorities. E1-R1 trust is route-owned and never browser-owned.
 
-## Wave 6 / O1F evidence
+## Wave 6 implementation evidence
 
+- [Wave 6 Cross-Slice Convergence Audit](wave6_cross_slice_convergence_audit.md)
 - [O1F completion report](../mvp/wave6/o1f_completion_report.md)
+- [I-5B completion report](../mvp/wave6/i5b_completion_report.md)
+- [I-7C completion report](../mvp/wave6/i7c_completion_report.md)
+- [E1-R1 completion report](../mvp/wave6/e1r1_completion_report.md)
+- [E1-R2 completion report](../mvp/wave6/e1r2_completion_report.md)
 - [O1F Operational Validation](o1f_operational_validation.md)
+- [Phase I-5B Pin / Unpin Apply](phase_i5b_pin_unpin_apply.md)
+- [Phase I-7C Held Apply / Discard Runtime](phase_i7c_held_apply_discard_runtime.md)
+- [E1-R1 Trusted Home Scene Admission](e1r1_trusted_home_scene_admission.md)
+- [E1-R2 Character Store Bootstrap](e1r2_character_store_bootstrap.md)
 
 ## Wave 5 / E1 evaluation evidence
 
@@ -145,8 +164,8 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 
 ## Evaluation evidence
 
-- [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md) records the current evidence inventory and Option A decision for MVP evaluation.
-- [E1 Local Runtime Evaluation](e1_local_runtime_evaluation_2026_06_25.md) records explicit trusted-scene formation through O0, separate real Home recall, and the known gaps around direct Home-origin formation, store bootstrap, provenance, and grounding.
+- [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md) records implemented E1-R1/E1-R2 evidence and the remaining E1-R3/E1-R4 quality work.
+- [E1 Local Runtime Evaluation](e1_local_runtime_evaluation_2026_06_25.md) records explicit trusted-scene formation through O0, separate real Home recall, and the original evidence inventory.
 
 ## Character cognition and RelaySOUL targets
 
