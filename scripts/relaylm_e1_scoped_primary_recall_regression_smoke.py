@@ -15,7 +15,10 @@ from relaylm.relaymem_retrieval import (
     _term_hints,
     build_relaymem_retrieval_dry_run_artifact,
 )
-from relaylm.relaymem_store import build_relaymem_store_diagnostics
+from relaylm.relaymem_store import (
+    build_relaymem_snippet_evidence_dry_run,
+    build_relaymem_store_diagnostics,
+)
 
 NAMESPACE = "character/default"
 CHARACTER_ID = "default"
@@ -69,6 +72,34 @@ def assert_disabled_diagnostics_bypass_effective_root(operator_root: Path) -> No
 
     require(diagnostics.get("fallback_reason") == "memory_store_disabled", diagnostics)
     require(diagnostics.get("root_path") == str(operator_root), diagnostics)
+
+
+def assert_snippet_disabled_bypass_effective_root(operator_root: Path) -> None:
+    original = primary_recall_runtime._effective_read_root
+
+    def forbidden_effective_root(root_path: str | None) -> str | None:
+        raise AssertionError(("disabled snippets resolved root", root_path))
+
+    try:
+        primary_recall_runtime._effective_read_root = forbidden_effective_root
+        evidence = build_relaymem_snippet_evidence_dry_run(
+            root_path=str(operator_root),
+            selected_mem_candidates=[{"path": "memory/mem/primary/example.md"}],
+            snippet_extraction_enabled=False,
+            snippet_dry_run_only=True,
+            max_snippet_chars=256,
+            max_snippet_candidates=3,
+        )
+    finally:
+        primary_recall_runtime._effective_read_root = original
+
+    require(evidence.get("snippet_extraction_enabled") is False, evidence)
+    require(evidence.get("root_path") == str(operator_root), evidence)
+    require(evidence.get("snippet_candidates") == [], evidence)
+    envelope = evidence.get("evidence_envelope")
+    require(isinstance(envelope, Mapping), evidence)
+    require(envelope.get("snippets") == [], envelope)
+    require(envelope.get("blocked") == [], envelope)
 
 
 def assert_character_root_scan_cap_falls_back(operator_root: Path) -> None:
@@ -155,6 +186,7 @@ def main() -> None:
         disabled_root = Path(directory) / "disabled-root"
         write_control_files(disabled_root / "characters" / "only-character")
         assert_disabled_diagnostics_bypass_effective_root(disabled_root)
+        assert_snippet_disabled_bypass_effective_root(disabled_root)
 
     with tempfile.TemporaryDirectory() as directory:
         capped_root = Path(directory) / "capped-root"
