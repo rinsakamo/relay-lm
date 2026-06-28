@@ -56,9 +56,24 @@ def test_storage_metadata_excluded_from_relevance() -> None:
     require(bridge_runtime._candidate_summary_score(candidate, ["morning"]) > 0, candidate)
 
 
+def test_weak_cjk_gram_overlap_is_not_relevant() -> None:
+    candidate = {
+        "summary": "これは静かな朝の記憶です。",
+        "title": "朝のこと",
+        "path": "memory/mem/primary/projects/unrelated.json",
+        "memory_kind": "recent_project_event",
+    }
+    require(
+        bridge_runtime._candidate_summary_score(candidate, ["明日の予定は何ですか"]) == 0,
+        candidate,
+    )
+    require(bridge_runtime._candidate_summary_score(candidate, ["静かな朝"]) > 0, candidate)
+
+
 def main() -> None:
     test_full_control_index_scan()
     test_storage_metadata_excluded_from_relevance()
+    test_weak_cjk_gram_overlap_is_not_relevant()
     print("E1-R5 Primary MEM recall bridge relevance-bound smoke passed")
 
 
