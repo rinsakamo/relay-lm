@@ -161,9 +161,12 @@ def _pipeline_node_results_to_log_dicts(
 def _is_relaymem_slp_runtime_enqueue_node_results(
     node_results: list[dict[str, Any]] | None,
 ) -> bool:
-    if not node_results or len(node_results) != 2:
+    if not node_results:
         return False
-    return [result.get("node_name") for result in node_results] == [
+    names = [result.get("node_name") for result in node_results]
+    if names and names[0] == "trusted_home_scene_admission":
+        names = names[1:]
+    return names == [
         "relaymem_slp_finalized_turn_source",
         "relaymem_slp_runtime_enqueue",
     ]
