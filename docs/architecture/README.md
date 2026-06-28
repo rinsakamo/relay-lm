@@ -78,10 +78,12 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [E1-R1 Trusted Home Scene Admission](e1r1_trusted_home_scene_admission.md)
 - [E1-R2 Character Store Bootstrap](e1r2_character_store_bootstrap.md)
 - [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md)
+- [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md)
 - [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md)
 - [Wave 4 Cross-Slice Convergence Audit](wave4_cross_slice_convergence_audit.md)
 - [Wave 5 Cross-Slice Convergence Audit](wave5_cross_slice_convergence_audit.md)
 - [Wave 6 Cross-Slice Convergence Audit](wave6_cross_slice_convergence_audit.md)
+- [Wave 7 Cross-Slice Convergence Audit](wave7_cross_slice_convergence_audit.md)
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [SOUL Lab UI-B1A Lifecycle Visibility](soul_lab_ui_b1a_lifecycle_visibility.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
@@ -127,14 +129,18 @@ The current Product and RelayMEM status is intentionally not summarized here. Re
 - [E1-R1 Trusted Home Scene Admission](e1r1_trusted_home_scene_admission.md)
 - [E1-R2 Character Store Bootstrap](e1r2_character_store_bootstrap.md)
 - [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md)
+- [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md)
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md)
 
-The browser owns no queue, scheduler, worker, storage root, namespace, backend, SOUL, or route authority. Forget, Pin / Unpin, and Held Governance mutation boundaries remain in explicit loopback contracts and server-side authorities. E1-R1 trust is route-owned and never browser-owned.
+The browser owns no queue, scheduler, worker, storage root, namespace, backend, SOUL, or route authority. Forget, Pin / Unpin, and Held Governance mutation boundaries remain in explicit loopback contracts and server-side authorities. E1-R1 trust is route-owned and never browser-owned. E1-R4 grounding remains request-side and never exposes runtime-private evidence in public diagnostics.
 
-## E1-R3 implementation evidence
+## Wave 7 implementation evidence
 
+- [Wave 7 Cross-Slice Convergence Audit](wave7_cross_slice_convergence_audit.md)
 - [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md)
 - [E1-R3 completion report](../mvp/wave7/e1r3_completion_report.md)
+- [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md)
+- [E1-R4 completion report](../mvp/wave7/e1r4_completion_report.md)
 
 ## Wave 6 implementation evidence
 
@@ -171,13 +177,10 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 
 ## Evaluation evidence
 
-- [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md) records implemented E1-R1/E1-R2/E1-R3 evidence and the remaining E1-R4 quality work.
+- [E1 MVP Evaluation Evidence Consolidation](e1_evaluation_consolidation.md) records implemented E1-R1/E1-R2/E1-R3/E1-R4 evidence and the current conditional non-E1 remaining work.
 - [E1 Local Runtime Evaluation](e1_local_runtime_evaluation_2026_06_25.md) records explicit trusted-scene formation through O0, separate real Home recall, and the original evidence inventory.
 
 ## Character cognition and RelaySOUL targets
 
 - [Character Belief, Relationship, and Social Expression Dynamics](character_belief_relationship_dynamics_design.md)
 - [ADR: Character-conditioned Belief Without Rewriting Observation](../adr/character_conditioned_belief_model.md)
-- [Experimental SOUL Replacement and Memory Bootstrap](../relaysoul/experimental_soul_replacement_memory_bootstrap_design.md)
-
-These are target-only. Experimental SOUL replacement is post-MVP, non-destructive, and distinct from ordinary same-character RelaySOUL revision and rollback.

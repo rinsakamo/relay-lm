@@ -77,10 +77,11 @@ Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<sl
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 6 implementation tracks and W3-INT through W6-INT are merged; E1-R3 and E1-R4 are complete. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
 
-## E1-R3 / E1-R4 implementation evidence
+## Wave 7 implementation evidence
 
+- [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md)
 - [E1-R3 provenance-preserving formation summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md)
 - [E1-R3 completion report](mvp/wave7/e1r3_completion_report.md)
 - [E1-R4 retrieval-response grounding](architecture/e1r4_retrieval_response_grounding.md)
