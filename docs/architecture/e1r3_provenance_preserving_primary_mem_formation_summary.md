@@ -18,6 +18,8 @@ relaylm_related_authority:
   - e1_evaluation_consolidation.md
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md
+  - e1r4_retrieval_response_grounding.md
+  - wave7_cross_slice_convergence_audit.md
   - phase6_i1b_runtime_enqueue_source_capture_handoff.md
   - phase6c1_primary_mem_worker_contract.md
   - phase6c1_one_claimed_primary_worker_handoff.md
@@ -127,7 +129,7 @@ They must not expose raw user text, assistant text, protected source body, queue
 
 ## Non-goals
 
-E1-R3 does not implement E1-R4 response grounding, unsupported-detail suppression, O2/O3, polling, service supervision, browser-owned trusted admission, automatic bootstrap, Pin/Unpin runtime changes, Held Apply/Discard runtime changes, Forget/Correct behavior changes, Secondary MEM consolidation, RelaySOUL mutation, TTS/audio/avatar/ASR, or public display of protected content.
+E1-R3 does not implement E1-R4 retrieval-response grounding, unsupported-detail suppression, O2/O3, polling, service supervision, browser-owned trusted admission, automatic bootstrap, Pin/Unpin runtime changes, Held Apply/Discard runtime changes, Forget/Correct behavior changes, Secondary MEM consolidation, RelaySOUL mutation, TTS/audio/avatar/ASR, or public display of protected content.
 
 ## Validation
 
@@ -143,6 +145,6 @@ PYTHONPATH=. python scripts/relaylm_docs_link_check.py
 PYTHONPATH=. python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
 ```
 
-## Downstream handoff to E1-R4
+## Downstream E1-R4 boundary
 
-E1-R3 protects formation evidence. E1-R4 remains responsible for retrieval-response grounding and unsupported-detail suppression: later responses must distinguish retrieved memory from inference and avoid presenting unsupported details as remembered history.
+E1-R3 protects formation evidence. E1-R4 is now implemented as the separate request-side retrieval-response grounding and unsupported-detail suppression boundary: later responses must distinguish retrieved memory from inference and avoid presenting unsupported details as remembered history.
