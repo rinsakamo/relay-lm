@@ -396,19 +396,22 @@ def _candidate_summary_score(candidate: Mapping[str, Any], query_terms: Sequence
         str(candidate.get(key, "")).lower()
         for key in ("summary", "title")
     )
-    score = 0
+    lexical_score = 0
+    gram_score = 0
     for term in query_terms:
         if term in haystack:
-            score += 16
+            lexical_score += 16
         for word in re.findall(r"[a-z0-9_:/-]{3,}", term):
             if word in haystack:
-                score += 3
+                lexical_score += 3
         for gram in _cjk_ngrams(term):
             if gram in haystack:
-                score += 1
-                if score >= 12:
-                    return score
-    return score
+                gram_score += 1
+    if lexical_score > 0:
+        return lexical_score + gram_score
+    if gram_score >= 12:
+        return gram_score
+    return 0
 
 
 def _cjk_ngrams(text: str) -> list[str]:
