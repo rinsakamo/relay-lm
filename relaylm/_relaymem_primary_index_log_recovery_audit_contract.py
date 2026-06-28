@@ -181,7 +181,13 @@ def _status_reasons(value: Mapping[str, Any], status: str) -> list[str]:
             ("log_updated", False), ("log_idempotent_noop", False),
             ("durability_confirmed", False),
         ),
-        "applied_cleanup_incomplete": (("cleanup_complete", False),),
+        "applied_cleanup_incomplete": (
+            ("cleanup_complete", False), ("durability_confirmed", False),
+        ),
+        "applied_state_uncertain": (
+            ("writes_memory", True), ("durability_confirmed", False),
+            ("cleanup_complete", True),
+        ),
     }
     reasons: list[str] = []
     if not status:
@@ -197,6 +203,7 @@ def _status_reasons(value: Mapping[str, Any], status: str) -> list[str]:
         "applied": "applied_state_mismatch",
         "index_applied_log_pending": "partial_state_mismatch",
         "applied_cleanup_incomplete": "cleanup_state_mismatch",
+        "applied_state_uncertain": "state_uncertain_state_mismatch",
     }.get(status)
     if status == "applied_durability_unconfirmed":
         partial_index = (
@@ -221,6 +228,10 @@ def _status_reasons(value: Mapping[str, Any], status: str) -> list[str]:
         reasons.append(f"primary_reconciliation_recovery_receipt_{suffix}")
     if status == "dry_run_ready" and value.get("index_reconciled") is True:
         reasons.append("primary_reconciliation_recovery_receipt_dry_run_state_mismatch")
+    if status == "applied_state_uncertain" and _all_reconciled(value):
+        reasons.append("primary_reconciliation_recovery_receipt_state_uncertain_state_mismatch")
+    if status == "applied_cleanup_incomplete" and not _has_reconciliation_progress(value):
+        reasons.append("primary_reconciliation_recovery_receipt_cleanup_progress_missing")
     return reasons
 
 
@@ -235,6 +246,17 @@ def _all_reconciled(value: Mapping[str, Any]) -> bool:
     return (
         value.get("index_reconciled") is True
         and value.get("log_reconciled") is True
+    )
+
+
+def _has_reconciliation_progress(value: Mapping[str, Any]) -> bool:
+    return any(
+        value.get(f"{role}_reconciled") is True
+        and (
+            value.get(f"{role}_updated") is True
+            or value.get(f"{role}_idempotent_noop") is True
+        )
+        for role in ("index", "log")
     )
 
 
