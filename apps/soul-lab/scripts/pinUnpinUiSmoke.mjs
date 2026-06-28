@@ -52,6 +52,11 @@ try {
   assert.deepEqual(api.parsePinPreflight(preflight, "pin", memoryId, 1), preflight);
   assert.equal(api.parsePinPreflight({ ...preflight, token_claims: { secret: true } }, "pin", memoryId, 1), null);
   assert.equal(api.parsePinPreflight({ ...preflight, effects: { ...preflight.effects, ordinary_retrieval_excluded: true } }, "pin", memoryId, 1), null);
+  assert.equal(api.parsePinPreflight({ ...preflight, current_pin_state: "hidden" }, "pin", memoryId, 1), null);
+  assert.equal(api.parsePinPreflight({ ...preflight, current_pin_state: "pinned" }, "pin", memoryId, 1), null);
+  assert.equal(api.parsePinPreflight({ ...preflight, status: "already_unpinned", apply_token: null, expires_at: null }, "pin", memoryId, 1), null);
+  const alreadyPinned = { ...preflight, status: "already_pinned", current_pin_state: "pinned", apply_token: null, expires_at: null };
+  assert.deepEqual(api.parsePinPreflight(alreadyPinned, "pin", memoryId, 1), alreadyPinned);
   const receipt = {
     schema: "relaylm.lab.memory_pin_apply.v0",
     status: "applied",
@@ -79,6 +84,8 @@ try {
   };
   assert.deepEqual(api.parsePinApply(receipt, "pin", memoryId, 1), receipt);
   assert.equal(api.parsePinApply({ ...receipt, physical_id: "secret" }, "pin", memoryId, 1), null);
+  assert.equal(api.parsePinApply({ ...receipt, prior_pin_state: "hidden" }, "pin", memoryId, 1), null);
+  assert.equal(api.parsePinApply({ ...receipt, status: "already_pinned", effect_applied: true }, "pin", memoryId, 1), null);
   const captures = [];
   await api.preflightMemoryPin("char", "ns", memoryId, { expectedRevision: 1, reason: "runtime private audit reason", operationId: "op-1" }, new AbortController().signal, async (url, init) => {
     captures.push({ url, init });
