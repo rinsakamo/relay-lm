@@ -11,7 +11,13 @@ for path in (REPO_ROOT, SCRIPTS_ROOT):
         sys.path.insert(0, str(path))
 
 import relaylm_i1gc_durable_finalization_replay_smoke as i1gc
+from relaylm.relaymem_durable_finalization_formation_replay_patch import (
+    install_durable_finalization_formation_replay_patch,
+)
 from relaylm.relaymem_slp_durable_finalization_record import canonical_json_bytes
+
+
+install_durable_finalization_formation_replay_patch()
 
 
 def require(condition: bool, detail: object) -> None:
