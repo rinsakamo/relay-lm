@@ -1,0 +1,262 @@
+name: Apply E1-R3 canonical durable replay patch
+
+on:
+  push:
+    branches:
+      - work-e1r3-canonical
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-e1r3-canonical-once-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work-e1r3-canonical
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply canonical durable replay patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+
+          def replace_once(path: Path, old: str, new: str) -> None:
+              text = path.read_text('utf-8')
+              if old not in text:
+                  raise SystemExit(f'missing pattern in {path}: {old[:80]!r}')
+              path.write_text(text.replace(old, new, 1), 'utf-8')
+
+          record = Path('relaylm/relaymem_slp_durable_finalization_record.py')
+          old_fields = dedent('''\
+          FINALIZED_SOURCE_FIELDS = frozenset({
+              "schema_version", "character_id", "run_id", "turn_index", "session_id",
+              "namespace", "source_event_kind", "source_count",
+              "persistence_policy_status", "source_lineage_artifact",
+              "relayscn_scene_policy_artifact", "relayemo_artifact",
+              "governed_messages", "governed_experience_artifact",
+          })
+          ''')
+          new_fields = dedent('''\
+          FINALIZED_SOURCE_LEGACY_FIELDS = frozenset({
+              "schema_version", "character_id", "run_id", "turn_index", "session_id",
+              "namespace", "source_event_kind", "source_count",
+              "persistence_policy_status", "source_lineage_artifact",
+              "relayscn_scene_policy_artifact", "relayemo_artifact",
+              "governed_messages", "governed_experience_artifact",
+          })
+          FINALIZED_SOURCE_FIELDS = frozenset({
+              *FINALIZED_SOURCE_LEGACY_FIELDS,
+              "formation_summary_artifact",
+          })
+          ''')
+          replace_once(record, old_fields, new_fields)
+
+          old_mapping_tail = dedent('''\
+                  "governed_experience_artifact": _copy_json_mapping(
+                      source.governed_experience_artifact
+                  ),
+              }
+          ''')
+          new_mapping_tail = dedent('''\
+                  "governed_experience_artifact": _copy_json_mapping(
+                      source.governed_experience_artifact
+                  ),
+                  "formation_summary_artifact": _copy_json_mapping(
+                      source.formation_summary_artifact
+                  ),
+              }
+          ''')
+          replace_once(record, old_mapping_tail, new_mapping_tail)
+
+          replace_once(
+              record,
+              '    if len(value) != len(FINALIZED_SOURCE_FIELDS) or set(value) != FINALIZED_SOURCE_FIELDS:\n        reasons.append("durable_finalization_finalized_source_shape_mismatch")\n',
+              '    fields = frozenset(value)\n    if fields not in {FINALIZED_SOURCE_FIELDS, FINALIZED_SOURCE_LEGACY_FIELDS}:\n        reasons.append("durable_finalization_finalized_source_shape_mismatch")\n',
+          )
+          replace_once(
+              record,
+              '    if value.get("relayemo_artifact") is not None and type(\n        value.get("relayemo_artifact")\n    ) is not dict:\n        reasons.append("durable_finalization_relayemo_artifact_invalid")\n',
+              '    if "formation_summary_artifact" in value and type(\n        value.get("formation_summary_artifact")\n    ) is not dict:\n        reasons.append("durable_finalization_formation_summary_artifact_invalid")\n    if value.get("relayemo_artifact") is not None and type(\n        value.get("relayemo_artifact")\n    ) is not dict:\n        reasons.append("durable_finalization_relayemo_artifact_invalid")\n',
+          )
+
+          replay = Path('relaylm/_relaymem_slp_durable_finalization_replay_impl.py')
+          replace_once(
+              replay,
+              '        messages = mapping["governed_messages"]\n        if type(messages) is not list:\n            raise TypeError\n        source = RelayMEMSLPFinalizedTurnSource(\n',
+              '        messages = mapping["governed_messages"]\n        if type(messages) is not list:\n            raise TypeError\n        formation = mapping.get("formation_summary_artifact", {})\n        if type(formation) is not dict:\n            return None, ("durable_finalization_formation_summary_artifact_invalid",)\n        source = RelayMEMSLPFinalizedTurnSource(\n',
+          )
+          replace_once(
+              replay,
+              '            governed_experience_artifact=deepcopy(dict(mapping["governed_experience_artifact"])),\n        )\n',
+              '            governed_experience_artifact=deepcopy(dict(mapping["governed_experience_artifact"])),\n            formation_summary_artifact=deepcopy(dict(formation)),\n        )\n',
+          )
+
+          smoke = Path('scripts/relaylm_i1gc_durable_finalization_formation_replay_smoke.py')
+          smoke.write_text(dedent('''\
+          from __future__ import annotations
+
+          import sys
+          from copy import deepcopy
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+
+          REPO_ROOT = Path(__file__).resolve().parents[1]
+          SCRIPTS_ROOT = REPO_ROOT / "scripts"
+          for path in (REPO_ROOT, SCRIPTS_ROOT):
+              if str(path) not in sys.path:
+                  sys.path.insert(0, str(path))
+
+          import relaylm_i1gc_durable_finalization_replay_smoke as i1gc
+          from relaylm.relaymem_slp_durable_finalization_record import (
+              _digest_without,
+              canonical_json_bytes,
+          )
+
+
+          def require(condition: bool, detail: object) -> None:
+              if not condition:
+                  raise AssertionError(detail)
+
+
+          def _legacy_seal(seal: dict[str, object]) -> dict[str, object]:
+              legacy = deepcopy(seal)
+              mapping = legacy["finalized_turn_source"]
+              require(type(mapping) is dict, mapping)
+              source_mapping = dict(mapping)
+              removed = source_mapping.pop("formation_summary_artifact")
+              require(type(removed) is dict, removed)
+              legacy["finalized_turn_source"] = source_mapping
+              legacy["seal_digest"] = _digest_without(legacy, "seal_digest")
+              return legacy
+
+
+          def test_canonical_formation_replay() -> None:
+              with TemporaryDirectory() as directory:
+                  root = Path(directory)
+                  config = i1gc._config(root)
+                  base, seal, source_result, _ = i1gc._publish_sealed(root)
+                  require(source_result.source is not None, source_result)
+                  source = source_result.source
+                  mapping = seal["finalized_turn_source"]
+                  require(type(mapping) is dict, mapping)
+                  require("formation_summary_artifact" in mapping, mapping)
+                  require(
+                      canonical_json_bytes(mapping["formation_summary_artifact"])
+                      == canonical_json_bytes(source.formation_summary_artifact),
+                      mapping,
+                  )
+                  result = i1gc._replay(config, str(base["locator_digest"]))
+                  require(result.status == "completed", result)
+                  require(result.finalized_turn_source_result is not None, result)
+                  require(result.finalized_turn_source_result.source is not None, result)
+                  replay_source = result.finalized_turn_source_result.source
+                  require(
+                      canonical_json_bytes(replay_source.formation_summary_artifact)
+                      == canonical_json_bytes(source.formation_summary_artifact),
+                      result,
+                  )
+
+
+          def test_legacy_formation_replay_defaults_empty() -> None:
+              with TemporaryDirectory() as directory:
+                  root = Path(directory)
+                  config = i1gc._config(root)
+                  base, segments, seal = i1gc.gb._records()
+                  legacy = _legacy_seal(seal)
+                  store = i1gc.gb._store(root / "finalization")
+                  i1gc.gb._publish(store, base, segments, legacy)
+                  result = i1gc._replay(config, str(base["locator_digest"]))
+                  require(result.status == "completed", result)
+                  require(result.finalized_turn_source_result is not None, result)
+                  require(result.finalized_turn_source_result.source is not None, result)
+                  replay_source = result.finalized_turn_source_result.source
+                  require(
+                      canonical_json_bytes(replay_source.formation_summary_artifact)
+                      == canonical_json_bytes({}),
+                      result,
+                  )
+
+
+          def main() -> None:
+              test_canonical_formation_replay()
+              test_legacy_formation_replay_defaults_empty()
+              print("relaylm_i1gc_durable_finalization_formation_replay_smoke: ok")
+
+
+          if __name__ == "__main__":
+              main()
+          '''), 'utf-8')
+
+          docs = Path('docs/mvp/wave7/e1r3_durable_replay_residual_followup.md')
+          docs.write_text(dedent('''\
+          # E1-R3 Durable Replay Residual Follow-up
+
+          Generated: 2026-06-28 JST
+          Updated: 2026-06-29 JST
+
+          This note records the #436 review residual and the canonical follow-up repair.
+
+          ## Residual
+
+          Durable finalization replay must preserve the E1-R3 `formation_summary_artifact` across sealed-record replay.
+
+          ## Canonical repair
+
+          - Replaced the opt-in durable-finalization formation replay monkeypatch with canonical record/replay support in the durable-finalization authorities.
+          - `finalized_source_to_mapping()` now emits `formation_summary_artifact` as worker-internal replay evidence in newly sealed records.
+          - `validate_finalized_source_mapping()` accepts both the canonical shape with `formation_summary_artifact` and legacy v0 sealed finalized-source mappings that predate the field.
+          - Replay reconstruction passes `formation_summary_artifact` into `RelayMEMSLPFinalizedTurnSource`, using `{}` for legacy records.
+          - `scripts/relaylm_i1gc_durable_finalization_formation_replay_smoke.py` now exercises the canonical path directly and includes a legacy-v0 replay check.
+
+          ## CI follow-up
+
+          The first PR run exposed failures in the M3h recovery-audit lane and the Phase 6-C1 integrated worker fault lane. The follow-up keeps forged dry-run/state-uncertain receipts rejected, keeps cleanup-incomplete receipts tied to reconciliation progress, and adds bounded CI diagnostics for the M3h functional smoke so future failures expose content-free assertion context instead of only a nonzero exit.
+
+          ## Non-goals preserved
+
+          - The protected-source payload remains unchanged.
+          - B1/B2 queue identity remains unchanged.
+          - Visible-response behavior remains unchanged.
+          - `relaylm.__init__` does not install any durable replay hook.
+          - Existing durable-finalization records are not invalidated solely because they predate E1-R3 formation summaries.
+          '''), 'utf-8')
+
+          patch = Path('relaylm/relaymem_durable_finalization_formation_replay_patch.py')
+          if patch.exists():
+              patch.unlink()
+          PY
+      - name: Install project
+        run: python -m pip install -e .
+      - name: Validate canonical replay patch
+        shell: bash
+        run: |
+          python -m compileall -q relaylm scripts
+          PYTHONPATH=. python scripts/relaylm_i1gc_durable_finalization_replay_smoke.py
+          PYTHONPATH=. python scripts/relaylm_i1gc_durable_finalization_formation_replay_smoke.py
+          PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+      - name: Commit patch
+        shell: bash
+        run: |
+          git status --short
+          if git diff --quiet; then
+            echo 'No patch changes to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add relaylm scripts docs
+          git commit -m 'fix: canonicalize formation summary durable replay'
+          git push origin HEAD:work-e1r3-canonical
