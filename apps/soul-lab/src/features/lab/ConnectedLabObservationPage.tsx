@@ -5,6 +5,7 @@ import { loadLabManagementProjections } from "../settings/managementApi";
 import { HeldGovernancePanel } from "./HeldGovernancePanel";
 import { PrimaryMemoryCorrectPanel } from "./PrimaryMemoryCorrectPanel";
 import { PrimaryMemoryForgetPanel } from "./PrimaryMemoryForgetPanel";
+import { PrimaryMemoryPinPanel } from "./PrimaryMemoryPinPanel";
 import {
   LabObservationError,
   loadLabObservation,
@@ -32,6 +33,7 @@ type LoadState =
 type SelectedOperation =
   | { kind: "correct"; memory: LabRecentMemoryItem }
   | { kind: "forget"; memory: LabRecentMemoryItem }
+  | { kind: "pin"; memory: LabRecentMemoryItem }
   | { kind: "held"; outcome: LabMemoryOutcomeItem };
 
 function text(language: Language, ja: string, en: string): string {
@@ -110,7 +112,7 @@ export function ConnectedLabObservationPage({
         <section className="surface-panel">
           <p className="eyebrow">SOURCE</p>
           <h2>{text(language, "ローカルプレビューデータ", "Local preview data")}</h2>
-          <p>{text(language, "サーバー実データとは混在していません。Correct / Forget / Held Governanceを含む操作はpreview-onlyで永続化されません。", "This view is not mixed with server data. Correct, Forget, Held Governance, and all other actions are preview-only and are not persisted.")}</p>
+          <p>{text(language, "サーバー実データとは混在していません。Correct / Forget / Pin / Held Governanceを含む操作はpreview-onlyで永続化されません。", "This view is not mixed with server data. Correct, Forget, Pin, Held Governance, and all other actions are preview-only and are not persisted.")}</p>
         </section>
         <MemoryInspectorPage language={language} activeCharacter={activeCharacter} onInspectorLockChange={onInspectorLockChange} />
       </div>
@@ -158,7 +160,7 @@ export function ConnectedLabObservationPage({
         <div>
           <p className="eyebrow">REAL LAB OBSERVATION + GOVERNANCE</p>
           <h1>Lab Observation</h1>
-          <p>{text(language, "実run、Primary MEM、RelayCTX注入証拠を観測し、formed Primary MEMをCorrect / Forget、held outcomeをApply / Discardできます。", "Observe real runs, Primary MEM, and RelayCTX evidence; Correct / Forget formed Primary MEM and Apply / Discard held outcomes.")}</p>
+          <p>{text(language, "実run、Primary MEM、RelayCTX注入証拠を観測し、formed Primary MEMをCorrect / Forget / Pin、held outcomeをApply / Discardできます。", "Observe real runs, Primary MEM, and RelayCTX evidence; Correct / Forget / Pin formed Primary MEM and Apply / Discard held outcomes.")}</p>
         </div>
         <div className="memory-inspector-boundary-card"><span className="mock-pill">Source: RelayLM runtime</span><p>namespace: {state.namespace}</p></div>
         <div className="memory-inspector-counts">
@@ -183,7 +185,7 @@ export function ConnectedLabObservationPage({
             {recent.items.map((item) => (
               <article className="memory-inspector-record memory-record-formed" key={item.memory_id}>
                 <span className="memory-inspector-count-dot memory-dot-formed" aria-hidden="true" />
-                <span><strong>{item.title || item.memory_id}</strong><span className="memory-inspector-record-summary">{item.bounded_summary}</span><span className="memory-inspector-record-meta">{item.source_kind} · {item.scope_label} · revision {item.revision}</span><span className="memory-inspector-actions"><button className="button button-secondary" type="button" onClick={() => setSelectedOperation({ kind: "correct", memory: item })}>Correct</button><button className="button button-secondary" type="button" onClick={() => setSelectedOperation({ kind: "forget", memory: item })}>Forget</button></span></span>
+                <span><strong>{item.title || item.memory_id}</strong><span className="memory-inspector-record-summary">{item.bounded_summary}</span><span className="memory-inspector-record-meta">{item.source_kind} · {item.scope_label} · revision {item.revision}</span><span className="memory-inspector-actions"><button className="button button-secondary" type="button" onClick={() => setSelectedOperation({ kind: "correct", memory: item })}>Correct</button><button className="button button-secondary" type="button" onClick={() => setSelectedOperation({ kind: "forget", memory: item })}>Forget</button><button className="button button-secondary" type="button" onClick={() => setSelectedOperation({ kind: "pin", memory: item })}>Pin / Unpin</button></span></span>
               </article>
             ))}
             {recent.items.length === 0 && <p>{text(language, "active formed memoryはありません。", "No active formed memory.")}</p>}
@@ -205,6 +207,7 @@ export function ConnectedLabObservationPage({
 
       {selectedOperation?.kind === "correct" && <PrimaryMemoryCorrectPanel language={language} characterId={activeCharacter.characterId} namespace={state.namespace} memory={selectedOperation.memory} onApplied={() => setRefreshKey((value) => value + 1)} />}
       {selectedOperation?.kind === "forget" && <PrimaryMemoryForgetPanel language={language} characterId={activeCharacter.characterId} namespace={state.namespace} memory={selectedOperation.memory} onApplied={() => setRefreshKey((value) => value + 1)} />}
+      {selectedOperation?.kind === "pin" && <PrimaryMemoryPinPanel language={language} characterId={activeCharacter.characterId} namespace={state.namespace} memory={selectedOperation.memory} onApplied={() => setRefreshKey((value) => value + 1)} />}
       {selectedOperation?.kind === "held" && <HeldGovernancePanel language={language} characterId={activeCharacter.characterId} namespace={state.namespace} outcome={selectedOperation.outcome} onApplied={() => setRefreshKey((value) => value + 1)} />}
 
       <section className="surface-panel">
@@ -222,8 +225,8 @@ export function ConnectedLabObservationPage({
 
       <section className="surface-panel">
         <h2>{text(language, "このPhaseの操作境界", "Operation boundary for this phase")}</h2>
-        <div className="memory-inspector-actions"><button className="button button-secondary" type="button" disabled>forget: active formed item row</button><button className="button button-secondary" type="button" disabled>pin / unpin</button><button className="button button-secondary" type="button" disabled>merge</button><button className="button button-secondary" type="button" disabled>held apply / discard: explicit confirm only</button></div>
-        <p>{text(language, "I-7Cはheld outcomeの明示的なApply / Discard governance decisionだけを追加します。worker / scheduler / retry loop / daemonは起動しません。", "I-7C adds only explicit Apply / Discard governance decisions for held outcomes. It does not start workers, schedulers, retry loops, or daemons.")}</p>
+        <div className="memory-inspector-actions"><button className="button button-secondary" type="button" disabled>correct / forget / pin: active formed item row</button><button className="button button-secondary" type="button" disabled>merge</button><button className="button button-secondary" type="button" disabled>held apply / discard: explicit confirm only</button></div>
+        <p>{text(language, "I-5Bはactiveなformed Primary MEMのPin / Unpin API/UIだけを追加します。I-7Cはheld outcomeの明示的なApply / Discard governance decisionだけを追加します。worker / scheduler / retry loop / daemonは起動しません。", "I-5B adds only the Pin / Unpin API/UI for active formed Primary MEM. I-7C adds only explicit Apply / Discard governance decisions for held outcomes. It does not start workers, schedulers, retry loops, or daemons.")}</p>
       </section>
     </div>
   );

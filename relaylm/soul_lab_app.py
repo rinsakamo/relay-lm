@@ -42,6 +42,7 @@ from relaylm.soul_lab_memory_forget import (
     LabMemoryForgetApplyRequest,
     LabMemoryForgetPreflightRequest,
 )
+from relaylm.soul_lab_memory_pin_routes import install_primary_memory_pin_routes
 from relaylm.soul_lab_observation import (
     LabObservationResponseMiddleware,
     install_lab_observation_runtime_hook,
@@ -445,6 +446,12 @@ def create_app(config_path: str | None = None) -> FastAPI:
         except PrimaryForgetError as error:
             raise forget_failure(error) from None
         return JSONResponse(content=result, headers={"Cache-Control": "no-store"})
+
+    install_primary_memory_pin_routes(
+        app=app,
+        config=config,
+        configured_loopback=configured_loopback,
+    )
 
     return app
 

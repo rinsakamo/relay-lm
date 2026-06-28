@@ -11,6 +11,7 @@
     "smoke:lifecycle-visibility": "node scripts/lifecycleVisibilitySmoke.mjs",
     "smoke:forget-ui": "node scripts/forgetUiSmoke.mjs",
     "smoke:held-governance-ui": "node scripts/heldGovernanceUiSmoke.mjs",
+    "smoke:pin-unpin-ui": "node scripts/pinUnpinUiSmoke.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "engines": {
