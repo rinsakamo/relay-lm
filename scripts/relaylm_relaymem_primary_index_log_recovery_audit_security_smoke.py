@@ -5,6 +5,7 @@ import fcntl
 import os
 import sys
 import tempfile
+from hashlib import sha256
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -43,7 +44,7 @@ def apply_plan(root: Path, plan: dict[str, object]) -> dict[str, object]:
 def main() -> int:
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
-        page_receipt, _, index_path, _ = fixture(root)
+        page_receipt, page_path, index_path, _ = fixture(root)
         plan = fresh_plan(root, page_receipt)
         applied = apply_plan(root, plan)
         receipt = applied["receipt"]
@@ -63,6 +64,25 @@ def main() -> int:
         traversal["page_relative_path"] = "../outside.md"
         blocked = audit(root, traversal)
         require(blocked["status"] == "blocked", blocked)
+
+        original_page = page_path.read_text(encoding="utf-8")
+        forged_page = original_page.replace(
+            'summary_origin: "trusted_in_process_summary"',
+            'summary_origin: "assistant_output"',
+        )
+        page_path.write_text(forged_page, encoding="utf-8")
+        forged_receipt = copy.deepcopy(receipt)
+        forged_receipt["page_digest"] = sha256(forged_page.encode("utf-8")).hexdigest()
+        forged = audit(root, forged_receipt)
+        require(forged["status"] == "blocked", forged)
+        require(forged["receipt_valid"] is True, forged)
+        require(forged["projection"]["page_verified"] is False, forged)
+        require(
+            "primary_reconciliation_recovery_page_summary_origin_mismatch"
+            in forged["blocked_reasons"],
+            forged,
+        )
+        page_path.write_text(original_page, encoding="utf-8")
 
         lock_fd = os.open(root / "memory/mem", os.O_RDONLY | os.O_DIRECTORY)
         try:
