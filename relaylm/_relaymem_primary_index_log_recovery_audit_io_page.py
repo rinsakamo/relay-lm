@@ -6,13 +6,16 @@ from hashlib import sha256
 from typing import Any
 
 from ._relaymem_primary_page_writer_common import (
+    EVENT_KINDS,
     KIND_TARGET,
     MAX_SUMMARY,
     MAX_TITLE,
     PAGE_SCHEMA,
     TARGET_DIR,
     bad_text,
+    is_sha256,
     parse_page_markdown,
+    token,
 )
 
 
@@ -53,6 +56,8 @@ def apply_page_result(
         "promotion_policy": "free_to_update",
         "safety_scope": "ordinary_memory",
         "idempotency_key": receipt["idempotency_key"],
+        "summary_origin": "trusted_in_process_summary",
+        "content_role": "evidence",
     }
     reasons = [
         f"primary_reconciliation_recovery_page_{field}_mismatch"
@@ -61,6 +66,18 @@ def apply_page_result(
     ]
     if expected_path != receipt["page_relative_path"]:
         reasons.append("primary_reconciliation_recovery_page_path_binding_mismatch")
+    if not isinstance(memory_kind, str) or memory_kind not in KIND_TARGET:
+        reasons.append("primary_reconciliation_recovery_page_memory_kind_mismatch")
+    event_kind = metadata.get("source_event_kind")
+    if not isinstance(event_kind, str) or event_kind not in EVENT_KINDS:
+        reasons.append("primary_reconciliation_recovery_page_source_event_kind_mismatch")
+    _, namespace_reasons = token(
+        metadata.get("namespace"),
+        "primary_reconciliation_recovery_page_namespace_invalid",
+    )
+    reasons.extend(namespace_reasons)
+    if not is_sha256(metadata.get("lineage_fingerprint")):
+        reasons.append("primary_reconciliation_recovery_page_lineage_fingerprint_invalid")
     summary = metadata.get("summary")
     title = metadata.get("title")
     if (
