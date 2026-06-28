@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the E1 MVP evaluation evidence consolidation boundary after E1-R1/R2."""
+"""Validate the E1 MVP evaluation evidence consolidation boundary after E1-R3."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,6 +14,7 @@ REQUIRED = {
         "## Implemented evidence vs remaining quality work",
         "E1-R1 route-owned trusted Home admission",
         "E1-R2 character-store bootstrap is implemented",
+        "E1-R3 provenance-preserving Primary MEM formation summary is implemented",
         "## Direct Home-origin admission decision record",
         "Option A",
         "Option B",
@@ -24,13 +25,13 @@ REQUIRED = {
         "E1-R3 provenance-preserving Primary MEM formation summary",
         "## Evidence-grounded recall behavior",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression",
-        "Trusted Home admission is implemented, but formation quality risks are not solved.",
         "Recall evidence is present, but evidence-grounded response behavior is not fully evaluated.",
     ),
     "docs/PROJECT_STATUS.md": (
         "E1 evaluation consolidation: complete",
         "E1-R1 trusted Home scene admission: complete",
         "E1-R2 character-store bootstrap command: complete",
+        "E1-R3 provenance-preserving Primary MEM formation summary: complete",
         "W6-INT merged",
         "Home can be a trusted formation source only through the E1-R1 route-owned gate; browser-owned trust remains rejected.",
     ),
@@ -38,12 +39,13 @@ REQUIRED = {
         "E1 evaluation consolidation                    complete",
         "E1-R1 trusted Home scene-admission path         complete",
         "E1-R2 idempotent character-store bootstrap command complete",
-        "E1-R3 provenance-preserving Primary MEM formation summary",
+        "E1-R3 provenance-preserving Primary MEM formation summary complete",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression",
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
         "E1-R1 route-owned trusted Home scene admission is current implemented.",
         "E1-R2 dry-run-first character-store bootstrap is current implemented.",
+        "E1-R3 provenance-preserving summary formation is current implemented.",
     ),
     "docs/architecture/current_target_migration_guide.md": (
         "E1-R1 is current implemented as route-owned trusted Home scene admission.",
@@ -53,18 +55,22 @@ REQUIRED = {
         "E1 MVP evaluation consolidation",
         "E1-R1 trusted Home scene admission",
         "E1-R2 character-store bootstrap command",
+        "E1-R3 provenance-preserving formation summary",
         "E1-R1 completion report",
         "E1-R2 completion report",
+        "E1-R3 completion report",
     ),
     "docs/architecture/README.md": (
         "E1 MVP Evaluation Evidence Consolidation",
         "E1-R1 Trusted Home Scene Admission",
         "E1-R2 Character Store Bootstrap",
+        "E1-R3 Provenance-Preserving Primary MEM Formation Summary",
     ),
     "docs/mvp/README.md": (
         "Wave 6 merged completion reports",
         "E1-R1 completion report",
         "E1-R2 completion report",
+        "E1-R3 completion report",
     ),
     "docs/mvp/wave5/e1_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
@@ -80,12 +86,23 @@ REQUIRED = {
         "relaylm_doc_type: implementation_completion_report",
         "character-store bootstrap",
     ),
+    "docs/mvp/wave7/e1r3_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "provenance-preserving Primary MEM formation summary",
+    ),
+    "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md": (
+        "relaylm_doc_type: implementation_handoff",
+        "user_assertion_evidence",
+        "assistant_acknowledgement_evidence",
+        "assistant_speculation_or_non_factual_evidence",
+    ),
 }
 
 EVIDENCE_PATHS = (
     "docs/architecture/e1_local_runtime_evaluation_2026_06_25.md",
     "docs/architecture/e1r1_trusted_home_scene_admission.md",
     "docs/architecture/e1r2_character_store_bootstrap.md",
+    "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
     "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
     "docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md",
     "docs/architecture/integration_i1_primary_mem_two_turn_recall.md",
@@ -102,6 +119,8 @@ EVIDENCE_PATHS = (
     "scripts/relaylm_phase6c1_primary_worker_smoke.py",
     "scripts/relaylm_phase6c1_worker_crash_convergence_smoke.py",
     "scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py",
+    "scripts/relaylm_e1r3_provenance_formation_summary_smoke.py",
+    "scripts/relaylm_e1r3_provenance_formation_security_smoke.py",
 )
 
 STALE = (
@@ -112,6 +131,8 @@ STALE = (
     "E1-R1 trusted Home scene-admission path: candidate",
     "E1-R2 idempotent character-store bootstrap command: candidate",
     "E1-R1 trusted Home scene-admission path         candidate",
+    "Trusted Home admission is implemented, but formation quality risks are not solved.",
+    "E1-R3 provenance-preserving Primary MEM formation summary  current next candidate",
 )
 
 SCANNED_DOCS = (
@@ -160,9 +181,11 @@ def validate_indexes_reference_e1() -> None:
         "e1_local_runtime_evaluation_2026_06_25.md",
         "e1r1_trusted_home_scene_admission.md",
         "e1r2_character_store_bootstrap.md",
+        "e1r3_provenance_preserving_primary_mem_formation_summary.md",
         "e1_completion_report.md",
         "e1r1_completion_report.md",
         "e1r2_completion_report.md",
+        "e1r3_completion_report.md",
     ):
         assert required in combined, f"index links missing {required}"
 

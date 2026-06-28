@@ -26,6 +26,7 @@ relaylm_related_authority:
   - docs/architecture/phase_i7c_held_apply_discard_runtime.md
   - docs/architecture/e1r1_trusted_home_scene_admission.md
   - docs/architecture/e1r2_character_store_bootstrap.md
+  - docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md
   - docs/architecture/e1_evaluation_consolidation.md
   - docs/architecture/wave6_cross_slice_convergence_audit.md
   - docs/architecture/wave5_cross_slice_convergence_audit.md
@@ -73,6 +74,7 @@ Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Prima
 E1 evaluation consolidation: complete
 E1-R1 trusted Home scene admission: complete
 E1-R2 character-store bootstrap command: complete
+E1-R3 provenance-preserving Primary MEM formation summary: complete
 Home can be a trusted formation source only through the E1-R1 route-owned gate; browser-owned trust remains rejected.
 
 Phase I-4A Forget / Hide contract: defined target contract; completed by I-4B through I-4F implementation slices
@@ -108,7 +110,7 @@ Wave 6 implementation tracks complete
 W6-INT merged
 ```
 
-Historical Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6. The current next candidates are Post-Wave-6 quality/evaluation work below.
+Historical Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6. E1-R3 is complete as a post-Wave-6 quality/evaluation slice. The current next quality gate is E1-R4.
 
 ## Phase 6 RelaySLP orchestration and O0
 
@@ -163,27 +165,25 @@ I-7C governs one already-held candidate through explicit Apply / Discard preflig
 
 UI-B0 real Home conversation is complete. UI-B1A read-only lifecycle and operation visibility is complete. I-4E Forget API/UI, I-5B Pin / Unpin API/UI, and I-7C Held Governance API/UI are complete. The browser uses server-projected routes and the existing same-origin RelayLM Chat Completions path. It owns no backend, SOUL, namespace, storage-root, queue, worker, scheduler, or route authority.
 
-E1 evaluation consolidation is complete as a docs/evidence boundary. E1-R1 adds a route-owned trusted Home scene-admission gate that defaults disabled and rejects browser-owned trust. E1-R2 adds a dry-run-first operator command for idempotent character-store bootstrap. E1-R3 and E1-R4 remain quality/evaluation follow-ups.
+E1 evaluation consolidation is complete as a docs/evidence boundary. E1-R1 adds a route-owned trusted Home scene-admission gate that defaults disabled and rejects browser-owned trust. E1-R2 adds a dry-run-first operator command for idempotent character-store bootstrap. E1-R3 adds speaker-provenance-safe Primary MEM formation summary construction so user assertions remain distinguishable, assistant acknowledgements/speculation are not promoted to user facts, and route-owned scene/trust evidence stays qualification metadata. E1-R4 remains a quality/evaluation follow-up.
 
 ## Immediate dependency-first work
 
 ```text
-Post-Wave-6 next candidates:
-  E1-R3 provenance-preserving Primary MEM formation summary
+Post-E1-R3 next candidates:
   E1-R4 retrieval-response grounding and unsupported-detail suppression
   O2/O3 only after explicit MVP need
   Static SOUL Lab bundle serving, if local packaging requires it
 ```
 
-The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](architecture/wave6_cross_slice_convergence_audit.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
+The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](architecture/wave6_cross_slice_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 
 ## Safe defaults
 
-Current mutation, worker, durable-finalization, retention, scheduler-related paths, and E1 evaluation paths remain default-off or explicitly caller/operator invoked. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1D1 accepts exact scheduler gates but runs only one caller-invoked round and returns without sleep. O1D2 returns bounded policy hints only. O1E returns bounded operational-control projections only. O1F validates operational edges but does not loop, poll, sleep, supervise, or run always-on. E1-R1 defaults disabled and does not accept browser-owned trust. E1-R2 is an explicit dry-run-first operator command.
+Current mutation, worker, durable-finalization, retention, scheduler-related paths, and E1 evaluation paths remain default-off or explicitly caller/operator invoked. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1D1 accepts exact scheduler gates but runs only one caller-invoked round and returns without sleep. O1D2 returns bounded policy hints only. O1E returns bounded operational-control projections only. O1F validates operational edges but does not loop, poll, sleep, supervise, or run always-on. E1-R1 defaults disabled and does not accept browser-owned trust. E1-R2 is an explicit dry-run-first operator command. E1-R3 exposes only content-free provenance counts/statuses publicly and keeps raw user text, assistant text, protected source bodies, queue payloads, roots, paths, tokens, owners, and digests out of public projections.
 
 ## Not yet implemented
 
-- speaker-provenance-safe Primary MEM summary formation;
 - strict evidence-grounded recall response generation;
 - O2 supervised worker service and O3 always-on local operation;
 - restore/unhide or physical purge;
@@ -215,8 +215,12 @@ Wave 4 implementation tracks are complete: O1D2, I-4E, UI-B1A, I-5A, and I-7A/B.
 
 Post-Wave-4 / Wave 5 implementation tracks are complete: E1 evaluation consolidation, O1E scheduler operational controls, and I-4F Forget product-completion validation. W5-INT records their source PRs, merge commits, completion reports, handoffs, authority map, leakage review, and frozen next inputs. W5-INT is merged.
 
-Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6; E1-R3 and E1-R4 remain current next quality work.
+Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6; E1-R3 is complete and E1-R4 remains current next quality work.
 
 ## Wave 6 cross-slice convergence
 
-Wave 6 implementation tracks are complete: O1F operational validation, I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap. W6-INT records their source PRs, merge commits, completion reports, handoffs, authority map, leakage review, and frozen next inputs. W6-INT is merged.
+Wave 6 implementation tracks are complete: I-5B, I-7C, E1-R1, and E1-R2. W6-INT is merged.
+
+## E1-R3 provenance formation boundary
+
+E1-R3 is complete for speaker-provenance-safe Primary MEM formation summary. It preserves user assertion evidence separately from assistant acknowledgement/speculation and scene/trust qualification while keeping existing C1-5/B2/B3/C2/M3 authorities unchanged. E1-R4 remains planned/unimplemented for retrieval-response grounding and unsupported-detail suppression.

@@ -16,6 +16,12 @@ docs/mvp/wave<N>/<slice>_completion_report.md
 
 Each implementation PR creates only its own report. It must not edit this central index, another slice's report, or shared current-state documents merely to mark completion. The wave convergence PR links the merged reports here after verifying the source PRs and merge commits.
 
+### E1-R3 completion report
+
+- [E1-R3 completion report](wave7/e1r3_completion_report.md) — source PR #436.
+
+The E1-R3 architecture handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](../architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md).
+
 ### Wave 6 merged completion reports
 
 W6-INT verifies the source PR numbers, merge commits, and dedicated handoffs for these historical reports:
@@ -74,6 +80,7 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/i5b_complet
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/i7c_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r1_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r2_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r3_completion_report.md
 ```
 
 The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current documentation boundary anchors after Wave 6 convergence."""
+"""Validate current documentation boundary anchors after E1-R3."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -18,6 +18,7 @@ CURRENT_DOCS = (
     "docs/architecture/e1_evaluation_consolidation.md",
     "docs/architecture/e1r1_trusted_home_scene_admission.md",
     "docs/architecture/e1r2_character_store_bootstrap.md",
+    "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
     "docs/architecture/phase_i5_pin_unpin_contract.md",
     "docs/architecture/phase_i5b_pin_unpin_apply.md",
     "docs/architecture/phase_i7ab_held_apply_discard_contract.md",
@@ -40,10 +41,10 @@ REQUIRED = {
         "I-7C Held Apply/Discard runtime/API/UI/durable governance evidence: complete",
         "E1-R1 trusted Home scene admission: complete",
         "E1-R2 character-store bootstrap command: complete",
+        "E1-R3 provenance-preserving Primary MEM formation summary: complete",
         "Wave 6 implementation tracks complete",
         "W6-INT merged",
-        "Post-Wave-6 next candidates:",
-        "E1-R3 provenance-preserving Primary MEM formation summary",
+        "Post-E1-R3 next candidates:",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression",
     ),
     "docs/README.md": (
@@ -53,6 +54,7 @@ REQUIRED = {
         "I-7C completion report",
         "E1-R1 completion report",
         "E1-R2 completion report",
+        "E1-R3 completion report",
     ),
     "docs/mvp/README.md": (
         "Wave 6 merged completion reports",
@@ -61,6 +63,7 @@ REQUIRED = {
         "I-7C completion report",
         "E1-R1 completion report",
         "E1-R2 completion report",
+        "E1-R3 completion report",
         "W6-INT is merged",
     ),
     "docs/architecture/README.md": (
@@ -71,6 +74,7 @@ REQUIRED = {
         "Phase I-7C Held Apply / Discard Runtime",
         "E1-R1 Trusted Home Scene Admission",
         "E1-R2 Character Store Bootstrap",
+        "E1-R3 Provenance-Preserving Primary MEM Formation Summary",
         "Wave 6 Cross-Slice Convergence Audit",
     ),
     "docs/DOCUMENTATION_MODEL.md": (
@@ -92,7 +96,8 @@ REQUIRED = {
         "I-7C Held Apply/Discard runtime/API/UI/durable evidence",
         "E1-R1 trusted Home scene-admission path",
         "E1-R2 idempotent character-store bootstrap command",
-        "### Post-Wave-6 next candidates",
+        "### E1-R3 completed",
+        "### Post-E1-R3 next candidates",
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
         "I1-GA through I1-GE are complete",
@@ -100,12 +105,20 @@ REQUIRED = {
         "I-7C is current implemented as Held Apply / Discard runtime/API/UI/durable governance evidence.",
         "E1-R1 route-owned trusted Home scene admission is current implemented.",
         "E1-R2 dry-run-first character-store bootstrap is current implemented.",
+        "E1-R3 provenance-preserving summary formation is current implemented.",
     ),
     "docs/architecture/e1_evaluation_consolidation.md": (
         "E1-R1 route-owned trusted Home admission",
         "E1-R2 character-store bootstrap is implemented",
-        "E1-R3 provenance-preserving Primary MEM formation summary",
+        "E1-R3 provenance-preserving Primary MEM formation summary is implemented",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression",
+    ),
+    "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md": (
+        "# E1-R3 Provenance-Preserving Primary MEM Formation Summary",
+        "user_assertion_evidence",
+        "assistant_acknowledgement_evidence",
+        "assistant_speculation_or_non_factual_evidence",
+        "blocked_browser_owned_trust",
     ),
     "docs/architecture/phase_i5_pin_unpin_contract.md": (
         "I-5A defines the Pin / Unpin governance contract and read-only preflight boundary.",
@@ -146,6 +159,8 @@ STALE = tuple(
     Pin/Unpin runtime API/UI/ranking behavior: pending
     Held Apply/Discard runtime API/UI/durable evidence: pending
     Character-store bootstrap remains operator-facing and brittle
+    E1-R3 provenance-preserving Primary MEM formation summary  current next candidate
+    E1-R3 provenance-preserving Primary MEM formation summary current next candidate
     """.splitlines()
     if line.strip()
 )

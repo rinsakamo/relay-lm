@@ -13,12 +13,13 @@ relaylm_not_authoritative_for:
   - current runtime implementation status
   - exact RelayMEM or RelaySLP schemas
   - production admission trust policy
-  - future speaker-provenance implementation details
+  - future recall-grounding implementation details
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - e1_local_runtime_evaluation_2026_06_25.md
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md
+  - e1r3_provenance_preserving_primary_mem_formation_summary.md
   - project_execution_plan.md
   - relaymem_slp_current_target.md
   - soul_lab_ui_b0_real_home_conversation.md
@@ -35,9 +36,9 @@ Last reviewed: 2026-06-28 JST.
 
 ## Purpose
 
-This document consolidates the MVP E1 evaluation evidence after Wave 6 convergence. It records that E1-R1 and E1-R2 are now implemented while preserving the remaining quality gates for provenance and grounded recall.
+This document consolidates the MVP E1 evaluation evidence after E1-R3. It records that E1-R1, E1-R2, and E1-R3 are implemented while preserving the remaining E1-R4 quality gate for evidence-grounded recall response behavior.
 
-E1 is evidence-first. E1-R1 adds route-owned trusted Home admission. E1-R2 adds explicit dry-run-first store bootstrap. E1 still does not implement speaker-provenance-safe summarization, evidence-grounded response behavior, polling, daemonization, service supervision, TTS/audio/avatar, ASR, peer transport, or RelaySOUL mutation authority.
+E1 is evidence-first. E1-R1 adds route-owned trusted Home admission. E1-R2 adds explicit dry-run-first store bootstrap. E1-R3 adds speaker-provenance-safe Primary MEM formation summary construction. E1 still does not implement E1-R4 retrieval-response grounding, polling, daemonization, service supervision, TTS/audio/avatar, ASR, peer transport, or RelaySOUL mutation authority.
 
 ## Current E1 proof boundary
 
@@ -47,15 +48,16 @@ The currently proven local E1 lane is:
 SOUL Lab Home-origin ordinary conversation or explicit trusted request
   -> route-owned trusted Home admission when E1-R1 is enabled
   -> durable source and queue evidence
+  -> speaker-provenance-safe Primary MEM formation summary
   -> local operation drain
   -> Primary MEM durable formation
   -> later SOUL Lab Home recall
   -> Lab observation and lifecycle/governance visibility
 ```
 
-E1-R1 route-owned trusted Home admission is implemented. Browser-owned trusted metadata remains rejected. E1-R2 character-store bootstrap is implemented as an explicit operator command, not automatic semantic memory creation.
+E1-R1 route-owned trusted Home admission is implemented. Browser-owned trusted metadata remains rejected. E1-R2 character-store bootstrap is implemented as an explicit operator command, not automatic semantic memory creation. E1-R3 provenance-preserving Primary MEM formation summary is implemented so user assertion evidence remains distinguishable from assistant acknowledgement/speculation and route-owned scene/trust qualification.
 
-Trusted Home admission is implemented, but formation quality risks are not solved. Recall evidence is present, but evidence-grounded response behavior is not fully evaluated.
+Recall evidence is present, but evidence-grounded response behavior is not fully evaluated.
 
 ## Evidence inventory
 
@@ -64,6 +66,7 @@ Trusted Home admission is implemented, but formation quality risks are not solve
 | Real Home conversation | Implemented | `docs/architecture/soul_lab_ui_b0_real_home_conversation.md`, `docs/architecture/e1_local_runtime_evaluation_2026_06_25.md` | SOUL Lab Home can use the existing same-origin Chat Completions path for real text conversation. |
 | Trusted Home admission | Implemented by E1-R1 | `docs/architecture/e1r1_trusted_home_scene_admission.md`, `docs/mvp/wave6/e1r1_completion_report.md` | Home-origin persistence may be admitted only by route-owned server configuration. Browser-owned trust is rejected. |
 | Character-store bootstrap | Implemented by E1-R2 | `docs/architecture/e1r2_character_store_bootstrap.md`, `docs/mvp/wave6/e1r2_completion_report.md` | Local evaluation can prepare the minimum safe Primary store layout through an explicit dry-run-first operator command. |
+| Provenance-preserving formation | Implemented by E1-R3 | `docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md`, `docs/mvp/wave7/e1r3_completion_report.md`, `scripts/relaylm_e1r3_provenance_formation_summary_smoke.py`, `scripts/relaylm_e1r3_provenance_formation_security_smoke.py` | Primary MEM formation uses a user-only memory candidate payload and keeps assistant and scene/trust evidence separate. |
 | Durable source and queue evidence | Implemented | `docs/architecture/phase6c1_durable_protected_source_persistence.md`, `docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md`, `docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md` | Durable protected-source, queue, and durable-finalization evidence exist through completed authorities. |
 | Local operation drain | Implemented as explicit bounded invocation | `docs/architecture/o0_local_one_job_runner.md`, `docs/architecture/o1f_operational_validation.md` | Operator-invoked local drain and caller-invoked O1 controls remain bounded and non-supervised. |
 | Primary MEM durable formation | Implemented | `docs/architecture/phase6c1_primary_mem_worker_contract.md`, `docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md` | M3a-M3h durable formation and worker fault convergence are covered by existing production smokes. |
@@ -82,12 +85,12 @@ Implemented evidence:
 - I-5A/I-5B and I-7A/B/I-7C are complete at their documented boundaries.
 - E1-R1 route-owned trusted Home admission is complete.
 - E1-R2 dry-run-first character-store bootstrap is complete.
+- E1-R3 provenance-preserving Primary MEM formation summary is complete.
 
 Remaining quality work:
 
-- E1-R3 provenance-preserving Primary MEM formation summary.
 - E1-R4 retrieval-response grounding and unsupported-detail suppression.
-- O2/O3 remain conditional on explicit MVP need and are not implied by E1-R1/R2.
+- O2/O3 remain conditional on explicit MVP need and are not implied by E1-R1/R2/R3.
 
 ## Direct Home-origin admission decision record
 
@@ -116,7 +119,20 @@ E1-R2 does not enqueue jobs, start workers, run schedulers, create semantic Prim
 
 ## Speaker-provenance-safe memory summary formation
 
-Primary MEM formation quality must preserve:
+E1-R3 provenance-preserving Primary MEM formation summary is implemented as:
+
+```text
+exact finalized-turn source
+  -> governed messages with explicit roles
+  -> user_assertion_evidence
+  -> assistant_acknowledgement_evidence
+  -> assistant_speculation_or_non_factual_evidence
+  -> scene_qualification_evidence
+  -> trust_admission_evidence
+  -> user-only memory_candidate_payload
+```
+
+The E1-R3 runtime helper preserves:
 
 - speaker provenance;
 - scene qualification;
@@ -125,14 +141,7 @@ Primary MEM formation quality must preserve:
 - no mixing of backend acknowledgement or decoration with user claims;
 - no promotion of assistant speculation into user fact evidence.
 
-Remaining quality work:
-
-```text
-E1-R3 provenance-preserving Primary MEM formation summary
-  -> user assertion evidence remains distinguishable
-  -> assistant acknowledgement is separate or excluded from factual evidence
-  -> assistant speculation is never promoted as user fact
-```
+Browser-owned trust remains rejected. Missing or unknown message roles fail closed.
 
 ## Evidence-grounded recall behavior
 
@@ -155,12 +164,14 @@ E1-R4 retrieval-response grounding and unsupported-detail suppression
 
 ## Evaluation smoke boundary
 
-`scripts/relaylm_e1_evaluation_consolidation_smoke.py` validates the post-E1-R1/R2 evidence inventory and remaining E1-R3/R4 quality gates. It does not require a live LLM, LM Studio, browser, network service, or workstation-local path.
+`scripts/relaylm_e1_evaluation_consolidation_smoke.py` validates the post-E1-R1/R2/R3 evidence inventory and remaining E1-R4 quality gate. It does not require a live LLM, LM Studio, browser, network service, or workstation-local path.
 
 Required validation set:
 
 ```bash
 python -m compileall relaylm scripts
+python scripts/relaylm_e1r3_provenance_formation_summary_smoke.py
+python scripts/relaylm_e1r3_provenance_formation_security_smoke.py
 python scripts/relaylm_e1_evaluation_consolidation_smoke.py
 python scripts/relaylm_docs_link_check.py
 python scripts/relaylm_documentation_current_boundary_smoke.py
