@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from _relaylm_phase_i3_test_support import form_primary_memory, require
+from relaylm import relaymem_primary_recall_runtime as primary_recall_runtime
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
     resolve_relaymem_character_store_root,
@@ -41,6 +42,44 @@ def scene_artifact() -> dict[str, Any]:
         "persistence_block": False,
         "persistence_block_reasons": [],
     }
+
+
+def write_control_files(root: Path) -> None:
+    mem_root = root / "memory" / "mem"
+    mem_root.mkdir(parents=True, exist_ok=True)
+    (mem_root / "index.md").write_text("# index\n", encoding="utf-8")
+    (mem_root / "log.md").write_text("# log\n", encoding="utf-8")
+
+
+def assert_disabled_diagnostics_bypass_effective_root(operator_root: Path) -> None:
+    original = primary_recall_runtime._effective_read_root
+
+    def forbidden_effective_root(root_path: str | None) -> str | None:
+        raise AssertionError(("disabled diagnostics resolved root", root_path))
+
+    try:
+        primary_recall_runtime._effective_read_root = forbidden_effective_root
+        diagnostics = build_relaymem_store_diagnostics(
+            root_path=str(operator_root),
+            store_enabled=False,
+            retrieval_dry_run_only=True,
+        )
+    finally:
+        primary_recall_runtime._effective_read_root = original
+
+    require(diagnostics.get("fallback_reason") == "memory_store_disabled", diagnostics)
+    require(diagnostics.get("root_path") == str(operator_root), diagnostics)
+
+
+def assert_character_root_scan_cap_falls_back(operator_root: Path) -> None:
+    characters = operator_root / "characters"
+    characters.mkdir(parents=True, exist_ok=True)
+    for index in range(primary_recall_runtime._MAX_CHARACTER_ROOT_SCAN + 1):
+        (characters / f"empty-{index:03d}").mkdir()
+    write_control_files(characters / "zz-valid-after-cap")
+
+    resolved_root = primary_recall_runtime._effective_read_root(str(operator_root))
+    require(resolved_root == str(operator_root), resolved_root)
 
 
 def assert_no_reason(value: Mapping[str, Any], reason_id: str) -> None:
@@ -111,6 +150,15 @@ def main() -> None:
     require("to" not in english_terms, english_terms)
     require("ship" in english_terms, english_terms)
     require("today" in english_terms, english_terms)
+
+    with tempfile.TemporaryDirectory() as directory:
+        disabled_root = Path(directory) / "disabled-root"
+        write_control_files(disabled_root / "characters" / "only-character")
+        assert_disabled_diagnostics_bypass_effective_root(disabled_root)
+
+    with tempfile.TemporaryDirectory() as directory:
+        capped_root = Path(directory) / "capped-root"
+        assert_character_root_scan_cap_falls_back(capped_root)
 
     with tempfile.TemporaryDirectory() as directory:
         operator_root = Path(directory) / "memory-root"
