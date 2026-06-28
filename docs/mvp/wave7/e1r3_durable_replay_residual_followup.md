@@ -16,6 +16,10 @@ Durable finalization replay must preserve the E1-R3 `formation_summary_artifact`
 - Replay reconstruction passes `formation_summary_artifact` into `RelayMEMSLPFinalizedTurnSource`, using `{}` for legacy records.
 - Added `scripts/relaylm_i1gc_durable_finalization_formation_replay_smoke.py` and wired it into the I1-GC durable-finalization replay workflow.
 
+## CI follow-up
+
+The first PR run exposed failures in the M3h recovery-audit lane and the Phase 6-C1 integrated worker fault lane. The shared repair was to avoid over-rejecting legitimate uncertain M3g receipts while still rejecting forged dry-run/state-uncertain receipts and cleanup-incomplete receipts without reconciliation progress.
+
 ## Non-goals preserved
 
 - The protected-source payload remains unchanged.
