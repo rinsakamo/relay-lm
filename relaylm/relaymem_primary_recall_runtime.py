@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 _TOKEN_WITH_SLASH_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$")
+_MAX_CHARACTER_ROOT_SCAN = 32
 _JAPANESE_RECALL_PHRASES = (
     "朝の集中作業",
     "集中作業",
@@ -78,8 +79,10 @@ def install_relaymem_primary_recall_runtime() -> None:
         store_enabled: bool,
         retrieval_dry_run_only: bool,
     ) -> dict[str, Any]:
+        if store_enabled:
+            root_path = _effective_read_root(root_path)
         return original_diagnostics(
-            root_path=_effective_read_root(root_path),
+            root_path=root_path,
             store_enabled=store_enabled,
             retrieval_dry_run_only=retrieval_dry_run_only,
         )
@@ -160,19 +163,20 @@ def _effective_read_root(root_path: str | None) -> str | None:
         return str(root)
     valid_roots: list[Path] = []
     try:
-        children = list(characters.iterdir())
+        for scanned_count, child in enumerate(characters.iterdir(), start=1):
+            if scanned_count > _MAX_CHARACTER_ROOT_SCAN:
+                return str(root)
+            if child.is_symlink() or not child.is_dir():
+                continue
+            memory_root = child / "memory"
+            if memory_root.is_symlink():
+                continue
+            if _root_has_control_files(child):
+                valid_roots.append(child)
+                if len(valid_roots) > 1:
+                    return str(root)
     except OSError:
         return str(root)
-    for child in children:
-        if child.is_symlink() or not child.is_dir():
-            continue
-        memory_root = child / "memory"
-        if memory_root.is_symlink():
-            continue
-        if _root_has_control_files(child):
-            valid_roots.append(child)
-            if len(valid_roots) > 1:
-                return str(root)
     if len(valid_roots) == 1:
         return str(valid_roots[0])
     return str(root)
