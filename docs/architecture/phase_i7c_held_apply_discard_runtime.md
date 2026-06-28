@@ -1,9 +1,15 @@
-# Phase I-7C Held Apply / Discard Runtime
-
+---
 relaylm_doc_type: architecture_handoff
-relaylm_status: active_design
+relaylm_status: current
 relaylm_volatility: bounded
 relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - phase_i7ab_held_apply_discard_contract.md
+  - phase_i4b_primary_current_state_shared_fence.md
+  - phase6b3_relayslp_queue_state_helpers.md
+  - soul_lab_ui_mvp.md
+---
+# Phase I-7C Held Apply / Discard Runtime
 
 ## Scope
 
@@ -71,7 +77,7 @@ The browser may send only the candidate id in the route, namespace/scope selecto
 
 ## SOUL Lab UI
 
-The UI now shows held rows as governance candidates without rendering held title, held summary, source body, model output, memory candidate text, or queue payload. Apply and Discard each require an explicit preflight button followed by a distinct confirmation button. Stale responses are dropped by a generation guard and `AbortController` cleanup.
+The UI shows held rows as governance candidates without rendering held title, held summary, source body, model output, memory candidate text, or queue payload. Apply and Discard each require an explicit preflight button followed by a distinct confirmation button. Stale responses are dropped by a generation guard and `AbortController` cleanup.
 
 ## Public projection
 
