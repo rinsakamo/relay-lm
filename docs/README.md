@@ -28,6 +28,10 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and completed E1-R1 through E1-R4 quality work.
 - [MVP evidence index](mvp/README.md) — historical snapshots and per-PR implementation completion reports.
 
+## Parallel implementation documentation rule
+
+Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<slice>_completion_report.md` only. Shared current-status and execution-plan documents may receive the minimum anchors needed to keep active validation green, but the wave convergence PR remains responsible for repository-wide synthesis. The next wave and release/evaluation gate remain closed until the convergence PR links the merged reports and updates shared current-status documents.
+
 ## Product-critical boundaries
 
 - [Phase 6 I1-B runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md)
