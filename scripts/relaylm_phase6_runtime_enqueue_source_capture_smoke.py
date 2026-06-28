@@ -178,7 +178,15 @@ def test_source_and_modes() -> None:
     require(source.source.persistence_policy_status == "allowed", source.source)
     protected = source.source.governed_experience_artifact
     require(USER_CANARY in str(protected["title"]), protected)
-    require(ASSISTANT_CANARY in str(protected["summary_text"]), protected)
+    require(USER_CANARY in str(protected["summary_text"]), protected)
+    require(ASSISTANT_CANARY not in str(protected["summary_text"]), protected)
+    formation = source.source.formation_summary_artifact
+    require(formation["schema_version"] == "relaymem.primary_formation_provenance_summary.v0", formation)
+    require(len(formation["user_assertion_evidence"]) == 1, formation)
+    non_factual = formation["assistant_speculation_or_non_factual_evidence"]
+    require(len(non_factual) == 1, formation)
+    require(non_factual[0]["role"] == "assistant", formation)
+    require(non_factual[0]["content"] == ASSISTANT_CANARY, formation)
     assert_content_free(source)
     assert_content_free(source.to_log_dict())
     assert_content_free(build_relaymem_slp_finalized_turn_source_node_result(source).to_log_dict())
