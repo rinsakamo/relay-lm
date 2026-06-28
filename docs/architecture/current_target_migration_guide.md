@@ -8,7 +8,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 ---
 # RelayLM Current / Target / Migration Guide
 
-Last reviewed: 2026-06-27 JST
+Last reviewed: 2026-06-28 JST
 
 ## Purpose
 
@@ -25,9 +25,12 @@ I-4E is current implemented as loopback Forget API/UI.
 I-4F is current implemented as validation-only Forget product completion.
 UI-B1A is current implemented read-only visibility.
 I-5A is current implemented contract/read-only preflight only.
+I-5B is current implemented as Pin / Unpin apply/API/UI/ranking behavior.
 I-7A/B is current implemented contract/read-only preflight only.
+I-7C is current implemented as Held Apply / Discard runtime/API/UI/durable governance evidence.
 E1 evaluation consolidation is current docs/evidence only.
-Direct Home-origin trusted scene admission remains target work.
+E1-R1 is current implemented as route-owned trusted Home scene admission.
+E1-R2 is current implemented as dry-run-first character-store bootstrap.
 ```
 
 ## RelaySLP and Primary MEM migration
@@ -46,11 +49,14 @@ ordinary finalized turn
   -> I-4F full Forget product validation
   -> UI-B1A read-only lifecycle visibility
   -> I-5A/I-7A/B read-only governance preflight
-  -> E1 evidence consolidation over the proven local lane
+  -> I-5B Pin / Unpin apply and ranking hint
+  -> I-7C Held Apply / Discard runtime governance evidence
+  -> E1-R1 route-owned trusted Home admission, when explicitly enabled
+  -> E1-R2 dry-run-first character-store bootstrap for local evaluation
   -> RelayCTX bounded injection
 ```
 
-Completed behavior must not be re-listed as migration work: Phase I-1, I-2, I-3, I1-GA through I1-GE, O0, O1D1, O1D2, O1E, O1F, I-4D, I-4E, I-4F, UI-B1A, I-5A read-only preflight, I-7A/B read-only preflight, and E1 evaluation consolidation are complete.
+Completed behavior must not be re-listed as migration work: Phase I-1, I-2, I-3, I1-GA through I1-GE, O0, O1D1, O1D2, O1E, O1F, I-4D, I-4E, I-4F, UI-B1A, I-5A read-only preflight, I-5B runtime apply/ranking, I-7A/B read-only preflight, I-7C runtime governance, E1 evaluation consolidation, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are complete.
 
 Remaining migration is deliberately narrower:
 
@@ -58,11 +64,6 @@ Remaining migration is deliberately narrower:
 O2 supervised worker service, if required
   -> O3 always-on operation, if required
 
-Pin/Unpin runtime apply/API/UI/ranking work
-Held Apply/Discard runtime/API/UI/durable evidence work
-
-E1-R1 trusted Home scene-admission path
-E1-R2 idempotent character-store bootstrap command
 E1-R3 provenance-preserving Primary MEM formation summary
 E1-R4 retrieval-response grounding and unsupported-detail suppression
 
@@ -72,4 +73,4 @@ TTS/audio/avatar runtime adapter execution
 
 ## Safe defaults
 
-Current apply, worker, durable-finalization, retention, and scheduler settings remain default-off or dry-run-first where applicable. O1E operational controls and O1F validation do not authorize polling, sleep, loops, service supervision, or always-on processing. No migration step may silently enable actual apply, expose content-bearing runtime state in generic diagnostics, or imply recurring scheduling/TTS/avatar execution from helper or handoff metadata alone.
+Current apply, worker, durable-finalization, retention, and scheduler settings remain default-off or explicit caller/operator invoked where applicable. O1E operational controls and O1F validation do not authorize polling, sleep, loops, service supervision, or always-on processing. E1-R1 defaults disabled and admits Home-origin persistence only through route-owned configuration, never browser-owned hidden metadata. E1-R2 is dry-run-first and may only prepare safe store layout. No migration step may silently expose content-bearing runtime state in generic diagnostics or imply recurring scheduling/TTS/avatar execution from helper or handoff metadata alone.
