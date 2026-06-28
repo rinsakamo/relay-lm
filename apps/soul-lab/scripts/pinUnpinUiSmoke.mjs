@@ -109,7 +109,8 @@ try {
   assert.match(connectedSource, /kind: "pin"/);
   assert.match(connectedSource, /Pin \/ Unpin/);
   assert.match(connectedSource, /I-5B adds only the Pin \/ Unpin API\/UI/);
-  assert.equal(connectedSource.includes("hidden retrieval"), true);
+  assert.match(connectedSource, /active formed Primary MEM/);
+  assert.match(connectedSource, /worker \/ scheduler \/ retry loop \/ daemon/);
 } finally {
   await rm(temp, { recursive: true, force: true });
 }
