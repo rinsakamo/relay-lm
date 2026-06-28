@@ -25,7 +25,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
-- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and remaining E1-R3/R4 quality work.
+- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and remaining E1-R4 quality work.
 - [MVP evidence index](mvp/README.md) — historical snapshots and per-PR implementation completion reports.
 
 ## Product-critical boundaries
@@ -66,12 +66,18 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md)
 - [E1-R1 trusted Home scene admission](architecture/e1r1_trusted_home_scene_admission.md)
 - [E1-R2 character-store bootstrap command](architecture/e1r2_character_store_bootstrap.md)
+- [E1-R3 provenance-preserving formation summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md)
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
 - [Architecture documentation index](architecture/README.md)
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 6 implementation tracks and W3-INT through W6-INT are merged. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 6 implementation tracks and W3-INT through W6-INT are merged; E1-R3 is complete. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+
+## E1-R3 implementation evidence
+
+- [E1-R3 provenance-preserving formation summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md)
+- [E1-R3 completion report](mvp/wave7/e1r3_completion_report.md)
 
 ## Wave 6 implementation evidence
 
