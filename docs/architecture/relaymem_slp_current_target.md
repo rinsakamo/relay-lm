@@ -21,6 +21,7 @@ relaylm_related_authority:
   - phase_i7c_held_apply_discard_runtime.md
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md
+  - e1r3_provenance_preserving_primary_mem_formation_summary.md
   - phase_i4f_forget_validation.md
   - e1_evaluation_consolidation.md
   - wave6_cross_slice_convergence_audit.md
@@ -55,7 +56,7 @@ Phase 6-B2 performs atomic durable enqueue of durably enqueued jobs through the 
 
 I2 real SOUL Lab observation is complete. It is read-only evidence only and cannot authorize repair or retrieval.
 
-E1 evaluation consolidation is current as an evidence/documentation boundary. E1-R1 route-owned trusted Home scene admission is current implemented. E1-R2 dry-run-first character-store bootstrap is current implemented. E1-R3 provenance-preserving summary formation and E1-R4 evidence-grounded recall behavior remain quality work.
+E1 evaluation consolidation is current as an evidence/documentation boundary. E1-R1 route-owned trusted Home scene admission is current implemented. E1-R2 dry-run-first character-store bootstrap is current implemented. E1-R3 provenance-preserving summary formation is current implemented. E1-R4 evidence-grounded recall behavior remains quality work.
 
 ## I1-G durable-finalization boundary
 
@@ -109,10 +110,11 @@ finalized ordinary turn
   -> E1 evidence consolidation                         complete as E1
   -> route-owned trusted Home admission                complete as E1-R1
   -> dry-run-first character-store bootstrap           complete as E1-R2
+  -> provenance-preserving formation summary           complete as E1-R3
   -> bounded scheduler operational controls            complete as O1E
   -> operational validation hardening                  complete as O1F
 ```
 
 ## Completion interpretation
 
-M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1F, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-5B, I-7A/B, I-7C, E1, E1-R1, and E1-R2 are implemented. O1F is validation-only caller-invoked operational hardening; O2 and O3 remain incomplete. E1-R1 is route-owned and defaults disabled; it does not permit browser-owned trust. E1-R2 is dry-run-first and does not create semantic memory content. E1-R3 and E1-R4 remain incomplete quality/evaluation work.
+M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1F, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-5B, I-7A/B, I-7C, E1, E1-R1, E1-R2, and E1-R3 are implemented. O1F is validation-only caller-invoked operational hardening; O2 and O3 remain incomplete. E1-R1 is route-owned and defaults disabled; it does not permit browser-owned trust. E1-R2 is dry-run-first and does not create semantic memory content. E1-R3 is speaker-provenance-safe formation summary work and does not implement retrieval-response grounding. E1-R4 remains incomplete quality/evaluation work.
