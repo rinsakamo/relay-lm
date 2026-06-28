@@ -108,6 +108,8 @@ Wave 6 implementation tracks complete
 W6-INT merged
 ```
 
+Historical Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6. The current next candidates are Post-Wave-6 quality/evaluation work below.
+
 ## Phase 6 RelaySLP orchestration and O0
 
 Implemented:
@@ -212,6 +214,8 @@ Wave 4 implementation tracks are complete: O1D2, I-4E, UI-B1A, I-5A, and I-7A/B.
 ## Wave 5 cross-slice convergence
 
 Post-Wave-4 / Wave 5 implementation tracks are complete: E1 evaluation consolidation, O1E scheduler operational controls, and I-4F Forget product-completion validation. W5-INT records their source PRs, merge commits, completion reports, handoffs, authority map, leakage review, and frozen next inputs. W5-INT is merged.
+
+Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6; E1-R3 and E1-R4 remain current next quality work.
 
 ## Wave 6 cross-slice convergence
 
