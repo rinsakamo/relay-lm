@@ -16,11 +16,19 @@ docs/mvp/wave<N>/<slice>_completion_report.md
 
 Each implementation PR creates only its own report. It must not edit this central index, another slice's report, or shared current-state documents merely to mark completion. The wave convergence PR links the merged reports here after verifying the source PRs and merge commits.
 
-### E1-R3 completion report
+### Wave 7 merged completion reports
 
-- [E1-R3 completion report](wave7/e1r3_completion_report.md) — source PR #436.
+W7-INT verifies the source PR numbers, merge commits, and dedicated handoffs for these historical reports:
 
-The E1-R3 architecture handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](../architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md).
+- [E1-R3 completion report](wave7/e1r3_completion_report.md) — source PR #436, merge `7bb2525cb000e893146408065f1aa5976f2b54ab`.
+- [E1-R4 completion report](wave7/e1r4_completion_report.md) — source PR #437, merge `e6e5b32cd489dda493ff0171a260dd561a91765c`.
+
+The Wave 7 cross-slice convergence record is [Wave 7 Cross-Slice Convergence Audit](../architecture/wave7_cross_slice_convergence_audit.md). W7-INT is merged.
+
+Wave 7 dedicated handoffs:
+
+- [E1-R3 Provenance-Preserving Primary MEM Formation Summary](../architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md)
+- [E1-R4 Retrieval-Response Grounding](../architecture/e1r4_retrieval_response_grounding.md)
 
 ### Wave 6 merged completion reports
 
@@ -81,6 +89,7 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/i7c_complet
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r1_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r2_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r3_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r4_completion_report.md
 ```
 
 The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.
