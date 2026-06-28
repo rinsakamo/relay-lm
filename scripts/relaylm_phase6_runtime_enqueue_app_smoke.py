@@ -19,9 +19,9 @@ from fastapi.testclient import TestClient
 from relaylm.app import create_app
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-USER_CANARY = "CANARY_RUNTIME_APP_USER_DO_NOT_LEAK"
-ASSISTANT_CANARY = "CANARY_RUNTIME_APP_ASSISTANT_DO_NOT_LEAK"
-NAMESPACE_CANARY = "CANARY_RUNTIME_APP_NAMESPACE_DO_NOT_LEAK"
+USER_CANARY = "CANARY_RUNTIME_APP_USER_PRIVATE"
+ASSISTANT_CANARY = "CANARY_RUNTIME_APP_ASSISTANT_PRIVATE"
+NAMESPACE_CANARY = "CANARY_RUNTIME_APP_NAMESPACE_PRIVATE"
 
 NON_STREAM_BODY = {
     "id": "chatcmpl-phase6-i1b",
@@ -36,7 +36,7 @@ NON_STREAM_BODY = {
 }
 STREAM_FRAMES = (
     'data: {"id":"chatcmpl-phase6-i1b","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"CANARY_RUNTIME_APP_"}}]}\n\n',
-    'data: {"id":"chatcmpl-phase6-i1b","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"ASSISTANT_DO_NOT_LEAK"}}]}\n\n',
+    'data: {"id":"chatcmpl-phase6-i1b","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"ASSISTANT_PRIVATE"}}]}\n\n',
     "data: [DONE]\n\n",
 )
 STREAM_BODY = "".join(STREAM_FRAMES)
@@ -113,6 +113,7 @@ def _write_config(
     cfg["relaymem_slp_runtime_enqueue_enabled"] = True
     cfg["relaymem_slp_runtime_enqueue_dry_run_only"] = False
     cfg["relaymem_slp_runtime_enqueue_apply_enabled"] = True
+    cfg["trusted_home_scene_admission_runtime_trigger_enabled"] = False
     cfg["relaymem_slp_queue_root"] = str(queue_root.resolve())
     cfg["relaymem_slp_protected_source_root"] = str(protected_source_root.resolve())
     cfg["relaymem_slp_protected_source_max_artifact_bytes"] = 256 * 1024
@@ -163,7 +164,13 @@ def _runtime_enqueue_record(path: Path) -> dict[str, Any]:
         and record["metadata"].get("event") == "relaymem_slp_runtime_enqueue"
     ]
     require(matches, _trace_records(path))
-    return matches[-1]
+    with_nodes = [
+        record
+        for record in matches
+        if isinstance(record.get("metadata", {}).get("pipeline_node_results"), list)
+    ]
+    require(with_nodes, matches)
+    return with_nodes[-1]
 
 
 def _assert_trace_content_free(record: dict[str, Any]) -> None:
@@ -181,6 +188,8 @@ def _assert_trace_content_free(record: dict[str, Any]) -> None:
     results = metadata.get("pipeline_node_results")
     require(isinstance(results, list), metadata)
     names = [item.get("node_name") for item in results if isinstance(item, dict)]
+    if names and names[0] == "trusted_home_scene_admission":
+        names = names[1:]
     require(
         names == [
             "relaymem_slp_finalized_turn_source",
@@ -192,6 +201,14 @@ def _assert_trace_content_free(record: dict[str, Any]) -> None:
     require(enqueue.get("decision") in {"enqueued", "enqueue_failed"}, enqueue)
     require(enqueue.get("diagnostics", {}).get("worker_ready") is False, enqueue)
     require(enqueue.get("diagnostics", {}).get("worker_invoked") is False, enqueue)
+
+
+def _assert_enqueue_decision(record: dict[str, Any], expected: str) -> None:
+    metadata = record.get("metadata")
+    require(isinstance(metadata, dict), record)
+    results = metadata.get("pipeline_node_results")
+    require(isinstance(results, list) and results, metadata)
+    require(results[-1].get("decision") == expected, record)
 
 
 def main() -> None:
@@ -235,11 +252,7 @@ def main() -> None:
                 require(registry.size == 1, registry)
                 first_trace = _runtime_enqueue_record(trace_path)
                 _assert_trace_content_free(first_trace)
-                require(
-                    first_trace["metadata"]["pipeline_node_results"][-1]["decision"]
-                    == "enqueued",
-                    first_trace,
-                )
+                _assert_enqueue_decision(first_trace, "enqueued")
 
                 with client.stream(
                     "POST",
@@ -263,11 +276,7 @@ def main() -> None:
                 require(registry.size == 2, registry)
                 stream_trace = _runtime_enqueue_record(trace_path)
                 _assert_trace_content_free(stream_trace)
-                require(
-                    stream_trace["metadata"]["pipeline_node_results"][-1]["decision"]
-                    == "enqueued",
-                    stream_trace,
-                )
+                _assert_enqueue_decision(stream_trace, "enqueued")
 
             failure_trace = root / "failure.jsonl"
             failure_config = root / "failure.yaml"
@@ -300,11 +309,7 @@ def main() -> None:
             )
             failed_trace = _runtime_enqueue_record(failure_trace)
             _assert_trace_content_free(failed_trace)
-            require(
-                failed_trace["metadata"]["pipeline_node_results"][-1]["decision"]
-                == "enqueue_failed",
-                failed_trace,
-            )
+            _assert_enqueue_decision(failed_trace, "enqueue_failed")
     finally:
         server.shutdown()
         server.server_close()
