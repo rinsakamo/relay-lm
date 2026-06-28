@@ -82,16 +82,18 @@ def apply_relaymem_runtime_injection_phase(
             "relaymem_runtime_ctx_injection",
         )
 
-    forwarded_payload = _maybe_apply_grounded_recall_response(
+    grounded_payload, grounded_applied = _maybe_apply_grounded_recall_response(
         payload=forwarded_payload,
         relaymem_retrieval_artifact=relaymem_retrieval_artifact,
         pipeline_context=pipeline_context,
     )
-    forwarded_payload = replace_pipeline_forwarded_payload(
-        pipeline_context,
-        forwarded_payload,
-        "relaymem_grounded_recall_response",
-    )
+    forwarded_payload = grounded_payload
+    if grounded_applied:
+        forwarded_payload = replace_pipeline_forwarded_payload(
+            pipeline_context,
+            forwarded_payload,
+            "relaymem_grounded_recall_response",
+        )
 
     return (
         forwarded_payload,
@@ -148,8 +150,8 @@ def _maybe_apply_grounded_recall_response(
     payload: Mapping[str, Any],
     relaymem_retrieval_artifact: dict[str, Any],
     pipeline_context: PipelineContext,
-) -> dict[str, Any]:
-    forwarded_payload = deepcopy(dict(payload))
+) -> tuple[dict[str, Any], bool]:
+    forwarded_payload = dict(payload)
     runtime = relaymem_retrieval_artifact.get("primary_recall_runtime")
     selected = runtime.get("selected_memories") if isinstance(runtime, Mapping) else None
     selected_memories = (
@@ -171,7 +173,7 @@ def _maybe_apply_grounded_recall_response(
             "no_selected_primary_recall_memory",
         ]
         relaymem_retrieval_artifact["grounded_recall_projection"] = projection
-        return forwarded_payload
+        return forwarded_payload, False
 
     result = build_grounded_recall_context(
         retrieved_memories=selected_memories,
@@ -191,7 +193,7 @@ def _maybe_apply_grounded_recall_response(
             *projection.get("blocked_reason_ids", []),
             "backend_messages_missing",
         ]
-        return forwarded_payload
+        return forwarded_payload, False
     inserted = _insert_backend_messages_before_latest_user(forwarded_payload, backend_messages)
     if inserted is None:
         projection["applied"] = False
@@ -199,9 +201,9 @@ def _maybe_apply_grounded_recall_response(
             *projection.get("blocked_reason_ids", []),
             "latest_user_message_not_found",
         ]
-        return forwarded_payload
+        return forwarded_payload, False
     projection["applied"] = True
-    return inserted
+    return inserted, True
 
 
 def _insert_backend_messages_before_latest_user(
