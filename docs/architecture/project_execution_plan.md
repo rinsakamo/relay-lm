@@ -27,6 +27,7 @@ relaylm_related_authority:
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
+  - e1r4_retrieval_response_grounding.md
   - e1_evaluation_consolidation.md
   - wave6_cross_slice_convergence_audit.md
   - wave5_cross_slice_convergence_audit.md
@@ -75,6 +76,7 @@ MVP must provide:
 - Primary MEM formation from trusted scene-qualified managed requests and from the E1-R1 route-owned trusted Home gate when explicitly enabled;
 - speaker-provenance-safe Primary MEM formation summary so assistant acknowledgement/speculation and scene/trust qualification are not promoted to user facts;
 - later-turn Primary MEM retrieval and RelayCTX injection;
+- request-side retrieval-response grounding and unsupported-detail suppression for recalled Primary MEM evidence;
 - read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence;
 - explicit auditable Correct;
 - explicit Forget / Hide through API/UI plus validation;
@@ -120,7 +122,7 @@ Evaluation
     -> E1-R1 trusted Home scene-admission path         complete
     -> E1-R2 idempotent character-store bootstrap command complete
     -> E1-R3 provenance-preserving Primary MEM formation summary complete
-    -> E1-R4 retrieval-response grounding and unsupported-detail suppression
+    -> E1-R4 retrieval-response grounding and unsupported-detail suppression complete
 
 SOUL Lab product
   UI-B1A lifecycle and operation visibility   complete
@@ -134,7 +136,7 @@ SOUL Lab product
 
 ### Foundation already available for MVP planning
 
-The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1F, UI-B1A, I-5A/I-5B, I-7A/B/I-7C, E1, E1-R1, E1-R2, and E1-R3.
+The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1F, UI-B1A, I-5A/I-5B, I-7A/B/I-7C, E1, E1-R1, E1-R2, E1-R3, and E1-R4.
 
 ### Wave 4 completed
 
@@ -171,7 +173,7 @@ The O1F completion report is [O1F completion report](../mvp/wave6/o1f_completion
 
 ### Post-O1F next candidates
 
-This historical transition anchor records the candidate set that existed after O1F and before the later Wave 6 implementation merges. It is kept so frozen Wave 3/Wave 5 convergence smokes can verify the transition while the current next-work list remains Post-E1-R3.
+This historical transition anchor records the candidate set that existed after O1F and before the later Wave 6 implementation merges. It is kept so frozen Wave 3/Wave 5 convergence smokes can verify the transition while the current next-work list remains Post-E1-R4.
 
 ```text
 I-5B Pin / Unpin apply/API/UI/ranking work                 complete in Wave 6
@@ -179,7 +181,7 @@ I-7C Held Apply/Discard runtime/API/UI/durable evidence    complete in Wave 6
 E1-R1 trusted Home scene-admission path                    complete in Wave 6
 E1-R2 idempotent character-store bootstrap command         complete in Wave 6
 E1-R3 provenance-preserving Primary MEM formation summary  complete
-E1-R4 retrieval-response grounding and unsupported-detail suppression current next candidate
+E1-R4 retrieval-response grounding and unsupported-detail suppression complete
 O2/O3 only after explicit MVP need
 ```
 
@@ -192,7 +194,7 @@ E1-R1 trusted Home scene-admission path
 E1-R2 idempotent character-store bootstrap command
 ```
 
-The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](wave6_cross_slice_convergence_audit.md). Wave 6 closes the primary remaining user-governance and local-evaluation ergonomics gaps without adding O2/O3, browser-owned trust, semantic summary-quality changes, evidence-grounded response behavior, RelaySOUL mutation, or media runtime execution.
+The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](wave6_cross_slice_convergence_audit.md). Wave 6 closes the primary remaining user-governance and local-evaluation ergonomics gaps without adding O2/O3, browser-owned trust, semantic summary-quality changes, RelaySOUL mutation, or media runtime execution. Evidence-grounded response behavior is now handled by E1-R4.
 
 ### E1-R3 completed
 
@@ -206,11 +208,20 @@ E1-R3 provenance-preserving Primary MEM formation summary
 
 The E1-R3 handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md). The completion report is [E1-R3 completion report](../mvp/wave7/e1r3_completion_report.md).
 
-### Post-E1-R3 next candidates
+### E1-R4 completed
 
 ```text
 E1-R4 retrieval-response grounding and unsupported-detail suppression
+  -> backend-bound grounded recall context
+  -> unsupported date/name/preference/quantity/relationship/cause suppression
+  -> public diagnostics remain content-free
+```
 
+The E1-R4 handoff is [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md). The completion report is [E1-R4 completion report](../mvp/wave7/e1r4_completion_report.md).
+
+### Post-E1-R4 next candidates
+
+```text
 O2 supervised worker service, only if required
   -> O3 always-on local operation, only if required
 
@@ -235,6 +246,8 @@ conversation recall lane
   -> SOUL Lab Home real conversation
   -> ordinary M2 / RelayCTX retrieval uses current eligible memories
   -> hidden/prior/prepared/recovery/corrupt/cross-scope candidates are excluded
+  -> backend-bound recall responses are grounded to retrieved evidence
+  -> unsupported recall details are suppressed or qualified
 
 user governance lane
   -> Correct API/UI and later retrieval convergence
@@ -249,7 +262,7 @@ operations lane
   -> no runtime-private content leakage in projections or docs
 ```
 
-E1-R1 means Home-origin trusted admission is available only through the route-owned server gate. It does not allow browser-owned trust metadata. E1-R2 means local store layout can be initialized through an explicit dry-run-first operator command. E1-R3 means Primary MEM formation summary is speaker-provenance-safe. E1-R4 remains the quality gate for response grounding.
+E1-R1 means Home-origin trusted admission is available only through the route-owned server gate. It does not allow browser-owned trust metadata. E1-R2 means local store layout can be initialized through an explicit dry-run-first operator command. E1-R3 means Primary MEM formation summary is speaker-provenance-safe. E1-R4 means retrieval responses receive backend-bound grounding and unsupported-detail suppression.
 
 ## Post-MVP roadmap
 
