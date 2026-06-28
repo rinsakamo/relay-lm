@@ -21,6 +21,7 @@ relaylm_related_authority:
   - e1r2_character_store_bootstrap.md
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
   - e1r4_retrieval_response_grounding.md
+  - wave7_cross_slice_convergence_audit.md
   - project_execution_plan.md
   - relaymem_slp_current_target.md
   - soul_lab_ui_b0_real_home_conversation.md
@@ -37,9 +38,11 @@ Last reviewed: 2026-06-28 JST.
 
 ## Purpose
 
-This document consolidates the MVP E1 evaluation evidence after E1-R4. It records that E1-R1, E1-R2, E1-R3, and E1-R4 are implemented while preserving the remaining non-E1 conditional work outside the evidence-quality gate.
+This document consolidates the MVP E1 evaluation evidence after Wave 7. It records that E1-R1, E1-R2, E1-R3, and E1-R4 are implemented while preserving the remaining non-E1 conditional work outside the evidence-quality gate.
 
 E1 is evidence-first. E1-R1 adds route-owned trusted Home admission. E1-R2 adds explicit dry-run-first store bootstrap. E1-R3 adds speaker-provenance-safe Primary MEM formation summary construction. E1-R4 adds request-side retrieval-response grounding and unsupported-detail suppression. E1 still does not implement polling, daemonization, service supervision, TTS/audio/avatar, ASR, peer transport, or RelaySOUL mutation authority.
+
+Wave 7 convergence is recorded in [Wave 7 Cross-Slice Convergence Audit](wave7_cross_slice_convergence_audit.md).
 
 ## Current E1 proof boundary
 
@@ -68,8 +71,8 @@ Recall evidence is present, and E1-R4 now provides evidence-grounded response be
 | Real Home conversation | Implemented | `docs/architecture/soul_lab_ui_b0_real_home_conversation.md`, `docs/architecture/e1_local_runtime_evaluation_2026_06_25.md` | SOUL Lab Home can use the existing same-origin Chat Completions path for real text conversation. |
 | Trusted Home admission | Implemented by E1-R1 | `docs/architecture/e1r1_trusted_home_scene_admission.md`, `docs/mvp/wave6/e1r1_completion_report.md` | Home-origin persistence may be admitted only by route-owned server configuration. Browser-owned trust is rejected. |
 | Character-store bootstrap | Implemented by E1-R2 | `docs/architecture/e1r2_character_store_bootstrap.md`, `docs/mvp/wave6/e1r2_completion_report.md` | Local evaluation can prepare the minimum safe Primary store layout through an explicit dry-run-first operator command. |
-| Provenance-preserving formation | Implemented by E1-R3 | `docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md`, `docs/mvp/wave7/e1r3_completion_report.md`, `scripts/relaylm_e1r3_provenance_formation_summary_smoke.py`, `scripts/relaylm_e1r3_provenance_formation_security_smoke.py` | Primary MEM formation uses a user-only memory candidate payload and keeps assistant and scene/trust evidence separate. |
-| Retrieval-response grounding | Implemented by E1-R4 | `docs/architecture/e1r4_retrieval_response_grounding.md`, `docs/mvp/wave7/e1r4_completion_report.md`, `scripts/relaylm_e1r4_grounded_recall_response_smoke.py`, `scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py`, `scripts/relaylm_e1r4_grounded_recall_security_smoke.py` | Later recall requests receive backend-bound grounded recall evidence and unsupported-detail suppression while public diagnostics remain content-free. |
+| Provenance-preserving formation | Implemented by E1-R3 | `docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md`, `docs/mvp/wave7/e1r3_completion_report.md`, `docs/architecture/wave7_cross_slice_convergence_audit.md`, `scripts/relaylm_e1r3_provenance_formation_summary_smoke.py`, `scripts/relaylm_e1r3_provenance_formation_security_smoke.py` | Primary MEM formation uses a user-only memory candidate payload and keeps assistant and scene/trust evidence separate. |
+| Retrieval-response grounding | Implemented by E1-R4 | `docs/architecture/e1r4_retrieval_response_grounding.md`, `docs/mvp/wave7/e1r4_completion_report.md`, `docs/architecture/wave7_cross_slice_convergence_audit.md`, `scripts/relaylm_e1r4_grounded_recall_response_smoke.py`, `scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py`, `scripts/relaylm_e1r4_grounded_recall_security_smoke.py` | Later recall requests receive backend-bound grounded recall evidence and unsupported-detail suppression while public diagnostics remain content-free. |
 | Durable source and queue evidence | Implemented | `docs/architecture/phase6c1_durable_protected_source_persistence.md`, `docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md`, `docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md` | Durable protected-source, queue, and durable-finalization evidence exist through completed authorities. |
 | Local operation drain | Implemented as explicit bounded invocation | `docs/architecture/o0_local_one_job_runner.md`, `docs/architecture/o1f_operational_validation.md` | Operator-invoked local drain and caller-invoked O1 controls remain bounded and non-supervised. |
 | Primary MEM durable formation | Implemented | `docs/architecture/phase6c1_primary_mem_worker_contract.md`, `docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md` | M3a-M3h durable formation and worker fault convergence are covered by existing production smokes. |
