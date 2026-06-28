@@ -9,6 +9,7 @@ ASSISTANT_SPEC = "CANARY_E1R4_ASSISTANT_SPEC_DO_NOT_LEAK maybe they first heard 
 HIDDEN_FACT = "CANARY_E1R4_HIDDEN_FACT_DO_NOT_LEAK favorite color is red"
 PINNED_FACT = "CANARY_E1R4_PINNED_FACT_DO_NOT_LEAK favorite color is blue"
 UNPINNED_FACT = "CANARY_E1R4_UNPINNED_FACT_DO_NOT_LEAK favorite color is green"
+UNRELATED_PREFERENCE_FACT = "CANARY_E1R4_UNRELATED_PREFERENCE_DO_NOT_LEAK favorite snack is senbei"
 
 
 def require(condition: bool, detail: object) -> None:
@@ -44,6 +45,21 @@ def test_unsupported_date_suppressed() -> None:
     require("does not support at least one requested detail" in context["instruction"], context)
     require("suppress or omit that detail" in context["instruction"], context)
     require("2024" not in repr(context), context)
+
+
+def test_unsupported_preference_suppressed() -> None:
+    result = build_grounded_recall_context(
+        retrieved_memories=[memory(fact_text=UNRELATED_PREFERENCE_FACT)],
+        query_text="What is my favorite color?",
+        character_id="default",
+        namespace="e1r4_namespace",
+    )
+    require(result.status == "unsupported_detail_suppressed", result)
+    context = result.grounded_recall_context
+    require(context is not None, result)
+    require("preference" in context["query_detail_types"], context)
+    require(context["unsupported_detail_count"] == 1, context)
+    require("suppress or omit that detail" in context["instruction"], context)
 
 
 def test_assistant_speculation_not_injected() -> None:
@@ -121,6 +137,7 @@ def test_pin_ranking_does_not_create_support() -> None:
 
 def main() -> None:
     test_unsupported_date_suppressed()
+    test_unsupported_preference_suppressed()
     test_assistant_speculation_not_injected()
     test_lifecycle_and_scope_exclusion_before_grounding()
     test_pin_ranking_does_not_create_support()
