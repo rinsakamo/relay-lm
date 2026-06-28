@@ -2,8 +2,11 @@
 """E1-R4 grounded recall response smoke."""
 from __future__ import annotations
 
+from pathlib import Path
+
 from relaylm.relaymem_grounded_recall_response import build_grounded_recall_context
 
+ROOT = Path(__file__).resolve().parents[1]
 USER_FACT = "CANARY_E1R4_USER_FACT_DO_NOT_LEAK favorite color is blue"
 PRIMARY_RECALL_FACT = "CANARY_E1R4_PRIMARY_RECALL_FACT_DO_NOT_LEAK favorite snack is senbei"
 
@@ -45,6 +48,8 @@ def test_directly_supported_recall() -> None:
     instruction = context["instruction"]
     require("Do not invent dates, names, preferences, quantities, relationships, or causes" in instruction, instruction)
     require("Answer only from directly supported evidence" in instruction, instruction)
+    backend_messages = context["backend_messages"]
+    require(USER_FACT in backend_messages[0]["content"], backend_messages)
     public = result.to_log_dict()
     require(public["grounding_enabled"] is True, public)
     require(public["grounded_item_count"] == 1, public)
@@ -79,6 +84,7 @@ def test_current_primary_recall_selected_memories() -> None:
     require(items[0]["provenance_source"] == "primary_recall_selected_memory", items)
     require(items[0]["revision_ref"] == "rev:7", items)
     require(PRIMARY_RECALL_FACT in items[0]["fact_text"], items)
+    require(PRIMARY_RECALL_FACT in context["backend_messages"][0]["content"], context)
     require(PRIMARY_RECALL_FACT not in repr(result.to_log_dict()), result.to_log_dict())
 
 
@@ -98,10 +104,19 @@ def test_no_retrieved_evidence() -> None:
     require(USER_FACT not in repr(context), context)
 
 
+def test_request_path_wiring() -> None:
+    source = (ROOT / "relaylm" / "relayctx_repack.py").read_text(encoding="utf-8")
+    require("build_grounded_recall_context" in source, "E1-R4 helper not wired")
+    require("relaymem_grounded_recall_response" in source, "E1-R4 import missing")
+    require("relaymem_grounded_recall_response" in source, "E1-R4 pipeline step missing")
+    require("grounded_recall_projection" in source, "E1-R4 public projection missing")
+
+
 def main() -> None:
     test_directly_supported_recall()
     test_current_primary_recall_selected_memories()
     test_no_retrieved_evidence()
+    test_request_path_wiring()
     print("relaylm_e1r4_grounded_recall_response_smoke: ok")
 
 
