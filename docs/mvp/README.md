@@ -18,7 +18,7 @@ Each implementation PR creates only its own report. It must not edit this centra
 
 ### E1-R3 completion report
 
-- [E1-R3 completion report](wave7/e1r3_completion_report.md) — source PR TBD by this PR before merge.
+- [E1-R3 completion report](wave7/e1r3_completion_report.md) — source PR #436.
 
 The E1-R3 architecture handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](../architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md).
 
