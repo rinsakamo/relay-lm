@@ -32,6 +32,10 @@ E1-R4 adds a request-side backend-bound grounding context for recall responses:
 
 The implementation is not post-hoc visible response rewriting. It does not mutate SSE chunks or rewrite generated text after backend response.
 
+## Request-side vs response-side decision
+
+E1-R4 is request-side only. It builds deterministic backend-bound grounding context before generation and does not implement post-hoc visible response rewriting, SSE mutation, stream interception, or public display of private evidence.
+
 ## Preserved authorities and non-goals
 
 Preserved authorities:
@@ -54,6 +58,12 @@ Non-goals:
 - RelaySOUL proposal/intervention/rollback.
 - TTS/audio/avatar/Live2D/ASR.
 - Public display of protected source, raw transcript, raw memory body, queue payload, store root, source path, token digest, claim token, or lease owner.
+
+## Authority preservation
+
+E1-R4 does not create a new retrieval authority, queue authority, worker authority, scheduler authority, browser trust authority, or memory mutation authority. It consumes already retrieved Primary MEM projections and applies lifecycle/scope/provenance support checks before constructing backend-bound recall context.
+
+Hidden, prior, prepared, recovery-required, corrupt, and cross-scope memories are excluded before grounding. Pin ranking only reorders eligible evidence and does not create factual support.
 
 ## Changed files
 
@@ -99,6 +109,12 @@ relaylm_e1r4_grounded_recall_security_smoke: ok
 ```
 
 CI is expected to run the repository workflows after PR updates. This report does not include protected content, raw traces, credentials, or runtime-private values.
+
+## Content leakage review
+
+Public projection fields are diagnostic-only and explicitly keep runtime-private evidence omitted. They do not include raw memory text, raw user text, raw assistant text, protected source body, queue payload, store root, source path, claim token, lease owner, token digest, or source digest.
+
+The security smoke verifies those protected values are absent from public diagnostics.
 
 ## Known limitations
 
