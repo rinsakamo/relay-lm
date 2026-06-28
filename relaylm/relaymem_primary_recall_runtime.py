@@ -61,8 +61,10 @@ def install_relaymem_primary_recall_runtime() -> None:
         max_snippet_candidates: int = _store_impl._DEFAULT_MAX_SNIPPET_CANDIDATES,
         max_read_bytes: int = _store_impl._DEFAULT_MAX_SNIPPET_READ_BYTES,
     ) -> dict[str, Any]:
+        if snippet_extraction_enabled:
+            root_path = _effective_read_root(root_path)
         return _store_impl.build_relaymem_snippet_evidence_dry_run(
-            root_path=_effective_read_root(root_path),
+            root_path=root_path,
             selected_mem_candidates=selected_mem_candidates,
             snippet_extraction_enabled=snippet_extraction_enabled,
             snippet_dry_run_only=snippet_dry_run_only,
