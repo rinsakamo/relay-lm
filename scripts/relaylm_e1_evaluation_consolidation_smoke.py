@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the E1 MVP evaluation evidence consolidation boundary after E1-R4."""
+"""Validate the E1 MVP evaluation evidence consolidation boundary after Wave 7."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -16,6 +16,7 @@ REQUIRED = {
         "E1-R2 character-store bootstrap is implemented",
         "E1-R3 provenance-preserving Primary MEM formation summary is implemented",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression is implemented",
+        "Wave 7 Cross-Slice Convergence Audit",
         "## Direct Home-origin admission decision record",
         "Option A",
         "Option B",
@@ -36,6 +37,8 @@ REQUIRED = {
         "E1-R3 provenance-preserving Primary MEM formation summary: complete",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression: complete",
         "W6-INT merged",
+        "Wave 7 implementation tracks complete",
+        "W7-INT merged",
         "Home can be a trusted formation source only through the E1-R1 route-owned gate; browser-owned trust remains rejected.",
     ),
     "docs/architecture/project_execution_plan.md": (
@@ -44,17 +47,22 @@ REQUIRED = {
         "E1-R2 idempotent character-store bootstrap command complete",
         "E1-R3 provenance-preserving Primary MEM formation summary complete",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression complete",
-        "### E1-R4 completed",
-        "### Post-E1-R4 next candidates",
+        "### Wave 7 completed",
+        "### Post-E1-R4 / Post-Wave-7 next candidates",
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
         "E1-R1 route-owned trusted Home scene admission is current implemented.",
         "E1-R2 dry-run-first character-store bootstrap is current implemented.",
         "E1-R3 provenance-preserving summary formation is current implemented.",
+        "E1-R4 request-side evidence-grounded recall behavior is current implemented.",
+        "request-side grounded recall response             complete as E1-R4",
     ),
     "docs/architecture/current_target_migration_guide.md": (
+        "Current Wave 7 compatibility interpretation",
         "E1-R1 is current implemented as route-owned trusted Home scene admission.",
         "E1-R2 is current implemented as dry-run-first character-store bootstrap.",
+        "E1-R3 is current implemented as provenance-preserving Primary MEM formation summary.",
+        "E1-R4 is current implemented as request-side retrieval-response grounding and unsupported-detail suppression.",
     ),
     "docs/README.md": (
         "E1 MVP evaluation consolidation",
@@ -62,6 +70,7 @@ REQUIRED = {
         "E1-R2 character-store bootstrap command",
         "E1-R3 provenance-preserving formation summary",
         "E1-R4 retrieval-response grounding",
+        "Wave 7 Cross-Slice Convergence Audit",
         "E1-R1 completion report",
         "E1-R2 completion report",
         "E1-R3 completion report",
@@ -72,12 +81,15 @@ REQUIRED = {
         "E1-R1 Trusted Home Scene Admission",
         "E1-R2 Character Store Bootstrap",
         "E1-R3 Provenance-Preserving Primary MEM Formation Summary",
+        "E1-R4 Retrieval-Response Grounding",
+        "Wave 7 Cross-Slice Convergence Audit",
     ),
     "docs/mvp/README.md": (
-        "Wave 6 merged completion reports",
+        "Wave 7 merged completion reports",
         "E1-R1 completion report",
         "E1-R2 completion report",
         "E1-R3 completion report",
+        "E1-R4 completion report",
     ),
     "docs/mvp/wave5/e1_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
@@ -106,11 +118,18 @@ REQUIRED = {
         "user_assertion_evidence",
         "assistant_acknowledgement_evidence",
         "assistant_speculation_or_non_factual_evidence",
+        "Downstream E1-R4 boundary",
     ),
     "docs/architecture/e1r4_retrieval_response_grounding.md": (
         "relaylm_doc_type: implementation_handoff",
         "relaymem.grounded_recall_context.v0",
         "unsupported_detail_suppressed",
+    ),
+    "docs/architecture/wave7_cross_slice_convergence_audit.md": (
+        "# Wave 7 Cross-Slice Convergence Audit",
+        "E1-R3 provenance-preserving Primary MEM formation summary",
+        "E1-R4 retrieval-response grounding and unsupported-detail suppression",
+        "W7-INT is merged.",
     ),
 }
 
@@ -120,6 +139,7 @@ EVIDENCE_PATHS = (
     "docs/architecture/e1r2_character_store_bootstrap.md",
     "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
     "docs/architecture/e1r4_retrieval_response_grounding.md",
+    "docs/architecture/wave7_cross_slice_convergence_audit.md",
     "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
     "docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md",
     "docs/architecture/integration_i1_primary_mem_two_turn_recall.md",
@@ -155,6 +175,8 @@ STALE = (
     "E1-R3 provenance-preserving Primary MEM formation summary  current next candidate",
     "E1-R4 retrieval-response grounding and unsupported-detail suppression current next candidate",
     "Recall evidence is present, but evidence-grounded response behavior is not fully evaluated.",
+    "E1-R4 evidence-grounded recall behavior remains quality work",
+    "E1-R4 remains incomplete quality/evaluation work",
 )
 
 SCANNED_DOCS = (
@@ -205,6 +227,7 @@ def validate_indexes_reference_e1() -> None:
         "e1r2_character_store_bootstrap.md",
         "e1r3_provenance_preserving_primary_mem_formation_summary.md",
         "e1r4_retrieval_response_grounding.md",
+        "wave7_cross_slice_convergence_audit.md",
         "e1_completion_report.md",
         "e1r1_completion_report.md",
         "e1r2_completion_report.md",
