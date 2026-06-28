@@ -26,6 +26,10 @@ from relaylm.relaymem_primary_page_candidate import (
 from relaylm.relaymem_primary_write_preflight import (
     build_relaymem_primary_source_lineage,
 )
+from relaylm.relaymem_provenance_formation_summary import (
+    FORMATION_SUMMARY_SCHEMA,
+    build_relaymem_primary_formation_summary,
+)
 from relaylm.relaymem_slp_primary_worker_source import SOURCE_SCHEMA
 from relaylm.relaymem_slp_queue_record import dedupe, is_token, strict_bool
 
@@ -68,6 +72,10 @@ class RelayMEMSLPFinalizedTurnSource:
     relayemo_artifact: Mapping[str, object] | None = field(repr=False)
     governed_messages: tuple[Mapping[str, object], ...] = field(repr=False)
     governed_experience_artifact: Mapping[str, object] = field(repr=False)
+    formation_summary_artifact: Mapping[str, object] = field(
+        default_factory=dict,
+        repr=False,
+    )
 
     def __repr__(self) -> str:
         return (
@@ -86,7 +94,12 @@ class RelayMEMSLPFinalizedTurnSource:
         job_id: str,
         dispatch_idempotency_key: str,
     ) -> dict[str, object]:
-        """Add B1-owned identities to the exact C1-0 16-field payload."""
+        """Add B1-owned identities to the exact C1-0 16-field payload.
+
+        The E1-R3 formation summary stays worker-internal and is intentionally
+        not added to the protected-source payload so C1-5/C1-2 compatibility and
+        the exact queue/source correlation contract remain unchanged.
+        """
 
         return {
             "schema_version": SOURCE_SCHEMA,
@@ -109,7 +122,9 @@ class RelayMEMSLPFinalizedTurnSource:
                 if self.relayemo_artifact is not None
                 else None
             ),
-            "governed_messages": [deepcopy(dict(item)) for item in self.governed_messages],
+            "governed_messages": [
+                deepcopy(dict(item)) for item in self.governed_messages
+            ],
             "governed_experience_artifact": deepcopy(
                 dict(self.governed_experience_artifact)
             ),
@@ -130,6 +145,7 @@ class RelayMEMSLPFinalizedTurnSourceResult:
     )
 
     def to_log_dict(self) -> dict[str, object]:
+        formation = _formation_projection(self.source)
         return {
             "schema_version": FINALIZED_TURN_SOURCE_PROJECTION_SCHEMA,
             "diagnostics_only": True,
@@ -153,6 +169,19 @@ class RelayMEMSLPFinalizedTurnSourceResult:
             "relayemo_present": (
                 self.source is not None and self.source.relayemo_artifact is not None
             ),
+            "formation_provenance_summary_present": formation["present"],
+            "formation_provenance_schema_present": formation["schema_present"],
+            "formation_user_assertion_evidence_count": formation[
+                "user_assertion_evidence_count"
+            ],
+            "formation_assistant_acknowledgement_evidence_count": formation[
+                "assistant_acknowledgement_evidence_count"
+            ],
+            "formation_assistant_non_factual_evidence_count": formation[
+                "assistant_speculation_or_non_factual_evidence_count"
+            ],
+            "assistant_text_promoted_to_user_fact": False,
+            "scene_text_promoted_to_user_fact": False,
             "worker_invoked": False,
             "queue_io_performed": False,
             "writes_memory": False,
@@ -274,8 +303,46 @@ def build_relaymem_slp_finalized_turn_source(
         turn_index=RUN_LOCAL_TURN_INDEX,
         lineage_fingerprint=str(lineage.get("lineage_fingerprint", "")),
     )
-    title = _title(user_text)
-    summary = _summary(user_text, assistant_text)
+    governed_messages = (
+        {"role": "user", "content": user_text},
+        {"role": "assistant", "content": assistant_text},
+    )
+    formation = build_relaymem_primary_formation_summary(
+        character_id=character_id,
+        namespace=namespace,
+        source_event_kind="turn",
+        source_lineage_fingerprint=str(lineage.get("lineage_fingerprint", "")),
+        protected_source_identity={
+            "run_id_present": True,
+            "turn_index_present": True,
+            "source_lineage_fingerprint_present": True,
+        },
+        relayscn_scene_policy_artifact=scene,
+        governed_messages=governed_messages,
+        enabled=True,
+        dry_run_only=False,
+    )
+    if (
+        formation.status != "formed"
+        or formation.memory_candidate_payload is None
+        or formation.formation_summary is None
+    ):
+        return _result(
+            "blocked",
+            enabled=True,
+            response_finalized=True,
+            blocked_reasons=formation.blocked_reasons or (formation.status,),
+        )
+    title = _candidate_text(formation.memory_candidate_payload, "title")
+    summary = _candidate_text(formation.memory_candidate_payload, "summary_text")
+    if title is None or summary is None:
+        return _result(
+            "blocked",
+            enabled=True,
+            response_finalized=True,
+            blocked_reasons=("formation_candidate_payload_invalid",),
+        )
+
     experience = build_relaymem_governed_experience_summary(
         candidate_id=candidate_id,
         source_event_kind="turn",
@@ -311,11 +378,9 @@ def build_relaymem_slp_finalized_turn_source(
         source_lineage_artifact=deepcopy(lineage),
         relayscn_scene_policy_artifact=scene,
         relayemo_artifact=emo,
-        governed_messages=(
-            {"role": "user", "content": user_text},
-            {"role": "assistant", "content": assistant_text},
-        ),
+        governed_messages=governed_messages,
         governed_experience_artifact=deepcopy(experience),
+        formation_summary_artifact=deepcopy(dict(formation.formation_summary)),
     )
     return _result(
         "ready",
@@ -348,6 +413,7 @@ def build_relaymem_slp_finalized_turn_source_node_result(
             "source_omitted": True,
             "raw_messages_included": False,
             "governed_experience_included": False,
+            "formation_summary_included": False,
             "identifier_values_included": False,
             "lineage_fingerprint_included": False,
             "worker_invoked": False,
@@ -449,22 +515,45 @@ def _normalise_summary_text(value: str, max_chars: int) -> str:
     return normalised[: max(1, max_chars - 1)].rstrip() + "…"
 
 
-def _title(user_text: str) -> str:
-    return _normalise_summary_text(user_text, _MAX_TITLE_CHARS)
+def _candidate_text(payload: Mapping[str, object], field_name: str) -> str | None:
+    value = payload.get(field_name)
+    if type(value) is not str or not value:
+        return None
+    limit = _MAX_TITLE_CHARS if field_name == "title" else _MAX_SUMMARY_CHARS
+    return _normalise_summary_text(value, limit)
 
 
-def _summary(user_text: str, assistant_text: str) -> str:
-    prefix_user = "User turn: "
-    separator = "\nAssistant response: "
-    available = _MAX_SUMMARY_CHARS - len(prefix_user) - len(separator)
-    user_budget = min(768, max(1, available // 3))
-    assistant_budget = max(1, available - user_budget)
-    return (
-        prefix_user
-        + _normalise_summary_text(user_text, user_budget)
-        + separator
-        + _normalise_summary_text(assistant_text, assistant_budget)
-    )
+def _formation_projection(
+    source: RelayMEMSLPFinalizedTurnSource | None,
+) -> dict[str, object]:
+    if source is None:
+        return {
+            "present": False,
+            "schema_present": False,
+            "user_assertion_evidence_count": 0,
+            "assistant_acknowledgement_evidence_count": 0,
+            "assistant_speculation_or_non_factual_evidence_count": 0,
+        }
+    artifact = source.formation_summary_artifact
+    counts = artifact.get("provenance_counts") if isinstance(artifact, Mapping) else None
+    if not isinstance(counts, Mapping):
+        counts = {}
+    return {
+        "present": isinstance(artifact, Mapping),
+        "schema_present": (
+            isinstance(artifact, Mapping)
+            and artifact.get("schema_version") == FORMATION_SUMMARY_SCHEMA
+        ),
+        "user_assertion_evidence_count": int(
+            counts.get("user_assertion_evidence", 0) or 0
+        ),
+        "assistant_acknowledgement_evidence_count": int(
+            counts.get("assistant_acknowledgement_evidence", 0) or 0
+        ),
+        "assistant_speculation_or_non_factual_evidence_count": int(
+            counts.get("assistant_speculation_or_non_factual_evidence", 0) or 0
+        ),
+    }
 
 
 def _result(
