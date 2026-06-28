@@ -29,6 +29,7 @@ relaylm_related_authority:
   - docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md
   - docs/architecture/e1r4_retrieval_response_grounding.md
   - docs/architecture/e1_evaluation_consolidation.md
+  - docs/architecture/wave7_cross_slice_convergence_audit.md
   - docs/architecture/wave6_cross_slice_convergence_audit.md
   - docs/architecture/wave5_cross_slice_convergence_audit.md
 ---
@@ -110,9 +111,11 @@ W5-INT merged
 O1F validation slice merged after W5-INT
 Wave 6 implementation tracks complete
 W6-INT merged
+Wave 7 implementation tracks complete
+W7-INT merged
 ```
 
-Historical Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6. E1-R3 and E1-R4 are complete as post-Wave-6 quality/evaluation slices.
+Historical Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6. E1-R3 and E1-R4 are complete through Wave 7.
 
 Historical Post-E1-R3 next candidates:
 
@@ -178,6 +181,8 @@ UI-B0 real Home conversation is complete. UI-B1A read-only lifecycle and operati
 
 E1 evaluation consolidation is complete as a docs/evidence boundary. E1-R1 adds a route-owned trusted Home scene-admission gate that defaults disabled and rejects browser-owned trust. E1-R2 adds a dry-run-first operator command for idempotent character-store bootstrap. E1-R3 adds speaker-provenance-safe Primary MEM formation summary construction so user assertions remain distinguishable, assistant acknowledgements/speculation are not promoted to user facts, and route-owned scene/trust evidence stays qualification metadata. E1-R4 adds request-side retrieval-response grounding and unsupported-detail suppression for eligible retrieved Primary MEM evidence.
 
+Wave 7 convergence is recorded in [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). It closes the post-Wave-6 E1 evidence-quality lane without opening O2/O3, post-hoc response rewriting, browser-owned trust, RelaySOUL mutation, or media runtime execution.
+
 ## Current caveats
 
 E1-R4 is request-side only. It builds a backend-bound grounded recall context and instruction from eligible retrieved Primary MEM evidence; it does not add post-hoc visible response rewriting, polling, supervision, O2/O3, browser-owned trust, or new memory mutation authority.
@@ -185,12 +190,12 @@ E1-R4 is request-side only. It builds a backend-bound grounded recall context an
 ## Immediate dependency-first work
 
 ```text
-Post-E1-R4 next candidates:
+Post-E1-R4 / Post-Wave-7 next candidates:
   O2/O3 only after explicit MVP need
   Static SOUL Lab bundle serving, if local packaging requires it
 ```
 
-The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](architecture/wave6_cross_slice_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
+The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](architecture/wave6_cross_slice_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 
 ## Safe defaults
 
@@ -228,11 +233,15 @@ Wave 4 implementation tracks are complete: O1D2, I-4E, UI-B1A, I-5A, and I-7A/B.
 
 Post-Wave-4 / Wave 5 implementation tracks are complete: E1 evaluation consolidation, O1E scheduler operational controls, and I-4F Forget product-completion validation. W5-INT records their source PRs, merge commits, completion reports, handoffs, authority map, leakage review, and frozen next inputs. W5-INT is merged.
 
-Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6; E1-R3 and E1-R4 are complete.
+Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6; E1-R3 and E1-R4 are complete through Wave 7.
 
 ## Wave 6 cross-slice convergence
 
 Wave 6 implementation tracks are complete: I-5B, I-7C, E1-R1, and E1-R2. W6-INT is merged.
+
+## Wave 7 cross-slice convergence
+
+Wave 7 implementation tracks are complete: E1-R3 and E1-R4. W7-INT is merged.
 
 ## E1-R3 provenance formation boundary
 
