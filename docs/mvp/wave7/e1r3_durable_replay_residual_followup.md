@@ -18,7 +18,7 @@ Durable finalization replay must preserve the E1-R3 `formation_summary_artifact`
 
 ## CI follow-up
 
-The first PR run exposed failures in the M3h recovery-audit lane and the Phase 6-C1 integrated worker fault lane. The shared repair was to avoid over-rejecting legitimate uncertain M3g receipts while still rejecting forged dry-run/state-uncertain receipts and cleanup-incomplete receipts without reconciliation progress.
+The first PR run exposed failures in the M3h recovery-audit lane and the Phase 6-C1 integrated worker fault lane. The follow-up keeps forged dry-run/state-uncertain receipts rejected, keeps cleanup-incomplete receipts tied to reconciliation progress, and adds bounded CI diagnostics for the M3h functional smoke so future failures expose content-free assertion context instead of only a nonzero exit.
 
 ## Non-goals preserved
 
