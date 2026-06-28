@@ -6,6 +6,11 @@ from .audit_projection_contracts import (
 )
 from .relaymem_durable_finalization_formation_replay_patch import (
     install_durable_finalization_formation_replay_patch as _install_durable_finalization_formation_replay_patch,
+from .relaymem_primary_recall_candidate_bridge_runtime import (
+    install_relaymem_primary_recall_candidate_bridge_runtime as _install_relaymem_primary_recall_candidate_bridge_runtime,
+)
+from .relaymem_primary_recall_runtime import (
+    install_relaymem_primary_recall_runtime as _install_relaymem_primary_recall_runtime,
 )
 from .relaymem_retrieval_priority_runtime import (
     install_relaymem_retrieval_priority_runtime as _install_relaymem_retrieval_priority_runtime,
@@ -25,5 +30,17 @@ del _audit_projection
 del _install_audit_projection_contracts
 del _install_relaymem_retrieval_priority_runtime
 del _install_durable_finalization_formation_replay_patch
+_install_relaymem_primary_recall_runtime()
+_install_relaymem_primary_recall_candidate_bridge_runtime()
+
+for _relaylm_init_cleanup_name in (
+    "_audit_projection",
+    "_install_audit_projection_contracts",
+    "_install_relaymem_primary_recall_candidate_bridge_runtime",
+    "_install_relaymem_primary_recall_runtime",
+    "_install_relaymem_retrieval_priority_runtime",
+):
+    globals().pop(_relaylm_init_cleanup_name, None)
+del _relaylm_init_cleanup_name
 
 __version__ = "0.1.0"
