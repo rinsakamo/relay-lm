@@ -115,7 +115,10 @@ def _build_apply(target: Any):
                     )
                     reasons.extend(bridge_reasons)
                     discovered_count = len(bridge_candidates)
-                    if bridge_candidates:
+                    if bridge_candidates and not query_terms:
+                        discovery_status = "primary_candidates_require_query_terms"
+                        reasons.append("primary_candidate_query_terms_missing")
+                    elif bridge_candidates:
                         discovery_status = "primary_candidates_discovered"
                         selected, used_tokens = _select_validated_candidates(
                             target=target,
@@ -133,7 +136,7 @@ def _build_apply(target: Any):
                             seen_identities=seen_identities,
                             reasons=reasons,
                             query_terms=query_terms,
-                            require_relevance=bool(query_terms),
+                            require_relevance=True,
                         )
                     else:
                         discovery_status = "primary_candidates_empty"
@@ -396,7 +399,7 @@ def _query_terms_from_artifact(artifact: Mapping[str, Any]) -> list[str]:
 
 def _candidate_summary_score(candidate: Mapping[str, Any], query_terms: Sequence[str]) -> int:
     if not query_terms:
-        return 1
+        return 0
     haystack = "\n".join(
         str(candidate.get(key, "")).lower()
         for key in ("summary", "title", "path", "memory_kind")
