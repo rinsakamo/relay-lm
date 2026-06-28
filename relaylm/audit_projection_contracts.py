@@ -45,6 +45,7 @@ def install_audit_projection_contracts(ap: Any) -> None:
             "content_free": ap._optional(ap._bool),
         }
     )
+    _install_primary_recall_projection(ap)
 
     reference = ap.PIPELINE_NODE_PROJECTORS["relayint_reference_repair"]
     ap.PIPELINE_NODE_PROJECTORS["relayint_reference_repair"] = ap.NodeProjector(
@@ -115,6 +116,51 @@ def _scoped_uuid_id(ap: Any, suffix: str):
         return ap._drop()
 
     return validate
+
+
+def _install_primary_recall_projection(ap: Any) -> None:
+    ap.TOP_LEVEL_PROJECTORS["relaymem_primary_recall_projection"] = ap._mapping(
+        {
+            "schema_version": ap._enum("relaymem.primary_recall_projection.v0"),
+            "diagnostics_only": ap._bool,
+            "content_free": ap._bool,
+            "content_included": ap._bool,
+            "memory_text_included": ap._bool,
+            "title_or_summary_included": ap._bool,
+            "character_value_included": ap._bool,
+            "namespace_value_included": ap._bool,
+            "runtime_identifier_values_included": ap._bool,
+            "path_values_included": ap._bool,
+            "digest_values_included": ap._bool,
+            "lineage_values_included": ap._bool,
+            "idempotency_values_included": ap._bool,
+            "backend_prompt_included": ap._bool,
+            "retrieval_attempted": ap._bool,
+            "scene_type": ap._bounded_token,
+            "retrieval_scope": ap._bounded_token,
+            "fallback_reason": ap._optional(ap._lower_token),
+            "persistence_block": ap._bool,
+            "ctx_block_present": ap._bool,
+            "primary_candidate_discovery_attempted": ap._bool,
+            "primary_candidate_count": ap._non_negative_int,
+            "grounding_enabled": ap._bool,
+            "grounded_item_count": ap._non_negative_int,
+            "unsupported_detail_policy": ap._enum("suppress"),
+            "evidence_content_included": ap._bool,
+            "runtime_private_evidence_omitted": ap._bool,
+            "selected_count": ap._non_negative_int,
+            "selected_layer_counts": ap._PRIMARY_RECALL_LAYER_COUNTS,
+            "character_scope_resolved": ap._bool,
+            "namespace_scope_valid": ap._bool,
+            "scope_matched": ap._bool,
+            "injection_candidate_present": ap._bool,
+            "injection_performed": ap._optional(ap._bool),
+            "estimated_chars": ap._non_negative_int,
+            "estimated_tokens": ap._non_negative_int,
+            "memory_used": ap._bool,
+            "blocked_reason_ids": ap._REASON_LIST,
+        }
+    )
 
 
 def _client_history_exclusion_apply_diagnostics(ap: Any):
@@ -260,15 +306,24 @@ def _artifact_projectors(ap: Any) -> dict[str, Any]:
         "relayctx_unpack_runtime_result": ap._mapping(
             {
                 "artifact_name": ap._enum("relayctx_unpack_runtime_result"),
-                "schema_version": ap._optional(
-                    ap._enum("relayctx_unpack_runtime.v0")
-                ),
+                "schema_version": ap._enum("relayctx_unpack_result.v0"),
                 "present": ap._bool,
-                "content_free": ap._optional(ap._bool),
-                "applied_to_response": ap._optional(ap._bool),
-                "candidate_present": ap._optional(ap._bool),
-                "persistence_allowed": ap._optional(ap._bool),
+                "diagnostics_only": ap._bool,
+                "content_free": ap._bool,
+                "applied": ap._bool,
+                "applied_to_response": ap._bool,
+                "candidate_present": ap._bool,
+                "persistence_allowed": ap._bool,
             }
+        ),
+        "relaymem_slp_finalized_turn_source": artifact(
+            "relaymem_slp_finalized_turn_source",
+            "relaymem.slp_finalized_turn_source_projection.v0",
+        ),
+        "relaymem_slp_protected_source_capture": artifact(
+            "relaymem_slp_protected_source_capture",
+            "relaymem.slp_runtime_enqueue_projection.v0",
+            extras={"dry_run_only": ap._optional(ap._bool)},
         ),
     }
 
@@ -278,3 +333,6 @@ def _reject_non_none(ap: Any):
         return ap._drop()
 
     return validate
+
+
+__all__ = ["install_audit_projection_contracts"]
