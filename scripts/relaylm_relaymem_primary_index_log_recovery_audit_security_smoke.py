@@ -76,7 +76,7 @@ def main() -> int:
         forged = audit(root, forged_receipt)
         require(forged["status"] == "blocked", forged)
         require(forged["receipt_valid"] is True, forged)
-        require(forged["page_verified"] is False, forged)
+        require(forged["projection"]["page_verified"] is False, forged)
         require(
             "primary_reconciliation_recovery_page_summary_origin_mismatch"
             in forged["blocked_reasons"],
