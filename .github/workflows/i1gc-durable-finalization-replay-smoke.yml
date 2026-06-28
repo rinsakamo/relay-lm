@@ -77,7 +77,7 @@ jobs:
           PYTHONPATH=. python scripts/relaylm_i1g_pre_enqueue_fault_model_smoke.py
           PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
           PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_app_smoke.py
-          PYTHONPATH=. python scripts/relaylm_i1gc_durable_finalization_formation_replay_smoke.py
+          PYTHONPATH=. python scripts/relaylm_i1gc_canonical_formation_replay_smoke.py
       - name: Run source-before-queue regressions
         run: |
           PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
