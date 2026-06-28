@@ -238,7 +238,6 @@ STALE_WORDS = (
     "remains unimplemented",
     "future work",
     "pending",
-    "candidate",
 )
 
 ALLOWED_STALE_LINE_SUBSTRINGS = (
