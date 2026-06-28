@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current documentation boundary anchors after E1-R3."""
+"""Validate current documentation boundary anchors after E1-R4."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,6 +19,7 @@ CURRENT_DOCS = (
     "docs/architecture/e1r1_trusted_home_scene_admission.md",
     "docs/architecture/e1r2_character_store_bootstrap.md",
     "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
+    "docs/architecture/e1r4_retrieval_response_grounding.md",
     "docs/architecture/phase_i5_pin_unpin_contract.md",
     "docs/architecture/phase_i5b_pin_unpin_apply.md",
     "docs/architecture/phase_i7ab_held_apply_discard_contract.md",
@@ -30,119 +31,38 @@ CURRENT_DOCS = (
 REQUIRED = {
     "docs/PROJECT_STATUS.md": (
         "This page owns current implementation status and active caveats.",
-        "I1-GE full production crash validation: complete",
-        "I1-G overall: complete",
         "O1F operational validation: complete",
         "O1 overall: complete through validation-only caller-invoked local scheduler boundary",
         "O2 supervised worker service: planned/unimplemented",
         "O3 always-on local operation: planned/unimplemented",
-        "Phase I-4 overall: complete",
         "I-5B Pin / Unpin apply/API/UI/ranking behavior: complete",
         "I-7C Held Apply/Discard runtime/API/UI/durable governance evidence: complete",
         "E1-R1 trusted Home scene admission: complete",
         "E1-R2 character-store bootstrap command: complete",
         "E1-R3 provenance-preserving Primary MEM formation summary: complete",
-        "Wave 6 implementation tracks complete",
-        "W6-INT merged",
-        "Post-E1-R3 next candidates:",
-        "E1-R4 retrieval-response grounding and unsupported-detail suppression",
+        "E1-R4 retrieval-response grounding and unsupported-detail suppression: complete",
+        "Post-E1-R4 next candidates:",
     ),
     "docs/README.md": (
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
-        "Wave 6 Cross-Slice Convergence Audit",
-        "I-5B completion report",
-        "I-7C completion report",
-        "E1-R1 completion report",
-        "E1-R2 completion report",
         "E1-R3 completion report",
+        "E1-R4 completion report",
+        "E1-R4 retrieval-response grounding",
     ),
-    "docs/mvp/README.md": (
-        "Wave 6 merged completion reports",
-        "O1F completion report",
-        "I-5B completion report",
-        "I-7C completion report",
-        "E1-R1 completion report",
-        "E1-R2 completion report",
-        "E1-R3 completion report",
-        "W6-INT is merged",
+    "docs/architecture/e1r4_retrieval_response_grounding.md": (
+        "# E1-R4 Retrieval-Response Grounding",
+        "relaymem.grounded_recall_context.v0",
+        "directly_supported",
+        "inferred_from_supported",
+        "unsupported_detail_suppressed",
+        "runtime_private_evidence_omitted=true",
     ),
-    "docs/architecture/README.md": (
-        "[Project Execution Plan](project_execution_plan.md)",
-        "The current Product and RelayMEM status is intentionally not summarized here.",
-        "O1F Operational Validation",
-        "Phase I-5B Pin / Unpin Apply",
-        "Phase I-7C Held Apply / Discard Runtime",
-        "E1-R1 Trusted Home Scene Admission",
-        "E1-R2 Character Store Bootstrap",
-        "E1-R3 Provenance-Preserving Primary MEM Formation Summary",
-        "Wave 6 Cross-Slice Convergence Audit",
-    ),
-    "docs/DOCUMENTATION_MODEL.md": (
-        "sweep directly affected feature-family master/contract documents",
-        "The feature-family sweep is mandatory.",
-        "must not leave a non-frozen master or contract document saying that an already completed subphase",
-    ),
-    "docs/architecture/current_target_migration_guide.md": (
-        "## Current Wave 6 compatibility interpretation",
-        "I-5B is current implemented as Pin / Unpin apply/API/UI/ranking behavior.",
-        "I-7C is current implemented as Held Apply / Discard runtime/API/UI/durable governance evidence.",
-        "E1-R1 is current implemented as route-owned trusted Home scene admission.",
-        "E1-R2 is current implemented as dry-run-first character-store bootstrap.",
-        "O2/O3 remain target/unimplemented.",
-    ),
-    "docs/architecture/project_execution_plan.md": (
-        "### Wave 6 completed",
-        "I-5B Pin / Unpin apply/API/UI/ranking work",
-        "I-7C Held Apply/Discard runtime/API/UI/durable evidence",
-        "E1-R1 trusted Home scene-admission path",
-        "E1-R2 idempotent character-store bootstrap command",
-        "### E1-R3 completed",
-        "### Post-E1-R3 next candidates",
-    ),
-    "docs/architecture/relaymem_slp_current_target.md": (
-        "I1-GA through I1-GE are complete",
-        "I-5B is current implemented as Pin / Unpin apply/API/UI/ranking behavior.",
-        "I-7C is current implemented as Held Apply / Discard runtime/API/UI/durable governance evidence.",
-        "E1-R1 route-owned trusted Home scene admission is current implemented.",
-        "E1-R2 dry-run-first character-store bootstrap is current implemented.",
-        "E1-R3 provenance-preserving summary formation is current implemented.",
-    ),
-    "docs/architecture/e1_evaluation_consolidation.md": (
-        "E1-R1 route-owned trusted Home admission",
-        "E1-R2 character-store bootstrap is implemented",
-        "E1-R3 provenance-preserving Primary MEM formation summary is implemented",
-        "E1-R4 retrieval-response grounding and unsupported-detail suppression",
-    ),
-    "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md": (
-        "# E1-R3 Provenance-Preserving Primary MEM Formation Summary",
-        "user_assertion_evidence",
-        "assistant_acknowledgement_evidence",
-        "assistant_speculation_or_non_factual_evidence",
-        "blocked_browser_owned_trust",
-    ),
-    "docs/architecture/phase_i5_pin_unpin_contract.md": (
-        "I-5A defines the Pin / Unpin governance contract and read-only preflight boundary.",
-        "I-5B is implemented as the apply/API/UI/ranking continuation.",
-    ),
-    "docs/architecture/phase_i7ab_held_apply_discard_contract.md": (
-        "I-7A/B defines the held outcome governance contract and read-only preflight boundary.",
-        "I-7C is implemented as the runtime/API/UI/durable-evidence continuation.",
-    ),
-    "docs/architecture/phase_i7c_held_apply_discard_runtime.md": (
-        "relaylm_status: current",
-        "I-7C connects the I-7A/B Held Apply / Discard contract to a bounded runtime decision path",
-    ),
-    "docs/architecture/soul_lab_ui_mvp.md": (
-        "Pin/Unpin runtime API/UI/ranking behavior: complete as I-5B",
-        "Held Apply/Discard runtime API/UI/durable evidence: complete as I-7C",
-        "E1-R1 route-owned trusted Home scene admission: complete outside browser authority",
-    ),
-    "docs/architecture/wave6_cross_slice_convergence_audit.md": (
-        "# Wave 6 Cross-Slice Convergence Audit",
-        "relaylm_status: historical_after_merge",
-        "## Source PR inventory",
-        "## Merge commit inventory",
-        "W6-INT is merged.",
+    "docs/mvp/wave7/e1r4_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "retrieval-response grounding and unsupported-detail suppression",
+        "Request-side vs response-side decision",
+        "Content leakage review",
+        "Authority preservation",
     ),
 }
 
@@ -159,8 +79,8 @@ STALE = tuple(
     Pin/Unpin runtime API/UI/ranking behavior: pending
     Held Apply/Discard runtime API/UI/durable evidence: pending
     Character-store bootstrap remains operator-facing and brittle
-    E1-R3 provenance-preserving Primary MEM formation summary  current next candidate
     E1-R3 provenance-preserving Primary MEM formation summary current next candidate
+    E1-R4 retrieval-response grounding and unsupported-detail suppression current next candidate
     """.splitlines()
     if line.strip()
 )
