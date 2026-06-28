@@ -21,17 +21,18 @@ relaylm_related_authority:
   - pipeline_responsibility_design.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
-  - o1e_scheduler_operational_controls.md
   - o1f_operational_validation.md
+  - phase_i5b_pin_unpin_apply.md
+  - phase_i7c_held_apply_discard_runtime.md
+  - e1r1_trusted_home_scene_admission.md
+  - e1r2_character_store_bootstrap.md
   - e1_evaluation_consolidation.md
-  - phase_i4f_forget_validation.md
+  - wave6_cross_slice_convergence_audit.md
   - wave5_cross_slice_convergence_audit.md
-  - wave4_cross_slice_convergence_audit.md
-  - wave3_cross_slice_convergence_audit.md
 ---
 # RelayLM Project Execution Plan
 
-Last reviewed: 2026-06-27 JST
+Last reviewed: 2026-06-28 JST
 
 ## Purpose
 
@@ -70,21 +71,23 @@ The MVP is the smallest text-first product boundary that lets a local operator e
 MVP must provide:
 
 - real SOUL Lab Home conversation through the existing OpenAI-compatible RelayLM path;
-- Primary MEM formation from trusted scene-qualified managed requests;
+- Primary MEM formation from trusted scene-qualified managed requests and from the E1-R1 route-owned trusted Home gate when explicitly enabled;
 - later-turn Primary MEM retrieval and RelayCTX injection;
 - read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence;
 - explicit auditable Correct;
 - explicit Forget / Hide through API/UI plus validation;
+- explicit Pin / Unpin apply through API/UI plus deterministic ranking hint;
+- explicit Held Apply / Discard runtime governance through API/UI plus durable content-free decision evidence;
 - ordinary retrieval exclusion for hidden, prepared, recovery-required, corrupt, ambiguous, unsafe, cross-scope, and prior physical revisions;
 - durable finalization evidence before protected visible release;
 - one-record restart replay, retention/isolation cleanup, and crash validation;
 - bounded local operation that can drain eligible replay and queue work through explicit caller-invoked rounds;
 - caller-invoked O1E stale-recovery/cancellation/shutdown controls and O1F operational validation;
-- E1 evidence consolidation with an explicit direct Home-origin formation decision.
+- dry-run-first character-store bootstrap for local evaluation.
 
 MVP does not include:
 
-- direct Home-origin trusted scene admission unless a later E1-R1 gate explicitly adds it;
+- browser-owned trusted admission or frontend self-asserted persistence policy;
 - always-on daemon/service supervision unless a later explicit MVP gate proves it is required;
 - voice, TTS execution, avatar, Live2D, ASR, or peer communication transport;
 - Secondary MEM consolidation;
@@ -96,15 +99,15 @@ MVP does not include:
 
 ```text
 Memory governance
-  I-4E Forget API/UI                         complete
-    -> I-4F Forget validation                complete
-    -> I-5A Pin / Unpin contract/preflight   complete
-    -> I-5B or apply/API/UI/ranking work     candidate
-    -> I-7A/B Held Apply/Discard preflight   complete
-    -> I-7C or runtime governance work       candidate
+  I-4E Forget API/UI                              complete
+    -> I-4F Forget validation                     complete
+    -> I-5A Pin / Unpin contract/preflight        complete
+    -> I-5B Pin / Unpin apply/API/UI/ranking work complete
+    -> I-7A/B Held Apply/Discard preflight        complete
+    -> I-7C Held Apply/Discard runtime/API/UI/durable evidence complete
 
 Operations
-  O1D2 ordering/fairness/retry/backoff/pacing complete
+  O1D2 bounded scheduler policy/fairness/pacing complete
     -> O1E stale recovery/cancellation/shutdown complete
     -> O1F operational validation               complete
     -> O2 supervised worker service, if required
@@ -112,14 +115,15 @@ Operations
 
 Evaluation
   E1 evaluation consolidation                    complete
-    -> direct Home-origin formation decision           Option A for current MVP
-    -> E1-R1 trusted Home scene-admission path         candidate
-    -> E1-R2 idempotent character-store bootstrap command
+    -> E1-R1 trusted Home scene-admission path         complete
+    -> E1-R2 idempotent character-store bootstrap command complete
     -> E1-R3 provenance-preserving Primary MEM formation summary
     -> E1-R4 retrieval-response grounding and unsupported-detail suppression
 
 SOUL Lab product
   UI-B1A lifecycle and operation visibility   complete
+    -> I-5B Pin / Unpin controls              complete
+    -> I-7C Held Governance controls          complete
     -> operator-facing evaluation flow
     -> static bundle serving, if required for local MVP packaging
 ```
@@ -128,7 +132,7 @@ SOUL Lab product
 
 ### Foundation already available for MVP planning
 
-The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1F, UI-B1A, I-5A, I-7A/B, and E1 evaluation consolidation.
+The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1F, UI-B1A, I-5A/I-5B, I-7A/B/I-7C, E1, E1-R1, and E1-R2.
 
 ### Wave 4 completed
 
@@ -163,36 +167,30 @@ O1F operational validation
 
 The O1F completion report is [O1F completion report](../mvp/wave6/o1f_completion_report.md). O1F completion allows O2/O3 to be considered later, but it does not itself prove that supervised or always-on operation is required for MVP.
 
-### E1 evaluation consolidation completed
-
-E1 records the current MVP evaluation decision:
+### Wave 6 completed
 
 ```text
-Option A for current MVP
-  -> Primary MEM formation remains operator/trusted-admission-path driven
-  -> SOUL Lab Home remains real conversation, recall, observation, and governance evaluation
-  -> direct Home-origin trusted memory formation remains unproven
-  -> Option B trusted Home scene-admission is deferred to E1-R1
-```
-
-This decision avoids browser-owned trusted admission metadata and lets MVP evaluation proceed against the already proven local lane. It does not prevent a future bounded Home trusted scene-admission phase.
-
-### Post-O1F next candidates
-
-```text
-I-5B or Pin/Unpin apply/API/UI/ranking work, if defined
-I-7C or Held Apply/Discard runtime/API/UI/durable evidence work, if defined
-
+I-5B Pin / Unpin apply/API/UI/ranking work
+I-7C Held Apply/Discard runtime/API/UI/durable evidence
 E1-R1 trusted Home scene-admission path
 E1-R2 idempotent character-store bootstrap command
+```
+
+The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](wave6_cross_slice_convergence_audit.md). Wave 6 closes the primary remaining user-governance and local-evaluation ergonomics gaps without adding O2/O3, browser-owned trust, semantic summary-quality changes, evidence-grounded response behavior, RelaySOUL mutation, or media runtime execution.
+
+### Post-Wave-6 next candidates
+
+```text
 E1-R3 provenance-preserving Primary MEM formation summary
 E1-R4 retrieval-response grounding and unsupported-detail suppression
 
 O2 supervised worker service, only if required
   -> O3 always-on local operation, only if required
+
+Static SOUL Lab bundle serving, only if required for local MVP packaging
 ```
 
-O2/O3 should remain after O1F unless a concrete evaluation requirement proves that supervised or always-on operation is necessary before the remaining governance UI/validation work.
+O2/O3 should remain after the evidence-quality gates unless a concrete evaluation requirement proves that supervised or always-on operation is necessary before the remaining quality work.
 
 ## MVP completion criteria
 
@@ -213,6 +211,8 @@ conversation recall lane
 user governance lane
   -> Correct API/UI and later retrieval convergence
   -> Forget API/UI and later retrieval exclusion convergence
+  -> Pin / Unpin API/UI and ranking hint convergence
+  -> Held Apply / Discard API/UI and durable governance evidence
   -> lifecycle visibility is readable without mutating evidence
 
 operations lane
@@ -221,7 +221,7 @@ operations lane
   -> no runtime-private content leakage in projections or docs
 ```
 
-The direct Home-origin formation gap is resolved for current MVP evaluation by the E1 Option A decision: MVP formation remains operator/admission-path driven while Home is used for conversation, recall, observation, and governance evaluation. A future E1-R1 phase may replace that decision only by adding a documented trusted scene-admission path.
+E1-R1 means Home-origin trusted admission is available only through the route-owned server gate. It does not allow browser-owned trust metadata. E1-R2 means local store layout can be initialized through an explicit dry-run-first operator command. E1-R3/R4 remain quality gates for provenance and response grounding.
 
 ## Post-MVP roadmap
 
