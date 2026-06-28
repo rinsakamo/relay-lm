@@ -1,7 +1,9 @@
 """Install E1-R3 formation-summary preservation for durable replay.
 
-This module patches the durable-finalization record/replay authorities at package
-initialisation time without changing the protected-source payload contract.  The
+This module patches the durable-finalization record/replay authorities when the
+formation replay lane explicitly opts in.  It intentionally is not installed from
+``relaylm.__init__`` because most helper-only smoke paths must be able to import
+``relaylm`` without pulling optional runtime dependencies such as PyYAML.  The
 seal keeps the worker-internal formation summary as replay evidence, while legacy
 v0 seals that predate the field remain replayable.
 """
