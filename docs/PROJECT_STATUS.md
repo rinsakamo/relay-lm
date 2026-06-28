@@ -108,6 +108,28 @@ Wave 6 implementation tracks complete
 W6-INT merged
 ```
 
+## Phase 6 RelaySLP orchestration and O0
+
+Implemented:
+
+- A1/A2 deferred admission and finalized-turn handoff;
+- B0-B3 durable enqueue and fenced lifecycle;
+- I1-B ordinary runtime source publication and enqueue;
+- C1-0 through C1-5 complete;
+- C2 one-job claim/rehydrate/execute adapter: complete;
+- O0 one-shot bounded queue discovery and one C2 delegation;
+- O1A pure two-lane round/result/disposition contract;
+- O1B one bounded eligible sealed I1-G replay-lane discovery and one existing I1-GC delegation;
+- O1C one bounded eligible B2/B3 queue-lane discovery and one existing C2 delegation;
+- O1D1 accepted scheduler gates and one production `replay -> queue` round;
+- O1D2 bounded scheduler policy wrapper;
+- O1E bounded caller-invoked operational controls;
+- O1F validation-only operational hardening.
+
+B3 lifecycle: complete. C1-5 keeps queue records content-free and persists the claim-independent protected capture before queue publication.
+
+I1 next-turn Primary MEM recall: complete. character and namespace isolation: complete.
+
 ## O1 operations boundary
 
 O1A through O1F are complete through a validation-only caller-invoked local scheduler boundary. O1D1 accepts the five exact scheduler gates and runs at most one `replay -> queue` round. O1D2 adds bounded policy hints without sleeping. O1E adds caller-invoked stale-recovery, cancellation, and shutdown projections without polling or supervision. O1F validates corruption, concurrency, saturation, restart reread, and leakage edges.
