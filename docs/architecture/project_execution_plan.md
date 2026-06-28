@@ -150,7 +150,7 @@ The frozen Wave 4 completion record is [Wave 4 Cross-Slice Convergence Audit](wa
 
 ```text
 E1 evaluation consolidation
-O1E stale recovery/cancellation/shutdown
+O1E stale recovery/cancellation/shutdown complete
 I-4F crash/race/security/fresh-conversation validation
 ```
 
@@ -166,6 +166,20 @@ O1F operational validation
 ```
 
 The O1F completion report is [O1F completion report](../mvp/wave6/o1f_completion_report.md). O1F completion allows O2/O3 to be considered later, but it does not itself prove that supervised or always-on operation is required for MVP.
+
+### Post-O1F next candidates
+
+This historical transition anchor records the candidate set that existed after O1F and before the later Wave 6 implementation merges. It is kept so frozen Wave 3/Wave 5 convergence smokes can verify the transition while the current next-work list remains Post-Wave-6.
+
+```text
+I-5B Pin / Unpin apply/API/UI/ranking work                 complete in Wave 6
+I-7C Held Apply/Discard runtime/API/UI/durable evidence    complete in Wave 6
+E1-R1 trusted Home scene-admission path                    complete in Wave 6
+E1-R2 idempotent character-store bootstrap command         complete in Wave 6
+E1-R3 provenance-preserving Primary MEM formation summary  current next candidate
+E1-R4 retrieval-response grounding and unsupported-detail suppression current next candidate
+O2/O3 only after explicit MVP need
+```
 
 ### Wave 6 completed
 
