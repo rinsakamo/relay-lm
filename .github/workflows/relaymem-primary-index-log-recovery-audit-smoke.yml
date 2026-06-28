@@ -57,9 +57,20 @@ jobs:
           scripts/relaylm_relaymem_primary_index_log_recovery_audit_security_smoke.py
           scripts/relaylm_relaymem_primary_index_log_recovery_audit_receipt_smoke.py
       - name: Run RelayMEM M3h recovery audit functional smoke
-        run: >-
-          PYTHONPATH=.
-          python scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
+        run: |
+          set +e
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py > m3h-functional-smoke.log 2>&1
+          exit_code=$?
+          cat m3h-functional-smoke.log
+          exit "$exit_code"
+      - name: Upload RelayMEM M3h functional smoke output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relaymem-m3h-functional-smoke-output
+          path: m3h-functional-smoke.log
+          if-no-files-found: error
+          retention-days: 3
       - name: Run RelayMEM M3h recovery audit security smoke
         run: >-
           PYTHONPATH=.
