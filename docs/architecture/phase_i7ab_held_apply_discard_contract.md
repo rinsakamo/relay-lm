@@ -1,33 +1,30 @@
 ---
 relaylm_doc_type: implementation_handoff
 relaylm_authority: phase_i7ab_held_apply_discard_contract_and_read_only_preflight
-relaylm_status: i7ab_contract_preflight_complete_after_pr
+relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: implementation
 relaylm_update_trigger:
-  - I-7 Apply runtime lands
-  - I-7 Discard runtime lands
-  - SOUL Lab held-governance mutation API or UI lands
+  - I-7 Apply runtime changes
+  - I-7 Discard runtime changes
+  - SOUL Lab held-governance mutation API or UI changes
   - held outcome producer schema changes
 relaylm_related_authority:
   - phase_i3_auditable_primary_mem_correct.md
   - phase_i4_primary_mem_forget_hide_contract.md
   - phase_i4b_primary_current_state_shared_fence.md
   - phase_i4d_primary_retrieval_exclusion.md
-  - phase_i5_pin_unpin_contract.md
+  - phase_i7c_held_apply_discard_runtime.md
   - phase6b3_relayslp_queue_state_helpers.md
-  - phase6c1_primary_mem_worker_contract.md
   - project_execution_plan.md
 ---
 # Phase I-7A/B Held Apply / Discard Contract and Read-Only Preflight
 
 ## Status and boundary
 
-I-7A/B defines the held outcome governance contract and adds a runtime read-only preflight boundary for future Apply and Discard decisions. It is contract/preflight only.
+I-7A/B defines the held outcome governance contract and read-only preflight boundary. I-7C is implemented as the runtime/API/UI/durable-evidence continuation. The current runtime decision path lives in [Phase I-7C Held Apply / Discard Runtime](phase_i7c_held_apply_discard_runtime.md).
 
-I-7A/B does **not** implement Apply. It does **not** implement Discard. It does not mutate B3 queue state or Primary MEM. It does not start workers or scheduler rounds. It does not add SOUL Lab mutation UI. A later I-7 apply/discard runtime slice will own mutation if adopted.
-
-The bounded I-7A/B path is:
+I-7A/B itself remains the governability preflight authority:
 
 ```text
 select one held operation/outcome candidate
@@ -37,15 +34,17 @@ select one held operation/outcome candidate
   -> compute Apply preflight
   -> compute Discard preflight
   -> bounded content-free operation projection
-  -> no apply/discard mutation
+  -> no apply/discard mutation in I-7A/B
 ```
+
+I-7C consumes this contract to persist one content-free Apply or Discard decision over an already-held candidate and expose the explicit loopback API/UI flow.
 
 ## Canonical terminology
 
-- **held outcome**: a runtime-private operation or worker outcome that stopped for human judgment rather than automatic retry, terminal failure, corruption recovery, or success.
-- **Apply candidate**: a held outcome that could later be adopted by a future mutation slice. I-7A/B only reports that it is apply-governable.
-- **Discard candidate**: the same held outcome viewed through the future discard decision path. I-7A/B only reports that it is discard-governable.
-- **source evidence**: runtime-private authoritative evidence proving where the held outcome came from. I-7A/B validates presence, digest shape, and authority but does not expose source payload content.
+- **held outcome**: runtime-private operation or worker outcome that stopped for human judgment rather than automatic retry, terminal failure, corruption recovery, or success.
+- **Apply candidate**: a held outcome that can be adopted by the I-7C mutation slice when governability remains ready.
+- **Discard candidate**: the same held outcome viewed through the I-7C discard decision path.
+- **source evidence**: runtime-private authoritative evidence proving where the held outcome came from.
 - **related Primary MEM**: an optional current Primary MEM whose lifecycle must remain safe before a held outcome can be considered governable.
 
 ## Held / blocked / failed / recovery / corrupt / terminal distinctions
@@ -75,16 +74,7 @@ applied / discarded:
   already governed; preflight returns an idempotent content-free blocked projection.
 ```
 
-B3 queue terminal states are also immutable for this boundary:
-
-```text
-succeeded -> queue_terminal_succeeded
-failed -> queue_terminal_failed
-cancelled -> queue_terminal_cancelled
-dead_letter -> queue_terminal_dead_letter
-```
-
-Queued or claimed B3 records are evidence only. I-7A/B never calls B3 transition helpers, never writes queue files, and never performs retry release or terminal commit.
+B3 queue terminal states are immutable for this boundary. Queued or claimed B3 records are evidence only. I-7A/B never calls B3 transition helpers, writes queue files, or performs retry release or terminal commit.
 
 ## Minimal runtime-private candidate schema
 
@@ -94,71 +84,7 @@ I-7A/B introduces this schema anchor:
 relaylm.mem.held_outcome_candidate.v0
 ```
 
-The minimal runtime-private shape is:
-
-```text
-schema_version = relaylm.mem.held_outcome_candidate.v0
-runtime_private = true
-content_included = false
-candidate_id
-operation_id
-character_id
-namespace
-scope
-status
-queue_state = queued | claimed | succeeded | failed | cancelled | dead_letter | null
-source_authority = primary_worker_outcome | governance_flow | operator_import
-source_evidence_digest
-source_evidence_present
-source_evidence_corrupt
-source_evidence_ambiguous
-source_content_included = false
-related_primary_memory_id = sha256 | null
-related_primary_expected_revision = int | null
-related_primary_physical_id = sha256 | null
-```
-
-The schema intentionally carries only identifiers, state labels, source-reference metadata, and digest-level evidence. It must not include held candidate body text, user text, model output text, memory candidate text, protected source body, queue payload body, Primary page body, or source file paths.
-
-## Source evidence separation
-
-Source evidence is runtime-private. Public projections include reason codes and bounded metadata only.
-
-```text
-runtime-private evidence:
-  source authority
-  source evidence digest
-  source present/corrupt/ambiguous flags
-  related Primary current-state reread result
-
-public projection:
-  status
-  action
-  candidate id
-  operation id
-  character id
-  namespace
-  scope
-  candidate status
-  queue state
-  related memory id
-  reason code
-  blocked reason ids
-  effect flags
-  content-free flags
-```
-
-Public projection must report:
-
-```text
-content_free = true
-runtime_private_evidence_omitted = true
-source_body_included = false
-model_output_included = false
-memory_content_included = false
-queue_payload_included = false
-primary_page_path_included = false
-```
+The minimal runtime-private shape carries only identifiers, state labels, source-reference metadata, and digest-level evidence. It must not include held candidate body text, user text, model output text, memory candidate text, protected source body, queue payload body, Primary page body, or source file paths.
 
 ## Preflight response schemas
 
@@ -174,55 +100,7 @@ Discard preflight:
 relaylm.lab.held_discard_preflight.v0
 ```
 
-Both return the same bounded shape with different `action` and effect contract flags:
-
-```text
-schema_version
-status = ready | blocked | safe_failure | invalid_input
-action = apply | discard
-read_only = true
-candidate_id
-operation_id
-character_id
-namespace
-scope
-candidate_status
-queue_state
-related_memory_id
-related_memory_checked
-reason_code
-blocked_reason_ids
-effects
-content-free flags
-```
-
-Apply effect preview:
-
-```text
-held_item_adopted_contract = true
-held_item_discarded_contract = false
-queue_state_mutated = false
-primary_mem_mutated = false
-worker_started = false
-scheduler_started = false
-automatic_retry_or_release = false
-runtime_private_content_exposed = false
-```
-
-Discard effect preview:
-
-```text
-held_item_adopted_contract = false
-held_item_discarded_contract = true
-queue_state_mutated = false
-primary_mem_mutated = false
-worker_started = false
-scheduler_started = false
-automatic_retry_or_release = false
-runtime_private_content_exposed = false
-```
-
-These are contract previews only. They do not persist governance state.
+Both return bounded shapes with action, status, candidate identifiers, current related Primary state summary, effect flags, and explicit content-free flags.
 
 ## Related Primary MEM current-state validation
 
@@ -246,7 +124,7 @@ A hidden related Primary MEM remains excluded from governance. Prepared, recover
 
 ## Authority preservation
 
-I-7A/B preserves these authorities:
+I-7A/B and I-7C preserve these authorities:
 
 - B3 remains the only durable queue lifecycle transition authority.
 - C1/C2 remain the only worker execution and outcome-production authorities.
@@ -256,19 +134,18 @@ I-7A/B preserves these authorities:
 
 The I-7A/B helper never invokes queue transition helpers, C2 worker adapters, O1 scheduler rounds, Primary page writers, Primary index/log reconciliation, Forget/Pin/Correct apply helpers, or SOUL Lab mutation APIs.
 
-## Later apply/discard runtime handoff
+## I-7C runtime continuation
 
-A later I-7 runtime slice may implement Apply and Discard only if it preserves this contract:
+I-7C preserves this contract by:
 
-- accept only a previously governable held candidate;
-- reread source evidence through its owning authority;
-- reread related Primary current state through the existing resolver;
-- use existing mutation fences where Primary mutation is involved;
-- write runtime-private audit evidence without semantic content leakage;
-- use B3 transitions only through B3 authority if queue state must change;
-- keep Apply and Discard idempotent under already-applied/already-discarded evidence;
-- never start workers, schedulers, or retry loops implicitly from preflight.
+- accepting only a previously governable held candidate;
+- rereading source evidence through its owning authority;
+- rereading related Primary current state through the existing resolver;
+- using existing mutation fences where Primary mutation is involved;
+- writing runtime-private audit evidence without semantic content leakage;
+- keeping Apply and Discard idempotent under already-applied/already-discarded evidence;
+- never starting workers, schedulers, or retry loops implicitly from preflight or UI.
 
 ## Non-goals
 
-I-7A/B explicitly does not implement Apply runtime, Discard runtime, B3 queue mutation, Primary MEM page/index/log writes, protected source body reads for projection, C2 worker invocation, automatic retry/release, terminal commits, daemon/polling/scheduler services, SOUL Lab Apply/Discard buttons, or shared current-status documentation updates.
+I-7A/B/I-7C do not implement worker start, scheduler start, automatic retry/release loops, O1 scheduler invocation, C2 worker invocation from UI, new B3 lifecycle authority, direct queue file rewrite, Pin/Unpin runtime apply, Forget restore/unhide/purge, Secondary MEM consolidation, RelaySOUL mutation, service supervision, daemonization, polling, or source/body display.
