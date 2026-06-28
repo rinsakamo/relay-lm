@@ -25,8 +25,12 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
-- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and remaining E1-R4 quality work.
+- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and completed E1-R1 through E1-R4 quality work.
 - [MVP evidence index](mvp/README.md) — historical snapshots and per-PR implementation completion reports.
+
+## Parallel implementation documentation rule
+
+Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<slice>_completion_report.md` only. Shared current-status and execution-plan documents may receive the minimum anchors needed to keep active validation green, but the wave convergence PR remains responsible for repository-wide synthesis. The next wave and release/evaluation gate remain closed until the convergence PR links the merged reports and updates shared current-status documents.
 
 ## Product-critical boundaries
 
@@ -67,17 +71,20 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [E1-R1 trusted Home scene admission](architecture/e1r1_trusted_home_scene_admission.md)
 - [E1-R2 character-store bootstrap command](architecture/e1r2_character_store_bootstrap.md)
 - [E1-R3 provenance-preserving formation summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md)
+- [E1-R4 retrieval-response grounding](architecture/e1r4_retrieval_response_grounding.md)
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
 - [Architecture documentation index](architecture/README.md)
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 6 implementation tracks and W3-INT through W6-INT are merged; E1-R3 is complete. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 6 implementation tracks and W3-INT through W6-INT are merged; E1-R3 and E1-R4 are complete. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
 
-## E1-R3 implementation evidence
+## E1-R3 / E1-R4 implementation evidence
 
 - [E1-R3 provenance-preserving formation summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md)
 - [E1-R3 completion report](mvp/wave7/e1r3_completion_report.md)
+- [E1-R4 retrieval-response grounding](architecture/e1r4_retrieval_response_grounding.md)
+- [E1-R4 completion report](mvp/wave7/e1r4_completion_report.md)
 
 ## Wave 6 implementation evidence
 
@@ -138,13 +145,3 @@ These documents are target architecture only. Experimental SOUL replacement is e
 - schemas and contracts -> `docs/contracts/`
 - RelaySOUL governance -> `docs/relaysoul/`
 - smoke and troubleshooting -> `docs/smoke/`
-- historical rationale -> `docs/architecture/archive/`
-- MVP snapshots and implementation completion reports -> `docs/mvp/`
-
-## Parallel implementation documentation rule
-
-For a declared parallel wave, each implementation PR must update only its code, tests/workflows, implementation-coupled exact schema/config docs, a unique slice-owned handoff, and one unique `docs/mvp/wave*/<slice>_completion_report.md`. It must not edit the shared status, execution plan, indexes, cross-slice current-target documents, previous-wave audit, or repository-wide documentation-boundary smoke merely to mark the slice complete.
-
-After the parallel PRs merge, the wave convergence thread updates Project Status, Project Execution Plan, both documentation indexes, relevant current/target documents, completion-report links, and repository-wide documentation smoke in one PR. The next wave and release/evaluation gate remain closed until that convergence PR is green and merged.
-
-For a non-parallel slice without a reserved convergence thread, the implementation PR may still update all affected current documents atomically. The authoritative rules and reserved shared-file list are in [Documentation Model](DOCUMENTATION_MODEL.md).

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from typing import Any
 
 from relaylm.config import RelayLMConfig
 from relaylm.diagnostics import build_relayctx_short_term_runtime_injection_apply_result
 from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
+from relaylm.relaymem_grounded_recall_response import build_grounded_recall_context
 from relaylm.relaymem_runtime_ctx import (
     maybe_apply_relaymem_runtime_ctx_injection,
     maybe_apply_relaymem_snippet_runtime_injection,
@@ -81,6 +82,19 @@ def apply_relaymem_runtime_injection_phase(
             "relaymem_runtime_ctx_injection",
         )
 
+    grounded_payload, grounded_applied = _maybe_apply_grounded_recall_response(
+        payload=forwarded_payload,
+        relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+        pipeline_context=pipeline_context,
+    )
+    forwarded_payload = grounded_payload
+    if grounded_applied:
+        forwarded_payload = replace_pipeline_forwarded_payload(
+            pipeline_context,
+            forwarded_payload,
+            "relaymem_grounded_recall_response",
+        )
+
     return (
         forwarded_payload,
         runtime_ctx_injection_result,
@@ -129,6 +143,122 @@ def apply_relayctx_short_term_runtime_injection_phase(
         "relayctx_short_term_runtime_injection",
     )
     return forwarded_payload, apply_result
+
+
+def _maybe_apply_grounded_recall_response(
+    *,
+    payload: Mapping[str, Any],
+    relaymem_retrieval_artifact: dict[str, Any],
+    pipeline_context: PipelineContext,
+) -> tuple[dict[str, Any], bool]:
+    forwarded_payload = dict(payload)
+    runtime = relaymem_retrieval_artifact.get("primary_recall_runtime")
+    selected = runtime.get("selected_memories") if isinstance(runtime, Mapping) else None
+    selected_memories = (
+        list(selected)
+        if isinstance(selected, Sequence) and not isinstance(selected, (str, bytes, bytearray))
+        else []
+    )
+    if not selected_memories:
+        result = build_grounded_recall_context(
+            retrieved_memories=[],
+            query_text=_latest_user_text(payload),
+            character_id=pipeline_context.route.character_id,
+            namespace=pipeline_context.route.memory_namespace,
+        )
+        projection = result.to_log_dict()
+        projection["applied"] = False
+        projection["blocked_reason_ids"] = [
+            *projection.get("blocked_reason_ids", []),
+            "no_selected_primary_recall_memory",
+        ]
+        relaymem_retrieval_artifact["grounded_recall_projection"] = projection
+        return forwarded_payload, False
+
+    result = build_grounded_recall_context(
+        retrieved_memories=selected_memories,
+        query_text=_latest_user_text(payload),
+        character_id=pipeline_context.route.character_id,
+        namespace=pipeline_context.route.memory_namespace,
+    )
+    projection = result.to_log_dict()
+    relaymem_retrieval_artifact["grounded_recall_projection"] = projection
+    context = result.grounded_recall_context
+    backend_messages = (
+        context.get("backend_messages") if isinstance(context, Mapping) else None
+    )
+    if not isinstance(backend_messages, Sequence) or isinstance(backend_messages, (str, bytes, bytearray)):
+        projection["applied"] = False
+        projection["blocked_reason_ids"] = [
+            *projection.get("blocked_reason_ids", []),
+            "backend_messages_missing",
+        ]
+        return forwarded_payload, False
+    inserted = _insert_backend_messages_before_latest_user(forwarded_payload, backend_messages)
+    if inserted is None:
+        projection["applied"] = False
+        projection["blocked_reason_ids"] = [
+            *projection.get("blocked_reason_ids", []),
+            "latest_user_message_not_found",
+        ]
+        return forwarded_payload, False
+    projection["applied"] = True
+    return inserted, True
+
+
+def _insert_backend_messages_before_latest_user(
+    payload: Mapping[str, Any],
+    backend_messages: Sequence[Any],
+) -> dict[str, Any] | None:
+    original_messages = payload.get("messages")
+    if not isinstance(original_messages, list):
+        return None
+    insertion_index = _relayctx_before_latest_user_index(original_messages)
+    if insertion_index is None:
+        return None
+    forwarded_messages = [
+        deepcopy(message) for message in original_messages if isinstance(message, Mapping)
+    ]
+    if len(forwarded_messages) != len(original_messages):
+        return None
+    sanitized: list[dict[str, str]] = []
+    for raw in backend_messages:
+        if not isinstance(raw, Mapping):
+            continue
+        role = raw.get("role")
+        content = raw.get("content")
+        if role not in {"system", "developer"} or not isinstance(content, str) or not content:
+            continue
+        sanitized.append({"role": role, "content": content})
+    if not sanitized:
+        return None
+    for offset, message in enumerate(sanitized):
+        forwarded_messages.insert(insertion_index + offset, message)
+    forwarded_payload = deepcopy(dict(payload))
+    forwarded_payload["messages"] = forwarded_messages
+    return forwarded_payload
+
+
+def _latest_user_text(payload: Mapping[str, Any]) -> str:
+    messages = payload.get("messages")
+    if not isinstance(messages, list):
+        return ""
+    for message in reversed(messages):
+        if not isinstance(message, Mapping) or message.get("role") != "user":
+            continue
+        content = message.get("content")
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts: list[str] = []
+            for part in content:
+                if not isinstance(part, Mapping):
+                    continue
+                text = part.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+            return "\n".join(parts)
+    return ""
 
 
 def _maybe_apply_token_budget_truncation(
