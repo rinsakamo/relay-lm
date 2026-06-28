@@ -68,6 +68,29 @@ def main() -> int:
             rejected,
         )
 
+        forged_uncertain = copy.deepcopy(dry_run["receipt"])
+        forged_uncertain["status"] = "applied_state_uncertain"
+        rejected_uncertain = audit(root, forged_uncertain)
+        require(rejected_uncertain["status"] == "blocked", rejected_uncertain)
+        require(rejected_uncertain["receipt_valid"] is False, rejected_uncertain)
+        require(
+            "primary_reconciliation_recovery_receipt_state_uncertain_state_mismatch"
+            in rejected_uncertain["blocked_reasons"],
+            rejected_uncertain,
+        )
+
+        forged_cleanup = copy.deepcopy(dry_run["receipt"])
+        forged_cleanup["status"] = "applied_cleanup_incomplete"
+        forged_cleanup["cleanup_complete"] = False
+        rejected_cleanup = audit(root, forged_cleanup)
+        require(rejected_cleanup["status"] == "blocked", rejected_cleanup)
+        require(rejected_cleanup["receipt_valid"] is False, rejected_cleanup)
+        require(
+            "primary_reconciliation_recovery_receipt_cleanup_progress_missing"
+            in rejected_cleanup["blocked_reasons"],
+            rejected_cleanup,
+        )
+
     with tempfile.TemporaryDirectory() as td:
         root = Path(td)
         page_receipt, _, _, _ = fixture(root)
