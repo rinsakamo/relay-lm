@@ -34,6 +34,10 @@ The bridge remains fail-closed when `query_summary.term_hints` is absent or empt
 
 Fallback relevance is evaluated only against memory content fields (`summary` and `title`), not storage metadata such as page path or memory kind. Discovery scans the loaded bounded control index before namespace and relevance filtering so later eligible entries are not skipped by a pre-filter cap.
 
+CJK gram-only relevance now requires a meaningful overlap threshold before a fallback candidate is treated as relevant, preventing weak common-phrase overlaps from grounding unrelated Primary MEM.
+
+E1-R5 also preserves the bridge discovery diagnostics through the audit projection contract so persisted traces retain whether fallback discovery ran and how many bounded candidates it found.
+
 Primary recall now accepts the same namespace token shape used by queue/worker formation, including slash-style namespace tokens such as `character/default`, while keeping exact namespace values runtime-private.
 
 ## Preserved authorities and non-goals
@@ -47,6 +51,7 @@ The configured RelayMEM root remains operator-owned. Character id is converted t
 Production / runtime:
 
 - `relaylm/relaymem_primary_recall_candidate_bridge_runtime.py`
+- `relaylm/audit_projection_contracts.py`
 - `relaylm/__init__.py`
 
 Tests / smokes:
@@ -55,6 +60,7 @@ Tests / smokes:
 - `scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py`
 - `scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py`
 - `scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py`
+- `scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py`
 
 Documentation:
 
@@ -70,6 +76,7 @@ PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smo
 PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
 PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
 PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py
 ```
 
 Regression targets carried in the PR body:
@@ -92,6 +99,8 @@ PYTHONPATH=. python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
 Review follow-up on PR #439 added fail-closed coverage for empty `query_summary.term_hints` after automated review identified that empty query terms could otherwise promote an unrelated first scoped Primary MEM.
 
 A later review follow-up tightened fallback relevance so storage metadata cannot satisfy query matching and removed the pre-filter 128-entry index scan cap.
+
+Additional review follow-up tightened weak CJK gram-only relevance and preserved E1-R5 Primary recall discovery fields in audit projections.
 
 The execution environment used for the initial PR preparation did not contain a local checkout of `rinsakamo/relay-lm`, so full repository smoke execution remains a PR/CI gate.
 
@@ -119,7 +128,7 @@ docs/mvp/wave7/e1r5_completion_report.md
 Cross-slice risk:
 
 ```text
-The bridge must remain bounded, exact-namespace, lifecycle-aware, content-free in public projections, content-only for relevance, and fail-closed without query hints.
+The bridge must remain bounded, exact-namespace, lifecycle-aware, content-free in public projections, content-only for relevance, audit-visible for public discovery diagnostics, and fail-closed without query hints.
 ```
 
 Recommended next phase:
