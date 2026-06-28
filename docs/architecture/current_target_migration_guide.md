@@ -14,7 +14,7 @@ Last reviewed: 2026-06-28 JST
 
 This guide distinguishes implemented runtime behavior from target architecture. Detailed RelayMEM/RelaySLP status lives in [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md), MVP sequencing and roadmap ordering live in [Project Execution Plan](project_execution_plan.md), and repository-wide current status lives in [Project Status](../PROJECT_STATUS.md).
 
-## Current Wave 6 compatibility interpretation
+## Current Wave 7 compatibility interpretation
 
 ```text
 O1D2 is current implemented as bounded policy wrapper.
@@ -31,6 +31,8 @@ I-7C is current implemented as Held Apply / Discard runtime/API/UI/durable gover
 E1 evaluation consolidation is current docs/evidence only.
 E1-R1 is current implemented as route-owned trusted Home scene admission.
 E1-R2 is current implemented as dry-run-first character-store bootstrap.
+E1-R3 is current implemented as provenance-preserving Primary MEM formation summary.
+E1-R4 is current implemented as request-side retrieval-response grounding and unsupported-detail suppression.
 ```
 
 ## RelaySLP and Primary MEM migration
@@ -53,10 +55,12 @@ ordinary finalized turn
   -> I-7C Held Apply / Discard runtime governance evidence
   -> E1-R1 route-owned trusted Home admission, when explicitly enabled
   -> E1-R2 dry-run-first character-store bootstrap for local evaluation
+  -> E1-R3 provenance-preserving formation summary
   -> RelayCTX bounded injection
+  -> E1-R4 request-side grounded recall context
 ```
 
-Completed behavior must not be re-listed as migration work: Phase I-1, I-2, I-3, I1-GA through I1-GE, O0, O1D1, O1D2, O1E, O1F, I-4D, I-4E, I-4F, UI-B1A, I-5A read-only preflight, I-5B runtime apply/ranking, I-7A/B read-only preflight, I-7C runtime governance, E1 evaluation consolidation, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are complete.
+Completed behavior must not be re-listed as migration work: Phase I-1, I-2, I-3, I1-GA through I1-GE, O0, O1D1, O1D2, O1E, O1F, I-4D, I-4E, I-4F, UI-B1A, I-5A read-only preflight, I-5B runtime apply/ranking, I-7A/B read-only preflight, I-7C runtime governance, E1 evaluation consolidation, E1-R1 trusted Home scene admission, E1-R2 character-store bootstrap, E1-R3 provenance-preserving Primary MEM formation summary, and E1-R4 retrieval-response grounding are complete.
 
 Remaining migration is deliberately narrower:
 
@@ -64,13 +68,10 @@ Remaining migration is deliberately narrower:
 O2 supervised worker service, if required
   -> O3 always-on operation, if required
 
-E1-R3 provenance-preserving Primary MEM formation summary
-E1-R4 retrieval-response grounding and unsupported-detail suppression
-
 RelayINT / RelayREF / RelaySCN ownership migrations
 TTS/audio/avatar runtime adapter execution
 ```
 
 ## Safe defaults
 
-Current apply, worker, durable-finalization, retention, and scheduler settings remain default-off or explicit caller/operator invoked where applicable. O1E operational controls and O1F validation do not authorize polling, sleep, loops, service supervision, or always-on processing. E1-R1 defaults disabled and admits Home-origin persistence only through route-owned configuration, never browser-owned hidden metadata. E1-R2 is dry-run-first and may only prepare safe store layout. No migration step may silently expose content-bearing runtime state in generic diagnostics or imply recurring scheduling/TTS/avatar execution from helper or handoff metadata alone.
+Current apply, worker, durable-finalization, retention, scheduler, and E1 evaluation settings remain default-off or explicit caller/operator invoked where applicable. O1E operational controls and O1F validation do not authorize polling, sleep, loops, service supervision, or always-on processing. E1-R1 defaults disabled and admits Home-origin persistence only through route-owned configuration, never browser-owned hidden metadata. E1-R2 is dry-run-first and may only prepare safe store layout. E1-R3 keeps public provenance projections content-free. E1-R4 keeps public grounded-recall projections content-free and does not perform post-hoc visible response rewriting. No migration step may silently expose content-bearing runtime state in generic diagnostics or imply recurring scheduling/TTS/avatar execution from helper or handoff metadata alone.
