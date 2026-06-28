@@ -65,7 +65,8 @@ def main() -> int:
         blocked = audit(root, traversal)
         require(blocked["status"] == "blocked", blocked)
 
-        forged_page = page_path.read_text(encoding="utf-8").replace(
+        original_page = page_path.read_text(encoding="utf-8")
+        forged_page = original_page.replace(
             'summary_origin: "trusted_in_process_summary"',
             'summary_origin: "assistant_output"',
         )
@@ -81,8 +82,7 @@ def main() -> int:
             in forged["blocked_reasons"],
             forged,
         )
-
-        page_path.write_bytes(page_receipt["page_digest"].encode("utf-8"))
+        page_path.write_text(original_page, encoding="utf-8")
 
         lock_fd = os.open(root / "memory/mem", os.O_RDONLY | os.O_DIRECTORY)
         try:
