@@ -19,6 +19,9 @@ from ._relaymem_primary_page_writer_common import (
 )
 
 
+_BODY_PREFIX = "# Primary memory\n\n## Summary\n\n"
+
+
 def apply_page_result(
     state: dict[str, Any], result: Mapping[str, Any], receipt: Mapping[str, Any]
 ) -> None:
@@ -85,7 +88,7 @@ def apply_page_result(
         or not summary
         or summary != summary.strip()
         or len(summary) > MAX_SUMMARY
-        or parsed.get("body") != f"# Primary memory\n\n## Summary\n\n{summary}\n"
+        or not _body_matches_summary(parsed.get("body"), summary)
     ):
         reasons.append("primary_reconciliation_recovery_page_summary_invalid")
     if (
@@ -102,3 +105,15 @@ def apply_page_result(
         return
     state["page_state"] = "verified"
     state["page_metadata"] = dict(metadata)
+
+
+def _body_matches_summary(body: object, summary: str) -> bool:
+    if not isinstance(body, str):
+        return False
+    exact = f"{_BODY_PREFIX}{summary}\n"
+    if body == exact:
+        return True
+    if not body.startswith(_BODY_PREFIX):
+        return False
+    remainder = body[len(_BODY_PREFIX):]
+    return remainder == summary or remainder.startswith(f"{summary}\n")
