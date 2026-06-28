@@ -57,6 +57,8 @@ Pre-stream hardening: Phase 5-D complete through D2
 Stream safety / TTS handoff preparation: Phase 5.5 complete for RelayLM Core
 Asynchronous RelaySLP orchestration: I1-B and B3 complete; C1-0 through C1-5 complete; C2 one-job adapter complete
 Local worker operation: O0 one invocation -> at most one eligible queued job complete
+I1-GE full production crash validation: complete
+I1-G overall: complete
 Scheduler contract: O1A replay-before-queue round / adapter / idle contract complete
 Scheduler replay lane: O1B one bounded sealed-record discovery/reread/I1-GC adapter complete
 Scheduler queue lane: O1C one bounded discovery/reread/scope/C2 adapter complete
@@ -69,6 +71,9 @@ O2 supervised worker service: planned/unimplemented
 O3 always-on local operation: planned/unimplemented
 
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall and scope isolation complete
+Phase I-4 overall: complete
+I-5B Pin / Unpin apply/API/UI/ranking behavior: complete
+I-7C Held Apply/Discard runtime/API/UI/durable governance evidence: complete
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0, UI-B1A, I-4E Forget UI, I-5B Pin / Unpin UI, and I-7C Held Governance UI complete
 UI-B1A read-only lifecycle visibility: complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete
@@ -80,6 +85,17 @@ E1-R4 retrieval-response grounding and unsupported-detail suppression: complete
 Home can be a trusted formation source only through the E1-R1 route-owned gate; browser-owned trust remains rejected.
 
 Phase I-4A Forget / Hide contract: defined target contract; completed by I-4B through I-4F implementation slices
+Wave 6 implementation tracks complete
+W6-INT merged
+```
+
+Historical Post-E1-R3 next candidates:
+
+```text
+Post-E1-R3 next candidates:
+  E1-R4 retrieval-response grounding and unsupported-detail suppression: complete
+  O2/O3 only after explicit MVP need
+  Static SOUL Lab bundle serving, if local packaging requires it
 ```
 
 ## Current caveats
