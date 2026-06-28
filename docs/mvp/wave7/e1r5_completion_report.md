@@ -1,81 +1,128 @@
+---
+relaylm_doc_type: implementation_completion_report
+relaylm_authority: wave_slice_implementation_evidence
+relaylm_status: historical_after_merge
+relaylm_volatility: frozen
+relaylm_owner: implementation
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_not_authoritative_for:
+  - repository-wide current implementation status
+  - cross-slice sequencing
+  - other phase completion
+---
 # E1-R5 Completion Report — Primary MEM Recall Candidate Discovery Bridge
 
 Last reviewed: 2026-06-28 JST
 
-## Source PR
+This report is evidence for one implementation pull request. It is not repository-wide current-status authority and does not open the next wave or release/evaluation gate.
 
-Placeholder: source PR to be assigned after branch publication.
+## Scope
 
-## Local E2E failure reproduced
+E1-R5 fixes the request-side gap where a durable character-scoped Primary MEM page can exist but later recall still projects `selected_count: 0` because no scoped Primary page becomes a selected M2 candidate.
 
-Local evaluation showed that Primary MEM formation could succeed and produce durable character-scoped index/log/page evidence, while a later recall projected:
+Base branch: `main`.
 
-```text
-selected_count: 0
-selected_layer_counts.primary: 0
-primary_recall_no_scoped_match
-```
+Start main SHA: `cc1417f93b679e3c2ca2bb5ed78f53e2cb93ad7a`.
 
-The backend then received generic/sample memory context instead of the formed Primary MEM fact.
+## Implemented production boundary
 
-## Implementation boundary
+E1-R5 adds a bounded Primary MEM candidate discovery bridge inside the request-side Primary recall runtime path.
 
-E1-R5 adds a request-side bounded fallback bridge inside the Primary recall runtime path. Existing M2 selection remains preferred. If no eligible scoped Primary candidate survives M2 narrowing, the bridge derives candidates from the character-scoped Primary index/log controls, validates the page and digest, applies lifecycle/scope exclusions, and rebuilds the existing RelayCTX / grounded recall handoff.
+The existing M2 candidate path remains the preferred relevance owner. The E1-R5 fallback runs only when no eligible scoped Primary candidate survives existing M2 narrowing. It then derives bounded candidates from the character-scoped Primary index/log controls, validates page schema, path, namespace, digest, index/log consistency, lifecycle eligibility, and query relevance, then rebuilds the existing RelayCTX / E1-R4 grounded recall handoff.
 
-## Why symlink workaround is not sufficient
+The bridge remains fail-closed when `query_summary.term_hints` is absent or empty. In that case it records `primary_candidate_query_terms_missing` and does not promote the first scoped Primary MEM from the index fallback.
 
-The symlink workaround can make a character-scoped store look like the older flat layout, but it does not guarantee that M2 returns a Primary MEM candidate. E1-R5 fixes the candidate handoff itself and resolves the scoped store from configured root + character id rather than relying on `runtime/memory/memory` compatibility links.
+Primary recall now accepts the same namespace token shape used by queue/worker formation, including slash-style namespace tokens such as `character/default`, while keeping exact namespace values runtime-private.
 
-## Candidate discovery bridge design
+## Preserved authorities and non-goals
 
-```text
-ordinary recall request
-  -> scoped character store root
-  -> existing M2 candidates first
-  -> if no eligible Primary candidate
-  -> bounded index/log scan
-  -> namespace + path validation
-  -> page schema/digest/index/log validation
-  -> lifecycle eligibility
-  -> query relevance on validated summary
-  -> selected Primary MEM evidence
-  -> E1-R4 grounded recall context
-```
+E1-R5 does not add worker, queue, scheduler, browser trust, store mutation, RelaySOUL, Pin / Unpin, Held Governance, Forget / Correct, TTS/audio/avatar, O2/O3 authority, or post-hoc visible response rewriting.
 
-## Path/layout authority
+The configured RelayMEM root remains operator-owned. Character id is converted to an opaque hash partition and is not used directly as a path component. Public diagnostics remain content-free and must not expose store roots, page paths, digests, lineage, private ids, queue payloads, or protected source bodies.
 
-The configured RelayMEM root remains operator-owned. Character id is converted to an opaque hash partition and is not used directly as a path component. Public diagnostics do not expose store roots or page paths.
+## Changed files
 
-## Namespace validator decision
+Production / runtime:
 
-Primary recall accepts the namespace shape used by queue/worker formation, including slash-style namespace tokens such as `character/default`, so memory formation and recall do not diverge.
+- `relaylm/relaymem_primary_recall_candidate_bridge_runtime.py`
+- `relaylm/__init__.py`
 
-## Request-side grounding behavior
+Tests / smokes:
 
-When a candidate is selected, the E1-R4 grounded recall context receives the bounded Primary summary as runtime-private evidence and continues to instruct the backend not to invent unsupported dates, names, quantities, relationships, causes, preferences, or first-heard/first-met details.
+- `scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py`
+- `scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py`
+- `scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py`
 
-## Response-side non-goals
+Documentation:
 
-No post-hoc visible response rewriting is added. E1-R5 only prepares backend-bound request context and public-safe projections.
+- `docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md`
+- `docs/mvp/wave7/e1r5_completion_report.md`
 
-## Tests / smokes added
+## Validation evidence
+
+New validation coverage:
 
 ```text
-scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
-scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
-scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
 ```
 
-The local environment available to this author did not contain a checkout of `rinsakamo/relay-lm`, so full repository smoke execution remains a PR/CI gate. The new Python files were syntax-checked before publication.
+Regression targets carried in the PR body:
 
-## Content leakage review
+```text
+python -m compileall -q relaylm scripts
+PYTHONPATH=. python scripts/relaylm_e1r4_grounded_recall_response_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r4_grounded_recall_security_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase_i1_two_turn_primary_recall_security_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase_i2_real_soul_lab_observation_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1_evaluation_consolidation_smoke.py
+PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+PYTHONPATH=. python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+```
 
-Public projections include counts, booleans, and reason ids only. The bridge explicitly preserves content-free public diagnostics and keeps memory text, protected sources, queue payloads, store roots, paths, digests, lineage, and claim/lease data out of the public projection.
+Review follow-up on PR #439 added fail-closed coverage for empty `query_summary.term_hints` after automated review identified that empty query terms could otherwise promote an unrelated first scoped Primary MEM.
 
-## Authority preservation
+The execution environment used for the initial PR preparation did not contain a local checkout of `rinsakamo/relay-lm`, so full repository smoke execution remains a PR/CI gate.
 
-E1-R5 does not add worker, queue, scheduler, browser trust, store mutation, RelaySOUL, Pin / Unpin, Held Governance, Forget / Correct, TTS/audio/avatar, or O2/O3 authority.
+## Known limitations
 
-## Remaining gates
+E1-R5 does not implement a broader retrieval ranking engine. It only bridges the missing character-scoped Primary MEM candidate handoff when bounded query hints are available.
 
-Run the full required validation set from the implementation prompt before merge, especially the E1-R5 smokes, E1-R4 grounded recall smokes, Phase I-1/I-2/I-4D smokes, documentation boundary smoke, docs link check, and PR-link smoke.
+E1-R5 does not make unbounded memory scans, does not depend on a `runtime/memory/memory` symlink workaround, and does not migrate older flat-store memory layouts.
+
+## Shared documentation update inputs
+
+Wave convergence wording:
+
+```text
+E1-R5 is complete for scoped Primary MEM recall candidate discovery. It preserves M2 as the preferred relevance owner, adds a bounded index/log/page fallback only when scoped Primary MEM is otherwise not selected, and keeps the fallback fail-closed without query hints.
+```
+
+Handoff path:
+
+```text
+docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md
+docs/mvp/wave7/e1r5_completion_report.md
+```
+
+Cross-slice risk:
+
+```text
+The bridge must remain bounded, exact-namespace, lifecycle-aware, content-free in public projections, and fail-closed without query hints.
+```
+
+Recommended next phase:
+
+```text
+No new wave is opened by this report. Continue with PR/CI review and only converge shared status documentation after merge.
+```
+
+## Source pull request
+
+- PR: #439
+- URL: https://github.com/rinsakamo/relay-lm/pull/439
