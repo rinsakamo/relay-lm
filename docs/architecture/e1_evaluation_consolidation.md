@@ -17,67 +17,60 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - e1_local_runtime_evaluation_2026_06_25.md
+  - e1r1_trusted_home_scene_admission.md
+  - e1r2_character_store_bootstrap.md
   - project_execution_plan.md
   - relaymem_slp_current_target.md
   - soul_lab_ui_b0_real_home_conversation.md
   - soul_lab_ui_b1a_lifecycle_visibility.md
   - integration_i1_primary_mem_two_turn_recall.md
-  - phase_i2_real_soul_lab_observation.md
   - phase_i4d_primary_retrieval_exclusion.md
   - phase_i4e_forget_api_ui.md
   - phase_i4f_forget_validation.md
-  - o1e_scheduler_operational_controls.md
   - o1f_operational_validation.md
-  - i1g_pre_enqueue_durable_finalization_contract.md
-  - i1ge_durable_finalization_crash_validation.md
 ---
 # E1 MVP Evaluation Evidence Consolidation
 
-Last reviewed: 2026-06-27 JST.
+Last reviewed: 2026-06-28 JST.
 
 ## Purpose
 
-This document consolidates the MVP E1 evaluation evidence after Wave 4 and the later O1F horizontal status sweep. It makes the direct Home-origin Primary MEM formation decision explicit and records the remaining quality and ergonomics work needed before a trustworthy local MVP evaluation.
+This document consolidates the MVP E1 evaluation evidence after Wave 6 convergence. It records that E1-R1 and E1-R2 are now implemented while preserving the remaining quality gates for provenance and grounded recall.
 
-E1 is evidence-first. It does not implement trusted scene admission, speaker-provenance summarization, evidence-grounded generation, bootstrap automation, polling, daemonization, service supervision, TTS/audio/avatar, ASR, peer transport, or any memory mutation authority.
+E1 is evidence-first. E1-R1 adds route-owned trusted Home admission. E1-R2 adds explicit dry-run-first store bootstrap. E1 still does not implement speaker-provenance-safe summarization, evidence-grounded response behavior, polling, daemonization, service supervision, TTS/audio/avatar, ASR, peer transport, or RelaySOUL mutation authority.
 
 ## Current E1 proof boundary
 
 The currently proven local E1 lane is:
 
 ```text
-explicit scene-qualified trusted request
+SOUL Lab Home-origin ordinary conversation or explicit trusted request
+  -> route-owned trusted Home admission when E1-R1 is enabled
   -> durable source and queue evidence
   -> local operation drain
   -> Primary MEM durable formation
   -> later SOUL Lab Home recall
-  -> Lab observation and lifecycle visibility
+  -> Lab observation and lifecycle/governance visibility
 ```
 
-The currently unproven product lane is:
+E1-R1 route-owned trusted Home admission is implemented. Browser-owned trusted metadata remains rejected. E1-R2 character-store bootstrap is implemented as an explicit operator command, not automatic semantic memory creation.
 
-```text
-SOUL Lab Home-origin ordinary conversation
-  -> trusted scene admission
-  -> Primary MEM formation
-```
-
-Home conversation is real, but Home-origin trusted memory formation is not proven. Trusted formation lane is proven, but all formation quality risks are not solved. Recall evidence is present, but evidence-grounded response behavior is not fully evaluated.
+Trusted Home admission is implemented, but formation quality risks are not solved. Recall evidence is present, but evidence-grounded response behavior is not fully evaluated.
 
 ## Evidence inventory
 
 | Evidence step | Implemented evidence | Primary proof artifacts | Current interpretation |
 |---|---|---|---|
 | Real Home conversation | Implemented | `docs/architecture/soul_lab_ui_b0_real_home_conversation.md`, `docs/architecture/e1_local_runtime_evaluation_2026_06_25.md` | SOUL Lab Home can use the existing same-origin Chat Completions path for real text conversation. |
-| Trusted formation lane | Implemented through a separate admission path | `docs/architecture/e1_local_runtime_evaluation_2026_06_25.md`, `docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md` | Explicit scene-qualified managed requests can enter the existing formation pipeline. |
-| Durable source and queue evidence | Implemented | `docs/architecture/phase6c1_durable_protected_source_persistence.md`, `docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md`, `docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md`, `docs/architecture/i1ge_durable_finalization_crash_validation.md` | Durable protected-source, queue, and durable-finalization evidence exist through the completed authorities. |
-| Local operation drain | Implemented as explicit bounded invocation | `docs/architecture/o0_local_one_job_runner.md`, `docs/architecture/phase6c2_one_queued_primary_worker_integration.md`, `scripts/relaylm_o0_local_one_job_runner_ci_runner.py`, `scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py` | Operator-invoked local drain can process at most one eligible job. O1E/O1F add caller-invoked controls and validation but still no polling or service supervision. |
-| Primary MEM durable formation | Implemented | `docs/architecture/phase6c1_primary_mem_worker_contract.md`, `docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md`, `docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md`, `scripts/relaylm_phase6c1_primary_worker_smoke.py`, `scripts/relaylm_phase6c1_worker_crash_convergence_smoke.py` | M3a-M3h durable formation, index/log convergence, and worker fault convergence are covered by existing production smokes. |
-| Later Home recall | Implemented for eligible current Primary MEM | `docs/architecture/integration_i1_primary_mem_two_turn_recall.md`, `docs/architecture/e1_local_runtime_evaluation_2026_06_25.md`, `docs/architecture/phase_i4d_primary_retrieval_exclusion.md` | Later SOUL Lab Home requests can retrieve current eligible Primary MEM through M2 and RelayCTX. |
-| Lab observation | Implemented read-only | `docs/architecture/phase_i2_real_soul_lab_observation.md`, `docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md` | SOUL Lab can observe formed memory, latest run evidence, lifecycle state, and operation status without gaining mutation authority. |
-| Lifecycle exclusion and Forget governance | Implemented | `docs/architecture/phase_i4d_primary_retrieval_exclusion.md`, `docs/architecture/phase_i4e_forget_api_ui.md`, `docs/architecture/phase_i4f_forget_validation.md` | Hidden, prior, prepared, recovery-required, corrupt, ambiguous, unsafe, cross-scope, unresolved, and prior physical revisions are excluded from ordinary M2/RelayCTX; Forget API/UI and validation are complete. |
+| Trusted Home admission | Implemented by E1-R1 | `docs/architecture/e1r1_trusted_home_scene_admission.md`, `docs/mvp/wave6/e1r1_completion_report.md` | Home-origin persistence may be admitted only by route-owned server configuration. Browser-owned trust is rejected. |
+| Character-store bootstrap | Implemented by E1-R2 | `docs/architecture/e1r2_character_store_bootstrap.md`, `docs/mvp/wave6/e1r2_completion_report.md` | Local evaluation can prepare the minimum safe Primary store layout through an explicit dry-run-first operator command. |
+| Durable source and queue evidence | Implemented | `docs/architecture/phase6c1_durable_protected_source_persistence.md`, `docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md`, `docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md` | Durable protected-source, queue, and durable-finalization evidence exist through completed authorities. |
+| Local operation drain | Implemented as explicit bounded invocation | `docs/architecture/o0_local_one_job_runner.md`, `docs/architecture/o1f_operational_validation.md` | Operator-invoked local drain and caller-invoked O1 controls remain bounded and non-supervised. |
+| Primary MEM durable formation | Implemented | `docs/architecture/phase6c1_primary_mem_worker_contract.md`, `docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md` | M3a-M3h durable formation and worker fault convergence are covered by existing production smokes. |
+| Later Home recall | Implemented for eligible current Primary MEM | `docs/architecture/integration_i1_primary_mem_two_turn_recall.md`, `docs/architecture/phase_i4d_primary_retrieval_exclusion.md` | Later SOUL Lab Home requests can retrieve current eligible Primary MEM through M2 and RelayCTX. |
+| User governance | Implemented through Correct, Forget, Pin, and Held Governance | `docs/architecture/phase_i3_auditable_primary_mem_correct.md`, `docs/architecture/phase_i4f_forget_validation.md`, `docs/architecture/phase_i5b_pin_unpin_apply.md`, `docs/architecture/phase_i7c_held_apply_discard_runtime.md` | Explicit governance surfaces are available without giving the browser queue, worker, scheduler, store-root, or route authority. |
 
-## Implemented evidence vs assumptions
+## Implemented evidence vs remaining quality work
 
 Implemented evidence:
 
@@ -86,49 +79,40 @@ Implemented evidence:
 - I1-GA through I1-GE are complete.
 - O0 and O1A through O1F are complete at their bounded caller-invoked or validation-only boundaries.
 - I-4B through I-4F are complete.
-- I-5A and I-7A/B are complete only for contract and read-only preflight.
-- The local E1 proof demonstrates explicit scene-qualified trusted request -> O0 terminal success -> Primary MEM -> later Home recall.
+- I-5A/I-5B and I-7A/B/I-7C are complete at their documented boundaries.
+- E1-R1 route-owned trusted Home admission is complete.
+- E1-R2 dry-run-first character-store bootstrap is complete.
 
-Assumptions and future work:
+Remaining quality work:
 
-- Direct Home-origin Primary MEM formation remains unproven.
-- Home requests do not currently carry a server-owned trusted scene-admission projection.
-- Character-store bootstrap remains operator-facing and brittle for local evaluation.
-- Speaker-provenance-safe Primary MEM summary formation remains quality work.
-- Strict evidence-grounded response behavior remains quality work.
-- O2/O3, Pin runtime behavior, Held runtime behavior, Merge/Supersession, Secondary MEM, and RelaySOUL proposal/intervention/rollback remain outside this E1 consolidation.
+- E1-R3 provenance-preserving Primary MEM formation summary.
+- E1-R4 retrieval-response grounding and unsupported-detail suppression.
+- O2/O3 remain conditional on explicit MVP need and are not implied by E1-R1/R2.
 
-## Direct Home-origin formation decision record
+## Direct Home-origin admission decision record
 
-| Option | Description | Benefits | Risks | MVP decision |
+| Option | Description | Benefits | Risks | Current decision |
 |---|---|---|---|---|
-| Option A | MVP formation remains operator/trusted-admission-path driven. Home is used for real conversation, recall, observation, Correct/Forget governance, lifecycle visibility, and evaluation of formed memories. | Preserves the trust boundary already proven by the repository. Avoids browser self-asserted persistence policy. Keeps MVP evaluation possible without silently weakening scene admission. | Local MVP is less seamless: an operator must still use a trusted formation lane for new memory evidence. | Recommended for the current MVP boundary. |
-| Option B | Add a future trusted scene-admission path to Home-origin requests. The trusted admission signal must be server-owned, route-owned, or otherwise authenticated and bounded. | Makes the direct Home product loop seamless for formation and later recall. | High risk if implemented as frontend-owned hidden metadata or broad runtime behavior. Requires a dedicated trust-boundary design and validation. | Deferred. |
+| Option A | MVP formation remains operator/trusted-admission-path driven while Home is used for conversation, recall, observation, and governance. | Preserves the original trust boundary. | Less seamless than direct Home formation. | Historical Wave 5 decision; replaced by bounded E1-R1 when explicitly enabled. |
+| Option B | Add a trusted scene-admission path to Home-origin requests. The trusted admission signal must be server-owned, route-owned, or otherwise authenticated and bounded. | Makes the direct Home product loop seamless for formation and later recall. | High risk if implemented as frontend-owned hidden metadata. | Implemented by E1-R1 through route-owned trusted Home scene admission. |
 
-E1 records Option A as the recommended current MVP decision. Option B is deferred to a future bounded follow-up named **E1-R1 trusted Home scene-admission path**. That follow-up must not allow the browser to self-assert arbitrary trusted scene policy and must not add hidden runtime signals without a documented trust boundary.
+E1-R1 implements Option B only as a route-owned gate. It must not be interpreted as broad browser-owned trusted metadata, a new queue format, or an automatic scheduler/service.
 
 ## Character-store bootstrap ergonomics
 
-Current local evaluation assumes the character-scoped Primary store has already been initialized with the expected directory and control-file shape. The existing runtime intentionally does not auto-create this authority during worker execution.
-
-Current operator-facing risks:
-
-- bootstrap is manual;
-- missing store structure can block a job before useful memory evidence is formed;
-- retry behavior can be confusing if the failed job remains outside the next O0 selection boundary;
-- local evaluation instructions are scattered across historical evidence and architecture docs.
-
-Smallest future improvement:
+E1-R2 idempotent character-store bootstrap command is implemented as:
 
 ```text
-E1-R2 idempotent character-store bootstrap command
-  -> explicit operator invocation
-  -> default-off / dry-run-first
+operator invocation
+  -> config/root/character/scope validation
+  -> dry-run bootstrap plan
+  -> optional apply
+  -> idempotent store layout preparation
   -> content-free projection
-  -> no queue, worker, scheduler, or memory-mutation authority transfer
+  -> return
 ```
 
-This improvement should make local evaluation repeatable without hiding the authority boundary between operator bootstrap, RelayMEM store layout, queue processing, and Home UI.
+E1-R2 does not enqueue jobs, start workers, run schedulers, create semantic Primary MEM pages, or repair malformed state silently.
 
 ## Speaker-provenance-safe memory summary formation
 
@@ -140,11 +124,6 @@ Primary MEM formation quality must preserve:
 - no hallucinated memory source;
 - no mixing of backend acknowledgement or decoration with user claims;
 - no promotion of assistant speculation into user fact evidence.
-
-Currently proven:
-
-- the production pipeline can durably form a Primary MEM from trusted evidence;
-- the local E1 record identified a provenance defect where assistant-authored text can be stored with user evidence.
 
 Remaining quality work:
 
@@ -176,9 +155,7 @@ E1-R4 retrieval-response grounding and unsupported-detail suppression
 
 ## Evaluation smoke boundary
 
-E1 adds `scripts/relaylm_e1_evaluation_consolidation_smoke.py` and `.github/workflows/e1-evaluation-consolidation.yml`.
-
-The smoke is docs-only. It validates required E1 anchors, verifies linked evidence documents and scripts exist, confirms the decision record remains explicit, and forbids leakage-oriented example labels. It does not require a live LLM, LM Studio, browser, network service, or workstation-local path.
+`scripts/relaylm_e1_evaluation_consolidation_smoke.py` validates the post-E1-R1/R2 evidence inventory and remaining E1-R3/R4 quality gates. It does not require a live LLM, LM Studio, browser, network service, or workstation-local path.
 
 Required validation set:
 
@@ -187,17 +164,5 @@ python -m compileall relaylm scripts
 python scripts/relaylm_e1_evaluation_consolidation_smoke.py
 python scripts/relaylm_docs_link_check.py
 python scripts/relaylm_documentation_current_boundary_smoke.py
-python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/e1_completion_report.md
 python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
 ```
-
-## Frozen E1 follow-up names
-
-```text
-E1-R1 trusted Home scene-admission path
-E1-R2 idempotent character-store bootstrap command
-E1-R3 provenance-preserving Primary MEM formation summary
-E1-R4 retrieval-response grounding and unsupported-detail suppression
-```
-
-These follow-ups are independent from O1E/O1F and O2/O3. Operational automation can process more eligible work, but it does not by itself make Home-origin requests trusted for formation, create missing character stores safely, repair speaker-provenance defects, or force evidence-grounded generation.
