@@ -25,13 +25,14 @@ _install_relaymem_retrieval_priority_runtime()
 _install_relaymem_primary_recall_runtime()
 _install_relaymem_primary_recall_candidate_bridge_runtime()
 
-del _audit_projection
-del _install_audit_projection_contracts
-del _install_relaymem_primary_recall_candidate_bridge_runtime
-
-del _audit_projection
-del _install_audit_projection_contracts
-del _install_relaymem_primary_recall_runtime
-del _install_relaymem_retrieval_priority_runtime
+for _relaylm_init_cleanup_name in (
+    "_audit_projection",
+    "_install_audit_projection_contracts",
+    "_install_relaymem_primary_recall_candidate_bridge_runtime",
+    "_install_relaymem_primary_recall_runtime",
+    "_install_relaymem_retrieval_priority_runtime",
+):
+    globals().pop(_relaylm_init_cleanup_name, None)
+del _relaylm_init_cleanup_name
 
 __version__ = "0.1.0"
