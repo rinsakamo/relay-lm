@@ -17,7 +17,6 @@ from .token_budget import estimate_text_tokens
 
 _TOKEN_WITH_SLASH_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$")
 _SAFE_REASON_RE = re.compile(r"[a-z0-9][a-z0-9_:-]{0,127}")
-_MAX_DISCOVERY_SCAN = 128
 _PATCHED_FLAG = "_e1r5_candidate_bridge_installed"
 
 
@@ -111,7 +110,6 @@ def _build_apply(target: Any):
                         target=target,
                         control=control,
                         namespace=namespace,
-                        max_scan=_MAX_DISCOVERY_SCAN,
                     )
                     reasons.extend(bridge_reasons)
                     discovered_count = len(bridge_candidates)
@@ -282,16 +280,10 @@ def _discover_primary_candidates_from_control(
     target: Any,
     control: Mapping[str, Sequence[Mapping[str, Any]]],
     namespace: str,
-    max_scan: int,
 ) -> tuple[list[dict[str, Any]], list[str]]:
     candidates: list[dict[str, Any]] = []
     reasons: list[str] = []
-    scanned = 0
     for entry in control.get("index", []):
-        if scanned >= max(0, int(max_scan)):
-            reasons.append("primary_candidate_scan_truncated")
-            break
-        scanned += 1
         if not isinstance(entry, Mapping):
             reasons.append("primary_candidate_shape_invalid")
             continue
@@ -402,7 +394,7 @@ def _candidate_summary_score(candidate: Mapping[str, Any], query_terms: Sequence
         return 0
     haystack = "\n".join(
         str(candidate.get(key, "")).lower()
-        for key in ("summary", "title", "path", "memory_kind")
+        for key in ("summary", "title")
     )
     score = 0
     for term in query_terms:
