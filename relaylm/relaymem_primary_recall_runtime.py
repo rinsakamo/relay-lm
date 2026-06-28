@@ -99,20 +99,14 @@ def install_relaymem_primary_recall_runtime() -> None:
 def _expanded_query_terms(query_terms: list[str] | None) -> list[str] | None:
     terms: list[str] = []
 
-    def add(term: str) -> None:
-        term = term.strip()[:32]
-        if len(term) < 2 or term in terms:
-            return
-        terms.append(term)
-
     for raw in query_terms or []:
-        add(str(raw))
+        _add_term(terms, str(raw))
         if len(terms) >= 12:
             return terms[:12]
     haystack = "\n".join(terms)
     for phrase in _JAPANESE_RECALL_PHRASES:
         if phrase in haystack:
-            add(phrase)
+            _add_japanese_phrase(terms, phrase)
             if len(terms) >= 12:
                 break
     return terms[:12]
@@ -121,23 +115,38 @@ def _expanded_query_terms(query_terms: list[str] | None) -> list[str] | None:
 def _term_hints_with_japanese_recall_phrases(text: str) -> list[str]:
     terms: list[str] = []
 
-    def add(term: str) -> None:
-        term = term.strip(".,!?。！？、:;()[]{}\"'")[:32]
-        if len(term) < 2 or term in terms:
-            return
-        terms.append(term)
-
     for raw in text.replace("\n", " ").split(" "):
-        add(raw)
+        _add_term(terms, raw)
         if len(terms) >= 12:
             return terms[:12]
 
     for phrase in _JAPANESE_RECALL_PHRASES:
         if phrase in text:
-            add(phrase)
+            _add_japanese_phrase(terms, phrase)
             if len(terms) >= 12:
                 break
     return terms[:12]
+
+
+def _add_term(terms: list[str], term: str) -> None:
+    term = _clean_term(term)
+    if term in _JAPANESE_RECALL_PHRASES:
+        _add_japanese_phrase(terms, term)
+        return
+    if len(term) < 3 or term in terms:
+        return
+    terms.append(term)
+
+
+def _add_japanese_phrase(terms: list[str], phrase: str) -> None:
+    phrase = _clean_term(phrase)
+    if len(phrase) < 2 or phrase in terms:
+        return
+    terms.append(phrase)
+
+
+def _clean_term(term: str) -> str:
+    return term.strip(".,!?。！？、:;()[]{}\"'")[:32]
 
 
 def _effective_read_root(root_path: str | None) -> str | None:
