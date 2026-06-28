@@ -26,6 +26,7 @@ relaylm_related_authority:
   - phase_i7c_held_apply_discard_runtime.md
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md
+  - e1r3_provenance_preserving_primary_mem_formation_summary.md
   - e1_evaluation_consolidation.md
   - wave6_cross_slice_convergence_audit.md
   - wave5_cross_slice_convergence_audit.md
@@ -72,6 +73,7 @@ MVP must provide:
 
 - real SOUL Lab Home conversation through the existing OpenAI-compatible RelayLM path;
 - Primary MEM formation from trusted scene-qualified managed requests and from the E1-R1 route-owned trusted Home gate when explicitly enabled;
+- speaker-provenance-safe Primary MEM formation summary so assistant acknowledgement/speculation and scene/trust qualification are not promoted to user facts;
 - later-turn Primary MEM retrieval and RelayCTX injection;
 - read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence;
 - explicit auditable Correct;
@@ -117,7 +119,7 @@ Evaluation
   E1 evaluation consolidation                    complete
     -> E1-R1 trusted Home scene-admission path         complete
     -> E1-R2 idempotent character-store bootstrap command complete
-    -> E1-R3 provenance-preserving Primary MEM formation summary
+    -> E1-R3 provenance-preserving Primary MEM formation summary complete
     -> E1-R4 retrieval-response grounding and unsupported-detail suppression
 
 SOUL Lab product
@@ -132,7 +134,7 @@ SOUL Lab product
 
 ### Foundation already available for MVP planning
 
-The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1F, UI-B1A, I-5A/I-5B, I-7A/B/I-7C, E1, E1-R1, and E1-R2.
+The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1F, UI-B1A, I-5A/I-5B, I-7A/B/I-7C, E1, E1-R1, E1-R2, and E1-R3.
 
 ### Wave 4 completed
 
@@ -169,14 +171,14 @@ The O1F completion report is [O1F completion report](../mvp/wave6/o1f_completion
 
 ### Post-O1F next candidates
 
-This historical transition anchor records the candidate set that existed after O1F and before the later Wave 6 implementation merges. It is kept so frozen Wave 3/Wave 5 convergence smokes can verify the transition while the current next-work list remains Post-Wave-6.
+This historical transition anchor records the candidate set that existed after O1F and before the later Wave 6 implementation merges. It is kept so frozen Wave 3/Wave 5 convergence smokes can verify the transition while the current next-work list remains Post-E1-R3.
 
 ```text
 I-5B Pin / Unpin apply/API/UI/ranking work                 complete in Wave 6
 I-7C Held Apply/Discard runtime/API/UI/durable evidence    complete in Wave 6
 E1-R1 trusted Home scene-admission path                    complete in Wave 6
 E1-R2 idempotent character-store bootstrap command         complete in Wave 6
-E1-R3 provenance-preserving Primary MEM formation summary  current next candidate
+E1-R3 provenance-preserving Primary MEM formation summary  complete
 E1-R4 retrieval-response grounding and unsupported-detail suppression current next candidate
 O2/O3 only after explicit MVP need
 ```
@@ -192,10 +194,21 @@ E1-R2 idempotent character-store bootstrap command
 
 The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](wave6_cross_slice_convergence_audit.md). Wave 6 closes the primary remaining user-governance and local-evaluation ergonomics gaps without adding O2/O3, browser-owned trust, semantic summary-quality changes, evidence-grounded response behavior, RelaySOUL mutation, or media runtime execution.
 
-### Post-Wave-6 next candidates
+### E1-R3 completed
 
 ```text
 E1-R3 provenance-preserving Primary MEM formation summary
+  -> user assertion evidence remains distinguishable
+  -> assistant acknowledgement/speculation is not promoted to user fact
+  -> scene/trust evidence remains qualification metadata
+  -> public diagnostics remain content-free
+```
+
+The E1-R3 handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md). The completion report is [E1-R3 completion report](../mvp/wave7/e1r3_completion_report.md).
+
+### Post-E1-R3 next candidates
+
+```text
 E1-R4 retrieval-response grounding and unsupported-detail suppression
 
 O2 supervised worker service, only if required
@@ -213,6 +226,7 @@ MVP can be considered evaluable when the following are all true:
 ```text
 trusted formation lane
   -> durable source and queue
+  -> speaker-provenance-safe formation summary
   -> local operation drains eligible work
   -> Primary MEM forms durably
   -> Lab observation shows the evidence
@@ -235,7 +249,7 @@ operations lane
   -> no runtime-private content leakage in projections or docs
 ```
 
-E1-R1 means Home-origin trusted admission is available only through the route-owned server gate. It does not allow browser-owned trust metadata. E1-R2 means local store layout can be initialized through an explicit dry-run-first operator command. E1-R3/R4 remain quality gates for provenance and response grounding.
+E1-R1 means Home-origin trusted admission is available only through the route-owned server gate. It does not allow browser-owned trust metadata. E1-R2 means local store layout can be initialized through an explicit dry-run-first operator command. E1-R3 means Primary MEM formation summary is speaker-provenance-safe. E1-R4 remains the quality gate for response grounding.
 
 ## Post-MVP roadmap
 
@@ -258,17 +272,5 @@ Character-to-character communication
   -> peer transport and conversation governance after single-character memory is stable
 
 Experimental SOUL replacement and memory bootstrap
-  -> post-MVP, non-destructive, explicit lab-only work
+  -> explicit post-MVP lab work only
 ```
-
-## Sequencing rules
-
-- Do not use a plan update to claim current implementation completion; update [Project Status](../PROJECT_STATUS.md) through the appropriate implementation or convergence PR.
-- Do not move a post-MVP item into MVP without naming the evaluation gate it unlocks.
-- Do not allow operations work to absorb I1-G replay, B3 queue lifecycle, C2 worker execution, RelayMEM lifecycle, or SOUL Lab mutation authority.
-- Do not allow memory-governance work to absorb scheduler, queue, durable-finalization, or worker authority.
-- Do not allow a Home-origin request to become persistence-eligible through browser-owned hidden trusted metadata.
-- Do not mark O2/O3 complete through O1F.
-- Do not mark Pin/Unpin runtime apply complete through I-5A.
-- Do not mark Held Apply/Discard runtime complete through I-7A/B.
-- During a declared parallel wave, implementation PRs update only their unique handoff/completion report and implementation-coupled docs; the convergence PR updates this plan, Project Status, indexes, current-target documents, and smoke together.
