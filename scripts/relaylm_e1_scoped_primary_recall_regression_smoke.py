@@ -10,7 +10,10 @@ from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
     resolve_relaymem_character_store_root,
 )
-from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
+from relaylm.relaymem_retrieval import (
+    _term_hints,
+    build_relaymem_retrieval_dry_run_artifact,
+)
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 
 NAMESPACE = "character/default"
@@ -20,6 +23,7 @@ SUMMARY = (
     "浅煎りのエチオピアコーヒーを飲むのが一番落ち着きます。"
 )
 QUERY = "私が朝の集中作業で落ち着く飲み物って何だっけ？"
+ENGLISH_STOPWORD_QUERY = "do we need to ship today?"
 
 
 def scene_artifact() -> dict[str, Any]:
@@ -82,7 +86,32 @@ def primary_keyword_candidate(value: Mapping[str, Any]) -> Mapping[str, Any]:
     raise AssertionError(value)
 
 
+def assert_no_primary_keyword_candidate(value: Mapping[str, Any]) -> None:
+    raw_candidates = value.get("selected_mem_candidates")
+    require(
+        isinstance(raw_candidates, Sequence) and not isinstance(raw_candidates, str),
+        value,
+    )
+    for candidate in raw_candidates:
+        if not isinstance(candidate, Mapping):
+            continue
+        require(
+            not (
+                candidate.get("memory_layer") == "primary"
+                and candidate.get("reason") == "keyword_match"
+            ),
+            candidate,
+        )
+
+
 def main() -> None:
+    english_terms = _term_hints(ENGLISH_STOPWORD_QUERY)
+    require("do" not in english_terms, english_terms)
+    require("we" not in english_terms, english_terms)
+    require("to" not in english_terms, english_terms)
+    require("ship" in english_terms, english_terms)
+    require("today" in english_terms, english_terms)
+
     with tempfile.TemporaryDirectory() as directory:
         operator_root = Path(directory) / "memory-root"
         operator_root.mkdir()
@@ -138,6 +167,23 @@ def main() -> None:
             ),
             diagnostics,
         )
+
+        english_retrieval = build_relaymem_retrieval_dry_run_artifact(
+            relayscn_scene_policy_artifact=scene_artifact(),
+            relayref_artifact=None,
+            messages=[{"role": "user", "content": ENGLISH_STOPWORD_QUERY}],
+            token_budget=512,
+            store_diagnostics=diagnostics,
+            max_candidates=3,
+            ctx_block_apply_enabled=False,
+            snippet_extraction_enabled=True,
+            snippet_dry_run_only=True,
+            snippet_apply_enabled=False,
+            snippet_budget=512,
+            max_snippet_chars=512,
+            max_snippet_candidates=3,
+        )
+        assert_no_primary_keyword_candidate(english_retrieval)
 
         retrieval = build_relaymem_retrieval_dry_run_artifact(
             relayscn_scene_policy_artifact=scene_artifact(),
