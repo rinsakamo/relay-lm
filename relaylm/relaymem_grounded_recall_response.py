@@ -29,7 +29,7 @@ SupportStatus = Literal[
 
 _EXCLUDED_STATES = {"hidden", "prior", "prepared", "recovery_required", "corrupt", "deleted", "tombstoned", "held"}
 _ELIGIBLE_STATES = {"active", "current", "eligible", "pinned"}
-_DIRECT = {"user_assertion", "user_assertion_only"}
+_DIRECT = {"user_assertion", "user_assertion_only", "primary_recall_selected_memory"}
 _INFERRED = {"scene_qualification", "other_allowed_source"}
 _UNSUPPORTED = {"assistant_acknowledgement", "assistant_speculation", "assistant_non_factual_context", "assistant_decoration", "unknown"}
 _SAFE_REF_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,96}$")
@@ -125,7 +125,7 @@ def build_grounded_recall_context(*, retrieved_memories: object, query_text: obj
         if not fact:
             excluded.append(_excluded(index, "ambiguous_evidence", "fact_text_missing")); ambiguous += 1; continue
         items.append({
-            "memory_ref": _safe_ref(raw.get("memory_id") or raw.get("id"), index),
+            "memory_ref": _safe_ref(raw.get("memory_id") or raw.get("id") or raw.get("idempotency_key") or raw.get("evidence_id"), index),
             "revision_ref": _safe_revision(raw.get("revision") or raw.get("rev")),
             "lifecycle_current_eligible": True,
             "pinned": bool(raw.get("pinned") is True or raw.get("pin_state") == "pinned"),
@@ -222,17 +222,37 @@ def _provenance(memory: Mapping[str, object]) -> str:
     counts = summary.get("provenance_counts") if isinstance(summary, Mapping) else None
     if isinstance(counts, Mapping) and int(counts.get("user_assertion_evidence", 0) or 0) > 0:
         return "user_assertion"
+    if _looks_like_current_primary_recall_evidence(memory):
+        return "primary_recall_selected_memory"
     return ""
 
 
 def _fact_text(memory: Mapping[str, object]) -> str:
-    for key in ("fact_text", "summary_text", "allowed_memory_snippet", "memory_snippet", "text"):
+    for key in ("fact_text", "summary_text", "summary", "snippet_text", "allowed_memory_snippet", "memory_snippet", "text"):
         value = memory.get(key)
         if type(value) is str and value.strip():
             text = _SPACE_RE.sub(" ", value).strip()
             return text if len(text) <= MAX_FACT_TEXT_CHARS else text[:MAX_FACT_TEXT_CHARS - 1].rstrip() + "…"
     payload = memory.get("memory_candidate_payload")
     return _fact_text(payload) if isinstance(payload, Mapping) else ""
+
+
+def _looks_like_current_primary_recall_evidence(memory: Mapping[str, object]) -> bool:
+    if memory.get("memory_layer") not in {None, "primary"}:
+        return False
+    if not _fact_text_without_payload(memory):
+        return False
+    if not any(key in memory for key in ("snippet_text", "summary")):
+        return False
+    return any(key in memory for key in ("evidence_id", "idempotency_key", "physical_idempotency_key", "revision"))
+
+
+def _fact_text_without_payload(memory: Mapping[str, object]) -> str:
+    for key in ("fact_text", "summary_text", "summary", "snippet_text", "allowed_memory_snippet", "memory_snippet", "text"):
+        value = memory.get(key)
+        if type(value) is str and value.strip():
+            return value.strip()
+    return ""
 
 
 def _safe_ref(value: object, index: int) -> str:
