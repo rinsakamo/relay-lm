@@ -115,7 +115,7 @@ REQUIRED = {
     ),
     "docs/architecture/integration_i1_primary_mem_two_turn_recall.md": (
         "E1-R5 bounded scoped Primary candidate bridge",
-        "M2 remains the preferred relevance owner",
+        "preserves M2 as preferred owner",
         "I-4D shared lifecycle eligibility",
     ),
     "docs/architecture/wave7_cross_slice_convergence_audit.md": (
@@ -162,7 +162,6 @@ STALE = tuple(
     E1-R4 remains incomplete quality/evaluation work
     E1-R4 response grounding.
     remaining E1-R4 quality work
-    M2 alone always selects current eligible scoped Primary MEM
     E1-R5 remains unindexed
     E1-R5 remains incomplete
     """.splitlines()
