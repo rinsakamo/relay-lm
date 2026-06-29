@@ -25,7 +25,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
-- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and completed E1-R1 through E1-R4 quality work.
+- [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and completed E1-R1 through E1-R5 quality work.
 - [MVP evidence index](mvp/README.md) — historical snapshots and per-PR implementation completion reports.
 
 ## Parallel implementation documentation rule
@@ -72,12 +72,13 @@ Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<sl
 - [E1-R2 character-store bootstrap command](architecture/e1r2_character_store_bootstrap.md)
 - [E1-R3 provenance-preserving formation summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md)
 - [E1-R4 retrieval-response grounding](architecture/e1r4_retrieval_response_grounding.md)
+- [E1-R5 Primary MEM recall candidate discovery bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md)
 - [RelayMEM / RelaySLP current / target boundary](architecture/relaymem_slp_current_target.md)
 - [Architecture documentation index](architecture/README.md)
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged, and E1-R5 is converged as a post-Wave-7 correction. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
 
 ## Wave 7 implementation evidence
 
@@ -86,6 +87,8 @@ Current runtime and implementation status is intentionally not summarized here. 
 - [E1-R3 completion report](mvp/wave7/e1r3_completion_report.md)
 - [E1-R4 retrieval-response grounding](architecture/e1r4_retrieval_response_grounding.md)
 - [E1-R4 completion report](mvp/wave7/e1r4_completion_report.md)
+- [E1-R5 Primary MEM recall candidate discovery bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md)
+- [E1-R5 completion report](mvp/wave7/e1r5_completion_report.md)
 
 ## Wave 6 implementation evidence
 

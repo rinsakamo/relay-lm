@@ -23,6 +23,7 @@ relaylm_related_authority:
   - e1r2_character_store_bootstrap.md
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
   - e1r4_retrieval_response_grounding.md
+  - e1r5_primary_mem_recall_candidate_bridge.md
   - phase_i4f_forget_validation.md
   - e1_evaluation_consolidation.md
   - wave7_cross_slice_convergence_audit.md
@@ -31,11 +32,11 @@ relaylm_related_authority:
 ---
 # RelayMEM / RelaySLP Current / Target Boundary
 
-Last reviewed: 2026-06-28 JST
+Last reviewed: 2026-06-29 JST
 
 ## Current implemented boundary
 
-RelayMEM currently provides bounded store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, gated RelayCTX injection, auditable Correct, canonical read-only Primary current-state resolution, I-4C1 hidden-successor lifecycle commit ownership, bounded I-4C2 recovery/finalization, I-4D ordinary retrieval lifecycle exclusion plus historical lifecycle overlay, I-4E loopback Forget API/UI, I-4F full Forget validation, I-5A Pin / Unpin read-only preflight, I-5B Pin / Unpin apply/API/UI/ranking behavior, I-7A/B Held Apply / Discard read-only preflight, and I-7C Held Apply / Discard runtime/API/UI/durable governance evidence.
+RelayMEM currently provides bounded store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, gated RelayCTX injection, auditable Correct, canonical read-only Primary current-state resolution, I-4C1 hidden-successor lifecycle commit ownership, bounded I-4C2 recovery/finalization, I-4D ordinary retrieval lifecycle exclusion plus historical lifecycle overlay, I-4E loopback Forget API/UI, I-4F full Forget validation, I-5A Pin / Unpin read-only preflight, I-5B Pin / Unpin apply/API/UI/ranking behavior, I-7A/B Held Apply / Discard read-only preflight, I-7C Held Apply / Discard runtime/API/UI/durable governance evidence, and E1-R5 bounded scoped Primary recall candidate bridging.
 
 The Primary MEM persistence chain is implemented through M3a-M3h. The Phase 6 execution boundary is implemented through B0-B3, C1-5, and C2, with O0 as the explicit local caller:
 
@@ -58,7 +59,7 @@ Phase 6-B2 performs atomic durable enqueue of durably enqueued jobs through the 
 
 I2 real SOUL Lab observation is complete. It is read-only evidence only and cannot authorize repair or retrieval.
 
-E1 evaluation consolidation is current as an evidence/documentation boundary. E1-R1 route-owned trusted Home scene admission is current implemented. E1-R2 dry-run-first character-store bootstrap is current implemented. E1-R3 provenance-preserving summary formation is current implemented. E1-R4 request-side evidence-grounded recall behavior is current implemented.
+E1 evaluation consolidation is current as an evidence/documentation boundary. E1-R1 route-owned trusted Home scene admission is current implemented. E1-R2 dry-run-first character-store bootstrap is current implemented. E1-R3 provenance-preserving summary formation is current implemented. E1-R4 request-side evidence-grounded recall behavior is current implemented. E1-R5 scoped Primary recall candidate discovery bridge is current implemented.
 
 ## I1-G durable-finalization boundary
 
@@ -90,7 +91,9 @@ I-5B Pin state remains governance metadata and a ranking hint. It never admits h
 
 E1-R3 is current implemented as speaker-provenance-safe Primary MEM formation summary construction. It keeps user assertion evidence separate from assistant acknowledgement/speculation and route-owned scene/trust qualification.
 
-E1-R4 is current implemented as request-side retrieval-response grounding and unsupported-detail suppression for eligible retrieved Primary MEM evidence. It consumes existing M2/RelayCTX-selected Primary MEM evidence, preserves I-4D lifecycle/scope exclusions, creates backend-bound grounding instructions, keeps public projections content-free, and does not mutate memory, create retrieval authority, rewrite visible responses, or expose runtime-private evidence publicly.
+E1-R4 is current implemented as request-side retrieval-response grounding and unsupported-detail suppression for eligible retrieved Primary MEM evidence. It consumes existing M2/RelayCTX-selected Primary MEM evidence, preserves I-4D lifecycle/scope exclusions, creates backend-bound grounding instructions, keeps public projections content-free, and does not mutate memory, rewrite visible responses, or expose runtime-private evidence publicly.
+
+E1-R5 is current implemented as a bounded scoped Primary MEM recall candidate discovery bridge. M2 remains the preferred relevance owner. When no eligible scoped Primary candidate survives existing M2 narrowing, E1-R5 may derive bounded candidates from exact character-scoped Primary index/log/page controls, apply shared I-4D lifecycle eligibility, require query relevance, and rebuild the existing RelayCTX/E1-R4 handoff shape. E1-R5 does not add broad retrieval ranking, unbounded filesystem scans, compatibility symlink dependence, memory mutation, worker/scheduler/queue authority, browser trust, or media runtime work.
 
 ## Completed Primary MEM integration
 
@@ -102,6 +105,7 @@ finalized ordinary turn
   -> O0 explicit local selection and one C2 call       complete
   -> C2/C1 worker path and verified Primary MEM        complete
   -> later M2 / RelayCTX recall                        complete as I-1
+  -> E1-R5 scoped Primary recall bridge                complete as E1-R5
   -> real Lab observation                              complete as I-2
   -> audited correction and corrected retrieval        complete as I-3
   -> canonical read-only lifecycle resolution          complete as I-4B
@@ -126,4 +130,4 @@ finalized ordinary turn
 
 ## Completion interpretation
 
-M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1F, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-5B, I-7A/B, I-7C, E1, E1-R1, E1-R2, E1-R3, and E1-R4 are implemented. O1F is validation-only caller-invoked operational hardening; O2 and O3 remain incomplete. E1-R1 is route-owned and defaults disabled; it does not permit browser-owned trust. E1-R2 is dry-run-first and does not create semantic memory content. E1-R3 is speaker-provenance-safe formation summary work. E1-R4 is request-side retrieval-response grounding and does not perform post-hoc visible response rewriting or create a new memory mutation authority.
+M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1F, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-5B, I-7A/B, I-7C, E1, E1-R1, E1-R2, E1-R3, E1-R4, and E1-R5 are implemented. O1F is validation-only caller-invoked operational hardening; O2 and O3 remain incomplete. E1-R1 is route-owned and defaults disabled; it does not permit browser-owned trust. E1-R2 is dry-run-first and does not create semantic memory content. E1-R3 is speaker-provenance-safe formation summary work. E1-R4 is request-side retrieval-response grounding and does not perform post-hoc visible response rewriting or create a new memory mutation authority. E1-R5 is a bounded candidate bridge and does not replace M2 as preferred relevance owner or add broad retrieval/mutation/scheduler authority.

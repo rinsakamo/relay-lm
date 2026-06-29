@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current documentation boundary anchors after Wave 7."""
+"""Validate current documentation boundary anchors after the E1-R5 convergence fix."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -20,6 +20,7 @@ CURRENT_DOCS = (
     "docs/architecture/e1r2_character_store_bootstrap.md",
     "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
     "docs/architecture/e1r4_retrieval_response_grounding.md",
+    "docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md",
     "docs/architecture/phase_i5_pin_unpin_contract.md",
     "docs/architecture/phase_i5b_pin_unpin_apply.md",
     "docs/architecture/phase_i7ab_held_apply_discard_contract.md",
@@ -42,37 +43,53 @@ REQUIRED = {
         "E1-R2 character-store bootstrap command: complete",
         "E1-R3 provenance-preserving Primary MEM formation summary: complete",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression: complete",
+        "E1-R5 Primary MEM recall candidate discovery bridge: complete",
         "Wave 7 implementation tracks complete",
         "W7-INT merged",
-        "Post-E1-R4 / Post-Wave-7 next candidates:",
+        "Post-E1-R5 / Post-Wave-7 next candidates:",
+        "E1-R5 scoped Primary recall candidate bridge boundary",
     ),
     "docs/README.md": (
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
         "Wave 7 Cross-Slice Convergence Audit",
         "E1-R3 completion report",
         "E1-R4 completion report",
-        "E1-R4 retrieval-response grounding",
+        "E1-R5 completion report",
+        "E1-R5 Primary MEM recall candidate discovery bridge",
     ),
     "docs/architecture/README.md": (
         "Wave 7 Cross-Slice Convergence Audit",
         "E1-R4 Retrieval-Response Grounding",
-        "implemented E1-R1/E1-R2/E1-R3/E1-R4 evidence",
+        "E1-R5 Primary MEM Recall Candidate Discovery Bridge",
+        "implemented E1-R1/E1-R2/E1-R3/E1-R4/E1-R5 evidence",
     ),
     "docs/mvp/README.md": (
         "Wave 7 merged completion reports",
         "source PR #436, merge `7bb2525cb000e893146408065f1aa5976f2b54ab`",
         "source PR #437, merge `e6e5b32cd489dda493ff0171a260dd561a91765c`",
-        "docs/mvp/wave7/e1r4_completion_report.md",
+        "source PR #439",
+        "docs/mvp/wave7/e1r5_completion_report.md",
+    ),
+    "docs/DOCUMENTATION_MODEL.md": (
+        "`architecture_handoff`",
+        "`validation_receipt`",
+        "`cross_slice_convergence_audit`",
+        "`integration_convergence_audit`",
+        "`evaluation_record`",
+        "`evaluation_consolidation`",
     ),
     "docs/architecture/current_target_migration_guide.md": (
         "Current Wave 7 compatibility interpretation",
         "E1-R3 is current implemented as provenance-preserving Primary MEM formation summary.",
         "E1-R4 is current implemented as request-side retrieval-response grounding and unsupported-detail suppression.",
+        "E1-R5 is current implemented as bounded scoped Primary MEM recall candidate discovery bridge.",
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
         "E1-R4 request-side evidence-grounded recall behavior is current implemented.",
+        "E1-R5 scoped Primary recall candidate discovery bridge is current implemented.",
         "request-side grounded recall response             complete as E1-R4",
-        "E1-R4 is request-side retrieval-response grounding",
+        "E1-R5 scoped Primary recall bridge                complete as E1-R5",
+        "E1-R5 is current implemented as a bounded scoped Primary MEM recall candidate discovery bridge.",
     ),
     "docs/architecture/e1r4_retrieval_response_grounding.md": (
         "# E1-R4 Retrieval-Response Grounding",
@@ -81,6 +98,25 @@ REQUIRED = {
         "inferred_from_supported",
         "unsupported_detail_suppressed",
         "runtime_private_evidence_omitted=true",
+    ),
+    "docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md": (
+        "relaylm_doc_type: implementation_handoff",
+        "# E1-R5 Primary MEM Recall Candidate Discovery Bridge",
+        "M2 remains the preferred relevance owner",
+        "shared I-4D current-state eligibility index",
+        "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
+        "E1-R5 completion report",
+    ),
+    "docs/architecture/e1_evaluation_consolidation.md": (
+        "E1-R5 Primary MEM recall candidate discovery bridge is complete.",
+        "Primary recall candidate bridge",
+        "current eligible Primary MEM can be selected by the M2-preferred path or",
+        "python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
+    ),
+    "docs/architecture/integration_i1_primary_mem_two_turn_recall.md": (
+        "E1-R5 bounded scoped Primary candidate bridge",
+        "preserves M2 as preferred owner",
+        "I-4D shared lifecycle eligibility",
     ),
     "docs/architecture/wave7_cross_slice_convergence_audit.md": (
         "# Wave 7 Cross-Slice Convergence Audit",
@@ -98,6 +134,12 @@ REQUIRED = {
         "Request-side vs response-side decision",
         "Content leakage review",
         "Authority preservation",
+    ),
+    "docs/mvp/wave7/e1r5_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "Primary MEM Recall Candidate Discovery Bridge",
+        "PR: #439",
+        "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
     ),
 }
 
@@ -120,6 +162,8 @@ STALE = tuple(
     E1-R4 remains incomplete quality/evaluation work
     E1-R4 response grounding.
     remaining E1-R4 quality work
+    E1-R5 remains unindexed
+    E1-R5 remains incomplete
     """.splitlines()
     if line.strip()
 )

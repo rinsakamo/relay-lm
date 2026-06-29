@@ -1,10 +1,44 @@
+---
+relaylm_doc_type: implementation_handoff
+relaylm_authority: e1r5_primary_mem_recall_candidate_discovery_bridge
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: evaluation
+relaylm_update_trigger:
+  - Primary recall candidate discovery changes
+  - namespace token compatibility changes
+  - E1 recall proof boundary changes
+  - lifecycle eligibility integration changes
+relaylm_not_authoritative_for:
+  - repository-wide current implementation status
+  - MVP roadmap sequencing
+  - worker, queue, scheduler, or store mutation authority
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - e1_evaluation_consolidation.md
+  - integration_i1_primary_mem_two_turn_recall.md
+  - phase_i4d_primary_retrieval_exclusion.md
+  - e1r4_retrieval_response_grounding.md
+  - ../mvp/wave7/e1r5_completion_report.md
+---
 # E1-R5 Primary MEM Recall Candidate Discovery Bridge
 
-Last reviewed: 2026-06-28 JST
+Last reviewed: 2026-06-29 JST
 
 ## Status
 
-E1-R5 adds a bounded request-side bridge for character-scoped Primary MEM recall. E1-R4 already builds backend-bound grounded recall instructions from selected Primary MEM evidence, but local E2E evaluation showed a gap before that stage: formed Primary MEM pages could exist under the character-scoped store while `selected_count` stayed `0` because no Primary MEM page became an M2 selected candidate.
+E1-R5 is current implemented. It adds a bounded request-side bridge for character-scoped Primary MEM recall after E1-R4 grounding.
+
+E1-R4 already builds backend-bound grounded recall instructions from selected Primary MEM evidence, but local E2E evaluation found a pre-grounding gap: formed Primary MEM pages could exist under the character-scoped store while `selected_count` stayed `0` because no Primary MEM page became an M2 selected candidate.
+
+E1-R5 corrects that proof boundary. The current E1 recall path is therefore not "M2 alone always selects current Primary MEM". The current boundary is:
+
+```text
+M2 remains the preferred relevance owner.
+If no eligible scoped Primary candidate survives existing M2 narrowing,
+E1-R5 may derive bounded candidates from scoped Primary index/log/page controls,
+then hand the selected evidence to the existing RelayCTX / E1-R4 grounded recall path.
+```
 
 ## Problem
 
@@ -34,8 +68,8 @@ When the fallback runs, it:
 2. reads only bounded Primary MEM control files from that scoped root;
 3. derives bounded Primary page candidates from index entries for the exact namespace;
 4. validates page path, schema, digest, index entry, and log entry consistency;
-5. applies Primary retrieval lifecycle eligibility, including hidden / prepared / prior / recovery-required / corrupt exclusions;
-6. checks bounded query relevance against the validated Primary summary when query hints are available;
+5. applies Primary retrieval lifecycle eligibility through the shared I-4D current-state eligibility index;
+6. checks bounded query relevance against validated Primary `summary` and `title` fields when query hints are available;
 7. rebuilds the existing bounded snippet handoff consumed by RelayCTX and E1-R4 grounded recall.
 
 The bridge does not depend on the compatibility symlink and does not materialize an unbounded tree.
@@ -43,6 +77,12 @@ The bridge does not depend on the compatibility symlink and does not materialize
 ## Namespace decision
 
 Primary recall now accepts the same namespace token shape used by the queue/worker side, including slash-style namespaces such as `character/default`. The goal is to avoid a formation-success / recall-reject split. Character and namespace values remain runtime-private and are not exposed in public projections.
+
+## Lifecycle eligibility ownership
+
+E1-R5 does not own an independent lifecycle policy. The implementation calls the shared Primary retrieval eligibility index used by I-4D before a fallback candidate can become selected evidence.
+
+The current implementation is still a runtime bridge over the original I-1 adapter. This is acceptable for the bounded E1-R5 fix, but future changes to `apply_relaymem_primary_recall_scope(...)` must either keep the E1-R5 bridge installed and covered by E1-R5 smokes or fold the bridge into the canonical Primary recall adapter so namespace handling and candidate discovery cannot drift.
 
 ## Grounded recall behavior
 
@@ -70,6 +110,33 @@ runtime_private_evidence_omitted=true
 
 The projection must not include raw memory text, raw transcript text, protected source body, queue payload, store root, source path, claim token, lease owner, token digest, source digest, page digest, lineage, or exact private ids.
 
+## Validation boundary
+
+E1-R5 validation is recorded in the completion report and must remain part of the current E1 recall regression set:
+
+```bash
+python -m compileall -q relaylm scripts
+PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase_i1_two_turn_primary_recall_security_smoke.py
+PYTHONPATH=. python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r4_grounded_recall_response_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1r4_grounded_recall_security_smoke.py
+PYTHONPATH=. python scripts/relaylm_e1_evaluation_consolidation_smoke.py
+PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+```
+
 ## Non-goals
 
 E1-R5 does not add O2/O3 supervision, polling, daemons, new queue authority, worker authority, browser-owned trust, automatic bootstrap, broad memory layout migration, Pin / Unpin semantics, Held Apply / Discard behavior, Forget / Correct behavior, Secondary MEM consolidation, RelaySOUL mutation, media runtime work, or post-hoc visible response rewriting.
+
+## Source evidence
+
+- [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md)
+- Source PR: #439

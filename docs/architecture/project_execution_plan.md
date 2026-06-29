@@ -28,6 +28,7 @@ relaylm_related_authority:
   - e1r2_character_store_bootstrap.md
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
   - e1r4_retrieval_response_grounding.md
+  - e1r5_primary_mem_recall_candidate_bridge.md
   - e1_evaluation_consolidation.md
   - wave7_cross_slice_convergence_audit.md
   - wave6_cross_slice_convergence_audit.md
@@ -35,7 +36,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Execution Plan
 
-Last reviewed: 2026-06-28 JST
+Last reviewed: 2026-06-29 JST
 
 ## Purpose
 
@@ -76,7 +77,7 @@ MVP must provide:
 - real SOUL Lab Home conversation through the existing OpenAI-compatible RelayLM path;
 - Primary MEM formation from trusted scene-qualified managed requests and from the E1-R1 route-owned trusted Home gate when explicitly enabled;
 - speaker-provenance-safe Primary MEM formation summary so assistant acknowledgement/speculation and scene/trust qualification are not promoted to user facts;
-- later-turn Primary MEM retrieval and RelayCTX injection;
+- later-turn Primary MEM retrieval and RelayCTX injection through the M2-preferred path plus the bounded E1-R5 scoped Primary candidate bridge when M2 yields no eligible scoped Primary candidate;
 - request-side retrieval-response grounding and unsupported-detail suppression for recalled Primary MEM evidence;
 - read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence;
 - explicit auditable Correct;
@@ -124,6 +125,7 @@ Evaluation
     -> E1-R2 idempotent character-store bootstrap command complete
     -> E1-R3 provenance-preserving Primary MEM formation summary complete
     -> E1-R4 retrieval-response grounding and unsupported-detail suppression complete
+    -> E1-R5 Primary MEM recall candidate discovery bridge complete
 
 SOUL Lab product
   UI-B1A lifecycle and operation visibility   complete
@@ -137,7 +139,7 @@ SOUL Lab product
 
 ### Foundation already available for MVP planning
 
-The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1F, UI-B1A, I-5A/I-5B, I-7A/B/I-7C, E1, E1-R1, E1-R2, E1-R3, and E1-R4.
+The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1F, UI-B1A, I-5A/I-5B, I-7A/B/I-7C, E1, E1-R1, E1-R2, E1-R3, E1-R4, and E1-R5.
 
 ### Wave 4 completed
 
@@ -174,7 +176,7 @@ The O1F completion report is [O1F completion report](../mvp/wave6/o1f_completion
 
 ### Post-O1F next candidates
 
-This historical transition anchor records the candidate set that existed after O1F and before the later Wave 6 and Wave 7 implementation merges. It is kept so frozen convergence smokes can verify the transition while the current next-work list remains Post-E1-R4 / Post-Wave-7.
+This historical transition anchor records the candidate set that existed after O1F and before the later Wave 6, Wave 7, and E1-R5 implementation merges. It is kept so frozen convergence smokes can verify the transition while the current next-work list remains Post-E1-R5 / Post-Wave-7.
 
 ```text
 I-5B Pin / Unpin apply/API/UI/ranking work                 complete in Wave 6
@@ -183,6 +185,7 @@ E1-R1 trusted Home scene-admission path                    complete in Wave 6
 E1-R2 idempotent character-store bootstrap command         complete in Wave 6
 E1-R3 provenance-preserving Primary MEM formation summary  complete in Wave 7
 E1-R4 retrieval-response grounding and unsupported-detail suppression complete in Wave 7
+E1-R5 Primary MEM recall candidate discovery bridge        complete post-Wave-7
 O2/O3 only after explicit MVP need
 ```
 
@@ -216,7 +219,19 @@ The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](wave7_cr
 
 Wave 7 closes the post-Wave-6 E1 evidence-quality lane without adding O2/O3, post-hoc visible response rewriting, browser-owned trust, semantic mutation authority, RelaySOUL mutation, or media runtime execution.
 
-### Post-E1-R4 / Post-Wave-7 next candidates
+### Post-Wave-7 E1-R5 correction completed
+
+```text
+E1-R5 Primary MEM recall candidate discovery bridge
+  -> M2 remains the preferred relevance owner
+  -> bounded scoped Primary index/log/page fallback only when M2 yields no eligible scoped Primary candidate
+  -> shared I-4D lifecycle eligibility still excludes hidden/prepared/recovery/corrupt/prior/cross-scope candidates
+  -> public diagnostics remain content-free
+```
+
+The E1-R5 handoff is [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md) and the completion report is [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md). E1-R5 corrects the E1 proof boundary; current docs must not claim that M2 alone always selects current eligible scoped Primary MEM.
+
+### Post-E1-R5 / Post-Wave-7 next candidates
 
 ```text
 O2 supervised worker service, only if required
@@ -241,7 +256,8 @@ trusted formation lane
 
 conversation recall lane
   -> SOUL Lab Home real conversation
-  -> ordinary M2 / RelayCTX retrieval uses current eligible memories
+  -> ordinary M2-preferred retrieval uses current eligible memories
+  -> E1-R5 bounded scoped Primary candidate bridge covers the no-M2-scoped-candidate gap
   -> hidden/prior/prepared/recovery/corrupt/cross-scope candidates are excluded
   -> backend-bound recall responses are grounded to retrieved evidence
   -> unsupported recall details are suppressed or qualified
@@ -259,7 +275,7 @@ operations lane
   -> no runtime-private content leakage in projections or docs
 ```
 
-E1-R1 means Home-origin trusted admission is available only through the route-owned server gate. It does not allow browser-owned trust metadata. E1-R2 means local store layout can be initialized through an explicit dry-run-first operator command. E1-R3 means Primary MEM formation summary is speaker-provenance-safe. E1-R4 means retrieval responses receive backend-bound grounding and unsupported-detail suppression.
+E1-R1 means Home-origin trusted admission is available only through the route-owned server gate. It does not allow browser-owned trust metadata. E1-R2 means local store layout can be initialized through an explicit dry-run-first operator command. E1-R3 means Primary MEM formation summary is speaker-provenance-safe. E1-R4 means retrieval responses receive backend-bound grounding and unsupported-detail suppression. E1-R5 means scoped Primary MEM recall can bridge the no-M2-scoped-candidate gap without replacing M2 as preferred relevance owner or adding new mutation/scheduler authority.
 
 ## Post-MVP roadmap
 

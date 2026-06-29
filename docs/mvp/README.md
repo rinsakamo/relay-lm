@@ -18,17 +18,19 @@ Each implementation PR creates only its own report. It must not edit this centra
 
 ### Wave 7 merged completion reports
 
-W7-INT verifies the source PR numbers, merge commits, and dedicated handoffs for these historical reports:
+W7-INT verifies the source PR numbers, merge commits, and dedicated handoffs for the original Wave 7 historical reports. E1-R5 was merged after W7-INT and is indexed here as a post-Wave-7 correction report:
 
 - [E1-R3 completion report](wave7/e1r3_completion_report.md) — source PR #436, merge `7bb2525cb000e893146408065f1aa5976f2b54ab`.
 - [E1-R4 completion report](wave7/e1r4_completion_report.md) — source PR #437, merge `e6e5b32cd489dda493ff0171a260dd561a91765c`.
+- [E1-R5 completion report](wave7/e1r5_completion_report.md) — source PR #439, post-Wave-7 correction to the E1 recall proof boundary.
 
-The Wave 7 cross-slice convergence record is [Wave 7 Cross-Slice Convergence Audit](../architecture/wave7_cross_slice_convergence_audit.md). W7-INT is merged.
+The Wave 7 cross-slice convergence record is [Wave 7 Cross-Slice Convergence Audit](../architecture/wave7_cross_slice_convergence_audit.md). W7-INT is merged; E1-R5 is now reflected by current shared documents and dedicated handoff links.
 
 Wave 7 dedicated handoffs:
 
 - [E1-R3 Provenance-Preserving Primary MEM Formation Summary](../architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md)
 - [E1-R4 Retrieval-Response Grounding](../architecture/e1r4_retrieval_response_grounding.md)
+- [E1-R5 Primary MEM Recall Candidate Discovery Bridge](../architecture/e1r5_primary_mem_recall_candidate_bridge.md)
 
 ### Wave 6 merged completion reports
 
@@ -90,6 +92,7 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r1_comple
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r2_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r3_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r4_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r5_completion_report.md
 ```
 
 The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.
