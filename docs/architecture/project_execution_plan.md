@@ -36,7 +36,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Execution Plan
 
-Last reviewed: 2026-06-29 JST
+Last reviewed: 2026-06-30 JST
 
 ## Purpose
 
@@ -234,6 +234,19 @@ The E1-R5 handoff is [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
 ```text
+Post-MVP decision debt registry:
+  PM-D1 RelaySOUL gate design-freeze relation
+  PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope
+  PM-D3 RelayEMO/RelaySCN scene_state ownership
+  PM-D4 client history exclusion default-off deployment decision
+  PM-D5 RelayMEM flat-store compatibility removal
+  PM-D6 RelayINT native artifact / RelayREF wrapper removal
+  PM-D7 runtime install hook fold-in
+
+Implementation order for large compatibility removals:
+  PM-D5 -> PM-D6 -> PM-D7
+  PM-D2 closure or absorption after PM-D6 if the RelayREF wrapper removal eliminates the remaining legacy artifact scope
+
 O2 supervised worker service, only if required
   -> O3 always-on local operation, only if required
 
@@ -241,6 +254,20 @@ Static SOUL Lab bundle serving, only if required for local MVP packaging
 ```
 
 O2/O3 should remain after the evidence-quality gates unless a concrete evaluation requirement proves that supervised or always-on operation is necessary before local MVP evaluation.
+
+### Post-MVP decision debt registry
+
+The following entries are intentionally tracked as Post-MVP decision debt instead of being implemented inside the E1-R5 convergence lane. Each entry must either be completed by a dedicated PR or explicitly closed by a later roadmap decision. They are listed here so repeated convergence cycles cannot silently drop them.
+
+| ID | Debt | Precondition | Scope | Done condition |
+| --- | --- | --- | --- | --- |
+| PM-D1 | RelaySOUL gate design-freeze relation | Phase 5.5 stream unpack design-freeze boundary remains current. | Verify the RelaySOUL gate design documents against `phase5_5_stream_unpack_bounded_slice.md` and state whether each gate is frozen, exempt, or later-update-only. | The design-freeze relationship is documented and covered by a docs smoke anchor. |
+| PM-D2 | RelayINT -> RelayMEM `relayref_artifact` legacy compatibility scope | PM-D6 has either completed or proved the wrapper still needs a separate compatibility closure. | Decide whether the RelayINT-to-RelayMEM legacy `relayref_artifact` path is removed, absorbed into native RelayINT, or retained as a documented historical note. | No unscoped runtime legacy artifact remains; any retained historical note is non-runtime and explicitly bounded. |
+| PM-D3 | RelayEMO/RelaySCN `scene_state` ownership | Component responsibility remains owned by the responsibility design docs. | Select one canonical `scene_state` owner and reduce the other side to consumer/projection behavior. | Runtime and docs expose one owner and no overlapping mutation authority. |
+| PM-D4 | client history exclusion default-off deployment decision | Current default-off behavior remains safe and unflipped. | Decide whether client history exclusion stays default-off, flips on by deployment gate, or is removed as unused. | The default decision, rollout condition, and rollback rule are documented before any behavior change. |
+| PM-D5 | RelayMEM flat-store compatibility removal | Local runtime memory layout is character-scoped: `runtime/memory/characters/<character>/<namespace>/memory/...`. | Remove old flat layout discovery and flat fallback from `_relaymem_store_impl.py`, `relaymem_primary_recall.py`, and `app.py`. | No runtime path uses `current_flat`, `legacy_flat`, `migration_required`, `read_only_compatibility_mode`, flat candidate dirs, flat root fallback, or `build_relaymem_primary_recall_compat_projection()`. A smoke proves character-scoped memory discovery is the only accepted layout. |
+| PM-D6 | RelayINT native artifact / RelayREF wrapper removal | PM-D5 is complete, so retrieval no longer depends on flat-store compatibility. | Move wrapper behavior into native RelayINT ownership, remove RelayREF historical wrapper metadata such as `relayint_alias` and `source_compat_module`, and update `app.py` to call the native RelayINT function directly. | `build_relayint_reference_repair_dry_run()` is no longer a RelayREF compatibility wrapper; RelayINT emits native artifacts without RelayREF compatibility metadata. |
+| PM-D7 | runtime install hook fold-in | PM-D5 and PM-D6 are complete, so remaining runtime patches can be classified accurately. | Fold import-time runtime patch behavior from `__init__.py` into canonical modules, then remove the install hook. | Importing `relaylm` does not install or mutate runtime behavior; canonical modules own the behavior directly and smoke coverage proves runtime behavior still works without import-time patch installation. |
 
 ## MVP completion criteria
 
@@ -258,45 +285,25 @@ conversation recall lane
   -> SOUL Lab Home real conversation
   -> ordinary M2-preferred retrieval uses current eligible memories
   -> E1-R5 bounded scoped Primary candidate bridge covers the no-M2-scoped-candidate gap
-  -> hidden/prior/prepared/recovery/corrupt/cross-scope candidates are excluded
-  -> backend-bound recall responses are grounded to retrieved evidence
-  -> unsupported recall details are suppressed or qualified
+  -> responses are grounded to retrieved eligible Primary MEM evidence and suppress unsupported details
+  -> recalled content is visible in ordinary response behavior
 
-user governance lane
-  -> Correct API/UI and later retrieval convergence
-  -> Forget API/UI and later retrieval exclusion convergence
-  -> Pin / Unpin API/UI and ranking hint convergence
-  -> Held Apply / Discard API/UI and durable governance evidence
-  -> lifecycle visibility is readable without mutating evidence
+governance lane
+  -> Correct is auditable
+  -> Forget / Hide excludes fresh ordinary retrieval and survives restart/recovery edges
+  -> Pin / Unpin can be applied through explicit governance
+  -> Held Apply / Discard can be applied through explicit governance
+  -> hidden/prepared/recovery/corrupt/cross-scope/prior revisions remain excluded
 
-operations lane
-  -> bounded replay-before-queue production rounds
-  -> fairness/retry/backoff/recovery/shutdown/operational validation
-  -> no runtime-private content leakage in projections or docs
+operation lane
+  -> caller can invoke bounded local rounds
+  -> stale recovery/cancellation/shutdown controls exist
+  -> corruption/concurrency/saturation/restart/leakage validation is recorded
+  -> no hidden always-on worker is required for the claimed boundary
+
+bootstrap lane
+  -> local operator can dry-run and apply character-store bootstrap
+  -> evaluation character storage is character-scoped
 ```
 
-E1-R1 means Home-origin trusted admission is available only through the route-owned server gate. It does not allow browser-owned trust metadata. E1-R2 means local store layout can be initialized through an explicit dry-run-first operator command. E1-R3 means Primary MEM formation summary is speaker-provenance-safe. E1-R4 means retrieval responses receive backend-bound grounding and unsupported-detail suppression. E1-R5 means scoped Primary MEM recall can bridge the no-M2-scoped-candidate gap without replacing M2 as preferred relevance owner or adding new mutation/scheduler authority.
-
-## Post-MVP roadmap
-
-Post-MVP work should remain outside the MVP unless a later convergence PR explicitly moves it into the MVP boundary.
-
-```text
-I-6 Merge / Supersession
-  -> reconcile multiple Primary MEM lines under explicit audit
-
-I-8 Secondary MEM consolidation
-  -> summarize or consolidate stable evidence after Primary governance is safe
-
-I-9 RelaySOUL proposal / intervention / rollback
-  -> persona-level proposal and explicit approval workflow
-
-Voice / TTS / avatar production loop
-  -> consume existing text and hint boundaries without changing memory authority
-
-Character-to-character communication
-  -> peer transport and conversation governance after single-character memory is stable
-
-Experimental SOUL replacement and memory bootstrap
-  -> explicit post-MVP lab work only
-```
+MVP completion should be declared by a convergence PR that updates this plan, [Project Status](../PROJECT_STATUS.md), and the relevant `docs/mvp/` completion records together.
