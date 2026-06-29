@@ -1,6 +1,9 @@
 """Public I1-GC one-record durable-finalization replay authority."""
 from __future__ import annotations
 
+import os
+import stat
+from collections.abc import Mapping
 from typing import Any
 
 from . import _relaymem_slp_durable_finalization_replay_impl as _impl
@@ -20,7 +23,6 @@ prepare_relaymem_slp_runtime_enqueue = _impl.prepare_relaymem_slp_runtime_enqueu
 _rename_noreplace = _impl._rename_noreplace
 _hash_without = _impl._hash_without
 _acquire_fence = _impl._acquire_fence
-_read_completion_fd = _impl._read_completion_fd
 _publish_completion = _impl._publish_completion
 
 
@@ -64,6 +66,106 @@ def _wrap_runtime(
         source_store_result=persisted,
         orphan_cleanup_result=None,
     )
+
+
+def _read_completion_fd(
+    root_fd: int,
+    locator: str,
+    expected: Mapping[str, object],
+) -> _impl._Inspect:
+    """Read one completion and distinguish invalid bytes from valid collisions."""
+
+    name = _impl.completion_filename(locator)
+    try:
+        before = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return _impl._Inspect("absent")
+    except OSError:
+        return _impl._Inspect(
+            "retryable", ("durable_finalization_completion_unreadable",)
+        )
+    if stat.S_ISLNK(before.st_mode):
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_symlink_blocked",)
+        )
+    if not stat.S_ISREG(before.st_mode):
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_unsafe_file_type",)
+        )
+    if before.st_nlink != 1:
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_hardlink_invalid",)
+        )
+    if before.st_size > _impl._MAX_COMPLETION_BYTES:
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_size_exceeded",)
+        )
+    try:
+        fd = os.open(
+            name,
+            os.O_RDONLY
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            dir_fd=root_fd,
+        )
+    except FileNotFoundError:
+        return _impl._Inspect("absent")
+    except OSError:
+        return _impl._Inspect(
+            "retryable", ("durable_finalization_completion_unreadable",)
+        )
+    try:
+        info = os.fstat(fd)
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
+            or (before.st_dev, before.st_ino) != (info.st_dev, info.st_ino)
+        ):
+            return _impl._Inspect(
+                "corrupt",
+                ("durable_finalization_completion_changed_during_read",),
+            )
+        data = _impl._read_bounded(fd, _impl._MAX_COMPLETION_BYTES)
+    finally:
+        os.close(fd)
+    if data is None:
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_size_exceeded",)
+        )
+    try:
+        after = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+    except OSError:
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_changed_during_read",)
+        )
+    if (
+        stat.S_ISLNK(after.st_mode)
+        or not stat.S_ISREG(after.st_mode)
+        or after.st_nlink != 1
+        or (after.st_dev, after.st_ino) != (info.st_dev, info.st_ino)
+        or after.st_size != info.st_size
+    ):
+        return _impl._Inspect(
+            "corrupt", ("durable_finalization_completion_changed_during_read",)
+        )
+    value, reason = _impl.decode_canonical_json(data)
+    if value is None or reason:
+        return _impl._Inspect(
+            "corrupt",
+            (reason or "durable_finalization_completion_decode_failed",),
+        )
+    _, reasons = _impl.validate_completion_marker(
+        value,
+        expected_locator=locator,
+        expected=expected,
+    )
+    if reasons:
+        collision_reason = "durable_finalization_completion_identity_collision"
+        return _impl._Inspect(
+            "collision" if reasons == (collision_reason,) else "corrupt",
+            reasons,
+        )
+    return _impl._Inspect("exact")
 
 
 def _sync_dependency_seams() -> None:
