@@ -24,7 +24,6 @@ class BlockType(str, Enum):
     COMMON_RUNTIME_POLICY = "common_runtime_policy"
     CHARACTER_SOUL_ANCHOR = "character_soul_anchor"
     CHARACTER_OUTPUT_POLICY = "character_output_policy"
-    ROOM_ANCHOR = "room_anchor"
     RELATIONSHIP_ANCHOR = "relationship_anchor"
     STABLE_MEMORY_SUMMARY = "stable_memory_summary"
     SCENE_STATE = "scene_state"
@@ -341,7 +340,6 @@ def build_placeholder_persona_blocks(
     common_runtime_policy: str,
     soul: str,
     output_policy: str,
-    room_anchor: str | None,
     relationship_anchor: str | None = None,
     stable_memory_summary: str | None = None,
     scene_state: str | None = None,
@@ -377,19 +375,6 @@ def build_placeholder_persona_blocks(
             include_in_prefix_cache_target=True,
         ),
     ]
-
-    if room_anchor:
-        blocks.append(
-            ContextBlock(
-                block_id=BlockType.ROOM_ANCHOR.value,
-                block_type=BlockType.ROOM_ANCHOR,
-                stability_class=StabilityClass.STABLE_PREFIX,
-                source="placeholder/ROOM_ANCHOR.md",
-                content=room_anchor,
-                token_budget_hint=300,
-                include_in_prefix_cache_target=True,
-            )
-        )
 
     if relationship_anchor:
         blocks.append(
