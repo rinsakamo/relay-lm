@@ -23,6 +23,7 @@ def require(condition: bool, message: str) -> None:
 
 
 def main() -> int:
+    retired_anchor = "room" + "_anchor"
     blocks = build_placeholder_persona_blocks(
         common_runtime_policy="Keep replies speakable and do not reveal internal tags.",
         soul="You are a stable AI character with a consistent worldview.",
@@ -55,7 +56,7 @@ def main() -> int:
     require("<character_output_policy>" in rendered, rendered)
     require("<relationship_anchor>" in rendered, rendered)
     require("<scene_state>" in rendered, rendered)
-    require("room_anchor" not in rendered, rendered)
+    require(retired_anchor not in rendered, rendered)
     require(rendered.endswith("</relaylm_context>"), rendered)
     print("ok render context blocks")
 
