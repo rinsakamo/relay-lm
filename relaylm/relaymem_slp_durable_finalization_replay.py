@@ -1,6 +1,7 @@
 """Public I1-GC one-record durable-finalization replay authority."""
 from __future__ import annotations
 
+import fcntl
 import os
 import stat
 from collections.abc import Mapping
@@ -22,8 +23,86 @@ apply_relaymem_slp_runtime_enqueue = _impl.apply_relaymem_slp_runtime_enqueue
 prepare_relaymem_slp_runtime_enqueue = _impl.prepare_relaymem_slp_runtime_enqueue
 _rename_noreplace = _impl._rename_noreplace
 _hash_without = _impl._hash_without
-_acquire_fence = _impl._acquire_fence
 _publish_completion = _impl._publish_completion
+
+
+def _acquire_fence(
+    root: str,
+    locator: str,
+) -> tuple[_impl._Fence | None, bool, tuple[str, ...]]:
+    """Acquire one durable nonblocking cross-process locator fence."""
+
+    root_fd, reasons = _impl._open_store_root(root)
+    if root_fd is None:
+        return None, False, reasons
+    name = f"{_impl._LOCK_PREFIX}{locator}.lock"
+    lock_fd: int | None = None
+    acquired = False
+    try:
+        try:
+            before = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            before = None
+        if before is not None and (
+            stat.S_ISLNK(before.st_mode)
+            or not stat.S_ISREG(before.st_mode)
+            or before.st_nlink != 1
+        ):
+            return None, False, (
+                "durable_finalization_replay_lock_unsafe_file_type",
+            )
+        lock_fd = os.open(
+            name,
+            os.O_RDWR
+            | os.O_CREAT
+            | getattr(os, "O_CLOEXEC", 0)
+            | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+            dir_fd=root_fd,
+        )
+        info = os.fstat(lock_fd)
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_nlink != 1
+            or (
+                before is not None
+                and (before.st_dev, before.st_ino) != (info.st_dev, info.st_ino)
+            )
+        ):
+            return None, False, (
+                "durable_finalization_replay_lock_unsafe_file_type",
+            )
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            acquired = True
+        except BlockingIOError:
+            return None, True, ("durable_finalization_replay_lock_busy",)
+        if before is None:
+            os.fsync(lock_fd)
+            os.fsync(root_fd)
+        fence = _impl._Fence(root_fd, lock_fd)
+        root_fd = -1
+        lock_fd = None
+        acquired = False
+        return fence, False, ()
+    except OSError:
+        return None, False, ("durable_finalization_replay_lock_failed",)
+    finally:
+        if lock_fd is not None:
+            if acquired:
+                try:
+                    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                except OSError:
+                    pass
+            try:
+                os.close(lock_fd)
+            except OSError:
+                pass
+        if root_fd >= 0:
+            try:
+                os.close(root_fd)
+            except OSError:
+                pass
 
 
 def _wrap_runtime(
