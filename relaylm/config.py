@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field, HttpUrl, StrictBool, model_validator
 
 Mode = Literal["pass_through", "memory_light", "memory_full"]
 TrustedHomeSceneAdmissionMode = Literal["disabled", "dry_run", "apply"]
+_RETIRED_CHARACTER_CONFIG_FIELDS = frozenset({"room_anchor", "room_state"})
 
 
 class ListenConfig(BaseModel):
@@ -61,6 +62,18 @@ class CharacterConfig(BaseModel):
     stable_memory_summary: str | None = None
     scene_state: str | None = None
     token_policy_shadow_enabled: bool | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_retired_character_fields(cls, value: object) -> object:
+        if isinstance(value, dict):
+            retired = sorted(_RETIRED_CHARACTER_CONFIG_FIELDS.intersection(value))
+            if retired:
+                raise ValueError(
+                    "retired_character_config_field_unsupported:"
+                    + ",".join(retired)
+                )
+        return value
 
 
 class ModelRoute(BaseModel):
