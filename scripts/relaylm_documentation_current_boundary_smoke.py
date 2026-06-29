@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current documentation boundary anchors after the E1-R5 convergence fix."""
+"""Validate current documentation boundary anchors after E1-R5 and debt tracking."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -48,6 +48,14 @@ REQUIRED = {
         "W7-INT merged",
         "Post-E1-R5 / Post-Wave-7 next candidates:",
         "E1-R5 scoped Primary recall candidate bridge boundary",
+        "Post-MVP decision debt is now tracked explicitly as PM-D1",
+        "PM-D1 RelaySOUL gate design-freeze relation",
+        "PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope",
+        "PM-D3 RelayEMO/RelaySCN scene_state ownership",
+        "PM-D4 client history exclusion default-off deployment decision",
+        "PM-D5 RelayMEM flat-store compatibility removal",
+        "PM-D6 RelayINT native artifact / RelayREF wrapper removal",
+        "PM-D7 runtime install hook fold-in",
     ),
     "docs/README.md": (
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
@@ -83,6 +91,18 @@ REQUIRED = {
         "E1-R3 is current implemented as provenance-preserving Primary MEM formation summary.",
         "E1-R4 is current implemented as request-side retrieval-response grounding and unsupported-detail suppression.",
         "E1-R5 is current implemented as bounded scoped Primary MEM recall candidate discovery bridge.",
+    ),
+    "docs/architecture/project_execution_plan.md": (
+        "Post-MVP decision debt registry",
+        "PM-D1 RelaySOUL gate design-freeze relation",
+        "PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope",
+        "PM-D3 RelayEMO/RelaySCN scene_state ownership",
+        "PM-D4 client history exclusion default-off deployment decision",
+        "PM-D5 RelayMEM flat-store compatibility removal",
+        "PM-D6 RelayINT native artifact / RelayREF wrapper removal",
+        "PM-D7 runtime install hook fold-in",
+        "Implementation order for large compatibility removals:",
+        "PM-D5 -> PM-D6 -> PM-D7",
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
         "E1-R4 request-side evidence-grounded recall behavior is current implemented.",
