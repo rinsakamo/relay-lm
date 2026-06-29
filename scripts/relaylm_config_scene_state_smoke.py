@@ -3,6 +3,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from pydantic import ValidationError
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -62,6 +64,19 @@ def _verify_profile_compile(cfg: RelayLMConfig, expect_scene_state_block: bool) 
     require(plan.enabled is True, plan)
 
 
+def _verify_retired_key_rejected(key: str, value: str) -> None:
+    character = _base_character()
+    character[key] = value
+    try:
+        RelayLMConfig.model_validate(_base_config(character))
+    except ValidationError as exc:
+        message = str(exc)
+        require("retired_character_config_field_unsupported" in message, message)
+        require(key in message, message)
+    else:
+        raise AssertionError(f"accepted retired character config key: {key}")
+
+
 def main() -> int:
     case1 = _base_character()
     case1["scene_state"] = "examples/profiles/default/SCENE_STATE.md"
@@ -77,6 +92,10 @@ def main() -> int:
     require(c2.scene_state is None, c2)
     _verify_profile_compile(cfg2, expect_scene_state_block=False)
     print("ok no scene_state profile compile")
+
+    _verify_retired_key_rejected("room_state", "examples/profiles/default/SCENE_STATE.md")
+    _verify_retired_key_rejected("room_anchor", "examples/profiles/default/SCENE_STATE.md")
+    print("ok retired scene compatibility keys rejected")
 
     print("ok scene_state is the only scene file field")
     return 0
