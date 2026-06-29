@@ -195,7 +195,7 @@ characters:
     memory_seed_path: examples/memory/companion_memories.yaml
 ```
 
-New copy-ready profiles omit legacy `room_anchor` unless a fixed durable room constraint is genuinely required.
+Copy-ready profiles use `scene_state` as the only current scene file field.
 
 ## Prompt layering notes
 
