@@ -49,6 +49,10 @@ def main() -> None:
         "B0-B3 durable enqueue and fenced lifecycle",
         "C2 one-job claim/rehydrate/execute adapter: complete",
         "I1 next-turn Primary MEM recall: complete",
+    )
+    require_any(
+        status,
+        "Character and namespace isolation: complete",
         "character and namespace isolation: complete",
     )
     require_any(
