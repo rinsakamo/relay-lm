@@ -274,3 +274,29 @@ operations lane
   -> fairness/retry/backoff/recovery/shutdown/operational validation
   -> no runtime-private content leakage in projections or docs
 ```
+
+E1-R1 means Home-origin trusted admission is available only through the route-owned server gate. It does not allow browser-owned trust metadata. E1-R2 means local store layout can be initialized through an explicit dry-run-first operator command. E1-R3 means Primary MEM formation summary is speaker-provenance-safe. E1-R4 means retrieval responses receive backend-bound grounding and unsupported-detail suppression. E1-R5 means scoped Primary MEM recall can bridge the no-M2-scoped-candidate gap without replacing M2 as preferred relevance owner or adding new mutation/scheduler authority.
+
+## Post-MVP roadmap
+
+Post-MVP work should remain outside the MVP unless a later convergence PR explicitly moves it into the MVP boundary.
+
+```text
+I-6 Merge / Supersession
+  -> reconcile multiple Primary MEM lines under explicit audit
+
+I-8 Secondary MEM consolidation
+  -> summarize or consolidate stable evidence after Primary governance is safe
+
+I-9 RelaySOUL proposal / intervention / rollback
+  -> persona-level proposal and explicit approval workflow
+
+Voice / TTS / avatar production loop
+  -> consume existing text and hint boundaries without changing memory authority
+
+Character-to-character communication
+  -> peer transport and conversation governance after single-character memory is stable
+
+Experimental SOUL replacement and memory bootstrap
+  -> explicit post-MVP lab work only
+```
