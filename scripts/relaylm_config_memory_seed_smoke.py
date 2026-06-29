@@ -34,7 +34,8 @@ def main() -> int:
     validate_block_order(blocks)
     rendered = render_context_blocks(blocks)
     require("<retrieved_memory>" in rendered, rendered)
-    require(rendered.index("<room_anchor>") < rendered.index("<retrieved_memory>"), rendered)
+    require("<scene_state>" in rendered, rendered)
+    require(rendered.index("<retrieved_memory>") < rendered.index("<scene_state>"), rendered)
     print("ok insert config memory block")
 
     no_memory_config = config.model_copy(deep=True)

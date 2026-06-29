@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import shutil
 import sys
-import tempfile
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -27,10 +25,9 @@ def _block_ids(profile_dir: Path) -> list[str]:
 
 def main() -> int:
     profile_dir = REPO_ROOT / "examples" / "profiles" / "default"
-    require(not (profile_dir / "ROOM_ANCHOR.md").exists(), profile_dir)
 
     files = _build_profile_files_for_dir(profile_dir)
-    require(files.room_anchor is None, files)
+    require(files.scene_state is not None, files)
     require(
         _block_ids(profile_dir)
         == [
@@ -41,20 +38,7 @@ def main() -> int:
         ],
         _block_ids(profile_dir),
     )
-    print("ok RelaySOUL dry-run uses current four-block standard profile")
-
-    with tempfile.TemporaryDirectory(dir=REPO_ROOT) as temp_dir:
-        compatibility_dir = Path(temp_dir) / "profile"
-        shutil.copytree(profile_dir, compatibility_dir)
-        (compatibility_dir / "ROOM_ANCHOR.md").write_text(
-            "Fixed compatibility room constraint.",
-            encoding="utf-8",
-        )
-
-        compatibility_files = _build_profile_files_for_dir(compatibility_dir)
-        require(compatibility_files.room_anchor is not None, compatibility_files)
-        require("room_anchor" in _block_ids(compatibility_dir), _block_ids(compatibility_dir))
-    print("ok RelaySOUL dry-run preserves optional room-anchor compatibility")
+    print("ok RelaySOUL dry-run uses current scene-state standard profile")
 
     return 0
 

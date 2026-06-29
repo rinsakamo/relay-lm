@@ -38,7 +38,7 @@ def main() -> int:
         memory_block=memory_block,
     )
     require(len(blocks_with_memory) == len(profile_blocks) + 1, blocks_with_memory)
-    require(blocks_with_memory[-1].block_type.value == "retrieved_memory", blocks_with_memory[-1])
+    require(blocks_with_memory[-2].block_type.value == "retrieved_memory", blocks_with_memory[-2])
     validate_block_order(blocks_with_memory)
     print("ok insert memory block")
 
@@ -52,16 +52,17 @@ def main() -> int:
         "common_runtime_policy",
         "character_soul_anchor",
         "character_output_policy",
-        "room_anchor",
         "retrieved_memory",
+        "scene_state",
         "incoming_system_prompt",
     ], block_order)
-    print("ok memory before incoming system fallback")
+    print("ok memory before current scene and incoming system fallback")
 
     rendered = render_context_blocks(final_blocks)
     require("<retrieved_memory>" in rendered, rendered)
     require("default-relaylm-project" in rendered, rendered)
-    require(rendered.index("<retrieved_memory>") < rendered.index("<incoming_system_prompt>"), rendered)
+    require(rendered.index("<retrieved_memory>") < rendered.index("<scene_state>"), rendered)
+    require(rendered.index("<scene_state>") < rendered.index("<incoming_system_prompt>"), rendered)
     print("ok render memory context")
 
     no_memory_blocks = insert_memory_block(

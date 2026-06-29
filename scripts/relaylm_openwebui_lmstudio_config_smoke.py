@@ -232,7 +232,6 @@ def main() -> int:
         ]:
             require(isinstance(path_value, str) and Path(path_value).exists(), path_value)
 
-        require(character.room_anchor is None, character)
         scene_state = Path(str(character.scene_state)).read_text(encoding="utf-8")
         require("synchronous live conversation" in scene_state, scene_state)
 
@@ -245,7 +244,7 @@ def main() -> int:
         require(plan.compiled_block_count == 4, plan)
         require(plan.compiled_message_count == 2, plan)
 
-    print("ok room-anchor content migrated to current owners")
+    print("ok scene-state content migrated to current owners")
     print("ok openwebui lmstudio copy-ready config routes")
     return 0
 

@@ -308,11 +308,9 @@ May contain:
 
 It must not contain role names, setting/task text, participant values, constraint values, transition-reason text, prompt fragments, or visible response text.
 
-## Legacy Room compatibility
+## Retired direct room-profile compatibility
 
-`room_state` may remain a compatibility alias for `scene_state` only when `scene_state` is unset.
-
-Legacy `room_anchor` content should be reclassified:
+Current character profile compilation uses `scene_state` as the only scene file field. Older direct room-profile file and alias paths are not current runtime inputs and should be migrated into the present owners:
 
 ```text
 shared fixed rules -> common_runtime_policy

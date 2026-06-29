@@ -163,12 +163,10 @@ characters:
     common_runtime_policy:
     soul: examples/profiles/default/SOUL.md
     output_policy: examples/profiles/default/style.md
-    room_anchor:
     memory_seed_path: examples/memory/default_memories.yaml
     relationship_anchor:
     stable_memory_summary:
     scene_state: examples/profiles/default/SCENE_STATE.md
-    room_state:
     token_policy_shadow_enabled:
 
 relayemo_enabled: false

@@ -199,12 +199,10 @@ characters:
     common_runtime_policy:
     soul: examples/profiles/companion/SOUL.md
     output_policy: examples/profiles/companion/OUTPUT_POLICY.md
-    room_anchor:
     memory_seed_path: examples/memory/companion_memories.yaml
     relationship_anchor:
     stable_memory_summary:
     scene_state: examples/profiles/default/SCENE_STATE.md
-    room_state:
     token_policy_shadow_enabled:
 ```
 
@@ -216,15 +214,13 @@ Required fields:
 Optional fields:
 
 - `common_runtime_policy`
-- `room_anchor`
 - `memory_seed_path`
 - `relationship_anchor`
 - `stable_memory_summary`
 - `scene_state`
-- `room_state`
 - `token_policy_shadow_enabled`
 
-`room_state` is a legacy alias used only when `scene_state` is unset. `room_anchor` is a compatibility field for fixed durable room constraints; do not place current topic, current mood, open questions, recent turns, or durable memory bodies there.
+`scene_state` is the only current character scene file field. Fixed room constraints should move into `scene_state` or future RelaySCN-owned state rather than a separate compatibility field.
 
 ### Scene/CTX/EMO ownership
 
@@ -372,7 +368,7 @@ Bounds and accepted ranges:
 - admitted record locators: 1 through 100000, default 1024;
 - one bounded publication operation: 1 through 60000 milliseconds, default 5000.
 
-The private record is content-bearing and separate from C1-5 and B2. I1-GB publishes restart evidence only. I1-GC one-record replay/completion and I1-GD retention/isolation cleanup are complete; I1-GE full crash validation remains unimplemented.
+The private record is content-bearing and separate from C1-5 and B2. I1-GB publishes restart evidence only. Current finalized-source mappings must include `formation_summary_artifact`; older local durable-finalization artifacts without that field are no longer supported and should be regenerated. I1-GC one-record replay/completion, I1-GD retention/isolation cleanup, and I1-GE full crash validation are complete.
 
 ## I1-GD durable-finalization retention flags
 
@@ -410,7 +406,7 @@ O0 is default-off. Exactly these gate combinations are valid:
 | dry-run | true | true | false |
 | apply | true | false | true |
 
-Every other combination is invalid configuration. The `relaylm-worker` CLI cannot elevate config to apply. When enabled, `relaymem_slp_queue_root`, `relaymem_slp_protected_source_root`, and `memory.root_path` must be absolute. `relaymem_local_worker_claim_owner` must be a bounded token. Lease duration accepts 1 through 604800 seconds. Discovery accepts 1 through 4096 entries and defaults to 256.
+Every other combination is invalid configuration. The `relaymem-worker` CLI cannot elevate config to apply. When enabled, `relaymem_slp_queue_root`, `relaymem_slp_protected_source_root`, and `memory.root_path` must be absolute. `relaymem_local_worker_claim_owner` must be a bounded token. Lease duration accepts 1 through 604800 seconds. Discovery accepts 1 through 4096 entries and defaults to 256.
 
 O0 processes at most one eligible queued record per `--once` invocation. It delegates claim, lease, retry, rehydration, worker execution, terminal transition, and cleanup to existing B3/C1-5/C2/C1-2 boundaries. It does not poll or start a daemon.
 
@@ -560,5 +556,5 @@ These are default-off diagnostics/preflight contracts unless a dedicated current
 - Require configured approved profile sources for current managed compilation.
 - Never use incoming client instructions as fallback durable SOUL authority.
 - Treat client system/developer messages as low-trust current instruction evidence.
-- Keep current, compatibility, and target config examples labeled.
+- Keep current and target config examples labeled.
 - Do not enable mutation, persistence, recovery, worker execution, or scheduling merely because a helper/schema exists.

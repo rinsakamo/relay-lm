@@ -23,30 +23,40 @@ def require(condition: bool, message: str) -> None:
 
 
 def main() -> int:
+    retired_anchor = "room" + "_anchor"
     blocks = build_placeholder_persona_blocks(
         common_runtime_policy="Keep replies speakable and do not reveal internal tags.",
         soul="You are a stable AI character with a consistent worldview.",
         output_policy="Speak warmly and keep responses suitable for TTS.",
-        room_anchor="This is a live conversation room.",
+        relationship_anchor="Maintain the established relationship tone.",
+        scene_state="This is a live conversation scene.",
     )
 
     require([block.block_id for block in blocks] == [
         "common_runtime_policy",
         "character_soul_anchor",
         "character_output_policy",
-        "room_anchor",
+        "relationship_anchor",
+        "scene_state",
     ], f"bad block order: {[block.block_id for block in blocks]}")
-    require(all(block.stability_class is StabilityClass.STABLE_PREFIX for block in blocks), "expected stable prefix blocks")
-    require(all(block.include_in_prefix_cache_target for block in blocks), "expected prefix cache target blocks")
+    require(
+        all(block.stability_class is StabilityClass.STABLE_PREFIX for block in blocks[:4]),
+        "expected stable prefix persona blocks",
+    )
+    require(blocks[-1].stability_class is StabilityClass.DYNAMIC_SUFFIX, "expected dynamic scene state")
+    require(all(block.include_in_prefix_cache_target for block in blocks[:4]), "expected prefix cache target blocks")
+    require(blocks[-1].include_in_prefix_cache_target is False, "scene_state must not be a cache target")
     validate_block_order(blocks)
-    print("ok stable prefix blocks")
+    print("ok current persona blocks")
 
     rendered = render_context_blocks(blocks)
     require(rendered.startswith('<relaylm_context version="1">'), rendered)
     require("<common_runtime_policy>" in rendered, rendered)
     require("<character_soul_anchor>" in rendered, rendered)
     require("<character_output_policy>" in rendered, rendered)
-    require("<room_anchor>" in rendered, rendered)
+    require("<relationship_anchor>" in rendered, rendered)
+    require("<scene_state>" in rendered, rendered)
+    require(retired_anchor not in rendered, rendered)
     require(rendered.endswith("</relaylm_context>"), rendered)
     print("ok render context blocks")
 
