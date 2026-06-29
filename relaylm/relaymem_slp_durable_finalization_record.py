@@ -57,15 +57,12 @@ SEAL_FIELDS = frozenset({
     "finalized_turn_source", "durable_job", "job_id",
     "dispatch_idempotency_key", "seal_digest",
 })
-FINALIZED_SOURCE_LEGACY_FIELDS = frozenset({
+FINALIZED_SOURCE_FIELDS = frozenset({
     "schema_version", "character_id", "run_id", "turn_index", "session_id",
     "namespace", "source_event_kind", "source_count",
     "persistence_policy_status", "source_lineage_artifact",
     "relayscn_scene_policy_artifact", "relayemo_artifact",
     "governed_messages", "governed_experience_artifact",
-})
-FINALIZED_SOURCE_FIELDS = frozenset({
-    *FINALIZED_SOURCE_LEGACY_FIELDS,
     "formation_summary_artifact",
 })
 
@@ -528,7 +525,7 @@ def validate_finalized_source_mapping(value: object) -> tuple[str, ...]:
         return ("durable_finalization_finalized_source_shape_invalid",)
     reasons: list[str] = []
     fields = frozenset(value)
-    if fields not in {FINALIZED_SOURCE_FIELDS, FINALIZED_SOURCE_LEGACY_FIELDS}:
+    if fields != FINALIZED_SOURCE_FIELDS:
         reasons.append("durable_finalization_finalized_source_shape_mismatch")
     if value.get("schema_version") != FINALIZED_TURN_SOURCE_SCHEMA:
         reasons.append("durable_finalization_finalized_source_schema_mismatch")
@@ -552,9 +549,7 @@ def validate_finalized_source_mapping(value: object) -> tuple[str, ...]:
     ):
         if type(value.get(key)) is not dict:
             reasons.append(f"durable_finalization_{key}_invalid")
-    if "formation_summary_artifact" in value and type(
-        value.get("formation_summary_artifact")
-    ) is not dict:
+    if type(value.get("formation_summary_artifact")) is not dict:
         reasons.append("durable_finalization_formation_summary_artifact_invalid")
     if value.get("relayemo_artifact") is not None and type(
         value.get("relayemo_artifact")
@@ -807,7 +802,6 @@ def _require_digest(value: object) -> None:
 __all__ = [
     "BASE_FIELDS",
     "FINALIZED_SOURCE_FIELDS",
-    "FINALIZED_SOURCE_LEGACY_FIELDS",
     "LOCATOR_VERSION",
     "PROJECTION_SCHEMA",
     "RECORD_REVISION",
