@@ -56,23 +56,11 @@ class CharacterConfig(BaseModel):
     common_runtime_policy: str | None = None
     soul: str
     output_policy: str
-    room_anchor: str | None = None
     memory_seed_path: str | None = None
     relationship_anchor: str | None = None
     stable_memory_summary: str | None = None
     scene_state: str | None = None
-    room_state: str | None = None
     token_policy_shadow_enabled: bool | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def _apply_scene_state_alias(cls, raw: Any) -> Any:
-        if not isinstance(raw, dict):
-            return raw
-        if raw.get("scene_state") is None and raw.get("room_state") is not None:
-            raw = dict(raw)
-            raw["scene_state"] = raw.get("room_state")
-        return raw
 
 
 class ModelRoute(BaseModel):
