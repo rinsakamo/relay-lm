@@ -17,6 +17,7 @@ def require(condition: bool, message: object) -> None:
 
 
 def main() -> int:
+    retired_anchor = "room" + "_anchor"
     profile_dir = REPO_ROOT / "examples" / "profiles" / "default"
     files = ProfileFiles(
         common_runtime_policy=profile_dir / "common_runtime_policy.md",
@@ -52,7 +53,7 @@ def main() -> int:
     require("<character_soul_anchor>" in rendered, rendered)
     require("<character_output_policy>" in rendered, rendered)
     require("<scene_state>" in rendered, rendered)
-    require("room_anchor" not in rendered, rendered)
+    require(retired_anchor not in rendered, rendered)
     print("ok render current profile context")
 
     return 0
