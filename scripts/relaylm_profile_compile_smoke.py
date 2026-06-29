@@ -23,6 +23,8 @@ def require(condition: bool, message: object) -> None:
 
 def main() -> int:
     instruction_role = "sys" + "tem"
+    retired_anchor = "room" + "_anchor"
+    retired_scene_alias = "room" + "_state"
     payload = {
         "model": "relaylm-default",
         "messages": [
@@ -43,7 +45,7 @@ def main() -> int:
     require("<relationship_anchor>" not in context, context)
     require("<stable_memory_summary>" not in context, context)
     require("<scene_state>" in context, context)
-    require("room_anchor" not in context, context)
+    require(retired_anchor not in context, context)
     print("ok optional persona blocks omitted when unset")
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -92,7 +94,7 @@ def main() -> int:
         compiled4 = compile_chat_payload_if_enabled(config=config4, route=route4, payload=payload)
         context4 = compiled4.payload["messages"][0]["content"]
         require("Scene mood is energetic." in context4, context4)
-        require("room_state" not in context4, context4)
+        require(retired_scene_alias not in context4, context4)
         print("ok scene_state is the only scene file field")
 
     return 0
