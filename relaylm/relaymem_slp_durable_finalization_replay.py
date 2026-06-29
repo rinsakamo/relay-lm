@@ -20,9 +20,50 @@ prepare_relaymem_slp_runtime_enqueue = _impl.prepare_relaymem_slp_runtime_enqueu
 _rename_noreplace = _impl._rename_noreplace
 _hash_without = _impl._hash_without
 _acquire_fence = _impl._acquire_fence
-_wrap_runtime = _impl._wrap_runtime
 _read_completion_fd = _impl._read_completion_fd
 _publish_completion = _impl._publish_completion
+
+
+def _wrap_runtime(
+    applied: _impl.RelayMEMSLPRuntimeEnqueueResult,
+    persisted: _impl.RelayMEMSLPProtectedSourceStoreResult,
+    restart_complete: bool,
+) -> _impl.RelayMEMSLPDurableRuntimeEnqueueResult:
+    """Project canonical reread convergence without guessing a failed mutation."""
+
+    enqueue = applied.enqueue_result
+    if restart_complete:
+        if applied.status in {"source_retention_failed", "enqueue_failed"}:
+            status = "process_local_cache_degraded"
+        elif enqueue is not None and enqueue.status == "enqueued_new":
+            status = "enqueued"
+        else:
+            status = "duplicate_existing"
+    elif enqueue is not None and enqueue.status == "enqueued_new":
+        status = "enqueued"
+    elif applied.status == "source_retention_failed":
+        status = "process_local_cache_degraded"
+    elif enqueue is not None and enqueue.status == "duplicate_existing":
+        status = "duplicate_existing"
+    else:
+        status = "enqueue_failed"
+    reasons = (
+        applied.blocked_reasons
+        if status in {"process_local_cache_degraded", "enqueue_failed"}
+        else ()
+    )
+    return _impl.RelayMEMSLPDurableRuntimeEnqueueResult(
+        status=status,
+        enabled=True,
+        dry_run_only=False,
+        apply_enabled=True,
+        restart_complete=restart_complete,
+        source_persisted_before_enqueue=True,
+        blocked_reasons=_impl.dedupe(tuple(reasons)),
+        runtime_result=applied,
+        source_store_result=persisted,
+        orphan_cleanup_result=None,
+    )
 
 
 def _sync_dependency_seams() -> None:
