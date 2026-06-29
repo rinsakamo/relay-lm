@@ -35,7 +35,7 @@ def main() -> int:
         "common_runtime_policy",
         "character_soul_anchor",
         "character_output_policy",
-        "retrieved_memory" if False else "scene_state",
+        "scene_state",
     ], f"bad blocks: {[block.block_id for block in blocks]}")
     print("ok build config profile blocks")
 
