@@ -32,7 +32,7 @@ on:
       - scripts/relaylm_jsonl_trace_smoke.py
       - scripts/relaylm_hardening_smoke.py
       - scripts/relaylm_profile_loading_smoke.py
-      - scripts/relaylm_config_room_scene_compat_smoke.py
+      - scripts/relaylm_config_scene_state_smoke.py
       - scripts/relaylm_relaysoul_temp_revision_compile_dry_run.py
       - scripts/relaylm_relaysoul_temp_revision_profile_smoke.py
       - .github/workflows/onboarding-config-smoke.yml
@@ -68,7 +68,7 @@ on:
       - scripts/relaylm_jsonl_trace_smoke.py
       - scripts/relaylm_hardening_smoke.py
       - scripts/relaylm_profile_loading_smoke.py
-      - scripts/relaylm_config_room_scene_compat_smoke.py
+      - scripts/relaylm_config_scene_state_smoke.py
       - scripts/relaylm_relaysoul_temp_revision_compile_dry_run.py
       - scripts/relaylm_relaysoul_temp_revision_profile_smoke.py
       - .github/workflows/onboarding-config-smoke.yml
@@ -136,5 +136,5 @@ jobs:
           python scripts/relaylm_openwebui_lmstudio_config_smoke.py
           python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
           python scripts/relaylm_profile_loading_smoke.py
-          python scripts/relaylm_config_room_scene_compat_smoke.py
+          python scripts/relaylm_config_scene_state_smoke.py
           python scripts/relaylm_relaysoul_temp_revision_profile_smoke.py
