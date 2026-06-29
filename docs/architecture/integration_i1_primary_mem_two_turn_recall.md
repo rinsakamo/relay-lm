@@ -8,6 +8,7 @@ relaylm_update_trigger:
   - Primary recall producer or consumer changes
   - character or namespace scope changes
   - downstream observation or mutation boundary changes
+  - Primary recall candidate discovery changes
 relaylm_not_authoritative_for:
   - queue scanning or daemon lifecycle
   - SOUL Lab observation schema details
@@ -17,13 +18,14 @@ relaylm_related_authority:
   - relaymem_mvp_implementation_plan.md
   - relaymem_slp_current_target.md
   - phase_i2_real_soul_lab_observation.md
+  - e1r5_primary_mem_recall_candidate_bridge.md
   - ../PROJECT_STATUS.md
 ---
 # Integration I1: Primary MEM Two-Turn Recall
 
 ## Status
 
-Implemented in Phase I-1 and preserved as the authoritative ordinary recall boundary.
+Implemented in Phase I-1 and preserved as the authoritative ordinary recall boundary, with the post-Wave-7 E1-R5 bridge now included in the current request-side proof boundary.
 
 ```text
 Turn 1 ordinary managed response
@@ -34,8 +36,9 @@ Turn 1 ordinary managed response
 
 Turn 2 ordinary managed request
   -> character-partitioned configured RelayMEM root
-  -> existing M2 candidate discovery
+  -> existing M2 candidate discovery as the preferred relevance owner
   -> exact Primary page / index / log / namespace validation
+  -> E1-R5 bounded scoped Primary candidate bridge if M2 yields no eligible scoped Primary candidate
   -> bounded request-local selected-memory artifact
   -> existing RelayCTX snippet injection
   -> backend-bound request
@@ -46,27 +49,30 @@ Phase I-2 observes this path but does not replace any I-1 producer, validator, s
 
 ## Production ownership
 
-Phase I-1 does not add a queue scanner, scheduler, daemon, or parallel retriever. Existing M2 discovery remains candidate owner. `relaymem_primary_recall` narrows candidates already discovered by M2 and rebuilds the existing RelayCTX snippet handoff from validated bounded Primary summaries.
+Phase I-1 does not add a queue scanner, scheduler, daemon, or parallel retriever. Existing M2 discovery remains the preferred candidate owner. `relaymem_primary_recall` narrows candidates discovered by M2 and rebuilds the existing RelayCTX snippet handoff from validated bounded Primary summaries.
 
-Character isolation is represented by an opaque partition below the configured RelayMEM root. Both the explicit C2 caller and ordinary request path use `resolve_relaymem_character_store_root()`. Namespace isolation remains an exact property of the canonical Primary page and matching index/log entries.
+E1-R5 adds a bounded request-side candidate discovery bridge for the specific case where no eligible scoped Primary candidate survives the existing M2 narrowing even though character-scoped Primary index/log/page controls contain an eligible relevant Primary page. The bridge preserves M2 as preferred owner, uses the same selected-memory handoff shape, and does not create new mutation, worker, scheduler, queue, or browser trust authority.
 
-Session and run identifiers are not new long-term retrieval restrictions. Phase I-2 run correlation is observation evidence only and cannot filter or authorize M2 retrieval.
+Character isolation is represented by an opaque partition below the configured RelayMEM root. Both the explicit C2 caller and ordinary request path use `resolve_relaymem_character_store_root()`. Namespace isolation remains an exact property of the canonical Primary page and matching index/log entries. E1-R5 also accepts slash-style namespace tokens such as `character/default` so formation-side namespace shape and recall-side namespace validation do not split.
+
+Session and run identifiers are not new long-term retrieval restrictions. Phase I-2 run correlation is observation evidence only and cannot filter or authorize M2 retrieval or the E1-R5 bridge.
 
 ## Validation and fail-closed rules
 
 A candidate is eligible only when:
 
 - existing RelaySCN/reference/retrieval gates allow snippet recall,
-- M2 selected it by query match rather than mere availability,
+- M2 selected it by query match or E1-R5 bounded fallback derives it from exact scoped Primary controls with query relevance,
 - path is a non-symlink Primary MEM Markdown file inside the scoped root,
 - page has exact `relaymem.primary_page.v0` front matter and body,
 - memory layer, promotion, safety, namespace, path identity, lineage, and idempotency metadata are valid,
 - exactly one canonical matching Primary index entry and one log entry exist,
 - page digest, index/log linkage, namespace, and lineage agree,
+- I-4D shared lifecycle eligibility says the physical revision is the current active logical memory,
 - duplicate memory identity is removed,
 - item count, character count, and token budget remain bounded.
 
-Malformed, missing, conflicting, unsupported, unsafe, over-budget, wrong-namespace, or unreconciled candidates are omitted. The adapter never recovers content from public projection, trace, queue record, frontend history, or Phase I-2 observation receipt.
+Malformed, missing, conflicting, unsupported, unsafe, over-budget, wrong-namespace, unreconciled, hidden, prepared, recovery-required, corrupt, prior-revision, or relevance-insufficient candidates are omitted. The adapter never recovers content from public projection, trace, queue record, frontend history, or Phase I-2 observation receipt.
 
 ## Authority and injection
 
@@ -87,7 +93,7 @@ Phase I-2 used-memory evidence is captured only after the existing injection res
 
 ## Public and runtime-private projection boundary
 
-`relaymem.primary_recall_projection.v0` remains content-free. It exposes only bounded status such as attempted/selected counts, Primary-layer counts, scope booleans, estimated size, injection-candidate presence, and reason IDs.
+`relaymem.primary_recall_projection.v0` remains content-free. It exposes only bounded status such as attempted/selected counts, Primary-layer counts, scope booleans, estimated size, injection-candidate presence, bridge discovery counts, and reason IDs.
 
 The runtime artifact containing snippets is request-local and must not be copied into generic `PipelineNodeResult`, trace, stdout/stderr, or workflow logs.
 
@@ -97,7 +103,7 @@ Phase I-2 introduces separate explicit-inspection schemas for Lab Observation. T
 
 Dispatch identity, M3 write identity, retrieval deduplication, and observation receipt identity remain separate.
 
-C2/M3 own durable write idempotency. I-1 deduplicates validated `idempotency_key` before RelayCTX assembly, so duplicate discovery or worker retry cannot multiply one memory in the prompt. Phase I-2 receipt replay cannot change that result.
+C2/M3 own durable write idempotency. I-1 deduplicates validated `idempotency_key` before RelayCTX assembly, so duplicate discovery or worker retry cannot multiply one memory in the prompt. E1-R5 maps eligible physical identities through the shared lifecycle eligibility index before selected evidence is built. Phase I-2 receipt replay cannot change that result.
 
 ## Downstream Phase I-2 — complete
 
@@ -114,18 +120,16 @@ See [Phase I-2 Real SOUL Lab Observation](phase_i2_real_soul_lab_observation.md)
 
 ## Next boundary
 
-Phase I-3 auditable Correct is next. It must validate and mutate authoritative memory through a separately reviewed contract, preserve prior state and provenance, and prove later M2 retrieval sees the corrected representation.
-
-Phase I-3 must not rewrite the I-1 recall adapter, use observation receipts as memory authority, or widen into forget, pin, merge, held apply/discard, RelaySOUL mutation, queue scheduling, or daemon lifecycle.
+Phase I-3 auditable Correct is complete. Later governance boundaries are owned by their dedicated contracts and do not rewrite the I-1 recall adapter, use observation receipts as memory authority, or widen into RelaySOUL mutation, queue scheduling, daemon lifecycle, or media runtime execution.
 
 ## Explicitly unresolved
 
-Phase I-1 and I-2 do not complete:
+Phase I-1, I-2, and E1-R5 do not complete:
 
 - queue scanning, scheduling, or service lifecycle,
 - visible-response-to-background-publication pre-enqueue crash recovery,
 - Secondary MEM consolidation,
-- Correct/forget/pin/merge/held-review mutation,
+- Merge / Supersession runtime apply,
 - RelaySOUL mutation,
 - TTS, audio, or Live2D execution,
 - static UI bundle serving.
