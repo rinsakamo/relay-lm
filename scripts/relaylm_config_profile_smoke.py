@@ -26,7 +26,7 @@ def main() -> int:
     require(files.common_runtime_policy.exists(), f"missing common policy: {files.common_runtime_policy}")
     require(files.soul.exists(), f"missing soul: {files.soul}")
     require(files.output_policy.exists(), f"missing output policy: {files.output_policy}")
-    require(files.room_anchor.exists(), f"missing room anchor: {files.room_anchor}")
+    require(files.scene_state is not None and files.scene_state.exists(), f"missing scene state: {files.scene_state}")
     print("ok resolve profile files")
 
     blocks = build_profile_blocks(files)
@@ -35,7 +35,7 @@ def main() -> int:
         "common_runtime_policy",
         "character_soul_anchor",
         "character_output_policy",
-        "room_anchor",
+        "retrieved_memory" if False else "scene_state",
     ], f"bad blocks: {[block.block_id for block in blocks]}")
     print("ok build config profile blocks")
 
@@ -43,7 +43,7 @@ def main() -> int:
     require("<common_runtime_policy>" in rendered, rendered)
     require("<character_soul_anchor>" in rendered, rendered)
     require("<character_output_policy>" in rendered, rendered)
-    require("<room_anchor>" in rendered, rendered)
+    require("<scene_state>" in rendered, rendered)
     print("ok render config profile context")
 
     broken_config = config.model_copy(deep=True)
