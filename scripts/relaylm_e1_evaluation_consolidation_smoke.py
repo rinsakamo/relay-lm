@@ -206,7 +206,6 @@ STALE = (
     "Recall evidence is present, but evidence-grounded response behavior is not fully evaluated.",
     "E1-R4 evidence-grounded recall behavior remains quality work",
     "E1-R4 remains incomplete quality/evaluation work",
-    "M2 alone always selects current eligible scoped Primary MEM",
     "E1-R5 remains incomplete",
 )
 
