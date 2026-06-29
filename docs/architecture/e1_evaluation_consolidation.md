@@ -9,6 +9,7 @@ relaylm_update_trigger:
   - direct Home-origin trusted formation decision changes
   - local MVP evaluation workflow changes
   - provenance or recall quality work becomes implemented
+  - Primary recall candidate discovery changes
 relaylm_not_authoritative_for:
   - current runtime implementation status
   - exact RelayMEM or RelaySLP schemas
@@ -21,6 +22,7 @@ relaylm_related_authority:
   - e1r2_character_store_bootstrap.md
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
   - e1r4_retrieval_response_grounding.md
+  - e1r5_primary_mem_recall_candidate_bridge.md
   - wave7_cross_slice_convergence_audit.md
   - project_execution_plan.md
   - relaymem_slp_current_target.md
@@ -34,15 +36,15 @@ relaylm_related_authority:
 ---
 # E1 MVP Evaluation Evidence Consolidation
 
-Last reviewed: 2026-06-28 JST.
+Last reviewed: 2026-06-29 JST.
 
 ## Purpose
 
-This document consolidates the MVP E1 evaluation evidence after Wave 7. It records that E1-R1, E1-R2, E1-R3, and E1-R4 are implemented while preserving the remaining non-E1 conditional work outside the evidence-quality gate.
+This document consolidates the MVP E1 evaluation evidence after the post-Wave-7 E1-R5 correction. It records that E1-R1, E1-R2, E1-R3, E1-R4, and E1-R5 are implemented while preserving the remaining non-E1 conditional work outside the evidence-quality gate.
 
-E1 is evidence-first. E1-R1 adds route-owned trusted Home admission. E1-R2 adds explicit dry-run-first store bootstrap. E1-R3 adds speaker-provenance-safe Primary MEM formation summary construction. E1-R4 adds request-side retrieval-response grounding and unsupported-detail suppression. E1 still does not implement polling, daemonization, service supervision, TTS/audio/avatar, ASR, peer transport, or RelaySOUL mutation authority.
+E1 is evidence-first. E1-R1 adds route-owned trusted Home admission. E1-R2 adds explicit dry-run-first store bootstrap. E1-R3 adds speaker-provenance-safe Primary MEM formation summary construction. E1-R4 adds request-side retrieval-response grounding and unsupported-detail suppression. E1-R5 adds a bounded Primary MEM recall candidate discovery bridge for the case where durable scoped Primary MEM exists but no scoped Primary candidate survives the existing M2 narrowing. E1 still does not implement polling, daemonization, service supervision, TTS/audio/avatar, ASR, peer transport, or RelaySOUL mutation authority.
 
-Wave 7 convergence is recorded in [Wave 7 Cross-Slice Convergence Audit](wave7_cross_slice_convergence_audit.md).
+Wave 7 convergence is recorded in [Wave 7 Cross-Slice Convergence Audit](wave7_cross_slice_convergence_audit.md). E1-R5 was merged after W7-INT and is now reflected here as a post-Wave-7 correction to the E1 proof boundary.
 
 ## Current E1 proof boundary
 
@@ -56,13 +58,15 @@ SOUL Lab Home-origin ordinary conversation or explicit trusted request
   -> local operation drain
   -> Primary MEM durable formation
   -> later SOUL Lab Home recall
+  -> M2 preferred candidate discovery
+  -> E1-R5 bounded scoped Primary candidate bridge when M2 yields no eligible scoped candidate
   -> request-side grounded recall context and unsupported-detail suppression
   -> Lab observation and lifecycle/governance visibility
 ```
 
-E1-R1 route-owned trusted Home admission is implemented. Browser-owned trusted metadata remains rejected. E1-R2 character-store bootstrap is implemented as an explicit operator command, not automatic semantic memory creation. E1-R3 provenance-preserving Primary MEM formation summary is implemented so user assertion evidence remains distinguishable from assistant acknowledgement/speculation and route-owned scene/trust qualification. E1-R4 retrieval-response grounding and unsupported-detail suppression is implemented as backend-bound request context and content-free public projection.
+E1-R1 route-owned trusted Home admission is implemented. Browser-owned trusted metadata remains rejected. E1-R2 character-store bootstrap is implemented as an explicit operator command, not automatic semantic memory creation. E1-R3 provenance-preserving Primary MEM formation summary is implemented so user assertion evidence remains distinguishable from assistant acknowledgement/speculation and route-owned scene/trust qualification. E1-R4 retrieval-response grounding and unsupported-detail suppression is implemented as backend-bound request context and content-free public projection. E1-R5 recall candidate discovery bridge is implemented so character-scoped Primary MEM formation success no longer depends on an older flat-store visibility assumption or on M2 alone selecting a scoped Primary page.
 
-Recall evidence is present, and E1-R4 now provides evidence-grounded response behavior for eligible retrieved Primary MEM evidence.
+Recall evidence is present. E1-R4 provides evidence-grounded response behavior for eligible retrieved Primary MEM evidence, and E1-R5 preserves that behavior by producing the same bounded selected-memory handoff shape when the fallback bridge finds an eligible relevant scoped Primary candidate.
 
 ## Evidence inventory
 
@@ -73,10 +77,11 @@ Recall evidence is present, and E1-R4 now provides evidence-grounded response be
 | Character-store bootstrap | Implemented by E1-R2 | `docs/architecture/e1r2_character_store_bootstrap.md`, `docs/mvp/wave6/e1r2_completion_report.md` | Local evaluation can prepare the minimum safe Primary store layout through an explicit dry-run-first operator command. |
 | Provenance-preserving formation | Implemented by E1-R3 | `docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md`, `docs/mvp/wave7/e1r3_completion_report.md`, `docs/architecture/wave7_cross_slice_convergence_audit.md`, `scripts/relaylm_e1r3_provenance_formation_summary_smoke.py`, `scripts/relaylm_e1r3_provenance_formation_security_smoke.py` | Primary MEM formation uses a user-only memory candidate payload and keeps assistant and scene/trust evidence separate. |
 | Retrieval-response grounding | Implemented by E1-R4 | `docs/architecture/e1r4_retrieval_response_grounding.md`, `docs/mvp/wave7/e1r4_completion_report.md`, `docs/architecture/wave7_cross_slice_convergence_audit.md`, `scripts/relaylm_e1r4_grounded_recall_response_smoke.py`, `scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py`, `scripts/relaylm_e1r4_grounded_recall_security_smoke.py` | Later recall requests receive backend-bound grounded recall evidence and unsupported-detail suppression while public diagnostics remain content-free. |
+| Primary recall candidate bridge | Implemented by E1-R5 | `docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md`, `docs/mvp/wave7/e1r5_completion_report.md`, `scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py`, `scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py`, `scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py`, `scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py`, `scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py` | M2 remains preferred, but if no eligible scoped Primary candidate survives M2 narrowing, E1-R5 may derive bounded exact-namespace candidates from scoped Primary index/log/page controls and pass them to the existing E1-R4 grounding handoff. |
 | Durable source and queue evidence | Implemented | `docs/architecture/phase6c1_durable_protected_source_persistence.md`, `docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md`, `docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md` | Durable protected-source, queue, and durable-finalization evidence exist through completed authorities. |
 | Local operation drain | Implemented as explicit bounded invocation | `docs/architecture/o0_local_one_job_runner.md`, `docs/architecture/o1f_operational_validation.md` | Operator-invoked local drain and caller-invoked O1 controls remain bounded and non-supervised. |
 | Primary MEM durable formation | Implemented | `docs/architecture/phase6c1_primary_mem_worker_contract.md`, `docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md` | M3a-M3h durable formation and worker fault convergence are covered by existing production smokes. |
-| Later Home recall | Implemented for eligible current Primary MEM | `docs/architecture/integration_i1_primary_mem_two_turn_recall.md`, `docs/architecture/phase_i4d_primary_retrieval_exclusion.md` | Later SOUL Lab Home requests can retrieve current eligible Primary MEM through M2, RelayCTX, and E1-R4 grounded recall response context. |
+| Later Home recall | Implemented for eligible current Primary MEM | `docs/architecture/integration_i1_primary_mem_two_turn_recall.md`, `docs/architecture/phase_i4d_primary_retrieval_exclusion.md`, `docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md` | Later SOUL Lab Home requests can retrieve current eligible Primary MEM through the M2-preferred path or the bounded E1-R5 scoped Primary candidate bridge before RelayCTX and E1-R4 grounded recall response context. |
 | User governance | Implemented through Correct, Forget, Pin, and Held Governance | `docs/architecture/phase_i3_auditable_primary_mem_correct.md`, `docs/architecture/phase_i4f_forget_validation.md`, `docs/architecture/phase_i5b_pin_unpin_apply.md`, `docs/architecture/phase_i7c_held_apply_discard_runtime.md` | Explicit governance surfaces are available without giving the browser queue, worker, scheduler, store-root, or route authority. |
 
 ## Implemented evidence vs remaining quality work
@@ -93,10 +98,11 @@ Implemented evidence:
 - E1-R2 dry-run-first character-store bootstrap is complete.
 - E1-R3 provenance-preserving Primary MEM formation summary is complete.
 - E1-R4 retrieval-response grounding and unsupported-detail suppression is complete.
+- E1-R5 Primary MEM recall candidate discovery bridge is complete.
 
 Remaining quality work:
 
-- O2/O3 remain conditional on explicit MVP need and are not implied by E1-R1/R2/R3/R4.
+- O2/O3 remain conditional on explicit MVP need and are not implied by E1-R1/R2/R3/R4/R5.
 
 ## Direct Home-origin admission decision record
 
@@ -155,24 +161,30 @@ Later recall must be grounded in eligible current Primary MEM evidence. Hidden, 
 
 Currently proven:
 
-- current eligible Primary MEM can be selected by M2 and injected through RelayCTX;
-- I-4D ordinary retrieval exclusion protects the lifecycle boundary;
+- current eligible Primary MEM can be selected by the M2-preferred path or, when no eligible scoped Primary candidate survives existing M2 narrowing, by the bounded E1-R5 scoped Primary candidate bridge;
+- I-4D ordinary retrieval exclusion protects the lifecycle boundary for both paths through the shared eligibility index;
 - E1-R4 distinguishes retrieved fact from inference before backend-bound recall response construction;
 - E1-R4 suppresses unsupported date, name, preference, quantity, relationship, and cause details;
 - SOUL Lab can display used-memory/lifecycle evidence without mutation authority.
 
-Implemented E1-R4 boundary:
+Implemented E1-R4/E1-R5 boundary:
 
 ```text
 E1-R4 retrieval-response grounding and unsupported-detail suppression
   -> distinguish retrieved fact from inference
   -> avoid presenting unsupported details as remembered history
   -> keep retrieval evidence bounded and content-private in public projections
+
+E1-R5 Primary MEM recall candidate discovery bridge
+  -> preserve M2 as preferred relevance owner
+  -> bridge scoped Primary index/log/page controls only when M2 yields no eligible scoped Primary candidate
+  -> fail closed without query hints
+  -> preserve I-4D lifecycle exclusion and E1-R4 grounded handoff shape
 ```
 
 ## Evaluation smoke boundary
 
-`scripts/relaylm_e1_evaluation_consolidation_smoke.py` validates the post-E1-R1/R2/R3/R4 evidence inventory. It does not require a live LLM, LM Studio, browser, network service, or workstation-local path.
+`scripts/relaylm_e1_evaluation_consolidation_smoke.py` validates the post-E1-R1/R2/R3/R4/R5 evidence inventory. It does not require a live LLM, LM Studio, browser, network service, or workstation-local path.
 
 Required validation set:
 
@@ -183,6 +195,14 @@ python scripts/relaylm_e1r3_provenance_formation_security_smoke.py
 python scripts/relaylm_e1r4_grounded_recall_response_smoke.py
 python scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py
 python scripts/relaylm_e1r4_grounded_recall_security_smoke.py
+python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
+python scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
+python scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
+python scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py
+python scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py
+python scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py
+python scripts/relaylm_phase_i1_two_turn_primary_recall_security_smoke.py
+python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
 python scripts/relaylm_e1_evaluation_consolidation_smoke.py
 python scripts/relaylm_docs_link_check.py
 python scripts/relaylm_documentation_current_boundary_smoke.py
