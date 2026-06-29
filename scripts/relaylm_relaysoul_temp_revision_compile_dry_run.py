@@ -179,7 +179,6 @@ def _build_profile_files_for_dir(profile_dir: Path) -> ProfileFiles:
     common_runtime_policy = profile_dir / "common_runtime_policy.md"
     soul = profile_dir / "SOUL.md"
     output_policy = _detect_optional_file(profile_dir, ["OUTPUT_POLICY.md", "style.md"])
-    room_anchor = _detect_optional_file(profile_dir, ["ROOM_ANCHOR.md"])
 
     if output_policy is None:
         raise DryRunShapeError("Missing output policy file: expected OUTPUT_POLICY.md or style.md")
@@ -202,7 +201,6 @@ def _build_profile_files_for_dir(profile_dir: Path) -> ProfileFiles:
         common_runtime_policy=common_runtime_policy,
         soul=soul,
         output_policy=output_policy,
-        room_anchor=room_anchor,
         relationship_anchor=relationship_anchor,
         stable_memory_summary=stable_memory_summary,
         scene_state=scene_state,
