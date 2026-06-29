@@ -57,12 +57,16 @@ SEAL_FIELDS = frozenset({
     "finalized_turn_source", "durable_job", "job_id",
     "dispatch_idempotency_key", "seal_digest",
 })
-FINALIZED_SOURCE_FIELDS = frozenset({
+FINALIZED_SOURCE_LEGACY_FIELDS = frozenset({
     "schema_version", "character_id", "run_id", "turn_index", "session_id",
     "namespace", "source_event_kind", "source_count",
     "persistence_policy_status", "source_lineage_artifact",
     "relayscn_scene_policy_artifact", "relayemo_artifact",
     "governed_messages", "governed_experience_artifact",
+})
+FINALIZED_SOURCE_FIELDS = frozenset({
+    *FINALIZED_SOURCE_LEGACY_FIELDS,
+    "formation_summary_artifact",
 })
 
 RecordKind = Literal["base", "segment", "seal"]
@@ -271,6 +275,9 @@ def finalized_source_to_mapping(
         "governed_experience_artifact": _copy_json_mapping(
             source.governed_experience_artifact
         ),
+        "formation_summary_artifact": _copy_json_mapping(
+            source.formation_summary_artifact
+        ),
     }
     reasons = validate_finalized_source_mapping(value)
     if reasons:
@@ -298,7 +305,7 @@ def build_seal_record(
         raise TypeError("durable_finalization_visible_content_bytes_required")
     try:
         visible_content.decode("utf-8")
-    except UnicodeDecodeError as exc:
+    except UnicodeDecodeError:
         raise ValueError("durable_finalization_visible_content_utf8_invalid") from None
     if type(finalized_turn_source_result) is not RelayMEMSLPFinalizedTurnSourceResult:
         raise TypeError("exact_finalized_turn_source_result_required")
@@ -520,7 +527,8 @@ def validate_finalized_source_mapping(value: object) -> tuple[str, ...]:
     if type(value) is not dict:
         return ("durable_finalization_finalized_source_shape_invalid",)
     reasons: list[str] = []
-    if len(value) != len(FINALIZED_SOURCE_FIELDS) or set(value) != FINALIZED_SOURCE_FIELDS:
+    fields = frozenset(value)
+    if fields not in {FINALIZED_SOURCE_FIELDS, FINALIZED_SOURCE_LEGACY_FIELDS}:
         reasons.append("durable_finalization_finalized_source_shape_mismatch")
     if value.get("schema_version") != FINALIZED_TURN_SOURCE_SCHEMA:
         reasons.append("durable_finalization_finalized_source_schema_mismatch")
@@ -544,6 +552,10 @@ def validate_finalized_source_mapping(value: object) -> tuple[str, ...]:
     ):
         if type(value.get(key)) is not dict:
             reasons.append(f"durable_finalization_{key}_invalid")
+    if "formation_summary_artifact" in value and type(
+        value.get("formation_summary_artifact")
+    ) is not dict:
+        reasons.append("durable_finalization_formation_summary_artifact_invalid")
     if value.get("relayemo_artifact") is not None and type(
         value.get("relayemo_artifact")
     ) is not dict:
@@ -772,7 +784,7 @@ def _copy_json_mapping(value: Mapping[str, object]) -> dict[str, object]:
     try:
         encoded = canonical_json_bytes(value)
         decoded, reason = decode_canonical_json(encoded)
-    except (TypeError, ValueError, RecursionError, OverflowError) as exc:
+    except (TypeError, ValueError, RecursionError, OverflowError):
         raise ValueError("durable_finalization_protected_mapping_invalid") from None
     if decoded is None or reason is not None:
         raise ValueError(reason or "durable_finalization_protected_mapping_invalid")
@@ -794,6 +806,8 @@ def _require_digest(value: object) -> None:
 
 __all__ = [
     "BASE_FIELDS",
+    "FINALIZED_SOURCE_FIELDS",
+    "FINALIZED_SOURCE_LEGACY_FIELDS",
     "LOCATOR_VERSION",
     "PROJECTION_SCHEMA",
     "RECORD_REVISION",
