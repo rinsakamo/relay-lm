@@ -54,6 +54,22 @@ _PIN_EFFECT_KEYS = {
     "physical_deletion",
     "semantic_content_changed",
 }
+_UNPIN_EFFECT_KEYS = {
+    "audit_evidence_retained",
+    "future_priority_hint_removed_contract",
+    "ordinary_retrieval_deleted",
+    "ordinary_retrieval_excluded",
+    "physical_deletion",
+    "semantic_content_changed",
+}
+
+
+def _preflight_effect_keys(operation_kind: str) -> set[str]:
+    if operation_kind == "pin":
+        return _PIN_EFFECT_KEYS
+    if operation_kind == "unpin":
+        return _UNPIN_EFFECT_KEYS
+    raise KeyError("operation_kind")
 
 
 def install_primary_memory_pin_routes(
@@ -101,13 +117,15 @@ def install_primary_memory_pin_routes(
 
     def safe_pin_preflight_projection(result: dict[str, Any]) -> dict[str, Any]:
         try:
+            operation_kind = result["operation_kind"]
+            effect_keys = _preflight_effect_keys(operation_kind)
             effects = result["effects"]
             if not isinstance(effects, dict):
                 raise KeyError("effects")
             return {
                 "schema": result["schema"],
                 "status": result["status"],
-                "operation_kind": result["operation_kind"],
+                "operation_kind": operation_kind,
                 "read_only": result["read_only"],
                 "memory_id": result["memory_id"],
                 "current_revision": result["current_revision"],
@@ -117,7 +135,7 @@ def install_primary_memory_pin_routes(
                 "target_pin_state": result["target_pin_state"],
                 "pin_state_contract_only": result["pin_state_contract_only"],
                 "effects": {
-                    key: bool(effects.get(key)) for key in sorted(_PIN_EFFECT_KEYS)
+                    key: bool(effects.get(key)) for key in sorted(effect_keys)
                 },
                 "apply_token": result["apply_token"],
                 "expires_at": result["expires_at"],
