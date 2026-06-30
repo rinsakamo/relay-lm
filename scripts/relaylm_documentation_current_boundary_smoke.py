@@ -21,6 +21,7 @@ CURRENT_DOCS = (
     "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
     "docs/architecture/e1r4_retrieval_response_grounding.md",
     "docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md",
+    "docs/architecture/e1r5_post_wave7_correction_convergence_audit.md",
     "docs/architecture/phase_i5_pin_unpin_contract.md",
     "docs/architecture/phase_i5b_pin_unpin_apply.md",
     "docs/architecture/phase_i7ab_held_apply_discard_contract.md",
@@ -56,6 +57,8 @@ REQUIRED = {
         "PM-D5 RelayMEM flat-store compatibility removal",
         "PM-D6 RelayINT native artifact / RelayREF wrapper removal",
         "PM-D7 runtime install hook fold-in",
+        "PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in",
+        "E1-R5 Post-Wave-7 Correction Convergence Audit",
     ),
     "docs/README.md": (
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
@@ -64,11 +67,14 @@ REQUIRED = {
         "E1-R4 completion report",
         "E1-R5 completion report",
         "E1-R5 Primary MEM recall candidate discovery bridge",
+        "E1-R5 Post-Wave-7 Correction Convergence Audit",
+        "PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision",
     ),
     "docs/architecture/README.md": (
         "Wave 7 Cross-Slice Convergence Audit",
         "E1-R4 Retrieval-Response Grounding",
         "E1-R5 Primary MEM Recall Candidate Discovery Bridge",
+        "E1-R5 Post-Wave-7 Correction Convergence Audit",
         "implemented E1-R1/E1-R2/E1-R3/E1-R4/E1-R5 evidence",
     ),
     "docs/mvp/README.md": (
@@ -91,6 +97,7 @@ REQUIRED = {
         "E1-R3 is current implemented as provenance-preserving Primary MEM formation summary.",
         "E1-R4 is current implemented as request-side retrieval-response grounding and unsupported-detail suppression.",
         "E1-R5 is current implemented as bounded scoped Primary MEM recall candidate discovery bridge.",
+        "PM-D8 in [Project Execution Plan](project_execution_plan.md) tracks the later decision",
     ),
     "docs/architecture/project_execution_plan.md": (
         "Post-MVP decision debt registry",
@@ -101,8 +108,11 @@ REQUIRED = {
         "PM-D5 RelayMEM flat-store compatibility removal",
         "PM-D6 RelayINT native artifact / RelayREF wrapper removal",
         "PM-D7 runtime install hook fold-in",
+        "PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in",
         "Implementation order for large compatibility removals:",
         "PM-D5 -> PM-D6 -> PM-D7",
+        "PM-D8 should be evaluated with PM-D5",
+        "Execute the existing RelaySCN-owned `scene_state` migration plan",
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
         "E1-R4 request-side evidence-grounded recall behavior is current implemented.",
@@ -114,6 +124,8 @@ REQUIRED = {
     "docs/architecture/e1r4_retrieval_response_grounding.md": (
         "# E1-R4 Retrieval-Response Grounding",
         "relaymem.grounded_recall_context.v0",
+        "e1r5_primary_mem_recall_candidate_bridge.md",
+        "E1-R5 may provide the bounded scoped Primary MEM candidate",
         "directly_supported",
         "inferred_from_supported",
         "unsupported_detail_suppressed",
@@ -124,8 +136,17 @@ REQUIRED = {
         "# E1-R5 Primary MEM Recall Candidate Discovery Bridge",
         "M2 remains the preferred relevance owner",
         "shared I-4D current-state eligibility index",
+        "The runtime-bridge-to-canonical-adapter decision is tracked as PM-D8",
         "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
         "E1-R5 completion report",
+    ),
+    "docs/architecture/e1r5_post_wave7_correction_convergence_audit.md": (
+        "relaylm_doc_type: integration_convergence_audit",
+        "# E1-R5 Post-Wave-7 Correction Convergence Audit",
+        "M2 remains the preferred relevance owner.",
+        "PM-D8: Fold E1-R5 bounded Primary MEM candidate bridge into canonical Primary recall adapter",
+        "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
+        "PYTHONPATH=. python scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py",
     ),
     "docs/architecture/e1_evaluation_consolidation.md": (
         "E1-R5 Primary MEM recall candidate discovery bridge is complete.",
