@@ -14,6 +14,7 @@ from relaylm_mvp_eval_runner import (
     STATUS_FAIL,
     STATUS_PASS,
     STATUS_SKIP,
+    STATUS_WARN,
     filter_categories,
     format_category_list,
     format_summary_text,
@@ -86,6 +87,30 @@ def main() -> int:
         require("overall_status: FAIL" in text, text)
         require("first_failure: category=fail_category" in text, text)
         require("fake-required-fail" in text, text)
+
+        warn_summary = run_categories(
+            repo_root,
+            (
+                CategorySpec(
+                    name="required_warn_category",
+                    required=True,
+                    commands=(
+                        CommandSpec(
+                            name="internal:governance-smoke-discovery",
+                            required=False,
+                            internal_action="governance_discovery",
+                        ),
+                    ),
+                ),
+            ),
+            mode="static",
+            fail_fast=False,
+        )
+        require(warn_summary["overall_status"] == STATUS_FAIL, warn_summary)
+        require(warn_summary["required_passed_count"] == 0, warn_summary)
+        require(warn_summary["required_failed_count"] == 1, warn_summary)
+        require(warn_summary["first_failure"]["category"] == "required_warn_category", warn_summary)
+        require(warn_summary["categories"][0]["status"] == STATUS_WARN, warn_summary)
 
         json_path = repo_root / "runtime" / "eval" / "summary.json"
         write_summary_json(summary, json_path)
