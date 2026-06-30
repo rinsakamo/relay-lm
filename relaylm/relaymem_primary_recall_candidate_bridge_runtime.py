@@ -18,6 +18,30 @@ from .token_budget import estimate_text_tokens
 _TOKEN_WITH_SLASH_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$")
 _SAFE_REASON_RE = re.compile(r"[a-z0-9][a-z0-9_:-]{0,127}")
 _PATCHED_FLAG = "_e1r5_candidate_bridge_installed"
+_NO_CANDIDATE_REASON_IDS = frozenset(
+    {
+        "blocked_no_candidates",
+        "ctx_block_candidate_entries_empty",
+        "no_selected_mem_candidates",
+        "snippet_candidates_empty",
+        "included_snippet_entries_empty",
+    }
+)
+_PROHIBITED_SCENE_TYPES = frozenset(
+    {"recovery", "formal_document", "medical_or_safety"}
+)
+_EXPLICIT_FALLBACK_BLOCKERS = frozenset(
+    {
+        "scene_policy_blocks_memory",
+        "current_context_only_no_external_mem",
+        "external_memory_blocked_by_scene_policy",
+        "unresolved_reference_requires_confirmation",
+        "scene_policy_does_not_allow_snippet_apply",
+        "must_not_silently_resolve_ambiguous_reference",
+        "blocked_scene_policy",
+        "blocked_unresolved_reference",
+    }
+)
 
 
 def install_relaymem_primary_recall_candidate_bridge_runtime() -> None:
@@ -56,13 +80,32 @@ def _build_apply(target: Any):
             reasons.append("memory_namespace_invalid")
 
         original_decision = artifact.get("snippet_apply_decision")
-        gate_allowed = original_decision in {"eligible_but_not_applied", "dry_run_only"}
-        if not gate_allowed:
-            reasons.append("existing_retrieval_gate_blocked")
+        original_decision_text = original_decision if isinstance(original_decision, str) else ""
+        gate_allowed = original_decision_text in {"eligible_but_not_applied", "dry_run_only"}
 
         candidates = _sequence(artifact.get("selected_mem_candidates"))
         if not candidates:
             reasons.append("existing_retrieval_selected_no_candidates")
+        fallback_no_candidate_trigger = _fallback_no_candidate_trigger(
+            original_decision=original_decision_text,
+            artifact=artifact,
+            candidates=candidates,
+        )
+        fallback_policy_blocker = _fallback_policy_blocker(
+            target=target,
+            artifact=artifact,
+            original_decision=original_decision_text,
+        )
+        fallback_discovery_allowed = (
+            root is not None
+            and namespace is not None
+            and fallback_no_candidate_trigger
+            and fallback_policy_blocker is None
+        )
+        if not gate_allowed and not fallback_discovery_allowed:
+            reasons.append("existing_retrieval_gate_blocked")
+        if fallback_no_candidate_trigger and fallback_policy_blocker is not None:
+            reasons.append(fallback_policy_blocker)
 
         max_candidates = max(0, int(max_snippet_candidates))
         max_chars = max(1, int(max_snippet_chars))
@@ -75,7 +118,7 @@ def _build_apply(target: Any):
         discovery_status = "disabled"
         query_terms = _query_terms_from_artifact(artifact)
 
-        if root is not None and namespace is not None and gate_allowed:
+        if root is not None and namespace is not None and (gate_allowed or fallback_discovery_allowed):
             control, control_reasons = target._load_control_state(root)
             reasons.extend(_candidate_public_reasons(control_reasons))
             if control is not None:
@@ -86,25 +129,26 @@ def _build_apply(target: Any):
                 lifecycle_index = load_primary_retrieval_eligibility_index(
                     root, namespace=namespace
                 )
-                selected, used_tokens = _select_validated_candidates(
-                    target=target,
-                    root=root,
-                    namespace=namespace,
-                    control=control,
-                    lifecycle_index=lifecycle_index,
-                    raw_candidates=candidates,
-                    require_keyword_match=True,
-                    max_candidates=max_candidates,
-                    max_chars=max_chars,
-                    budget=budget,
-                    chars_per_token=cpt,
-                    used_tokens=used_tokens,
-                    seen_identities=seen_identities,
-                    reasons=reasons,
-                    query_terms=(),
-                    require_relevance=False,
-                )
-                if not selected:
+                if gate_allowed:
+                    selected, used_tokens = _select_validated_candidates(
+                        target=target,
+                        root=root,
+                        namespace=namespace,
+                        control=control,
+                        lifecycle_index=lifecycle_index,
+                        raw_candidates=candidates,
+                        require_keyword_match=True,
+                        max_candidates=max_candidates,
+                        max_chars=max_chars,
+                        budget=budget,
+                        chars_per_token=cpt,
+                        used_tokens=used_tokens,
+                        seen_identities=seen_identities,
+                        reasons=reasons,
+                        query_terms=(),
+                        require_relevance=False,
+                    )
+                if not selected and (gate_allowed or fallback_discovery_allowed):
                     discovery_attempted = True
                     bridge_candidates, bridge_reasons = _discover_primary_candidates_from_control(
                         target=target,
@@ -149,10 +193,17 @@ def _build_apply(target: Any):
             reasons.append("primary_recall_no_scoped_match")
 
         public_reasons = _reason_ids(reasons)
+        handoff_decision = _bridge_handoff_decision(
+            original_decision=original_decision_text,
+            artifact=artifact,
+            selected=selected,
+            discovery_attempted=discovery_attempted,
+            fallback_no_candidate_trigger=fallback_no_candidate_trigger,
+        )
         target._replace_legacy_handoff(
             artifact,
             selected,
-            original_decision=str(original_decision or "blocked"),
+            original_decision=handoff_decision,
             snippet_budget=budget,
             reasons=public_reasons,
         )
@@ -370,6 +421,98 @@ def _sequence(value: object) -> list[Any]:
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         return list(value)
     return []
+
+
+def _fallback_no_candidate_trigger(
+    *,
+    original_decision: str,
+    artifact: Mapping[str, Any],
+    candidates: Sequence[Any],
+) -> bool:
+    if candidates:
+        return False
+    if original_decision == "blocked_no_candidates":
+        return True
+    return bool(_NO_CANDIDATE_REASON_IDS.intersection(_artifact_reason_ids(artifact)))
+
+
+def _fallback_policy_blocker(
+    *,
+    target: Any,
+    artifact: Mapping[str, Any],
+    original_decision: str,
+) -> str | None:
+    if original_decision == "blocked_scene_policy":
+        return "scene_policy_blocks_memory"
+    if original_decision == "blocked_unresolved_reference":
+        return "unresolved_reference_requires_confirmation"
+
+    scene_type = target._token(artifact.get("scene_type")) or "unknown"
+    retrieval_scope = target._token(artifact.get("retrieval_scope")) or "current_context_only"
+    if scene_type == "unknown":
+        return "scene_policy_blocks_memory"
+    if retrieval_scope == "current_context_only":
+        return "current_context_only_no_external_mem"
+    if scene_type in _PROHIBITED_SCENE_TYPES:
+        return "external_memory_blocked_by_scene_policy"
+
+    fallback_reason = target._projection_fallback_reason(artifact)
+    if isinstance(fallback_reason, str) and fallback_reason in _EXPLICIT_FALLBACK_BLOCKERS:
+        return _public_fallback_blocker(fallback_reason)
+    for reason in _artifact_reason_ids(artifact):
+        if reason in _EXPLICIT_FALLBACK_BLOCKERS:
+            return _public_fallback_blocker(reason)
+    return None
+
+
+def _public_fallback_blocker(reason: str) -> str:
+    mapping = {
+        "blocked_scene_policy": "scene_policy_blocks_memory",
+        "blocked_unresolved_reference": "unresolved_reference_requires_confirmation",
+        "scene_policy_does_not_allow_snippet_apply": "scene_policy_blocks_memory",
+        "must_not_silently_resolve_ambiguous_reference": "unresolved_reference_requires_confirmation",
+    }
+    return mapping.get(reason, reason)
+
+
+def _artifact_reason_ids(artifact: Mapping[str, Any]) -> list[str]:
+    output: list[str] = []
+
+    def add(value: object) -> None:
+        if isinstance(value, str) and value and value not in output:
+            output.append(value)
+
+    for key in ("snippet_apply_blocked_reasons", "apply_blocked_reasons"):
+        for reason in _sequence(artifact.get(key)):
+            add(reason)
+    for key in ("blocked",):
+        for item in _sequence(artifact.get(key)):
+            if isinstance(item, Mapping):
+                add(item.get("reason"))
+            else:
+                add(item)
+    ctx_block_snippet_candidate = artifact.get("ctx_block_snippet_candidate")
+    if isinstance(ctx_block_snippet_candidate, Mapping):
+        for item in _sequence(ctx_block_snippet_candidate.get("blocked")):
+            if isinstance(item, Mapping):
+                add(item.get("reason"))
+    return output
+
+
+def _bridge_handoff_decision(
+    *,
+    original_decision: str,
+    artifact: Mapping[str, Any],
+    selected: Sequence[Mapping[str, Any]],
+    discovery_attempted: bool,
+    fallback_no_candidate_trigger: bool,
+) -> str:
+    decision = original_decision or "blocked"
+    if selected and discovery_attempted and fallback_no_candidate_trigger:
+        if "snippet_dry_run_only" in _artifact_reason_ids(artifact):
+            return "dry_run_only"
+        return "eligible_but_not_applied"
+    return decision
 
 
 def _query_terms_from_artifact(artifact: Mapping[str, Any]) -> list[str]:
