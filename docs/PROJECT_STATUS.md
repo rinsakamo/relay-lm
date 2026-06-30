@@ -89,7 +89,7 @@ Phase I-4C1 hidden-successor commit: complete
 Phase I-4C2 prepared recovery / operation-scoped M3f-M3g / tombstone finalization: complete
 Phase I-4D ordinary retrieval lifecycle exclusion: complete
 Phase I-4E loopback Forget API and SOUL Lab UI: complete
-Phase I-4F full Forget product validation: complete
+Phase I-4F full Forget validation: complete
 Phase I-4 overall: complete
 
 I-5A Pin / Unpin contract and read-only preflight: complete
