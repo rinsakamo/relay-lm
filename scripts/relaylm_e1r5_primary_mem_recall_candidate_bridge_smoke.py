@@ -58,6 +58,18 @@ def no_selected_candidates_artifact() -> dict[str, object]:
     }
 
 
+def disabled_store_no_selected_candidates_artifact() -> dict[str, object]:
+    blocked = no_selected_candidates_artifact()
+    blocked["fallback_reason"] = "memory_store_disabled"
+    blocked["store_diagnostics"] = {
+        "schema_version": "relaymem.store_diagnostics.v0",
+        "diagnostics_only": True,
+        "store_enabled": False,
+        "fallback_reason": "memory_store_disabled",
+    }
+    return blocked
+
+
 def main() -> None:
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as directory:
         configured_root = Path(directory) / "runtime" / "memory"
@@ -135,8 +147,27 @@ def main() -> None:
         require("existing_retrieval_gate_blocked" not in no_candidate_runtime["blocked_reason_ids"], no_candidate_runtime)
         require("青い灯台" in json.dumps(no_candidate_runtime, ensure_ascii=False), no_candidate_runtime)
 
+        disabled_store_bridged = apply_relaymem_primary_recall_scope(
+            disabled_store_no_selected_candidates_artifact(),
+            scoped_store_root=str(scoped),
+            expected_namespace=NAMESPACE,
+            max_snippet_chars=512,
+            max_snippet_candidates=3,
+            snippet_budget=512,
+        )
+        disabled_runtime = disabled_store_bridged["primary_recall_runtime"]
+        disabled_projection = disabled_store_bridged["primary_recall_projection"]
+        require(disabled_runtime["primary_candidate_discovery_attempted"] is False, disabled_runtime)
+        require(disabled_runtime["primary_candidate_count"] == 0, disabled_runtime)
+        require(disabled_runtime["selected_count"] == 0, disabled_runtime)
+        require("memory_store_disabled" in disabled_runtime["blocked_reason_ids"], disabled_runtime)
+        require("primary_recall_no_scoped_match" in disabled_runtime["blocked_reason_ids"], disabled_runtime)
+        require(disabled_projection["grounding_enabled"] is False, disabled_projection)
+        require(disabled_projection["grounded_item_count"] == 0, disabled_projection)
+        require(disabled_store_bridged["snippet_apply_decision"] == "blocked_no_candidates", disabled_store_bridged)
+
         public = json.dumps(
-            [projection, no_candidate_projection],
+            [projection, no_candidate_projection, disabled_projection],
             ensure_ascii=False,
         )
         for forbidden in (
@@ -159,6 +190,7 @@ def main() -> None:
         ):
             require(flag in projection, projection)
             require(flag in no_candidate_projection, no_candidate_projection)
+            require(flag in disabled_projection, disabled_projection)
 
     print("E1-R5 Primary MEM recall candidate bridge smoke passed")
 
