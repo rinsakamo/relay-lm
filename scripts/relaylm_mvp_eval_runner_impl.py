@@ -135,7 +135,10 @@ def _governance_scripts(root: Path) -> tuple[tuple[str, ...], tuple[str, ...]]:
     missing: list[str] = []
     for group, patterns in GOVERNANCE_PATTERNS.items():
         group_found = {
-            path.name for pattern in patterns for path in (root / "scripts").glob(pattern) if path.is_file()
+            path.name
+            for pattern in patterns
+            for path in (root / "scripts").glob(pattern)
+            if path.is_file()
         }
         if group_found:
             found.update(group_found)
@@ -212,6 +215,13 @@ def _category_reason(results: Sequence[dict[str, object]]) -> str:
     return "none"
 
 
+def _first_problem_result(results: Sequence[dict[str, object]]) -> dict[str, object] | None:
+    for item in results:
+        if item["status"] in {STATUS_FAIL, STATUS_WARN}:
+            return item
+    return None
+
+
 def run_categories(root: Path, categories: Sequence[CategorySpec], *, mode: str, fail_fast: bool = False) -> dict[str, object]:
     started = time.monotonic()
     category_results: list[dict[str, object]] = []
@@ -231,6 +241,13 @@ def run_categories(root: Path, categories: Sequence[CategorySpec], *, mode: str,
             if fail_fast and result["status"] == STATUS_FAIL and command.required:
                 break
         status = _category_status(command_results, category.required)
+        if category.required and status == STATUS_WARN and first_failure is None:
+            problem = _first_problem_result(command_results)
+            first_failure = {
+                "category": category.name,
+                "command": str(problem["name"] if problem else category.name),
+                "failure_reason_id": str(problem["failure_reason_id"] if problem else _category_reason(command_results)),
+            }
         category_results.append(
             {
                 "name": category.name,
@@ -241,10 +258,12 @@ def run_categories(root: Path, categories: Sequence[CategorySpec], *, mode: str,
                 "commands": command_results,
             }
         )
-        if fail_fast and status == STATUS_FAIL and category.required:
+        if fail_fast and status in {STATUS_FAIL, STATUS_WARN} and category.required:
             break
     required_passed = sum(1 for item in category_results if item["required"] and item["status"] == STATUS_PASS)
-    required_failed = sum(1 for item in category_results if item["required"] and item["status"] == STATUS_FAIL)
+    required_failed = sum(
+        1 for item in category_results if item["required"] and item["status"] in {STATUS_FAIL, STATUS_WARN}
+    )
     optional_skipped = sum(1 for item in category_results if not item["required"] and item["status"] == STATUS_SKIP)
     overall = STATUS_FAIL if required_failed else STATUS_PASS
     return {
