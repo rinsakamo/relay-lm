@@ -375,9 +375,4 @@ approved durable persona
 
 ## I1 bounded Primary MEM injection
 
-RelayCTX receives a request-local selected-memory artifact after existing M2
-selection and exact scope/integrity validation. Only bounded Primary summary
-evidence is inserted before the latest user message. SOUL, OUTPUT_POLICY,
-RELATIONSHIP_ANCHOR, Secondary MEM, and RelaySCN remain higher authority; path,
-identity, lineage, retry, and control-file metadata are excluded from the
-backend prompt and public diagnostics.
+RelayCTX receives a request-local selected-memory artifact after the Primary recall selection path and exact scope/integrity validation. M2 remains the preferred relevance owner. When M2 yields no eligible scoped Primary candidate, the E1-R5 bounded scoped Primary candidate bridge may supply a fallback candidate before the bounded RelayCTX injection step. Only bounded Primary summary evidence is inserted before the latest user message. SOUL, OUTPUT_POLICY, RELATIONSHIP_ANCHOR, Secondary MEM, and RelaySCN remain higher authority; path, identity, lineage, retry, and control-file metadata are excluded from the backend prompt and public diagnostics.
