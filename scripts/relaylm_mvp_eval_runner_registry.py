@@ -63,5 +63,5 @@ GOVERNANCE_PATTERNS = {
     "forget_hide": ("*forget*smoke.py", "*hide*smoke.py", "relaylm_phase_i4f*_smoke.py"),
     "pin_unpin": ("*pin*unpin*smoke.py", "relaylm_phase_i5b*_smoke.py"),
     "held_apply_discard": ("*held*apply*discard*smoke.py", "relaylm_phase_i7c*_smoke.py"),
-    "correct": ("*correct*smoke.py", "relaylm_phase_i3*_smoke.py"),
+    "correct": ("relaylm_phase_i3*_smoke.py",),
 }
