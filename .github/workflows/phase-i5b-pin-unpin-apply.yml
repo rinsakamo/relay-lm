@@ -35,6 +35,8 @@ jobs:
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i5a_pin_unpin_contract_smoke.py
       - name: I-5B apply smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i5b_pin_unpin_apply_smoke.py
+      - name: I-5B API projection smoke
+        run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i5b_pin_unpin_api_projection_smoke.py
       - name: I-5B ranking smoke
         run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i5b_pin_unpin_ranking_smoke.py
       - name: I-5B idempotency smoke
