@@ -17,6 +17,8 @@ CHARACTER = "default"
 NAMESPACE = "character_default"
 SUMMARY = "評価用に覚えておいて。私は朝の集中作業では、浅煎りのエチオピアコーヒーを飲むのが一番落ち着きます。"
 QUESTION = "私が朝の集中作業で落ち着く飲み物って何だっけ？"
+PASSPHRASE_SUMMARY = "評価用メモです。私はRelayLM MVP評価では、合言葉を「青い灯台」と呼ぶことにしました。"
+PASSPHRASE_QUESTION = "RelayLM MVP評価の合言葉として、私が「呼ぶことにしました」と言った言葉は何ですか？"
 
 
 def artifact() -> dict[str, object]:
@@ -37,6 +39,25 @@ def artifact() -> dict[str, object]:
     }
 
 
+def no_selected_candidates_artifact() -> dict[str, object]:
+    return {
+        "scene_type": "design_talk",
+        "retrieval_scope": "long_term_memory",
+        "snippet_apply_decision": "blocked_no_candidates",
+        "snippet_apply_blocked_reasons": [
+            "blocked_no_candidates",
+            "ctx_block_candidate_entries_empty",
+            "snippet_candidates_empty",
+            "included_snippet_entries_empty",
+        ],
+        "query_summary": {
+            "source": "latest_user_message",
+            "term_hints": ["RelayLM MVP評価", "合言葉", "青い灯台"],
+        },
+        "selected_mem_candidates": [],
+    }
+
+
 def main() -> None:
     with tempfile.TemporaryDirectory(dir=REPO_ROOT) as directory:
         configured_root = Path(directory) / "runtime" / "memory"
@@ -51,6 +72,13 @@ def main() -> None:
             candidate_id="e1r5-coffee",
             title="朝の集中作業の飲み物",
             summary=SUMMARY,
+        )
+        passphrase_memory_id = form_primary_memory(
+            scoped,
+            namespace=NAMESPACE,
+            candidate_id="e1r5-blue-lighthouse",
+            title="RelayLM MVP評価の合言葉",
+            summary=PASSPHRASE_SUMMARY,
         )
         require(not (configured_root / "memory").exists(), "top-level symlink workaround present")
 
@@ -84,8 +112,44 @@ def main() -> None:
         require("浅煎りのエチオピアコーヒー" in backend_messages, backend_messages)
         require("Do not invent dates" in backend_messages, backend_messages)
 
-        public = json.dumps(projection, ensure_ascii=False)
-        for forbidden in (SUMMARY, "浅煎り", "エチオピア", str(scoped), str(configured_root), memory_id):
+        no_candidate_bridged = apply_relaymem_primary_recall_scope(
+            no_selected_candidates_artifact(),
+            scoped_store_root=str(scoped),
+            expected_namespace=NAMESPACE,
+            max_snippet_chars=512,
+            max_snippet_candidates=3,
+            snippet_budget=512,
+        )
+        no_candidate_runtime = no_candidate_bridged["primary_recall_runtime"]
+        no_candidate_projection = no_candidate_bridged["primary_recall_projection"]
+        require(no_candidate_runtime["primary_candidate_discovery_attempted"] is True, no_candidate_runtime)
+        require(no_candidate_runtime["primary_candidate_count"] > 0, no_candidate_runtime)
+        require(no_candidate_runtime["selected_count"] == 1, no_candidate_runtime)
+        require(no_candidate_projection["primary_candidate_discovery_attempted"] is True, no_candidate_projection)
+        require(no_candidate_projection["primary_candidate_count"] > 0, no_candidate_projection)
+        require(no_candidate_projection["selected_count"] == 1, no_candidate_projection)
+        require(no_candidate_projection["grounding_enabled"] is True, no_candidate_projection)
+        require(no_candidate_projection["grounded_item_count"] == 1, no_candidate_projection)
+        require(no_candidate_bridged["snippet_apply_decision"] == "eligible_but_not_applied", no_candidate_bridged)
+        require("primary_recall_no_scoped_match" not in no_candidate_runtime["blocked_reason_ids"], no_candidate_runtime)
+        require("existing_retrieval_gate_blocked" not in no_candidate_runtime["blocked_reason_ids"], no_candidate_runtime)
+        require("青い灯台" in json.dumps(no_candidate_runtime, ensure_ascii=False), no_candidate_runtime)
+
+        public = json.dumps(
+            [projection, no_candidate_projection],
+            ensure_ascii=False,
+        )
+        for forbidden in (
+            SUMMARY,
+            PASSPHRASE_SUMMARY,
+            "浅煎り",
+            "エチオピア",
+            "青い灯台",
+            str(scoped),
+            str(configured_root),
+            memory_id,
+            passphrase_memory_id,
+        ):
             require(forbidden not in public, ("public leak", forbidden, public))
         for flag in (
             "evidence_content_included",
@@ -94,6 +158,7 @@ def main() -> None:
             "digest_values_included",
         ):
             require(flag in projection, projection)
+            require(flag in no_candidate_projection, no_candidate_projection)
 
     print("E1-R5 Primary MEM recall candidate bridge smoke passed")
 
