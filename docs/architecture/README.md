@@ -80,6 +80,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md)
 - [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md)
 - [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
+- [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md)
 - [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md)
 - [Wave 4 Cross-Slice Convergence Audit](wave4_cross_slice_convergence_audit.md)
 - [Wave 5 Cross-Slice Convergence Audit](wave5_cross_slice_convergence_audit.md)
@@ -146,6 +147,7 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 - [E1-R4 completion report](../mvp/wave7/e1r4_completion_report.md)
 - [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
 - [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md)
+- [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md)
 
 ## Wave 6 implementation evidence
 
