@@ -8,7 +8,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 ---
 # RelayLM Current / Target / Migration Guide
 
-Last reviewed: 2026-06-29 JST
+Last reviewed: 2026-06-30 JST
 
 ## Purpose
 
@@ -37,6 +37,8 @@ E1-R5 is current implemented as bounded scoped Primary MEM recall candidate disc
 ```
 
 E1-R5 was merged after W7-INT and is now treated as a post-Wave-7 correction to the E1 proof boundary. Current docs must not read the E1 recall proof as "M2 alone always selects current eligible scoped Primary MEM". M2 remains preferred; E1-R5 bridges the no-M2-scoped-candidate gap under bounded exact-namespace and lifecycle checks.
+
+The E1-R5 runtime bridge is not a permanent unowned compatibility assumption. PM-D8 in [Project Execution Plan](project_execution_plan.md) tracks the later decision to keep the bridge covered by E1-R5 smokes or fold it into the canonical Primary recall adapter. PM-D8 is related to PM-D5 because flat-store compatibility removal may touch Primary recall layout discovery and adapter/root handling.
 
 ## RelaySLP and Primary MEM migration
 
