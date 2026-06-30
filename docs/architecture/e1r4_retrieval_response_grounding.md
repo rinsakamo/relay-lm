@@ -17,6 +17,7 @@ relaylm_not_authoritative_for:
 relaylm_related_authority:
   - e1_evaluation_consolidation.md
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
+  - e1r5_primary_mem_recall_candidate_bridge.md
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i4d_primary_retrieval_exclusion.md
   - phase_i5b_pin_unpin_apply.md
@@ -24,7 +25,7 @@ relaylm_related_authority:
 ---
 # E1-R4 Retrieval-Response Grounding
 
-Last reviewed: 2026-06-28 JST.
+Last reviewed: 2026-06-30 JST.
 
 ## Purpose
 
@@ -64,6 +65,8 @@ grounded_recall_context:
   instruction
   backend_messages
 ```
+
+E1-R5 may provide the bounded scoped Primary MEM candidate that becomes input evidence for E1-R4 grounded recall when M2 yields no eligible scoped Primary candidate. E1-R4 consumes the same selected-memory handoff shape regardless of whether the candidate came from the M2-preferred path or the E1-R5 bounded bridge.
 
 `fact_text` is runtime-private backend evidence. Public diagnostics never include raw memory text, raw user text, raw assistant text, protected source body, queue payload, store root, source path, claim token, lease owner, token digest, or source digest.
 
