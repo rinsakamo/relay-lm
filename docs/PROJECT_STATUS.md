@@ -29,6 +29,7 @@ relaylm_related_authority:
   - docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md
   - docs/architecture/e1r4_retrieval_response_grounding.md
   - docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md
+  - docs/architecture/e1r5_post_wave7_correction_convergence_audit.md
   - docs/architecture/e1_evaluation_consolidation.md
   - docs/architecture/wave7_cross_slice_convergence_audit.md
   - docs/architecture/wave6_cross_slice_convergence_audit.md
@@ -88,7 +89,7 @@ Phase I-4C1 hidden-successor commit: complete
 Phase I-4C2 prepared recovery / operation-scoped M3f-M3g / tombstone finalization: complete
 Phase I-4D ordinary retrieval lifecycle exclusion: complete
 Phase I-4E loopback Forget API and SOUL Lab UI: complete
-Phase I-4F full Forget validation: complete
+Phase I-4F full Forget product validation: complete
 Phase I-4 overall: complete
 
 I-5A Pin / Unpin contract and read-only preflight: complete
@@ -186,7 +187,7 @@ UI-B0 real Home conversation is complete. UI-B1A read-only lifecycle and operati
 
 E1 evaluation consolidation is complete as a docs/evidence boundary. E1-R1 adds a route-owned trusted Home scene-admission gate that defaults disabled and rejects browser-owned trust. E1-R2 adds a dry-run-first operator command for idempotent character-store bootstrap. E1-R3 adds speaker-provenance-safe Primary MEM formation summary construction so user assertions remain distinguishable, assistant acknowledgements/speculation are not promoted to user facts, and route-owned scene/trust evidence stays qualification metadata. E1-R4 adds request-side retrieval-response grounding and unsupported-detail suppression for eligible retrieved Primary MEM evidence. E1-R5 adds the bounded Primary MEM recall candidate discovery bridge for the discovered `selected_count: 0` scoped-recall gap while preserving M2 as the preferred relevance owner.
 
-Wave 7 convergence is recorded in [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). E1-R5 is recorded in [E1-R5 Primary MEM Recall Candidate Discovery Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md) and [E1-R5 completion report](mvp/wave7/e1r5_completion_report.md). The E1 proof boundary now includes E1-R5 and does not claim that M2 alone always selects current eligible scoped Primary MEM.
+Wave 7 convergence is recorded in [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). E1-R5 is recorded in [E1-R5 Primary MEM Recall Candidate Discovery Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md), [E1-R5 completion report](mvp/wave7/e1r5_completion_report.md), and [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The E1 proof boundary now includes E1-R5 and does not claim that M2 alone always selects current eligible scoped Primary MEM.
 
 ## Current caveats
 
@@ -194,7 +195,7 @@ E1-R4 is request-side only. It builds a backend-bound grounded recall context an
 
 E1-R5 is a bounded request-side fallback bridge. It does not replace M2 as the preferred relevance owner, does not run without query hints, does not scan unbounded filesystem trees, does not use the compatibility symlink, and does not add mutation, worker, scheduler, queue, browser trust, RelaySOUL, or media runtime authority.
 
-Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-freeze relation, PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope, PM-D3 RelayEMO/RelaySCN scene_state ownership, PM-D4 client history exclusion default-off deployment decision, PM-D5 RelayMEM flat-store compatibility removal, PM-D6 RelayINT native artifact / RelayREF wrapper removal, and PM-D7 runtime install hook fold-in. These items are intentionally unimplemented until dedicated roadmap PRs close or absorb them.
+Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-freeze relation, PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope, PM-D3 RelayEMO/RelaySCN scene_state ownership, PM-D4 client history exclusion default-off deployment decision, PM-D5 RelayMEM flat-store compatibility removal, PM-D6 RelayINT native artifact / RelayREF wrapper removal, PM-D7 runtime install hook fold-in, and PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in. These items are intentionally unimplemented until dedicated roadmap PRs close or absorb them.
 
 ## Immediate dependency-first work
 
@@ -206,12 +207,13 @@ Post-E1-R5 / Post-Wave-7 next candidates:
   PM-D5 RelayMEM flat-store compatibility removal
   PM-D6 RelayINT native artifact / RelayREF wrapper removal
   PM-D7 runtime install hook fold-in
+  PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
   PM-D2 closure or absorption after PM-D6 if RelayREF wrapper removal closes the legacy artifact scope
   O2/O3 only after explicit MVP need
   Static SOUL Lab bundle serving, if local packaging requires it
 ```
 
-The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](architecture/wave6_cross_slice_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). The E1-R5 implementation handoff is [E1-R5 Primary MEM Recall Candidate Discovery Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
+The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The E1-R5 post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](architecture/wave6_cross_slice_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). The E1-R5 implementation handoff is [E1-R5 Primary MEM Recall Candidate Discovery Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 
 ## Safe defaults
 
