@@ -38,6 +38,7 @@ _EXPLICIT_FALLBACK_BLOCKERS = frozenset(
         "unresolved_reference_requires_confirmation",
         "scene_policy_does_not_allow_snippet_apply",
         "must_not_silently_resolve_ambiguous_reference",
+        "memory_store_disabled",
         "blocked_scene_policy",
         "blocked_unresolved_reference",
     }
