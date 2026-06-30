@@ -29,6 +29,7 @@ relaylm_related_authority:
   - e1r3_provenance_preserving_primary_mem_formation_summary.md
   - e1r4_retrieval_response_grounding.md
   - e1r5_primary_mem_recall_candidate_bridge.md
+  - e1r5_post_wave7_correction_convergence_audit.md
   - e1_evaluation_consolidation.md
   - wave7_cross_slice_convergence_audit.md
   - wave6_cross_slice_convergence_audit.md
@@ -229,7 +230,7 @@ E1-R5 Primary MEM recall candidate discovery bridge
   -> public diagnostics remain content-free
 ```
 
-The E1-R5 handoff is [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md) and the completion report is [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md). E1-R5 corrects the E1 proof boundary; current docs must not claim that M2 alone always selects current eligible scoped Primary MEM.
+The E1-R5 handoff is [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md), the completion report is [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md), and the post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md). E1-R5 corrects the E1 proof boundary; current docs must not claim that M2 alone always selects current eligible scoped Primary MEM.
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
@@ -242,9 +243,11 @@ Post-MVP decision debt registry:
   PM-D5 RelayMEM flat-store compatibility removal
   PM-D6 RelayINT native artifact / RelayREF wrapper removal
   PM-D7 runtime install hook fold-in
+  PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
 
 Implementation order for large compatibility removals:
   PM-D5 -> PM-D6 -> PM-D7
+  PM-D8 should be evaluated with PM-D5 when Primary recall layout discovery or adapter/root handling is touched
   PM-D2 closure or absorption after PM-D6 if the RelayREF wrapper removal eliminates the remaining legacy artifact scope
 
 O2 supervised worker service, only if required
@@ -263,11 +266,12 @@ The following entries are intentionally tracked as Post-MVP decision debt instea
 | --- | --- | --- | --- | --- |
 | PM-D1 | RelaySOUL gate design-freeze relation | Phase 5.5 stream unpack design-freeze boundary remains current. | Verify the RelaySOUL gate design documents against `phase5_5_stream_unpack_bounded_slice.md` and state whether each gate is frozen, exempt, or later-update-only. | The design-freeze relationship is documented and covered by a docs smoke anchor. |
 | PM-D2 | RelayINT -> RelayMEM `relayref_artifact` legacy compatibility scope | PM-D6 has either completed or proved the wrapper still needs a separate compatibility closure. | Decide whether the RelayINT-to-RelayMEM legacy `relayref_artifact` path is removed, absorbed into native RelayINT, or retained as a documented historical note. | No unscoped runtime legacy artifact remains; any retained historical note is non-runtime and explicitly bounded. |
-| PM-D3 | RelayEMO/RelaySCN `scene_state` ownership | Component responsibility remains owned by the responsibility design docs. | Select one canonical `scene_state` owner and reduce the other side to consumer/projection behavior. | Runtime and docs expose one owner and no overlapping mutation authority. |
+| PM-D3 | RelayEMO/RelaySCN `scene_state` ownership | RelaySCN remains the canonical `scene_state` owner per `relayscn_mvp_scene_policy.md` and responsibility docs. | Execute the existing RelaySCN-owned `scene_state` migration plan by reducing RelayEMO scene classification ownership to consumer/projection behavior and aligning runtime writers/readers with the RelaySCN-owned contract. | Runtime and docs expose RelaySCN as the single `scene_state` owner and no overlapping mutation authority remains. |
 | PM-D4 | client history exclusion default-off deployment decision | Current default-off behavior remains safe and unflipped. | Decide whether client history exclusion stays default-off, flips on by deployment gate, or is removed as unused. | The default decision, rollout condition, and rollback rule are documented before any behavior change. |
-| PM-D5 | RelayMEM flat-store compatibility removal | Local runtime memory layout is character-scoped: `runtime/memory/characters/<character>/<namespace>/memory/...`. | Remove old flat layout discovery and flat fallback from `_relaymem_store_impl.py`, `relaymem_primary_recall.py`, and `app.py`. | No runtime path uses `current_flat`, `legacy_flat`, `migration_required`, `read_only_compatibility_mode`, flat candidate dirs, flat root fallback, or `build_relaymem_primary_recall_compat_projection()`. A smoke proves character-scoped memory discovery is the only accepted layout. |
+| PM-D5 | RelayMEM flat-store compatibility removal | Local runtime memory layout is character-scoped: `runtime/memory/characters/<character>/<namespace>/memory/...`. | Remove old flat layout discovery and flat fallback from `_relaymem_store_impl.py`, `relaymem_primary_recall.py`, and `app.py`; evaluate PM-D8 if Primary recall layout discovery or adapter/root handling is touched. | No runtime path uses `current_flat`, `legacy_flat`, `migration_required`, `read_only_compatibility_mode`, flat candidate dirs, flat root fallback, or `build_relaymem_primary_recall_compat_projection()`. A smoke proves character-scoped memory discovery is the only accepted layout. PM-D8 is either closed, absorbed, or explicitly left as separately covered bridge debt. |
 | PM-D6 | RelayINT native artifact / RelayREF wrapper removal | PM-D5 is complete, so retrieval no longer depends on flat-store compatibility. | Move wrapper behavior into native RelayINT ownership, remove RelayREF historical wrapper metadata such as `relayint_alias` and `source_compat_module`, and update `app.py` to call the native RelayINT function directly. | `build_relayint_reference_repair_dry_run()` is no longer a RelayREF compatibility wrapper; RelayINT emits native artifacts without RelayREF compatibility metadata. |
 | PM-D7 | runtime install hook fold-in | PM-D5 and PM-D6 are complete, so remaining runtime patches can be classified accurately. | Fold import-time runtime patch behavior from `__init__.py` into canonical modules, then remove the install hook. | Importing `relaylm` does not install or mutate runtime behavior; canonical modules own the behavior directly and smoke coverage proves runtime behavior still works without import-time patch installation. |
+| PM-D8 | E1-R5 bridge canonical Primary recall adapter fold-in | E1-R5 remains a bounded runtime bridge over the original I-1 adapter, and PM-D5/PM-D6 may touch Primary recall roots, namespace handling, or candidate discovery. | Decide whether the E1-R5 bounded scoped Primary candidate bridge remains a runtime bridge or is folded into the canonical Primary recall adapter. Preserve the rule that M2 remains the preferred relevance owner and E1-R5 only supplies a bounded scoped Primary fallback when M2 yields no eligible scoped candidate. | Namespace handling, lifecycle eligibility, and candidate discovery cannot drift between `apply_relaymem_primary_recall_scope(...)` and the E1-R5 bridge. Until folded in or explicitly retained, the bridge remains covered by E1-R5 smokes. |
 
 ## MVP completion criteria
 
