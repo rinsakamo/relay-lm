@@ -78,7 +78,7 @@ Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<sl
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged, and E1-R5 is converged as a post-Wave-7 correction. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged, E1-R5 is converged as a post-Wave-7 correction, and PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
 
 ## Wave 7 implementation evidence
 
@@ -89,6 +89,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 - [E1-R4 completion report](mvp/wave7/e1r4_completion_report.md)
 - [E1-R5 Primary MEM recall candidate discovery bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md)
 - [E1-R5 completion report](mvp/wave7/e1r5_completion_report.md)
+- [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md)
 
 ## Wave 6 implementation evidence
 
