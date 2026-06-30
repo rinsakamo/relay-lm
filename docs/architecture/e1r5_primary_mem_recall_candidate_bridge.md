@@ -19,11 +19,13 @@ relaylm_related_authority:
   - integration_i1_primary_mem_two_turn_recall.md
   - phase_i4d_primary_retrieval_exclusion.md
   - e1r4_retrieval_response_grounding.md
+  - e1r5_post_wave7_correction_convergence_audit.md
+  - project_execution_plan.md
   - ../mvp/wave7/e1r5_completion_report.md
 ---
 # E1-R5 Primary MEM Recall Candidate Discovery Bridge
 
-Last reviewed: 2026-06-29 JST
+Last reviewed: 2026-06-30 JST
 
 ## Status
 
@@ -84,6 +86,12 @@ E1-R5 does not own an independent lifecycle policy. The implementation calls the
 
 The current implementation is still a runtime bridge over the original I-1 adapter. This is acceptable for the bounded E1-R5 fix, but future changes to `apply_relaymem_primary_recall_scope(...)` must either keep the E1-R5 bridge installed and covered by E1-R5 smokes or fold the bridge into the canonical Primary recall adapter so namespace handling and candidate discovery cannot drift.
 
+## Follow-up debt
+
+The runtime-bridge-to-canonical-adapter decision is tracked as PM-D8 in [Project Execution Plan](project_execution_plan.md). PM-D8 is intentionally tied to PM-D5 RelayMEM flat-store compatibility removal because the flat-store cleanup may touch Primary recall layout discovery and adapter/root handling.
+
+Until PM-D8 is closed or absorbed into PM-D5/PM-D6, E1-R5 bridge behavior must remain installed and covered by the E1-R5 smoke set. A future fold-in must preserve the current ownership rule: M2 remains preferred, E1-R5 is fallback only when M2 yields no eligible scoped Primary candidate, and lifecycle eligibility remains shared with I-4D.
+
 ## Grounded recall behavior
 
 When the bridge selects a Primary MEM page, E1-R4 grounded recall receives the same selected-memory shape as the M2 path. Backend-bound context may include the bounded supported summary as private evidence, and the instruction continues to require unsupported-detail suppression:
@@ -139,4 +147,5 @@ E1-R5 does not add O2/O3 supervision, polling, daemons, new queue authority, wor
 ## Source evidence
 
 - [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md)
+- [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md)
 - Source PR: #439
