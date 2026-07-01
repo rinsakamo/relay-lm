@@ -26,6 +26,12 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 4. Dedicated current contracts and handoffs
 5. [Current / Target / Migration Guide](current_target_migration_guide.md)
 
+## Character workspace target architecture
+
+- [File-first Character Workspace Design](file_first_character_workspace_design.md) defines the target Markdown source tree, RelayREL boundary, SLP-maintained scene/memory wiki model, and KV-cache-friendly context tiers.
+- [Pipeline Responsibility Design](pipeline_responsibility_design.md) defines component ownership and the target REL -> SCN -> EMO -> INT -> MEM -> CTX order.
+- [Memory Lifecycle Design](memory_lifecycle_design.md) defines MEMORY.md, memory pages, SLP memory apply boundaries, and content-free projections.
+
 ## Execution and roadmap
 
 - [Project Execution Plan](project_execution_plan.md)
@@ -79,7 +85,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [E1-R2 Character Store Bootstrap](e1r2_character_store_bootstrap.md)
 - [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md)
 - [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md)
-- [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
+- [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
 - [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md)
 - [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md)
 - [Wave 4 Cross-Slice Convergence Audit](wave4_cross_slice_convergence_audit.md)
@@ -92,6 +98,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 
 ## Memory lifecycle
 
+- [File-first Character Workspace Design](file_first_character_workspace_design.md)
 - [Memory Lifecycle Design](memory_lifecycle_design.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — compatibility stub
@@ -106,7 +113,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Phase I-5B Pin / Unpin Apply](phase_i5b_pin_unpin_apply.md)
 - [Phase I-7A/B Held Apply / Discard Contract](phase_i7ab_held_apply_discard_contract.md)
 - [Phase I-7C Held Apply / Discard Runtime](phase_i7c_held_apply_discard_runtime.md)
-- [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
+- [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
 
 The current Product and RelayMEM status is intentionally not summarized here. Read [Project Status](../PROJECT_STATUS.md) for current state and [Project Execution Plan](project_execution_plan.md) for MVP sequencing.
 
@@ -133,7 +140,7 @@ The current Product and RelayMEM status is intentionally not summarized here. Re
 - [E1-R2 Character Store Bootstrap](e1r2_character_store_bootstrap.md)
 - [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md)
 - [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md)
-- [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
+- [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md)
 
 The browser owns no queue, scheduler, worker, storage root, namespace, backend, SOUL, or route authority. Forget, Pin / Unpin, and Held Governance mutation boundaries remain in explicit loopback contracts and server-side authorities. E1-R1 trust is route-owned and never browser-owned. E1-R4 grounding remains request-side and never exposes runtime-private evidence in public diagnostics. E1-R5 bridge diagnostics remain content-free and do not expose scoped roots, namespaces, paths, digests, lineage, or runtime-private evidence.
@@ -145,7 +152,7 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 - [E1-R3 completion report](../mvp/wave7/e1r3_completion_report.md)
 - [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md)
 - [E1-R4 completion report](../mvp/wave7/e1r4_completion_report.md)
-- [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
+- [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
 - [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md)
 - [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md)
 
@@ -189,5 +196,6 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 
 ## Character cognition and RelaySOUL targets
 
+- [File-first Character Workspace Design](file_first_character_workspace_design.md)
 - [Character Belief, Relationship, and Social Expression Dynamics](character_belief_relationship_dynamics_design.md)
 - [ADR: Character-conditioned Belief Without Rewriting Observation](../adr/character_conditioned_belief_model.md)
