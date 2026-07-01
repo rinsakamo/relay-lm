@@ -107,6 +107,7 @@ MVP must provide:
 - no-character startup routing to Character Creation / Import rather than default-character auto-restore;
 - Quick Create and Advanced Create paths that produce the same file-first workspace format;
 - bundled official primary-user-fit starter templates and at least one finished showcase character template;
+- RelayLM onboarding knowledge in official starter/showcase templates so default characters can explain workspace basics without becoming development-review characters;
 - KV-cache-friendly context tiering that keeps uppercase sources stable and pushes state/retrieval to dynamic suffixes;
 - Character Workspace UI surfaces for Character, Scenes, Relationships, Memory Wiki, Runtime, and Advanced diagnostics;
 - Primary MEM formation from trusted scene-qualified managed requests and from the E1-R1 route-owned trusted Home gate when explicitly enabled;
@@ -296,6 +297,7 @@ CW-A5 character creation, templates, and showcase import
   -> Quick Create / Advanced Create
   -> primary-user-fit starter templates
   -> finished showcase character templates
+  -> RelayLM onboarding knowledge in official templates
   -> content-only external import validation
 ```
 
