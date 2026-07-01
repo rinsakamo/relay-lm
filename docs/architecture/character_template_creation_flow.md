@@ -44,6 +44,7 @@ Show the user why a grown local AI character feels different from a blank chatbo
   public/private expression difference
   bounded memory use
   relationship continuity without fake intimacy
+  natural guidance for using RelayLM itself
 ```
 
 ## Core rule
@@ -167,6 +168,85 @@ select template
 
 The UI should not force the user to inspect every source file during Quick Create. Details remain editable after creation.
 
+## RelayLM onboarding knowledge
+
+Official starter and showcase characters should include a small RelayLM onboarding knowledge pack.
+
+This is not the same as making the default character a RelayLM development-review partner. The character may be a companion, VTuber partner, mascot, or roleplay character, while still knowing how to explain RelayLM to the user.
+
+Purpose:
+
+```text
+help first-time users understand what RelayLM is
+explain the Character Workspace model in character voice
+answer basic questions about SOUL / STYLE / EMOTION / SCENE / RELATIONSHIP / MEMORY / BOUNDARY
+explain that Markdown source files are editable source of truth
+explain that .relaylm/** is generated/runtime/internal material
+explain how to create, import, edit, and grow characters
+explain public/private scene and memory-disclosure behavior
+suggest safe next steps when the user is confused
+```
+
+Recommended placement:
+
+```text
+memory/topics/relaylm.md
+  template-scoped product knowledge page
+
+scenes/relaylm_onboarding.md
+  optional onboarding/help scene
+
+preview/sample_responses.md
+  examples of the character explaining RelayLM in its own voice
+```
+
+Example metadata:
+
+```markdown
+status:: template_knowledge
+source:: template:relaylm_onboarding
+scope:: product_help
+```
+
+The onboarding knowledge pack should be factual, compact, and user-facing. It should not include internal PR history, private implementation notes, queue records, memory IDs, unreleased claims, or hidden diagnostics.
+
+Good default knowledge:
+
+```text
+RelayLM is a local-LLM character workspace.
+Characters are stored as editable Markdown files.
+Uppercase files are stable human-edited character sources.
+Lowercase pages are SLP-maintained wiki/work pages.
+.relaylm contains generated/runtime artifacts.
+RelayLM compiles the workspace into backend-bound prompt projections.
+Memory and scene updates can be proposed or maintained after turns.
+Private memory should not be exposed in public/stream scenes.
+```
+
+Not default knowledge:
+
+```text
+current PR status
+private roadmap arguments
+internal review comments
+queue implementation details
+memory IDs or revision IDs
+claims that a feature is implemented when it is only target architecture
+```
+
+The default behavior should be:
+
+```text
+character first
+  -> keep the chosen character voice and use case
+
+RelayLM-aware
+  -> can explain how this workspace works when asked
+
+not developer-default
+  -> does not turn every character into a technical project reviewer
+```
+
 ## Advanced Create
 
 Advanced Create exposes the underlying source model:
@@ -207,19 +287,22 @@ Primary showcase examples:
 ```text
 Showcase Friendly Companion
   A warm but bounded companion with recognizable voice, gentle continuity,
-  private-scene familiarity limits, and natural memory use without fake intimacy.
+  RelayLM onboarding knowledge, private-scene familiarity limits,
+  and natural memory use without fake intimacy.
 
 Showcase VTuber / Stream Partner
   A stream-friendly character with public/private scene differences,
-  expression profiles, audience-safe memory disclosure, and chat-ready style.
+  RelayLM help behavior, expression profiles, audience-safe memory disclosure,
+  and chat-ready style.
 
 Showcase Creator Mascot
   A memorable mascot-style character for creators who want a consistent local AI
-  persona for brainstorming, streaming, short clips, and casual interaction.
+  persona for brainstorming, streaming, short clips, casual interaction,
+  and light RelayLM guidance.
 
 Showcase Fantasy Roleplay Character
   A lore-heavy character with SOUL, STYLE, EMOTION, SCENE, BOUNDARY, LORE,
-  and roleplay-oriented scene pages.
+  roleplay-oriented scene pages, and optional out-of-character RelayLM help mode.
 ```
 
 Secondary showcase examples:
@@ -239,12 +322,14 @@ Starter template
   minimal memory
   small scene set
   broad defaults
+  RelayLM onboarding knowledge
   intended for customization
 
 Showcase template
   richer memory/core examples
   multiple active scenes
   tuned relationship instance
+  RelayLM onboarding/help scene
   optional LORE
   sample prompts/responses
   demonstrates growth and maturity
@@ -266,10 +351,11 @@ Use showcase as-is
   keep curated example memories and scenes
 
 Use as starter
-  keep personality/style/lore, but clear example user-specific memory
+  keep personality/style/lore and RelayLM onboarding knowledge,
+  but clear example user-specific memory
 ```
 
-For AI companion templates, the default should avoid importing fake user-specific intimacy. It is acceptable to include template-scoped examples such as favorite topics, prior scene examples, creator workflow examples, or demo-user memories when clearly marked as template examples.
+For AI companion templates, the default should avoid importing fake user-specific intimacy. It is acceptable to include template-scoped examples such as favorite topics, prior scene examples, creator workflow examples, demo-user memories, and RelayLM onboarding knowledge when clearly marked as template examples or template knowledge.
 
 ## Template sources
 
@@ -312,9 +398,12 @@ relationships/
   user.md optional
 scenes/
   default.md
+  relaylm_onboarding.md optional
   optional showcase scenes
 memory/
   core.md
+  topics/
+    relaylm.md optional
   optional showcase pages
 preview/
   sample_prompt.txt
@@ -363,8 +452,9 @@ Example:
 ```text
 Fantasy Roleplay generator
   asks for name, gender/presentation, world, role, oath or motivation,
-  relationship to user, tone, and forbidden behaviors
+  relationship to user, tone, forbidden behaviors, and RelayLM help behavior
   -> drafts SOUL / STYLE / EMOTION / SCENE / RELATIONSHIP / MEMORY / BOUNDARY / LORE
+  -> includes compact RelayLM onboarding knowledge unless the user disables it
 ```
 
 Generated files are candidates until user approval. After approval, Markdown source files become the source of truth and RelayLM uses deterministic compilation and cached projections.
@@ -444,6 +534,7 @@ Default active characters are not auto-restored.
 Templates are explicit creation sources.
 Quick Create is light.
 Advanced Create is detailed.
+Official starter/showcase characters include RelayLM onboarding knowledge.
 Showcase characters demonstrate the grown-character experience for AI companion,
 VTuber / stream, mascot, and roleplay users.
 Design-review characters are secondary power-user templates, not the default shelf.
