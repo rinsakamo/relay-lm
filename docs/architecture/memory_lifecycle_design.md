@@ -8,6 +8,7 @@ relaylm_update_trigger:
   - short-term memory semantics change
   - RelayMEM or RelaySLP persistence policy changes
   - SOUL Lab memory operation UI changes
+  - file-first workspace memory policy changes
 relaylm_not_authoritative_for:
   - current runtime implementation status
   - exact RelayMEM retrieval schemas
@@ -15,11 +16,11 @@ relaylm_not_authoritative_for:
   - RelaySOUL revision approval schema
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
+  - file_first_character_workspace_design.md
   - context_packing_design.md
   - relaymem_mvp_design.md
   - relaymem_slp_execution_design.md
   - relaymem_slp_current_target.md
-  - relaymem_mvp_implementation_plan.md
   - scene_memory_scope_design.md
   - soul_lab_ui_mvp.md
   - phase_i3_auditable_primary_mem_correct.md
@@ -31,19 +32,88 @@ relaylm_related_authority:
 
 ## Purpose
 
-This document defines how RelayLM treats short-term memory, experience evidence, long-term MEM formation, and SOUL Lab memory operations as one lifecycle.
+This document defines how RelayLM treats short-term memory, governed experience evidence, long-term MEM formation, memory policy, and SOUL Lab memory operations as one lifecycle.
+
+The target user-facing source model is file-first. The stable policy for memory behavior lives in `MEMORY.md`; human-readable memory pages live under `memory/**/*.md`; generated units, indexes, and projections live under `.relaylm/**`.
 
 The key product boundary is:
 
 ```text
 Ordinary MEM formation is autonomous by default.
-User approval is not required for ordinary memory formation.
-SOUL-level changes and high-risk memory operations require explicit intervention.
+User approval is not required for every ordinary memory formation.
+SOUL / STYLE / EMOTION / SCENE / RELATIONSHIP / MEMORY / BOUNDARY changes
+and high-risk memory operations require explicit intervention or proposals.
 ```
 
-RelayMEM should feel like a character forming experience, not like the user managing a per-turn approval queue.
+RelayMEM should feel like a character forming experience, not like the user managing a per-turn approval queue. SOUL Lab should let the user observe, correct, archive, forget, merge, and inspect what was used without turning memory into user labor.
 
-This document is target architecture. It does not carry date-stamped completion appendices. Current implementation status belongs to [Project Status](../PROJECT_STATUS.md) and exact handoffs.
+This document is target architecture. Current implementation status belongs to [Project Status](../PROJECT_STATUS.md) and exact handoffs.
+
+## File-first memory sources
+
+Target layout:
+
+```text
+characters/<character>/
+  MEMORY.md
+  memory/
+    core.md
+    people/
+      user.md
+    projects/
+    topics/
+    episodes/
+    inbox/
+    forgotten/
+  proposals/
+    memory/
+  .relaylm/
+    sources/
+    build/
+      memory_units.jsonl
+      links.jsonl
+    indexes/
+```
+
+### MEMORY.md
+
+`MEMORY.md` owns memory policy:
+
+- what should be remembered;
+- what should not be remembered;
+- memory granularity;
+- memory recall style;
+- source-reference requirements;
+- archive / forgotten / deleted semantics;
+- personal-memory disclosure rules;
+- SLP auto-apply versus proposal rules.
+
+`MEMORY.md` is an uppercase human-editable source and should be compact, rarely changed, and KV-cache-friendly.
+
+### memory/**/*.md
+
+`memory/**/*.md` files are memory pages, not one-file-per-memory records.
+
+```text
+Markdown page = human editing unit
+Memory block = semantic unit
+Retrieval chunk = internal generated unit
+```
+
+A page may contain many stable memory blocks with Obsidian-style block IDs and inline metadata.
+
+Example:
+
+```markdown
+## Target user direction ^mem-relaylm-target-user
+
+status:: active
+importance:: high
+tags:: #relaylm #product-direction
+
+RelayLM should target mid-range GPU local LLM hobbyists and character-AI
+experimenters rather than DGX-class infrastructure operators.
+```
 
 ## Lifecycle summary
 
@@ -53,15 +123,19 @@ RelayCTX short-term state
 
 Experience evidence
   -> governed turn/session/communication evidence after normal response
+  -> stored under protected .relaylm/sources/ when content-bearing source retention is needed
 
 RelaySLP
-  -> deferred memory extraction, salience/scope/safety classification, merge/update/hold/reject/proposal
+  -> deferred memory extraction, salience/scope/safety classification,
+     merge/update/hold/reject/proposal, and page compilation
 
 RelayMEM durable memory
-  -> formed memories, summaries, relations, lifecycle revisions, and retrieval pages
+  -> formed memory blocks, summaries, relations, lifecycle revisions, retrieval pages,
+     and compiled memory_units.jsonl / indexes
 
-SOUL Lab
-  -> observation, correction, forgetting, pinning, merging, and SOUL-level intervention when needed
+SOUL Lab / Character Workspace UI
+  -> observation, correction, archive, forget, merge, source review,
+     and escalation to proposals when needed
 ```
 
 Short-term memory helps the current interaction. Long-term MEM crystallizes experience for future interactions.
@@ -78,25 +152,21 @@ RelayLM memory should be read as four related layers:
    EMO- and SCN-influenced experiential memory.
 
 2. Secondary MEM / Crystallized MEM
-   SLP-consolidated memory organized against SOUL, existing MEM, lineage, and retrieval needs.
+   SLP-consolidated memory organized against SOUL, BOUNDARY, MEMORY policy,
+   existing MEM, lineage, relation typing, contradiction checks, and retrieval needs.
 
-3. SOUL anchor
-   Durable identity, values, worldview, output policy, and relationship anchors.
+3. Character source layer
+   SOUL / STYLE / EMOTION / SCENE / RELATIONSHIP / MEMORY / BOUNDARY.
+   This layer is not ordinary memory and changes through explicit proposal/approval.
 ```
 
-SOUL is not just another memory page. It is the durable identity/value anchor used to decide whether an experience remains ordinary MEM, becomes stable relationship/project/concept memory, or must be escalated as a SOUL proposal.
+SOUL is not just another memory page. MEMORY is not a memory page either; it is the stable policy source used to decide what should be remembered, how it should be recalled, and when a candidate must be held or proposed.
 
-### Short-term CTX
+## Primary MEM: experience memory
 
-Short-term CTX is working memory. It is request/session/scene local, latency-sensitive, and not automatically durable. It may become source evidence for RelaySLP, but it is not itself long-term MEM.
+Primary MEM captures what the character experienced, noticed, or found salient: session episodes, communication episodes, subjective impressions, relationship moments, recent project events, unresolved but salient experiences, emotional salience markers, and scene-bound memories.
 
-### Primary MEM: experience memory
-
-Primary MEM is EMO- and SCN-influenced experiential memory. It captures what the character experienced, noticed, or found salient: session episodes, communication episodes, subjective impressions, relationship moments, recent project events, unresolved but salient experiences, emotional salience markers, and scene-bound memories.
-
-Primary MEM is stronger than short-term CTX because it may survive the current session, but it is still closer to lived experience than to stable knowledge.
-
-RelayEMO influences salience and temperature. RelaySCN influences scope, scene, persistence policy, and whether the experience is eligible to be remembered. Neither EMO nor SCN may turn raw affect estimates into durable facts by itself.
+RelayEMO influences salience and expression pressure. RelaySCN influences scope, scene, persistence policy, and whether the experience is eligible to be remembered. RelayREL influences target-specific permissions and relationship salience. None of them may turn raw affect estimates or one-turn impressions into durable user facts by themselves.
 
 Example boundary:
 
@@ -108,13 +178,11 @@ Disallowed durable fact:
   Mica is an anxious person.
 ```
 
-### Secondary MEM: crystallized memory
+## Secondary MEM: crystallized memory
 
-Secondary MEM is SLP-consolidated memory. It is formed when RelaySLP organizes primary MEM or other governed evidence against SOUL constraints, existing MEM pages, source lineage, contradiction checks, namespace boundaries, long-term retrieval needs, and relation typing/summaries.
+Secondary MEM is SLP-consolidated memory. It is formed when RelaySLP organizes primary MEM or other governed evidence against source lineage, existing pages, contradiction checks, namespace boundaries, long-term retrieval needs, relationship policy, and `MEMORY.md`.
 
 Secondary MEM may become stable project state, concept pages, relationship summaries, durable preferences, recurring patterns, contradiction-resolved claims, relation graph entries, or stable memory summaries.
-
-Secondary MEM is less emotionally raw than primary MEM. It preserves EMO/SCN as provenance, salience, or scope when useful, but it should not preserve transient affect as a durable claim.
 
 Example transformation:
 
@@ -123,21 +191,14 @@ Primary MEM:
   The user reacted strongly against requiring manual approval for every MEM candidate.
 
 Secondary MEM:
-  RelayLM MEM design should treat ordinary memory formation as autonomous, while SOUL Lab provides observation, correction, forgetting, pinning, and merging after the fact.
+  RelayLM MEM design should treat ordinary memory formation as autonomous,
+  while Character Workspace UI provides observation, correction, archive, forget,
+  merge, and source review after the fact.
 ```
 
-### SOUL anchor boundary
+## Character source escalation boundary
 
-SOUL is the character's durable identity and value anchor.
-
-SOUL affects secondary MEM formation by answering questions like:
-
-- Is this ordinary memory or identity-level change?
-- Does this experience conflict with protected values or relationship anchors?
-- Should this become a stable relationship/project/concept memory?
-- Should this be escalated as a RelaySOUL proposal?
-
-A memory may produce a SOUL candidate, but it must not directly mutate SOUL.
+A memory may produce a proposal for a character-source change, but it must not directly mutate uppercase source files.
 
 ```text
 Primary MEM
@@ -146,11 +207,24 @@ Primary MEM
 Secondary MEM
   -> what this means for future continuity
 
-SOUL proposal
-  -> whether identity, values, or relationship anchors should change
+Proposal
+  -> whether SOUL / STYLE / EMOTION / SCENE / RELATIONSHIP / MEMORY / BOUNDARY should change
 
-SOUL revision
+Approved source revision
   -> explicit intervention path only
+```
+
+Examples:
+
+```text
+ordinary memory:
+  The user prefers file-first Markdown workspace terminology.
+
+REL proposal:
+  Increase direct_disagreement_permission for relationships/user.md.
+
+SOUL proposal:
+  The character's general temperament should become more confrontational.
 ```
 
 ## Component ownership
@@ -159,29 +233,41 @@ SOUL revision
 
 RelayCTX owns request-local and session-local continuity needed for the current answer: current topic, active task/question, prior decisions, referable items, unresolved slots, selected recent continuity metadata, and bounded short-term summaries.
 
-RelayCTX short-term memory must not be treated as durable memory merely because it helped a prompt. It is not automatically persisted and it is not a source of RelaySOUL changes.
+RelayCTX short-term memory must not be treated as durable memory merely because it helped a prompt. It is not automatically persisted and it is not a source of character-source changes.
 
-### Experience evidence
+### Experience evidence and .relaylm/sources
 
-Experience evidence is governed source material produced around a turn, session, communication, correction, or recovery event.
+Experience evidence is governed source material produced around a turn, session, communication, correction, import, or recovery event.
 
-It may include source references to the latest exchange, communication session summaries, RelayCTX Unpack/update candidates after validation, RelaySCN scene/persistence policy, RelayEMO expression or salience evidence in bounded form, RelayRUN checkpoint/recovery metadata, user corrections or explicit memory requests, retrieval summaries, and source lineage.
+It may include source references to the latest exchange, communication session summaries, RelayCTX Unpack/update candidates after validation, RelaySCN scene/persistence policy, RelayREL relationship policy classes, RelayEMO expression or salience evidence in bounded form, RelayRUN checkpoint/recovery metadata, user corrections or explicit memory requests, retrieval summaries, and source lineage.
 
-Experience evidence is not the same as generic runtime trace. Content-bearing evidence belongs in the protected memory/source domain, not default trace/audit projections.
+Content-bearing evidence belongs in the protected memory/source domain, such as `.relaylm/sources/**`, not default trace/audit projections.
 
 ### RelaySLP
 
-RelaySLP is the deferred memory compiler. It decides whether governed evidence becomes no durable memory change, a new memory record, an update to an existing memory page, a session/scene summary, a relation update, a held/blocked item, a correction/forgetting operation, or a RelaySOUL proposal candidate.
+RelaySLP is the deferred workspace compiler. It decides whether governed evidence becomes no durable change, a new memory block, an update to an existing memory page, a session/scene summary, a relation update candidate, a held/blocked item, a correction/forgetting operation, or a source proposal.
 
-RelaySLP is allowed to apply ordinary memory updates only when the apply gate, RelaySCN persistence policy, source lineage, confidence/stability, namespace, and idempotency checks pass.
+RelaySLP is allowed to apply ordinary memory updates only when the apply gate, RelaySCN persistence policy, RelayREL permission policy, source lineage, confidence/stability, namespace, idempotency, and `MEMORY.md` checks pass.
+
+RelaySLP may also create scene candidates under `scenes/_inbox/` and relationship proposals under `proposals/relationship/`, but it must not apply high-risk source changes during the normal response path.
 
 ### RelayMEM durable memory
 
-RelayMEM durable memory stores formed experience and retrieval pages. It is lower authority than SOUL, OUTPUT_POLICY, and RELATIONSHIP_ANCHOR. It should inform answers and continuity, but it must not silently rewrite identity, values, relationship policy, or output style.
+RelayMEM durable memory stores formed experience and retrieval pages/units. It is lower authority than BOUNDARY, SOUL, REL, SCENE, EMOTION, STYLE, and MEMORY policy. It should inform answers and continuity, but it must not silently rewrite identity, values, relationship policy, emotion profiles, scene policy, memory policy, boundary policy, or output style.
 
-### SOUL Lab
+### Character Workspace UI
 
-SOUL Lab is not a mandatory approval queue for ordinary memory formation. It should let the user see recently formed memories, see which memories influenced an answer, inspect uncertain or held memories, correct a memory, perform Forget, pin/unpin important memories, merge duplicates, resolve contradictions, and escalate identity-level changes into SOUL Intervention.
+The primary UI should not be a per-turn approval queue or a memory-id console. It should let the user:
+
+- see recently formed memories;
+- see held or uncertain memories;
+- see memories used in the latest response;
+- inspect source summaries;
+- edit memory pages when desired;
+- archive / forget / correct / merge;
+- review proposals for high-risk changes.
+
+Pin / Unpin and raw revision IDs are internal or Advanced diagnostics concepts, not the default user-facing vocabulary.
 
 ## Short-term versus long-term memory
 
@@ -213,11 +299,11 @@ Short-term CTX
   -> source evidence for SLP when policy allows
 
 Primary MEM
-  -> scene-aware and EMO-influenced experience memory
+  -> scene-aware, relationship-aware, and EMO-influenced experience memory
   -> useful for recent continuity and subjective relationship memory
 
 Secondary MEM
-  -> SOUL-aligned, contradiction-checked, lineage-backed memory
+  -> source-aligned, contradiction-checked, lineage-backed memory
   -> useful for durable retrieval and stable summaries
 ```
 
@@ -228,36 +314,48 @@ RelaySLP may create primary MEM quickly at turn/session end, then consolidate it
 Retrieval should preserve authority order.
 
 ```text
-Highest authority:
-  SOUL / OUTPUT_POLICY / RELATIONSHIP_ANCHOR
+Highest stable authority:
+  BOUNDARY / SOUL / RELATIONSHIP / STYLE / EMOTION / MEMORY policy
 
-Stable memory:
-  Secondary MEM / Crystallized MEM
+Target/session semi-stable context:
+  selected relationships/<target>.md summary
+  selected active scene page summary
+  selected secondary MEM summary
 
 Dynamic context:
   RelaySCN scene state
-  Primary MEM / Experience MEM
-  Short-term CTX
+  RelayEMO expression state
+  selected Primary MEM / Experience MEM
+  selected short-term CTX
   latest user input
 ```
 
-Prompt placement should keep stable, approved context before dynamic evidence:
+Prompt placement should keep stable, approved context before dynamic evidence while preserving KV-cache-friendly tiers:
 
 ```text
 stable prefix:
+  BOUNDARY
   SOUL
-  OUTPUT_POLICY
-  RELATIONSHIP_ANCHOR
+  STYLE
+  EMOTION
+  RELATIONSHIP
+  MEMORY
+  optional LORE
+
+semi-stable prefix:
+  selected relationship instance
+  selected scene summary
   selected secondary MEM summary
 
 dynamic suffix:
-  SCN
+  scene_state
+  emotion_state
   selected primary MEM
   selected short-term CTX
   latest input
 ```
 
-Primary MEM can help a reply feel continuous and emotionally aware, but it must not override SOUL or secondary MEM. Secondary MEM can guide durable continuity, but it still remains lower authority than SOUL.
+Primary MEM can help a reply feel continuous and emotionally aware, but it must not override character sources or secondary MEM. Secondary MEM can guide durable continuity, but it still remains lower authority than stable character and policy sources.
 
 ## Primary MEM lifecycle states
 
@@ -283,15 +381,32 @@ That means:
 - the normal conversation loop should not pause for memory decisions;
 - safe low-risk memories may be formed after turn/session end when gates pass;
 - Lab shows what was formed and what was held;
-- user correction remains available after the fact.
+- user correction remains available after the fact;
+- SLP-maintained lowercase pages may grow without invalidating stable uppercase sources.
 
-This is intentionally different from RelaySOUL mutation. SOUL-level changes require explicit intervention because they alter identity, values, output policy, relationship anchors, or durable persona constraints.
+This is intentionally different from character-source mutation. Uppercase files and high-risk relationship parameters require explicit intervention because they alter identity, style, emotion profiles, scene policy, relationship policy, memory policy, or boundaries.
 
 ## Intervention boundaries
 
-User/operator intervention is required for RelaySOUL changes, relationship anchor changes, durable output policy changes, explicit Forget lifecycle transitions and any separate physical deletion operation, explicit pinning/unpinning when it changes retrieval priority, sensitive personal facts, low-confidence personal inference, unresolved contradictions, user-disputed memories, policy-blocked persistence, and memory operations that cross namespace boundaries.
+User/operator intervention is required for:
 
-User/operator intervention is not required for every ordinary project note, concept refinement, relationship continuity detail, or session summary when RelaySLP gates classify it as safe to apply.
+- `SOUL.md` changes;
+- `STYLE.md` changes;
+- `EMOTION.md` changes;
+- `SCENE.md` changes;
+- `RELATIONSHIP.md` changes;
+- `MEMORY.md` changes;
+- `BOUNDARY.md` changes;
+- important `relationships/<target>.md` parameter or role changes;
+- explicit Forget lifecycle transitions and any separate physical deletion operation;
+- sensitive personal facts;
+- low-confidence personal inference;
+- unresolved contradictions;
+- user-disputed memories;
+- policy-blocked persistence;
+- memory operations that cross namespace boundaries.
+
+User/operator intervention is not required for every ordinary project note, concept refinement, low-risk relationship continuity detail, or session summary when RelaySLP gates classify it as safe to apply.
 
 ## Safety scopes
 
@@ -305,7 +420,7 @@ review_required
   Held because the system cannot safely decide without later review or correction.
 
 explicit_approval_required
-  Requires explicit user/operator approval or a RelaySOUL proposal path.
+  Requires explicit user/operator approval or a source proposal path.
 
 never_auto_promote
   Never becomes ordinary durable memory automatically.
@@ -313,47 +428,9 @@ never_auto_promote
 
 `review_required` and `explicit_approval_required` are exception paths. They should not be the ordinary memory formation experience.
 
-## Lab presentation model
-
-Prefer these Lab surfaces:
-
-```text
-Memory Formation
-  newly formed memories
-  held or uncertain memories
-  blocked memory operations
-  memories used in latest response
-  source experience summary
-  Correct / Forget / Pin / Merge controls
-```
-
-Avoid making the primary UI a per-turn approval inbox. The Lab should support operator control without turning normal memory formation into user labor.
-
-## Retrieval relationship
-
-RelayMEM Retrieval reads formed memory for the current answer. It does not write memory.
-
-```text
-formed MEM
-  -> RelayMEM Retrieval
-  -> bounded runtime-private evidence
-  -> RelayCTX packing
-  -> current answer
-```
-
-RelaySLP writes or updates future memory after the normal answer path.
-
-```text
-current experience
-  -> governed evidence
-  -> deferred RelaySLP
-  -> gated memory apply
-  -> future retrieval
-```
-
 ## Content-bearing and content-free boundary
 
-Content-bearing memory artifacts may contain source text, candidate values, snippets, or page updates only in protected memory/SLP domains.
+Content-bearing memory artifacts may contain source text, candidate values, snippets, or page updates only in protected memory/SLP/source domains.
 
 Default trace, audit, public errors, and general runtime diagnostics must remain content-free and expose only counts, booleans, status values, reason IDs, safety scope classes, confidence/stability bands, namespace classes, and apply attempted/applied booleans.
 
@@ -363,8 +440,9 @@ This lifecycle does not make RelayLM:
 
 - a universal semantic memory judge;
 - a vector database product;
-- an automatic SOUL mutation system;
+- an automatic character-source mutation system;
 - a per-turn user approval workflow;
+- a one-file-per-memory system;
 - a replacement for explicit user correction;
 - a physical deletion, secure-erasure, purge, restore, or unhide system through Forget;
 - a reason to persist raw runtime traces as memory.
@@ -373,11 +451,12 @@ This lifecycle does not make RelayLM:
 
 ```text
 RelayCTX keeps short-term continuity.
-Primary MEM captures EMO- and SCN-influenced experience.
-RelaySLP consolidates primary MEM into secondary MEM when gates pass.
-Secondary MEM stores SOUL-aligned crystallized memory for durable retrieval.
-SOUL Lab lets the user observe, correct, Forget, pin, merge, and escalate.
-SOUL Intervention remains explicit.
+Primary MEM captures SCN / EMO / REL-influenced experience.
+RelaySLP consolidates Primary MEM into Secondary MEM when gates pass.
+MEMORY.md defines memory policy.
+memory/**/*.md stores human-readable memory pages.
+.relaylm/build stores compiled retrieval units and indexes.
+Character Workspace UI lets the user observe, correct, archive, Forget, merge, and review proposals.
 ```
 
 ## Primary MEM next-turn use
