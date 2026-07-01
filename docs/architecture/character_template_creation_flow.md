@@ -28,6 +28,24 @@ This document defines the target character creation and template import flow for
 
 It complements [File-first Character Workspace Design](file_first_character_workspace_design.md). It does not claim that the current SOUL Lab UI already implements these flows.
 
+## Primary user fit
+
+The primary template experience should fit local-LLM character users: AI companion builders, VTuber / livestream experimenters, roleplay users, and hobbyists running mid-range GPU stacks through tools such as OpenWebUI and LM Studio.
+
+The default template shelf must not be shaped around RelayLM development work. A design-review partner can exist as an advanced or developer-oriented template, but it should not be the primary default character experience.
+
+Primary showcase goal:
+
+```text
+Show the user why a grown local AI character feels different from a blank chatbot:
+  stable identity
+  recognizable voice
+  scene-aware behavior
+  public/private expression difference
+  bounded memory use
+  relationship continuity without fake intimacy
+```
+
 ## Core rule
 
 RelayLM must not auto-create or auto-restore a default active character when no valid character workspace exists.
@@ -89,16 +107,16 @@ tone
 intended use
 ```
 
-Example choices:
+Default template choices should be character-first:
 
 ```text
 Template:
   Friendly Companion
-  Design Partner
-  VTuber Chat
-  Fantasy Knight
-  Quiet Assistant
-  Blank
+  VTuber / Stream Partner
+  Creator Mascot
+  Fantasy Roleplay Character
+  Calm Assistant Character
+  Blank Character
 
 Tone:
   friendly
@@ -106,14 +124,24 @@ Tone:
   calm
   energetic
   cool
+  playful
   slightly sharp
 
 Use:
   casual chat
-  development / design review
+  AI companion
   livestream / VTuber chat
-  learning support
   roleplay
+  learning support
+  creative brainstorming
+```
+
+Secondary or advanced templates may include:
+
+```text
+Developer Design Partner
+  useful for RelayLM development and technical review,
+  but not a default showcase for the primary user.
 ```
 
 User-facing flow:
@@ -172,22 +200,34 @@ finished showcase characters
   -> let the user immediately experience what a grown character feels like
 ```
 
-Finished showcase characters are important because a blank or newly generated character does not demonstrate long-term memory, scene tuning, relationship style, or mature character consistency. A showcase character should demonstrate the end-state experience that RelayLM is aiming for.
+Finished showcase characters are important because a blank or newly generated character does not demonstrate long-term memory, scene tuning, relationship style, public/private scene handling, or mature character consistency. A showcase character should demonstrate the end-state character experience that RelayLM is aiming for.
 
-Examples:
+Primary showcase examples:
 
 ```text
-Showcase Design Partner
-  Mature project-review companion with established scene pages, memory examples,
-  relationship policy, and direct-but-safe disagreement style.
+Showcase Friendly Companion
+  A warm but bounded companion with recognizable voice, gentle continuity,
+  private-scene familiarity limits, and natural memory use without fake intimacy.
 
-Showcase VTuber Chat Character
-  Stream-friendly character with public/private scene differences, expression profiles,
-  and safe memory-disclosure behavior.
+Showcase VTuber / Stream Partner
+  A stream-friendly character with public/private scene differences,
+  expression profiles, audience-safe memory disclosure, and chat-ready style.
 
-Showcase Fantasy Knight
-  Lore-heavy character with SOUL, STYLE, EMOTION, SCENE, BOUNDARY, LORE,
+Showcase Creator Mascot
+  A memorable mascot-style character for creators who want a consistent local AI
+  persona for brainstorming, streaming, short clips, and casual interaction.
+
+Showcase Fantasy Roleplay Character
+  A lore-heavy character with SOUL, STYLE, EMOTION, SCENE, BOUNDARY, LORE,
   and roleplay-oriented scene pages.
+```
+
+Secondary showcase examples:
+
+```text
+Developer Design Partner
+  A technical/project-review companion for advanced users.
+  This may be useful as a power-user template but should not define the default shelf.
 ```
 
 Showcase characters may include curated example memory pages and scene pages, but they must still be content-only templates.
@@ -210,13 +250,13 @@ Showcase template
   demonstrates growth and maturity
 ```
 
-Showcase templates must clearly mark example memories as template memories. They must not imply that the system personally knows the user before the user creates or imports the workspace.
+Showcase templates must clearly mark example memories as template memories. They must not imply that the system personally knows the real user before the user creates or imports the workspace.
 
 Recommended marker:
 
 ```markdown
 status:: template_example
-source:: template:showcase_design_partner
+source:: template:showcase_friendly_companion
 ```
 
 On creation from a showcase template, RelayLM should offer a light reset option:
@@ -229,7 +269,7 @@ Use as starter
   keep personality/style/lore, but clear example user-specific memory
 ```
 
-For AI companion templates, the default should avoid importing fake user-specific intimacy. Project/product example memories are acceptable when clearly template-scoped.
+For AI companion templates, the default should avoid importing fake user-specific intimacy. It is acceptable to include template-scoped examples such as favorite topics, prior scene examples, creator workflow examples, or demo-user memories when clearly marked as template examples.
 
 ## Template sources
 
@@ -321,8 +361,8 @@ Some templates may be generator templates rather than static templates.
 Example:
 
 ```text
-Fantasy Knight generator
-  asks for name, gender/presentation, kingdom, knight order, oath,
+Fantasy Roleplay generator
+  asks for name, gender/presentation, world, role, oath or motivation,
   relationship to user, tone, and forbidden behaviors
   -> drafts SOUL / STYLE / EMOTION / SCENE / RELATIONSHIP / MEMORY / BOUNDARY / LORE
 ```
@@ -349,11 +389,17 @@ Recommended zero-character UI:
 No character found.
 
 Quick start:
-  Design Partner
   Friendly Companion
-  VTuber Chat
-  Fantasy Knight
-  Showcase Design Partner
+  VTuber / Stream Partner
+  Creator Mascot
+  Fantasy Roleplay Character
+  Calm Assistant Character
+
+Showcase:
+  Showcase Friendly Companion
+  Showcase VTuber / Stream Partner
+  Showcase Creator Mascot
+  Showcase Fantasy Roleplay Character
 
 Create:
   Quick Create
@@ -370,7 +416,7 @@ MVP can simplify this to:
 ```text
 Create quickly
 Create in detail
-Start from showcase
+Try a showcase character
 Import
 ```
 
@@ -398,7 +444,9 @@ Default active characters are not auto-restored.
 Templates are explicit creation sources.
 Quick Create is light.
 Advanced Create is detailed.
-Showcase characters demonstrate the grown-character experience.
+Showcase characters demonstrate the grown-character experience for AI companion,
+VTuber / stream, mascot, and roleplay users.
+Design-review characters are secondary power-user templates, not the default shelf.
 External imports are validated content-only packs.
 All modes produce the same file-first Character Workspace.
 ```
