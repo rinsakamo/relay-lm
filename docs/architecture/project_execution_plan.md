@@ -19,6 +19,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../DOCUMENTATION_MODEL.md
   - pipeline_responsibility_design.md
+  - file_first_character_workspace_design.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
   - o1f_operational_validation.md
@@ -37,7 +38,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Execution Plan
 
-Last reviewed: 2026-06-30 JST
+Last reviewed: 2026-07-01 JST
 
 ## Purpose
 
@@ -54,6 +55,9 @@ PROJECT_STATUS.md
 project_execution_plan.md
   -> MVP boundary, dependency sequence, roadmap, wave ordering
 
+file_first_character_workspace_design.md
+  -> target source tree, workspace UX, KV-cache tiers, and RelayREL boundary
+
 slice contracts and handoffs
   -> exact bounded behavior for one feature or phase
 
@@ -69,23 +73,40 @@ post_i3_evaluation_work_roadmap.md
 relaymem_mvp_implementation_plan.md
 ```
 
+## Product direction reset
+
+The completed E1 / I-4 / I-5 / I-7 / O1 work proves that RelayLM can form, govern, recall, ground, and exclude scoped Primary MEM through durable local runtime boundaries. That foundation remains valuable, but it should not define the default product UX.
+
+The target product MVP is now:
+
+```text
+A Markdown-first local-LLM character workspace where the user can edit
+human-readable character source files, let RelaySLP maintain scene and memory
+wiki pages, and have RelayLM compile those files into cache-friendly runtime
+projections for character-consistent conversation.
+```
+
+This means the default UI target shifts away from internal memory-governance controls and toward Character Workspace surfaces. Pin / Unpin, revision IDs, queue records, workers, and apply tokens remain available in Advanced diagnostics or explicit governance flows, but they are not the primary user mental model.
+
 ## MVP boundary
 
-The MVP is the smallest text-first product boundary that lets a local operator evaluate whether RelayLM can sustain character-scoped memory safely through real conversation, observation, explicit governance, and bounded local operation.
+The MVP is the smallest file-first product boundary that lets a local operator evaluate whether RelayLM can sustain a character through editable Markdown sources, scene/emotion/relationship-aware context compilation, safe memory formation and recall, and bounded local operation.
 
 MVP must provide:
 
-- real SOUL Lab Home conversation through the existing OpenAI-compatible RelayLM path;
+- a character workspace source tree with `SOUL.md`, `STYLE.md`, `EMOTION.md`, `SCENE.md`, `RELATIONSHIP.md`, `MEMORY.md`, and `BOUNDARY.md`;
+- optional `LORE.md` for characters with substantial world/backstory material;
+- lower-case SLP-maintained `memory/**/*.md`, `scenes/**/*.md`, and `relationships/<target>.md` pages;
+- `.relaylm/sources/`, `.relaylm/state/`, and `.relaylm/build/` generated/runtime domains;
+- KV-cache-friendly context tiering that keeps uppercase sources stable and pushes state/retrieval to dynamic suffixes;
+- Character Workspace UI surfaces for Character, Scenes, Relationships, Memory Wiki, Runtime, and Advanced diagnostics;
 - Primary MEM formation from trusted scene-qualified managed requests and from the E1-R1 route-owned trusted Home gate when explicitly enabled;
 - speaker-provenance-safe Primary MEM formation summary so assistant acknowledgement/speculation and scene/trust qualification are not promoted to user facts;
 - later-turn Primary MEM retrieval and RelayCTX injection through the M2-preferred path plus the bounded E1-R5 scoped Primary candidate bridge when M2 yields no eligible scoped Primary candidate;
 - request-side retrieval-response grounding and unsupported-detail suppression for recalled Primary MEM evidence;
-- read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence;
-- explicit auditable Correct;
-- explicit Forget / Hide through API/UI plus validation;
-- explicit Pin / Unpin apply through API/UI plus deterministic ranking hint;
-- explicit Held Apply / Discard runtime governance through API/UI plus durable content-free decision evidence;
 - ordinary retrieval exclusion for hidden, prepared, recovery-required, corrupt, ambiguous, unsafe, cross-scope, and prior physical revisions;
+- explicit user-visible archive/forget/correct/merge-style memory operations, backed by existing governance where applicable;
+- proposal paths for high-risk source changes, including SOUL / STYLE / EMOTION / SCENE / RELATIONSHIP / MEMORY / BOUNDARY and important `relationships/<target>.md` parameters;
 - durable finalization evidence before protected visible release;
 - one-record restart replay, retention/isolation cleanup, and crash validation;
 - bounded local operation that can drain eligible replay and queue work through explicit caller-invoked rounds;
@@ -97,15 +118,16 @@ MVP does not include:
 - browser-owned trusted admission or frontend self-asserted persistence policy;
 - always-on daemon/service supervision unless a later explicit MVP gate proves it is required;
 - voice, TTS execution, avatar, Live2D, ASR, or peer communication transport;
-- Secondary MEM consolidation;
-- Merge / Supersession runtime apply unless explicitly pulled into MVP later;
-- RelaySOUL proposal/intervention/rollback runtime;
+- full Obsidian plugin behavior;
+- one-file-per-memory user-facing storage;
+- uncontrolled SLP auto-mutation of uppercase character sources;
+- physical secure erasure or purge semantics beyond explicit target contracts;
 - experimental SOUL replacement or synthetic memory bootstrap.
 
 ## MVP execution lanes
 
 ```text
-Memory governance
+Completed runtime and governance foundation
   I-4E Forget API/UI                              complete
     -> I-4F Forget validation                     complete
     -> I-5A Pin / Unpin contract/preflight        complete
@@ -113,12 +135,18 @@ Memory governance
     -> I-7A/B Held Apply/Discard preflight        complete
     -> I-7C Held Apply/Discard runtime/API/UI/durable evidence complete
 
+Character Workspace reset
+  CW-A1 file-first source tree and parser contracts
+    -> CW-A2 workspace compiler projections and KV-cache tiers
+    -> CW-A3 Character Workspace UI rebuild
+    -> CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals
+
 Operations
   O1D2 bounded scheduler policy/fairness/pacing complete
     -> O1E stale recovery/cancellation/shutdown complete
     -> O1F operational validation               complete
-    -> O2 supervised worker service, if required
-    -> O3 always-on local operation, if required
+    -> O2 supervised worker service, only if required
+    -> O3 always-on local operation, only if required
 
 Evaluation
   E1 evaluation consolidation                    complete
@@ -127,13 +155,6 @@ Evaluation
     -> E1-R3 provenance-preserving Primary MEM formation summary complete
     -> E1-R4 retrieval-response grounding and unsupported-detail suppression complete
     -> E1-R5 Primary MEM recall candidate discovery bridge complete
-
-SOUL Lab product
-  UI-B1A lifecycle and operation visibility   complete
-    -> I-5B Pin / Unpin controls              complete
-    -> I-7C Held Governance controls          complete
-    -> operator-facing evaluation flow
-    -> static bundle serving, if required for local MVP packaging
 ```
 
 ## MVP dependency waves
@@ -177,7 +198,7 @@ The O1F completion report is [O1F completion report](../mvp/wave6/o1f_completion
 
 ### Post-O1F next candidates
 
-This historical transition anchor records the candidate set that existed after O1F and before the later Wave 6, Wave 7, and E1-R5 implementation merges. It is kept so frozen convergence smokes can verify the transition while the current next-work list remains Post-E1-R5 / Post-Wave-7.
+This historical transition anchor records the candidate set that existed after O1F and before the later Wave 6, Wave 7, and E1-R5 implementation merges. It is kept so frozen convergence smokes can verify the transition while the current next-work list is the Character Workspace reset plus Post-E1-R5 / Post-Wave-7 debt registry.
 
 ```text
 I-5B Pin / Unpin apply/API/UI/ranking work                 complete in Wave 6
@@ -230,9 +251,35 @@ E1-R5 Primary MEM recall candidate discovery bridge
   -> public diagnostics remain content-free
 ```
 
-The E1-R5 handoff is [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md), the completion report is [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md), and the post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md). E1-R5 corrects the E1 proof boundary; current docs must not claim that M2 alone always selects current eligible scoped Primary MEM.
+The E1-R5 handoff is [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md), the completion report is [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md), and the post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md). E1-R5 corrects the E1 proof boundary; current docs must not claim that M2 alone always selects current eligible scoped Primary MEM.
 
-### Post-E1-R5 / Post-Wave-7 next candidates
+### Character Workspace reset next candidates
+
+```text
+CW-A1 file-first source tree and parser contracts
+  -> SOUL.md / STYLE.md / EMOTION.md / SCENE.md / RELATIONSHIP.md / MEMORY.md / BOUNDARY.md
+  -> relationships/<target>.md / scenes/**/*.md / memory/**/*.md
+  -> .relaylm/sources / .relaylm/state / .relaylm/build domains
+  -> no one-file-per-memory assumption
+
+CW-A2 workspace compiler projections and KV-cache tiers
+  -> uppercase source stable prefix
+  -> selected relationship/scene/memory semi-stable tier
+  -> current state/retrieval/current input dynamic suffix
+  -> content hash and fragment-id preservation
+
+CW-A3 Character Workspace UI rebuild
+  -> Character / Scenes / Relationships / Memory Wiki / Runtime / Advanced
+  -> Pin / Unpin and queue details moved to Advanced/internal governance
+
+CW-A4 RelaySLP workspace maintenance
+  -> MEM inbox/page candidates
+  -> SCENE inbox/page candidates
+  -> REL update candidates
+  -> high-risk uppercase changes as proposals only
+```
+
+### Post-E1-R5 / Post-Wave-7 decision debt registry
 
 ```text
 Post-MVP decision debt registry:
@@ -257,57 +304,3 @@ Static SOUL Lab bundle serving, only if required for local MVP packaging
 ```
 
 O2/O3 should remain after the evidence-quality gates unless a concrete evaluation requirement proves that supervised or always-on operation is necessary before local MVP evaluation.
-
-### Post-MVP decision debt registry
-
-The following entries are intentionally tracked as Post-MVP decision debt instead of being implemented inside the E1-R5 convergence lane. Each entry must either be completed by a dedicated PR or explicitly closed by a later roadmap decision. They are listed here so repeated convergence cycles cannot silently drop them.
-
-| ID | Debt | Precondition | Scope | Done condition |
-| --- | --- | --- | --- | --- |
-| PM-D1 | RelaySOUL gate design-freeze relation | Phase 5.5 stream unpack design-freeze boundary remains current. | Verify the RelaySOUL gate design documents against `phase5_5_stream_unpack_bounded_slice.md` and state whether each gate is frozen, exempt, or later-update-only. | The design-freeze relationship is documented and covered by a docs smoke anchor. |
-| PM-D2 | RelayINT -> RelayMEM `relayref_artifact` legacy compatibility scope | PM-D6 has either completed or proved the wrapper still needs a separate compatibility closure. | Decide whether the RelayINT-to-RelayMEM legacy `relayref_artifact` path is removed, absorbed into native RelayINT, or retained as a documented historical note. | No unscoped runtime legacy artifact remains; any retained historical note is non-runtime and explicitly bounded. |
-| PM-D3 | RelayEMO/RelaySCN `scene_state` ownership | RelaySCN remains the canonical `scene_state` owner per `relayscn_mvp_scene_policy.md` and responsibility docs. | Execute the existing RelaySCN-owned `scene_state` migration plan by reducing RelayEMO scene classification ownership to consumer/projection behavior and aligning runtime writers/readers with the RelaySCN-owned contract. | Runtime and docs expose RelaySCN as the single `scene_state` owner and no overlapping mutation authority remains. |
-| PM-D4 | client history exclusion default-off deployment decision | Current default-off behavior remains safe and unflipped. | Decide whether client history exclusion stays default-off, flips on by deployment gate, or is removed as unused. | The default decision, rollout condition, and rollback rule are documented before any behavior change. |
-| PM-D5 | RelayMEM flat-store compatibility removal | Local runtime memory layout is character-scoped: `runtime/memory/characters/<character>/<namespace>/memory/...`. | Remove old flat layout discovery and flat fallback from `_relaymem_store_impl.py`, `relaymem_primary_recall.py`, and `app.py`; evaluate PM-D8 if Primary recall layout discovery or adapter/root handling is touched. | No runtime path uses `current_flat`, `legacy_flat`, `migration_required`, `read_only_compatibility_mode`, flat candidate dirs, flat root fallback, or `build_relaymem_primary_recall_compat_projection()`. A smoke proves character-scoped memory discovery is the only accepted layout. PM-D8 is either closed, absorbed, or explicitly left as separately covered bridge debt. |
-| PM-D6 | RelayINT native artifact / RelayREF wrapper removal | PM-D5 is complete, so retrieval no longer depends on flat-store compatibility. | Move wrapper behavior into native RelayINT ownership, remove RelayREF historical wrapper metadata such as `relayint_alias` and `source_compat_module`, and update `app.py` to call the native RelayINT function directly. | `build_relayint_reference_repair_dry_run()` is no longer a RelayREF compatibility wrapper; RelayINT emits native artifacts without RelayREF compatibility metadata. |
-| PM-D7 | runtime install hook fold-in | PM-D5 and PM-D6 are complete, so remaining runtime patches can be classified accurately. | Fold import-time runtime patch behavior from `__init__.py` into canonical modules, then remove the install hook. | Importing `relaylm` does not install or mutate runtime behavior; canonical modules own the behavior directly and smoke coverage proves runtime behavior still works without import-time patch installation. |
-| PM-D8 | E1-R5 bridge canonical Primary recall adapter fold-in | E1-R5 remains a bounded runtime bridge over the original I-1 adapter, and PM-D5/PM-D6 may touch Primary recall roots, namespace handling, or candidate discovery. | Decide whether the E1-R5 bounded scoped Primary candidate bridge remains a runtime bridge or is folded into the canonical Primary recall adapter. Preserve the rule that M2 remains the preferred relevance owner and E1-R5 only supplies a bounded scoped Primary fallback when M2 yields no eligible scoped candidate. | Namespace handling, lifecycle eligibility, and candidate discovery cannot drift between `apply_relaymem_primary_recall_scope(...)` and the E1-R5 bridge. Until folded in or explicitly retained, the bridge remains covered by E1-R5 smokes. |
-
-## MVP completion criteria
-
-MVP can be considered evaluable when the following are all true:
-
-```text
-trusted formation lane
-  -> durable source and queue
-  -> speaker-provenance-safe formation summary
-  -> local operation drains eligible work
-  -> Primary MEM forms durably
-  -> Lab observation shows the evidence
-
-conversation recall lane
-  -> SOUL Lab Home real conversation
-  -> ordinary M2-preferred retrieval uses current eligible memories
-  -> E1-R5 bounded scoped Primary candidate bridge covers the no-M2-scoped-candidate gap
-  -> responses are grounded to retrieved eligible Primary MEM evidence and suppress unsupported details
-  -> recalled content is visible in ordinary response behavior
-
-governance lane
-  -> Correct is auditable
-  -> Forget / Hide excludes fresh ordinary retrieval and survives restart/recovery edges
-  -> Pin / Unpin can be applied through explicit governance
-  -> Held Apply / Discard can be applied through explicit governance
-  -> hidden/prepared/recovery/corrupt/cross-scope/prior revisions remain excluded
-
-operation lane
-  -> caller can invoke bounded local rounds
-  -> stale recovery/cancellation/shutdown controls exist
-  -> corruption/concurrency/saturation/restart/leakage validation is recorded
-  -> no hidden always-on worker is required for the claimed boundary
-
-bootstrap lane
-  -> local operator can dry-run and apply character-store bootstrap
-  -> evaluation character storage is character-scoped
-```
-
-MVP completion should be declared by a convergence PR that updates this plan, [Project Status](../PROJECT_STATUS.md), and the relevant `docs/mvp/` completion records together.
