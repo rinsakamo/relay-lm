@@ -20,6 +20,7 @@ relaylm_related_authority:
   - ../DOCUMENTATION_MODEL.md
   - pipeline_responsibility_design.md
   - file_first_character_workspace_design.md
+  - character_template_creation_flow.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
   - o1f_operational_validation.md
@@ -58,6 +59,9 @@ project_execution_plan.md
 file_first_character_workspace_design.md
   -> target source tree, workspace UX, KV-cache tiers, and RelayREL boundary
 
+character_template_creation_flow.md
+  -> no-character startup, Quick/Advanced Create, template import, and showcase policy
+
 slice contracts and handoffs
   -> exact bounded behavior for one feature or phase
 
@@ -86,6 +90,8 @@ wiki pages, and have RelayLM compile those files into cache-friendly runtime
 projections for character-consistent conversation.
 ```
 
+The primary local user is a mid-range GPU local-LLM / OpenWebUI / LM Studio / AI companion / VTuber experimenter. MVP creation and template flows should prioritize low-friction character creation and finished showcase character experience over internal memory governance or RelayLM-development-specific default characters.
+
 This means the default UI target shifts away from internal memory-governance controls and toward Character Workspace surfaces. Pin / Unpin, revision IDs, queue records, workers, and apply tokens remain available in Advanced diagnostics or explicit governance flows, but they are not the primary user mental model.
 
 ## MVP boundary
@@ -98,6 +104,9 @@ MVP must provide:
 - optional `LORE.md` for characters with substantial world/backstory material;
 - lower-case SLP-maintained `memory/**/*.md`, `scenes/**/*.md`, and `relationships/<target>.md` pages;
 - `.relaylm/sources/`, `.relaylm/state/`, and `.relaylm/build/` generated/runtime domains;
+- no-character startup routing to Character Creation / Import rather than default-character auto-restore;
+- Quick Create and Advanced Create paths that produce the same file-first workspace format;
+- bundled official primary-user-fit starter templates and at least one finished showcase character template;
 - KV-cache-friendly context tiering that keeps uppercase sources stable and pushes state/retrieval to dynamic suffixes;
 - Character Workspace UI surfaces for Character, Scenes, Relationships, Memory Wiki, Runtime, and Advanced diagnostics;
 - Primary MEM formation from trusted scene-qualified managed requests and from the E1-R1 route-owned trusted Home gate when explicitly enabled;
@@ -121,6 +130,9 @@ MVP does not include:
 - full Obsidian plugin behavior;
 - one-file-per-memory user-facing storage;
 - uncontrolled SLP auto-mutation of uppercase character sources;
+- default active character auto-creation or auto-restore;
+- unbounded third-party template execution;
+- RelayLM-development-specific design partner as the default template shelf;
 - physical secure erasure or purge semantics beyond explicit target contracts;
 - experimental SOUL replacement or synthetic memory bootstrap.
 
@@ -140,6 +152,7 @@ Character Workspace reset
     -> CW-A2 workspace compiler projections and KV-cache tiers
     -> CW-A3 Character Workspace UI rebuild
     -> CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals
+    -> CW-A5 character creation, templates, and showcase import
 
 Operations
   O1D2 bounded scheduler policy/fairness/pacing complete
@@ -277,6 +290,13 @@ CW-A4 RelaySLP workspace maintenance
   -> SCENE inbox/page candidates
   -> REL update candidates
   -> high-risk uppercase changes as proposals only
+
+CW-A5 character creation, templates, and showcase import
+  -> no-character startup to creation/import flow
+  -> Quick Create / Advanced Create
+  -> primary-user-fit starter templates
+  -> finished showcase character templates
+  -> content-only external import validation
 ```
 
 ### Post-E1-R5 / Post-Wave-7 decision debt registry
