@@ -29,6 +29,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 ## Character workspace target architecture
 
 - [File-first Character Workspace Design](file_first_character_workspace_design.md) defines the target Markdown source tree, RelayREL boundary, SLP-maintained scene/memory wiki model, and KV-cache-friendly context tiers.
+- [Character Template and Creation Flow](character_template_creation_flow.md) defines Quick Create, Advanced Create, no-character startup, template import, and primary-user-fit finished showcase character policy.
 - [Pipeline Responsibility Design](pipeline_responsibility_design.md) defines component ownership and the target REL -> SCN -> EMO -> INT -> MEM -> CTX order.
 - [Memory Lifecycle Design](memory_lifecycle_design.md) defines MEMORY.md, memory pages, SLP memory apply boundaries, and content-free projections.
 
@@ -197,5 +198,6 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 ## Character cognition and RelaySOUL targets
 
 - [File-first Character Workspace Design](file_first_character_workspace_design.md)
+- [Character Template and Creation Flow](character_template_creation_flow.md)
 - [Character Belief, Relationship, and Social Expression Dynamics](character_belief_relationship_dynamics_design.md)
 - [ADR: Character-conditioned Belief Without Rewriting Observation](../adr/character_conditioned_belief_model.md)
