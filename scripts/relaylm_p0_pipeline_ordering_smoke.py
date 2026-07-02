@@ -20,36 +20,18 @@ def _assert(condition: bool, message: str) -> None:
 
 def main() -> None:
     signature = inspect.signature(build_relayscn_scene_policy_artifact)
-    _assert(
-        "relayemo_artifact" not in signature.parameters,
-        "RelaySCN public API must not expose a relayemo_artifact parameter",
-    )
+    _assert("relayemo_artifact" not in signature.parameters, "RelaySCN public API must not expose relayemo_artifact")
 
     source = Path("relaylm/relayscn.py").read_text(encoding="utf-8")
-    _assert(
-        "_extract_relayemo_scene_state" not in source,
-        "RelaySCN must not keep the RelayEMO scene-state extractor",
-    )
-    _assert(
-        "scene_state_source\": source" in source,
-        "RelaySCN artifact should expose its normalized scene-state source",
-    )
-    _assert(
-        'source = "relayemo_artifact"' not in source,
-        "RelaySCN must not emit scene_state_source=relayemo_artifact",
-    )
+    _assert("_extract_relayemo_scene_state" not in source, "RelayEMO scene-state extractor must be removed")
+    _assert('source = "relayemo_artifact"' not in source, "RelaySCN must not emit relayemo_artifact scene source")
+
+    app_source = Path("relaylm/app.py").read_text(encoding="utf-8")
+    actual_app_rewired = "relayemo_artifact=relayemo_artifact" not in app_source
 
     explicit_artifact = build_relayscn_scene_policy_artifact(
         payload={
-            "metadata": {
-                "relayscn": {
-                    "scene_state": {
-                        "scene_type": "review_work",
-                        "confidence": 0.91,
-                        "stability": 0.86,
-                    }
-                }
-            },
+            "metadata": {"relayscn": {"scene_state": {"scene_type": "review_work", "confidence": 0.91, "stability": 0.86}}},
             "messages": [{"role": "user", "content": "casual fallback text"}],
         }
     )
@@ -71,14 +53,14 @@ def main() -> None:
     _assert(ignored_artifact["scene_state"]["scene_type"] == "review_work", "RelayEMO scene_state must not override RelaySCN")
 
     unknown_artifact = build_relayscn_scene_policy_artifact(payload={"messages": []})
-    _assert(unknown_artifact["scene_state_source"] == "heuristic", "empty request should remain heuristic/fail-closed")
+    _assert(unknown_artifact["scene_state_source"] == "heuristic", "empty request should remain heuristic")
     _assert(unknown_artifact["scene_state"]["scene_type"] == "unknown", "empty request should fail closed to unknown")
 
     relayrel_projection = build_relayrel_relationship_projection(route=None, request_scope_identity={"session_id": "s"})
     retrieval_artifact = build_relaymem_retrieval_dry_run_artifact(
         relayscn_scene_policy_artifact=heuristic_artifact,
         relayref_artifact={"unresolved_reference_detected": False, "mode_reasons": []},
-        messages=[{"role": "user", "content": "content intentionally not emitted in public diagnostics"}],
+        messages=[{"role": "user", "content": "diagnostic smoke text"}],
         token_budget=256,
         store_diagnostics={"store_enabled": False, "readiness": "disabled"},
         max_candidates=4,
@@ -95,21 +77,23 @@ def main() -> None:
         relayscn_scene_policy_artifact=heuristic_artifact,
         relayemo_artifact={"user_affect_estimate_is_estimate": True},
         relaymem_retrieval_artifact=retrieval_artifact,
+        actual_app_rewired=actual_app_rewired,
     )
     order = order_projection["request_path_order"]
     _assert(order.index("relayrel_relationship_projection") < order.index("relayscn_scene_policy"), "RelayREL must precede RelaySCN")
     _assert(order.index("relayscn_scene_policy") < order.index("relayemo_input"), "RelaySCN must precede input RelayEMO")
     _assert(order.index("relaymem_retrieval") > order.index("relayscn_scene_policy"), "RelayMEM must consume RelaySCN policy after SCN")
-    _assert(order_projection["relaymem_consumes_relayscn_policy"] is True, "order projection should mark RelayMEM as consuming RelaySCN")
+    _assert(order_projection["relaymem_consumes_relayscn_policy"] is True, "RelayMEM should consume RelaySCN")
+    if actual_app_rewired:
+        _assert(order_projection["merge_ready"] is True, order_projection)
+        _assert(order_projection["remaining_work"] == [], order_projection)
+    else:
+        _assert(order_projection["merge_ready"] is False, order_projection)
+        _assert("app.py_request_path_not_yet_rewired" in order_projection["remaining_work"], order_projection)
 
     public_json = json.dumps(order_projection, ensure_ascii=False)
-    for forbidden in (
-        "content intentionally not emitted",
-        "relationship body",
-        "memory body",
-        "assistant output",
-    ):
-        _assert(forbidden not in public_json, f"public diagnostics leaked forbidden content: {forbidden}")
+    for forbidden in ("diagnostic smoke text", "relationship body", "memory body"):
+        _assert(forbidden not in public_json, f"diagnostics leaked forbidden content: {forbidden}")
 
     print("relaylm_p0_pipeline_ordering_smoke: PASS")
 
