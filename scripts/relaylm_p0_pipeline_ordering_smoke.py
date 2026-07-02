@@ -113,13 +113,14 @@ def main() -> None:
         "Japanese streaming cue should classify as vtuber_roleplay",
     )
 
-    pr_review_artifact = build_relayscn_scene_policy_artifact(
-        payload={"messages": [{"role": "user", "content": "PR#123を確認して"}]}
-    )
-    _assert(
-        pr_review_artifact["scene_state"]["scene_type"] == "review_work",
-        "PR confirmation cue should classify as review_work",
-    )
+    for pr_review_text in ("PR#123を確認して", "PRを確認して", "PR", "please check pr"):
+        pr_review_artifact = build_relayscn_scene_policy_artifact(
+            payload={"messages": [{"role": "user", "content": pr_review_text}]}
+        )
+        _assert(
+            pr_review_artifact["scene_state"]["scene_type"] == "review_work",
+            f"PR confirmation cue should classify as review_work: {pr_review_text!r}",
+        )
 
     formal_artifact = build_relayscn_scene_policy_artifact(
         payload={"messages": [{"role": "user", "content": "文書を作成して"}]}

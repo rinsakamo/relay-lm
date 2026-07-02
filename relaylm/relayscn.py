@@ -289,6 +289,14 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
     if not text:
         return "unknown", 0.35, 0.35, "missing_message_metadata"
 
+    if (
+        text.strip() == "pr"
+        or "prを確認" in text
+        or "check pr" in text
+        or "check the pr" in text
+    ):
+        return "review_work", 0.78, 0.72, "keyword:review_work"
+
     checks = [
         (
             "recovery",
