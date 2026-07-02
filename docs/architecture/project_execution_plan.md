@@ -137,6 +137,12 @@ MVP does not include:
 - physical secure erasure or purge semantics beyond explicit target contracts;
 - experimental SOUL replacement or synthetic memory bootstrap.
 
+## MVP completion criteria
+
+MVP completion criteria retain the completed Phase I-2 observation boundary: read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence.
+
+For the file-first Character Workspace reset, MVP completion additionally requires that the target Character Workspace surfaces and projections remain clearly separated from current implementation status until the dedicated implementation slices land.
+
 ## MVP execution lanes
 
 ```text
@@ -267,6 +273,10 @@ E1-R5 Primary MEM recall candidate discovery bridge
 
 The E1-R5 handoff is [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md), the completion report is [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md), and the post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md). E1-R5 corrects the E1 proof boundary; current docs must not claim that M2 alone always selects current eligible scoped Primary MEM.
 
+### Post-E1-R5 / Post-Wave-7 next candidates
+
+Compatibility anchor for E1 evaluation consolidation smokes. The current next-work list is the Character Workspace reset plus the P0 RelayREL / RelaySCN / RelayEMO ordering fix.
+
 ### Character Workspace reset next candidates
 
 ```text
@@ -308,6 +318,7 @@ Post-MVP decision debt registry:
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope
   PM-D3 RelayEMO/RelaySCN scene_state ownership
+    -> Execute the existing RelaySCN-owned `scene_state` migration plan through the P0 RelayREL / RelaySCN / RelayEMO ordering fix before Character Workspace implementation
   PM-D4 client history exclusion default-off deployment decision
   PM-D5 RelayMEM flat-store compatibility removal
   PM-D6 RelayINT native artifact / RelayREF wrapper removal
