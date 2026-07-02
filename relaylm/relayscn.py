@@ -304,7 +304,7 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
         ),
         (
             "formal_document",
-            ("formal", "report", "契約", "公的", "公式", "論文", "document"),
+            ("formal", "report", "契約", "公的", "公式", "論文", "文書", "document"),
             0.80,
             0.76,
         ),
@@ -314,6 +314,7 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
             (
                 "implement",
                 "code",
+                "コード",
                 "repo",
                 "file",
                 "bug",

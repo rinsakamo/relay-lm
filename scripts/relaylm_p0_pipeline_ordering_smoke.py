@@ -66,6 +66,7 @@ def main() -> None:
         "please fix this bug",
         "fix this error",
         "implement this",
+        "コードを修正して",
         "修正して",
         "実装して",
         "バグを直して",
@@ -88,6 +89,14 @@ def main() -> None:
         _assert("relayemo_artifact" in str(exc), "RelaySCN should reject relayemo_artifact explicitly")
     else:
         raise AssertionError("RelaySCN must reject relayemo_artifact as an unexpected keyword")
+
+    formal_artifact = build_relayscn_scene_policy_artifact(
+        payload={"messages": [{"role": "user", "content": "文書を作成して"}]}
+    )
+    _assert(
+        formal_artifact["scene_state"]["scene_type"] == "formal_document",
+        "Japanese document task should classify as formal_document",
+    )
 
     unknown_artifact = build_relayscn_scene_policy_artifact(payload={"messages": []})
     _assert(unknown_artifact["scene_state_source"] == "heuristic", "empty request should remain heuristic")
@@ -121,6 +130,19 @@ def main() -> None:
     _assert(order.index("relayscn_scene_policy") < order.index("relayemo_input"), "RelaySCN must precede input RelayEMO")
     _assert(order.index("relaymem_retrieval") > order.index("relayscn_scene_policy"), "RelayMEM must consume RelaySCN policy after SCN")
     _assert(order_projection["relaymem_consumes_relayscn_policy"] is True, "RelayMEM should consume RelaySCN")
+
+    missing_retrieval_projection = build_p0_pipeline_order_projection(
+        relayrel_projection=relayrel_projection,
+        relayscn_scene_policy_artifact=heuristic_artifact,
+        relayemo_artifact={"user_affect_estimate_is_estimate": True},
+        relaymem_retrieval_artifact=None,
+        actual_app_rewired=actual_app_rewired,
+    )
+    _assert(
+        missing_retrieval_projection["relaymem_consumes_relayscn_policy"] is False,
+        "RelayMEM consumption must require RelayMEM retrieval artifact evidence",
+    )
+
     if actual_app_rewired:
         _assert(order_projection["merge_ready"] is True, order_projection)
         _assert(order_projection["remaining_work"] == [], order_projection)
