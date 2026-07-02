@@ -104,7 +104,16 @@ def main() -> None:
 
     explicit_artifact = build_relayscn_scene_policy_artifact(
         payload={
-            "metadata": {"relayscn": {"scene_state": {"scene_type": "review_work", "confidence": 0.91, "stability": 0.86}}},
+            "metadata": {
+                "relayscn": {
+                    "scene_state": {
+                        "scene_type": "review_work",
+                        "confidence": 0.91,
+                        "stability": 0.86,
+                        "signals": ["private signal body"],
+                    }
+                }
+            },
             "messages": [{"role": "user", "content": "casual fallback text"}],
         }
     )
@@ -114,6 +123,7 @@ def main() -> None:
     _assert(explicit_artifact["scene_policy"]["policy_authority"] == "authoritative", "explicit metadata may open authoritative policy")
     _assert(explicit_artifact["scene_policy"]["relaymem_retrieval_scope"] == "current_project_only", "explicit review may use review retrieval scope")
     _assert(explicit_artifact["scene_policy"]["relaymem_update_gate"] == "allowed_dry_run", "explicit review may use dry-run update gate")
+    _assert("private signal body" not in json.dumps(explicit_artifact), "explicit signals must be content-free")
 
     heuristic_artifact = build_relayscn_scene_policy_artifact(
         payload={"messages": [{"role": "user", "content": "Please review this PR diff."}]}
@@ -185,7 +195,9 @@ def main() -> None:
         "safety file",
         "医療ファイル",
         "安全ファイル",
+        "medical PR",
         "legal PR",
+        "医療 PR",
         "safety review",
     ):
         safety_file_artifact = build_relayscn_scene_policy_artifact(

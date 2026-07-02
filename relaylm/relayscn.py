@@ -215,10 +215,11 @@ def _normalize_scene_state(raw_scene_state: Mapping[str, Any], *, source: str) -
 
     signals = raw_scene_state.get("signals")
     normalized_signals = (
-        [str(x) for x in signals]
+        [_normalize_content_free_signal(x) for x in signals]
         if isinstance(signals, Sequence) and not isinstance(signals, str)
         else []
     )
+    normalized_signals = list(dict.fromkeys(normalized_signals))
     if scene_type == "unknown" and "unknown_scene_fail_closed" not in normalized_signals:
         normalized_signals.append("unknown_scene_fail_closed")
     if source == "heuristic" and not normalized_signals:
@@ -236,6 +237,24 @@ def _normalize_scene_state(raw_scene_state: Mapping[str, Any], *, source: str) -
         "recovery_mode": raw_scene_state.get("recovery_mode") is True,
         "user_confirmation_required": raw_scene_state.get("user_confirmation_required") is True,
     }
+
+
+def _normalize_content_free_signal(signal: Any) -> str:
+    signal_text = str(signal)
+    allowed_exact = {
+        "unknown_scene_fail_closed",
+        "heuristic_default",
+        "missing_message_metadata",
+        "slp_confusion_unresolved",
+        "contradiction_detected",
+        "unresolved_reference_detected",
+        "output_generated_from_recovery_context",
+    }
+    if signal_text in allowed_exact:
+        return signal_text
+    if signal_text.startswith("keyword:") or signal_text.startswith("heuristic_fallback:"):
+        return signal_text
+    return "redacted_signal"
 
 
 def _build_scene_policy(scene_state: Mapping[str, Any]) -> tuple[dict[str, Any], list[str]]:
