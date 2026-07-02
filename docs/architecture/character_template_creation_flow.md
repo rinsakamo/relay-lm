@@ -168,11 +168,59 @@ select template
 
 The UI should not force the user to inspect every source file during Quick Create. Details remain editable after creation.
 
-## RelayLM onboarding knowledge
+## RelayLM onboarding knowledge memory
 
-Official starter and showcase characters should include a small RelayLM onboarding knowledge pack.
+Official default starter and showcase characters should include a small RelayLM onboarding knowledge memory.
 
-This is not the same as making the default character a RelayLM development-review partner. The character may be a companion, VTuber partner, mascot, or roleplay character, while still knowing how to explain RelayLM to the user.
+This is a normal memory page from the retrieval/compiler point of view. It should live under the same `memory/**/*.md` tree as other character memories so it can be selected, chunked, and injected by the ordinary memory pipeline when the user asks about RelayLM.
+
+It is not a SOUL trait and must not turn the character into a RelayLM development-review partner. The character may be a companion, VTuber partner, mascot, or roleplay character, while still having one protected memory page that explains RelayLM basics.
+
+Recommended placement:
+
+```text
+memory/topics/relaylm.md
+  protected template-scoped product-help memory page
+
+scenes/relaylm_onboarding.md
+  optional onboarding/help scene that selects that memory when appropriate
+
+preview/sample_responses.md
+  examples of the character explaining RelayLM in its own voice
+```
+
+Recommended metadata:
+
+```markdown
+status:: template_knowledge
+source:: template:relaylm_onboarding
+scope:: product_help
+mutable:: false
+slp_update:: disabled
+update_policy:: bundled_template_update_only
+```
+
+Meaning:
+
+```text
+normal memory page
+  -> searchable and injectable when relevant
+
+protected from ordinary SLP mutation
+  -> RelaySLP must not rewrite, merge, summarize away, or supersede this page during normal memory maintenance
+
+not fake user memory
+  -> not treated as something the character learned about the real user
+
+not source identity
+  -> not placed in SOUL.md and not used as character identity
+```
+
+Official default characters should include this page. Self-authored characters, imported characters, and third-party templates should not receive RelayLM onboarding knowledge automatically.
+
+If a user wants the same help behavior in a custom or imported character, they can copy `memory/topics/relaylm.md` into that character workspace. Once copied, it is ordinary character memory for that workspace and should work through the same retrieval path. RelayLM should not special-case the character type beyond honoring the page metadata.
+
+Manual edits are allowed because the workspace is file-first. However, RelaySLP should still treat the page as protected from automatic mutation while `slp_update:: disabled` is present. If the user removes that metadata, the page becomes an ordinary editable memory page under normal memory policy.
 
 Purpose:
 
@@ -187,28 +235,7 @@ explain public/private scene and memory-disclosure behavior
 suggest safe next steps when the user is confused
 ```
 
-Recommended placement:
-
-```text
-memory/topics/relaylm.md
-  template-scoped product knowledge page
-
-scenes/relaylm_onboarding.md
-  optional onboarding/help scene
-
-preview/sample_responses.md
-  examples of the character explaining RelayLM in its own voice
-```
-
-Example metadata:
-
-```markdown
-status:: template_knowledge
-source:: template:relaylm_onboarding
-scope:: product_help
-```
-
-The onboarding knowledge pack should be factual, compact, and user-facing. It should not include internal PR history, private implementation notes, queue records, memory IDs, unreleased claims, or hidden diagnostics.
+The onboarding knowledge memory should be factual, compact, and user-facing. It should not include internal PR history, private implementation notes, queue records, memory IDs, unreleased claims, or hidden diagnostics.
 
 Good default knowledge:
 
@@ -287,12 +314,12 @@ Primary showcase examples:
 ```text
 Showcase Friendly Companion
   A warm but bounded companion with recognizable voice, gentle continuity,
-  RelayLM onboarding knowledge, private-scene familiarity limits,
+  protected RelayLM onboarding memory, private-scene familiarity limits,
   and natural memory use without fake intimacy.
 
 Showcase VTuber / Stream Partner
   A stream-friendly character with public/private scene differences,
-  RelayLM help behavior, expression profiles, audience-safe memory disclosure,
+  protected RelayLM help memory, expression profiles, audience-safe memory disclosure,
   and chat-ready style.
 
 Showcase Creator Mascot
@@ -302,7 +329,7 @@ Showcase Creator Mascot
 
 Showcase Fantasy Roleplay Character
   A lore-heavy character with SOUL, STYLE, EMOTION, SCENE, BOUNDARY, LORE,
-  roleplay-oriented scene pages, and optional out-of-character RelayLM help mode.
+  roleplay-oriented scene pages, and optional out-of-character RelayLM help scene.
 ```
 
 Secondary showcase examples:
@@ -322,14 +349,15 @@ Starter template
   minimal memory
   small scene set
   broad defaults
-  RelayLM onboarding knowledge
+  protected RelayLM onboarding memory
   intended for customization
 
 Showcase template
   richer memory/core examples
   multiple active scenes
   tuned relationship instance
-  RelayLM onboarding/help scene
+  protected RelayLM onboarding memory
+  optional onboarding/help scene
   optional LORE
   sample prompts/responses
   demonstrates growth and maturity
@@ -348,14 +376,14 @@ On creation from a showcase template, RelayLM should offer a light reset option:
 
 ```text
 Use showcase as-is
-  keep curated example memories and scenes
+  keep curated example memories, scenes, and protected RelayLM onboarding memory
 
 Use as starter
-  keep personality/style/lore and RelayLM onboarding knowledge,
+  keep personality/style/lore and protected RelayLM onboarding memory,
   but clear example user-specific memory
 ```
 
-For AI companion templates, the default should avoid importing fake user-specific intimacy. It is acceptable to include template-scoped examples such as favorite topics, prior scene examples, creator workflow examples, demo-user memories, and RelayLM onboarding knowledge when clearly marked as template examples or template knowledge.
+For AI companion templates, the default should avoid importing fake user-specific intimacy. It is acceptable to include template-scoped examples such as favorite topics, prior scene examples, creator workflow examples, demo-user memories, and protected RelayLM onboarding memory when clearly marked as template examples or template knowledge.
 
 ## Template sources
 
@@ -452,9 +480,10 @@ Example:
 ```text
 Fantasy Roleplay generator
   asks for name, gender/presentation, world, role, oath or motivation,
-  relationship to user, tone, forbidden behaviors, and RelayLM help behavior
+  relationship to user, tone, forbidden behaviors, and optional RelayLM help behavior
   -> drafts SOUL / STYLE / EMOTION / SCENE / RELATIONSHIP / MEMORY / BOUNDARY / LORE
-  -> includes compact RelayLM onboarding knowledge unless the user disables it
+  -> for official default templates, includes protected RelayLM onboarding memory
+  -> for custom/imported templates, does not auto-inject RelayLM onboarding memory
 ```
 
 Generated files are candidates until user approval. After approval, Markdown source files become the source of truth and RelayLM uses deterministic compilation and cached projections.
@@ -534,7 +563,10 @@ Default active characters are not auto-restored.
 Templates are explicit creation sources.
 Quick Create is light.
 Advanced Create is detailed.
-Official starter/showcase characters include RelayLM onboarding knowledge.
+Official default starter/showcase characters include a protected normal memory page
+for RelayLM onboarding knowledge.
+Self-authored and imported characters do not receive RelayLM onboarding knowledge automatically.
+Users may copy the onboarding memory page into a custom workspace when desired.
 Showcase characters demonstrate the grown-character experience for AI companion,
 VTuber / stream, mascot, and roleplay users.
 Design-review characters are secondary power-user templates, not the default shelf.
