@@ -138,25 +138,22 @@ _FAIL_CLOSED_UNKNOWN_POLICY = {
 def build_relayscn_scene_policy_artifact(
     *,
     payload: Mapping[str, Any] | None = None,
-    relayemo_artifact: Mapping[str, Any] | None = None,
+    **_deprecated_compat_kwargs: Any,
 ) -> dict[str, Any]:
     """Build a diagnostics-only RelaySCN scene-policy artifact.
 
-    The MVP helper prefers explicit request/RelayEMO metadata, falls back to a
-    lightweight text heuristic, and then fails closed for unknown or missing
-    state. It never mutates request payloads or runtime behavior.
+    RelaySCN owns normalized same-turn scene state. The MVP helper prefers
+    explicit RelaySCN/request metadata, falls back to a lightweight text
+    heuristic, and then fails closed for unknown or missing state. It never
+    accepts RelayEMO affect artifacts as normalized scene-state input.
     """
 
     payload = payload or {}
     explicit_scene_state = _extract_explicit_scene_state(payload)
-    relayemo_scene_state = _extract_relayemo_scene_state(relayemo_artifact)
 
     if explicit_scene_state is not None:
         scene_state = explicit_scene_state
         source = "request_metadata"
-    elif relayemo_scene_state is not None:
-        scene_state = relayemo_scene_state
-        source = "relayemo_artifact"
     else:
         scene_type, confidence, stability, heuristic_reason = _estimate_scene_from_messages(payload)
         scene_state = {
@@ -174,6 +171,7 @@ def build_relayscn_scene_policy_artifact(
     return {
         "schema_version": "relayscn.scene_policy_artifact.v0",
         "diagnostics_only": True,
+        "content_free": True,
         "scene_state_source": source,
         "scene_state": scene_state,
         "scene_policy": scene_policy,
@@ -200,20 +198,6 @@ def _extract_explicit_scene_state(payload: Mapping[str, Any]) -> dict[str, Any] 
         if isinstance(scene_type, str) and scene_type:
             return dict(candidate)
     return None
-
-
-def _extract_relayemo_scene_state(
-    relayemo_artifact: Mapping[str, Any] | None,
-) -> dict[str, Any] | None:
-    if not isinstance(relayemo_artifact, Mapping):
-        return None
-    scene_state = relayemo_artifact.get("scene_state")
-    if not isinstance(scene_state, Mapping):
-        return None
-    scene_type = scene_state.get("scene_type")
-    if not isinstance(scene_type, str) or not scene_type:
-        return None
-    return dict(scene_state)
 
 
 def _normalize_scene_state(raw_scene_state: Mapping[str, Any], *, source: str) -> dict[str, Any]:
