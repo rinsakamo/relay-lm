@@ -62,6 +62,22 @@ def main() -> None:
     _assert(heuristic_artifact["scene_state_source"] == "heuristic", "missing metadata should use heuristic")
     _assert(heuristic_artifact["scene_state"]["scene_type"] == "review_work", "heuristic should classify review text")
 
+    for code_task_text in (
+        "please fix this bug",
+        "fix this error",
+        "implement this",
+        "修正して",
+        "実装して",
+        "バグを直して",
+    ):
+        code_task_artifact = build_relayscn_scene_policy_artifact(
+            payload={"messages": [{"role": "user", "content": code_task_text}]}
+        )
+        _assert(
+            code_task_artifact["scene_state"]["scene_type"] == "implementation_work",
+            f"code-task text should classify as implementation_work: {code_task_text!r}",
+        )
+
     relayemo_like_scene = {"scene_state": {"scene_type": "vtuber_roleplay", "confidence": 1.0}}
     try:
         build_relayscn_scene_policy_artifact(
