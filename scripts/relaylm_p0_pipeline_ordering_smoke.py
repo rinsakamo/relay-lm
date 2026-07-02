@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import ast
 import inspect
 import json
 from pathlib import Path
@@ -18,6 +19,23 @@ def _assert(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
+def _app_relayscn_call_excludes_relayemo_artifact(app_source: str) -> bool:
+    tree = ast.parse(app_source)
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "build_relayscn_scene_policy_artifact"
+    ]
+    _assert(calls, "app.py must call build_relayscn_scene_policy_artifact")
+    for call in calls:
+        for keyword in call.keywords:
+            if keyword.arg == "relayemo_artifact":
+                return False
+    return True
+
+
 def main() -> None:
     signature = inspect.signature(build_relayscn_scene_policy_artifact)
     _assert("relayemo_artifact" not in signature.parameters, "RelaySCN public API must not expose relayemo_artifact")
@@ -27,7 +45,7 @@ def main() -> None:
     _assert('source = "relayemo_artifact"' not in source, "RelaySCN must not emit relayemo_artifact scene source")
 
     app_source = Path("relaylm/app.py").read_text(encoding="utf-8")
-    actual_app_rewired = "relayemo_artifact=relayemo_artifact" not in app_source
+    actual_app_rewired = _app_relayscn_call_excludes_relayemo_artifact(app_source)
 
     explicit_artifact = build_relayscn_scene_policy_artifact(
         payload={
