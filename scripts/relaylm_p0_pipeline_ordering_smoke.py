@@ -98,6 +98,28 @@ def main() -> None:
         "Japanese document task should classify as formal_document",
     )
 
+    for medical_task_text in ("医療について相談したい", "医療安全について確認したい"):
+        medical_artifact = build_relayscn_scene_policy_artifact(
+            payload={"messages": [{"role": "user", "content": medical_task_text}]}
+        )
+        _assert(
+            medical_artifact["scene_state"]["scene_type"] == "medical_or_safety",
+            f"medical/safety text should classify as medical_or_safety: {medical_task_text!r}",
+        )
+        scene_policy = medical_artifact["scene_policy"]
+        _assert(
+            scene_policy["relayctx_mode"] == "safety_cautious",
+            "medical/safety policy should use safety-cautious RelayCTX mode",
+        )
+        _assert(
+            scene_policy["relaymem_retrieval_scope"] == "minimal_or_evidence_only",
+            "medical/safety policy should restrict RelayMEM retrieval to minimal/evidence scope",
+        )
+        _assert(
+            scene_policy["relaymem_update_gate"] == "blocked",
+            "medical/safety policy should block RelayMEM updates",
+        )
+
     unknown_artifact = build_relayscn_scene_policy_artifact(payload={"messages": []})
     _assert(unknown_artifact["scene_state_source"] == "heuristic", "empty request should remain heuristic")
     _assert(unknown_artifact["scene_state"]["scene_type"] == "unknown", "empty request should fail closed to unknown")

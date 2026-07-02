@@ -298,7 +298,7 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
         ),
         (
             "medical_or_safety",
-            ("medical", "doctor", "病院", "薬", "危険", "安全", "safety", "legal"),
+            ("medical", "doctor", "病院", "薬", "医療", "危険", "安全", "safety", "legal"),
             0.82,
             0.78,
         ),
