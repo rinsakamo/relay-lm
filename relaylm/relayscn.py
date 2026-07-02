@@ -292,8 +292,6 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
 
     if _contains_ascii_word(text, "pr"):
         return "review_work", 0.78, 0.72, "keyword:review_work"
-    if _contains_ascii_word(text, "file"):
-        return "implementation_work", 0.78, 0.72, "keyword:implementation_work"
 
     checks = [
         (
@@ -360,6 +358,8 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
     for scene_type, needles, confidence, stability in checks:
         if any(needle in text for needle in needles):
             return scene_type, confidence, stability, f"keyword:{scene_type}"
+    if _contains_ascii_word(text, "file"):
+        return "implementation_work", 0.78, 0.72, "keyword:implementation_work"
     return "casual_chat", 0.62, 0.60, "heuristic_fallback:casual_chat"
 
 

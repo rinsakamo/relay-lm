@@ -131,6 +131,15 @@ def main() -> None:
             f"non-PR text should not classify as review_work: {non_review_text!r}",
         )
 
+    for safety_file_text in ("medical file", "legal file", "safety file", "医療ファイル"):
+        safety_file_artifact = build_relayscn_scene_policy_artifact(
+            payload={"messages": [{"role": "user", "content": safety_file_text}]}
+        )
+        _assert(
+            safety_file_artifact["scene_state"]["scene_type"] == "medical_or_safety",
+            f"medical/safety file text should classify as medical_or_safety: {safety_file_text!r}",
+        )
+
     for file_task_text in ("file", "edit file", "this file"):
         file_task_artifact = build_relayscn_scene_policy_artifact(
             payload={"messages": [{"role": "user", "content": file_task_text}]}
