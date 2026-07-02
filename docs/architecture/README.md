@@ -26,6 +26,15 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 4. Dedicated current contracts and handoffs
 5. [Current / Target / Migration Guide](current_target_migration_guide.md)
 
+## Character workspace target architecture
+
+- [File-first Character Workspace Design](file_first_character_workspace_design.md) defines the target Markdown source tree, RelayREL boundary, SLP-maintained scene/memory wiki model, and KV-cache-friendly context tiers.
+- [Character Template and Creation Flow](character_template_creation_flow.md) defines Quick Create, Advanced Create, no-character startup, template import, and primary-user-fit finished showcase character policy.
+- [Pinned Normal Memory Pages](pinned_normal_memory_pages.md) defines pinned normal memory as ordinary retrieval memory protected from ordinary RelaySLP maintenance.
+- [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](p0_relayrel_relayscn_relayemo_ordering_fix.md) records the next implementation priority before Character Workspace parser/compiler work.
+- [Pipeline Responsibility Design](pipeline_responsibility_design.md) defines component ownership and the target REL -> SCN -> EMO -> INT -> MEM -> CTX order.
+- [Memory Lifecycle Design](memory_lifecycle_design.md) defines MEMORY.md, memory pages, SLP memory apply boundaries, and content-free projections.
+
 ## Execution and roadmap
 
 - [Project Execution Plan](project_execution_plan.md)
@@ -92,6 +101,8 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 
 ## Memory lifecycle
 
+- [File-first Character Workspace Design](file_first_character_workspace_design.md)
+- [Pinned Normal Memory Pages](pinned_normal_memory_pages.md)
 - [Memory Lifecycle Design](memory_lifecycle_design.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — compatibility stub
@@ -189,5 +200,7 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 
 ## Character cognition and RelaySOUL targets
 
+- [File-first Character Workspace Design](file_first_character_workspace_design.md)
+- [Character Template and Creation Flow](character_template_creation_flow.md)
 - [Character Belief, Relationship, and Social Expression Dynamics](character_belief_relationship_dynamics_design.md)
 - [ADR: Character-conditioned Belief Without Rewriting Observation](../adr/character_conditioned_belief_model.md)

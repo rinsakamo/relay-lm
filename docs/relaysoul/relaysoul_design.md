@@ -1,73 +1,134 @@
+---
+relaylm_doc_type: stable_architecture
+relaylm_authority: relaysoul_persona_source_boundary
+relaylm_status: target
+relaylm_volatility: medium
+relaylm_owner: relaysoul
+relaylm_update_trigger:
+  - persona source ownership changes
+  - RelaySOUL proposal/apply boundary changes
+  - file-first character workspace source changes
+relaylm_not_authoritative_for:
+  - current runtime implementation status
+  - exact RelaySOUL patch schema
+  - exact revision metadata schema
+  - RelayREL apply schema
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - ../architecture/file_first_character_workspace_design.md
+  - ../architecture/pipeline_responsibility_design.md
+  - ../contracts/relaysoul_patch_schema.md
+  - ../contracts/relaysoul_revision_contract.md
+---
 # RelaySOUL Design
 
 ## Purpose
 
-RelaySOUL is RelayLM's human-in-the-loop durable persona-source calibration layer.
+RelaySOUL is RelayLM's human-in-the-loop durable character-source calibration layer.
 
-It creates, calibrates, versions, approves, applies, and rolls back persona-source revisions. It does not train model weights and it does not own request-local scene state, current affect state, short-term context, or compiled memory.
+It creates, calibrates, versions, approves, applies, and rolls back durable character-source revisions. It does not train model weights and it does not own request-local scene state, current affect state, target-specific relationship state, short-term context, or compiled memory.
 
 ```text
 RelaySOUL
-  -> approved durable persona artifacts
+  -> approved portable character sources
 
 RelayLM runtime
-  -> compiles approved artifacts with current SCN, EMO, INT, MEM, and CTX state
+  -> compiles approved sources with current REL, SCN, EMO, MEM, and CTX state
 ```
 
-Current implementation status and sequencing live in [Project Status](../PROJECT_STATUS.md) and [Pipeline Implementation Plan](../architecture/pipeline_implementation_plan.md).
+Current implementation status and sequencing live in [Project Status](../PROJECT_STATUS.md) and [Project Execution Plan](../architecture/project_execution_plan.md).
 
-## Target owned persona sources
+## File-first target boundary
 
-The target RelaySOUL ownership boundary is:
+The file-first workspace target supersedes the older three-file persona target.
 
-- `SOUL.md`: durable identity, values, worldview, and invariants,
-- `OUTPUT_POLICY.md`: durable character voice, expression rules, response shape, and memory-disclosure policy,
-- `RELATIONSHIP_ANCHOR.md`: approved slow-changing relationship expectations.
-
-Target ownership excludes:
-
-- `scene_state` or `SCENE_STATE.md`,
-- current mood or affect state,
-- RelayCTX working state,
-- `STABLE_MEMORY_SUMMARY.md` or compiled memory pages,
-- request-local retrieval evidence,
-- runtime checkpoints or trace artifacts.
-
-Reusable scene presets belong to RelaySCN configuration. Stable memory summaries belong to RelayMEM storage and RelaySLP compilation.
-
-## Current implementation compatibility
-
-The current `mvp-soul-0` dry-run/tooling chain predates this narrower boundary.
-
-It still accepts these legacy targets in several scripts and validators:
+Portable character sources:
 
 ```text
+SOUL.md
+  name, identity, values, temperament, and invariants.
+  It should remain meaningful if copied into another compatible product.
+
+STYLE.md
+  base voice, tone, roleplay flavor, formatting, and output surface.
+
+EMOTION.md
+  emotion-state response profiles such as angry, warm, concerned, focused.
+  It defines how emotion changes expression; it is not current emotion state.
+
+BOUNDARY.md
+  character-specific privacy, pressure, intimacy, disclosure, and safety-expression limits.
+
+LORE.md
+  optional world, backstory, setting, factions, and proper nouns when the character needs them.
+```
+
+Related workspace sources owned by other components:
+
+```text
+RELATIONSHIP.md
+  RelayREL role and parameter vocabulary.
+
+relationships/<target>.md
+  RelayREL target-specific relationship instances such as relationships/user.md.
+
+SCENE.md and scenes/*.md
+  RelaySCN scene policy and SLP-maintained scene wiki pages.
+
+MEMORY.md and memory/**/*.md
+  RelayMEM / RelaySLP memory policy and memory wiki pages.
+```
+
+RelaySOUL owns durable portable character-source calibration. RelayREL owns target-specific relationship state and interaction policy. RelaySCN owns scene policy/state. RelayMEM/RelaySLP own durable memory pages and memory candidates.
+
+## Legacy target-name interpretation
+
+Older docs and scripts may still refer to:
+
+```text
+OUTPUT_POLICY.md
+RELATIONSHIP_ANCHOR.md
 STABLE_MEMORY_SUMMARY.md
 SCENE_STATE.md
 ```
 
-It also currently blocks only `SOUL.md` in `normal_chat`, rather than blocking apply for every persona source.
+Target interpretation:
 
-Therefore:
+```text
+OUTPUT_POLICY.md
+  -> STYLE.md for voice/output surface.
+  -> MEMORY.md or BOUNDARY.md when the old text was really memory-disclosure or privacy policy.
 
-- the 3-file boundary above is the target architecture,
-- current artifacts must be interpreted with the implemented `mvp-soul-0` contracts,
-- no consumer should assume the target v1 allowlist/schema already exists,
-- a future implementation migration must update patch, revision, approval, apply, rollback, examples, and smoke tests atomically.
+RELATIONSHIP_ANCHOR.md
+  -> RELATIONSHIP.md for role/parameter definitions.
+  -> relationships/<target>.md for concrete target-specific relationship state.
 
-See:
+STABLE_MEMORY_SUMMARY.md
+  -> MEMORY.md for policy.
+  -> memory/**/*.md for human-readable memory pages.
+  -> .relaylm/build/memory_units.jsonl for compiled units.
 
-- [RelaySOUL Patch Schema](../contracts/relaysoul_patch_schema.md),
-- [RelaySOUL Revision Metadata / Rollback Contract](../contracts/relaysoul_revision_contract.md).
+SCENE_STATE.md
+  -> SCENE.md / scenes/*.md for durable scene policy and scene wiki.
+  -> .relaylm/state/scene_state.json for current runtime state.
+```
+
+Current compatibility tooling may accept older names until a dedicated implementation PR updates parser allowlists, patch target classification, examples, revision contracts, and smoke tests atomically.
 
 ## Authority boundary
 
 ```text
-runtime / safety policy
+runtime / system / safety policy
   highest execution authority
 
-approved RelaySOUL revision
-  durable persona authority
+BOUNDARY.md
+  character-specific privacy, pressure, intimacy, disclosure, and expression limits
+
+SOUL.md
+  durable portable identity and values
+
+RelayREL
+  target-specific relationship state and interaction policy
 
 RelaySCN
   current situation, role, task, and temporary constraints
@@ -84,6 +145,40 @@ client persona/system prompt
 
 A client prompt must never be copied wholesale into RelaySOUL. Explicit import is a separate calibration workflow with target classification, review, versioning, and rollback.
 
+## SOUL versus REL
+
+RelaySOUL must keep `SOUL.md` portable.
+
+```text
+SOUL.md
+  character-intrinsic
+  target-independent
+  portable
+
+RELATIONSHIP.md + relationships/<target>.md
+  relationship-bound
+  target-specific
+  not portable by itself
+```
+
+Examples:
+
+```text
+SOUL.md
+  The character is quick to anger when important things are treated carelessly.
+
+EMOTION.md
+  angry responses become shorter and more direct, while repair remains possible.
+
+RELATIONSHIP.md
+  defines trust, attachment, permissions, disclosure, and EMO gain.
+
+relationships/user.md
+  user is a valued co-creator and trusted operator.
+```
+
+Target-specific facts such as `user is most_important_person`, `probe_impulse_gain is high`, or `public_familiarity_permission is low` belong to RelayREL, not SOUL.
+
 ## Natural example calibration
 
 RelaySOUL may use protected content-bearing calibration evidence:
@@ -91,11 +186,13 @@ RelaySOUL may use protected content-bearing calibration evidence:
 - preferred/rejected response samples,
 - short reason labels,
 - explicit user style corrections,
-- explicit relationship corrections,
+- explicit character-creation input,
 - renderer comparison samples,
-- explicit character-creation input.
+- explicit boundary corrections.
 
-Example evidence may contain response text and freeform notes. It belongs to a protected calibration store, not the default runtime trace.
+Relationship corrections are usually RelayREL proposals. They may trigger a RelaySOUL proposal only when they reveal a portable character invariant rather than a target-specific relationship parameter.
+
+Example flow:
 
 ```text
 protected calibration evidence
@@ -108,21 +205,25 @@ protected calibration evidence
   -> keep or rollback
 ```
 
-A single inferred mood, one unusual turn, or one retrieval result is not sufficient evidence for a durable persona change.
+A single inferred mood, one unusual turn, one retrieval result, or one relationship estimate is not sufficient evidence for a durable character-source change.
 
 ## Target-source classification
 
 | Feedback type | Preferred owner/target |
 |---|---|
-| Durable identity, values, worldview, invariants | `SOUL.md` |
-| Character voice, tone, response shape, memory disclosure | `OUTPUT_POLICY.md` |
-| Approved relationship expectations | `RELATIONSHIP_ANCHOR.md` |
-| Current role, task, setting, temporary response constraint | RelaySCN runtime state/config |
-| Current affect or expression pressure | RelayEMO request/session-local state |
-| Durable factual/project/user memory | RelaySLP -> RelayMEM |
+| Name, identity, values, worldview, temperament, invariants | `SOUL.md` |
+| Character voice, tone, response shape, roleplay flavor | `STYLE.md` |
+| Emotion-state response profile | `EMOTION.md` |
+| Character-specific privacy, pressure, intimacy, disclosure limits | `BOUNDARY.md` |
+| Backstory, world, setting, factions, proper nouns | optional `LORE.md` |
+| Relationship roles and parameter vocabulary | RelayREL `RELATIONSHIP.md` |
+| Concrete relationship with a target | RelayREL `relationships/<target>.md` |
+| Scene selection/generation/merge policy | RelaySCN `SCENE.md` |
+| Concrete scene pages and candidates | RelaySCN `scenes/*.md`, `scenes/_inbox/*.md` |
+| Durable factual/project/user memory and memory policy | RelayMEM/RelaySLP `MEMORY.md`, `memory/**/*.md` |
 | Current topic, open question, referable items | RelayCTX working state |
 
-`SOUL.md` must not become a style dumping ground. `OUTPUT_POLICY.md` must not become a hidden identity core. `RELATIONSHIP_ANCHOR.md` must remain relationship-specific.
+`SOUL.md` must not become a style dumping ground. `STYLE.md` must not become a hidden identity core. `RELATIONSHIP.md` must not contain target-specific relationship state. `relationships/<target>.md` must not silently rewrite portable character identity.
 
 ## Modes
 
@@ -130,9 +231,9 @@ A single inferred mood, one unusual turn, or one retrieval result is not suffici
 
 Purpose:
 
-- create or substantially reshape a persona,
+- create or substantially reshape a character,
 - test multiple explicit character directions,
-- allow broader persona-source revisions.
+- allow broader portable-source revisions.
 
 Requirements:
 
@@ -147,31 +248,32 @@ Requirements:
 
 Purpose:
 
-- refine an existing persona,
+- refine an existing character,
 - tune durable voice/expression policy,
-- tune approved relationship expectations.
+- tune emotion profiles,
+- tune character-specific boundaries.
 
 Requirements:
 
-- prefer `OUTPUT_POLICY.md` and `RELATIONSHIP_ANCHOR.md`,
-- propose `SOUL.md` only when a durable identity change is explicit and unavoidable,
+- choose the smallest correct source,
+- propose `SOUL.md` only when a durable identity/value/temperament change is explicit and unavoidable,
 - require user review before apply,
-- consolidate instead of append-only growth.
+- consolidate instead of append-only growth,
+- preserve KV-cache-friendly stable prefixes.
 
 ### `normal_chat`
 
 Target behavior:
 
 - proposal/candidate generation only,
-- no persona-source apply,
+- no portable character-source apply,
 - explicit correction may offer entry into calibration/character-creation mode,
-- RelaySLP may route durable-memory evidence to RelayMEM, not RelaySOUL.
-
-Current `mvp-soul-0` enforcement remains weaker until the migration described above is implemented.
+- RelaySLP may route ordinary durable-memory evidence to RelayMEM,
+- RelaySLP may route target-specific relationship evidence to RelayREL proposals.
 
 ## Patch generation
 
-Patch generation receives only the persona sources relevant to the target plus protected calibration evidence.
+Patch generation receives only the target source(s) relevant to the requested change plus protected calibration evidence.
 
 It should:
 
@@ -180,22 +282,23 @@ It should:
 - explain target classification,
 - emit no change when current sources already explain the preference,
 - preserve source lineage,
-- avoid unrelated memory, scene, or affect artifacts,
-- avoid full rewrites unless explicitly requested.
+- avoid unrelated memory, scene, relationship, or affect artifacts,
+- avoid full rewrites unless explicitly requested,
+- keep stable source fragments cache-friendly.
 
 The model-generated patch body is content-bearing and remains protected.
 
-Current patch tooling may still include legacy scene/memory sources for compatibility. That behavior is not the target ownership model.
-
-## Persona source budgets
+## Persona source budgets and cache stability
 
 Suggested conceptual budgets:
 
 ```yaml
 persona_source_budget:
   soul_max_tokens: 800
-  output_policy_max_tokens: 600
-  relationship_anchor_max_tokens: 500
+  style_max_tokens: 600
+  emotion_max_tokens: 800
+  boundary_max_tokens: 600
+  lore_max_tokens: 1200
 ```
 
 Rules:
@@ -203,18 +306,19 @@ Rules:
 - prefer replacement/consolidation over unbounded append,
 - propose compression when over budget,
 - keep stable persona files legible and cache-friendly,
-- do not crowd out the current request or required context,
+- avoid changing stable uppercase files during normal chat,
+- do not crowd out current request, selected relationship state, selected scene state, or selected memory evidence,
 - budget values are policy/configuration, not immutable architecture truth.
 
-Memory and scene budgets are owned by RelayMEM/RelayCTX/RelaySCN.
+Memory, scene, and relationship-instance budgets are owned by RelayMEM/RelaySLP, RelaySCN, RelayREL, and RelayCTX.
 
 ## Renderer validation
 
-The backend model is a persona renderer. A source patch must be evaluated against the target local model and runtime layout.
+The backend model is a character renderer. A source patch must be evaluated against the target local model and runtime layout.
 
 ```text
 patch candidate
-  -> temporary persona revision
+  -> temporary character-source revision
   -> RelayLM compile dry-run
   -> token / stable-prefix / compatibility checks
   -> target renderer samples
@@ -226,11 +330,11 @@ A teacher-model distillation step may help compress or reconcile sources, but it
 
 ## Revision, apply, and rollback
 
-Every applied persona revision should include:
+Every applied portable character-source revision should include:
 
 - revision and parent identifiers,
 - mode,
-- changed persona-source classes,
+- changed source classes,
 - evidence/reference IDs,
 - approval state,
 - compile dry-run status,
@@ -238,9 +342,7 @@ Every applied persona revision should include:
 - applied actor/time metadata,
 - rollback availability.
 
-The exact current field names are defined by `mvp-soul-0`; the proposed v1 names are documented separately in the revision contract.
-
-Apply remains fail-closed. A failed compile, approval, budget, invariant, lineage, or persistence check produces no persona mutation.
+Apply remains fail-closed. A failed compile, approval, budget, invariant, lineage, persistence, or cache-stability check produces no portable character-source mutation.
 
 ## Protected evidence versus content-free projection
 
@@ -251,7 +353,7 @@ May contain:
 - response samples,
 - freeform feedback,
 - patch prompts and patch bodies,
-- persona-source contents,
+- character-source contents,
 - renderer outputs,
 - detailed rationale.
 
@@ -259,74 +361,23 @@ May contain:
 
 May contain typed allowlisted metadata such as:
 
-- revision/candidate/reference IDs,
-- mode,
-- target source class,
-- changed-file classes,
-- evidence count,
-- approval requirement/status,
-- budget delta class,
-- stable-prefix changed boolean,
-- compile/apply/rollback status,
-- reason identifiers.
+- source class names,
+- changed-fragment counts,
+- token-count bands,
+- stable-prefix-change boolean,
+- approval state,
+- reason IDs,
+- rollback availability,
+- compile-dry-run status.
 
-Default runtime trace must not contain generated response text, feedback text, patch text, prompt text, or persona/memory bodies.
-
-## Interaction with RelaySLP
-
-RelaySLP may emit a RelaySOUL proposal candidate when governed evidence suggests a durable persona, relationship, or output-policy change.
-
-```text
-RelaySLP proposal candidate
-  -> target classification
-  -> RelaySCN proposal eligibility
-  -> RelaySOUL calibration/approval workflow
-  -> versioned persona revision
-```
-
-RelaySLP never writes RelaySOUL files directly.
-
-## Required migration follow-up
-
-A future implementation PR should:
-
-1. remove legacy scene/memory targets from every RelaySOUL allowlist,
-2. carry mode through candidate, revision, approval, apply, rollback, and storage artifacts,
-3. block every normal-chat persona apply,
-4. introduce typed protected candidates and content-free projections,
-5. update examples and smoke tests,
-6. preserve backward compatibility only through an explicit schema/version migration.
-
-## Safety and product boundary
-
-- official presets should remain safe and general-purpose,
-- arbitrary user-provided models/files remain outside complete RelaySOUL control,
-- persona change must remain attributable, understandable, and reversible,
-- calibration must not optimize dependency, pressure, guilt, or concealed system limitations,
-- normal chat must not silently drift durable identity.
-
-## Non-goals
-
-RelaySOUL does not:
-
-- claim the target v1 contract is already implemented,
-- own scene or affect state,
-- compile or store ordinary long-term memory,
-- treat client prompts as durable authority,
-- write from raw affect inference,
-- expose protected calibration content through generic diagnostics,
-- bypass approval, versioning, compile dry-run, or rollback.
+It must not contain source file bodies, prompt fragments, relationship bodies, memory bodies, renderer outputs, or raw feedback.
 
 ## Summary
 
 ```text
-current implementation
-  mvp-soul-0 legacy 5-file tooling contract
-
-target architecture
-  explicit protected persona feedback
-  -> 3-file durable persona candidate
-  -> target-renderer validation
-  -> explicit review and approval
-  -> versioned apply / rollback
+RelaySOUL owns portable character-source calibration.
+RelayREL owns target-specific relationship policy.
+RelaySCN owns scene policy/state.
+RelayMEM/RelaySLP own memory pages and memory candidates.
+RelayCTX compiles selected sources into cache-friendly backend context.
 ```
