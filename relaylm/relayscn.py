@@ -138,7 +138,6 @@ _FAIL_CLOSED_UNKNOWN_POLICY = {
 def build_relayscn_scene_policy_artifact(
     *,
     payload: Mapping[str, Any] | None = None,
-    **_deprecated_compat_kwargs: Any,
 ) -> dict[str, Any]:
     """Build a diagnostics-only RelaySCN scene-policy artifact.
 

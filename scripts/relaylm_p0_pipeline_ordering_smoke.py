@@ -45,12 +45,15 @@ def main() -> None:
     _assert(heuristic_artifact["scene_state"]["scene_type"] == "review_work", "heuristic should classify review text")
 
     relayemo_like_scene = {"scene_state": {"scene_type": "vtuber_roleplay", "confidence": 1.0}}
-    ignored_artifact = build_relayscn_scene_policy_artifact(
-        payload={"messages": [{"role": "user", "content": "Please review this PR diff."}]},
-        **{"relayemo_artifact": relayemo_like_scene},
-    )
-    _assert(ignored_artifact["scene_state_source"] == "heuristic", "RelayEMO scene_state must be ignored")
-    _assert(ignored_artifact["scene_state"]["scene_type"] == "review_work", "RelayEMO scene_state must not override RelaySCN")
+    try:
+        build_relayscn_scene_policy_artifact(
+            payload={"messages": [{"role": "user", "content": "Please review this PR diff."}]},
+            **{"relayemo_artifact": relayemo_like_scene},
+        )
+    except TypeError as exc:
+        _assert("relayemo_artifact" in str(exc), "RelaySCN should reject relayemo_artifact explicitly")
+    else:
+        raise AssertionError("RelaySCN must reject relayemo_artifact as an unexpected keyword")
 
     unknown_artifact = build_relayscn_scene_policy_artifact(payload={"messages": []})
     _assert(unknown_artifact["scene_state_source"] == "heuristic", "empty request should remain heuristic")

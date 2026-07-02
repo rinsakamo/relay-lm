@@ -29,7 +29,7 @@ Before implementing Character Workspace parser/compiler/UI slices, RelayLM needs
 
 ## Current draft status
 
-This PR currently implements the helper/projection side of the ownership correction, but it is not merge-ready until the FastAPI request path is rewired.
+This PR is complete only after the FastAPI request path is actually rewired and the local validation commands pass; helper/projection changes alone are not sufficient.
 
 Implemented in this draft:
 
@@ -44,10 +44,10 @@ Public diagnostics/projections remain content-free.
 Still required before this PR can be marked ready:
 
 ```text
-app.py request path must call RelayREL / RelaySCN before input-side RelayEMO.
-app.py must stop passing relayemo_artifact into build_relayscn_scene_policy_artifact.
-project_execution_plan.md must move PM-D3/P0 from next candidate to complete only after app.py is wired.
-validation must pass locally or in CI.
+app.py request path calls RelayREL / RelaySCN before input-side RelayEMO.
+app.py no longer passes relayemo_artifact into build_relayscn_scene_policy_artifact.
+project_execution_plan.md moves PM-D3/P0 to complete only because app.py is wired and validation passed.
+validation passes locally or in CI before ready-for-review.
 ```
 
 ## Target order
@@ -145,7 +145,7 @@ The dedicated smoke proves:
 ```text
 build_relayscn_scene_policy_artifact has no public relayemo_artifact parameter
 RelaySCN no longer keeps _extract_relayemo_scene_state
-RelaySCN does not emit scene_state_source=relayemo_artifact
+RelaySCN rejects relayemo_artifact as an unexpected keyword and does not emit scene_state_source=relayemo_artifact
 explicit request metadata still wins
 missing metadata uses heuristic/fail-closed behavior
 RelayREL precedes RelaySCN in the order projection
