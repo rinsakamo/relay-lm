@@ -21,6 +21,7 @@ def build_p0_pipeline_order_projection(
     relayscn_scene_policy_artifact: Mapping[str, Any] | None = None,
     relayemo_artifact: Mapping[str, Any] | None = None,
     relaymem_retrieval_artifact: Mapping[str, Any] | None = None,
+    actual_app_rewired: bool = False,
 ) -> dict[str, Any]:
     """Build a diagnostics-only order projection for P0 smoke coverage.
 
@@ -28,6 +29,10 @@ def build_p0_pipeline_order_projection(
     flags only. It never includes raw messages, memory bodies, relationship
     bodies, scene bodies, assistant output, or backend payload text.
     """
+
+    remaining_work: list[str] = []
+    if not actual_app_rewired:
+        remaining_work.append("app.py_request_path_not_yet_rewired")
 
     return {
         "schema_version": "relaylm.pipeline_order_projection.v0",
@@ -45,6 +50,9 @@ def build_p0_pipeline_order_projection(
         "relaymem_consumes_relayscn_policy": isinstance(relayscn_scene_policy_artifact, Mapping),
         "relayscn_precedes_relayemo": True,
         "relayrel_precedes_relayscn": True,
+        "actual_app_rewired": bool(actual_app_rewired),
+        "remaining_work": remaining_work,
+        "merge_ready": not remaining_work,
     }
 
 
