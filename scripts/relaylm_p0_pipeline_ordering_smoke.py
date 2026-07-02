@@ -51,6 +51,46 @@ def _app_request_path_order_is_rewired(app_source: str) -> bool:
     return relayrel_line < relayscn_line < relayemo_line
 
 
+def _assert_policy_closed_for_non_authoritative_heuristic(artifact: dict[str, object], label: str) -> None:
+    scene_state = artifact["scene_state"]
+    scene_policy = artifact["scene_policy"]
+    _assert(scene_state["is_estimate"] is True, f"{label} should remain a heuristic estimate")
+    _assert(
+        scene_policy["policy_authority"] == "heuristic_non_authoritative",
+        f"{label} should not receive authoritative policy",
+    )
+    _assert(
+        scene_policy["relaymem_retrieval_scope"] == "current_context_only",
+        f"{label} should not open broad RelayMEM retrieval",
+    )
+    _assert(
+        scene_policy["relaymem_update_gate"] == "blocked",
+        f"{label} should not open RelayMEM updates",
+    )
+
+
+def _assert_safety_policy_restrictive(artifact: dict[str, object], label: str) -> None:
+    scene_state = artifact["scene_state"]
+    scene_policy = artifact["scene_policy"]
+    _assert(scene_state["is_estimate"] is True, f"{label} should remain a heuristic estimate")
+    _assert(
+        scene_policy["policy_authority"] == "heuristic_restrictive",
+        f"{label} should only receive restrictive heuristic policy",
+    )
+    _assert(
+        scene_policy["relayctx_mode"] == "safety_cautious",
+        f"{label} should use safety-cautious RelayCTX mode",
+    )
+    _assert(
+        scene_policy["relaymem_retrieval_scope"] == "minimal_or_evidence_only",
+        f"{label} should restrict RelayMEM retrieval to minimal/evidence scope",
+    )
+    _assert(
+        scene_policy["relaymem_update_gate"] == "blocked",
+        f"{label} should block RelayMEM updates",
+    )
+
+
 def main() -> None:
     signature = inspect.signature(build_relayscn_scene_policy_artifact)
     _assert("relayemo_artifact" not in signature.parameters, "RelaySCN public API must not expose relayemo_artifact")
@@ -70,12 +110,17 @@ def main() -> None:
     )
     _assert(explicit_artifact["scene_state_source"] == "request_metadata", "explicit metadata should win")
     _assert(explicit_artifact["scene_state"]["scene_type"] == "review_work", "explicit scene type should be preserved")
+    _assert(explicit_artifact["scene_state"]["source_authoritative"] is True, "explicit metadata should be authoritative")
+    _assert(explicit_artifact["scene_policy"]["policy_authority"] == "authoritative", "explicit metadata may open authoritative policy")
+    _assert(explicit_artifact["scene_policy"]["relaymem_retrieval_scope"] == "current_project_only", "explicit review may use review retrieval scope")
+    _assert(explicit_artifact["scene_policy"]["relaymem_update_gate"] == "allowed_dry_run", "explicit review may use dry-run update gate")
 
     heuristic_artifact = build_relayscn_scene_policy_artifact(
         payload={"messages": [{"role": "user", "content": "Please review this PR diff."}]}
     )
     _assert(heuristic_artifact["scene_state_source"] == "heuristic", "missing metadata should use heuristic")
     _assert(heuristic_artifact["scene_state"]["scene_type"] == "review_work", "heuristic should classify review text")
+    _assert_policy_closed_for_non_authoritative_heuristic(heuristic_artifact, "heuristic review text")
 
     for code_task_text in (
         "please fix this bug",
@@ -93,6 +138,7 @@ def main() -> None:
             code_task_artifact["scene_state"]["scene_type"] == "implementation_work",
             f"code-task text should classify as implementation_work: {code_task_text!r}",
         )
+        _assert_policy_closed_for_non_authoritative_heuristic(code_task_artifact, code_task_text)
 
     relayemo_like_scene = {"scene_state": {"scene_type": "vtuber_roleplay", "confidence": 1.0}}
     try:
@@ -112,6 +158,7 @@ def main() -> None:
         vtuber_artifact["scene_state"]["scene_type"] == "vtuber_roleplay",
         "Japanese streaming cue should classify as vtuber_roleplay",
     )
+    _assert_policy_closed_for_non_authoritative_heuristic(vtuber_artifact, "配信してください")
 
     for pr_review_text in ("PR#123を確認して", "PRを確認して", "PR", "please check pr"):
         pr_review_artifact = build_relayscn_scene_policy_artifact(
@@ -121,6 +168,7 @@ def main() -> None:
             pr_review_artifact["scene_state"]["scene_type"] == "review_work",
             f"PR confirmation cue should classify as review_work: {pr_review_text!r}",
         )
+        _assert_policy_closed_for_non_authoritative_heuristic(pr_review_artifact, pr_review_text)
 
     for non_review_text in ("please check prices", "check profile"):
         non_review_artifact = build_relayscn_scene_policy_artifact(
@@ -131,7 +179,15 @@ def main() -> None:
             f"non-PR text should not classify as review_work: {non_review_text!r}",
         )
 
-    for safety_file_text in ("medical file", "legal file", "safety file", "医療ファイル"):
+    for safety_file_text in (
+        "medical file",
+        "legal file",
+        "safety file",
+        "医療ファイル",
+        "安全ファイル",
+        "legal PR",
+        "safety review",
+    ):
         safety_file_artifact = build_relayscn_scene_policy_artifact(
             payload={"messages": [{"role": "user", "content": safety_file_text}]}
         )
@@ -139,6 +195,7 @@ def main() -> None:
             safety_file_artifact["scene_state"]["scene_type"] == "medical_or_safety",
             f"medical/safety file text should classify as medical_or_safety: {safety_file_text!r}",
         )
+        _assert_safety_policy_restrictive(safety_file_artifact, safety_file_text)
 
     for file_task_text in ("file", "edit file", "this file"):
         file_task_artifact = build_relayscn_scene_policy_artifact(
@@ -148,6 +205,7 @@ def main() -> None:
             file_task_artifact["scene_state"]["scene_type"] == "implementation_work",
             f"file task text should classify as implementation_work: {file_task_text!r}",
         )
+        _assert_policy_closed_for_non_authoritative_heuristic(file_task_artifact, file_task_text)
 
     for non_file_task_text in ("profile", "update my profile"):
         non_file_task_artifact = build_relayscn_scene_policy_artifact(
@@ -165,6 +223,8 @@ def main() -> None:
         formal_artifact["scene_state"]["scene_type"] == "formal_document",
         "Japanese document task should classify as formal_document",
     )
+    _assert(formal_artifact["scene_policy"]["policy_authority"] == "heuristic_restrictive", "formal heuristic should only restrict policy")
+    _assert(formal_artifact["scene_policy"]["relaymem_update_gate"] == "blocked", "formal heuristic should block updates")
 
     for medical_task_text in ("医療について相談したい", "医療安全について確認したい"):
         medical_artifact = build_relayscn_scene_policy_artifact(
@@ -174,19 +234,7 @@ def main() -> None:
             medical_artifact["scene_state"]["scene_type"] == "medical_or_safety",
             f"medical/safety text should classify as medical_or_safety: {medical_task_text!r}",
         )
-        scene_policy = medical_artifact["scene_policy"]
-        _assert(
-            scene_policy["relayctx_mode"] == "safety_cautious",
-            "medical/safety policy should use safety-cautious RelayCTX mode",
-        )
-        _assert(
-            scene_policy["relaymem_retrieval_scope"] == "minimal_or_evidence_only",
-            "medical/safety policy should restrict RelayMEM retrieval to minimal/evidence scope",
-        )
-        _assert(
-            scene_policy["relaymem_update_gate"] == "blocked",
-            "medical/safety policy should block RelayMEM updates",
-        )
+        _assert_safety_policy_restrictive(medical_artifact, medical_task_text)
 
     unknown_artifact = build_relayscn_scene_policy_artifact(payload={"messages": []})
     _assert(unknown_artifact["scene_state_source"] == "heuristic", "empty request should remain heuristic")

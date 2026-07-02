@@ -20,6 +20,7 @@ KNOWN_SCENE_TYPES = {
 
 LOW_CONFIDENCE_THRESHOLD = 0.70
 LOW_STABILITY_THRESHOLD = 0.65
+_RESTRICTIVE_HEURISTIC_SCENE_TYPES = {"medical_or_safety", "formal_document", "recovery"}
 
 _POLICY_BY_SCENE_TYPE: dict[str, dict[str, Any]] = {
     "casual_chat": {
@@ -230,6 +231,8 @@ def _normalize_scene_state(raw_scene_state: Mapping[str, Any], *, source: str) -
         "stability": stability,
         "signals": normalized_signals,
         "is_estimate": source != "request_metadata",
+        "scene_state_authority": "authoritative" if source == "request_metadata" else "heuristic",
+        "source_authoritative": source == "request_metadata",
         "recovery_mode": raw_scene_state.get("recovery_mode") is True,
         "user_confirmation_required": raw_scene_state.get("user_confirmation_required") is True,
     }
@@ -241,8 +244,23 @@ def _build_scene_policy(scene_state: Mapping[str, Any]) -> tuple[dict[str, Any],
         if isinstance(scene_state.get("scene_type"), str)
         else "unknown"
     )
-    base_policy = _POLICY_BY_SCENE_TYPE.get(scene_type, _FAIL_CLOSED_UNKNOWN_POLICY)
-    policy = {"schema_version": "relayscn.scene_policy.v0", **base_policy}
+    source_authoritative = scene_state.get("source_authoritative") is True
+    heuristic_may_restrict = (
+        scene_state.get("is_estimate") is True
+        and scene_type in _RESTRICTIVE_HEURISTIC_SCENE_TYPES
+    )
+    if source_authoritative or heuristic_may_restrict:
+        base_policy = _POLICY_BY_SCENE_TYPE.get(scene_type, _FAIL_CLOSED_UNKNOWN_POLICY)
+        policy_authority = "authoritative" if source_authoritative else "heuristic_restrictive"
+    else:
+        base_policy = _FAIL_CLOSED_UNKNOWN_POLICY
+        policy_authority = "heuristic_non_authoritative"
+    policy = {
+        "schema_version": "relayscn.scene_policy.v0",
+        **base_policy,
+        "policy_authority": policy_authority,
+        "source_authoritative": source_authoritative,
+    }
 
     confidence = _coerce_probability(scene_state.get("confidence"), default=0.0)
     stability = _coerce_probability(scene_state.get("stability"), default=0.0)
@@ -256,6 +274,8 @@ def _build_scene_policy(scene_state: Mapping[str, Any]) -> tuple[dict[str, Any],
         reasons.append("scene_type_is_medical_or_safety")
     if scene_type == "formal_document":
         reasons.append("scene_type_is_formal_document")
+    if policy_authority == "heuristic_non_authoritative":
+        reasons.append("heuristic_scene_state_non_authoritative")
     if policy.get("user_confirmation_required") is True:
         reasons.append("user_confirmation_required")
     if confidence < LOW_CONFIDENCE_THRESHOLD:
@@ -289,9 +309,6 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
     text = _latest_user_text(payload).lower()
     if not text:
         return "unknown", 0.35, 0.35, "missing_message_metadata"
-
-    if _contains_ascii_word(text, "pr"):
-        return "review_work", 0.78, 0.72, "keyword:review_work"
 
     checks = [
         (
@@ -358,6 +375,8 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
     for scene_type, needles, confidence, stability in checks:
         if any(needle in text for needle in needles):
             return scene_type, confidence, stability, f"keyword:{scene_type}"
+    if _contains_ascii_word(text, "pr"):
+        return "review_work", 0.78, 0.72, "keyword:review_work"
     if _contains_ascii_word(text, "file"):
         return "implementation_work", 0.78, 0.72, "keyword:implementation_work"
     return "casual_chat", 0.62, 0.60, "heuristic_fallback:casual_chat"
