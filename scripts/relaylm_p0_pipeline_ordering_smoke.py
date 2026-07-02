@@ -19,21 +19,36 @@ def _assert(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
-def _app_relayscn_call_excludes_relayemo_artifact(app_source: str) -> bool:
+def _app_request_path_order_is_rewired(app_source: str) -> bool:
     tree = ast.parse(app_source)
-    calls = [
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Name)
-        and node.func.id == "build_relayscn_scene_policy_artifact"
-    ]
-    _assert(calls, "app.py must call build_relayscn_scene_policy_artifact")
-    for call in calls:
-        for keyword in call.keywords:
-            if keyword.arg == "relayemo_artifact":
-                return False
-    return True
+    call_lines: dict[str, list[int]] = {
+        "build_relayrel_relationship_projection": [],
+        "build_relayscn_scene_policy_artifact": [],
+        "run_relayemo": [],
+    }
+    relayscn_has_relayemo_kwarg = False
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+            continue
+        func_name = node.func.id
+        if func_name not in call_lines:
+            continue
+        call_lines[func_name].append(node.lineno)
+        if func_name == "build_relayscn_scene_policy_artifact":
+            relayscn_has_relayemo_kwarg = any(
+                keyword.arg == "relayemo_artifact" for keyword in node.keywords
+            )
+
+    for func_name, lines in call_lines.items():
+        _assert(lines, f"app.py must call {func_name}")
+    if relayscn_has_relayemo_kwarg:
+        return False
+
+    relayrel_line = min(call_lines["build_relayrel_relationship_projection"])
+    relayscn_line = min(call_lines["build_relayscn_scene_policy_artifact"])
+    relayemo_line = min(call_lines["run_relayemo"])
+    return relayrel_line < relayscn_line < relayemo_line
 
 
 def main() -> None:
@@ -45,7 +60,7 @@ def main() -> None:
     _assert('source = "relayemo_artifact"' not in source, "RelaySCN must not emit relayemo_artifact scene source")
 
     app_source = Path("relaylm/app.py").read_text(encoding="utf-8")
-    actual_app_rewired = _app_relayscn_call_excludes_relayemo_artifact(app_source)
+    actual_app_rewired = _app_request_path_order_is_rewired(app_source)
 
     explicit_artifact = build_relayscn_scene_policy_artifact(
         payload={
@@ -89,6 +104,22 @@ def main() -> None:
         _assert("relayemo_artifact" in str(exc), "RelaySCN should reject relayemo_artifact explicitly")
     else:
         raise AssertionError("RelaySCN must reject relayemo_artifact as an unexpected keyword")
+
+    vtuber_artifact = build_relayscn_scene_policy_artifact(
+        payload={"messages": [{"role": "user", "content": "配信してください"}]}
+    )
+    _assert(
+        vtuber_artifact["scene_state"]["scene_type"] == "vtuber_roleplay",
+        "Japanese streaming cue should classify as vtuber_roleplay",
+    )
+
+    pr_review_artifact = build_relayscn_scene_policy_artifact(
+        payload={"messages": [{"role": "user", "content": "PR#123を確認して"}]}
+    )
+    _assert(
+        pr_review_artifact["scene_state"]["scene_type"] == "review_work",
+        "PR confirmation cue should classify as review_work",
+    )
 
     formal_artifact = build_relayscn_scene_policy_artifact(
         payload={"messages": [{"role": "user", "content": "文書を作成して"}]}

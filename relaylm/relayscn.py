@@ -308,7 +308,7 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
             0.80,
             0.76,
         ),
-        ("review_work", ("review", "pr ", "diff", "レビュー", "検証"), 0.78, 0.72),
+        ("review_work", ("review", "pr ", "pr#", "diff", "レビュー", "検証"), 0.78, 0.72),
         (
             "implementation_work",
             (
@@ -347,7 +347,7 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
         ),
         (
             "vtuber_roleplay",
-            ("vtuber", "live2d", "tts", "roleplay", "ロールプレイ"),
+            ("vtuber", "live2d", "tts", "roleplay", "ロールプレイ", "配信"),
             0.74,
             0.70,
         ),
