@@ -122,6 +122,33 @@ def main() -> None:
             f"PR confirmation cue should classify as review_work: {pr_review_text!r}",
         )
 
+    for non_review_text in ("please check prices", "check profile"):
+        non_review_artifact = build_relayscn_scene_policy_artifact(
+            payload={"messages": [{"role": "user", "content": non_review_text}]}
+        )
+        _assert(
+            non_review_artifact["scene_state"]["scene_type"] != "review_work",
+            f"non-PR text should not classify as review_work: {non_review_text!r}",
+        )
+
+    for file_task_text in ("file", "edit file", "this file"):
+        file_task_artifact = build_relayscn_scene_policy_artifact(
+            payload={"messages": [{"role": "user", "content": file_task_text}]}
+        )
+        _assert(
+            file_task_artifact["scene_state"]["scene_type"] == "implementation_work",
+            f"file task text should classify as implementation_work: {file_task_text!r}",
+        )
+
+    for non_file_task_text in ("profile", "update my profile"):
+        non_file_task_artifact = build_relayscn_scene_policy_artifact(
+            payload={"messages": [{"role": "user", "content": non_file_task_text}]}
+        )
+        _assert(
+            non_file_task_artifact["scene_state"]["scene_type"] != "implementation_work",
+            f"non-file text should not classify as implementation_work: {non_file_task_text!r}",
+        )
+
     formal_artifact = build_relayscn_scene_policy_artifact(
         payload={"messages": [{"role": "user", "content": "文書を作成して"}]}
     )

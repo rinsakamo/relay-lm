@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -289,13 +290,10 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
     if not text:
         return "unknown", 0.35, 0.35, "missing_message_metadata"
 
-    if (
-        text.strip() == "pr"
-        or "prを確認" in text
-        or "check pr" in text
-        or "check the pr" in text
-    ):
+    if _contains_ascii_word(text, "pr"):
         return "review_work", 0.78, 0.72, "keyword:review_work"
+    if _contains_ascii_word(text, "file"):
+        return "implementation_work", 0.78, 0.72, "keyword:implementation_work"
 
     checks = [
         (
@@ -324,7 +322,6 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
                 "code",
                 "コード",
                 "repo",
-                "file",
                 "bug",
                 "error",
                 "fix ",
@@ -364,6 +361,11 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
         if any(needle in text for needle in needles):
             return scene_type, confidence, stability, f"keyword:{scene_type}"
     return "casual_chat", 0.62, 0.60, "heuristic_fallback:casual_chat"
+
+
+def _contains_ascii_word(text: str, word: str) -> bool:
+    pattern = rf"(?<![a-z0-9_]){re.escape(word)}(?![a-z0-9_])"
+    return re.search(pattern, text) is not None
 
 
 def _latest_user_text(payload: Mapping[str, Any]) -> str:
