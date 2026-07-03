@@ -103,6 +103,9 @@ def build_scene_classifier_candidate(
         reason_ids.append("scene_wiki_candidate_match")
         if scene_type == "unknown" and matched_scene_type != "unknown":
             scene_type = matched_scene_type
+            if source_authoritative:
+                validation_errors = [item for item in validation_errors if item != "unrecognized_scene_type"]
+                reason_ids = [item for item in reason_ids if item != "unrecognized_scene_type"]
 
     candidate_scene_family = (
         matched_scene_family if match_strength in {"medium", "strong"} and matched_scene_family != "unknown" else _family_for_scene_type(scene_type)
