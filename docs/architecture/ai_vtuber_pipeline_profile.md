@@ -23,7 +23,7 @@ text-in / voice-and-avatar-out
 
 ASR remains outside RelayLM's MVP runtime. OS/device/browser speech input may provide text.
 
-RelayLM owns context, memory, visible/internal output separation, and engine-neutral expression hints. It does not own TTS engine execution or Live2D/avatar execution.
+RelayLM owns relationship-conditioned context, scene policy, memory, visible/internal output separation, and engine-neutral expression hints. It does not own TTS engine execution or Live2D/avatar execution.
 
 ## Request and generation path
 
@@ -31,6 +31,7 @@ RelayLM owns context, memory, visible/internal output separation, and engine-neu
 Text input
   -> RelayRUN request shell
   -> PipelineContext
+  -> RelayREL
   -> Input-side RelaySCN
   -> Input-side RelayEMO
   -> RelayINT
@@ -187,7 +188,7 @@ code_block            -> caption_only or substitute
 inline_code           -> short/pronounceable only
 url                    -> caption_only or domain substitute
 json_yaml              -> caption_only
-table                  -> caption_only or summary substitute
+table                 -> caption_only or summary substitute
 command_or_file_path   -> caption_only unless explicitly useful
 internal_marker        -> blocked
 ```
