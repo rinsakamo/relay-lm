@@ -77,6 +77,56 @@ def main() -> None:
     assert set(trusted_public) == EXPECTED_PUBLIC_KEYS
     assert trusted_public["content_free"] is True
 
+    low_confidence = build_analyzer_candidate_artifact(
+        analyzer_kind="query_detail_candidate",
+        source="trusted_explicit",
+        source_language="en",
+        source_authoritative=True,
+        candidate_applied=True,
+        policy_authority="bounded",
+        restrictive_only=False,
+        confidence=0.39,
+        stability=0.8,
+        content_free=True,
+    )
+    low_confidence_public = content_free_projection(low_confidence)
+    assert validate_analyzer_candidate_artifact(low_confidence).is_valid is True
+    assert is_policy_authoritative(low_confidence) is True
+    assert can_open_runtime_policy(low_confidence) is False
+    assert low_confidence_public["confidence_bucket"] == "low"
+
+    default_numeric = build_analyzer_candidate_artifact(
+        analyzer_kind="query_detail_candidate",
+        source="trusted_explicit",
+        source_language="en",
+        source_authoritative=True,
+        candidate_applied=True,
+        policy_authority="bounded",
+        restrictive_only=False,
+        content_free=True,
+    )
+    default_numeric_public = content_free_projection(default_numeric)
+    assert validate_analyzer_candidate_artifact(default_numeric).is_valid is True
+    assert can_open_runtime_policy(default_numeric) is False
+    assert default_numeric_public["confidence_bucket"] == "low"
+    assert default_numeric_public["stability_bucket"] == "low"
+
+    low_stability = build_analyzer_candidate_artifact(
+        analyzer_kind="query_detail_candidate",
+        source="trusted_explicit",
+        source_language="en",
+        source_authoritative=True,
+        candidate_applied=True,
+        policy_authority="bounded",
+        restrictive_only=False,
+        confidence=0.8,
+        stability=0.39,
+        content_free=True,
+    )
+    low_stability_public = content_free_projection(low_stability)
+    assert can_open_runtime_policy(low_stability) is False
+    assert low_stability_public["stability_bucket"] == "low"
+
     direct_raw = {
         "schema_version": SCHEMA_VERSION,
         "analyzer_kind": "query_detail_candidate",
@@ -100,6 +150,26 @@ def main() -> None:
     assert "raw_diagnostic_field_dropped" in direct_public["validation_error_ids"]
     assert "unsupported_field_dropped" in direct_public["validation_error_ids"]
     _assert_content_free(direct_public)
+
+    bool_numeric_raw = {
+        "schema_version": SCHEMA_VERSION,
+        "analyzer_kind": "query_detail_candidate",
+        "source": "trusted_explicit",
+        "source_language": "en",
+        "source_authoritative": True,
+        "candidate_applied": True,
+        "policy_authority": "bounded",
+        "restrictive_only": False,
+        "confidence": True,
+        "stability": False,
+        "content_free": True,
+    }
+    bool_numeric_result = validate_analyzer_candidate_artifact(bool_numeric_raw)
+    bool_numeric_public = bool_numeric_result.to_public_dict()
+    assert bool_numeric_result.is_valid is False
+    assert can_open_runtime_policy(bool_numeric_raw) is False
+    assert "malformed_confidence" in bool_numeric_public["validation_error_ids"]
+    assert "malformed_stability" in bool_numeric_public["validation_error_ids"]
 
     enum_non_string_raw = {
         "schema_version": SCHEMA_VERSION,
@@ -267,7 +337,11 @@ def main() -> None:
 
     for public_value in (
         trusted_public,
+        low_confidence_public,
+        default_numeric_public,
+        low_stability_public,
         direct_public,
+        bool_numeric_public,
         enum_non_string_public,
         nonfinite_public,
         single_reason_public,
