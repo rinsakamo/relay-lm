@@ -215,7 +215,7 @@ def _normalize_scene_state(raw_scene_state: Mapping[str, Any], *, source: str) -
 
     signals = raw_scene_state.get("signals")
     normalized_signals = (
-        [_normalize_content_free_signal(x) for x in signals]
+        [_normalize_content_free_signal(x, source=source) for x in signals]
         if isinstance(signals, Sequence) and not isinstance(signals, str)
         else []
     )
@@ -239,7 +239,7 @@ def _normalize_scene_state(raw_scene_state: Mapping[str, Any], *, source: str) -
     }
 
 
-def _normalize_content_free_signal(signal: Any) -> str:
+def _normalize_content_free_signal(signal: Any, *, source: str) -> str:
     signal_text = str(signal)
     allowed_exact = {
         "unknown_scene_fail_closed",
@@ -252,7 +252,10 @@ def _normalize_content_free_signal(signal: Any) -> str:
     }
     if signal_text in allowed_exact:
         return signal_text
-    if signal_text.startswith("keyword:") or signal_text.startswith("heuristic_fallback:"):
+    if source == "heuristic" and (
+        signal_text.startswith("keyword:")
+        or signal_text.startswith("heuristic_fallback:")
+    ):
         return signal_text
     return "redacted_signal"
 

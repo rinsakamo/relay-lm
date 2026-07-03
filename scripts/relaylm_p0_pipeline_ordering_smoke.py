@@ -110,7 +110,11 @@ def main() -> None:
                         "scene_type": "review_work",
                         "confidence": 0.91,
                         "stability": 0.86,
-                        "signals": ["private signal body"],
+                        "signals": [
+                            "private signal body",
+                            "keyword:secret implementation note",
+                            "heuristic_fallback:secret fallback note",
+                        ],
                     }
                 }
             },
@@ -123,7 +127,20 @@ def main() -> None:
     _assert(explicit_artifact["scene_policy"]["policy_authority"] == "authoritative", "explicit metadata may open authoritative policy")
     _assert(explicit_artifact["scene_policy"]["relaymem_retrieval_scope"] == "current_project_only", "explicit review may use review retrieval scope")
     _assert(explicit_artifact["scene_policy"]["relaymem_update_gate"] == "allowed_dry_run", "explicit review may use dry-run update gate")
-    _assert("private signal body" not in json.dumps(explicit_artifact), "explicit signals must be content-free")
+    explicit_artifact_json = json.dumps(explicit_artifact)
+    for forbidden_signal_text in (
+        "private signal body",
+        "secret implementation note",
+        "secret fallback note",
+    ):
+        _assert(
+            forbidden_signal_text not in explicit_artifact_json,
+            f"explicit signals must be content-free: {forbidden_signal_text!r}",
+        )
+    _assert(
+        explicit_artifact["scene_state"]["signals"] == ["redacted_signal"],
+        "external request metadata signals should be redacted to a fixed token",
+    )
 
     heuristic_artifact = build_relayscn_scene_policy_artifact(
         payload={"messages": [{"role": "user", "content": "Please review this PR diff."}]}
