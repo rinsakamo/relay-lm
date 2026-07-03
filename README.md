@@ -188,13 +188,13 @@ Connection problem? See the [OpenWebUI + RelayLM + LM Studio troubleshooting gui
 
 ## 🏗️ Architecture
 
-The canonical runtime order is:
+The canonical target runtime order is:
 
 ```text
 User input
   -> RelayRUN request shell
   -> PipelineContext
-  -> RelayREL
+  -> RelayREL target relationship selection
   -> Input-side RelaySCN
   -> Input-side RelayEMO
   -> RelayINT
@@ -212,16 +212,16 @@ User input
 Out-of-band after-turn path:
   governed evidence
   -> RelaySLP
-  -> MEM update candidates / SOUL proposals
+  -> MEM update candidates / SCENE update candidates / REL update candidates / SOUL proposals
   -> persistence and approval gates
 ```
 
-This is the canonical responsibility order, not a claim that every stage is already active. Consult [Project Status](docs/PROJECT_STATUS.md) for implementation status.
+This is the canonical responsibility order, not a claim that every stage is already active. Consult [Project Status](docs/PROJECT_STATUS.md) and the [Current / Target / Migration Guide](docs/architecture/current_target_migration_guide.md) for implementation status.
 
 | When | Relay component | What it does |
 |---|---|---|
 | Throughout the request | 🎛️ **RelayRUN** | Manages stage order, recovery, checkpoints, and trace |
-| Input | 🤝 **RelayREL** | Resolves relationship-conditioned interaction policy and target-specific relationship projection |
+| Target input architecture | 🤝 **RelayREL** | Selects relationship-specific interaction policy before scene resolution |
 | Input | 🌬️ **RelaySCN** | Classifies the scene and resolves memory, expression, and persistence policy |
 | Input and output | 🙂 **RelayEMO** | Interprets affect cues and adjusts scene-appropriate expression |
 | Input | 🚦 **RelayINT** | Detects intent and ambiguity, then decides whether to continue, ask, or stop |

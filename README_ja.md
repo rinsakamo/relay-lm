@@ -187,12 +187,13 @@ curl http://127.0.0.1:8090/v1/chat/completions \
 
 ## 🏗️ アーキテクチャ
 
-正規のランタイム順序は次のとおりです。
+正規のtargetランタイム順序は次のとおりです。
 
 ```text
 User input
   -> RelayRUN request shell
   -> PipelineContext
+  -> RelayREL target relationship selection
   -> Input-side RelaySCN
   -> Input-side RelayEMO
   -> RelayINT
@@ -210,15 +211,16 @@ User input
 Out-of-band after-turn path:
   governed evidence
   -> RelaySLP
-  -> MEM update candidates / SOUL proposals
+  -> MEM update candidates / SCENE update candidates / REL update candidates / SOUL proposals
   -> persistence and approval gates
 ```
 
-これは責務上の正規順序であり、すべての段階が現在有効という意味ではありません。実装状況は [Project Status](docs/PROJECT_STATUS.md) を参照してください。
+これは責務上の正規順序であり、すべての段階が現在有効という意味ではありません。実装状況は [Project Status](docs/PROJECT_STATUS.md) と [Current / Target / Migration Guide](docs/architecture/current_target_migration_guide.md) を参照してください。
 
 | いつ動くか | Relayコンポーネント | 何をするか |
 |---|---|---|
 | 会話全体 | 🎛️ **RelayRUN** | 各処理の順序、復旧、checkpoint、traceを管理する |
+| target入力アーキテクチャ | 🤝 **RelayREL** | シーン解決の前に、関係性ごとのinteraction policyを選ぶ |
 | 入力側 | 🌬️ **RelaySCN** | 会話の場面を判断し、記憶・表現・永続化の方針を決める |
 | 入力・出力 | 🙂 **RelayEMO** | 感情の手がかりを読み、場面に応じた表現を調整する |
 | 入力側 | 🚦 **RelayINT** | 入力の意図と曖昧性を判断し、続行・確認・停止を決める |
