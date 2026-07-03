@@ -61,11 +61,9 @@ POLICY_AUTHORITIES = frozenset({
     "update",
 })
 
-# ACG-1 has no target-specific permissive policy compiler.  Only a trusted,
-# authoritative bounded candidate may open runtime policy through this generic
-# helper.  "restrictive" may still be applied by callers as fail-closed safety
-# behavior, but it does not open permissive runtime policy.
 RUNTIME_OPEN_AUTHORITIES = frozenset({"bounded"})
+RUNTIME_OPEN_MIN_CONFIDENCE = 0.4
+RUNTIME_OPEN_MIN_STABILITY = 0.4
 
 CONFIDENCE_BUCKETS = frozenset({"low", "medium", "high"})
 STABILITY_BUCKETS = frozenset({"low", "medium", "high"})
@@ -161,8 +159,6 @@ class AnalyzerCandidateValidation:
     validation_error_ids: tuple[str, ...]
 
     def to_public_dict(self) -> dict[str, Any]:
-        """Return the content-free public projection for the normalized artifact."""
-
         projection = content_free_projection(self.artifact)
         projection["is_valid"] = self.is_valid
         return projection
@@ -186,13 +182,6 @@ def build_analyzer_candidate_artifact(
     enum_values: Iterable[Any] | None = None,
     **extra: Any,
 ) -> dict[str, Any]:
-    """Build and normalize an analyzer candidate artifact.
-
-    Unknown keyword arguments are not copied into the artifact.  Text-like
-    diagnostic fields are represented only as stable validation errors so that
-    callers can pass raw analyzer payloads without causing public leakage.
-    """
-
     artifact: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "analyzer_kind": analyzer_kind,
@@ -225,8 +214,6 @@ def build_analyzer_candidate_artifact(
 def validate_analyzer_candidate_artifact(
     artifact: Mapping[str, Any] | None,
 ) -> AnalyzerCandidateValidation:
-    """Validate an artifact and return a fail-closed normalized summary."""
-
     normalized = normalize_analyzer_candidate_artifact(artifact)
     validation_error_ids = tuple(normalized["validation_errors"])
     return AnalyzerCandidateValidation(
@@ -239,8 +226,6 @@ def validate_analyzer_candidate_artifact(
 def normalize_analyzer_candidate_artifact(
     artifact: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
-    """Return a normalized, fail-closed analyzer candidate artifact."""
-
     raw: Mapping[str, Any] = artifact or {}
     validation_errors: list[str] = []
     reason_ids: list[str] = []
@@ -359,8 +344,6 @@ def normalize_analyzer_candidate_artifact(
 
 
 def is_policy_authoritative(artifact: Mapping[str, Any] | None) -> bool:
-    """Return whether the artifact carries trusted, validated policy authority."""
-
     normalized = normalize_analyzer_candidate_artifact(artifact)
     if normalized["validation_errors"]:
         return False
@@ -372,25 +355,18 @@ def is_policy_authoritative(artifact: Mapping[str, Any] | None) -> bool:
 
 
 def can_open_runtime_policy(artifact: Mapping[str, Any] | None) -> bool:
-    """Return whether this artifact may open bounded runtime policy.
-
-    ACG-1 only recognizes trusted authoritative bounded policy as an opener.
-    Candidate, heuristic, locale, fallback, unknown, malformed, and merely
-    restrictive artifacts return ``False``.
-    """
-
     normalized = normalize_analyzer_candidate_artifact(artifact)
     return (
         is_policy_authoritative(normalized)
         and normalized["candidate_applied"] is True
         and normalized["policy_authority"] in RUNTIME_OPEN_AUTHORITIES
         and normalized["restrictive_only"] is False
+        and normalized["confidence"] >= RUNTIME_OPEN_MIN_CONFIDENCE
+        and normalized["stability"] >= RUNTIME_OPEN_MIN_STABILITY
     )
 
 
 def content_free_projection(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
-    """Return a bounded public projection without raw text or free-form rationale."""
-
     normalized = normalize_analyzer_candidate_artifact(artifact)
     return {
         "schema_version": SCHEMA_VERSION,
@@ -409,8 +385,6 @@ def content_free_projection(artifact: Mapping[str, Any] | None) -> dict[str, Any
 
 
 def analyzer_governance_enum_values() -> dict[str, tuple[str, ...]]:
-    """Expose fixed English enum registries for smoke tests and docs checks."""
-
     return {
         "analyzer_kind": tuple(sorted(ANALYZER_KINDS | {"unknown"})),
         "source_class": tuple(sorted(SOURCE_CLASSES)),
@@ -474,6 +448,9 @@ def _normalize_optional_bool(value: Any, reason_id: str, errors: list[str]) -> b
 
 
 def _bounded_float(value: Any, reason_id: str, errors: list[str]) -> float:
+    if isinstance(value, bool):
+        errors.append(reason_id)
+        return 0.0
     try:
         number = float(value)
     except (TypeError, ValueError):
