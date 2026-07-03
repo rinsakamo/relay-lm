@@ -36,7 +36,13 @@ def latest_user_text(messages: list[dict[str, Any]]) -> str:
 
 
 def estimate_user_affect(text: str) -> dict[str, Any]:
-    low_conf = {"valence": 0.0, "arousal": 0.0, "dominance": 0.0, "intensity": 0.0, "confidence": 0.2}
+    low_conf = {
+        "valence": 0.0,
+        "arousal": 0.0,
+        "dominance": 0.0,
+        "intensity": 0.0,
+        "confidence": 0.2,
+    }
     t = text.strip().lower()
     if not t:
         score = low_conf
@@ -55,20 +61,33 @@ def estimate_user_affect(text: str) -> dict[str, Any]:
         or "面白い" in text
         or "エモい" in text
     ):
-        score = {"valence": 0.4, "arousal": 0.6, "dominance": 0.2, "intensity": 0.7, "confidence": 0.55}
+        score = {
+            "valence": 0.4,
+            "arousal": 0.6,
+            "dominance": 0.2,
+            "intensity": 0.7,
+            "confidence": 0.55,
+        }
         mode, evidence = "light_positive_estimate", "light_text_heuristic"
     elif "?" in t or "不安" in t or "心配" in t:
-        score = {"valence": -0.2, "arousal": 0.35, "dominance": -0.2, "intensity": 0.45, "confidence": 0.5}
+        score = {
+            "valence": -0.2,
+            "arousal": 0.35,
+            "dominance": -0.2,
+            "intensity": 0.45,
+            "confidence": 0.5,
+        }
         mode, evidence = "uncertain_estimate", "light_text_heuristic"
     else:
-        score = {"valence": 0.0, "arousal": 0.1, "dominance": 0.0, "intensity": 0.2, "confidence": 0.35}
+        score = {
+            "valence": 0.0,
+            "arousal": 0.1,
+            "dominance": 0.0,
+            "intensity": 0.2,
+            "confidence": 0.35,
+        }
         mode, evidence = "neutral_estimate", "light_text_heuristic"
-    return {
-        **score,
-        "mode": mode,
-        "evidence_level": evidence,
-        "is_estimate": True,
-    }
+    return {**score, "mode": mode, "evidence_level": evidence, "is_estimate": True}
 
 
 def infer_scene_hint_type(text: str) -> str:
@@ -165,8 +184,13 @@ def run_relayemo(
         scene_hint=scene_hint_type,
     )
     previous = previous_assistant_state or {
-        "valence": 0.0, "arousal": 0.0, "dominance": 0.0, "intensity": 0.0, "mode": "neutral",
-        "stability": 1.0, "updated_by": "init",
+        "valence": 0.0,
+        "arousal": 0.0,
+        "dominance": 0.0,
+        "intensity": 0.0,
+        "mode": "neutral",
+        "stability": 1.0,
+        "updated_by": "init",
     }
     delta = 0.2
     decay = 0.05
@@ -180,24 +204,39 @@ def run_relayemo(
         next_state["updated_by"] = "bootstrap_from_user_affect_estimate"
     elif confidence < 0.4:
         next_state = dict(previous)
-        next_state["intensity"] = max(0.0, float(previous.get("intensity", 0.0)) - decay)
+        next_state["intensity"] = max(
+            0.0,
+            float(previous.get("intensity", 0.0)) - decay,
+        )
         next_state["updated_by"] = "decay_only"
     else:
         next_state = dict(previous)
-        for k in ("valence", "arousal", "dominance", "intensity"):
-            cur = float(previous.get(k, 0.0))
-            target = float(affect.get(k, 0.0))
+        for key in ("valence", "arousal", "dominance", "intensity"):
+            cur = float(previous.get(key, 0.0))
+            target = float(affect.get(key, 0.0))
             step = max(-delta, min(delta, target - cur))
-            next_state[k] = cur + step
+            next_state[key] = cur + step
         next_state["updated_by"] = "user_affect_estimate"
     next_state["mode"] = "expressive_support_estimate"
-    next_state["stability"] = max(0.0, min(1.0, 1.0 - abs(float(next_state["intensity"]) - float(previous.get("intensity", 0.0)))))
+    next_state["stability"] = max(
+        0.0,
+        min(
+            1.0,
+            1.0
+            - abs(
+                float(next_state["intensity"])
+                - float(previous.get("intensity", 0.0))
+            ),
+        ),
+    )
 
     artifact: dict[str, Any] = {
         "user_affect_estimate": affect,
         "affect_probe_mode": config.relayemo_affect_probe_mode,
         "heuristic_user_affect_estimate": affect,
-        "llm_user_affect_estimate_candidate": llm_probe.get("user_affect_estimate_candidate"),
+        "llm_user_affect_estimate_candidate": llm_probe.get(
+            "user_affect_estimate_candidate"
+        ),
         "llm_scene_hint_candidate": llm_probe.get("scene_hint_candidate"),
         "llm_scene_state_candidate": llm_probe.get("scene_state_candidate"),
         "llm_affect_probe_meta": llm_probe.get("classifier_meta"),
@@ -244,23 +283,28 @@ def latest_assistant_text(messages: list[dict[str, Any]]) -> str:
     return ""
 
 
-def _clamp(v: Any, lo: float, hi: float) -> float:
+def _clamp(value: Any, lo: float, hi: float) -> float:
     try:
-        f = float(v)
+        number = float(value)
     except (TypeError, ValueError):
         return lo
-    return max(lo, min(hi, f))
+    return max(lo, min(hi, number))
 
 
-def _is_numeric(v: Any) -> bool:
-    if isinstance(v, bool):
+def _is_numeric(value: Any) -> bool:
+    if isinstance(value, bool):
         return False
-    if not isinstance(v, (int, float)):
+    if not isinstance(value, (int, float)):
         return False
-    return math.isfinite(float(v))
+    return math.isfinite(float(value))
 
 
-def build_llm_affect_probe_prompt(*, user_text: str, recent_assistant_text: str, scene_hint: str) -> str:
+def build_llm_affect_probe_prompt(
+    *,
+    user_text: str,
+    recent_assistant_text: str,
+    scene_hint: str,
+) -> str:
     return (
         "You are an affect probe. Estimate only, never assert certainty.\n"
         "Return JSON only with keys user_affect_estimate_candidate, scene_hint_candidate, classifier_meta.\n"
@@ -268,6 +312,16 @@ def build_llm_affect_probe_prompt(*, user_text: str, recent_assistant_text: str,
         f"recent_assistant_text: {recent_assistant_text}\n"
         f"scene_hint: {scene_hint}\n"
     )
+
+
+def _extract_scene_candidate_payload(payload: Any) -> Any:
+    if not isinstance(payload, dict):
+        return {}
+    if "scene_hint_candidate" in payload:
+        return payload.get("scene_hint_candidate")
+    if "scene_state_candidate" in payload:
+        return payload.get("scene_state_candidate")
+    return {}
 
 
 def parse_llm_affect_probe_output(raw_text: str) -> dict[str, Any]:
@@ -288,10 +342,13 @@ def parse_llm_affect_probe_output(raw_text: str) -> dict[str, Any]:
                 "validation_errors": ["invalid_json"],
             },
         }
-    cand_raw = payload.get("user_affect_estimate_candidate", {}) if isinstance(payload, dict) else {}
-    scene_raw = payload.get("scene_hint_candidate", {}) if isinstance(payload, dict) else {}
-    if scene_raw == {} and isinstance(payload, dict) and isinstance(payload.get("scene_state_candidate"), dict):
-        scene_raw = payload.get("scene_state_candidate", {})
+
+    cand_raw = (
+        payload.get("user_affect_estimate_candidate", {})
+        if isinstance(payload, dict)
+        else {}
+    )
+    scene_raw = _extract_scene_candidate_payload(payload)
     if not isinstance(cand_raw, dict):
         errors.append("user_affect_estimate_candidate_not_object")
         cand = {}
@@ -302,6 +359,7 @@ def parse_llm_affect_probe_output(raw_text: str) -> dict[str, Any]:
         scene = {}
     else:
         scene = scene_raw
+
     scene_type = scene.get("scene_type")
     if scene_type not in SCENE_HINT_TYPES:
         errors.append("invalid_scene_type")
@@ -316,8 +374,8 @@ def parse_llm_affect_probe_output(raw_text: str) -> dict[str, Any]:
             scene_confidence = 0.0
         else:
             scene_confidence = _clamp(scene_confidence_raw, 0.0, 1.0)
-    numeric_fields = ("valence", "arousal", "dominance", "intensity", "confidence")
-    for field in numeric_fields:
+
+    for field in ("valence", "arousal", "dominance", "intensity", "confidence"):
         if field not in cand:
             errors.append(f"missing_numeric_field:{field}")
             continue
@@ -338,7 +396,8 @@ def parse_llm_affect_probe_output(raw_text: str) -> dict[str, Any]:
         dominance = 0.0
         intensity = 0.0
         confidence = 0.0
-    parsed = {
+
+    return {
         "user_affect_estimate_candidate": {
             "valence": valence,
             "arousal": arousal,
@@ -374,7 +433,6 @@ def parse_llm_affect_probe_output(raw_text: str) -> dict[str, Any]:
             "validation_errors": errors,
         },
     }
-    return parsed
 
 
 def build_llm_affect_probe_candidate(
@@ -384,7 +442,10 @@ def build_llm_affect_probe_candidate(
     recent_assistant_text: str,
     scene_hint: str,
 ) -> dict[str, Any]:
-    if not config.relayemo_llm_affect_probe_enabled or config.relayemo_affect_probe_mode != "llm_structured_dry_run":
+    if (
+        not config.relayemo_llm_affect_probe_enabled
+        or config.relayemo_affect_probe_mode != "llm_structured_dry_run"
+    ):
         return {
             "user_affect_estimate_candidate": None,
             "scene_hint_candidate": None,
@@ -400,7 +461,9 @@ def build_llm_affect_probe_candidate(
         }
     prompt = build_llm_affect_probe_prompt(
         user_text=user_text[: config.relayemo_llm_affect_probe_max_input_chars],
-        recent_assistant_text=recent_assistant_text[: config.relayemo_llm_affect_probe_max_input_chars],
+        recent_assistant_text=recent_assistant_text[
+            : config.relayemo_llm_affect_probe_max_input_chars
+        ],
         scene_hint=scene_hint,
     )
     _ = prompt
@@ -454,8 +517,9 @@ def save_session_assistant_state(
     }
     if len(_RELAYEMO_SESSION_STATE) <= max_entries:
         return
+    overflow = max(0, len(_RELAYEMO_SESSION_STATE) - max_entries)
     for key, _ in sorted(
         _RELAYEMO_SESSION_STATE.items(),
         key=lambda item: float(item[1].get("updated_at", 0.0)),
-    )[: max(0, len(_RELAYEMO_SESSION_STATE) - max_entries)]:
+    )[:overflow]:
         _RELAYEMO_SESSION_STATE.pop(key, None)
