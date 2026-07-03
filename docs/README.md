@@ -23,6 +23,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Current project status](PROJECT_STATUS.md) — the single current implementation status authority.
 - [Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md) — the current product direction reset target: editable Markdown character sources compiled into runtime projections.
+- [RelayREL relationship design](architecture/relayrel_relationship_design.md) — target-specific relationship state, relationship-conditioned interaction policy, and `RELATIONSHIP.md` / `relationships/<target>.md` ownership.
 - [Character template creation flow](architecture/character_template_creation_flow.md) — no-character startup, Quick/Advanced Create, template import, and showcase policy.
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
@@ -39,6 +40,7 @@ Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<sl
 ## Product-critical boundaries
 
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md)
+- [RelayREL relationship design](architecture/relayrel_relationship_design.md)
 - [Character template creation flow](architecture/character_template_creation_flow.md)
 - [P0 RelayREL / RelaySCN / RelayEMO ordering fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md)
 - [ACG-1 Analyzer Candidate Governance contract](architecture/acg1_analyzer_candidate_governance_contract.md)
@@ -137,6 +139,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 ## Target architecture and post-MVP design
 
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md)
+- [RelayREL relationship design](architecture/relayrel_relationship_design.md)
 - [Character template creation flow](architecture/character_template_creation_flow.md)
 - [Character belief, relationship, and social expression dynamics](architecture/character_belief_relationship_dynamics_design.md)
 - [ADR: character-conditioned belief without rewriting observation](adr/character_conditioned_belief_model.md)
