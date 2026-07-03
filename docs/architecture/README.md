@@ -29,6 +29,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 ## Character workspace target architecture
 
 - [File-first Character Workspace Design](file_first_character_workspace_design.md) defines the target Markdown source tree, RelayREL boundary, SLP-maintained scene/memory wiki model, and KV-cache-friendly context tiers.
+- [RelayREL Relationship Design](relayrel_relationship_design.md) defines target-specific relationship state, `RELATIONSHIP.md`, `relationships/<target>.md`, and relationship-conditioned interaction policy.
 - [Character Template and Creation Flow](character_template_creation_flow.md) defines Quick Create, Advanced Create, no-character startup, template import, and primary-user-fit finished showcase character policy.
 - [Pinned Normal Memory Pages](pinned_normal_memory_pages.md) defines pinned normal memory as ordinary retrieval memory protected from ordinary RelaySLP maintenance.
 - [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](p0_relayrel_relayscn_relayemo_ordering_fix.md) records the completed pre-Character-Workspace ordering boundary, which is complete only once app.py request-path rewiring is present and validation passes.
@@ -102,6 +103,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 ## Memory lifecycle
 
 - [File-first Character Workspace Design](file_first_character_workspace_design.md)
+- [RelayREL Relationship Design](relayrel_relationship_design.md)
 - [Pinned Normal Memory Pages](pinned_normal_memory_pages.md)
 - [Memory Lifecycle Design](memory_lifecycle_design.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
@@ -201,6 +203,7 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 ## Character cognition and RelaySOUL targets
 
 - [File-first Character Workspace Design](file_first_character_workspace_design.md)
+- [RelayREL Relationship Design](relayrel_relationship_design.md)
 - [Character Template and Creation Flow](character_template_creation_flow.md)
 - [Character Belief, Relationship, and Social Expression Dynamics](character_belief_relationship_dynamics_design.md)
 - [ADR: Character-conditioned Belief Without Rewriting Observation](../adr/character_conditioned_belief_model.md)
