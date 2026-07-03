@@ -1,9 +1,4 @@
-"""RelaySCN structured scene classifier candidate boundary.
-
-Classifier output is candidate evidence only. This module normalizes structured
-scene labels into fixed English enum values, runs the shared Analyzer Candidate
-Governance authority gate, and exposes only content-free diagnostics.
-"""
+"""RelaySCN structured scene classifier candidate boundary."""
 
 from __future__ import annotations
 
@@ -35,11 +30,9 @@ SCENE_TYPES = frozenset({
     "memory_management",
     "character_workspace",
 })
-
 RESTRICTIVE_SCENE_TYPES = frozenset({"medical_or_safety", "formal_document", "recovery"})
 MATCH_STRENGTHS = frozenset({"none", "weak", "medium", "strong"})
 _TOKEN_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
-
 _PUBLIC_REASON_IDS = frozenset({
     "classifier_candidate_non_authoritative",
     "classifier_candidate_restrictive_only",
@@ -58,14 +51,12 @@ def build_scene_classifier_candidate(
     payload: Mapping[str, Any] | None = None,
     scene_wiki_definitions: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Build a content-free structured scene classifier candidate artifact."""
-
     raw_candidate = candidate if isinstance(candidate, Mapping) else None
     reason_ids: list[str] = []
     validation_errors: list[str] = []
 
     if raw_candidate is None:
-        scene_type, confidence, stability, heuristic_reason = _estimate_scene_from_messages(payload or {})
+        scene_type, confidence, stability = _estimate_scene_from_messages(payload or {})
         source = "heuristic"
         source_language = "und"
         candidate_scene_id = "unknown"
@@ -74,7 +65,7 @@ def build_scene_classifier_candidate(
         requested_source_authoritative = False
         requested_candidate_applied = scene_type in RESTRICTIVE_SCENE_TYPES
         requested_policy_authority = "restrictive" if scene_type in RESTRICTIVE_SCENE_TYPES else "none"
-        reason_ids.extend(["heuristic_scene_candidate", heuristic_reason])
+        reason_ids.append("heuristic_scene_candidate")
     else:
         scene_type = _safe_scene_type(
             raw_candidate.get("candidate_scene_type") or raw_candidate.get("scene_type"),
@@ -109,10 +100,7 @@ def build_scene_classifier_candidate(
         reason_ids.append("scene_wiki_candidate_match")
 
     source_authoritative = source in TRUSTED_SOURCE_CLASSES and requested_source_authoritative
-    if source_authoritative:
-        reason_ids.append("trusted_scene_candidate")
-    else:
-        reason_ids.append("classifier_candidate_non_authoritative")
+    reason_ids.append("trusted_scene_candidate" if source_authoritative else "classifier_candidate_non_authoritative")
 
     if source in NON_AUTHORITATIVE_SOURCE_CLASSES:
         policy_authority = "restrictive" if scene_type in RESTRICTIVE_SCENE_TYPES else requested_policy_authority
@@ -125,11 +113,7 @@ def build_scene_classifier_candidate(
     else:
         policy_authority = requested_policy_authority
         candidate_applied = requested_candidate_applied and scene_type != "unknown"
-        restrictive_only = not (
-            source_authoritative
-            and candidate_applied
-            and policy_authority == "bounded"
-        )
+        restrictive_only = not (source_authoritative and candidate_applied and policy_authority == "bounded")
         if not source_authoritative and policy_authority == "bounded":
             validation_errors.append("policy_authority_not_permitted")
             reason_ids.append("classifier_policy_open_rejected")
@@ -156,7 +140,6 @@ def build_scene_classifier_candidate(
         content_free=True,
         validation_errors=validation_errors,
     )
-    can_open = can_open_runtime_policy(governance)
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -175,7 +158,7 @@ def build_scene_classifier_candidate(
         "candidate_applied": governance["candidate_applied"],
         "policy_authority": governance["policy_authority"],
         "restrictive_only": governance["restrictive_only"],
-        "can_open_runtime_policy": can_open,
+        "can_open_runtime_policy": can_open_runtime_policy(governance),
         "content_free": True,
         "reason_ids": tuple(_safe_reason_ids([*reason_ids, *governance["reason_ids"]])),
         "validation_errors": tuple(_safe_validation_errors([*validation_errors, *governance["validation_errors"]])),
@@ -185,8 +168,6 @@ def build_scene_classifier_candidate(
 
 
 def scene_classifier_public_projection(candidate: Mapping[str, Any] | None) -> dict[str, Any]:
-    """Return public content-free diagnostics for a scene classifier candidate."""
-
     raw = candidate if isinstance(candidate, Mapping) else {}
     match_id = _safe_token(raw.get("matched_scene_wiki_id"))
     return {
@@ -210,66 +191,27 @@ def scene_classifier_public_projection(candidate: Mapping[str, Any] | None) -> d
     }
 
 
-def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, float, float, str]:
+def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, float, float]:
     text = _latest_user_text(payload).lower()
     if not text:
-        return "unknown", 0.35, 0.35, "unknown_scene_fail_closed"
-
-    checks = [
-        (
-            "recovery",
-            ("confused", "lost", "戻る", "わから", "混乱", "文脈", "context repair"),
-            0.82,
-            0.78,
-        ),
-        (
-            "medical_or_safety",
-            ("medical", "doctor", "病院", "薬", "医療", "危険", "安全", "safety", "legal"),
-            0.82,
-            0.78,
-        ),
-        (
-            "formal_document",
-            ("formal", "report", "契約", "公的", "公式", "論文", "文書", "document"),
-            0.80,
-            0.76,
-        ),
-        ("review_work", ("review", "pr ", "pr#", "diff", "レビュー", "検証"), 0.78, 0.72),
-        (
-            "implementation_work",
-            (
-                "implement",
-                "code",
-                "コード",
-                "repo",
-                "bug",
-                "error",
-                "fix ",
-                "fix this",
-                "ファイル",
-                "実装",
-                "実装して",
-                "修正",
-                "修正して",
-                "バグ",
-                "直して",
-                "commit",
-            ),
-            0.78,
-            0.72,
-        ),
-        ("system_ops", ("git ", "github", "remote", "push", "branch", "環境", "設定"), 0.76, 0.70),
-        ("design_talk", ("design", "architecture", "設計", "仕様", "policy", "mvp"), 0.74, 0.70),
-        ("vtuber_roleplay", ("vtuber", "live2d", "tts", "roleplay", "ロールプレイ", "配信"), 0.74, 0.70),
-    ]
-    for scene_type, needles, confidence, stability in checks:
-        if any(needle in text for needle in needles):
-            return scene_type, confidence, stability, "heuristic_scene_candidate"
-    if _contains_ascii_word(text, "pr"):
-        return "review_work", 0.78, 0.72, "heuristic_scene_candidate"
-    if _contains_ascii_word(text, "file"):
-        return "implementation_work", 0.78, 0.72, "heuristic_scene_candidate"
-    return "casual_chat", 0.62, 0.60, "heuristic_scene_candidate"
+        return "unknown", 0.35, 0.35
+    if any(x in text for x in ("medical", "doctor", "病院", "薬", "医療", "危険", "安全", "safety", "legal")):
+        return "medical_or_safety", 0.82, 0.78
+    if any(x in text for x in ("formal", "report", "契約", "公的", "公式", "論文", "文書", "document")):
+        return "formal_document", 0.80, 0.76
+    if any(x in text for x in ("review", "pr ", "pr#", "diff", "レビュー", "検証")) or _contains_ascii_word(text, "pr"):
+        return "review_work", 0.78, 0.72
+    if any(x in text for x in ("implement", "code", "コード", "repo", "bug", "error", "fix ", "fix this", "ファイル", "実装", "修正", "バグ", "直して", "commit")) or _contains_ascii_word(text, "file"):
+        return "implementation_work", 0.78, 0.72
+    if any(x in text for x in ("git ", "github", "remote", "push", "branch", "環境", "設定")):
+        return "system_ops", 0.76, 0.70
+    if any(x in text for x in ("design", "architecture", "設計", "仕様", "policy", "mvp")):
+        return "design_talk", 0.74, 0.70
+    if any(x in text for x in ("vtuber", "live2d", "tts", "roleplay", "ロールプレイ", "配信")):
+        return "vtuber_roleplay", 0.74, 0.70
+    if any(x in text for x in ("confused", "lost", "戻る", "わから", "混乱", "文脈", "context repair")):
+        return "recovery", 0.82, 0.78
+    return "casual_chat", 0.62, 0.60
 
 
 def _latest_user_text(payload: Mapping[str, Any]) -> str:
@@ -283,21 +225,26 @@ def _latest_user_text(payload: Mapping[str, Any]) -> str:
         if isinstance(content, str):
             return content
         if isinstance(content, list):
-            parts = []
-            for item in content:
-                if isinstance(item, Mapping) and isinstance(item.get("text"), str):
-                    parts.append(item["text"])
-            return "\n".join(parts)
+            return "\n".join(item["text"] for item in content if isinstance(item, Mapping) and isinstance(item.get("text"), str))
     return ""
 
 
 def _contains_ascii_word(text: str, word: str) -> bool:
-    pattern = rf"(?<![a-z0-9_]){re.escape(word)}(?![a-z0-9_])"
-    return re.search(pattern, text) is not None
+    return re.search(rf"(?<![a-z0-9_]){re.escape(word)}(?![a-z0-9_])", text) is not None
 
 
 def _safe_scene_type(value: Any, validation_errors: list[str], reason_ids: list[str]) -> str:
-    token = _safe_token(value)
+    if not isinstance(value, str) or not value.strip():
+        validation_errors.append("unrecognized_scene_type")
+        reason_ids.append("unrecognized_scene_type")
+        return "unknown"
+    token = value.strip().lower()
+    if token == "unknown":
+        return "unknown"
+    if not _TOKEN_RE.fullmatch(token):
+        validation_errors.append("unrecognized_scene_type")
+        reason_ids.append("unrecognized_scene_type")
+        return "unknown"
     if token in SCENE_TYPES:
         return token
     validation_errors.append("unrecognized_scene_type")
@@ -347,15 +294,11 @@ def _safe_policy_authority(value: Any) -> str:
 
 def _safe_match_strength(value: Any) -> str:
     token = _safe_token(value)
-    if token in MATCH_STRENGTHS:
-        return token
-    return "none"
+    return token if token in MATCH_STRENGTHS else "none"
 
 
 def _safe_bool(value: Any, *, default: bool) -> bool:
-    if isinstance(value, bool):
-        return value
-    return default
+    return value if isinstance(value, bool) else default
 
 
 def _coerce_probability(value: Any, *, default: float) -> float:
@@ -373,19 +316,12 @@ def _safe_reason_ids(value: Any) -> list[str]:
         raw_values = value
     else:
         raw_values = ()
+    allowed = _PUBLIC_REASON_IDS | {"candidate_not_applied", "fail_closed_candidate_source", "heuristic_restrictive_only", "llm_candidate_restrictive_only", "non_authoritative_source", "unknown_reason"}
     result: list[str] = []
     for raw in raw_values:
         token = _safe_token(raw)
-        if token in _PUBLIC_REASON_IDS or token in {
-            "candidate_not_applied",
-            "fail_closed_candidate_source",
-            "heuristic_restrictive_only",
-            "llm_candidate_restrictive_only",
-            "non_authoritative_source",
-            "unknown_reason",
-        }:
-            if token not in result:
-                result.append(token)
+        if token in allowed and token not in result:
+            result.append(token)
     return result
 
 
@@ -396,26 +332,7 @@ def _safe_validation_errors(value: Any) -> list[str]:
         raw_values = value
     else:
         raw_values = ()
-    allowed = {
-        "invalid_analyzer_kind",
-        "invalid_content_free_flag",
-        "invalid_source_class",
-        "invalid_source_language",
-        "malformed_candidate_applied",
-        "malformed_confidence",
-        "malformed_is_estimate",
-        "malformed_reason_id",
-        "malformed_restrictive_only",
-        "malformed_source_authoritative",
-        "malformed_stability",
-        "non_authoritative_source",
-        "policy_authority_not_permitted",
-        "raw_diagnostic_field_dropped",
-        "unrecognized_scene_type",
-        "unknown_enum_value",
-        "unknown_policy_authority",
-        "unsupported_field_dropped",
-    }
+    allowed = {"invalid_analyzer_kind", "invalid_content_free_flag", "invalid_source_class", "invalid_source_language", "malformed_candidate_applied", "malformed_confidence", "malformed_is_estimate", "malformed_reason_id", "malformed_restrictive_only", "malformed_source_authoritative", "malformed_stability", "non_authoritative_source", "policy_authority_not_permitted", "raw_diagnostic_field_dropped", "unrecognized_scene_type", "unknown_enum_value", "unknown_policy_authority", "unsupported_field_dropped"}
     result: list[str] = []
     for raw in raw_values:
         token = _safe_token(raw)
