@@ -135,6 +135,50 @@ Post-E1-R5 / Post-Wave-7 next candidates:
 
 ## MVP dependency waves
 
+### Wave 4 completed
+
+```text
+O1D2 bounded scheduler policy/fairness/pacing
+I-4E loopback API and SOUL Lab Forget UI
+UI-B1A read-only lifecycle visibility
+I-5A Pin / Unpin contract/preflight
+I-7A/B Held Apply / Discard contract/preflight
+```
+
+Wave 4 closed the immediate policy, UI, and preflight convergence boundary without opening I-5B/I-7C runtime apply or O2/O3.
+
+### Wave 5 completed
+
+```text
+E1 evaluation consolidation
+O1E stale recovery/cancellation/shutdown complete
+I-4F crash/race/security/fresh-conversation validation
+```
+
+Wave 5 closed the evaluation, operational-control, and Forget validation slices without adding polling, supervision, or always-on operation.
+
+### O1F validation completed
+
+```text
+O1F operational validation
+  -> corruption / concurrency / saturation / restart / leakage validation
+  -> validation-only hardening over caller-invoked O1E/O1D2/O1D1
+  -> no polling, sleep, service supervision, worker pool, or always-on operation
+```
+
+### Post-O1F next candidates
+
+```text
+I-5B Pin / Unpin apply/API/UI/ranking work                 complete in Wave 6
+I-7C Held Apply/Discard runtime/API/UI/durable evidence    complete in Wave 6
+E1-R1 trusted Home scene-admission path                    complete in Wave 6
+E1-R2 idempotent character-store bootstrap command         complete in Wave 6
+E1-R3 provenance-preserving Primary MEM formation summary  complete in Wave 7
+E1-R4 retrieval-response grounding and unsupported-detail suppression complete in Wave 7
+E1-R5 Primary MEM recall candidate discovery bridge        complete post-Wave-7
+O2/O3 only after explicit MVP need
+```
+
 ### Wave 7 completed
 
 ```text
