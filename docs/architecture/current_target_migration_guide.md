@@ -14,7 +14,9 @@ Last reviewed: 2026-07-03 JST
 
 This guide distinguishes implemented runtime behavior from target architecture. Detailed RelayMEM/RelaySLP status lives in [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md), MVP sequencing and roadmap ordering live in [Project Execution Plan](project_execution_plan.md), and repository-wide current status lives in [Project Status](../PROJECT_STATUS.md).
 
-## Current Post-Wave-7 / P0-PIPE compatibility interpretation
+## Current Wave 7 compatibility interpretation
+
+This section now includes the post-Wave-7 P0-PIPE and ACG-1 current boundary in addition to the Wave 7 / E1-R5 compatibility interpretation.
 
 ```text
 O1D2 is current implemented as bounded policy wrapper.
