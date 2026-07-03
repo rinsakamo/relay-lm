@@ -4,33 +4,85 @@ RelayLM treats prompt construction as context compilation, not concatenation.
 
 The design goal is to combine:
 
-- approved persona stability,
+- approved character-source stability,
+- relationship-conditioned behavior,
+- scene and affect policy,
 - useful memory evidence,
 - low latency,
 - backend prefix/KV cache reuse,
 - content-safe output handling,
 - explicit client-authority boundaries.
 
-Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md). This document defines the stable packing model.
+Current implementation phase and sequencing live in [Project Execution Plan](project_execution_plan.md) and [Project Status](../PROJECT_STATUS.md). The file-first workspace target source tree and Tier 0-3 cache model live in [File-first Character Workspace Design](file_first_character_workspace_design.md). This document defines the lower-level context packing interpretation used by RelayCTX and should be read as the packing strategy beneath that workspace target.
+
+## Relationship to the File-first Character Workspace tiers
+
+The older `stable_prefix` / `slow_prefix` / `dynamic_suffix` terminology remains valid as a lower-level packing strategy, but it is no longer a separate canonical product model.
+
+```text
+File-first Character Workspace Tier 0-3
+  -> product/source and cache-tier model
+
+Context packing stable/slow/dynamic classes
+  -> RelayCTX lower-level placement strategy within those tiers
+```
+
+Recommended mapping:
+
+```text
+Tier 0 runtime policy
+  -> stable prefix
+
+Tier 1 approved uppercase character sources
+  -> stable prefix
+
+Tier 2 selected relationship / scene / memory wiki pages or compiled summaries
+  -> slow prefix or semi-stable prefix
+
+Tier 3 current state, retrieval, current input, and response instruction
+  -> dynamic suffix
+```
+
+If this document and `file_first_character_workspace_design.md` appear to disagree, the workspace design owns the product source tree and cache tier vocabulary. This document owns only the RelayCTX packing placement rules.
 
 ## Authority and ownership
 
-### Approved durable persona
+### Approved durable character sources
+
+File-first target portable character sources include:
 
 ```text
 SOUL.md
-  who the character is
+  durable identity, values, temperament, and invariants
 
-OUTPUT_POLICY.md
-  durable expression and response-shape policy
+STYLE.md
+  durable voice, tone, roleplay flavor, formatting, and output surface
 
-RELATIONSHIP_ANCHOR.md
-  approved durable relationship principles
+EMOTION.md
+  durable emotion-response profiles, not current emotion state
+
+BOUNDARY.md
+  character-specific privacy, pressure, intimacy, disclosure, and safety-expression limits
+
+LORE.md
+  optional world, backstory, setting, factions, and proper nouns
 ```
 
-These sources come from RelaySOUL or approved route configuration.
+These sources come from RelaySOUL-approved source calibration or approved route configuration. Client `system` or `developer` messages are not fallback persona sources. On managed routes they are bounded low-trust evidence for RelaySCN / client-instruction authority handling.
 
-Client `system` or `developer` messages are not fallback persona sources. On managed routes they are bounded low-trust evidence for RelaySCN.
+### RelayREL relationship policy
+
+RelayREL contributes relationship-conditioned interaction policy before RelaySCN and RelayEMO run:
+
+```text
+RELATIONSHIP.md
+  relationship role and parameter vocabulary
+
+relationships/<target>.md
+  target-specific relationship instance such as relationships/user.md
+```
+
+Relationship state is distinct from durable character identity and from factual memory. It must not be folded back into `SOUL.md` or RelaySCN scene state by default.
 
 ### RelaySCN state
 
@@ -92,23 +144,42 @@ client messages
 
 Explicit `pass_through` routes are the exception and intentionally preserve delegated client authority.
 
+## Recommended request-path order before packing
+
+RelayCTX receives upstream artifacts after the shipped P0-PIPE order:
+
+```text
+RelayREL
+  -> RelaySCN
+  -> RelayEMO
+  -> RelayINT
+  -> RelayMEM Retrieval
+  -> RelayCTX Repack
+```
+
+RelayCTX must not compensate for missing upstream ownership by reparsing raw user text as relationship, scene, affect, intent, or memory authority.
+
 ## Recommended context order
 
 RelayLM orders context from stable to dynamic.
 
 ```text
 1. common_runtime_policy
-2. character_soul_anchor
-3. character_output_policy
-4. relationship_anchor
-5. stable_memory_summary
-6. scene_state
-7. intent hints required for the current action
-8. retrieved_memory / RAG / spill chunks
-9. selected RelayLM-owned recent context
-10. minimum compatible tool/multimodal transaction state
-11. latest_input
-12. response_instruction
+2. character_soul
+3. character_style
+4. character_boundary
+5. character_emotion_profiles
+6. optional_lore
+7. relayrel_relationship_policy
+8. stable_memory_policy_or_summary
+9. relayscn_scene_policy / scene_state
+10. relayemo_expression_hint
+11. relayint_intent_or_reference_hint
+12. retrieved_memory / RAG / spill chunks
+13. selected RelayLM-owned recent context
+14. minimum compatible tool/multimodal transaction state
+15. latest_input
+16. response_instruction
 ```
 
 The core rule:
@@ -123,8 +194,8 @@ A token budget is an upper bound, not a target.
 
 RelayCTX Repack prefers the smallest sufficient context:
 
-1. preserve required runtime and approved persona anchors,
-2. include RelaySCN and RelayINT evidence needed for the current action,
+1. preserve required runtime and approved character-source anchors,
+2. include RelayREL / RelaySCN / RelayEMO / RelayINT evidence needed for the current action,
 3. include confirmed short-term context,
 4. include long-term memory only when RelayINT and RelaySCN allow it,
 5. stop when the answer can be generated safely and coherently.
@@ -137,9 +208,11 @@ Unused budget remains unused.
 
 ```text
 common_runtime_policy
-character_soul_anchor
-character_output_policy
-relationship_anchor
+SOUL.md-derived character_soul
+STYLE.md-derived character_style
+BOUNDARY.md-derived character_boundary
+EMOTION.md-derived emotion response profiles
+optional LORE.md-derived durable lore
 ```
 
 Rules:
@@ -152,20 +225,24 @@ Rules:
 - no volatile scene or affect state,
 - byte-for-byte stability where practical.
 
-### Slow prefix
+### Slow / semi-stable prefix
 
 ```text
-stable_memory_summary
+RelayREL selected relationship policy
 approved durable user/character memory summaries
+selected scene-wiki summaries when stable enough
+selected memory-wiki summaries when stable enough
 ```
 
-These may change after a governed RelaySLP update, not every turn.
+These may change after a governed RelaySLP or relationship update, not every turn.
 
 ### Dynamic suffix
 
 ```text
 scene_state
-intent hints
+scene_policy deltas
+current affect/expression hint
+intent / reference hints
 retrieved_memory
 retrieved_rag
 selected_recent_context
@@ -174,7 +251,7 @@ latest_input
 response_instruction
 ```
 
-Dynamic content must remain after durable persona sources.
+Dynamic content must remain after durable character and relationship sources.
 
 ## Common runtime policy
 
@@ -185,23 +262,31 @@ The shared runtime block should remain short and character-neutral. It may inclu
 - compatibility-safe response requirements,
 - output suitability requirements.
 
-It is not the character's SOUL or current scene.
+It is not the character's SOUL, current relationship state, or current scene.
 
 ## Character blocks
 
-### Character soul anchor
+### Character soul
 
 Contains approved durable identity, values, worldview, and invariants.
 
-It must not contain current topic, scene role, user-specific transient memory, RAG content, or client prompt replay.
+It must not contain current topic, scene role, user-specific transient memory, RAG content, relationship-instance state, or client prompt replay.
 
-### Character output policy
+### Character style
 
-Contains approved durable expression policy. Temporary response constraints belong to RelaySCN or the current request, not automatic edits to durable output policy.
+Contains approved durable expression policy. Temporary response constraints belong to RelaySCN or the current request, not automatic edits to durable style policy.
 
-### Relationship anchor
+### Character boundary
 
-Contains approved durable relationship expectations. It is distinct from factual memory and should update only through a governed path.
+Contains character-specific privacy, pressure, intimacy, disclosure, and safety-expression limits. It does not replace global runtime/safety policy.
+
+### Emotion response profiles
+
+Contains approved durable mappings for how the character expresses emotion classes. Current affect estimate and expression pressure belong to RelayEMO state and remain dynamic.
+
+### Relationship policy
+
+Contains RelayREL-approved relationship role/parameter guidance and selected target-specific relationship state. It is distinct from factual memory and should update only through a governed path.
 
 ## Scene block
 
@@ -235,8 +320,9 @@ scene_state:
   user_confirmation_required: false
 ```
 
-Do not place these RelayCTX/RelayEMO-owned values into `scene_state`:
+Do not place these RelayREL/RelayCTX/RelayEMO-owned values into `scene_state`:
 
+- target-specific relationship state,
 - current mood or raw affect estimate,
 - open questions list,
 - recently discussed points,
@@ -248,7 +334,7 @@ RelaySCN may expose policy classes that constrain EMO or CTX without owning thei
 
 ## Retrieved memory and RAG
 
-Retrieved evidence is dynamic and lower authority than runtime policy and approved durable persona.
+Retrieved evidence is dynamic and lower authority than runtime policy, approved durable character sources, relationship policy, and scene policy.
 
 RelayCTX should preserve:
 
@@ -279,11 +365,15 @@ Use stable simple tags for model conditioning. Example:
 ```xml
 <relaylm_context version="1">
   <common_runtime_policy>...</common_runtime_policy>
-  <character_soul_anchor>...</character_soul_anchor>
-  <character_output_policy>...</character_output_policy>
-  <relationship_anchor>...</relationship_anchor>
+  <character_soul>...</character_soul>
+  <character_style>...</character_style>
+  <character_boundary>...</character_boundary>
+  <character_emotion_profiles>...</character_emotion_profiles>
+  <relationship_policy>...</relationship_policy>
   <stable_memory_summary>...</stable_memory_summary>
   <scene_state>...</scene_state>
+  <scene_policy>...</scene_policy>
+  <expression_hint>...</expression_hint>
   <intent_context>...</intent_context>
   <retrieved_memory>...</retrieved_memory>
   <selected_recent_context>...</selected_recent_context>
@@ -306,7 +396,7 @@ When the current instruction identity is unknown and the authority contract perm
 
 It must:
 
-- remain below runtime policy and approved RelaySOUL authority,
+- remain below runtime policy and approved RelaySOUL / RelayREL / RelaySCN authority,
 - exclude prior client history,
 - be absent on a validated cache hit,
 - never be copied into default diagnostics,
@@ -330,11 +420,11 @@ Degrade in this order:
 4. shorten selected recent context,
 5. block or use an authority-safe fallback when no valid payload remains.
 
-Do not restore raw client history or mutate durable persona sources as fallback.
+Do not restore raw client history or mutate durable character sources as fallback.
 
 ## Content-bearing versus content-free surfaces
 
-Content-bearing runtime objects include compiled blocks, scene semantics, resolved references, memory evidence, and backend messages.
+Content-bearing runtime objects include compiled blocks, relationship semantics, scene semantics, resolved references, memory evidence, and backend messages.
 
 Default trace/audit projections include only:
 
@@ -345,13 +435,13 @@ Default trace/audit projections include only:
 - reason identifiers,
 - payload-mutation booleans.
 
-They must not include prompt text, memory bodies, scene semantic text, paths, or final responses.
+They must not include prompt text, relationship bodies, memory bodies, scene semantic text, paths, or final responses.
 
 ## Non-goals
 
 Context packing does not:
 
-- classify scene or affect,
+- classify relationship, scene, or affect,
 - resolve ambiguity,
 - retrieve or write memory,
 - mutate RelaySOUL,
@@ -362,8 +452,10 @@ Context packing does not:
 ## Summary
 
 ```text
-approved durable persona
+approved durable character sources
+  + RelayREL relationship policy
   + RelaySCN request-local policy
+  + RelayEMO expression hint
   + RelayINT action hints
   + RelayMEM approved evidence
   + RelayCTX-selected short-term context
@@ -375,4 +467,4 @@ approved durable persona
 
 ## I1 bounded Primary MEM injection
 
-RelayCTX receives a request-local selected-memory artifact after the Primary recall selection path and exact scope/integrity validation. M2 remains the preferred relevance owner. When M2 yields no eligible scoped Primary candidate, the E1-R5 bounded scoped Primary candidate bridge may supply a fallback candidate before the bounded RelayCTX injection step. Only bounded Primary summary evidence is inserted before the latest user message. SOUL, OUTPUT_POLICY, RELATIONSHIP_ANCHOR, Secondary MEM, and RelaySCN remain higher authority; path, identity, lineage, retry, and control-file metadata are excluded from the backend prompt and public diagnostics.
+RelayCTX receives a request-local selected-memory artifact after the Primary recall selection path and exact scope/integrity validation. M2 remains the preferred relevance owner. When M2 yields no eligible scoped Primary candidate, the E1-R5 bounded scoped Primary candidate bridge may supply a fallback candidate before the bounded RelayCTX injection step. Only bounded Primary summary evidence is inserted before the latest user message. `SOUL.md`, `STYLE.md`, `BOUNDARY.md`, RelayREL relationship policy, RelaySCN scene policy, and current RelayEMO expression constraints remain higher authority; path, identity, lineage, retry, and control-file metadata are excluded from the backend prompt and public diagnostics.

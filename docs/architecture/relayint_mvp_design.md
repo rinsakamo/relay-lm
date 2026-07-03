@@ -104,12 +104,13 @@ These helpers evaluate scene and request compatibility and preserve fail-closed/
 
 ## Current runtime position
 
-Current request-path ordering is approximately:
+After P0-PIPE / PR #458, current request-path ordering is:
 
 ```text
 request/profile compilation
-  -> RelayEMO
+  -> RelayREL content-free relationship projection
   -> RelaySCN v0
+  -> Input-side RelayEMO
   -> RelayINT historical compatibility reference repair
   -> RelayINT fast-path dry-run
   -> RelayINT quick-clarification preflight/apply planning
@@ -117,12 +118,13 @@ request/profile compilation
   -> later RelayCTX/backend phases
 ```
 
-This differs from the target canonical ordering below.
+This current order includes the shipped P0 ordering correction. RelayINT itself still differs from the target typed v1 contract below because it uses compatibility artifacts and Retrieval v0 still derives some query terms from raw messages.
 
 ## Target canonical position
 
 ```text
 User input
+  -> RelayREL
   -> Input-side RelaySCN
   -> Input-side RelayEMO
   -> RelayINT
@@ -136,11 +138,14 @@ User input
   -> User output
 ```
 
-Target RelayINT runs before Retrieval so long-term memory is not used to guess ambiguous references silently.
+Target RelayINT runs after relationship/scene/affect policy setup and before Retrieval so long-term memory is not used to guess ambiguous references silently.
 
 ## Target component boundary
 
 ```text
+RelayREL
+  relationship-conditioned policy
+
 RelaySCN
   scene and policy
 
@@ -311,7 +316,7 @@ A future implementation migration should update together:
 5. remove Retrieval dependence on raw messages for authorization/scope,
 6. preserve current fast-path safety gates and reason IDs,
 7. update quick-clarification consumers and RelayRUN wiring,
-8. update app/PipelineContext ordering,
+8. preserve the shipped P0 order `RelayREL -> RelaySCN -> RelayEMO -> RelayINT`,
 9. update INT/MEM/trace/integration smoke tests,
 10. preserve v0 compatibility through explicit schema/version handling.
 
@@ -331,12 +336,12 @@ RelayINT does not:
 
 ```text
 current
-  historical RelayREF-shaped RelayINT compatibility artifact
+  RelayREL -> RelaySCN -> RelayEMO -> historical RelayREF-shaped RelayINT compatibility artifact
   + independent content-free fast-path dry-run v0
   + quick-clarification preflight/apply artifacts
 
 target
-  SCN policy + CTX working state + current turn
+  REL policy + SCN policy + CTX working state + current turn
   -> typed RelayINT intent v1
   -> typed retrieval decision/confirmed scope
   -> RelayMEM Retrieval

@@ -24,6 +24,7 @@ relaylm_related_authority:
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
   - analyzer_candidate_governance.md
+  - acg1_analyzer_candidate_governance_contract.md
   - o1f_operational_validation.md
   - phase_i5b_pin_unpin_apply.md
   - phase_i7c_held_apply_discard_runtime.md
@@ -156,8 +157,8 @@ Completed runtime and governance foundation
     -> I-7C Held Apply/Discard runtime/API/UI/durable evidence complete
 
 Analyzer Candidate Governance
-  ACG-0 P0 RelayREL / RelaySCN / RelayEMO ordering boundary
-    -> ACG-1 Analyzer Candidate Governance contract
+  ACG-0 P0 RelayREL / RelaySCN / RelayEMO ordering boundary complete
+    -> ACG-1 Analyzer Candidate Governance contract complete
     -> ACG-2 Grounded Recall Query Detail Analyzer
     -> ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization
     -> ACG-4 RelayREF / RelayINT Reference Analyzer consolidation
@@ -191,7 +192,7 @@ Evaluation
 
 ### Foundation already available for MVP planning
 
-The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1F, UI-B1A, I-5A/I-5B, I-7A/B/I-7C, E1, E1-R1, E1-R2, E1-R3, E1-R4, and E1-R5.
+The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1F, UI-B1A, I-5A/I-5B, I-7A/B/I-7C, E1, E1-R1, E1-R2, E1-R3, E1-R4, E1-R5, P0-PIPE, and ACG-1.
 
 ### Wave 4 completed
 
@@ -267,9 +268,7 @@ E1-R4 retrieval-response grounding and unsupported-detail suppression
   -> public diagnostics remain content-free
 ```
 
-The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](wave7_cross_slice_convergence_audit.md). The E1-R3 handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md) and the completion report is [E1-R3 completion report](../mvp/wave7/e1r3_completion_report.md). The E1-R4 handoff is [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md) and the completion report is [E1-R4 completion report](../mvp/wave7/e1r4_completion_report.md).
-
-Wave 7 closes the post-Wave-6 E1 evidence-quality lane without adding O2/O3, post-hoc visible response rewriting, browser-owned trust, semantic mutation authority, RelaySOUL mutation, or media runtime execution.
+The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](wave7_cross_slice_convergence_audit.md). Wave 7 closes the post-Wave-6 E1 evidence-quality lane without adding O2/O3, post-hoc visible response rewriting, browser-owned trust, semantic mutation authority, RelaySOUL mutation, or media runtime execution.
 
 ### Post-Wave-7 E1-R5 correction completed
 
@@ -283,25 +282,50 @@ E1-R5 Primary MEM recall candidate discovery bridge
 
 The E1-R5 handoff is [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md), the completion report is [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md), and the post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md). E1-R5 corrects the E1 proof boundary; current docs must not claim that M2 alone always selects current eligible scoped Primary MEM.
 
-### Post-E1-R5 / Post-Wave-7 next candidates
-
-Compatibility anchor for E1 evaluation consolidation smokes. The P0 RelayREL / RelaySCN / RelayEMO ordering fix is complete only after actual app.py request-path rewiring and validation.
-
-Before the Character Workspace reset begins, RelayLM should execute the highest-priority Analyzer Candidate Governance sequence recorded in [Analyzer Candidate Governance and Multilingual Schema Policy](analyzer_candidate_governance.md). This prevents the next product layer from inheriting multilingual free-text keyword ownership across RelaySCN, RelayINT, RelayREF, RelayMEM, and RelayEMO.
+### P0-PIPE ordering correction completed
 
 ```text
-ACG-0 P0 RelayREL / RelaySCN / RelayEMO ordering boundary
-  -> complete P0 ordering validation
-  -> keep RelaySCN lexical heuristics non-authoritative
-  -> keep public diagnostics content-free
+P0 RelayREL / RelaySCN / RelayEMO ordering
+  -> RelayREL runs before RelaySCN
+  -> RelaySCN no longer consumes RelayEMO artifact scene_state as fallback
+  -> input-side RelayEMO runs after RelaySCN
+  -> RelayINT, RelayMEM, and RelayCTX remain downstream
+  -> public diagnostics remain content-free
+```
 
+The P0-PIPE handoff is [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](p0_relayrel_relayscn_relayemo_ordering_fix.md). This closes PM-D3 because the request path is rewired and validated, not merely because helper/projection code exists.
+
+### ACG-1 Analyzer Candidate Governance completed
+
+```text
 ACG-1 Analyzer Candidate Governance contract
+  -> shared candidate-vs-authoritative fields
+  -> English-only schema keys / enum values / reason IDs
+  -> fail-closed handling for invalid, low-confidence, or ambiguous analyzer output
+  -> content-free public projection helpers
+```
+
+The ACG-1 handoff is [ACG-1 Analyzer Candidate Governance Contract](acg1_analyzer_candidate_governance_contract.md). ACG-1 establishes the shared contract/helper layer only; it does not implement the ACG-2 through ACG-6 analyzer producers/classifiers.
+
+### Post-E1-R5 / Post-Wave-7 next candidates
+
+Compatibility anchor for E1 evaluation consolidation smokes. The P0 RelayREL / RelaySCN / RelayEMO ordering fix and ACG-1 governance contract are complete.
+
+Before the Character Workspace reset implementation begins, RelayLM should execute the remaining highest-priority Analyzer Candidate Governance sequence recorded in [Analyzer Candidate Governance and Multilingual Schema Policy](analyzer_candidate_governance.md). This prevents the next product layer from inheriting multilingual free-text keyword ownership across RelaySCN, RelayINT, RelayREF, RelayMEM, and RelayEMO.
+
+```text
+ACG-0 P0 RelayREL / RelaySCN / RelayEMO ordering boundary: complete
+  -> RelayREL precedes RelaySCN
+  -> RelaySCN lexical heuristics remain non-authoritative
+  -> public diagnostics remain content-free
+
+ACG-1 Analyzer Candidate Governance contract: complete
   -> shared candidate-vs-authoritative fields
   -> English-only schema keys / enum values / reason IDs
   -> fail-closed handling for invalid, low-confidence, or ambiguous analyzer output
 
 ACG-2 Grounded Recall Query Detail Analyzer
-  -> first implementation phase after the governance contract
+  -> first remaining implementation phase after the governance contract
   -> date/name/preference/quantity/relationship/cause detection behind a structured artifact
   -> existing regex checks become fallback candidates, not distributed authority
 
@@ -361,15 +385,15 @@ CW-A5 character creation, templates, and showcase import
 Post-MVP decision debt registry:
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope
-  PM-D3 RelayEMO/RelaySCN scene_state ownership
-    -> Execute the existing RelaySCN-owned `scene_state` migration plan through the P0 RelayREL / RelaySCN / RelayEMO ordering fix; mark complete only after app.py is rewired and validation passes, then execute ACG-1 through ACG-6 before starting Character Workspace implementation
+  PM-D3 RelayEMO/RelaySCN scene_state ownership: complete in PR #458
+    -> Execute the existing RelaySCN-owned `scene_state` migration plan is now complete through PR #458; closed only after app.py was rewired and validation passed; it must not be reopened by future analyzer or Character Workspace work
   PM-D4 client history exclusion default-off deployment decision
   PM-D5 RelayMEM flat-store compatibility removal
   PM-D6 RelayINT native artifact / RelayREF wrapper removal
   PM-D7 runtime install hook fold-in
   PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
   PM-D9 analyzer candidate governance and multilingual schema policy
-    -> Execute ACG-1 before adding new LLM or heuristic analyzers; ACG-2 and ACG-3 precede SCN structured classifier / scene-wiki work because Grounded Recall and retrieval quality are directly affected by multilingual interpretation gaps
+    -> ACG-1 is complete; execute ACG-2 before adding new Grounded Recall detail analyzers, and ACG-2/ACG-3 before SCN structured classifier / scene-wiki work because Grounded Recall and retrieval quality are directly affected by multilingual interpretation gaps
 
 Implementation order for large compatibility removals:
   PM-D5 -> PM-D6 -> PM-D7

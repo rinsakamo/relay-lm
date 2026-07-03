@@ -1,7 +1,7 @@
 ---
 relaylm_doc_type: implementation_report
 relaylm_authority: p0_relayrel_relayscn_relayemo_ordering_fix
-relaylm_status: draft
+relaylm_status: current
 relaylm_volatility: high
 relaylm_owner: implementation
 relaylm_update_trigger:
@@ -21,33 +21,29 @@ relaylm_related_authority:
 ---
 # P0 RelayREL / RelaySCN / RelayEMO Ordering Fix
 
+Last reviewed: 2026-07-03 JST
+
 ## Purpose
 
-This document records the draft P0 implementation boundary after the file-first Character Workspace design reset.
+This document records the completed P0 implementation boundary after the file-first Character Workspace design reset.
 
-Before implementing Character Workspace parser/compiler/UI slices, RelayLM needs to remove the legacy scene ownership path where RelayEMO ran before RelaySCN and RelaySCN could fall back to `RelayEMO` artifact `scene_state` as normalized scene state.
+Before implementing Character Workspace parser/compiler/UI slices, RelayLM needed to remove the legacy scene ownership path where RelayEMO ran before RelaySCN and RelaySCN could fall back to `RelayEMO` artifact `scene_state` as normalized scene state.
 
-## Current draft status
+## Implementation status
 
-This PR is complete only after the FastAPI request path is actually rewired and the local validation commands pass; helper/projection changes alone are not sufficient.
+This slice is complete in PR #458 after the FastAPI request path was rewired and local validation passed. Helper/projection changes alone were not sufficient; the completed boundary depends on actual `app.py` request-path ordering plus smoke evidence.
 
-Implemented in this draft:
+Completed behavior:
 
 ```text
+app.py request path calls RelayREL / RelaySCN before input-side RelayEMO.
+app.py no longer passes relayemo_artifact into build_relayscn_scene_policy_artifact.
 RelaySCN no longer accepts RelayEMO artifact scene_state as normalized fallback.
 RelayREL has a content-free placeholder/projection for request-path ordering.
 Pipeline order projection proves RelayREL -> RelaySCN -> RelayEMO -> RelayINT -> RelayMEM -> RelayCTX.
 RelayMEM retrieval smoke coverage consumes RelaySCN policy.
 Public diagnostics/projections remain content-free.
-```
-
-Still required before this PR can be marked ready:
-
-```text
-app.py request path calls RelayREL / RelaySCN before input-side RelayEMO.
-app.py no longer passes relayemo_artifact into build_relayscn_scene_policy_artifact.
-project_execution_plan.md moves PM-D3/P0 to complete only because app.py is wired and validation passed.
-validation passes locally or in CI before ready-for-review.
+PM-D3 RelayEMO/RelaySCN scene_state ownership is closed by the shipped request-path wiring and validation.
 ```
 
 ## Target order
@@ -127,11 +123,11 @@ Primary MEM lifecycle changes unrelated to pipeline ordering
 runtime support for Character Workspace source files
 ```
 
-The RelayREL implementation in this draft is a content-free placeholder/projection. It exposes only presence/status flags and must not expose raw messages, relationship bodies, memory bodies, scene bodies, private state, or assistant output.
+The RelayREL implementation in this completed slice is a content-free placeholder/projection. It exposes only presence/status flags and must not expose raw messages, relationship bodies, memory bodies, scene bodies, private state, or assistant output.
 
 ## Validation
 
-Expected validation for this slice:
+Validation for this slice:
 
 ```text
 python -m compileall -q relaylm scripts

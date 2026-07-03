@@ -25,6 +25,12 @@ relaylm_related_authority:
 
 Last reviewed: 2026-07-03 JST
 
+## Status
+
+ACG-1 is current as the shared analyzer candidate governance contract/helper slice. The implementation lives in `relaylm/analyzer_governance.py`, with smoke coverage in `scripts/relaylm_analyzer_governance_smoke.py`.
+
+This status does not imply that ACG-2 through ACG-6 are implemented. ACG-1 establishes the common schema, validation, authority, and content-free projection boundary that later analyzer producers must consume.
+
 ## Purpose
 
 ACG-1 introduces the shared Analyzer Candidate Governance contract in `relaylm/analyzer_governance.py`.

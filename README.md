@@ -1,7 +1,7 @@
 # RelayLM
 
 <p align="center">
-  <strong>Memory- and persona-aware OpenAI-compatible conversation proxy for local LLMs</strong>
+  <strong>File-first character workspace and memory/persona-aware OpenAI-compatible conversation proxy for local LLMs</strong>
 </p>
 
 <p align="center">
@@ -23,7 +23,7 @@
 
 ## 🌉 What is RelayLM?
 
-RelayLM is a persona-specialized conversation proxy for local LLM applications, AI companions, VTubers, agents, and local inference runtimes.
+RelayLM is a file-first character workspace and persona-specialized conversation proxy for local LLM applications, AI companions, VTubers, agents, and local inference runtimes.
 
 It sits between an OpenAI-compatible frontend and backend:
 
@@ -33,15 +33,16 @@ Frontend
   -> OpenAI-compatible LLM backend
 ```
 
-RelayLM is **not** a language model and **not** a memory database. It is designed to compile persona, approved memory, RAG, recent turns, scene state, and spilled context into a token-budgeted, persona-stable, KV-reuse-aware effective context.
+RelayLM is **not** a language model and **not** a memory database. Its product target is an editable Markdown character workspace whose approved sources are compiled into relationship-, scene-, emotion-, memory-, and context-aware runtime projections. It is designed to compile persona, approved memory, RAG, recent turns, scene state, and spilled context into a token-budgeted, persona-stable, KV-reuse-aware effective context.
 
 > Make an AI VTuber or AI companion feel like it remembers unusually well, without requiring the frontend to manage long context directly.
 
 ## ✨ Why RelayLM?
 
 - 🔌 **URL-swap integration** — connect through an OpenAI-compatible `/v1/chat/completions` endpoint.
+- 🧬 **File-first character workspace** — target editable Markdown sources such as `SOUL.md`, `STYLE.md`, `EMOTION.md`, `SCENE.md`, `RELATIONSHIP.md`, `MEMORY.md`, and `BOUNDARY.md`.
 - 🧠 **Persona-stable context** — keep identity and output policy above dynamic memory and retrieved evidence.
-- 🧩 **Explicit pipeline boundaries** — separate scene, affect, intent, retrieval, context packing, output observation, orchestration, and deferred persistence.
+- 🧩 **Explicit pipeline boundaries** — separate relationship, scene, affect, intent, retrieval, context packing, output observation, orchestration, and deferred persistence.
 - ⚡ **KV-reuse-aware layout** — prefer stable context ordering that can benefit prefix/KV cache reuse.
 - 🛡️ **Safe-by-default behavior** — introduce request mutation and persistence behind explicit compatibility, policy, and apply gates.
 - 💻 **Local-first posture** — keep storage local by default, expose backend URLs in configuration, and avoid hidden remote telemetry.
@@ -193,6 +194,7 @@ The canonical runtime order is:
 User input
   -> RelayRUN request shell
   -> PipelineContext
+  -> RelayREL
   -> Input-side RelaySCN
   -> Input-side RelayEMO
   -> RelayINT
@@ -219,6 +221,7 @@ This is the canonical responsibility order, not a claim that every stage is alre
 | When | Relay component | What it does |
 |---|---|---|
 | Throughout the request | 🎛️ **RelayRUN** | Manages stage order, recovery, checkpoints, and trace |
+| Input | 🤝 **RelayREL** | Resolves relationship-conditioned interaction policy and target-specific relationship projection |
 | Input | 🌬️ **RelaySCN** | Classifies the scene and resolves memory, expression, and persistence policy |
 | Input and output | 🙂 **RelayEMO** | Interprets affect cues and adjusts scene-appropriate expression |
 | Input | 🚦 **RelayINT** | Detects intent and ambiguity, then decides whether to continue, ask, or stop |
@@ -233,8 +236,10 @@ For authoritative ownership and order, see the [Pipeline Responsibility Design](
 
 - 📍 [Current project status](docs/PROJECT_STATUS.md)
 - 🗺️ [Documentation index](docs/README.md)
+- 🧬 [File-first Character Workspace design](docs/architecture/file_first_character_workspace_design.md)
+- 🧭 [Character template creation flow](docs/architecture/character_template_creation_flow.md)
 - 🏗️ [Architecture documents](docs/architecture/README.md)
-- 🧭 [Pipeline implementation plan](docs/architecture/pipeline_implementation_plan.md)
+- 🧭 [Project execution plan](docs/architecture/project_execution_plan.md)
 - 🚀 [OpenWebUI + LM Studio MVP guide](docs/openwebui_lmstudio_mvp.md)
 - ⚙️ [Configuration schema](docs/config_schema.md)
 - 📜 [Contracts](docs/contracts/README.md)

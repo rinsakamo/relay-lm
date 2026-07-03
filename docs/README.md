@@ -22,11 +22,15 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 
 - [Current project status](PROJECT_STATUS.md) — the single current implementation status authority.
 - [Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.
+- [File-first Character Workspace design](architecture/file_first_character_workspace_design.md) — the current product direction reset target: editable Markdown character sources compiled into runtime projections.
+- [Character template creation flow](architecture/character_template_creation_flow.md) — no-character startup, Quick/Advanced Create, template import, and showcase policy.
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
 - [Pipeline responsibility design](architecture/pipeline_responsibility_design.md) — component responsibility and canonical target order.
 - [Current / Target / Migration Guide](architecture/current_target_migration_guide.md) — compatibility interpretation.
 - [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md) — current E1 evidence inventory and completed E1-R1 through E1-R5 quality work.
 - [MVP evidence index](mvp/README.md) — historical snapshots and per-PR implementation completion reports.
+
+The current product target is no longer only a memory-governance proxy. The MVP direction is a Markdown/file-first Character Workspace plus governed runtime behavior for relationship-, scene-, emotion-, memory-, and context-aware conversation.
 
 ## Parallel implementation documentation rule
 
@@ -34,6 +38,11 @@ Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<sl
 
 ## Product-critical boundaries
 
+- [File-first Character Workspace design](architecture/file_first_character_workspace_design.md)
+- [Character template creation flow](architecture/character_template_creation_flow.md)
+- [P0 RelayREL / RelaySCN / RelayEMO ordering fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md)
+- [ACG-1 Analyzer Candidate Governance contract](architecture/acg1_analyzer_candidate_governance_contract.md)
+- [Analyzer Candidate Governance roadmap](architecture/analyzer_candidate_governance.md)
 - [Phase 6 I1-B runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md)
 - [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md)
 - [Phase 6-C1-2 one-claimed worker](architecture/phase6c1_one_claimed_primary_worker_handoff.md)
@@ -78,7 +87,7 @@ Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<sl
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged, E1-R5 is converged as a post-Wave-7 correction, and PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged, E1-R5 is converged as a post-Wave-7 correction, P0-PIPE is complete in PR #458, ACG-1 is complete as the analyzer governance contract/helper slice, and PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
 
 ## Wave 7 implementation evidence
 
@@ -127,11 +136,13 @@ Current runtime and implementation status is intentionally not summarized here. 
 
 ## Target architecture and post-MVP design
 
+- [File-first Character Workspace design](architecture/file_first_character_workspace_design.md)
+- [Character template creation flow](architecture/character_template_creation_flow.md)
 - [Character belief, relationship, and social expression dynamics](architecture/character_belief_relationship_dynamics_design.md)
 - [ADR: character-conditioned belief without rewriting observation](adr/character_conditioned_belief_model.md)
 - [Experimental SOUL replacement and memory bootstrap](relaysoul/experimental_soul_replacement_memory_bootstrap_design.md)
 
-These documents are target architecture only. Experimental SOUL replacement is explicitly post-MVP and does not alter the ordinary Phase I-9 revision/rollback path.
+These documents are target architecture unless explicitly listed as a current completed boundary above. Experimental SOUL replacement is explicitly post-MVP and does not alter the ordinary Phase I-9 revision/rollback path.
 
 ## Canonical precedence
 

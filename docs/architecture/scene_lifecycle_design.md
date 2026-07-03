@@ -13,13 +13,16 @@ This document defines the lifecycle and ownership of:
 - `session_id`,
 - optional `room_id`.
 
-RelaySCN owns scene interpretation and scene-policy resolution. RelayRUN owns runtime transition/checkpoint orchestration. RelayCTX owns short-term conversation working state. RelayEMO owns affect state.
+RelaySCN owns scene interpretation and scene-policy resolution. RelayREL owns relationship-conditioned interaction policy before scene policy is compiled. RelayRUN owns runtime transition/checkpoint orchestration. RelayCTX owns short-term conversation working state. RelayEMO owns affect state.
 
 This document does not define standalone `RelayPLC` or `RelayTRC` components.
 
 ## Core boundary
 
 ```text
+RelayREL
+  target-specific relationship policy and relationship-conditioned interaction bounds
+
 RelaySCN
   what situation is active and what policy follows
 
@@ -33,7 +36,7 @@ RelayRUN
   how runtime transition/recovery is executed and recorded
 ```
 
-Scene state must not become a catch-all container for affect, short-term conversation history, or durable memory.
+Scene state must not become a catch-all container for relationship state, affect, short-term conversation history, or durable memory.
 
 ## Definitions
 
@@ -92,6 +95,7 @@ RelaySCN-owned fields describe the situation and policy inputs.
 
 Do not store these in `scene_state` as owned semantic state:
 
+- target-specific relationship state,
 - current mood or raw affect estimate,
 - current topic notes,
 - open questions,
@@ -101,7 +105,7 @@ Do not store these in `scene_state` as owned semantic state:
 - transcript-shaped recent turns,
 - memory page bodies.
 
-Those belong to RelayEMO, RelayCTX working state, or RelayMEM.
+Those belong to RelayREL, RelayEMO, RelayCTX working state, or RelayMEM.
 
 ### `scene_policy`
 
@@ -163,7 +167,7 @@ Examples:
 - require evidence before asserting a project status,
 - suppress roleplay in a formal-document scene.
 
-They are lower authority than runtime/safety policy and approved durable persona policy.
+They are lower authority than runtime/safety policy, approved durable persona policy, and approved relationship policy.
 
 ### `session_id`
 
@@ -198,6 +202,9 @@ Raw client `system` or `developer` messages are evidence, not scene state. They 
 Client payload canonicalization
   -> current user turn
   -> current client instruction evidence
+
+RelayREL
+  -> relationship-conditioned interaction policy
 
 Input-side RelaySCN
   -> scene_state
@@ -314,9 +321,9 @@ Current character profile compilation uses `scene_state` as the only scene file 
 
 ```text
 shared fixed rules -> common_runtime_policy
-character expression rules -> OUTPUT_POLICY.md
-relationship principles -> RELATIONSHIP_ANCHOR.md
-dynamic situation -> scene_state
+character expression rules -> STYLE.md or EMOTION.md
+relationship principles -> RELATIONSHIP.md / relationships/<target>.md through RelayREL
+dynamic situation -> RelaySCN scene_state
 current function -> scene_role
 external host identity -> room_id metadata
 ```
@@ -331,6 +338,7 @@ Retrieval only reads. RelaySLP may later inspect governed scene summaries when p
 
 Scene lifecycle does not own:
 
+- relationship state,
 - affect estimation,
 - current-topic/open-question working memory,
 - memory retrieval implementation,
@@ -343,6 +351,7 @@ Scene lifecycle does not own:
 ## Summary
 
 ```text
+relationship context -> RelayREL
 scene evidence
   -> RelaySCN scene_state
   -> RelaySCN scene_policy
