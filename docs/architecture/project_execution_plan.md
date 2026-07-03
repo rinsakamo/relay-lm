@@ -133,6 +133,40 @@ Post-E1-R5 / Post-Wave-7 next candidates:
   O2/O3 only after explicit MVP need
 ```
 
+## MVP dependency waves
+
+### Wave 7 completed
+
+```text
+E1-R3 provenance-preserving Primary MEM formation summary complete
+E1-R4 retrieval-response grounding and unsupported-detail suppression complete
+```
+
+Wave 7 completed the E1-R3 / E1-R4 evidence and grounding slices without changing O2/O3, browser trust, RelaySOUL mutation, or media runtime authority.
+
+### Post-Wave-7 E1-R5 correction completed
+
+```text
+E1-R5 Primary MEM recall candidate discovery bridge complete
+```
+
+E1-R5 remains a bounded scoped Primary recall bridge. It preserves M2 as preferred relevance owner and is tracked for later canonical adapter fold-in by PM-D8.
+
+### Post-E1-R5 / Post-Wave-7 next candidates
+
+```text
+E1-R5 scoped Primary recall candidate bridge boundary remains complete; new work starts after P0-PIPE and ACG.
+PM-D1 RelaySOUL gate design-freeze relation
+PM-D4 client history exclusion default-off deployment decision
+PM-D5 RelayMEM flat-store compatibility removal
+PM-D6 RelayINT native artifact / RelayREF wrapper removal
+PM-D7 runtime install hook fold-in
+PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
+PM-D9 analyzer candidate governance and multilingual schema policy
+PM-D2 closure or absorption after PM-D6 if RelayREF wrapper removal closes the legacy artifact scope
+O2/O3 only after explicit MVP need
+```
+
 ## Current authority links
 
 ACG handoffs: [ACG-1](acg1_analyzer_candidate_governance_contract.md), [ACG-2](acg2_grounded_recall_detail_safety.md), [ACG-3](acg3_retrieval_query_normalization.md), [ACG-4](acg4_reference_intent_analyzer.md), [ACG-5](acg5_relayemo_scene_cleanup.md), and [ACG-6](acg6_scene_wiki_classifier.md). E1-R5 details are in [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md) and [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md).
