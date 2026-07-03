@@ -74,6 +74,7 @@ E1-R5 Primary MEM recall candidate discovery bridge: complete
 Home can be a trusted formation source only through the E1-R1 route-owned gate; browser-owned trust remains rejected.
 I-5B Pin / Unpin apply/API/UI/ranking behavior: complete
 I-7C Held Apply/Discard runtime/API/UI/durable governance evidence: complete
+W6-INT merged
 Wave 7 implementation tracks complete
 W7-INT merged
 Post-Wave-7 E1-R5 correction merged and converged
