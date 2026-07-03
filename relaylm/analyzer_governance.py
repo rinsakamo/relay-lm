@@ -7,6 +7,7 @@ content-free and use English-only schema keys, enum values, and reason IDs.
 """
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -205,9 +206,9 @@ def build_analyzer_candidate_artifact(
         "confidence": confidence,
         "stability": stability,
         "content_free": content_free,
-        "validation_errors": list(validation_errors or ()),
-        "reason_ids": list(reason_ids or ()),
-        "enum_values": list(enum_values or ()),
+        "validation_errors": _input_sequence(validation_errors),
+        "reason_ids": _input_sequence(reason_ids),
+        "enum_values": _input_sequence(enum_values),
     }
 
     dropped_errors: list[str] = []
@@ -243,6 +244,13 @@ def normalize_analyzer_candidate_artifact(
     raw: Mapping[str, Any] = artifact or {}
     validation_errors: list[str] = []
     reason_ids: list[str] = []
+
+    for key in raw:
+        if key not in _ALLOWED_ARTIFACT_KEYS:
+            if key in _RAW_TEXT_LIKE_KEYS:
+                validation_errors.append("raw_diagnostic_field_dropped")
+            else:
+                validation_errors.append("unsupported_field_dropped")
 
     if raw.get("schema_version") != SCHEMA_VERSION:
         validation_errors.append("unknown_enum_value")
@@ -414,6 +422,16 @@ def analyzer_governance_enum_values() -> dict[str, tuple[str, ...]]:
     }
 
 
+def _input_sequence(value: Iterable[Any] | None) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, Iterable):
+        return list(value)
+    return [value]
+
+
 def _as_token(value: Any) -> str:
     if not isinstance(value, str):
         return "unknown"
@@ -461,7 +479,7 @@ def _bounded_float(value: Any, reason_id: str, errors: list[str]) -> float:
     except (TypeError, ValueError):
         errors.append(reason_id)
         return 0.0
-    if number < 0.0 or number > 1.0:
+    if not math.isfinite(number) or number < 0.0 or number > 1.0:
         errors.append(reason_id)
         return 0.0
     return number
