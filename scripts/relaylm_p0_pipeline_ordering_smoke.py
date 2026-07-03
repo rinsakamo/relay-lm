@@ -107,6 +107,7 @@ def main() -> None:
             "metadata": {
                 "relayscn": {
                     "scene_state": {
+                        "schema_version": "secret schema version",
                         "scene_type": "review_work",
                         "confidence": 0.91,
                         "stability": 0.86,
@@ -132,6 +133,7 @@ def main() -> None:
         "private signal body",
         "secret implementation note",
         "secret fallback note",
+        "secret schema version",
     ):
         _assert(
             forbidden_signal_text not in explicit_artifact_json,
@@ -140,6 +142,10 @@ def main() -> None:
     _assert(
         explicit_artifact["scene_state"]["signals"] == ["redacted_signal"],
         "external request metadata signals should be redacted to a fixed token",
+    )
+    _assert(
+        explicit_artifact["scene_state"]["schema_version"] == "relayscn.scene_state.v0",
+        "external request metadata schema_version should be normalized",
     )
 
     heuristic_artifact = build_relayscn_scene_policy_artifact(

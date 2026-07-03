@@ -225,8 +225,15 @@ def _normalize_scene_state(raw_scene_state: Mapping[str, Any], *, source: str) -
     if source == "heuristic" and not normalized_signals:
         normalized_signals.append("heuristic_default")
 
+    raw_schema_version = raw_scene_state.get("schema_version")
+    schema_version = (
+        raw_schema_version
+        if raw_schema_version == "relayscn.scene_state.v0"
+        else "relayscn.scene_state.v0"
+    )
+
     return {
-        "schema_version": str(raw_scene_state.get("schema_version") or "relayscn.scene_state.v0"),
+        "schema_version": schema_version,
         "scene_type": scene_type,
         "confidence": confidence,
         "stability": stability,
