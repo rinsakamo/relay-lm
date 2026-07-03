@@ -81,6 +81,10 @@ P0-PIPE ordering slice is complete after PR #458 rewired app.py and validation p
 ACG-1 through ACG-6 analyzer governance slices are complete through bounded candidate producers, cleanup gates, and content-free public diagnostics
 ```
 
+## Phase 6 and E1 current boundary
+
+B0-B3 durable enqueue and fenced lifecycle are complete. B3 lifecycle: complete. C2 one-job claim/rehydrate/execute adapter: complete. I1 next-turn Primary MEM recall: complete. Character and namespace isolation: complete.
+
 ## Analyzer Candidate Governance boundary
 
 ACG-1 Analyzer Candidate Governance is complete as the shared contract/helper slice. ACG-2 Grounded Recall Detail Safety is complete. ACG-3 Retrieval Query Normalization is complete. ACG-4 Reference/Intent Analyzer consolidation is complete. ACG-5 RelayEMO scene ownership cleanup is complete. ACG-6 SCN structured classifier and scene-wiki boundary is complete.
