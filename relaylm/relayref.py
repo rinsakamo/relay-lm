@@ -107,10 +107,10 @@ def _extract_ctx_handoff_guess(ctx_hints: Mapping[str, Any]) -> dict[str, Any] |
     raw = ctx_hints.get("ctx_handoff_guess")
     if raw is None:
         return None
-    value = (raw.get("value") or raw.get("text") or raw.get("summary")) if isinstance(raw, Mapping) else raw
-    if not isinstance(value, str) or not value:
+    present = bool(raw) if not isinstance(raw, Mapping) else bool(raw.get("value") or raw.get("text") or raw.get("summary"))
+    if not present:
         return None
-    return {"value": value, "use_as": "confirmation_candidate", "auto_resume_allowed": False, "trusted_context": False}
+    return {"value_present": True, "use_as": "confirmation_candidate", "auto_resume_allowed": False, "trusted_context": False}
 
 
 def _build_forced_sleep_candidate(scene_policy: Mapping[str, Any]) -> dict[str, Any]:
