@@ -12,7 +12,7 @@ scene evidence
 
 This document separates the **current implemented RelaySCN v0 helper** from the **target request-local RelaySCN ownership and pipeline order**.
 
-Current implementation phase and sequencing live in [Pipeline Implementation Plan](pipeline_implementation_plan.md) and [Project Status](../PROJECT_STATUS.md).
+Current implementation phase and sequencing live in [Project Execution Plan](project_execution_plan.md) and [Project Status](../PROJECT_STATUS.md).
 
 ## Current implemented RelaySCN v0
 
@@ -20,18 +20,19 @@ The current helper is `build_relayscn_scene_policy_artifact()` in `relaylm/relay
 
 ### Current runtime order
 
-The current `app.py` request path runs approximately:
+After P0-PIPE / PR #458, the current `app.py` request path runs the ordering-critical input stages as:
 
 ```text
 request/profile compilation
-  -> Input-side RelayEMO
+  -> RelayREL content-free relationship projection
   -> RelaySCN v0
+  -> Input-side RelayEMO
   -> RelayINT compatibility/reference-repair artifacts
   -> RelayMEM Retrieval
   -> later pipeline phases
 ```
 
-Thus the current implementation still runs RelayEMO before RelaySCN and passes the RelayEMO artifact into RelaySCN.
+Thus the current implementation no longer runs RelayEMO before RelaySCN and no longer passes the RelayEMO artifact into RelaySCN as normalized scene state.
 
 ### Current scene-source precedence
 
@@ -39,12 +40,11 @@ Current RelaySCN v0 chooses scene state in this order:
 
 ```text
 1. explicit request metadata / payload scene state
-2. RelayEMO artifact scene_state
-3. lightweight current-message heuristic
-4. unknown/fail-closed state
+2. lightweight current-message heuristic
+3. unknown/fail-closed state
 ```
 
-The `relayemo_artifact` fallback is a legacy compatibility dependency and not the target ownership model.
+The former `relayemo_artifact` fallback was a legacy compatibility dependency and is removed from the shipped P0-PIPE boundary.
 
 ### Current v0 scene-state shape
 
@@ -127,6 +127,9 @@ Client payload canonicalization
   -> current user turn
   -> bounded current client instruction evidence
 
+RelayREL
+  -> relationship-conditioned interaction policy
+
 Input-side RelaySCN
   -> request-local scene_state
   -> scene_policy
@@ -143,7 +146,7 @@ Output-side RelaySCN
 User / TTS / Avatar output
 ```
 
-In the target model, RelaySCN creates the normalized scene and policy before RelayEMO applies scene-constrained affect/expression behavior.
+In the target model, RelayREL establishes relationship-conditioned policy before RelaySCN, and RelaySCN creates the normalized scene and policy before RelayEMO applies scene-constrained affect/expression behavior.
 
 RelayEMO may provide bounded affect-related evidence for a future/next classification cycle, but it does not own normalized `scene_state`.
 
@@ -269,7 +272,7 @@ Raw client `system` or `developer` messages remain evidence, not scene state.
 ```text
 1. RelayLM runtime / safety policy
 2. approved RelaySOUL
-3. approved durable output/relationship policy
+3. approved RelayREL relationship policy
 4. RelaySCN scene policy
 5. compatible client-derived role/context/constraints
 6. current user request
@@ -312,25 +315,25 @@ It must not contain role names, setting/task text, participant values, constrain
 
 A future implementation migration should update together:
 
-1. remove normalized scene ownership from RelayEMO,
-2. run input-side RelaySCN before RelayEMO,
-3. replace the RelayEMO `scene_state` fallback with bounded evidence hints where needed,
-4. introduce typed `scene_state.v1` and `scene_policy.v1`,
-5. update app/PipelineContext node ordering,
-6. update persistence and downstream policy consumers,
-7. add typed content-free scene projections,
-8. update RelaySCN, RelayEMO, Retrieval, and integration smoke tests,
-9. preserve v0 compatibility through explicit schema/version handling.
+1. keep the shipped P0-PIPE order `RelayREL -> RelaySCN -> RelayEMO`,
+2. introduce typed `scene_state.v1` and `scene_policy.v1`,
+3. update persistence and downstream policy consumers,
+4. add typed content-free scene projections,
+5. update RelaySCN, RelayEMO, Retrieval, and integration smoke tests,
+6. preserve v0 compatibility through explicit schema/version handling.
+
+The previous migration items to remove normalized scene ownership from RelayEMO, run input-side RelaySCN before RelayEMO, and remove the RelayEMO `scene_state` fallback are complete through PR #458.
 
 ## Summary
 
 ```text
 current
-  RelayEMO -> RelaySCN v0
-  explicit metadata -> RelayEMO scene_state -> heuristic
+  RelayREL -> RelaySCN v0 -> RelayEMO
+  explicit metadata -> heuristic -> unknown/fail-closed
 
 target
-  canonicalized evidence -> RelaySCN v1 state/policy
+  canonicalized evidence -> RelayREL relationship policy
+  -> RelaySCN v1 state/policy
   -> scene-constrained RelayEMO
   -> INT / MEM / CTX
 ```
