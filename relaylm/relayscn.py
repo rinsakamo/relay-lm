@@ -6,7 +6,13 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from relaylm.scene_classifier import (
+    build_scene_classifier_candidate,
+    scene_classifier_public_projection,
+)
+
 KNOWN_SCENE_TYPES = {
+    "unknown",
     "casual_chat",
     "design_talk",
     "implementation_work",
@@ -16,11 +22,20 @@ KNOWN_SCENE_TYPES = {
     "system_ops",
     "vtuber_roleplay",
     "recovery",
+    "memory_management",
+    "character_workspace",
 }
 
 LOW_CONFIDENCE_THRESHOLD = 0.70
 LOW_STABILITY_THRESHOLD = 0.65
 _RESTRICTIVE_HEURISTIC_SCENE_TYPES = {"medical_or_safety", "formal_document", "recovery"}
+_AUTHORITATIVE_SCENE_STATE_SOURCES = {
+    "request_metadata",
+    "trusted_explicit",
+    "trusted_route",
+    "trusted_tool_signal",
+    "confirmed_user_action",
+}
 
 _POLICY_BY_SCENE_TYPE: dict[str, dict[str, Any]] = {
     "casual_chat": {
@@ -111,6 +126,28 @@ _POLICY_BY_SCENE_TYPE: dict[str, dict[str, Any]] = {
         "user_confirmation_required": False,
         "output_rewrite_allowed": False,
     },
+    "memory_management": {
+        "relayctx_mode": "memory_governance_compact",
+        "relayemo_marker_policy": "suppressed_or_light",
+        "relayemo_expression_policy": "suppressed_or_light",
+        "relaymem_retrieval_scope": "current_project_only",
+        "relaymem_update_gate": "dry_run_only",
+        "relaysoul_update_gate": "blocked",
+        "slp_mode": "recommended",
+        "user_confirmation_required": True,
+        "output_rewrite_allowed": False,
+    },
+    "character_workspace": {
+        "relayctx_mode": "workspace_compact",
+        "relayemo_marker_policy": "suppressed_or_light",
+        "relayemo_expression_policy": "suppressed_or_light",
+        "relaymem_retrieval_scope": "project_context",
+        "relaymem_update_gate": "dry_run_only",
+        "relaysoul_update_gate": "proposal_only",
+        "slp_mode": "optional",
+        "user_confirmation_required": False,
+        "output_rewrite_allowed": False,
+    },
     "recovery": {
         "relayctx_mode": "context_repair",
         "relayemo_marker_policy": "suppressed",
@@ -143,31 +180,28 @@ def build_relayscn_scene_policy_artifact(
 ) -> dict[str, Any]:
     """Build a diagnostics-only RelaySCN scene-policy artifact.
 
-    RelaySCN owns normalized same-turn scene state. The MVP helper prefers
-    explicit RelaySCN/request metadata, falls back to a lightweight text
-    heuristic, and then fails closed for unknown or missing state. It never
-    accepts RelayEMO affect artifacts as normalized scene-state input.
+    RelaySCN owns normalized same-turn scene state. Trusted explicit RelaySCN
+    metadata remains the only default authority that can open permissive policy.
+    Structured scene classifier and scene-wiki matches are included as bounded
+    candidate diagnostics; they may restrict/fail closed, but they do not open
+    broad RelayMEM retrieval or update gates unless the candidate is backed by a
+    trusted/explicit/confirmed source that passes Analyzer Candidate Governance.
+    RelayEMO affect artifacts are never accepted as scene-state input.
     """
 
     payload = payload or {}
     explicit_scene_state = _extract_explicit_scene_state(payload)
+    classifier_candidate = _build_classifier_candidate(payload)
 
     if explicit_scene_state is not None:
         scene_state = explicit_scene_state
         source = "request_metadata"
     else:
-        scene_type, confidence, stability, heuristic_reason = _estimate_scene_from_messages(payload)
-        scene_state = {
-            "schema_version": "relayscn.scene_state.v0",
-            "scene_type": scene_type,
-            "confidence": confidence,
-            "stability": stability,
-            "signals": [heuristic_reason],
-        }
-        source = "heuristic"
+        scene_state, source = _scene_state_from_classifier_candidate(classifier_candidate, payload)
 
     scene_state = _normalize_scene_state(scene_state, source=source)
     scene_policy, persistence_reasons = _build_scene_policy(scene_state)
+    classifier_public = scene_classifier_public_projection(classifier_candidate)
 
     return {
         "schema_version": "relayscn.scene_policy_artifact.v0",
@@ -179,6 +213,10 @@ def build_relayscn_scene_policy_artifact(
         "persistence_block": scene_policy["persistence_block"],
         "persistence_block_reasons": persistence_reasons,
         "diagnostics_required": scene_policy["diagnostics_required"],
+        "scene_classifier_candidate_present": classifier_public["candidate_present"],
+        "scene_classifier_candidate": classifier_candidate,
+        "scene_classifier_candidate_public": classifier_public,
+        "scene_wiki_match": classifier_candidate.get("scene_wiki_match"),
     }
 
 
@@ -199,6 +237,85 @@ def _extract_explicit_scene_state(payload: Mapping[str, Any]) -> dict[str, Any] 
         if isinstance(scene_type, str) and scene_type:
             return dict(candidate)
     return None
+
+
+def _build_classifier_candidate(payload: Mapping[str, Any]) -> dict[str, Any]:
+    raw_candidate = payload.get("scene_classifier_candidate")
+    if not isinstance(raw_candidate, Mapping):
+        metadata = payload.get("metadata")
+        if isinstance(metadata, Mapping):
+            relayscn = metadata.get("relayscn")
+            if isinstance(relayscn, Mapping) and isinstance(relayscn.get("scene_classifier_candidate"), Mapping):
+                raw_candidate = relayscn.get("scene_classifier_candidate")
+            elif isinstance(metadata.get("scene_classifier_candidate"), Mapping):
+                raw_candidate = metadata.get("scene_classifier_candidate")
+    scene_wiki_definitions = _extract_scene_wiki_definitions(payload)
+    return build_scene_classifier_candidate(
+        candidate=raw_candidate if isinstance(raw_candidate, Mapping) else None,
+        payload=payload,
+        scene_wiki_definitions=scene_wiki_definitions,
+    )
+
+
+def _extract_scene_wiki_definitions(payload: Mapping[str, Any]) -> Sequence[Mapping[str, Any]] | None:
+    definitions = payload.get("scene_wiki_definitions")
+    if isinstance(definitions, Sequence) and not isinstance(definitions, str):
+        return [item for item in definitions if isinstance(item, Mapping)]
+    metadata = payload.get("metadata")
+    if isinstance(metadata, Mapping):
+        relayscn = metadata.get("relayscn")
+        if isinstance(relayscn, Mapping):
+            relayscn_definitions = relayscn.get("scene_wiki_definitions")
+            if isinstance(relayscn_definitions, Sequence) and not isinstance(relayscn_definitions, str):
+                return [item for item in relayscn_definitions if isinstance(item, Mapping)]
+        metadata_definitions = metadata.get("scene_wiki_definitions")
+        if isinstance(metadata_definitions, Sequence) and not isinstance(metadata_definitions, str):
+            return [item for item in metadata_definitions if isinstance(item, Mapping)]
+    return None
+
+
+def _scene_state_from_classifier_candidate(
+    classifier_candidate: Mapping[str, Any],
+    payload: Mapping[str, Any],
+) -> tuple[dict[str, Any], str]:
+    candidate_scene_type = classifier_candidate.get("candidate_scene_type")
+    scene_type = candidate_scene_type if isinstance(candidate_scene_type, str) else "unknown"
+    confidence = _coerce_probability(classifier_candidate.get("confidence"), default=0.35)
+    stability = _coerce_probability(classifier_candidate.get("stability"), default=0.35)
+    signal = _signal_from_classifier_candidate(classifier_candidate)
+    source = _relayscn_source_from_classifier_candidate(classifier_candidate)
+
+    if classifier_candidate.get("source") == "heuristic":
+        _legacy_scene_type, _legacy_confidence, _legacy_stability, legacy_signal = _estimate_scene_from_messages(payload)
+        signal = legacy_signal
+
+    return (
+        {
+            "schema_version": "relayscn.scene_state.v0",
+            "scene_type": scene_type,
+            "confidence": confidence,
+            "stability": stability,
+            "signals": [signal],
+        },
+        source,
+    )
+
+
+def _signal_from_classifier_candidate(classifier_candidate: Mapping[str, Any]) -> str:
+    scene_type = classifier_candidate.get("candidate_scene_type")
+    if scene_type in _RESTRICTIVE_HEURISTIC_SCENE_TYPES:
+        return f"keyword:{scene_type}"
+    if classifier_candidate.get("match_strength") in {"medium", "strong"}:
+        return "scene_wiki_candidate_match"
+    return "heuristic_default"
+
+
+def _relayscn_source_from_classifier_candidate(classifier_candidate: Mapping[str, Any]) -> str:
+    if classifier_candidate.get("can_open_runtime_policy") is True:
+        source = classifier_candidate.get("source")
+        if isinstance(source, str) and source in _AUTHORITATIVE_SCENE_STATE_SOURCES:
+            return source
+    return "heuristic"
 
 
 def _normalize_scene_state(raw_scene_state: Mapping[str, Any], *, source: str) -> dict[str, Any]:
@@ -232,15 +349,16 @@ def _normalize_scene_state(raw_scene_state: Mapping[str, Any], *, source: str) -
         else "relayscn.scene_state.v0"
     )
 
+    source_authoritative = source in _AUTHORITATIVE_SCENE_STATE_SOURCES
     return {
         "schema_version": schema_version,
         "scene_type": scene_type,
         "confidence": confidence,
         "stability": stability,
         "signals": normalized_signals,
-        "is_estimate": source != "request_metadata",
-        "scene_state_authority": "authoritative" if source == "request_metadata" else "heuristic",
-        "source_authoritative": source == "request_metadata",
+        "is_estimate": not source_authoritative,
+        "scene_state_authority": "authoritative" if source_authoritative else "heuristic",
+        "source_authoritative": source_authoritative,
         "recovery_mode": raw_scene_state.get("recovery_mode") is True,
         "user_confirmation_required": raw_scene_state.get("user_confirmation_required") is True,
     }
@@ -256,6 +374,7 @@ def _normalize_content_free_signal(signal: Any, *, source: str) -> str:
         "contradiction_detected",
         "unresolved_reference_detected",
         "output_generated_from_recovery_context",
+        "scene_wiki_candidate_match",
     }
     if signal_text in allowed_exact:
         return signal_text
@@ -263,7 +382,10 @@ def _normalize_content_free_signal(signal: Any, *, source: str) -> str:
         signal_text.startswith("keyword:")
         or signal_text.startswith("heuristic_fallback:")
     ):
-        return signal_text
+        suffix = signal_text.split(":", 1)[1]
+        if suffix in KNOWN_SCENE_TYPES:
+            return signal_text
+        return "redacted_signal"
     return "redacted_signal"
 
 
