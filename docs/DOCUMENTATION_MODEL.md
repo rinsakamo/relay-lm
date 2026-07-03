@@ -64,6 +64,8 @@ Use plain scalar or list values only. Do not encode source text, prompts, traces
 | `implementation_plan` | MVP boundary, dependency sequencing, and post-MVP roadmap | `docs/architecture/project_execution_plan.md` | execution sequence and roadmap only, not current implementation status |
 | `redirect_stub` | Compatibility pointer from an older authority path | old plan/roadmap paths | redirect only; never status or sequencing authority |
 | `stable_architecture` | Durable responsibility, component, and target-order design | `docs/architecture/*_design.md` | stable architecture and ownership |
+| `architecture` | Older compatibility alias for stable architecture docs | older `docs/architecture/*.md` files | interpret as `stable_architecture`; prefer canonical `stable_architecture` for new or touched docs |
+| `architecture_report` | Older compatibility alias for architecture/governance reports | older `docs/architecture/*.md` reports | interpret as architecture guidance; prefer a canonical type such as `stable_architecture`, `implementation_plan`, `contract`, or `evaluation_record` when a touched doc clearly fits one |
 | `current_target_migration` | Current, compatibility, target, and migration interpretation | `docs/architecture/current_target_migration_guide.md`, `docs/architecture/relaymem_slp_current_target.md` | current-vs-target interpretation and migration caveats |
 | `implementation_handoff` | Bounded implementation slice record | `docs/architecture/phase*_handoff.md` and dedicated architecture handoff docs | completed or active slice record only |
 | `architecture_handoff` | Older alias for a bounded implementation handoff | `docs/architecture/e1r*.md`, `docs/architecture/phase_i*.md` | completed or active slice record only; prefer `implementation_handoff` for new docs |
@@ -78,7 +80,7 @@ Use plain scalar or list values only. Do not encode source text, prompts, traces
 | `adr` | Durable design decision and consequences | `docs/adr/` | decision rationale and supersession chain |
 | `historical_evidence` | Previous MVP notes or archived rationale | `docs/mvp/`, `docs/architecture/archive/` | evidence only; never current authority |
 
-New documents should prefer the canonical type names above. Existing documents using a listed compatibility alias do not need a rename-only PR, but the alias must be listed here so AI-first readers can interpret it safely.
+New documents should prefer the canonical type names above. Existing documents using a listed compatibility alias do not need a rename-only PR, but the alias must be listed here so AI-first readers can interpret it safely. When a compatibility-alias document is otherwise touched for substantive content, prefer moving it to the closest canonical type in the same PR.
 
 ## Status values
 

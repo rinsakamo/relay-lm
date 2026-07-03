@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: architecture
+relaylm_doc_type: stable_architecture
 relaylm_authority: memory_lifecycle_boundary
 relaylm_status: target
 relaylm_volatility: medium
@@ -7,6 +7,7 @@ relaylm_owner: architecture
 relaylm_update_trigger:
   - short-term memory semantics change
   - RelayMEM or RelaySLP persistence policy changes
+  - RelayREL relationship-memory policy changes
   - SOUL Lab memory operation UI changes
   - file-first workspace memory policy changes
 relaylm_not_authoritative_for:
@@ -14,9 +15,11 @@ relaylm_not_authoritative_for:
   - exact RelayMEM retrieval schemas
   - exact RelaySLP apply schema
   - RelaySOUL revision approval schema
+  - RelayREL relationship update schema
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - file_first_character_workspace_design.md
+  - relayrel_relationship_design.md
   - context_packing_design.md
   - relaymem_mvp_design.md
   - relaymem_slp_execution_design.md
@@ -32,9 +35,9 @@ relaylm_related_authority:
 
 ## Purpose
 
-This document defines how RelayLM treats short-term memory, governed experience evidence, long-term MEM formation, memory policy, and SOUL Lab memory operations as one lifecycle.
+This document defines how RelayLM treats short-term memory, governed experience evidence, long-term MEM formation, memory policy, relationship-memory interaction, and SOUL Lab memory operations as one lifecycle.
 
-The target user-facing source model is file-first. The stable policy for memory behavior lives in `MEMORY.md`; human-readable memory pages live under `memory/**/*.md`; generated units, indexes, and projections live under `.relaylm/**`.
+The target user-facing source model is file-first. The stable policy for memory behavior lives in `MEMORY.md`; human-readable memory pages live under `memory/**/*.md`; relationship role and target-specific interaction policy live under `RELATIONSHIP.md` and `relationships/<target>.md`; generated units, indexes, and projections live under `.relaylm/**`.
 
 The key product boundary is:
 
@@ -42,7 +45,7 @@ The key product boundary is:
 Ordinary MEM formation is autonomous by default.
 User approval is not required for every ordinary memory formation.
 SOUL / STYLE / EMOTION / SCENE / RELATIONSHIP / MEMORY / BOUNDARY changes
-and high-risk memory operations require explicit intervention or proposals.
+and high-risk memory or relationship operations require explicit intervention or proposals.
 ```
 
 RelayMEM should feel like a character forming experience, not like the user managing a per-turn approval queue. SOUL Lab should let the user observe, correct, archive, forget, merge, and inspect what was used without turning memory into user labor.
@@ -133,12 +136,16 @@ RelayMEM durable memory
   -> formed memory blocks, summaries, relations, lifecycle revisions, retrieval pages,
      and compiled memory_units.jsonl / indexes
 
+RelayREL relationship policy
+  -> target-specific permissions and relationship salience that may constrain memory reference,
+     relationship-memory updates, and relationship proposals
+
 SOUL Lab / Character Workspace UI
   -> observation, correction, archive, forget, merge, source review,
      and escalation to proposals when needed
 ```
 
-Short-term memory helps the current interaction. Long-term MEM crystallizes experience for future interactions.
+Short-term memory helps the current interaction. Long-term MEM crystallizes experience for future interactions. RelayREL decides whether and how target-specific relationship policy may modulate memory reference and relationship update candidates; it does not replace RelayMEM storage or RelaySLP evidence reconciliation.
 
 ## Memory layers
 
@@ -149,18 +156,19 @@ RelayLM memory should be read as four related layers:
    Working memory for the current turn, session, or scene.
 
 1. Primary MEM / Experience MEM
-   EMO- and SCN-influenced experiential memory.
+   EMO-, SCN-, and REL-influenced experiential memory.
 
 2. Secondary MEM / Crystallized MEM
    SLP-consolidated memory organized against SOUL, BOUNDARY, MEMORY policy,
-   existing MEM, lineage, relation typing, contradiction checks, and retrieval needs.
+   existing MEM, lineage, relation typing, contradiction checks, relationship policy,
+   and retrieval needs.
 
 3. Character source layer
    SOUL / STYLE / EMOTION / SCENE / RELATIONSHIP / MEMORY / BOUNDARY.
    This layer is not ordinary memory and changes through explicit proposal/approval.
 ```
 
-SOUL is not just another memory page. MEMORY is not a memory page either; it is the stable policy source used to decide what should be remembered, how it should be recalled, and when a candidate must be held or proposed.
+SOUL is not just another memory page. MEMORY is not a memory page either; it is the stable policy source used to decide what should be remembered, how it should be recalled, and when a candidate must be held or proposed. RELATIONSHIP is not a memory page either; it is RelayREL policy and target-specific interaction state.
 
 ## Primary MEM: experience memory
 
@@ -242,6 +250,12 @@ Experience evidence is governed source material produced around a turn, session,
 It may include source references to the latest exchange, communication session summaries, RelayCTX Unpack/update candidates after validation, RelaySCN scene/persistence policy, RelayREL relationship policy classes, RelayEMO expression or salience evidence in bounded form, RelayRUN checkpoint/recovery metadata, user corrections or explicit memory requests, retrieval summaries, and source lineage.
 
 Content-bearing evidence belongs in the protected memory/source domain, such as `.relaylm/sources/**`, not default trace/audit projections.
+
+### RelayREL
+
+RelayREL owns target-specific relationship state and interaction policy. It may decide whether personal-memory references, bold inferences, relationship salience boosts, public familiarity, and repair style are permitted for a target in the current scene.
+
+RelayREL does not store durable memory evidence and does not mutate `memory/**/*.md`. It may receive relationship update candidates from RelaySLP and may require explicit review for important `relationships/<target>.md` changes.
 
 ### RelaySLP
 
@@ -453,6 +467,7 @@ This lifecycle does not make RelayLM:
 RelayCTX keeps short-term continuity.
 Primary MEM captures SCN / EMO / REL-influenced experience.
 RelaySLP consolidates Primary MEM into Secondary MEM when gates pass.
+RelayREL owns target-specific relationship policy, not durable memory storage.
 MEMORY.md defines memory policy.
 memory/**/*.md stores human-readable memory pages.
 .relaylm/build stores compiled retrieval units and indexes.
