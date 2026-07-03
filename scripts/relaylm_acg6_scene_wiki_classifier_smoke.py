@@ -36,6 +36,8 @@ def _assert_content_free(value: object) -> None:
         "free-form rationale",
         "secret private scene",
         "SECRET_SCENE_MARKDOWN",
+        "private_abuse_history",
+        "private_scene_family",
     ):
         _assert(token not in serialized, serialized)
 
@@ -80,6 +82,23 @@ def main() -> None:
     _assert("unrecognized_scene_type" in free_public["validation_error_ids"], free_public)
     _assert_content_free(free_form)
     _assert_content_free(free_public)
+
+    untrusted_private_tokens = build_scene_classifier_candidate(
+        candidate={
+            "source": "llm_candidate",
+            "candidate_scene_type": "implementation_work",
+            "candidate_scene_id": "private_abuse_history",
+            "candidate_scene_family": "private_scene_family",
+            "confidence": 0.88,
+            "stability": 0.83,
+        }
+    )
+    untrusted_private_public = scene_classifier_public_projection(untrusted_private_tokens)
+    _assert(untrusted_private_tokens["candidate_scene_id"] is None, untrusted_private_tokens)
+    _assert(untrusted_private_tokens["matched_scene_wiki_id"] is None, untrusted_private_tokens)
+    _assert(untrusted_private_public["matched_scene_wiki_id"] is None, untrusted_private_public)
+    _assert_content_free(untrusted_private_tokens)
+    _assert_content_free(untrusted_private_public)
 
     llm_open_attempt = build_scene_classifier_candidate(
         candidate={
@@ -199,6 +218,30 @@ def main() -> None:
     _assert(wiki_policy["scene_policy"]["relaymem_retrieval_scope"] == "current_context_only", wiki_policy)
     _assert_content_free(wiki_policy["scene_classifier_candidate_public"])
 
+    trusted_id_only = build_scene_classifier_candidate(
+        candidate={
+            "source": "confirmed_user_action",
+            "source_authoritative": True,
+            "candidate_applied": True,
+            "candidate_scene_id": "code_review",
+            "policy_authority": "bounded",
+            "restrictive_only": False,
+            "confidence": 0.95,
+            "stability": 0.90,
+        },
+        scene_wiki_definitions=definitions,
+    )
+    _assert(trusted_id_only["candidate_scene_type"] == "review_work", trusted_id_only)
+    _assert(trusted_id_only["candidate_scene_id"] == "repo_review", trusted_id_only)
+    _assert(trusted_id_only["candidate_scene_family"] == "implementation", trusted_id_only)
+    _assert(trusted_id_only["can_open_runtime_policy"] is True, trusted_id_only)
+    trusted_id_only_policy = build_relayscn_scene_policy_artifact(
+        payload={"scene_classifier_candidate": trusted_id_only, "scene_wiki_definitions": definitions}
+    )
+    _assert(trusted_id_only_policy["scene_state_source"] == "confirmed_user_action", trusted_id_only_policy)
+    _assert(trusted_id_only_policy["scene_state"]["scene_type"] == "review_work", trusted_id_only_policy)
+    _assert(trusted_id_only_policy["scene_policy"]["relaymem_retrieval_scope"] == "current_project_only", trusted_id_only_policy)
+
     confirmed = build_scene_classifier_candidate(
         candidate={
             "source": "confirmed_user_action",
@@ -234,6 +277,7 @@ def main() -> None:
         "free_form": free_public,
         "wiki": wiki_policy["scene_classifier_candidate_public"],
         "confirmed": confirmed_policy["scene_classifier_candidate_public"],
+        "trusted_id_only": trusted_id_only_policy["scene_classifier_candidate_public"],
     }
     _assert_content_free(public_payload)
 
