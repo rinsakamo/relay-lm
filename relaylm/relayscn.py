@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -19,6 +20,7 @@ KNOWN_SCENE_TYPES = {
 
 LOW_CONFIDENCE_THRESHOLD = 0.70
 LOW_STABILITY_THRESHOLD = 0.65
+_RESTRICTIVE_HEURISTIC_SCENE_TYPES = {"medical_or_safety", "formal_document", "recovery"}
 
 _POLICY_BY_SCENE_TYPE: dict[str, dict[str, Any]] = {
     "casual_chat": {
@@ -138,25 +140,21 @@ _FAIL_CLOSED_UNKNOWN_POLICY = {
 def build_relayscn_scene_policy_artifact(
     *,
     payload: Mapping[str, Any] | None = None,
-    relayemo_artifact: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a diagnostics-only RelaySCN scene-policy artifact.
 
-    The MVP helper prefers explicit request/RelayEMO metadata, falls back to a
-    lightweight text heuristic, and then fails closed for unknown or missing
-    state. It never mutates request payloads or runtime behavior.
+    RelaySCN owns normalized same-turn scene state. The MVP helper prefers
+    explicit RelaySCN/request metadata, falls back to a lightweight text
+    heuristic, and then fails closed for unknown or missing state. It never
+    accepts RelayEMO affect artifacts as normalized scene-state input.
     """
 
     payload = payload or {}
     explicit_scene_state = _extract_explicit_scene_state(payload)
-    relayemo_scene_state = _extract_relayemo_scene_state(relayemo_artifact)
 
     if explicit_scene_state is not None:
         scene_state = explicit_scene_state
         source = "request_metadata"
-    elif relayemo_scene_state is not None:
-        scene_state = relayemo_scene_state
-        source = "relayemo_artifact"
     else:
         scene_type, confidence, stability, heuristic_reason = _estimate_scene_from_messages(payload)
         scene_state = {
@@ -174,6 +172,7 @@ def build_relayscn_scene_policy_artifact(
     return {
         "schema_version": "relayscn.scene_policy_artifact.v0",
         "diagnostics_only": True,
+        "content_free": True,
         "scene_state_source": source,
         "scene_state": scene_state,
         "scene_policy": scene_policy,
@@ -202,20 +201,6 @@ def _extract_explicit_scene_state(payload: Mapping[str, Any]) -> dict[str, Any] 
     return None
 
 
-def _extract_relayemo_scene_state(
-    relayemo_artifact: Mapping[str, Any] | None,
-) -> dict[str, Any] | None:
-    if not isinstance(relayemo_artifact, Mapping):
-        return None
-    scene_state = relayemo_artifact.get("scene_state")
-    if not isinstance(scene_state, Mapping):
-        return None
-    scene_type = scene_state.get("scene_type")
-    if not isinstance(scene_type, str) or not scene_type:
-        return None
-    return dict(scene_state)
-
-
 def _normalize_scene_state(raw_scene_state: Mapping[str, Any], *, source: str) -> dict[str, Any]:
     raw_scene_type = raw_scene_state.get("scene_type") or raw_scene_state.get("type")
     scene_type = raw_scene_type if isinstance(raw_scene_type, str) and raw_scene_type else "unknown"
@@ -230,25 +215,56 @@ def _normalize_scene_state(raw_scene_state: Mapping[str, Any], *, source: str) -
 
     signals = raw_scene_state.get("signals")
     normalized_signals = (
-        [str(x) for x in signals]
+        [_normalize_content_free_signal(x, source=source) for x in signals]
         if isinstance(signals, Sequence) and not isinstance(signals, str)
         else []
     )
+    normalized_signals = list(dict.fromkeys(normalized_signals))
     if scene_type == "unknown" and "unknown_scene_fail_closed" not in normalized_signals:
         normalized_signals.append("unknown_scene_fail_closed")
     if source == "heuristic" and not normalized_signals:
         normalized_signals.append("heuristic_default")
 
+    raw_schema_version = raw_scene_state.get("schema_version")
+    schema_version = (
+        raw_schema_version
+        if raw_schema_version == "relayscn.scene_state.v0"
+        else "relayscn.scene_state.v0"
+    )
+
     return {
-        "schema_version": str(raw_scene_state.get("schema_version") or "relayscn.scene_state.v0"),
+        "schema_version": schema_version,
         "scene_type": scene_type,
         "confidence": confidence,
         "stability": stability,
         "signals": normalized_signals,
         "is_estimate": source != "request_metadata",
+        "scene_state_authority": "authoritative" if source == "request_metadata" else "heuristic",
+        "source_authoritative": source == "request_metadata",
         "recovery_mode": raw_scene_state.get("recovery_mode") is True,
         "user_confirmation_required": raw_scene_state.get("user_confirmation_required") is True,
     }
+
+
+def _normalize_content_free_signal(signal: Any, *, source: str) -> str:
+    signal_text = str(signal)
+    allowed_exact = {
+        "unknown_scene_fail_closed",
+        "heuristic_default",
+        "missing_message_metadata",
+        "slp_confusion_unresolved",
+        "contradiction_detected",
+        "unresolved_reference_detected",
+        "output_generated_from_recovery_context",
+    }
+    if signal_text in allowed_exact:
+        return signal_text
+    if source == "heuristic" and (
+        signal_text.startswith("keyword:")
+        or signal_text.startswith("heuristic_fallback:")
+    ):
+        return signal_text
+    return "redacted_signal"
 
 
 def _build_scene_policy(scene_state: Mapping[str, Any]) -> tuple[dict[str, Any], list[str]]:
@@ -257,8 +273,23 @@ def _build_scene_policy(scene_state: Mapping[str, Any]) -> tuple[dict[str, Any],
         if isinstance(scene_state.get("scene_type"), str)
         else "unknown"
     )
-    base_policy = _POLICY_BY_SCENE_TYPE.get(scene_type, _FAIL_CLOSED_UNKNOWN_POLICY)
-    policy = {"schema_version": "relayscn.scene_policy.v0", **base_policy}
+    source_authoritative = scene_state.get("source_authoritative") is True
+    heuristic_may_restrict = (
+        scene_state.get("is_estimate") is True
+        and scene_type in _RESTRICTIVE_HEURISTIC_SCENE_TYPES
+    )
+    if source_authoritative or heuristic_may_restrict:
+        base_policy = _POLICY_BY_SCENE_TYPE.get(scene_type, _FAIL_CLOSED_UNKNOWN_POLICY)
+        policy_authority = "authoritative" if source_authoritative else "heuristic_restrictive"
+    else:
+        base_policy = _FAIL_CLOSED_UNKNOWN_POLICY
+        policy_authority = "heuristic_non_authoritative"
+    policy = {
+        "schema_version": "relayscn.scene_policy.v0",
+        **base_policy,
+        "policy_authority": policy_authority,
+        "source_authoritative": source_authoritative,
+    }
 
     confidence = _coerce_probability(scene_state.get("confidence"), default=0.0)
     stability = _coerce_probability(scene_state.get("stability"), default=0.0)
@@ -272,6 +303,8 @@ def _build_scene_policy(scene_state: Mapping[str, Any]) -> tuple[dict[str, Any],
         reasons.append("scene_type_is_medical_or_safety")
     if scene_type == "formal_document":
         reasons.append("scene_type_is_formal_document")
+    if policy_authority == "heuristic_non_authoritative":
+        reasons.append("heuristic_scene_state_non_authoritative")
     if policy.get("user_confirmation_required") is True:
         reasons.append("user_confirmation_required")
     if confidence < LOW_CONFIDENCE_THRESHOLD:
@@ -315,20 +348,37 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
         ),
         (
             "medical_or_safety",
-            ("medical", "doctor", "病院", "薬", "危険", "安全", "safety", "legal"),
+            ("medical", "doctor", "病院", "薬", "医療", "危険", "安全", "safety", "legal"),
             0.82,
             0.78,
         ),
         (
             "formal_document",
-            ("formal", "report", "契約", "公的", "公式", "論文", "document"),
+            ("formal", "report", "契約", "公的", "公式", "論文", "文書", "document"),
             0.80,
             0.76,
         ),
-        ("review_work", ("review", "pr ", "diff", "レビュー", "検証"), 0.78, 0.72),
+        ("review_work", ("review", "pr ", "pr#", "diff", "レビュー", "検証"), 0.78, 0.72),
         (
             "implementation_work",
-            ("implement", "code", "repo", "ファイル", "実装", "修正", "commit"),
+            (
+                "implement",
+                "code",
+                "コード",
+                "repo",
+                "bug",
+                "error",
+                "fix ",
+                "fix this",
+                "ファイル",
+                "実装",
+                "実装して",
+                "修正",
+                "修正して",
+                "バグ",
+                "直して",
+                "commit",
+            ),
             0.78,
             0.72,
         ),
@@ -346,7 +396,7 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
         ),
         (
             "vtuber_roleplay",
-            ("vtuber", "live2d", "tts", "roleplay", "ロールプレイ"),
+            ("vtuber", "live2d", "tts", "roleplay", "ロールプレイ", "配信"),
             0.74,
             0.70,
         ),
@@ -354,7 +404,16 @@ def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, floa
     for scene_type, needles, confidence, stability in checks:
         if any(needle in text for needle in needles):
             return scene_type, confidence, stability, f"keyword:{scene_type}"
+    if _contains_ascii_word(text, "pr"):
+        return "review_work", 0.78, 0.72, "keyword:review_work"
+    if _contains_ascii_word(text, "file"):
+        return "implementation_work", 0.78, 0.72, "keyword:implementation_work"
     return "casual_chat", 0.62, 0.60, "heuristic_fallback:casual_chat"
+
+
+def _contains_ascii_word(text: str, word: str) -> bool:
+    pattern = rf"(?<![a-z0-9_]){re.escape(word)}(?![a-z0-9_])"
+    return re.search(pattern, text) is not None
 
 
 def _latest_user_text(payload: Mapping[str, Any]) -> str:

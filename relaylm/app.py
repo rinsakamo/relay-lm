@@ -72,6 +72,7 @@ from relaylm.relayint import (
     build_relayint_request_compatibility_gate,
 )
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
+from relaylm.relayrel import build_relayrel_relationship_projection
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
@@ -288,6 +289,14 @@ def create_app(config_path: str | None = None) -> FastAPI:
         )
         forwarded_payload = pipeline_context.forwarded_payload
         token_budget_truncation: dict[str, Any] | None = None
+        relayrel_relationship_projection = build_relayrel_relationship_projection(
+            route=route,
+            request_scope_identity=request_scope_identity,
+        )
+        _ = relayrel_relationship_projection
+        relayscn_scene_policy_artifact = build_relayscn_scene_policy_artifact(
+            payload=payload,
+        )
         relayemo_artifact: dict[str, Any] | None = None
         if config.relayemo_enabled:
             session_key, session_key_source = _resolve_relayemo_session_key(
@@ -334,10 +343,6 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     max_entries=config.relayemo_session_state_max_entries,
                 )
 
-        relayscn_scene_policy_artifact = build_relayscn_scene_policy_artifact(
-            payload=payload,
-            relayemo_artifact=relayemo_artifact,
-        )
         relayref_artifact = build_relayint_reference_repair_dry_run(
             relayscn_artifact=relayscn_scene_policy_artifact,
             messages=_extract_trace_messages(payload),

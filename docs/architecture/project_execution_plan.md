@@ -275,7 +275,7 @@ The E1-R5 handoff is [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_me
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-Compatibility anchor for E1 evaluation consolidation smokes. The current next-work list is the Character Workspace reset plus the P0 RelayREL / RelaySCN / RelayEMO ordering fix.
+Compatibility anchor for E1 evaluation consolidation smokes. The P0 RelayREL / RelaySCN / RelayEMO ordering fix is complete only after actual app.py request-path rewiring and validation; Character Workspace reset work follows that boundary.
 
 ### Character Workspace reset next candidates
 
@@ -318,7 +318,7 @@ Post-MVP decision debt registry:
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope
   PM-D3 RelayEMO/RelaySCN scene_state ownership
-    -> Execute the existing RelaySCN-owned `scene_state` migration plan through the P0 RelayREL / RelaySCN / RelayEMO ordering fix before Character Workspace implementation
+    -> Execute the existing RelaySCN-owned `scene_state` migration plan through the P0 RelayREL / RelaySCN / RelayEMO ordering fix; mark complete only after app.py is rewired and validation passes, then start Character Workspace implementation
   PM-D4 client history exclusion default-off deployment decision
   PM-D5 RelayMEM flat-store compatibility removal
   PM-D6 RelayINT native artifact / RelayREF wrapper removal

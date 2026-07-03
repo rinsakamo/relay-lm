@@ -34,10 +34,11 @@ relaylm_related_authority:
   - docs/architecture/wave7_cross_slice_convergence_audit.md
   - docs/architecture/wave6_cross_slice_convergence_audit.md
   - docs/architecture/wave5_cross_slice_convergence_audit.md
+  - docs/architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md
 ---
 # RelayLM Project Status
 
-Last reviewed: 2026-06-30 JST
+Last reviewed: 2026-07-02 JST
 
 ## Purpose and authority
 
@@ -72,6 +73,7 @@ O2 supervised worker service: planned/unimplemented
 O3 always-on local operation: planned/unimplemented
 
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall, scope isolation, and E1-R5 scoped candidate bridge complete
+P0-PIPE RelayREL / RelaySCN / RelayEMO ordering: complete in PR #458 after actual app.py request-path rewiring and local validation; RelayREL now precedes RelaySCN, RelaySCN precedes input-side RelayEMO, RelayINT/RelayMEM/RelayCTX remain downstream
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0, UI-B1A, I-4E Forget UI, I-5B Pin / Unpin UI, and I-7C Held Governance UI complete
 UI-B1A read-only lifecycle visibility: complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete through M2-preferred recall plus E1-R5 bounded scoped candidate bridge
@@ -117,6 +119,7 @@ W6-INT merged
 Wave 7 implementation tracks complete
 W7-INT merged
 Post-Wave-7 E1-R5 correction merged and converged
+P0-PIPE ordering slice is complete after PR #458 rewired app.py and validation passed for compile, ordering smoke, docs link check, and current-boundary smoke
 ```
 
 Historical Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6. E1-R3 and E1-R4 are complete through Wave 7. E1-R5 is complete as a post-Wave-7 correction to the E1 recall proof boundary.
@@ -189,21 +192,38 @@ E1 evaluation consolidation is complete as a docs/evidence boundary. E1-R1 adds 
 
 Wave 7 convergence is recorded in [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). E1-R5 is recorded in [E1-R5 Primary MEM Recall Candidate Discovery Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md), [E1-R5 completion report](mvp/wave7/e1r5_completion_report.md), and [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The E1 proof boundary now includes E1-R5 and does not claim that M2 alone always selects current eligible scoped Primary MEM.
 
+## RelayREL / RelaySCN / RelayEMO ordering boundary
+
+P0-PIPE is complete in PR #458 after the actual FastAPI `app.py` request path was rewired and validation passed. The request path now establishes the content-free RelayREL relationship projection, builds RelaySCN scene policy without any RelayEMO artifact compatibility input, runs input-side RelayEMO afterward, and keeps RelayINT, RelayMEM retrieval, and RelayCTX repack/injection downstream of RelaySCN ownership.
+
+This does not implement full RelayREL relationship Markdown parsing, Character Workspace source tree parsing, Character Workspace compiler projections, Quick Create / Advanced Create, or Character Workspace UI.
+
 ## Current caveats
 
 E1-R4 is request-side only. It builds a backend-bound grounded recall context and instruction from eligible retrieved Primary MEM evidence; it does not add post-hoc visible response rewriting, polling, supervision, O2/O3, browser-owned trust, or new memory mutation authority.
 
 E1-R5 is a bounded request-side fallback bridge. It does not replace M2 as the preferred relevance owner, does not run without query hints, does not scan unbounded filesystem trees, does not use the compatibility symlink, and does not add mutation, worker, scheduler, queue, browser trust, RelaySOUL, or media runtime authority.
 
-Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-freeze relation, PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope, PM-D3 RelayEMO/RelaySCN scene_state ownership, PM-D4 client history exclusion default-off deployment decision, PM-D5 RelayMEM flat-store compatibility removal, PM-D6 RelayINT native artifact / RelayREF wrapper removal, PM-D7 runtime install hook fold-in, and PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in. These items are intentionally unimplemented until dedicated roadmap PRs close or absorb them.
+Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-freeze relation, PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope, PM-D3 RelayEMO/RelaySCN scene_state ownership, PM-D4 client history exclusion default-off deployment decision, PM-D5 RelayMEM flat-store compatibility removal, PM-D6 RelayINT native artifact / RelayREF wrapper removal, PM-D7 runtime install hook fold-in, and PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in. These items are intentionally unimplemented until dedicated roadmap PRs close or absorb them. PM-D3 is closed by PR #458 only because the actual request path is rewired and validated, not merely because helper/projection code exists.
 
 ## Immediate dependency-first work
 
 ```text
+Character Workspace parser/compiler/UI slices
+  -> begin only after the completed P0-PIPE request-path ordering fix
+  -> keep full RelayREL Markdown parsing out of PR #458
+
+Character Workspace reset next candidates:
+  CW-A1 file-first source tree and parser contracts
+  CW-A2 workspace compiler projections and KV-cache tiers
+  CW-A3 Character Workspace UI rebuild
+  CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals
+  CW-A5 character creation, templates, and showcase import
+
 Post-E1-R5 / Post-Wave-7 next candidates:
+  E1-R5 scoped Primary recall candidate bridge boundary remains complete; new work starts after P0-PIPE.
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D4 client history exclusion default-off deployment decision
-  PM-D3 RelayEMO/RelaySCN scene_state ownership
   PM-D5 RelayMEM flat-store compatibility removal
   PM-D6 RelayINT native artifact / RelayREF wrapper removal
   PM-D7 runtime install hook fold-in
@@ -213,14 +233,17 @@ Post-E1-R5 / Post-Wave-7 next candidates:
   Static SOUL Lab bundle serving, if local packaging requires it
 ```
 
-The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The E1-R5 post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](architecture/wave6_cross_slice_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). The E1-R5 implementation handoff is [E1-R5 Primary MEM Recall Candidate Discovery Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
+The completed P0-PIPE implementation boundary is [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md). The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The E1-R5 post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](architecture/wave6_cross_slice_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). The E1-R5 implementation handoff is [E1-R5 Primary MEM Recall Candidate Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 
 ## Safe defaults
 
-Current mutation, worker, durable-finalization, retention, scheduler-related paths, and E1 evaluation paths remain default-off or explicitly caller/operator invoked. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1D1 accepts exact scheduler gates but runs only one caller-invoked round and returns without sleep. O1D2 returns bounded policy hints only. O1E returns bounded operational-control projections only. O1F validates operational edges but does not loop, poll, sleep, supervise, or run always-on. E1-R1 defaults disabled and does not accept browser-owned trust. E1-R2 is an explicit dry-run-first operator command. E1-R3 exposes only content-free provenance counts/statuses publicly and keeps raw user text, assistant text, protected source bodies, queue payloads, roots, paths, tokens, owners, and digests out of public projections. E1-R4 exposes only content-free grounded-recall counts/statuses publicly and keeps runtime-private evidence out of public projections. E1-R5 exposes only content-free bridge discovery counts/statuses publicly and keeps memory text, page paths, roots, namespaces, ids, digests, lineage, queue payloads, and protected source bodies out of public projections.
+Current mutation, worker, durable-finalization, retention, scheduler-related paths, and E1 evaluation paths remain default-off or explicitly caller/operator invoked. I1-GC does not add a scanner or automatic retry loop. I1-GD performs one bounded caller-invoked pass and does not poll or invoke replay. O1D1 accepts exact scheduler gates but runs only one caller-invoked round and returns without sleep. O1D2 returns bounded policy hints only. O1E returns bounded operational-control projections only. O1F validates operational edges but does not loop, poll, sleep, supervise, or run always-on. E1-R1 defaults disabled and does not accept browser-owned trust. E1-R2 is an explicit dry-run-first operator command. E1-R3 exposes only content-free provenance counts/statuses publicly and keeps raw user text, assistant text, protected source bodies, queue payloads, roots, paths, tokens, owners, and digests out of public projections. E1-R4 exposes only content-free grounded-recall counts/statuses publicly and keeps runtime-private evidence out of public projections. E1-R5 exposes only content-free bridge discovery counts/statuses publicly and keeps memory text, page paths, roots, namespaces, ids, digests, lineage, queue payloads, and protected source bodies out of public projections. P0-PIPE projections expose only content-free ordering/projection evidence and keep relationship bodies, scene bodies, memory bodies, raw messages, private state, and assistant output out of public projections.
 
 ## Not yet implemented
 
+- Character Workspace source tree parser/compiler/UI;
+- Quick Create / Advanced Create / template import UI;
+- full RelayREL relationship Markdown parsing;
 - O2 supervised worker service and O3 always-on local operation;
 - restore/unhide or physical purge;
 - Merge / Supersession runtime apply;
@@ -238,37 +261,3 @@ O1B is complete for one bounded, non-recursive inventory of the configured I1-G 
 ## Wave 2 cross-slice convergence
 
 W2-INT audits the merged I1-GD, I-4C2, O1B, and O1C production boundaries. It adds no scheduler loop or retrieval exclusion. The Wave 2 audit is frozen historical evidence.
-
-## Wave 3 cross-slice convergence
-
-Wave 3 implementation tracks are complete: I1-GE, I-4D, and O1D1. W3-INT records their source PRs, merge commits, completion reports, handoffs, lock/root/config map, leakage proof, and frozen Wave 4 inputs. W3-INT is merged.
-
-## Wave 4 cross-slice convergence
-
-Wave 4 implementation tracks are complete: O1D2, I-4E, UI-B1A, I-5A, and I-7A/B. W4-INT records their source PRs, merge commits, completion reports, handoffs, authority map, leakage review, and frozen post-Wave-4 inputs. W4-INT is merged.
-
-## Wave 5 cross-slice convergence
-
-Post-Wave-4 / Wave 5 implementation tracks are complete: E1 evaluation consolidation, O1E scheduler operational controls, and I-4F Forget product-completion validation. W5-INT records their source PRs, merge commits, completion reports, handoffs, authority map, leakage review, and frozen next inputs. W5-INT is merged.
-
-Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6; E1-R3 and E1-R4 are complete through Wave 7; E1-R5 is complete as a post-Wave-7 correction.
-
-## Wave 6 cross-slice convergence
-
-Wave 6 implementation tracks are complete: I-5B, I-7C, E1-R1, and E1-R2. W6-INT is merged.
-
-## Wave 7 cross-slice convergence
-
-Wave 7 implementation tracks are complete: E1-R3 and E1-R4. W7-INT is merged. E1-R5 landed after W7-INT and is now converged as a post-Wave-7 correction to the E1 recall proof boundary.
-
-## E1-R3 provenance formation boundary
-
-E1-R3 is complete for speaker-provenance-safe Primary MEM formation summary. It preserves user assertion evidence separately from assistant acknowledgement/speculation and scene/trust qualification while keeping existing C1-5/B2/B3/C2/M3 authorities unchanged.
-
-## E1-R4 grounded recall response boundary
-
-E1-R4 is complete for request-side retrieval-response grounding and unsupported-detail suppression. It consumes retrieved eligible Primary MEM evidence, creates backend-bound grounding instructions, keeps public projections content-free, and does not add post-hoc visible response rewriting or a new mutation/retrieval authority.
-
-## E1-R5 scoped Primary recall candidate bridge boundary
-
-E1-R5 is complete for bounded scoped Primary MEM recall candidate discovery. M2 remains the preferred relevance owner. When no eligible scoped Primary candidate survives existing M2 narrowing, E1-R5 may derive bounded candidates from exact character-scoped Primary index/log/page controls, apply shared I-4D lifecycle eligibility, require query relevance, rebuild the existing RelayCTX/E1-R4 handoff shape, and keep public diagnostics content-free. It does not add broad retrieval ranking, unbounded filesystem scans, compatibility symlink dependence, worker/scheduler/queue authority, memory mutation, RelaySOUL mutation, media runtime work, or post-hoc visible response rewriting.
