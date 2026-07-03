@@ -233,6 +233,19 @@ def normalize_reference_intent_artifact(artifact: Mapping[str, Any] | None) -> d
     if "unknown" in intent_kinds:
         intent_kinds = ["unknown"]
 
+    invalid_detection_flags = analyzer_kind == "unknown" or reference_kind == "unknown" or intent_kinds == ["unknown"]
+    if invalid_detection_flags and any(
+        raw.get(key) is True
+        for key in (
+            "ambiguity_detected",
+            "unresolved_reference_detected",
+            "prior_memory_request_detected",
+            "continuation_detected",
+            "clarification_recommended",
+        )
+    ):
+        errors.append("invalid_detection_flags_dropped")
+
     governance = raw.get("governance")
     if isinstance(governance, Mapping):
         governance = normalize_analyzer_candidate_artifact(governance)
@@ -252,6 +265,12 @@ def normalize_reference_intent_artifact(artifact: Mapping[str, Any] | None) -> d
             validation_errors=errors,
         )
     governance_public = content_free_projection(governance)
+    ambiguity_detected = False if invalid_detection_flags else raw.get("ambiguity_detected") is True
+    unresolved_reference_detected = False if invalid_detection_flags else raw.get("unresolved_reference_detected") is True
+    prior_memory_request_detected = False if invalid_detection_flags else raw.get("prior_memory_request_detected") is True
+    continuation_detected = False if invalid_detection_flags else raw.get("continuation_detected") is True
+    clarification_recommended = False if invalid_detection_flags else raw.get("clarification_recommended") is True
+    reference_terms_detected_count = 0 if invalid_detection_flags else _non_negative_int(raw.get("reference_terms_detected_count"))
     return {
         "schema_version": SCHEMA_VERSION,
         "analyzer_kind": analyzer_kind,
@@ -259,23 +278,23 @@ def normalize_reference_intent_artifact(artifact: Mapping[str, Any] | None) -> d
         "source_language": governance["source_language"],
         "reference_kind": reference_kind,
         "intent_kinds": intent_kinds,
-        "ambiguity_detected": raw.get("ambiguity_detected") is True,
-        "unresolved_reference_detected": raw.get("unresolved_reference_detected") is True,
-        "prior_memory_request_detected": raw.get("prior_memory_request_detected") is True,
-        "continuation_detected": raw.get("continuation_detected") is True,
-        "clarification_recommended": raw.get("clarification_recommended") is True,
+        "ambiguity_detected": ambiguity_detected,
+        "unresolved_reference_detected": unresolved_reference_detected,
+        "prior_memory_request_detected": prior_memory_request_detected,
+        "continuation_detected": continuation_detected,
+        "clarification_recommended": clarification_recommended,
         "confidence": governance["confidence"],
         "stability": governance["stability"],
         "is_estimate": governance["is_estimate"],
         "source_authoritative": governance["source_authoritative"],
-        "candidate_applied": governance["candidate_applied"],
-        "policy_authority": governance["policy_authority"],
+        "candidate_applied": False if invalid_detection_flags else governance["candidate_applied"],
+        "policy_authority": "none" if invalid_detection_flags else governance["policy_authority"],
         "restrictive_only": governance["restrictive_only"],
         "content_free": True,
         "reason_ids": list(governance["reason_ids"]),
         "validation_errors": _dedupe([*errors, *list(governance["validation_errors"])]),
-        "reference_terms_detected_count": _non_negative_int(raw.get("reference_terms_detected_count")),
-        "runtime_policy_open_allowed": can_open_runtime_policy(governance),
+        "reference_terms_detected_count": reference_terms_detected_count,
+        "runtime_policy_open_allowed": False if invalid_detection_flags else can_open_runtime_policy(governance),
         "governance": governance,
         "governance_public": governance_public,
     }
