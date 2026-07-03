@@ -101,6 +101,26 @@ def main() -> None:
     assert "unsupported_field_dropped" in direct_public["validation_error_ids"]
     _assert_content_free(direct_public)
 
+    enum_non_string_raw = {
+        "schema_version": SCHEMA_VERSION,
+        "analyzer_kind": "query_detail_candidate",
+        "source": "trusted_explicit",
+        "source_language": "en",
+        "source_authoritative": True,
+        "candidate_applied": True,
+        "policy_authority": "bounded",
+        "restrictive_only": False,
+        "confidence": 0.9,
+        "stability": 0.8,
+        "content_free": True,
+        "enum_values": [123],
+    }
+    enum_non_string_result = validate_analyzer_candidate_artifact(enum_non_string_raw)
+    enum_non_string_public = enum_non_string_result.to_public_dict()
+    assert enum_non_string_result.is_valid is False
+    assert can_open_runtime_policy(enum_non_string_raw) is False
+    assert "unknown_enum_value" in enum_non_string_public["validation_error_ids"]
+
     nonfinite = build_analyzer_candidate_artifact(
         analyzer_kind="query_detail_candidate",
         source="trusted_explicit",
@@ -248,6 +268,7 @@ def main() -> None:
     for public_value in (
         trusted_public,
         direct_public,
+        enum_non_string_public,
         nonfinite_public,
         single_reason_public,
         heuristic_public,
