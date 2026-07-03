@@ -59,8 +59,8 @@ def build_scene_classifier_candidate(
         scene_type, confidence, stability = _estimate_scene_from_messages(payload or {})
         source = "heuristic"
         source_language = "und"
-        candidate_scene_id = "unknown"
-        candidate_scene_family = _family_for_scene_type(scene_type)
+        lookup_scene_id = "unknown"
+        lookup_scene_family = _family_for_scene_type(scene_type)
         is_estimate = True
         requested_source_authoritative = False
         requested_candidate_applied = scene_type in RESTRICTIVE_SCENE_TYPES
@@ -76,30 +76,39 @@ def build_scene_classifier_candidate(
         stability = _coerce_probability(raw_candidate.get("stability"), default=0.0)
         source = _safe_source(raw_candidate.get("source"))
         source_language = _safe_language(raw_candidate.get("source_language"))
-        candidate_scene_id = _safe_token(raw_candidate.get("candidate_scene_id") or raw_candidate.get("scene_id"))
-        raw_family = raw_candidate.get("candidate_scene_family") or raw_candidate.get("scene_family")
-        candidate_scene_family = _safe_token(raw_family)
-        if candidate_scene_family == "unknown":
-            candidate_scene_family = _family_for_scene_type(scene_type)
+        lookup_scene_id = _safe_token(raw_candidate.get("candidate_scene_id") or raw_candidate.get("scene_id"))
+        lookup_scene_family = _safe_token(raw_candidate.get("candidate_scene_family") or raw_candidate.get("scene_family"))
+        if lookup_scene_family == "unknown":
+            lookup_scene_family = _family_for_scene_type(scene_type)
         is_estimate = _safe_bool(raw_candidate.get("is_estimate"), default=source not in TRUSTED_SOURCE_CLASSES)
         requested_source_authoritative = raw_candidate.get("source_authoritative") is True
         requested_candidate_applied = raw_candidate.get("candidate_applied") is True
         requested_policy_authority = _safe_policy_authority(raw_candidate.get("policy_authority"))
 
+    source_authoritative = source in TRUSTED_SOURCE_CLASSES and requested_source_authoritative
     match = match_scene_wiki_definition(
         candidate_scene_type=scene_type,
-        candidate_scene_id=candidate_scene_id,
-        candidate_scene_family=candidate_scene_family,
+        candidate_scene_id=lookup_scene_id,
+        candidate_scene_family=lookup_scene_family,
         scene_definitions=scene_wiki_definitions,
     )
-    match_strength = match["match_strength"]
-    matched_scene_wiki_id = match["matched_scene_wiki_id"]
+    match_strength = _safe_match_strength(match.get("match_strength"))
+    matched_scene_wiki_id = _safe_token(match.get("matched_scene_wiki_id"))
+    matched_scene_type = _safe_scene_type(match.get("matched_scene_type"), [], [])
+    matched_scene_family = _safe_token(match.get("matched_scene_family"))
+
     if match_strength in {"medium", "strong"}:
         confidence = max(confidence, 0.82 if match_strength == "strong" else 0.72)
         stability = max(stability, 0.78 if match_strength == "strong" else 0.70)
         reason_ids.append("scene_wiki_candidate_match")
+        if scene_type == "unknown" and matched_scene_type != "unknown":
+            scene_type = matched_scene_type
 
-    source_authoritative = source in TRUSTED_SOURCE_CLASSES and requested_source_authoritative
+    candidate_scene_family = (
+        matched_scene_family if match_strength in {"medium", "strong"} and matched_scene_family != "unknown" else _family_for_scene_type(scene_type)
+    )
+    exposed_scene_id = matched_scene_wiki_id if match_strength in {"medium", "strong"} and matched_scene_wiki_id != "unknown" else None
+
     reason_ids.append("trusted_scene_candidate" if source_authoritative else "classifier_candidate_non_authoritative")
 
     if source in NON_AUTHORITATIVE_SOURCE_CLASSES:
@@ -147,9 +156,9 @@ def build_scene_classifier_candidate(
         "source": governance["source"],
         "source_language": governance["source_language"],
         "candidate_scene_type": scene_type,
-        "candidate_scene_id": None if candidate_scene_id == "unknown" else candidate_scene_id,
+        "candidate_scene_id": exposed_scene_id,
         "candidate_scene_family": candidate_scene_family,
-        "matched_scene_wiki_id": matched_scene_wiki_id,
+        "matched_scene_wiki_id": exposed_scene_id,
         "match_strength": match_strength,
         "confidence": governance["confidence"],
         "stability": governance["stability"],
@@ -162,7 +171,7 @@ def build_scene_classifier_candidate(
         "content_free": True,
         "reason_ids": tuple(_safe_reason_ids([*reason_ids, *governance["reason_ids"]])),
         "validation_errors": tuple(_safe_validation_errors([*validation_errors, *governance["validation_errors"]])),
-        "scene_wiki_match": scene_wiki_match_public_projection(match),
+        "scene_wiki_match": _scene_wiki_match_public_projection_redacted(match, scene_type, candidate_scene_family),
         "governance": governance,
     }
 
@@ -189,6 +198,13 @@ def scene_classifier_public_projection(candidate: Mapping[str, Any] | None) -> d
         "validation_error_ids": tuple(_safe_validation_errors(raw.get("validation_errors"))),
         "content_free": True,
     }
+
+
+def _scene_wiki_match_public_projection_redacted(match: Mapping[str, Any], scene_type: str, scene_family: str) -> dict[str, Any]:
+    public = scene_wiki_match_public_projection(match)
+    public["candidate_scene_type"] = scene_type
+    public["candidate_scene_family"] = scene_family
+    return public
 
 
 def _estimate_scene_from_messages(payload: Mapping[str, Any]) -> tuple[str, float, float]:
