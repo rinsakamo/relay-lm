@@ -23,6 +23,7 @@ relaylm_related_authority:
   - character_template_creation_flow.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
+  - analyzer_candidate_governance.md
   - o1f_operational_validation.md
   - phase_i5b_pin_unpin_apply.md
   - phase_i7c_held_apply_discard_runtime.md
@@ -39,7 +40,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Execution Plan
 
-Last reviewed: 2026-07-01 JST
+Last reviewed: 2026-07-03 JST
 
 ## Purpose
 
@@ -153,6 +154,15 @@ Completed runtime and governance foundation
     -> I-5B Pin / Unpin apply/API/UI/ranking work complete
     -> I-7A/B Held Apply/Discard preflight        complete
     -> I-7C Held Apply/Discard runtime/API/UI/durable evidence complete
+
+Analyzer Candidate Governance
+  ACG-0 P0 RelayREL / RelaySCN / RelayEMO ordering boundary
+    -> ACG-1 Analyzer Candidate Governance contract
+    -> ACG-2 Grounded Recall Query Detail Analyzer
+    -> ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization
+    -> ACG-4 RelayREF / RelayINT Reference Analyzer consolidation
+    -> ACG-5 RelayEMO scene ownership cleanup
+    -> ACG-6 SCN structured classifier and scene-wiki integration
 
 Character Workspace reset
   CW-A1 file-first source tree and parser contracts
@@ -275,7 +285,41 @@ The E1-R5 handoff is [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_me
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-Compatibility anchor for E1 evaluation consolidation smokes. The P0 RelayREL / RelaySCN / RelayEMO ordering fix is complete only after actual app.py request-path rewiring and validation; Character Workspace reset work follows that boundary.
+Compatibility anchor for E1 evaluation consolidation smokes. The P0 RelayREL / RelaySCN / RelayEMO ordering fix is complete only after actual app.py request-path rewiring and validation.
+
+Before the Character Workspace reset begins, RelayLM should execute the highest-priority Analyzer Candidate Governance sequence recorded in [Analyzer Candidate Governance and Multilingual Schema Policy](analyzer_candidate_governance.md). This prevents the next product layer from inheriting multilingual free-text keyword ownership across RelaySCN, RelayINT, RelayREF, RelayMEM, and RelayEMO.
+
+```text
+ACG-0 P0 RelayREL / RelaySCN / RelayEMO ordering boundary
+  -> complete P0 ordering validation
+  -> keep RelaySCN lexical heuristics non-authoritative
+  -> keep public diagnostics content-free
+
+ACG-1 Analyzer Candidate Governance contract
+  -> shared candidate-vs-authoritative fields
+  -> English-only schema keys / enum values / reason IDs
+  -> fail-closed handling for invalid, low-confidence, or ambiguous analyzer output
+
+ACG-2 Grounded Recall Query Detail Analyzer
+  -> first implementation phase after the governance contract
+  -> date/name/preference/quantity/relationship/cause detection behind a structured artifact
+  -> existing regex checks become fallback candidates, not distributed authority
+
+ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization
+  -> remove whitespace-split semantic ownership
+  -> add language-tolerant structured query hints
+
+ACG-4 RelayREF / RelayINT Reference Analyzer consolidation
+  -> one reference/continuation/prior-memory request artifact
+  -> locale markers become fallback candidate signals
+
+ACG-5 RelayEMO scene ownership cleanup
+  -> affect/expression ownership only
+  -> any scene hint remains a non-authoritative candidate
+
+ACG-6 SCN structured classifier and scene-wiki integration
+  -> only after the authority contract and memory-safety analyzer boundaries land
+```
 
 ### Character Workspace reset next candidates
 
@@ -318,12 +362,14 @@ Post-MVP decision debt registry:
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope
   PM-D3 RelayEMO/RelaySCN scene_state ownership
-    -> Execute the existing RelaySCN-owned `scene_state` migration plan through the P0 RelayREL / RelaySCN / RelayEMO ordering fix; mark complete only after app.py is rewired and validation passes, then start Character Workspace implementation
+    -> Execute the existing RelaySCN-owned `scene_state` migration plan through the P0 RelayREL / RelaySCN / RelayEMO ordering fix; mark complete only after app.py is rewired and validation passes, then execute ACG-1 through ACG-6 before starting Character Workspace implementation
   PM-D4 client history exclusion default-off deployment decision
   PM-D5 RelayMEM flat-store compatibility removal
   PM-D6 RelayINT native artifact / RelayREF wrapper removal
   PM-D7 runtime install hook fold-in
   PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
+  PM-D9 analyzer candidate governance and multilingual schema policy
+    -> Execute ACG-1 before adding new LLM or heuristic analyzers; ACG-2 and ACG-3 precede SCN structured classifier / scene-wiki work because Grounded Recall and retrieval quality are directly affected by multilingual interpretation gaps
 
 Implementation order for large compatibility removals:
   PM-D5 -> PM-D6 -> PM-D7
