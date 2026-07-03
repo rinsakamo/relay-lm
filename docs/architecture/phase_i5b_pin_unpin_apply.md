@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: architecture
+relaylm_doc_type: implementation_handoff
 relaylm_authority: phase_contract
 relaylm_status: current
 relaylm_owner: relaymem_primary_governance
