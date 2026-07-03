@@ -5,6 +5,11 @@ import re
 from pathlib import Path
 from typing import Any
 
+from relaylm.retrieval_query_analyzer import (
+    analyze_retrieval_query,
+    retrieval_query_backend_hints,
+)
+
 _TOKEN_WITH_SLASH_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:/-]{0,127}$")
 _MAX_CHARACTER_ROOT_SCAN = 32
 _JAPANESE_RECALL_PHRASES = (
@@ -97,7 +102,7 @@ def install_relaymem_primary_recall_runtime() -> None:
 
     _retrieval.discover_relaymem_page_candidates = discover_relaymem_page_candidates
     _retrieval.build_relaymem_snippet_evidence_dry_run = build_relaymem_snippet_evidence_dry_run
-    _retrieval._term_hints = _term_hints_with_japanese_recall_phrases
+    _retrieval._term_hints = _term_hints_with_retrieval_query_analyzer
     _INSTALLED = True
 
 
@@ -117,16 +122,16 @@ def _expanded_query_terms(query_terms: list[str] | None) -> list[str] | None:
     return terms[:12]
 
 
-def _term_hints_with_japanese_recall_phrases(text: str) -> list[str]:
-    terms: list[str] = []
-
-    for raw in text.replace("\n", " ").split(" "):
-        _add_term(terms, raw)
-        if len(terms) >= 12:
-            return terms[:12]
+def _term_hints_with_retrieval_query_analyzer(text: str) -> list[str]:
+    analysis = analyze_retrieval_query(
+        text,
+        source="heuristic",
+        max_hints=12,
+    )
+    terms = retrieval_query_backend_hints(analysis)
 
     for phrase in _JAPANESE_RECALL_PHRASES:
-        if phrase in text:
+        if phrase in text or phrase in "\n".join(terms):
             _add_japanese_phrase(terms, phrase)
             if len(terms) >= 12:
                 break
