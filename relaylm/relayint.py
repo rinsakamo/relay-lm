@@ -73,11 +73,13 @@ def build_relayint_fast_path_dry_run(
     explicit_prior_memory = bool(reference_intent["prior_memory_request_detected"])
     reference_terms_count = int(reference_intent["reference_terms_detected_count"])
     ctx_signal_present = bool(ctx_summary["ctx_signal_present"])
-    ambiguity_detected = _ambiguity_detected(
+    analyzer_ambiguity_detected = bool(reference_intent.get("ambiguity_detected"))
+    legacy_ambiguity_detected = _ambiguity_detected(
         detected_reference_kind=detected_reference_kind,
         ctx_signal_present=ctx_signal_present,
         explicit_prior_memory=explicit_prior_memory,
     )
+    ambiguity_detected = analyzer_ambiguity_detected or legacy_ambiguity_detected
     mem_query_needed = explicit_prior_memory
     candidate_action = _candidate_action(
         detected_reference_kind=detected_reference_kind,
@@ -110,6 +112,8 @@ def build_relayint_fast_path_dry_run(
     )
     if reference_terms_count > 0:
         decision_reasons.append("reference_intent_analyzer_candidate")
+    if analyzer_ambiguity_detected:
+        decision_reasons.append("reference_intent_analyzer_ambiguity")
     return {
         "schema_version": "relayint_fast_path_dry_run.v0",
         "enabled": True,
