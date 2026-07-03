@@ -72,8 +72,22 @@ E1-R3 provenance-preserving Primary MEM formation summary: complete
 E1-R4 retrieval-response grounding and unsupported-detail suppression: complete
 E1-R5 Primary MEM recall candidate discovery bridge: complete
 Home can be a trusted formation source only through the E1-R1 route-owned gate; browser-owned trust remains rejected.
+I1-GE full production crash validation: complete
+I1-G overall: complete
+Phase I-4D ordinary retrieval lifecycle exclusion: complete
+Phase I-4E loopback Forget API and SOUL Lab UI: complete
+Phase I-4F full Forget validation: complete
+Phase I-4 overall: complete
+I-5A Pin / Unpin contract and read-only preflight: complete
 I-5B Pin / Unpin apply/API/UI/ranking behavior: complete
+I-7A/B Held Apply / Discard contract and read-only preflight: complete
 I-7C Held Apply/Discard runtime/API/UI/durable governance evidence: complete
+Wave 3 implementation tracks complete
+W3-INT merged
+Wave 4 implementation tracks complete
+W4-INT merged
+Post-Wave-4 / Wave 5 implementation tracks complete
+W5-INT merged
 W6-INT merged
 Wave 7 implementation tracks complete
 W7-INT merged
@@ -84,7 +98,7 @@ ACG-1 through ACG-6 analyzer governance slices are complete through bounded cand
 
 ## Phase 6 and E1 current boundary
 
-B0-B3 durable enqueue and fenced lifecycle are complete. B3 lifecycle: complete. C2 one-job claim/rehydrate/execute adapter: complete. I1 next-turn Primary MEM recall: complete. Character and namespace isolation: complete.
+B0-B3 durable enqueue and fenced lifecycle are complete. B3 lifecycle: complete. C1-5 keeps queue records content-free and persists the claim-independent protected capture before queue publication. C2 one-job claim/rehydrate/execute adapter: complete. I1 next-turn Primary MEM recall: complete. Character and namespace isolation: complete.
 
 ## Analyzer Candidate Governance boundary
 
@@ -103,6 +117,16 @@ Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-
 ## Immediate dependency-first work
 
 ```text
+Post-O1F next candidates:
+  I-5B Pin / Unpin apply/API/UI/ranking work                 complete in Wave 6
+  I-7C Held Apply/Discard runtime/API/UI/durable evidence    complete in Wave 6
+  E1-R1 trusted Home scene-admission path                    complete in Wave 6
+  E1-R2 idempotent character-store bootstrap command         complete in Wave 6
+  E1-R3 provenance-preserving Primary MEM formation summary  complete in Wave 7
+  E1-R4 retrieval-response grounding and unsupported-detail suppression complete in Wave 7
+  E1-R5 Primary MEM recall candidate discovery bridge        complete post-Wave-7
+  O2/O3 only after explicit MVP need
+
 Post-E1-R5 / Post-Wave-7 next candidates:
   E1-R5 scoped Primary recall candidate bridge boundary remains complete; new work starts after P0-PIPE and ACG.
   PM-D1 RelaySOUL gate design-freeze relation
