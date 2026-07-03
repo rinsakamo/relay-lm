@@ -110,6 +110,29 @@ Rules:
 - unknown enum values and malformed JSON fail closed;
 - candidate outputs may strengthen safety restrictions but may not open permissive runtime policy without trusted authority.
 
+## Plain-language phase aliases
+
+The ACG roadmap uses numbered implementation slices, but the product-level sequence also has a plain-language phase map:
+
+```text
+Phase A: Analyzer Governance
+  -> ACG-1 Analyzer Candidate Governance contract
+
+Phase B: Grounded Recall Detail Safety
+  -> ACG-2 Grounded Recall Query Detail Analyzer
+
+Phase C: Retrieval Query Normalization
+  -> ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization
+
+Phase D: Reference/Intent Analyzer Consolidation
+  -> ACG-4 RelayREF / RelayINT Reference Analyzer consolidation
+
+Phase E: Scene-wiki Classifier
+  -> ACG-6 SCN structured classifier and scene-wiki integration
+```
+
+ACG-0 is the prerequisite P0 ordering boundary. ACG-5 is inserted before Phase E to remove the remaining RelayEMO scene-ownership ambiguity so SCN scene-wiki work does not inherit a second scene owner.
+
 ## Priority implementation phases
 
 ### ACG-0: Close the P0 RelaySCN ordering boundary
