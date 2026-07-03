@@ -149,6 +149,14 @@ def main() -> None:
             require(all(item["memory_id"] != memory_id for item in recent.json()["items"]), recent.json())
             assert_no_private_control_leak(recent.text, token)
 
+            recent_limited = client.get(f"/lab/api/characters/{CHARACTER}/memory/recent{query}&limit=1")
+            require(recent_limited.status_code == 200, recent_limited.text)
+            recent_limited_json = recent_limited.json()
+            require(recent_limited_json["availability"] == "available", recent_limited_json)
+            require(len(recent_limited_json["items"]) == 1, recent_limited_json)
+            require(recent_limited_json["items"][0]["memory_id"] == already_id, recent_limited_json)
+            assert_no_private_control_leak(recent_limited.text, token)
+
             lifecycle = client.get(f"/lab/api/characters/{CHARACTER}/lab/last-run/memory/used-lifecycle{query}")
             require(lifecycle.status_code == 200, lifecycle.text)
             item = lifecycle.json()["items"][0]
