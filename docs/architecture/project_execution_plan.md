@@ -25,6 +25,8 @@ relaylm_related_authority:
   - relaymem_slp_current_target.md
   - analyzer_candidate_governance.md
   - acg1_analyzer_candidate_governance_contract.md
+  - acg2_grounded_recall_detail_safety.md
+  - acg3_retrieval_query_normalization.md
   - o1f_operational_validation.md
   - phase_i5b_pin_unpin_apply.md
   - phase_i7c_held_apply_discard_runtime.md
@@ -159,8 +161,8 @@ Completed runtime and governance foundation
 Analyzer Candidate Governance
   ACG-0 P0 RelayREL / RelaySCN / RelayEMO ordering boundary complete
     -> ACG-1 Analyzer Candidate Governance contract complete
-    -> ACG-2 Grounded Recall Query Detail Analyzer
-    -> ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization
+    -> ACG-2 Grounded Recall Query Detail Analyzer complete
+    -> ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization complete
     -> ACG-4 RelayREF / RelayINT Reference Analyzer consolidation
     -> ACG-5 RelayEMO scene ownership cleanup
     -> ACG-6 SCN structured classifier and scene-wiki integration
@@ -192,7 +194,7 @@ Evaluation
 
 ### Foundation already available for MVP planning
 
-The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1F, UI-B1A, I-5A/I-5B, I-7A/B/I-7C, E1, E1-R1, E1-R2, E1-R3, E1-R4, E1-R5, P0-PIPE, and ACG-1.
+The current MVP plan assumes the completed foundations listed in [Project Status](../PROJECT_STATUS.md): Phase 6 through C2/O0, UI-B0 real Home conversation, Phase I-2 observation, Phase I-3 Correct, I1-GA through I1-GE, I-4B through I-4F, O1A through O1F, UI-B1A, I-5A/I-5B, I-7A/B/I-7C, E1, E1-R1, E1-R2, E1-R3, E1-R4, E1-R5, P0-PIPE, ACG-1, ACG-2, and ACG-3.
 
 ### Wave 4 completed
 
@@ -305,11 +307,35 @@ ACG-1 Analyzer Candidate Governance contract
   -> content-free public projection helpers
 ```
 
-The ACG-1 handoff is [ACG-1 Analyzer Candidate Governance Contract](acg1_analyzer_candidate_governance_contract.md). ACG-1 establishes the shared contract/helper layer only; it does not implement the ACG-2 through ACG-6 analyzer producers/classifiers.
+The ACG-1 handoff is [ACG-1 Analyzer Candidate Governance Contract](acg1_analyzer_candidate_governance_contract.md). ACG-1 establishes the shared contract/helper layer only; it does not implement the remaining ACG-4 through ACG-6 analyzer producers/classifiers.
+
+### ACG-2 Grounded Recall Detail Safety completed
+
+```text
+ACG-2 Grounded Recall Query Detail Analyzer
+  -> remembered-detail detection is a structured analyzer candidate artifact
+  -> regex/heuristic checks remain fallback candidates, not distributed authority
+  -> unsupported-detail suppression remains restrictive-only
+  -> public diagnostics remain content-free
+```
+
+The ACG-2 handoff is [ACG-2 Grounded Recall Detail Safety](acg2_grounded_recall_detail_safety.md). ACG-2 closes the Grounded Recall detail-safety slice without adding post-hoc visible response rewriting, memory mutation, worker/scheduler behavior, or broad retrieval authority.
+
+### ACG-3 Retrieval Query Normalization completed
+
+```text
+ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization
+  -> whitespace splitting is a fallback candidate, not the semantic owner
+  -> bounded backend-private retrieval hints are produced behind an analyzer boundary
+  -> E1-R5 fallback bridge consumes private hints without exposing public term hints
+  -> public retrieval diagnostics remain content-free
+```
+
+The ACG-3 handoff is [ACG-3 Retrieval Query Normalization](acg3_retrieval_query_normalization.md). ACG-3 closes the retrieval-query normalization slice without adding broad retrieval, memory mutation, lifecycle bypass, worker/scheduler behavior, or raw-query public leakage.
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-Compatibility anchor for E1 evaluation consolidation smokes. The P0 RelayREL / RelaySCN / RelayEMO ordering fix and ACG-1 governance contract are complete.
+Compatibility anchor for E1 evaluation consolidation smokes. The P0 RelayREL / RelaySCN / RelayEMO ordering fix, ACG-1 governance contract, ACG-2 detail-safety boundary, and ACG-3 retrieval-query normalization boundary are complete.
 
 Before the Character Workspace reset implementation begins, RelayLM should execute the remaining highest-priority Analyzer Candidate Governance sequence recorded in [Analyzer Candidate Governance and Multilingual Schema Policy](analyzer_candidate_governance.md). This prevents the next product layer from inheriting multilingual free-text keyword ownership across RelaySCN, RelayINT, RelayREF, RelayMEM, and RelayEMO.
 
@@ -324,14 +350,13 @@ ACG-1 Analyzer Candidate Governance contract: complete
   -> English-only schema keys / enum values / reason IDs
   -> fail-closed handling for invalid, low-confidence, or ambiguous analyzer output
 
-ACG-2 Grounded Recall Query Detail Analyzer
-  -> first remaining implementation phase after the governance contract
+ACG-2 Grounded Recall Query Detail Analyzer: complete
   -> date/name/preference/quantity/relationship/cause detection behind a structured artifact
-  -> existing regex checks become fallback candidates, not distributed authority
+  -> existing regex checks are fallback candidates, not distributed authority
 
-ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization
-  -> remove whitespace-split semantic ownership
-  -> add language-tolerant structured query hints
+ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization: complete
+  -> whitespace splitting is fallback candidate behavior, not semantic ownership
+  -> language-tolerant bounded private hints feed read-only retrieval paths
 
 ACG-4 RelayREF / RelayINT Reference Analyzer consolidation
   -> one reference/continuation/prior-memory request artifact
@@ -393,7 +418,7 @@ Post-MVP decision debt registry:
   PM-D7 runtime install hook fold-in
   PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
   PM-D9 analyzer candidate governance and multilingual schema policy
-    -> ACG-1 is complete; execute ACG-2 before adding new Grounded Recall detail analyzers, and ACG-2/ACG-3 before SCN structured classifier / scene-wiki work because Grounded Recall and retrieval quality are directly affected by multilingual interpretation gaps
+    -> ACG-1 through ACG-3 are complete; execute ACG-4 before SCN structured classifier / scene-wiki work because reference/intent ownership remains a multilingual interpretation dependency
 
 Implementation order for large compatibility removals:
   PM-D5 -> PM-D6 -> PM-D7

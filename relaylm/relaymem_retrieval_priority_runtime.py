@@ -4,6 +4,11 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from relaylm.relaymem_retrieval_priority import prioritize_relaymem_candidates
+from relaylm.retrieval_query_analyzer import (
+    analyze_retrieval_query,
+    public_retrieval_query_projection,
+    retrieval_query_backend_hints,
+)
 
 _SCHEMA_VERSION = "relaymem.retrieval_priority_runtime.v0"
 _MAX_PRIORITY_DISCOVERY_CANDIDATES = 128
@@ -78,6 +83,30 @@ def install_relaymem_retrieval_priority_runtime(
         **kwargs: Any,
     ) -> dict[str, Any]:
         artifact = original_build(*args, **kwargs)
+        messages = kwargs.get("messages")
+        latest_user_text = _latest_user_text(
+            messages if isinstance(messages, Sequence) and not isinstance(messages, str) else []
+        )
+        retrieval_query_candidate = analyze_retrieval_query(
+            latest_user_text,
+            source="heuristic",
+        )
+        backend_private_hints = retrieval_query_backend_hints(retrieval_query_candidate)
+        artifact["query_summary"] = _content_free_query_summary(
+            latest_user_text=latest_user_text,
+            retrieval_query_candidate=retrieval_query_candidate,
+        )
+        artifact["retrieval_query_candidate"] = public_retrieval_query_projection(
+            retrieval_query_candidate
+        )
+        artifact["retrieval_query_private"] = {
+            "schema_version": "relaylm.retrieval_query_private_hints.v0",
+            "runtime_private": True,
+            "content_free": False,
+            "source": "retrieval_query_analyzer",
+            "backend_private_hints": tuple(backend_private_hints),
+            "query_hint_count": len(backend_private_hints),
+        }
         selected_mem_candidates = artifact.get("selected_mem_candidates")
         artifact["retrieval_priority"] = _runtime_priority_projection(
             selected_mem_candidates
@@ -99,6 +128,40 @@ def _priority_discovery_cap(max_candidates: int) -> int:
     if normalized == 0:
         return 0
     return _MAX_PRIORITY_DISCOVERY_CANDIDATES
+
+
+def _content_free_query_summary(
+    *,
+    latest_user_text: str,
+    retrieval_query_candidate: Mapping[str, Any],
+) -> dict[str, Any]:
+    projection = public_retrieval_query_projection(retrieval_query_candidate)
+    return {
+        "source": "latest_user_message",
+        "input_chars": len(latest_user_text),
+        "term_hints": [],
+        "term_hints_content_free": True,
+        "query_hint_strategy": projection["query_hint_strategy"],
+        "query_hint_count": projection["query_hint_count"],
+        "ambiguous_reference_terms_present": projection["has_ambiguous_reference"],
+        "content_free": True,
+    }
+
+
+def _latest_user_text(messages: Sequence[Mapping[str, Any]]) -> str:
+    for message in reversed(messages):
+        if not isinstance(message, Mapping) or message.get("role") != "user":
+            continue
+        content = message.get("content")
+        if isinstance(content, str):
+            return content
+        if isinstance(content, Sequence) and not isinstance(content, str):
+            parts: list[str] = []
+            for item in content:
+                if isinstance(item, Mapping) and isinstance(item.get("text"), str):
+                    parts.append(item["text"])
+            return "\n".join(parts)
+    return ""
 
 
 def _runtime_priority_projection(

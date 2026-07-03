@@ -52,7 +52,19 @@ def no_selected_candidates_artifact() -> dict[str, object]:
         ],
         "query_summary": {
             "source": "latest_user_message",
-            "term_hints": ["RelayLM MVP評価", "合言葉", "青い灯台"],
+            "term_hints": [],
+            "term_hints_content_free": True,
+            "query_hint_strategy": "mixed_fallback",
+            "query_hint_count": 3,
+            "content_free": True,
+        },
+        "retrieval_query_private": {
+            "schema_version": "relaylm.retrieval_query_private_hints.v0",
+            "runtime_private": True,
+            "content_free": False,
+            "source": "retrieval_query_analyzer",
+            "backend_private_hints": ["RelayLM MVP評価", "合言葉", "青い灯台"],
+            "query_hint_count": 3,
         },
         "selected_mem_candidates": [],
     }
@@ -134,6 +146,8 @@ def main() -> None:
         )
         no_candidate_runtime = no_candidate_bridged["primary_recall_runtime"]
         no_candidate_projection = no_candidate_bridged["primary_recall_projection"]
+        require(no_candidate_bridged["query_summary"]["term_hints"] == [], no_candidate_bridged)
+        require(no_candidate_bridged["query_summary"]["content_free"] is True, no_candidate_bridged)
         require(no_candidate_runtime["primary_candidate_discovery_attempted"] is True, no_candidate_runtime)
         require(no_candidate_runtime["primary_candidate_count"] > 0, no_candidate_runtime)
         require(no_candidate_runtime["selected_count"] == 1, no_candidate_runtime)
@@ -143,6 +157,7 @@ def main() -> None:
         require(no_candidate_projection["grounding_enabled"] is True, no_candidate_projection)
         require(no_candidate_projection["grounded_item_count"] == 1, no_candidate_projection)
         require(no_candidate_bridged["snippet_apply_decision"] == "eligible_but_not_applied", no_candidate_bridged)
+        require("primary_candidate_query_terms_missing" not in no_candidate_runtime["blocked_reason_ids"], no_candidate_runtime)
         require("primary_recall_no_scoped_match" not in no_candidate_runtime["blocked_reason_ids"], no_candidate_runtime)
         require("existing_retrieval_gate_blocked" not in no_candidate_runtime["blocked_reason_ids"], no_candidate_runtime)
         require("青い灯台" in json.dumps(no_candidate_runtime, ensure_ascii=False), no_candidate_runtime)

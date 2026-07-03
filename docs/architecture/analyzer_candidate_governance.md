@@ -21,6 +21,7 @@ relaylm_related_authority:
   - p0_relayrel_relayscn_relayemo_ordering_fix.md
   - acg1_analyzer_candidate_governance_contract.md
   - acg2_grounded_recall_detail_safety.md
+  - acg3_retrieval_query_normalization.md
   - e1r4_retrieval_response_grounding.md
   - relaymem_slp_current_target.md
 ---
@@ -124,7 +125,7 @@ Phase B: Grounded Recall Detail Safety
   -> ACG-2 Grounded Recall Query Detail Analyzer (complete)
 
 Phase C: Retrieval Query Normalization
-  -> ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization
+  -> ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization (complete)
 
 Phase D: Reference/Intent Analyzer Consolidation
   -> ACG-4 RelayREF / RelayINT Reference Analyzer consolidation
@@ -133,7 +134,7 @@ Phase E: Scene-wiki Classifier
   -> ACG-6 SCN structured classifier and scene-wiki integration
 ```
 
-ACG-0 is the prerequisite P0 ordering boundary and is complete through PR #458. ACG-1 is complete as the shared contract/helper slice. ACG-2 is complete as the Grounded Recall Query Detail Analyzer and request-side unsupported-detail safety slice. ACG-5 is inserted before Phase E to remove the remaining RelayEMO scene-ownership ambiguity so SCN scene-wiki work does not inherit a second scene owner.
+ACG-0 is the prerequisite P0 ordering boundary and is complete through PR #458. ACG-1 is complete as the shared contract/helper slice. ACG-2 is complete as the Grounded Recall Query Detail Analyzer and request-side unsupported-detail safety slice. ACG-3 is complete as the Retrieval Query Analyzer / Retrieval Hint Normalization slice. ACG-5 remains inserted before Phase E to remove the remaining RelayEMO scene-ownership ambiguity so SCN scene-wiki work does not inherit a second scene owner.
 
 ## Priority implementation phases
 
@@ -187,16 +188,19 @@ The ACG-2 handoff is [ACG-2 Grounded Recall Detail Safety](acg2_grounded_recall_
 
 ### ACG-3: RelayMEM Query Analyzer / Retrieval Hint Normalization
 
-Replace whitespace-split query hints with a language-tolerant query analyzer boundary.
+ACG-3 is complete. It replaces whitespace-split semantic ownership with a Retrieval Query Analyzer boundary while keeping the existing whitespace path as a fallback candidate rather than the meaning owner.
 
-Scope:
+Implemented scope:
 
-- isolate `_term_hints` as a fallback candidate;
-- add language-neutral fallback hints such as bounded character n-grams or validated structured search terms;
-- keep public query summaries content-free;
-- prevent raw user text leakage in diagnostics.
+- isolates RelayMEM query hint production behind `relaylm/retrieval_query_analyzer.py`;
+- adds bounded language-tolerant fallback hints, including no-whitespace/CJK n-gram hints;
+- keeps public `query_summary` and `retrieval_query_candidate` diagnostics content-free;
+- keeps runtime-private bounded hints available to read-only RelayMEM candidate discovery and the E1-R5 bridge;
+- prevents raw user text and private hint leakage in public diagnostics.
 
-This improves recall for languages without whitespace tokenization and reduces retrieval brittleness.
+ACG-3 improves recall for languages without whitespace tokenization and reduces retrieval brittleness without opening broader retrieval, memory mutation, worker/scheduler behavior, or scene/lifecycle bypass authority.
+
+The ACG-3 handoff is [ACG-3 Retrieval Query Normalization](acg3_retrieval_query_normalization.md).
 
 ### ACG-4: RelayREF / RelayINT Reference Analyzer consolidation
 

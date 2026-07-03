@@ -517,8 +517,22 @@ def _bridge_handoff_decision(
 
 
 def _query_terms_from_artifact(artifact: Mapping[str, Any]) -> list[str]:
+    retrieval_query_private = artifact.get("retrieval_query_private")
+    private_terms = (
+        retrieval_query_private.get("backend_private_hints")
+        if isinstance(retrieval_query_private, Mapping)
+        else None
+    )
+    terms = _normalized_query_terms(private_terms)
+    if terms:
+        return terms
+
     query_summary = artifact.get("query_summary")
     raw_terms = query_summary.get("term_hints") if isinstance(query_summary, Mapping) else None
+    return _normalized_query_terms(raw_terms)
+
+
+def _normalized_query_terms(raw_terms: object) -> list[str]:
     if not isinstance(raw_terms, Sequence) or isinstance(raw_terms, (str, bytes, bytearray)):
         return []
     terms: list[str] = []
