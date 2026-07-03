@@ -6,6 +6,7 @@ import json
 from relaylm.analyzer_governance import (
     ANALYZER_KINDS,
     POLICY_AUTHORITIES,
+    SCHEMA_VERSION,
     SOURCE_CLASSES,
     analyzer_governance_enum_values,
     build_analyzer_candidate_artifact,
@@ -75,6 +76,59 @@ def main() -> None:
     assert trusted_public["stability_bucket"] == "high"
     assert set(trusted_public) == EXPECTED_PUBLIC_KEYS
     assert trusted_public["content_free"] is True
+
+    direct_raw = {
+        "schema_version": SCHEMA_VERSION,
+        "analyzer_kind": "query_detail_candidate",
+        "source": "trusted_explicit",
+        "source_language": "en",
+        "source_authoritative": True,
+        "candidate_applied": True,
+        "policy_authority": "bounded",
+        "restrictive_only": False,
+        "confidence": 0.9,
+        "stability": 0.8,
+        "content_free": True,
+        "raw_user_text": "private user message",
+        "rationale": "LLM says private ...",
+        "future_private_field": "SECRET_USER_TEXT",
+    }
+    direct_result = validate_analyzer_candidate_artifact(direct_raw)
+    direct_public = direct_result.to_public_dict()
+    assert direct_result.is_valid is False
+    assert can_open_runtime_policy(direct_raw) is False
+    assert "raw_diagnostic_field_dropped" in direct_public["validation_error_ids"]
+    assert "unsupported_field_dropped" in direct_public["validation_error_ids"]
+    _assert_content_free(direct_public)
+
+    nonfinite = build_analyzer_candidate_artifact(
+        analyzer_kind="query_detail_candidate",
+        source="trusted_explicit",
+        source_language="en",
+        source_authoritative=True,
+        candidate_applied=True,
+        policy_authority="bounded",
+        restrictive_only=False,
+        confidence="nan",
+        stability=float("inf"),
+        content_free=True,
+    )
+    nonfinite_public = content_free_projection(nonfinite)
+    assert can_open_runtime_policy(nonfinite) is False
+    assert "malformed_confidence" in nonfinite_public["validation_error_ids"]
+    assert "malformed_stability" in nonfinite_public["validation_error_ids"]
+
+    single_reason = build_analyzer_candidate_artifact(
+        analyzer_kind="affect_candidate",
+        source="trusted_tool_signal",
+        reason_ids="candidate_not_applied",
+        policy_authority="none",
+        content_free=True,
+    )
+    single_reason_public = content_free_projection(single_reason)
+    assert "candidate_not_applied" in single_reason_public["reason_ids"]
+    assert "malformed_reason_id" not in single_reason_public["validation_error_ids"]
+    assert validate_analyzer_candidate_artifact(single_reason).is_valid is True
 
     heuristic = build_analyzer_candidate_artifact(
         analyzer_kind="retrieval_query_candidate",
@@ -191,8 +245,17 @@ def main() -> None:
     assert SOURCE_CLASSES == set(registries["source_class"])
     assert POLICY_AUTHORITIES == set(registries["policy_authority"])
 
-    for public_value in (trusted_public, heuristic_public, llm_public, unknown_public, leak_public):
-        assert set(public_value) == EXPECTED_PUBLIC_KEYS
+    for public_value in (
+        trusted_public,
+        direct_public,
+        nonfinite_public,
+        single_reason_public,
+        heuristic_public,
+        llm_public,
+        unknown_public,
+        leak_public,
+    ):
+        assert set(public_value).issubset(EXPECTED_PUBLIC_KEYS | {"is_valid"})
         assert public_value["source_class"] in SOURCE_CLASSES
         assert public_value["policy_authority"] in POLICY_AUTHORITIES
         assert public_value["confidence_bucket"] in registries["confidence_bucket"]
