@@ -26,9 +26,11 @@ The RelaySOUL design, cadence, chain, persistence architecture, execution-gate, 
 
 Use the [Current / Target / Migration Guide](../architecture/current_target_migration_guide.md) together with the documents below.
 
-Current compatibility behavior is the `mvp-soul-0` dry-run/preflight chain. It retains a five-file allowlist and does not perform actual apply, rollback, or persistence execution. The target architecture narrows durable RelaySOUL ownership to `SOUL.md`, `OUTPUT_POLICY.md`, and `RELATIONSHIP_ANCHOR.md`, and blocks persona-source apply during normal chat.
+Current compatibility behavior is the `mvp-soul-0` dry-run/preflight chain. It retains the older compatibility allowlist and does not perform actual apply, rollback, or persistence execution.
 
-The target migration must update patch, revision, approval, apply, rollback, storage, examples, and smoke tests atomically. A target three-file statement does not change the current wire contract by itself.
+The file-first workspace target supersedes the older three-file persona target. Durable portable RelaySOUL-owned character sources are now `SOUL.md`, `STYLE.md`, `EMOTION.md`, `BOUNDARY.md`, and optional `LORE.md`. `RELATIONSHIP.md` and `relationships/<target>.md` are RelayREL-owned relationship sources; `SCENE.md` and `scenes/*.md` are RelaySCN-owned scene sources; `MEMORY.md` and `memory/**/*.md` are RelayMEM / RelaySLP-owned memory sources.
+
+The target migration must update patch, revision, approval, apply, rollback, storage, examples, and smoke tests atomically. A file-first target statement does not change the current `mvp-soul-0` wire contract by itself.
 
 ## Core design
 
