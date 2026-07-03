@@ -19,6 +19,7 @@ relaylm_related_authority:
   - project_execution_plan.md
   - pipeline_responsibility_design.md
   - p0_relayrel_relayscn_relayemo_ordering_fix.md
+  - acg1_analyzer_candidate_governance_contract.md
   - e1r4_retrieval_response_grounding.md
   - relaymem_slp_current_target.md
 ---
@@ -116,7 +117,7 @@ The ACG roadmap uses numbered implementation slices, but the product-level seque
 
 ```text
 Phase A: Analyzer Governance
-  -> ACG-1 Analyzer Candidate Governance contract
+  -> ACG-1 Analyzer Candidate Governance contract (current)
 
 Phase B: Grounded Recall Detail Safety
   -> ACG-2 Grounded Recall Query Detail Analyzer
@@ -131,15 +132,13 @@ Phase E: Scene-wiki Classifier
   -> ACG-6 SCN structured classifier and scene-wiki integration
 ```
 
-ACG-0 is the prerequisite P0 ordering boundary. ACG-5 is inserted before Phase E to remove the remaining RelayEMO scene-ownership ambiguity so SCN scene-wiki work does not inherit a second scene owner.
+ACG-0 is the prerequisite P0 ordering boundary and is complete through PR #458. ACG-1 is current as the shared contract/helper slice. ACG-5 is inserted before Phase E to remove the remaining RelayEMO scene-ownership ambiguity so SCN scene-wiki work does not inherit a second scene owner.
 
 ## Priority implementation phases
 
 ### ACG-0: Close the P0 RelaySCN ordering boundary
 
-Complete the P0 RelayREL / RelaySCN / RelayEMO ordering fix before starting Character Workspace reset work.
-
-Required boundary:
+The P0 RelayREL / RelaySCN / RelayEMO ordering fix is complete through PR #458. Current request-path ordering is:
 
 ```text
 RelayREL -> RelaySCN -> RelayEMO -> RelayINT -> RelayMEM -> RelayCTX
@@ -149,7 +148,7 @@ RelaySCN owns normalized scene policy input. RelayEMO must not be a scene-state 
 
 ### ACG-1: Analyzer Candidate Governance contract
 
-Introduce a shared architecture contract for analyzer candidate artifacts.
+ACG-1 is current as the shared Analyzer Candidate Governance contract/helper slice. It introduces `relaylm/analyzer_governance.py` and smoke coverage in `scripts/relaylm_analyzer_governance_smoke.py`.
 
 Scope:
 
@@ -159,13 +158,13 @@ Scope:
 - define fixed English enum policy;
 - define fail-closed behavior for invalid or low-confidence analyzer output.
 
-This phase should be documentation and schema-first. It should not introduce a large runtime classifier.
+This phase is documentation and schema-first. It does not introduce a large runtime classifier, and it does not implement ACG-2 through ACG-6 analyzer producers.
 
 ### ACG-2: Grounded Recall Query Detail Analyzer
 
 Move request-side remembered-detail detection out of ad hoc regex ownership and into a query detail analyzer artifact.
 
-Why this is first among implementation phases:
+Why this is first among remaining implementation phases:
 
 - unsupported detail suppression directly protects remembered-fact correctness;
 - current detail detection is language-limited;
