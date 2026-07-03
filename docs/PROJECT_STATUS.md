@@ -35,10 +35,11 @@ relaylm_related_authority:
   - docs/architecture/wave6_cross_slice_convergence_audit.md
   - docs/architecture/wave5_cross_slice_convergence_audit.md
   - docs/architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md
+  - docs/architecture/analyzer_candidate_governance.md
 ---
 # RelayLM Project Status
 
-Last reviewed: 2026-07-02 JST
+Last reviewed: 2026-07-03 JST
 
 ## Purpose and authority
 
@@ -74,6 +75,7 @@ O3 always-on local operation: planned/unimplemented
 
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall, scope isolation, and E1-R5 scoped candidate bridge complete
 P0-PIPE RelayREL / RelaySCN / RelayEMO ordering: complete in PR #458 after actual app.py request-path rewiring and local validation; RelayREL now precedes RelaySCN, RelaySCN precedes input-side RelayEMO, RelayINT/RelayMEM/RelayCTX remain downstream
+Analyzer Candidate Governance roadmap: planned/current next gate after P0-PIPE; ACG-1 through ACG-6 precede Character Workspace implementation unless a later roadmap PR changes the dependency order
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0, UI-B1A, I-4E Forget UI, I-5B Pin / Unpin UI, and I-7C Held Governance UI complete
 UI-B1A read-only lifecycle visibility: complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete through M2-preferred recall plus E1-R5 bounded scoped candidate bridge
@@ -120,6 +122,7 @@ Wave 7 implementation tracks complete
 W7-INT merged
 Post-Wave-7 E1-R5 correction merged and converged
 P0-PIPE ordering slice is complete after PR #458 rewired app.py and validation passed for compile, ordering smoke, docs link check, and current-boundary smoke
+ACG roadmap is the next dependency gate after P0-PIPE and before Character Workspace reset implementation
 ```
 
 Historical Post-O1F next candidates: I-5B Pin / Unpin apply, I-7C Held Apply / Discard runtime governance, E1-R1 trusted Home scene admission, and E1-R2 character-store bootstrap are now complete through Wave 6. E1-R3 and E1-R4 are complete through Wave 7. E1-R5 is complete as a post-Wave-7 correction to the E1 recall proof boundary.
@@ -190,7 +193,7 @@ UI-B0 real Home conversation is complete. UI-B1A read-only lifecycle and operati
 
 E1 evaluation consolidation is complete as a docs/evidence boundary. E1-R1 adds a route-owned trusted Home scene-admission gate that defaults disabled and rejects browser-owned trust. E1-R2 adds a dry-run-first operator command for idempotent character-store bootstrap. E1-R3 adds speaker-provenance-safe Primary MEM formation summary construction so user assertions remain distinguishable, assistant acknowledgements/speculation are not promoted to user facts, and route-owned scene/trust evidence stays qualification metadata. E1-R4 adds request-side retrieval-response grounding and unsupported-detail suppression for eligible retrieved Primary MEM evidence. E1-R5 adds the bounded Primary MEM recall candidate discovery bridge for the discovered `selected_count: 0` scoped-recall gap while preserving M2 as the preferred relevance owner.
 
-Wave 7 convergence is recorded in [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). E1-R5 is recorded in [E1-R5 Primary MEM Recall Candidate Discovery Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md), [E1-R5 completion report](mvp/wave7/e1r5_completion_report.md), and [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The E1 proof boundary now includes E1-R5 and does not claim that M2 alone always selects current eligible scoped Primary MEM.
+Wave 7 convergence is recorded in [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). E1-R5 is recorded in [E1-R5 Primary MEM Recall Candidate Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md), [E1-R5 completion report](mvp/wave7/e1r5_completion_report.md), and [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The E1 proof boundary now includes E1-R5 and does not claim that M2 alone always selects current eligible scoped Primary MEM.
 
 ## RelayREL / RelaySCN / RelayEMO ordering boundary
 
@@ -198,19 +201,41 @@ P0-PIPE is complete in PR #458 after the actual FastAPI `app.py` request path wa
 
 This does not implement full RelayREL relationship Markdown parsing, Character Workspace source tree parsing, Character Workspace compiler projections, Quick Create / Advanced Create, or Character Workspace UI.
 
+## Analyzer Candidate Governance boundary
+
+Analyzer Candidate Governance is planned/unimplemented and is now the immediate dependency gate after the completed P0-PIPE ordering boundary. It must run before Character Workspace parser/compiler/UI implementation unless a later roadmap PR explicitly changes the dependency order.
+
+The current planned order is:
+
+```text
+ACG-1 Analyzer Candidate Governance contract
+  -> ACG-2 Grounded Recall Query Detail Analyzer
+  -> ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization
+  -> ACG-4 RelayREF / RelayINT Reference Analyzer consolidation
+  -> ACG-5 RelayEMO scene ownership cleanup
+  -> ACG-6 SCN structured classifier and scene-wiki integration
+```
+
+The plain-language phase aliases are Phase A Analyzer Governance, Phase B Grounded Recall Detail Safety, Phase C Retrieval Query Normalization, Phase D Reference/Intent Analyzer Consolidation, and Phase E Scene-wiki Classifier. The roadmap is recorded in [Analyzer Candidate Governance and Multilingual Schema Policy](architecture/analyzer_candidate_governance.md).
+
 ## Current caveats
 
 E1-R4 is request-side only. It builds a backend-bound grounded recall context and instruction from eligible retrieved Primary MEM evidence; it does not add post-hoc visible response rewriting, polling, supervision, O2/O3, browser-owned trust, or new memory mutation authority.
 
 E1-R5 is a bounded request-side fallback bridge. It does not replace M2 as the preferred relevance owner, does not run without query hints, does not scan unbounded filesystem trees, does not use the compatibility symlink, and does not add mutation, worker, scheduler, queue, browser trust, RelaySOUL, or media runtime authority.
 
-Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-freeze relation, PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope, PM-D3 RelayEMO/RelaySCN scene_state ownership, PM-D4 client history exclusion default-off deployment decision, PM-D5 RelayMEM flat-store compatibility removal, PM-D6 RelayINT native artifact / RelayREF wrapper removal, PM-D7 runtime install hook fold-in, and PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in. These items are intentionally unimplemented until dedicated roadmap PRs close or absorb them. PM-D3 is closed by PR #458 only because the actual request path is rewired and validated, not merely because helper/projection code exists.
+Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-freeze relation, PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope, PM-D3 RelayEMO/RelaySCN scene_state ownership, PM-D4 client history exclusion default-off deployment decision, PM-D5 RelayMEM flat-store compatibility removal, PM-D6 RelayINT native artifact / RelayREF wrapper removal, PM-D7 runtime install hook fold-in, PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in, and PM-D9 analyzer candidate governance and multilingual schema policy. These items are intentionally unimplemented until dedicated roadmap PRs close or absorb them. PM-D3 is closed by PR #458 only because the actual request path is rewired and validated, not merely because helper/projection code exists. PM-D9 is open until ACG-1 through ACG-6 are implemented or explicitly rescheduled by a later roadmap PR.
 
 ## Immediate dependency-first work
 
 ```text
+Analyzer Candidate Governance slices
+  -> begin after the completed P0-PIPE request-path ordering fix
+  -> execute ACG-1 through ACG-6 before Character Workspace reset implementation
+  -> keep schema keys / enum values / reason IDs English-only while isolating multilingual free-text understanding inside analyzer candidate producers
+
 Character Workspace parser/compiler/UI slices
-  -> begin only after the completed P0-PIPE request-path ordering fix
+  -> begin only after the ACG gate lands or a later roadmap PR explicitly changes this dependency order
   -> keep full RelayREL Markdown parsing out of PR #458
 
 Character Workspace reset next candidates:
@@ -221,19 +246,20 @@ Character Workspace reset next candidates:
   CW-A5 character creation, templates, and showcase import
 
 Post-E1-R5 / Post-Wave-7 next candidates:
-  E1-R5 scoped Primary recall candidate bridge boundary remains complete; new work starts after P0-PIPE.
+  E1-R5 scoped Primary recall candidate bridge boundary remains complete; new work starts after P0-PIPE and ACG.
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D4 client history exclusion default-off deployment decision
   PM-D5 RelayMEM flat-store compatibility removal
   PM-D6 RelayINT native artifact / RelayREF wrapper removal
   PM-D7 runtime install hook fold-in
   PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
+  PM-D9 analyzer candidate governance and multilingual schema policy
   PM-D2 closure or absorption after PM-D6 if RelayREF wrapper removal closes the legacy artifact scope
   O2/O3 only after explicit MVP need
   Static SOUL Lab bundle serving, if local packaging requires it
 ```
 
-The completed P0-PIPE implementation boundary is [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md). The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The E1-R5 post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](architecture/wave6_cross_slice_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). The E1-R5 implementation handoff is [E1-R5 Primary MEM Recall Candidate Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
+The completed P0-PIPE implementation boundary is [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md). The Analyzer Candidate Governance roadmap is [Analyzer Candidate Governance and Multilingual Schema Policy](architecture/analyzer_candidate_governance.md). The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The E1-R5 post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The Wave 6 convergence record is [Wave 6 Cross-Slice Convergence Audit](architecture/wave6_cross_slice_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). The E1-R5 implementation handoff is [E1-R5 Primary MEM Recall Candidate Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 
 ## Safe defaults
 
@@ -241,6 +267,7 @@ Current mutation, worker, durable-finalization, retention, scheduler-related pat
 
 ## Not yet implemented
 
+- Analyzer Candidate Governance runtime slices ACG-1 through ACG-6;
 - Character Workspace source tree parser/compiler/UI;
 - Quick Create / Advanced Create / template import UI;
 - full RelayREL relationship Markdown parsing;
