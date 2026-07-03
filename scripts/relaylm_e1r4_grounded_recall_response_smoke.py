@@ -46,7 +46,7 @@ def test_directly_supported_recall() -> None:
     require(items[0]["provenance_source"] == "user_assertion", items)
     require(USER_FACT in items[0]["fact_text"], items)
     instruction = context["instruction"]
-    require("Do not invent dates, names, preferences, quantities, relationships, or causes" in instruction, instruction)
+    require("Do not invent dates, names, preferences, quantities, relationships, locations, identities, or causes" in instruction, instruction)
     require("Answer only from directly supported evidence" in instruction, instruction)
     backend_messages = context["backend_messages"]
     require(USER_FACT in backend_messages[0]["content"], backend_messages)

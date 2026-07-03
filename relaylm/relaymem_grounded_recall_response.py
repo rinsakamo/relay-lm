@@ -10,6 +10,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
+from relaylm.query_detail_analyzer import (
+    QueryDetailAnalysis,
+    analyze_query_detail_candidate,
+)
+
 GROUNDED_RECALL_CONTEXT_SCHEMA = "relaymem.grounded_recall_context.v0"
 GROUNDED_RECALL_PROJECTION_SCHEMA = "relaymem.grounded_recall_projection.v0"
 MAX_EVIDENCE_ITEMS = 32
@@ -35,18 +40,14 @@ _UNSUPPORTED = {"assistant_acknowledgement", "assistant_speculation", "assistant
 _SAFE_REF_RE = re.compile(r"^[A-Za-z0-9_.:-]{1,96}$")
 _LONG_HEX_RE = re.compile(r"^[0-9a-f]{32,}$")
 _SPACE_RE = re.compile(r"\s+")
-_DATE_QUERY_RE = re.compile(r"\b(when|date|day|month|year|time|first hear|first heard)\b|いつ|何年|何月|何日|初めて", re.I)
 _DATE_LIKE_RE = re.compile(r"\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b|\b\d{4}\b|令和|平成|昭和|\d{1,2}月\d{1,2}日", re.I)
-_QUANTITY_QUERY_RE = re.compile(r"\b(how many|how much|number|quantity)\b|何個|いくつ|何回", re.I)
 _QUANTITY_LIKE_RE = re.compile(r"\b\d+(?:\.\d+)?\b|一つ|二つ|三つ|[0-9]+個|[0-9]+回")
-_NAME_QUERY_RE = re.compile(r"\b(name|who)\b|名前|誰", re.I)
 _NAME_LIKE_RE = re.compile(r"\b(name is|called|named)\b|名前は", re.I)
-_REL_QUERY_RE = re.compile(r"\b(relationship|related|friend|family|coworker)\b|関係|友人|家族|同僚", re.I)
 _REL_LIKE_RE = re.compile(r"\b(friend|family|parent|child|coworker|relationship)\b|友人|家族|同僚|関係", re.I)
-_CAUSE_QUERY_RE = re.compile(r"\b(why|because|cause|reason)\b|なぜ|理由|原因", re.I)
 _CAUSE_LIKE_RE = re.compile(r"\b(because|reason|cause|due to)\b|理由|原因|なぜなら", re.I)
-_PREFERENCE_QUERY_RE = re.compile(r"\b(favorite|favourite|prefer|preference|like|love|dislike|hobby|taste)\b|好き|好み|お気に入り|嫌い", re.I)
 _PREFERENCE_LIKE_RE = re.compile(r"\b(favorite|favourite|prefer|preference|like|love|dislike|hobby|taste)\b|好き|好み|お気に入り|嫌い", re.I)
+_LOCATION_LIKE_RE = re.compile(r"\b(?:location|place|address|city|country|venue|station|room|building|site)\s*(?:is|:|=)|場所[は:：]|住所[は:：]|会場[は:：]|駅[は:：]|部屋[は:：]|市[は:：]|国[は:：]|県[は:：]", re.I)
+_IDENTITY_LIKE_RE = re.compile(r"\b(identity|profile|name is|called|named)\b|身元|名前は|プロフィール", re.I)
 _FAVORITE_DETAIL_RE = re.compile(r"\bfavo[u]?rite\s+([A-Za-z][A-Za-z0-9_-]{0,32})", re.I)
 
 
@@ -62,6 +63,9 @@ class RelayMEMGroundedRecallResult:
         ctx = self.grounded_recall_context if isinstance(self.grounded_recall_context, Mapping) else {}
         evidence = ctx.get("evidence_items") if isinstance(ctx, Mapping) else []
         excluded = ctx.get("excluded_evidence") if isinstance(ctx, Mapping) else []
+        query_detail = ctx.get("query_detail_analysis") if isinstance(ctx, Mapping) else {}
+        query_detail_map = query_detail if isinstance(query_detail, Mapping) else {}
+        query_detail_types = ctx.get("query_detail_types") if isinstance(ctx, Mapping) else []
         return {
             "schema_version": GROUNDED_RECALL_PROJECTION_SCHEMA,
             "diagnostics_only": True,
@@ -74,6 +78,11 @@ class RelayMEMGroundedRecallResult:
             "unsupported_detail_policy": str(ctx.get("unsupported_detail_policy", "suppress")) if isinstance(ctx, Mapping) else "suppress",
             "unsupported_detail_count": int(ctx.get("unsupported_detail_count", 0) or 0) if isinstance(ctx, Mapping) else 0,
             "ambiguous_evidence_count": int(ctx.get("ambiguous_evidence_count", 0) or 0) if isinstance(ctx, Mapping) else 0,
+            "query_detail_type_count": len(query_detail_types) if isinstance(query_detail_types, Sequence) else 0,
+            "query_detail_unsupported_detail_risk": bool(ctx.get("unsupported_detail_risk", False)) if isinstance(ctx, Mapping) else False,
+            "query_detail_source_class": str(query_detail_map.get("source_class", "unknown")),
+            "query_detail_restrictive_only": bool(query_detail_map.get("restrictive_only", True)),
+            "query_detail_content_free": bool(query_detail_map.get("content_free", True)),
             "evidence_content_included": False,
             "runtime_private_evidence_omitted": True,
             "raw_memory_text_included": False,
@@ -91,7 +100,16 @@ class RelayMEMGroundedRecallResult:
         }
 
 
-def build_grounded_recall_context(*, retrieved_memories: object, query_text: object = "", character_id: object | None = None, namespace: object | None = None, enabled: bool = True, unsupported_detail_policy: object = "suppress") -> RelayMEMGroundedRecallResult:
+def build_grounded_recall_context(
+    *,
+    retrieved_memories: object,
+    query_text: object = "",
+    character_id: object | None = None,
+    namespace: object | None = None,
+    enabled: bool = True,
+    unsupported_detail_policy: object = "suppress",
+    query_detail_candidate: object | None = None,
+) -> RelayMEMGroundedRecallResult:
     if type(enabled) is not bool:
         return _result("context_build_failed", bool(enabled), False, None, ("grounding_enabled_invalid",))
     if not enabled:
@@ -100,8 +118,13 @@ def build_grounded_recall_context(*, retrieved_memories: object, query_text: obj
         return _result("context_build_failed", True, False, None, ("unsupported_detail_policy_invalid",))
     if type(query_text) is not str or type(retrieved_memories) not in {list, tuple} or len(retrieved_memories) > MAX_EVIDENCE_ITEMS:
         return _result("context_build_failed", True, False, None, ("request_shape_invalid",))
+
+    query_detail_analysis = analyze_query_detail_candidate(
+        query_text=query_text,
+        candidate=query_detail_candidate,
+    )
     if not retrieved_memories:
-        ctx = _context([], [], query_text, str(unsupported_detail_policy), 0, 0, no_evidence=True)
+        ctx = _context([], [], query_detail_analysis, str(unsupported_detail_policy), 0, 0, no_evidence=True)
         return _result("no_retrieved_evidence", True, True, ctx, ("no_retrieved_evidence",))
 
     items: list[dict[str, object]] = []
@@ -139,8 +162,8 @@ def build_grounded_recall_context(*, retrieved_memories: object, query_text: obj
         })
 
     items.sort(key=lambda item: (not bool(item.get("pinned")), str(item.get("memory_ref", ""))))
-    unsupported = _unsupported_detail_count(query_text, items)
-    ctx = _context(items, excluded, query_text, str(unsupported_detail_policy), unsupported, ambiguous, no_evidence=False)
+    unsupported = _unsupported_detail_count(query_text, items, query_detail_analysis)
+    ctx = _context(items, excluded, query_detail_analysis, str(unsupported_detail_policy), unsupported, ambiguous, no_evidence=False)
     if items and unsupported:
         return _result("unsupported_detail_suppressed", True, True, ctx, ("requested_detail_not_supported_by_retrieved_memory",))
     if items:
@@ -166,9 +189,19 @@ def classify_grounded_recall_support(memory: Mapping[str, object]) -> SupportSta
     return "ambiguous_evidence"
 
 
-def _context(items: list[dict[str, object]], excluded: list[dict[str, object]], query: str, policy: str, unsupported: int, ambiguous: int, *, no_evidence: bool) -> dict[str, object]:
+def _context(
+    items: list[dict[str, object]],
+    excluded: list[dict[str, object]],
+    query_detail_analysis: QueryDetailAnalysis,
+    policy: str,
+    unsupported: int,
+    ambiguous: int,
+    *,
+    no_evidence: bool,
+) -> dict[str, object]:
     instruction = _instruction(no_evidence=no_evidence, unsupported=unsupported, policy=policy)
     content = _backend_message_content(instruction, items, unsupported)
+    public_query_detail = query_detail_analysis.to_public_dict()
     return {
         "schema_version": GROUNDED_RECALL_CONTEXT_SCHEMA,
         "runtime_private": True,
@@ -178,7 +211,9 @@ def _context(items: list[dict[str, object]], excluded: list[dict[str, object]], 
         "unsupported_detail_policy": policy,
         "unsupported_detail_count": unsupported,
         "ambiguous_evidence_count": ambiguous,
-        "query_detail_types": _query_detail_types(query),
+        "query_detail_types": list(query_detail_analysis.requested_detail_types),
+        "unsupported_detail_risk": query_detail_analysis.unsupported_detail_risk,
+        "query_detail_analysis": public_query_detail,
         "instruction": instruction,
         "backend_messages": [{"role": "system", "content": content}],
     }
@@ -206,7 +241,7 @@ def _backend_message_content(instruction: str, items: Sequence[Mapping[str, obje
 
 
 def _instruction(*, no_evidence: bool, unsupported: int, policy: str) -> str:
-    base = "Use only the grounded_recall_context evidence_items for remembered facts. Treat directly_supported evidence as remembered fact. Mark inferred_from_supported statements explicitly as inference. Do not invent dates, names, preferences, quantities, relationships, or causes. Assistant acknowledgements, assistant speculation, hidden/prior/prepared/recovery/corrupt/cross-scope memories, and Held Governance evidence do not create recalled facts. Pin ordering may rank eligible evidence earlier but never creates factual support."
+    base = "Use only the grounded_recall_context evidence_items for remembered facts. Treat directly_supported evidence as remembered fact. Mark inferred_from_supported statements explicitly as inference. Do not invent dates, names, preferences, quantities, relationships, locations, identities, or causes. Assistant acknowledgements, assistant speculation, hidden/prior/prepared/recovery/corrupt/cross-scope memories, and Held Governance evidence do not create recalled facts. Pin ordering may rank eligible evidence earlier but never creates factual support."
     if no_evidence:
         return base + " No retrieved evidence is present; do not claim to remember the requested detail. Say the memory does not support that detail."
     if unsupported:
@@ -296,32 +331,24 @@ def _safe_revision(value: object) -> str:
     return "revision_present" if value not in {None, ""} else "revision_unknown"
 
 
-def _query_detail_types(query: str) -> list[str]:
-    checks = (
-        ("date_or_time", _DATE_QUERY_RE),
-        ("name", _NAME_QUERY_RE),
-        ("quantity", _QUANTITY_QUERY_RE),
-        ("relationship", _REL_QUERY_RE),
-        ("cause", _CAUSE_QUERY_RE),
-        ("preference", _PREFERENCE_QUERY_RE),
-    )
-    return [name for name, pattern in checks if pattern.search(query)]
-
-
-def _unsupported_detail_count(query: str, items: Sequence[Mapping[str, object]]) -> int:
+def _unsupported_detail_count(query: str, items: Sequence[Mapping[str, object]], analysis: QueryDetailAnalysis) -> int:
     facts = "\n".join(str(item.get("fact_text", "")) for item in items)
+    requested = set(analysis.requested_detail_types)
     return sum((
-        bool(_DATE_QUERY_RE.search(query) and not _DATE_LIKE_RE.search(facts)),
-        bool(_QUANTITY_QUERY_RE.search(query) and not _QUANTITY_LIKE_RE.search(facts)),
-        bool(_NAME_QUERY_RE.search(query) and not _NAME_LIKE_RE.search(facts)),
-        bool(_REL_QUERY_RE.search(query) and not _REL_LIKE_RE.search(facts)),
-        bool(_CAUSE_QUERY_RE.search(query) and not _CAUSE_LIKE_RE.search(facts)),
-        _preference_detail_missing(query, facts),
+        bool("date_or_time" in requested and not _DATE_LIKE_RE.search(facts)),
+        bool("quantity" in requested and not _QUANTITY_LIKE_RE.search(facts)),
+        bool("person_or_name" in requested and not _NAME_LIKE_RE.search(facts)),
+        bool("relationship" in requested and not _REL_LIKE_RE.search(facts)),
+        bool("cause_or_reason" in requested and not _CAUSE_LIKE_RE.search(facts)),
+        _preference_detail_missing(query, facts, requested),
+        bool("location" in requested and not _LOCATION_LIKE_RE.search(facts)),
+        bool("identity" in requested and not _IDENTITY_LIKE_RE.search(facts)),
+        bool("unknown" in requested),
     ))
 
 
-def _preference_detail_missing(query: str, facts: str) -> bool:
-    if not _PREFERENCE_QUERY_RE.search(query):
+def _preference_detail_missing(query: str, facts: str, requested: set[str]) -> bool:
+    if "preference" not in requested:
         return False
     query_lower = query.lower()
     facts_lower = facts.lower()
