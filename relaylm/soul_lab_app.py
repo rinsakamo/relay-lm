@@ -26,6 +26,10 @@ from relaylm.relaymem_primary_forget import (
     list_primary_memory_forget_history,
     preflight_primary_memory_forget,
 )
+from relaylm.soul_lab_forget_projection_history import (
+    build_lab_active_recent_memory_projection,
+    build_lab_forget_history_projection,
+)
 from relaylm.soul_lab_lifecycle_visibility_projection import (
     build_lab_lifecycle_visibility_projection,
 )
@@ -51,7 +55,6 @@ from relaylm.soul_lab_observation_projection import (
     build_lab_last_run_projection,
     build_lab_memory_held_projection,
     build_lab_memory_used_projection,
-    build_lab_recent_memory_projection,
     resolve_lab_observation_scope,
 )
 from relaylm.soul_lab_used_memory_lifecycle_projection import (
@@ -236,7 +239,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
         limit: int = Query(default=20, ge=1, le=50),
     ) -> JSONResponse:
         require_loopback_management(request)
-        projection = build_lab_recent_memory_projection(observation_scope(character_id, namespace), limit=limit)
+        projection = build_lab_active_recent_memory_projection(observation_scope(character_id, namespace), limit=limit)
         return JSONResponse(content=projection.model_dump(mode="json"), headers={"Cache-Control": "no-store"})
 
     @app.get("/lab/api/characters/{character_id}/memory/held", response_model=None)
@@ -443,9 +446,15 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 namespace=namespace,
                 memory_id=memory_id,
             )
+            projection = build_lab_forget_history_projection(
+                store_root=scope.store_root,
+                namespace=namespace,
+                memory_id=memory_id,
+                base=result,
+            )
         except PrimaryForgetError as error:
             raise forget_failure(error) from None
-        return JSONResponse(content=result, headers={"Cache-Control": "no-store"})
+        return JSONResponse(content=projection, headers={"Cache-Control": "no-store"})
 
     install_primary_memory_pin_routes(
         app=app,
