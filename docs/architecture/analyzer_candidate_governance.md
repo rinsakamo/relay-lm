@@ -20,6 +20,7 @@ relaylm_related_authority:
   - pipeline_responsibility_design.md
   - p0_relayrel_relayscn_relayemo_ordering_fix.md
   - acg1_analyzer_candidate_governance_contract.md
+  - acg2_grounded_recall_detail_safety.md
   - e1r4_retrieval_response_grounding.md
   - relaymem_slp_current_target.md
 ---
@@ -117,10 +118,10 @@ The ACG roadmap uses numbered implementation slices, but the product-level seque
 
 ```text
 Phase A: Analyzer Governance
-  -> ACG-1 Analyzer Candidate Governance contract (current)
+  -> ACG-1 Analyzer Candidate Governance contract (complete)
 
 Phase B: Grounded Recall Detail Safety
-  -> ACG-2 Grounded Recall Query Detail Analyzer
+  -> ACG-2 Grounded Recall Query Detail Analyzer (complete)
 
 Phase C: Retrieval Query Normalization
   -> ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization
@@ -132,7 +133,7 @@ Phase E: Scene-wiki Classifier
   -> ACG-6 SCN structured classifier and scene-wiki integration
 ```
 
-ACG-0 is the prerequisite P0 ordering boundary and is complete through PR #458. ACG-1 is current as the shared contract/helper slice. ACG-5 is inserted before Phase E to remove the remaining RelayEMO scene-ownership ambiguity so SCN scene-wiki work does not inherit a second scene owner.
+ACG-0 is the prerequisite P0 ordering boundary and is complete through PR #458. ACG-1 is complete as the shared contract/helper slice. ACG-2 is complete as the Grounded Recall Query Detail Analyzer and request-side unsupported-detail safety slice. ACG-5 is inserted before Phase E to remove the remaining RelayEMO scene-ownership ambiguity so SCN scene-wiki work does not inherit a second scene owner.
 
 ## Priority implementation phases
 
@@ -148,7 +149,7 @@ RelaySCN owns normalized scene policy input. RelayEMO must not be a scene-state 
 
 ### ACG-1: Analyzer Candidate Governance contract
 
-ACG-1 is current as the shared Analyzer Candidate Governance contract/helper slice. It introduces `relaylm/analyzer_governance.py` and smoke coverage in `scripts/relaylm_analyzer_governance_smoke.py`.
+ACG-1 is complete as the shared Analyzer Candidate Governance contract/helper slice. It introduces `relaylm/analyzer_governance.py` and smoke coverage in `scripts/relaylm_analyzer_governance_smoke.py`.
 
 Scope:
 
@@ -158,30 +159,31 @@ Scope:
 - define fixed English enum policy;
 - define fail-closed behavior for invalid or low-confidence analyzer output.
 
-This phase is documentation and schema-first. It does not introduce a large runtime classifier, and it does not implement ACG-2 through ACG-6 analyzer producers.
+This phase is documentation and schema-first. It does not introduce a large runtime classifier, and it does not implement ACG-3 through ACG-6 analyzer producers/classifiers.
 
 ### ACG-2: Grounded Recall Query Detail Analyzer
 
-Move request-side remembered-detail detection out of ad hoc regex ownership and into a query detail analyzer artifact.
+ACG-2 is complete. It moves request-side remembered-detail detection out of ad hoc regex ownership and into a Query Detail Analyzer artifact consumed by Grounded Recall.
 
-Why this is first among remaining implementation phases:
-
-- unsupported detail suppression directly protects remembered-fact correctness;
-- current detail detection is language-limited;
-- missing detail detection can allow unsupported dates, names, quantities, relationships, causes, or preferences to pass through without suppression.
-
-Target candidate artifact:
+Fixed English detail enum values:
 
 ```text
-query_detail_analyzer
-  -> requested_detail_types
-  -> unsupported_detail_risk
-  -> source_language
-  -> confidence
-  -> restrictive_only
+date_or_time
+person_or_name
+quantity
+relationship
+cause_or_reason
+preference
+location
+identity
+unknown
 ```
 
-Existing regex checks may remain as a fallback candidate, but unsupported-detail suppression must not become weaker. Low confidence should prefer restrictive suppression rather than permissive recall.
+Existing regex checks remain as a fallback candidate, but unsupported-detail suppression does not become weaker. The fallback is non-authoritative, restrictive-only, and may strengthen suppression only.
+
+ACG-2 does not require an LLM classifier, does not add post-hoc visible response rewriting, does not mutate memory, and does not expose raw user text, memory text, protected source bodies, free-form rationale, regex match bodies, filesystem paths, or queue payloads in public diagnostics.
+
+The ACG-2 handoff is [ACG-2 Grounded Recall Detail Safety](acg2_grounded_recall_detail_safety.md).
 
 ### ACG-3: RelayMEM Query Analyzer / Retrieval Hint Normalization
 
