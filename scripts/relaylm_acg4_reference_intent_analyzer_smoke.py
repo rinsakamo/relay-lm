@@ -57,6 +57,19 @@ def main() -> None:
         require(public["unresolved_reference_detected"] is True, (marker, public))
         require(public["clarification_recommended"] is True, (marker, public))
 
+    for marker in ("この件", "前の"):
+        public = _public(marker)
+        require(public["unresolved_reference_detected"] is True, (marker, public))
+        require(public["clarification_recommended"] is True, (marker, public))
+        relayint = build_relayint_fast_path_dry_run(
+            messages=_message(marker),
+            ctx_hints={},
+            enabled=True,
+        )
+        require(isinstance(relayint, dict), relayint)
+        require(relayint["detected_reference_kind"] == "pronoun_like", relayint)
+        require(relayint["candidate_action"] == "ask_clarification", relayint)
+
     for marker in ("which one", "what was that", "what were we"):
         public = _public(marker)
         require(public["unresolved_reference_detected"] is True, (marker, public))
