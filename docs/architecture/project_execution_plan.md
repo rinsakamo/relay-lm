@@ -386,7 +386,7 @@ Post-MVP decision debt registry:
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope
   PM-D3 RelayEMO/RelaySCN scene_state ownership: complete in PR #458
-    -> Closed only after app.py was rewired and validation passed; it must not be reopened by future analyzer or Character Workspace work
+    -> Execute the existing RelaySCN-owned `scene_state` migration plan is now complete through PR #458; closed only after app.py was rewired and validation passed; it must not be reopened by future analyzer or Character Workspace work
   PM-D4 client history exclusion default-off deployment decision
   PM-D5 RelayMEM flat-store compatibility removal
   PM-D6 RelayINT native artifact / RelayREF wrapper removal
