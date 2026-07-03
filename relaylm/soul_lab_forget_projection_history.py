@@ -23,12 +23,17 @@ from .relaymem_primary_forget_finalization_artifact import (
     MAX_TOMBSTONE_BYTES,
     validate_forget_tombstone,
 )
+from .relaymem_primary_recall import _load_control_state, _load_validated_page
 from .soul_lab_observation_projection import (
     LabObservationScope,
+    LabRecentMemoryItem,
     LabRecentMemoryProjection,
-    build_lab_recent_memory_projection,
 )
-from .soul_lab_observation_store import normalize_reason_ids, stable_correlation
+from .soul_lab_observation_store import (
+    bounded_text,
+    normalize_reason_ids,
+    stable_correlation,
+)
 
 _MAX_HISTORY_ITEMS = 50
 
@@ -38,28 +43,74 @@ def build_lab_active_recent_memory_projection(
 ) -> LabRecentMemoryProjection:
     """Return only active, current, retrieval-eligible Primary memories.
 
-    The base recent projection walks the canonical control log.  After Forget,
-    that log can still contain the prior active physical page for a logical
-    memory whose current successor is hidden.  SOUL Lab recent is an active view,
-    so each candidate is rechecked against the current-state resolver before it
-    is shown.
+    This intentionally scans the canonical control log itself rather than
+    filtering an already-limited recent projection.  Hidden or recovery Forget
+    successors must not consume result slots; older active memories should still
+    backfill the response until the requested limit is reached or the log is
+    exhausted.
     """
 
-    projection = build_lab_recent_memory_projection(scope, limit=limit)
-    if not scope.available or scope.store_root is None or not projection.items:
-        return projection
+    bounded_limit = max(1, min(int(limit), 50))
+    if not scope.available or scope.store_root is None:
+        return LabRecentMemoryProjection(
+            availability="unavailable",
+            character_id=scope.character_id,
+            namespace=scope.namespace,
+            limit=bounded_limit,
+            items=[],
+            bounded_reason_ids=list(scope.reason_ids),
+        )
 
-    filtered = []
-    reasons: list[str] = list(projection.bounded_reason_ids)
-    for item in projection.items:
+    root = Path(scope.store_root)
+    control, reasons = _load_control_state(root)
+    if control is None:
+        return LabRecentMemoryProjection(
+            availability="unavailable",
+            character_id=scope.character_id,
+            namespace=scope.namespace,
+            limit=bounded_limit,
+            items=[],
+            bounded_reason_ids=normalize_reason_ids(reasons),
+        )
+
+    from .relaymem_primary_correction import (
+        load_primary_correction_state,
+        resolve_primary_correction_identity,
+    )
+
+    correction_state = load_primary_correction_state(
+        root,
+        namespace=scope.namespace,
+    )
+    items: list[LabRecentMemoryItem] = []
+    seen: set[str] = set()
+    projection_reasons: list[str] = list(reasons)
+    for entry in reversed(control["log"]):
+        if entry.get("namespace") != scope.namespace:
+            continue
+        physical_identity = entry.get("idempotency_key")
+        if not isinstance(physical_identity, str):
+            continue
+        resolved = resolve_primary_correction_identity(
+            correction_state,
+            physical_identity,
+        )
+        if resolved is None:
+            projection_reasons.append("primary_correction_state_invalid")
+            continue
+        identity, revision, is_current = resolved
+        if not is_current or identity in seen:
+            continue
+        seen.add(identity)
+
         try:
             state = resolve_primary_current_state(
                 scope.store_root,
                 namespace=scope.namespace,
-                memory_id=item.memory_id,
+                memory_id=identity,
             )
         except PrimaryCurrentStateError:
-            reasons.append("primary_recent_current_state_unavailable")
+            projection_reasons.append("primary_recent_current_state_unavailable")
             continue
         if (
             state.lifecycle_state != "active"
@@ -67,18 +118,45 @@ def build_lab_active_recent_memory_projection(
             or not state.controls_valid
             or not state.page_valid
             or not state.retrieval_eligible
-            or state.current_revision != item.revision
+            or state.current_revision != revision
+            or state.current_physical_id != physical_identity
         ):
-            reasons.append("primary_recent_non_active_current_excluded")
+            projection_reasons.append("primary_recent_non_active_current_excluded")
+            projection_reasons.extend(state.bounded_reason_ids)
             continue
-        filtered.append(item)
 
-    return projection.model_copy(
-        update={
-            "availability": "available" if filtered else "empty",
-            "items": filtered,
-            "bounded_reason_ids": normalize_reason_ids(reasons),
-        }
+        loaded, blocked = _load_validated_page(
+            root,
+            {"path": entry.get("page_relative_path")},
+            expected_namespace=scope.namespace,
+            control=control,
+        )
+        if loaded is None:
+            projection_reasons.extend(blocked)
+            continue
+        receipts = correction_state.receipts_by_logical.get(identity, ())
+        items.append(
+            LabRecentMemoryItem(
+                memory_id=identity,
+                title=bounded_text(loaded.get("title"), maximum=160),
+                bounded_summary=bounded_text(loaded.get("summary"), maximum=512),
+                source_kind=str(loaded.get("memory_kind", "primary")),
+                revision=revision,
+                correction_count=len(receipts),
+                last_corrected_at=str(receipts[-1]["applied_at"]) if receipts else None,
+                has_prior_revision=bool(receipts),
+            )
+        )
+        if len(items) >= bounded_limit:
+            break
+
+    return LabRecentMemoryProjection(
+        availability="available" if items else "empty",
+        character_id=scope.character_id,
+        namespace=scope.namespace,
+        limit=bounded_limit,
+        items=items,
+        bounded_reason_ids=normalize_reason_ids(projection_reasons),
     )
 
 
