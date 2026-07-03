@@ -529,8 +529,11 @@ def _sanitize_enum_values(value: Any, errors: list[str]) -> list[str]:
 
     sanitized: list[str] = []
     for item in values:
-        token = item if isinstance(item, str) else "unknown"
-        token = token.strip().lower() if isinstance(token, str) else "unknown"
+        if not isinstance(item, str):
+            errors.append("unknown_enum_value")
+            sanitized.append("unknown_enum_value")
+            continue
+        token = item.strip().lower()
         if token in known_values:
             sanitized.append(token)
         else:
