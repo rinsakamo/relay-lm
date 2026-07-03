@@ -16,6 +16,7 @@ from relaylm.reference_intent_analyzer import (
     analyze_reference_intent,
     normalize_reference_intent_artifact,
     reference_intent_public_projection,
+    relayint_legacy_reference_kind,
 )
 from relaylm.relayint import build_relayint_fast_path_dry_run
 from relaylm.relayref import build_relayref_dry_run_artifact
@@ -70,6 +71,18 @@ def main() -> None:
         require(relayint["detected_reference_kind"] == "pronoun_like", relayint)
         require(relayint["candidate_action"] == "ask_clarification", relayint)
 
+    for marker in ("どっち", "which one"):
+        relayint = build_relayint_fast_path_dry_run(
+            messages=_message(marker),
+            ctx_hints={"current_topic": "keyword:private body"},
+            enabled=True,
+        )
+        require(isinstance(relayint, dict), relayint)
+        require(relayint["reference_intent_analyzer"]["reference_kind"] == "ambiguous_choice", relayint)
+        require(relayint["ambiguity_detected"] is True, relayint)
+        require(relayint["candidate_action"] == "ask_clarification", relayint)
+        _assert_content_free(relayint)
+
     for marker in ("which one", "what was that", "what were we"):
         public = _public(marker)
         require(public["unresolved_reference_detected"] is True, (marker, public))
@@ -108,6 +121,27 @@ def main() -> None:
     require(malformed_public["intent_kinds"] == ("unknown",), malformed_public)
     require("unknown_enum_value" in malformed_public["validation_error_ids"], malformed_public)
     _assert_content_free(malformed_public)
+
+    malformed_flagged = normalize_reference_intent_artifact(
+        {
+            "schema_version": "relaylm.reference_intent_analyzer.v0",
+            "analyzer_kind": "reference_intent_candidate",
+            "reference_kind": "secret private reference",
+            "intent_kinds": ["keyword:private body"],
+            "prior_memory_request_detected": True,
+            "unresolved_reference_detected": True,
+            "ambiguity_detected": True,
+        }
+    )
+    malformed_flagged_public = reference_intent_public_projection(malformed_flagged)
+    require(malformed_flagged_public["reference_kind"] == "unknown", malformed_flagged_public)
+    require(malformed_flagged_public["prior_memory_request_detected"] is False, malformed_flagged_public)
+    require(malformed_flagged_public["unresolved_reference_detected"] is False, malformed_flagged_public)
+    require(malformed_flagged_public["ambiguity_detected"] is False, malformed_flagged_public)
+    require(malformed_flagged_public["candidate_applied"] is False, malformed_flagged_public)
+    require(malformed_flagged_public["runtime_policy_open_allowed"] is False, malformed_flagged_public)
+    require("invalid_detection_flags_dropped" in malformed_flagged_public["validation_error_ids"], malformed_flagged_public)
+    require(relayint_legacy_reference_kind(malformed_flagged) == "none", malformed_flagged)
 
     for enum_value in REFERENCE_KINDS | INTENT_KINDS:
         require(enum_value.isascii(), enum_value)
