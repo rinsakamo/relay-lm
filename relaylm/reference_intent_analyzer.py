@@ -49,6 +49,8 @@ UNRESOLVED_REFERENCE_MARKERS = (
     "さっき",
     "どっち",
     "どれ",
+    "前の",
+    "この件",
     "何の話",
     "わから",
 )
@@ -208,7 +210,9 @@ def normalize_reference_intent_artifact(artifact: Mapping[str, Any] | None) -> d
     errors: list[str] = _string_list(raw.get("validation_errors"))
     for key in raw:
         if key not in _ALLOWED_KEYS:
-            errors.append("raw_diagnostic_field_dropped" if key in _RAW_TEXT_LIKE_KEYS else "unsupported_field_dropped")
+            errors.append(
+                "raw_diagnostic_field_dropped" if key in _RAW_TEXT_LIKE_KEYS else "unsupported_field_dropped"
+            )
 
     if raw.get("schema_version") != SCHEMA_VERSION:
         errors.append("unknown_enum_value")
@@ -348,7 +352,14 @@ def _count_terms(text: str, terms: Sequence[str]) -> int:
     return sum(1 for term in terms if term in text)
 
 
-def _reference_kind(*, prior_memory_count: int, continuation_count: int, unresolved_count: int, ambiguous_choice_count: int, context_repair_count: int) -> str:
+def _reference_kind(
+    *,
+    prior_memory_count: int,
+    continuation_count: int,
+    unresolved_count: int,
+    ambiguous_choice_count: int,
+    context_repair_count: int,
+) -> str:
     if prior_memory_count > 0:
         return "prior_memory_reference"
     if ambiguous_choice_count > 0:
@@ -362,7 +373,15 @@ def _reference_kind(*, prior_memory_count: int, continuation_count: int, unresol
     return "none"
 
 
-def _intent_kinds(*, prior_memory_request: bool, continuation: bool, unresolved: bool, correction_count: int, review_count: int, implementation_count: int) -> list[str]:
+def _intent_kinds(
+    *,
+    prior_memory_request: bool,
+    continuation: bool,
+    unresolved: bool,
+    correction_count: int,
+    review_count: int,
+    implementation_count: int,
+) -> list[str]:
     intents: list[str] = []
     if continuation:
         intents.append("continuation")
@@ -379,7 +398,13 @@ def _intent_kinds(*, prior_memory_request: bool, continuation: bool, unresolved:
     return intents
 
 
-def _ambiguity_detected(*, reference_kind: str, continuation: bool, prior_memory_request: bool, ctx_signal_present: bool) -> bool:
+def _ambiguity_detected(
+    *,
+    reference_kind: str,
+    continuation: bool,
+    prior_memory_request: bool,
+    ctx_signal_present: bool,
+) -> bool:
     if reference_kind == "none" or prior_memory_request:
         return False
     if continuation:
@@ -387,7 +412,14 @@ def _ambiguity_detected(*, reference_kind: str, continuation: bool, prior_memory
     return True
 
 
-def _confidence_score(*, reference_kind: str, prior_memory_request: bool, continuation: bool, ambiguity: bool, ctx_signal_present: bool) -> float:
+def _confidence_score(
+    *,
+    reference_kind: str,
+    prior_memory_request: bool,
+    continuation: bool,
+    ambiguity: bool,
+    ctx_signal_present: bool,
+) -> float:
     if prior_memory_request:
         return 0.82
     if ambiguity:
