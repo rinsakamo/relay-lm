@@ -6,6 +6,9 @@ wiring, uppercase source mutation, or default character restoration.
 """
 from __future__ import annotations
 
+import sys
+from types import ModuleType
+
 from . import _constants as _constants
 from ._constants import (
     INTERNAL_BUILD_FILES,
@@ -35,13 +38,14 @@ from ._types import (
 from ._validation import build_character_workspace_manifest, character_workspace_layout, validate_character_workspace
 
 
-def __setattr__(name: str, value: object) -> None:
-    # Keep smoke-time monkeypatches for the public manifest entry limit wired to
-    # the implementation module that reads the bounded limit.
-    globals()[name] = value
-    if name == "MAX_MANIFEST_ENTRIES":
-        _constants.MAX_MANIFEST_ENTRIES = value  # type: ignore[assignment]
+class _CharacterWorkspaceModule(ModuleType):
+    def __setattr__(self, name: str, value: object) -> None:
+        super().__setattr__(name, value)
+        if name == "MAX_MANIFEST_ENTRIES":
+            _constants.MAX_MANIFEST_ENTRIES = value  # type: ignore[assignment]
 
+
+sys.modules[__name__].__class__ = _CharacterWorkspaceModule
 
 __all__ = [
     "INTERNAL_BUILD_FILES",
