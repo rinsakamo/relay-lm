@@ -196,7 +196,6 @@ def test_parser_version_write_block() -> None:
         enabled=True,
         parser_version="typed-parser-v1",
     )
-    require(result is not None and parse_result.parse_ready is True, parse_result) if False else None
     require(parse_result is not None and parse_result.parse_ready is True, parse_result)
     with tempfile.TemporaryDirectory() as temp_dir:
         cache_root = Path(temp_dir)
