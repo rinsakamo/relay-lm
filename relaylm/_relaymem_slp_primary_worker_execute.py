@@ -137,6 +137,10 @@ def execute_relaymem_slp_primary_worker(
             "before_m3e_page_writer": "lease_lost_before_m3e",
             "before_m3g_reconciliation_apply": "lease_lost_before_m3g",
         }[coordinator.denied_at]
+        side_effect_started = (
+            coordinator.denied_at == "before_m3g_reconciliation_apply"
+            and _side_effect_started(pipeline)
+        )
         return _result(
             status=status,
             request=exact,
@@ -146,7 +150,7 @@ def execute_relaymem_slp_primary_worker(
             m3g_checkpoint_passed=coordinator.m3g_checkpoint_passed,
             lease_renewal_count=coordinator.lease_renewal_count,
             pipeline_result=pipeline,
-            side_effect_started=_side_effect_started(pipeline),
+            side_effect_started=side_effect_started,
             reasons=coordinator.reason_ids,
         )
 
