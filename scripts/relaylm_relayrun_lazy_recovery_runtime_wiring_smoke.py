@@ -57,6 +57,12 @@ def _base_artifact_kwargs(*, backend_forward_status: str) -> dict[str, Any]:
             "run_id": "run-phase5d2b-runtime-smoke",
             "route": route,
             "stream_enabled": False,
+            "relayrel_relationship_projection": {
+                "schema_version": "relayrel.relationship_projection.v0",
+                "diagnostics_only": True,
+                "content_free": True,
+            },
+            "relayemo_artifact": None,
             "relayscn_scene_policy_artifact": {
                 "schema_version": "relayscn.scene_policy_artifact.v0",
                 "diagnostics_only": True,
@@ -97,6 +103,7 @@ def _base_artifact_kwargs(*, backend_forward_status: str) -> dict[str, Any]:
                 "applied": False,
                 "blocked_reasons": [],
             },
+            "relayctx_short_term_runtime_injection_apply_result": None,
             "token_budget_truncation": None,
             "backend_forward_status": backend_forward_status,
             "stream_started": False,

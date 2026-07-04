@@ -22,17 +22,27 @@ def build_p0_pipeline_order_projection(
     relayemo_artifact: Mapping[str, Any] | None = None,
     relaymem_retrieval_artifact: Mapping[str, Any] | None = None,
     actual_app_rewired: bool = False,
+    measured_node_order: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     """Build a diagnostics-only order projection for P0 smoke coverage.
 
     The projection reports node names and content-free artifact presence/status
     flags only. It never includes raw messages, memory bodies, relationship
     bodies, scene bodies, assistant output, or backend payload text.
+
+    ``relayscn_precedes_relayemo`` and ``relayrel_precedes_relayscn`` are derived
+    from ``measured_node_order`` (an actual observed call/execution order, e.g.
+    from AST line-number measurement of app.py) when the caller supplies it, so
+    the fields report a measured fact rather than a declared constant. When no
+    measured order is supplied, they fall back to ``actual_app_rewired`` (the
+    only other measurement available to this diagnostics-only helper).
     """
 
     remaining_work: list[str] = []
     if not actual_app_rewired:
         remaining_work.append("app.py_request_path_not_yet_rewired")
+
+    safe_measured_order = _safe_string_sequence(measured_node_order)
 
     return {
         "schema_version": "relaylm.pipeline_order_projection.v0",
@@ -50,12 +60,49 @@ def build_p0_pipeline_order_projection(
         "relaymem_consumes_relayscn_policy": _relaymem_consumes_relayscn_policy(
             relaymem_retrieval_artifact
         ),
-        "relayscn_precedes_relayemo": True,
-        "relayrel_precedes_relayscn": True,
+        "relayscn_precedes_relayemo": _measured_order_precedes(
+            safe_measured_order,
+            "relayscn_scene_policy",
+            "relayemo_input",
+            fallback=actual_app_rewired,
+        ),
+        "relayrel_precedes_relayscn": _measured_order_precedes(
+            safe_measured_order,
+            "relayrel_relationship_projection",
+            "relayscn_scene_policy",
+            fallback=actual_app_rewired,
+        ),
+        "measured_node_order": safe_measured_order,
         "actual_app_rewired": bool(actual_app_rewired),
         "remaining_work": remaining_work,
         "merge_ready": not remaining_work,
     }
+
+
+def _safe_string_sequence(value: Sequence[str] | None) -> list[str] | None:
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        return None
+    return [str(item) for item in value]
+
+
+def _measured_order_precedes(
+    measured_node_order: list[str] | None,
+    before: str,
+    after: str,
+    *,
+    fallback: bool,
+) -> bool:
+    """Return whether ``before`` precedes ``after`` in a measured node order.
+
+    Falls back to ``fallback`` when no measured order is supplied or either
+    node name is absent from it, since precedence cannot be measured then.
+    """
+
+    if measured_node_order is None:
+        return fallback
+    if before not in measured_node_order or after not in measured_node_order:
+        return fallback
+    return measured_node_order.index(before) < measured_node_order.index(after)
 
 
 def _node(

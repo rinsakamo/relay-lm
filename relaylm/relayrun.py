@@ -39,11 +39,13 @@ DEFAULT_RELAYRUN_NODE_SEQUENCE: tuple[str, ...] = (
     "ctx_compile",
     "token_policy",
     "scope_resolution",
-    "input_relayemo",
+    "relayrel",
     "input_relayscn",
+    "input_relayemo",
     "relayref",
     "relaymem_retrieval",
     "relaymem_runtime_injection",
+    "relayctx_short_term_injection",
     "token_budget_truncation",
     "diagnostics_build",
     "backend_forward",
@@ -52,10 +54,13 @@ DEFAULT_RELAYRUN_NODE_SEQUENCE: tuple[str, ...] = (
 
 RUNTIME_CHECKPOINT_NODE_SEQUENCE: tuple[str, ...] = (
     "request_received",
+    "relayrel",
     "relayscn",
+    "relayemo",
     "relayint",
     "relaymem_retrieval",
     "relaymem_runtime_ctx",
+    "relayctx_short_term_injection",
     "token_budget_truncation",
     "backend_forward",
 )

@@ -19,14 +19,16 @@ def _assert(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
-def _app_request_path_order_is_rewired(app_source: str) -> bool:
+_APP_CALL_TO_ORDER_NODE: dict[str, str] = {
+    "build_relayrel_relationship_projection": "relayrel_relationship_projection",
+    "build_relayscn_scene_policy_artifact": "relayscn_scene_policy",
+    "run_relayemo": "relayemo_input",
+}
+
+
+def _app_request_path_call_lines(app_source: str) -> dict[str, list[int]]:
     tree = ast.parse(app_source)
-    call_lines: dict[str, list[int]] = {
-        "build_relayrel_relationship_projection": [],
-        "build_relayscn_scene_policy_artifact": [],
-        "run_relayemo": [],
-    }
-    relayscn_has_relayemo_kwarg = False
+    call_lines: dict[str, list[int]] = {name: [] for name in _APP_CALL_TO_ORDER_NODE}
 
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
@@ -35,14 +37,41 @@ def _app_request_path_order_is_rewired(app_source: str) -> bool:
         if func_name not in call_lines:
             continue
         call_lines[func_name].append(node.lineno)
-        if func_name == "build_relayscn_scene_policy_artifact":
-            relayscn_has_relayemo_kwarg = any(
-                keyword.arg == "relayemo_artifact" for keyword in node.keywords
-            )
 
     for func_name, lines in call_lines.items():
         _assert(lines, f"app.py must call {func_name}")
-    if relayscn_has_relayemo_kwarg:
+    return call_lines
+
+
+def _app_request_path_relayscn_has_relayemo_kwarg(app_source: str) -> bool:
+    tree = ast.parse(app_source)
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "build_relayscn_scene_policy_artifact"
+            and any(keyword.arg == "relayemo_artifact" for keyword in node.keywords)
+        ):
+            return True
+    return False
+
+
+def _app_request_path_measured_order(app_source: str) -> list[str]:
+    """Return the actual RelayREL/RelaySCN/RelayEMO call order measured from app.py.
+
+    This reads real AST call line numbers from the current app.py source instead
+    of declaring the order as a constant, so callers can prove precedence rather
+    than assert it.
+    """
+
+    call_lines = _app_request_path_call_lines(app_source)
+    ordered_func_names = sorted(call_lines, key=lambda name: min(call_lines[name]))
+    return [_APP_CALL_TO_ORDER_NODE[name] for name in ordered_func_names]
+
+
+def _app_request_path_order_is_rewired(app_source: str) -> bool:
+    call_lines = _app_request_path_call_lines(app_source)
+    if _app_request_path_relayscn_has_relayemo_kwarg(app_source):
         return False
 
     relayrel_line = min(call_lines["build_relayrel_relationship_projection"])
@@ -101,6 +130,7 @@ def main() -> None:
 
     app_source = Path("relaylm/app.py").read_text(encoding="utf-8")
     actual_app_rewired = _app_request_path_order_is_rewired(app_source)
+    measured_node_order = _app_request_path_measured_order(app_source)
 
     explicit_artifact = build_relayscn_scene_policy_artifact(
         payload={
@@ -297,12 +327,25 @@ def main() -> None:
         relayemo_artifact={"user_affect_estimate_is_estimate": True},
         relaymem_retrieval_artifact=retrieval_artifact,
         actual_app_rewired=actual_app_rewired,
+        measured_node_order=measured_node_order,
     )
     order = order_projection["request_path_order"]
     _assert(order.index("relayrel_relationship_projection") < order.index("relayscn_scene_policy"), "RelayREL must precede RelaySCN")
     _assert(order.index("relayscn_scene_policy") < order.index("relayemo_input"), "RelaySCN must precede input RelayEMO")
     _assert(order.index("relaymem_retrieval") > order.index("relayscn_scene_policy"), "RelayMEM must consume RelaySCN policy after SCN")
     _assert(order_projection["relaymem_consumes_relayscn_policy"] is True, "RelayMEM should consume RelaySCN")
+    _assert(
+        order_projection["measured_node_order"] == measured_node_order,
+        "order projection must report the measured node order it was given",
+    )
+    _assert(
+        order_projection["relayrel_precedes_relayscn"] == actual_app_rewired,
+        "relayrel_precedes_relayscn must be derived from the measured app.py call order",
+    )
+    _assert(
+        order_projection["relayscn_precedes_relayemo"] == actual_app_rewired,
+        "relayscn_precedes_relayemo must be derived from the measured app.py call order",
+    )
 
     missing_retrieval_projection = build_p0_pipeline_order_projection(
         relayrel_projection=relayrel_projection,
@@ -310,10 +353,44 @@ def main() -> None:
         relayemo_artifact={"user_affect_estimate_is_estimate": True},
         relaymem_retrieval_artifact=None,
         actual_app_rewired=actual_app_rewired,
+        measured_node_order=measured_node_order,
     )
     _assert(
         missing_retrieval_projection["relaymem_consumes_relayscn_policy"] is False,
         "RelayMEM consumption must require RelayMEM retrieval artifact evidence",
+    )
+
+    reversed_order_projection = build_p0_pipeline_order_projection(
+        relayrel_projection=relayrel_projection,
+        relayscn_scene_policy_artifact=heuristic_artifact,
+        relayemo_artifact={"user_affect_estimate_is_estimate": True},
+        relaymem_retrieval_artifact=retrieval_artifact,
+        actual_app_rewired=True,
+        measured_node_order=["relayemo_input", "relayscn_scene_policy", "relayrel_relationship_projection"],
+    )
+    _assert(
+        reversed_order_projection["relayscn_precedes_relayemo"] is False,
+        "a reversed measured order must not report relayscn_precedes_relayemo as True",
+    )
+    _assert(
+        reversed_order_projection["relayrel_precedes_relayscn"] is False,
+        "a reversed measured order must not report relayrel_precedes_relayscn as True",
+    )
+
+    unmeasured_order_projection = build_p0_pipeline_order_projection(
+        relayrel_projection=relayrel_projection,
+        relayscn_scene_policy_artifact=heuristic_artifact,
+        relayemo_artifact={"user_affect_estimate_is_estimate": True},
+        relaymem_retrieval_artifact=retrieval_artifact,
+        actual_app_rewired=False,
+    )
+    _assert(
+        unmeasured_order_projection["relayscn_precedes_relayemo"] is False,
+        "without a measured order, precedence must fall back to actual_app_rewired rather than a hardcoded True",
+    )
+    _assert(
+        unmeasured_order_projection["measured_node_order"] is None,
+        "measured_node_order must be None when the caller supplies no measurement",
     )
 
     if actual_app_rewired:
