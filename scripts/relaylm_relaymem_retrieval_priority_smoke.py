@@ -22,9 +22,6 @@ def _candidate(path: str, *, reason: str = "store_page_available") -> dict[str, 
     elif path.startswith("memory/mem/primary/"):
         layer = "primary"
         profile = "target_primary_secondary"
-    elif path.startswith("memory/mem/"):
-        layer = "legacy_flat"
-        profile = "current_flat"
     else:
         layer = "unknown"
         profile = "unknown"
@@ -43,13 +40,13 @@ def _candidate(path: str, *, reason: str = "store_page_available") -> dict[str, 
 def main() -> int:
     mixed = [
         _candidate("memory/mem/primary/sessions/session.md", reason="keyword_match"),
-        _candidate("memory/mem/projects/legacy.md", reason="keyword_match"),
         _candidate("memory/mem/secondary/concepts/concept.md", reason="keyword_match"),
         _candidate("memory/mem/secondary/summaries/summary.md"),
         _candidate("memory/mem/primary/scenes/scene.md"),
         _candidate("memory/mem/secondary/relations/relation.md"),
         _candidate("memory/mem/secondary/projects/project.md", reason="keyword_match"),
         _candidate("memory/mem/secondary/claims/claim.md", reason="keyword_match"),
+        _candidate("memory/mem/primary/projects/project.md", reason="keyword_match"),
     ]
     prioritized = prioritize_relaymem_candidates(mixed, max_candidates=5)
     require(prioritized["schema_version"] == "relaymem.retrieval_priority.v0", prioritized)
@@ -59,11 +56,8 @@ def main() -> int:
     require(prioritized["mutates_soul"] is False, prioritized)
     require(prioritized["candidate_count"] == 8, prioritized)
     require(prioritized["selected_count"] == 5, prioritized)
-    require(
-        prioritized["layer_counts"]
-        == {"secondary": 5, "primary": 2, "legacy_flat": 1, "unknown": 0},
-        prioritized,
-    )
+    require(prioritized["layer_counts"] == {"secondary": 5, "primary": 3, "unknown": 0}, prioritized)
+    require(prioritized["selection_policy"]["flat_store_compatibility_removed"] is True, prioritized)
     selected = prioritized["selected_candidates"]
     selected_paths = [item["path"] for item in selected]
     require(
@@ -77,11 +71,8 @@ def main() -> int:
         ],
         selected,
     )
-    require(
-        [item["retrieval_rank"] for item in selected] == [0, 1, 2, 3, 4],
-        selected,
-    )
-    print("ok MEM-M2 tier order preserves scene/session before projects")
+    require([item["retrieval_rank"] for item in selected] == [0, 1, 2, 3, 4], selected)
+    print("ok MEM-M2 target tier order preserves scene/session before projects")
 
     projection = prioritized["selection_projection"]
     require(projection["content_included"] is False, projection)
@@ -90,7 +81,6 @@ def main() -> int:
     projection_text = repr(projection)
     require("summary.md" not in projection_text, projection)
     require("session.md" not in projection_text, projection)
-    require("legacy.md" not in projection_text, projection)
     require(
         [item["priority_tier"] for item in projection["selected"]]
         == [
@@ -122,18 +112,19 @@ def main() -> int:
     )
     print("ok keyword bonus cannot override higher MEM-M2 tiers")
 
+    legacy_like = prioritize_relaymem_candidates(
+        [_candidate("memory/mem/projects/legacy.md", reason="keyword_match")]
+    )
+    require(legacy_like["layer_counts"] == {"secondary": 0, "primary": 0, "unknown": 1}, legacy_like)
+    require(legacy_like["selection_projection"]["selected"][0]["memory_layer"] == "unknown", legacy_like)
+    print("ok flat-looking candidate is no longer classified as legacy_flat")
+
     tie = prioritize_relaymem_candidates(
-        [
-            _candidate("memory/mem/secondary/projects/a.md"),
-            _candidate("memory/mem/secondary/projects/b.md"),
-        ]
+        [_candidate("memory/mem/secondary/projects/a.md"), _candidate("memory/mem/secondary/projects/b.md")]
     )
     require(
         [item["path"] for item in tie["selected_candidates"]]
-        == [
-            "memory/mem/secondary/projects/a.md",
-            "memory/mem/secondary/projects/b.md",
-        ],
+        == ["memory/mem/secondary/projects/a.md", "memory/mem/secondary/projects/b.md"],
         tie,
     )
     print("ok original order is stable tie-breaker")
