@@ -97,6 +97,7 @@ Wave 3 implementation tracks complete
 W3-INT merged
 Wave 4 implementation tracks complete
 W4-INT merged
+Post-Wave-4 / Wave 5 implementation tracks complete
 W5-INT merged
 W6-INT merged
 Wave 7 implementation tracks complete
@@ -135,6 +136,16 @@ Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-
 ## Immediate dependency-first work
 
 ```text
+Post-O1F next candidates:
+  I-5B Pin / Unpin apply/API/UI/ranking work                 complete in Wave 6
+  I-7C Held Apply/Discard runtime/API/UI/durable evidence    complete in Wave 6
+  E1-R1 trusted Home scene-admission path                    complete in Wave 6
+  E1-R2 idempotent character-store bootstrap command         complete in Wave 6
+  E1-R3 provenance-preserving Primary MEM formation summary  complete in Wave 7
+  E1-R4 retrieval-response grounding and unsupported-detail suppression complete in Wave 7
+  E1-R5 Primary MEM recall candidate discovery bridge        complete post-Wave-7
+  O2/O3 only after explicit MVP need
+
 Character Workspace reset:
   CW-A1 file-first source tree and parser contracts          complete
   CW-A2 workspace compiler projections and KV-cache tiers    complete
