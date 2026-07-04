@@ -4,6 +4,17 @@ relaylm_authority: character_workspace_creation_templates_import_boundary
 relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: character_workspace
+relaylm_update_trigger:
+  - character creation route behavior changes
+  - template validation or manifest behavior changes
+  - workspace commit behavior changes
+  - active-character selection policy changes
+relaylm_not_authoritative_for:
+  - repository-wide current status
+  - runtime conversation behavior outside creation/import flow
+  - remote template registry behavior
+  - RelaySLP automatic maintenance beyond CW-A4
+  - active character auto-selection
 relaylm_related_authority:
   - ../PROJECT_STATUS.md
   - project_execution_plan.md
