@@ -61,7 +61,7 @@ def build_relayint_reference_intent_artifact(*, relayscn_artifact: Mapping[str, 
     reason_ids = _dedupe_reasons([*_string_list(reference_projection.get("reason_ids")), *_string_list(reference_projection.get("validation_error_ids")), *scene_gate["block_reasons"], *_decision_reasons(detected_reference_kind=detected_reference_kind, explicit_prior_memory=prior_memory, ambiguity_detected=ambiguity, mem_query_needed=mem_query_needed, ctx_signal_present=ctx_signal_present)])
     projection = _relayint_projection(reference_present=reference_present, reference_resolved=resolution_state == "resolved_in_current_context", ambiguity_present=ambiguity, prior_memory_request_detected=prior_memory, mem_query_needed_candidate=mem_query_needed, confidence_band=confidence_bucket, action=candidate_action, reason_ids=reason_ids, reference_intent_projection=reference_projection)
     mode_reasons = _legacy_mode_reasons(parsed_scene=parsed_scene, unresolved_reference=unresolved, ambiguity_detected=ambiguity, reason_ids=reason_ids)
-    mode = "suggest_reflect" if mode_reasons else "none"
+    mode = _legacy_mode(mode_reasons)
     return {
         "schema_version": "relayint.intent.v1",
         "runtime_private": True,
@@ -312,6 +312,12 @@ def _relayint_scene_gate(parsed_scene: Mapping[str, Any]) -> dict[str, Any]:
 
 def _scene_fail_closed(parsed_scene: Mapping[str, Any]) -> bool:
     return bool(_relayint_scene_gate(parsed_scene)["block_reasons"])
+
+
+def _legacy_mode(mode_reasons: Sequence[str]) -> str:
+    if "recovery_scene" in mode_reasons:
+        return "context_repair"
+    return "suggest_reflect" if mode_reasons else "none"
 
 
 def _legacy_mode_reasons(*, parsed_scene: Mapping[str, Any], unresolved_reference: bool, ambiguity_detected: bool, reason_ids: Sequence[str]) -> list[str]:

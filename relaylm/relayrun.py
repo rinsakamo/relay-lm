@@ -682,6 +682,30 @@ def _relayrun_node_name_alias(node_name: str | None) -> str | None:
     return None
     
 
+def _relayrun_recovery_source_node(safe_nodes: list[dict[str, Any]]) -> str | None:
+    for node in safe_nodes:
+        if node.get("node_status") != "blocked" or node.get("node_name") not in {"relayref", "relayint"}:
+            continue
+        blocked_reasons = node.get("blocked_reasons")
+        if isinstance(blocked_reasons, list) and "unresolved_reference_detected" in blocked_reasons:
+            return str(node.get("node_name") or "unknown")
+    for node in safe_nodes:
+        if node.get("node_status") in {"failed", "blocked"} and node.get("node_name") == "backend_forward":
+            return "backend_forward"
+    for node in safe_nodes:
+        if node.get("node_status") == "failed":
+            return str(node.get("node_name") or "unknown")
+    for node in safe_nodes:
+        if node.get("node_status") == "blocked" and node.get("node_name") not in {"relayref", "relayint"}:
+            return str(node.get("node_name") or "unknown")
+    for node in safe_nodes:
+        if node.get("node_status") == "blocked":
+            return str(node.get("node_name") or "unknown")
+    return None
+
+
+
+
 def build_relayrun_recovery_transition_artifact(
     *,
     node_statuses: list[dict[str, Any]] | tuple[dict[str, Any], ...] | None = None,
@@ -697,14 +721,7 @@ def build_relayrun_recovery_transition_artifact(
     """
 
     safe_nodes = [node for node in (node_statuses or ()) if isinstance(node, dict)]
-    source_node = None
-    for preferred_status in ("failed", "blocked"):
-        for node in safe_nodes:
-            if node.get("node_status") == preferred_status:
-                source_node = str(node.get("node_name") or "unknown")
-                break
-        if source_node is not None:
-            break
+    source_node = _relayrun_recovery_source_node(safe_nodes)
 
     source_node_alias = _relayrun_node_name_alias(source_node)
     
