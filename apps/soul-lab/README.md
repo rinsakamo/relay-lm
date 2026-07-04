@@ -1,8 +1,8 @@
-# SOUL Lab UI
+# Character Workspace UI
 
-`apps/soul-lab` is the browser-based local interface for RelayLM character continuity.
+`apps/soul-lab` is the browser-based local interface for RelayLM character continuity. As of CW-A3, the visible shell is organized as a file-first Character Workspace rather than an internal SOUL Lab administration surface.
 
-The current bounded implementation covers UI-A0 through UI-A7, Phase I-2, Phase I-3, and UI-B0:
+The current bounded implementation covers UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0/UI-B1A, I-4E Forget UI, I-5B Pin / Unpin UI, I-7C Held Governance UI, and CW-A3:
 
 - TypeScript + React + Vite foundation,
 - Japanese-default message catalogs with English preview catalogs,
@@ -10,6 +10,7 @@ The current bounded implementation covers UI-A0 through UI-A7, Phase I-2, Phase 
 - one shared shell owner for route, language, theme, active character, navigation lock, top bar, sidebar, footer, and route rendering,
 - persistent active-character display preference,
 - exact server-projected character records from `GET /lab/api/characters`,
+- top-level Character Workspace routes: Home, Character, Scenes, Relationships, Memory Wiki, Runtime, and Advanced,
 - real Home conversation through the existing RelayLM `/v1/chat/completions` path,
 - server-owned single-route resolution with fail-closed unavailable/ambiguous states,
 - bounded non-stream OpenAI-compatible response parsing,
@@ -24,19 +25,14 @@ The current bounded implementation covers UI-A0 through UI-A7, Phase I-2, Phase 
 - content-free runtime status projection,
 - Phase I-2 latest-run, formed/held/blocked, and used-memory observation,
 - Phase I-3 token-gated auditable Correct,
-- first-launch / No Active Character route,
-- Lab Assistant guided entry,
-- browser-local New Character draft,
-- RelaySOUL persona source-set adoption draft,
-- mock-driven Communication and Pod surfaces,
 - formed / held / blocked Memory Inspector outcomes,
-- shared Settings / Runtime Boundary route,
+- existing Correct / Forget / Pin / Unpin / Held Governance details under Advanced,
 - loopback-only read access to `GET /lab/api/settings`,
 - strict browser-side management and observation schema validation,
 - server-side endpoint redaction and credential exclusion,
-- hash-route enforcement while Communication, Pod, or Memory Inspector holds a navigation lock.
+- hash-route enforcement while Advanced-hosted governance surfaces hold a navigation lock.
 
-UI-B0 does not create a new route, character, SOUL, memory, prompt, credential, backend, or worker authority. The browser sends only the server-projected route model and standard user/assistant history to the same-origin RelayLM endpoint. Existing RelayLM character resolution, M2 retrieval, RelayCTX injection, backend forwarding, and RelaySLP boundaries remain unchanged.
+CW-A3 does not create a new route, character, SOUL, memory, prompt, credential, backend, worker, source write, or runtime authority. The browser sends only the server-projected route model and standard user/assistant history to the same-origin RelayLM endpoint. Existing RelayLM character resolution, M2 retrieval, RelayCTX injection, backend forwarding, and RelaySLP boundaries remain unchanged.
 
 ## Requirements
 
@@ -75,12 +71,33 @@ Direct routes:
 
 ```text
 http://127.0.0.1:5173/lab/#/home
-http://127.0.0.1:5173/lab/#/adoption
-http://127.0.0.1:5173/lab/#/observation
-http://127.0.0.1:5173/lab/#/communication
-http://127.0.0.1:5173/lab/#/pod
-http://127.0.0.1:5173/lab/#/settings
+http://127.0.0.1:5173/lab/#/character
+http://127.0.0.1:5173/lab/#/scenes
+http://127.0.0.1:5173/lab/#/relationships
+http://127.0.0.1:5173/lab/#/memory
+http://127.0.0.1:5173/lab/#/runtime
+http://127.0.0.1:5173/lab/#/advanced
 ```
+
+Legacy SOUL Lab hashes are absorbed instead of becoming new authority:
+
+```text
+#/observation   -> Runtime
+#/communication -> Advanced
+#/pod           -> Advanced
+#/adoption      -> Advanced
+#/settings      -> Advanced
+```
+
+## Character Workspace surfaces
+
+- **Home** keeps the real conversation path and explicit Local Preview separation.
+- **Character** shows SOUL.md, STYLE.md, EMOTION.md, BOUNDARY.md, and optional LORE.md as source-status / draft-preview surfaces.
+- **Scenes** separates SCENE.md, active scene pages, and scene inbox candidates without ACG-6 runtime classifier execution or auto-merge.
+- **Relationships** separates RELATIONSHIP.md vocabulary, target-specific relationship pages, and pending REL proposals without browser-owned role assignment.
+- **Memory Wiki** shows memory policy, pages, blocks, retrieval chunks, inbox, archive, and forgotten items using user-friendly vocabulary.
+- **Runtime** shows content-free latest used scene/emotion/relationship/memory/context and CW-A2 tier summaries.
+- **Advanced** collects internal governance labels, queue/worker/audit diagnostics, and existing explicit loopback controls without increasing browser authority.
 
 ## Home conversation behavior
 
@@ -107,6 +124,11 @@ cd apps/soul-lab
 npm install --no-audit --no-fund
 npm run typecheck
 npm run smoke:home-conversation
+npm run smoke:lifecycle-visibility
+npm run smoke:forget-ui
+npm run smoke:pin-unpin-ui
+npm run smoke:held-governance-ui
+npm run smoke:character-workspace
 npm run build
 ```
 
@@ -116,11 +138,8 @@ Repository validation includes:
 python -m compileall -q relaylm scripts
 PYTHONPATH=. python scripts/relaylm_docs_link_check.py
 PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
-PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
-PYTHONPATH=.:scripts python scripts/relaylm_phase_i2_lab_observation_ci_runner.py
-PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
-PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_config_smoke.py
-PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+PYTHONPATH=. python scripts/relaylm_cw_a1_file_first_workspace_smoke.py
+PYTHONPATH=. python scripts/relaylm_cw_a2_workspace_compiler_smoke.py
 ```
 
 The production bundle is written to `apps/soul-lab/dist/` with a `/lab/` asset base. Serving that bundle from RelayLM remains a separate bounded slice.
@@ -129,4 +148,4 @@ The production bundle is written to `apps/soul-lab/dist/` with a `/lab/` asset b
 
 The browser is presentation and interaction only. It is not the authority for SOUL, MEM, RelayRUN, RelaySLP, worker execution, memory namespaces, backend selection, peer transport, intervention apply, rollback, memory governance, runtime configuration, persistent character registry, process lifecycle, backend credentials, source inspection, or persistence decisions.
 
-Server projections and bounded observation responses exclude API keys, URL credentials, source paths/content, raw traces, prompt text, compiled context, and protected source. Conversation transcripts remain browser-process-local and are not written to `localStorage`.
+Server projections and bounded observation responses exclude API keys, URL credentials, absolute source paths/content, raw traces, prompt text, compiled context, and protected source. Conversation transcripts remain browser-process-local and are not written to `localStorage`; CW-A3 does not persist raw source or memory bodies to browser storage.
