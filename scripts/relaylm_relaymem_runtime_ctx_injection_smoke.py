@@ -82,8 +82,6 @@ def _build_store(root: Path, *, with_page: bool = True) -> None:
     (mem / "primary" / "sessions").mkdir(parents=True, exist_ok=True)
     (mem / "primary" / "projects").mkdir(parents=True, exist_ok=True)
     (mem / "secondary" / "projects").mkdir(parents=True, exist_ok=True)
-    (mem / "index.md").write_text("# Index\nRelayMEM\n", encoding="utf-8")
-    (mem / "log.md").write_text("# Log\n", encoding="utf-8")
     if with_page:
         form_primary_memory(
             root,
@@ -92,6 +90,10 @@ def _build_store(root: Path, *, with_page: bool = True) -> None:
             title="RelayMEM runtime ctx injection",
             summary=SUMMARY,
         )
+    else:
+        mem.mkdir(parents=True, exist_ok=True)
+        (mem / "index.md").write_text("# Index\nRelayMEM\n", encoding="utf-8")
+        (mem / "log.md").write_text("# Log\n", encoding="utf-8")
 
 
 def _configured_and_scoped_root(temp_dir: str) -> tuple[Path, Path]:
