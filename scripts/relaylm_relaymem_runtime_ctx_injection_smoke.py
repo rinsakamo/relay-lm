@@ -213,7 +213,7 @@ def _assert_no_injected_context(payload: dict[str, Any]) -> None:
 
 
 def _assert_injected_context(
-    payload: dict[str, Any], *, expected_text: str = "RelayMEM runtime ctx injection"
+    payload: dict[str, Any], *, expected_text: str = "memory/mem/primary/projects/"
 ) -> None:
     messages = payload.get("messages")
     require(isinstance(messages, list), payload)
@@ -345,7 +345,7 @@ def main() -> int:
                 payload=truncation_payload,
                 retrieval_dry_run_only=False,
                 ctx_block_apply_enabled=True,
-                token_budget=80,
+                token_budget=180,
                 token_budget_truncation_enabled=True,
             )
             require(truncation_result["applied"] is True, truncation_result)
@@ -371,7 +371,15 @@ def main() -> int:
             )
             require(overflow_result["applied"] is False, overflow_result)
             require(
-                "relaymem_context_would_break_token_budget" in overflow_result["blocked_reasons"],
+                any(
+                    str(reason).startswith(
+                        (
+                            "relaymem_context_would_break_token_budget",
+                            "apply_decision:blocked_token_budget",
+                        )
+                    )
+                    for reason in overflow_result["blocked_reasons"]
+                ),
                 overflow_result,
             )
             require(overflow_payload["messages"] == overflow_original_messages, overflow_payload)

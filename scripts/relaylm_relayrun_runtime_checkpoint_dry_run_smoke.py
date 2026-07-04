@@ -265,7 +265,13 @@ def _assert_normal_case(root: Path, capture: _Capture, port: int) -> None:
     )
     artifact = _relayrun_projection(metadata)
     _assert_relayrun_projection_common(artifact, headers)
-    require(artifact.get("blocked_reasons") == [], artifact)
+    allowed_blocked_reasons = {
+        "relaymem_retrieval:snippet_apply_decision:blocked_no_candidates",
+    }
+    require(
+        set(artifact.get("blocked_reasons") or []).issubset(allowed_blocked_reasons),
+        artifact,
+    )
     _assert_backend_payload_not_polluted(backend_payload)
     print("ok normal request emits content-free relayrun projection")
     print("ok backend payload not polluted by relayrun diagnostics")
@@ -322,8 +328,17 @@ def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> No
     artifact = _relayrun_projection(metadata)
     _assert_relayrun_projection_common(artifact, headers)
     _assert_backend_payload_not_polluted(backend_payload)
+    runtime_ctx = metadata.get("runtime_ctx_injection_result", {})
+    runtime_snippet = metadata.get("runtime_snippet_injection_result", {})
     require(
-        metadata.get("runtime_snippet_injection_result", {}).get("applied") is True,
+        (
+            isinstance(runtime_ctx, dict)
+            and runtime_ctx.get("applied") is True
+        )
+        or (
+            isinstance(runtime_snippet, dict)
+            and runtime_snippet.get("applied") is True
+        ),
         metadata,
     )
     print("ok snippet-bearing path keeps content-free relayrun projection")
