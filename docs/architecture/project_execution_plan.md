@@ -88,6 +88,8 @@ Evaluation
 
 For the file-first Character Workspace reset, MVP completion requires that target Character Workspace surfaces and projections remain clearly separated from current implementation status until dedicated implementation slices land.
 
+Phase I-2 is complete for read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence. That observation boundary remains read-only and cannot authorize repair, retrieval, mutation, or source-body exposure.
+
 ## Post-MVP decision debt registry
 
 - PM-D1 RelaySOUL gate design-freeze relation
