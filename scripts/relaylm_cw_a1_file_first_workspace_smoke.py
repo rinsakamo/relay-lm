@@ -5,6 +5,7 @@ import json
 import tempfile
 from pathlib import Path
 
+import relaylm.character_workspace as cw
 from relaylm.character_workspace import (
     OPTIONAL_SOURCE_FILENAMES,
     REQUIRED_SOURCE_FILENAMES,
@@ -26,8 +27,8 @@ def _serialized(value: object) -> str:
 def _assert_content_free(value: object) -> None:
     serialized = _serialized(value)
     forbidden = (
-        "SECRET_MARKDOWN_BODY",
-        "SECRET_PRIVATE_PATH",
+        "PRIVATE_MARKDOWN_BODY",
+        "PRIVATE_SOURCE_PATH",
         "queue-record-123",
         "runtime-private-payload",
         "^mem-relaylm-target-user",
@@ -75,7 +76,7 @@ def main() -> None:
             "status:: active\n"
             "importance:: high\n"
             "tags:: #relaylm\n\n"
-            "SECRET_MARKDOWN_BODY\n",
+            "PRIVATE_MARKDOWN_BODY\n",
             encoding="utf-8",
         )
         (root / "memory" / "people").mkdir()
@@ -112,6 +113,15 @@ def main() -> None:
         assert public_manifest["status"] == "valid"
         _assert_content_free(public_manifest)
 
+        old_limit = cw.MAX_MANIFEST_ENTRIES
+        try:
+            cw.MAX_MANIFEST_ENTRIES = 3
+            limited_manifest = build_character_workspace_manifest(root)
+            assert "manifest_entry_limit_reached" in limited_manifest.reason_ids
+            _assert_content_free(limited_manifest.to_public_dict())
+        finally:
+            cw.MAX_MANIFEST_ENTRIES = old_limit
+
         missing_root = Path(tmp) / "characters" / "missing-soul"
         missing_root.mkdir()
         for filename in REQUIRED_SOURCE_FILENAMES:
@@ -133,6 +143,23 @@ def main() -> None:
         assert bad_character.status == CharacterWorkspaceValidationStatus.INVALID_CHARACTER_ID
         assert bad_character.is_valid is False
 
+        reserved_root = Path(tmp) / "characters" / "reserved"
+        reserved_root.mkdir()
+        _write_required_sources(reserved_root)
+        (reserved_root / "proposals").write_text("not a directory", encoding="utf-8")
+        reserved = validate_character_workspace(reserved_root, character_id="reserved")
+        assert reserved.status == CharacterWorkspaceValidationStatus.RESERVED_PATH_CONFLICT
+        assert "proposals" in reserved.reserved_conflicts
+
+        reserved_sources_root = Path(tmp) / "characters" / "reserved-sources"
+        reserved_sources_root.mkdir()
+        _write_required_sources(reserved_sources_root)
+        (reserved_sources_root / ".relaylm").mkdir()
+        (reserved_sources_root / ".relaylm" / "sources").write_text("not a directory", encoding="utf-8")
+        reserved_sources = validate_character_workspace(reserved_sources_root, character_id="reserved-sources")
+        assert reserved_sources.status == CharacterWorkspaceValidationStatus.RESERVED_PATH_CONFLICT
+        assert ".relaylm/sources" in reserved_sources.reserved_conflicts
+
         missing_default = Path(tmp) / "characters" / "default"
         assert not missing_default.exists()
         missing_default_result = validate_character_workspace(missing_default, character_id="default")
@@ -152,8 +179,12 @@ def main() -> None:
     assert classify_character_workspace_path("relationships/user.md").kind == CharacterWorkspacePathKind.RELATIONSHIP_PAGE
     assert classify_character_workspace_path("proposals/memory/draft.md").kind == CharacterWorkspacePathKind.PROPOSAL
     assert classify_character_workspace_path("/absolute/path.md").reason_ids == ("path_escape_rejected",)
+    assert classify_character_workspace_path("C:/Users/rin/SOUL.md").reason_ids == ("path_escape_rejected",)
+    assert classify_character_workspace_path(r"C:\Users\rin\SOUL.md").reason_ids == ("path_escape_rejected",)
+    assert classify_character_workspace_path("//server/share/SOUL.md").reason_ids == ("path_escape_rejected",)
     assert classify_character_workspace_path("../escape.md").reason_ids == ("path_escape_rejected",)
     assert classify_character_workspace_path("memory/../SOUL.md").reason_ids == ("path_escape_rejected",)
+    assert classify_character_workspace_path("memory/./core.md").reason_ids == ("path_escape_rejected",)
 
     markdown = (
         "# Memory policy\n\n"
@@ -164,7 +195,7 @@ def main() -> None:
         "tags:: #relaylm\n\n"
         "The page is a human editing unit, not one file per memory.\n"
     )
-    blocks = parse_markdown_blocks(markdown, source_path="SECRET_PRIVATE_PATH")
+    blocks = parse_markdown_blocks(markdown, source_path="PRIVATE_SOURCE_PATH")
     assert len(blocks) == 2
     target_block = blocks[1]
     assert target_block.heading == "Target user direction"
