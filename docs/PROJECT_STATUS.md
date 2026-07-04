@@ -66,7 +66,7 @@ RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall, sco
 P0-PIPE RelayREL / RelaySCN / RelayEMO ordering: complete in PR #458 after actual app.py request-path rewiring and local validation; RelayREL now precedes RelaySCN, RelaySCN precedes input-side RelayEMO, RelayINT/RelayMEM/RelayCTX remain downstream
 Analyzer Candidate Governance: ACG-1 contract/helpers complete; ACG-2 Grounded Recall Detail Safety complete; ACG-3 Retrieval Query Normalization complete; ACG-4 Reference/Intent Analyzer consolidation complete; ACG-5 RelayEMO scene ownership cleanup complete; ACG-6 SCN structured classifier and scene-wiki boundary complete
 Character Workspace reset: CW-A1 file-first source tree/parser contracts complete; CW-A2 compiler projections and KV-cache tiers complete; CW-A3 Character Workspace UI rebuild complete as a presentation-only browser UI rebuild
-SOUL Lab UI / Character Workspace UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0, UI-B1A, I-4E Forget UI, I-5B Pin / Unpin UI, I-7C Held Governance UI, and CW-A3 Character Workspace top-level surfaces complete
+SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0, UI-B1A, I-4E Forget UI, I-5B Pin / Unpin UI, I-7C Held Governance UI, and CW-A3 Character Workspace top-level surfaces complete
 UI-B1A read-only lifecycle visibility: complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete through M2-preferred recall plus E1-R5 bounded scoped candidate bridge
 E1 evaluation consolidation: complete
