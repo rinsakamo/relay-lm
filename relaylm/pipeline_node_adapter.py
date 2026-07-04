@@ -40,6 +40,27 @@ def record_phase45_node_results(
     existing = {result.node_name for result in pipeline_context.node_results}
     synthesized: list[PipelineNodeResult] = []
 
+    if "relayint_reference_repair" not in existing:
+        synthesized.append(
+            build_pipeline_node_result(
+                node_name="relayint_reference_repair",
+                status="diagnostic_only",
+                decision=_text(_get(relayint_intent_artifact, "mode")) or "none",
+                diagnostics={
+                    "diagnostics_only": True,
+                    "content_free": True,
+                    "source_node_alias": "relayint_reference_repair",
+                    "compatibility_source_node": "relayref",
+                    "artifact_present": isinstance(relayint_intent_artifact, Mapping),
+                    "unresolved_reference_detected": (
+                        _get(relayint_intent_artifact, "unresolved_reference_detected") is True
+                    ),
+                    "apply_allowed": _get(relayint_intent_artifact, "apply_allowed") is True,
+                },
+                artifacts=_summaries((("relayint_intent_artifact", relayint_intent_artifact),)),
+            )
+        )
+
     if "relayint_reference_intent" not in existing:
         synthesized.append(
             build_pipeline_node_result(

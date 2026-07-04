@@ -51,7 +51,7 @@ def install_audit_projection_contracts(ap: Any) -> None:
     ap.PIPELINE_NODE_PROJECTORS["relayint_reference_repair"] = ap.NodeProjector(
         decisions=frozenset({"none", "context_repair", "suggest_reflect"}),
         diagnostics=reference.diagnostics,
-        artifact_names=reference.artifact_names,
+        artifact_names=reference.artifact_names | frozenset({"relayint_intent_artifact"}),
     )
     relayint_reference_intent_diagnostics = ap._mapping(
         {
