@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: architecture_contract
+relaylm_doc_type: implementation_contract
 relaylm_authority: acg1_analyzer_candidate_governance_contract
 relaylm_status: current
 relaylm_volatility: high
@@ -23,19 +23,19 @@ relaylm_related_authority:
 ---
 # ACG-1 Analyzer Candidate Governance Contract
 
-Last reviewed: 2026-07-03 JST
+Last reviewed: 2026-07-04 JST
 
 ## Status
 
 ACG-1 is current as the shared analyzer candidate governance contract/helper slice. The implementation lives in `relaylm/analyzer_governance.py`, with smoke coverage in `scripts/relaylm_analyzer_governance_smoke.py`.
 
-This status does not imply that ACG-2 through ACG-6 are implemented. ACG-1 establishes the common schema, validation, authority, and content-free projection boundary that later analyzer producers must consume.
+ACG-2 through ACG-6 are now implemented in dedicated handoffs and consume this shared contract where applicable. This document remains authoritative only for the common ACG-1 schema, validation, authority, and content-free projection boundary.
 
 ## Purpose
 
 ACG-1 introduces the shared Analyzer Candidate Governance contract in `relaylm/analyzer_governance.py`.
 
-The contract defines a minimal, English-only, schema-first artifact boundary for analyzer candidate outputs. It lets future Grounded Recall detail detection, retrieval query normalization, RelayREF / RelayINT reference intent detection, RelayEMO cleanup, and SCN scene-wiki classification share one candidate-vs-authority model.
+The contract defines a minimal, English-only, schema-first artifact boundary for analyzer candidate outputs. It lets Grounded Recall detail detection, retrieval query normalization, RelayREF / RelayINT reference intent detection, RelayEMO cleanup, and SCN scene-wiki classification share one candidate-vs-authority model.
 
 ## In scope
 
@@ -59,7 +59,7 @@ affect_candidate
 scene_policy_candidate
 ```
 
-These are contract placeholders only. ACG-1 does not implement their full analyzers.
+These are common contract kinds. Their full producer behavior is owned by the relevant dedicated ACG handoff, not by this ACG-1 contract document.
 
 ## Non-goals
 
@@ -138,4 +138,4 @@ PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
 
 ## Handoff
 
-Future ACG slices should consume `relaylm.analyzer_governance` rather than minting separate natural-language heuristics as policy authorities. Candidate producers can add target-specific fields later, but public diagnostics must remain content-free and authority must stay with explicit gates or target contracts.
+ACG producer slices should consume `relaylm.analyzer_governance` rather than minting separate natural-language heuristics as policy authorities. Candidate producers can add target-specific fields, but public diagnostics must remain content-free and authority must stay with explicit gates or target contracts.
