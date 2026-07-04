@@ -179,6 +179,10 @@ O1F operational validation
   -> no polling, sleep, service supervision, worker pool, or always-on operation
 ```
 
+### Post-O1F next candidates
+
+Post-O1F candidates have been closed or absorbed by later Wave 6, Wave 7, E1-R5, PM-D*, and Character Workspace reset slices. Remaining operations work remains O2/O3 only after explicit MVP need.
+
 ### Wave 7 completed
 
 ```text
