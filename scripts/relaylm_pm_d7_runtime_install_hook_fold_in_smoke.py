@@ -51,6 +51,14 @@ def _run_cli(args: list[str]) -> tuple[int, dict[str, Any], str]:
     return code, json.loads(text), text
 
 
+def _scoped_root(memory_root: Path, character_id: str = "default") -> Path:
+    from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
+
+    scoped = resolve_relaymem_character_store_root(str(memory_root), character_id)
+    require(scoped is not None, "character scope unresolved")
+    return Path(scoped)
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as td:
         work = Path(td)
@@ -92,7 +100,8 @@ def main() -> int:
         require(code == 0, payload)
         require(payload["status"] == "applied_ready", payload)
         require(payload["mutated"] is True, payload)
-        require((memory_root / "characters" / "default" / "memory" / "mem" / "primary" / "projects").is_dir(), payload)
+        scoped = _scoped_root(memory_root)
+        require((scoped / "memory" / "mem" / "primary" / "projects").is_dir(), payload)
         require(str(work) not in text, "public write report leaked path")
         print("ok write creates allowed layout only")
 
