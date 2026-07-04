@@ -148,7 +148,12 @@ def _assert_lazy_completed_path() -> None:
 
 def _assert_relayemo_session_state_fallback_stays_ordinary() -> None:
     kwargs = _base_artifact_kwargs(backend_forward_status="completed")
-    kwargs["config"] = kwargs["config"].model_copy(update={"relayemo_enabled": True})
+    kwargs["config"] = kwargs["config"].model_copy(
+        update={
+            "relayemo_enabled": True,
+            "relayemo_session_state_enabled": True,
+        }
+    )
     kwargs["relayemo_artifact"] = {
         "schema_version": "relayemo.runtime.v0",
         "session_state_enabled": True,
@@ -158,6 +163,7 @@ def _assert_relayemo_session_state_fallback_stays_ordinary() -> None:
         "state_persisted": False,
         "state_storage": "process_memory",
         "fallback_reason": "session_key_unavailable",
+        "blocked_reasons": [],
         "assistant_emotion_state": {"mode": "expressive_support_estimate"},
         "user_affect_estimate": {"confidence": 0.8},
     }
