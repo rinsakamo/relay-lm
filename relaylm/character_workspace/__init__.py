@@ -85,7 +85,7 @@ def _build_artifacts_with_content_free_metadata(state: object) -> tuple[object, 
 
 
 def _guarded_write_character_workspace_build_artifacts(root: str | object, result: object) -> tuple[str, ...]:
-    """Write build artifacts without following pre-existing artifact symlinks."""
+    """Write build artifacts without following or preserving linked artifact paths."""
 
     if not result.is_valid:
         raise ValueError("cannot write invalid Character Workspace compile result")
@@ -106,6 +106,10 @@ def _guarded_write_character_workspace_build_artifacts(root: str | object, resul
             raise ValueError("build artifact path is a symlink")
         if not _compiler._is_relative_to(target.resolve(), root_resolved):
             raise ValueError("build artifact write escaped workspace root")
+        if target.exists():
+            if target.is_dir():
+                raise ValueError("build artifact path is a directory")
+            target.unlink()
         target.write_bytes(artifact.content)
         written.append(f".relaylm/build/{artifact.name}")
     return tuple(written)
