@@ -7,6 +7,8 @@ from pydantic import Field, field_validator
 
 from .soul_lab_contracts import StrictLabRequestModel, validate_lab_request_text
 
+# StrictLabRequestModel preserves ConfigDict(extra="forbid", strict=True).
+
 
 class LabHeldGovernancePreflightRequest(StrictLabRequestModel):
     schema: Literal["relaylm.lab.held_governance_preflight_request.v0"]
