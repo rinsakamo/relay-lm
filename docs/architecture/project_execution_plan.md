@@ -94,7 +94,7 @@ Phase I-2 is complete for read-only observation of latest runs, formed memory, h
 ## Post-MVP decision debt registry
 
 - PM-D1 RelaySOUL gate design-freeze relation
-- PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope
+- PM-D2 RelayINT -> RelayMEM relayint_intent_artifact legacy compatibility scope
 - PM-D3 RelayEMO/RelaySCN scene_state ownership
 - PM-D4 client history exclusion default-off deployment decision
 - PM-D5 RelayMEM flat-store compatibility removal

@@ -218,6 +218,7 @@ def assert_registry_hygiene() -> None:
         "pipeline_node_results",
         "projection_dropped_field_count",
         "projection_unsupported_artifact_count",
+        "relaymem_primary_recall_projection",
         "relayrun_artifact",
         "runtime_ctx_injection_result",
         "runtime_snippet_injection_result",
@@ -239,10 +240,14 @@ def assert_registry_hygiene() -> None:
         "client_instruction_cache_lookup",
         "client_history_exclusion_preflight",
         "client_history_exclusion_apply",
+        "client_instruction_relayscn_projection",
         "relayint_reference_repair",
+        "relayint_reference_intent",
         "relayint_quick_clarification",
         "relayctx_repack",
         "relayctx_unpack",
+        "relaymem_slp_finalized_turn_source",
+        "relaymem_slp_runtime_enqueue",
     }
     nodes = set(registered_pipeline_node_projectors())
     require(nodes == expected_nodes, nodes)

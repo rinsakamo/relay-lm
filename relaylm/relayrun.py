@@ -698,11 +698,14 @@ def build_relayrun_recovery_transition_artifact(
 
     safe_nodes = [node for node in (node_statuses or ()) if isinstance(node, dict)]
     source_node = None
-    for node in safe_nodes:
-        if node.get("node_status") in {"failed", "blocked"}:
-            source_node = str(node.get("node_name") or "unknown")
+    for preferred_status in ("failed", "blocked"):
+        for node in safe_nodes:
+            if node.get("node_status") == preferred_status:
+                source_node = str(node.get("node_name") or "unknown")
+                break
+        if source_node is not None:
             break
-            
+
     source_node_alias = _relayrun_node_name_alias(source_node)
     
     proposed_transition_type = "none"
