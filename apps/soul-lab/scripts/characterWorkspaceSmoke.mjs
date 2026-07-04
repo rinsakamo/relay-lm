@@ -23,6 +23,7 @@ const messages = read("src/locales/messages.ts");
 const rootApp = read("src/app/RootApp.tsx");
 const workspace = read("src/features/workspace/CharacterWorkspacePages.tsx");
 const workspaceCss = read("src/features/workspace/characterWorkspace.css");
+const stylesCss = read("src/styles.css");
 const home = read("src/features/home/HomeConversationPage.tsx");
 
 require(packageJson.includes('"smoke:character-workspace"'), "CW-A3 smoke script missing");
@@ -97,8 +98,12 @@ require(!rootApp.includes("dangerouslySetInnerHTML"), "dangerouslySetInnerHTML i
 require(home.includes("/v1/chat/completions"), "Home real runtime path missing");
 require(home.includes("REAL RUNTIME") && home.includes("LOCAL PREVIEW"), "real runtime / local preview separation missing");
 require(home.includes("server projection由来のrouteだけを使い"), "Home server-projected route boundary missing");
+require(home.includes('onNavigate("observation")'), "Home Runtime CTA must still enter the legacy observation alias");
+require(home.includes('onNavigate("memory")'), "Home Memory Wiki CTA must navigate directly to Memory Wiki");
+require(!home.includes('onNavigate("communication")'), "Home Memory Wiki CTA must not navigate through the legacy communication alias");
 require(!rootApp.includes("setMockFallback(true)"), "automatic mock fallback must not be introduced");
 require(workspaceCss.includes(".workspace-surface"), "Character Workspace CSS missing");
+require(stylesCss.includes("grid-template-columns: repeat(7, minmax(0, 1fr))"), "mobile navigation must account for seven CW-A3 routes");
 require(messages.includes("表示はcontent-free projection"), "Japanese default boundary label missing");
 require(messages.includes("This surface is content-free projection"), "English preview catalog missing");
 
