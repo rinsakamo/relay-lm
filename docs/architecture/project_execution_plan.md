@@ -30,6 +30,7 @@ relaylm_related_authority:
   - acg4_reference_intent_analyzer.md
   - acg5_relayemo_scene_cleanup.md
   - acg6_scene_wiki_classifier.md
+  - cw_a1_file_first_source_tree_parser_contracts.md
   - e1r5_primary_mem_recall_candidate_bridge.md
   - e1r5_post_wave7_correction_convergence_audit.md
 ---
@@ -62,7 +63,7 @@ Analyzer Candidate Governance
     -> ACG-6 SCN structured classifier and scene-wiki integration complete
 
 Character Workspace reset
-  CW-A1 file-first source tree and parser contracts
+  CW-A1 file-first source tree and parser contracts complete
     -> CW-A2 workspace compiler projections and KV-cache tiers
     -> CW-A3 Character Workspace UI rebuild
     -> CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals
@@ -116,8 +117,8 @@ Execute the existing RelaySCN-owned `scene_state` migration plan only through de
 
 ```text
 Character Workspace reset
-  CW-A1 file-first source tree and parser contracts
-  CW-A2 workspace compiler projections and KV-cache tiers
+  CW-A1 file-first source tree and parser contracts complete
+  CW-A2 workspace compiler projections and KV-cache tiers current next candidate
   CW-A3 Character Workspace UI rebuild
   CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals
   CW-A5 character creation, templates, and showcase import
@@ -198,6 +199,15 @@ E1-R5 Primary MEM recall candidate discovery bridge complete
 
 E1-R5 remains a bounded scoped Primary recall bridge. It preserves M2 as preferred relevance owner and is tracked for later canonical adapter fold-in by PM-D8.
 
+### Character Workspace reset opened
+
+```text
+CW-A1 file-first source tree and parser contracts complete
+CW-A2 workspace compiler projections and KV-cache tiers current next candidate
+```
+
+CW-A1 establishes the read-only file-first Character Workspace source-tree and parser contracts. It does not compile prompt projections, write `.relaylm/build/**`, mutate uppercase sources, maintain SLP wiki pages, rebuild UI, or auto-create a default character.
+
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
 ```text
@@ -215,4 +225,4 @@ O2/O3 only after explicit MVP need
 
 ## Current authority links
 
-ACG handoffs: [ACG-1](acg1_analyzer_candidate_governance_contract.md), [ACG-2](acg2_grounded_recall_detail_safety.md), [ACG-3](acg3_retrieval_query_normalization.md), [ACG-4](acg4_reference_intent_analyzer.md), [ACG-5](acg5_relayemo_scene_cleanup.md), and [ACG-6](acg6_scene_wiki_classifier.md). E1-R5 details are in [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md) and [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md).
+ACG handoffs: [ACG-1](acg1_analyzer_candidate_governance_contract.md), [ACG-2](acg2_grounded_recall_detail_safety.md), [ACG-3](acg3_retrieval_query_normalization.md), [ACG-4](acg4_reference_intent_analyzer.md), [ACG-5](acg5_relayemo_scene_cleanup.md), and [ACG-6](acg6_scene_wiki_classifier.md). CW-A1 details are in [CW-A1 File-first Source Tree and Parser Contracts](cw_a1_file_first_source_tree_parser_contracts.md). E1-R5 details are in [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md) and [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md).
