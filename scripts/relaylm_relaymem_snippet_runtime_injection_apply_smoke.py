@@ -415,6 +415,7 @@ def _assert_incomplete_target_layout_fail_closed(
         _relaymem_primary_recall_scope_allowed(
             {
                 "fallback_reason": "memory_store_files_blocked",
+                "root_present": True,
                 "layout_compatibility": {
                     "target_primary_secondary_present": False,
                     "flat_store_compatibility_removed": True,

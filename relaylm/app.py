@@ -1109,7 +1109,8 @@ def _relaymem_primary_recall_scope_allowed(
         return True
     compatibility = store_diagnostics.get("layout_compatibility")
     if (
-        isinstance(compatibility, Mapping)
+        store_diagnostics.get("root_present") is True
+        and isinstance(compatibility, Mapping)
         and compatibility.get("target_primary_secondary_present") is False
     ):
         return False
