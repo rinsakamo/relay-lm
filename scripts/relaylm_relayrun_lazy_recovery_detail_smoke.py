@@ -79,6 +79,56 @@ def assert_lazy_ordinary_path() -> None:
         assert artifact[key] is None, key
 
 
+def assert_benign_blocked_path_stays_minimal() -> None:
+    kwargs = _base_kwargs()
+    kwargs["node_statuses"] = [
+        build_relayrun_node(
+            node_name="relayscn",
+            node_status="blocked",
+            blocked_reasons=["scene_policy:blocked"],
+        ),
+        build_relayrun_node(node_name="backend_forward", node_status="pending"),
+    ]
+    kwargs["blocked_reasons"] = ["relayscn:scene_policy:blocked"]
+    artifact = build_runtime_checkpoint_lazy_recovery_artifact(
+        backend_forward_status="pending",
+        **kwargs,
+    )
+    detail = artifact.get("recovery_detail")
+    assert isinstance(detail, dict)
+    assert detail["constructed"] is False
+    assert detail["reason"] == "ordinary_path_no_blocked_or_checkpoint_need"
+    assert artifact["content_free"] is True
+    assert artifact["blocked_reasons"] == ["relayscn:scene_policy:blocked"]
+    for key in RECOVERY_DETAIL_ARTIFACT_KEYS:
+        assert artifact[key] is None, key
+
+
+def assert_backend_pending_benign_path_stays_minimal() -> None:
+    kwargs = _base_kwargs()
+    kwargs["node_statuses"] = [
+        build_relayrun_node(
+            node_name="relaymem_retrieval",
+            node_status="blocked",
+            blocked_reasons=["apply_decision:blocked_no_candidates"],
+        ),
+        build_relayrun_node(node_name="backend_forward", node_status="pending"),
+    ]
+    kwargs["blocked_reasons"] = [
+        "relaymem_retrieval:apply_decision:blocked_no_candidates",
+    ]
+    artifact = build_runtime_checkpoint_lazy_recovery_artifact(
+        backend_forward_status="pending",
+        **kwargs,
+    )
+    detail = artifact.get("recovery_detail")
+    assert isinstance(detail, dict)
+    assert detail["constructed"] is False
+    assert detail["reason"] == "ordinary_path_no_blocked_or_checkpoint_need"
+    for key in RECOVERY_DETAIL_ARTIFACT_KEYS:
+        assert artifact[key] is None, key
+
+
 def assert_blocked_path_builds_full_detail() -> None:
     kwargs = _base_kwargs()
     kwargs["node_statuses"] = [
@@ -184,6 +234,8 @@ def assert_checkpoint_and_recovery_flags_require_detail() -> None:
 
 def main() -> None:
     assert_lazy_ordinary_path()
+    assert_benign_blocked_path_stays_minimal()
+    assert_backend_pending_benign_path_stays_minimal()
     assert_blocked_path_builds_full_detail()
     assert_backend_failed_path_builds_full_detail()
     assert_explicit_override_is_respected()

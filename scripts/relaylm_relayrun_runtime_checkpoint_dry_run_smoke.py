@@ -213,6 +213,8 @@ def _assert_relayrun_projection_common(
     require(headers.get("x-relaylm-run-status") == "diagnostics_only", headers)
     require(headers.get("x-relaylm-resume-mode") == "none", headers)
 
+
+def _assert_projection_stays_minimal(artifact: dict[str, Any]) -> None:
     projection_text = json.dumps(artifact, ensure_ascii=False)
     forbidden_projection_tokens = (
         "checkpoint_persistence_plan",
@@ -232,6 +234,19 @@ def _assert_relayrun_projection_common(
     )
     for token in forbidden_projection_tokens:
         require(token not in projection_text, (token, artifact))
+
+
+def _assert_projection_shows_recovery_detail(artifact: dict[str, Any]) -> None:
+    require(artifact.get("diagnostics_only") is True, artifact)
+    require(artifact.get("content_free") is True, artifact)
+    recovery_transition_artifact = artifact.get("recovery_transition_artifact")
+    require(isinstance(recovery_transition_artifact, dict), artifact)
+    require(recovery_transition_artifact.get("diagnostics_only") is True, artifact)
+    safety = recovery_transition_artifact.get("safety")
+    require(isinstance(safety, dict), artifact)
+    require(safety.get("contains_user_content") is False, artifact)
+    require(safety.get("contains_backend_payload") is False, artifact)
+    require(safety.get("contains_response_text") is False, artifact)
 
 
 def _assert_backend_payload_not_polluted(backend_payload: dict[str, Any]) -> None:
@@ -265,6 +280,7 @@ def _assert_normal_case(root: Path, capture: _Capture, port: int) -> None:
     )
     artifact = _relayrun_projection(metadata)
     _assert_relayrun_projection_common(artifact, headers)
+    _assert_projection_stays_minimal(artifact)
     allowed_blocked_reasons = {
         "relaymem_retrieval:snippet_apply_decision:blocked_no_candidates",
     }
@@ -291,8 +307,12 @@ def _assert_recovery_case(root: Path, capture: _Capture, port: int) -> None:
     )
     artifact = _relayrun_projection(metadata)
     _assert_relayrun_projection_common(artifact, headers)
+    # The recovery scene raises a genuine recovery-relevant relayint block
+    # (ambiguous reference under context_repair mode), so the lazy helper is
+    # expected to construct full recovery detail rather than stay minimal.
+    _assert_projection_shows_recovery_detail(artifact)
     _assert_backend_payload_not_polluted(backend_payload)
-    print("ok recovery scene emits content-free relayrun projection")
+    print("ok recovery scene surfaces full recovery detail via lazy helper")
 
 
 def _assert_unresolved_reference_case(root: Path, capture: _Capture, port: int) -> None:
@@ -309,8 +329,11 @@ def _assert_unresolved_reference_case(root: Path, capture: _Capture, port: int) 
     )
     artifact = _relayrun_projection(metadata)
     _assert_relayrun_projection_common(artifact, headers)
+    # An unresolved reference is a genuine recovery-relevant relayint block,
+    # so the lazy helper is expected to construct full recovery detail.
+    _assert_projection_shows_recovery_detail(artifact)
     _assert_backend_payload_not_polluted(backend_payload)
-    print("ok unresolved reference emits content-free relayrun projection")
+    print("ok unresolved reference surfaces full recovery detail via lazy helper")
 
 
 def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> None:
@@ -327,6 +350,7 @@ def _assert_snippet_enabled_case(root: Path, capture: _Capture, port: int) -> No
     )
     artifact = _relayrun_projection(metadata)
     _assert_relayrun_projection_common(artifact, headers)
+    _assert_projection_stays_minimal(artifact)
     _assert_backend_payload_not_polluted(backend_payload)
     runtime_ctx = metadata.get("runtime_ctx_injection_result", {})
     runtime_snippet = metadata.get("runtime_snippet_injection_result", {})
