@@ -15,8 +15,19 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from _relaylm_phase_i3_test_support import form_primary_memory
 from relaylm.app import create_app
 from relaylm.app import _relayrun_relayscn_node
+from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
+
+NAMESPACE = "character/default"
+CHARACTER_ID = "default"
+SUMMARY = (
+    "RelayRUN dry-run checkpoint candidate. "
+    "Recover the current context using RelayMEM. "
+    "RelayMEM snippet runtime candidate. "
+    "RELAYRUN_SNIPPET_SENTINEL is bounded snippet evidence only."
+)
 
 
 class _Capture:
@@ -69,14 +80,27 @@ def require(condition: bool, detail: object) -> None:
 
 
 def _build_store(root: Path) -> None:
-    projects = root / "memory" / "mem" / "projects"
-    projects.mkdir(parents=True)
-    (root / "memory" / "mem" / "index.md").write_text("# Index\nRelayMEM\n", encoding="utf-8")
-    (root / "memory" / "mem" / "log.md").write_text("# Log\n", encoding="utf-8")
-    (projects / "relaymem.md").write_text(
-        "# RelayMEM\nRELAYRUN_SNIPPET_SENTINEL is bounded snippet evidence only.\n",
-        encoding="utf-8",
+    mem = root / "memory" / "mem"
+    (root / "memory" / "sources" / "conversations").mkdir(parents=True, exist_ok=True)
+    (mem / "primary" / "sessions").mkdir(parents=True, exist_ok=True)
+    (mem / "primary" / "projects").mkdir(parents=True, exist_ok=True)
+    (mem / "secondary" / "projects").mkdir(parents=True, exist_ok=True)
+    (mem / "index.md").write_text("# Index\nRelayMEM\n", encoding="utf-8")
+    (mem / "log.md").write_text("# Log\n", encoding="utf-8")
+    form_primary_memory(
+        root,
+        namespace=NAMESPACE,
+        candidate_id="relayrun-runtime-checkpoint",
+        title="RelayRUN runtime checkpoint",
+        summary=SUMMARY,
     )
+
+
+def _configured_and_scoped_root(temp_dir: str) -> tuple[Path, Path]:
+    configured_root = Path(temp_dir) / "memory-root"
+    scoped = resolve_relaymem_character_store_root(str(configured_root), CHARACTER_ID)
+    require(isinstance(scoped, str) and scoped, scoped)
+    return configured_root, Path(scoped)
 
 
 def _write_config(
@@ -342,8 +366,8 @@ def _assert_relayscn_persistence_block_design_talk_case() -> None:
 
 def main() -> int:
     with tempfile.TemporaryDirectory() as td:
-        root = Path(td)
-        _build_store(root)
+        configured_root, scoped_root = _configured_and_scoped_root(td)
+        _build_store(scoped_root)
         capture = _Capture()
         _BackendHandler.capture = capture
         server = ThreadingHTTPServer(("127.0.0.1", 0), _BackendHandler)
@@ -352,10 +376,10 @@ def main() -> int:
         try:
             _assert_relayscn_persistence_block_design_talk_case()
             port = server.server_address[1]
-            _assert_normal_case(root, capture, port)
-            _assert_recovery_case(root, capture, port)
-            _assert_unresolved_reference_case(root, capture, port)
-            _assert_snippet_enabled_case(root, capture, port)
+            _assert_normal_case(configured_root, capture, port)
+            _assert_recovery_case(configured_root, capture, port)
+            _assert_unresolved_reference_case(configured_root, capture, port)
+            _assert_snippet_enabled_case(configured_root, capture, port)
         finally:
             server.shutdown()
             thread.join(timeout=5)
