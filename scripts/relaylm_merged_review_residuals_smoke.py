@@ -113,8 +113,10 @@ def test_store_validation_budget() -> None:
         root = Path(temp_dir)
         sources = root / "memory" / "sources" / "conversations"
         pages = root / "memory" / "mem" / "primary" / "sessions"
+        secondary = root / "memory" / "mem" / "secondary" / "projects"
         sources.mkdir(parents=True)
         pages.mkdir(parents=True)
+        secondary.mkdir(parents=True)
         for index in range(70):
             (sources / f"conversation-{index:03d}.jsonl").write_text(
                 '{"event":"bounded"}\n', encoding="utf-8"
@@ -129,10 +131,13 @@ def test_store_validation_budget() -> None:
         )
         relative = target.relative_to(root).as_posix()
         require(relative in result["page_paths"], result)
-        require(result["pages_discovered"] >= 1, result)
+        require(result["pages_discovered"] == 1, result)
+        require(result["fallback_reason"] == "memory_store_validation_truncated", result)
+        require(result["layout_compatibility"]["target_primary_secondary_present"] is True, result)
         require(result["validation"]["files_validated"] == 64, result)
         require(result["validation"]["validation_truncated"] is True, result)
-        print("ok source logs cannot exhaust MEM-page validation capacity")
+        require(result["validation"]["full_tree_materialized"] is False, result)
+        print("ok validation truncation preserves validated MEM pages before source overflow")
 
 
 def _typed_parse_candidate() -> dict[str, Any]:

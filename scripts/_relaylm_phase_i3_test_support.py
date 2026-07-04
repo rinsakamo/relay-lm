@@ -29,6 +29,24 @@ def require(condition: bool, detail: object) -> None:
         raise AssertionError(detail)
 
 
+def ensure_pm_d5_target_layout(root: Path) -> None:
+    for relative in (
+        "memory/sources/conversations",
+        "memory/sources/communications",
+        "memory/sources/corrections",
+        "memory/mem/primary/projects",
+        "memory/mem/primary/relationships",
+        "memory/mem/primary/sessions",
+        "memory/mem/primary/scenes",
+        "memory/mem/secondary/projects",
+        "memory/mem/secondary/concepts",
+        "memory/mem/secondary/claims",
+        "memory/mem/secondary/summaries",
+        "memory/mem/secondary/relations",
+    ):
+        (root / relative).mkdir(parents=True, exist_ok=True)
+
+
 def form_primary_memory(
     store_root: Path,
     *,
@@ -37,6 +55,7 @@ def form_primary_memory(
     title: str,
     summary: str,
 ) -> str:
+    ensure_pm_d5_target_layout(store_root)
     index = store_root / "memory" / "mem" / "index.md"
     log = store_root / "memory" / "mem" / "log.md"
     if not index.exists() and not log.exists():
@@ -129,4 +148,4 @@ def recent_memory(app: Any, *, character_id: str, namespace: str):
     return projection.items[0]
 
 
-__all__ = ["form_primary_memory", "recent_memory", "require", "write_config"]
+__all__ = ["ensure_pm_d5_target_layout", "form_primary_memory", "recent_memory", "require", "write_config"]

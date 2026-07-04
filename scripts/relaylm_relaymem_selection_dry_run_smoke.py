@@ -16,11 +16,9 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.app import create_app
+from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
-from relaylm.relaymem_store import (
-    build_relaymem_store_diagnostics,
-    discover_relaymem_page_candidates,
-)
+from relaylm.relaymem_store import build_relaymem_store_diagnostics, discover_relaymem_page_candidates
 
 
 class _Capture:
@@ -58,9 +56,7 @@ class _BackendHandler(BaseHTTPRequestHandler):
             {
                 "id": "chatcmpl-relaymem-selection-smoke",
                 "object": "chat.completion",
-                "choices": [
-                    {"index": 0, "message": {"role": "assistant", "content": "ok"}}
-                ],
+                "choices": [{"index": 0, "message": {"role": "assistant", "content": "ok"}}],
             }
         ).encode("utf-8")
         self.send_response(200)
@@ -104,11 +100,7 @@ def _scene_payload(scene_type: str, content: str) -> dict[str, Any]:
         "model": "relaylm-default",
         "messages": [{"role": "user", "content": content}],
         "metadata": {
-            "scene_state": {
-                "scene_type": scene_type,
-                "confidence": 0.95,
-                "stability": 0.9,
-            }
+            "scene_state": {"scene_type": scene_type, "confidence": 0.95, "stability": 0.9}
         },
         "stream": False,
     }
@@ -166,45 +158,23 @@ def _assert_no_backend_artifact(payload: dict[str, Any]) -> None:
     require(forbidden.isdisjoint(payload), payload)
 
 
-def _build_store(root: Path) -> None:
-    projects = root / "memory" / "mem" / "projects"
-    concepts = root / "memory" / "mem" / "concepts"
-    summaries = root / "memory" / "mem" / "summaries"
-    projects.mkdir(parents=True)
-    concepts.mkdir(parents=True)
-    summaries.mkdir(parents=True)
-    (root / "memory" / "mem" / "index.md").write_text("# Index\nRelayMEM\n", encoding="utf-8")
-    (root / "memory" / "mem" / "log.md").write_text("# Log\n", encoding="utf-8")
-    for idx in range(5):
-        (projects / f"relaymem_{idx}.md").write_text(
+def _build_store(root: Path, *, count: int = 5) -> None:
+    mem = root / "memory" / "mem"
+    (root / "memory" / "sources" / "conversations").mkdir(parents=True)
+    (mem / "primary" / "sessions").mkdir(parents=True)
+    (mem / "secondary" / "projects").mkdir(parents=True)
+    (mem / "secondary" / "concepts").mkdir(parents=True)
+    (mem / "secondary" / "summaries").mkdir(parents=True)
+    (mem / "index.md").write_text("# Index\nRelayMEM\n", encoding="utf-8")
+    (mem / "log.md").write_text("# Log\n", encoding="utf-8")
+    for idx in range(count):
+        (mem / "secondary" / "projects" / f"relaymem_{idx}.md").write_text(
             f"# RelayMEM {idx}\nRelayMEM retrieval selection dry-run page.\n",
             encoding="utf-8",
         )
-    (concepts / "context.md").write_text("# Context\nRelayCTX notes.\n", encoding="utf-8")
-    (summaries / "overview.md").write_text("# Summary\nRelayMEM overview.\n", encoding="utf-8")
-    (projects / "broken.md").write_bytes(b"\xff\xfe\x00")
-
-
-def _build_large_store(root: Path) -> None:
-    projects = root / "memory" / "mem" / "projects"
-    projects.mkdir(parents=True)
-    (root / "memory" / "mem" / "index.md").write_text("# Index\nRelayMEM\n", encoding="utf-8")
-    (root / "memory" / "mem" / "log.md").write_text("# Log\n", encoding="utf-8")
-    for idx in range(150):
-        (projects / f"relaymem_large_{idx:03d}.md").write_text(
-            f"# RelayMEM Large {idx}\n" + ("x" * 2048),
-            encoding="utf-8",
-        )
-
-
-def _build_candidate_cap_store(root: Path) -> None:
-    projects = root / "memory" / "mem" / "projects"
-    projects.mkdir(parents=True)
-    (root / "memory" / "mem" / "index.md").write_text("# Index\n", encoding="utf-8")
-    (root / "memory" / "mem" / "log.md").write_text("# Log\n", encoding="utf-8")
-    (projects / "001_valid.md").write_text("# One\nRelayMEM\n", encoding="utf-8")
-    (projects / "002_valid.md").write_text("# Two\nRelayMEM\n", encoding="utf-8")
-    (projects / "003_broken.md").write_bytes(b"\xff\xfe\x00")
+    (mem / "secondary" / "concepts" / "context.md").write_text("# Context\nRelayCTX notes.\n", encoding="utf-8")
+    (mem / "secondary" / "summaries" / "overview.md").write_text("# Summary\nRelayMEM overview.\n", encoding="utf-8")
+    (mem / "primary" / "sessions" / "session.md").write_text("# Session\nRelayMEM session note.\n", encoding="utf-8")
 
 
 def main() -> int:
@@ -212,44 +182,37 @@ def main() -> int:
         store_root = Path(store_td)
         _build_store(store_root)
         direct = discover_relaymem_page_candidates(
-            root_path=str(store_root),
-            query_terms=["relaymem"],
-            max_candidates=2,
-            max_read_bytes=24,
+            root_path=str(store_root), query_terms=["relaymem"], max_candidates=2, max_read_bytes=24
         )
         require(len(direct["candidates"]) == 2, direct)
         require(all(item["estimated_chars"] <= 24 for item in direct["candidates"]), direct)
         require(direct["full_candidate_tree_materialized"] is False, direct)
-        print("ok direct discovery respects max candidate and read limits")
+        require({item["layout_profile"] for item in direct["candidates"]} == {"target_primary_secondary"}, direct)
+        print("ok direct target discovery respects max candidate and read limits")
 
         with tempfile.TemporaryDirectory() as cap_td:
             cap_root = Path(cap_td)
-            _build_candidate_cap_store(cap_root)
+            _build_store(cap_root, count=3)
+            (cap_root / "memory" / "mem" / "secondary" / "projects" / "broken.md").write_bytes(b"\xff\xfe\x00")
             cap = discover_relaymem_page_candidates(
-                root_path=str(cap_root),
-                query_terms=["relaymem"],
-                max_candidates=2,
-                max_read_bytes=32,
-                max_scan=10,
+                root_path=str(cap_root), query_terms=["relaymem"], max_candidates=2, max_read_bytes=32, max_scan=10
             )
             cap_blocked = {item["path"]: item["reason"] for item in cap["blocked_files"]}
             require(len(cap["candidates"]) == 2, cap)
             require(cap["candidate_cap_reached"] is True, cap)
-            require(cap_blocked.get("memory/mem/projects/003_broken.md") == "malformed_or_unreadable_file", cap)
+            require(
+                cap_blocked.get("memory/mem/secondary/projects/broken.md") == "malformed_or_unreadable_file",
+                cap,
+            )
             print("ok candidate scan continues after candidate cap to report blocked files")
 
         with tempfile.TemporaryDirectory() as utf8_td:
             utf8_root = Path(utf8_td)
-            utf8_projects = utf8_root / "memory" / "mem" / "projects"
-            utf8_projects.mkdir(parents=True)
-            (utf8_root / "memory" / "mem" / "index.md").write_text("# Index\n", encoding="utf-8")
-            (utf8_root / "memory" / "mem" / "log.md").write_text("# Log\n", encoding="utf-8")
+            _build_store(utf8_root, count=0)
+            utf8_projects = utf8_root / "memory" / "mem" / "secondary" / "projects"
             (utf8_projects / "jp.md").write_text("ああ", encoding="utf-8")
             utf8 = discover_relaymem_page_candidates(
-                root_path=str(utf8_root),
-                query_terms=[],
-                max_candidates=1,
-                max_read_bytes=1,
+                root_path=str(utf8_root), query_terms=[], max_candidates=1, max_read_bytes=1
             )
             require(len(utf8["candidates"]) == 1, utf8)
             require(utf8["blocked_files"] == [], utf8)
@@ -257,24 +220,17 @@ def main() -> int:
 
             (utf8_projects / "incomplete.md").write_bytes(b"abc\xe3")
             incomplete = discover_relaymem_page_candidates(
-                root_path=str(utf8_root),
-                query_terms=[],
-                max_candidates=4,
-                max_read_bytes=16,
+                root_path=str(utf8_root), query_terms=[], max_candidates=4, max_read_bytes=16
             )
             blocked = {item["path"]: item["reason"] for item in incomplete["blocked_files"]}
-            require(blocked.get("memory/mem/projects/incomplete.md") == "malformed_or_unreadable_file", incomplete)
+            require(blocked.get("memory/mem/secondary/projects/incomplete.md") == "malformed_or_unreadable_file", incomplete)
             print("ok incomplete UTF-8 at EOF is blocked")
 
         with tempfile.TemporaryDirectory() as large_td:
             large_root = Path(large_td)
-            _build_large_store(large_root)
+            _build_store(large_root, count=150)
             capped = discover_relaymem_page_candidates(
-                root_path=str(large_root),
-                query_terms=["relaymem"],
-                max_candidates=4,
-                max_read_bytes=32,
-                max_scan=8,
+                root_path=str(large_root), query_terms=["relaymem"], max_candidates=4, max_read_bytes=32, max_scan=8
             )
             require(len(capped["candidates"]) == 4, capped)
             require(capped["candidate_scan_seen"] <= 8, capped)
@@ -284,17 +240,9 @@ def main() -> int:
             print("ok candidate discovery streams directory scan and caps work")
 
             truncated_store = build_relaymem_store_diagnostics(
-                root_path=str(large_root),
-                store_enabled=True,
-                retrieval_dry_run_only=True,
+                root_path=str(large_root), store_enabled=True, retrieval_dry_run_only=True
             )
-            require(
-                truncated_store["fallback_reason"] in {
-                    "memory_store_scan_truncated",
-                    "memory_store_validation_truncated",
-                },
-                truncated_store,
-            )
+            require(truncated_store["fallback_reason"] in {"memory_store_scan_truncated", "memory_store_validation_truncated"}, truncated_store)
             retrieval = build_relaymem_retrieval_dry_run_artifact(
                 relayscn_scene_policy_artifact=_scene_artifact(),
                 messages=[{"role": "user", "content": "RelayMEM Large"}],
@@ -317,18 +265,12 @@ def main() -> int:
                 trace_path = Path(td) / "trace.jsonl"
                 cfg_path = Path(td) / "disabled.yaml"
                 _write_config(
-                    cfg_path,
-                    port=port,
-                    trace_path=trace_path,
-                    store_root=store_root,
-                    store_enabled=False,
+                    cfg_path, port=port, trace_path=trace_path, store_root=store_root, store_enabled=False
                 )
                 app = create_app(str(cfg_path))
                 with TestClient(app) as client:
                     projection = _post_and_get_projection(
-                        client,
-                        trace_path,
-                        _scene_payload("design_talk", "RelayMEM retrieval"),
+                        client, trace_path, _scene_payload("design_talk", "RelayMEM retrieval")
                     )
                     require(projection["selected_count"] == 0, projection)
                     require(projection["fallback_reason"] == "memory_store_disabled", projection)
@@ -336,13 +278,17 @@ def main() -> int:
                     print("ok disabled store emits a content-free zero-selection projection")
 
             with tempfile.TemporaryDirectory() as td:
+                configured_root = Path(td) / "memory-root"
+                scoped = resolve_relaymem_character_store_root(str(configured_root), "default")
+                require(isinstance(scoped, str), scoped)
+                _build_store(Path(scoped))
                 trace_path = Path(td) / "trace.jsonl"
                 cfg_path = Path(td) / "enabled.yaml"
                 _write_config(
                     cfg_path,
                     port=port,
                     trace_path=trace_path,
-                    store_root=store_root,
+                    store_root=configured_root,
                     store_enabled=True,
                     candidate_limit=2,
                 )
@@ -351,21 +297,16 @@ def main() -> int:
                     design_payload = _scene_payload("design_talk", "RelayMEM retrieval")
                     design = _post_and_get_projection(client, trace_path, design_payload)
                     require(design["selected_count"] == 0, design)
-                    require(design["character_scope_resolved"] is False, design)
+                    require(design["character_scope_resolved"] is True, design)
                     require(design["scope_matched"] is False, design)
-                    require("legacy_flat_store_compatibility" in design["blocked_reason_ids"], design)
+                    require("legacy_flat_store_compatibility" not in design["blocked_reason_ids"], design)
                     backend_payload = capture.last_chat_payload()
                     _assert_no_backend_artifact(backend_payload)
-                    require(
-                        backend_payload.get("metadata") == design_payload["metadata"],
-                        "backend metadata changed",
-                    )
-                    print("ok legacy-flat runtime selection remains content-free and non-mutating")
+                    require(backend_payload.get("metadata") == design_payload["metadata"], "backend metadata changed")
+                    print("ok target runtime selection remains content-free and non-mutating")
 
                     recovery = _post_and_get_projection(
-                        client,
-                        trace_path,
-                        _scene_payload("recovery", "何の話だったっけ"),
+                        client, trace_path, _scene_payload("recovery", "何の話だったっけ")
                     )
                     require(recovery["retrieval_scope"] == "current_context_only", recovery)
                     require(recovery["selected_count"] == 0, recovery)
@@ -373,18 +314,14 @@ def main() -> int:
 
                     for scene_type in ("formal_document", "medical_or_safety"):
                         projection = _post_and_get_projection(
-                            client,
-                            trace_path,
-                            _scene_payload(scene_type, "RelayMEM evidence"),
+                            client, trace_path, _scene_payload(scene_type, "RelayMEM evidence")
                         )
                         require(projection["selected_count"] == 0, projection)
                         require(projection["persistence_block"] is True, projection)
                     print("ok formal and medical scenes suppress runtime selection")
 
                     latest = _post_and_get_projection(
-                        client,
-                        trace_path,
-                        _scene_payload("design_talk", "RelayMEM trace check"),
+                        client, trace_path, _scene_payload("design_talk", "RelayMEM trace check")
                     )
                     require(latest["content_free"] is True, latest)
                     require(latest["selected_layer_counts"] == {"primary": 0}, latest)

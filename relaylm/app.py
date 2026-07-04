@@ -76,7 +76,6 @@ from relaylm.relayrel import build_relayrel_relationship_projection
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
-    build_relaymem_primary_recall_compat_projection,
     resolve_relaymem_character_store_root,
 )
 from relaylm.relayrun import (
@@ -381,26 +380,10 @@ def create_app(config_path: str | None = None) -> FastAPI:
         )
 
         relaymem_configured_store_root = config.memory.root_path
-        relaymem_character_partition_present = False
-        if (
-            isinstance(relaymem_configured_store_root, str)
-            and relaymem_configured_store_root
-        ):
-            character_partition = (
-                Path(relaymem_configured_store_root) / "characters"
-            )
-            relaymem_character_partition_present = (
-                character_partition.exists() or character_partition.is_symlink()
-            )
-        if relaymem_character_partition_present:
-            relaymem_scoped_store_root = (
-                resolve_relaymem_character_store_root(
-                    relaymem_configured_store_root,
-                    route.character_id,
-                )
-            )
-        else:
-            relaymem_scoped_store_root = relaymem_configured_store_root
+        relaymem_scoped_store_root = resolve_relaymem_character_store_root(
+            relaymem_configured_store_root,
+            route.character_id,
+        )
 
         relaymem_store_diagnostics = build_relaymem_store_diagnostics(
             root_path=relaymem_scoped_store_root,
@@ -422,7 +405,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             max_snippet_chars=config.memory.max_snippet_chars,
             max_snippet_candidates=config.memory.max_snippet_candidates,
         )
-        if relaymem_character_partition_present:
+        if _relaymem_primary_recall_scope_allowed(relaymem_store_diagnostics):
             relaymem_retrieval_artifact = apply_relaymem_primary_recall_scope(
                 relaymem_retrieval_artifact,
                 scoped_store_root=relaymem_scoped_store_root,
@@ -431,12 +414,6 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 max_snippet_candidates=config.memory.max_snippet_candidates,
                 snippet_budget=config.memory.snippet_budget,
                 chars_per_token=config.memory.chars_per_token,
-            )
-        else:
-            relaymem_retrieval_artifact["primary_recall_projection"] = (
-                build_relaymem_primary_recall_compat_projection(
-                    relaymem_retrieval_artifact
-                )
             )
         (
             forwarded_payload,
@@ -1123,6 +1100,21 @@ def _apply_relayemo_marker_to_response(body: dict[str, Any], preview: dict[str, 
         else:
             message["content"] = content + marker
     return body
+
+
+def _relaymem_primary_recall_scope_allowed(
+    store_diagnostics: Mapping[str, Any] | None,
+) -> bool:
+    if not isinstance(store_diagnostics, Mapping):
+        return True
+    compatibility = store_diagnostics.get("layout_compatibility")
+    if (
+        store_diagnostics.get("root_present") is True
+        and isinstance(compatibility, Mapping)
+        and compatibility.get("target_primary_secondary_present") is False
+    ):
+        return False
+    return True
 
 
 def _resolve_relaymem_retrieval_token_budget(config: RelayLMConfig) -> int | None:

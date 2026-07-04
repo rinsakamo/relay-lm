@@ -185,8 +185,21 @@ def create_request(
 
 
 def prepare_store(root: Path) -> None:
-    for category in ("projects", "relationships", "sessions", "scenes"):
-        (root / f"memory/mem/primary/{category}").mkdir(parents=True, exist_ok=True)
+    for relative in (
+        "memory/sources/conversations",
+        "memory/sources/communications",
+        "memory/sources/corrections",
+        "memory/mem/primary/projects",
+        "memory/mem/primary/relationships",
+        "memory/mem/primary/sessions",
+        "memory/mem/primary/scenes",
+        "memory/mem/secondary/projects",
+        "memory/mem/secondary/concepts",
+        "memory/mem/secondary/claims",
+        "memory/mem/secondary/summaries",
+        "memory/mem/secondary/relations",
+    ):
+        (root / relative).mkdir(parents=True, exist_ok=True)
     (root / "memory/mem/index.md").write_text("# Index\n", encoding="utf-8")
     (root / "memory/mem/log.md").write_text("# Log\n", encoding="utf-8")
 

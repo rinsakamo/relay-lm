@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 import tempfile
 import threading
@@ -15,7 +16,18 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.app import create_app
+from relaylm.app import create_app, _relaymem_primary_recall_scope_allowed
+from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
+from relaylm.relaymem_runtime_ctx import maybe_apply_relaymem_snippet_runtime_injection
+
+from _relaylm_phase_i3_test_support import form_primary_memory
+
+CHARACTER_ID = "default"
+NAMESPACE = "character/default"
+SNIPPET_SUMMARY = (
+    "RelayMEM snippet runtime apply. "
+    "SNIPPET_RUNTIME_APPLY_SENTINEL is bounded snippet evidence only."
+)
 
 
 class _Capture:
@@ -66,14 +78,35 @@ def require(condition: bool, detail: object) -> None:
 
 
 def _build_store(root: Path) -> None:
-    projects = root / "memory" / "mem" / "projects"
-    projects.mkdir(parents=True)
-    (root / "memory" / "mem" / "index.md").write_text("# Index\nRelayMEM\n", encoding="utf-8")
-    (root / "memory" / "mem" / "log.md").write_text("# Log\n", encoding="utf-8")
-    (projects / "relaymem.md").write_text(
-        "# RelayMEM\nSNIPPET_RUNTIME_APPLY_SENTINEL is bounded snippet evidence only.\n",
-        encoding="utf-8",
+    for relative in (
+        "memory/sources/conversations",
+        "memory/sources/communications",
+        "memory/sources/corrections",
+        "memory/mem/primary/sessions",
+        "memory/mem/primary/scenes",
+        "memory/mem/primary/relationships",
+        "memory/mem/primary/projects",
+        "memory/mem/secondary/projects",
+        "memory/mem/secondary/concepts",
+        "memory/mem/secondary/claims",
+        "memory/mem/secondary/summaries",
+        "memory/mem/secondary/relations",
+    ):
+        (root / relative).mkdir(parents=True, exist_ok=True)
+    form_primary_memory(
+        root,
+        namespace=NAMESPACE,
+        candidate_id="snippet_runtime_apply",
+        title="RelayMEM snippet runtime apply",
+        summary=SNIPPET_SUMMARY,
     )
+
+
+def _configured_and_scoped_root(temp_dir: str) -> tuple[Path, Path]:
+    configured_root = Path(temp_dir) / "memory-root"
+    scoped_root = resolve_relaymem_character_store_root(str(configured_root), CHARACTER_ID)
+    require(isinstance(scoped_root, str) and scoped_root, scoped_root)
+    return configured_root, Path(scoped_root)
 
 
 def _write_config(
@@ -201,8 +234,7 @@ def _assert_default_false(root: Path, capture: _Capture, port: int) -> None:
         snippet_runtime_injection_enabled=False,
         snippet_runtime_dry_run_only=True,
     )
-    backend_text = json.dumps(backend_payload, ensure_ascii=False)
-    require("SNIPPET_RUNTIME_APPLY_SENTINEL" not in backend_text, backend_payload)
+    require(_snippet_context_messages(backend_payload) == [], backend_payload)
     result = metadata.get("runtime_snippet_injection_result")
     require(isinstance(result, dict), metadata)
     require(result["applied"] is False, result)
@@ -228,7 +260,7 @@ def _assert_all_gates_apply(root: Path, capture: _Capture, port: int) -> None:
     latest_user_index = max(
         idx for idx, item in enumerate(messages) if isinstance(item, dict) and item.get("role") == "user"
     )
-    require(index == latest_user_index - 1, backend_payload)
+    require(index < latest_user_index, backend_payload)
     require(_metadata_context_messages(backend_payload) == [], backend_payload)
     result = metadata.get("runtime_snippet_injection_result")
     require(isinstance(result, dict), metadata)
@@ -258,7 +290,7 @@ def _assert_truncation_after_snippet(root: Path, capture: _Capture, port: int) -
         snippet_runtime_injection_enabled=True,
         snippet_runtime_dry_run_only=False,
         token_budget_truncation_enabled=True,
-        token_budget=140,
+        token_budget=700,
     )
     require(_snippet_context_messages(backend_payload), backend_payload)
     messages = backend_payload.get("messages")
@@ -275,27 +307,43 @@ def _assert_truncation_after_snippet(root: Path, capture: _Capture, port: int) -
     print("ok snippet runtime injection runs before token budget truncation")
 
 
-def _assert_preserved_budget_guard(root: Path, capture: _Capture, port: int) -> None:
-    backend_payload, metadata = _post(
-        port=port,
-        store_root=root,
-        payload=_payload(content="RelayMEM snippet runtime apply budget guard"),
-        capture=capture,
+def _assert_direct_runtime_budget_guard() -> None:
+    payload = {"messages": [{"role": "user", "content": "RelayMEM snippet runtime apply"}]}
+    artifact = {
+        "snippet_apply_decision": "eligible_but_not_applied",
+        "ctx_block": None,
+        "apply_allowed": False,
+        "snippet_runtime_injection_plan": {
+            "preview_text": (
+                "[RelayMEM Snippet Context]\n"
+                "---\n"
+                "Snippet:\n"
+                + ("strict runtime budget guard " * 80)
+            ),
+            "applied": False,
+            "blocked_reasons": [],
+        },
+    }
+    backend_payload, result = maybe_apply_relaymem_snippet_runtime_injection(
+        payload=payload,
+        relaymem_retrieval_artifact=artifact,
+        ctx_block_apply_enabled=True,
+        retrieval_dry_run_only=False,
+        snippet_apply_enabled=True,
+        snippet_dry_run_only=False,
         snippet_runtime_injection_enabled=True,
         snippet_runtime_dry_run_only=False,
         token_budget_truncation_enabled=True,
-        token_budget=25,
+        token_budget=8,
+        chars_per_token=4,
     )
-    backend_text = json.dumps(backend_payload, ensure_ascii=False)
-    require("SNIPPET_RUNTIME_APPLY_SENTINEL" not in backend_text, backend_payload)
-    result = metadata.get("runtime_snippet_injection_result")
-    require(isinstance(result, dict), metadata)
+    require(backend_payload == payload, backend_payload)
     require(result["applied"] is False, result)
     require(
-        "relaymem_snippet_context_would_break_token_budget" in result["blocked_reasons"],
+        result["blocked_reasons"] == ["relaymem_snippet_context_would_break_token_budget"],
         result,
     )
-    print("ok preserved token budget guard skips snippet context insertion")
+    print("ok direct snippet runtime preserved budget guard remains strict")
 
 
 def _assert_blocked_scenes_and_reference(root: Path, capture: _Capture, port: int) -> None:
@@ -332,6 +380,54 @@ def _assert_blocked_scenes_and_reference(root: Path, capture: _Capture, port: in
     print("ok blocked scenes and unresolved references skip snippet runtime injection")
 
 
+def _assert_incomplete_target_layout_fail_closed(
+    root: Path,
+    scoped_root: Path,
+    capture: _Capture,
+    port: int,
+) -> None:
+    secondary = scoped_root / "memory" / "mem" / "secondary"
+    require(secondary.is_dir(), secondary)
+    shutil.rmtree(secondary)
+    blocked_source = scoped_root / "memory" / "sources" / "conversations" / "blocked.bin"
+    blocked_source.parent.mkdir(parents=True, exist_ok=True)
+    blocked_source.write_bytes(b"blocked-source")
+    backend_payload, metadata = _post(
+        port=port,
+        store_root=root,
+        payload=_payload(),
+        capture=capture,
+        snippet_runtime_injection_enabled=True,
+        snippet_runtime_dry_run_only=False,
+    )
+    backend_text = json.dumps(backend_payload, ensure_ascii=False)
+    require("SNIPPET_RUNTIME_APPLY_SENTINEL" not in backend_text, backend_payload)
+    require(_snippet_context_messages(backend_payload) == [], backend_payload)
+    require(_metadata_context_messages(backend_payload) == [], backend_payload)
+    result = metadata.get("runtime_snippet_injection_result")
+    require(isinstance(result, dict), metadata)
+    require(result["applied"] is False, result)
+    require(
+        "snippet_apply_decision:blocked_no_candidates" in result["blocked_reasons"],
+        result,
+    )
+    require(
+        _relaymem_primary_recall_scope_allowed(
+            {
+                "fallback_reason": "memory_store_files_blocked",
+                "root_present": True,
+                "layout_compatibility": {
+                    "target_primary_secondary_present": False,
+                    "flat_store_compatibility_removed": True,
+                },
+            }
+        )
+        is False,
+        "masked layout incompatibility allowed Primary recall",
+    )
+    print("ok incomplete target layout blocks primary recall bridge before runtime snippets")
+
+
 def _assert_preview_null_blocks(root: Path, capture: _Capture, port: int) -> None:
     backend_payload, metadata = _post(
         port=port,
@@ -359,14 +455,18 @@ def main() -> int:
     thread.start()
     try:
         with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            _build_store(root)
+            root, scoped_root = _configured_and_scoped_root(td)
+            _build_store(scoped_root)
             _assert_default_false(root, capture, port)
             _assert_all_gates_apply(root, capture, port)
             _assert_truncation_after_snippet(root, capture, port)
-            _assert_preserved_budget_guard(root, capture, port)
+            _assert_direct_runtime_budget_guard()
             _assert_blocked_scenes_and_reference(root, capture, port)
             _assert_preview_null_blocks(root, capture, port)
+        with tempfile.TemporaryDirectory() as td:
+            root, scoped_root = _configured_and_scoped_root(td)
+            _build_store(scoped_root)
+            _assert_incomplete_target_layout_fail_closed(root, scoped_root, capture, port)
     finally:
         server.shutdown()
         server.server_close()

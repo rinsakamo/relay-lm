@@ -25,23 +25,15 @@ _PATH_TIER_SCORES = (
     ("memory/mem/secondary/concepts/", "secondary_concept", 690),
     ("memory/mem/secondary/claims/", "secondary_claim", 680),
     ("memory/mem/primary/projects/", "primary_project", 600),
-    ("memory/mem/summaries/", "legacy_summary", 500),
-    ("memory/mem/relations/", "legacy_relation", 490),
-    ("memory/mem/projects/", "legacy_project", 480),
-    ("memory/mem/concepts/", "legacy_concept", 470),
 )
 
 _GENERIC_TIER_SCORES = {
     "secondary": ("secondary_generic", 650),
     "primary": ("primary_generic", 580),
-    "legacy_flat": ("legacy_generic", 450),
     "unknown": ("unknown_generic", 0),
 }
 
-_REASON_SCORES = {
-    "keyword_match": 1,
-    "store_page_available": 0,
-}
+_REASON_SCORES = {"keyword_match": 1, "store_page_available": 0}
 
 
 def prioritize_relaymem_candidates(
@@ -87,15 +79,12 @@ def prioritize_relaymem_candidates(
                 "secondary_concept",
                 "secondary_claim",
                 "primary_project",
-                "legacy_summary",
-                "legacy_relation",
-                "legacy_project",
-                "legacy_concept",
             ],
             "tie_breaker": "original_candidate_order",
             "path_tiers_enabled": True,
             "keyword_match_bonus_enabled": True,
             "keyword_match_is_intra_tier_only": True,
+            "flat_store_compatibility_removed": True,
         },
         "layer_counts": _layer_counts(annotated),
         "selected_layer_counts": _layer_counts(selected),
@@ -138,15 +127,13 @@ def _priority_for_candidate(
 
 def _memory_layer(candidate: Mapping[str, Any]) -> str:
     value = candidate.get("memory_layer")
-    if value in {"secondary", "primary", "legacy_flat", "unknown"}:
+    if value in {"secondary", "primary", "unknown"}:
         return str(value)
     path = str(candidate.get("path", ""))
     if path.startswith("memory/mem/secondary/"):
         return "secondary"
     if path.startswith("memory/mem/primary/"):
         return "primary"
-    if path.startswith("memory/mem/"):
-        return "legacy_flat"
     return "unknown"
 
 
@@ -154,10 +141,7 @@ def _path_tier(path: str, memory_layer: str) -> tuple[str, int]:
     for prefix, tier, score in _PATH_TIER_SCORES:
         if path.startswith(prefix):
             return tier, score
-    return _GENERIC_TIER_SCORES.get(
-        memory_layer,
-        _GENERIC_TIER_SCORES["unknown"],
-    )
+    return _GENERIC_TIER_SCORES.get(memory_layer, _GENERIC_TIER_SCORES["unknown"])
 
 
 def _priority_reasons(*, memory_layer: str, tier: str, reason: str) -> list[str]:
@@ -172,14 +156,11 @@ def _priority_reasons(*, memory_layer: str, tier: str, reason: str) -> list[str]
 def _candidate_sort_key(candidate: Mapping[str, Any]) -> tuple[int, int]:
     score = candidate.get("retrieval_priority_score")
     original_index = candidate.get("retrieval_original_index")
-    return (
-        -(score if isinstance(score, int) else 0),
-        original_index if isinstance(original_index, int) else 0,
-    )
+    return (-(score if isinstance(score, int) else 0), original_index if isinstance(original_index, int) else 0)
 
 
 def _layer_counts(candidates: Sequence[Mapping[str, Any]]) -> dict[str, int]:
-    counts = {"secondary": 0, "primary": 0, "legacy_flat": 0, "unknown": 0}
+    counts = {"secondary": 0, "primary": 0, "unknown": 0}
     for candidate in candidates:
         layer = _memory_layer(candidate)
         counts[layer if layer in counts else "unknown"] += 1
@@ -198,10 +179,7 @@ def _content_free_projection(candidates: Sequence[dict[str, Any]]) -> dict[str, 
                 "layout_profile": str(candidate.get("layout_profile", "unknown")),
                 "priority_tier": priority_tier,
                 "priority_score": int(candidate.get("retrieval_priority_score", 0)),
-                "reason_ids": [
-                    str(item)
-                    for item in candidate.get("retrieval_priority_reasons", [])
-                ],
+                "reason_ids": [str(item) for item in candidate.get("retrieval_priority_reasons", [])],
             }
         )
     return {
