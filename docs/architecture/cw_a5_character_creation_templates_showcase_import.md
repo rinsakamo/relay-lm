@@ -185,7 +185,7 @@ CW-A5 does not implement remote template ecosystems, unbounded downloads, automa
 python -m compileall -q relaylm scripts
 PYTHONPATH=. python scripts/relaylm_cw_a1_file_first_workspace_smoke.py
 PYTHONPATH=. python scripts/relaylm_cw_a2_workspace_compiler_smoke.py
-PYTHONPATH=. python scripts/relaylm_cw_a4_slp_workspace_maintenance_smoke.py
+PYTHONPATH=. python scripts/relaylm_cw_a4_workspace_slp_candidates_smoke.py
 PYTHONPATH=. python scripts/relaylm_cw_a5_character_creation_templates_smoke.py
 cd apps/soul-lab && npm run typecheck
 cd apps/soul-lab && npm run smoke:character-workspace
