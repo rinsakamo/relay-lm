@@ -1,0 +1,50 @@
+# E2 value smoke scenario: memory recall.
+#
+# Design intent: turns 1-3 present concrete facts (name, plan, preference)
+# naturally, turns 4-6 interleave unrelated topics, and turns 7-10 require
+# recall without directly asking "do you remember".
+#
+# Each turn carries a `probe` note describing what the turn tests. The probe
+# is copied into the generated comparison artifact for the human judge.
+scenario_id: scenario_01_memory_recall
+title: Memory recall across topic changes
+description: >-
+  Present concrete facts early, dilute them with unrelated topics, then ask
+  questions whose good answers require recalling those facts without being
+  asked to remember them explicitly.
+turns:
+  - user: >-
+      こんにちは。私はリン。今日からときどき話し相手になってもらおうと思って。
+      最近は仕事が立て込んでいて、少し疲れ気味なんだ。
+    probe: 名前「リン」と近況(疲れ気味)の自然な提示。
+  - user: >-
+      来週の水曜日に京都へ日帰り出張があるんだよね。新幹線がどうも苦手で、
+      いつも発車のだいぶ前にホームに着くようにしてる。
+    probe: 具体的予定(来週水曜・京都出張)と特性(新幹線が苦手・早めに着く習慣)の提示。
+  - user: >-
+      そういえば私、コーヒーが体質的に飲めなくて、喫茶店ではいつもほうじ茶か
+      ジュースを頼むんだ。ちょっと子どもっぽいかな。
+    probe: 嗜好・制約(コーヒー不可、ほうじ茶派)の提示。
+  - user: >-
+      ところで最近、何か面白い本の話とかある?ジャンルは何でもいいよ。
+    probe: 無関係話題への転換(記憶の希釈を開始)。
+  - user: >-
+      雨の日の休日って、家で何をして過ごすのがおすすめ?
+    probe: 無関係話題の継続。
+  - user: >-
+      ふと思ったんだけど、AIって「懐かしい」って感覚をどう扱うんだろうね。雑談だけど。
+    probe: 無関係話題の継続(序盤の事実から十分に距離を取る)。
+  - user: >-
+      さて、そろそろ例の出張の準備を始めようと思うんだけど、何から手をつけたらいいかな。
+    probe: >-
+      間接想起。「例の出張」だけで京都・来週水曜・新幹線が苦手という文脈を
+      補完できるかを見る(直接「覚えてる?」とは聞かない)。
+  - user: >-
+      向こうで打ち合わせの合間に一息つくとしたら、何を頼むのがよさそう?
+    probe: 間接想起。コーヒー不可・ほうじ茶派を踏まえた提案ができるか。
+  - user: >-
+      移動の当日、私の性格を考えると特に気をつけておくことってあると思う?
+    probe: 間接想起。新幹線が苦手で早めにホームへ着く習慣に触れられるか。
+  - user: >-
+      今日はありがとう。最後に、今日ここまでの話を私宛てに一言でまとめてくれる?
+    probe: 総合想起。名前「リン」を含め、序盤の事実を要約に反映できるか。
