@@ -582,7 +582,7 @@ export function HomeConversationPage({
 
       <aside className="right-rail">
         <section className="runtime-panel surface-panel">
-          <div className="section-heading compact-heading"><div><p className="eyebrow">RUNTIME</p><h2>{translate(language, "runtime.title")}</h2></div><StatusBadge label={`${readyCount}/${runtimeRows.length}`} state={readyCount === runtimeRows.length && runtimeRows.length > 0 ? "online" : "degraded"} /></div>
+          <div className="section-heading compact-heading"><div><p className="eyebrow">RUNTIME</p><h2>{translate(language, "runtime.title")}</h2></div><StatusBadge label={`${readyCount}/${runtimeRows.length}`} state={readyCount === runtimeRows.length && runtimeRows.length > 0 ? "connected" : "degraded"} /></div>
           <p className="panel-description">{translate(language, "runtime.description")}</p>
           <div className="runtime-list">
             {runtimeRows.map((component) => (
@@ -600,7 +600,7 @@ export function HomeConversationPage({
             {mockEvents.length === 0 ? <p>{translate(language, "events.empty")}</p> : mockEvents.map((event) => (
               <div className="event-row" key={event.eventId}>
                 <span className={`event-dot severity-${event.severity}`} aria-hidden="true" />
-                <div><strong>{event.title}</strong><span>{event.description}</span></div>
+                <div><strong>{event.category}</strong><span>{event.summary}</span></div>
               </div>
             ))}
           </div>
