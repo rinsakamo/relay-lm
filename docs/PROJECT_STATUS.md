@@ -72,6 +72,10 @@ E1-R3 provenance-preserving Primary MEM formation summary: complete
 E1-R4 retrieval-response grounding and unsupported-detail suppression: complete
 E1-R5 Primary MEM recall candidate discovery bridge: complete
 Home can be a trusted formation source only through the E1-R1 route-owned gate; browser-owned trust remains rejected.
+I1-GA contract / fault model: complete
+I1-GB durable-finalization publication / pre-release admission: complete
+I1-GC one-record restart replay / exact C1-5+B2 convergence / completion marker: complete
+I1-GD retention / orphan reconciliation / isolation lifecycle / cleanup: complete
 I1-GE full production crash validation: complete
 I1-G overall: complete
 Phase I-4D ordinary retrieval lifecycle exclusion: complete
