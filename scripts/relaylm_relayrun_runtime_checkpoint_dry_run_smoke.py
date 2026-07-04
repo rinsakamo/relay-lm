@@ -85,8 +85,6 @@ def _build_store(root: Path) -> None:
     (mem / "primary" / "sessions").mkdir(parents=True, exist_ok=True)
     (mem / "primary" / "projects").mkdir(parents=True, exist_ok=True)
     (mem / "secondary" / "projects").mkdir(parents=True, exist_ok=True)
-    (mem / "index.md").write_text("# Index\nRelayMEM\n", encoding="utf-8")
-    (mem / "log.md").write_text("# Log\n", encoding="utf-8")
     form_primary_memory(
         root,
         namespace=NAMESPACE,
