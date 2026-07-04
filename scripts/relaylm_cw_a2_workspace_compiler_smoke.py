@@ -54,6 +54,8 @@ def _write_fixture(root: Path) -> None:
     (root / "memory" / "core.md").write_text(
         "# Core memory\n\n"
         "## Target user direction ^mem-relaylm-target-user\n\n"
+        "memory_id:: mem-secret\n"
+        "queue_record:: queue-record-123\n"
         "status:: active\n"
         "importance:: high\n\n"
         "PRIVATE_MEMORY_BODY\n\n"
@@ -61,6 +63,23 @@ def _write_fixture(root: Path) -> None:
         "status:: active\n"
         "importance:: high\n\n"
         "PRIVATE_MEMORY_BODY_DUPLICATE_ANCHOR\n",
+        encoding="utf-8",
+    )
+    (root / "memory" / "a-b.md").write_text(
+        "# Path collision A\n\n"
+        "## Shared anchor ^path-collision\n\n"
+        "status:: active\n"
+        "importance:: high\n\n"
+        "PRIVATE_PATH_COLLISION_A\n",
+        encoding="utf-8",
+    )
+    (root / "memory" / "a").mkdir()
+    (root / "memory" / "a" / "b.md").write_text(
+        "# Path collision B\n\n"
+        "## Shared anchor ^path-collision\n\n"
+        "status:: active\n"
+        "importance:: high\n\n"
+        "PRIVATE_PATH_COLLISION_B\n",
         encoding="utf-8",
     )
     (root / "memory" / "inbox").mkdir()
@@ -105,6 +124,22 @@ def _assert_no_timestamps_or_uuids(result: object) -> None:
     assert not uuid_re.search(serialized), serialized
 
 
+def _assert_artifacts_content_free(result: object) -> None:
+    serialized = _serialized([artifact.text() for artifact in result.artifacts])
+    for token in (
+        "PRIVATE_MEMORY_BODY",
+        "PRIVATE_RELATIONSHIP_BODY",
+        "PRIVATE_SCENE_BODY",
+        "PRIVATE_FORGOTTEN_MEMORY_BODY",
+        "PRIVATE_PATH_COLLISION_A",
+        "PRIVATE_PATH_COLLISION_B",
+        "runtime-private-payload",
+        "queue-record-123",
+        "mem-secret",
+    ):
+        assert token not in serialized, token
+
+
 def _assert_public_projection_content_free(projection: dict[str, object]) -> None:
     serialized = _serialized(projection)
     assert projection["content_free"] is True
@@ -115,6 +150,7 @@ def _assert_public_projection_content_free(projection: dict[str, object]) -> Non
         "PRIVATE_FORGOTTEN_MEMORY_BODY",
         "runtime-private-payload",
         "queue-record-123",
+        "mem-secret",
     ):
         assert token not in serialized, token
 
@@ -147,6 +183,7 @@ def main() -> None:
 
         _assert_no_abs_paths(dry, root)
         _assert_no_timestamps_or_uuids(dry)
+        _assert_artifacts_content_free(dry)
 
         before_files = _list_files(root)
         written = compile_character_workspace(root, write=True)
@@ -154,6 +191,7 @@ def main() -> None:
         after_files = _list_files(root)
         created_files = after_files - before_files
         assert created_files == {f".relaylm/build/{name}" for name in EXPECTED_ARTIFACTS}, created_files
+        _assert_artifacts_content_free(written)
 
         repeated = compile_character_workspace(root)
         assert {artifact.name: artifact.content for artifact in written.artifacts} == {
@@ -184,6 +222,14 @@ def main() -> None:
         assert len(duplicate_anchor_ids) == 2
         assert len(set(duplicate_anchor_ids)) == 2, duplicate_anchor_ids
         assert all("memory-core.md" in unit_id for unit_id in duplicate_anchor_ids)
+
+        path_collision_units = [
+            row for row in memory_rows
+            if row["source_path"] in {"memory/a-b.md", "memory/a/b.md"} and "path-collision" in row["unit_id"]
+        ]
+        path_collision_ids = [row["unit_id"] for row in path_collision_units]
+        assert len(path_collision_ids) == 2
+        assert len(set(path_collision_ids)) == 2, path_collision_ids
 
         scene_rows = _artifact_jsonl(written, "scene_units.jsonl")
         scene_inbox = [row for row in scene_rows if row["source_path"].startswith("scenes/_inbox/")]
@@ -265,6 +311,23 @@ def main() -> None:
             symlink_result = compile_character_workspace(symlink_root)
             assert symlink_result.is_valid is False
             assert "symlink_escape_rejected" in symlink_result.blocking_reason_ids
+
+        source_symlink_root = Path(tmp) / "characters" / "source-symlink"
+        source_symlink_root.mkdir()
+        for filename in REQUIRED_SOURCE_FILENAMES:
+            if filename != "SOUL.md":
+                source_symlink_root.joinpath(filename).write_text("# Source\n", encoding="utf-8")
+        outside_source = Path(tmp) / "outside_soul.md"
+        outside_source.write_bytes(b"\xff")
+        try:
+            (source_symlink_root / "SOUL.md").symlink_to(outside_source)
+        except (OSError, NotImplementedError):
+            pass
+        else:
+            source_symlink_result = compile_character_workspace(source_symlink_root)
+            assert source_symlink_result.is_valid is False
+            assert "symlink_escape_rejected" in source_symlink_result.blocking_reason_ids
+            assert "source_file_not_utf8" not in source_symlink_result.blocking_reason_ids
 
         artifact_symlink_root = Path(tmp) / "characters" / "artifact-symlink"
         _write_fixture(artifact_symlink_root)
