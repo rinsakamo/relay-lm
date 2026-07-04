@@ -225,7 +225,9 @@ def main() -> None:
 
         path_collision_units = [
             row for row in memory_rows
-            if row["source_path"] in {"memory/a-b.md", "memory/a/b.md"} and "path-collision" in row["unit_id"]
+            if row["source_path"] in {"memory/a-b.md", "memory/a/b.md"}
+            and row["has_anchor"] is True
+            and "path-collision" in row["unit_id"]
         ]
         path_collision_ids = [row["unit_id"] for row in path_collision_units]
         assert len(path_collision_ids) == 2
@@ -346,6 +348,24 @@ def main() -> None:
             else:
                 raise AssertionError("artifact symlink write was not rejected")
             assert (artifact_symlink_root / "STYLE.md").read_text(encoding="utf-8") == original_style
+
+        artifact_hardlink_root = Path(tmp) / "characters" / "artifact-hardlink"
+        _write_fixture(artifact_hardlink_root)
+        hardlink_build_root = artifact_hardlink_root / ".relaylm" / "build"
+        hardlink_build_root.mkdir(parents=True)
+        hardlink_style = artifact_hardlink_root / "STYLE.md"
+        hardlink_artifact = hardlink_build_root / "style_projection.json"
+        original_hardlink_style = hardlink_style.read_text(encoding="utf-8")
+        try:
+            hardlink_artifact.hardlink_to(hardlink_style)
+        except (OSError, NotImplementedError):
+            pass
+        else:
+            assert hardlink_artifact.samefile(hardlink_style)
+            hardlink_written = compile_character_workspace(artifact_hardlink_root, write=True)
+            assert hardlink_written.is_valid is True
+            assert hardlink_style.read_text(encoding="utf-8") == original_hardlink_style
+            assert not hardlink_artifact.samefile(hardlink_style)
 
     print("CW-A2 workspace compiler projection smoke passed")
 
