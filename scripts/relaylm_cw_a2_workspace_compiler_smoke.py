@@ -266,6 +266,24 @@ def main() -> None:
             assert symlink_result.is_valid is False
             assert "symlink_escape_rejected" in symlink_result.blocking_reason_ids
 
+        artifact_symlink_root = Path(tmp) / "characters" / "artifact-symlink"
+        _write_fixture(artifact_symlink_root)
+        artifact_build_root = artifact_symlink_root / ".relaylm" / "build"
+        artifact_build_root.mkdir(parents=True)
+        original_style = (artifact_symlink_root / "STYLE.md").read_text(encoding="utf-8")
+        try:
+            (artifact_build_root / "style_projection.json").symlink_to("../../STYLE.md")
+        except (OSError, NotImplementedError):
+            pass
+        else:
+            try:
+                compile_character_workspace(artifact_symlink_root, write=True)
+            except ValueError as exc:
+                assert "symlink" in str(exc)
+            else:
+                raise AssertionError("artifact symlink write was not rejected")
+            assert (artifact_symlink_root / "STYLE.md").read_text(encoding="utf-8") == original_style
+
     print("CW-A2 workspace compiler projection smoke passed")
 
 
