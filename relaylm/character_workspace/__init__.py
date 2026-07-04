@@ -29,8 +29,8 @@ def _content_free_metadata(metadata: object) -> dict[str, object]:
     if not isinstance(metadata, dict):
         return {}
     return {
-        str(key): value
-        for key, value in sorted(metadata.items())
+        str(key): True
+        for key, _value in sorted(metadata.items())
         if str(key) in _ALLOWED_METADATA_VALUE_KEYS
     }
 
