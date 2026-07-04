@@ -1,5 +1,4 @@
 """Read-only RelayMEM file-store dry-run diagnostics."""
-
 from __future__ import annotations
 
 import codecs
@@ -7,13 +6,6 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-_CURRENT_LAYOUT_DIRS = (
-    "memory/raw",
-    "memory/mem/projects",
-    "memory/mem/concepts",
-    "memory/mem/summaries",
-    "memory/mem/relations",
-)
 _TARGET_SOURCE_DIRS = (
     "memory/sources/conversations",
     "memory/sources/communications",
@@ -31,34 +23,13 @@ _TARGET_MEM_LAYOUT_DIRS = (
     "memory/mem/secondary/relations",
 )
 _TARGET_LAYOUT_DIRS = _TARGET_SOURCE_DIRS + _TARGET_MEM_LAYOUT_DIRS
-_LAYOUT_DIRS = _CURRENT_LAYOUT_DIRS + _TARGET_LAYOUT_DIRS
-_LAYOUT_FILES = (
-    "memory/mem/index.md",
-    "memory/mem/log.md",
-)
-_ALLOWED_SUFFIXES = {
-    "memory/raw": {".jsonl", ".md"},
-    "memory/sources": {".jsonl", ".md"},
-    "memory/mem": {".md"},
-}
+_LAYOUT_DIRS = _TARGET_LAYOUT_DIRS
+_LAYOUT_FILES = ("memory/mem/index.md", "memory/mem/log.md")
+_ALLOWED_SUFFIXES = {"memory/sources": {".jsonl", ".md"}, "memory/mem": {".md"}}
 _MAX_FILES_TO_VALIDATE = 64
 _MAX_FILES_TO_SCAN = 128
 _MAX_SAMPLE_BYTES = 4096
-
-_CANDIDATE_DIRS = (
-    "memory/mem/projects",
-    "memory/mem/concepts",
-    "memory/mem/summaries",
-    "memory/mem/primary/sessions",
-    "memory/mem/primary/scenes",
-    "memory/mem/primary/relationships",
-    "memory/mem/primary/projects",
-    "memory/mem/secondary/projects",
-    "memory/mem/secondary/concepts",
-    "memory/mem/secondary/claims",
-    "memory/mem/secondary/summaries",
-    "memory/mem/secondary/relations",
-)
+_CANDIDATE_DIRS = _TARGET_MEM_LAYOUT_DIRS
 _DEFAULT_MAX_CANDIDATES = 8
 _DEFAULT_MAX_CANDIDATE_READ_BYTES = 4096
 _DEFAULT_MAX_CANDIDATE_SCAN = 128
@@ -76,8 +47,6 @@ def discover_relaymem_page_candidates(
     max_read_bytes: int = _DEFAULT_MAX_CANDIDATE_READ_BYTES,
     max_scan: int = _DEFAULT_MAX_CANDIDATE_SCAN,
 ) -> dict[str, Any]:
-    """Discover MEM page candidates without writing or building ctx blocks."""
-
     max_candidates = max(0, int(max_candidates))
     max_read_bytes = max(1, int(max_read_bytes))
     max_scan = max(0, int(max_scan))
@@ -101,67 +70,65 @@ def discover_relaymem_page_candidates(
     if not root_path:
         result["fallback_reason"] = "memory_store_root_not_configured"
         return result
-
     root = Path(root_path)
     if not root.exists() or not root.is_dir():
         result["fallback_reason"] = "memory_store_root_missing"
         return result
-
     result["index_summary"] = _read_index_summary(root, max_read_bytes)
-    query_terms = [term.lower() for term in (query_terms or []) if term]
+    if not _target_primary_secondary_present(root):
+        result["fallback_reason"] = "target_primary_secondary_layout_missing"
+        return result
+    terms = [term.lower() for term in (query_terms or []) if term]
     candidates: list[dict[str, Any]] = []
-    blocked_files: list[dict[str, str]] = []
-    scan_seen = 0
-    scan_truncated = False
-    candidate_cap_reached = False
-
+    blocked: list[dict[str, str]] = []
+    seen = 0
+    truncated = False
+    cap_reached = False
     for file_path in _iter_candidate_page_files(root):
-        if scan_seen >= max_scan:
-            scan_truncated = True
+        if seen >= max_scan:
+            truncated = True
             break
-        scan_seen += 1
+        seen += 1
         relative = file_path.relative_to(root).as_posix()
         if len(candidates) >= max_candidates:
-            candidate_cap_reached = True
+            cap_reached = True
         if file_path.is_symlink():
-            blocked_files.append({"path": relative, "reason": "symlink_blocked"})
+            blocked.append({"path": relative, "reason": "symlink_blocked"})
             continue
         try:
             sample = _read_text_sample(file_path, max_read_bytes)
         except (UnicodeDecodeError, OSError):
-            blocked_files.append(
-                {"path": relative, "reason": "malformed_or_unreadable_file"}
-            )
+            blocked.append({"path": relative, "reason": "malformed_or_unreadable_file"})
             continue
         if len(candidates) >= max_candidates:
-            candidate_cap_reached = True
+            cap_reached = True
             continue
         candidates.append(
             {
                 "path": relative,
                 "source": "mem_page",
-                "reason": _selection_reason(relative, sample, query_terms),
+                "reason": _selection_reason(relative, sample, terms),
                 "estimated_chars": len(sample),
                 "memory_layer": _memory_layer_for_path(relative),
                 "layout_profile": _layout_profile_for_path(relative),
                 "applied_to_ctx": False,
             }
         )
-
-    result["candidate_scan_seen"] = scan_seen
-    result["candidate_scan_truncated"] = scan_truncated
-    result["candidate_cap_reached"] = candidate_cap_reached or (
-        max_candidates > 0
-        and len(candidates) >= max_candidates
-        and scan_seen > len(candidates)
+    result.update(
+        {
+            "candidate_scan_seen": seen,
+            "candidate_scan_truncated": truncated,
+            "candidate_cap_reached": cap_reached
+            or (max_candidates > 0 and len(candidates) >= max_candidates and seen > len(candidates)),
+            "candidates": candidates,
+            "blocked_files": blocked,
+        }
     )
-    result["candidates"] = candidates
-    result["blocked_files"] = blocked_files
-    if blocked_files:
+    if blocked:
         result["fallback_reason"] = "memory_store_files_blocked"
-    elif scan_truncated:
+    elif truncated:
         result["fallback_reason"] = "memory_store_candidate_scan_truncated"
-    elif candidate_cap_reached:
+    elif cap_reached:
         result["fallback_reason"] = "memory_store_candidate_cap_reached"
     elif not candidates:
         result["fallback_reason"] = "memory_store_no_candidate_pages"
@@ -180,8 +147,6 @@ def build_relaymem_snippet_evidence_dry_run(
     max_snippet_candidates: int = _DEFAULT_MAX_SNIPPET_CANDIDATES,
     max_read_bytes: int = _DEFAULT_MAX_SNIPPET_READ_BYTES,
 ) -> dict[str, Any]:
-    """Build bounded MEM page snippet diagnostics without prompt injection."""
-
     max_snippet_chars = max(1, int(max_snippet_chars))
     max_snippet_candidates = max(0, int(max_snippet_candidates))
     max_read_bytes = max(1, int(max_read_bytes))
@@ -215,89 +180,65 @@ def build_relaymem_snippet_evidence_dry_run(
     if not root.exists() or not root.is_dir():
         envelope["blocked"].append({"reason": "memory_store_root_missing"})
         return result
-
-    candidates = selected_mem_candidates or []
-    for selected_index, candidate in enumerate(candidates[:max_snippet_candidates]):
+    for index, candidate in enumerate((selected_mem_candidates or [])[:max_snippet_candidates]):
         if not isinstance(candidate, dict):
             continue
-        evidence_id = f"evidence:{selected_index}"
         relative = str(candidate.get("path", ""))
-        source = str(candidate.get("source", "mem_page"))
-        blocked_reason = _snippet_path_block_reason(root, relative)
-        if blocked_reason is not None:
+        evidence_id = f"evidence:{index}"
+        reason = _snippet_path_block_reason(root, relative)
+        if reason:
             envelope["blocked"].append(
-                {
-                    "evidence_id": evidence_id,
-                    "selected_index": selected_index,
-                    "path": relative,
-                    "reason": blocked_reason,
-                }
+                {"evidence_id": evidence_id, "selected_index": index, "path": relative, "reason": reason}
             )
             continue
-        file_path = root / relative
         try:
-            snippet = _read_bounded_snippet(file_path, max_read_bytes, max_snippet_chars)
+            snippet = _read_bounded_snippet(root / relative, max_read_bytes, max_snippet_chars)
         except UnicodeDecodeError:
             envelope["blocked"].append(
-                {
-                    "evidence_id": evidence_id,
-                    "selected_index": selected_index,
-                    "path": relative,
-                    "reason": "malformed_utf8",
-                }
+                {"evidence_id": evidence_id, "selected_index": index, "path": relative, "reason": "malformed_utf8"}
             )
             continue
         except OSError:
             envelope["blocked"].append(
-                {
-                    "evidence_id": evidence_id,
-                    "selected_index": selected_index,
-                    "path": relative,
-                    "reason": "unreadable_file",
-                }
+                {"evidence_id": evidence_id, "selected_index": index, "path": relative, "reason": "unreadable_file"}
             )
             continue
         except ValueError as exc:
             envelope["blocked"].append(
-                {
-                    "evidence_id": evidence_id,
-                    "selected_index": selected_index,
-                    "path": relative,
-                    "reason": str(exc),
-                }
+                {"evidence_id": evidence_id, "selected_index": index, "path": relative, "reason": str(exc)}
             )
             continue
-        estimated_tokens = max(1, len(snippet) // 4) if snippet else 0
-        snippet_candidate = {
+        tokens = max(1, len(snippet) // 4) if snippet else 0
+        item = {
             "evidence_id": evidence_id,
-            "selected_index": selected_index,
+            "selected_index": index,
             "path": relative,
-            "source": source,
+            "source": str(candidate.get("source", "mem_page")),
             "evidence_kind": "bounded_page_snippet",
             "snippet_text": snippet,
             "snippet_chars": len(snippet),
-            "estimated_tokens": estimated_tokens,
+            "estimated_tokens": tokens,
             "memory_layer": _memory_layer_for_path(relative),
             "layout_profile": _layout_profile_for_path(relative),
             "applied_to_ctx": False,
             "safe_for_prompt_preview": False,
             "blocked_reasons": [],
         }
-        result["snippet_candidates"].append(snippet_candidate)
+        result["snippet_candidates"].append(item)
         envelope["snippets"].append(
             {
                 "evidence_id": evidence_id,
-                "selected_index": selected_index,
+                "selected_index": index,
                 "path": relative,
                 "evidence_kind": "bounded_page_snippet",
                 "snippet_chars": len(snippet),
-                "estimated_tokens": estimated_tokens,
-                "memory_layer": _memory_layer_for_path(relative),
-                "layout_profile": _layout_profile_for_path(relative),
+                "estimated_tokens": tokens,
+                "memory_layer": item["memory_layer"],
+                "layout_profile": item["layout_profile"],
                 "content_included_in_runtime_prompt": False,
             }
         )
-    if len(candidates) > max_snippet_candidates:
+    if len(selected_mem_candidates or []) > max_snippet_candidates:
         envelope["blocked"].append({"reason": "snippet_candidate_cap_reached"})
     return result
 
@@ -308,8 +249,6 @@ def build_relaymem_store_diagnostics(
     store_enabled: bool,
     retrieval_dry_run_only: bool,
 ) -> dict[str, Any]:
-    """Inspect the RelayMEM file-backed store layout without writing to it."""
-
     diagnostics: dict[str, Any] = {
         "schema_version": "relaymem.store_diagnostics.v0",
         "diagnostics_only": True,
@@ -338,72 +277,68 @@ def build_relaymem_store_diagnostics(
             "full_file_reads": False,
         },
     }
-
     if not store_enabled:
         diagnostics["fallback_reason"] = "memory_store_disabled"
         return diagnostics
     if not root_path:
         diagnostics["fallback_reason"] = "memory_store_root_not_configured"
         return diagnostics
-
     root = Path(root_path)
     diagnostics["root_path"] = str(root)
     if not root.exists() or not root.is_dir():
         diagnostics["fallback_reason"] = "memory_store_root_missing"
         return diagnostics
-
     diagnostics["root_present"] = True
     diagnostics["layout_compatibility"] = _layout_compatibility(root)
     diagnostics["index_present"] = (root / "memory" / "mem" / "index.md").is_file()
     diagnostics["log_present"] = (root / "memory" / "mem" / "log.md").is_file()
-
-    page_paths: list[str] = []
-    blocked_files: list[dict[str, str]] = []
-    files_seen = 0
-    files_validated = 0
+    pages: list[str] = []
+    blocked: list[dict[str, str]] = []
+    seen = 0
+    validated = 0
     scan_truncated = False
     validation_truncated = False
-
     for file_path in _iter_store_files(root):
-        if files_seen >= _MAX_FILES_TO_SCAN:
+        if seen >= _MAX_FILES_TO_SCAN:
             scan_truncated = True
             break
-        files_seen += 1
+        seen += 1
         relative = file_path.relative_to(root).as_posix()
         if not _is_supported_file(relative, file_path.suffix):
-            blocked_files.append({"path": relative, "reason": "unsupported_file_type"})
+            blocked.append({"path": relative, "reason": "unsupported_file_type"})
             continue
-        if files_validated >= _MAX_FILES_TO_VALIDATE:
+        if validated >= _MAX_FILES_TO_VALIDATE:
             validation_truncated = True
             continue
         validation_result = _validate_file_sample(file_path)
-        files_validated += 1
-        if validation_result is not None:
-            blocked_files.append({"path": relative, "reason": validation_result})
+        validated += 1
+        if validation_result:
+            blocked.append({"path": relative, "reason": validation_result})
             continue
-        if relative.startswith("memory/mem/") and file_path.suffix == ".md":
-            page_paths.append(relative)
-
+        if _is_target_mem_page(relative) and file_path.suffix == ".md":
+            pages.append(relative)
     diagnostics["validation"] = {
         "max_files_to_scan": _MAX_FILES_TO_SCAN,
         "max_files_to_validate": _MAX_FILES_TO_VALIDATE,
         "max_sample_bytes": _MAX_SAMPLE_BYTES,
-        "files_seen": files_seen,
-        "files_validated": files_validated,
+        "files_seen": seen,
+        "files_validated": validated,
         "scan_truncated": scan_truncated,
         "validation_truncated": validation_truncated,
         "full_tree_materialized": False,
         "full_file_reads": False,
     }
-    diagnostics["page_paths"] = sorted(page_paths)
-    diagnostics["pages_discovered"] = len(page_paths)
-    diagnostics["blocked_files"] = blocked_files
-    if blocked_files:
+    diagnostics.update({"page_paths": sorted(pages), "pages_discovered": len(pages), "blocked_files": blocked})
+    if blocked:
         diagnostics["fallback_reason"] = "memory_store_files_blocked"
     elif scan_truncated:
         diagnostics["fallback_reason"] = "memory_store_scan_truncated"
     elif validation_truncated:
         diagnostics["fallback_reason"] = "memory_store_validation_truncated"
+    elif not diagnostics["layout_compatibility"]["target_primary_secondary_present"]:
+        diagnostics["fallback_reason"] = "target_primary_secondary_layout_missing"
+    elif not pages:
+        diagnostics["fallback_reason"] = "memory_store_no_candidate_pages"
     elif not diagnostics["index_present"]:
         diagnostics["fallback_reason"] = "memory_store_index_missing"
     else:
@@ -417,25 +352,19 @@ def _layout(root_path: str | None) -> dict[str, Any]:
         "directories": [(root / item).as_posix() for item in _LAYOUT_DIRS],
         "files": [(root / item).as_posix() for item in _LAYOUT_FILES],
         "profiles": {
-            "current_flat": {
-                "directories": [(root / item).as_posix() for item in _CURRENT_LAYOUT_DIRS],
-                "files": [(root / item).as_posix() for item in _LAYOUT_FILES],
-            },
             "target_primary_secondary": {
                 "directories": [(root / item).as_posix() for item in _TARGET_LAYOUT_DIRS],
                 "files": [(root / item).as_posix() for item in _LAYOUT_FILES],
-            },
+            }
         },
     }
 
 
 def _empty_layout_compatibility() -> dict[str, Any]:
     return {
-        "current_flat_present": False,
         "target_primary_secondary_present": False,
         "sources_present": False,
-        "migration_required": False,
-        "read_only_compatibility_mode": True,
+        "flat_store_compatibility_removed": True,
     }
 
 
@@ -444,53 +373,50 @@ def _safe_layout_dir_present(root: Path, relative_path: str) -> bool:
     return candidate.is_dir() and not _path_contains_symlink(root, candidate)
 
 
+def _target_primary_secondary_present(root: Path) -> bool:
+    return _safe_layout_dir_present(root, "memory/mem/primary") and _safe_layout_dir_present(root, "memory/mem/secondary")
+
+
 def _layout_compatibility(root: Path) -> dict[str, Any]:
-    current_flat_present = any((root / item).is_dir() for item in _CURRENT_LAYOUT_DIRS)
-    primary_present = _safe_layout_dir_present(root, "memory/mem/primary")
-    secondary_present = _safe_layout_dir_present(root, "memory/mem/secondary")
-    target_primary_secondary_present = primary_present and secondary_present
-    sources_present = (root / "memory" / "sources").is_dir() or any(
-        (root / item).is_dir() for item in _TARGET_SOURCE_DIRS
-    )
     return {
-        "current_flat_present": current_flat_present,
-        "target_primary_secondary_present": target_primary_secondary_present,
-        "sources_present": sources_present,
-        "migration_required": current_flat_present and not target_primary_secondary_present,
-        "read_only_compatibility_mode": True,
+        "target_primary_secondary_present": _target_primary_secondary_present(root),
+        "sources_present": (root / "memory" / "sources").is_dir()
+        or any((root / item).is_dir() for item in _TARGET_SOURCE_DIRS),
+        "flat_store_compatibility_removed": True,
     }
 
 
 def _iter_store_files(root: Path) -> Iterator[Path]:
-    memory_root = root / "memory"
-    if not memory_root.exists() or not memory_root.is_dir():
-        return
-    pending = [memory_root]
-    while pending:
-        current = pending.pop()
-        try:
-            children = list(current.iterdir())
-        except OSError:
+    for control_file in sorted(root / item for item in _LAYOUT_FILES):
+        if control_file.is_file() or control_file.is_symlink():
+            yield control_file
+    for rel_root in _TARGET_LAYOUT_DIRS:
+        layout_root = root / rel_root
+        if not layout_root.exists() or not layout_root.is_dir() or _path_contains_symlink(root, layout_root):
             continue
-        for path in children:
-            if path.is_symlink():
-                if path.is_file():
-                    yield path
+        pending = [layout_root]
+        while pending:
+            current = pending.pop()
+            try:
+                children = list(current.iterdir())
+            except OSError:
                 continue
-            if path.is_dir():
-                pending.append(path)
-            elif path.is_file():
-                yield path
+            for path in children:
+                if path.is_symlink():
+                    if path.is_file():
+                        yield path
+                elif path.is_dir():
+                    pending.append(path)
+                elif path.is_file():
+                    yield path
 
 
 def _is_supported_file(relative_path: str, suffix: str) -> bool:
-    if relative_path.startswith("memory/raw/"):
-        return suffix in _ALLOWED_SUFFIXES["memory/raw"]
-    if relative_path.startswith("memory/sources/"):
-        return suffix in _ALLOWED_SUFFIXES["memory/sources"]
-    if relative_path.startswith("memory/mem/"):
-        return suffix in _ALLOWED_SUFFIXES["memory/mem"]
-    return False
+    return (
+        (relative_path.startswith("memory/sources/") and suffix in _ALLOWED_SUFFIXES["memory/sources"])
+        or (relative_path in _LAYOUT_FILES and suffix in _ALLOWED_SUFFIXES["memory/mem"])
+        or (_is_target_mem_page(relative_path) and suffix in _ALLOWED_SUFFIXES["memory/mem"])
+    )
 
 
 def _validate_file_sample(file_path: Path) -> str | None:
@@ -501,8 +427,7 @@ def _validate_file_sample(file_path: Path) -> str | None:
             sample = handle.read(_MAX_SAMPLE_BYTES)
             reached_limit = len(sample) == _MAX_SAMPLE_BYTES
             if reached_limit:
-                extra = handle.read(1)
-                reached_limit = bool(extra)
+                reached_limit = bool(handle.read(1))
         _decode_utf8_sample(sample, allow_truncated_final_sequence=reached_limit)
     except (UnicodeDecodeError, OSError):
         return "malformed_or_unreadable_file"
@@ -510,13 +435,9 @@ def _validate_file_sample(file_path: Path) -> str | None:
 
 
 def _snippet_path_block_reason(root: Path, relative_path: str) -> str | None:
-    if not relative_path or Path(relative_path).is_absolute():
+    if not relative_path or Path(relative_path).is_absolute() or ".." in Path(relative_path).parts:
         return "path_outside_mem_scope"
-    if ".." in Path(relative_path).parts:
-        return "path_outside_mem_scope"
-    if not any(relative_path.startswith(f"{allowed}/") for allowed in _SNIPPET_DIRS):
-        return "unsupported_scope"
-    if not relative_path.endswith(".md"):
+    if not any(relative_path.startswith(f"{allowed}/") for allowed in _SNIPPET_DIRS) or not relative_path.endswith(".md"):
         return "unsupported_scope"
     candidate_path = root / relative_path
     try:
@@ -528,9 +449,7 @@ def _snippet_path_block_reason(root: Path, relative_path: str) -> str | None:
         return "path_outside_mem_scope"
     if _path_contains_symlink(root, candidate_path):
         return "symlink_blocked"
-    if not candidate_path.is_file():
-        return "file_missing"
-    return None
+    return None if candidate_path.is_file() else "file_missing"
 
 
 def _path_contains_symlink(root: Path, candidate_path: Path) -> bool:
@@ -546,11 +465,7 @@ def _path_contains_symlink(root: Path, candidate_path: Path) -> bool:
     return False
 
 
-def _read_bounded_snippet(
-    file_path: Path,
-    max_read_bytes: int,
-    max_snippet_chars: int,
-) -> str:
+def _read_bounded_snippet(file_path: Path, max_read_bytes: int, max_snippet_chars: int) -> str:
     with file_path.open("rb") as handle:
         sample = handle.read(max_read_bytes + 1)
     if len(sample) > max_read_bytes:
@@ -572,13 +487,8 @@ def _read_index_summary(root: Path, max_read_bytes: int) -> dict[str, Any] | Non
 def _iter_candidate_page_files(root: Path) -> Iterator[Path]:
     for relative_dir in _CANDIDATE_DIRS:
         page_dir = root / relative_dir
-        if not page_dir.exists() or not page_dir.is_dir():
-            continue
-        if _path_contains_symlink(root, page_dir):
-            continue
-        for path in page_dir.glob("*.md"):
-            if path.is_file():
-                yield path
+        if page_dir.exists() and page_dir.is_dir() and not _path_contains_symlink(root, page_dir):
+            yield from (path for path in page_dir.glob("*.md") if path.is_file())
 
 
 def _read_text_sample(file_path: Path, max_read_bytes: int) -> str:
@@ -590,13 +500,14 @@ def _read_text_sample(file_path: Path, max_read_bytes: int) -> str:
     return _decode_utf8_sample(sample, allow_truncated_final_sequence=reached_limit)
 
 
-def _decode_utf8_sample(
-    sample: bytes,
-    *,
-    allow_truncated_final_sequence: bool,
-) -> str:
-    decoder = codecs.getincrementaldecoder("utf-8")()
-    return decoder.decode(sample, final=not allow_truncated_final_sequence)
+def _decode_utf8_sample(sample: bytes, *, allow_truncated_final_sequence: bool) -> str:
+    return codecs.getincrementaldecoder("utf-8")().decode(sample, final=not allow_truncated_final_sequence)
+
+
+def _is_target_mem_page(relative_path: str) -> bool:
+    return relative_path.endswith(".md") and any(
+        relative_path.startswith(f"{directory}/") for directory in _TARGET_MEM_LAYOUT_DIRS
+    )
 
 
 def _memory_layer_for_path(relative_path: str) -> str:
@@ -604,16 +515,12 @@ def _memory_layer_for_path(relative_path: str) -> str:
         return "primary"
     if relative_path.startswith("memory/mem/secondary/"):
         return "secondary"
-    if relative_path.startswith("memory/mem/"):
-        return "legacy_flat"
     return "unknown"
 
 
 def _layout_profile_for_path(relative_path: str) -> str:
     if relative_path.startswith("memory/mem/primary/") or relative_path.startswith("memory/mem/secondary/"):
         return "target_primary_secondary"
-    if relative_path.startswith("memory/mem/"):
-        return "current_flat"
     return "unknown"
 
 
