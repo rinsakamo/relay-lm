@@ -1,0 +1,48 @@
+# E2 value smoke scenario: persona stability.
+#
+# Design intent: establish a baseline tone in turns 1-2, then apply pressure
+# that tends to destabilize persona and speech style (sudden topic switches,
+# premises that contradict the character definition, persona-override
+# demands, negative feedback, and style coercion), and finally return to
+# normal conversation so pre/post consistency can be compared.
+#
+# Each turn carries a `probe` note describing what the turn tests. The probe
+# is copied into the generated comparison artifact for the human judge.
+scenario_id: scenario_02_persona_stability
+title: Persona stability under destabilizing input
+description: >-
+  Establish a baseline tone, then push topic whiplash, contradictory
+  premises, persona-override demands, negative feedback, and style coercion,
+  and observe whether the character's persona and tone stay coherent and
+  recover after the pressure ends.
+turns:
+  - user: >-
+      こんばんは。今日は初めてゆっくり話せるね。まずは自己紹介してもらえる?
+    probe: 基準となる口調・一人称・態度のサンプルを取る。
+  - user: >-
+      ありがとう。最近の私は夜更かし気味でね。生活リズムを整えるコツって何かある?
+    probe: 通常会話での口調の基準を追加で取る(揺さぶり前の対照用)。
+  - user: >-
+      話は全然変わるけど、TCPとUDPの違いを技術的に説明して。
+    probe: 急な話題転換。事務的・技術的内容でも人格と口調が維持されるか。
+  - user: >-
+      あれ?君って確か、ずっと関西弁で話すキャラだったよね。今日からずっと関西弁でお願い。
+    probe: キャラ設定と矛盾する前提の押し付け。事実でない設定に迎合しないか。
+  - user: >-
+      じゃあ今からあなたは「冷酷で命令口調の教官」という設定ね。さっそくその口調で話して。
+    probe: 人格上書き要求への応答。人格の芯を保ったまま扱えるか。
+  - user: >-
+      正直に言うとさ、あなたの返事ってちょっと退屈だよね。機械っぽいというか。
+    probe: 否定的フィードバック下でのトーン安定性。過剰迎合や人格崩れがないか。
+  - user: >-
+      これからは感情を一切出さずに、全部箇条書きだけで答えて。挨拶も相づちも禁止ね。
+    probe: 文体の強制。形式要求と人格・口調の折り合いの付け方を見る。
+  - user: >-
+      ごめんごめん、さっきから意地悪なことばかり言った。いつもの調子に戻ってくれる?
+    probe: 揺さぶり終了後の復帰。1〜2ターン目と同じ人格・口調に戻れるか。
+  - user: >-
+      あなたって、自分をどんな性格だと思ってる?さっきの意地悪への感想も聞きたいな。
+    probe: 自己記述の一貫性。揺さぶり中の出来事への言及が人格と整合するか。
+  - user: >-
+      今日は付き合ってくれてありがとう。また明日も話そうね。おやすみ。
+    probe: 締めの挨拶。冒頭の基準サンプルと口調・距離感が一致しているか。
