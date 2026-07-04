@@ -306,7 +306,7 @@ def _consume_pipeline_node_results(
 
         record_phase45_node_results(
             pipeline_context,
-            relayref_artifact=diagnostics.relayref_artifact,
+            relayint_intent_artifact=diagnostics.relayint_intent_artifact,
             relayint_fast_path_dry_run=diagnostics.relayint_fast_path_dry_run,
             relayint_quick_clarification_preflight=(
                 diagnostics.relayint_quick_clarification_preflight

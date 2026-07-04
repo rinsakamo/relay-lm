@@ -51,7 +51,23 @@ def install_audit_projection_contracts(ap: Any) -> None:
     ap.PIPELINE_NODE_PROJECTORS["relayint_reference_repair"] = ap.NodeProjector(
         decisions=frozenset({"none", "context_repair", "suggest_reflect"}),
         diagnostics=reference.diagnostics,
-        artifact_names=reference.artifact_names,
+        artifact_names=reference.artifact_names | frozenset({"relayint_intent_artifact"}),
+    )
+    relayint_reference_intent_diagnostics = ap._mapping(
+        {
+            "diagnostics_only": ap._bool,
+            "content_free": ap._bool,
+            "source_node_alias": ap._enum("relayint_reference_intent"),
+            "compatibility_source_node": ap._enum("relayint"),
+            "artifact_present": ap._bool,
+            "unresolved_reference_detected": ap._bool,
+            "apply_allowed": ap._bool,
+        }
+    )
+    ap.PIPELINE_NODE_PROJECTORS["relayint_reference_intent"] = ap.NodeProjector(
+        decisions=frozenset({"none", "context_repair", "suggest_reflect"}),
+        diagnostics=relayint_reference_intent_diagnostics,
+        artifact_names=frozenset({"relayint_intent_artifact"}),
     )
 
     ap.PIPELINE_NODE_PROJECTORS["client_history_exclusion_apply"] = ap.NodeProjector(
@@ -274,6 +290,10 @@ def _artifact_projectors(ap: Any) -> dict[str, Any]:
         "relayref_artifact": artifact(
             "relayref_artifact",
             "relayref.dry_run_artifact.v0",
+        ),
+        "relayint_intent_artifact": artifact(
+            "relayint_intent_artifact",
+            "relayint.intent.v1",
         ),
         "relayint_fast_path_dry_run": artifact(
             "relayint_fast_path_dry_run",

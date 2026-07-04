@@ -47,6 +47,70 @@ _RECOVERY_ENABLED_FLAGS: tuple[str, ...] = (
     "user_action_dry_run_enabled",
 )
 
+_BENIGN_RECOVERY_DETAIL_BLOCKED_REASONS = frozenset(
+    {
+        "relaymem_retrieval:apply_decision:blocked_no_candidates",
+        "relaymem_retrieval:snippet_apply_decision:blocked_no_candidates",
+        "relaymem_runtime_ctx:snippet_apply_decision:blocked_no_candidates",
+        "relaymem_runtime_ctx:snippet_runtime_injection_plan_preview_empty",
+        "relaymem_runtime_ctx:snippet_runtime_injection_plan_blocked",
+        "relaymem_retrieval:apply_decision:blocked_scene_policy",
+        "relaymem_runtime_ctx:apply_decision:blocked_scene_policy",
+        "relaymem_runtime_ctx:ctx_injection_plan_preview_empty",
+        "relaymem_runtime_ctx:ctx_injection_plan_blocked",
+        "relayscn:scene_policy:recovery",
+        "scene_policy:recovery",
+        "relayscn:scene_policy:blocked",
+        "scene_policy:blocked",
+        "apply_decision:blocked_no_candidates",
+        "snippet_apply_decision:blocked_no_candidates",
+        "snippet_runtime_injection_plan_preview_empty",
+        "snippet_runtime_injection_plan_blocked",
+        "apply_decision:blocked_scene_policy",
+        "ctx_injection_plan_preview_empty",
+        "ctx_injection_plan_blocked",
+    }
+)
+
+
+def _recovery_detail_blocking_reasons(value: Any) -> tuple[str, ...]:
+    return tuple(
+        reason
+        for reason in _string_tuple(value)
+        if reason not in _BENIGN_RECOVERY_DETAIL_BLOCKED_REASONS
+    )
+
+
+def _node_status_requires_recovery_detail(node: Mapping[str, Any]) -> bool:
+    status = node.get("node_status")
+    node_name = node.get("node_name")
+
+    if status in {"failed", "waiting_user"}:
+        return True
+    if status != "blocked":
+        return False
+
+    # Ordinary RelaySCN / RelayMEM policy and no-candidate blocks are still
+    # represented in the lightweight runtime checkpoint projection. They should
+    # not automatically expand the full recovery-detail chain; explicit recovery
+    # smokes and future recovery features opt in through recovery flags.
+    if node_name in {"relayscn", "relaymem_retrieval", "relaymem_runtime_ctx"}:
+        return False
+
+    if node_name not in {"relayref", "relayint", "backend_forward"}:
+        return False
+
+    raw_reasons = _string_tuple(node.get("blocked_reasons"))
+    if _recovery_detail_blocking_reasons(raw_reasons):
+        return True
+    if raw_reasons:
+        return False
+    return True
+
+
+
+
+
 
 def build_runtime_checkpoint_lazy_recovery_artifact(
     *,
@@ -119,7 +183,9 @@ def relayrun_recovery_detail_required(
     if backend_forward_status in {"failed", "blocked"}:
         reasons.append(f"backend_forward_status:{backend_forward_status}")
 
-    blocked_reasons = _string_tuple(checkpoint_kwargs.get("blocked_reasons"))
+    blocked_reasons = _recovery_detail_blocking_reasons(
+        checkpoint_kwargs.get("blocked_reasons")
+    )
     if blocked_reasons:
         reasons.append("blocked_reasons_present")
 
@@ -128,8 +194,8 @@ def relayrun_recovery_detail_required(
         for node in node_statuses:
             if not isinstance(node, Mapping):
                 continue
-            status = node.get("node_status")
-            if status in {"failed", "blocked", "waiting_user"}:
+            if _node_status_requires_recovery_detail(node):
+                status = node.get("node_status")
                 node_name = node.get("node_name")
                 if isinstance(node_name, str) and node_name:
                     reasons.append(f"node_status:{node_name}:{status}")

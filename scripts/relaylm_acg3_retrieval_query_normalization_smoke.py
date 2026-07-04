@@ -66,12 +66,12 @@ def _retrieval_for(
     store_root: Path,
     content: str,
     scene_type: str = "design_talk",
-    relayref_artifact: dict[str, Any] | None = None,
+    relayint_intent_artifact: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     scope = "current_context_only" if scene_type == "recovery" else "project_context"
     return build_relaymem_retrieval_dry_run_artifact(
         relayscn_scene_policy_artifact=_scene_artifact(scene_type, scope),
-        relayref_artifact=relayref_artifact,
+        relayint_intent_artifact=relayint_intent_artifact,
         messages=[{"role": "user", "content": content}],
         store_diagnostics=_store_diagnostics(store_root),
         max_candidates=4,
@@ -202,7 +202,7 @@ def main() -> int:
         unresolved = _retrieval_for(
             store_root=store_root,
             content="それは何の話だった？",
-            relayref_artifact={"unresolved_reference_detected": True},
+            relayint_intent_artifact={"unresolved_reference_detected": True},
         )
         require(unresolved["fallback_reason"] == "unresolved_reference_requires_confirmation", unresolved)
         require(unresolved["selected_mem_candidates"] == [], unresolved)

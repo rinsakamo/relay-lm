@@ -123,7 +123,7 @@ def _assert_no_backend_artifact(payload: dict[str, Any]) -> None:
     forbidden = {
         "relaymem_retrieval_artifact",
         "relaymem_primary_recall_projection",
-        "relayref_artifact",
+        "relayint_intent_artifact",
         "relayscn_scene_policy_artifact",
         "ctx_block",
         "selected",
@@ -249,7 +249,7 @@ def main() -> int:
 
         malformed = build_relaymem_retrieval_dry_run_artifact(
             relayscn_scene_policy_artifact={"bad": "shape"},
-            relayref_artifact=None,
+            relayint_intent_artifact=None,
             messages=[],
         )
         require(malformed["scene_type"] == "unknown", malformed)
@@ -267,7 +267,7 @@ def main() -> int:
                 "persistence_block": False,
                 "persistence_block_reasons": [],
             },
-            relayref_artifact=None,
+            relayint_intent_artifact=None,
             messages=[],
         )
         require(unsupported["scene_type"] == "unknown", unsupported)

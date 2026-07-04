@@ -1011,6 +1011,36 @@ _COMPILE_DECISION = _mapping(
     }
 )
 
+_RELAYRUN_RECOVERY_TRANSITION_SAFETY = _mapping(
+    {
+        "passes_through_output_pipeline": _bool,
+        "direct_user_output_allowed": _bool,
+        "contains_user_content": _bool,
+        "contains_backend_payload": _bool,
+        "contains_response_text": _bool,
+    }
+)
+
+_RELAYRUN_RECOVERY_TRANSITION = _mapping(
+    {
+        "schema_version": _enum("relayrun.recovery_transition.v0"),
+        "diagnostics_only": _bool,
+        "user_visible": _bool,
+        "apply_allowed": _bool,
+        "applied": _bool,
+        "transition_created": _bool,
+        "proposed_transition_type": _bounded_token,
+        "source_node": _optional(_bounded_token),
+        "source_node_alias": _optional(_bounded_token),
+        "compatibility_source_node": _optional(_bounded_token),
+        "next_node": _optional(_bounded_token),
+        "resume_mode": _bounded_token,
+        "required_user_action": _optional(_bounded_token),
+        "blocked_reasons": _REASON_LIST,
+        "safety": _RELAYRUN_RECOVERY_TRANSITION_SAFETY,
+    }
+)
+
 _RELAYRUN = _mapping(
     {
         "schema_version": _bounded_token,
@@ -1026,6 +1056,7 @@ _RELAYRUN = _mapping(
         "blocked": _optional(_bool),
         "blocked_reasons": _optional(_REASON_LIST),
         "resume_mode": _optional(_bounded_token),
+        "recovery_transition_artifact": _optional(_RELAYRUN_RECOVERY_TRANSITION),
     }
 )
 

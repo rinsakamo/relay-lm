@@ -50,7 +50,7 @@ class RequestDiagnostics:
     compile_decision_dry_run: dict[str, Any] | None = None
     relayemo_artifact: dict[str, Any] | None = None
     relayscn_scene_policy_artifact: dict[str, Any] | None = None
-    relayref_artifact: dict[str, Any] | None = None
+    relayint_intent_artifact: dict[str, Any] | None = None
     relaymem_retrieval_artifact: dict[str, Any] | None = None
     runtime_ctx_injection_result: dict[str, Any] | None = None
     runtime_snippet_injection_result: dict[str, Any] | None = None

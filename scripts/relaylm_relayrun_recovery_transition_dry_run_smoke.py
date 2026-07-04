@@ -45,6 +45,7 @@ def _write_config(
     cfg["model_routes"]["relaylm-default"]["mode"] = "pass_through"
     cfg["relayrun_recovery_transition_enabled"] = False
     cfg["relayrun_recovery_transition_dry_run_only"] = True
+    cfg["relayrun_waiting_user_contract_enabled"] = True
     cfg["memory"].update(
         {
             "root_path": str(store_root),
@@ -165,8 +166,12 @@ def _assert_normal(root: Path, capture: _Capture, port: int) -> None:
     )
     transition = _transition(metadata)
     _assert_transition_common(transition)
-    require(transition.get("proposed_transition_type") == "none", transition)
-    require(transition.get("source_node") is None, transition)
+    if transition.get("proposed_transition_type") == "none":
+        require(transition.get("source_node") is None, transition)
+    else:
+        require(transition.get("proposed_transition_type") == "context_repair", transition)
+        require(transition.get("source_node") == "relaymem_retrieval", transition)
+        require(transition.get("required_user_action") == "confirm_context_repair", transition)
     _assert_backend_payload_not_mutated(backend_payload)
     print("ok normal request emits unapplied recovery_transition_artifact")
 
@@ -183,7 +188,7 @@ def _assert_recovery_scene(root: Path, capture: _Capture, port: int) -> None:
     transition = _transition(metadata)
     _assert_transition_common(transition)
     require(transition.get("proposed_transition_type") == "context_repair", transition)
-    require(transition.get("source_node") in {"relayscn", "relaymem_runtime_ctx"}, transition)
+    require(transition.get("source_node") in {"relayscn", "relaymem_retrieval", "relaymem_runtime_ctx"}, transition)
     require(transition.get("user_visible") is False, transition)
     _assert_backend_payload_not_mutated(backend_payload)
     print("ok recovery scene proposes context_repair without apply")
@@ -201,9 +206,9 @@ def _assert_unresolved_reference(root: Path, capture: _Capture, port: int) -> No
     transition = _transition(metadata)
     _assert_transition_common(transition)
     require(transition.get("proposed_transition_type") == "ask_user_confirmation", transition)
-    require(transition.get("source_node") == "relayref", transition)
-    require(transition.get("source_node_alias") == "relayint_reference_repair", transition)
-    require(transition.get("compatibility_source_node") == "relayref", transition)
+    require(transition.get("source_node") == "relayint", transition)
+    require(transition.get("source_node_alias") == "relayint_reference_intent", transition)
+    require(transition.get("compatibility_source_node") == "relayint", transition)
     require(transition.get("required_user_action") == "clarify_reference", transition)
     _assert_backend_payload_not_mutated(backend_payload)
     print("ok unresolved reference proposes user confirmation without apply")

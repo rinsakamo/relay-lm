@@ -101,7 +101,7 @@ def _artifact_for(
     scene_type: str = "design_talk",
     scope: str = "project_context",
     token_budget: int | None = 800,
-    relayref_artifact: dict[str, Any] | None = None,
+    relayint_intent_artifact: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     store = build_relaymem_store_diagnostics(
         root_path=str(store_root),
@@ -110,7 +110,7 @@ def _artifact_for(
     )
     return build_relaymem_retrieval_dry_run_artifact(
         relayscn_scene_policy_artifact=_scene_artifact(scene_type, scope),
-        relayref_artifact=relayref_artifact,
+        relayint_intent_artifact=relayint_intent_artifact,
         messages=[{"role": "user", "content": "RelayMEM RelayCTX project context"}],
         token_budget=token_budget,
         store_diagnostics=store,
@@ -218,7 +218,7 @@ def main() -> int:
 
         unresolved = _artifact_for(
             store_root=store_root,
-            relayref_artifact={"unresolved_reference_detected": True},
+            relayint_intent_artifact={"unresolved_reference_detected": True},
         )
         require(unresolved["ctx_block_candidate"]["entries"] == [], unresolved)
         require(unresolved["fallback_reason"] == "unresolved_reference_requires_confirmation", unresolved)

@@ -122,7 +122,7 @@ E1-R4 is request-side only. It builds a backend-bound grounded recall context an
 
 E1-R5 is a bounded request-side fallback bridge. It does not replace M2 as the preferred relevance owner, does not run without query hints, does not scan unbounded filesystem trees, does not use the compatibility symlink, and does not add mutation, worker, scheduler, queue, browser trust, RelaySOUL, or media runtime authority.
 
-Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-freeze relation, PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope, PM-D3 RelayEMO/RelaySCN scene_state ownership, PM-D4 client history exclusion default-off deployment decision, PM-D5 RelayMEM flat-store compatibility removal, PM-D6 RelayINT native artifact / RelayREF wrapper removal, PM-D7 runtime install hook fold-in, PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in, and PM-D9 analyzer candidate governance and multilingual schema policy. ACG-1 through ACG-6 close the current PM-D9 analyzer-governance sequence.
+Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-freeze relation, PM-D2 RelayINT -> RelayMEM relayint_intent_artifact legacy compatibility scope, PM-D3 RelayEMO/RelaySCN scene_state ownership, PM-D4 client history exclusion default-off deployment decision, PM-D5 RelayMEM flat-store compatibility removal, PM-D6 RelayINT native artifact / RelayREF wrapper removal, PM-D7 runtime install hook fold-in, PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in, and PM-D9 analyzer candidate governance and multilingual schema policy. ACG-1 through ACG-6 close the current PM-D9 analyzer-governance sequence.
 
 ## Immediate dependency-first work
 

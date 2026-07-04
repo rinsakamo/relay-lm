@@ -197,6 +197,7 @@ def main() -> None:
                 [result.get("node_name") for result in results]
                 == [
                     "relayint_reference_repair",
+                    "relayint_reference_intent",
                     "relayint_quick_clarification",
                     "relayctx_repack",
                 ],
@@ -219,6 +220,7 @@ def main() -> None:
                 [result.get("node_name") for result in results]
                 == [
                     "relayint_reference_repair",
+                    "relayint_reference_intent",
                     "relayint_quick_clarification",
                     "relayctx_repack",
                     "relayctx_unpack",

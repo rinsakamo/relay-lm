@@ -53,7 +53,7 @@ DEFAULT_RELAYRUN_NODE_SEQUENCE: tuple[str, ...] = (
 RUNTIME_CHECKPOINT_NODE_SEQUENCE: tuple[str, ...] = (
     "request_received",
     "relayscn",
-    "relayref",
+    "relayint",
     "relaymem_retrieval",
     "relaymem_runtime_ctx",
     "token_budget_truncation",
@@ -677,8 +677,34 @@ def _build_checkpoint_index_file_summary(
 def _relayrun_node_name_alias(node_name: str | None) -> str | None:
     if node_name == "relayref":
         return "relayint_reference_repair"
+    if node_name == "relayint":
+        return "relayint_reference_intent"
     return None
     
+
+def _relayrun_recovery_source_node(safe_nodes: list[dict[str, Any]]) -> str | None:
+    for node in safe_nodes:
+        if node.get("node_status") != "blocked" or node.get("node_name") not in {"relayref", "relayint"}:
+            continue
+        blocked_reasons = node.get("blocked_reasons")
+        if isinstance(blocked_reasons, list) and "unresolved_reference_detected" in blocked_reasons:
+            return str(node.get("node_name") or "unknown")
+    for node in safe_nodes:
+        if node.get("node_status") in {"failed", "blocked"} and node.get("node_name") == "backend_forward":
+            return "backend_forward"
+    for node in safe_nodes:
+        if node.get("node_status") == "failed":
+            return str(node.get("node_name") or "unknown")
+    for node in safe_nodes:
+        if node.get("node_status") == "blocked" and node.get("node_name") not in {"relayref", "relayint"}:
+            return str(node.get("node_name") or "unknown")
+    for node in safe_nodes:
+        if node.get("node_status") == "blocked":
+            return str(node.get("node_name") or "unknown")
+    return None
+
+
+
 
 def build_relayrun_recovery_transition_artifact(
     *,
@@ -695,12 +721,8 @@ def build_relayrun_recovery_transition_artifact(
     """
 
     safe_nodes = [node for node in (node_statuses or ()) if isinstance(node, dict)]
-    source_node = None
-    for node in safe_nodes:
-        if node.get("node_status") in {"failed", "blocked"}:
-            source_node = str(node.get("node_name") or "unknown")
-            break
-            
+    source_node = _relayrun_recovery_source_node(safe_nodes)
+
     source_node_alias = _relayrun_node_name_alias(source_node)
     
     proposed_transition_type = "none"
@@ -709,7 +731,7 @@ def build_relayrun_recovery_transition_artifact(
     if source_node == "backend_forward":
         proposed_transition_type = "retry_safe_node"
         next_node = "backend_forward"
-    elif source_node == "relayref":
+    elif source_node in {"relayref", "relayint"}:
         proposed_transition_type = "ask_user_confirmation"
         next_node = "waiting_user"
         required_user_action = "clarify_reference"

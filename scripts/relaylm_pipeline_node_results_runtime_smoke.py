@@ -143,6 +143,7 @@ def main() -> None:
                 [result.get("node_name") for result in results]
                 == [
                     "relayint_reference_repair",
+                    "relayint_reference_intent",
                     "relayint_quick_clarification",
                     "relayctx_repack",
                 ],
@@ -151,6 +152,7 @@ def main() -> None:
             _assert_no_raw_content(results)
 
             reference = results[0]
+            native_reference = results[1]
             require(reference.get("status") == "diagnostic_only", reference)
             require(
                 reference.get("diagnostics", {}).get("compatibility_source_node")
@@ -162,8 +164,19 @@ def main() -> None:
                 == "relayint_reference_repair",
                 reference,
             )
+            require(native_reference.get("node_name") == "relayint_reference_intent", native_reference)
+            require(
+                native_reference.get("diagnostics", {}).get("compatibility_source_node")
+                == "relayint",
+                native_reference,
+            )
+            require(
+                native_reference.get("diagnostics", {}).get("source_node_alias")
+                == "relayint_reference_intent",
+                native_reference,
+            )
 
-            quick = results[1]
+            quick = results[2]
             require(quick.get("status") == "diagnostic_only", quick)
             require(quick.get("decision") == "apply_plan_recorded", quick)
             require("phase4_plan_only" in quick.get("blocked_reasons", []), quick)
@@ -172,7 +185,7 @@ def main() -> None:
                 quick,
             )
 
-            repack = results[2]
+            repack = results[3]
             require(repack.get("status") in {"diagnostic_only", "applied"}, repack)
             require(
                 isinstance(repack.get("diagnostics", {}).get("phase_artifact_count"), int),

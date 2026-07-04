@@ -98,7 +98,7 @@ def _artifact_for(
     scene_type: str = "design_talk",
     scope: str = "project_context",
     token_budget: int | None = 800,
-    relayref_artifact: dict[str, Any] | None = None,
+    relayint_intent_artifact: dict[str, Any] | None = None,
     retrieval_dry_run_only: bool = True,
     ctx_block_apply_enabled: bool = False,
 ) -> dict[str, Any]:
@@ -109,7 +109,7 @@ def _artifact_for(
     )
     return build_relaymem_retrieval_dry_run_artifact(
         relayscn_scene_policy_artifact=_scene_artifact(scene_type, scope),
-        relayref_artifact=relayref_artifact,
+        relayint_intent_artifact=relayint_intent_artifact,
         messages=[{"role": "user", "content": "RelayMEM apply readiness"}],
         token_budget=token_budget,
         store_diagnostics=store,
@@ -229,7 +229,7 @@ def main() -> int:
 
         unresolved = _artifact_for(
             store_root=store_root,
-            relayref_artifact={"unresolved_reference_detected": True},
+            relayint_intent_artifact={"unresolved_reference_detected": True},
             retrieval_dry_run_only=False,
             ctx_block_apply_enabled=True,
         )

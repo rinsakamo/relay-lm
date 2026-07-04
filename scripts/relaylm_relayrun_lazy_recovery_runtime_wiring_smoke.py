@@ -73,7 +73,7 @@ def _base_artifact_kwargs(*, backend_forward_status: str) -> dict[str, Any]:
                 "persistence_block": False,
                 "persistence_block_reasons": [],
             },
-            "relayref_artifact": {
+            "relayint_intent_artifact": {
                 "schema_version": "relayint.reference_repair.v0",
                 "diagnostics_only": True,
                 "unresolved_reference_detected": False,
