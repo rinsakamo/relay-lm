@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -540,18 +539,19 @@ def _plan_candidates(evidence_items: tuple[WorkspaceSourceEvidence, ...], *, max
             reasons.append("source_user_assertion_evidence_missing")
             continue
         lowered = user_text.lower()
+        suffix = _target_suffix(evidence, user_text)
         sensitive = _contains_any(lowered, _SENSITIVE_HINTS)
         memory_reason_ids = ["user_assertion_evidence_present"]
         if sensitive:
             memory_reason_ids.append("sensitive_memory_candidate")
-        memory = _candidate("memory_inbox_addition", "memory", f"memory/inbox/memory-{_hash_text(user_text)[:16]}.md", evidence, "high" if sensitive else "low", True, False, tuple(memory_reason_ids))
+        memory = _candidate("memory_inbox_addition", "memory", f"memory/inbox/memory-{suffix}.md", evidence, "high" if sensitive else "low", True, False, tuple(memory_reason_ids))
         candidates.append(memory)
         proposals.append(_proposal_for_candidate(memory, proposal_kind="append_inbox_page"))
         if len(candidates) >= max_candidates:
             reasons.append("candidate_limit_reached")
             break
         if _contains_any(lowered, _SCENE_HINTS):
-            scene = _candidate("scene_inbox_addition", "scene", f"scenes/_inbox/scene-{_hash_text(user_text)[:16]}.md", evidence, "low", True, False, ("scene_candidate_signal", "relayscn_authority_preserved"))
+            scene = _candidate("scene_inbox_addition", "scene", f"scenes/_inbox/scene-{suffix}.md", evidence, "low", True, False, ("scene_candidate_signal", "relayscn_authority_preserved"))
             candidates.append(scene)
             proposals.append(_proposal_for_candidate(scene, proposal_kind="append_inbox_page"))
         if len(candidates) >= max_candidates:
@@ -562,7 +562,7 @@ def _plan_candidates(evidence_items: tuple[WorkspaceSourceEvidence, ...], *, max
             rel = _candidate(
                 "relationship_parameter_proposal" if important else "relationship_note",
                 "relationship",
-                f"relationships/_inbox/relationship-{_hash_text(user_text)[:16]}.md",
+                f"relationships/_inbox/relationship-{suffix}.md",
                 evidence,
                 "medium" if important else "low",
                 True,
@@ -572,6 +572,10 @@ def _plan_candidates(evidence_items: tuple[WorkspaceSourceEvidence, ...], *, max
             candidates.append(rel)
             proposals.append(_proposal_for_candidate(rel, proposal_kind="uppercase_source_change_required" if important else "relationship_update"))
     return tuple(candidates), tuple(proposals), _dedupe(reasons)
+
+
+def _target_suffix(evidence: WorkspaceSourceEvidence, user_text: str) -> str:
+    return _hash_parts(_hash_text(user_text), evidence.stable_ref)[:16]
 
 
 def _candidate(kind: str, domain: str, target_path: str, evidence: WorkspaceSourceEvidence, risk_level: str, approval_required: bool, auto_apply_eligible: bool, reason_ids: tuple[str, ...]) -> CharacterWorkspaceCandidate:
@@ -588,6 +592,7 @@ def _proposal_for_candidate(candidate: CharacterWorkspaceCandidate, *, proposal_
         "source_count": len(candidate.source_evidence_refs),
         "candidate_kind": candidate.candidate_kind,
         "candidate_id": candidate.candidate_id,
+        "candidate_target_path": candidate.target_path,
         "uppercase_source_write": False,
         "runtime_prompt_injection": False,
         "queue_or_worker_authority": False,
@@ -601,15 +606,29 @@ def _proposal_path(candidate: CharacterWorkspaceCandidate, proposal_hash: str) -
 
 
 def _write_candidate_artifacts(root: Path, candidates: tuple[CharacterWorkspaceCandidate, ...], proposals: tuple[CharacterWorkspaceProposal, ...]) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    writes: list[tuple[str, str]] = []
-    for candidate in candidates:
-        if _candidate_is_blocked(candidate):
-            continue
-        if candidate.target_path.endswith(".md"):
-            writes.append((candidate.target_path, _candidate_markdown(candidate)))
-    for proposal in proposals:
-        writes.append((proposal.target_path, _json_text(proposal.to_dict())))
+    written: list[str] = []
+    errors: list[str] = []
 
+    candidate_writes = [
+        (candidate.target_path, _candidate_markdown(candidate))
+        for candidate in candidates
+        if not _candidate_is_blocked(candidate) and candidate.target_path.endswith(".md")
+    ]
+    candidate_written, candidate_errors = _write_artifact_batch(root, candidate_writes)
+    written.extend(candidate_written)
+    errors.extend(candidate_errors)
+    if errors:
+        errors.append("proposal_write_skipped_after_candidate_write_failure")
+        return tuple(dict.fromkeys(written)), _dedupe(errors)
+
+    proposal_writes = [(proposal.target_path, _json_text(proposal.to_dict())) for proposal in proposals]
+    proposal_written, proposal_errors = _write_artifact_batch(root, proposal_writes)
+    written.extend(proposal_written)
+    errors.extend(proposal_errors)
+    return tuple(dict.fromkeys(written)), _dedupe(errors)
+
+
+def _write_artifact_batch(root: Path, writes: Iterable[tuple[str, str]]) -> tuple[list[str], list[str]]:
     written: list[str] = []
     errors: list[str] = []
     for relative_path, text in writes:
@@ -652,7 +671,7 @@ def _write_candidate_artifacts(root: Path, candidates: tuple[CharacterWorkspaceC
             errors.append("candidate_artifact_write_failed")
         except UnicodeDecodeError:
             errors.append("candidate_artifact_conflict_not_utf8")
-    return tuple(dict.fromkeys(written)), _dedupe(errors)
+    return written, errors
 
 
 def _path_has_symlink(root: Path, path: Path) -> bool:
