@@ -1179,7 +1179,30 @@ def _build_relayrun_runtime_artifact(
         ),
     ]
     blocked_reasons = _relayrun_collect_blocked_reasons(node_statuses)
+    recovery_detail_explicitly_required = (
+        config.relayrun_checkpoint_write_enabled
+        or config.relayrun_checkpoint_index_enabled
+        or config.relayrun_resume_preflight_enabled
+        or config.relayrun_recovery_transition_enabled
+        or config.relayrun_waiting_user_contract_enabled
+        or config.relayrun_recovery_apply_preflight_enabled
+        or config.relayrun_recovery_response_draft_enabled
+        or config.relayrun_visible_recovery_preflight_enabled
+        or config.relayrun_recovery_response_generator_enabled
+        or config.relayrun_output_relayscn_recovery_gate_enabled
+        or config.relayrun_visible_recovery_apply_preflight_enabled
+        or config.relayrun_user_action_dry_run_enabled
+    )
+    recovery_detail_backend_required = backend_forward_status in {"failed", "blocked"}
+    include_recovery_details = (
+        True
+        if recovery_detail_explicitly_required
+        else False
+        if blocked_reasons and not recovery_detail_backend_required
+        else None
+    )
     artifact = build_runtime_checkpoint_lazy_recovery_artifact(
+        include_recovery_details=include_recovery_details,
         backend_forward_status=backend_forward_status,
         checkpoint_write_enabled=config.relayrun_checkpoint_write_enabled,
         checkpoint_dry_run_only=config.relayrun_checkpoint_dry_run_only,
@@ -1282,10 +1305,12 @@ def _relayrun_relayint_intent_node(artifact: Mapping[str, Any] | None) -> dict[s
     blocked_reasons = []
     if artifact.get("unresolved_reference_detected") is True:
         blocked_reasons.append("unresolved_reference_detected")
+    mode = artifact.get("mode")
     blocked_reasons.extend(
         reason
         for reason in _string_list(artifact.get("mode_reasons"))
         if reason not in blocked_reasons
+        and not (reason == "recovery_scene" and mode == "context_repair")
     )
     status = "blocked" if blocked_reasons else "completed"
     return build_relayrun_node(

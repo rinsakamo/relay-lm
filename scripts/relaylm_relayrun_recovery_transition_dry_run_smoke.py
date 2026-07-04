@@ -45,6 +45,7 @@ def _write_config(
     cfg["model_routes"]["relaylm-default"]["mode"] = "pass_through"
     cfg["relayrun_recovery_transition_enabled"] = False
     cfg["relayrun_recovery_transition_dry_run_only"] = True
+    cfg["relayrun_waiting_user_contract_enabled"] = True
     cfg["memory"].update(
         {
             "root_path": str(store_root),
