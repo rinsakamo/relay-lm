@@ -56,7 +56,11 @@ def _write_fixture(root: Path) -> None:
         "## Target user direction ^mem-relaylm-target-user\n\n"
         "status:: active\n"
         "importance:: high\n\n"
-        "PRIVATE_MEMORY_BODY\n",
+        "PRIVATE_MEMORY_BODY\n\n"
+        "## Duplicate anchored note ^mem-relaylm-target-user\n\n"
+        "status:: active\n"
+        "importance:: high\n\n"
+        "PRIVATE_MEMORY_BODY_DUPLICATE_ANCHOR\n",
         encoding="utf-8",
     )
     (root / "memory" / "inbox").mkdir()
@@ -172,6 +176,15 @@ def main() -> None:
         assert memory_inbox
         assert all(row["prompt_candidate"] is False and row["candidate_only"] is True for row in memory_inbox)
 
+        duplicate_anchor_units = [
+            row for row in memory_rows
+            if row["source_path"] == "memory/core.md" and "mem-relaylm-target-user" in row["unit_id"]
+        ]
+        duplicate_anchor_ids = [row["unit_id"] for row in duplicate_anchor_units]
+        assert len(duplicate_anchor_ids) == 2
+        assert len(set(duplicate_anchor_ids)) == 2, duplicate_anchor_ids
+        assert all("memory-core.md" in unit_id for unit_id in duplicate_anchor_ids)
+
         scene_rows = _artifact_jsonl(written, "scene_units.jsonl")
         scene_inbox = [row for row in scene_rows if row["source_path"].startswith("scenes/_inbox/")]
         assert scene_inbox
@@ -222,7 +235,7 @@ def main() -> None:
         stable_hashes_after_memory = _artifact_json(memory_changed, "character_manifest.json")["source_file_hashes"]
         assert stable_hashes_after_memory == stable_hashes_after_style
 
-        assert _memory_unit_ids(memory_changed) == _memory_unit_ids(style_changed)
+        assert _memory_unit_ids(memory_changed) == _memory_unit_ids(style_changed) - {duplicate_anchor_ids[1]}
 
         state_root = root / ".relaylm" / "state"
         assert not state_root.exists(), ".relaylm/state was unexpectedly written"
