@@ -9,8 +9,21 @@ from __future__ import annotations
 import sys
 from types import ModuleType
 
+from . import _compiler as _compiler
 from . import _constants as _constants
-from ._compiler import (
+
+
+def _stable_fragment_id_with_source_path(domain: str, relative_path: str, block: object, occurrence: int) -> str:
+    anchor = getattr(block, "anchor", None)
+    if anchor:
+        return _compiler._safe_id(f"{domain}:{relative_path}:{str(anchor).lstrip('^')}:{occurrence}")
+    heading = _compiler._slug(getattr(block, "heading", None) or "root")
+    return _compiler._safe_id(f"{domain}:{relative_path}:{heading}:{occurrence}")
+
+
+_compiler._stable_fragment_id = _stable_fragment_id_with_source_path
+
+from ._compiler import (  # noqa: E402
     ARTIFACT_SCHEMA_VERSIONS,
     COMPILER_NAME,
     COMPILER_SCHEMA_VERSION,
@@ -22,7 +35,7 @@ from ._compiler import (
     compile_character_workspace,
     write_character_workspace_build_artifacts,
 )
-from ._constants import (
+from ._constants import (  # noqa: E402
     INTERNAL_BUILD_FILES,
     INTERNAL_DIRECTORIES,
     INTERNAL_STATE_FILES,
@@ -35,9 +48,9 @@ from ._constants import (
     RESERVED_DIRECTORY_PATHS,
     SCHEMA_VERSION,
 )
-from ._parser import parse_character_source_file, parse_markdown_blocks
-from ._pathing import classify_character_workspace_path
-from ._types import (
+from ._parser import parse_character_source_file, parse_markdown_blocks  # noqa: E402
+from ._pathing import classify_character_workspace_path  # noqa: E402
+from ._types import (  # noqa: E402
     CharacterMarkdownBlock,
     CharacterSourceParseResult,
     CharacterWorkspaceLayout,
@@ -47,7 +60,7 @@ from ._types import (
     CharacterWorkspaceValidationResult,
     CharacterWorkspaceValidationStatus,
 )
-from ._validation import build_character_workspace_manifest, character_workspace_layout, validate_character_workspace
+from ._validation import build_character_workspace_manifest, character_workspace_layout, validate_character_workspace  # noqa: E402
 
 
 class _CharacterWorkspaceModule(ModuleType):
