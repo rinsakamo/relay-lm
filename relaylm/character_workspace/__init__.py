@@ -21,7 +21,35 @@ def _stable_fragment_id_with_source_path(domain: str, relative_path: str, block:
     return _compiler._safe_id(f"{domain}:{relative_path}:{heading}:{occurrence}")
 
 
+def _guarded_write_character_workspace_build_artifacts(root: str | object, result: object) -> tuple[str, ...]:
+    """Write build artifacts without following pre-existing artifact symlinks."""
+
+    if not result.is_valid:
+        raise ValueError("cannot write invalid Character Workspace compile result")
+
+    root_path = _compiler.Path(root)
+    build_root = _compiler._safe_build_root(root_path)
+    if build_root.exists() and build_root.is_symlink():
+        raise ValueError("build artifact root is a symlink")
+    build_root.mkdir(parents=True, exist_ok=True)
+
+    written: list[str] = []
+    root_resolved = root_path.resolve()
+    for artifact in result.artifacts:
+        target = build_root / artifact.name
+        if target.name != artifact.name or artifact.name not in _compiler.EXPECTED_ARTIFACTS:
+            raise ValueError("unexpected build artifact path")
+        if target.is_symlink():
+            raise ValueError("build artifact path is a symlink")
+        if not _compiler._is_relative_to(target.resolve(), root_resolved):
+            raise ValueError("build artifact write escaped workspace root")
+        target.write_bytes(artifact.content)
+        written.append(f".relaylm/build/{artifact.name}")
+    return tuple(written)
+
+
 _compiler._stable_fragment_id = _stable_fragment_id_with_source_path
+_compiler.write_character_workspace_build_artifacts = _guarded_write_character_workspace_build_artifacts
 
 from ._compiler import (  # noqa: E402
     ARTIFACT_SCHEMA_VERSIONS,
