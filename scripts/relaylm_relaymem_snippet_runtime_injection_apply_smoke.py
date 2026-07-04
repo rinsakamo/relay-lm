@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 import tempfile
 import threading
@@ -379,6 +380,37 @@ def _assert_blocked_scenes_and_reference(root: Path, capture: _Capture, port: in
     print("ok blocked scenes and unresolved references skip snippet runtime injection")
 
 
+def _assert_incomplete_target_layout_fail_closed(
+    root: Path,
+    scoped_root: Path,
+    capture: _Capture,
+    port: int,
+) -> None:
+    secondary = scoped_root / "memory" / "mem" / "secondary"
+    require(secondary.is_dir(), secondary)
+    shutil.rmtree(secondary)
+    backend_payload, metadata = _post(
+        port=port,
+        store_root=root,
+        payload=_payload(),
+        capture=capture,
+        snippet_runtime_injection_enabled=True,
+        snippet_runtime_dry_run_only=False,
+    )
+    backend_text = json.dumps(backend_payload, ensure_ascii=False)
+    require("SNIPPET_RUNTIME_APPLY_SENTINEL" not in backend_text, backend_payload)
+    require(_snippet_context_messages(backend_payload) == [], backend_payload)
+    require(_metadata_context_messages(backend_payload) == [], backend_payload)
+    result = metadata.get("runtime_snippet_injection_result")
+    require(isinstance(result, dict), metadata)
+    require(result["applied"] is False, result)
+    require(
+        "snippet_apply_decision:blocked_no_candidates" in result["blocked_reasons"],
+        result,
+    )
+    print("ok incomplete target layout blocks primary recall bridge before runtime snippets")
+
+
 def _assert_preview_null_blocks(root: Path, capture: _Capture, port: int) -> None:
     backend_payload, metadata = _post(
         port=port,
@@ -414,6 +446,10 @@ def main() -> int:
             _assert_direct_runtime_budget_guard()
             _assert_blocked_scenes_and_reference(root, capture, port)
             _assert_preview_null_blocks(root, capture, port)
+        with tempfile.TemporaryDirectory() as td:
+            root, scoped_root = _configured_and_scoped_root(td)
+            _build_store(scoped_root)
+            _assert_incomplete_target_layout_fail_closed(root, scoped_root, capture, port)
     finally:
         server.shutdown()
         server.server_close()

@@ -405,15 +405,16 @@ def create_app(config_path: str | None = None) -> FastAPI:
             max_snippet_chars=config.memory.max_snippet_chars,
             max_snippet_candidates=config.memory.max_snippet_candidates,
         )
-        relaymem_retrieval_artifact = apply_relaymem_primary_recall_scope(
-            relaymem_retrieval_artifact,
-            scoped_store_root=relaymem_scoped_store_root,
-            expected_namespace=route.memory_namespace,
-            max_snippet_chars=config.memory.max_snippet_chars,
-            max_snippet_candidates=config.memory.max_snippet_candidates,
-            snippet_budget=config.memory.snippet_budget,
-            chars_per_token=config.memory.chars_per_token,
-        )
+        if _relaymem_primary_recall_scope_allowed(relaymem_store_diagnostics):
+            relaymem_retrieval_artifact = apply_relaymem_primary_recall_scope(
+                relaymem_retrieval_artifact,
+                scoped_store_root=relaymem_scoped_store_root,
+                expected_namespace=route.memory_namespace,
+                max_snippet_chars=config.memory.max_snippet_chars,
+                max_snippet_candidates=config.memory.max_snippet_candidates,
+                snippet_budget=config.memory.snippet_budget,
+                chars_per_token=config.memory.chars_per_token,
+            )
         (
             forwarded_payload,
             runtime_ctx_injection_result,
@@ -1099,6 +1100,14 @@ def _apply_relayemo_marker_to_response(body: dict[str, Any], preview: dict[str, 
         else:
             message["content"] = content + marker
     return body
+
+
+def _relaymem_primary_recall_scope_allowed(
+    store_diagnostics: Mapping[str, Any] | None,
+) -> bool:
+    if not isinstance(store_diagnostics, Mapping):
+        return True
+    return store_diagnostics.get("fallback_reason") != "target_primary_secondary_layout_missing"
 
 
 def _resolve_relaymem_retrieval_token_budget(config: RelayLMConfig) -> int | None:
