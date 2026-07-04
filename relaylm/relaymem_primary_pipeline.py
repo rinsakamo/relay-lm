@@ -43,6 +43,15 @@ class RelayMEMPrimaryPipelineCheckpointResult:
     reason_ids: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class RelayMEMPrimaryPipelineCheckpointDenied:
+    """Typed content-free checkpoint denial preserved across helper seams."""
+
+    stage: str
+    checkpoint: PrimaryPipelineCheckpointName
+    reason_ids: tuple[str, ...]
+
+
 PrimaryPipelineCheckpoint = Callable[
     [PrimaryPipelineCheckpointName], RelayMEMPrimaryPipelineCheckpointResult
 ]
@@ -302,6 +311,150 @@ def _checkpoint_result(
     return RelayMEMPrimaryPipelineCheckpointResult(value.allowed, reasons)
 
 
+def _checkpoint_denial(
+    *,
+    stage: str,
+    checkpoint: PrimaryPipelineCheckpointName,
+    decision: RelayMEMPrimaryPipelineCheckpointResult,
+) -> RelayMEMPrimaryPipelineCheckpointDenied:
+    reasons = _impl._reasons(
+        decision.reason_ids or ("primary_pipeline_checkpoint_denied",)
+    )
+    return RelayMEMPrimaryPipelineCheckpointDenied(
+        stage=stage,
+        checkpoint=checkpoint,
+        reason_ids=reasons or ("primary_pipeline_checkpoint_denied",),
+    )
+
+
+def _m3e_checkpoint_denied_result(
+    denial: RelayMEMPrimaryPipelineCheckpointDenied,
+) -> dict[str, Any]:
+    reasons = list(denial.reason_ids)
+    return {
+        "schema_version": "relaymem.primary_page_write_apply.v0",
+        "helper_only": True,
+        "runtime_private_receipt": True,
+        "enabled": True,
+        "dry_run_only": False,
+        "apply_enabled": True,
+        "write_apply_supported": True,
+        "apply_requested": True,
+        "handoff_valid": False,
+        "status": "blocked",
+        "writes_memory": False,
+        "page_applied": False,
+        "idempotent_noop": False,
+        "durability_confirmed": False,
+        "cleanup_complete": False,
+        "updates_index": False,
+        "updates_log": False,
+        "mutates_soul": False,
+        "invokes_slp": False,
+        "lab_api_exposed": False,
+        "runtime_wired": False,
+        "visible_response_changed": False,
+        "receipt": None,
+        "blocked_reasons": reasons,
+        "projection": {
+            "schema_version": "relaymem.primary_page_write_projection.v0",
+            "diagnostics_only": True,
+            "content_free": True,
+            "content_included": False,
+            "store_root_path_included": False,
+            "candidate_id_included": False,
+            "namespace_included": False,
+            "target_path_included": False,
+            "lineage_fingerprint_included": False,
+            "idempotency_key_included": False,
+            "page_markdown_included": False,
+            "page_digest_included": False,
+            "raw_source_text_included": False,
+            "raw_message_history_included": False,
+            "raw_affect_estimates_included": False,
+            "status": "blocked",
+            "handoff_valid": False,
+            "target_category": "unknown",
+            "memory_kind": "unknown",
+            "page_bytes": 0,
+            "writes_memory": False,
+            "page_applied": False,
+            "idempotent_noop": False,
+            "durability_confirmed": False,
+            "cleanup_complete": False,
+            "updates_index": False,
+            "updates_log": False,
+            "blocked_reasons": reasons,
+        },
+    }
+
+
+def _m3g_checkpoint_denied_result(
+    denial: RelayMEMPrimaryPipelineCheckpointDenied,
+) -> dict[str, Any]:
+    reasons = list(denial.reason_ids)
+    return {
+        "schema_version": "relaymem.primary_index_log_reconciliation_apply.v0",
+        "helper_only": True,
+        "runtime_private_receipt": True,
+        "enabled": True,
+        "dry_run_only": False,
+        "apply_enabled": True,
+        "apply_supported": True,
+        "apply_requested": True,
+        "plan_valid": False,
+        "page_verified": False,
+        "status": "blocked",
+        "writes_memory": False,
+        "index_reconciled": False,
+        "log_reconciled": False,
+        "index_updated": False,
+        "log_updated": False,
+        "index_idempotent_noop": False,
+        "log_idempotent_noop": False,
+        "durability_confirmed": False,
+        "cleanup_complete": False,
+        "updates_index": False,
+        "updates_log": False,
+        "mutates_soul": False,
+        "invokes_slp": False,
+        "runtime_wired": False,
+        "lab_api_exposed": False,
+        "visible_response_changed": False,
+        "receipt": None,
+        "blocked_reasons": reasons,
+        "projection": {
+            "schema_version": "relaymem.primary_index_log_reconciliation_apply_projection.v0",
+            "diagnostics_only": True,
+            "content_free": True,
+            "content_included": False,
+            "store_root_path_included": False,
+            "target_paths_included": False,
+            "namespace_included": False,
+            "idempotency_key_included": False,
+            "page_digest_included": False,
+            "control_digests_included": False,
+            "entry_identities_included": False,
+            "proposed_content_included": False,
+            "status": "blocked",
+            "reconciliation_state": "unknown",
+            "plan_valid": False,
+            "page_verified": False,
+            "apply_requested": True,
+            "writes_memory": False,
+            "index_reconciled": False,
+            "log_reconciled": False,
+            "index_updated": False,
+            "log_updated": False,
+            "idempotent_noop_count": 0,
+            "durability_confirmed": False,
+            "cleanup_complete": False,
+            "conflict_count": 0,
+            "blocked_reasons": reasons,
+        },
+    }
+
+
 def execute_relaymem_primary_pipeline(
     request: object,
     *,
@@ -333,19 +486,29 @@ def execute_relaymem_primary_pipeline(
                 return original_consume(*args, **kwargs)
 
             def m3e_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
-                decision = _checkpoint_result(
-                    checkpoint, "before_m3e_page_writer"
-                )
+                checkpoint_name = "before_m3e_page_writer"
+                decision = _checkpoint_result(checkpoint, checkpoint_name)
                 if not decision.allowed:
-                    raise RuntimeError("primary pipeline checkpoint denied")
+                    return _m3e_checkpoint_denied_result(
+                        _checkpoint_denial(
+                            stage="m3e_page_writer",
+                            checkpoint=checkpoint_name,
+                            decision=decision,
+                        )
+                    )
                 return original_m3e(*args, **kwargs)
 
             def m3g_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
-                decision = _checkpoint_result(
-                    checkpoint, "before_m3g_reconciliation_apply"
-                )
+                checkpoint_name = "before_m3g_reconciliation_apply"
+                decision = _checkpoint_result(checkpoint, checkpoint_name)
                 if not decision.allowed:
-                    raise RuntimeError("primary pipeline checkpoint denied")
+                    return _m3g_checkpoint_denied_result(
+                        _checkpoint_denial(
+                            stage="m3g_reconciliation_apply",
+                            checkpoint=checkpoint_name,
+                            decision=decision,
+                        )
+                    )
                 return original_m3g(*args, **kwargs)
 
             _impl.consume_relaymem_slp_primary_worker_source = (
@@ -391,6 +554,7 @@ __all__ = [
     "STAGES",
     "PrimaryPipelineCheckpoint",
     "PrimaryPipelineCheckpointName",
+    "RelayMEMPrimaryPipelineCheckpointDenied",
     "RelayMEMPrimaryPipelineCheckpointResult",
     "RelayMEMPrimaryPipelineProjection",
     "RelayMEMPrimaryPipelineRequest",
