@@ -65,7 +65,7 @@ REQUIRED = {
         "E1-R5 scoped Primary recall bridge                complete as E1-R5",
     ),
     "docs/architecture/current_target_migration_guide.md": (
-        "Current Wave 7 compatibility interpretation",
+        "Current Wave 7 / P0-PIPE / ACG compatibility interpretation",
         "E1-R1 is current implemented as route-owned trusted Home scene admission.",
         "E1-R2 is current implemented as dry-run-first character-store bootstrap.",
         "E1-R3 is current implemented as provenance-preserving Primary MEM formation summary.",
