@@ -16,6 +16,8 @@ This guide distinguishes implemented runtime behavior from target architecture. 
 
 ## Current Wave 7 / P0-PIPE / ACG / CW compatibility interpretation
 
+Compatibility anchor retained for E1 evaluation smoke: Current Wave 7 / P0-PIPE / ACG compatibility interpretation.
+
 This section includes the Wave 7 / E1-R5 compatibility interpretation plus the post-Wave-7 P0-PIPE, ACG-1 through ACG-6, and CW-A1 through CW-A5 current boundaries.
 
 ```text
