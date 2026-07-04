@@ -52,6 +52,7 @@ def install_character_creation_routes(
 
     @app.post("/lab/api/character-templates/validate", response_model=None)
     async def lab_character_template_validate(request: Request) -> JSONResponse:
+        require_loopback_management(request)
         payload = await exact_json(request, LabCharacterTemplateValidateRequest)
         if payload.template_id:
             projection = _validate_bundled_template(payload.template_id)
@@ -68,6 +69,7 @@ def install_character_creation_routes(
 
     @app.post("/lab/api/characters/create-from-template", response_model=None)
     async def lab_character_create_from_template(request: Request) -> JSONResponse:
+        require_loopback_management(request)
         payload = await exact_json(request, LabCharacterCreateFromTemplateRequest)
         try:
             result = commit_character_from_template(
@@ -90,6 +92,7 @@ def install_character_creation_routes(
 
     @app.post("/lab/api/characters/import-template", response_model=None)
     async def lab_character_import_template(request: Request) -> JSONResponse:
+        require_loopback_management(request)
         payload = await exact_json(request, LabCharacterImportTemplateRequest)
         projection = _validate_local_import(payload.import_path)
         content = projection.to_public_dict()
