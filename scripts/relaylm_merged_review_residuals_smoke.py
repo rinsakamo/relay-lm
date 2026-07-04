@@ -128,11 +128,14 @@ def test_store_validation_budget() -> None:
             retrieval_dry_run_only=True,
         )
         relative = target.relative_to(root).as_posix()
-        require(relative in result["page_paths"], result)
-        require(result["pages_discovered"] >= 1, result)
+        require(relative not in result["page_paths"], result)
+        require(result["page_paths"] == [], result)
+        require(result["pages_discovered"] == 0, result)
+        require(result["fallback_reason"] == "memory_store_validation_truncated", result)
         require(result["validation"]["files_validated"] == 64, result)
         require(result["validation"]["validation_truncated"] is True, result)
-        print("ok source logs cannot exhaust MEM-page validation capacity")
+        require(result["validation"]["full_tree_materialized"] is False, result)
+        print("ok validation truncation fails closed without projecting unchecked pages")
 
 
 def _typed_parse_candidate() -> dict[str, Any]:
@@ -193,6 +196,7 @@ def test_parser_version_write_block() -> None:
         enabled=True,
         parser_version="typed-parser-v1",
     )
+    require(result is not None and parse_result.parse_ready is True, parse_result) if False else None
     require(parse_result is not None and parse_result.parse_ready is True, parse_result)
     with tempfile.TemporaryDirectory() as temp_dir:
         cache_root = Path(temp_dir)
