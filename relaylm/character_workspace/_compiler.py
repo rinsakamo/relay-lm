@@ -600,7 +600,8 @@ def _uppercase_fragments(source_results: Iterable[CharacterSourceParseResult]) -
                     "fragment_id": fragment_id,
                     "source_path": source.filename,
                     "source_kind": source.source_kind,
-                    "heading": block.heading,
+                    "heading": None,
+                    "heading_hash": _optional_content_hash(block.heading),
                     "heading_level": block.heading_level,
                     "has_anchor": block.anchor is not None,
                     "metadata": _content_free_metadata(block.metadata),
@@ -724,7 +725,8 @@ def _page_units(
                 "source_path": relative,
                 "source_stage": stage,
                 "artifact_name": artifact_name,
-                "heading": block.heading,
+                "heading": None,
+                "heading_hash": _optional_content_hash(block.heading),
                 "heading_level": block.heading_level,
                 "has_anchor": block.anchor is not None,
                 "metadata": _content_free_metadata(block.metadata),
@@ -750,6 +752,7 @@ def _policy_unit(fragment: dict[str, Any], *, artifact_name: str, unit_kind: str
         "source_stage": "policy",
         "artifact_name": artifact_name,
         "heading": fragment["heading"],
+        "heading_hash": fragment.get("heading_hash"),
         "heading_level": fragment["heading_level"],
         "has_anchor": fragment["has_anchor"],
         "metadata": fragment["metadata"],
@@ -858,6 +861,12 @@ def _jsonl_bytes(rows: Iterable[dict[str, Any]]) -> bytes:
     return b"".join(_json_bytes(row) for row in rows)
 
 
+def _optional_content_hash(text: str | None) -> str | None:
+    if not text:
+        return None
+    return _content_hash(text)
+
+
 def _content_hash(text: str) -> str:
     return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -877,8 +886,12 @@ def _hash_many(values: Iterable[str | None]) -> str:
 def _stable_fragment_id(domain: str, relative_path: str, block: CharacterMarkdownBlock, occurrence: int) -> str:
     anchor = block.anchor
     path_digest = hashlib.sha256(relative_path.encode("utf-8")).hexdigest()[:12]
-    fragment = anchor.lstrip("^") if anchor else _slug(block.heading or "root")
-    fragment_digest = hashlib.sha256(fragment.encode("utf-8")).hexdigest()[:8]
+    if anchor:
+        fragment = anchor.lstrip("^")
+        fragment_digest = hashlib.sha256(fragment.encode("utf-8")).hexdigest()[:8]
+    else:
+        fragment = "heading"
+        fragment_digest = hashlib.sha256((block.heading or "root").encode("utf-8")).hexdigest()[:12]
     return _safe_id(f"{domain}:{path_digest}:{relative_path}:{fragment_digest}:{fragment}:{occurrence}")
 
 

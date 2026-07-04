@@ -94,6 +94,12 @@ def _write_fixture(root: Path) -> None:
         "case-collision-lower\n",
         encoding="utf-8",
     )
+    (root / "memory" / "private-heading.md").write_text(
+        "# queue-record-heading-123\n\n"
+        "status:: active\n"
+        "importance:: high\n",
+        encoding="utf-8",
+    )
     (root / "memory" / "inbox").mkdir()
     (root / "memory" / "inbox" / "candidate.md").write_text(
         "# Candidate memory\n\nstatus:: draft\n\nPRIVATE_MEMORY_INBOX_BODY\n",
@@ -148,6 +154,7 @@ def _assert_artifacts_content_free(result: object) -> None:
         "runtime-private-payload",
         "queue-record-123",
         "mem-secret",
+        "queue-record-heading-123",
     ):
         assert token not in serialized, token
 
@@ -249,11 +256,19 @@ def main() -> None:
             row for row in memory_rows
             if row["source_path"] == "memory/case-collision.md"
             and row["has_anchor"] is True
-            and row["heading"] in {"Upper", "Lower"}
         ]
         case_collision_ids = [row["unit_id"] for row in case_collision_units]
         assert len(case_collision_ids) == 2
         assert len(set(case_collision_ids)) == 2, case_collision_ids
+
+        private_heading_units = [
+            row for row in memory_rows
+            if row["source_path"] == "memory/private-heading.md"
+        ]
+        assert private_heading_units
+        assert all(row["heading"] is None for row in private_heading_units)
+        assert all(row.get("heading_hash") for row in private_heading_units)
+        assert all("queue-record-heading-123" not in row["unit_id"] for row in private_heading_units)
 
         scene_rows = _artifact_jsonl(written, "scene_units.jsonl")
         scene_inbox = [row for row in scene_rows if row["source_path"].startswith("scenes/_inbox/")]
