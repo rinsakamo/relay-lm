@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: implementation_report
+relaylm_doc_type: implementation_handoff
 relaylm_authority: p0_relayrel_relayscn_relayemo_ordering_fix
 relaylm_status: current
 relaylm_volatility: high
