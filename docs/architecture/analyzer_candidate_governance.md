@@ -22,6 +22,9 @@ relaylm_related_authority:
   - acg1_analyzer_candidate_governance_contract.md
   - acg2_grounded_recall_detail_safety.md
   - acg3_retrieval_query_normalization.md
+  - acg4_reference_intent_analyzer.md
+  - acg5_relayemo_scene_cleanup.md
+  - acg6_scene_wiki_classifier.md
   - e1r4_retrieval_response_grounding.md
   - relaymem_slp_current_target.md
 ---
@@ -86,21 +89,7 @@ Downstream components must treat invalid schema, unknown enum values, low confid
 
 ## Multilingual schema policy
 
-RelayLM should keep analyzer schema keys, enum values, reason IDs, and policy fields in English. This does not mean that the LLM or analyzer returns English free-form prose. It means that arbitrary user input languages are normalized into English fixed schema values.
-
-Example:
-
-```json
-{
-  "schema_version": "relaylm.query_detail_analyzer.v0",
-  "source_language": "ja",
-  "requested_detail_types": ["date_or_time", "preference"],
-  "confidence": 0.82,
-  "is_estimate": true,
-  "candidate_applied": false,
-  "restrictive_only": true
-}
-```
+RelayLM keeps analyzer schema keys, enum values, reason IDs, and policy fields in English. This does not mean that the LLM or analyzer returns English free-form prose. It means that arbitrary user input languages are normalized into English fixed schema values.
 
 The downstream Relay layers read `requested_detail_types`, `reference_kind`, `scene_type`, `affect_candidate`, or similar fixed enum values. They do not parse the original Japanese, English, Chinese, Korean, or other-language user text again.
 
@@ -115,8 +104,6 @@ Rules:
 
 ## Plain-language phase aliases
 
-The ACG roadmap uses numbered implementation slices, but the product-level sequence also has a plain-language phase map:
-
 ```text
 Phase A: Analyzer Governance
   -> ACG-1 Analyzer Candidate Governance contract (complete)
@@ -128,15 +115,18 @@ Phase C: Retrieval Query Normalization
   -> ACG-3 RelayMEM Query Analyzer / Retrieval Hint Normalization (complete)
 
 Phase D: Reference/Intent Analyzer Consolidation
-  -> ACG-4 RelayREF / RelayINT Reference Analyzer consolidation
+  -> ACG-4 RelayREF / RelayINT Reference Analyzer consolidation (complete)
+
+Phase D2: RelayEMO scene cleanup
+  -> ACG-5 RelayEMO scene ownership cleanup (complete)
 
 Phase E: Scene-wiki Classifier
-  -> ACG-6 SCN structured classifier and scene-wiki integration
+  -> ACG-6 SCN structured classifier and scene-wiki integration (complete)
 ```
 
-ACG-0 is the prerequisite P0 ordering boundary and is complete through PR #458. ACG-1 is complete as the shared contract/helper slice. ACG-2 is complete as the Grounded Recall Query Detail Analyzer and request-side unsupported-detail safety slice. ACG-3 is complete as the Retrieval Query Analyzer / Retrieval Hint Normalization slice. ACG-5 remains inserted before Phase E to remove the remaining RelayEMO scene-ownership ambiguity so SCN scene-wiki work does not inherit a second scene owner.
+ACG-0 is the prerequisite P0 ordering boundary and is complete through PR #458. ACG-1 through ACG-6 are now implemented as bounded candidate-governance slices. Character Workspace parser/compiler/UI work remains separate.
 
-## Priority implementation phases
+## Implemented phases
 
 ### ACG-0: Close the P0 RelaySCN ordering boundary
 
@@ -160,29 +150,13 @@ Scope:
 - define fixed English enum policy;
 - define fail-closed behavior for invalid or low-confidence analyzer output.
 
-This phase is documentation and schema-first. It does not introduce a large runtime classifier, and it does not implement ACG-3 through ACG-6 analyzer producers/classifiers.
+The ACG-1 handoff is [ACG-1 Analyzer Candidate Governance Contract](acg1_analyzer_candidate_governance_contract.md).
 
 ### ACG-2: Grounded Recall Query Detail Analyzer
 
 ACG-2 is complete. It moves request-side remembered-detail detection out of ad hoc regex ownership and into a Query Detail Analyzer artifact consumed by Grounded Recall.
 
-Fixed English detail enum values:
-
-```text
-date_or_time
-person_or_name
-quantity
-relationship
-cause_or_reason
-preference
-location
-identity
-unknown
-```
-
-Existing regex checks remain as a fallback candidate, but unsupported-detail suppression does not become weaker. The fallback is non-authoritative, restrictive-only, and may strengthen suppression only.
-
-ACG-2 does not require an LLM classifier, does not add post-hoc visible response rewriting, does not mutate memory, and does not expose raw user text, memory text, protected source bodies, free-form rationale, regex match bodies, filesystem paths, or queue payloads in public diagnostics.
+Existing regex checks remain as fallback candidates, but unsupported-detail suppression does not become weaker. The fallback is non-authoritative, restrictive-only, and may strengthen suppression only.
 
 The ACG-2 handoff is [ACG-2 Grounded Recall Detail Safety](acg2_grounded_recall_detail_safety.md).
 
@@ -190,50 +164,38 @@ The ACG-2 handoff is [ACG-2 Grounded Recall Detail Safety](acg2_grounded_recall_
 
 ACG-3 is complete. It replaces whitespace-split semantic ownership with a Retrieval Query Analyzer boundary while keeping the existing whitespace path as a fallback candidate rather than the meaning owner.
 
-Implemented scope:
-
-- isolates RelayMEM query hint production behind `relaylm/retrieval_query_analyzer.py`;
-- adds bounded language-tolerant fallback hints, including no-whitespace/CJK n-gram hints;
-- keeps public `query_summary` and `retrieval_query_candidate` diagnostics content-free;
-- keeps runtime-private bounded hints available to read-only RelayMEM candidate discovery and the E1-R5 bridge;
-- prevents raw user text and private hint leakage in public diagnostics.
-
 ACG-3 improves recall for languages without whitespace tokenization and reduces retrieval brittleness without opening broader retrieval, memory mutation, worker/scheduler behavior, or scene/lifecycle bypass authority.
 
 The ACG-3 handoff is [ACG-3 Retrieval Query Normalization](acg3_retrieval_query_normalization.md).
 
 ### ACG-4: RelayREF / RelayINT Reference Analyzer consolidation
 
-Unify unresolved-reference, continuation, and prior-memory-request detection behind a shared reference analyzer candidate.
+ACG-4 is complete. It unifies unresolved-reference, continuation, and prior-memory-request detection behind a shared reference analyzer candidate while preserving content-free public diagnostics and keeping fallback locale markers non-authoritative.
 
-Scope:
-
-- replace duplicated fixed marker sets with one artifact;
-- keep locale-specific markers as fallback candidate signals;
-- make clarification / reflect suggestions restrictive-only unless trusted context resolves the reference;
-- preserve content-free public diagnostics.
+The ACG-4 handoff is [ACG-4 Reference Intent Analyzer](acg4_reference_intent_analyzer.md).
 
 ### ACG-5: RelayEMO scene ownership cleanup
 
-RelayEMO should own affect and expression modulation, not scene policy.
+ACG-5 is complete. RelayEMO owns affect and expression modulation, not scene policy. Any remaining scene-like output is a non-authoritative scene hint candidate and RelaySCN does not consume RelayEMO artifacts as scene authority.
 
-Scope:
-
-- rename or demote RelayEMO `scene_state` output to `scene_hint_candidate` if it remains useful for affect probing;
-- ensure RelaySCN never consumes RelayEMO scene hints as authoritative state;
-- keep affect candidates separate from scene policy and memory authority.
+The ACG-5 handoff is [ACG-5 RelayEMO Scene Cleanup](acg5_relayemo_scene_cleanup.md).
 
 ### ACG-6: SCN structured classifier and scene-wiki integration
 
-Only after the authority contract and memory-safety analyzers are in place, introduce SCN structured classifier candidates and scene-wiki matching.
+ACG-6 is complete as the first safe SCN structured classifier and scene-wiki matching boundary.
 
-Scope:
+Implemented scope:
 
-- structured JSON classifier candidate;
-- scene profile / scene-wiki matching;
-- learned scene pattern consolidation;
-- explicit confidence and authority gates;
-- no direct broad retrieval or mutation authority from classifier output alone.
+- `relaylm/scene_classifier.py` produces fixed English `scene_policy_candidate` artifacts;
+- `relaylm/scene_wiki_matcher.py` matches structured scene definitions by safe IDs/enums/aliases only;
+- RelaySCN includes classifier and scene-wiki diagnostics while preserving explicit/trusted scene authority precedence;
+- classifier and scene-wiki matches remain non-authoritative by default;
+- safety, formal-document, and recovery candidates may restrict/fail closed;
+- non-authoritative implementation/review/design/roleplay candidates cannot open broad retrieval or update policy;
+- public diagnostics remain content-free;
+- no scene-wiki page mutation, uppercase source mutation, Character Workspace parser/compiler/UI, or live LLM dependency is introduced.
+
+The ACG-6 handoff is [ACG-6 Scene-Wiki Classifier Boundary](acg6_scene_wiki_classifier.md).
 
 ## Non-goals
 
@@ -243,7 +205,8 @@ This roadmap does not require:
 - making English free-form LLM prose authoritative;
 - broad runtime policy from heuristic scene classification;
 - Character Workspace parser/compiler/UI implementation;
-- full SCN scene-wiki implementation before the memory-safety analyzers land.
+- scene-wiki page generation or mutation;
+- RelayEMO scene ownership restoration.
 
 ## Acceptance criteria
 
@@ -255,4 +218,8 @@ The governance direction is considered established when:
 - public diagnostics remain content-free even for explicit metadata signals;
 - Grounded Recall detail detection has a candidate artifact boundary;
 - retrieval query hints are no longer semantically owned by whitespace splitting;
-- RelayREF and RelayINT reference markers are on a path to one shared analyzer artifact.
+- RelayREF and RelayINT reference markers share the ACG-4 reference analyzer boundary;
+- RelayEMO affect/expression ownership is separated from RelaySCN scene policy;
+- RelaySCN has a structured scene classifier candidate and scene-wiki match boundary;
+- scene-wiki matching does not mutate files and does not expose scene body text;
+- classifier candidates cannot open broad retrieval, memory update, SOUL/source mutation, or output rewrite authority by themselves.
