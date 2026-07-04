@@ -24,6 +24,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md) — the current product direction reset target: editable Markdown character sources compiled into runtime projections.
 - [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md) — the current read-only source tree/parser contract slice for the file-first Character Workspace reset.
+- [CW-A5 Character Creation, Templates, and Showcase Import](architecture/cw_a5_character_creation_templates_showcase_import.md) — the current bounded creation/template/import slice for deterministic local Character Workspace creation.
 - [RelayREL relationship design](architecture/relayrel_relationship_design.md) — target-specific relationship state, relationship-conditioned interaction policy, and `RELATIONSHIP.md` / `relationships/<target>.md` ownership.
 - [Character template creation flow](architecture/character_template_creation_flow.md) — no-character startup, Quick/Advanced Create, template import, and showcase policy.
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
@@ -42,6 +43,7 @@ Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<sl
 
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md)
 - [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md)
+- [CW-A5 Character Creation, Templates, and Showcase Import](architecture/cw_a5_character_creation_templates_showcase_import.md)
 - [RelayREL relationship design](architecture/relayrel_relationship_design.md)
 - [Character template creation flow](architecture/character_template_creation_flow.md)
 - [P0 RelayREL / RelaySCN / RelayEMO ordering fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md)
@@ -96,7 +98,7 @@ Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<sl
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged, E1-R5 is converged as a post-Wave-7 correction, P0-PIPE is complete in PR #458, ACG-1 through ACG-6 analyzer governance slices are complete, and PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged, E1-R5 is converged as a post-Wave-7 correction, P0-PIPE is complete in PR #458, ACG-1 through ACG-6 analyzer governance slices are complete, CW-A1 through CW-A5 Character Workspace reset slices are complete, and PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
 
 ## Wave 8 implementation evidence
 
