@@ -12,6 +12,7 @@ from .character_store_bootstrap import (
     execute_character_store_bootstrap,
 )
 from .config import RelayLMConfig
+from .relaymem_primary_recall import resolve_relaymem_character_store_root
 
 REQUEST_SCHEMA = "relaylm.runtime_install_request.v0"
 REPORT_SCHEMA = "relaylm.runtime_install_report.v0"
@@ -258,16 +259,34 @@ def _collect_targets(config: RelayLMConfig, config_dir: Path) -> tuple[list[_Tar
 
 
 def _prevalidate_character_store(*, config: RelayLMConfig, character_id: str, memory_root: Path | None) -> tuple[list[RuntimeInstallAction], list[str], bool]:
+    reasons: list[str] = []
     if not isinstance(character_id, str) or not character_id:
         return [], ["runtime_install_character_id_invalid"], False
     if character_id not in config.characters:
-        return [], ["character_store_bootstrap_character_not_configured"], False
+        reasons.append("character_store_bootstrap_character_not_configured")
     if not config.memory.store_enabled:
-        return [], ["character_store_bootstrap_memory_store_disabled"], False
+        reasons.append("character_store_bootstrap_memory_store_disabled")
     if memory_root is None:
-        return [], ["runtime_install_character_store_memory_root_not_configured"], False
-    present = (memory_root / "characters" / character_id).is_dir()
-    return [RuntimeInstallAction("character_store_bootstrap", "character_store_root", True, False, "preflight")], [], present
+        reasons.append("runtime_install_character_store_memory_root_not_configured")
+        return [], reasons, False
+
+    scoped = resolve_relaymem_character_store_root(str(memory_root), character_id)
+    if scoped is None:
+        reasons.append("character_store_bootstrap_character_scope_unresolved")
+    matching_namespaces = {
+        route.memory_namespace
+        for route in config.model_routes.values()
+        if route.character_id == character_id and route.memory_namespace is not None
+    }
+    matching_route_count = sum(1 for route in config.model_routes.values() if route.character_id == character_id)
+    if matching_route_count == 0:
+        reasons.append("character_store_bootstrap_route_scope_missing")
+    elif len(matching_namespaces) > 1:
+        reasons.append("character_store_bootstrap_route_scope_ambiguous")
+    if reasons:
+        return [], reasons, False
+    assert scoped is not None
+    return [RuntimeInstallAction("character_store_bootstrap", "character_store_root", True, False, "preflight")], [], Path(scoped).is_dir()
 
 
 def _run_character_store_bootstrap(*, config: RelayLMConfig, character_id: str, memory_root: Path, write: bool) -> tuple[list[RuntimeInstallAction], list[str], bool]:
@@ -286,7 +305,9 @@ def _run_character_store_bootstrap(*, config: RelayLMConfig, character_id: str, 
     status = str(public.get("status", "invalid_input"))
     if status == "invalid_input":
         return [RuntimeInstallAction("character_store_bootstrap", "character_store_root", False, False, "runtime_install_character_store_bootstrap_failed")], [str(x) for x in public.get("reason_ids", [])], False
-    return [RuntimeInstallAction("character_store_bootstrap", "character_store_root", status == "dry_run_missing" or not bool(public.get("ready")), bool(public.get("mutated")), status)], [], bool(public.get("ready")) or (memory_root / "characters" / character_id).is_dir()
+    scoped = resolve_relaymem_character_store_root(str(memory_root), character_id)
+    present = scoped is not None and Path(scoped).is_dir()
+    return [RuntimeInstallAction("character_store_bootstrap", "character_store_root", status == "dry_run_missing" or not bool(public.get("ready")), bool(public.get("mutated")), status)], [], bool(public.get("ready")) or present
 
 
 def _resolve_config_dir(config_path: str | None) -> tuple[Path, str | None]:
