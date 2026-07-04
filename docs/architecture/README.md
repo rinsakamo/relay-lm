@@ -31,6 +31,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [File-first Character Workspace Design](file_first_character_workspace_design.md) defines the target Markdown source tree, RelayREL boundary, SLP-maintained scene/memory wiki model, and KV-cache-friendly context tiers.
 - [RelayREL Relationship Design](relayrel_relationship_design.md) defines target-specific relationship state, `RELATIONSHIP.md`, `relationships/<target>.md`, and relationship-conditioned interaction policy.
 - [Character Template and Creation Flow](character_template_creation_flow.md) defines Quick Create, Advanced Create, no-character startup, template import, and primary-user-fit finished showcase character policy.
+- [CW-A5 Character Creation, Templates, and Showcase Import](cw_a5_character_creation_templates_showcase_import.md) records the current bounded deterministic local creation/template/import implementation slice.
 - [Pinned Normal Memory Pages](pinned_normal_memory_pages.md) defines pinned normal memory as ordinary retrieval memory protected from ordinary RelaySLP maintenance.
 - [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](p0_relayrel_relayscn_relayemo_ordering_fix.md) records the completed pre-Character-Workspace ordering boundary, which is complete only once app.py request-path rewiring is present and validation passes.
 - [Pipeline Responsibility Design](pipeline_responsibility_design.md) defines component ownership and the target REL -> SCN -> EMO -> INT -> MEM -> CTX order.
@@ -157,9 +158,10 @@ The current Product and RelayMEM status is intentionally not summarized here. Re
 - [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md)
 - [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md)
 - [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
+- [CW-A5 Character Creation, Templates, and Showcase Import](cw_a5_character_creation_templates_showcase_import.md)
 - [SOUL Lab Runtime MVP](soul_lab_runtime_mvp.md)
 
-The browser owns no queue, scheduler, worker, storage root, namespace, backend, SOUL, or route authority. Forget, Pin / Unpin, and Held Governance mutation boundaries remain in explicit loopback contracts and server-side authorities. E1-R1 trust is route-owned and never browser-owned. E1-R4 grounding remains request-side and never exposes runtime-private evidence in public diagnostics. E1-R5 bridge diagnostics remain content-free and do not expose scoped roots, namespaces, paths, digests, lineage, or runtime-private evidence.
+The browser owns no queue, scheduler, worker, storage root, namespace, backend, SOUL, or route authority. Forget, Pin / Unpin, and Held Governance mutation boundaries remain in explicit loopback contracts and server-side authorities. E1-R1 trust is route-owned and never browser-owned. E1-R4 grounding remains request-side and never exposes runtime-private evidence in public diagnostics. E1-R5 bridge diagnostics remain content-free and do not expose scoped roots, namespaces, paths, digests, lineage, or runtime-private evidence. CW-A5 creation/import surfaces remain explicit user-approved flows and do not auto-activate a character.
 
 ## Wave 7 implementation evidence
 

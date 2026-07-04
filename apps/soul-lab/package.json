@@ -13,6 +13,7 @@
     "smoke:held-governance-ui": "node scripts/heldGovernanceUiSmoke.mjs",
     "smoke:pin-unpin-ui": "node scripts/pinUnpinUiSmoke.mjs",
     "smoke:character-workspace": "node scripts/characterWorkspaceSmoke.mjs",
+    "smoke:character-creation": "node scripts/characterCreationSmoke.mjs",
     "preview": "vite preview --host 127.0.0.1"
   },
   "engines": {

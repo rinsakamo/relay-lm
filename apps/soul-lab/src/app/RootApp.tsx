@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
 import type { CharacterSummary, LabRoute, Language, Theme } from "../domain/lab";
+import { CharacterCreationPage } from "../features/creation/CharacterCreationPage";
 import { ConnectedLifecycleLabObservationPage } from "../features/lifecycle/ConnectedLifecycleLabObservationPage";
 import {
   loadLabManagementProjections,
@@ -14,6 +15,7 @@ import { App } from "./App";
 
 const navigation: Array<{ route: LabRoute; label: MessageKey; marker: string }> = [
   { route: "home", label: "nav.home", marker: "⌂" },
+  { route: "create", label: "nav.create", marker: "＋" },
   { route: "character", label: "nav.character", marker: "◆" },
   { route: "scenes", label: "nav.scenes", marker: "▦" },
   { route: "relationships", label: "nav.relationships", marker: "⇄" },
@@ -26,12 +28,13 @@ const legacyRouteAliases: Record<string, LabRoute> = {
   observation: "runtime",
   communication: "advanced",
   pod: "advanced",
-  adoption: "advanced",
+  adoption: "create",
   settings: "advanced",
 };
 
 const footerLabels: Record<LabRoute, string> = {
   home: "CW-A3 · Existing real Home conversation / explicit Local Preview",
+  create: "CW-A5 · explicit character creation / templates / import",
   character: "CW-A3 · SOUL / STYLE / EMOTION / BOUNDARY / optional LORE",
   scenes: "CW-A3 · SCENE policy / active scenes / scene inbox",
   relationships: "CW-A3 · RELATIONSHIP vocabulary / target context / proposals",
@@ -41,7 +44,7 @@ const footerLabels: Record<LabRoute, string> = {
   observation: "CW-A3 · legacy route mapped to Runtime",
   communication: "CW-A3 · legacy route mapped to Advanced",
   pod: "CW-A3 · legacy route mapped to Advanced",
-  adoption: "CW-A3 · legacy route mapped to Advanced",
+  adoption: "CW-A5 · legacy route mapped to Create",
   settings: "CW-A3 · legacy route mapped to Advanced",
 };
 
@@ -99,8 +102,9 @@ export function RootApp() {
   >({});
   const [settingsProjection, setSettingsProjection] = useState<LabSettingsProjection | null>(null);
 
+  const noRuntimeCharacter = runtimeCharacters !== null && runtimeCharacters.length === 0;
   const characters = useMemo(
-    () => (runtimeCharacters && runtimeCharacters.length > 0 ? runtimeCharacters : mockCharacters),
+    () => (runtimeCharacters !== null ? runtimeCharacters : mockCharacters),
     [runtimeCharacters],
   );
   const activeCharacter = useMemo(
@@ -168,8 +172,8 @@ export function RootApp() {
   }, [language]);
 
   useEffect(() => {
-    window.localStorage.setItem("soul-lab-active-character", activeCharacterId);
-  }, [activeCharacterId]);
+    if (!noRuntimeCharacter) window.localStorage.setItem("soul-lab-active-character", activeCharacterId);
+  }, [activeCharacterId, noRuntimeCharacter]);
 
   const updateNavigationLock = useCallback((lockRoute: LabRoute, locked: boolean) => {
     setNavigationLock((current) => {
@@ -193,7 +197,7 @@ export function RootApp() {
   }
 
   function selectCharacter(characterId: string) {
-    if (!interactionLocked) setActiveCharacterId(characterId);
+    if (!interactionLocked && characterId) setActiveCharacterId(characterId);
   }
 
   const workspacePageProps = {
@@ -227,20 +231,26 @@ export function RootApp() {
         </nav>
         <div className="sidebar-note">
           <span className="mock-pill">
-            {route === "home"
-              ? "REAL / EXPLICIT PREVIEW"
-              : runtimeCharacters
-                ? "CONTENT-FREE PROJECTION"
-                : translate(language, "app.mockBadge")}
+            {noRuntimeCharacter
+              ? "NO CHARACTER / CREATE"
+              : route === "home"
+                ? "REAL / EXPLICIT PREVIEW"
+                : runtimeCharacters
+                  ? "CONTENT-FREE PROJECTION"
+                  : translate(language, "app.mockBadge")}
           </span>
           <p>
             {navigationLock
               ? translate(language, "nav.locked")
-              : route === "home"
+              : noRuntimeCharacter
                 ? language === "ja"
-                  ? "Homeは既存RelayLM /v1/chat/completions authority pathのままです。"
-                  : "Home stays on the existing RelayLM /v1/chat/completions authority path."
-                : translate(language, "nav.boundaryNote")}
+                  ? "有効なCharacter Workspaceはありません。Create / Importへ進みます。"
+                  : "No valid Character Workspace exists. Continue through Create / Import."
+                : route === "home"
+                  ? language === "ja"
+                    ? "Homeは既存RelayLM /v1/chat/completions authority pathのままです。"
+                    : "Home stays on the existing RelayLM /v1/chat/completions authority path."
+                  : translate(language, "nav.boundaryNote")}
           </p>
         </div>
       </aside>
@@ -249,12 +259,16 @@ export function RootApp() {
         <header className="topbar">
           <label className="character-selector">
             <span>{translate(language, "header.activeCharacter")}</span>
-            <select value={activeCharacter.characterId} disabled={interactionLocked} onChange={(event: ChangeEvent<HTMLSelectElement>) => selectCharacter(event.target.value)}>
-              {characters.map((character) => <option value={character.characterId} key={character.characterId}>{character.displayName}</option>)}
+            <select value={noRuntimeCharacter ? "" : activeCharacter.characterId} disabled={interactionLocked || noRuntimeCharacter} onChange={(event: ChangeEvent<HTMLSelectElement>) => selectCharacter(event.target.value)}>
+              {noRuntimeCharacter
+                ? <option value="">No valid character workspace</option>
+                : characters.map((character) => <option value={character.characterId} key={character.characterId}>{character.displayName}</option>)}
             </select>
           </label>
           <div className="topbar-status">
-            <><span className={`status-badge status-${activeCharacter.status}`}>{translate(language, `status.${activeCharacter.status}`)}</span><span className="soul-version">SOUL {activeCharacter.soulVersion} · {activeCharacter.stabilityLabel}</span></>
+            {noRuntimeCharacter
+              ? <><span className="status-badge status-degraded">Create required</span><span className="soul-version">No default character was auto-created</span></>
+              : <><span className={`status-badge status-${activeCharacter.status}`}>{translate(language, `status.${activeCharacter.status}`)}</span><span className="soul-version">SOUL {activeCharacter.soulVersion} · {activeCharacter.stabilityLabel}</span></>}
           </div>
           <div className="topbar-actions">
             <button className="icon-button" type="button" aria-label={translate(language, "header.language")} title={translate(language, "header.language")} onClick={() => setLanguage((value) => (value === "ja" ? "en" : "ja"))}>{language === "ja" ? "EN" : "JA"}</button>
@@ -263,7 +277,9 @@ export function RootApp() {
         </header>
 
         <main className="main-content">
-          {route === "home" && (
+          {noRuntimeCharacter && <CharacterCreationPage language={language} noCharacter />}
+          {!noRuntimeCharacter && route === "create" && <CharacterCreationPage language={language} />}
+          {!noRuntimeCharacter && route === "home" && (
             <App
               language={language}
               activeCharacter={activeCharacter}
@@ -272,12 +288,12 @@ export function RootApp() {
               onNavigate={navigate}
             />
           )}
-          {route === "character" && <CharacterWorkspacePage surface="character" {...workspacePageProps} />}
-          {route === "scenes" && <CharacterWorkspacePage surface="scenes" {...workspacePageProps} />}
-          {route === "relationships" && <CharacterWorkspacePage surface="relationships" {...workspacePageProps} />}
-          {route === "memory" && <CharacterWorkspacePage surface="memory" {...workspacePageProps} />}
-          {route === "runtime" && <CharacterWorkspacePage surface="runtime" {...workspacePageProps} />}
-          {route === "advanced" && (
+          {!noRuntimeCharacter && route === "character" && <CharacterWorkspacePage surface="character" {...workspacePageProps} />}
+          {!noRuntimeCharacter && route === "scenes" && <CharacterWorkspacePage surface="scenes" {...workspacePageProps} />}
+          {!noRuntimeCharacter && route === "relationships" && <CharacterWorkspacePage surface="relationships" {...workspacePageProps} />}
+          {!noRuntimeCharacter && route === "memory" && <CharacterWorkspacePage surface="memory" {...workspacePageProps} />}
+          {!noRuntimeCharacter && route === "runtime" && <CharacterWorkspacePage surface="runtime" {...workspacePageProps} />}
+          {!noRuntimeCharacter && route === "advanced" && (
             <div className="advanced-stack">
               <CharacterWorkspacePage surface="advanced" {...workspacePageProps} />
               <ConnectedLifecycleLabObservationPage

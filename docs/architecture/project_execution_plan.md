@@ -34,6 +34,7 @@ relaylm_related_authority:
   - cw_a2_workspace_compiler_projections.md
   - cw_a3_character_workspace_ui_rebuild.md
   - cw_a4_slp_workspace_maintenance_candidates.md
+  - cw_a5_character_creation_templates_showcase_import.md
   - e1r5_primary_mem_recall_candidate_bridge.md
   - e1r5_post_wave7_correction_convergence_audit.md
 ---
@@ -70,7 +71,7 @@ Character Workspace reset
     -> CW-A2 workspace compiler projections and KV-cache tiers complete
     -> CW-A3 Character Workspace UI rebuild complete
     -> CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals complete
-    -> CW-A5 character creation, templates, and showcase import
+    -> CW-A5 character creation, templates, and showcase import complete
 
 Operations
   O1D2 bounded scheduler policy/fairness/pacing complete
@@ -94,7 +95,9 @@ For the file-first Character Workspace reset, MVP completion requires that targe
 
 CW-A3 closes the browser UI rebuild portion of the reset. It is presentation-only: Home stays on the existing RelayLM `/v1/chat/completions` authority path, and Character / Scenes / Relationships / Memory Wiki / Runtime / Advanced default to content-free projections, source-status vocabulary, and explicit Advanced separation for governance internals.
 
-CW-A4 closes the first RelaySLP-maintained workspace maintenance slice for MEM / SCENE / REL wiki candidates and proposals only. It is dry-run-first, produces content-free public projections, writes only allowlisted inbox/proposal artifacts when explicitly requested, and preserves the uppercase source approval boundary. CW-A4 does not implement CW-A5 creation/template flow, direct uppercase source rewrites, RelaySOUL apply/rollback, current-turn response effects, runtime prompt injection, queue/worker/O2/O3 authority, or replacement of RelayMEM lifecycle, RelaySCN scene, or RelayREL relationship runtime authorities.
+CW-A4 closes the first RelaySLP-maintained workspace maintenance slice for MEM / SCENE / REL wiki candidates and proposals only. It is dry-run-first, produces content-free public projections, writes only allowlisted inbox/proposal artifacts when explicitly requested, and preserves the uppercase source approval boundary. CW-A4 does not implement direct uppercase source rewrites, RelaySOUL apply/rollback, current-turn response effects, runtime prompt injection, queue/worker/O2/O3 authority, or replacement of RelayMEM lifecycle, RelaySCN scene, or RelayREL relationship runtime authorities.
+
+CW-A5 closes the first character creation/template slice. It implements deterministic bundled templates, Quick Create, Advanced Create staging, showcase use-as-is/use-as-starter behavior, local template folder/zip validation, loopback creation APIs, explicit CLI dry-run/write commands, zero-character UI routing, and local CW-A2 build generation after approved commit. CW-A5 does not implement remote registries, unbounded downloads, automatic default active character restoration, normal-path LLM generation, runtime prompt injection changes, or active-character auto-selection after commit.
 
 Phase I-2 is complete for read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence. That observation boundary remains read-only and cannot authorize repair, retrieval, mutation, or source-body exposure.
 
@@ -128,7 +131,7 @@ Character Workspace reset
   CW-A2 workspace compiler projections and KV-cache tiers complete
   CW-A3 Character Workspace UI rebuild complete
   CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals complete
-  CW-A5 character creation, templates, and showcase import
+  CW-A5 character creation, templates, and showcase import complete
 
 Post-E1-R5 / Post-Wave-7 next candidates:
   E1-R5 scoped Primary recall candidate bridge boundary remains complete; new work starts after P0-PIPE and ACG.
@@ -178,16 +181,7 @@ O1F operational validation
 
 ### Post-O1F next candidates
 
-```text
-I-5B Pin / Unpin apply/API/UI/ranking work                 complete in Wave 6
-I-7C Held Apply/Discard runtime/API/UI/durable evidence    complete in Wave 6
-E1-R1 trusted Home scene-admission path                    complete in Wave 6
-E1-R2 idempotent character-store bootstrap command         complete in Wave 6
-E1-R3 provenance-preserving Primary MEM formation summary  complete in Wave 7
-E1-R4 retrieval-response grounding and unsupported-detail suppression complete in Wave 7
-E1-R5 Primary MEM recall candidate discovery bridge        complete post-Wave-7
-O2/O3 only after explicit MVP need
-```
+Post-O1F candidates have been closed or absorbed by later Wave 6, Wave 7, E1-R5, PM-D*, and Character Workspace reset slices. Remaining operations work remains O2/O3 only after explicit MVP need.
 
 ### Wave 7 completed
 
@@ -206,32 +200,18 @@ E1-R5 Primary MEM recall candidate discovery bridge complete
 
 E1-R5 remains a bounded scoped Primary recall bridge. It preserves M2 as preferred relevance owner and is tracked for later canonical adapter fold-in by PM-D8.
 
-### Character Workspace reset opened
+### Character Workspace reset completed through CW-A5
 
 ```text
 CW-A1 file-first source tree and parser contracts complete
 CW-A2 workspace compiler projections and KV-cache tiers complete
 CW-A3 Character Workspace UI rebuild complete
 CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals complete
+CW-A5 character creation, templates, and showcase import complete
 ```
 
-CW-A1 establishes the read-only file-first Character Workspace source-tree and parser contracts. CW-A2 adds deterministic `.relaylm/build/**` compiler projections and KV-cache tier summaries. CW-A3 rebuilds `apps/soul-lab` into Character Workspace top-level surfaces while preserving the existing Home conversation authority path and keeping browser authority presentation-only. CW-A4 adds dry-run-first RelaySLP MEM / SCENE / REL candidate/proposal planning, content-free projection, and explicit write-candidates mode for allowlisted inbox/proposal artifacts only; it does not add uppercase source rewrites, runtime prompt injection, queue/worker/O2/O3 authority, or current-turn effects.
+CW-A1 establishes the read-only file-first Character Workspace source-tree and parser contracts. CW-A2 adds deterministic `.relaylm/build/**` compiler projections and KV-cache tier summaries. CW-A3 rebuilds `apps/soul-lab` into Character Workspace top-level surfaces while preserving the existing Home conversation authority path and keeping browser authority presentation-only. CW-A4 adds dry-run-first RelaySLP MEM / SCENE / REL candidate/proposal planning, content-free projection, and explicit write-candidates mode for allowlisted inbox/proposal artifacts only. CW-A5 adds deterministic, explicit character creation/template/import surfaces while preserving the no-auto-default and no-hidden-activation boundary.
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-```text
-E1-R5 scoped Primary recall candidate bridge boundary remains complete; new work starts after P0-PIPE and ACG.
-PM-D1 RelaySOUL gate design-freeze relation
-PM-D4 client history exclusion default-off deployment decision
-PM-D5 RelayMEM flat-store compatibility removal
-PM-D6 RelayINT native artifact / RelayREF wrapper removal
-PM-D7 runtime install hook fold-in
-PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
-PM-D9 analyzer candidate governance and multilingual schema policy
-PM-D2 closure or absorption after PM-D6 if RelayREF wrapper removal closes the legacy artifact scope
-O2/O3 only after explicit MVP need
-```
-
-## Current authority links
-
-ACG handoffs: [ACG-1](acg1_analyzer_candidate_governance_contract.md), [ACG-2](acg2_grounded_recall_detail_safety.md), [ACG-3](acg3_retrieval_query_normalization.md), [ACG-4](acg4_reference_intent_analyzer.md), [ACG-5](acg5_relayemo_scene_cleanup.md), and [ACG-6](acg6_scene_wiki_classifier.md). CW handoffs: [CW-A1](cw_a1_file_first_source_tree_parser_contracts.md), [CW-A2](cw_a2_workspace_compiler_projections.md), [CW-A3](cw_a3_character_workspace_ui_rebuild.md), and [CW-A4](cw_a4_slp_workspace_maintenance_candidates.md). E1-R5 details are in [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md) and [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md).
+The remaining candidates are PM-D1/PM-D4/PM-D5/PM-D6/PM-D7/PM-D8/PM-D9 follow-through and O2/O3 only after explicit MVP need.

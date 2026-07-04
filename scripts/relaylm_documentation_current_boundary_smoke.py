@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current documentation boundary anchors after E1-R5, ACG, and Wave 8 docs updates."""
+"""Validate current documentation boundary anchors after E1-R5, ACG, CW-A5, and Wave 8 docs updates."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -24,6 +24,7 @@ CURRENT_DOCS = (
     "docs/architecture/e1r5_post_wave7_correction_convergence_audit.md",
     "docs/architecture/acg1_analyzer_candidate_governance_contract.md",
     "docs/architecture/acg5_relayemo_scene_cleanup.md",
+    "docs/architecture/cw_a5_character_creation_templates_showcase_import.md",
     "docs/architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md",
     "docs/architecture/phase_i5_pin_unpin_contract.md",
     "docs/architecture/phase_i5b_pin_unpin_apply.md",
@@ -53,6 +54,8 @@ REQUIRED = {
         "Post-E1-R5 / Post-Wave-7 next candidates:",
         "E1-R5 scoped Primary recall candidate bridge boundary",
         "Analyzer Candidate Governance: ACG-1 contract/helpers complete; ACG-2 Grounded Recall Detail Safety complete; ACG-3 Retrieval Query Normalization complete; ACG-4 Reference/Intent Analyzer consolidation complete; ACG-5 RelayEMO scene ownership cleanup complete; ACG-6 SCN structured classifier and scene-wiki boundary complete",
+        "CW-A5 character creation, templates, and showcase import   complete",
+        "CW-A5 handoff is [CW-A5 Character Creation, Templates, and Showcase Import]",
         "Post-MVP decision debt is now tracked explicitly as PM-D1",
         "PM-D1 RelaySOUL gate design-freeze relation",
         "PM-D2 RelayINT -> RelayMEM relayint_intent_artifact legacy compatibility scope",
@@ -66,6 +69,8 @@ REQUIRED = {
     ),
     "docs/README.md": (
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
+        "CW-A5 Character Creation, Templates, and Showcase Import",
+        "CW-A1 through CW-A5 Character Workspace reset slices are complete",
         "ACG-1 through ACG-6 analyzer governance slices are complete",
         "ACG-6 Scene-Wiki Classifier Boundary",
         "Wave 8 implementation evidence",
@@ -79,6 +84,9 @@ REQUIRED = {
         "PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision",
     ),
     "docs/architecture/README.md": (
+        "CW-A5 Character Creation, Templates, and Showcase Import",
+        "current bounded deterministic local creation/template/import implementation slice",
+        "CW-A5 creation/import surfaces remain explicit user-approved flows",
         "Wave 7 Cross-Slice Convergence Audit",
         "E1-R4 Retrieval-Response Grounding",
         "E1-R5 Primary MEM Recall Candidate Discovery Bridge",
@@ -105,15 +113,21 @@ REQUIRED = {
         "`evaluation_consolidation`",
     ),
     "docs/architecture/current_target_migration_guide.md": (
-        "Current Wave 7 / P0-PIPE / ACG compatibility interpretation",
+        "Current Wave 7 / P0-PIPE / ACG / CW compatibility interpretation",
         "E1-R3 is current implemented as provenance-preserving Primary MEM formation summary.",
         "E1-R4 is current implemented as request-side retrieval-response grounding and unsupported-detail suppression.",
         "E1-R5 is current implemented as bounded scoped Primary MEM recall candidate discovery bridge.",
         "ACG-2 is current implemented as Grounded Recall detail safety behind Query Detail Analyzer governance.",
         "ACG-6 is current implemented as the bounded SCN structured classifier and scene-wiki matching boundary.",
+        "CW-A1 is current implemented as file-first source tree and parser contracts.",
+        "CW-A2 is current implemented as workspace compiler projections and KV-cache tier summaries.",
+        "CW-A3 is current implemented as the presentation-only Character Workspace UI rebuild.",
+        "CW-A4 is current implemented as dry-run-first SLP-maintained MEM/SCENE/REL wiki candidate and proposal planning.",
+        "CW-A5 is current implemented as deterministic character creation, bundled templates, showcase import, local validation, loopback APIs, CLI dry-run/write commands, zero-character UI routing, and local CW-A2 build generation after approved commit.",
         "ACG-1 through ACG-6 are current as bounded analyzer-governance slices.",
+        "CW-A1 through CW-A5 are current as bounded Character Workspace reset slices.",
         "Completed behavior must not be re-listed as migration work:",
-        "ACG-1 through ACG-6 analyzer governance slices are complete.",
+        "CW-A1 through CW-A5 Character Workspace reset slices are complete.",
         "PM-D8 in [Project Execution Plan](project_execution_plan.md) tracks the later decision",
     ),
     "docs/architecture/project_execution_plan.md": (
@@ -126,6 +140,7 @@ REQUIRED = {
         "PM-D6 RelayINT native artifact / RelayREF wrapper removal",
         "PM-D7 runtime install hook fold-in",
         "PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in",
+        "CW-A5 character creation, templates, and showcase import complete",
         "Implementation order for large compatibility removals:",
         "PM-D5 -> PM-D6 -> PM-D7",
         "PM-D8 should be evaluated with PM-D5",
@@ -184,6 +199,16 @@ REQUIRED = {
         "relaylm_doc_type: implementation_handoff",
         "# ACG-5 RelayEMO Scene Ownership Cleanup",
     ),
+    "docs/architecture/cw_a5_character_creation_templates_showcase_import.md": (
+        "relaylm_doc_type: implementation_handoff",
+        "relaylm_update_trigger:",
+        "relaylm_not_authoritative_for:",
+        "# CW-A5 Character Creation, Templates, and Showcase Import",
+        "CW-A5 adds the bounded character creation path",
+        "The SOUL Lab UI now routes the zero-character projection to the Create surface",
+        "The CLI requires `--write` for persistence and does not auto-activate characters.",
+        "PYTHONPATH=. python scripts/relaylm_cw_a5_character_creation_templates_smoke.py",
+    ),
     "docs/architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md": (
         "relaylm_doc_type: implementation_handoff",
         "# P0 RelayREL / RelaySCN / RelayEMO Ordering Fix",
@@ -240,6 +265,7 @@ STALE = tuple(
     remaining E1-R4 quality work
     E1-R5 remains unindexed
     E1-R5 remains incomplete
+    Character Workspace source tree parser/compiler/UI
     ACG-1 is current as a shared contract/helper layer only. It does not mean that Grounded Recall detail detection, retrieval query normalization, RelayREF / RelayINT reference analyzer consolidation, RelayEMO scene-hint cleanup, or SCN scene-wiki classifier work is complete.
     ACG-2 through ACG-6 analyzer candidate producers/classifiers
     ACG-1 is complete as the analyzer governance contract/helper slice, and PM-D8 tracks

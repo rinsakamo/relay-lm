@@ -20,6 +20,8 @@ dependencies = [
 relaylm = "relaylm.soul_lab_app:main"
 relaylm-worker = "relaylm.local_worker_cli:main"
 relaylm-character-store-bootstrap = "relaylm.character_store_bootstrap_cli:main"
+relaylm-character-create = "relaylm.character_creation_cli:main_create"
+relaylm-character-template-validate = "relaylm.character_creation_cli:main_validate"
 relaylm-runtime-install = "relaylm.runtime_install_cli:main"
 
 [build-system]

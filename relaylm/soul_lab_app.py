@@ -26,6 +26,7 @@ from relaylm.relaymem_primary_forget import (
     list_primary_memory_forget_history,
     preflight_primary_memory_forget,
 )
+from relaylm.soul_lab_character_creation import install_character_creation_routes
 from relaylm.soul_lab_forget_projection_history import (
     build_lab_active_recent_memory_projection,
     build_lab_forget_history_projection,
@@ -200,6 +201,12 @@ def create_app(config_path: str | None = None) -> FastAPI:
         app,
         require_loopback_management=require_loopback_management,
         observation_scope=correction_scope,
+        exact_json=exact_json,
+    )
+    install_character_creation_routes(
+        app,
+        config=config,
+        require_loopback_management=require_loopback_management,
         exact_json=exact_json,
     )
 
