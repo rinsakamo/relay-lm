@@ -44,6 +44,11 @@ Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<sl
 - [Character template creation flow](architecture/character_template_creation_flow.md)
 - [P0 RelayREL / RelaySCN / RelayEMO ordering fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md)
 - [ACG-1 Analyzer Candidate Governance contract](architecture/acg1_analyzer_candidate_governance_contract.md)
+- [ACG-2 Grounded Recall Detail Safety](architecture/acg2_grounded_recall_detail_safety.md)
+- [ACG-3 Retrieval Query Normalization](architecture/acg3_retrieval_query_normalization.md)
+- [ACG-4 Reference Intent Analyzer](architecture/acg4_reference_intent_analyzer.md)
+- [ACG-5 RelayEMO Scene Cleanup](architecture/acg5_relayemo_scene_cleanup.md)
+- [ACG-6 Scene-Wiki Classifier Boundary](architecture/acg6_scene_wiki_classifier.md)
 - [Analyzer Candidate Governance roadmap](architecture/analyzer_candidate_governance.md)
 - [Phase 6 I1-B runtime enqueue and protected source capture](architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md)
 - [Phase 6-C1 Primary MEM worker contract](architecture/phase6c1_primary_mem_worker_contract.md)
@@ -89,7 +94,11 @@ Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<sl
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged, E1-R5 is converged as a post-Wave-7 correction, P0-PIPE is complete in PR #458, ACG-1 is complete as the analyzer governance contract/helper slice, and PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged, E1-R5 is converged as a post-Wave-7 correction, P0-PIPE is complete in PR #458, ACG-1 through ACG-6 analyzer governance slices are complete, and PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+
+## Wave 8 implementation evidence
+
+- [MVP eval runner completion report](mvp/wave8/mvp_eval_runner_completion_report.md) — source PR #451. This is an operator-facing evaluation-flow convenience only and does not mark O2/O3 complete.
 
 ## Wave 7 implementation evidence
 
