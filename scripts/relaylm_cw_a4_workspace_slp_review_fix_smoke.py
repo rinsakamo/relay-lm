@@ -8,6 +8,7 @@ from pathlib import Path
 from relaylm.character_workspace import REQUIRED_SOURCE_FILENAMES, plan_character_workspace_slp_candidates
 
 ASSISTANT_SECRET = "ASSISTANT_ONLY_PASSWORD_SCENE_RELATIONSHIP_TOKEN"
+DUPLICATE_USER_FACT = "User says the public relationship trust note should be reviewed."
 
 
 def _write_required_sources(root: Path) -> None:
@@ -42,6 +43,12 @@ def _assert_public_projection_safe(run: object, root: Path) -> None:
     assert str(root.resolve()) not in serialized
     assert projection["raw_source_body_included"] is False
     assert projection["queue_mutated"] is False
+
+
+def _assert_no_proposals_written(root: Path) -> None:
+    proposal_root = root / "proposals"
+    if proposal_root.exists():
+        assert not list(proposal_root.rglob("*.json")), "orphaned proposal written after blocked candidate write"
 
 
 def main() -> None:
@@ -83,7 +90,9 @@ def main() -> None:
             write = plan_character_workspace_slp_candidates(root, write_candidates=True)
             assert write.status == "write_blocked"
             assert "write_path_symlink_rejected" in write.blocked_reason_ids
+            assert "proposal_write_skipped_after_candidate_write_failure" in write.blocked_reason_ids
             assert not queue_target.exists(), "write followed dangling symlink into .relaylm/queue"
+            _assert_no_proposals_written(root)
 
         assistant_only_root = Path(tmp) / "characters" / "assistant-only"
         _write_required_sources(assistant_only_root)
@@ -96,6 +105,30 @@ def main() -> None:
         _assert_public_projection_safe(assistant_only, assistant_only_root)
         assert any("assistant_only_speculation" in candidate.reason_ids for candidate in assistant_only.candidates)
         assert "assistant_only_speculation_blocked" in assistant_only.reason_ids
+
+        duplicate_root = Path(tmp) / "characters" / "duplicates"
+        _write_required_sources(duplicate_root)
+        _write_source(duplicate_root, {"messages": [{"role": "user", "content": DUPLICATE_USER_FACT}]}, "a.json")
+        _write_source(duplicate_root, {"messages": [{"role": "user", "content": DUPLICATE_USER_FACT}]}, "b.json")
+        duplicate_run = plan_character_workspace_slp_candidates(duplicate_root, write_candidates=True)
+        assert duplicate_run.status == "planned"
+        assert "candidate_artifact_conflict" not in duplicate_run.blocked_reason_ids
+        memory_paths = [candidate.target_path for candidate in duplicate_run.candidates if candidate.target_domain == "memory"]
+        assert len(memory_paths) == len(set(memory_paths)) == 2, memory_paths
+        assert all((duplicate_root / path).exists() for path in memory_paths)
+
+        conflict_root = Path(tmp) / "characters" / "conflict"
+        _write_required_sources(conflict_root)
+        _write_source(conflict_root, {"messages": [{"role": "user", "content": "User says a memory note should be reviewed."}]})
+        conflict_plan = plan_character_workspace_slp_candidates(conflict_root)
+        conflict_path = next(candidate.target_path for candidate in conflict_plan.candidates if candidate.target_domain == "memory")
+        (conflict_root / conflict_path).parent.mkdir(parents=True, exist_ok=True)
+        (conflict_root / conflict_path).write_text("conflicting existing candidate\n", encoding="utf-8")
+        conflict_write = plan_character_workspace_slp_candidates(conflict_root, write_candidates=True)
+        assert conflict_write.status == "write_blocked"
+        assert "candidate_artifact_conflict" in conflict_write.blocked_reason_ids
+        assert "proposal_write_skipped_after_candidate_write_failure" in conflict_write.blocked_reason_ids
+        _assert_no_proposals_written(conflict_root)
 
     print("CW-A4 review fix smoke passed")
 
