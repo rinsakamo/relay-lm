@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: implementation_report
+relaylm_doc_type: implementation_handoff
 relaylm_authority: acg5_relayemo_scene_cleanup
 relaylm_status: current
 relaylm_volatility: high
@@ -21,7 +21,7 @@ relaylm_related_authority:
 ---
 # ACG-5 RelayEMO Scene Ownership Cleanup
 
-Last reviewed: 2026-07-03 JST
+Last reviewed: 2026-07-04 JST
 
 ## Purpose
 
