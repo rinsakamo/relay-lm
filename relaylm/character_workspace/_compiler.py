@@ -66,6 +66,7 @@ DYNAMIC_SUFFIX_OWNERS = (
 )
 
 ANCHOR_RE = re.compile(r"\^([A-Za-z0-9][A-Za-z0-9_.:-]*)")
+ARTIFACT_METADATA_VALUE_KEYS = frozenset({"status", "importance", "priority", "scope"})
 
 
 @dataclass(frozen=True)
@@ -146,15 +147,15 @@ def compile_character_workspace(
     if preflight_errors:
         return _blocked_result(character_id, preflight_errors)
 
+    symlink_errors = _find_symlink_escape_errors(root_path)
+    if symlink_errors:
+        return _blocked_result(character_id, symlink_errors, status=CharacterWorkspaceValidationStatus.PATH_ESCAPE_REJECTED.value)
+
     validation = validate_character_workspace(root_path, character_id=character_id, public=False)
     assert isinstance(validation, CharacterWorkspaceValidationResult)
     if not validation.is_valid:
         reason_ids = tuple(validation.reason_ids or (validation.status.value,))
         return _blocked_result(character_id, reason_ids, status=validation.status.value)
-
-    symlink_errors = _find_symlink_escape_errors(root_path)
-    if symlink_errors:
-        return _blocked_result(character_id, symlink_errors, status=CharacterWorkspaceValidationStatus.PATH_ESCAPE_REJECTED.value)
 
     try:
         state = _compile_state(root_path, validation)
@@ -203,14 +204,23 @@ def write_character_workspace_build_artifacts(
 
     root_path = Path(root)
     build_root = _safe_build_root(root_path)
+    if build_root.exists() and build_root.is_symlink():
+        raise ValueError("build artifact root is a symlink")
     build_root.mkdir(parents=True, exist_ok=True)
     written: list[str] = []
+    root_resolved = root_path.resolve()
     for artifact in result.artifacts:
         target = build_root / artifact.name
         if target.name != artifact.name or artifact.name not in EXPECTED_ARTIFACTS:
             raise ValueError("unexpected build artifact path")
-        if not _is_relative_to(target.resolve(), root_path.resolve()):
+        if target.is_symlink():
+            raise ValueError("build artifact path is a symlink")
+        if not _is_relative_to(target.resolve(), root_resolved):
             raise ValueError("build artifact write escaped workspace root")
+        if target.exists():
+            if target.is_dir():
+                raise ValueError("build artifact path is a directory")
+            target.unlink()
         target.write_bytes(artifact.content)
         written.append(f".relaylm/build/{artifact.name}")
     return tuple(written)
@@ -593,7 +603,7 @@ def _uppercase_fragments(source_results: Iterable[CharacterSourceParseResult]) -
                     "heading": block.heading,
                     "heading_level": block.heading_level,
                     "has_anchor": block.anchor is not None,
-                    "metadata": dict(sorted(block.metadata)),
+                    "metadata": _content_free_metadata(block.metadata),
                     "metadata_keys": tuple(key for key, _value in block.metadata),
                     "content_hash": block.content_hash,
                     "source_content_hash": source.content_hash,
@@ -717,7 +727,7 @@ def _page_units(
                 "heading": block.heading,
                 "heading_level": block.heading_level,
                 "has_anchor": block.anchor is not None,
-                "metadata": dict(sorted(block.metadata)),
+                "metadata": _content_free_metadata(block.metadata),
                 "metadata_keys": tuple(key for key, _value in block.metadata),
                 "content_hash": block.content_hash,
                 "source_content_hash": source_hash,
@@ -866,10 +876,18 @@ def _hash_many(values: Iterable[str | None]) -> str:
 
 def _stable_fragment_id(domain: str, relative_path: str, block: CharacterMarkdownBlock, occurrence: int) -> str:
     anchor = block.anchor
-    if anchor:
-        return _safe_id(f"{domain}:{anchor.lstrip('^')}")
-    heading = _slug(block.heading or "root")
-    return _safe_id(f"{domain}:{relative_path}:{heading}:{occurrence}")
+    path_digest = hashlib.sha256(relative_path.encode("utf-8")).hexdigest()[:12]
+    fragment = anchor.lstrip("^") if anchor else _slug(block.heading or "root")
+    return _safe_id(f"{domain}:{path_digest}:{relative_path}:{fragment}:{occurrence}")
+
+
+def _content_free_metadata(metadata: tuple[tuple[str, str], ...] | dict[str, str]) -> dict[str, bool]:
+    items = metadata.items() if isinstance(metadata, dict) else metadata
+    return {
+        str(key): True
+        for key, _value in sorted(items)
+        if str(key) in ARTIFACT_METADATA_VALUE_KEYS
+    }
 
 
 def _safe_id(value: str) -> str:

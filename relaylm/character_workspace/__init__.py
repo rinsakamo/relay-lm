@@ -9,133 +9,7 @@ from __future__ import annotations
 import sys
 from types import ModuleType
 
-from . import _compiler as _compiler
 from . import _constants as _constants
-
-_ALLOWED_METADATA_VALUE_KEYS = frozenset({"status", "importance", "priority", "scope"})
-_ORIGINAL_BUILD_ARTIFACTS = _compiler._build_artifacts
-_ORIGINAL_COMPILE_CHARACTER_WORKSPACE = _compiler.compile_character_workspace
-
-
-def _stable_fragment_id_with_source_path(domain: str, relative_path: str, block: object, occurrence: int) -> str:
-    anchor = getattr(block, "anchor", None)
-    heading = _compiler._slug(getattr(block, "heading", None) or "root")
-    path_digest = _compiler.hashlib.sha256(relative_path.encode("utf-8")).hexdigest()[:12]
-    fragment = str(anchor).lstrip("^") if anchor else heading
-    return _compiler._safe_id(f"{domain}:{path_digest}:{relative_path}:{fragment}:{occurrence}")
-
-
-def _content_free_metadata(metadata: object) -> dict[str, object]:
-    if not isinstance(metadata, dict):
-        return {}
-    return {
-        str(key): True
-        for key, _value in sorted(metadata.items())
-        if str(key) in _ALLOWED_METADATA_VALUE_KEYS
-    }
-
-
-def _sanitize_artifact_payload(value: object) -> object:
-    if isinstance(value, dict):
-        sanitized: dict[str, object] = {}
-        for key, item in value.items():
-            if key == "metadata":
-                sanitized[key] = _content_free_metadata(item)
-            else:
-                sanitized[str(key)] = _sanitize_artifact_payload(item)
-        return sanitized
-    if isinstance(value, list):
-        return [_sanitize_artifact_payload(item) for item in value]
-    return value
-
-
-def _json_text(value: object) -> str:
-    return _compiler.json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n"
-
-
-def _jsonl_text(rows: object) -> str:
-    assert isinstance(rows, list)
-    return "".join(_compiler.json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows)
-
-
-def _artifact_with_text(artifact: object, text: str) -> object:
-    content = text.encode("utf-8")
-    return _compiler.CharacterWorkspaceBuildArtifact(
-        name=artifact.name,
-        relative_path=artifact.relative_path,
-        schema_version=artifact.schema_version,
-        content=content,
-        content_hash=_compiler._content_hash(text),
-    )
-
-
-def _sanitize_artifact_metadata(artifact: object) -> object:
-    text = artifact.text()
-    if artifact.name.endswith(".jsonl"):
-        rows = [_sanitize_artifact_payload(_compiler.json.loads(line)) for line in text.splitlines() if line.strip()]
-        return _artifact_with_text(artifact, _jsonl_text(rows))
-    if artifact.name.endswith(".json"):
-        return _artifact_with_text(artifact, _json_text(_sanitize_artifact_payload(_compiler.json.loads(text))))
-    return artifact
-
-
-def _build_artifacts_with_content_free_metadata(state: object) -> tuple[object, ...]:
-    artifacts = _ORIGINAL_BUILD_ARTIFACTS(state)
-    return tuple(_sanitize_artifact_metadata(artifact) for artifact in artifacts)
-
-
-def _guarded_write_character_workspace_build_artifacts(root: str | object, result: object) -> tuple[str, ...]:
-    """Write build artifacts without following or preserving linked artifact paths."""
-
-    if not result.is_valid:
-        raise ValueError("cannot write invalid Character Workspace compile result")
-
-    root_path = _compiler.Path(root)
-    build_root = _compiler._safe_build_root(root_path)
-    if build_root.exists() and build_root.is_symlink():
-        raise ValueError("build artifact root is a symlink")
-    build_root.mkdir(parents=True, exist_ok=True)
-
-    written: list[str] = []
-    root_resolved = root_path.resolve()
-    for artifact in result.artifacts:
-        target = build_root / artifact.name
-        if target.name != artifact.name or artifact.name not in _compiler.EXPECTED_ARTIFACTS:
-            raise ValueError("unexpected build artifact path")
-        if target.is_symlink():
-            raise ValueError("build artifact path is a symlink")
-        if not _compiler._is_relative_to(target.resolve(), root_resolved):
-            raise ValueError("build artifact write escaped workspace root")
-        if target.exists():
-            if target.is_dir():
-                raise ValueError("build artifact path is a directory")
-            target.unlink()
-        target.write_bytes(artifact.content)
-        written.append(f".relaylm/build/{artifact.name}")
-    return tuple(written)
-
-
-def _guarded_compile_character_workspace(root: str | object, *, write: bool = False) -> object:
-    root_path = _compiler.Path(root)
-    character_id = root_path.name if root_path.name else None
-    preflight_errors = _compiler._preflight_root_errors(root_path)
-    if preflight_errors:
-        return _compiler._blocked_result(character_id, preflight_errors)
-
-    symlink_errors = _compiler._find_symlink_escape_errors(root_path)
-    if symlink_errors:
-        return _compiler._blocked_result(
-            character_id,
-            symlink_errors,
-            status=_compiler.CharacterWorkspaceValidationStatus.PATH_ESCAPE_REJECTED.value,
-        )
-    return _ORIGINAL_COMPILE_CHARACTER_WORKSPACE(root_path, write=write)
-
-
-_compiler._stable_fragment_id = _stable_fragment_id_with_source_path
-_compiler._build_artifacts = _build_artifacts_with_content_free_metadata
-_compiler.compile_character_workspace = _guarded_compile_character_workspace
-_compiler.write_character_workspace_build_artifacts = _guarded_write_character_workspace_build_artifacts
 
 from ._compiler import (  # noqa: E402
     ARTIFACT_SCHEMA_VERSIONS,
@@ -185,6 +59,7 @@ class _CharacterWorkspaceModule(ModuleType):
 
 
 sys.modules[__name__].__class__ = _CharacterWorkspaceModule
+
 
 __all__ = [
     "ARTIFACT_SCHEMA_VERSIONS",
