@@ -1362,13 +1362,7 @@ def _relayrun_relayemo_node(
             fallback_reason="relayemo_artifact_missing",
         )
     fallback_reason = relayemo_artifact.get("fallback_reason")
-    blocked_reasons: list[str] = []
-    if (
-        relayemo_artifact.get("state_updated") is False
-        and isinstance(fallback_reason, str)
-        and fallback_reason
-    ):
-        blocked_reasons.append(fallback_reason)
+    blocked_reasons = _string_list(relayemo_artifact.get("blocked_reasons"))
     status = "blocked" if blocked_reasons else "completed"
     return build_relayrun_node(
         node_name="relayemo",
