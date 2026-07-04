@@ -33,6 +33,7 @@ relaylm_related_authority:
   - cw_a1_file_first_source_tree_parser_contracts.md
   - cw_a2_workspace_compiler_projections.md
   - cw_a3_character_workspace_ui_rebuild.md
+  - cw_a4_slp_workspace_maintenance_candidates.md
   - e1r5_primary_mem_recall_candidate_bridge.md
   - e1r5_post_wave7_correction_convergence_audit.md
 ---
@@ -68,7 +69,7 @@ Character Workspace reset
   CW-A1 file-first source tree and parser contracts complete
     -> CW-A2 workspace compiler projections and KV-cache tiers complete
     -> CW-A3 Character Workspace UI rebuild complete
-    -> CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals
+    -> CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals complete
     -> CW-A5 character creation, templates, and showcase import
 
 Operations
@@ -91,7 +92,9 @@ Evaluation
 
 For the file-first Character Workspace reset, MVP completion requires that target Character Workspace surfaces and projections remain clearly separated from current implementation status until dedicated implementation slices land.
 
-CW-A3 closes the browser UI rebuild portion of the reset. It is presentation-only: Home stays on the existing RelayLM `/v1/chat/completions` authority path, and Character / Scenes / Relationships / Memory Wiki / Runtime / Advanced default to content-free projections, source-status vocabulary, and explicit Advanced separation for governance internals. CW-A3 does not implement CW-A4 SLP-maintained workspace maintenance or CW-A5 creation/template flow.
+CW-A3 closes the browser UI rebuild portion of the reset. It is presentation-only: Home stays on the existing RelayLM `/v1/chat/completions` authority path, and Character / Scenes / Relationships / Memory Wiki / Runtime / Advanced default to content-free projections, source-status vocabulary, and explicit Advanced separation for governance internals.
+
+CW-A4 closes the first RelaySLP-maintained workspace maintenance slice for MEM / SCENE / REL wiki candidates and proposals only. It is dry-run-first, produces content-free public projections, writes only allowlisted inbox/proposal artifacts when explicitly requested, and preserves the uppercase source approval boundary. CW-A4 does not implement CW-A5 creation/template flow, direct uppercase source rewrites, RelaySOUL apply/rollback, current-turn response effects, runtime prompt injection, queue/worker/O2/O3 authority, or replacement of RelayMEM lifecycle, RelaySCN scene, or RelayREL relationship runtime authorities.
 
 Phase I-2 is complete for read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence. That observation boundary remains read-only and cannot authorize repair, retrieval, mutation, or source-body exposure.
 
@@ -124,7 +127,7 @@ Character Workspace reset
   CW-A1 file-first source tree and parser contracts complete
   CW-A2 workspace compiler projections and KV-cache tiers complete
   CW-A3 Character Workspace UI rebuild complete
-  CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals
+  CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals complete
   CW-A5 character creation, templates, and showcase import
 
 Post-E1-R5 / Post-Wave-7 next candidates:
@@ -209,9 +212,10 @@ E1-R5 remains a bounded scoped Primary recall bridge. It preserves M2 as preferr
 CW-A1 file-first source tree and parser contracts complete
 CW-A2 workspace compiler projections and KV-cache tiers complete
 CW-A3 Character Workspace UI rebuild complete
+CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals complete
 ```
 
-CW-A1 establishes the read-only file-first Character Workspace source-tree and parser contracts. CW-A2 adds deterministic `.relaylm/build/**` compiler projections and KV-cache tier summaries. CW-A3 rebuilds `apps/soul-lab` into Character Workspace top-level surfaces while preserving the existing Home conversation authority path and keeping browser authority presentation-only.
+CW-A1 establishes the read-only file-first Character Workspace source-tree and parser contracts. CW-A2 adds deterministic `.relaylm/build/**` compiler projections and KV-cache tier summaries. CW-A3 rebuilds `apps/soul-lab` into Character Workspace top-level surfaces while preserving the existing Home conversation authority path and keeping browser authority presentation-only. CW-A4 adds dry-run-first RelaySLP MEM / SCENE / REL candidate/proposal planning, content-free projection, and explicit write-candidates mode for allowlisted inbox/proposal artifacts only; it does not add uppercase source rewrites, runtime prompt injection, queue/worker/O2/O3 authority, or current-turn effects.
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
@@ -230,4 +234,4 @@ O2/O3 only after explicit MVP need
 
 ## Current authority links
 
-ACG handoffs: [ACG-1](acg1_analyzer_candidate_governance_contract.md), [ACG-2](acg2_grounded_recall_detail_safety.md), [ACG-3](acg3_retrieval_query_normalization.md), [ACG-4](acg4_reference_intent_analyzer.md), [ACG-5](acg5_relayemo_scene_cleanup.md), and [ACG-6](acg6_scene_wiki_classifier.md). CW handoffs: [CW-A1](cw_a1_file_first_source_tree_parser_contracts.md), [CW-A2](cw_a2_workspace_compiler_projections.md), and [CW-A3](cw_a3_character_workspace_ui_rebuild.md). E1-R5 details are in [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md) and [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md).
+ACG handoffs: [ACG-1](acg1_analyzer_candidate_governance_contract.md), [ACG-2](acg2_grounded_recall_detail_safety.md), [ACG-3](acg3_retrieval_query_normalization.md), [ACG-4](acg4_reference_intent_analyzer.md), [ACG-5](acg5_relayemo_scene_cleanup.md), and [ACG-6](acg6_scene_wiki_classifier.md). CW handoffs: [CW-A1](cw_a1_file_first_source_tree_parser_contracts.md), [CW-A2](cw_a2_workspace_compiler_projections.md), [CW-A3](cw_a3_character_workspace_ui_rebuild.md), and [CW-A4](cw_a4_slp_workspace_maintenance_candidates.md). E1-R5 details are in [E1-R5 Primary MEM Recall Candidate Bridge](e1r5_primary_mem_recall_candidate_bridge.md) and [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md).

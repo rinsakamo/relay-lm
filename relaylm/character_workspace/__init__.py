@@ -2,7 +2,9 @@
 
 CW-A1 is read-only and contract-only for source tree/parser validation. CW-A2
 adds an explicit compiler for deterministic ``.relaylm/build/**`` projection
-artifacts without runtime prompt injection or uppercase source mutation.
+artifacts without runtime prompt injection or uppercase source mutation. CW-A4
+adds dry-run-first RelaySLP workspace maintenance candidate/proposal planning
+without queue, worker, runtime prompt, or uppercase source mutation authority.
 """
 from __future__ import annotations
 
@@ -38,6 +40,21 @@ from ._constants import (  # noqa: E402
 )
 from ._parser import parse_character_source_file, parse_markdown_blocks  # noqa: E402
 from ._pathing import classify_character_workspace_path  # noqa: E402
+from ._slp import (  # noqa: E402
+    DEFAULT_MAX_CANDIDATES,
+    DEFAULT_MAX_READ_BYTES,
+    DEFAULT_MAX_SOURCE_FILES,
+    SLP_CANDIDATE_SCHEMA_VERSION,
+    SLP_PROJECTION_SCHEMA_VERSION,
+    SLP_PROPOSAL_SCHEMA_VERSION,
+    SLP_RUN_SCHEMA_VERSION,
+    CharacterWorkspaceCandidate,
+    CharacterWorkspaceProposal,
+    CharacterWorkspaceSLPRun,
+    WorkspaceSourceEvidence,
+    build_character_workspace_slp_projection,
+    plan_character_workspace_slp_candidates,
+)
 from ._types import (  # noqa: E402
     CharacterMarkdownBlock,
     CharacterSourceParseResult,
@@ -65,6 +82,9 @@ __all__ = [
     "ARTIFACT_SCHEMA_VERSIONS",
     "COMPILER_NAME",
     "COMPILER_SCHEMA_VERSION",
+    "DEFAULT_MAX_CANDIDATES",
+    "DEFAULT_MAX_READ_BYTES",
+    "DEFAULT_MAX_SOURCE_FILES",
     "EXPECTED_ARTIFACTS",
     "INTERNAL_BUILD_FILES",
     "INTERNAL_DIRECTORIES",
@@ -77,24 +97,34 @@ __all__ = [
     "REQUIRED_SOURCE_FILENAMES",
     "RESERVED_DIRECTORY_PATHS",
     "SCHEMA_VERSION",
+    "SLP_CANDIDATE_SCHEMA_VERSION",
+    "SLP_PROJECTION_SCHEMA_VERSION",
+    "SLP_PROPOSAL_SCHEMA_VERSION",
+    "SLP_RUN_SCHEMA_VERSION",
     "TIER_ORDER",
     "CharacterMarkdownBlock",
     "CharacterSourceParseResult",
     "CharacterWorkspaceBuildArtifact",
+    "CharacterWorkspaceCandidate",
     "CharacterWorkspaceCompileResult",
     "CharacterWorkspaceLayout",
     "CharacterWorkspaceManifest",
     "CharacterWorkspacePathClassification",
     "CharacterWorkspacePathKind",
+    "CharacterWorkspaceProposal",
+    "CharacterWorkspaceSLPRun",
     "CharacterWorkspaceValidationResult",
     "CharacterWorkspaceValidationStatus",
+    "WorkspaceSourceEvidence",
     "build_character_workspace_compiler_projection",
     "build_character_workspace_manifest",
+    "build_character_workspace_slp_projection",
     "character_workspace_layout",
     "classify_character_workspace_path",
     "compile_character_workspace",
     "parse_character_source_file",
     "parse_markdown_blocks",
+    "plan_character_workspace_slp_candidates",
     "validate_character_workspace",
     "write_character_workspace_build_artifacts",
 ]
