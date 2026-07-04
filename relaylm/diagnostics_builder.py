@@ -120,6 +120,7 @@ def relayint_runtime_diagnostics_kwargs(
 
 def runtime_artifact_diagnostics_kwargs(
     *,
+    relayrel_relationship_projection: Any,
     relayemo_artifact: Any,
     relayscn_scene_policy_artifact: Any,
     relayint_intent_artifact: Any,
@@ -130,6 +131,7 @@ def runtime_artifact_diagnostics_kwargs(
     """Return RequestDiagnostics kwargs derived from runtime artifacts."""
 
     return {
+        "relayrel_relationship_projection": relayrel_relationship_projection,
         "relayemo_artifact": relayemo_artifact,
         "relayscn_scene_policy_artifact": relayscn_scene_policy_artifact,
         "relayint_intent_artifact": relayint_intent_artifact,

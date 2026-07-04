@@ -21,7 +21,7 @@ relaylm_related_authority:
 ---
 # P0 RelayREL / RelaySCN / RelayEMO Ordering Fix
 
-Last reviewed: 2026-07-03 JST
+Last reviewed: 2026-07-04 JST
 
 ## Purpose
 
@@ -40,7 +40,7 @@ app.py request path calls RelayREL / RelaySCN before input-side RelayEMO.
 app.py no longer passes relayemo_artifact into build_relayscn_scene_policy_artifact.
 RelaySCN no longer accepts RelayEMO artifact scene_state as normalized fallback.
 RelayREL has a content-free placeholder/projection for request-path ordering.
-Pipeline order projection proves RelayREL -> RelaySCN -> RelayEMO -> RelayINT -> RelayMEM -> RelayCTX.
+Pipeline order projection declares the intended RelayREL -> RelaySCN -> RelayEMO -> RelayINT -> RelayMEM -> RelayCTX request path order; `relayscn_precedes_relayemo` and `relayrel_precedes_relayscn` are derived from an actual measured call order (AST line-number measurement of `app.py` in `scripts/relaylm_p0_pipeline_ordering_smoke.py`) rather than hardcoded, and fall back conservatively when no measured order is supplied.
 RelayMEM retrieval smoke coverage consumes RelaySCN policy.
 Public diagnostics/projections remain content-free.
 PM-D3 RelayEMO/RelaySCN scene_state ownership is closed by the shipped request-path wiring and validation.
@@ -144,8 +144,9 @@ RelaySCN no longer keeps _extract_relayemo_scene_state
 RelaySCN rejects relayemo_artifact as an unexpected keyword and does not emit scene_state_source=relayemo_artifact
 explicit request metadata still wins
 missing metadata uses heuristic/fail-closed behavior
-RelayREL precedes RelaySCN in the order projection
-RelaySCN precedes input RelayEMO in the order projection
+RelayREL precedes RelaySCN in the declared request_path_order
+RelaySCN precedes input RelayEMO in the declared request_path_order
+the order projection's relayrel_precedes_relayscn/relayscn_precedes_relayemo flags are derived from a measured app.py call order (not hardcoded); a reversed or missing measured order does not report True
 RelayMEM retrieval consumes RelaySCN policy
 public order diagnostics remain content-free
 ```

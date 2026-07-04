@@ -48,6 +48,7 @@ class RequestDiagnostics:
     profile_compile_fallback_reason: str | None = None
     fallback_reason: str | None = None
     compile_decision_dry_run: dict[str, Any] | None = None
+    relayrel_relationship_projection: dict[str, Any] | None = None
     relayemo_artifact: dict[str, Any] | None = None
     relayscn_scene_policy_artifact: dict[str, Any] | None = None
     relayint_intent_artifact: dict[str, Any] | None = None

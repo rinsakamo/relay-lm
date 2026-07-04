@@ -57,6 +57,12 @@ def _base_artifact_kwargs(*, backend_forward_status: str) -> dict[str, Any]:
             "run_id": "run-phase5d2b-runtime-smoke",
             "route": route,
             "stream_enabled": False,
+            "relayrel_relationship_projection": {
+                "schema_version": "relayrel.relationship_projection.v0",
+                "diagnostics_only": True,
+                "content_free": True,
+            },
+            "relayemo_artifact": None,
             "relayscn_scene_policy_artifact": {
                 "schema_version": "relayscn.scene_policy_artifact.v0",
                 "diagnostics_only": True,
@@ -97,6 +103,7 @@ def _base_artifact_kwargs(*, backend_forward_status: str) -> dict[str, Any]:
                 "applied": False,
                 "blocked_reasons": [],
             },
+            "relayctx_short_term_runtime_injection_apply_result": None,
             "token_budget_truncation": None,
             "backend_forward_status": backend_forward_status,
             "stream_started": False,
@@ -139,6 +146,46 @@ def _assert_lazy_completed_path() -> None:
     print("ok app runtime completed path uses lazy recovery detail")
 
 
+def _assert_relayemo_session_state_fallback_stays_ordinary() -> None:
+    kwargs = _base_artifact_kwargs(backend_forward_status="completed")
+    kwargs["config"] = kwargs["config"].model_copy(
+        update={
+            "relayemo_enabled": True,
+            "relayemo_session_state_enabled": True,
+        }
+    )
+    kwargs["relayemo_artifact"] = {
+        "schema_version": "relayemo.runtime.v0",
+        "session_state_enabled": True,
+        "session_key_source": "unavailable",
+        "previous_state_found": False,
+        "state_updated": False,
+        "state_persisted": False,
+        "state_storage": "process_memory",
+        "fallback_reason": "session_key_unavailable",
+        "blocked_reasons": [],
+        "assistant_emotion_state": {"mode": "expressive_support_estimate"},
+        "user_affect_estimate": {"confidence": 0.8},
+    }
+
+    artifact = _build_relayrun_runtime_artifact(**kwargs)
+    relayemo = _find_node(artifact, "relayemo")
+    require(relayemo.get("node_status") == "completed", relayemo)
+    require(relayemo.get("blocked_reasons") == [], relayemo)
+    require(relayemo.get("fallback_reason") == "session_key_unavailable", relayemo)
+    require(artifact.get("blocked_reasons") == [], artifact)
+
+    recovery_detail = artifact.get("recovery_detail")
+    require(isinstance(recovery_detail, dict), artifact)
+    require(recovery_detail.get("constructed") is False, recovery_detail)
+    require(
+        recovery_detail.get("reason") == "ordinary_path_no_blocked_or_checkpoint_need",
+        recovery_detail,
+    )
+    require(recovery_detail.get("required_reasons") == [], recovery_detail)
+    print("ok RelayEMO session-key persistence fallback stays on lazy ordinary path")
+
+
 def _assert_failed_path_keeps_full_detail() -> None:
     kwargs = _base_artifact_kwargs(backend_forward_status="failed")
     kwargs["backend_forward_blocked_reasons"] = ["BackendRequestError"]
@@ -159,6 +206,7 @@ def _assert_failed_path_keeps_full_detail() -> None:
 
 def main() -> int:
     _assert_lazy_completed_path()
+    _assert_relayemo_session_state_fallback_stays_ordinary()
     _assert_failed_path_keeps_full_detail()
     return 0
 

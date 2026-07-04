@@ -301,6 +301,16 @@ Responsibilities:
 - degrade low-priority dynamic context before high-authority character and boundary sources;
 - avoid leaking runtime-private evidence into public diagnostics.
 
+The current runtime phase order inside RelayCTX Repack is:
+
+```text
+relaymem runtime CTX/snippet injection
+  -> RelayCTX short-term runtime injection
+  -> token_budget_truncation
+```
+
+`token_budget_truncation` runs last among these mutations, so it is the final gate on the forwarded payload's estimated token total; every prior injection phase's output is subject to it before the backend forward. Injection phases must not run after truncation, since nothing downstream re-enforces the budget.
+
 RelayCTX answers: **what exact bounded context should the backend model receive?**
 
 ### 10. Main LLM / backend forward
