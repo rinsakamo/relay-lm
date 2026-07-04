@@ -493,7 +493,7 @@ export function HomeConversationPage({
             <button className="button button-primary" type="button" onClick={() => onNavigate("observation")}>
               {translate(language, "home.openObservation")}
             </button>
-            <button className="button button-secondary" type="button" onClick={() => onNavigate("communication")}>
+            <button className="button button-secondary" type="button" onClick={() => onNavigate("memory")}>
               {translate(language, "home.openCommunication")}
             </button>
           </div>
@@ -517,80 +517,93 @@ export function HomeConversationPage({
           <div><p className="eyebrow">TEXT FIRST</p><h2 id="session-title">{translate(language, "home.session")}</h2></div>
           <span className="session-state">{sourceStateLabel(sourceMode, session, target.status)}</span>
         </div>
-
-        <div className="conversation-toolbar" aria-label={language === "ja" ? "会話設定" : "Conversation controls"}>
-          <div className="segmented-control">
-            <button className={sourceMode === "real" ? "is-selected" : ""} type="button" onClick={() => changeSourceMode("real")}>REAL RUNTIME</button>
-            <button className={sourceMode === "preview" ? "is-selected" : ""} type="button" onClick={() => changeSourceMode("preview")}>LOCAL PREVIEW</button>
-          </div>
-          <label className="stream-toggle">
-            <input type="checkbox" checked={stream} disabled={active || sourceMode === "preview"} onChange={(event) => setStreamModes((current) => ({ ...current, [activeCharacter.characterId]: event.target.checked }))} />
-            {language === "ja" ? "ストリーミング" : "Streaming"}
-          </label>
-          <button className="button button-secondary compact-button" type="button" onClick={startNewConversation}>{language === "ja" ? "新しい会話" : "New conversation"}</button>
+        <div className="source-toggle" role="group" aria-label="conversation source mode">
+          <button
+            className={sourceMode === "real" ? "toggle-active" : ""}
+            type="button"
+            onClick={() => changeSourceMode("real")}
+          >
+            REAL RUNTIME
+          </button>
+          <button
+            className={sourceMode === "preview" ? "toggle-active" : ""}
+            type="button"
+            onClick={() => changeSourceMode("preview")}
+          >
+            LOCAL PREVIEW
+          </button>
         </div>
-
-        {routeFailure && sourceMode === "real" && <p className="conversation-alert" role="status">{failureLabel(language, routeFailure)}</p>}
-
+        {sourceMode === "real" && routeFailure ? (
+          <div className="conversation-warning" role="status">
+            {failureLabel(language, routeFailure)}
+          </div>
+        ) : null}
         <div className="chat-log" aria-live="polite">
-          {session.messages.length === 0 && <p className="empty-conversation">{language === "ja" ? "このブラウザ内セッションにはまだメッセージがありません。" : "This browser-local session has no messages yet."}</p>}
-          {session.messages.map((entry) => (
-            <article className={`chat-entry chat-${entry.role === "assistant" ? "character" : "user"}`} key={entry.messageId}>
-              <div className="chat-meta"><strong>{entry.role === "assistant" ? activeCharacter.displayName : "You"}</strong><time>{entry.occurredAtLabel}</time></div>
-              {entry.content.length > 0 && <p>{entry.content}</p>}
-              {entry.status === "pending" && <p className="message-state">{language === "ja" ? "応答待機中…" : "Waiting for response…"}</p>}
-              {entry.status === "streaming" && <span className="message-state">STREAMING</span>}
-              {entry.status === "stopped" && <p className="message-state">{language === "ja" ? "停止済み（受信済みテキストは保持）" : "Stopped; received text was preserved."}</p>}
-              {entry.status === "failed" && entry.failureReason && <p className="conversation-alert">{failureLabel(language, entry.failureReason)}</p>}
+          {session.messages.length === 0 ? (
+            <div className="empty-chat">
+              <p>{translate(language, "home.mockNotice")}</p>
+              <small>{language === "ja" ? "REAL RUNTIMEはserver projection由来のrouteだけを使います。" : "REAL RUNTIME uses only server-projected routes."}</small>
+            </div>
+          ) : session.messages.map((message) => (
+            <article className={`chat-entry ${message.role === "user" ? "chat-user" : "chat-assistant"}`} key={message.messageId}>
+              <div className="chat-meta"><strong>{message.role === "user" ? "You" : activeCharacter.displayName}</strong><span>{message.occurredAtLabel}</span></div>
+              <p>{message.content || (message.status === "pending" ? "…" : "")}</p>
+              {message.failureReason ? <small className="message-error">{failureLabel(language, message.failureReason)}</small> : null}
             </article>
           ))}
         </div>
-
         <form className="composer" onSubmit={submitMessage}>
-          <textarea value={session.draft} onChange={updateDraft} maxLength={HOME_CONVERSATION_BOUNDS.maxUserMessageChars + 1} placeholder={translate(language, "home.composerPlaceholder")} aria-label={translate(language, "home.composerPlaceholder")} />
-          <div className="composer-actions">
-            {active && <button className="button button-secondary" type="button" onClick={stopRequest}>{language === "ja" ? "停止" : "Stop"}</button>}
-            {canRetry && <button className="button button-secondary" type="button" onClick={retryRequest}>{language === "ja" ? "再試行" : "Retry"}</button>}
-            <button className="button button-primary" type="submit" disabled={!session.draft.trim() || active || draftRejected || (sourceMode === "real" && target.status !== "available")}>{translate(language, "home.send")}</button>
-          </div>
+          <textarea
+            aria-label={translate(language, "home.composerPlaceholder")}
+            disabled={active}
+            maxLength={HOME_CONVERSATION_BOUNDS.maxUserMessageChars + 1}
+            onChange={updateDraft}
+            placeholder={translate(language, "home.composerPlaceholder")}
+            rows={3}
+            value={session.draft}
+          />
+          <button className="button button-primary" disabled={active || draftRejected || !session.draft.trim()} type="submit">{translate(language, "home.send")}</button>
         </form>
-        {draftRejected && <p className="conversation-alert">{failureLabel(language, "invalid_request")}</p>}
-        <p className="boundary-note">
-          {sourceMode === "real"
-            ? language === "ja"
-              ? "server projection由来のrouteだけを使い、SOUL・MEM・namespace・credentialをブラウザから送信しません。"
-              : "Only the server-projected route is used; the browser sends no SOUL, MEM, namespace, or credential."
-            : language === "ja"
-              ? "明示的なローカルプレビューです。このセッションは実runtime会話へ混入しません。"
-              : "Explicit local preview. This session is never mixed into real runtime requests."}
-        </p>
+        <div className="conversation-controls">
+          <label className="stream-toggle">
+            <input
+              checked={stream}
+              disabled={active || sourceMode === "preview"}
+              onChange={(event) => setStreamModes((current) => ({ ...current, [activeCharacter.characterId]: event.currentTarget.checked }))}
+              type="checkbox"
+            />
+            <span>stream</span>
+          </label>
+          <button className="button button-secondary" disabled={!active} onClick={stopRequest} type="button">Stop</button>
+          <button className="button button-secondary" disabled={!canRetry} onClick={retryRequest} type="button">Retry</button>
+          <button className="button button-secondary" disabled={active} onClick={startNewConversation} type="button">New Conversation</button>
+        </div>
       </section>
 
       <aside className="right-rail">
-        <section className="surface-panel runtime-panel" aria-labelledby="runtime-title">
-          <div className="section-heading compact-heading"><div><p className="eyebrow">{readyCount}/{runtimeRows.length} CONFIGURED</p><h2 id="runtime-title">{translate(language, "runtime.title")}</h2></div></div>
-          <p className="panel-description">{sourceMode === "real" ? language === "ja" ? "server-ownedのcontent-free設定投影です。ネットワークprobeは行いません。" : "Server-owned content-free configuration projection; no network probe is performed." : translate(language, "runtime.description")}</p>
+        <section className="runtime-panel surface-panel">
+          <div className="section-heading compact-heading"><div><p className="eyebrow">RUNTIME</p><h2>{translate(language, "runtime.title")}</h2></div><StatusBadge label={`${readyCount}/${runtimeRows.length}`} state={readyCount === runtimeRows.length && runtimeRows.length > 0 ? "connected" : "degraded"} /></div>
+          <p className="panel-description">{translate(language, "runtime.description")}</p>
           <div className="runtime-list">
-            {runtimeRows.length === 0 && <p className="boundary-note">{language === "ja" ? "runtime設定投影を利用できません。" : "Runtime configuration projection is unavailable."}</p>}
             {runtimeRows.map((component) => (
               <div className="runtime-row" key={component.id}>
                 <div><strong>{component.label}</strong><span>{component.detail}</span></div>
-                <StatusBadge state={component.state} label={translate(language, connectionKey(component.state))} />
+                <StatusBadge label={translate(language, connectionKey(component.state))} state={component.state} />
               </div>
             ))}
           </div>
         </section>
 
-        <section className="surface-panel events-panel" aria-labelledby="events-title">
-          <div className="section-heading compact-heading"><div><p className="eyebrow">CONTENT-FREE SUMMARY</p><h2 id="events-title">{translate(language, "events.title")}</h2></div></div>
-          {sourceMode === "real" ? (
-            <div className="event-list"><article className="event-row"><span className="event-dot severity-info" aria-hidden="true" /><div><strong>Runtime projection</strong><span>{settingsProjection ? `${settingsProjection.diagnostics.projected_event_count} projected events · no raw trace` : language === "ja" ? "利用不可" : "Unavailable"}</span></div></article></div>
-          ) : (
-            <div className="event-list">
-              {mockEvents.length === 0 && <p>{translate(language, "events.empty")}</p>}
-              {mockEvents.map((event) => <article className="event-row" key={event.eventId}><span className={`event-dot severity-${event.severity}`} aria-hidden="true" /><div><strong>{event.summary}</strong><span>{event.category} · {event.occurredAtLabel}</span></div></article>)}
-            </div>
-          )}
+        <section className="events-panel surface-panel">
+          <div className="section-heading compact-heading"><div><p className="eyebrow">WORKSPACE</p><h2>{translate(language, "events.title")}</h2></div></div>
+          <div className="event-list">
+            {mockEvents.length === 0 ? <p>{translate(language, "events.empty")}</p> : mockEvents.map((event) => (
+              <div className="event-row" key={event.eventId}>
+                <span className={`event-dot severity-${event.severity}`} aria-hidden="true" />
+                <div><strong>{event.category}</strong><span>{event.summary}</span></div>
+              </div>
+            ))}
+          </div>
         </section>
       </aside>
     </div>
