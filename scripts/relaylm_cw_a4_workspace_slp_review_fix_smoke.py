@@ -130,6 +130,24 @@ def main() -> None:
         assert "proposal_write_skipped_after_candidate_write_failure" in conflict_write.blocked_reason_ids
         _assert_no_proposals_written(conflict_root)
 
+        cap_root = Path(tmp) / "characters" / "source-cap"
+        _write_required_sources(cap_root)
+        for index in range(5):
+            _write_source(cap_root, {"messages": [{"role": "user", "content": f"bounded source {index}"}]}, f"{index}.json")
+        cap_run = plan_character_workspace_slp_candidates(cap_root, max_source_files=2)
+        assert cap_run.source_evidence_count == 2, cap_run.source_evidence_count
+        assert "source_file_limit_reached" in cap_run.reason_ids
+
+        oversized_root = Path(tmp) / "characters" / "oversized"
+        _write_required_sources(oversized_root)
+        source_dir = oversized_root / ".relaylm" / "sources" / "conversations"
+        source_dir.mkdir(parents=True, exist_ok=True)
+        (source_dir / "large.json").write_text("x" * 128, encoding="utf-8")
+        oversized_run = plan_character_workspace_slp_candidates(oversized_root, max_read_bytes=16)
+        assert oversized_run.source_evidence_count == 0
+        assert "source_read_limit_reached" in oversized_run.reason_ids
+        assert not oversized_run.candidates
+
     print("CW-A4 review fix smoke passed")
 
 
