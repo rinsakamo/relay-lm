@@ -34,7 +34,7 @@ _RETRIEVAL_ELIGIBLE_FALLBACK_REASONS = {
 def build_relaymem_retrieval_dry_run_artifact(
     *,
     relayscn_scene_policy_artifact: Mapping[str, Any] | None,
-    relayref_artifact: Mapping[str, Any] | None = None,
+    relayint_intent_artifact: Mapping[str, Any] | None = None,
     messages: Sequence[Mapping[str, Any]] | None = None,
     token_budget: int | None = None,
     store_diagnostics: Mapping[str, Any] | None = None,
@@ -55,13 +55,13 @@ def build_relaymem_retrieval_dry_run_artifact(
     retrieval_scope = parsed_scn["retrieval_scope"]
     persistence_block = parsed_scn["persistence_block"]
     persistence_block_reasons = parsed_scn["persistence_block_reasons"]
-    relayref_unresolved = _relayref_unresolved_reference(relayref_artifact)
+    relayint_unresolved = _relayint_unresolved_reference(relayint_intent_artifact)
 
     fallback_reason = _resolve_fallback_reason(
         malformed=parsed_scn["malformed"],
         scene_type=scene_type,
         retrieval_scope=retrieval_scope,
-        relayref_unresolved=relayref_unresolved,
+        relayint_unresolved=relayint_unresolved,
         store_diagnostics=store_diagnostics,
     )
     normalized_token_budget = _normalize_token_budget(token_budget)
@@ -79,7 +79,7 @@ def build_relaymem_retrieval_dry_run_artifact(
         malformed=parsed_scn["malformed"],
         scene_type=scene_type,
         retrieval_scope=retrieval_scope,
-        relayref_unresolved=relayref_unresolved,
+        relayint_unresolved=relayint_unresolved,
         ctx_block_candidate=ctx_block_candidate,
         retrieval_dry_run_only=_retrieval_dry_run_only(store_diagnostics),
         ctx_block_apply_enabled=ctx_block_apply_enabled,
@@ -90,7 +90,7 @@ def build_relaymem_retrieval_dry_run_artifact(
         scene_type=scene_type,
         retrieval_scope=retrieval_scope,
         malformed=parsed_scn["malformed"],
-        relayref_unresolved=relayref_unresolved,
+        relayint_unresolved=relayint_unresolved,
         apply_decision=apply_readiness["apply_decision"],
         snippet_extraction_enabled=snippet_extraction_enabled,
         snippet_dry_run_only=snippet_dry_run_only,
@@ -105,7 +105,7 @@ def build_relaymem_retrieval_dry_run_artifact(
         malformed=parsed_scn["malformed"],
         scene_type=scene_type,
         retrieval_scope=retrieval_scope,
-        relayref_unresolved=relayref_unresolved,
+        relayint_unresolved=relayint_unresolved,
         ctx_block_candidate=ctx_block_candidate,
         evidence_envelope=snippet_evidence["evidence_envelope"],
         snippet_candidates=snippet_evidence["snippet_candidates"],
@@ -131,7 +131,7 @@ def build_relaymem_retrieval_dry_run_artifact(
     blocked = _build_blocked_reasons(
         fallback_reason=fallback_reason,
         scene_type=scene_type,
-        relayref_unresolved=relayref_unresolved,
+        relayint_unresolved=relayint_unresolved,
         discovery_blocked=discovery_blocked,
     )
     used_tokens = sum(
@@ -188,7 +188,7 @@ def _build_snippet_evidence_dry_run(
     scene_type: str,
     retrieval_scope: str,
     malformed: bool,
-    relayref_unresolved: bool,
+    relayint_unresolved: bool,
     apply_decision: str,
     snippet_extraction_enabled: bool,
     snippet_dry_run_only: bool,
@@ -210,7 +210,7 @@ def _build_snippet_evidence_dry_run(
         malformed=malformed,
         scene_type=scene_type,
         retrieval_scope=retrieval_scope,
-        relayref_unresolved=relayref_unresolved,
+        relayint_unresolved=relayint_unresolved,
         selected_mem_candidates=selected_mem_candidates,
         apply_decision=apply_decision,
     )
@@ -246,7 +246,7 @@ def _snippet_extraction_skip_reason(
     malformed: bool,
     scene_type: str,
     retrieval_scope: str,
-    relayref_unresolved: bool,
+    relayint_unresolved: bool,
     selected_mem_candidates: Sequence[Mapping[str, Any]],
     apply_decision: str,
 ) -> str | None:
@@ -256,7 +256,7 @@ def _snippet_extraction_skip_reason(
         return "current_context_only_no_external_mem"
     if scene_type in {"recovery", "formal_document", "medical_or_safety"}:
         return "external_memory_blocked_by_scene_policy"
-    if relayref_unresolved:
+    if relayint_unresolved:
         return "unresolved_reference_requires_confirmation"
     if not selected_mem_candidates:
         return "no_selected_mem_candidates"
@@ -319,12 +319,12 @@ def _resolve_fallback_reason(
     malformed: bool,
     scene_type: str,
     retrieval_scope: str,
-    relayref_unresolved: bool,
+    relayint_unresolved: bool,
     store_diagnostics: Mapping[str, Any] | None = None,
 ) -> str:
     if malformed or scene_type == "unknown":
         return "scene_policy_blocks_memory"
-    if relayref_unresolved:
+    if relayint_unresolved:
         return "unresolved_reference_requires_confirmation"
     if scene_type in {"recovery", "formal_document", "medical_or_safety"}:
         return "external_memory_blocked_by_scene_policy"
@@ -340,7 +340,7 @@ def _build_blocked_reasons(
     *,
     fallback_reason: str,
     scene_type: str,
-    relayref_unresolved: bool,
+    relayint_unresolved: bool,
     discovery_blocked: list[dict[str, str]] | None = None,
 ) -> list[dict[str, str]]:
     if fallback_reason == "memory_store_not_configured":
@@ -348,7 +348,7 @@ def _build_blocked_reasons(
     blocked = [{"reason": fallback_reason}]
     if scene_type in {"formal_document", "medical_or_safety"}:
         blocked.append({"reason": f"scene_type:{scene_type}"})
-    if relayref_unresolved:
+    if relayint_unresolved:
         blocked.append({"reason": "must_not_silently_resolve_ambiguous_reference"})
     blocked.extend(discovery_blocked or [])
     return blocked
@@ -659,7 +659,7 @@ def _build_snippet_apply_readiness(
     malformed: bool,
     scene_type: str,
     retrieval_scope: str,
-    relayref_unresolved: bool,
+    relayint_unresolved: bool,
     ctx_block_candidate: Mapping[str, Any],
     evidence_envelope: Mapping[str, Any],
     snippet_candidates: Sequence[Mapping[str, Any]],
@@ -711,7 +711,7 @@ def _build_snippet_apply_readiness(
     )
     preconditions = {
         "scene_policy_allows_apply": not scene_policy_blocks,
-        "reference_resolved": not relayref_unresolved,
+        "reference_resolved": not relayint_unresolved,
         "candidate_entries_present": bool(candidate_entries),
         "evidence_envelope_present": evidence_envelope_present,
         "snippet_candidates_present": snippet_candidates_present,
@@ -726,7 +726,7 @@ def _build_snippet_apply_readiness(
 
     if scene_policy_blocks:
         decision = "blocked_scene_policy"
-    elif relayref_unresolved:
+    elif relayint_unresolved:
         decision = "blocked_unresolved_reference"
     elif not candidate_entries:
         decision = "blocked_no_candidates"
@@ -1061,7 +1061,7 @@ def _build_apply_readiness(
     malformed: bool,
     scene_type: str,
     retrieval_scope: str,
-    relayref_unresolved: bool,
+    relayint_unresolved: bool,
     ctx_block_candidate: Mapping[str, Any],
     retrieval_dry_run_only: bool,
     ctx_block_apply_enabled: bool,
@@ -1085,7 +1085,7 @@ def _build_apply_readiness(
     )
     preconditions = {
         "scene_policy_allows_apply": not scene_policy_blocks,
-        "reference_resolved": not relayref_unresolved,
+        "reference_resolved": not relayint_unresolved,
         "candidate_entries_present": bool(candidate_entries),
         "included_entries_present": bool(included_entries),
         "token_budget_allows_candidate": not budget_truncated,
@@ -1098,7 +1098,7 @@ def _build_apply_readiness(
 
     if scene_policy_blocks:
         decision = "blocked_scene_policy"
-    elif relayref_unresolved:
+    elif relayint_unresolved:
         decision = "blocked_unresolved_reference"
     elif not candidate_entries:
         decision = "blocked_no_candidates"
@@ -1180,10 +1180,10 @@ def _store_fallback_reason(store_diagnostics: Mapping[str, Any] | None) -> str |
     return None
 
 
-def _relayref_unresolved_reference(relayref_artifact: Mapping[str, Any] | None) -> bool:
-    if not isinstance(relayref_artifact, Mapping):
+def _relayint_unresolved_reference(relayint_intent_artifact: Mapping[str, Any] | None) -> bool:
+    if not isinstance(relayint_intent_artifact, Mapping):
         return False
-    return relayref_artifact.get("unresolved_reference_detected") is True
+    return relayint_intent_artifact.get("unresolved_reference_detected") is True
 
 
 def _build_query_summary(messages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:

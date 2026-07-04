@@ -122,7 +122,7 @@ def runtime_artifact_diagnostics_kwargs(
     *,
     relayemo_artifact: Any,
     relayscn_scene_policy_artifact: Any,
-    relayref_artifact: Any,
+    relayint_intent_artifact: Any,
     relaymem_retrieval_artifact: Any,
     runtime_ctx_injection_result: Any,
     runtime_snippet_injection_result: Any,
@@ -132,7 +132,7 @@ def runtime_artifact_diagnostics_kwargs(
     return {
         "relayemo_artifact": relayemo_artifact,
         "relayscn_scene_policy_artifact": relayscn_scene_policy_artifact,
-        "relayref_artifact": relayref_artifact,
+        "relayint_intent_artifact": relayint_intent_artifact,
         "relaymem_retrieval_artifact": relaymem_retrieval_artifact,
         "runtime_ctx_injection_result": runtime_ctx_injection_result,
         "runtime_snippet_injection_result": runtime_snippet_injection_result,

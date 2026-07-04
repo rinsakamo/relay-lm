@@ -113,7 +113,7 @@ def _retrieval(root: Path, *, scene_type: str = "design_talk", scope: str = "pro
     )
     return build_relaymem_retrieval_dry_run_artifact(
         relayscn_scene_policy_artifact=_scene_artifact(scene_type, scope),
-        relayref_artifact=relayref,
+        relayint_intent_artifact=relayref,
         messages=[{"role": "user", "content": "RelayMEM snippet evidence"}],
         token_budget=token_budget,
         store_diagnostics=store,

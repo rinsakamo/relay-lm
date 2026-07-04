@@ -96,7 +96,7 @@ def _artifact_for(
     snippet_enabled: bool,
     scene_type: str = "design_talk",
     scope: str = "project_context",
-    relayref_artifact: dict[str, Any] | None = None,
+    relayint_intent_artifact: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     store = build_relaymem_store_diagnostics(
         root_path=str(root),
@@ -105,7 +105,7 @@ def _artifact_for(
     )
     return build_relaymem_retrieval_dry_run_artifact(
         relayscn_scene_policy_artifact=_scene_artifact(scene_type, scope),
-        relayref_artifact=relayref_artifact,
+        relayint_intent_artifact=relayint_intent_artifact,
         messages=[{"role": "user", "content": "RelayMEM CTX evidence metadata"}],
         token_budget=800,
         store_diagnostics=store,
@@ -205,7 +205,7 @@ def _assert_scene_safety(root: Path) -> None:
     unresolved = _artifact_for(
         root,
         snippet_enabled=True,
-        relayref_artifact={"unresolved_reference_detected": True},
+        relayint_intent_artifact={"unresolved_reference_detected": True},
     )
     require(unresolved["ctx_block_candidate"]["entries"] == [], unresolved)
     print("ok blocked scenes and unresolved references have no snippet metadata entries")

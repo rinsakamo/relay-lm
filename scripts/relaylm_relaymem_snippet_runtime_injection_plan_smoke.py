@@ -94,7 +94,7 @@ def _artifact_for(
     root: Path,
     *,
     scene_type: str = "design_talk",
-    relayref_artifact: dict[str, Any] | None = None,
+    relayint_intent_artifact: dict[str, Any] | None = None,
     snippet_extraction_enabled: bool = True,
     snippet_dry_run_only: bool = True,
     snippet_apply_enabled: bool = False,
@@ -107,7 +107,7 @@ def _artifact_for(
     )
     return build_relaymem_retrieval_dry_run_artifact(
         relayscn_scene_policy_artifact=_scene_artifact(scene_type),
-        relayref_artifact=relayref_artifact,
+        relayint_intent_artifact=relayint_intent_artifact,
         messages=[{"role": "user", "content": "RelayMEM snippet runtime plan"}],
         token_budget=800,
         store_diagnostics=store,
@@ -171,7 +171,7 @@ def _assert_blocked_plans(root: Path) -> None:
         _artifact_for(root, scene_type="formal_document"),
         _artifact_for(root, scene_type="medical_or_safety"),
         _artifact_for(root, scene_type="unknown"),
-        _artifact_for(root, relayref_artifact={"unresolved_reference_detected": True}),
+        _artifact_for(root, relayint_intent_artifact={"unresolved_reference_detected": True}),
         _artifact_for(root, snippet_extraction_enabled=False),
         _artifact_for(
             root,

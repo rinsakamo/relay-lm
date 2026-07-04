@@ -95,7 +95,7 @@ def _artifact_for(
     *,
     scene_type: str = "design_talk",
     scope: str = "project_context",
-    relayref_artifact: dict[str, Any] | None = None,
+    relayint_intent_artifact: dict[str, Any] | None = None,
     snippet_extraction_enabled: bool = True,
     snippet_dry_run_only: bool = True,
     snippet_apply_enabled: bool = False,
@@ -108,7 +108,7 @@ def _artifact_for(
     )
     return build_relaymem_retrieval_dry_run_artifact(
         relayscn_scene_policy_artifact=_scene_artifact(scene_type, scope),
-        relayref_artifact=relayref_artifact,
+        relayint_intent_artifact=relayint_intent_artifact,
         messages=[{"role": "user", "content": "RelayMEM snippet ctx block"}],
         token_budget=800,
         store_diagnostics=store,
@@ -169,7 +169,7 @@ def _assert_blocked_candidates(root: Path) -> None:
         artifact = _artifact_for(root, scene_type=scene_type)
         _assert_candidate_shape(artifact)
         require(artifact["ctx_block_snippet_candidate"]["entries"] == [], (scene_type, artifact))
-    unresolved = _artifact_for(root, relayref_artifact={"unresolved_reference_detected": True})
+    unresolved = _artifact_for(root, relayint_intent_artifact={"unresolved_reference_detected": True})
     require(unresolved["snippet_apply_decision"] == "blocked_unresolved_reference", unresolved)
     require(unresolved["ctx_block_snippet_candidate"]["entries"] == [], unresolved)
     disabled = _artifact_for(root, snippet_extraction_enabled=False)

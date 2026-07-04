@@ -109,7 +109,7 @@ def main() -> int:
 
         artifact = build_relaymem_retrieval_dry_run_artifact(
             relayscn_scene_policy_artifact=_scene_policy(),
-            relayref_artifact=None,
+            relayint_intent_artifact=None,
             messages=[{"role": "user", "content": "RelayMEM priority project"}],
             token_budget=2048,
             store_diagnostics=store,
@@ -176,7 +176,7 @@ def main() -> int:
 
         zero = build_relaymem_retrieval_dry_run_artifact(
             relayscn_scene_policy_artifact=_scene_policy(),
-            relayref_artifact=None,
+            relayint_intent_artifact=None,
             messages=[{"role": "user", "content": "RelayMEM priority project"}],
             store_diagnostics=store,
             max_candidates=0,
@@ -207,7 +207,7 @@ def main() -> int:
         )
         artifact = build_relaymem_retrieval_dry_run_artifact(
             relayscn_scene_policy_artifact=_scene_policy(),
-            relayref_artifact=None,
+            relayint_intent_artifact=None,
             messages=[{"role": "user", "content": "RelayMEM late summary"}],
             store_diagnostics=store,
             max_candidates=1,

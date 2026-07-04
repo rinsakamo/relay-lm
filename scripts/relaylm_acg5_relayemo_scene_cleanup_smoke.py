@@ -119,7 +119,7 @@ def main() -> None:
     )
     retrieval_artifact = build_relaymem_retrieval_dry_run_artifact(
         relayscn_scene_policy_artifact=relayscn_artifact,
-        relayref_artifact={"unresolved_reference_detected": False, "mode_reasons": []},
+        relayint_intent_artifact={"unresolved_reference_detected": False, "mode_reasons": []},
         messages=[{"role": "user", "content": "diagnostic smoke text"}],
         token_budget=256,
         store_diagnostics={"store_enabled": False, "readiness": "disabled"},

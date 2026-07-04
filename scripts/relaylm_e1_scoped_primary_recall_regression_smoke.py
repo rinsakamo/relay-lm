@@ -250,7 +250,7 @@ def main() -> None:
 
         english_retrieval = build_relaymem_retrieval_dry_run_artifact(
             relayscn_scene_policy_artifact=scene_artifact(),
-            relayref_artifact=None,
+            relayint_intent_artifact=None,
             messages=[{"role": "user", "content": ENGLISH_STOPWORD_QUERY}],
             token_budget=512,
             store_diagnostics=diagnostics,
@@ -267,7 +267,7 @@ def main() -> None:
 
         retrieval = build_relaymem_retrieval_dry_run_artifact(
             relayscn_scene_policy_artifact=scene_artifact(),
-            relayref_artifact=None,
+            relayint_intent_artifact=None,
             messages=[{"role": "user", "content": QUERY}],
             token_budget=512,
             store_diagnostics=diagnostics,

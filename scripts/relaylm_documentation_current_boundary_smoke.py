@@ -55,7 +55,7 @@ REQUIRED = {
         "Analyzer Candidate Governance: ACG-1 contract/helpers complete; ACG-2 Grounded Recall Detail Safety complete; ACG-3 Retrieval Query Normalization complete; ACG-4 Reference/Intent Analyzer consolidation complete; ACG-5 RelayEMO scene ownership cleanup complete; ACG-6 SCN structured classifier and scene-wiki boundary complete",
         "Post-MVP decision debt is now tracked explicitly as PM-D1",
         "PM-D1 RelaySOUL gate design-freeze relation",
-        "PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope",
+        "PM-D2 RelayINT -> RelayMEM relayint_intent_artifact legacy compatibility scope",
         "PM-D3 RelayEMO/RelaySCN scene_state ownership",
         "PM-D4 client history exclusion default-off deployment decision",
         "PM-D5 RelayMEM flat-store compatibility removal",
@@ -119,7 +119,7 @@ REQUIRED = {
     "docs/architecture/project_execution_plan.md": (
         "Post-MVP decision debt registry",
         "PM-D1 RelaySOUL gate design-freeze relation",
-        "PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope",
+        "PM-D2 RelayINT -> RelayMEM relayint_intent_artifact legacy compatibility scope",
         "PM-D3 RelayEMO/RelaySCN scene_state ownership",
         "PM-D4 client history exclusion default-off deployment decision",
         "PM-D5 RelayMEM flat-store compatibility removal",

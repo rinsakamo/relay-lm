@@ -68,7 +68,7 @@ from relaylm.relayint import (
     build_relayint_fast_path_dry_run,
     build_relayint_quick_clarification_apply_plan,
     build_relayint_quick_clarification_preflight,
-    build_relayint_reference_repair_dry_run,
+    build_relayint_reference_intent_artifact,
     build_relayint_request_compatibility_gate,
 )
 from relaylm.relayscn import build_relayscn_scene_policy_artifact
@@ -342,7 +342,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     max_entries=config.relayemo_session_state_max_entries,
                 )
 
-        relayref_artifact = build_relayint_reference_repair_dry_run(
+        relayint_intent_artifact = build_relayint_reference_intent_artifact(
             relayscn_artifact=relayscn_scene_policy_artifact,
             messages=_extract_trace_messages(payload),
             ctx_hints=_extract_ctx_hints(payload),
@@ -392,7 +392,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
         )
         relaymem_retrieval_artifact = build_relaymem_retrieval_dry_run_artifact(
             relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-            relayref_artifact=relayref_artifact,
+            relayint_intent_artifact=relayint_intent_artifact,
             messages=_extract_trace_messages(payload),
             token_budget=_resolve_relaymem_retrieval_token_budget(config),
             store_diagnostics=relaymem_store_diagnostics,
@@ -502,7 +502,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             route=route,
             stream_enabled=stream_enabled,
             relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-            relayref_artifact=relayref_artifact,
+            relayint_intent_artifact=relayint_intent_artifact,
             relaymem_retrieval_artifact=relaymem_retrieval_artifact,
             runtime_ctx_injection_result=runtime_ctx_injection_result,
             runtime_snippet_injection_result=runtime_snippet_injection_result,
@@ -589,7 +589,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             **runtime_artifact_diagnostics_kwargs(
                 relayemo_artifact=relayemo_artifact,
                 relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-                relayref_artifact=relayref_artifact,
+                relayint_intent_artifact=relayint_intent_artifact,
                 relaymem_retrieval_artifact=relaymem_diagnostics_artifact,
                 runtime_ctx_injection_result=runtime_ctx_injection_result,
                 runtime_snippet_injection_result=runtime_snippet_injection_result,
@@ -638,7 +638,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     route=route,
                     stream_enabled=stream_enabled,
                     relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-                    relayref_artifact=relayref_artifact,
+                    relayint_intent_artifact=relayint_intent_artifact,
                     relaymem_retrieval_artifact=relaymem_retrieval_artifact,
                     runtime_ctx_injection_result=runtime_ctx_injection_result,
                     runtime_snippet_injection_result=runtime_snippet_injection_result,
@@ -672,7 +672,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 route=route,
                 stream_enabled=stream_enabled,
                 relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-                relayref_artifact=relayref_artifact,
+                relayint_intent_artifact=relayint_intent_artifact,
                 relaymem_retrieval_artifact=relaymem_retrieval_artifact,
                 runtime_ctx_injection_result=runtime_ctx_injection_result,
                 runtime_snippet_injection_result=runtime_snippet_injection_result,
@@ -773,7 +773,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 route=route,
                 stream_enabled=stream_enabled,
                 relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-                relayref_artifact=relayref_artifact,
+                relayint_intent_artifact=relayint_intent_artifact,
                 relaymem_retrieval_artifact=relaymem_retrieval_artifact,
                 runtime_ctx_injection_result=runtime_ctx_injection_result,
                 runtime_snippet_injection_result=runtime_snippet_injection_result,
@@ -807,7 +807,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             route=route,
             stream_enabled=stream_enabled,
             relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-            relayref_artifact=relayref_artifact,
+            relayint_intent_artifact=relayint_intent_artifact,
             relaymem_retrieval_artifact=relaymem_retrieval_artifact,
             runtime_ctx_injection_result=runtime_ctx_injection_result,
             runtime_snippet_injection_result=runtime_snippet_injection_result,
@@ -1147,7 +1147,7 @@ def _build_relayrun_runtime_artifact(
     route: ResolvedRoute,
     stream_enabled: bool,
     relayscn_scene_policy_artifact: Mapping[str, Any] | None,
-    relayref_artifact: Mapping[str, Any] | None,
+    relayint_intent_artifact: Mapping[str, Any] | None,
     relaymem_retrieval_artifact: Mapping[str, Any] | None,
     runtime_ctx_injection_result: Mapping[str, Any] | None,
     runtime_snippet_injection_result: Mapping[str, Any] | None,
@@ -1160,7 +1160,7 @@ def _build_relayrun_runtime_artifact(
     node_statuses = [
         build_relayrun_node(node_name="request_received", node_status="completed"),
         _relayrun_relayscn_node(relayscn_scene_policy_artifact),
-        _relayrun_relayref_node(relayref_artifact),
+        _relayrun_relayint_intent_node(relayint_intent_artifact),
         _relayrun_relaymem_retrieval_node(relaymem_retrieval_artifact),
         _relayrun_relaymem_runtime_ctx_node(
             runtime_ctx_injection_result=runtime_ctx_injection_result,
@@ -1271,13 +1271,13 @@ def _relayrun_relayscn_node(artifact: Mapping[str, Any] | None) -> dict[str, Any
     )
 
 
-def _relayrun_relayref_node(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
+def _relayrun_relayint_intent_node(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
     if not isinstance(artifact, Mapping):
         return build_relayrun_node(
-            node_name="relayref",
+            node_name="relayint",
             node_status="failed",
-            blocked_reasons=["relayref_artifact_missing"],
-            fallback_reason="relayref_artifact_missing",
+            blocked_reasons=["relayint_intent_artifact_missing"],
+            fallback_reason="relayint_intent_artifact_missing",
         )
     blocked_reasons = []
     if artifact.get("unresolved_reference_detected") is True:
@@ -1289,7 +1289,7 @@ def _relayrun_relayref_node(artifact: Mapping[str, Any] | None) -> dict[str, Any
     )
     status = "blocked" if blocked_reasons else "completed"
     return build_relayrun_node(
-        node_name="relayref",
+        node_name="relayint",
         node_status=status,
         blocked_reasons=blocked_reasons,
         fallback_reason=(

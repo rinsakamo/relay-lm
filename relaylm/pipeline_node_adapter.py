@@ -20,7 +20,7 @@ _INPUT_SIDE_DIRECT_NODE_NAMES = frozenset(
 def record_phase45_node_results(
     pipeline_context: PipelineContext,
     *,
-    relayref_artifact: Mapping[str, Any] | None,
+    relayint_intent_artifact: Mapping[str, Any] | None,
     relayint_fast_path_dry_run: Mapping[str, Any] | None,
     relayint_quick_clarification_preflight: Mapping[str, Any] | None,
     relayint_quick_clarification_apply_plan: Mapping[str, Any] | None,
@@ -40,24 +40,24 @@ def record_phase45_node_results(
     existing = {result.node_name for result in pipeline_context.node_results}
     synthesized: list[PipelineNodeResult] = []
 
-    if "relayint_reference_repair" not in existing:
+    if "relayint_reference_intent" not in existing:
         synthesized.append(
             build_pipeline_node_result(
-                node_name="relayint_reference_repair",
+                node_name="relayint_reference_intent",
                 status="diagnostic_only",
-                decision=_text(_get(relayref_artifact, "mode")) or "none",
+                decision=_text(_get(relayint_intent_artifact, "mode")) or "none",
                 diagnostics={
                     "diagnostics_only": True,
                     "content_free": True,
-                    "source_node_alias": "relayint_reference_repair",
-                    "compatibility_source_node": "relayref",
-                    "artifact_present": isinstance(relayref_artifact, Mapping),
+                    "source_node_alias": "relayint_reference_intent",
+                    "compatibility_source_node": "relayint",
+                    "artifact_present": isinstance(relayint_intent_artifact, Mapping),
                     "unresolved_reference_detected": (
-                        _get(relayref_artifact, "unresolved_reference_detected") is True
+                        _get(relayint_intent_artifact, "unresolved_reference_detected") is True
                     ),
-                    "apply_allowed": _get(relayref_artifact, "apply_allowed") is True,
+                    "apply_allowed": _get(relayint_intent_artifact, "apply_allowed") is True,
                 },
-                artifacts=_summaries((("relayref_artifact", relayref_artifact),)),
+                artifacts=_summaries((("relayint_intent_artifact", relayint_intent_artifact),)),
             )
         )
 

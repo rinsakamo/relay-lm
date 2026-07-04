@@ -112,7 +112,7 @@ def _assert_relaymem_consumes_native_artifact() -> None:
     artifact = _artifact("それを直して")
     retrieval = build_relaymem_retrieval_dry_run_artifact(
         relayscn_scene_policy_artifact=_scene(),
-        relayref_artifact=artifact,
+        relayint_intent_artifact=artifact,
         messages=[{"role": "user", "content": "それを直して"}],
         store_diagnostics={"fallback_reason": "memory_store_read_only_selection_dry_run"},
     )

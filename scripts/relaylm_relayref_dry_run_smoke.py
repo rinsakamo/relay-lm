@@ -86,14 +86,14 @@ def _post_and_get_relayref(
 ) -> dict[str, Any]:
     resp = client.post("/v1/chat/completions", json=payload)
     require(resp.status_code == 200, resp.text)
-    artifact = _last_metadata(trace_path).get("relayref_artifact")
+    artifact = _last_metadata(trace_path).get("relayint_intent_artifact")
     require(isinstance(artifact, dict), _last_metadata(trace_path))
     return artifact
 
 
 def _assert_no_backend_artifact(payload: dict[str, Any]) -> None:
     forbidden = {
-        "relayref_artifact",
+        "relayint_intent_artifact",
         "relayscn_scene_policy_artifact",
         "context_rewrite",
         "forced_sleep_candidate",
@@ -183,8 +183,8 @@ def main() -> int:
                 print("ok recovery scene emits context_repair and confirmation-only handoff")
 
                 metadata = _last_metadata(trace_path)
-                require(isinstance(metadata.get("relayref_artifact"), dict), metadata)
-                print("ok trace metadata includes relayref_artifact")
+                require(isinstance(metadata.get("relayint_intent_artifact"), dict), metadata)
+                print("ok trace metadata includes relayint_intent_artifact")
 
         malformed = build_relayref_dry_run_artifact(relayscn_artifact={"bad": "shape"})
         require(malformed["diagnostics_only"] is True, malformed)

@@ -278,7 +278,7 @@ def main() -> None:
     relayrel_projection = build_relayrel_relationship_projection(route=None, request_scope_identity={"session_id": "s"})
     retrieval_artifact = build_relaymem_retrieval_dry_run_artifact(
         relayscn_scene_policy_artifact=heuristic_artifact,
-        relayref_artifact={"unresolved_reference_detected": False, "mode_reasons": []},
+        relayint_intent_artifact={"unresolved_reference_detected": False, "mode_reasons": []},
         messages=[{"role": "user", "content": "diagnostic smoke text"}],
         token_budget=256,
         store_diagnostics={"store_enabled": False, "readiness": "disabled"},
