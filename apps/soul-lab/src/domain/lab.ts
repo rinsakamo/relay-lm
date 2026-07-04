@@ -6,6 +6,12 @@ export type Theme = "light" | "dark";
 export type Language = "ja" | "en";
 export type LabRoute =
   | "home"
+  | "character"
+  | "scenes"
+  | "relationships"
+  | "memory"
+  | "runtime"
+  | "advanced"
   | "observation"
   | "communication"
   | "pod"
