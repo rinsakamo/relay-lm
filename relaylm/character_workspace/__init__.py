@@ -1,0 +1,1 @@
+"""Character Workspace package."""
