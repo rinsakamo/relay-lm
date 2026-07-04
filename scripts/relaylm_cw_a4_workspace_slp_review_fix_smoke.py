@@ -130,6 +130,20 @@ def main() -> None:
         assert "proposal_write_skipped_after_candidate_write_failure" in conflict_write.blocked_reason_ids
         _assert_no_proposals_written(conflict_root)
 
+        partial_root = Path(tmp) / "characters" / "partial-conflict"
+        _write_required_sources(partial_root)
+        _write_source(partial_root, {"messages": [{"role": "user", "content": "User says this memory and scene should be reviewed."}]})
+        partial_plan = plan_character_workspace_slp_candidates(partial_root)
+        partial_memory_path = next(candidate.target_path for candidate in partial_plan.candidates if candidate.target_domain == "memory")
+        partial_scene_path = next(candidate.target_path for candidate in partial_plan.candidates if candidate.target_domain == "scene")
+        (partial_root / partial_scene_path).parent.mkdir(parents=True, exist_ok=True)
+        (partial_root / partial_scene_path).write_text("conflicting existing scene candidate\n", encoding="utf-8")
+        partial_write = plan_character_workspace_slp_candidates(partial_root, write_candidates=True)
+        assert partial_write.status == "write_blocked"
+        assert "candidate_artifact_conflict" in partial_write.blocked_reason_ids
+        assert not (partial_root / partial_memory_path).exists(), "candidate batch was partially written before conflict"
+        _assert_no_proposals_written(partial_root)
+
         cap_root = Path(tmp) / "characters" / "source-cap"
         _write_required_sources(cap_root)
         for index in range(5):
@@ -147,6 +161,21 @@ def main() -> None:
         assert oversized_run.source_evidence_count == 0
         assert "source_read_limit_reached" in oversized_run.reason_ids
         assert not oversized_run.candidates
+
+        source_root_symlink = Path(tmp) / "characters" / "source-root-symlink"
+        _write_required_sources(source_root_symlink)
+        source_parent = source_root_symlink / ".relaylm" / "sources"
+        source_parent.mkdir(parents=True, exist_ok=True)
+        external_source = Path(tmp) / "external-source"
+        external_source.mkdir(parents=True, exist_ok=True)
+        try:
+            (source_parent / "conversations").symlink_to(external_source, target_is_directory=True)
+        except (OSError, NotImplementedError):
+            pass
+        else:
+            symlink_run = plan_character_workspace_slp_candidates(source_root_symlink)
+            assert symlink_run.status == "path_escape_rejected"
+            assert "symlink_escape_rejected" in symlink_run.blocked_reason_ids
 
     print("CW-A4 review fix smoke passed")
 

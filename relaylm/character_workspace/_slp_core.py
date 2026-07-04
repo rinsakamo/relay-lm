@@ -1,6 +1,6 @@
 """CW-A4 RelaySLP Character Workspace candidate/proposal planner core.
 
-This module is side-effect free unless ``write_candidates=True`` is passed.  It
+This module is side-effect free unless ``write_candidates=True`` is passed. It
 plans content-free public projections for RelaySLP-maintained Memory Wiki,
 Scene Wiki, and Relationship workspace maintenance candidates from bounded
 user-asserted governed source evidence.
@@ -42,22 +42,18 @@ _WRITE_PREFIXES = (
     "proposals/scene/",
     "proposals/relationship/",
 )
+_PROPOSAL_PREFIXES = (
+    "proposals/memory/",
+    "proposals/scene/",
+    "proposals/relationship/",
+)
 _FORBIDDEN_WRITE_PREFIXES = (
     ".relaylm/build/",
     ".relaylm/state/",
     ".relaylm/queue/",
 )
 _UPPERCASE_SOURCES = frozenset({*REQUIRED_SOURCE_FILENAMES, "LORE.md"})
-_SCENE_HINTS = (
-    "scene",
-    "scenario",
-    "situation",
-    "context",
-    "home scene",
-    "場面",
-    "シーン",
-    "状況",
-)
+_SCENE_HINTS = ("scene", "scenario", "situation", "context", "home scene", "場面", "シーン", "状況")
 _RELATIONSHIP_HINTS = (
     "relationship",
     "familiarity",
@@ -95,15 +91,7 @@ _SENSITIVE_HINTS = (
     "宗教",
     "政治",
 )
-_TEXT_KEYS = (
-    "content",
-    "text",
-    "message",
-    "summary_text",
-    "title",
-    "user_text",
-    "assistant_text",
-)
+_TEXT_KEYS = ("content", "text", "message", "summary_text", "title", "user_text", "assistant_text")
 _ROLE_KEYS = ("role", "speaker", "source_role", "message_role")
 
 
@@ -385,18 +373,21 @@ def _preflight_root_errors(root: Path) -> tuple[str, ...]:
 
 
 def _find_symlink_escape_errors(root: Path) -> tuple[str, ...]:
+    """Preflight only source roots touched by the planner, not the full workspace."""
+
     try:
         root_resolved = root.resolve()
     except OSError:
         return ("workspace_root_resolve_failed",)
-    for path in root.rglob("*"):
-        if not path.is_symlink():
+    for source_root in _SOURCE_ROOTS:
+        directory = root / source_root
+        if not directory.exists():
             continue
         try:
-            resolved = path.resolve()
+            resolved = directory.resolve()
         except OSError:
-            return ("symlink_escape_rejected",)
-        if not _is_relative_to(resolved, root_resolved):
+            return ("source_root_resolve_failed",)
+        if directory.is_symlink() or not _is_relative_to(resolved, root_resolved):
             return ("symlink_escape_rejected",)
     return ()
 
@@ -620,59 +611,94 @@ def _proposal_path(candidate: CharacterWorkspaceCandidate, proposal_hash: str) -
 
 
 def _write_candidate_artifacts(root: Path, candidates: tuple[CharacterWorkspaceCandidate, ...], proposals: tuple[CharacterWorkspaceProposal, ...]) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    written: list[str] = []
-    errors: list[str] = []
-
-    candidate_writes = [
+    candidate_writes = tuple(
         (candidate.target_path, _candidate_markdown(candidate))
         for candidate in candidates
         if not _candidate_is_blocked(candidate) and candidate.target_path.endswith(".md")
-    ]
-    candidate_written, candidate_errors = _write_artifact_batch(root, candidate_writes)
+    )
+    candidate_preflight_errors = _preflight_artifact_batch(root, candidate_writes)
+    if candidate_preflight_errors:
+        return (), _dedupe((*candidate_preflight_errors, "proposal_write_skipped_after_candidate_write_failure"))
+
+    written: list[str] = []
+    errors: list[str] = []
+    candidate_written, candidate_errors = _write_artifact_batch(root, candidate_writes, preflight=False)
     written.extend(candidate_written)
     errors.extend(candidate_errors)
-    if errors:
-        errors.append("proposal_write_skipped_after_candidate_write_failure")
-        return tuple(dict.fromkeys(written)), _dedupe(errors)
 
-    proposal_writes = [(proposal.target_path, _json_text(proposal.to_dict())) for proposal in proposals]
+    successful_candidate_paths = frozenset(candidate_written)
+    proposal_writes = tuple(
+        (proposal.target_path, _json_text(proposal.to_dict()))
+        for proposal in proposals
+        if str(proposal.public_summary.get("candidate_target_path", "")) in successful_candidate_paths
+    )
     proposal_written, proposal_errors = _write_artifact_batch(root, proposal_writes)
     written.extend(proposal_written)
     errors.extend(proposal_errors)
+    if candidate_errors:
+        errors.append("proposal_write_limited_to_successful_candidates_after_candidate_write_failure")
     return tuple(dict.fromkeys(written)), _dedupe(errors)
 
 
-def _write_artifact_batch(root: Path, writes: Iterable[tuple[str, str]]) -> tuple[list[str], list[str]]:
-    written: list[str] = []
+def _preflight_artifact_batch(root: Path, writes: Iterable[tuple[str, str]]) -> tuple[str, ...]:
     errors: list[str] = []
-    for relative_path, text in writes:
+    seen: dict[str, str] = {}
+    try:
+        root_resolved = root.resolve()
+    except OSError:
+        return ("workspace_root_resolve_failed",)
+    for relative_path, text in tuple(writes):
         path_errors = _validate_write_path(relative_path)
         if path_errors:
             errors.extend(path_errors)
             continue
+        previous = seen.get(relative_path)
+        if previous is not None:
+            if previous != text:
+                errors.append("candidate_artifact_conflict")
+            continue
+        seen[relative_path] = text
         target = root / relative_path
+        parent = target.parent
         try:
-            root_resolved = root.resolve()
-            parent = target.parent
             if _path_has_symlink(root, parent):
                 errors.append("write_path_symlink_rejected")
-                continue
-            parent.mkdir(parents=True, exist_ok=True)
-            parent_errors = _validate_resolved_workspace_destination(root_resolved, parent)
-            if parent_errors:
-                errors.extend(parent_errors)
                 continue
             if target.is_symlink():
                 errors.append("write_path_symlink_rejected")
                 continue
+            if not target.exists():
+                continue
+            target_errors = _validate_resolved_workspace_destination(root_resolved, target)
+            if target_errors:
+                errors.extend(target_errors)
+                continue
+            if target.is_dir():
+                errors.append("write_path_conflict")
+                continue
+            existing = target.read_text(encoding="utf-8")
+            if existing != text:
+                errors.append("candidate_artifact_conflict")
+        except OSError:
+            errors.append("candidate_artifact_write_failed")
+        except UnicodeDecodeError:
+            errors.append("candidate_artifact_conflict_not_utf8")
+    return _dedupe(errors)
+
+
+def _write_artifact_batch(root: Path, writes: Iterable[tuple[str, str]], *, preflight: bool = True) -> tuple[list[str], list[str]]:
+    write_items = tuple(writes)
+    if preflight:
+        errors = list(_preflight_artifact_batch(root, write_items))
+        if errors:
+            return [], errors
+    written: list[str] = []
+    errors: list[str] = []
+    for relative_path, text in write_items:
+        target = root / relative_path
+        try:
+            target.parent.mkdir(parents=True, exist_ok=True)
             if target.exists():
-                target_errors = _validate_resolved_workspace_destination(root_resolved, target)
-                if target_errors:
-                    errors.extend(target_errors)
-                    continue
-                if target.is_dir():
-                    errors.append("write_path_conflict")
-                    continue
                 existing = target.read_text(encoding="utf-8")
                 if existing == text:
                     written.append(relative_path)
@@ -736,6 +762,8 @@ def _validate_write_path(relative_path: str) -> tuple[str, ...]:
         return ("write_path_not_allowlisted",)
     if not (normalized.endswith(".md") or normalized.endswith(".json")):
         return ("write_path_not_allowlisted",)
+    if any(normalized.startswith(prefix) for prefix in _PROPOSAL_PREFIXES):
+        return () if normalized.endswith(".json") else ("write_path_not_allowlisted",)
     classification = classify_character_workspace_path(normalized)
     if classification.reason_ids or classification.domain not in {"memory", "scene", "relationship"}:
         return ("write_path_not_allowlisted",)
