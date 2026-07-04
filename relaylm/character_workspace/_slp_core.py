@@ -407,15 +407,19 @@ def _load_source_evidence(root: Path, *, max_source_files: int, max_read_bytes: 
     paths: list[Path] = []
     reasons: list[str] = []
     root_resolved = root.resolve()
+    capped = False
     for source_root in _SOURCE_ROOTS:
         directory = root / source_root
         if not directory.exists():
             continue
         if not directory.is_dir() or directory.is_symlink():
             return (), ("source_root_invalid",), True
-        for path in sorted(directory.rglob("*"), key=lambda item: item.relative_to(root).as_posix()):
+        for path in directory.rglob("*"):
             if path.is_dir():
                 continue
+            if len(paths) >= max_source_files:
+                capped = True
+                break
             try:
                 resolved = path.resolve()
             except OSError:
@@ -423,9 +427,9 @@ def _load_source_evidence(root: Path, *, max_source_files: int, max_read_bytes: 
             if path.is_symlink() or not _is_relative_to(resolved, root_resolved):
                 return (), ("symlink_escape_rejected",), True
             paths.append(path)
-    if len(paths) > max_source_files:
-        reasons.append("source_file_limit_reached")
-        paths = paths[:max_source_files]
+        if capped:
+            reasons.append("source_file_limit_reached")
+            break
 
     evidence: list[WorkspaceSourceEvidence] = []
     for path in paths:
@@ -433,12 +437,11 @@ def _load_source_evidence(root: Path, *, max_source_files: int, max_read_bytes: 
         classification = classify_character_workspace_path(rel)
         if classification.reason_ids:
             return (), tuple(classification.reason_ids), True
-        try:
-            raw = path.read_bytes()
-        except OSError:
-            return (), ("source_file_read_failed",), True
-        if len(raw) > max_read_bytes:
-            reasons.append("source_read_limit_reached")
+        raw, read_reason, read_failed = _read_bounded_bytes(path, max_read_bytes=max_read_bytes)
+        if read_failed:
+            return (), (read_reason or "source_file_read_failed",), True
+        if read_reason:
+            reasons.append(read_reason)
             continue
         try:
             text = raw.decode("utf-8")
@@ -452,6 +455,17 @@ def _load_source_evidence(root: Path, *, max_source_files: int, max_read_bytes: 
         stable_ref = "src:" + _hash_parts(rel, content_hash)[:24]
         evidence.append(WorkspaceSourceEvidence(rel, stable_ref, content_hash, roles, user_text))
     return tuple(evidence), _dedupe(reasons), False
+
+
+def _read_bounded_bytes(path: Path, *, max_read_bytes: int) -> tuple[bytes, str | None, bool]:
+    try:
+        with path.open("rb") as handle:
+            raw = handle.read(max_read_bytes + 1)
+    except OSError:
+        return b"", "source_file_read_failed", True
+    if len(raw) > max_read_bytes:
+        return b"", "source_read_limit_reached", False
+    return raw, None, False
 
 
 def _role_texts_from_source(text: str) -> tuple[str, str]:
