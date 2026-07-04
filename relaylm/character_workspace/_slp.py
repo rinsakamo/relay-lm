@@ -1,7 +1,7 @@
 """Compatibility exports for CW-A4 RelaySLP workspace candidate planning."""
 from __future__ import annotations
 
-from ._slp_core import (
+from ._slp_followup import (
     DEFAULT_MAX_CANDIDATES,
     DEFAULT_MAX_READ_BYTES,
     DEFAULT_MAX_SOURCE_FILES,
