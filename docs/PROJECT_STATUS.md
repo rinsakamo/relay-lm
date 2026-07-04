@@ -27,6 +27,8 @@ relaylm_related_authority:
   - docs/architecture/acg5_relayemo_scene_cleanup.md
   - docs/architecture/acg6_scene_wiki_classifier.md
   - docs/architecture/cw_a1_file_first_source_tree_parser_contracts.md
+  - docs/architecture/cw_a2_workspace_compiler_projections.md
+  - docs/architecture/cw_a3_character_workspace_ui_rebuild.md
   - docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md
   - docs/architecture/e1r4_retrieval_response_grounding.md
   - docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md
@@ -63,8 +65,8 @@ O3 always-on local operation: planned/unimplemented
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall, scope isolation, and E1-R5 scoped candidate bridge complete
 P0-PIPE RelayREL / RelaySCN / RelayEMO ordering: complete in PR #458 after actual app.py request-path rewiring and local validation; RelayREL now precedes RelaySCN, RelaySCN precedes input-side RelayEMO, RelayINT/RelayMEM/RelayCTX remain downstream
 Analyzer Candidate Governance: ACG-1 contract/helpers complete; ACG-2 Grounded Recall Detail Safety complete; ACG-3 Retrieval Query Normalization complete; ACG-4 Reference/Intent Analyzer consolidation complete; ACG-5 RelayEMO scene ownership cleanup complete; ACG-6 SCN structured classifier and scene-wiki boundary complete
-Character Workspace reset: CW-A1 file-first source tree/parser contracts complete as a read-only target contract; CW-A2 compiler projections and KV-cache tiers remain next
-SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0, UI-B1A, I-4E Forget UI, I-5B Pin / Unpin UI, and I-7C Held Governance UI complete
+Character Workspace reset: CW-A1 file-first source tree/parser contracts complete; CW-A2 compiler projections and KV-cache tiers complete; CW-A3 Character Workspace UI rebuild complete as a presentation-only browser UI rebuild
+SOUL Lab UI / Character Workspace UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0, UI-B1A, I-4E Forget UI, I-5B Pin / Unpin UI, I-7C Held Governance UI, and CW-A3 Character Workspace top-level surfaces complete
 UI-B1A read-only lifecycle visibility: complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete through M2-preferred recall plus E1-R5 bounded scoped candidate bridge
 E1 evaluation consolidation: complete
@@ -114,7 +116,9 @@ ACG-6 keeps classifier and scene-wiki matches non-authoritative by default. It d
 
 ## Character Workspace boundary
 
-CW-A1 is complete as a read-only target contract slice. It adds deterministic file-first layout constants, path classification, workspace validation, Markdown block parsing, read-only manifest diagnostics, public content-free projections, and smoke coverage. It does not implement the CW-A2 compiler/KV-cache projection layer, CW-A3 UI rebuild, CW-A4 RelaySLP workspace maintenance, CW-A5 templates/imports, runtime prompt wiring, uppercase source mutation, or default active character auto-create/auto-restore.
+CW-A1 is complete as a read-only target contract slice. CW-A2 is complete as an explicit compiler projection slice for deterministic `.relaylm/build/**` artifacts and KV-cache tier summaries. CW-A3 is complete as a browser UI rebuild that reorganizes the existing `apps/soul-lab` shell into Home, Character, Scenes, Relationships, Memory Wiki, Runtime, and Advanced surfaces.
+
+CW-A3 keeps Home on the existing RelayLM `/v1/chat/completions` authority path, keeps Real Runtime and Local Preview explicitly separated, and moves internal governance vocabulary toward Advanced without adding browser authority. It does not implement CW-A4 RelaySLP workspace maintenance, CW-A5 character creation/template import, source auto-writing, RelaySOUL apply/rollback, runtime prompt injection, worker operation, raw prompt/source display, or credential exposure.
 
 ## Current caveats
 
@@ -139,8 +143,8 @@ Post-O1F next candidates:
 
 Character Workspace reset:
   CW-A1 file-first source tree and parser contracts          complete
-  CW-A2 workspace compiler projections and KV-cache tiers    current next candidate
-  CW-A3 Character Workspace UI rebuild
+  CW-A2 workspace compiler projections and KV-cache tiers    complete
+  CW-A3 Character Workspace UI rebuild                       complete
   CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals
   CW-A5 character creation, templates, and showcase import
 
@@ -157,12 +161,10 @@ Post-E1-R5 / Post-Wave-7 next candidates:
   O2/O3 only after explicit MVP need
 ```
 
-The completed P0-PIPE implementation boundary is [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md). The ACG-1 contract is [ACG-1 Analyzer Candidate Governance Contract](architecture/acg1_analyzer_candidate_governance_contract.md). The ACG-2 handoff is [ACG-2 Grounded Recall Detail Safety](architecture/acg2_grounded_recall_detail_safety.md). The ACG-3 handoff is [ACG-3 Retrieval Query Normalization](architecture/acg3_retrieval_query_normalization.md). The ACG-4 handoff is [ACG-4 Reference Intent Analyzer](architecture/acg4_reference_intent_analyzer.md). The ACG-5 handoff is [ACG-5 RelayEMO Scene Cleanup](architecture/acg5_relayemo_scene_cleanup.md). The ACG-6 handoff is [ACG-6 Scene-Wiki Classifier Boundary](architecture/acg6_scene_wiki_classifier.md). The CW-A1 handoff is [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md). The Analyzer Candidate Governance roadmap is [Analyzer Candidate Governance and Multilingual Schema Policy](architecture/analyzer_candidate_governance.md). The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The E1-R5 post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). The E1-R5 implementation handoff is [E1-R5 Primary MEM Recall Candidate Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
+The completed P0-PIPE implementation boundary is [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md). The ACG-1 contract is [ACG-1 Analyzer Candidate Governance Contract](architecture/acg1_analyzer_candidate_governance_contract.md). The ACG-2 handoff is [ACG-2 Grounded Recall Detail Safety](architecture/acg2_grounded_recall_detail_safety.md). The ACG-3 handoff is [ACG-3 Retrieval Query Normalization](architecture/acg3_retrieval_query_normalization.md). The ACG-4 handoff is [ACG-4 Reference Intent Analyzer](architecture/acg4_reference_intent_analyzer.md). The ACG-5 handoff is [ACG-5 RelayEMO Scene Cleanup](architecture/acg5_relayemo_scene_cleanup.md). The ACG-6 handoff is [ACG-6 Scene-Wiki Classifier Boundary](architecture/acg6_scene_wiki_classifier.md). The CW-A1 handoff is [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md). The CW-A2 handoff is [CW-A2 Workspace Compiler Projections and KV-cache Tiers](architecture/cw_a2_workspace_compiler_projections.md). The CW-A3 handoff is [CW-A3 Character Workspace UI Rebuild](architecture/cw_a3_character_workspace_ui_rebuild.md). The Analyzer Candidate Governance roadmap is [Analyzer Candidate Governance and Multilingual Schema Policy](architecture/analyzer_candidate_governance.md). The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The E1-R5 post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). The E1-R5 implementation handoff is [E1-R5 Primary MEM Recall Candidate Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 
 ## Not yet implemented
 
-- CW-A2 compiler/KV-cache projections and backend prompt projection wiring;
-- CW-A3 Character Workspace UI rebuild;
 - CW-A4 RelaySLP automatic workspace maintenance;
 - CW-A5 Quick Create / Advanced Create / template import UI;
 - full RelayREL relationship Markdown parsing;
