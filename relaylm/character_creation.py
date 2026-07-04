@@ -1,11 +1,11 @@
 """CW-A5 Character Creation, bundled templates, and safe template import.
 
-This module is intentionally deterministic and local-only.  It stages complete
-file-first Character Workspace source trees, validates them through CW-A1, and
-generates `.relaylm/build/**` only through the CW-A2 compiler after an explicit
-create approval.  Bundled templates are content-only source packs; external
-packs are validation-only in this MVP surface unless a caller wires an explicit
-import policy around the returned validation result.
+This module is deterministic and local-only. It stages complete file-first
+Character Workspace source trees, validates them through CW-A1, and generates
+``.relaylm/build/**`` only through the CW-A2 compiler after explicit create
+approval. Bundled templates are content-only source packs; external packs are
+validation-only in the MVP API surface unless a future bounded importer commits
+them explicitly.
 """
 from __future__ import annotations
 
@@ -498,10 +498,10 @@ def commit_character_workspace_candidate(
         )
 
     root.mkdir(parents=True, exist_ok=True)
-    temp_name = f".relaylm-create-{candidate.character_id}.tmp"
-    staging_root = root / temp_name
-    if staging_root.exists():
-        shutil.rmtree(staging_root)
+    temp_parent = root / f"_relaylm_create_{candidate.character_id}_tmp"
+    staging_root = temp_parent / candidate.character_id
+    if temp_parent.exists():
+        shutil.rmtree(temp_parent)
     try:
         _write_workspace_files(staging_root, candidate.source_files)
         validation = validate_character_workspace(
@@ -536,8 +536,8 @@ def commit_character_workspace_candidate(
             written_build_artifacts=tuple(f".relaylm/build/{name}" for name in EXPECTED_ARTIFACTS),
         )
     finally:
-        if staging_root.exists():
-            shutil.rmtree(staging_root)
+        if temp_parent.exists():
+            shutil.rmtree(temp_parent)
 
 
 def validate_template_path(path: str | Path) -> TemplateValidationResult:
@@ -594,8 +594,7 @@ def validate_template_zip(path: str | Path) -> TemplateValidationResult:
         with zipfile.ZipFile(zip_path) as archive:
             for info in archive.infolist():
                 mode = (info.external_attr >> 16) & 0o777777
-                is_symlink = stat.S_ISLNK(mode)
-                entries.append((info.filename, mode, info.is_dir(), is_symlink))
+                entries.append((info.filename, mode, info.is_dir(), stat.S_ISLNK(mode)))
     except zipfile.BadZipFile:
         return TemplateValidationResult(
             status="invalid",
@@ -629,8 +628,7 @@ def _validate_template_entries(
     path_set = set(normalized_paths)
     if "manifest.json" not in path_set:
         reason_ids.append("missing_manifest")
-    missing_required = [filename for filename in REQUIRED_SOURCE_FILENAMES if filename not in path_set]
-    if missing_required:
+    if any(filename not in path_set for filename in REQUIRED_SOURCE_FILENAMES):
         reason_ids.append("missing_required_template_source")
 
     unique_reasons = tuple(dict.fromkeys(reason_ids))
@@ -652,11 +650,11 @@ def _unsafe_template_entry_reasons(
 ) -> tuple[str, ...]:
     reasons: list[str] = []
     pure = PurePosixPath(relative_path)
+    lowered = relative_path.lower()
     if relative_path.startswith("/") or pure.is_absolute():
         reasons.append("absolute_path_rejected")
     if any(part in {"", ".", ".."} for part in pure.parts):
         reasons.append("path_traversal_rejected")
-    lowered = relative_path.lower()
     if is_symlink:
         reasons.append("symlink_rejected")
     if any(lowered == prefix.rstrip("/") or lowered.startswith(prefix) for prefix in _RESERVED_TEMPLATE_PREFIXES):
