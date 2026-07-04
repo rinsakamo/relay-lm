@@ -56,6 +56,8 @@ def _write_fixture(root: Path) -> None:
         "## Target user direction ^mem-relaylm-target-user\n\n"
         "memory_id:: mem-secret\n"
         "queue_record:: queue-record-123\n"
+        "scope:: queue-record-123\n"
+        "priority:: runtime-private-payload\n"
         "status:: active\n"
         "importance:: high\n\n"
         "PRIVATE_MEMORY_BODY\n\n"
