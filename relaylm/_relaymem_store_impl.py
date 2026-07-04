@@ -22,7 +22,7 @@ _TARGET_MEM_LAYOUT_DIRS = (
     "memory/mem/secondary/summaries",
     "memory/mem/secondary/relations",
 )
-_TARGET_LAYOUT_DIRS = _TARGET_SOURCE_DIRS + _TARGET_MEM_LAYOUT_DIRS
+_TARGET_LAYOUT_DIRS = _TARGET_MEM_LAYOUT_DIRS + _TARGET_SOURCE_DIRS
 _LAYOUT_DIRS = _TARGET_LAYOUT_DIRS
 _LAYOUT_FILES = ("memory/mem/index.md", "memory/mem/log.md")
 _ALLOWED_SUFFIXES = {"memory/sources": {".jsonl", ".md"}, "memory/mem": {".md"}}

@@ -94,6 +94,31 @@ def main() -> int:
         print("ok target Primary/Secondary store remains discoverable")
 
     with tempfile.TemporaryDirectory() as td:
+        source_heavy_root = Path(td)
+        _write_target_store(source_heavy_root)
+        source_dir = source_heavy_root / "memory" / "sources" / "conversations"
+        for index in range(90):
+            (source_dir / f"source-{index:03d}.jsonl").write_text(
+                '{"event":"source-heavy"}\n',
+                encoding="utf-8",
+            )
+        diagnostics = build_relaymem_store_diagnostics(
+            root_path=str(source_heavy_root),
+            store_enabled=True,
+            retrieval_dry_run_only=True,
+        )
+        require(diagnostics["pages_discovered"] == 2, diagnostics)
+        require(
+            {
+                "memory/mem/primary/sessions/session.md",
+                "memory/mem/secondary/projects/project.md",
+            }.issubset(set(diagnostics["page_paths"])),
+            diagnostics,
+        )
+        require(diagnostics["validation"]["validation_truncated"] is True, diagnostics)
+        print("ok source-heavy target store preserves MEM-page validation priority")
+
+    with tempfile.TemporaryDirectory() as td:
         configured_root = Path(td)
         scoped = resolve_relaymem_character_store_root(str(configured_root), "character_default")
         require(isinstance(scoped, str), scoped)

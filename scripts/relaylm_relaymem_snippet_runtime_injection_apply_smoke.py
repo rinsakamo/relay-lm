@@ -16,7 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.app import create_app
+from relaylm.app import create_app, _relaymem_primary_recall_scope_allowed
 from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
 from relaylm.relaymem_runtime_ctx import maybe_apply_relaymem_snippet_runtime_injection
 
@@ -389,6 +389,9 @@ def _assert_incomplete_target_layout_fail_closed(
     secondary = scoped_root / "memory" / "mem" / "secondary"
     require(secondary.is_dir(), secondary)
     shutil.rmtree(secondary)
+    blocked_source = scoped_root / "memory" / "sources" / "conversations" / "blocked.bin"
+    blocked_source.parent.mkdir(parents=True, exist_ok=True)
+    blocked_source.write_bytes(b"blocked-source")
     backend_payload, metadata = _post(
         port=port,
         store_root=root,
@@ -407,6 +410,19 @@ def _assert_incomplete_target_layout_fail_closed(
     require(
         "snippet_apply_decision:blocked_no_candidates" in result["blocked_reasons"],
         result,
+    )
+    require(
+        _relaymem_primary_recall_scope_allowed(
+            {
+                "fallback_reason": "memory_store_files_blocked",
+                "layout_compatibility": {
+                    "target_primary_secondary_present": False,
+                    "flat_store_compatibility_removed": True,
+                },
+            }
+        )
+        is False,
+        "masked layout incompatibility allowed Primary recall",
     )
     print("ok incomplete target layout blocks primary recall bridge before runtime snippets")
 

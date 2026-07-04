@@ -1107,7 +1107,13 @@ def _relaymem_primary_recall_scope_allowed(
 ) -> bool:
     if not isinstance(store_diagnostics, Mapping):
         return True
-    return store_diagnostics.get("fallback_reason") != "target_primary_secondary_layout_missing"
+    compatibility = store_diagnostics.get("layout_compatibility")
+    if (
+        isinstance(compatibility, Mapping)
+        and compatibility.get("target_primary_secondary_present") is False
+    ):
+        return False
+    return True
 
 
 def _resolve_relaymem_retrieval_token_budget(config: RelayLMConfig) -> int | None:
