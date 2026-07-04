@@ -40,7 +40,7 @@ def build_relayint_reference_intent_artifact(*, relayscn_artifact: Mapping[str, 
     ctx_hints = ctx_hints or {}
     parsed_scene = _parse_relayscn_artifact(relayscn_artifact)
     ctx_summary = _ctx_metadata_summary(ctx_hints)
-    reference_intent = analyze_reference_intent(messages=messages, ctx_hints=ctx_hints, source="reference_intent_analyzer")
+    reference_intent = analyze_reference_intent(messages=messages, ctx_hints=ctx_hints, source="heuristic")
     reference_projection = reference_intent_public_projection(reference_intent)
     detected_reference_kind = relayint_legacy_reference_kind(reference_intent)
     prior_memory = bool(reference_intent["prior_memory_request_detected"])
@@ -68,7 +68,7 @@ def build_relayint_reference_intent_artifact(*, relayscn_artifact: Mapping[str, 
         "diagnostics_only": True,
         "content_free": True,
         "request_local": True,
-        "source": "reference_intent_analyzer",
+        "source": "heuristic",
         "llm_called": False,
         "mem_lookup_executed": False,
         "backend_payload_mutation_allowed": False,

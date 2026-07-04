@@ -53,7 +53,7 @@ DEFAULT_RELAYRUN_NODE_SEQUENCE: tuple[str, ...] = (
 RUNTIME_CHECKPOINT_NODE_SEQUENCE: tuple[str, ...] = (
     "request_received",
     "relayscn",
-    "relayref",
+    "relayint",
     "relaymem_retrieval",
     "relaymem_runtime_ctx",
     "token_budget_truncation",
@@ -677,6 +677,8 @@ def _build_checkpoint_index_file_summary(
 def _relayrun_node_name_alias(node_name: str | None) -> str | None:
     if node_name == "relayref":
         return "relayint_reference_repair"
+    if node_name == "relayint":
+        return "relayint_reference_intent"
     return None
     
 
@@ -709,7 +711,7 @@ def build_relayrun_recovery_transition_artifact(
     if source_node == "backend_forward":
         proposed_transition_type = "retry_safe_node"
         next_node = "backend_forward"
-    elif source_node == "relayref":
+    elif source_node in {"relayref", "relayint"}:
         proposed_transition_type = "ask_user_confirmation"
         next_node = "waiting_user"
         required_user_action = "clarify_reference"
