@@ -176,6 +176,7 @@ CW-A4 does not implement:
 python -m compileall -q relaylm scripts
 PYTHONPATH=. python scripts/relaylm_cw_a2_workspace_compiler_smoke.py
 PYTHONPATH=. python scripts/relaylm_cw_a4_workspace_slp_candidates_smoke.py
+PYTHONPATH=. python scripts/relaylm_cw_a4_workspace_slp_review_fix_smoke.py
 PYTHONPATH=. python scripts/relaylm_docs_link_check.py
 PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
 ```
