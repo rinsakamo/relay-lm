@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current documentation boundary anchors after E1-R5 and debt tracking."""
+"""Validate current documentation boundary anchors after E1-R5, ACG, and Wave 8 docs updates."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,6 +22,9 @@ CURRENT_DOCS = (
     "docs/architecture/e1r4_retrieval_response_grounding.md",
     "docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md",
     "docs/architecture/e1r5_post_wave7_correction_convergence_audit.md",
+    "docs/architecture/acg1_analyzer_candidate_governance_contract.md",
+    "docs/architecture/acg5_relayemo_scene_cleanup.md",
+    "docs/architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md",
     "docs/architecture/phase_i5_pin_unpin_contract.md",
     "docs/architecture/phase_i5b_pin_unpin_apply.md",
     "docs/architecture/phase_i7ab_held_apply_discard_contract.md",
@@ -49,6 +52,7 @@ REQUIRED = {
         "W7-INT merged",
         "Post-E1-R5 / Post-Wave-7 next candidates:",
         "E1-R5 scoped Primary recall candidate bridge boundary",
+        "Analyzer Candidate Governance: ACG-1 contract/helpers complete; ACG-2 Grounded Recall Detail Safety complete; ACG-3 Retrieval Query Normalization complete; ACG-4 Reference/Intent Analyzer consolidation complete; ACG-5 RelayEMO scene ownership cleanup complete; ACG-6 SCN structured classifier and scene-wiki boundary complete",
         "Post-MVP decision debt is now tracked explicitly as PM-D1",
         "PM-D1 RelaySOUL gate design-freeze relation",
         "PM-D2 RelayINT -> RelayMEM relayref_artifact legacy compatibility scope",
@@ -62,6 +66,10 @@ REQUIRED = {
     ),
     "docs/README.md": (
         "[Current project status](PROJECT_STATUS.md) — the single current implementation status authority.",
+        "ACG-1 through ACG-6 analyzer governance slices are complete",
+        "ACG-6 Scene-Wiki Classifier Boundary",
+        "Wave 8 implementation evidence",
+        "MVP eval runner completion report",
         "Wave 7 Cross-Slice Convergence Audit",
         "E1-R3 completion report",
         "E1-R4 completion report",
@@ -78,6 +86,10 @@ REQUIRED = {
         "implemented E1-R1/E1-R2/E1-R3/E1-R4/E1-R5 evidence",
     ),
     "docs/mvp/README.md": (
+        "Wave 8 merged completion reports",
+        "MVP eval runner completion report",
+        "source PR #451",
+        "docs/mvp/wave8/mvp_eval_runner_completion_report.md",
         "Wave 7 merged completion reports",
         "source PR #436, merge `7bb2525cb000e893146408065f1aa5976f2b54ab`",
         "source PR #437, merge `e6e5b32cd489dda493ff0171a260dd561a91765c`",
@@ -93,10 +105,15 @@ REQUIRED = {
         "`evaluation_consolidation`",
     ),
     "docs/architecture/current_target_migration_guide.md": (
-        "Current Wave 7 compatibility interpretation",
+        "Current Wave 7 / P0-PIPE / ACG compatibility interpretation",
         "E1-R3 is current implemented as provenance-preserving Primary MEM formation summary.",
         "E1-R4 is current implemented as request-side retrieval-response grounding and unsupported-detail suppression.",
         "E1-R5 is current implemented as bounded scoped Primary MEM recall candidate discovery bridge.",
+        "ACG-2 is current implemented as Grounded Recall detail safety behind Query Detail Analyzer governance.",
+        "ACG-6 is current implemented as the bounded SCN structured classifier and scene-wiki matching boundary.",
+        "ACG-1 through ACG-6 are current as bounded analyzer-governance slices.",
+        "Completed behavior must not be re-listed as migration work:",
+        "ACG-1 through ACG-6 analyzer governance slices are complete.",
         "PM-D8 in [Project Execution Plan](project_execution_plan.md) tracks the later decision",
     ),
     "docs/architecture/project_execution_plan.md": (
@@ -159,6 +176,18 @@ REQUIRED = {
         "preserves M2 as preferred owner",
         "I-4D shared lifecycle eligibility",
     ),
+    "docs/architecture/acg1_analyzer_candidate_governance_contract.md": (
+        "relaylm_doc_type: implementation_contract",
+        "ACG-2 through ACG-6 are now implemented in dedicated handoffs",
+    ),
+    "docs/architecture/acg5_relayemo_scene_cleanup.md": (
+        "relaylm_doc_type: implementation_handoff",
+        "# ACG-5 RelayEMO Scene Ownership Cleanup",
+    ),
+    "docs/architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md": (
+        "relaylm_doc_type: implementation_handoff",
+        "# P0 RelayREL / RelaySCN / RelayEMO Ordering Fix",
+    ),
     "docs/architecture/wave7_cross_slice_convergence_audit.md": (
         "# Wave 7 Cross-Slice Convergence Audit",
         "PR #436",
@@ -181,6 +210,12 @@ REQUIRED = {
         "Primary MEM Recall Candidate Discovery Bridge",
         "PR: #439",
         "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
+    ),
+    "docs/mvp/wave8/mvp_eval_runner_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "MVP Eval Runner Completion Report",
+        "PR: #451",
+        "PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner.py --mode static --json-out runtime/eval/mvp_eval_static_latest.json",
     ),
 }
 
@@ -205,6 +240,11 @@ STALE = tuple(
     remaining E1-R4 quality work
     E1-R5 remains unindexed
     E1-R5 remains incomplete
+    ACG-1 is current as a shared contract/helper layer only. It does not mean that Grounded Recall detail detection, retrieval query normalization, RelayREF / RelayINT reference analyzer consolidation, RelayEMO scene-hint cleanup, or SCN scene-wiki classifier work is complete.
+    ACG-2 through ACG-6 analyzer candidate producers/classifiers
+    ACG-1 is complete as the analyzer governance contract/helper slice, and PM-D8 tracks
+    relaylm_doc_type: architecture_contract
+    relaylm_doc_type: implementation_report
     """.splitlines()
     if line.strip()
 )

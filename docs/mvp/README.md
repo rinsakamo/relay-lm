@@ -16,6 +16,12 @@ docs/mvp/wave<N>/<slice>_completion_report.md
 
 Each implementation PR creates only its own report. It must not edit this central index, another slice's report, or shared current-state documents merely to mark completion. The wave convergence PR links the merged reports here after verifying the source PRs and merge commits.
 
+### Wave 8 merged completion reports
+
+Wave 8 currently contains an operator-facing evaluation-flow convenience report. It is historical evidence for the runner slice only and does not mark O2/O3, supervised workers, polling, or always-on operation complete.
+
+- [MVP eval runner completion report](wave8/mvp_eval_runner_completion_report.md) — source PR #451.
+
 ### Wave 7 merged completion reports
 
 W7-INT verifies the source PR numbers, merge commits, and dedicated handoffs for the original Wave 7 historical reports. E1-R5 was merged after W7-INT and is indexed here as a post-Wave-7 correction report:
@@ -93,6 +99,7 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r2_comple
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r3_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r4_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r5_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/mvp_eval_runner_completion_report.md
 ```
 
 The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.

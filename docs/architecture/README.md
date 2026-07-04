@@ -36,6 +36,16 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Pipeline Responsibility Design](pipeline_responsibility_design.md) defines component ownership and the target REL -> SCN -> EMO -> INT -> MEM -> CTX order.
 - [Memory Lifecycle Design](memory_lifecycle_design.md) defines MEMORY.md, memory pages, SLP memory apply boundaries, and content-free projections.
 
+## Analyzer candidate governance
+
+- [Analyzer Candidate Governance and Multilingual Schema Policy](analyzer_candidate_governance.md) is the current ACG roadmap and policy synthesis.
+- [ACG-1 Analyzer Candidate Governance Contract](acg1_analyzer_candidate_governance_contract.md) defines the shared analyzer candidate contract/helper boundary.
+- [ACG-2 Grounded Recall Detail Safety](acg2_grounded_recall_detail_safety.md) records the governed Query Detail Analyzer boundary for Grounded Recall detail safety.
+- [ACG-3 Retrieval Query Normalization](acg3_retrieval_query_normalization.md) records RelayMEM retrieval query normalization behind a governed analyzer candidate.
+- [ACG-4 Reference Intent Analyzer](acg4_reference_intent_analyzer.md) records RelayREF / RelayINT reference and intent analyzer consolidation.
+- [ACG-5 RelayEMO Scene Cleanup](acg5_relayemo_scene_cleanup.md) records RelayEMO scene ownership cleanup and non-authoritative scene hint handling.
+- [ACG-6 Scene-Wiki Classifier Boundary](acg6_scene_wiki_classifier.md) records the bounded SCN structured classifier and scene-wiki matching boundary.
+
 ## Execution and roadmap
 
 - [Project Execution Plan](project_execution_plan.md)
