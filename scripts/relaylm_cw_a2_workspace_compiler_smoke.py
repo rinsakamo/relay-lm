@@ -84,6 +84,16 @@ def _write_fixture(root: Path) -> None:
         "PRIVATE_PATH_COLLISION_B\n",
         encoding="utf-8",
     )
+    (root / "memory" / "case-collision.md").write_text(
+        "# Case collision\n\n"
+        "## Upper ^Case\n\n"
+        "status:: active\n"
+        "case-collision-upper\n\n"
+        "## Lower ^case\n\n"
+        "status:: active\n"
+        "case-collision-lower\n",
+        encoding="utf-8",
+    )
     (root / "memory" / "inbox").mkdir()
     (root / "memory" / "inbox" / "candidate.md").write_text(
         "# Candidate memory\n\nstatus:: draft\n\nPRIVATE_MEMORY_INBOX_BODY\n",
@@ -234,6 +244,16 @@ def main() -> None:
         path_collision_ids = [row["unit_id"] for row in path_collision_units]
         assert len(path_collision_ids) == 2
         assert len(set(path_collision_ids)) == 2, path_collision_ids
+
+        case_collision_units = [
+            row for row in memory_rows
+            if row["source_path"] == "memory/case-collision.md"
+            and row["has_anchor"] is True
+            and row["heading"] in {"Upper", "Lower"}
+        ]
+        case_collision_ids = [row["unit_id"] for row in case_collision_units]
+        assert len(case_collision_ids) == 2
+        assert len(set(case_collision_ids)) == 2, case_collision_ids
 
         scene_rows = _artifact_jsonl(written, "scene_units.jsonl")
         scene_inbox = [row for row in scene_rows if row["source_path"].startswith("scenes/_inbox/")]

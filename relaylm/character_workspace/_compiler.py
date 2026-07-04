@@ -878,7 +878,8 @@ def _stable_fragment_id(domain: str, relative_path: str, block: CharacterMarkdow
     anchor = block.anchor
     path_digest = hashlib.sha256(relative_path.encode("utf-8")).hexdigest()[:12]
     fragment = anchor.lstrip("^") if anchor else _slug(block.heading or "root")
-    return _safe_id(f"{domain}:{path_digest}:{relative_path}:{fragment}:{occurrence}")
+    fragment_digest = hashlib.sha256(fragment.encode("utf-8")).hexdigest()[:8]
+    return _safe_id(f"{domain}:{path_digest}:{relative_path}:{fragment_digest}:{fragment}:{occurrence}")
 
 
 def _content_free_metadata(metadata: tuple[tuple[str, str], ...] | dict[str, str]) -> dict[str, bool]:
