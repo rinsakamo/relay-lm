@@ -1,36 +1,48 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
 import type { CharacterSummary, LabRoute, Language, Theme } from "../domain/lab";
-import { AdoptionPage } from "../features/adoption/AdoptionPage";
-import { CommunicationPage } from "../features/communication/CommunicationPage";
 import { ConnectedLifecycleLabObservationPage } from "../features/lifecycle/ConnectedLifecycleLabObservationPage";
-import { PodPage } from "../features/pod/PodPage";
-import { ConnectedSettingsPage } from "../features/settings/ConnectedSettingsPage";
 import {
   loadLabManagementProjections,
   type LabCharacterProjection,
   type LabSettingsProjection,
 } from "../features/settings/managementApi";
+import { CharacterWorkspacePage } from "../features/workspace/CharacterWorkspacePages";
 import { translate, type MessageKey } from "../locales/messages";
 import { mockCharacters } from "../mocks/lab";
 import { App } from "./App";
 
 const navigation: Array<{ route: LabRoute; label: MessageKey; marker: string }> = [
   { route: "home", label: "nav.home", marker: "⌂" },
-  { route: "observation", label: "nav.observation", marker: "◉" },
-  { route: "communication", label: "nav.communication", marker: "⇄" },
-  { route: "pod", label: "nav.pod", marker: "◇" },
-  { route: "adoption", label: "nav.adoption", marker: "+" },
-  { route: "settings", label: "nav.settings", marker: "⚙" },
+  { route: "character", label: "nav.character", marker: "◆" },
+  { route: "scenes", label: "nav.scenes", marker: "▦" },
+  { route: "relationships", label: "nav.relationships", marker: "⇄" },
+  { route: "memory", label: "nav.memory", marker: "◎" },
+  { route: "runtime", label: "nav.runtime", marker: "◉" },
+  { route: "advanced", label: "nav.advanced", marker: "⚙" },
 ];
 
+const legacyRouteAliases: Record<string, LabRoute> = {
+  observation: "runtime",
+  communication: "advanced",
+  pod: "advanced",
+  adoption: "advanced",
+  settings: "advanced",
+};
+
 const footerLabels: Record<LabRoute, string> = {
-  home: "UI-B0 / UI-B1A · Real Home Conversation / Lifecycle Visibility",
-  adoption: "UI-A2 · Adoption / First Launch",
-  communication: "UI-A3 · Character Communication",
-  pod: "UI-A4 · Pod / SOUL Intervention",
-  observation: "Phase I-2 / I-3 / UI-B1A · Observation / Correct / Lifecycle Visibility",
-  settings: "UI-A6 / UI-A7 · Shared Shell / Management Projection",
+  home: "CW-A3 · Existing real Home conversation / explicit Local Preview",
+  character: "CW-A3 · SOUL / STYLE / EMOTION / BOUNDARY / optional LORE",
+  scenes: "CW-A3 · SCENE policy / active scenes / scene inbox",
+  relationships: "CW-A3 · RELATIONSHIP vocabulary / target context / proposals",
+  memory: "CW-A3 · Memory Wiki pages, blocks, links, archive, forgotten",
+  runtime: "CW-A3 · content-free context projection and used-memory evidence",
+  advanced: "CW-A3 · developer diagnostics / internal governance / existing loopback controls",
+  observation: "CW-A3 · legacy route mapped to Runtime",
+  communication: "CW-A3 · legacy route mapped to Advanced",
+  pod: "CW-A3 · legacy route mapped to Advanced",
+  adoption: "CW-A3 · legacy route mapped to Advanced",
+  settings: "CW-A3 · legacy route mapped to Advanced",
 };
 
 function isLabRoute(value: string): value is LabRoute {
@@ -39,7 +51,8 @@ function isLabRoute(value: string): value is LabRoute {
 
 function hashRoute(): LabRoute {
   const value = window.location.hash.replace(/^#\/?/, "");
-  return isLabRoute(value) ? value : "home";
+  if (isLabRoute(value)) return value;
+  return legacyRouteAliases[value] ?? "home";
 }
 
 function runtimeCharacterSummary(character: LabCharacterProjection): CharacterSummary {
@@ -99,7 +112,6 @@ export function RootApp() {
   );
   const activeCharacterProjection = characterProjections[activeCharacter.characterId] ?? null;
   const interactionLocked = navigationLock !== null;
-  const adoptionRoute = route === "adoption";
 
   useEffect(() => {
     const controller = new AbortController();
@@ -166,23 +178,16 @@ export function RootApp() {
     });
   }, []);
 
-  const handleCommunicationLockChange = useCallback(
-    (locked: boolean) => updateNavigationLock("communication", locked),
-    [updateNavigationLock],
-  );
-  const handleInterventionLockChange = useCallback(
-    (locked: boolean) => updateNavigationLock("pod", locked),
-    [updateNavigationLock],
-  );
-  const handleInspectorLockChange = useCallback(
-    (locked: boolean) => updateNavigationLock("observation", locked),
+  const handleAdvancedLockChange = useCallback(
+    (locked: boolean) => updateNavigationLock("advanced", locked),
     [updateNavigationLock],
   );
 
   function navigate(nextRoute: LabRoute) {
-    if (navigationLock && nextRoute !== navigationLock) return;
-    const nextHash = `#/${nextRoute}`;
-    if (window.location.hash === nextHash) setRoute(nextRoute);
+    const canonicalRoute = legacyRouteAliases[nextRoute] ?? nextRoute;
+    if (navigationLock && canonicalRoute !== navigationLock) return;
+    const nextHash = `#/${canonicalRoute}`;
+    if (window.location.hash === nextHash) setRoute(canonicalRoute);
     else window.location.hash = nextHash;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -191,14 +196,21 @@ export function RootApp() {
     if (!interactionLocked) setActiveCharacterId(characterId);
   }
 
+  const workspacePageProps = {
+    language,
+    activeCharacter,
+    characterProjection: activeCharacterProjection,
+    settingsProjection,
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand-lockup">
-          <div className="brand-mark" aria-hidden="true">S</div>
+          <div className="brand-mark" aria-hidden="true">CW</div>
           <div><strong>{translate(language, "app.name")}</strong><span>{translate(language, "app.subtitle")}</span></div>
         </div>
-        <nav className="primary-navigation" aria-label="SOUL Lab">
+        <nav className="primary-navigation" aria-label="Character Workspace">
           {navigation.map((item) => (
             <button
               className={`nav-item ${item.route === route ? "nav-item-active" : ""}`}
@@ -215,19 +227,19 @@ export function RootApp() {
         </nav>
         <div className="sidebar-note">
           <span className="mock-pill">
-            {route === "home" || route === "observation"
+            {route === "home"
               ? "REAL / EXPLICIT PREVIEW"
               : runtimeCharacters
-                ? "RUNTIME CHARACTERS"
+                ? "CONTENT-FREE PROJECTION"
                 : translate(language, "app.mockBadge")}
           </span>
           <p>
             {navigationLock
               ? translate(language, "nav.locked")
-              : route === "home" || route === "observation"
+              : route === "home"
                 ? language === "ja"
-                  ? "実runtimeを優先し、ローカルプレビューは明示的に切り替えます。"
-                  : "Real runtime is primary; local preview requires an explicit switch."
+                  ? "Homeは既存RelayLM /v1/chat/completions authority pathのままです。"
+                  : "Home stays on the existing RelayLM /v1/chat/completions authority path."
                 : translate(language, "nav.boundaryNote")}
           </p>
         </div>
@@ -235,22 +247,14 @@ export function RootApp() {
 
       <div className="workspace">
         <header className="topbar">
-          {adoptionRoute ? (
-            <div className="character-selector"><span>{translate(language, "header.activeCharacter")}</span><strong>NO ACTIVE CHARACTER</strong></div>
-          ) : (
-            <label className="character-selector">
-              <span>{translate(language, "header.activeCharacter")}</span>
-              <select value={activeCharacter.characterId} disabled={interactionLocked} onChange={(event: ChangeEvent<HTMLSelectElement>) => selectCharacter(event.target.value)}>
-                {characters.map((character) => <option value={character.characterId} key={character.characterId}>{character.displayName}</option>)}
-              </select>
-            </label>
-          )}
+          <label className="character-selector">
+            <span>{translate(language, "header.activeCharacter")}</span>
+            <select value={activeCharacter.characterId} disabled={interactionLocked} onChange={(event: ChangeEvent<HTMLSelectElement>) => selectCharacter(event.target.value)}>
+              {characters.map((character) => <option value={character.characterId} key={character.characterId}>{character.displayName}</option>)}
+            </select>
+          </label>
           <div className="topbar-status">
-            {adoptionRoute ? (
-              <><span className="status-badge status-unconfigured">First launch</span><span className="soul-version">SOUL · not initialized</span></>
-            ) : (
-              <><span className={`status-badge status-${activeCharacter.status}`}>{translate(language, `status.${activeCharacter.status}`)}</span><span className="soul-version">SOUL {activeCharacter.soulVersion} · {activeCharacter.stabilityLabel}</span></>
-            )}
+            <><span className={`status-badge status-${activeCharacter.status}`}>{translate(language, `status.${activeCharacter.status}`)}</span><span className="soul-version">SOUL {activeCharacter.soulVersion} · {activeCharacter.stabilityLabel}</span></>
           </div>
           <div className="topbar-actions">
             <button className="icon-button" type="button" aria-label={translate(language, "header.language")} title={translate(language, "header.language")} onClick={() => setLanguage((value) => (value === "ja" ? "en" : "ja"))}>{language === "ja" ? "EN" : "JA"}</button>
@@ -268,11 +272,22 @@ export function RootApp() {
               onNavigate={navigate}
             />
           )}
-          {route === "adoption" && <AdoptionPage language={language} onBackHome={() => navigate("home")} />}
-          {route === "observation" && <ConnectedLifecycleLabObservationPage key={activeCharacter.characterId} language={language} activeCharacter={activeCharacter} onInspectorLockChange={handleInspectorLockChange} />}
-          {route === "communication" && <CommunicationPage key={activeCharacter.characterId} language={language} activeCharacter={activeCharacter} characters={characters} onSessionLockChange={handleCommunicationLockChange} />}
-          {route === "pod" && <PodPage key={activeCharacter.characterId} language={language} activeCharacter={activeCharacter} onInterventionLockChange={handleInterventionLockChange} />}
-          {route === "settings" && <ConnectedSettingsPage language={language} theme={theme} activeCharacterId={activeCharacter.characterId} characters={characters} />}
+          {route === "character" && <CharacterWorkspacePage surface="character" {...workspacePageProps} />}
+          {route === "scenes" && <CharacterWorkspacePage surface="scenes" {...workspacePageProps} />}
+          {route === "relationships" && <CharacterWorkspacePage surface="relationships" {...workspacePageProps} />}
+          {route === "memory" && <CharacterWorkspacePage surface="memory" {...workspacePageProps} />}
+          {route === "runtime" && <CharacterWorkspacePage surface="runtime" {...workspacePageProps} />}
+          {route === "advanced" && (
+            <div className="advanced-stack">
+              <CharacterWorkspacePage surface="advanced" {...workspacePageProps} />
+              <ConnectedLifecycleLabObservationPage
+                key={activeCharacter.characterId}
+                language={language}
+                activeCharacter={activeCharacter}
+                onInspectorLockChange={handleAdvancedLockChange}
+              />
+            </div>
+          )}
         </main>
 
         <footer className="footer-bar"><span>{translate(language, "footer.boundary")}</span><span>{footerLabels[route]}</span></footer>
