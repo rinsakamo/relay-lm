@@ -16,6 +16,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from relaylm.app import create_app
+from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 
@@ -73,12 +74,14 @@ def require(condition: bool, detail: object) -> None:
 
 
 def _build_store(root: Path, *, with_page: bool = True) -> None:
-    projects = root / "memory" / "mem" / "projects"
-    projects.mkdir(parents=True)
-    (root / "memory" / "mem" / "index.md").write_text("# Index\nRelayMEM\n", encoding="utf-8")
-    (root / "memory" / "mem" / "log.md").write_text("# Log\n", encoding="utf-8")
+    mem = root / "memory" / "mem"
+    (root / "memory" / "sources" / "conversations").mkdir(parents=True)
+    (mem / "primary" / "sessions").mkdir(parents=True)
+    (mem / "secondary" / "projects").mkdir(parents=True)
+    (mem / "index.md").write_text("# Index\nRelayMEM\n", encoding="utf-8")
+    (mem / "log.md").write_text("# Log\n", encoding="utf-8")
     if with_page:
-        (projects / "relaymem.md").write_text(
+        (mem / "secondary" / "projects" / "relaymem.md").write_text(
             "# RelayMEM\nRelayMEM ctx injection plan diagnostics candidate.\n",
             encoding="utf-8",
         )
@@ -142,11 +145,7 @@ def _scene_payload(scene_type: str, content: str) -> dict[str, Any]:
         "model": "relaylm-default",
         "messages": [{"role": "user", "content": content}],
         "metadata": {
-            "scene_state": {
-                "scene_type": scene_type,
-                "confidence": 0.95,
-                "stability": 0.9,
-            }
+            "scene_state": {"scene_type": scene_type, "confidence": 0.95, "stability": 0.9}
         },
         "stream": False,
     }
@@ -290,9 +289,13 @@ def main() -> int:
         thread.start()
         try:
             with tempfile.TemporaryDirectory() as td:
+                configured_root = Path(td) / "memory-root"
+                scoped = resolve_relaymem_character_store_root(str(configured_root), "default")
+                require(isinstance(scoped, str), scoped)
+                _build_store(Path(scoped))
                 trace_path = Path(td) / "trace.jsonl"
                 cfg_path = Path(td) / "cfg.yaml"
-                _write_config(cfg_path, port=port, trace_path=trace_path, store_root=store_root)
+                _write_config(cfg_path, port=port, trace_path=trace_path, store_root=configured_root)
                 app = create_app(str(cfg_path))
                 with TestClient(app) as client:
                     resp = client.post(
@@ -303,11 +306,11 @@ def main() -> int:
                     metadata = _last_backend_response_metadata(trace_path)
                     projection = _content_free_projection(metadata)
                     require(projection["selected_count"] == 0, projection)
-                    require(projection["character_scope_resolved"] is False, projection)
+                    require(projection["character_scope_resolved"] is True, projection)
                     require(projection["injection_performed"] is False, projection)
-                    require("legacy_flat_store_compatibility" in projection["blocked_reason_ids"], projection)
+                    require("legacy_flat_store_compatibility" not in projection["blocked_reason_ids"], projection)
                     _assert_no_backend_artifact(capture.last_chat_payload())
-                    print("ok trace exposes only content-free plan status without backend mutation")
+                    print("ok trace exposes target-only content-free plan status without backend mutation")
         finally:
             server.shutdown()
             server.server_close()
