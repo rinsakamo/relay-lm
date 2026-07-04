@@ -218,6 +218,7 @@ def main() -> int:
             selected_mem_candidates=target_candidates["candidates"],
             snippet_extraction_enabled=True,
             snippet_dry_run_only=True,
+            max_snippet_candidates=8,
         )
         require(snippets["snippet_candidates"], snippets)
         require(snippets["evidence_envelope"]["blocked"] == [], snippets)
