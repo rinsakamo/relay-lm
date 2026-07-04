@@ -69,6 +69,9 @@ def trace_runtime_event(
 
     global _LAST_CONSUMED_CONTEXT_EXPECTS_STREAM_FINAL_TRACE
     _LAST_CONSUMED_CONTEXT_EXPECTS_STREAM_FINAL_TRACE = False
+    if not config.trace.enabled or not config.trace.path:
+        return False
+
     explicit_pipeline_node_results = pipeline_node_results is not None
     resolved_pipeline_node_results = (
         _pipeline_node_results_to_log_dicts(pipeline_node_results)
@@ -79,8 +82,6 @@ def trace_runtime_event(
         _LAST_CONSUMED_CONTEXT_EXPECTS_STREAM_FINAL_TRACE
     )
     _LAST_CONSUMED_CONTEXT_EXPECTS_STREAM_FINAL_TRACE = False
-    if not config.trace.enabled or not config.trace.path:
-        return False
 
     try:
         trace_metadata = dict(metadata or {})
