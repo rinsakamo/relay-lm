@@ -3,14 +3,14 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import Field, field_validator
+
+from .soul_lab_contracts import StrictLabRequestModel, validate_lab_request_text
+
+# StrictLabRequestModel preserves ConfigDict(extra="forbid", strict=True).
 
 
-class _ExactModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
-
-
-class LabHeldGovernancePreflightRequest(_ExactModel):
+class LabHeldGovernancePreflightRequest(StrictLabRequestModel):
     schema: Literal["relaylm.lab.held_governance_preflight_request.v0"]
     operation_id: str = Field(min_length=1, max_length=128)
     reason: str = Field(min_length=1, max_length=512)
@@ -18,14 +18,10 @@ class LabHeldGovernancePreflightRequest(_ExactModel):
     @field_validator("operation_id", "reason")
     @classmethod
     def validate_bounded_text(cls, value: str, info):
-        if value != value.strip() or _unsafe(value):
-            raise ValueError(f"{info.field_name}_invalid")
-        if info.field_name == "operation_id" and any(char in value for char in "\n\r\t"):
-            raise ValueError("operation_id_invalid")
-        return value
+        return validate_lab_request_text(value, info.field_name)
 
 
-class LabHeldGovernanceDecisionRequest(_ExactModel):
+class LabHeldGovernanceDecisionRequest(StrictLabRequestModel):
     schema: Literal["relaylm.lab.held_governance_decision_request.v0"]
     operation_id: str = Field(min_length=1, max_length=128)
     reason: str = Field(min_length=1, max_length=512)
@@ -34,22 +30,7 @@ class LabHeldGovernanceDecisionRequest(_ExactModel):
     @field_validator("operation_id", "reason", "apply_token")
     @classmethod
     def validate_token_text(cls, value: str, info):
-        if value != value.strip() or _unsafe(value):
-            raise ValueError(f"{info.field_name}_invalid")
-        if info.field_name in {"operation_id", "apply_token"} and any(
-            char in value for char in "\n\r\t"
-        ):
-            raise ValueError(f"{info.field_name}_invalid")
-        return value
-
-
-def _unsafe(value: str) -> bool:
-    return any(
-        ord(char) < 32
-        or ord(char) in {0x2028, 0x2029}
-        or 0xD800 <= ord(char) <= 0xDFFF
-        for char in value
-    )
+        return validate_lab_request_text(value, info.field_name)
 
 
 __all__ = ["LabHeldGovernanceDecisionRequest", "LabHeldGovernancePreflightRequest"]
