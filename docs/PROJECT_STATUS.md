@@ -83,7 +83,6 @@ E1-R2 character-store bootstrap command: complete
 E1-R3 provenance-preserving Primary MEM formation summary: complete
 E1-R4 retrieval-response grounding and unsupported-detail suppression: complete
 E1-R5 Primary MEM recall candidate fallback: complete
-E1-R5 Primary MEM recall candidate discovery bridge: complete
 Home can be a trusted formation source only through the E1-R1 route-owned gate; browser-owned trust remains rejected.
 I1-GA contract / fault model: complete
 I1-GB durable-finalization publication / pre-release admission: complete
