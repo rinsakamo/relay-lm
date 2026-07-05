@@ -5,17 +5,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from .relaymem_primary_current_state import (
-    PrimaryCurrentStateError,
-    resolve_primary_current_state,
-)
-from .soul_lab_observation_projection import LabObservationScope, _run_order_key
-from .soul_lab_observation_store import (
-    bounded_text,
-    normalize_reason_ids,
-    read_run_receipts_for_scope,
-    read_used_receipt_for_run,
-)
+from .soul_lab_observation_projection import LabObservationScope
+from .soul_lab_observation_store import bounded_text, normalize_reason_ids
+from .soul_lab_read_context import build_lab_read_context
 
 
 class _ExactModel(BaseModel):
@@ -60,47 +52,31 @@ def build_lab_memory_used_lifecycle_projection(
 ) -> LabMemoryUsedLifecycleProjection:
     """Overlay current lifecycle without changing the durable historical receipt."""
 
-    if not scope.available or scope.store_root is None:
+    context = build_lab_read_context(scope)
+    if context.availability == "unavailable":
         return _empty(
             scope,
             availability="unavailable",
             run_id=None,
-            reasons=list(scope.reason_ids),
+            reasons=list(context.unavailable_reasons),
         )
-    runs, run_reasons = read_run_receipts_for_scope(
-        scope.store_root, scope.character_id, scope.namespace
-    )
-    runs = [
-        item
-        for item in runs
-        if item.get("character_id") == scope.character_id
-        and item.get("namespace") == scope.namespace
-    ]
-    if not runs:
+    if context.latest_run is None:
         return _empty(
             scope,
             availability="empty",
             run_id=None,
-            reasons=normalize_reason_ids(run_reasons),
+            reasons=normalize_reason_ids(context.run_reasons),
         )
-    latest = max(runs, key=_run_order_key)
-    run_id = str(latest["run_id"])
-    receipt, used_reasons = read_used_receipt_for_run(scope.store_root, run_id)
-    if receipt is not None and (
-        receipt.get("character_id") != scope.character_id
-        or receipt.get("namespace") != scope.namespace
-    ):
-        receipt = None
-        used_reasons = normalize_reason_ids(
-            [*used_reasons, "observation_receipt_scope_mismatch"]
-        )
+
+    run_id = str(context.latest_run["run_id"])
+    receipt = context.latest_used_receipt
     if receipt is None:
         return _empty(
             scope,
             availability="empty",
             run_id=run_id,
-            response_completed=latest["relayrun_status"] == "completed",
-            reasons=normalize_reason_ids([*run_reasons, *used_reasons]),
+            response_completed=context.response_generation_completed,
+            reasons=normalize_reason_ids([*context.run_reasons, *context.used_reasons]),
         )
 
     items: list[LabUsedMemoryLifecycleItem] = []
@@ -108,9 +84,7 @@ def build_lab_memory_used_lifecycle_projection(
     for raw in list(receipt.get("items", []))[:16]:
         memory_id = str(raw["memory_id"])
         injected = bounded_text(raw.get("injected_summary"), maximum=512)
-        current_summary, lifecycle, reason = _current_overlay(
-            scope.store_root, scope.namespace, memory_id
-        )
+        current_summary, lifecycle, reason = context.current_overlay(memory_id)
         if reason is not None:
             overlay_reasons.append(reason)
         items.append(
@@ -128,8 +102,8 @@ def build_lab_memory_used_lifecycle_projection(
         )
     reasons = normalize_reason_ids(
         [
-            *run_reasons,
-            *used_reasons,
+            *context.run_reasons,
+            *context.used_reasons,
             *overlay_reasons,
             *receipt.get("reason_ids", []),
         ]
@@ -146,34 +120,10 @@ def build_lab_memory_used_lifecycle_projection(
             receipt["relayctx_injection_performed"]
         ),
         backend_bound_included=bool(receipt["backend_bound_included"]),
-        response_generation_completed=latest["relayrun_status"] == "completed",
+        response_generation_completed=context.response_generation_completed,
         items=items,
         bounded_reason_ids=reasons,
     )
-
-
-def _current_overlay(
-    store_root: str,
-    namespace: str,
-    memory_id: str,
-) -> tuple[str | None, Literal["active", "hidden", "unknown"], str | None]:
-    try:
-        state = resolve_primary_current_state(
-            store_root, namespace=namespace, memory_id=memory_id
-        )
-    except PrimaryCurrentStateError:
-        return None, "unknown", "primary_current_state_unresolved"
-    if state.lifecycle_state == "hidden":
-        return None, "hidden", None
-    if (
-        state.lifecycle_state == "active"
-        and state.mutation_state == "none"
-        and state.retrieval_eligible is True
-        and state.controls_valid is True
-        and state.page_valid is True
-    ):
-        return bounded_text(state.summary, maximum=512), "active", None
-    return None, "unknown", "primary_current_state_ineligible"
 
 
 def _empty(
