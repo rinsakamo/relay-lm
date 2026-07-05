@@ -12,6 +12,11 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from relaylm._analyzer_text_features import (
+    infer_simple_language,
+    normalize_token,
+    unique_preserve_order,
+)
 from relaylm.analyzer_governance import (
     build_analyzer_candidate_artifact,
     can_open_runtime_policy,
@@ -62,7 +67,6 @@ _DETAIL_QUERY_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 )
 
 _SELF_IDENTITY_QUERY_RE = re.compile(r"\b(who am i|what am i)\b|私は誰|自分.*何者", re.I)
-_JA_RE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff]")
 
 
 @dataclass(frozen=True)
@@ -355,13 +359,7 @@ def _union_detail_types(*groups: Iterable[str]) -> tuple[str, ...]:
 
 
 def _infer_language(query_text: object) -> str:
-    if not isinstance(query_text, str) or not query_text.strip():
-        return "und"
-    if _JA_RE.search(query_text):
-        return "ja"
-    if query_text.isascii():
-        return "en"
-    return "und"
+    return infer_simple_language(query_text)
 
 
 def _safe_language(value: object, fallback: str) -> str:
@@ -376,10 +374,7 @@ def _safe_language(value: object, fallback: str) -> str:
 
 
 def _token(value: object, default: str) -> str:
-    if not isinstance(value, str):
-        return default
-    token = value.strip().lower()
-    return token or default
+    return normalize_token(value, default)
 
 
 def _input_tokens(value: object) -> tuple[str, ...]:
@@ -393,12 +388,9 @@ def _input_tokens(value: object) -> tuple[str, ...]:
 
 
 def _dedupe(values: Iterable[str]) -> tuple[str, ...]:
-    result: list[str] = []
-    for value in values:
-        token = _token(value, "unknown_enum_value")
-        if token not in result:
-            result.append(token)
-    return tuple(result)
+    return tuple(
+        unique_preserve_order(normalize_token(value, "unknown_enum_value") for value in values)
+    )
 
 
 __all__ = [

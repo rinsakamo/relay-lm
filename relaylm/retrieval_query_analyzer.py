@@ -7,9 +7,17 @@ selection path, but it cannot open broader retrieval policy or memory mutation.
 """
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
+from relaylm._analyzer_text_features import (
+    RETRIEVAL_AMBIGUOUS_REFERENCE_MARKERS,
+    as_string_sequence,
+    contains_any_marker,
+    estimate_query_language,
+    has_cjk,
+    unique_preserve_order,
+)
 from relaylm.analyzer_governance import (
     build_analyzer_candidate_artifact,
     can_open_runtime_policy,
@@ -32,25 +40,8 @@ _MAX_NGRAM_HINTS = 6
 _MAX_NGRAM_CHARS = 8
 
 _STRIP_CHARS = "\ufeff\u200b\r\n\t .,!?。！？、:;()[]{}\"'`<>«»“”‘’"
-_ASCII_WORD_CHARS = frozenset(
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-./:"
-)
 _PUNCT_OR_SPACE = frozenset(_STRIP_CHARS) | frozenset(
     "・/\\|=@#$%^&*+~，．；：（）［］｛｝【】『』「」"
-)
-
-_AMBIGUOUS_REFERENCE_MARKERS = (
-    "which one",
-    "what was that",
-    "that one",
-    "それ",
-    "これ",
-    "あれ",
-    "さっき",
-    "どっち",
-    "どれ",
-    "何の話",
-    "わから",
 )
 
 
@@ -76,7 +67,7 @@ def analyze_retrieval_query(
         minimum=0,
         maximum=_MAX_HINTS,
     )
-    language = source_language or _estimate_source_language(raw_text)
+    language = source_language or estimate_query_language(raw_text)
     validation_errors: list[str] = []
 
     whitespace_terms = _whitespace_hints(raw_text, max_hints=normalized_max_hints)
@@ -102,7 +93,7 @@ def analyze_retrieval_query(
     elif strategy == "bounded_ngram_fallback":
         backend_private_hints = ngram_hints[:normalized_max_hints]
     elif strategy == "mixed_fallback":
-        backend_private_hints = _dedupe_strings(
+        backend_private_hints = unique_preserve_order(
             [*whitespace_terms, *ngram_hints],
             max_items=normalized_max_hints,
         )
@@ -150,7 +141,7 @@ def analyze_retrieval_query(
         "content_free": False,
         "reason_ids": tuple(governance["reason_ids"]),
         "validation_errors": tuple(
-            _dedupe_strings([*governance["validation_errors"], *validation_errors])
+            unique_preserve_order([*governance["validation_errors"], *validation_errors])
         ),
     }
 
@@ -185,9 +176,9 @@ def public_retrieval_query_projection(artifact: Mapping[str, Any] | None) -> dic
     governance_public = content_free_projection(
         governance if isinstance(governance, Mapping) else None
     )
-    validation_errors = _dedupe_strings([
-        *_as_string_sequence(governance_public.get("validation_error_ids")),
-        *_as_string_sequence(artifact.get("validation_errors")),
+    validation_errors = unique_preserve_order([
+        *as_string_sequence(governance_public.get("validation_error_ids")),
+        *as_string_sequence(artifact.get("validation_errors")),
     ])
     return {
         "schema_version": RETRIEVAL_QUERY_SCHEMA_VERSION,
@@ -211,7 +202,7 @@ def public_retrieval_query_projection(artifact: Mapping[str, Any] | None) -> dic
         "can_open_runtime_policy": can_open_runtime_policy(
             governance if isinstance(governance, Mapping) else None
         ),
-        "reason_ids": tuple(_as_string_sequence(governance_public.get("reason_ids"))),
+        "reason_ids": tuple(as_string_sequence(governance_public.get("reason_ids"))),
         "validation_error_ids": tuple(validation_errors),
         "content_free": True,
     }
@@ -219,8 +210,7 @@ def public_retrieval_query_projection(artifact: Mapping[str, Any] | None) -> dic
 
 def has_ambiguous_reference(text: str | None) -> bool:
     raw_text = text if isinstance(text, str) else ""
-    lowered = raw_text.lower()
-    return any(marker in lowered for marker in _AMBIGUOUS_REFERENCE_MARKERS)
+    return contains_any_marker(raw_text, RETRIEVAL_AMBIGUOUS_REFERENCE_MARKERS)
 
 
 def whitespace_fallback_hints(text: str | None, *, max_hints: int = _MAX_HINTS) -> list[str]:
@@ -235,7 +225,7 @@ def _select_strategy(
 ) -> str:
     if whitespace_terms and ngram_hints and _has_no_whitespace_text(text):
         return "mixed_fallback"
-    if whitespace_terms and ngram_hints and _contains_cjk(text):
+    if whitespace_terms and ngram_hints and has_cjk(text):
         return "mixed_fallback"
     if whitespace_terms:
         return "whitespace_fallback"
@@ -309,47 +299,5 @@ def _bounded_int(value: object, *, default: int, minimum: int, maximum: int) -> 
     return max(minimum, min(maximum, numeric))
 
 
-def _dedupe_strings(values: Iterable[str], *, max_items: int | None = None) -> list[str]:
-    deduped: list[str] = []
-    for raw in values:
-        value = str(raw)
-        if not value or value in deduped:
-            continue
-        deduped.append(value)
-        if max_items is not None and len(deduped) >= max_items:
-            break
-    return deduped
-
-
-def _as_string_sequence(value: object) -> list[str]:
-    if isinstance(value, Sequence) and not isinstance(value, str):
-        return [str(item) for item in value]
-    if isinstance(value, str):
-        return [value]
-    return []
-
-
 def _has_no_whitespace_text(text: str) -> bool:
     return bool(text) and not any(char.isspace() for char in text)
-
-
-def _contains_cjk(text: str) -> bool:
-    return any(
-        "\u3040" <= char <= "\u30ff"
-        or "\u3400" <= char <= "\u9fff"
-        or "\uf900" <= char <= "\ufaff"
-        or "\uac00" <= char <= "\ud7af"
-        for char in text
-    )
-
-
-def _estimate_source_language(text: str) -> str:
-    if any("\u3040" <= char <= "\u30ff" for char in text):
-        return "ja"
-    if any("\uac00" <= char <= "\ud7af" for char in text):
-        return "ko"
-    if any("\u3400" <= char <= "\u9fff" or "\uf900" <= char <= "\ufaff" for char in text):
-        return "zh"
-    if any(char in _ASCII_WORD_CHARS for char in text):
-        return "en"
-    return "und"
