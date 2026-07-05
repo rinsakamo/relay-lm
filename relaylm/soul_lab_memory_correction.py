@@ -9,7 +9,7 @@ from .soul_lab_contracts import StrictLabRequestModel, validate_lab_request_text
 
 
 class LabMemoryCorrectPreflightRequest(StrictLabRequestModel):
-    schema: Literal["relaylm.lab.memory_correct_preflight_request.v0"]
+    schema_: Literal["relaylm.lab.memory_correct_preflight_request.v0"] = Field(alias="schema")
     expected_revision: int = Field(ge=1, le=2_147_483_647)
     corrected_title: str = Field(max_length=160)
     corrected_summary: str = Field(min_length=1, max_length=2048)
@@ -23,7 +23,7 @@ class LabMemoryCorrectPreflightRequest(StrictLabRequestModel):
 
 
 class LabMemoryCorrectApplyRequest(StrictLabRequestModel):
-    schema: Literal["relaylm.lab.memory_correct_apply_request.v0"]
+    schema_: Literal["relaylm.lab.memory_correct_apply_request.v0"] = Field(alias="schema")
     operation_id: str = Field(min_length=1, max_length=128)
     apply_token: str = Field(min_length=1, max_length=8192)
     expected_revision: int = Field(ge=1, le=2_147_483_647)

@@ -11,7 +11,7 @@ from .soul_lab_contracts import StrictLabRequestModel, validate_lab_request_text
 
 
 class LabHeldGovernancePreflightRequest(StrictLabRequestModel):
-    schema: Literal["relaylm.lab.held_governance_preflight_request.v0"]
+    schema_: Literal["relaylm.lab.held_governance_preflight_request.v0"] = Field(alias="schema")
     operation_id: str = Field(min_length=1, max_length=128)
     reason: str = Field(min_length=1, max_length=512)
 
@@ -22,7 +22,7 @@ class LabHeldGovernancePreflightRequest(StrictLabRequestModel):
 
 
 class LabHeldGovernanceDecisionRequest(StrictLabRequestModel):
-    schema: Literal["relaylm.lab.held_governance_decision_request.v0"]
+    schema_: Literal["relaylm.lab.held_governance_decision_request.v0"] = Field(alias="schema")
     operation_id: str = Field(min_length=1, max_length=128)
     reason: str = Field(min_length=1, max_length=512)
     apply_token: str = Field(min_length=1, max_length=8192)

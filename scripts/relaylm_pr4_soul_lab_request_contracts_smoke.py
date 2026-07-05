@@ -36,7 +36,10 @@ def require(condition: bool, message: object) -> None:
 
 def expect_valid(model, payload: dict[str, object]) -> None:
     parsed = model.model_validate(payload)
-    require(parsed.model_dump() == payload, (model, parsed.model_dump(), payload))
+    require(
+        parsed.model_dump(by_alias=True) == payload,
+        (model, parsed.model_dump(by_alias=True), payload),
+    )
 
 
 def expect_invalid(model, payload: dict[str, object]) -> None:

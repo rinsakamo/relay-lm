@@ -149,7 +149,7 @@ def main() -> None:
                 reason_ids=(),
             )
             projection = build_lab_lifecycle_visibility_projection(scope, config=config(queue_root, durable_root))
-            require(projection.schema == "relaylm.lab.lifecycle_visibility.v0", projection)
+            require(projection.schema_ == "relaylm.lab.lifecycle_visibility.v0", projection)
             require(projection.read_only is True, projection)
             require(projection.mutation_controls_exposed is False, projection)
             require(projection.scheduler_controls_exposed is False, projection)
@@ -199,7 +199,11 @@ def main() -> None:
             require(_public_lifecycle("active", "recovery_required") == "recovery_required", "recovery vocabulary")
             require(_public_lifecycle("active", "corrupt") == "corrupt", "corrupt vocabulary")
 
-            public = json.dumps(projection.model_dump(mode="json"), ensure_ascii=False, sort_keys=True)
+            public = json.dumps(
+                projection.model_dump(mode="json", by_alias=True),
+                ensure_ascii=False,
+                sort_keys=True,
+            )
             for canary in PRIVATE_CANARIES:
                 require(canary not in public, (canary, public))
 

@@ -9,7 +9,7 @@ from .soul_lab_contracts import StrictLabRequestModel, validate_lab_request_text
 
 
 class LabMemoryPinPreflightRequest(StrictLabRequestModel):
-    schema: Literal["relaylm.lab.memory_pin_preflight_request.v0"]
+    schema_: Literal["relaylm.lab.memory_pin_preflight_request.v0"] = Field(alias="schema")
     expected_revision: int = Field(ge=1, le=2_147_483_647)
     reason: str = Field(min_length=1, max_length=512)
     operation_id: str = Field(min_length=1, max_length=128)
@@ -21,7 +21,7 @@ class LabMemoryPinPreflightRequest(StrictLabRequestModel):
 
 
 class LabMemoryUnpinPreflightRequest(StrictLabRequestModel):
-    schema: Literal["relaylm.lab.memory_unpin_preflight_request.v0"]
+    schema_: Literal["relaylm.lab.memory_unpin_preflight_request.v0"] = Field(alias="schema")
     expected_revision: int = Field(ge=1, le=2_147_483_647)
     reason: str = Field(min_length=1, max_length=512)
     operation_id: str = Field(min_length=1, max_length=128)
@@ -33,7 +33,7 @@ class LabMemoryUnpinPreflightRequest(StrictLabRequestModel):
 
 
 class LabMemoryPinApplyRequest(StrictLabRequestModel):
-    schema: Literal["relaylm.lab.memory_pin_apply_request.v0"]
+    schema_: Literal["relaylm.lab.memory_pin_apply_request.v0"] = Field(alias="schema")
     expected_revision: int = Field(ge=1, le=2_147_483_647)
     reason: str = Field(min_length=1, max_length=512)
     operation_id: str = Field(min_length=1, max_length=128)
@@ -46,7 +46,7 @@ class LabMemoryPinApplyRequest(StrictLabRequestModel):
 
 
 class LabMemoryUnpinApplyRequest(StrictLabRequestModel):
-    schema: Literal["relaylm.lab.memory_unpin_apply_request.v0"]
+    schema_: Literal["relaylm.lab.memory_unpin_apply_request.v0"] = Field(alias="schema")
     expected_revision: int = Field(ge=1, le=2_147_483_647)
     reason: str = Field(min_length=1, max_length=512)
     operation_id: str = Field(min_length=1, max_length=128)

@@ -99,8 +99,9 @@ class LabFreshConversationVisibility(_ExactModel):
 
 
 class LabLifecycleVisibilityProjection(_ExactModel):
-    schema: Literal["relaylm.lab.lifecycle_visibility.v0"] = (
-        "relaylm.lab.lifecycle_visibility.v0"
+    schema_: Literal["relaylm.lab.lifecycle_visibility.v0"] = Field(
+        default="relaylm.lab.lifecycle_visibility.v0",
+        alias="schema",
     )
     source: Literal["relaylm_runtime"] = "relaylm_runtime"
     read_only: Literal[True] = True
