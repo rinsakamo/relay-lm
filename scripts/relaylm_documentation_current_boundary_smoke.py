@@ -175,6 +175,7 @@ REQUIRED = {
         "CW-A5 character creation, templates, and showcase import complete",
         "O2 supervised worker service             complete as opt-in local scheduler service",
         "O3 always-on local operation             complete as opt-in local CLI/process wrapper",
+        "E1-R5 Primary MEM recall candidate discovery fallback complete",
         "Completed post-MVP debt:",
         "Implementation order for large compatibility removals and fold-ins",
         "PM-D5 -> PM-D6 -> PM-D7 -> PM-D8",
@@ -183,18 +184,19 @@ REQUIRED = {
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
         "E1-R4 request-side evidence-grounded recall behavior is current implemented.",
-        "E1-R5 scoped Primary recall candidate discovery bridge is current implemented.",
+        "E1-R5 scoped Primary recall candidate fallback is current implemented.",
         "O2 is current implemented as an opt-in supervised local scheduler service above O1E.",
         "O3 is current implemented as an opt-in local CLI/process wrapper around O2.",
-        "PM-D5, PM-D6, and PM-D7 are complete as post-MVP compatibility/debt fold-in slices.",
+        "PM-D5, PM-D6, PM-D7, and PM-D8 are complete as post-MVP compatibility/debt fold-in slices.",
         "request-side grounded recall response             complete as E1-R4",
-        "E1-R5 scoped Primary recall bridge                complete as E1-R5",
+        "E1-R5 scoped Primary recall fallback              complete as E1-R5",
         "opt-in supervised local scheduler service         complete as O2",
         "opt-in local CLI/process wrapper                  complete as O3",
         "target-only RelayMEM store discovery              complete as PM-D5",
         "native input-side RelayINT artifact               complete as PM-D6",
         "explicit runtime install/preflight command        complete as PM-D7",
-        "E1-R5 is current implemented as a bounded scoped Primary MEM recall candidate discovery bridge.",
+        "canonical Primary recall fallback fold-in         complete as PM-D8",
+        "E1-R5 is current implemented as a bounded scoped Primary MEM recall candidate fallback in canonical Primary recall.",
     ),
     "docs/architecture/e1r4_retrieval_response_grounding.md": (
         "# E1-R4 Retrieval-Response Grounding",
@@ -356,7 +358,7 @@ STALE = tuple(
     O2 supervised worker service, if required
     O3 always-on operation, if required
     I-5 runtime apply/API/UI/ranking behavior: unimplemented
-    I-7 runtime apply/discard/API/UI/durable governance evidence: unimplemented
+    I-7 runtime apply/discard/API/UI/durable evidence: unimplemented
     Direct Home-origin formation: not currently proven; trusted scene admission is missing
     Direct Home-origin trusted scene admission remains target work
     Pin/Unpin runtime API/UI/ranking behavior: pending
@@ -370,6 +372,11 @@ STALE = tuple(
     remaining E1-R4 quality work
     E1-R5 remains unindexed
     E1-R5 remains incomplete
+    E1-R5 Primary MEM recall candidate discovery bridge: complete
+    E1-R5 Primary MEM recall candidate discovery bridge complete
+    E1-R5 scoped Primary recall candidate discovery bridge is current implemented.
+    E1-R5 scoped Primary recall bridge                complete as E1-R5
+    Compatibility anchor retained for E1 evaluation smoke
     Character Workspace source tree parser/compiler/UI
     ACG-1 is current as a shared contract/helper layer only. It does not mean that Grounded Recall detail detection, retrieval query normalization, RelayREF / RelayINT reference analyzer consolidation, RelayEMO scene-hint cleanup, or SCN scene-wiki classifier work is complete.
     ACG-2 through ACG-6 analyzer candidate producers/classifiers
