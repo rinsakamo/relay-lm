@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from . import _relaymem_store_impl as _impl
+from ._analyzer_text_features import has_cjk
+
+_MIN_NON_CJK_TERM_CHARS = 3
 
 _JAPANESE_RECALL_PHRASES = (
     "朝の集中作業",
@@ -71,11 +74,10 @@ def _expanded_query_terms(query_terms: list[str] | None) -> list[str] | None:
         if not isinstance(raw_term, str):
             continue
         term = _clean_query_term(raw_term)
-        if not term:
-            continue
-        lowered = term.lower()
-        if lowered not in expanded:
-            expanded.append(lowered)
+        if term and (has_cjk(term) or len(term) >= _MIN_NON_CJK_TERM_CHARS):
+            lowered = term.lower()
+            if lowered not in expanded:
+                expanded.append(lowered)
         for phrase in _JAPANESE_RECALL_PHRASES:
             if phrase in term:
                 phrase_lowered = phrase.lower()

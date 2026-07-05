@@ -195,6 +195,26 @@ def assert_direct_store_query_punctuation_match(operator_root: Path) -> None:
     )
 
 
+def assert_direct_store_short_term_not_matched(operator_root: Path) -> None:
+    discovery = discover_relaymem_page_candidates(
+        root_path=str(operator_root),
+        query_terms=["a?"],
+        max_candidates=8,
+        max_scan=8,
+    )
+    candidates = discovery.get("candidates")
+    require(isinstance(candidates, Sequence) and not isinstance(candidates, str), discovery)
+    require(
+        not any(
+            isinstance(candidate, Mapping)
+            and candidate.get("memory_layer") == "primary"
+            and candidate.get("reason") == "keyword_match"
+            for candidate in candidates
+        ),
+        discovery,
+    )
+
+
 def main() -> None:
     english_terms = _term_hints(ENGLISH_STOPWORD_QUERY)
     require("do" not in english_terms, english_terms)
@@ -272,6 +292,7 @@ def main() -> None:
             diagnostics,
         )
         assert_direct_store_query_punctuation_match(operator_root)
+        assert_direct_store_short_term_not_matched(operator_root)
 
         english_retrieval = build_relaymem_retrieval_dry_run_artifact(
             relayscn_scene_policy_artifact=scene_artifact(),
