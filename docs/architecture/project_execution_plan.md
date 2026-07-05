@@ -114,6 +114,7 @@ Open or remaining decision debt:
 
 - PM-D1 RelaySOUL gate design-freeze relation
 - PM-D2 RelayINT -> RelayMEM relayint_intent_artifact legacy compatibility scope; evaluate closure or absorption after PM-D6 if the native artifact closes the legacy artifact scope
+- PM-D3 RelayEMO/RelaySCN scene_state ownership
 - PM-D4 client history exclusion default-off deployment decision
 - PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
 - PM-D9 analyzer candidate governance and multilingual schema policy follow-through after ACG-1 through ACG-6
@@ -152,6 +153,7 @@ Completed post-MVP debt:
 Remaining post-E1-R5 / post-Wave-7 candidates:
   E1-R5 scoped Primary recall candidate bridge boundary remains complete.
   PM-D1 RelaySOUL gate design-freeze relation
+  PM-D3 RelayEMO/RelaySCN scene_state ownership
   PM-D4 client history exclusion default-off deployment decision
   PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
   PM-D9 analyzer candidate governance and multilingual schema policy follow-through
@@ -246,4 +248,4 @@ PM-D5 removes legacy flat RelayMEM runtime discovery, PM-D6 makes RelayINT own t
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-The remaining candidates are PM-D1/PM-D4/PM-D8/PM-D9 follow-through, PM-D2 closure or absorption after PM-D6, and durable-memory E2 value smoke after O2/O3 scheduler draining evidence.
+The remaining candidates are PM-D1/PM-D3/PM-D4/PM-D8/PM-D9 follow-through, PM-D2 closure or absorption after PM-D6, and durable-memory E2 value smoke after O2/O3 scheduler draining evidence.
