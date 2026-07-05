@@ -9,7 +9,7 @@ relaylm_update_trigger:
   - Phase 6 deferred orchestration slice lands
   - durable MEM persistence apply state changes
   - ordinary-runtime worker integration changes
-  - I1-G or O1 boundary changes
+  - I1-G or O1/O2/O3 boundary changes
   - E1 evaluation evidence boundary changes
 relaylm_not_authoritative_for:
   - repository-wide phase sequencing
@@ -17,6 +17,11 @@ relaylm_not_authoritative_for:
   - RelaySOUL approval contracts
 relaylm_related_authority:
   - o1f_operational_validation.md
+  - o2_supervised_scheduler_service.md
+  - o3_always_on_local_scheduler.md
+  - pm_d5_relaymem_flat_store_compatibility_removal.md
+  - pm_d6_relayint_native_artifact_relayref_wrapper_removal.md
+  - pm_d7_runtime_install_hook_fold_in.md
   - phase_i5b_pin_unpin_apply.md
   - phase_i7c_held_apply_discard_runtime.md
   - e1r1_trusted_home_scene_admission.md
@@ -32,11 +37,11 @@ relaylm_related_authority:
 ---
 # RelayMEM / RelaySLP Current / Target Boundary
 
-Last reviewed: 2026-06-29 JST
+Last reviewed: 2026-07-05 JST
 
 ## Current implemented boundary
 
-RelayMEM currently provides bounded store discovery, Primary/Secondary layout compatibility, retrieval priority, runtime-private snippet selection, content-free retrieval projection, gated RelayCTX injection, auditable Correct, canonical read-only Primary current-state resolution, I-4C1 hidden-successor lifecycle commit ownership, bounded I-4C2 recovery/finalization, I-4D ordinary retrieval lifecycle exclusion plus historical lifecycle overlay, I-4E loopback Forget API/UI, I-4F full Forget validation, I-5A Pin / Unpin read-only preflight, I-5B Pin / Unpin apply/API/UI/ranking behavior, I-7A/B Held Apply / Discard read-only preflight, I-7C Held Apply / Discard runtime/API/UI/durable governance evidence, and E1-R5 bounded scoped Primary recall candidate bridging.
+RelayMEM currently provides bounded store discovery, target-only Primary/Secondary layout discovery after PM-D5 flat-store compatibility removal, retrieval priority, runtime-private snippet selection, content-free retrieval projection, gated RelayCTX injection, auditable Correct, canonical read-only Primary current-state resolution, I-4C1 hidden-successor lifecycle commit ownership, bounded I-4C2 recovery/finalization, I-4D ordinary retrieval lifecycle exclusion plus historical lifecycle overlay, I-4E loopback Forget API/UI, I-4F full Forget validation, I-5A Pin / Unpin read-only preflight, I-5B Pin / Unpin apply/API/UI/ranking behavior, I-7A/B Held Apply / Discard read-only preflight, I-7C Held Apply / Discard runtime/API/UI/durable governance evidence, and E1-R5 bounded scoped Primary recall candidate bridging.
 
 The Primary MEM persistence chain is implemented through M3a-M3h. The Phase 6 execution boundary is implemented through B0-B3, C1-5, and C2, with O0 as the explicit local caller:
 
@@ -61,21 +66,23 @@ I2 real SOUL Lab observation is complete. It is read-only evidence only and cann
 
 E1 evaluation consolidation is current as an evidence/documentation boundary. E1-R1 route-owned trusted Home scene admission is current implemented. E1-R2 dry-run-first character-store bootstrap is current implemented. E1-R3 provenance-preserving summary formation is current implemented. E1-R4 request-side evidence-grounded recall behavior is current implemented. E1-R5 scoped Primary recall candidate discovery bridge is current implemented.
 
+PM-D5, PM-D6, and PM-D7 are complete as post-MVP compatibility/debt fold-in slices. PM-D5 removes legacy flat-store runtime discovery. PM-D6 makes the input-side RelayINT artifact native instead of RelayREF-wrapper-shaped. PM-D7 adds the explicit dry-run-first runtime install/preflight command.
+
 ## I1-G durable-finalization boundary
 
 I1-GA through I1-GE are complete. I1-G completion means sealed evidence, exact C1-5 source, exact B2 queue correlation, durable completion, retention/isolation lifecycle, and crash-at-every-boundary validation. It does not imply B3 terminal success, C2 execution, worker execution, Primary MEM formation, semantic quality, retrieval use, automatic scheduling, polling, supervision, or always-on operation.
 
-## O1 scheduler boundary
+## O1/O2/O3 scheduler boundary
 
 O1A defines a pure scheduler contract. O1B and O1C bounded production discovery and delegation are complete. O1D1 accepts the five exact scheduler gates, invokes O1B then O1C at most once each, aggregates through O1A, validates the content-free projection, and returns without sleeping.
 
-O1D2 is current implemented as a bounded policy wrapper around the existing O1D1 one-round scheduler coordinator. O1D2 does not poll, sleep, run a second round, recover stale claims, handle cancellation, supervise services, or create a durable scheduler journal.
+O1D2 is current implemented as a bounded policy wrapper around the existing O1D1 one-round scheduler coordinator. O1D2 itself does not poll, sleep, run a second round, recover stale claims, handle cancellation, supervise services, or create a durable scheduler journal.
 
 O1E is current implemented as a bounded caller-invoked operational-control layer. One explicit call may check cancellation, optionally orchestrate at most one B3 stale-recovery transition through existing B3 authority, invoke at most one O1D2/O1D1 scheduler round, and return a bounded content-free projection. O1E does not poll, sleep, loop, daemonize, supervise, create background workers, start timers, or rewrite queue records directly.
 
-O1F is current implemented as validation-only hardening over the caller-invoked O1E/O1D2/O1D1 stack. It validates corruption, concurrency, saturation/boundedness, restart reread, cancellation/shutdown projection, and leakage boundaries. O1F does not poll, sleep, loop, supervise, create workers, or implement O2/O3.
+O1F is current implemented as validation-only hardening over the caller-invoked O1E/O1D2/O1D1 stack. It validates corruption, concurrency, saturation/boundedness, restart reread, cancellation/shutdown projection, and leakage boundaries. O1F does not poll, sleep, loop, supervise, create workers, or itself implement local always-on operation.
 
-O2 supervision and O3 always-on operation remain unimplemented.
+O2 is current implemented as an opt-in supervised local scheduler service above O1E. O3 is current implemented as an opt-in local CLI/process wrapper around O2. O2/O3 are not app-embedded, not browser authority, not default-on, and do not add memory mutation, queue, worker, stale-recovery, or durable-finalization authority.
 
 ## Current Primary mutation and lifecycle-read boundary
 
@@ -126,8 +133,13 @@ finalized ordinary turn
   -> request-side grounded recall response             complete as E1-R4
   -> bounded scheduler operational controls            complete as O1E
   -> operational validation hardening                  complete as O1F
+  -> opt-in supervised local scheduler service         complete as O2
+  -> opt-in local CLI/process wrapper                  complete as O3
+  -> target-only RelayMEM store discovery              complete as PM-D5
+  -> native input-side RelayINT artifact               complete as PM-D6
+  -> explicit runtime install/preflight command        complete as PM-D7
 ```
 
 ## Completion interpretation
 
-M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1F, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-5B, I-7A/B, I-7C, E1, E1-R1, E1-R2, E1-R3, E1-R4, and E1-R5 are implemented. O1F is validation-only caller-invoked operational hardening; O2 and O3 remain incomplete. E1-R1 is route-owned and defaults disabled; it does not permit browser-owned trust. E1-R2 is dry-run-first and does not create semantic memory content. E1-R3 is speaker-provenance-safe formation summary work. E1-R4 is request-side retrieval-response grounding and does not perform post-hoc visible response rewriting or create a new memory mutation authority. E1-R5 is a bounded candidate bridge and does not replace M2 as preferred relevance owner or add broad retrieval/mutation/scheduler authority.
+M3a-M3h, B0-B3, C1-0 through C1-5, C2, O0, I1-GA through I1-GE, O1A through O1F, O2, O3, I-1 recall, I-2 observation, I-3 Correct, I-4B, I-4C1, I-4C2, I-4D, I-4E, I-4F, UI-B1A, I-5A, I-5B, I-7A/B, I-7C, E1, E1-R1, E1-R2, E1-R3, E1-R4, E1-R5, PM-D5, PM-D6, and PM-D7 are implemented. O1F is validation-only caller-invoked operational hardening. O2 and O3 are opt-in local operation layers that remain explicit operator-invoked and default-off. E1-R1 is route-owned and defaults disabled; it does not permit browser-owned trust. E1-R2 is dry-run-first and does not create semantic memory content. E1-R3 is speaker-provenance-safe formation summary work. E1-R4 is request-side retrieval-response grounding and does not perform post-hoc visible response rewriting or create a new memory mutation authority. E1-R5 is a bounded candidate bridge and does not replace M2 as preferred relevance owner or add broad retrieval/mutation/scheduler authority. PM-D5 removes legacy flat-store runtime discovery. PM-D6 removes the input-side RelayREF-shaped RelayINT wrapper. PM-D7 adds explicit dry-run-first runtime install/preflight support only.

@@ -1,3 +1,24 @@
+---
+relaylm_doc_type: implementation_handoff
+relaylm_authority: pm_d6_relayint_native_artifact_boundary
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: relayint
+relaylm_update_trigger:
+  - RelayINT reference or intent artifact schema changes
+  - RelayREF compatibility wrapper behavior changes
+  - RelayMEM unresolved-reference blocking changes
+relaylm_not_authoritative_for:
+  - repository-wide current status
+  - roadmap sequencing
+  - output-side RelayREF runtime design
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - project_execution_plan.md
+  - current_target_migration_guide.md
+  - analyzer_candidate_governance.md
+  - acg4_reference_intent_analyzer.md
+---
 # PM-D6 RelayINT Native Artifact / RelayREF Wrapper Removal
 
 Date: 2026-07-04 JST

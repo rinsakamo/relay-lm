@@ -1,3 +1,24 @@
+---
+relaylm_doc_type: implementation_handoff
+relaylm_authority: pm_d5_relaymem_flat_store_compatibility_removal_boundary
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: relaymem
+relaylm_update_trigger:
+  - RelayMEM store layout discovery changes
+  - Primary or Secondary MEM runtime readable layout changes
+  - E1-R5 or PM-D8 Primary recall adapter/root handling changes
+relaylm_not_authoritative_for:
+  - repository-wide current status
+  - roadmap sequencing
+  - automatic migration or repair behavior
+relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_authority:
+  - project_execution_plan.md
+  - current_target_migration_guide.md
+  - relaymem_slp_current_target.md
+  - e1r5_primary_mem_recall_candidate_bridge.md
+---
 # PM-D5 RelayMEM flat-store compatibility removal
 
 ## Purpose
