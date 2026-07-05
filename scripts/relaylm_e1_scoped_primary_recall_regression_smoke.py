@@ -18,6 +18,7 @@ from relaylm.relaymem_retrieval import (
 from relaylm.relaymem_store import (
     build_relaymem_snippet_evidence_dry_run,
     build_relaymem_store_diagnostics,
+    discover_relaymem_page_candidates,
 )
 
 NAMESPACE = "character/default"
@@ -174,6 +175,26 @@ def assert_no_primary_keyword_candidate(value: Mapping[str, Any]) -> None:
         )
 
 
+def assert_direct_store_query_punctuation_match(operator_root: Path) -> None:
+    discovery = discover_relaymem_page_candidates(
+        root_path=str(operator_root),
+        query_terms=["エチオピア?", "coffee?"],
+        max_candidates=8,
+        max_scan=8,
+    )
+    candidates = discovery.get("candidates")
+    require(isinstance(candidates, Sequence) and not isinstance(candidates, str), discovery)
+    require(
+        any(
+            isinstance(candidate, Mapping)
+            and candidate.get("memory_layer") == "primary"
+            and candidate.get("reason") == "keyword_match"
+            for candidate in candidates
+        ),
+        discovery,
+    )
+
+
 def main() -> None:
     english_terms = _term_hints(ENGLISH_STOPWORD_QUERY)
     require("do" not in english_terms, english_terms)
@@ -228,6 +249,9 @@ def main() -> None:
             title="朝の集中作業の飲み物",
             summary=SUMMARY,
         )
+        english_page = scoped_root / "memory" / "mem" / "primary" / "projects" / "direct-coffee.md"
+        english_page.parent.mkdir(parents=True, exist_ok=True)
+        english_page.write_text("# Direct query\ncoffee direct-store punctuation match\n", encoding="utf-8")
 
         diagnostics = build_relaymem_store_diagnostics(
             root_path=str(operator_root),
@@ -247,6 +271,7 @@ def main() -> None:
             ),
             diagnostics,
         )
+        assert_direct_store_query_punctuation_match(operator_root)
 
         english_retrieval = build_relaymem_retrieval_dry_run_artifact(
             relayscn_scene_policy_artifact=scene_artifact(),
