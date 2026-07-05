@@ -20,6 +20,7 @@ MVP-specific implementation notes remain under `docs/mvp/`. Executable smoke scr
 
 ## RelayMEM and local behavior evaluation
 
+- [E2 value smoke runbook](e2_value_smoke_runbook.md)
 - [RelayMEM runtime payload diff evaluation](relaymem_runtime_payload_eval.md)
 - [RelayMEM local LLM evaluation guide](relaymem_local_llm_eval_guide.md)
 - [RelayMEM local response comparison guide](relaymem_local_response_comparison.md)
