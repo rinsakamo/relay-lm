@@ -60,12 +60,13 @@ REQUIRED = {
         "E1-R2 dry-run-first character-store bootstrap is current implemented.",
         "E1-R3 provenance-preserving summary formation is current implemented.",
         "E1-R4 request-side evidence-grounded recall behavior is current implemented.",
-        "E1-R5 scoped Primary recall candidate discovery bridge is current implemented.",
+        "E1-R5 scoped Primary recall candidate fallback is current implemented.",
         "request-side grounded recall response             complete as E1-R4",
-        "E1-R5 scoped Primary recall bridge                complete as E1-R5",
+        "E1-R5 scoped Primary recall fallback              complete as E1-R5",
+        "canonical Primary recall fallback fold-in         complete as PM-D8",
     ),
     "docs/architecture/current_target_migration_guide.md": (
-        "Current Wave 7 / P0-PIPE / ACG compatibility interpretation",
+        "Current Wave 7 / P0-PIPE / ACG / CW compatibility interpretation",
         "E1-R1 is current implemented as route-owned trusted Home scene admission.",
         "E1-R2 is current implemented as dry-run-first character-store bootstrap.",
         "E1-R3 is current implemented as provenance-preserving Primary MEM formation summary.",
@@ -207,6 +208,8 @@ STALE = (
     "E1-R4 evidence-grounded recall behavior remains quality work",
     "E1-R4 remains incomplete quality/evaluation work",
     "E1-R5 remains incomplete",
+    "E1-R5 scoped Primary recall candidate discovery bridge is current implemented.",
+    "E1-R5 scoped Primary recall bridge                complete as E1-R5",
 )
 
 SCANNED_DOCS = (
