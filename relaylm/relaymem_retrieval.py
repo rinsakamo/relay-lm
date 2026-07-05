@@ -5,9 +5,15 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from relaylm.relaymem_retrieval_priority import prioritize_relaymem_candidates
 from relaylm.relaymem_store import (
     build_relaymem_snippet_evidence_dry_run,
     discover_relaymem_page_candidates,
+)
+from relaylm.retrieval_query_analyzer import (
+    analyze_retrieval_query,
+    public_retrieval_query_projection,
+    retrieval_query_backend_hints,
 )
 
 
@@ -29,6 +35,19 @@ _RETRIEVAL_ELIGIBLE_FALLBACK_REASONS = {
     "memory_store_validation_truncated",
     "memory_store_scan_truncated",
 }
+_MAX_PRIORITY_DISCOVERY_CANDIDATES = 128
+_JAPANESE_RECALL_PHRASES = (
+    "朝の集中作業",
+    "集中作業",
+    "落ち着く",
+    "落ち着き",
+    "飲み物",
+    "浅煎り",
+    "エチオピアコーヒー",
+    "エチオピア",
+    "コーヒー",
+    "紅茶",
+)
 
 
 def build_relaymem_retrieval_dry_run_artifact(
@@ -138,6 +157,14 @@ def build_relaymem_retrieval_dry_run_artifact(
         int(candidate.get("estimated_tokens", 0))
         for candidate in selected_mem_candidates
     )
+    latest_user_text = _latest_user_text(messages)
+    retrieval_query_candidate_analysis = analyze_retrieval_query(
+        latest_user_text,
+        source="heuristic",
+    )
+    retrieval_query_backend_private_hints = retrieval_query_backend_hints(
+        retrieval_query_candidate_analysis
+    )
 
     return {
         "artifact_version": "relaymem_retrieval.v0",
@@ -145,7 +172,22 @@ def build_relaymem_retrieval_dry_run_artifact(
         "apply_allowed": False,
         "retrieval_scope": retrieval_scope,
         "scene_type": scene_type,
-        "query_summary": _build_query_summary(messages),
+        "query_summary": _content_free_query_summary(
+            latest_user_text=latest_user_text,
+            retrieval_query_candidate=retrieval_query_candidate_analysis,
+        ),
+        "retrieval_query_candidate": public_retrieval_query_projection(
+            retrieval_query_candidate_analysis
+        ),
+        "retrieval_query_private": {
+            "schema_version": "relaymem.retrieval_query_private_hints.v0",
+            "runtime_private": True,
+            "content_free": False,
+            "source": "retrieval_query_analyzer",
+            "backend_private_hints": tuple(retrieval_query_backend_private_hints),
+            "query_hint_count": len(retrieval_query_backend_private_hints),
+        },
+        "retrieval_priority": _retrieval_priority_projection(selected_mem_candidates),
         "selected": [],
         "selected_mem_candidates": selected_mem_candidates,
         "blocked": blocked,
@@ -354,6 +396,13 @@ def _build_blocked_reasons(
     return blocked
 
 
+def _priority_discovery_cap(max_candidates: int) -> int:
+    normalized = max(0, int(max_candidates))
+    if normalized == 0:
+        return 0
+    return _MAX_PRIORITY_DISCOVERY_CANDIDATES
+
+
 def _select_mem_candidates_dry_run(
     *,
     fallback_reason: str,
@@ -368,12 +417,16 @@ def _select_mem_candidates_dry_run(
     root_path = store_diagnostics.get("root_path")
     if not isinstance(root_path, str) or not root_path:
         return [], []
+
+    final_limit = max(0, int(max_candidates))
+    discovery_cap = _priority_discovery_cap(final_limit)
     discovery = discover_relaymem_page_candidates(
         root_path=root_path,
         query_terms=query_terms,
-        max_candidates=max(0, max_candidates),
+        max_candidates=discovery_cap,
+        max_scan=discovery_cap,
     )
-    candidates = []
+    candidates: list[dict[str, Any]] = []
     for candidate in discovery.get("candidates", []):
         if not isinstance(candidate, Mapping):
             continue
@@ -386,6 +439,8 @@ def _select_mem_candidates_dry_run(
         )
         dry_run_candidate["applied_to_ctx"] = False
         candidates.append(dry_run_candidate)
+
+    prioritized = prioritize_relaymem_candidates(candidates, max_candidates=final_limit)
     blocked = [
         {"path": str(item.get("path")), "reason": str(item.get("reason"))}
         for item in discovery.get("blocked_files", [])
@@ -396,7 +451,7 @@ def _select_mem_candidates_dry_run(
         "memory_store_read_only_selection_dry_run",
     }:
         blocked.append({"reason": discovery_reason})
-    return candidates, blocked
+    return list(prioritized["selected_candidates"]), blocked
 
 
 
@@ -1186,13 +1241,47 @@ def _relayint_unresolved_reference(relayint_intent_artifact: Mapping[str, Any] |
     return relayint_intent_artifact.get("unresolved_reference_detected") is True
 
 
-def _build_query_summary(messages: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    latest_user_text = _latest_user_text(messages)
+def _content_free_query_summary(
+    *,
+    latest_user_text: str,
+    retrieval_query_candidate: Mapping[str, Any],
+) -> dict[str, Any]:
+    projection = public_retrieval_query_projection(retrieval_query_candidate)
     return {
         "source": "latest_user_message",
         "input_chars": len(latest_user_text),
-        "term_hints": _term_hints(latest_user_text),
-        "ambiguous_reference_terms_present": _has_ambiguous_reference(latest_user_text),
+        "term_hints": [],
+        "term_hints_content_free": True,
+        "query_hint_strategy": projection["query_hint_strategy"],
+        "query_hint_count": projection["query_hint_count"],
+        "ambiguous_reference_terms_present": projection["has_ambiguous_reference"],
+        "content_free": True,
+    }
+
+
+def _retrieval_priority_projection(
+    selected_mem_candidates: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    prioritized = prioritize_relaymem_candidates(selected_mem_candidates)
+    return {
+        "schema_version": "relaymem.retrieval_priority_runtime.v0",
+        "diagnostics_only": True,
+        "read_only": True,
+        "runtime_wiring": "dry_run_only",
+        "source": "selected_mem_candidates",
+        "content_included": False,
+        "path_included": False,
+        "snippet_included": False,
+        "applied_to_ctx": False,
+        "payload_mutation_allowed": False,
+        "writes_memory": False,
+        "mutates_soul": False,
+        "candidate_count": prioritized["candidate_count"],
+        "selected_count": prioritized["selected_count"],
+        "selection_policy": prioritized["selection_policy"],
+        "layer_counts": prioritized["layer_counts"],
+        "selected_layer_counts": prioritized["selected_layer_counts"],
+        "selection_projection": prioritized["selection_projection"],
     }
 
 
@@ -1213,32 +1302,30 @@ def _latest_user_text(messages: Sequence[Mapping[str, Any]]) -> str:
 
 
 def _term_hints(text: str) -> list[str]:
-    terms: list[str] = []
-    for raw in text.replace("\n", " ").split(" "):
-        term = raw.strip(".,!?。！？、:;()[]{}\"'")
-        if len(term) < 3 or term in terms:
-            continue
-        terms.append(term[:32])
-        if len(terms) >= 6:
-            break
-    return terms
-
-
-def _has_ambiguous_reference(text: str) -> bool:
-    lowered = text.lower()
-    markers = (
-        "which one",
-        "what was that",
-        "それ",
-        "これ",
-        "あれ",
-        "さっき",
-        "どっち",
-        "どれ",
-        "何の話",
-        "わから",
+    analysis = analyze_retrieval_query(
+        text,
+        source="heuristic",
+        max_hints=12,
     )
-    return any(marker in lowered for marker in markers)
+    terms = retrieval_query_backend_hints(analysis)
+
+    for phrase in _JAPANESE_RECALL_PHRASES:
+        if phrase in text or phrase in "\n".join(terms):
+            _add_japanese_phrase(terms, phrase)
+            if len(terms) >= 12:
+                break
+    return terms[:12]
+
+
+def _add_japanese_phrase(terms: list[str], phrase: str) -> None:
+    phrase = _clean_term(phrase)
+    if len(phrase) < 2 or phrase in terms:
+        return
+    terms.append(phrase)
+
+
+def _clean_term(term: str) -> str:
+    return term.strip(".,!?。！？、:;()[]{}\"'")[:32]
 
 
 def _normalize_token_budget(token_budget: int | None) -> dict[str, Any]:

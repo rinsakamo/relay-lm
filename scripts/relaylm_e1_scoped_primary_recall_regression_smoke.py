@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from _relaylm_phase_i3_test_support import form_primary_memory, require
-from relaylm import relaymem_primary_recall_runtime as primary_recall_runtime
+from relaylm import _relaymem_store_impl as primary_recall_runtime
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
     resolve_relaymem_character_store_root,
