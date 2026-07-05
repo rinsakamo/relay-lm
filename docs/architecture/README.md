@@ -52,6 +52,9 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Project Execution Plan](project_execution_plan.md)
 - [Pipeline Implementation Plan](pipeline_implementation_plan.md) — compatibility stub
 - [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md) — compatibility stub
+- [PM-D5 RelayMEM Flat-store Compatibility Removal](pm_d5_relaymem_flat_store_compatibility_removal.md)
+- [PM-D6 RelayINT Native Artifact / RelayREF Wrapper Removal](pm_d6_relayint_native_artifact_relayref_wrapper_removal.md)
+- [PM-D7 Runtime Install Hook Fold-in](pm_d7_runtime_install_hook_fold_in.md)
 
 ## Product-critical Phase 6 and Integration boundaries
 
@@ -78,6 +81,8 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [O1D2 Deterministic Scheduler Policy](o1d2_scheduler_policy.md)
 - [O1E Scheduler Operational Controls](o1e_scheduler_operational_controls.md)
 - [O1F Operational Validation](o1f_operational_validation.md)
+- [O2 Supervised Scheduler Service](o2_supervised_scheduler_service.md)
+- [O3 Always-On Local Scheduler](o3_always_on_local_scheduler.md)
 - [I1-G Durable-finalization Contract and Replay Boundary](i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD Durable-finalization Retention and Isolation Cleanup](i1gd_durable_finalization_retention_cleanup.md)
 - [I1-GE Durable-finalization Crash Validation](i1ge_durable_finalization_crash_validation.md)
@@ -119,6 +124,8 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Memory Lifecycle Design](memory_lifecycle_design.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — compatibility stub
+- [PM-D5 RelayMEM Flat-store Compatibility Removal](pm_d5_relaymem_flat_store_compatibility_removal.md)
+- [PM-D7 Runtime Install Hook Fold-in](pm_d7_runtime_install_hook_fold_in.md)
 - [Phase I-4A Primary MEM Forget / Hide Contract](phase_i4_primary_mem_forget_hide_contract.md)
 - [Phase I-4B Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md)
 - [Phase I-4C1 Primary Forget Hidden-Successor Commit](phase_i4c1_primary_forget_hidden_successor.md)
