@@ -110,10 +110,10 @@ def _preflight(root: Path, command: CommandSpec) -> dict[str, object]:
     anchors = (
         (project_status, "O2 supervised worker service: complete as opt-in supervised local scheduler service wrapping O1E; not app-embedded, not default-on, and no new memory mutation authority"),
         (project_status, "O3 always-on local operation: complete as opt-in local CLI/process wrapper around O2; not browser authority, not app-embedded, and not default-on"),
-        (project_status, "E1-R5 Primary MEM recall candidate discovery bridge: complete"),
+        (project_status, "E1-R5 Primary MEM recall candidate fallback: complete"),
         (execution_plan, "O2 supervised worker service             complete as opt-in local scheduler service"),
         (execution_plan, "O3 always-on local operation             complete as opt-in local CLI/process wrapper"),
-        (execution_plan, "E1-R5 Primary MEM recall candidate discovery bridge"),
+        (execution_plan, "E1-R5 Primary MEM recall candidate discovery fallback complete"),
         (e1_doc, "scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py"),
         (e1_doc, "does not require a live LLM"),
     )
