@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current documentation boundary anchors after E1-R5, ACG, CW-A5, and Wave 8 docs updates."""
+"""Validate current documentation boundary anchors after E1-R5, ACG, CW-A5, O2/O3, and Wave 8 docs updates."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -25,6 +25,8 @@ CURRENT_DOCS = (
     "docs/architecture/acg1_analyzer_candidate_governance_contract.md",
     "docs/architecture/acg5_relayemo_scene_cleanup.md",
     "docs/architecture/cw_a5_character_creation_templates_showcase_import.md",
+    "docs/architecture/o2_supervised_scheduler_service.md",
+    "docs/architecture/o3_always_on_local_scheduler.md",
     "docs/architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md",
     "docs/architecture/phase_i5_pin_unpin_contract.md",
     "docs/architecture/phase_i5b_pin_unpin_apply.md",
@@ -40,8 +42,14 @@ REQUIRED = {
         "This page owns current implementation status and active caveats.",
         "O1F operational validation: complete",
         "O1 overall: complete through validation-only caller-invoked local scheduler boundary",
-        "O2 supervised worker service: planned/unimplemented",
-        "O3 always-on local operation: planned/unimplemented",
+        "O2 supervised worker service: complete as opt-in supervised local scheduler service wrapping O1E; not app-embedded, not default-on, and no new memory mutation authority",
+        "O3 always-on local operation: complete as opt-in local CLI/process wrapper around O2; not browser authority, not app-embedded, and not default-on",
+        "## O2/O3 local scheduler operation boundary",
+        "O2/O3 are not app-embedded, not browser authority, not default-on, and do not add memory mutation authority.",
+        "O2/O3 supervised local scheduler operation                 complete for explicit MVP need",
+        "durable-memory E2 value smoke after O2/O3 scheduler draining evidence",
+        "O2 handoff is [O2 Supervised Scheduler Service]",
+        "O3 handoff is [O3 Always-On Local Scheduler]",
         "I-5B Pin / Unpin apply/API/UI/ranking behavior: complete",
         "I-7C Held Apply/Discard runtime/API/UI/durable governance evidence: complete",
         "E1-R1 trusted Home scene admission: complete",
@@ -209,6 +217,26 @@ REQUIRED = {
         "The CLI requires `--write` for persistence and does not auto-activate characters.",
         "PYTHONPATH=. python scripts/relaylm_cw_a5_character_creation_templates_smoke.py",
     ),
+    "docs/architecture/o2_supervised_scheduler_service.md": (
+        "relaylm_doc_type: implementation_handoff",
+        "relaylm_authority: o2_supervised_scheduler_service_boundary",
+        "# O2 Supervised Scheduler Service",
+        "O2 adds an opt-in supervised local service loop around the existing O1E operational controls boundary.",
+        "O2 has no independent memory, queue, worker, stale-recovery, or finalization authority.",
+        "O2 reads only public, content-free fields from O1E/O1D2 results.",
+        "PYTHONPATH=. python scripts/relaylm_o2_supervised_scheduler_service_smoke.py",
+        "Durable-memory E2 smoke should remain a separate slice.",
+    ),
+    "docs/architecture/o3_always_on_local_scheduler.md": (
+        "relaylm_doc_type: implementation_handoff",
+        "relaylm_authority: o3_always_on_local_scheduler_boundary",
+        "# O3 Always-On Local Scheduler",
+        "O3 adds an opt-in local process wrapper for O2.",
+        "O3 delegates all scheduling work to O2, and O2 delegates each round to O1E.",
+        "PYTHONPATH=. python scripts/relaylm_o3_always_on_local_scheduler.py --config config.yaml --max-rounds 1",
+        "PYTHONPATH=. python scripts/relaylm_o3_always_on_local_scheduler_smoke.py",
+        "The later durable-memory E2 scenario should consume this capability",
+    ),
     "docs/architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md": (
         "relaylm_doc_type: implementation_handoff",
         "# P0 RelayREL / RelaySCN / RelayEMO Ordering Fix",
@@ -250,6 +278,8 @@ STALE = tuple(
     W5-INT in progress until the convergence PR merges
     W5-INT is in progress until the convergence PR containing this audit is merged.
     O1F remains target/unimplemented.
+    O2 supervised worker service: planned/unimplemented
+    O3 always-on local operation: planned/unimplemented
     I-5 runtime apply/API/UI/ranking behavior: unimplemented
     I-7 runtime apply/discard/API/UI/durable governance evidence: unimplemented
     Direct Home-origin formation: not currently proven; trusted scene admission is missing
