@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 from copy import deepcopy
-from dataclasses import replace
+from dataclasses import dataclass, replace
 import json
 import os
 from pathlib import Path
@@ -144,92 +144,16 @@ def create_app(config_path: str | None = None) -> FastAPI:
     @app.post("/v1/chat/completions", response_model=None)
     async def chat_completions(request: Request) -> JSONResponse | StreamingResponse:
         request_id = str(uuid.uuid4())
-        try:
-            payload = await request.json()
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            diagnostics = RequestDiagnostics(
-                request_id=request_id,
-                trace_enabled=config.trace.enabled,
-                fallback_reason="invalid_json",
-            )
-            return openai_error(
-                status_code=400,
-                message="Request body must be valid JSON.",
-                error_type="invalid_request_error",
-                headers=diagnostics.to_headers(),
-            )
-
-        if not isinstance(payload, Mapping):
-            diagnostics = RequestDiagnostics(
-                request_id=request_id,
-                trace_enabled=config.trace.enabled,
-                fallback_reason="invalid_json_type",
-            )
-            return openai_error(
-                status_code=400,
-                message="Request body must be a JSON object.",
-                error_type="invalid_request_error",
-                headers=diagnostics.to_headers(),
-            )
-
-        model = payload.get("model")
-        if not isinstance(model, str) or not model:
-            diagnostics = RequestDiagnostics(
-                request_id=request_id,
-                trace_enabled=config.trace.enabled,
-                fallback_reason="missing_model",
-            )
-            return openai_error(
-                status_code=400,
-                message="Request field 'model' is required.",
-                error_type="invalid_request_error",
-                headers=diagnostics.to_headers(),
-            )
-
-        stream_value = payload.get("stream", False)
-        if not isinstance(stream_value, bool):
-            diagnostics = RequestDiagnostics(
-                request_id=request_id,
-                route_model=model,
-                trace_enabled=config.trace.enabled,
-                fallback_reason="invalid_stream_type",
-            )
-            return openai_error(
-                status_code=400,
-                message="Request field 'stream' must be a boolean when provided.",
-                error_type="invalid_request_error",
-                headers=diagnostics.to_headers(),
-            )
-        stream_enabled = stream_value
-
-        try:
-            route = resolve_route(config, model)
-        except RouteNotFoundError as exc:
-            diagnostics = RequestDiagnostics(
-                request_id=request_id,
-                route_model=model,
-                trace_enabled=config.trace.enabled,
-                fallback_reason="route_not_found",
-            )
-            return openai_error(
-                status_code=400,
-                message=str(exc),
-                error_type="invalid_request_error",
-                headers=diagnostics.to_headers(),
-            )
-        except RouteConfigurationError as exc:
-            diagnostics = RequestDiagnostics(
-                request_id=request_id,
-                route_model=model,
-                trace_enabled=config.trace.enabled,
-                fallback_reason="route_configuration_error",
-            )
-            return openai_error(
-                status_code=500,
-                message=str(exc),
-                error_type="server_error",
-                headers=diagnostics.to_headers(),
-            )
+        validation = await _validate_and_resolve_managed_chat_request(
+            request,
+            request_id=request_id,
+            config=config,
+        )
+        if validation.error_response is not None:
+            return validation.error_response
+        payload = validation.payload
+        stream_enabled = validation.stream_enabled
+        route = validation.route
 
         relayrun_run_id = new_run_id()
 
@@ -534,10 +458,11 @@ def create_app(config_path: str | None = None) -> FastAPI:
             diagnostics_only=compile_diagnostics_only,
         )
 
-        # relayrun_artifact is built after all CTX Repack mutations (relaymem
-        # injection, short-term injection, token_budget_truncation) so node
-        # statuses reflect the final forwarded payload state.
-        relayrun_artifact = _build_relayrun_runtime_artifact(
+        # runtime_artifact_context freezes the fields shared by every
+        # RelayRUN artifact build below; only backend_forward_status and the
+        # stream/backend-progress flags vary across the pending/failed/
+        # completed call sites.
+        runtime_artifact_context = _ManagedRuntimeArtifactContext(
             config=config,
             request_id=request_id,
             run_id=relayrun_run_id,
@@ -554,6 +479,13 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 relayctx_short_term_runtime_injection_apply_result
             ),
             token_budget_truncation=token_budget_truncation,
+        )
+
+        # relayrun_artifact is built after all CTX Repack mutations (relaymem
+        # injection, short-term injection, token_budget_truncation) so node
+        # statuses reflect the final forwarded payload state.
+        relayrun_artifact = _build_relayrun_runtime_artifact_for_context(
+            runtime_artifact_context,
             backend_forward_status="pending",
             stream_started=False,
             first_token_sent=False,
@@ -642,62 +574,15 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     forwarded_payload, route
                 )
             except BackendRequestError as exc:
-                failed_relayrun_artifact = _build_relayrun_runtime_artifact(
+                return _build_backend_request_error_response(
                     config=config,
-                    request_id=request_id,
-                    run_id=relayrun_run_id,
-                    route=route,
-                    stream_enabled=stream_enabled,
-                    relayrel_relationship_projection=relayrel_relationship_projection,
-                    relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-                    relayemo_artifact=relayemo_artifact,
-                    relayint_intent_artifact=relayint_intent_artifact,
-                    relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-                    runtime_ctx_injection_result=runtime_ctx_injection_result,
-                    runtime_snippet_injection_result=runtime_snippet_injection_result,
-                    relayctx_short_term_runtime_injection_apply_result=(
-                        relayctx_short_term_runtime_injection_apply_result
-                    ),
-                    token_budget_truncation=token_budget_truncation,
-                    backend_forward_status="failed",
-                    backend_forward_blocked_reasons=[exc.__class__.__name__],
-                    stream_started=False,
-                    first_token_sent=False,
+                    exc=exc,
+                    diagnostics=diagnostics,
+                    runtime_artifact_context=runtime_artifact_context,
+                    forwarded_payload=forwarded_payload,
                 )
-                failed_diagnostics = replace(
-                    diagnostics,
-                    relayrun_artifact=failed_relayrun_artifact,
-                )
-                trace_runtime_event(
-                    config=config,
-                    diagnostics=failed_diagnostics,
-                    message_count=len(_extract_trace_messages(forwarded_payload)),
-                    response_present=False,
-                    metadata={"event": "backend_error", "error_type": exc.__class__.__name__},
-                )
-                return openai_error(
-                    status_code=502,
-                    message=f"RelayLM could not reach backend: {exc}",
-                    error_type="backend_connection_error",
-                    headers=failed_diagnostics.to_headers(),
-                )
-            stream_relayrun_artifact = _build_relayrun_runtime_artifact(
-                config=config,
-                request_id=request_id,
-                run_id=relayrun_run_id,
-                route=route,
-                stream_enabled=stream_enabled,
-                relayrel_relationship_projection=relayrel_relationship_projection,
-                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-                relayemo_artifact=relayemo_artifact,
-                relayint_intent_artifact=relayint_intent_artifact,
-                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-                runtime_ctx_injection_result=runtime_ctx_injection_result,
-                runtime_snippet_injection_result=runtime_snippet_injection_result,
-                relayctx_short_term_runtime_injection_apply_result=(
-                    relayctx_short_term_runtime_injection_apply_result
-                ),
-                token_budget_truncation=token_budget_truncation,
+            stream_relayrun_artifact = _build_relayrun_runtime_artifact_for_context(
+                runtime_artifact_context,
                 backend_forward_status="completed",
                 stream_started=True,
                 first_token_sent=False,
@@ -787,62 +672,15 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 forwarded_payload, route
             )
         except BackendRequestError as exc:
-            failed_relayrun_artifact = _build_relayrun_runtime_artifact(
+            return _build_backend_request_error_response(
                 config=config,
-                request_id=request_id,
-                run_id=relayrun_run_id,
-                route=route,
-                stream_enabled=stream_enabled,
-                relayrel_relationship_projection=relayrel_relationship_projection,
-                relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-                relayemo_artifact=relayemo_artifact,
-                relayint_intent_artifact=relayint_intent_artifact,
-                relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-                runtime_ctx_injection_result=runtime_ctx_injection_result,
-                runtime_snippet_injection_result=runtime_snippet_injection_result,
-                relayctx_short_term_runtime_injection_apply_result=(
-                    relayctx_short_term_runtime_injection_apply_result
-                ),
-                token_budget_truncation=token_budget_truncation,
-                backend_forward_status="failed",
-                backend_forward_blocked_reasons=[exc.__class__.__name__],
-                stream_started=False,
-                first_token_sent=False,
+                exc=exc,
+                diagnostics=diagnostics,
+                runtime_artifact_context=runtime_artifact_context,
+                forwarded_payload=forwarded_payload,
             )
-            failed_diagnostics = replace(
-                diagnostics,
-                relayrun_artifact=failed_relayrun_artifact,
-            )
-            trace_runtime_event(
-                config=config,
-                diagnostics=failed_diagnostics,
-                message_count=len(_extract_trace_messages(forwarded_payload)),
-                response_present=False,
-                metadata={"event": "backend_error", "error_type": exc.__class__.__name__},
-            )
-            return openai_error(
-                status_code=502,
-                message=f"RelayLM could not reach backend: {exc}",
-                error_type="backend_connection_error",
-                headers=failed_diagnostics.to_headers(),
-            )
-        success_relayrun_artifact = _build_relayrun_runtime_artifact(
-            config=config,
-            request_id=request_id,
-            run_id=relayrun_run_id,
-            route=route,
-            stream_enabled=stream_enabled,
-            relayrel_relationship_projection=relayrel_relationship_projection,
-            relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-            relayemo_artifact=relayemo_artifact,
-            relayint_intent_artifact=relayint_intent_artifact,
-            relaymem_retrieval_artifact=relaymem_retrieval_artifact,
-            runtime_ctx_injection_result=runtime_ctx_injection_result,
-            runtime_snippet_injection_result=runtime_snippet_injection_result,
-            relayctx_short_term_runtime_injection_apply_result=(
-                relayctx_short_term_runtime_injection_apply_result
-            ),
-            token_budget_truncation=token_budget_truncation,
+        success_relayrun_artifact = _build_relayrun_runtime_artifact_for_context(
+            runtime_artifact_context,
             backend_forward_status="completed",
             stream_started=False,
             first_token_sent=False,
@@ -943,6 +781,234 @@ def create_app(config_path: str | None = None) -> FastAPI:
         return JSONResponse(status_code=status_code, content={"raw": body}, headers=headers)
 
     return app
+
+
+@dataclass
+class _ManagedChatRequestValidationResult:
+    """Outcome of validating and route-resolving a managed chat request."""
+
+    error_response: JSONResponse | None
+    payload: Mapping[str, Any] | None = None
+    model: str | None = None
+    stream_enabled: bool = False
+    route: ResolvedRoute | None = None
+
+
+async def _validate_and_resolve_managed_chat_request(
+    request: Request,
+    *,
+    request_id: str,
+    config: RelayLMConfig,
+) -> _ManagedChatRequestValidationResult:
+    """Parse, validate, and route-resolve a managed chat completion request.
+
+    Preserves the exact fallback_reason values, status codes, and header
+    shape of each early-return branch from the original inline validation.
+    """
+
+    try:
+        payload = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        diagnostics = RequestDiagnostics(
+            request_id=request_id,
+            trace_enabled=config.trace.enabled,
+            fallback_reason="invalid_json",
+        )
+        return _ManagedChatRequestValidationResult(
+            error_response=openai_error(
+                status_code=400,
+                message="Request body must be valid JSON.",
+                error_type="invalid_request_error",
+                headers=diagnostics.to_headers(),
+            )
+        )
+
+    if not isinstance(payload, Mapping):
+        diagnostics = RequestDiagnostics(
+            request_id=request_id,
+            trace_enabled=config.trace.enabled,
+            fallback_reason="invalid_json_type",
+        )
+        return _ManagedChatRequestValidationResult(
+            error_response=openai_error(
+                status_code=400,
+                message="Request body must be a JSON object.",
+                error_type="invalid_request_error",
+                headers=diagnostics.to_headers(),
+            )
+        )
+
+    model = payload.get("model")
+    if not isinstance(model, str) or not model:
+        diagnostics = RequestDiagnostics(
+            request_id=request_id,
+            trace_enabled=config.trace.enabled,
+            fallback_reason="missing_model",
+        )
+        return _ManagedChatRequestValidationResult(
+            error_response=openai_error(
+                status_code=400,
+                message="Request field 'model' is required.",
+                error_type="invalid_request_error",
+                headers=diagnostics.to_headers(),
+            )
+        )
+
+    stream_value = payload.get("stream", False)
+    if not isinstance(stream_value, bool):
+        diagnostics = RequestDiagnostics(
+            request_id=request_id,
+            route_model=model,
+            trace_enabled=config.trace.enabled,
+            fallback_reason="invalid_stream_type",
+        )
+        return _ManagedChatRequestValidationResult(
+            error_response=openai_error(
+                status_code=400,
+                message="Request field 'stream' must be a boolean when provided.",
+                error_type="invalid_request_error",
+                headers=diagnostics.to_headers(),
+            )
+        )
+    stream_enabled = stream_value
+
+    try:
+        route = resolve_route(config, model)
+    except RouteNotFoundError as exc:
+        diagnostics = RequestDiagnostics(
+            request_id=request_id,
+            route_model=model,
+            trace_enabled=config.trace.enabled,
+            fallback_reason="route_not_found",
+        )
+        return _ManagedChatRequestValidationResult(
+            error_response=openai_error(
+                status_code=400,
+                message=str(exc),
+                error_type="invalid_request_error",
+                headers=diagnostics.to_headers(),
+            )
+        )
+    except RouteConfigurationError as exc:
+        diagnostics = RequestDiagnostics(
+            request_id=request_id,
+            route_model=model,
+            trace_enabled=config.trace.enabled,
+            fallback_reason="route_configuration_error",
+        )
+        return _ManagedChatRequestValidationResult(
+            error_response=openai_error(
+                status_code=500,
+                message=str(exc),
+                error_type="server_error",
+                headers=diagnostics.to_headers(),
+            )
+        )
+
+    return _ManagedChatRequestValidationResult(
+        error_response=None,
+        payload=payload,
+        model=model,
+        stream_enabled=stream_enabled,
+        route=route,
+    )
+
+
+@dataclass
+class _ManagedRuntimeArtifactContext:
+    """Fields shared by every RelayRUN artifact build for one managed request.
+
+    Only backend_forward_status and the stream/backend-progress flags vary
+    across the pending/failed/completed call sites, so this context freezes
+    everything else exactly as it was computed by the runtime pipeline.
+    """
+
+    config: RelayLMConfig
+    request_id: str
+    run_id: str
+    route: ResolvedRoute
+    stream_enabled: bool
+    relayrel_relationship_projection: Mapping[str, Any] | None
+    relayscn_scene_policy_artifact: Mapping[str, Any] | None
+    relayemo_artifact: Mapping[str, Any] | None
+    relayint_intent_artifact: Mapping[str, Any] | None
+    relaymem_retrieval_artifact: Mapping[str, Any] | None
+    runtime_ctx_injection_result: Mapping[str, Any] | None
+    runtime_snippet_injection_result: Mapping[str, Any] | None
+    relayctx_short_term_runtime_injection_apply_result: Mapping[str, Any] | None
+    token_budget_truncation: Mapping[str, Any] | None
+
+
+def _build_relayrun_runtime_artifact_for_context(
+    context: _ManagedRuntimeArtifactContext,
+    *,
+    backend_forward_status: str,
+    backend_forward_blocked_reasons: list[str] | None = None,
+    stream_started: bool | None = None,
+    first_token_sent: bool | None = None,
+) -> dict[str, Any]:
+    return _build_relayrun_runtime_artifact(
+        config=context.config,
+        request_id=context.request_id,
+        run_id=context.run_id,
+        route=context.route,
+        stream_enabled=context.stream_enabled,
+        relayrel_relationship_projection=context.relayrel_relationship_projection,
+        relayscn_scene_policy_artifact=context.relayscn_scene_policy_artifact,
+        relayemo_artifact=context.relayemo_artifact,
+        relayint_intent_artifact=context.relayint_intent_artifact,
+        relaymem_retrieval_artifact=context.relaymem_retrieval_artifact,
+        runtime_ctx_injection_result=context.runtime_ctx_injection_result,
+        runtime_snippet_injection_result=context.runtime_snippet_injection_result,
+        relayctx_short_term_runtime_injection_apply_result=(
+            context.relayctx_short_term_runtime_injection_apply_result
+        ),
+        token_budget_truncation=context.token_budget_truncation,
+        backend_forward_status=backend_forward_status,
+        backend_forward_blocked_reasons=backend_forward_blocked_reasons,
+        stream_started=stream_started,
+        first_token_sent=first_token_sent,
+    )
+
+
+def _build_backend_request_error_response(
+    *,
+    config: RelayLMConfig,
+    exc: BackendRequestError,
+    diagnostics: RequestDiagnostics,
+    runtime_artifact_context: _ManagedRuntimeArtifactContext,
+    forwarded_payload: Mapping[str, Any],
+) -> JSONResponse:
+    """Build the shared 502 response for a failed backend forward attempt.
+
+    Used by both the stream and non-stream forwarding paths, which must
+    build an identical failed RelayRUN artifact, trace event, and error body.
+    """
+
+    failed_relayrun_artifact = _build_relayrun_runtime_artifact_for_context(
+        runtime_artifact_context,
+        backend_forward_status="failed",
+        backend_forward_blocked_reasons=[exc.__class__.__name__],
+        stream_started=False,
+        first_token_sent=False,
+    )
+    failed_diagnostics = replace(
+        diagnostics,
+        relayrun_artifact=failed_relayrun_artifact,
+    )
+    trace_runtime_event(
+        config=config,
+        diagnostics=failed_diagnostics,
+        message_count=len(_extract_trace_messages(forwarded_payload)),
+        response_present=False,
+        metadata={"event": "backend_error", "error_type": exc.__class__.__name__},
+    )
+    return openai_error(
+        status_code=502,
+        message=f"RelayLM could not reach backend: {exc}",
+        error_type="backend_connection_error",
+        headers=failed_diagnostics.to_headers(),
+    )
 
 
 def _durable_finalization_gate_relevant(config: RelayLMConfig) -> bool:
