@@ -7,11 +7,11 @@ transitions remain outside this module.
 """
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 from typing import Any, Literal, Mapping
 
 from .pipeline_node_result import PipelineNodeResult, build_pipeline_node_result
+from .reason_ids import normalize_reason_ids
 from .relaymem_primary_formation import build_relaymem_primary_formation_dry_run
 from .relaymem_primary_index_log_apply import (
     apply_relaymem_primary_index_log_reconciliation,
@@ -90,8 +90,6 @@ STAGES: tuple[StageName, ...] = (
     "m3g_reconciliation_apply",
     "m3h_recovery_audit",
 )
-_REASON_RE = re.compile(r"^[a-z0-9][a-z0-9_:-]{0,127}$")
-_MAX_REASONS = 32
 _M3G_LOCK_REASON = "primary_reconciliation_apply_lock_unavailable"
 _M3H_LOCK_REASONS = frozenset(
     {
@@ -788,14 +786,7 @@ def _artifact_reasons(value: Mapping[str, Any]) -> tuple[str, ...]:
 
 
 def _reasons(values: Any) -> tuple[str, ...]:
-    output: list[str] = []
-    for value in values:
-        reason = value if type(value) is str and _REASON_RE.fullmatch(value) else "invalid_reason_id"
-        if reason not in output:
-            output.append(reason)
-        if len(output) >= _MAX_REASONS:
-            break
-    return tuple(output)
+    return normalize_reason_ids(values, invalid="marker", output="tuple")
 
 
 def _stage(
