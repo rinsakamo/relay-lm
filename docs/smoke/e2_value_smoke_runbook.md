@@ -36,7 +36,7 @@ Checked-in examples live under `examples/value_smoke/`:
 - `scenario_01_memory_recall.yaml` — safe synthetic memory-recall comparison.
 - `scenario_02_persona_stability.yaml` — safe synthetic persona/output-style stability comparison.
 
-The scenario files are intentionally concise and contain no real patient, hospital, account, token, or private project secret content.
+The scenario files must not contain real patient, hospital, account, token, or private project secret content.
 
 ## Run command
 
