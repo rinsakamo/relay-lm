@@ -31,6 +31,8 @@ relaylm_related_authority:
   - docs/architecture/cw_a3_character_workspace_ui_rebuild.md
   - docs/architecture/cw_a4_slp_workspace_maintenance_candidates.md
   - docs/architecture/cw_a5_character_creation_templates_showcase_import.md
+  - docs/architecture/o2_supervised_scheduler_service.md
+  - docs/architecture/o3_always_on_local_scheduler.md
   - docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md
   - docs/architecture/e1r4_retrieval_response_grounding.md
   - docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md
@@ -39,7 +41,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Status
 
-Last reviewed: 2026-07-04 JST
+Last reviewed: 2026-07-05 JST
 
 ## Purpose and authority
 
@@ -61,8 +63,8 @@ O1D2 bounded scheduler policy/fairness/pacing: complete
 O1E stale recovery/cancellation/shutdown: complete
 O1F operational validation: complete
 O1 overall: complete through validation-only caller-invoked local scheduler boundary
-O2 supervised worker service: planned/unimplemented
-O3 always-on local operation: planned/unimplemented
+O2 supervised worker service: complete as opt-in supervised local scheduler service wrapping O1E; not app-embedded, not default-on, and no new memory mutation authority
+O3 always-on local operation: complete as opt-in local CLI/process wrapper around O2; not browser authority, not app-embedded, and not default-on
 
 RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall, scope isolation, and E1-R5 scoped candidate bridge complete
 P0-PIPE RelayREL / RelaySCN / RelayEMO ordering: complete in PR #458 after actual app.py request-path rewiring and local validation; RelayREL now precedes RelaySCN, RelaySCN precedes input-side RelayEMO, RelayINT/RelayMEM/RelayCTX remain downstream
@@ -111,6 +113,12 @@ ACG-1 through ACG-6 analyzer governance slices are complete through bounded cand
 
 B0-B3 durable enqueue and fenced lifecycle are complete. B3 lifecycle: complete. C1-5 keeps queue records content-free and persists the claim-independent protected capture before queue publication. C2 one-job claim/rehydrate/execute adapter: complete. I1 next-turn Primary MEM recall: complete. Character and namespace isolation: complete.
 
+## O2/O3 local scheduler operation boundary
+
+O2 is complete as an opt-in supervised local scheduler service that wraps O1E operational controls, carries O1D2 policy state across repeated invocations, and follows bounded content-free pacing. O3 is complete as an opt-in local CLI/process wrapper around O2 with SIGINT/SIGTERM cancellation and JSON-only content-free output.
+
+O2/O3 are not app-embedded, not browser authority, not default-on, and do not add memory mutation authority. Existing O1E/O1D2/O1D1 gates remain the only authority for stale recovery, scheduler rounds, worker execution, durable finalization, and pacing. Durable-memory E2 smoke remains intentionally separate.
+
 ## Analyzer Candidate Governance boundary
 
 ACG-1 Analyzer Candidate Governance is complete as the shared contract/helper slice. ACG-2 Grounded Recall Detail Safety is complete. ACG-3 Retrieval Query Normalization is complete. ACG-4 Reference/Intent Analyzer consolidation is complete. ACG-5 RelayEMO scene ownership cleanup is complete. ACG-6 SCN structured classifier and scene-wiki boundary is complete.
@@ -125,7 +133,7 @@ CW-A3 keeps Home on the existing RelayLM `/v1/chat/completions` authority path, 
 
 ## Current caveats
 
-E1-R4 is request-side only. It builds a backend-bound grounded recall context and instruction from eligible retrieved Primary MEM evidence; it does not add post-hoc visible response rewriting, polling, supervision, O2/O3, browser-owned trust, or new memory mutation authority.
+E1-R4 is request-side only. It builds a backend-bound grounded recall context and instruction from eligible retrieved Primary MEM evidence; it does not add post-hoc visible response rewriting, polling, supervision, browser-owned trust, or new memory mutation authority.
 
 E1-R5 is a bounded request-side fallback bridge. It does not replace M2 as the preferred relevance owner, does not run without query hints, does not scan unbounded filesystem trees, does not use the compatibility symlink, and does not add mutation, worker, scheduler, queue, browser trust, RelaySOUL, or media runtime authority.
 
@@ -144,7 +152,7 @@ Post-O1F next candidates:
   E1-R3 provenance-preserving Primary MEM formation summary  complete in Wave 7
   E1-R4 retrieval-response grounding and unsupported-detail suppression complete in Wave 7
   E1-R5 Primary MEM recall candidate discovery bridge        complete post-Wave-7
-  O2/O3 only after explicit MVP need
+  O2/O3 supervised local scheduler operation                 complete for explicit MVP need
 
 Character Workspace reset:
   CW-A1 file-first source tree and parser contracts          complete
@@ -163,15 +171,14 @@ Post-E1-R5 / Post-Wave-7 next candidates:
   PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
   PM-D9 analyzer candidate governance and multilingual schema policy
   PM-D2 closure or absorption after PM-D6 if RelayREF wrapper removal closes the legacy artifact scope
-  O2/O3 only after explicit MVP need
+  durable-memory E2 value smoke after O2/O3 scheduler draining evidence
 ```
 
-The completed P0-PIPE implementation boundary is [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md). The ACG-1 contract is [ACG-1 Analyzer Candidate Governance Contract](architecture/acg1_analyzer_candidate_governance_contract.md). The ACG-2 handoff is [ACG-2 Grounded Recall Detail Safety](architecture/acg2_grounded_recall_detail_safety.md). The ACG-3 handoff is [ACG-3 Retrieval Query Normalization](architecture/acg3_retrieval_query_normalization.md). The ACG-4 handoff is [ACG-4 Reference Intent Analyzer](architecture/acg4_reference_intent_analyzer.md). The ACG-5 handoff is [ACG-5 RelayEMO Scene Cleanup](architecture/acg5_relayemo_scene_cleanup.md). The ACG-6 handoff is [ACG-6 Scene-Wiki Classifier Boundary](architecture/acg6_scene_wiki_classifier.md). The CW-A1 handoff is [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md). The CW-A2 handoff is [CW-A2 Workspace Compiler Projections and KV-cache Tiers](architecture/cw_a2_workspace_compiler_projections.md). The CW-A3 handoff is [CW-A3 Character Workspace UI Rebuild](architecture/cw_a3_character_workspace_ui_rebuild.md). The CW-A4 handoff is [CW-A4 SLP Workspace Maintenance Candidates](architecture/cw_a4_slp_workspace_maintenance_candidates.md). The CW-A5 handoff is [CW-A5 Character Creation, Templates, and Showcase Import](architecture/cw_a5_character_creation_templates_showcase_import.md). The Analyzer Candidate Governance roadmap is [Analyzer Candidate Governance and Multilingual Schema Policy](architecture/analyzer_candidate_governance.md). The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The E1-R5 post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). The E1-R5 implementation handoff is [E1-R5 Primary MEM Recall Candidate Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
+The completed P0-PIPE implementation boundary is [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md). The ACG-1 contract is [ACG-1 Analyzer Candidate Governance Contract](architecture/acg1_analyzer_candidate_governance_contract.md). The ACG-2 handoff is [ACG-2 Grounded Recall Detail Safety](architecture/acg2_grounded_recall_detail_safety.md). The ACG-3 handoff is [ACG-3 Retrieval Query Normalization](architecture/acg3_retrieval_query_normalization.md). The ACG-4 handoff is [ACG-4 Reference Intent Analyzer](architecture/acg4_reference_intent_analyzer.md). The ACG-5 handoff is [ACG-5 RelayEMO Scene Cleanup](architecture/acg5_relayemo_scene_cleanup.md). The ACG-6 handoff is [ACG-6 Scene-Wiki Classifier Boundary](architecture/acg6_scene_wiki_classifier.md). The CW-A1 handoff is [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md). The CW-A2 handoff is [CW-A2 Workspace Compiler Projections and KV-cache Tiers](architecture/cw_a2_workspace_compiler_projections.md). The CW-A3 handoff is [CW-A3 Character Workspace UI Rebuild](architecture/cw_a3_character_workspace_ui_rebuild.md). The CW-A4 handoff is [CW-A4 SLP Workspace Maintenance Candidates](architecture/cw_a4_slp_workspace_maintenance_candidates.md). The CW-A5 handoff is [CW-A5 Character Creation, Templates, and Showcase Import](architecture/cw_a5_character_creation_templates_showcase_import.md). The O2 handoff is [O2 Supervised Scheduler Service](architecture/o2_supervised_scheduler_service.md). The O3 handoff is [O3 Always-On Local Scheduler](architecture/o3_always_on_local_scheduler.md). The Analyzer Candidate Governance roadmap is [Analyzer Candidate Governance and Multilingual Schema Policy](architecture/analyzer_candidate_governance.md). The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The E1-R5 post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). The E1-R5 implementation handoff is [E1-R5 Primary MEM Recall Candidate Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 
 ## Not yet implemented
 
 - full RelayREL relationship Markdown parsing;
-- O2 supervised worker service and O3 always-on local operation;
 - restore/unhide or physical purge;
 - Merge / Supersession runtime apply;
 - Secondary MEM consolidation;
