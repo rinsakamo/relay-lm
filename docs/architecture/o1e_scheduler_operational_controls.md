@@ -61,6 +61,6 @@ O1E accepts an explicit cancellation token or probe. Cancellation is checked bef
 
 O1E scans at most one bounded queue root pass, selects at most one expired claimed record, and constructs an exact B3 `stale_recovery` transition request. It never rewrites queue records directly. The public O1E projection exposes only bounded statuses and booleans, not job IDs, dispatch IDs, lease tokens, owners, paths, exact timestamps, raw records, or nested delegate results.
 
-## Remaining work
+## Follow-on boundaries
 
-O1F remains responsible for full corruption, concurrency, saturation, restart, leakage, and operational validation. O2/O3 remain unimplemented unless a later MVP gate requires supervised or always-on operation.
+O1F is complete as validation-only operational hardening over this caller-invoked boundary. O2 and O3 are implemented in dedicated handoffs as opt-in layers above O1E; they do not change O1E's authority, default-off gates, or one-invocation semantics.
