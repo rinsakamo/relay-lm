@@ -52,6 +52,8 @@ def main() -> None:
         require(runtime["selected_count"] == 1, runtime)
         require(runtime["primary_candidate_discovery_attempted"] is True, runtime)
         require("primary_recall_no_scoped_match" not in runtime["blocked_reason_ids"], runtime)
+        require(runtime["selected_memories"][0]["lifecycle_state"] == "active", runtime)
+        require(runtime["selected_memories"][0]["current"] is True, runtime)
 
     print("E1-R5 Primary MEM recall no-symlink smoke passed")
 
