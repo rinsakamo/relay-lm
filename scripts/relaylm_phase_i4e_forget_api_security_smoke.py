@@ -8,7 +8,7 @@ import yaml
 from fastapi.testclient import TestClient
 
 from _relaylm_phase_i3_test_support import form_primary_memory, require, write_config
-import relaylm.soul_lab_app as lab_app_module
+import relaylm.soul_lab_memory_forget_routes as lab_forget_routes_module
 from relaylm._relaymem_primary_forget_impl import PrimaryForgetError
 from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
 from relaylm.soul_lab_app import create_app
@@ -133,14 +133,14 @@ def main() -> None:
             wrong_namespace = client.post(f"{base}/forget/preflight?namespace={OTHER_NAMESPACE}", json=preflight_body(1, "wrong-namespace"))
             require(wrong_namespace.status_code == 404, wrong_namespace.text)
 
-            original_apply = lab_app_module.apply_primary_memory_forget
+            original_apply = lab_forget_routes_module.apply_primary_memory_forget
             def expired_apply(**kwargs):  # type: ignore[no-untyped-def]
                 raise PrimaryForgetError("token_expired")
-            lab_app_module.apply_primary_memory_forget = expired_apply
+            lab_forget_routes_module.apply_primary_memory_forget = expired_apply
             try:
                 expired = client.post(f"{base}/forget{query}", json=apply_body(1, "security-valid", token))
             finally:
-                lab_app_module.apply_primary_memory_forget = original_apply
+                lab_forget_routes_module.apply_primary_memory_forget = original_apply
             require(expired.status_code == 409, expired.text)
             require(expired.json() == {"detail": "token_expired"}, expired.json())
             assert_bounded(expired.text, token)
