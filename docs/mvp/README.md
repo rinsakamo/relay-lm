@@ -21,7 +21,7 @@ Each implementation PR creates only its own report. It must not edit this centra
 Wave 8 currently contains operator-facing evaluation-flow convenience and later documentation convergence reports. These reports are historical evidence for their own slices only. The MVP eval runner report does not mark O2/O3, supervised workers, polling, or always-on operation complete; the O2/O3 and PM-D5-D7 docs convergence report records the later shared-documentation convergence after those separate implementation PRs landed.
 
 - [MVP eval runner completion report](wave8/mvp_eval_runner_completion_report.md) — source PR #451.
-- [O2/O3 and PM-D5-D7 docs convergence completion report](wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md) — source PR TBD.
+- [O2/O3 and PM-D5-D7 docs convergence completion report](wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md) — source PR #490.
 
 ### Wave 7 merged completion reports
 
