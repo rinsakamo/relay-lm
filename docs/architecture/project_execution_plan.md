@@ -91,6 +91,7 @@ Evaluation
     -> E1-R2 idempotent character-store bootstrap command complete
     -> E1-R3 provenance-preserving Primary MEM formation summary complete
     -> E1-R4 retrieval-response grounding and unsupported-detail suppression complete
+    -> E1-R5 Primary MEM recall candidate discovery bridge complete
     -> E1-R5 Primary MEM recall candidate discovery fallback complete
 ```
 
@@ -210,6 +211,7 @@ Wave 7 completed the E1-R3 / E1-R4 evidence and grounding slices without changin
 ### Post-Wave-7 E1-R5 correction completed
 
 ```text
+E1-R5 Primary MEM recall candidate discovery bridge complete
 E1-R5 Primary MEM recall candidate discovery fallback complete
 ```
 
