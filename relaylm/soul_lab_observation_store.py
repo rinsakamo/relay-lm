@@ -15,8 +15,6 @@ from hashlib import sha256
 from pathlib import Path
 from typing import Any, Mapping
 
-from .reason_ids import normalize_reason_ids
-
 STORE_SCHEMA = "relaylm.lab.observation_store.v0"
 RUN_RECEIPT_SCHEMA = "relaylm.lab.run_receipt.v0"
 OUTCOME_RECEIPT_SCHEMA = "relaylm.lab.memory_outcome_receipt.v0"
@@ -27,6 +25,7 @@ _MAX_RECEIPT_BYTES = 64 * 1024
 _MAX_RECEIPTS_PER_KIND = 256
 _TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
 _HEX_RE = re.compile(r"^[0-9a-f]{64}$")
+_REASON_RE = re.compile(r"^[a-z0-9][a-z0-9_:-]{0,127}$")
 
 
 class ObservationStoreError(ValueError):
@@ -67,6 +66,24 @@ def bounded_text(value: object, *, maximum: int) -> str:
         if len(output) >= maximum:
             break
     return "".join(output).strip()
+
+
+def normalize_reason_ids(values: object, *, maximum: int = 32) -> list[str]:
+    output: list[str] = []
+    if isinstance(values, (str, bytes, bytearray)):
+        values = [values]
+    try:
+        iterator = iter(values)  # type: ignore[arg-type]
+    except TypeError:
+        iterator = iter(())
+    for value in iterator:
+        if not isinstance(value, str) or _REASON_RE.fullmatch(value) is None:
+            continue
+        if value not in output:
+            output.append(value)
+        if len(output) >= maximum:
+            break
+    return output
 
 
 def write_run_receipt(store_root: object, payload: Mapping[str, Any]) -> bool:
@@ -210,7 +227,7 @@ def _validate_run_payload(value: Mapping[str, Any]) -> dict[str, Any]:
         raise ObservationStoreError("run_receipt_slp_status_invalid")
     if type(value.get("recovery_required")) is not bool:
         raise ObservationStoreError("run_receipt_recovery_invalid")
-    reasons = normalize_reason_ids(value.get("reason_ids"), invalid="drop", output="list")
+    reasons = normalize_reason_ids(value.get("reason_ids"))
     if reasons != value.get("reason_ids"):
         raise ObservationStoreError("run_receipt_reasons_invalid")
     return dict(value)
@@ -249,7 +266,7 @@ def _validate_outcome_payload(value: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(summary, str) or summary != bounded_text(summary, maximum=512):
         raise ObservationStoreError("outcome_receipt_summary_invalid")
     _timestamp(value, "observed_at")
-    reasons = normalize_reason_ids(value.get("reason_ids"), invalid="drop", output="list")
+    reasons = normalize_reason_ids(value.get("reason_ids"))
     if reasons != value.get("reason_ids"):
         raise ObservationStoreError("outcome_receipt_reasons_invalid")
     return dict(value)
@@ -272,8 +289,8 @@ def _validate_used_payload(value: Mapping[str, Any]) -> dict[str, Any]:
     _token(value, "character_id")
     _token(value, "namespace")
     for key in (
-        "retrieval_attempted", "candidate_discovered",
-        "selected", "relayctx_injection_performed", "backend_bound_included",
+        "retrieval_attempted", "candidate_discovered", "selected",
+        "relayctx_injection_performed", "backend_bound_included",
     ):
         if type(value.get(key)) is not bool:
             raise ObservationStoreError(f"used_receipt_{key}_invalid")
@@ -296,7 +313,7 @@ def _validate_used_payload(value: Mapping[str, Any]) -> dict[str, Any]:
             raise ObservationStoreError("used_receipt_source_kind_invalid")
         items.append(dict(item))
     _timestamp(value, "captured_at")
-    reasons = normalize_reason_ids(value.get("reason_ids"), invalid="drop", output="list")
+    reasons = normalize_reason_ids(value.get("reason_ids"))
     if reasons != value.get("reason_ids"):
         raise ObservationStoreError("used_receipt_reasons_invalid")
     validated = dict(value)
@@ -395,7 +412,7 @@ def _read_receipts(
     if valid_count > _MAX_RECEIPTS_PER_KIND:
         reasons.add("observation_receipt_count_exceeded")
     receipts = [entry[3] for entry in sorted(retained)]
-    return receipts, normalize_reason_ids(sorted(reasons), invalid="drop", output="list")
+    return receipts, normalize_reason_ids(sorted(reasons))
 
 
 def _receipt_order_key(payload: Mapping[str, Any], schema: str) -> tuple[datetime, str]:
@@ -501,3 +518,43 @@ def _has_symlink_component(path: Path) -> bool:
 
 def _canonical_bytes(value: object) -> bytes:
     return (json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
+
+
+def _exact_keys(value: Mapping[str, Any], expected: set[str]) -> None:
+    if set(value) != expected:
+        raise ObservationStoreError("observation_receipt_exact_keys_required")
+
+
+def _true(value: Mapping[str, Any], key: str) -> None:
+    if value.get(key) is not True:
+        raise ObservationStoreError(f"observation_receipt_{key}_required")
+
+
+def _token(value: Mapping[str, Any], key: str) -> None:
+    item = value.get(key)
+    if not isinstance(item, str) or _TOKEN_RE.fullmatch(item) is None:
+        raise ObservationStoreError(f"observation_receipt_{key}_invalid")
+
+
+def _timestamp(value: Mapping[str, Any], key: str) -> None:
+    item = value.get(key)
+    if not isinstance(item, str) or len(item) > 64:
+        raise ObservationStoreError(f"observation_receipt_{key}_invalid")
+    try:
+        parsed = datetime.fromisoformat(item.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ObservationStoreError(f"observation_receipt_{key}_invalid") from exc
+    if parsed.tzinfo is None:
+        raise ObservationStoreError(f"observation_receipt_{key}_timezone_required")
+
+
+__all__ = [
+    "OUTCOME_RECEIPT_SCHEMA", "RUN_RECEIPT_SCHEMA", "USED_RECEIPT_SCHEMA",
+    "ObservationStoreError", "bounded_text", "normalize_reason_ids",
+    "read_outcome_receipts", "read_outcome_receipts_for_namespace",
+    "read_outcome_receipts_for_run", "read_run_receipts",
+    "read_run_receipts_for_scope", "read_used_receipt_for_run",
+    "read_used_receipts",
+    "stable_correlation", "utc_now", "write_outcome_receipt", "write_run_receipt",
+    "write_used_receipt",
+]
