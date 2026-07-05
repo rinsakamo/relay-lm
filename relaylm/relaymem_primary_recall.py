@@ -158,15 +158,22 @@ def apply_relaymem_primary_recall_scope(
         artifact=artifact,
         original_decision=original_decision_text,
     )
+    # Fallback discovery is *considered* whenever M2's own gate already permits
+    # external memory (gate_allowed) or M2's block was purely "no candidates"
+    # (fallback_no_candidate_trigger) -- but considering it is never enough on
+    # its own. `fallback_policy_blocker` (scene policy / unresolved reference /
+    # current_context_only / prohibited scene type / memory store disabled)
+    # must independently be absent before the control-index scan may run.
+    fallback_discovery_considered = gate_allowed or fallback_no_candidate_trigger
     fallback_discovery_allowed = (
         root is not None
         and namespace is not None
-        and fallback_no_candidate_trigger
+        and fallback_discovery_considered
         and fallback_policy_blocker is None
     )
     if not gate_allowed and not fallback_discovery_allowed:
         reasons.append("existing_retrieval_gate_blocked")
-    if fallback_no_candidate_trigger and fallback_policy_blocker is not None:
+    if fallback_discovery_considered and fallback_policy_blocker is not None:
         reasons.append(fallback_policy_blocker)
 
     max_candidates = max(0, int(max_snippet_candidates))
@@ -211,7 +218,7 @@ def apply_relaymem_primary_recall_scope(
                     query_terms=(),
                     require_relevance=False,
                 )
-            if not selected and (gate_allowed or fallback_discovery_allowed):
+            if not selected and fallback_discovery_allowed:
                 discovery_attempted = True
                 discovered_candidates, discovered_reasons = _discover_scoped_primary_candidates_from_control(
                     control=control,
@@ -361,6 +368,8 @@ def _select_validated_primary_candidates(
         loaded["physical_idempotency_key"] = physical_identity
         loaded["idempotency_key"] = identity
         loaded["revision"] = revision
+        loaded["lifecycle_state"] = "active"
+        loaded["current"] = True
         if identity in seen_identities:
             reasons.append("primary_recall_duplicate_identity_deduped")
             continue

@@ -123,6 +123,8 @@ def main() -> None:
         require(projection["selected_layer_counts"]["primary"] == 1, projection)
         require("primary_recall_no_scoped_match" not in runtime["blocked_reason_ids"], runtime)
         require("浅煎りのエチオピアコーヒー" in json.dumps(runtime, ensure_ascii=False), runtime)
+        require(runtime["selected_memories"][0]["lifecycle_state"] == "active", runtime)
+        require(runtime["selected_memories"][0]["current"] is True, runtime)
 
         grounded = build_grounded_recall_context(
             retrieved_memories=runtime["selected_memories"],
