@@ -7,6 +7,7 @@ transitions remain outside this module.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal, Mapping
 
@@ -80,16 +81,6 @@ RecoveryClassification = Literal[
     "journaled_recovery_candidate",
 ]
 
-STAGES: tuple[StageName, ...] = (
-    "m3a_formation",
-    "m3b_write_preflight",
-    "m3c_page_candidate",
-    "m3d_writer_handoff",
-    "m3e_page_writer",
-    "m3f_reconciliation_preflight",
-    "m3g_reconciliation_apply",
-    "m3h_recovery_audit",
-)
 _M3G_LOCK_REASON = "primary_reconciliation_apply_lock_unavailable"
 _M3H_LOCK_REASONS = frozenset(
     {
@@ -179,6 +170,114 @@ _M3H_FIELDS = frozenset(
         "invokes_slp", "runtime_wired", "lab_api_exposed",
         "visible_response_changed", "audit", "blocked_reasons", "projection",
     }
+)
+
+
+@dataclass(frozen=True)
+class StageSpec:
+    """Internal metadata for one exact Primary MEM M3 stage."""
+
+    name: StageName
+    result_key: str
+    result_schema: str
+    failure_reason_id: str
+    expected_fields: frozenset[str]
+    requires_checkpoint: bool = False
+
+
+_STAGE_SPECS: tuple[StageSpec, ...] = (
+    StageSpec(
+        name="m3a_formation",
+        result_key="m3a_result",
+        result_schema="relaymem.primary_formation_dry_run.v0",
+        failure_reason_id="m3a_execution_failed",
+        expected_fields=_M3A_FIELDS,
+    ),
+    StageSpec(
+        name="m3b_write_preflight",
+        result_key="m3b_result",
+        result_schema="relaymem.primary_write_preflight_dry_run.v0",
+        failure_reason_id="m3b_execution_failed",
+        expected_fields=_M3B_FIELDS,
+    ),
+    StageSpec(
+        name="m3c_page_candidate",
+        result_key="m3c_result",
+        result_schema="relaymem.primary_page_candidate_dry_run.v0",
+        failure_reason_id="m3c_execution_failed",
+        expected_fields=_M3C_FIELDS,
+    ),
+    StageSpec(
+        name="m3d_writer_handoff",
+        result_key="m3d_result",
+        result_schema="relaymem.primary_writer_handoff_preflight.v0",
+        failure_reason_id="m3d_execution_failed",
+        expected_fields=_M3D_FIELDS,
+    ),
+    StageSpec(
+        name="m3e_page_writer",
+        result_key="m3e_result",
+        result_schema="relaymem.primary_page_write_apply.v0",
+        failure_reason_id="m3e_execution_failed",
+        expected_fields=_M3E_FIELDS,
+        requires_checkpoint=True,
+    ),
+    StageSpec(
+        name="m3f_reconciliation_preflight",
+        result_key="m3f_result",
+        result_schema="relaymem.primary_index_log_reconciliation_preflight.v0",
+        failure_reason_id="m3f_execution_failed",
+        expected_fields=_M3F_FIELDS,
+    ),
+    StageSpec(
+        name="m3g_reconciliation_apply",
+        result_key="m3g_result",
+        result_schema="relaymem.primary_index_log_reconciliation_apply.v0",
+        failure_reason_id="m3g_execution_failed",
+        expected_fields=_M3G_FIELDS,
+        requires_checkpoint=True,
+    ),
+    StageSpec(
+        name="m3h_recovery_audit",
+        result_key="m3h_result",
+        result_schema="relaymem.primary_index_log_reconciliation_recovery_audit_result.v0",
+        failure_reason_id="m3h_execution_failed",
+        expected_fields=_M3H_FIELDS,
+    ),
+)
+STAGES: tuple[StageName, ...] = tuple(spec.name for spec in _STAGE_SPECS)  # type: ignore[assignment]
+_STAGE_SPECS_BY_NAME: dict[StageName, StageSpec] = {
+    spec.name: spec for spec in _STAGE_SPECS
+}
+
+
+@dataclass(frozen=True)
+class PrimaryPipelineDeps:
+    """Internal dependency container for exact Primary MEM pipeline helper seams."""
+
+    consume_protected_source: Callable[..., object]
+    build_m3a_formation: Callable[..., object]
+    build_m3b_write_preflight: Callable[..., object]
+    build_m3c_page_candidate: Callable[..., object]
+    build_m3d_writer_handoff: Callable[..., object]
+    apply_m3e_page_writer: Callable[..., object]
+    build_m3f_reconciliation_preflight: Callable[..., object]
+    apply_m3g_reconciliation: Callable[..., object]
+    audit_m3h_recovery: Callable[..., object]
+
+
+_DEFAULT_DEPS = PrimaryPipelineDeps(
+    consume_protected_source=consume_relaymem_slp_primary_worker_source,
+    build_m3a_formation=build_relaymem_primary_formation_dry_run,
+    build_m3b_write_preflight=build_relaymem_primary_write_preflight_dry_run,
+    build_m3c_page_candidate=build_relaymem_primary_page_candidate_dry_run,
+    build_m3d_writer_handoff=build_relaymem_primary_writer_handoff_preflight,
+    apply_m3e_page_writer=apply_relaymem_primary_page_write,
+    build_m3f_reconciliation_preflight=(
+        build_relaymem_primary_index_log_reconciliation_preflight
+    ),
+    apply_m3g_reconciliation=apply_relaymem_primary_index_log_reconciliation,
+    audit_m3h_recovery=audit_relaymem_primary_index_log_reconciliation_recovery,
 )
 
 
@@ -358,11 +457,16 @@ class _Artifacts:
         self.values[stage] = value
 
 
-def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelineResult:
+def execute_relaymem_primary_pipeline(
+    request: object,
+    *,
+    deps: PrimaryPipelineDeps | None = None,
+) -> RelayMEMPrimaryPipelineResult:
     """Execute the exact protected source through the canonical RelayMEM stages."""
 
     ledger = _Ledger()
     artifacts = _Artifacts()
+    deps_value = _validate_deps(deps)
     request_value, request_reasons = _validate_request(request)
     if request_value is None:
         return _finish(
@@ -385,7 +489,7 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
             reasons=(),
         )
 
-    source, source_reasons = consume_relaymem_slp_primary_worker_source(
+    source, source_reasons = deps_value.consume_protected_source(
         request_value.worker_source,
         claimed_record=request_value.claimed_record,
         request_scope=request_value.request_scope,
@@ -403,7 +507,7 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
     protected = source.to_protected_runtime_dict()
 
     try:
-        m3a = build_relaymem_primary_formation_dry_run(
+        m3a = deps_value.build_m3a_formation(
             relayscn_scene_policy_artifact=protected["relayscn_scene_policy_artifact"],
             relayemo_artifact=protected["relayemo_artifact"],
             messages=protected["governed_messages"],
@@ -413,8 +517,8 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
             source_event_kind=source.source_event_kind,
         )
     except Exception:
-        return _stage_failure(request_value, ledger, artifacts, "m3a_formation", "m3a_execution_failed")
-    m3a_errors = _validate_result(m3a, "relaymem.primary_formation_dry_run.v0", _M3A_FIELDS)
+        return _stage_failure(request_value, ledger, artifacts, "m3a_formation")
+    m3a_errors = _validate_stage_result(m3a, "m3a_formation")
     if m3a_errors:
         return _stage_invalid(request_value, ledger, artifacts, "m3a_formation", m3a, m3a_errors)
     artifacts.set("m3a_formation", m3a)
@@ -442,7 +546,7 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
     lineage = _source_lineage(source)
 
     try:
-        m3b = build_relaymem_primary_write_preflight_dry_run(
+        m3b = deps_value.build_m3b_write_preflight(
             candidates=m3a["candidates"],
             source_lineage_artifact=lineage,
             enabled=True,
@@ -450,8 +554,8 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
             apply_enabled=request_value.apply_enabled,
         )
     except Exception:
-        return _stage_failure(request_value, ledger, artifacts, "m3b_write_preflight", "m3b_execution_failed")
-    m3b_errors = _validate_result(m3b, "relaymem.primary_write_preflight_dry_run.v0", _M3B_FIELDS)
+        return _stage_failure(request_value, ledger, artifacts, "m3b_write_preflight")
+    m3b_errors = _validate_stage_result(m3b, "m3b_write_preflight")
     if m3b_errors:
         return _stage_invalid(request_value, ledger, artifacts, "m3b_write_preflight", m3b, m3b_errors)
     artifacts.set("m3b_write_preflight", m3b)
@@ -473,7 +577,7 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
     ledger.record("m3b_write_preflight", status="completed", completed=True, result=m3b)
 
     try:
-        m3c = build_relaymem_primary_page_candidate_dry_run(
+        m3c = deps_value.build_m3c_page_candidate(
             preflight_artifact=m3b,
             source_lineage_artifact=lineage,
             governed_experience_artifact=protected["governed_experience_artifact"],
@@ -482,8 +586,8 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
             apply_enabled=request_value.apply_enabled,
         )
     except Exception:
-        return _stage_failure(request_value, ledger, artifacts, "m3c_page_candidate", "m3c_execution_failed")
-    m3c_errors = _validate_result(m3c, "relaymem.primary_page_candidate_dry_run.v0", _M3C_FIELDS)
+        return _stage_failure(request_value, ledger, artifacts, "m3c_page_candidate")
+    m3c_errors = _validate_stage_result(m3c, "m3c_page_candidate")
     if m3c_errors:
         return _stage_invalid(request_value, ledger, artifacts, "m3c_page_candidate", m3c, m3c_errors)
     artifacts.set("m3c_page_candidate", m3c)
@@ -496,7 +600,7 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
     ledger.record("m3c_page_candidate", status="completed", completed=True, result=m3c)
 
     try:
-        m3d = build_relaymem_primary_writer_handoff_preflight(
+        m3d = deps_value.build_m3d_writer_handoff(
             page_candidate_artifact=m3c,
             root_path=request_value.store_root,
             enabled=True,
@@ -504,8 +608,8 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
             apply_enabled=request_value.apply_enabled,
         )
     except Exception:
-        return _stage_failure(request_value, ledger, artifacts, "m3d_writer_handoff", "m3d_execution_failed")
-    m3d_errors = _validate_result(m3d, "relaymem.primary_writer_handoff_preflight.v0", _M3D_FIELDS)
+        return _stage_failure(request_value, ledger, artifacts, "m3d_writer_handoff")
+    m3d_errors = _validate_stage_result(m3d, "m3d_writer_handoff")
     if m3d_errors:
         return _stage_invalid(request_value, ledger, artifacts, "m3d_writer_handoff", m3d, m3d_errors)
     artifacts.set("m3d_writer_handoff", m3d)
@@ -528,7 +632,7 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
         return _finish_from_request("dry_run_ready", request_value, ledger, artifacts, ())
 
     try:
-        m3e = apply_relaymem_primary_page_write(
+        m3e = deps_value.apply_m3e_page_writer(
             writer_handoff_artifact=m3d,
             root_path=request_value.store_root,
             enabled=True,
@@ -536,8 +640,8 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
             apply_enabled=True,
         )
     except Exception:
-        return _stage_failure(request_value, ledger, artifacts, "m3e_page_writer", "m3e_execution_failed")
-    m3e_errors = _validate_result(m3e, "relaymem.primary_page_write_apply.v0", _M3E_FIELDS)
+        return _stage_failure(request_value, ledger, artifacts, "m3e_page_writer")
+    m3e_errors = _validate_stage_result(m3e, "m3e_page_writer")
     if m3e_errors:
         return _stage_invalid(request_value, ledger, artifacts, "m3e_page_writer", m3e, m3e_errors)
     artifacts.set("m3e_page_writer", m3e)
@@ -552,15 +656,15 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
     ledger.record("m3e_page_writer", status="completed", completed=True, result=m3e)
 
     try:
-        m3f = build_relaymem_primary_index_log_reconciliation_preflight(
+        m3f = deps_value.build_m3f_reconciliation_preflight(
             receipt=m3e_receipt,
             root_path=request_value.store_root,
             enabled=True,
             dry_run_only=True,
         )
     except Exception:
-        return _stage_failure(request_value, ledger, artifacts, "m3f_reconciliation_preflight", "m3f_execution_failed")
-    m3f_errors = _validate_result(m3f, "relaymem.primary_index_log_reconciliation_preflight.v0", _M3F_FIELDS)
+        return _stage_failure(request_value, ledger, artifacts, "m3f_reconciliation_preflight")
+    m3f_errors = _validate_stage_result(m3f, "m3f_reconciliation_preflight")
     if m3f_errors:
         return _stage_invalid(request_value, ledger, artifacts, "m3f_reconciliation_preflight", m3f, m3f_errors)
     artifacts.set("m3f_reconciliation_preflight", m3f)
@@ -572,7 +676,7 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
     ledger.record("m3f_reconciliation_preflight", status="completed", completed=True, result=m3f)
 
     try:
-        m3g = apply_relaymem_primary_index_log_reconciliation(
+        m3g = deps_value.apply_m3g_reconciliation(
             plan_artifact=plan,
             root_path=request_value.store_root,
             enabled=True,
@@ -580,8 +684,8 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
             apply_enabled=True,
         )
     except Exception:
-        return _stage_failure(request_value, ledger, artifacts, "m3g_reconciliation_apply", "m3g_execution_failed")
-    m3g_errors = _validate_result(m3g, "relaymem.primary_index_log_reconciliation_apply.v0", _M3G_FIELDS)
+        return _stage_failure(request_value, ledger, artifacts, "m3g_reconciliation_apply")
+    m3g_errors = _validate_stage_result(m3g, "m3g_reconciliation_apply")
     if m3g_errors:
         return _stage_invalid(request_value, ledger, artifacts, "m3g_reconciliation_apply", m3g, m3g_errors)
     artifacts.set("m3g_reconciliation_apply", m3g)
@@ -597,15 +701,15 @@ def execute_relaymem_primary_pipeline(request: object) -> RelayMEMPrimaryPipelin
     ledger.record("m3g_reconciliation_apply", status="completed", completed=True, result=m3g)
 
     try:
-        m3h = audit_relaymem_primary_index_log_reconciliation_recovery(
+        m3h = deps_value.audit_m3h_recovery(
             receipt=m3g_receipt,
             root_path=request_value.store_root,
             enabled=True,
             dry_run_only=True,
         )
     except Exception:
-        return _stage_failure(request_value, ledger, artifacts, "m3h_recovery_audit", "m3h_execution_failed")
-    m3h_errors = _validate_result(m3h, "relaymem.primary_index_log_reconciliation_recovery_audit_result.v0", _M3H_FIELDS)
+        return _stage_failure(request_value, ledger, artifacts, "m3h_recovery_audit")
+    m3h_errors = _validate_stage_result(m3h, "m3h_recovery_audit")
     if m3h_errors:
         return _stage_invalid(request_value, ledger, artifacts, "m3h_recovery_audit", m3h, m3h_errors)
     artifacts.set("m3h_recovery_audit", m3h)
@@ -742,6 +846,14 @@ def _validate_request(
     return (value, ()) if not reasons else (None, _reasons(reasons))
 
 
+def _validate_deps(value: PrimaryPipelineDeps | None) -> PrimaryPipelineDeps:
+    if value is None:
+        return _DEFAULT_DEPS
+    if type(value) is not PrimaryPipelineDeps:
+        raise TypeError("exact PrimaryPipelineDeps required")
+    return value
+
+
 def _source_lineage(source: RelayMEMSLPPrimaryWorkerSource) -> dict[str, Any]:
     return {
         "schema_version": LINEAGE_SCHEMA,
@@ -760,6 +872,15 @@ def _source_lineage(source: RelayMEMSLPPrimaryWorkerSource) -> dict[str, Any]:
         },
         "blocked_reasons": [],
     }
+
+
+def _stage_spec(stage: StageName) -> StageSpec:
+    return _STAGE_SPECS_BY_NAME[stage]
+
+
+def _validate_stage_result(value: object, stage: StageName) -> tuple[str, ...]:
+    spec = _stage_spec(stage)
+    return _validate_result(value, spec.result_schema, spec.expected_fields)
 
 
 def _validate_result(
@@ -821,9 +942,8 @@ def _stage_failure(
     ledger: _Ledger,
     artifacts: _Artifacts,
     stage: StageName,
-    reason: str,
 ) -> RelayMEMPrimaryPipelineResult:
-    reasons = (reason,)
+    reasons = (_stage_spec(stage).failure_reason_id,)
     ledger.record(stage, status="blocked", completed=False, blocked=True, terminal=True, reasons=reasons)
     return _finish_from_request("blocked", request, ledger, artifacts, reasons)
 
@@ -875,6 +995,10 @@ def _finish(
     completed = tuple(item.stage for item in items if item.completed)
     executed = tuple(item.stage for item in items if item.executed)
     values = artifacts.values
+    stage_payload = {
+        spec.result_key: values[spec.name]
+        for spec in _STAGE_SPECS
+    }
     return RelayMEMPrimaryPipelineResult(
         schema_version=RESULT_SCHEMA,
         status=status,
@@ -887,14 +1011,7 @@ def _finish(
         last_stage=executed[-1] if executed else None,
         last_completed_stage=completed[-1] if completed else None,
         stage_results=items,
-        m3a_result=values["m3a_formation"],
-        m3b_result=values["m3b_write_preflight"],
-        m3c_result=values["m3c_page_candidate"],
-        m3d_result=values["m3d_writer_handoff"],
-        m3e_result=values["m3e_page_writer"],
-        m3f_result=values["m3f_reconciliation_preflight"],
-        m3g_result=values["m3g_reconciliation_apply"],
-        m3h_result=values["m3h_recovery_audit"],
+        **stage_payload,
         reason_ids=_reasons(reasons),
     )
 
@@ -904,10 +1021,12 @@ __all__ = [
     "REQUEST_SCHEMA",
     "RESULT_SCHEMA",
     "STAGES",
+    "PrimaryPipelineDeps",
     "RelayMEMPrimaryPipelineProjection",
     "RelayMEMPrimaryPipelineRequest",
     "RelayMEMPrimaryPipelineResult",
     "RelayMEMPrimaryPipelineStageResult",
+    "StageSpec",
     "build_relaymem_primary_pipeline_node_result",
     "execute_relaymem_primary_pipeline",
     "project_relaymem_primary_pipeline",

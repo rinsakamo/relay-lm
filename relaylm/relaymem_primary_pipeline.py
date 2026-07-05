@@ -1,9 +1,9 @@
 """Public RelayMEM Phase 6-C1-1 Primary MEM pipeline boundary.
 
 The implementation remains runtime-private in the adjacent implementation
-module. This facade fixes the exact public types, synchronizes testable M3
-helper seams, and rejects non-canonical request modes or impossible result
-ledgers before any public projection is produced.
+module. This facade fixes the exact public types, builds per-call dependency
+seams for testable M3 helpers, and rejects non-canonical request modes or
+impossible result ledgers before any public projection is produced.
 
 Phase 6-C1-2 adds a minimal runtime-private checkpoint seam. The seam knows
 nothing about queue roots, claims, leases, or B3 transitions; it only asks an
@@ -57,8 +57,8 @@ PrimaryPipelineCheckpoint = Callable[
 ]
 
 # Preserve the existing module-level M3 seams. The functional and security
-# smokes patch these exact names; execute synchronizes them into the private
-# implementation immediately before each invocation.
+# smokes patch these exact names; execute now routes them through a per-call
+# dependency container instead of mutating the private implementation globals.
 build_relaymem_primary_formation_dry_run = (
     _impl.build_relaymem_primary_formation_dry_run
 )
@@ -82,15 +82,6 @@ audit_relaymem_primary_index_log_reconciliation_recovery = (
     _impl.audit_relaymem_primary_index_log_reconciliation_recovery
 )
 
-_HELPER_NAMES = (
-    "build_relaymem_primary_write_preflight_dry_run",
-    "build_relaymem_primary_page_candidate_dry_run",
-    "build_relaymem_primary_writer_handoff_preflight",
-    "apply_relaymem_primary_page_write",
-    "build_relaymem_primary_index_log_reconciliation_preflight",
-    "apply_relaymem_primary_index_log_reconciliation",
-    "audit_relaymem_primary_index_log_reconciliation_recovery",
-)
 _CANONICAL_MODES = frozenset(
     {
         (False, True, False),
@@ -266,12 +257,30 @@ def _formation_with_candidate_identity(*args: Any, **kwargs: Any) -> Any:
     return target(*args, **kwargs)
 
 
-def _sync_helper_seams() -> None:
-    _impl.build_relaymem_primary_formation_dry_run = (
-        _formation_with_candidate_identity
+def _base_pipeline_deps() -> _impl.PrimaryPipelineDeps:
+    return _impl.PrimaryPipelineDeps(
+        consume_protected_source=_impl.consume_relaymem_slp_primary_worker_source,
+        build_m3a_formation=_formation_with_candidate_identity,
+        build_m3b_write_preflight=globals()[
+            "build_relaymem_primary_write_preflight_dry_run"
+        ],
+        build_m3c_page_candidate=globals()[
+            "build_relaymem_primary_page_candidate_dry_run"
+        ],
+        build_m3d_writer_handoff=globals()[
+            "build_relaymem_primary_writer_handoff_preflight"
+        ],
+        apply_m3e_page_writer=globals()["apply_relaymem_primary_page_write"],
+        build_m3f_reconciliation_preflight=globals()[
+            "build_relaymem_primary_index_log_reconciliation_preflight"
+        ],
+        apply_m3g_reconciliation=globals()[
+            "apply_relaymem_primary_index_log_reconciliation"
+        ],
+        audit_m3h_recovery=globals()[
+            "audit_relaymem_primary_index_log_reconciliation_recovery"
+        ],
     )
-    for name in _HELPER_NAMES:
-        setattr(_impl, name, globals()[name])
 
 
 def _checkpoint_result(
@@ -455,6 +464,55 @@ def _m3g_checkpoint_denied_result(
     }
 
 
+def _deps_with_checkpoint(
+    deps: _impl.PrimaryPipelineDeps,
+    checkpoint: PrimaryPipelineCheckpoint,
+) -> _impl.PrimaryPipelineDeps:
+    def consume_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
+        decision = _checkpoint_result(checkpoint, "before_source_consumption")
+        if not decision.allowed:
+            return None, decision.reason_ids
+        return deps.consume_protected_source(*args, **kwargs)
+
+    def m3e_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
+        checkpoint_name = "before_m3e_page_writer"
+        decision = _checkpoint_result(checkpoint, checkpoint_name)
+        if not decision.allowed:
+            return _m3e_checkpoint_denied_result(
+                _checkpoint_denial(
+                    stage="m3e_page_writer",
+                    checkpoint=checkpoint_name,
+                    decision=decision,
+                )
+            )
+        return deps.apply_m3e_page_writer(*args, **kwargs)
+
+    def m3g_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
+        checkpoint_name = "before_m3g_reconciliation_apply"
+        decision = _checkpoint_result(checkpoint, checkpoint_name)
+        if not decision.allowed:
+            return _m3g_checkpoint_denied_result(
+                _checkpoint_denial(
+                    stage="m3g_reconciliation_apply",
+                    checkpoint=checkpoint_name,
+                    decision=decision,
+                )
+            )
+        return deps.apply_m3g_reconciliation(*args, **kwargs)
+
+    return _impl.PrimaryPipelineDeps(
+        consume_protected_source=consume_with_checkpoint,
+        build_m3a_formation=deps.build_m3a_formation,
+        build_m3b_write_preflight=deps.build_m3b_write_preflight,
+        build_m3c_page_candidate=deps.build_m3c_page_candidate,
+        build_m3d_writer_handoff=deps.build_m3d_writer_handoff,
+        apply_m3e_page_writer=m3e_with_checkpoint,
+        build_m3f_reconciliation_preflight=deps.build_m3f_reconciliation_preflight,
+        apply_m3g_reconciliation=m3g_with_checkpoint,
+        audit_m3h_recovery=deps.audit_m3h_recovery,
+    )
+
+
 def execute_relaymem_primary_pipeline(
     request: object,
     *,
@@ -469,61 +527,10 @@ def execute_relaymem_primary_pipeline(
         previous_candidate_id = _CURRENT_CANDIDATE_ID
         _CURRENT_CANDIDATE_ID = _candidate_id_from_request(request)
         try:
-            _sync_helper_seams()
-            if checkpoint is None:
-                return _impl.execute_relaymem_primary_pipeline(request)
-
-            original_consume = _impl.consume_relaymem_slp_primary_worker_source
-            original_m3e = _impl.apply_relaymem_primary_page_write
-            original_m3g = _impl.apply_relaymem_primary_index_log_reconciliation
-
-            def consume_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
-                decision = _checkpoint_result(
-                    checkpoint, "before_source_consumption"
-                )
-                if not decision.allowed:
-                    return None, decision.reason_ids
-                return original_consume(*args, **kwargs)
-
-            def m3e_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
-                checkpoint_name = "before_m3e_page_writer"
-                decision = _checkpoint_result(checkpoint, checkpoint_name)
-                if not decision.allowed:
-                    return _m3e_checkpoint_denied_result(
-                        _checkpoint_denial(
-                            stage="m3e_page_writer",
-                            checkpoint=checkpoint_name,
-                            decision=decision,
-                        )
-                    )
-                return original_m3e(*args, **kwargs)
-
-            def m3g_with_checkpoint(*args: Any, **kwargs: Any) -> Any:
-                checkpoint_name = "before_m3g_reconciliation_apply"
-                decision = _checkpoint_result(checkpoint, checkpoint_name)
-                if not decision.allowed:
-                    return _m3g_checkpoint_denied_result(
-                        _checkpoint_denial(
-                            stage="m3g_reconciliation_apply",
-                            checkpoint=checkpoint_name,
-                            decision=decision,
-                        )
-                    )
-                return original_m3g(*args, **kwargs)
-
-            _impl.consume_relaymem_slp_primary_worker_source = (
-                consume_with_checkpoint
-            )
-            _impl.apply_relaymem_primary_page_write = m3e_with_checkpoint
-            _impl.apply_relaymem_primary_index_log_reconciliation = (
-                m3g_with_checkpoint
-            )
-            try:
-                return _impl.execute_relaymem_primary_pipeline(request)
-            finally:
-                _impl.consume_relaymem_slp_primary_worker_source = original_consume
-                _impl.apply_relaymem_primary_page_write = original_m3e
-                _impl.apply_relaymem_primary_index_log_reconciliation = original_m3g
+            deps = _base_pipeline_deps()
+            if checkpoint is not None:
+                deps = _deps_with_checkpoint(deps, checkpoint)
+            return _impl.execute_relaymem_primary_pipeline(request, deps=deps)
         finally:
             _CURRENT_CANDIDATE_ID = previous_candidate_id
 
