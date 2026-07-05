@@ -25,6 +25,8 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md) — the current product direction reset target: editable Markdown character sources compiled into runtime projections.
 - [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md) — the current read-only source tree/parser contract slice for the file-first Character Workspace reset.
 - [CW-A5 Character Creation, Templates, and Showcase Import](architecture/cw_a5_character_creation_templates_showcase_import.md) — the current bounded creation/template/import slice for deterministic local Character Workspace creation.
+- [O2 Supervised Scheduler Service](architecture/o2_supervised_scheduler_service.md) — the current opt-in supervised local scheduler service boundary.
+- [O3 Always-On Local Scheduler](architecture/o3_always_on_local_scheduler.md) — the current opt-in local CLI/process wrapper boundary.
 - [RelayREL relationship design](architecture/relayrel_relationship_design.md) — target-specific relationship state, relationship-conditioned interaction policy, and `RELATIONSHIP.md` / `relationships/<target>.md` ownership.
 - [Character template creation flow](architecture/character_template_creation_flow.md) — no-character startup, Quick/Advanced Create, template import, and showcase policy.
 - [Documentation model](DOCUMENTATION_MODEL.md) — document types, metadata, authority, AI reading rules, and the parallel implementation/convergence flow.
@@ -67,7 +69,12 @@ Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<sl
 - [O1D2 deterministic scheduler policy](architecture/o1d2_scheduler_policy.md)
 - [O1E scheduler operational controls](architecture/o1e_scheduler_operational_controls.md)
 - [O1F operational validation](architecture/o1f_operational_validation.md)
+- [O2 supervised scheduler service](architecture/o2_supervised_scheduler_service.md)
+- [O3 always-on local scheduler](architecture/o3_always_on_local_scheduler.md)
 - [O1 manual one-round runbook](smoke/o1_manual_one_round_runbook.md)
+- [PM-D5 RelayMEM flat-store compatibility removal](architecture/pm_d5_relaymem_flat_store_compatibility_removal.md)
+- [PM-D6 RelayINT native artifact / RelayREF wrapper removal](architecture/pm_d6_relayint_native_artifact_relayref_wrapper_removal.md)
+- [PM-D7 runtime install hook fold-in](architecture/pm_d7_runtime_install_hook_fold_in.md)
 - [I1-G durable-finalization contract and completed GA-GE boundaries](architecture/i1g_pre_enqueue_durable_finalization_contract.md)
 - [I1-GD durable-finalization retention and isolation lifecycle](architecture/i1gd_durable_finalization_retention_cleanup.md)
 - [I1-GE Durable-finalization Crash Validation](architecture/i1ge_durable_finalization_crash_validation.md)
@@ -98,7 +105,7 @@ Implementation PRs add or update their own slice handoff and `docs/mvp/wave*/<sl
 
 ## Current status pointer
 
-Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged, E1-R5 is converged as a post-Wave-7 correction, P0-PIPE is complete in PR #458, ACG-1 through ACG-6 analyzer governance slices are complete, CW-A1 through CW-A5 Character Workspace reset slices are complete, and PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision. O1F is validation-only and does not add O2/O3 supervision or always-on operation.
+Current runtime and implementation status is intentionally not summarized here. Read [Current project status](PROJECT_STATUS.md) for the current boundary. At the time this index was reviewed, Wave 3 through Wave 7 implementation tracks and W3-INT through W7-INT are merged, E1-R5 is converged as a post-Wave-7 correction, P0-PIPE is complete in PR #458, ACG-1 through ACG-6 analyzer governance slices are complete, CW-A1 through CW-A5 Character Workspace reset slices are complete, O2/O3 supervised local scheduler operation is complete as opt-in local operation support, PM-D5 through PM-D7 compatibility/debt fold-in slices are complete, and PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision. O1F remains validation-only and O2/O3 do not add app-embedded, browser-owned, default-on, or independently mutation-authoritative scheduling.
 
 ## Wave 8 implementation evidence
 
