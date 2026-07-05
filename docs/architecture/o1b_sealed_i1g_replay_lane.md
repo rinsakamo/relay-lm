@@ -33,11 +33,11 @@ relaylm_related_authority:
 ---
 # O1B: Bounded Sealed I1-G Replay-Lane Discovery
 
-Last reviewed: 2026-06-27 JST
+Last reviewed: 2026-07-05 JST
 
 ## Status and authority
 
-**Production replay-lane adapter complete.** O1C queue-lane adapter, O1D1 one production round, O1D2 bounded policy, O1E operational controls, and O1F operational validation are also complete at their bounded caller-invoked boundaries. O2 supervision and O3 always-on service operation remain planned/unimplemented.
+**Production replay-lane adapter complete.** O1C queue-lane adapter, O1D1 one production round, O1D2 bounded policy, O1E operational controls, and O1F operational validation are also complete at their bounded caller-invoked boundaries. O2 supervised local service operation and O3 local always-on process wrapper are complete in dedicated opt-in handoffs above O1E; they do not change O1B replay-lane authority.
 
 O1B owns exactly one bounded replay-lane opportunity:
 
@@ -127,8 +127,8 @@ O1D1  accepted scheduler gates + one production round         complete
 O1D2  ordering/fairness/retry-time/backoff/jitter/pacing      complete
 O1E   stale recovery/cancellation/graceful shutdown           complete
 O1F   operational validation                                  complete
-O2    supervised service                                      planned/unimplemented
-O3    always-on operation                                     planned/unimplemented
+O2    supervised local service wrapper above O1E              complete
+O3    local CLI/process wrapper around O2                     complete
 ```
 
 O1B adds no scheduler CLI, browser route, accepted scheduler configuration, polling interval, daemon, service unit, queue scan, queue execution, or automatic operation.
