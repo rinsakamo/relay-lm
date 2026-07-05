@@ -65,7 +65,7 @@ Missing or incomplete target Primary/Secondary layout must fail closed and must 
 
 ## E1-R5 / PM-D8 interaction
 
-This slice preserves the E1-R5 bounded scoped Primary recall bridge as the intended Primary recall path. PM-D8 remains open unless a later PR explicitly folds the E1-R5 bridge into the canonical adapter with equivalent security and no-symlink smoke coverage.
+This slice preserved the E1-R5 bounded scoped Primary recall fallback as the intended Primary recall path while PM-D5 removed flat-store compatibility. PM-D8 is now complete: PR #491 folds the former E1-R5 bridge behavior into the canonical Primary recall adapter with equivalent security, no-symlink, lifecycle, relevance-bound, and content-free projection coverage.
 
 ## Public diagnostics and leakage boundary
 
@@ -73,7 +73,7 @@ Public diagnostics are content-free. They must not expose raw physical paths, ch
 
 ## Non-goals
 
-This document does not implement PM-D6, PM-D7, PM-D8, automatic migration, copy/repair, symlink creation, runtime memory mutation, post-hoc visible response rewriting, TTS/audio/avatar execution, or browser-owned trust.
+This document does not implement PM-D6, PM-D7, automatic migration, copy/repair, symlink creation, runtime memory mutation, post-hoc visible response rewriting, TTS/audio/avatar execution, or browser-owned trust.
 
 ## Validation
 

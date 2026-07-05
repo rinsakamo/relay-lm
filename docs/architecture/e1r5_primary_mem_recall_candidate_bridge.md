@@ -25,11 +25,11 @@ relaylm_related_authority:
 ---
 # E1-R5 Primary MEM Recall Candidate Discovery Bridge
 
-Last reviewed: 2026-06-30 JST
+Last reviewed: 2026-07-06 JST
 
 ## Status
 
-E1-R5 is current implemented. It adds a bounded request-side bridge for character-scoped Primary MEM recall after E1-R4 grounding.
+E1-R5 is current implemented. It adds a bounded request-side fallback for character-scoped Primary MEM recall after E1-R4 grounding. PM-D8 is closed by PR #491: the former bridge behavior is now canonicalized in Primary recall, and the former `relaymem_primary_recall_candidate_bridge_runtime` module remains compatibility no-op only.
 
 E1-R4 already builds backend-bound grounded recall instructions from selected Primary MEM evidence, but local E2E evaluation found a pre-grounding gap: formed Primary MEM pages could exist under the character-scoped store while `selected_count` stayed `0` because no Primary MEM page became an M2 selected candidate.
 
@@ -62,7 +62,7 @@ The symlink workaround `runtime/memory/memory -> runtime/memory/characters/<hash
 
 ## Implemented boundary
 
-The preferred M2 path remains the first relevance owner. E1-R5 only runs after the scoped Primary recall adapter cannot select an eligible Primary candidate from existing M2 results.
+The preferred M2 path remains the first relevance owner. The canonical Primary recall implementation now owns the former E1-R5 bridge behavior, and the E1-R5 fallback only runs after the scoped Primary recall adapter cannot select an eligible Primary candidate from existing M2 results.
 
 When the fallback runs, it:
 
@@ -74,7 +74,7 @@ When the fallback runs, it:
 6. checks bounded query relevance against validated Primary `summary` and `title` fields when query hints are available;
 7. rebuilds the existing bounded snippet handoff consumed by RelayCTX and E1-R4 grounded recall.
 
-The bridge does not depend on the compatibility symlink and does not materialize an unbounded tree.
+The canonical fallback does not depend on the compatibility symlink and does not materialize an unbounded tree.
 
 ## Namespace decision
 
@@ -84,17 +84,17 @@ Primary recall now accepts the same namespace token shape used by the queue/work
 
 E1-R5 does not own an independent lifecycle policy. The implementation calls the shared Primary retrieval eligibility index used by I-4D before a fallback candidate can become selected evidence.
 
-The current implementation is still a runtime bridge over the original I-1 adapter. This is acceptable for the bounded E1-R5 fix, but future changes to `apply_relaymem_primary_recall_scope(...)` must either keep the E1-R5 bridge installed and covered by E1-R5 smokes or fold the bridge into the canonical Primary recall adapter so namespace handling and candidate discovery cannot drift.
+The current implementation is no longer an active runtime monkey-patch over the original I-1 adapter. PR #491 folded bounded fallback discovery, slash-permitting scope and namespace token handling, lifecycle eligibility integration, relevance bounds, and content-free public projection handling into the canonical Primary recall path.
 
-## Follow-up debt
+## PM-D8 closure
 
-The runtime-bridge-to-canonical-adapter decision is tracked as PM-D8 in [Project Execution Plan](project_execution_plan.md). PM-D8 is intentionally tied to PM-D5 RelayMEM flat-store compatibility removal because the flat-store cleanup may touch Primary recall layout discovery and adapter/root handling.
+PM-D8 is absorbed and closed by PR #491. The former runtime bridge module remains compatibility no-op only; canonical behavior now lives in `relaymem_primary_recall` / `apply_relaymem_primary_recall_scope(...)`.
 
-Until PM-D8 is closed or absorbed into PM-D5/PM-D6, E1-R5 bridge behavior must remain installed and covered by the E1-R5 smoke set. A future fold-in must preserve the current ownership rule: M2 remains preferred, E1-R5 is fallback only when M2 yields no eligible scoped Primary candidate, and lifecycle eligibility remains shared with I-4D.
+The PR #491 fold-in preserves the current ownership rule: M2 remains preferred, E1-R5 is fallback only when M2 yields no eligible scoped Primary candidate, and lifecycle eligibility remains shared with I-4D.
 
 ## Grounded recall behavior
 
-When the bridge selects a Primary MEM page, E1-R4 grounded recall receives the same selected-memory shape as the M2 path. Backend-bound context may include the bounded supported summary as private evidence, and the instruction continues to require unsupported-detail suppression:
+When the fallback selects a Primary MEM page, E1-R4 grounded recall receives the same selected-memory shape as the M2 path. Backend-bound context may include the bounded supported summary as private evidence, and the instruction continues to require unsupported-detail suppression:
 
 ```text
 Use only grounded_recall_context evidence_items for remembered facts.
@@ -149,3 +149,4 @@ E1-R5 does not add O2/O3 supervision, polling, daemons, new queue authority, wor
 - [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md)
 - [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md)
 - Source PR: #439
+- Canonical fold-in PR: #491

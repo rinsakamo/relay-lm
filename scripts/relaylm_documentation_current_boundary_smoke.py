@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current documentation boundary anchors after E1-R5, ACG, CW-A5, O2/O3, PM-D5-D7, and Wave 8 docs updates."""
+"""Validate current documentation boundary anchors after E1-R5, ACG, CW-A5, O2/O3, PM-D5-D8, and Wave 8 docs updates."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -63,11 +63,11 @@ REQUIRED = {
         "E1-R2 character-store bootstrap command: complete",
         "E1-R3 provenance-preserving Primary MEM formation summary: complete",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression: complete",
-        "E1-R5 Primary MEM recall candidate discovery bridge: complete",
+        "E1-R5 Primary MEM recall candidate fallback: complete",
         "Wave 7 implementation tracks complete",
         "W7-INT merged",
         "Post-E1-R5 / Post-Wave-7 next candidates:",
-        "E1-R5 scoped Primary recall candidate bridge boundary",
+        "E1-R5 scoped Primary recall candidate fallback boundary",
         "Analyzer Candidate Governance: ACG-1 contract/helpers complete; ACG-2 Grounded Recall Detail Safety complete; ACG-3 Retrieval Query Normalization complete; ACG-4 Reference/Intent Analyzer consolidation complete; ACG-5 RelayEMO scene ownership cleanup complete; ACG-6 SCN structured classifier and scene-wiki boundary complete",
         "CW-A5 character creation, templates, and showcase import   complete",
         "CW-A5 handoff is [CW-A5 Character Creation, Templates, and Showcase Import]",
@@ -80,6 +80,7 @@ REQUIRED = {
         "PM-D6 RelayINT native artifact / RelayREF wrapper removal",
         "PM-D7 runtime install hook fold-in",
         "PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in",
+        "PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in: complete",
         "E1-R5 Post-Wave-7 Correction Convergence Audit",
     ),
     "docs/README.md": (
@@ -101,7 +102,7 @@ REQUIRED = {
         "E1-R5 completion report",
         "E1-R5 Primary MEM recall candidate discovery bridge",
         "E1-R5 Post-Wave-7 Correction Convergence Audit",
-        "PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision",
+        "PM-D8 completes the E1-R5 bridge canonical adapter fold-in in PR #491",
     ),
     "docs/architecture/README.md": (
         "CW-A5 Character Creation, Templates, and Showcase Import",
@@ -143,7 +144,7 @@ REQUIRED = {
         "O3 is current implemented as an opt-in local CLI/process wrapper around O2.",
         "E1-R3 is current implemented as provenance-preserving Primary MEM formation summary.",
         "E1-R4 is current implemented as request-side retrieval-response grounding and unsupported-detail suppression.",
-        "E1-R5 is current implemented as bounded scoped Primary MEM recall candidate discovery bridge.",
+        "E1-R5 is current implemented as bounded scoped Primary MEM recall candidate discovery fallback.",
         "ACG-2 is current implemented as Grounded Recall detail safety behind Query Detail Analyzer governance.",
         "ACG-6 is current implemented as the bounded SCN structured classifier and scene-wiki matching boundary.",
         "CW-A1 is current implemented as file-first source tree and parser contracts.",
@@ -154,11 +155,12 @@ REQUIRED = {
         "PM-D5 is current implemented as RelayMEM flat-store compatibility removal from ordinary runtime discovery and public diagnostics.",
         "PM-D6 is current implemented as RelayINT native artifact ownership after RelayREF wrapper removal from the input-side entrypoint.",
         "PM-D7 is current implemented as explicit dry-run-first runtime install and setup preflight/apply command support.",
+        "PM-D8 is current implemented as the E1-R5 bridge canonical Primary recall adapter fold-in from PR #491.",
         "ACG-1 through ACG-6 are current as bounded analyzer-governance slices.",
         "CW-A1 through CW-A5 are current as bounded Character Workspace reset slices.",
         "Completed behavior must not be re-listed as migration work:",
         "O2 and O3 are opt-in local operation boundaries",
-        "PM-D8 in [Project Execution Plan](project_execution_plan.md) tracks the later decision",
+        "PM-D8 in [Project Execution Plan](project_execution_plan.md) is complete.",
     ),
     "docs/architecture/project_execution_plan.md": (
         "Post-MVP decision debt registry",
@@ -169,30 +171,32 @@ REQUIRED = {
         "PM-D5 RelayMEM flat-store compatibility removal",
         "PM-D6 RelayINT native artifact / RelayREF wrapper removal",
         "PM-D7 runtime install hook fold-in",
-        "PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in",
+        "PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in complete in PR #491",
         "CW-A5 character creation, templates, and showcase import complete",
         "O2 supervised worker service             complete as opt-in local scheduler service",
         "O3 always-on local operation             complete as opt-in local CLI/process wrapper",
+        "E1-R5 Primary MEM recall candidate discovery fallback complete",
         "Completed post-MVP debt:",
-        "Implementation order for large compatibility removals",
-        "PM-D5 -> PM-D6 -> PM-D7",
-        "PM-D8 should be evaluated with PM-D5",
+        "Implementation order for large compatibility removals and fold-ins",
+        "PM-D5 -> PM-D6 -> PM-D7 -> PM-D8",
+        "PM-D8 was historically related to PM-D5",
         "Execute the existing RelaySCN-owned `scene_state` migration plan",
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
         "E1-R4 request-side evidence-grounded recall behavior is current implemented.",
-        "E1-R5 scoped Primary recall candidate discovery bridge is current implemented.",
+        "E1-R5 scoped Primary recall candidate fallback is current implemented.",
         "O2 is current implemented as an opt-in supervised local scheduler service above O1E.",
         "O3 is current implemented as an opt-in local CLI/process wrapper around O2.",
-        "PM-D5, PM-D6, and PM-D7 are complete as post-MVP compatibility/debt fold-in slices.",
+        "PM-D5, PM-D6, PM-D7, and PM-D8 are complete as post-MVP compatibility/debt fold-in slices.",
         "request-side grounded recall response             complete as E1-R4",
-        "E1-R5 scoped Primary recall bridge                complete as E1-R5",
+        "E1-R5 scoped Primary recall fallback              complete as E1-R5",
         "opt-in supervised local scheduler service         complete as O2",
         "opt-in local CLI/process wrapper                  complete as O3",
         "target-only RelayMEM store discovery              complete as PM-D5",
         "native input-side RelayINT artifact               complete as PM-D6",
         "explicit runtime install/preflight command        complete as PM-D7",
-        "E1-R5 is current implemented as a bounded scoped Primary MEM recall candidate discovery bridge.",
+        "canonical Primary recall fallback fold-in         complete as PM-D8",
+        "E1-R5 is current implemented as a bounded scoped Primary MEM recall candidate fallback in canonical Primary recall.",
     ),
     "docs/architecture/e1r4_retrieval_response_grounding.md": (
         "# E1-R4 Retrieval-Response Grounding",
@@ -209,7 +213,8 @@ REQUIRED = {
         "# E1-R5 Primary MEM Recall Candidate Discovery Bridge",
         "M2 remains the preferred relevance owner",
         "shared I-4D current-state eligibility index",
-        "The runtime-bridge-to-canonical-adapter decision is tracked as PM-D8",
+        "PM-D8 is absorbed and closed by PR #491",
+        "former `relaymem_primary_recall_candidate_bridge_runtime` module remains compatibility no-op only",
         "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
         "E1-R5 completion report",
     ),
@@ -217,7 +222,7 @@ REQUIRED = {
         "relaylm_doc_type: integration_convergence_audit",
         "# E1-R5 Post-Wave-7 Correction Convergence Audit",
         "M2 remains the preferred relevance owner.",
-        "PM-D8: Fold E1-R5 bounded Primary MEM candidate bridge into canonical Primary recall adapter",
+        "PM-D8: E1-R5 bounded Primary MEM candidate fallback folded into canonical Primary recall adapter in PR #491",
         "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
         "PYTHONPATH=. python scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py",
     ),
@@ -283,6 +288,7 @@ REQUIRED = {
         "PM-D5 removes RelayMEM flat-store compatibility from ordinary runtime discovery and public diagnostics.",
         "flat_store_compatibility_removed: true",
         "Runtime page candidate discovery scans only target Primary/Secondary directories.",
+        "PM-D8 is now complete: PR #491 folds the former E1-R5 bridge behavior into the canonical Primary recall adapter",
         "PYTHONPATH=. python scripts/relaylm_pm_d5_flat_store_compat_removal_smoke.py",
     ),
     "docs/architecture/pm_d6_relayint_native_artifact_relayref_wrapper_removal.md": (
@@ -352,7 +358,7 @@ STALE = tuple(
     O2 supervised worker service, if required
     O3 always-on operation, if required
     I-5 runtime apply/API/UI/ranking behavior: unimplemented
-    I-7 runtime apply/discard/API/UI/durable governance evidence: unimplemented
+    I-7 runtime apply/discard/API/UI/durable evidence: unimplemented
     Direct Home-origin formation: not currently proven; trusted scene admission is missing
     Direct Home-origin trusted scene admission remains target work
     Pin/Unpin runtime API/UI/ranking behavior: pending
@@ -366,10 +372,22 @@ STALE = tuple(
     remaining E1-R4 quality work
     E1-R5 remains unindexed
     E1-R5 remains incomplete
+    E1-R5 Primary MEM recall candidate discovery bridge: complete
+    E1-R5 Primary MEM recall candidate discovery bridge complete
+    E1-R5 scoped Primary recall candidate discovery bridge is current implemented.
+    E1-R5 scoped Primary recall bridge                complete as E1-R5
+    Compatibility anchor retained for E1 evaluation smoke
     Character Workspace source tree parser/compiler/UI
     ACG-1 is current as a shared contract/helper layer only. It does not mean that Grounded Recall detail detection, retrieval query normalization, RelayREF / RelayINT reference analyzer consolidation, RelayEMO scene-hint cleanup, or SCN scene-wiki classifier work is complete.
     ACG-2 through ACG-6 analyzer candidate producers/classifiers
     ACG-1 is complete as the analyzer governance contract/helper slice, and PM-D8 tracks
+    PM-D8 tracks the E1-R5 bridge canonical adapter fold-in decision
+    PM-D8 in [Project Execution Plan](project_execution_plan.md) tracks the later decision
+    PM-D8 should be evaluated with PM-D5
+    PM-D8 remains open unless
+    Until PM-D8 is closed or absorbed
+    The runtime-bridge-to-canonical-adapter decision is tracked as PM-D8
+    current implementation is still a runtime bridge
     relaylm_doc_type: architecture_contract
     relaylm_doc_type: implementation_report
     """.splitlines()
