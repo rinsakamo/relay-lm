@@ -1,16 +1,16 @@
 """Strict request and result helpers for the Phase 6-C1-2 worker."""
 from __future__ import annotations
 
-import re
 from typing import Any
 
+from .reason_ids import normalize_reason_ids
 from .relaymem_primary_pipeline import RelayMEMPrimaryPipelineResult
 from .relaymem_slp_primary_worker_outcome import RelayMEMSLPPrimaryWorkerOutcome
 from .relaymem_slp_primary_worker_source import (
     RelayMEMSLPPrimaryWorkerSource,
     RelayMEMSLPPrimaryWorkerSourceScope,
 )
-from .relaymem_slp_queue_record import MAX_LEASE_SECONDS, dedupe
+from .relaymem_slp_queue_record import MAX_LEASE_SECONDS
 from .relaymem_slp_queue_state import RelayMEMSLPQueueStateTransitionResult
 from ._relaymem_slp_primary_worker_fence import (
     _check_active_claim,
@@ -24,9 +24,6 @@ from ._relaymem_slp_primary_worker_types import (
     RelayMEMSLPPrimaryWorkerResult,
     WorkerStatus,
 )
-
-_REASON_RE = re.compile(r"^[a-z0-9][a-z0-9_:-]{0,127}$")
-_MAX_REASONS = 32
 
 
 def _validate_request(
@@ -183,22 +180,7 @@ def _result(
 
 
 def _reason_ids(values: Any) -> tuple[str, ...]:
-    output: list[str] = []
-    try:
-        iterator = iter(values)
-    except TypeError:
-        iterator = iter(("invalid_reason_id",))
-    for value in iterator:
-        reason = (
-            value
-            if type(value) is str and _REASON_RE.fullmatch(value)
-            else "invalid_reason_id"
-        )
-        if reason not in output:
-            output.append(reason)
-        if len(output) >= _MAX_REASONS:
-            break
-    return dedupe(output)
+    return normalize_reason_ids(values, invalid="marker", output="tuple")
 
 
 __all__ = [
