@@ -41,6 +41,11 @@ _CONTENT_TYPE_RE = re.compile(
 _URI_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 _WINDOWS_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
 
+_UUID_TEXT = (
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-"
+    r"[89ab][0-9a-f]{3}-[0-9a-f]{12}"
+)
+
 _PIPELINE_STATUSES = frozenset(
     {"applied", "skipped", "blocked", "failed", "diagnostic_only"}
 )
@@ -189,6 +194,17 @@ def _content_type(value: Any) -> Projection:
     return _ok(value) if _CONTENT_TYPE_RE.fullmatch(value) else _drop()
 
 
+def _scoped_uuid_id(suffix: str) -> Validator:
+    pattern = re.compile(rf"^{_UUID_TEXT}:{re.escape(suffix)}$", re.IGNORECASE)
+
+    def validate(value: Any) -> Projection:
+        if isinstance(value, str) and pattern.fullmatch(value):
+            return _ok(value)
+        return _drop()
+
+    return validate
+
+
 def _enum(*allowed: str) -> Validator:
     values = frozenset(allowed)
 
@@ -284,20 +300,132 @@ _STATE_COUNTS = _exact_string_int_map(_STATE_COUNT_KEYS)
 _CONTENT_SHAPE_COUNTS = _exact_string_int_map(_CONTENT_SHAPE_KEYS)
 _FINGERPRINT_SCOPE = _exact_string_int_map(_FINGERPRINT_SCOPE_KEYS)
 
-_ARTIFACT_BASE_FIELDS: dict[str, Validator] = {
-    "artifact_name": _bounded_token,
-    "schema_version": _optional(_bounded_token),
-    "present": _bool,
-    "diagnostics_only": _optional(_bool),
-    "content_free": _optional(_bool),
-    "applied": _optional(_bool),
-    "dry_run_only": _optional(_bool),
-    "runtime_private_source": _optional(_bool),
-    "read_only": _optional(_bool),
-    "payload_mutation_applied": _optional(_bool),
-    "applied_to_response": _optional(_bool),
-    "candidate_present": _optional(_bool),
-    "persistence_allowed": _optional(_bool),
+def _reject_non_none(value: Any) -> Projection:
+    return _drop()
+
+
+def _artifact_fields(
+    name: str,
+    schema_version: str | None,
+    *,
+    extras: Mapping[str, Validator] | None = None,
+) -> Validator:
+    fields: dict[str, Validator] = {
+        "artifact_name": _enum(name),
+        "schema_version": (
+            _optional(_enum(schema_version))
+            if schema_version is not None
+            else _optional(_reject_non_none)
+        ),
+        "present": _bool,
+        "diagnostics_only": _optional(_bool),
+        "content_free": _optional(_bool),
+        "applied": _optional(_bool),
+    }
+    if extras:
+        fields.update(extras)
+    return _mapping(fields)
+
+
+_ARTIFACT_PROJECTORS: dict[str, Validator] = {
+    "client_message_canonicalization_dry_run": _artifact_fields(
+        "client_message_canonicalization_dry_run",
+        "client_message_canonicalization_dry_run.v0",
+    ),
+    "client_instruction_extraction_dry_run": _artifact_fields(
+        "client_instruction_extraction_dry_run",
+        "client_instruction_extraction_dry_run.v0",
+    ),
+    "client_instruction_fingerprint_dry_run": _artifact_fields(
+        "client_instruction_fingerprint_dry_run",
+        "client_instruction_fingerprint_dry_run.v0",
+    ),
+    "client_instruction_identity_runtime_summary": _artifact_fields(
+        "client_instruction_identity_runtime_summary",
+        "client_instruction_identity.v0",
+        extras={"runtime_private_source": _optional(_bool)},
+    ),
+    "client_instruction_cache_dry_run": _artifact_fields(
+        "client_instruction_cache_dry_run",
+        "client_instruction_cache_dry_run.v0",
+        extras={"dry_run_only": _optional(_bool)},
+    ),
+    "client_instruction_cache_lookup_runtime_summary": _artifact_fields(
+        "client_instruction_cache_lookup_runtime_summary",
+        "client_instruction_cache_lookup_runtime.v0",
+        extras={
+            "runtime_private_source": _optional(_bool),
+            "read_only": _optional(_bool),
+        },
+    ),
+    "client_history_exclusion_preflight_summary": _artifact_fields(
+        "client_history_exclusion_preflight_summary",
+        "client_history_exclusion_preflight.v0",
+        extras={
+            "runtime_private_source": _optional(_bool),
+            "payload_mutation_applied": _optional(_bool),
+        },
+    ),
+    "client_history_exclusion_apply_summary": _mapping(
+        {
+            "artifact_name": _enum("client_history_exclusion_apply_summary"),
+            "schema_version": _enum("client_history_exclusion_apply.v0"),
+            "present": _bool,
+            "diagnostics_only": _bool,
+            "content_free": _bool,
+            "runtime_private_source": _bool,
+            "payload_candidate_present": _bool,
+            "payload_mutation_applied": _bool,
+            "content_bearing_candidate_persisted": _bool,
+        }
+    ),
+    "relayref_artifact": _artifact_fields(
+        "relayref_artifact",
+        "relayref.dry_run_artifact.v0",
+    ),
+    "relayint_intent_artifact": _artifact_fields(
+        "relayint_intent_artifact",
+        "relayint.intent.v1",
+    ),
+    "relayint_fast_path_dry_run": _artifact_fields(
+        "relayint_fast_path_dry_run",
+        "relayint_fast_path_dry_run.v0",
+    ),
+    "relayint_quick_clarification_preflight": _artifact_fields(
+        "relayint_quick_clarification_preflight",
+        "relayint_quick_clarification_preflight.v0",
+    ),
+    "relayint_quick_clarification_apply_plan": _artifact_fields(
+        "relayint_quick_clarification_apply_plan",
+        "relayint_quick_clarification_apply_plan.v0",
+    ),
+    "runtime_ctx_injection_result": _artifact_fields(
+        "runtime_ctx_injection_result",
+        "relaymem.runtime_ctx_injection_result.v0",
+    ),
+    "runtime_snippet_injection_result": _artifact_fields(
+        "runtime_snippet_injection_result",
+        "relaymem.runtime_snippet_injection_result.v0",
+    ),
+    "token_budget_truncation": _artifact_fields(
+        "token_budget_truncation",
+        None,
+    ),
+    "relayctx_short_term_runtime_injection_apply_result": _artifact_fields(
+        "relayctx_short_term_runtime_injection_apply_result",
+        "relayctx_short_term_runtime_injection_apply_result.v0",
+    ),
+    "relayctx_unpack_runtime_result": _mapping(
+        {
+            "artifact_name": _enum("relayctx_unpack_runtime_result"),
+            "schema_version": _optional(_enum("relayctx_unpack_runtime.v0")),
+            "present": _bool,
+            "content_free": _optional(_bool),
+            "applied_to_response": _optional(_bool),
+            "candidate_present": _optional(_bool),
+            "persistence_allowed": _optional(_bool),
+        }
+    ),
 }
 
 
@@ -309,8 +437,6 @@ class NodeProjector:
 
 
 def _artifact_list(allowed_names: frozenset[str]) -> Validator:
-    base = _mapping(_ARTIFACT_BASE_FIELDS)
-
     def validate(value: Any) -> Projection:
         if not isinstance(value, Sequence) or isinstance(
             value, (str, bytes, bytearray)
@@ -326,7 +452,11 @@ def _artifact_list(allowed_names: frozenset[str]) -> Validator:
             if not isinstance(artifact_name, str) or artifact_name not in allowed_names:
                 dropped += 1
                 continue
-            clean, child_dropped = base(item)
+            projector = _ARTIFACT_PROJECTORS.get(artifact_name)
+            if projector is None:
+                dropped += 1
+                continue
+            clean, child_dropped = projector(item)
             dropped += child_dropped
             if clean is _DROP or clean is _OMIT:
                 dropped += 1
@@ -660,6 +790,41 @@ _REFERENCE_DIAGNOSTICS = _mapping(
     }
 )
 
+_REFERENCE_INTENT_DIAGNOSTICS = _mapping(
+    {
+        "diagnostics_only": _bool,
+        "content_free": _bool,
+        "source_node_alias": _enum("relayint_reference_intent"),
+        "compatibility_source_node": _enum("relayint"),
+        "artifact_present": _bool,
+        "unresolved_reference_detected": _bool,
+        "apply_allowed": _bool,
+    }
+)
+
+_HISTORY_APPLY_DIAGNOSTICS = _mapping(
+    {
+        "schema_version": _enum("client_history_exclusion_apply.v0"),
+        "enabled": _bool,
+        "status": _enum("ready", "applied", "blocked", "skipped"),
+        "dry_run_only": _bool,
+        "managed_route": _bool,
+        "compiler_used": _bool,
+        "relay_owned_prefix_message_count": _non_negative_int,
+        "original_compiled_message_count": _non_negative_int,
+        "forwarded_message_count": _non_negative_int,
+        "excluded_client_message_count": _non_negative_int,
+        "preserved_client_message_count": _non_negative_int,
+        "instruction_resolution_mode": _enum(
+            "none", "cache_hit", "cache_miss_first_pass", "blocked", "not_applicable",
+        ),
+        "payload_candidate_present": _bool,
+        "payload_mutation_applied": _bool,
+        "runtime_private_source": _bool,
+        "content_bearing_candidate_persisted": _bool,
+    }
+)
+
 _QUICK_DIAGNOSTICS = _mapping(
     {
         "diagnostics_only": _bool,
@@ -862,9 +1027,24 @@ PIPELINE_NODE_PROJECTORS: dict[str, NodeProjector] = {
         artifact_names=frozenset({"client_history_exclusion_preflight_summary"}),
     ),
     "relayint_reference_repair": NodeProjector(
-        decisions=None,
+        decisions=frozenset({"none", "context_repair", "suggest_reflect"}),
         diagnostics=_REFERENCE_DIAGNOSTICS,
-        artifact_names=frozenset({"relayref_artifact"}),
+        artifact_names=frozenset({"relayref_artifact", "relayint_intent_artifact"}),
+    ),
+    "relayint_reference_intent": NodeProjector(
+        decisions=frozenset({"none", "context_repair", "suggest_reflect"}),
+        diagnostics=_REFERENCE_INTENT_DIAGNOSTICS,
+        artifact_names=frozenset({"relayint_intent_artifact"}),
+    ),
+    "client_history_exclusion_apply": NodeProjector(
+        decisions=frozenset({
+            "pass_through_route_exempt",
+            "client_history_exclusion_apply_blocked",
+            "client_history_exclusion_applied",
+            "client_history_exclusion_apply_ready",
+        }),
+        diagnostics=_HISTORY_APPLY_DIAGNOSTICS,
+        artifact_names=frozenset({"client_history_exclusion_apply_summary"}),
     ),
     "relayint_quick_clarification": NodeProjector(
         decisions=frozenset({
@@ -993,15 +1173,16 @@ _TOKEN_MEMORY_DRY_RUN = _mapping({"summary": _TOKEN_MEMORY_SUMMARY, "assembly": 
 _COMPILE_DECISION = _mapping(
     {
         "schema_version": _optional(_bounded_token),
-        "decision_id": _opaque_id,
-        "plan_id": _opaque_id,
-        "result_id": _opaque_id,
-        "decision_state": _enum("COMPILE_DRY_RUN"),
+        "decision_id": _scoped_uuid_id("compile-decision-dry-run"),
+        "plan_id": _scoped_uuid_id("compile-plan"),
+        "result_id": _scoped_uuid_id("compile-result"),
+        "decision_state": _enum("COMPILE_DRY_RUN", "COMPILE_APPLY"),
         "selected_route": _bounded_token,
         "selected_mode": _bounded_token,
         "backend": _bounded_token,
         "character_id": _optional(_opaque_id),
         "compiled_message_count": _non_negative_int,
+        "fallback_reason": _optional(_lower_token),
         "blocking_reasons": _REASON_LIST,
         "omitted_block_ids": _OPAQUE_ID_LIST,
         "token_budget_status": _bounded_token,
@@ -1099,6 +1280,13 @@ _PRIMARY_RECALL_PROJECTION = _mapping(
         "fallback_reason": _optional(_lower_token),
         "persistence_block": _bool,
         "ctx_block_present": _bool,
+        "primary_candidate_discovery_attempted": _bool,
+        "primary_candidate_count": _non_negative_int,
+        "grounding_enabled": _bool,
+        "grounded_item_count": _non_negative_int,
+        "unsupported_detail_policy": _enum("suppress"),
+        "evidence_content_included": _bool,
+        "runtime_private_evidence_omitted": _bool,
         "selected_count": _non_negative_int,
         "selected_layer_counts": _PRIMARY_RECALL_LAYER_COUNTS,
         "character_scope_resolved": _bool,
@@ -1138,6 +1326,8 @@ TOP_LEVEL_PROJECTORS: dict[str, Validator] = {
     "runtime_ctx_injection_result": _RUNTIME_INJECTION,
     "runtime_snippet_injection_result": _RUNTIME_INJECTION,
     "relaymem_primary_recall_projection": _PRIMARY_RECALL_PROJECTION,
+    "projection_dropped_field_count": _non_negative_int,
+    "projection_unsupported_artifact_count": _non_negative_int,
 }
 
 
