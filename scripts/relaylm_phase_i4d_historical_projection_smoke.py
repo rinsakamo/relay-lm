@@ -75,7 +75,7 @@ def main() -> None:
             namespace=NAMESPACE, store_root=str(root), reason_ids=(),
         )
         active = build_lab_memory_used_lifecycle_projection(scope)
-        require(active.schema == "relaylm.lab.memory_used_lifecycle.v1", active)
+        require(active.schema_ == "relaylm.lab.memory_used_lifecycle.v1", active)
         item = active.items[0]
         require(item.injected_summary == INJECTED, item)
         require(item.current_summary == INJECTED, item)
@@ -104,7 +104,7 @@ def main() -> None:
         require(item.representation_changed is False, item)
         require(item.lifecycle_changed is True, item)
         require(used_path.read_bytes() == before, "historical receipt changed")
-        public = hidden.model_dump_json()
+        public = hidden.model_dump_json(by_alias=True)
         require(REASON not in public, public)
         require(str(preflight["apply_token"]) not in public, public)
 

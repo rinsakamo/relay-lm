@@ -25,9 +25,10 @@ class LabUsedMemoryLifecycleItem(_ExactModel):
 
 
 class LabMemoryUsedLifecycleProjection(_ExactModel):
-    schema: Literal[
-        "relaylm.lab.memory_used_lifecycle.v1"
-    ] = "relaylm.lab.memory_used_lifecycle.v1"
+    schema_: Literal["relaylm.lab.memory_used_lifecycle.v1"] = Field(
+        default="relaylm.lab.memory_used_lifecycle.v1",
+        alias="schema",
+    )
     source: Literal["relaylm_runtime"] = "relaylm_runtime"
     read_only: Literal[True] = True
     availability: Literal["available", "empty", "unavailable"]

@@ -9,7 +9,7 @@ from .soul_lab_contracts import StrictLabRequestModel, validate_lab_request_text
 
 
 class LabMemoryForgetPreflightRequest(StrictLabRequestModel):
-    schema: Literal["relaylm.lab.memory_forget_preflight_request.v0"]
+    schema_: Literal["relaylm.lab.memory_forget_preflight_request.v0"] = Field(alias="schema")
     expected_revision: int = Field(ge=1, le=2_147_483_647)
     expected_lifecycle_state: Literal["active"]
     reason: str = Field(min_length=1, max_length=512)
@@ -22,7 +22,7 @@ class LabMemoryForgetPreflightRequest(StrictLabRequestModel):
 
 
 class LabMemoryForgetApplyRequest(StrictLabRequestModel):
-    schema: Literal["relaylm.lab.memory_forget_apply_request.v0"]
+    schema_: Literal["relaylm.lab.memory_forget_apply_request.v0"] = Field(alias="schema")
     expected_revision: int = Field(ge=1, le=2_147_483_647)
     expected_lifecycle_state: Literal["active"]
     reason: str = Field(min_length=1, max_length=512)

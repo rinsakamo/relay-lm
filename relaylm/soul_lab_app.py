@@ -236,7 +236,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
     ) -> JSONResponse:
         require_loopback_management(request)
         projection = build_lab_last_run_projection(observation_scope(character_id, namespace))
-        return JSONResponse(content=projection.model_dump(mode="json"), headers={"Cache-Control": "no-store"})
+        return JSONResponse(content=projection.model_dump(mode="json", by_alias=True), headers={"Cache-Control": "no-store"})
 
     @app.get("/lab/api/characters/{character_id}/memory/recent", response_model=None)
     async def lab_recent_memory(
@@ -247,7 +247,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
     ) -> JSONResponse:
         require_loopback_management(request)
         projection = build_lab_active_recent_memory_projection(observation_scope(character_id, namespace), limit=limit)
-        return JSONResponse(content=projection.model_dump(mode="json"), headers={"Cache-Control": "no-store"})
+        return JSONResponse(content=projection.model_dump(mode="json", by_alias=True), headers={"Cache-Control": "no-store"})
 
     @app.get("/lab/api/characters/{character_id}/memory/held", response_model=None)
     async def lab_held_memory(
@@ -258,7 +258,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
     ) -> JSONResponse:
         require_loopback_management(request)
         projection = build_lab_memory_held_projection(observation_scope(character_id, namespace), limit=limit)
-        return JSONResponse(content=projection.model_dump(mode="json"), headers={"Cache-Control": "no-store"})
+        return JSONResponse(content=projection.model_dump(mode="json", by_alias=True), headers={"Cache-Control": "no-store"})
 
     @app.get(
         "/lab/api/characters/{character_id}/lab/last-run/memory/used",
@@ -271,7 +271,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
     ) -> JSONResponse:
         require_loopback_management(request)
         projection = build_lab_memory_used_projection(observation_scope(character_id, namespace))
-        return JSONResponse(content=projection.model_dump(mode="json"), headers={"Cache-Control": "no-store"})
+        return JSONResponse(content=projection.model_dump(mode="json", by_alias=True), headers={"Cache-Control": "no-store"})
 
     @app.get(
         "/lab/api/characters/{character_id}/lab/last-run/memory/used-lifecycle",
@@ -284,7 +284,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
     ) -> JSONResponse:
         require_loopback_management(request)
         projection = build_lab_memory_used_lifecycle_projection(observation_scope(character_id, namespace))
-        return JSONResponse(content=projection.model_dump(mode="json"), headers={"Cache-Control": "no-store"})
+        return JSONResponse(content=projection.model_dump(mode="json", by_alias=True), headers={"Cache-Control": "no-store"})
 
     @app.get(
         "/lab/api/characters/{character_id}/lab/lifecycle-visibility",
@@ -300,7 +300,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             observation_scope(character_id, namespace),
             config=config,
         )
-        return JSONResponse(content=projection.model_dump(mode="json"), headers={"Cache-Control": "no-store"})
+        return JSONResponse(content=projection.model_dump(mode="json", by_alias=True), headers={"Cache-Control": "no-store"})
 
     @app.post(
         "/lab/api/characters/{character_id}/memory/{memory_id}/correct/preflight",

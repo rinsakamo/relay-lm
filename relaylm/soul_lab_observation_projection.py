@@ -69,7 +69,10 @@ class LabUsedMemoryItem(_ExactModel):
 
 
 class LabLastRunProjection(_ExactModel):
-    schema: Literal["relaylm.lab.last_run.v0"] = "relaylm.lab.last_run.v0"
+    schema_: Literal["relaylm.lab.last_run.v0"] = Field(
+        default="relaylm.lab.last_run.v0",
+        alias="schema",
+    )
     source: SourceMarker = "relaylm_runtime"
     read_only: Literal[True] = True
     availability: Availability
@@ -96,7 +99,10 @@ class LabLastRunProjection(_ExactModel):
 
 
 class LabRecentMemoryProjection(_ExactModel):
-    schema: Literal["relaylm.lab.memory_recent.v0"] = "relaylm.lab.memory_recent.v0"
+    schema_: Literal["relaylm.lab.memory_recent.v0"] = Field(
+        default="relaylm.lab.memory_recent.v0",
+        alias="schema",
+    )
     source: SourceMarker = "relaylm_runtime"
     read_only: Literal[True] = True
     availability: Availability
@@ -110,7 +116,10 @@ class LabRecentMemoryProjection(_ExactModel):
 
 
 class LabMemoryHeldProjection(_ExactModel):
-    schema: Literal["relaylm.lab.memory_held.v0"] = "relaylm.lab.memory_held.v0"
+    schema_: Literal["relaylm.lab.memory_held.v0"] = Field(
+        default="relaylm.lab.memory_held.v0",
+        alias="schema",
+    )
     source: SourceMarker = "relaylm_runtime"
     read_only: Literal[True] = True
     availability: Availability
@@ -124,7 +133,10 @@ class LabMemoryHeldProjection(_ExactModel):
 
 
 class LabMemoryUsedProjection(_ExactModel):
-    schema: Literal["relaylm.lab.memory_used.v0"] = "relaylm.lab.memory_used.v0"
+    schema_: Literal["relaylm.lab.memory_used.v0"] = Field(
+        default="relaylm.lab.memory_used.v0",
+        alias="schema",
+    )
     source: SourceMarker = "relaylm_runtime"
     read_only: Literal[True] = True
     availability: Availability
