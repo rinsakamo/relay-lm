@@ -23,6 +23,7 @@ from .soul_lab_observation_store import (
     read_used_receipt_for_run,
     stable_correlation,
 )
+from .soul_lab_read_context import build_lab_read_context
 
 SourceMarker = Literal["relaylm_runtime"]
 Availability = Literal["available", "empty", "unavailable"]
@@ -352,42 +353,35 @@ def build_lab_memory_held_projection(scope: LabObservationScope, *, limit: int) 
 
 
 def build_lab_memory_used_projection(scope: LabObservationScope) -> LabMemoryUsedProjection:
-    if not scope.available or scope.store_root is None:
+    context = build_lab_read_context(scope)
+    if context.availability == "unavailable":
         return LabMemoryUsedProjection(
             availability="unavailable", character_id=scope.character_id, namespace=scope.namespace,
             run_id=None, retrieval_attempted=False, candidate_discovered=False, selected=False,
             relayctx_injection_performed=False, backend_bound_included=False,
-            response_generation_completed=False, items=[], bounded_reason_ids=list(scope.reason_ids),
+            response_generation_completed=False, items=[], bounded_reason_ids=list(context.unavailable_reasons),
         )
-    runs, run_reasons = read_run_receipts_for_scope(
-        scope.store_root, scope.character_id, scope.namespace
-    )
-    runs = [item for item in runs if item.get("character_id") == scope.character_id and item.get("namespace") == scope.namespace]
-    if not runs:
+    if context.latest_run is None:
         return LabMemoryUsedProjection(
             availability="empty", character_id=scope.character_id, namespace=scope.namespace,
             run_id=None, retrieval_attempted=False, candidate_discovered=False, selected=False,
             relayctx_injection_performed=False, backend_bound_included=False,
-            response_generation_completed=False, items=[], bounded_reason_ids=normalize_reason_ids(run_reasons),
+            response_generation_completed=False, items=[], bounded_reason_ids=normalize_reason_ids(context.run_reasons),
         )
-    latest = max(runs, key=_run_order_key)
-    run_id = str(latest["run_id"])
-    receipt, used_reasons = read_used_receipt_for_run(scope.store_root, run_id)
-    if receipt is not None and (
-        receipt.get("character_id") != scope.character_id
-        or receipt.get("namespace") != scope.namespace
-    ):
-        receipt = None
-        used_reasons = normalize_reason_ids([*used_reasons, "observation_receipt_scope_mismatch"])
+
+    run_id = str(context.latest_run["run_id"])
+    receipt = context.latest_used_receipt
     if receipt is None:
         return LabMemoryUsedProjection(
             availability="empty", character_id=scope.character_id, namespace=scope.namespace,
             run_id=run_id, retrieval_attempted=False, candidate_discovered=False, selected=False,
             relayctx_injection_performed=False, backend_bound_included=False,
-            response_generation_completed=latest["relayrun_status"] == "completed", items=[],
-            bounded_reason_ids=normalize_reason_ids([*run_reasons, *used_reasons]),
+            response_generation_completed=context.response_generation_completed, items=[],
+            bounded_reason_ids=normalize_reason_ids([*context.run_reasons, *context.used_reasons]),
         )
-    current, current_reasons = _current_summaries(scope.store_root, scope.namespace)
+
+    current = context.current_summary_map()
+    current_reasons = context.current_summary_reasons()
     items: list[LabUsedMemoryItem] = []
     for item in receipt.get("items", []):
         memory_id = str(item["memory_id"])
@@ -398,7 +392,7 @@ def build_lab_memory_used_projection(scope: LabObservationScope) -> LabMemoryUse
             representation_changed=current_summary is not None and current_summary != injected,
             source_kind=str(item.get("source_kind", "primary")),
         ))
-    reasons = normalize_reason_ids([*run_reasons, *used_reasons, *current_reasons, *receipt.get("reason_ids", [])])
+    reasons = normalize_reason_ids([*context.run_reasons, *context.used_reasons, *current_reasons, *receipt.get("reason_ids", [])])
     return LabMemoryUsedProjection(
         availability="available" if items else "empty", character_id=scope.character_id,
         namespace=scope.namespace, run_id=run_id,
@@ -406,47 +400,8 @@ def build_lab_memory_used_projection(scope: LabObservationScope) -> LabMemoryUse
         candidate_discovered=bool(receipt["candidate_discovered"]), selected=bool(receipt["selected"]),
         relayctx_injection_performed=bool(receipt["relayctx_injection_performed"]),
         backend_bound_included=bool(receipt["backend_bound_included"]),
-        response_generation_completed=latest["relayrun_status"] == "completed", items=items, bounded_reason_ids=reasons,
+        response_generation_completed=context.response_generation_completed, items=items, bounded_reason_ids=reasons,
     )
-
-
-def _current_summaries(store_root: str, namespace: str) -> tuple[dict[str, str], list[str]]:
-    root = Path(store_root)
-    control, reasons = _load_control_state(root)
-    if control is None:
-        return {}, reasons
-    from .relaymem_primary_correction import (
-        load_primary_correction_state,
-        resolve_primary_correction_identity,
-    )
-
-    correction_state = load_primary_correction_state(root, namespace=namespace)
-    summaries: dict[str, str] = {}
-    output_reasons = list(reasons)
-    for entry in control["index"]:
-        if entry.get("namespace") != namespace:
-            continue
-        physical_identity = entry.get("idempotency_key")
-        if not isinstance(physical_identity, str):
-            continue
-        resolved = resolve_primary_correction_identity(
-            correction_state, physical_identity
-        )
-        if resolved is None:
-            output_reasons.append("primary_correction_state_invalid")
-            continue
-        identity, _revision, is_current = resolved
-        if not is_current:
-            continue
-        loaded, blocked = _load_validated_page(
-            root, {"path": entry.get("page_relative_path")},
-            expected_namespace=namespace, control=control,
-        )
-        if loaded is None:
-            output_reasons.extend(blocked)
-            continue
-        summaries[identity] = bounded_text(loaded.get("summary"), maximum=512)
-    return summaries, normalize_reason_ids(output_reasons)
 
 
 __all__ = [
