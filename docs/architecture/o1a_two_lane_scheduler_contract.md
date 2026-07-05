@@ -36,11 +36,11 @@ relaylm_related_authority:
 ---
 # O1A: Bounded Two-Lane Work-Source Scheduling and Idle-State Contract
 
-Last reviewed: 2026-06-27 JST
+Last reviewed: 2026-07-05 JST
 
 ## 1. Status
 
-**Contract and pure deterministic aggregation model complete.** O1B replay adapter, O1C queue adapter, O1D1 one production round, O1D2 policy wrapper, O1E caller-invoked operational controls, and O1F operational validation are complete at their bounded boundaries. Supervised service lifecycle and always-on operation remain outside O1A and are planned/unimplemented as O2/O3.
+**Contract and pure deterministic aggregation model complete.** O1B replay adapter, O1C queue adapter, O1D1 one production round, O1D2 policy wrapper, O1E caller-invoked operational controls, and O1F operational validation are complete at their bounded boundaries. O2 supervised local service operation and O3 local always-on process wrapping are complete in dedicated opt-in handoffs above O1E; they do not change O1A authority.
 
 O1A defines one bounded scheduler round across two distinct work sources:
 
@@ -49,7 +49,7 @@ O1A defines one bounded scheduler round across two distinct work sources:
 
 O1A does not scan either root, select a production record, invoke I1-GC, invoke C2, poll, sleep, compute backoff, recover stale claims, supervise a process, validate operational soak behavior, or mutate a filesystem. The pure module `relaylm/relaymem_slp_scheduler_contract.py` validates already-bounded lane outcomes and derives only a scheduler result, a `stop | run_next_round | idle` disposition, and a content-free projection.
 
-O1D1 is the production wiring for exactly one such round. O1D2 wraps one round with bounded policy hints. O1E wraps the caller-invoked stack with bounded stale-recovery/cancellation/shutdown controls. O1F validates the operational boundary. None of these completions makes O1 a recurring automatic queue processor, production polling loop, supervised service, or always-on operation.
+O1D1 is the production wiring for exactly one such round. O1D2 wraps one round with bounded policy hints. O1E wraps the caller-invoked stack with bounded stale-recovery/cancellation/shutdown controls. O1F validates the operational boundary. O2 and O3 wrap that stack only through dedicated opt-in local operation handoffs. None of these completions makes O1A a recurring automatic queue processor, production polling loop, supervised service, or always-on operation.
 
 The current downstream map is:
 
@@ -60,7 +60,8 @@ O1E   stale-claim recovery orchestration, cancellation checkpoints,
       graceful shutdown controls                                      complete
 O1F   corruption, concurrency, saturation, restart, leakage,
       operational validation                                          complete
-O2/O3 supervised and always-on local operation                        planned/unimplemented
+O2    supervised local service wrapper above O1E                      complete
+O3    local CLI/process wrapper around O2                             complete
 ```
 
 ## 2. Purpose and path
@@ -82,7 +83,7 @@ one bounded scheduler round
   -> return without sleeping
 ```
 
-The scheduler coordinates opportunities. It does not absorb either underlying state machine. O1D2 and O1E own policy and controls around subsequent caller decisions. O1F owns validation-only hardening. O2/O3 would own any later service supervision or always-on lifecycle.
+The scheduler coordinates opportunities. It does not absorb either underlying state machine. O1D2 and O1E own policy and controls around subsequent caller decisions. O1F owns validation-only hardening. O2/O3 own opt-in local service supervision and process wrapping outside O1A.
 
 ## 3. Authority map
 
@@ -207,7 +208,7 @@ relaymem_local_scheduler_queue_lane_enabled: true
 
 Every other combination is invalid and stops before lane invocation. An enabled scheduler with both lanes disabled is also invalid.
 
-Scheduler gates never elevate I1-GC, O0, C2, B3, or durable-finalization gates. Replay apply requires the existing I1-GC/durable-finalization explicit gates. Queue apply reuses current O0/C2 gates and server-owned roots. CLI and browser input cannot provide roots, locators, job IDs, dispatch IDs, or claims. Roots are never derived from a record. O1D2 owns interval, retry-time, fairness, backoff, jitter, and saturation pacing. O2 owns any future concurrency and worker-count settings.
+Scheduler gates never elevate I1-GC, O0, C2, B3, or durable-finalization gates. Replay apply requires the existing I1-GC/durable-finalization explicit gates. Queue apply reuses current O0/C2 gates and server-owned roots. CLI and browser input cannot provide roots, locators, job IDs, dispatch IDs, or claims. Roots are never derived from a record. O1D2 owns interval, retry-time, fairness, backoff, jitter, and saturation pacing. O2 owns service-level concurrency and worker-count settings.
 
 The pure `SchedulerGates` type uses exact booleans and rejects integer/string coercion.
 
