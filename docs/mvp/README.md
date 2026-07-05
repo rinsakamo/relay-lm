@@ -18,9 +18,10 @@ Each implementation PR creates only its own report. It must not edit this centra
 
 ### Wave 8 merged completion reports
 
-Wave 8 currently contains an operator-facing evaluation-flow convenience report. It is historical evidence for the runner slice only and does not mark O2/O3, supervised workers, polling, or always-on operation complete.
+Wave 8 currently contains operator-facing evaluation-flow convenience and later documentation convergence reports. These reports are historical evidence for their own slices only. The MVP eval runner report does not mark O2/O3, supervised workers, polling, or always-on operation complete; the O2/O3 and PM-D5-D7 docs convergence report records the later shared-documentation convergence after those separate implementation PRs landed.
 
 - [MVP eval runner completion report](wave8/mvp_eval_runner_completion_report.md) — source PR #451.
+- [O2/O3 and PM-D5-D7 docs convergence completion report](wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md) — source PR TBD.
 
 ### Wave 7 merged completion reports
 
@@ -100,6 +101,7 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r3_comple
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r4_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r5_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/mvp_eval_runner_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md
 ```
 
 The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.
