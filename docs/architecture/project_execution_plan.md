@@ -45,7 +45,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Execution Plan
 
-Last reviewed: 2026-07-05 JST
+Last reviewed: 2026-07-06 JST
 
 ## Purpose
 
@@ -91,7 +91,7 @@ Evaluation
     -> E1-R2 idempotent character-store bootstrap command complete
     -> E1-R3 provenance-preserving Primary MEM formation summary complete
     -> E1-R4 retrieval-response grounding and unsupported-detail suppression complete
-    -> E1-R5 Primary MEM recall candidate discovery bridge complete
+    -> E1-R5 Primary MEM recall candidate discovery fallback complete
 ```
 
 ## MVP completion criteria
@@ -116,7 +116,6 @@ Open or remaining decision debt:
 - PM-D2 RelayINT -> RelayMEM relayint_intent_artifact legacy compatibility scope; evaluate closure or absorption after PM-D6 if the native artifact closes the legacy artifact scope
 - PM-D3 RelayEMO/RelaySCN scene_state ownership
 - PM-D4 client history exclusion default-off deployment decision
-- PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
 - PM-D9 analyzer candidate governance and multilingual schema policy follow-through after ACG-1 through ACG-6
 
 Completed post-MVP debt:
@@ -124,14 +123,15 @@ Completed post-MVP debt:
 - PM-D5 RelayMEM flat-store compatibility removal
 - PM-D6 RelayINT native artifact / RelayREF wrapper removal
 - PM-D7 runtime install hook fold-in
+- PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in complete in PR #491
 
-Implementation order for large compatibility removals was completed as:
+Implementation order for large compatibility removals and fold-ins completed as:
 
 ```text
-PM-D5 -> PM-D6 -> PM-D7
+PM-D5 -> PM-D6 -> PM-D7 -> PM-D8
 ```
 
-PM-D8 should be evaluated with PM-D5 when Primary recall layout discovery or adapter/root handling is touched.
+PM-D8 was historically related to PM-D5 because both touched Primary recall layout discovery and adapter/root handling. PR #491 closes PM-D8 by folding the former E1-R5 bridge behavior into canonical Primary recall while leaving the former bridge module compatibility no-op only.
 
 Execute the existing RelaySCN-owned `scene_state` migration plan only through dedicated RelaySCN or Character Workspace follow-up slices. ACG-6 does not add Character Workspace parser/compiler/UI, scene-wiki page mutation, or permissive runtime authority from classifier output alone.
 
@@ -149,13 +149,13 @@ Completed post-MVP debt:
   PM-D5 RelayMEM flat-store compatibility removal complete
   PM-D6 RelayINT native artifact / RelayREF wrapper removal complete
   PM-D7 runtime install hook fold-in complete
+  PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in complete
 
 Remaining post-E1-R5 / post-Wave-7 candidates:
-  E1-R5 scoped Primary recall candidate bridge boundary remains complete.
+  E1-R5 scoped Primary recall candidate fallback boundary remains complete.
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D3 RelayEMO/RelaySCN scene_state ownership
   PM-D4 client history exclusion default-off deployment decision
-  PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
   PM-D9 analyzer candidate governance and multilingual schema policy follow-through
   PM-D2 closure or absorption after PM-D6 if RelayREF wrapper removal closes the legacy artifact scope
   durable-memory E2 value smoke after O2/O3 scheduler draining evidence
@@ -210,10 +210,10 @@ Wave 7 completed the E1-R3 / E1-R4 evidence and grounding slices without changin
 ### Post-Wave-7 E1-R5 correction completed
 
 ```text
-E1-R5 Primary MEM recall candidate discovery bridge complete
+E1-R5 Primary MEM recall candidate discovery fallback complete
 ```
 
-E1-R5 remains a bounded scoped Primary recall bridge. It preserves M2 as preferred relevance owner and is tracked for later canonical adapter fold-in by PM-D8.
+E1-R5 remains a bounded scoped Primary recall fallback. It preserves M2 as preferred relevance owner. PM-D8 canonical adapter fold-in is complete in PR #491; the former runtime bridge module remains compatibility no-op only.
 
 ### Character Workspace reset completed through CW-A5
 
@@ -236,16 +236,17 @@ O3 always-on local operation complete as opt-in local CLI/process wrapper
 
 O2/O3 remain local operation support only. They are not app-embedded, not browser authority, not default-on, and do not add memory mutation authority. The durable-memory E2 scenario remains separate evaluation work.
 
-### PM-D5 / PM-D6 / PM-D7 compatibility debt completed
+### PM-D5 / PM-D6 / PM-D7 / PM-D8 compatibility debt completed
 
 ```text
 PM-D5 RelayMEM flat-store compatibility removal complete
 PM-D6 RelayINT native artifact / RelayREF wrapper removal complete
 PM-D7 runtime install hook fold-in complete
+PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in complete
 ```
 
-PM-D5 removes legacy flat RelayMEM runtime discovery, PM-D6 makes RelayINT own the native input-side reference/intent artifact, and PM-D7 adds explicit dry-run-first runtime install/preflight support.
+PM-D5 removes legacy flat RelayMEM runtime discovery, PM-D6 makes RelayINT own the native input-side reference/intent artifact, PM-D7 adds explicit dry-run-first runtime install/preflight support, and PM-D8 folds the E1-R5 bounded scoped Primary fallback into canonical Primary recall.
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-The remaining candidates are PM-D1/PM-D3/PM-D4/PM-D8/PM-D9 follow-through, PM-D2 closure or absorption after PM-D6, and durable-memory E2 value smoke after O2/O3 scheduler draining evidence.
+The remaining candidates are PM-D1/PM-D3/PM-D4/PM-D9 follow-through, PM-D2 closure or absorption after PM-D6, and durable-memory E2 value smoke after O2/O3 scheduler draining evidence.
