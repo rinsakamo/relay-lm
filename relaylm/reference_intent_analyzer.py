@@ -10,6 +10,18 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
+from relaylm._analyzer_text_features import (
+    AMBIGUOUS_CHOICE_MARKERS,
+    CONTEXT_REPAIR_MARKERS,
+    CONTINUATION_MARKERS,
+    CORRECTION_MARKERS,
+    IMPLEMENTATION_MARKERS,
+    PRIOR_MEMORY_REQUEST_MARKERS,
+    REVIEW_MARKERS,
+    UNRESOLVED_REFERENCE_MARKERS,
+    count_markers,
+    detect_reference_language,
+)
 from relaylm.analyzer_governance import (
     build_analyzer_candidate_artifact,
     can_open_runtime_policy,
@@ -38,37 +50,6 @@ INTENT_KINDS = frozenset({
     "implementation_request",
     "unknown",
 })
-
-UNRESOLVED_REFERENCE_MARKERS = (
-    "which one",
-    "what was that",
-    "what were we",
-    "それ",
-    "これ",
-    "あれ",
-    "さっき",
-    "どっち",
-    "どれ",
-    "前の",
-    "この件",
-    "何の話",
-    "わから",
-)
-AMBIGUOUS_CHOICE_MARKERS = ("which one", "どっち", "どれ")
-CONTEXT_REPAIR_MARKERS = ("what was that", "what were we", "何の話", "わから")
-PRIOR_MEMORY_REQUEST_MARKERS = (
-    "前に話した",
-    "覚えてる",
-    "思い出して",
-    "前回",
-    "前のスレッド",
-    "previous",
-    "remember",
-)
-CONTINUATION_MARKERS = ("続き", "その方向", "それで", "continue")
-CORRECTION_MARKERS = ("修正", "直して", "fix", "correct")
-REVIEW_MARKERS = ("レビュー", "確認して", "review")
-IMPLEMENTATION_MARKERS = ("実装", "進めて", "implement")
 
 _RAW_TEXT_LIKE_KEYS = frozenset({
     "assistant_text",
@@ -360,15 +341,11 @@ def _content_text(content: Any) -> str:
 
 
 def _detect_language(text: str) -> str:
-    if any("\u3040" <= char <= "\u30ff" or "\u4e00" <= char <= "\u9fff" for char in text):
-        return "ja"
-    if any(char.isascii() and char.isalpha() for char in text):
-        return "en"
-    return "und"
+    return detect_reference_language(text)
 
 
 def _count_terms(text: str, terms: Sequence[str]) -> int:
-    return sum(1 for term in terms if term in text)
+    return count_markers(text, terms)
 
 
 def _reference_kind(
