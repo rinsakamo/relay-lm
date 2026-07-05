@@ -37,6 +37,60 @@ _SNIPPET_DIRS = _CANDIDATE_DIRS
 _DEFAULT_MAX_SNIPPET_CHARS = 512
 _DEFAULT_MAX_SNIPPET_CANDIDATES = 3
 _DEFAULT_MAX_SNIPPET_READ_BYTES = 4096
+_MAX_CHARACTER_ROOT_SCAN = 32
+
+
+def _effective_read_root(root_path: str | None) -> str | None:
+    """Resolve the character-scoped store root when given an operator root.
+
+    When ``root_path`` itself has no control files but exactly one
+    ``characters/*`` child does, reads are scoped to that single character
+    partition. Any ambiguity (zero or multiple valid children, unreadable
+    directories) falls back to the original root untouched.
+    """
+    if not root_path:
+        return root_path
+    root = Path(root_path)
+    if _root_has_any_control_file(root):
+        return str(root)
+    characters = root / "characters"
+    if characters.is_symlink() or not characters.is_dir():
+        return str(root)
+    valid_roots: list[Path] = []
+    try:
+        for scanned_count, child in enumerate(characters.iterdir(), start=1):
+            if scanned_count > _MAX_CHARACTER_ROOT_SCAN:
+                return str(root)
+            if child.is_symlink() or not child.is_dir():
+                continue
+            memory_root = child / "memory"
+            if memory_root.is_symlink():
+                continue
+            if _root_has_control_files(child):
+                valid_roots.append(child)
+                if len(valid_roots) > 1:
+                    return str(root)
+    except OSError:
+        return str(root)
+    if len(valid_roots) == 1:
+        return str(valid_roots[0])
+    return str(root)
+
+
+def _root_has_any_control_file(root: Path) -> bool:
+    memory_root = root / "memory"
+    mem_root = memory_root / "mem"
+    if memory_root.is_symlink() or mem_root.is_symlink():
+        return False
+    return (mem_root / "index.md").is_file() or (mem_root / "log.md").is_file()
+
+
+def _root_has_control_files(root: Path) -> bool:
+    memory_root = root / "memory"
+    mem_root = memory_root / "mem"
+    if memory_root.is_symlink() or mem_root.is_symlink():
+        return False
+    return (mem_root / "index.md").is_file() and (mem_root / "log.md").is_file()
 
 
 def discover_relaymem_page_candidates(
@@ -47,6 +101,7 @@ def discover_relaymem_page_candidates(
     max_read_bytes: int = _DEFAULT_MAX_CANDIDATE_READ_BYTES,
     max_scan: int = _DEFAULT_MAX_CANDIDATE_SCAN,
 ) -> dict[str, Any]:
+    root_path = _effective_read_root(root_path)
     max_candidates = max(0, int(max_candidates))
     max_read_bytes = max(1, int(max_read_bytes))
     max_scan = max(0, int(max_scan))
@@ -147,6 +202,8 @@ def build_relaymem_snippet_evidence_dry_run(
     max_snippet_candidates: int = _DEFAULT_MAX_SNIPPET_CANDIDATES,
     max_read_bytes: int = _DEFAULT_MAX_SNIPPET_READ_BYTES,
 ) -> dict[str, Any]:
+    if snippet_extraction_enabled:
+        root_path = _effective_read_root(root_path)
     max_snippet_chars = max(1, int(max_snippet_chars))
     max_snippet_candidates = max(0, int(max_snippet_candidates))
     max_read_bytes = max(1, int(max_read_bytes))
@@ -249,6 +306,8 @@ def build_relaymem_store_diagnostics(
     store_enabled: bool,
     retrieval_dry_run_only: bool,
 ) -> dict[str, Any]:
+    if store_enabled:
+        root_path = _effective_read_root(root_path)
     diagnostics: dict[str, Any] = {
         "schema_version": "relaymem.store_diagnostics.v0",
         "diagnostics_only": True,
