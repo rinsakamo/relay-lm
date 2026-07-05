@@ -44,7 +44,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Status
 
-Last reviewed: 2026-07-05 JST
+Last reviewed: 2026-07-06 JST
 
 ## Purpose and authority
 
@@ -69,20 +69,20 @@ O1 overall: complete through validation-only caller-invoked local scheduler boun
 O2 supervised worker service: complete as opt-in supervised local scheduler service wrapping O1E; not app-embedded, not default-on, and no new memory mutation authority
 O3 always-on local operation: complete as opt-in local CLI/process wrapper around O2; not browser authority, not app-embedded, and not default-on
 
-RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall, scope isolation, and E1-R5 scoped candidate bridge complete
+RelayMEM Primary path: M1/M2 complete; M3a-M3h executable; next-turn recall, scope isolation, E1-R5 scoped candidate fallback, and PM-D8 canonical Primary recall fold-in complete
 P0-PIPE RelayREL / RelaySCN / RelayEMO ordering: complete in PR #458 after actual app.py request-path rewiring and local validation; RelayREL now precedes RelaySCN, RelaySCN precedes input-side RelayEMO, RelayINT/RelayMEM/RelayCTX remain downstream
 CTX Repack phase ordering fix: complete; RelayCTX short-term runtime injection now runs before token_budget_truncation in app.py so token_budget_truncation is the actual final CTX Repack mutation gate
 Analyzer Candidate Governance: ACG-1 contract/helpers complete; ACG-2 Grounded Recall Detail Safety complete; ACG-3 Retrieval Query Normalization complete; ACG-4 Reference/Intent Analyzer consolidation complete; ACG-5 RelayEMO scene ownership cleanup complete; ACG-6 SCN structured classifier and scene-wiki boundary complete
 Character Workspace reset: CW-A1 file-first source tree/parser contracts complete; CW-A2 compiler projections and KV-cache tiers complete; CW-A3 Character Workspace UI rebuild complete as a presentation-only browser UI rebuild; CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals complete as dry-run-first content-free candidate/proposal planning; CW-A5 character creation, bundled templates, showcase import, and safe template validation complete
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0, UI-B1A, I-4E Forget UI, I-5B Pin / Unpin UI, I-7C Held Governance UI, CW-A3 Character Workspace top-level surfaces, and CW-A5 creation surface complete
 UI-B1A read-only lifecycle visibility: complete
-Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete through M2-preferred recall plus E1-R5 bounded scoped candidate bridge
+Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete through M2-preferred recall plus E1-R5 bounded scoped candidate fallback
 E1 evaluation consolidation: complete
 E1-R1 trusted Home scene admission: complete
 E1-R2 character-store bootstrap command: complete
 E1-R3 provenance-preserving Primary MEM formation summary: complete
 E1-R4 retrieval-response grounding and unsupported-detail suppression: complete
-E1-R5 Primary MEM recall candidate discovery bridge: complete
+E1-R5 Primary MEM recall candidate fallback: complete
 Home can be a trusted formation source only through the E1-R1 route-owned gate; browser-owned trust remains rejected.
 I1-GA contract / fault model: complete
 I1-GB durable-finalization publication / pre-release admission: complete
@@ -107,12 +107,13 @@ W5-INT merged
 W6-INT merged
 Wave 7 implementation tracks complete
 W7-INT merged
-Post-Wave-7 E1-R5 correction merged and converged
+Post-Wave-7 E1-R5 correction merged and converged; PM-D8 canonical Primary recall adapter fold-in complete in PR #491
 P0-PIPE ordering slice is complete after PR #458 rewired app.py and validation passed for compile, ordering smoke, docs link check, and current-boundary smoke
 ACG-1 through ACG-6 analyzer governance slices are complete through bounded candidate producers, cleanup gates, and content-free public diagnostics
 PM-D5 RelayMEM flat-store compatibility removal: complete
 PM-D6 RelayINT native artifact / RelayREF wrapper removal: complete
 PM-D7 runtime install hook fold-in: complete
+PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in: complete
 ```
 
 ## Phase 6 and E1 current boundary
@@ -141,11 +142,11 @@ CW-A3 keeps Home on the existing RelayLM `/v1/chat/completions` authority path, 
 
 E1-R4 is request-side only. It builds a backend-bound grounded recall context and instruction from eligible retrieved Primary MEM evidence; it does not add post-hoc visible response rewriting, polling, supervision, browser-owned trust, or new memory mutation authority.
 
-E1-R5 is a bounded request-side fallback bridge. It does not replace M2 as the preferred relevance owner, does not run without query hints, does not scan unbounded filesystem trees, does not use the compatibility symlink, and does not add mutation, worker, scheduler, queue, browser trust, RelaySOUL, or media runtime authority.
+E1-R5 is a bounded request-side fallback. PR #491 folds the former bridge behavior into canonical Primary recall. E1-R5 does not replace M2 as the preferred relevance owner, does not run without query hints, does not scan unbounded filesystem trees, does not use the compatibility symlink, and does not add mutation, worker, scheduler, queue, browser trust, RelaySOUL, or media runtime authority.
 
 RelayCTX short-term runtime injection apply (`relayctx_short_term_runtime_injection_apply_enabled`) remains default-off and dry-run-only by default (`relayctx_short_term_runtime_injection_dry_run_only: true`), so the CTX Repack ordering fix closes a latent gap rather than an actively triggered production bug in the shipped default configuration; deployments that turn apply on must run with the fixed ordering.
 
-Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-freeze relation, PM-D2 RelayINT -> RelayMEM relayint_intent_artifact legacy compatibility scope, PM-D3 RelayEMO/RelaySCN scene_state ownership, PM-D4 client history exclusion default-off deployment decision, PM-D5 RelayMEM flat-store compatibility removal, PM-D6 RelayINT native artifact / RelayREF wrapper removal, PM-D7 runtime install hook fold-in, PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in, and PM-D9 analyzer candidate governance and multilingual schema policy. PM-D5, PM-D6, and PM-D7 are complete; ACG-1 through ACG-6 close the current PM-D9 analyzer-governance sequence.
+Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-freeze relation, PM-D2 RelayINT -> RelayMEM relayint_intent_artifact legacy compatibility scope, PM-D3 RelayEMO/RelaySCN scene_state ownership, PM-D4 client history exclusion default-off deployment decision, PM-D5 RelayMEM flat-store compatibility removal, PM-D6 RelayINT native artifact / RelayREF wrapper removal, PM-D7 runtime install hook fold-in, PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in, and PM-D9 analyzer candidate governance and multilingual schema policy. PM-D5, PM-D6, PM-D7, and PM-D8 are complete; ACG-1 through ACG-6 close the current PM-D9 analyzer-governance sequence.
 
 ## Immediate dependency-first work
 
@@ -157,7 +158,7 @@ Post-O1F next candidates:
   E1-R2 idempotent character-store bootstrap command         complete in Wave 6
   E1-R3 provenance-preserving Primary MEM formation summary  complete in Wave 7
   E1-R4 retrieval-response grounding and unsupported-detail suppression complete in Wave 7
-  E1-R5 Primary MEM recall candidate discovery bridge        complete post-Wave-7
+  E1-R5 Primary MEM recall candidate fallback               complete post-Wave-7
   O2/O3 supervised local scheduler operation                 complete for explicit MVP need
 
 Character Workspace reset:
@@ -171,12 +172,12 @@ Completed post-MVP debt:
   PM-D5 RelayMEM flat-store compatibility removal            complete
   PM-D6 RelayINT native artifact / RelayREF wrapper removal  complete
   PM-D7 runtime install hook fold-in                         complete
+  PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in complete
 
 Post-E1-R5 / Post-Wave-7 next candidates:
-  E1-R5 scoped Primary recall candidate bridge boundary remains complete; new work starts after P0-PIPE and ACG.
+  E1-R5 scoped Primary recall candidate fallback boundary remains complete; new work starts after P0-PIPE and ACG.
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D4 client history exclusion default-off deployment decision
-  PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in
   PM-D9 analyzer candidate governance and multilingual schema policy follow-through
   PM-D2 closure or absorption after PM-D6 if RelayREF wrapper removal closes the legacy artifact scope
   durable-memory E2 value smoke after O2/O3 scheduler draining evidence
