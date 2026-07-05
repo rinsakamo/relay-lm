@@ -19,7 +19,7 @@ relaylm_related_authority:
 
 ## Status
 
-O1D1 implements one accepted, server-configured, single-threaded production scheduler round. Later O1D2 policy, O1E stale-recovery/cancellation/shutdown controls, and O1F operational validation are complete at their bounded caller-invoked boundaries. O1D1 itself still does not implement a scheduler loop, polling, sleep, daemonization, service supervision, worker pools, or always-on operation.
+O1D1 implements one accepted, server-configured, single-threaded production scheduler round. Later O1D2 policy, O1E stale-recovery/cancellation/shutdown controls, and O1F operational validation are complete at their bounded caller-invoked boundaries. O2 supervised local service operation and O3 local process wrapping are complete in dedicated opt-in handoffs above O1E. O1D1 itself still does not implement a scheduler loop, polling, sleep, daemonization, service supervision, worker pools, or always-on operation.
 
 ```text
 one exact RelayLMConfig
@@ -102,7 +102,7 @@ O1C remains sole owner of bounded queue inventory, eligibility, deterministic se
 
 B3/C2/I1-GC/C1-5 retain mutation, claim, lease, replay-fence, source, and convergence authority. O1D1 adds no global scheduler lock, cross-root lock, durable round journal, or leader election.
 
-O1D2 may add bounded policy hints around one O1D1 round. O1E may add caller-invoked cancellation, stale recovery, and shutdown controls around one O1D2/O1D1 invocation. O1F may validate the public operational boundary. None of those later slices moves O1D1 into polling, service supervision, or always-on operation.
+O1D2 may add bounded policy hints around one O1D1 round. O1E may add caller-invoked cancellation, stale recovery, and shutdown controls around one O1D2/O1D1 invocation. O1F may validate the public operational boundary. O2 and O3 may supervise or repeat that caller-invoked stack only through their dedicated opt-in local boundaries; none of those later slices moves O1D1 itself into polling, service supervision, or always-on operation.
 
 ## Same-round replay-to-queue rule
 
@@ -182,7 +182,8 @@ The workflow also runs O1A/O1B/O1C, Wave 2, O0, I1-GC/I1-GD, B2/B3, C2, config l
 O1D2: fairness, retry-time policy, backoff, jitter, pacing      complete
 O1E: stale recovery, cancellation, graceful shutdown controls   complete
 O1F: operational/soak validation                               complete
-O2/O3: supervised and broader automatic operation               planned/unimplemented
+O2: opt-in supervised local service wrapper above O1E           complete
+O3: opt-in local CLI/process wrapper around O2                  complete
 ```
 
 O1D1 completion must not be described as an always-on scheduler, polling service, fairness completion, recovery/shutdown completion, operational-validation completion, or automatic production operation completion. Repository-wide current O1 status lives in [Project Status](../PROJECT_STATUS.md).
