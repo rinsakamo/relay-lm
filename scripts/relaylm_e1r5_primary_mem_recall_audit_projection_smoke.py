@@ -1,7 +1,6 @@
 """E1-R5 Primary MEM recall audit projection field preservation smoke."""
 from __future__ import annotations
 
-import relaylm  # noqa: F401 - installs audit projection contracts
 from relaylm.audit_projection import project_audit_metadata
 
 
