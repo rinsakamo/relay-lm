@@ -18,6 +18,7 @@ _JAPANESE_RECALL_PHRASES = (
     "コーヒー",
     "紅茶",
 )
+_STRIP_CHARS = "\ufeff\u200b\r\n\t .,!?。！？、:;()[]{}\"'`<>«»“”‘’"
 
 
 def discover_relaymem_page_candidates(
@@ -69,7 +70,7 @@ def _expanded_query_terms(query_terms: list[str] | None) -> list[str] | None:
     for raw_term in query_terms:
         if not isinstance(raw_term, str):
             continue
-        term = raw_term.strip()
+        term = _clean_query_term(raw_term)
         if not term:
             continue
         lowered = term.lower()
@@ -81,6 +82,12 @@ def _expanded_query_terms(query_terms: list[str] | None) -> list[str] | None:
                 if phrase_lowered not in expanded:
                     expanded.append(phrase_lowered)
     return expanded
+
+
+def _clean_query_term(raw_term: str) -> str:
+    term = str(raw_term).strip(_STRIP_CHARS)
+    term = " ".join(term.split())
+    return term[:128]
 
 
 __all__ = [
