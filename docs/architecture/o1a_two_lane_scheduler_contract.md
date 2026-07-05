@@ -208,7 +208,7 @@ relaymem_local_scheduler_queue_lane_enabled: true
 
 Every other combination is invalid and stops before lane invocation. An enabled scheduler with both lanes disabled is also invalid.
 
-Scheduler gates never elevate I1-GC, O0, C2, B3, or durable-finalization gates. Replay apply requires the existing I1-GC/durable-finalization explicit gates. Queue apply reuses current O0/C2 gates and server-owned roots. CLI and browser input cannot provide roots, locators, job IDs, dispatch IDs, or claims. Roots are never derived from a record. O1D2 owns interval, retry-time, fairness, backoff, jitter, and saturation pacing. O2 owns service-level concurrency and worker-count settings.
+Scheduler gates never elevate I1-GC, O0, C2, B3, or durable-finalization gates. Replay apply requires the existing I1-GC/durable-finalization explicit gates. Queue apply reuses current O0/C2 gates and server-owned roots. CLI and browser input cannot provide roots, locators, job IDs, dispatch IDs, or claims. Roots are never derived from a record. O1D2 owns interval, retry-time, fairness, backoff, jitter, and saturation pacing. O2 does not currently add worker-count or parallel concurrency controls; those remain future/unsupported unless a later O2 settings slice adds them.
 
 The pure `SchedulerGates` type uses exact booleans and rejects integer/string coercion.
 
@@ -243,7 +243,7 @@ claim owner lease token generation or revision value
 exact retry completion or record timestamp
 digest or fingerprint
 raw exception or config value
-credential or backend secret
+sensitive backend or config value
 nested private lane result
 nested I1-GC result
 nested C2 result
