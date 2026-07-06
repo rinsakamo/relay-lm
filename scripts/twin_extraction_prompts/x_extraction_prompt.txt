@@ -1,0 +1,39 @@
+あなたはペルソナ設計のための素材抽出器です。以下に、ある人物(以後「本人」)のX(Twitter)ポストを、ID・日時付きで渡します。これを読み、次の2系統に分離して抽出してください。
+
+## 系統A: style_observations(人格・スタイル素材)
+本人の「どう考え、どう話すか」に関する観察。以下のカテゴリごとに抽出:
+- tone: 口調・文体の癖(語尾、断定の強さ、敬体/常体の使い分け、文の長さの傾向)
+- values: 繰り返し現れる価値観・優先順位(何を重視し、何を嫌うか)
+- judgment: 判断の癖(意思決定のパターン、リスクへの態度、何を根拠に結論を出すか)
+- humor: ユーモアの型(皮肉、自虐、言葉遊び、その頻度)
+- attention: 関心の向け方(どんな話題に反応し、どんな切り口で語るか)
+
+各観察には:
+- description: 観察内容(1〜2文、日本語)
+- evidence_ids: 根拠となるポストIDを1つ以上
+- strength: high(3件以上の独立した根拠) / medium(2件) / low(1件)
+
+## 系統B: fact_candidates(記憶素材)
+本人に関する事実・知識・出来事。各candidateには:
+- statement: 一人称の平叙文で記述(例:「病棟の稼働率改善に取り組んでいる」)
+- type: knowledge(知識・持論・専門性) / episodic(特定の出来事・体験)
+- provenance: "x_post" 固定
+- evidence_ids: 根拠ポストID
+- time_context: 判明する範囲の時期(年月まで。不明なら "unknown")
+- sensitivity: 患者・職員・取引先等の第三者が特定されうる情報、または経営数値の生データを含む場合は "private_only"、それ以外は "general"。迷ったら "private_only"
+
+## 厳守事項
+- 根拠のない推測・一般論からの補完は禁止。ポストに書かれていることだけから抽出する。
+- 事実をAに、文体の観察をBに入れない。
+- RTや他人の発言への言及から「他人の情報」を抽出しない。本人の発話・見解のみ。
+- 出力はJSONのみ。前置き・後書き・コードフェンス不要。
+
+## 出力形式
+{
+  "style_observations": [
+    {"category": "...", "description": "...", "evidence_ids": ["..."], "strength": "..."}
+  ],
+  "fact_candidates": [
+    {"statement": "...", "type": "...", "provenance": "x_post", "evidence_ids": ["..."], "time_context": "...", "sensitivity": "..."}
+  ]
+}
