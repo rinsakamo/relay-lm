@@ -14,7 +14,7 @@ relaylm_not_authoritative_for:
 ---
 # ツイン素材 二股抽出プロンプト(X archive / ChatGPTログ)
 
-目的: Rinの一人称コーパスから、**(A) スタイル・価値観・判断の癖 → SOUL draft素材** と **(B) 事実・知識 → MEM candidate** を分離抽出する。抽出結果はdraftであり、Rinの手動レビュー・削除を経てからCW-A1形式に落とす。
+目的: 対象人物の一人称コーパスから、**(A) スタイル・価値観・判断の癖 → SOUL draft素材** と **(B) 事実・知識 → MEM candidate** を分離抽出する。抽出結果はdraftであり、本人の手動レビュー・削除を経てからCW-A1形式に落とす。
 
 ---
 
@@ -24,7 +24,7 @@ relaylm_not_authoritative_for:
 前処理(ソース別) -> チャンク分割 -> 抽出プロンプト実行(バッチごと)
   -> A: style_observations をレビュー用に列挙(自動統合なし) -> SOUL draft叩き台
   -> B: fact_candidates を完全一致のみ集約 -> MEM candidate一覧
-  -> Rin手動レビュー(削除・修正・sensitivityの最終判断)
+  -> 本人レビュー(削除・修正・sensitivityの最終判断)
   -> SOUL: CW-A1 file-first形式へ / MEM: bootstrap経路へ(provenanceラベル付き)
 ```
 
@@ -157,9 +157,9 @@ relaylm_not_authoritative_for:
 
 ## 集約・レビュー手順
 
-1. 全バッチのJSONをマージし、style_observationsは自動統合しない。descriptionが同一または類似していても分離したまま保持し、各観察のevidence_ids件数からstrengthのみ再計算する。統合・削除・言い換えはRinレビューで判断する。
+1. 全バッチのJSONをマージし、style_observationsは自動統合しない。descriptionが同一または類似していても分離したまま保持し、各観察のevidence_ids件数からstrengthのみ再計算する。統合・削除・言い換えは本人レビューで判断する。
 2. fact_candidatesは `statement` と `type` の完全一致のみ統合する。x_postとchatgpt_reconstructedの両方に根拠があるものはprovenanceを配列で両方保持する。句読点違い・言い換え・類似文は自動統合しない。
-3. **Rinレビュー(ここが本体)**:
+3. **本人レビュー(ここが本体)**:
    - style: strength=lowは原則落とす。残す場合は自覚と一致するかで判断。「公開の場の自分」への偏りを意識して、実際と違う観察は削除。
    - fact: sensitivityの機械判定を全件目視で上書き確認。private_onlyは公開fixtureへの流用禁止。
    - episodicは「体験として語らない」制約が演技側で効く前提でのみ採用。不安なら落とす。
