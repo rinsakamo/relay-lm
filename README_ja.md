@@ -1,7 +1,7 @@
 # RelayLM
 
 <p align="center">
-  <strong>ローカルLLMのための、記憶・人格指向 OpenAI互換会話プロキシ</strong>
+  <strong>ローカルLLMのための、file-first Character Workspace と記憶・人格指向 OpenAI互換会話プロキシ</strong>
 </p>
 
 <p align="center">
@@ -23,7 +23,7 @@
 
 ## 🌉 RelayLMとは？
 
-RelayLMは、ローカルLLMアプリ、AIコンパニオン、AI VTuber、エージェント、ローカル推論ランタイム向けの、人格に特化した会話プロキシです。
+RelayLMは、ローカルLLMアプリ、AIコンパニオン、AI VTuber、エージェント、ローカル推論ランタイム向けの、**file-first Character Workspace** と人格特化会話プロキシです。
 
 OpenAI互換のフロントエンドとバックエンドの間に配置します。
 
@@ -33,15 +33,16 @@ OpenAI互換のフロントエンドとバックエンドの間に配置しま�
   -> OpenAI互換 LLMバックエンド
 ```
 
-RelayLM自体は**言語モデルではなく**、**メモリデータベースでもありません**。人格、承認済み記憶、RAG、直近の会話、シーン状態、退避コンテキストを、トークン予算内で人格を安定させ、KVキャッシュを再利用しやすい実効コンテキストへ組み立てることを目的としています。
+RelayLM自体は**言語モデルではなく**、**メモリデータベースでもありません**。現在の製品ターゲットは、承認済みMarkdownソースをランタイム投影へコンパイルする、編集可能なfile-first Character Workspaceです。人格、承認済み記憶、RAG、直近の会話、シーン状態、退避コンテキストを、トークン予算内で人格を安定させ、KVキャッシュを再利用しやすい実効コンテキストへ組み立てることを目的としています。
 
 > フロントエンド側で長いコンテキストを管理しなくても、AI VTuberやAIコンパニオンが「よく覚えている」と感じられる会話を目指します。
 
 ## ✨ RelayLMの特徴
 
 - 🔌 **URL差し替えで統合** — OpenAI互換の `/v1/chat/completions` エンドポイントに接続します。
+- 🧬 **File-first Character Workspace** — `SOUL.md`, `STYLE.md`, `EMOTION.md`, `SCENE.md`, `RELATIONSHIP.md`, `MEMORY.md`, `BOUNDARY.md` などの承認済みMarkdownソースを扱います。
 - 🧠 **人格を優先したコンテキスト** — 動的な記憶や検索結果より上位に、人格と出力方針を保ちます。
-- 🧩 **責務を分けたパイプライン** — シーン、感情、意図、検索、コンテキスト、出力観察、実行制御、遅延永続化を分離します。
+- 🧩 **責務を分けたパイプライン** — 関係性、シーン、感情、意図、検索、コンテキスト、出力観察、実行制御、遅延永続化を分離します。
 - ⚡ **KV再利用を意識した配置** — prefix/KVキャッシュを再利用しやすい安定した順序を重視します。
 - 🛡️ **安全側のデフォルト** — リクエスト書き換えや永続化を、互換性・ポリシー・applyゲートの後ろで導入します。
 - 💻 **ローカルファースト** — ストレージを原則ローカルに置き、バックエンドURLを設定で明示し、隠れた外部テレメトリを持ちません。
@@ -235,8 +236,9 @@ Out-of-band after-turn path:
 
 - 📍 [現在のプロジェクト状況](docs/PROJECT_STATUS.md)
 - 🗺️ [ドキュメント一覧](docs/README.md)
+- 🧬 [File-first Character Workspace設計](docs/architecture/file_first_character_workspace_design.md)
+- 🧭 [Character template creation flow](docs/architecture/character_template_creation_flow.md)
 - 🏗️ [アーキテクチャ文書](docs/architecture/README.md)
-- 🧭 [パイプライン実装計画](docs/architecture/pipeline_implementation_plan.md)
 - 🚀 [OpenWebUI + LM Studio MVPガイド](docs/openwebui_lmstudio_mvp.md)
 - ⚙️ [設定スキーマ](docs/config_schema.md)
 - 📜 [契約文書](docs/contracts/README.md)
