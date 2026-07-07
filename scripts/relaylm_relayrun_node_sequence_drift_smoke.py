@@ -2,12 +2,12 @@
 """Smoke coverage guarding against RelayRUN node-sequence/node-builder drift.
 
 RUNTIME_CHECKPOINT_NODE_SEQUENCE (relaylm/relayrun.py) declares the canonical
-runtime checkpoint node names. app.py's `_build_relayrun_runtime_artifact`
-independently builds the actual `node_statuses` list attached to every
-request. Nothing enforced these two stay in sync, so a prior review found the
-declared sequence missing RelayREL, RelayEMO, and the RelayCTX short-term
-injection node entirely. This smoke fails closed if the two ever diverge
-again.
+runtime checkpoint node names. relaylm/relayrun_runtime_artifact.py's
+`_build_relayrun_runtime_artifact` independently builds the actual
+`node_statuses` list attached to every request. Nothing enforced these two stay
+in sync, so a prior review found the declared sequence missing RelayREL,
+RelayEMO, and the RelayCTX short-term injection node entirely. This smoke fails
+closed if the two ever diverge again.
 """
 
 from __future__ import annotations
@@ -19,9 +19,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.app import _build_relayrun_runtime_artifact
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.relayrun import RUNTIME_CHECKPOINT_NODE_SEQUENCE
+from relaylm.relayrun_runtime_artifact import _build_relayrun_runtime_artifact
 from relaylm.routing import resolve_route
 
 
@@ -81,7 +81,8 @@ def main() -> int:
     require(
         actual_node_names == declared_node_names,
         (
-            "RUNTIME_CHECKPOINT_NODE_SEQUENCE and app.py node_statuses names diverged: "
+            "RUNTIME_CHECKPOINT_NODE_SEQUENCE and runtime artifact "
+            "node_statuses names diverged: "
             f"declared_only={declared_node_names - actual_node_names} "
             f"actual_only={actual_node_names - declared_node_names}"
         ),
@@ -108,7 +109,7 @@ def main() -> int:
         RUNTIME_CHECKPOINT_NODE_SEQUENCE,
     )
 
-    print("ok RUNTIME_CHECKPOINT_NODE_SEQUENCE matches app.py node_statuses names")
+    print("ok RUNTIME_CHECKPOINT_NODE_SEQUENCE matches runtime artifact node_statuses names")
     print("ok relayrel/relayemo/relayctx_short_term_injection sit at canonical positions")
     return 0
 
