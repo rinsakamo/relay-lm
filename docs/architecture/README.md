@@ -55,6 +55,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [PM-D5 RelayMEM Flat-store Compatibility Removal](pm_d5_relaymem_flat_store_compatibility_removal.md)
 - [PM-D6 RelayINT Native Artifact / RelayREF Wrapper Removal](pm_d6_relayint_native_artifact_relayref_wrapper_removal.md)
 - [PM-D7 Runtime Install Hook Fold-in](pm_d7_runtime_install_hook_fold_in.md)
+- [PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in](e1r5_primary_mem_recall_candidate_bridge.md) — PM-D8 is absorbed and closed by PR #491; the former bridge behavior is now canonical Primary recall.
 
 ## Product-critical Phase 6 and Integration boundaries
 
@@ -126,6 +127,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [RelayMEM MVP Implementation Plan](relaymem_mvp_implementation_plan.md) — compatibility stub
 - [PM-D5 RelayMEM Flat-store Compatibility Removal](pm_d5_relaymem_flat_store_compatibility_removal.md)
 - [PM-D7 Runtime Install Hook Fold-in](pm_d7_runtime_install_hook_fold_in.md)
+- [PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in](e1r5_primary_mem_recall_candidate_bridge.md) — canonical fallback fold-in; M2 remains preferred and E1-R5 remains fallback-only.
 - [Phase I-4A Primary MEM Forget / Hide Contract](phase_i4_primary_mem_forget_hide_contract.md)
 - [Phase I-4B Primary Current State and Shared Mutation Fence](phase_i4b_primary_current_state_shared_fence.md)
 - [Phase I-4C1 Primary Forget Hidden-Successor Commit](phase_i4c1_primary_forget_hidden_successor.md)
