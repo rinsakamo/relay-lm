@@ -89,9 +89,20 @@ ChatGPT側は `--prompt-file scripts/twin_extraction_prompts/chatgpt_extraction_
 
 応答JSONのパースに失敗したバッチは `--out-dir/failed/` に記録され、実行は続行される(fail-closed)。成功したバッチの抽出結果は `--out-dir/results/` に保存される。進行ログはバッチID・件数・status・所要時間のみで、本文は出力されない。
 
-X側とChatGPT側は別々の `--out-dir` で実行し、マージ時に両方の `results/` を1つのディレクトリにまとめてから次のステップに進む(あるいはマージを2回実行してレビュー用JSONを2つ作り、Rinのレビューで統合してもよい)。
+X側とChatGPT側は別々の `--out-dir` で実行する。両方とも `results/` 配下のファイル名は `batch_0001.result.json` のように同じ採番なので、**手動でファイルをコピーして1つのディレクトリにまとめてはいけない**(片方が他方を上書きし、そのソースの抽出結果がマージから消える)。マージCLIは `--results-dir` を複数回指定できるので、そのまま両方のディレクトリを渡す。
 
 ### 4. マージ
+
+複数ソースをまとめて1つのレビューJSONにする場合、`--results-dir` を繰り返し指定する(ファイルを事前にコピーする必要はない):
+
+```bash
+PYTHONPATH=.:scripts python scripts/relaylm_twin_extraction_merge.py \
+  --results-dir runtime/twin_extraction/x/run/results \
+  --results-dir runtime/twin_extraction/chatgpt/run/results \
+  --out runtime/twin_extraction/twin_extraction_review.json
+```
+
+単一ソースのみをマージする場合は `--results-dir` を1回だけ指定する:
 
 ```bash
 PYTHONPATH=.:scripts python scripts/relaylm_twin_extraction_merge.py \

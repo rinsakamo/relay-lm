@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """Twin Extraction merge CLI.
 
-Merges all batch extraction results under --results-dir into a single
-review artifact (--out). Caller-invoked and bounded; this script is not
-part of the RelayLM runtime and does not import the `relaylm` package.
+Merges all batch extraction results under one or more --results-dir
+directories into a single review artifact (--out). --results-dir is
+repeatable so separate sources (for example X and ChatGPT batch-runner
+output) can be merged directly without copying their files into one
+directory first -- both sources reuse the same batch_NNNN.result.json
+numbering, so a manual copy would silently overwrite one source's evidence
+with the other's. Caller-invoked and bounded; this script is not part of
+the RelayLM runtime and does not import the `relaylm` package.
 
 This tool produces a review artifact only. It does not write to MEM/SOUL
 and does not perform bootstrap ingestion.
@@ -171,7 +176,15 @@ def build_review(batches: list[dict]) -> dict:
 
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--results-dir", required=True, type=Path)
+    parser.add_argument(
+        "--results-dir",
+        required=True,
+        type=Path,
+        action="append",
+        help="a batch-runner --out-dir/results directory; repeat to merge multiple sources "
+        "(e.g. X and ChatGPT) without combining their files by hand, since both sources "
+        "reuse the same batch_NNNN.result.json numbering and a manual copy would collide",
+    )
     parser.add_argument("--out", required=True, type=Path)
     return parser
 
@@ -179,11 +192,13 @@ def build_arg_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
 
-    if not args.results_dir.is_dir():
+    if any(not results_dir.is_dir() for results_dir in args.results_dir):
         print("error: results directory not found", file=sys.stderr)
         return 2
 
-    batches = load_result_batches(args.results_dir)
+    batches = []
+    for results_dir in args.results_dir:
+        batches.extend(load_result_batches(results_dir))
     review = build_review(batches)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)

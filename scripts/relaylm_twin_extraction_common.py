@@ -47,7 +47,11 @@ def iter_json_array_stream(fh, chunk_size: int = DEFAULT_CHUNK_SIZE) -> Iterator
             return
         if not buf:
             if not chunk:
-                return
+                # EOF with no closing bracket ever seen: a truncated array
+                # must fail closed rather than silently look like a clean
+                # end-of-array (which would make truncated archive input
+                # produce a partial batch set with exit code 0).
+                raise TwinExtractionInputError("truncated JSON array: missing closing bracket")
             continue
         try:
             obj, end = decoder.raw_decode(buf)

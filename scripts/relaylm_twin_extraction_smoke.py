@@ -18,6 +18,7 @@ import tempfile
 from pathlib import Path
 
 import relaylm_twin_extraction_batch_runner as batch_runner
+import relaylm_twin_extraction_common as common
 import relaylm_twin_extraction_merge as merge
 import relaylm_twin_extraction_preprocess as preprocess
 
@@ -554,6 +555,96 @@ def check_merge(tmp_path: Path) -> None:
     require(fact_four_b["evidence_ids"] == ["1007"], fact_four_b)
 
 
+def check_merge_multiple_results_dirs_do_not_collide(tmp_path: Path) -> None:
+    # X and ChatGPT batch-runner output both use batch_0001.result.json,
+    # batch_0002.result.json, ... numbering. Merging two sources must not
+    # require copying them into one directory first (which would silently
+    # overwrite one source's files with the other's); --results-dir must be
+    # repeatable instead.
+    x_results_dir = tmp_path / "collision_x_results"
+    chatgpt_results_dir = tmp_path / "collision_chatgpt_results"
+    x_results_dir.mkdir()
+    chatgpt_results_dir.mkdir()
+
+    (x_results_dir / "batch_0001.result.json").write_text(
+        json.dumps(
+            {
+                "style_observations": [],
+                "fact_candidates": [
+                    {
+                        "statement": "CANARY_COLLISION_X_FACT from the x source",
+                        "type": "knowledge",
+                        "provenance": "x_post",
+                        "evidence_ids": ["1001"],
+                        "sensitivity": "general",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (chatgpt_results_dir / "batch_0001.result.json").write_text(
+        json.dumps(
+            {
+                "style_observations": [],
+                "fact_candidates": [
+                    {
+                        "statement": "CANARY_COLLISION_CHATGPT_FACT from the chatgpt source",
+                        "type": "knowledge",
+                        "provenance": "chatgpt_reconstructed",
+                        "evidence_ids": ["conv-a"],
+                        "sensitivity": "general",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    out_path = tmp_path / "collision_review.json"
+    exit_code, stdout = _capture_stdout(
+        merge.main,
+        ["--results-dir", str(x_results_dir), "--results-dir", str(chatgpt_results_dir), "--out", str(out_path)],
+    )
+    require(exit_code == 0, stdout)
+    summary = json.loads(stdout.strip())
+    require(summary["batches_merged"] == 2, summary)
+
+    review = json.loads(out_path.read_text(encoding="utf-8"))
+    statements = {fact["statement"] for fact in review["fact_candidates"]}
+    require("CANARY_COLLISION_X_FACT from the x source" in statements, statements)
+    require("CANARY_COLLISION_CHATGPT_FACT from the chatgpt source" in statements, statements)
+
+
+def check_truncated_json_array_fails_closed(tmp_path: Path) -> None:
+    # A truncated top-level array (EOF before the closing bracket) must
+    # fail closed, not silently look like a clean end-of-array.
+    truncated = io.StringIO('[{"tweet": {"id_str": "1", "created_at": "Mon Jan 02 10:00:00 +0000 2023", "full_text": "hi"}}')
+    try:
+        list(common.iter_json_array_stream(truncated, chunk_size=8))
+        raise AssertionError("truncated JSON array must raise TwinExtractionInputError")
+    except common.TwinExtractionInputError:
+        pass
+
+    input_path = tmp_path / "truncated_tweets.js"
+    out_dir = tmp_path / "truncated_out"
+    input_path.write_text(
+        'window.YTD.tweets.part0 = [{"tweet": {"id_str": "1", "created_at": "Mon Jan 02 10:00:00 +0000 2023", '
+        '"full_text": "CANARY_TRUNCATED_BODY"}}',
+        encoding="utf-8",
+    )
+    # The truncated array fails the in-memory json.loads parse (unterminated
+    # array), which load_json_array() already falls back from to the
+    # streaming iterator regardless of file size -- exercising the same
+    # fixed code path end to end through the preprocess CLI.
+    exit_code, stdout = _capture_stdout(
+        preprocess.main,
+        ["--source", "x", "--input", str(input_path), "--out-dir", str(out_dir)],
+    )
+    require(exit_code != 0, "truncated archive input must fail closed, not exit 0")
+    require(not out_dir.exists(), "a failed preprocess run must not write partial batches")
+
+
 def check_dry_run_pipeline_one_loop(tmp_path: Path, batch_paths: list[Path]) -> None:
     prompt_path = tmp_path / "prompt.txt"
     prompt_path.write_text("SYSTEM PROMPT PLACEHOLDER", encoding="utf-8")
@@ -609,6 +700,8 @@ def main() -> int:
         check_batch_runner_main_fail_closed(tmp_path, batch_paths)
         check_batch_runner_rerun_clears_stale_marker(tmp_path, batch_paths)
         check_merge(tmp_path)
+        check_merge_multiple_results_dirs_do_not_collide(tmp_path)
+        check_truncated_json_array_fails_closed(tmp_path)
         check_dry_run_pipeline_one_loop(tmp_path, batch_paths)
 
     print("RelayLM Twin Extraction tooling smoke passed")
