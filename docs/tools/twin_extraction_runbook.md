@@ -112,7 +112,7 @@ PYTHONPATH=.:scripts python scripts/relaylm_twin_extraction_merge.py \
 
 出力される `twin_extraction_review.json` はレビュー用の単一JSON。`style_observations` は自動統合されない(descriptionが類似していても分離したまま保持し、evidence_ids件数からstrengthのみ再計算する)。`fact_candidates` は `statement` と `type` の完全一致のみ統合し、`sensitivity` が1件でも `private_only` の場合は統合後の候補全体を `private_only` に倒す。曖昧一致統合は行わない。
 
-### 5. Rinレビューと後続経路
+### 5. 本人レビューと後続経路
 
 このツールが作るのは `twin_extraction_review.json` まで。MEM/SOULへの書き込み・bootstrap投入・SLP経路への接続は行わない。[Twin Extraction プロンプト仕様](twin_extraction_prompts.md) の「集約・レビュー手順」に従って手動レビューし、承認された素材のみを別途CW-A1形式・MEM bootstrap経路に反映する。
 
