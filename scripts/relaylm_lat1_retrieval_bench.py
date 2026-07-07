@@ -78,10 +78,30 @@ def _validate_bench_root(path: Path, *, flag_name: str) -> Path:
     return resolved
 
 
+def _validate_store_dir(store_root: Path) -> Path:
+    if store_root.is_symlink():
+        raise SystemExit(
+            "error: refusing to read symlinked bench store directory "
+            f"(fail-closed): {store_root}"
+        )
+    resolved = store_root.resolve()
+    try:
+        resolved.relative_to(ALLOWED_ROOT)
+    except ValueError:
+        raise SystemExit(
+            f"error: bench store directory must resolve under {ALLOWED_ROOT} "
+            f"(got {resolved}); refusing to read outside the gitignored "
+            "LAT-1 bench directory"
+        )
+    if not store_root.is_dir():
+        raise SystemExit(f"error: expected store directory missing: {store_root}")
+    return resolved
+
+
 def _discover_sizes(stores_root: Path) -> list[int]:
     sizes = []
     for path in sorted(stores_root.glob("size_*")):
-        if not path.is_dir():
+        if path.is_symlink() or not path.is_dir():
             continue
         try:
             sizes.append(int(path.name.removeprefix("size_")))
@@ -161,9 +181,7 @@ def main() -> int:
     queries = _build_query_set()
     results = []
     for size in sizes:
-        store_root = stores_root / f"size_{size}"
-        if not store_root.is_dir():
-            raise SystemExit(f"error: expected store directory missing: {store_root}")
+        store_root = _validate_store_dir(stores_root / f"size_{size}")
         result = _run_one_size(
             store_root,
             size=size,
