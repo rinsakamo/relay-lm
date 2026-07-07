@@ -72,11 +72,12 @@ Use plain scalar or list values only. Do not encode source text, prompts, traces
 | `architecture_handoff` | Older alias for a bounded implementation handoff | `docs/architecture/e1r*.md`, `docs/architecture/phase_i*.md` | completed or active slice record only; prefer `implementation_handoff` for new docs |
 | `implementation_completion_report` | PR-scoped implementation evidence and later convergence input | `docs/mvp/wave*/<slice>_completion_report.md` | one implementation PR's claimed boundary, evidence, limitations, and shared-doc update inputs only |
 | `contract` | Exact schema, gate, artifact, and runtime contract | `docs/contracts/` or dedicated architecture contract docs | exact implemented or planned contract behavior |
+| `runbook` | Operator-facing manual procedure or bounded tooling operation guide | `docs/smoke/`, `docs/tools/` | procedure and interpretation boundaries for the named manual/tooling flow; never repository-wide current status |
 | `smoke_howto` | Manual or automated validation procedure | `docs/smoke/` | validation steps and expected evidence |
 | `validation_receipt` | Frozen validation result or receipt-style proof record | `docs/architecture/*validation*receipt*.md`, `docs/mvp/` | validation evidence only; never current implementation status |
 | `cross_slice_convergence_audit` | Cross-slice convergence audit over merged implementation tracks | `docs/architecture/wave*_cross_slice_convergence_audit.md` | historical convergence evidence and shared-doc inputs |
 | `integration_convergence_audit` | Integration-wave convergence audit over merged tracks | `docs/architecture/wave*_cross_slice_convergence_audit.md` | historical integration convergence evidence and shared-doc inputs |
-| `evaluation_record` | Local or bounded evaluation run record | `docs/architecture/*evaluation*.md` | evaluation evidence only; not runtime status authority |
+| `evaluation_record` | Local or bounded evaluation run record | `docs/architecture/*evaluation*.md`, `docs/evaluation/` | evaluation evidence only; not runtime status authority; blank templates are not measured evidence |
 | `evaluation_consolidation` | Current evaluation evidence synthesis | `docs/architecture/e1_evaluation_consolidation.md` | current evaluation proof boundary and evidence inventory |
 | `adr` | Durable design decision and consequences | `docs/adr/` | decision rationale and supersession chain |
 | `historical_evidence` | Previous MVP notes or archived rationale | `docs/mvp/`, `docs/architecture/archive/` | evidence only; never current authority |
@@ -117,6 +118,8 @@ The current placement rules remain:
 - stable cross-cutting architecture -> `docs/architecture/`
 - exact schemas and contracts -> `docs/contracts/` or dedicated architecture contract docs
 - smoke, troubleshooting, and evaluation docs -> `docs/smoke/`
+- offline tooling specifications and runbooks -> `docs/tools/`
+- evaluation templates and run records -> `docs/evaluation/`
 - historical MVP snapshots and implementation completion reports -> `docs/mvp/`
 - superseded architecture rationale -> `docs/architecture/archive/`
 - RelaySOUL governance docs -> `docs/relaysoul/`
