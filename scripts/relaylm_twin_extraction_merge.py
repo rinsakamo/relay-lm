@@ -43,12 +43,20 @@ def _recompute_strength(evidence_count: int) -> str:
     return "low"
 
 
+def _is_scalar_evidence_id(item: object) -> bool:
+    return isinstance(item, (str, int, float)) and not isinstance(item, bool)
+
+
 def _valid_evidence_id_list(raw_evidence_ids: object) -> list[str] | None:
     """Return a normalized, deduplicated, sorted evidence-id list, or None
-    if ``raw_evidence_ids`` is not a non-empty list (for example a bare
-    string, which would otherwise be iterated character-by-character).
+    if ``raw_evidence_ids`` is not a non-empty list of scalars. Rejects a
+    bare string (which would otherwise be iterated character-by-character)
+    and rejects any non-scalar element such as a dict or list (which would
+    otherwise be silently stringified into a garbage id via ``str()``).
     """
     if not isinstance(raw_evidence_ids, list) or not raw_evidence_ids:
+        return None
+    if not all(item is None or _is_scalar_evidence_id(item) for item in raw_evidence_ids):
         return None
     evidence_ids = sorted({str(item) for item in raw_evidence_ids if item is not None})
     if not evidence_ids:

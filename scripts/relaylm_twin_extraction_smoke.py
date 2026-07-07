@@ -645,6 +645,91 @@ def check_truncated_json_array_fails_closed(tmp_path: Path) -> None:
     require(not out_dir.exists(), "a failed preprocess run must not write partial batches")
 
 
+def check_missing_delimiter_json_array_fails_closed() -> None:
+    # A missing ',' between elements (e.g. [{...}{...}]) must fail closed
+    # instead of silently decoding both elements as if the input were
+    # valid JSON.
+    missing_comma = io.StringIO('[{"a": 1}{"b": 2}]')
+    try:
+        list(common.iter_json_array_stream(missing_comma, chunk_size=4))
+        raise AssertionError("a missing ',' between array elements must raise TwinExtractionInputError")
+    except common.TwinExtractionInputError:
+        pass
+
+    # A trailing comma before ']' is also invalid JSON and must fail closed.
+    trailing_comma = io.StringIO('[{"a": 1},]')
+    try:
+        list(common.iter_json_array_stream(trailing_comma, chunk_size=4))
+        raise AssertionError("a trailing comma before ']' must raise TwinExtractionInputError")
+    except common.TwinExtractionInputError:
+        pass
+
+    # Well-formed arrays (with and without inter-chunk boundaries splitting
+    # the delimiter) must still decode cleanly.
+    for chunk_size in (4, 1024):
+        well_formed = io.StringIO('[{"a": 1}, {"b": 2}, {"c": 3}]')
+        require(
+            list(common.iter_json_array_stream(well_formed, chunk_size=chunk_size))
+            == [{"a": 1}, {"b": 2}, {"c": 3}],
+            f"well-formed array must still decode cleanly at chunk_size={chunk_size}",
+        )
+        empty_array = io.StringIO("[]")
+        require(list(common.iter_json_array_stream(empty_array, chunk_size=chunk_size)) == [], "empty array must decode to no elements")
+
+
+def check_merge_rejects_non_scalar_evidence_ids(tmp_path: Path) -> None:
+    results_dir = tmp_path / "nonscalar_results"
+    results_dir.mkdir()
+    (results_dir / "batch_0001.result.json").write_text(
+        json.dumps(
+            {
+                "style_observations": [
+                    {
+                        "category": "tone",
+                        "description": "CANARY_NONSCALAR_STYLE must be dropped not corrupted",
+                        "evidence_ids": [{"id": "1001"}],
+                        "strength": "low",
+                    }
+                ],
+                "fact_candidates": [
+                    {
+                        "statement": "CANARY_NONSCALAR_FACT must be dropped not corrupted",
+                        "type": "knowledge",
+                        "provenance": "x_post",
+                        "evidence_ids": [{"id": "1001"}, "1002"],
+                        "sensitivity": "general",
+                    },
+                    {
+                        "statement": "CANARY_NONE_EVIDENCE_TOLERATED stays valid",
+                        "type": "knowledge",
+                        "provenance": "x_post",
+                        "evidence_ids": ["1003", None],
+                        "sensitivity": "general",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    out_path = tmp_path / "nonscalar_review.json"
+    exit_code, stdout = _capture_stdout(merge.main, ["--results-dir", str(results_dir), "--out", str(out_path)])
+    require(exit_code == 0, stdout)
+
+    review = json.loads(out_path.read_text(encoding="utf-8"))
+    descriptions = {obs["description"] for obs in review["style_observations"]}
+    require("CANARY_NONSCALAR_STYLE must be dropped not corrupted" not in descriptions, descriptions)
+
+    statements = {fact["statement"]: fact for fact in review["fact_candidates"]}
+    require("CANARY_NONSCALAR_FACT must be dropped not corrupted" not in statements, statements)
+    tolerated = statements["CANARY_NONE_EVIDENCE_TOLERATED stays valid"]
+    require(tolerated["evidence_ids"] == ["1003"], tolerated)
+
+    # No dict repr garbage (e.g. "{'id': '1001'}") must leak into the
+    # written review artifact at all.
+    review_text = out_path.read_text(encoding="utf-8")
+    require("{'id'" not in review_text, "a non-scalar evidence id must never be stringified into the review artifact")
+
+
 def check_dry_run_pipeline_one_loop(tmp_path: Path, batch_paths: list[Path]) -> None:
     prompt_path = tmp_path / "prompt.txt"
     prompt_path.write_text("SYSTEM PROMPT PLACEHOLDER", encoding="utf-8")
@@ -701,7 +786,9 @@ def main() -> int:
         check_batch_runner_rerun_clears_stale_marker(tmp_path, batch_paths)
         check_merge(tmp_path)
         check_merge_multiple_results_dirs_do_not_collide(tmp_path)
+        check_merge_rejects_non_scalar_evidence_ids(tmp_path)
         check_truncated_json_array_fails_closed(tmp_path)
+        check_missing_delimiter_json_array_fails_closed()
         check_dry_run_pipeline_one_loop(tmp_path, batch_paths)
 
     print("RelayLM Twin Extraction tooling smoke passed")

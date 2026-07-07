@@ -25,11 +25,15 @@ def iter_json_array_stream(fh, chunk_size: int = DEFAULT_CHUNK_SIZE) -> Iterator
 
     Works for plain JSON arrays and for text with a non-JSON prefix before
     the first ``[`` (for example a JS variable-assignment prefix), since it
-    scans forward for the first ``[`` before decoding elements.
+    scans forward for the first ``[`` before decoding elements. Requires a
+    ``,`` between elements and rejects a trailing comma before ``]``, so
+    malformed input such as ``[{...}{...}]`` (a missing delimiter) fails
+    closed instead of silently decoding both elements anyway.
     """
     decoder = json.JSONDecoder()
     buf = ""
     started = False
+    need_delimiter = False
     while True:
         chunk = fh.read(chunk_size)
         if chunk:
@@ -42,9 +46,8 @@ def iter_json_array_stream(fh, chunk_size: int = DEFAULT_CHUNK_SIZE) -> Iterator
                 continue
             buf = buf[idx + 1 :]
             started = True
-        buf = buf.lstrip(" \t\r\n,")
-        if buf.startswith("]"):
-            return
+
+        buf = buf.lstrip(" \t\r\n")
         if not buf:
             if not chunk:
                 # EOF with no closing bracket ever seen: a truncated array
@@ -53,6 +56,21 @@ def iter_json_array_stream(fh, chunk_size: int = DEFAULT_CHUNK_SIZE) -> Iterator
                 # produce a partial batch set with exit code 0).
                 raise TwinExtractionInputError("truncated JSON array: missing closing bracket")
             continue
+        if buf.startswith("]"):
+            return
+
+        if need_delimiter:
+            if not buf.startswith(","):
+                raise TwinExtractionInputError("malformed JSON array: expected ',' or ']' between elements")
+            buf = buf[1:].lstrip(" \t\r\n")
+            if not buf:
+                if not chunk:
+                    raise TwinExtractionInputError("truncated JSON array: missing closing bracket")
+                continue
+            if buf.startswith("]"):
+                raise TwinExtractionInputError("malformed JSON array: trailing comma before ']'")
+            need_delimiter = False
+
         try:
             obj, end = decoder.raw_decode(buf)
         except ValueError:
@@ -61,6 +79,7 @@ def iter_json_array_stream(fh, chunk_size: int = DEFAULT_CHUNK_SIZE) -> Iterator
             continue
         yield obj
         buf = buf[end:]
+        need_delimiter = True
 
 
 def _stream_json_array_from_path(path: Path, chunk_size: int) -> Iterator[object]:
