@@ -18,10 +18,12 @@ Each implementation PR creates only its own report. It must not edit this centra
 
 ### Wave 8 merged completion reports
 
-Wave 8 currently contains operator-facing evaluation-flow convenience and later documentation convergence reports. These reports are historical evidence for their own slices only. The MVP eval runner report does not mark O2/O3, supervised workers, polling, or always-on operation complete; the O2/O3 and PM-D5-D7 docs convergence report records the later shared-documentation convergence after those separate implementation PRs landed.
+Wave 8 currently contains operator-facing evaluation-flow conveniences, runtime-non-contact offline tooling, measurement-only infrastructure evidence, and documentation convergence reports. These reports are historical evidence for their own slices only. The MVP eval runner report does not mark O2/O3, supervised workers, polling, or always-on operation complete; the Twin Extraction report does not add MEM/SOUL ingestion or RelaySLP runtime wiring; the LAT-1 report does not implement response-time guarantees, degradation ladders, timeouts, search-algorithm changes, ANN/vector DB, Secondary MEM, SSE stream timing, O2/O3 changes, or TTS/avatar timing.
 
 - [MVP eval runner completion report](wave8/mvp_eval_runner_completion_report.md) — source PR #451.
 - [O2/O3 and PM-D5-D7 docs convergence completion report](wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md) — source PR #490.
+- [Twin Extraction Tooling completion report](wave8/twin_extraction_completion_report.md) — source PR #503; offline runtime-non-contact preprocessing/extraction tooling only.
+- [LAT-1 Latency Measurement completion report](wave8/lat1_latency_measurement_completion_report.md) — source PR #505; measurement-only evidence, no optimization or behavior change.
 
 ### Wave 7 merged completion reports
 
@@ -102,6 +104,8 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r4_comple
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r5_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/mvp_eval_runner_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/twin_extraction_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/lat1_latency_measurement_completion_report.md
 ```
 
 The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.
