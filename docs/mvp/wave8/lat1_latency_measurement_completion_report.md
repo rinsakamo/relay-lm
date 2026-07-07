@@ -183,6 +183,5 @@ store.
 
 ## Source pull request
 
-Pending: this slice has not yet been opened as a pull request. This section
-must be filled in with a concrete PR number and URL before this report is
-treated as final evidence.
+- PR: #505
+- URL: https://github.com/rinsakamo/relay-lm/pull/505
