@@ -10,6 +10,11 @@ local/
 # batch files, and extraction results and must never be committed.
 runtime/twin_extraction/
 
+# LAT-1 offline latency bench fixtures and results. Synthetic-only, never
+# connected to a production or configured character store; must never be
+# committed.
+runtime/bench/
+
 # Windows / WSL metadata
 *:Zone.Identifier
 *.Zone.Identifier

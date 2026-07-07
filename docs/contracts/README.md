@@ -19,6 +19,8 @@ Before treating a proposed schema as the current wire contract, use the [Current
 - [RelayRUN recovery response generator current / target boundary](relayrun_recovery_response_generator_current_target.md)
 - [RelayRUN recovery response generator contract](relayrun_recovery_response_generator_contract.md)
   - related design: [RelayRUN Runtime Checkpoint Design](../architecture/relayrun_runtime_checkpoint_design.md)
+- [LAT-1 RelayRUN `timing_summary` artifact schema](../architecture/lat1_latency_measurement.md)
+  - `relayrun.timing_summary.v0`: numeric-only per-request RelayRUN node timing rollup, measurement only
 
 Current compile behavior has two implemented surfaces:
 

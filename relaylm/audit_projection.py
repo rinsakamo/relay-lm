@@ -1222,6 +1222,18 @@ _RELAYRUN_RECOVERY_TRANSITION = _mapping(
     }
 )
 
+_RELAYRUN_TIMING_SUMMARY = _mapping(
+    {
+        "schema_version": _bounded_token,
+        "pipeline_overhead_ms": _non_negative_int,
+        "backend_forward_ms": _optional(_non_negative_int),
+        "time_to_first_token_ms": _optional(_non_negative_int),
+        "retrieval_ms": _optional(_non_negative_int),
+        "nodes_timed_count": _non_negative_int,
+        "nodes_untimed_count": _non_negative_int,
+    }
+)
+
 _RELAYRUN = _mapping(
     {
         "schema_version": _bounded_token,
@@ -1238,6 +1250,7 @@ _RELAYRUN = _mapping(
         "blocked_reasons": _optional(_REASON_LIST),
         "resume_mode": _optional(_bounded_token),
         "recovery_transition_artifact": _optional(_RELAYRUN_RECOVERY_TRANSITION),
+        "timing_summary": _optional(_RELAYRUN_TIMING_SUMMARY),
     }
 )
 

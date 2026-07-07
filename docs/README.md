@@ -160,6 +160,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 
 - [Twin Extraction prompt specification](tools/twin_extraction_prompts.md) — caller-invoked, bounded, runtime-non-contact offline material-extraction prompts and tooling notes.
 - [Twin Extraction runbook](tools/twin_extraction_runbook.md) — execution steps for the offline preprocessing/batch-runner/merge CLIs. This tooling does not connect to MEM/SOUL bootstrap or the RelaySLP pipeline.
+- [LAT-1 Latency Measurement](architecture/lat1_latency_measurement.md) — RelayRUN per-node timing and `timing_summary` schema, plus the offline M2 retrieval scaling bench (`scripts/relaylm_lat1_bench_store_generator.py`, `scripts/relaylm_lat1_retrieval_bench.py`). Measurement only; no request-path or search-algorithm behavior change. See also [LAT-1 Retrieval Scaling Report](evaluation/lat1_retrieval_scaling_report.md) (template; results pending a real run).
 
 ## Target architecture and post-MVP design
 
