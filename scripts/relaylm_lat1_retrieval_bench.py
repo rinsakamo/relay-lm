@@ -65,6 +65,19 @@ def _percentile(sorted_values: list[float], pct: float) -> float:
     return sorted_values[rank]
 
 
+def _validate_bench_root(path: Path, *, flag_name: str) -> Path:
+    resolved = path.resolve()
+    try:
+        resolved.relative_to(ALLOWED_ROOT)
+    except ValueError:
+        raise SystemExit(
+            f"error: {flag_name} must resolve under {ALLOWED_ROOT} "
+            f"(got {resolved}); refusing to read or write outside the gitignored "
+            "LAT-1 bench directory"
+        )
+    return resolved
+
+
 def _discover_sizes(stores_root: Path) -> list[int]:
     sizes = []
     for path in sorted(stores_root.glob("size_*")):
@@ -132,7 +145,9 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    stores_root = Path(args.stores_root)
+    stores_root = _validate_bench_root(Path(args.stores_root), flag_name="--stores-root")
+    out_root = _validate_bench_root(Path(args.out_root), flag_name="--out-root")
+
     if args.sizes:
         sizes = [int(token) for token in args.sizes.split(",") if token.strip()]
     else:
@@ -164,14 +179,6 @@ def main() -> int:
             f"avg_selected_count={result['avg_selected_count']:>6}"
         )
 
-    out_root = Path(args.out_root).resolve()
-    try:
-        out_root.relative_to(ALLOWED_ROOT)
-    except ValueError:
-        raise SystemExit(
-            f"error: --out-root must resolve under {ALLOWED_ROOT} (got {out_root}); "
-            "the bench must complete entirely under the gitignored runtime/bench/ directory"
-        )
     out_root.mkdir(parents=True, exist_ok=True)
     out_path = out_root / "lat1_retrieval_bench_results.json"
     out_path.write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")

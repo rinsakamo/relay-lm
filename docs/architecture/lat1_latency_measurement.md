@@ -161,7 +161,11 @@ non-empty directory or outside `runtime/bench/`.
 the same function `app.py` calls for the `relaymem_retrieval` node) against
 each generated store with a fixed, seeded 20-query set, `--repeat` times
 each, and writes p50/p95/avg-selected-count JSON under `runtime/bench/results/`.
-It makes no backend/LLM/network call.
+It makes no backend/LLM/network call. Both `--stores-root` (read) and
+`--out-root` (write) are fail-closed the same way as the generator's
+`--out-root`: either flag must resolve under `runtime/bench/`, or the bench
+refuses to run rather than silently reading from or writing to a
+production store root or a configured character store.
 
 Reproduction:
 

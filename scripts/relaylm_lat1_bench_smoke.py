@@ -116,8 +116,41 @@ def check_generate_bench_roundtrip() -> None:
         print("ok store generator refuses to overwrite an existing non-empty store directory")
 
 
+def check_bench_rejects_stores_root_outside_bench_dir() -> None:
+    bench_root = REPO_ROOT / "runtime" / "bench"
+    bench_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=bench_root) as td:
+        results_root = Path(td) / "results"
+        with tempfile.TemporaryDirectory() as outside_td:
+            outside_stores_root = Path(outside_td) / "stores"
+            (outside_stores_root / "size_20").mkdir(parents=True)
+
+            bench = _run(
+                [
+                    str(BENCH),
+                    "--stores-root",
+                    str(outside_stores_root),
+                    "--out-root",
+                    str(results_root),
+                    "--repeat",
+                    "1",
+                ]
+            )
+            require(bench.returncode != 0, bench.stdout + bench.stderr)
+            combined = bench.stdout + bench.stderr
+            require(
+                "--stores-root" in combined
+                and "runtime/bench" in combined
+                and "LAT-1 bench directory" in combined,
+                combined,
+            )
+            require(not results_root.exists(), results_root)
+            print("ok retrieval bench refuses --stores-root outside runtime/bench/ (fail-closed)")
+
+
 def main() -> int:
     check_generate_bench_roundtrip()
+    check_bench_rejects_stores_root_outside_bench_dir()
     return 0
 
 
