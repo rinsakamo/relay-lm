@@ -35,9 +35,12 @@ Implemented:
   `duration_ms`, matching the existing pattern in
   `relaylm/soul_lab_observation.py`); real timing brackets around each of
   the ten live `RUNTIME_CHECKPOINT_NODE_SEQUENCE` nodes' already-existing
-  work in `chat_completions()`; `node_timings` threaded through
-  `_ManagedRuntimeArtifactContext` and `_build_relayrun_runtime_artifact()`
-  into each `_relayrun_*_node()` helper.
+  work in `chat_completions()`; `node_timings` passed to RelayRUN runtime
+  artifact construction.
+- `relaylm/relayrun_runtime_artifact.py`: `_ManagedRuntimeArtifactContext`,
+  `_build_relayrun_runtime_artifact()`, and the `_relayrun_*_node()` status
+  classifiers that convert the already-built runtime artifacts into live
+  RelayRUN `node_statuses`.
 - `relaylm/audit_projection.py`: `_RELAYRUN_TIMING_SUMMARY`, a bounded
   numeric/null validator, added to the `_RELAYRUN` projection whitelist so
   `timing_summary` reaches the persisted, content-free audit trace. Per-node
@@ -146,8 +149,9 @@ store.
 - `relaylm/relayrun.py`'s `DEFAULT_RELAYRUN_NODE_SEQUENCE` and
   `RelayRunDiagnosticsArtifact` are pre-existing dead code (nothing outside
   `relayrun.py` calls them); this slice times the live
-  `RUNTIME_CHECKPOINT_NODE_SEQUENCE` set actually used by `app.py` instead.
-  This mismatch predates this slice and is documented, not fixed, here.
+  `RUNTIME_CHECKPOINT_NODE_SEQUENCE` set recorded by `app.py` and built into
+  `node_statuses` by the RelayRUN runtime artifact builder instead. This
+  mismatch predates this slice and is documented, not fixed, here.
 - `discover_relaymem_page_candidates`'s internal scan is capped at a fixed
   constant (`_MAX_PRIORITY_DISCOVERY_CANDIDATES = 128`) regardless of store
   size; the retrieval bench may show latency plateauing above that cap
@@ -159,8 +163,8 @@ store.
 - Per-node `duration_ms`/`started_at`/`completed_at` are not surfaced through
   the content-free audit-projection whitelist; only the `timing_summary`
   rollup is. Inspecting individual node timing requires a direct call to
-  `relaylm.app._build_relayrun_runtime_artifact` (as the new timing smoke
-  does), not the persisted trace.
+  `relaylm.relayrun_runtime_artifact._build_relayrun_runtime_artifact` (as the
+  timing smoke does), not the persisted trace.
 
 ## Shared documentation update inputs
 

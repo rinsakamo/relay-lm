@@ -38,9 +38,11 @@ relaylm/relayrun_lazy_recovery.py timing_summary passthrough in
                                    _build_minimal_runtime_checkpoint_artifact()
 relaylm/app.py                    _start_timing()/_finalize_timing() helpers;
                                    real per-node timing brackets in
-                                   chat_completions(); node_timings threaded
-                                   through _ManagedRuntimeArtifactContext and
-                                   _build_relayrun_runtime_artifact()
+                                   chat_completions(); node_timings passed to
+                                   RelayRUN runtime artifact construction
+relaylm/relayrun_runtime_artifact.py  _ManagedRuntimeArtifactContext;
+                                      _build_relayrun_runtime_artifact();
+                                      _relayrun_*_node() status classifiers
 relaylm/audit_projection.py       _RELAYRUN_TIMING_SUMMARY validator; timing_summary
                                    added to the _RELAYRUN projection whitelist
 scripts/relaylm_lat1_bench_store_generator.py   synthetic Primary MEM store generator
@@ -58,9 +60,9 @@ docs/evaluation/lat1_retrieval_scaling_report.md  bench report template (results
 - `RUNTIME_CHECKPOINT_NODE_SEQUENCE` (`request_received`, `relayrel`, `relayscn`,
   `relayemo`, `relayint`, `relaymem_retrieval`, `relaymem_runtime_ctx`,
   `relayctx_short_term_injection`, `token_budget_truncation`,
-  `backend_forward`) is what `relaylm/app.py`'s `chat_completions()` actually
-  builds into `node_statuses` on every request. LAT-1 times exactly these ten
-  nodes.
+  `backend_forward`) is what the managed `chat_completions()` path records and
+  what `relaylm/relayrun_runtime_artifact.py` builds into `node_statuses` on
+  every request. LAT-1 times exactly these ten nodes.
 - `DEFAULT_RELAYRUN_NODE_SEQUENCE` and `RelayRunDiagnosticsArtifact` (also in
   `relaylm/relayrun.py`) are pre-existing dead code: nothing in `relaylm/`
   outside `relayrun.py` itself imports or calls them. LAT-1 does not wire
@@ -69,8 +71,8 @@ docs/evaluation/lat1_retrieval_scaling_report.md  bench report template (results
 
 ## Measured span per node (what is timed, and what is not)
 
-Each node's `started_at`/`completed_at` bracket the real work app.py already
-does for that node, not the after-the-fact `_relayrun_*_node()` status
+Each node's `started_at`/`completed_at` bracket the real work `app.py` already
+performs for that node, not the after-the-fact `_relayrun_*_node()` status
 classifier (which only inspects an already-built artifact and cannot time
 its own construction):
 
@@ -124,8 +126,9 @@ own `started_at`/`completed_at`/`duration_ms`) are **not** added to the
 `_RELAYRUN` projection whitelist by this slice -- they remain visible only
 in-process during request handling, matching this projector's pre-existing
 scope. Use `docs/evaluation/lat1_retrieval_scaling_report.md`'s reproduction
-steps or a direct call to `relaylm.app._build_relayrun_runtime_artifact` to
-inspect node-level timing.
+steps or a direct call to
+`relaylm.relayrun_runtime_artifact._build_relayrun_runtime_artifact` to inspect
+node-level timing.
 
 ## Known limitation: `time_to_first_token_ms` is always null
 
