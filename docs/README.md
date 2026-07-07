@@ -156,6 +156,11 @@ Current runtime and implementation status is intentionally not summarized here. 
 - [I-5A completion report](mvp/wave4/i5a_completion_report.md)
 - [I-7A/B completion report](mvp/wave4/i7ab_completion_report.md)
 
+## Offline tooling and runbooks
+
+- [Twin Extraction prompt specification](tools/twin_extraction_prompts.md) — caller-invoked, bounded, runtime-non-contact offline material-extraction prompts and tooling notes.
+- [Twin Extraction runbook](tools/twin_extraction_runbook.md) — execution steps for the offline preprocessing/batch-runner/merge CLIs. This tooling does not connect to MEM/SOUL bootstrap or the RelaySLP pipeline.
+
 ## Target architecture and post-MVP design
 
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md)

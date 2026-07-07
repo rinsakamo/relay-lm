@@ -200,3 +200,7 @@ The completed P0-PIPE implementation boundary is [P0 RelayREL / RelaySCN / Relay
 ## O1B sealed replay-lane boundary
 
 O1B is complete for one bounded, non-recursive inventory of the configured I1-G root, exact canonical grouping and eligibility classification, deterministic selection of one sealed-pending locator, canonical selected-record reread, and at most one existing I1-GC delegation. It does not implement the O1C queue algorithm, a scheduler round loop, polling, shutdown, supervision, or always-on operation.
+
+## Offline tooling addenda
+
+Offline extraction tooling (runtime non-contact) added: caller-invoked, bounded `scripts/relaylm_twin_extraction_*` preprocessing/batch-runner/merge CLIs that turn X archive and ChatGPT export material into a reviewable style/fact extraction artifact. See [Twin Extraction runbook](tools/twin_extraction_runbook.md). This tooling does not import `relaylm`, does not write to MEM/SOUL, and does not change O2/O3, CW-A4/CW-A5, or RelaySLP status.

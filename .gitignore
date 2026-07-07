@@ -6,6 +6,10 @@ config.yaml
 # with conversation bodies and must never be committed.
 local/
 
+# Twin Extraction offline tooling input/output. Holds raw archive material,
+# batch files, and extraction results and must never be committed.
+runtime/twin_extraction/
+
 # Windows / WSL metadata
 *:Zone.Identifier
 *.Zone.Identifier
