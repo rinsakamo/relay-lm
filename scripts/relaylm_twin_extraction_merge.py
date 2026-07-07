@@ -20,9 +20,12 @@ Merge rules:
   - fact_candidates are merged only on an exact (statement, type) match.
     Ambiguous/fuzzy statement merging is never performed. Merged
     evidence_ids are unioned and provenance is collected into a sorted
-    list. If any merged member is `private_only`, the merged candidate is
-    `private_only`. A candidate with no explicit sensitivity is treated as
-    `private_only` (fail-closed default).
+    list. Candidates without at least one valid provenance label are
+    dropped instead of emitting provenance-empty artifacts, but their
+    `private_only` sensitivity is still propagated to any surviving exact
+    duplicate. If any merged member is `private_only`, the merged candidate
+    is `private_only`. A candidate with no explicit sensitivity is treated
+    as `private_only` (fail-closed default).
 """
 from __future__ import annotations
 
@@ -64,6 +67,28 @@ def _valid_evidence_id_list(raw_evidence_ids: object) -> list[str] | None:
     return evidence_ids
 
 
+def _normalize_provenance(raw_provenance: object) -> list[str] | None:
+    """Return non-empty provenance labels or None for invalid/missing data.
+
+    The extraction prompts require a source label (for example ``x_post`` or
+    ``chatgpt_reconstructed``). If an LLM response omits it, returns an empty
+    value, or returns a nested/non-scalar shape, drop the fact candidate
+    instead of emitting a review artifact with ``"provenance": []``.
+    """
+    if _is_scalar_evidence_id(raw_provenance):
+        labels = {str(raw_provenance)}
+    elif isinstance(raw_provenance, list) and raw_provenance:
+        if not all(_is_scalar_evidence_id(item) for item in raw_provenance):
+            return None
+        labels = {str(item) for item in raw_provenance}
+    else:
+        return None
+    labels = {label for label in labels if label}
+    if not labels:
+        return None
+    return sorted(labels)
+
+
 def _normalize_style_observation(raw: dict) -> dict | None:
     if not isinstance(raw.get("category"), str) or not isinstance(raw.get("description"), str):
         return None
@@ -94,6 +119,7 @@ def merge_style_observations(batches: list[dict]) -> list[dict]:
 def merge_fact_candidates(batches: list[dict]) -> list[dict]:
     grouped: dict[tuple[str, str], dict] = {}
     order: list[tuple[str, str]] = []
+    private_only_keys: set[tuple[str, str]] = set()
 
     for batch in batches:
         for raw in batch.get("fact_candidates", []):
@@ -104,11 +130,20 @@ def merge_fact_candidates(batches: list[dict]) -> list[dict]:
             if not isinstance(statement, str) or not statement or not isinstance(fact_type, str) or not fact_type:
                 continue
 
+            key = (statement, fact_type)
+            sensitivity = raw.get("sensitivity")
+            if sensitivity != "general":
+                private_only_keys.add(key)
+                if key in grouped:
+                    grouped[key]["sensitivity"] = "private_only"
+
             fact_evidence_ids = _valid_evidence_id_list(raw.get("evidence_ids"))
             if fact_evidence_ids is None:
                 continue
+            provenance = _normalize_provenance(raw.get("provenance"))
+            if provenance is None:
+                continue
 
-            key = (statement, fact_type)
             if key not in grouped:
                 grouped[key] = {
                     "statement": statement,
@@ -116,26 +151,17 @@ def merge_fact_candidates(batches: list[dict]) -> list[dict]:
                     "provenance": set(),
                     "evidence_ids": set(),
                     "time_contexts": set(),
-                    "sensitivity": "general",
+                    "sensitivity": "private_only" if key in private_only_keys else "general",
                 }
                 order.append(key)
             entry = grouped[key]
 
-            provenance = raw.get("provenance")
-            if isinstance(provenance, list):
-                entry["provenance"].update(str(item) for item in provenance if item)
-            elif provenance:
-                entry["provenance"].add(str(provenance))
-
+            entry["provenance"].update(provenance)
             entry["evidence_ids"].update(fact_evidence_ids)
 
             time_context = raw.get("time_context")
             if isinstance(time_context, str) and time_context and time_context != "unknown":
                 entry["time_contexts"].add(time_context)
-
-            sensitivity = raw.get("sensitivity")
-            if sensitivity != "general":
-                entry["sensitivity"] = "private_only"
 
     result = []
     for key in order:
