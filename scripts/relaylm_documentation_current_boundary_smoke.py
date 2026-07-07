@@ -7,11 +7,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 CURRENT_DOCS = (
+    "README_ja.md",
     "docs/PROJECT_STATUS.md",
     "docs/README.md",
     "docs/architecture/README.md",
     "docs/mvp/README.md",
     "docs/DOCUMENTATION_MODEL.md",
+    "docs/smoke/README.md",
+    "docs/smoke/o1_manual_one_round_runbook.md",
     "docs/architecture/current_target_migration_guide.md",
     "docs/architecture/project_execution_plan.md",
     "docs/architecture/relaymem_slp_current_target.md",
@@ -42,6 +45,13 @@ CURRENT_DOCS = (
 )
 
 REQUIRED = {
+    "README_ja.md": (
+        "file-first Character Workspace と記憶・人格指向 OpenAI互換会話プロキシ",
+        "承認済みMarkdownソースをランタイム投影へコンパイルする、編集可能なfile-first Character Workspace",
+        "`SOUL.md`, `STYLE.md`, `EMOTION.md`, `SCENE.md`, `RELATIONSHIP.md`, `MEMORY.md`, `BOUNDARY.md`",
+        "関係性、シーン、感情、意図、検索、コンテキスト、出力観察、実行制御、遅延永続化を分離します。",
+        "[File-first Character Workspace設計]",
+    ),
     "docs/PROJECT_STATUS.md": (
         "This page owns current implementation status and active caveats.",
         "O1F operational validation: complete",
@@ -97,6 +107,11 @@ REQUIRED = {
         "PM-D7 runtime install hook fold-in",
         "Wave 8 implementation evidence",
         "MVP eval runner completion report",
+        "O2/O3 and PM-D5-D7 docs convergence completion report",
+        "Twin Extraction Tooling completion report",
+        "LAT-1 Latency Measurement completion report",
+        "Offline runtime-non-contact preprocessing/extraction tooling only",
+        "Measurement-only evidence; no optimization",
         "Wave 7 Cross-Slice Convergence Audit",
         "E1-R3 completion report",
         "E1-R4 completion report",
@@ -114,6 +129,9 @@ REQUIRED = {
         "PM-D5 RelayMEM Flat-store Compatibility Removal",
         "PM-D6 RelayINT Native Artifact / RelayREF Wrapper Removal",
         "PM-D7 Runtime Install Hook Fold-in",
+        "PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in",
+        "PM-D8 is absorbed and closed by PR #491; the former bridge behavior is now canonical Primary recall.",
+        "canonical fallback fold-in; M2 remains preferred and E1-R5 remains fallback-only.",
         "Wave 7 Cross-Slice Convergence Audit",
         "E1-R4 Retrieval-Response Grounding",
         "E1-R5 Primary MEM Recall Candidate Discovery Bridge",
@@ -124,7 +142,14 @@ REQUIRED = {
         "Wave 8 merged completion reports",
         "MVP eval runner completion report",
         "source PR #451",
+        "O2/O3 and PM-D5-D7 docs convergence completion report",
+        "Twin Extraction Tooling completion report",
+        "source PR #503; offline runtime-non-contact preprocessing/extraction tooling only.",
+        "LAT-1 Latency Measurement completion report",
+        "source PR #505; measurement-only evidence, no optimization or behavior change.",
         "docs/mvp/wave8/mvp_eval_runner_completion_report.md",
+        "docs/mvp/wave8/twin_extraction_completion_report.md",
+        "docs/mvp/wave8/lat1_latency_measurement_completion_report.md",
         "Wave 7 merged completion reports",
         "source PR #436, merge `7bb2525cb000e893146408065f1aa5976f2b54ab`",
         "source PR #437, merge `e6e5b32cd489dda493ff0171a260dd561a91765c`",
@@ -133,11 +158,30 @@ REQUIRED = {
     ),
     "docs/DOCUMENTATION_MODEL.md": (
         "`architecture_handoff`",
+        "`runbook`",
         "`validation_receipt`",
         "`cross_slice_convergence_audit`",
         "`integration_convergence_audit`",
         "`evaluation_record`",
         "`evaluation_consolidation`",
+        "manual smoke, troubleshooting, and local behavior validation docs -> `docs/smoke/`",
+        "offline tooling specifications and runbooks -> `docs/tools/`",
+        "evaluation templates and run records -> `docs/evaluation/`",
+        "blank templates are not measured evidence",
+    ),
+    "docs/smoke/README.md": (
+        "O1 manual one-round operations runbook",
+        "lower-level compatibility/manual validation for one O1D1-style round; not O2/O3 service operation.",
+        "offline tooling docs under `docs/tools/`",
+        "evaluation templates or run records under `docs/evaluation/`",
+    ),
+    "docs/smoke/o1_manual_one_round_runbook.md": (
+        "relaylm_doc_type: runbook",
+        "relaylm_status: compatibility",
+        "This runbook remains a compatibility/manual-validation guide for explicitly invoking one O1D1-style scheduler round.",
+        "For current opt-in local service/always-on wrapper operation, read [O2 Supervised Scheduler Service]",
+        "[O3 Always-On Local Scheduler]",
+        "O2/O3 are separate opt-in local operation layers above O1E/O1D1 and do not make this manual runbook a service loop.",
     ),
     "docs/architecture/current_target_migration_guide.md": (
         "Current Wave 7 / P0-PIPE / ACG / CW compatibility interpretation",
@@ -393,6 +437,7 @@ STALE = tuple(
     current implementation is still a runtime bridge
     Execute the existing RelaySCN-owned `scene_state` migration plan
     The remaining candidates are PM-D1/PM-D3/PM-D4
+    smoke, troubleshooting, and evaluation docs -> `docs/smoke/`
     relaylm_doc_type: architecture_contract
     relaylm_doc_type: implementation_report
     """.splitlines()
