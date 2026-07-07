@@ -2,8 +2,8 @@
 
 Runs the full LAT-1 offline bench pipeline at a minimal size (N=20) inside a
 temporary directory so it completes locally in a few seconds, and verifies
-the store generator's fail-closed behavior against a non-empty existing
-directory.
+the bench tooling's fail-closed behavior against non-empty and symlinked
+store directories.
 """
 
 from __future__ import annotations
@@ -148,9 +148,80 @@ def check_bench_rejects_stores_root_outside_bench_dir() -> None:
             print("ok retrieval bench refuses --stores-root outside runtime/bench/ (fail-closed)")
 
 
+def check_generator_rejects_symlinked_store_target() -> None:
+    bench_root = REPO_ROOT / "runtime" / "bench"
+    bench_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=bench_root) as td:
+        stores_root = Path(td) / "stores"
+        stores_root.mkdir()
+        link_target = Path(td) / "target"
+        link_target.mkdir()
+        symlink_path = stores_root / "size_20"
+        try:
+            symlink_path.symlink_to(link_target, target_is_directory=True)
+        except (NotImplementedError, OSError):
+            print("ok symlink test skipped: platform does not allow directory symlink creation")
+            return
+
+        generate = _run(
+            [
+                str(GENERATOR),
+                "--sizes",
+                "20",
+                "--out-root",
+                str(stores_root),
+                "--seed",
+                "1",
+            ]
+        )
+        require(generate.returncode != 0, generate.stdout + generate.stderr)
+        combined = generate.stdout + generate.stderr
+        require("symlinked bench store directory" in combined and "fail-closed" in combined, combined)
+        require(not (link_target / "memory").exists(), link_target)
+        print("ok store generator refuses symlinked size_<N> targets")
+
+
+def check_bench_rejects_symlinked_store_target() -> None:
+    bench_root = REPO_ROOT / "runtime" / "bench"
+    bench_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=bench_root) as td:
+        stores_root = Path(td) / "stores"
+        results_root = Path(td) / "results"
+        stores_root.mkdir()
+        link_target = Path(td) / "target"
+        link_target.mkdir()
+        symlink_path = stores_root / "size_20"
+        try:
+            symlink_path.symlink_to(link_target, target_is_directory=True)
+        except (NotImplementedError, OSError):
+            print("ok symlink test skipped: platform does not allow directory symlink creation")
+            return
+
+        bench = _run(
+            [
+                str(BENCH),
+                "--stores-root",
+                str(stores_root),
+                "--out-root",
+                str(results_root),
+                "--sizes",
+                "20",
+                "--repeat",
+                "1",
+            ]
+        )
+        require(bench.returncode != 0, bench.stdout + bench.stderr)
+        combined = bench.stdout + bench.stderr
+        require("symlinked bench store directory" in combined and "fail-closed" in combined, combined)
+        require(not results_root.exists(), results_root)
+        print("ok retrieval bench refuses symlinked size_<N> stores")
+
+
 def main() -> int:
     check_generate_bench_roundtrip()
     check_bench_rejects_stores_root_outside_bench_dir()
+    check_generator_rejects_symlinked_store_target()
+    check_bench_rejects_symlinked_store_target()
     return 0
 
 
