@@ -194,6 +194,28 @@ def _validate_out_root(out_root: Path) -> Path:
     return resolved
 
 
+def _validate_target_dir(path: Path) -> Path:
+    if path.is_symlink():
+        raise SystemExit(
+            "error: refusing to write through symlinked bench store directory "
+            f"(fail-closed): {path}"
+        )
+    resolved = path.resolve()
+    try:
+        resolved.relative_to(ALLOWED_ROOT)
+    except ValueError:
+        raise SystemExit(
+            f"error: bench store directory must resolve under {ALLOWED_ROOT} "
+            f"(got {resolved}); refusing to write outside the gitignored "
+            "LAT-1 bench directory"
+        )
+    if path.exists() and not path.is_dir():
+        raise SystemExit(
+            f"error: refusing to overwrite existing non-directory bench store target: {path}"
+        )
+    return path
+
+
 def _parse_sizes(raw: str) -> list[int]:
     sizes = []
     for token in raw.split(","):
@@ -219,7 +241,7 @@ def main() -> int:
     sizes = _parse_sizes(args.sizes)
     out_root = _validate_out_root(Path(args.out_root))
 
-    target_dirs = {size: out_root / f"size_{size}" for size in sizes}
+    target_dirs = {size: _validate_target_dir(out_root / f"size_{size}") for size in sizes}
     existing_nonempty = [
         str(path) for path in target_dirs.values() if path.exists() and any(path.iterdir())
     ]
