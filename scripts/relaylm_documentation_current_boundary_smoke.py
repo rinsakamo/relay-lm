@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate current documentation boundary anchors after E1-R5, ACG, CW-A5, O2/O3, PM-D5-D8, and Wave 8 docs updates."""
+"""Validate current documentation boundary anchors after E1-R5, ACG, CW-A5, O2/O3, PM-D3, PM-D5-D8, and Wave 8 docs updates."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -71,10 +71,11 @@ REQUIRED = {
         "Analyzer Candidate Governance: ACG-1 contract/helpers complete; ACG-2 Grounded Recall Detail Safety complete; ACG-3 Retrieval Query Normalization complete; ACG-4 Reference/Intent Analyzer consolidation complete; ACG-5 RelayEMO scene ownership cleanup complete; ACG-6 SCN structured classifier and scene-wiki boundary complete",
         "CW-A5 character creation, templates, and showcase import   complete",
         "CW-A5 handoff is [CW-A5 Character Creation, Templates, and Showcase Import]",
-        "Post-MVP decision debt is now tracked explicitly as PM-D1",
+        "Post-MVP decision debt is tracked explicitly as PM-D1",
         "PM-D1 RelaySOUL gate design-freeze relation",
         "PM-D2 RelayINT -> RelayMEM relayint_intent_artifact legacy compatibility scope",
-        "PM-D3 RelayEMO/RelaySCN scene_state ownership",
+        "PM-D3 RelayEMO/RelaySCN scene_state ownership: closed by P0-PIPE request-path ordering validation",
+        "PM-D3 RelayEMO/RelaySCN scene_state ownership              closed by P0-PIPE",
         "PM-D4 client history exclusion default-off deployment decision",
         "PM-D5 RelayMEM flat-store compatibility removal",
         "PM-D6 RelayINT native artifact / RelayREF wrapper removal",
@@ -166,7 +167,7 @@ REQUIRED = {
         "Post-MVP decision debt registry",
         "PM-D1 RelaySOUL gate design-freeze relation",
         "PM-D2 RelayINT -> RelayMEM relayint_intent_artifact legacy compatibility scope",
-        "PM-D3 RelayEMO/RelaySCN scene_state ownership",
+        "PM-D3 RelayEMO/RelaySCN scene_state ownership closed by P0-PIPE request-path ordering validation",
         "PM-D4 client history exclusion default-off deployment decision",
         "PM-D5 RelayMEM flat-store compatibility removal",
         "PM-D6 RelayINT native artifact / RelayREF wrapper removal",
@@ -179,8 +180,9 @@ REQUIRED = {
         "Completed post-MVP debt:",
         "Implementation order for large compatibility removals and fold-ins",
         "PM-D5 -> PM-D6 -> PM-D7 -> PM-D8",
-        "PM-D8 was historically related to PM-D5",
-        "Execute the existing RelaySCN-owned `scene_state` migration plan",
+        "PM-D3 was closed by P0-PIPE",
+        "Future RelaySCN-owned `scene_state` or scene-wiki work must be handled",
+        "The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through",
     ),
     "docs/architecture/relaymem_slp_current_target.md": (
         "E1-R4 request-side evidence-grounded recall behavior is current implemented.",
@@ -310,6 +312,7 @@ REQUIRED = {
     "docs/architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md": (
         "relaylm_doc_type: implementation_handoff",
         "# P0 RelayREL / RelaySCN / RelayEMO Ordering Fix",
+        "PM-D3 RelayEMO/RelaySCN scene_state ownership is closed by the shipped request-path wiring and validation.",
     ),
     "docs/architecture/wave7_cross_slice_convergence_audit.md": (
         "# Wave 7 Cross-Slice Convergence Audit",
@@ -388,11 +391,22 @@ STALE = tuple(
     Until PM-D8 is closed or absorbed
     The runtime-bridge-to-canonical-adapter decision is tracked as PM-D8
     current implementation is still a runtime bridge
+    Execute the existing RelaySCN-owned `scene_state` migration plan
+    The remaining candidates are PM-D1/PM-D3/PM-D4
     relaylm_doc_type: architecture_contract
     relaylm_doc_type: implementation_report
     """.splitlines()
     if line.strip()
 )
+
+
+STATUS_PM_D3_STALE = (
+    "Post-MVP decision debt is now tracked explicitly as PM-D1 RelaySOUL gate design-freeze relation, "
+    "PM-D2 RelayINT -> RelayMEM relayint_intent_artifact legacy compatibility scope, "
+    "PM-D3 RelayEMO/RelaySCN scene_state ownership,"
+)
+
+PLAN_PM_D3_STALE = "- PM-D3 RelayEMO/RelaySCN scene_state ownership\n- PM-D4 client history exclusion default-off deployment decision"
 
 
 def read(path: str) -> str:
@@ -412,6 +426,10 @@ def forbid_current_stale(path: str) -> None:
         return
     body = read(path)
     stale = [anchor for anchor in STALE if anchor in body]
+    if path == "docs/PROJECT_STATUS.md" and STATUS_PM_D3_STALE in body:
+        stale.append(STATUS_PM_D3_STALE)
+    if path == "docs/architecture/project_execution_plan.md" and PLAN_PM_D3_STALE in body:
+        stale.append(PLAN_PM_D3_STALE)
     assert not stale, f"{path}: stale anchors: {stale!r}"
 
 
