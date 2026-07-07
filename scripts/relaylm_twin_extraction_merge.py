@@ -21,10 +21,11 @@ Merge rules:
     Ambiguous/fuzzy statement merging is never performed. Merged
     evidence_ids are unioned and provenance is collected into a sorted
     list. Candidates without at least one valid provenance label are
-    dropped instead of emitting provenance-empty artifacts. If any merged
-    member is `private_only`, the merged candidate is `private_only`. A
-    candidate with no explicit sensitivity is treated as `private_only`
-    (fail-closed default).
+    dropped instead of emitting provenance-empty artifacts, but their
+    `private_only` sensitivity is still propagated to any surviving exact
+    duplicate. If any merged member is `private_only`, the merged candidate
+    is `private_only`. A candidate with no explicit sensitivity is treated
+    as `private_only` (fail-closed default).
 """
 from __future__ import annotations
 
@@ -118,6 +119,7 @@ def merge_style_observations(batches: list[dict]) -> list[dict]:
 def merge_fact_candidates(batches: list[dict]) -> list[dict]:
     grouped: dict[tuple[str, str], dict] = {}
     order: list[tuple[str, str]] = []
+    private_only_keys: set[tuple[str, str]] = set()
 
     for batch in batches:
         for raw in batch.get("fact_candidates", []):
@@ -128,6 +130,13 @@ def merge_fact_candidates(batches: list[dict]) -> list[dict]:
             if not isinstance(statement, str) or not statement or not isinstance(fact_type, str) or not fact_type:
                 continue
 
+            key = (statement, fact_type)
+            sensitivity = raw.get("sensitivity")
+            if sensitivity != "general":
+                private_only_keys.add(key)
+                if key in grouped:
+                    grouped[key]["sensitivity"] = "private_only"
+
             fact_evidence_ids = _valid_evidence_id_list(raw.get("evidence_ids"))
             if fact_evidence_ids is None:
                 continue
@@ -135,7 +144,6 @@ def merge_fact_candidates(batches: list[dict]) -> list[dict]:
             if provenance is None:
                 continue
 
-            key = (statement, fact_type)
             if key not in grouped:
                 grouped[key] = {
                     "statement": statement,
@@ -143,7 +151,7 @@ def merge_fact_candidates(batches: list[dict]) -> list[dict]:
                     "provenance": set(),
                     "evidence_ids": set(),
                     "time_contexts": set(),
-                    "sensitivity": "general",
+                    "sensitivity": "private_only" if key in private_only_keys else "general",
                 }
                 order.append(key)
             entry = grouped[key]
@@ -154,10 +162,6 @@ def merge_fact_candidates(batches: list[dict]) -> list[dict]:
             time_context = raw.get("time_context")
             if isinstance(time_context, str) and time_context and time_context != "unknown":
                 entry["time_contexts"].add(time_context)
-
-            sensitivity = raw.get("sensitivity")
-            if sensitivity != "general":
-                entry["sensitivity"] = "private_only"
 
     result = []
     for key in order:
