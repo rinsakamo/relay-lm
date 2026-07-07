@@ -30,7 +30,10 @@ if str(REPO_ROOT) not in sys.path:
 
 from relaylm._relaymem_primary_page_writer_common import FRONT_MATTER_KEYS, PAGE_SCHEMA
 
-ALLOWED_ROOT = (REPO_ROOT / "runtime" / "bench").resolve()
+# Intentionally do not resolve this allowlist root: if runtime/ or
+# runtime/bench is a symlink, candidate paths resolve outside this lexical
+# repo-local boundary and are rejected by the validators below.
+ALLOWED_ROOT = REPO_ROOT / "runtime" / "bench"
 DEFAULT_OUT_ROOT = ALLOWED_ROOT / "stores"
 DEFAULT_SIZES = (100, 500, 2000, 5000)
 DEFAULT_SEED = 20260707
