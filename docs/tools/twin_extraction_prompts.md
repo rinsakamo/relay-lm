@@ -22,8 +22,8 @@ relaylm_not_authoritative_for:
 
 ```text
 前処理(ソース別) -> チャンク分割 -> 抽出プロンプト実行(バッチごと)
-  -> A: style_observations を集約・重複統合 -> SOUL draft叩き台
-  -> B: fact_candidates を集約・重複統合 -> MEM candidate一覧
+  -> A: style_observations をレビュー用に列挙(自動統合なし) -> SOUL draft叩き台
+  -> B: fact_candidates を完全一致のみ集約 -> MEM candidate一覧
   -> Rin手動レビュー(削除・修正・sensitivityの最終判断)
   -> SOUL: CW-A1 file-first形式へ / MEM: bootstrap経路へ(provenanceラベル付き)
 ```
@@ -157,8 +157,8 @@ relaylm_not_authoritative_for:
 
 ## 集約・レビュー手順
 
-1. 全バッチのJSONをマージし、style_observationsは類似descriptionを統合(evidence_idsを合算、strengthを再計算)。
-2. fact_candidatesは同一statementの重複を統合。x_postとchatgpt_reconstructedの両方に根拠があるものはprovenanceを配列で両方保持。
+1. 全バッチのJSONをマージし、style_observationsは自動統合しない。descriptionが同一または類似していても分離したまま保持し、各観察のevidence_ids件数からstrengthのみ再計算する。統合・削除・言い換えはRinレビューで判断する。
+2. fact_candidatesは `statement` と `type` の完全一致のみ統合する。x_postとchatgpt_reconstructedの両方に根拠があるものはprovenanceを配列で両方保持する。句読点違い・言い換え・類似文は自動統合しない。
 3. **Rinレビュー(ここが本体)**:
    - style: strength=lowは原則落とす。残す場合は自覚と一致するかで判断。「公開の場の自分」への偏りを意識して、実際と違う観察は削除。
    - fact: sensitivityの機械判定を全件目視で上書き確認。private_onlyは公開fixtureへの流用禁止。
@@ -176,6 +176,6 @@ relaylm_not_authoritative_for:
 
 - `scripts/relaylm_twin_extraction_preprocess.py` — 前処理(prefix剥がし・RT除外・引用RT処理・日付フィルタ・バッチ分割)
 - `scripts/relaylm_twin_extraction_batch_runner.py` — バッチごとの抽出プロンプト実行(dry-run・fail-closed・リトライ境界あり)
-- `scripts/relaylm_twin_extraction_merge.py` — レビュー用単一JSON(`twin_extraction_review.json`)への集約(統合ルールは本ツールの「集約・レビュー手順」1と一致し、曖昧一致統合は行わない)
+- `scripts/relaylm_twin_extraction_merge.py` — レビュー用単一JSON(`twin_extraction_review.json`)への集約(統合ルールは本ツールの「集約・レビュー手順」と一致し、曖昧一致統合は行わない)
 
 実行手順は [Twin Extraction 運用ランブック](twin_extraction_runbook.md) を参照。これらのツールはRelayLMランタイム(`relaylm/`)に対する変更を含まず、MEM/SOULへの書き込みやbootstrap投入は行わない。
