@@ -35,6 +35,17 @@ def discover_batches(batch_dir: Path) -> list[Path]:
     return sorted(batch_dir.glob("batch_*.jsonl"))
 
 
+def clear_prior_run_outputs(results_dir: Path, failed_dir: Path) -> None:
+    """Remove stale runner outputs before writing this invocation's bounded result set."""
+    for directory, pattern in (
+        (results_dir, "*.result.json"),
+        (failed_dir, "*.failed.json"),
+    ):
+        for path in directory.glob(pattern):
+            if path.is_file():
+                path.unlink()
+
+
 def build_payload(model: str, prompt_text: str, records: list[dict]) -> dict:
     return {
         "model": model,
@@ -155,6 +166,12 @@ def main(argv: list[str] | None = None) -> int:
     results_dir.mkdir(parents=True, exist_ok=True)
     failed_dir.mkdir(parents=True, exist_ok=True)
 
+    # A live rerun into the same --out-dir must be a clean bounded result set.
+    # Otherwise a previous wider run (for example without --max-batches) can
+    # leave higher-numbered result files that this shorter run never visits,
+    # and merge reads every *.result.json it finds.
+    clear_prior_run_outputs(results_dir, failed_dir)
+
     def completion_fn(payload: dict) -> dict:
         return call_chat_completions(args.base_url, payload)
 
@@ -167,10 +184,8 @@ def main(argv: list[str] | None = None) -> int:
         outcome = run_batch(completion_fn, args.model, prompt_text, records, args.retries)
         elapsed = time.monotonic() - started
 
-        # A rerun into the same --out-dir must not leave a stale marker from
-        # a previous run's opposite outcome for this batch id (for example a
-        # prior success's results/<id>.result.json surviving a current
-        # failure), since merge reads every *.result.json it finds.
+        # Keep each batch's marker mutually exclusive even if a future change
+        # moves output cleanup or writes additional per-batch markers.
         (results_dir / f"{batch_id}.result.json").unlink(missing_ok=True)
         (failed_dir / f"{batch_id}.failed.json").unlink(missing_ok=True)
 
