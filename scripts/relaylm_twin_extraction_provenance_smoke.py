@@ -3,6 +3,8 @@
 
 Verifies that malformed fact-candidate provenance is dropped before review
 artifact creation, so reviewers never see provenance-empty fact candidates.
+It also verifies fail-closed sensitivity propagation when a malformed exact
+duplicate is private_only but a valid duplicate survives.
 """
 from __future__ import annotations
 
@@ -53,6 +55,20 @@ def main() -> int:
                             "sensitivity": "general",
                         },
                         {
+                            "statement": "CANARY_PRIVATE_DUPLICATE survives as private_only",
+                            "type": "knowledge",
+                            "provenance": "x_post",
+                            "evidence_ids": ["1007"],
+                            "sensitivity": "general",
+                        },
+                        {
+                            "statement": "CANARY_PRIVATE_DUPLICATE survives as private_only",
+                            "type": "knowledge",
+                            "provenance": {"source": "chatgpt_reconstructed"},
+                            "evidence_ids": ["1008"],
+                            "sensitivity": "private_only",
+                        },
+                        {
                             "statement": "CANARY_MISSING_PROVENANCE must be dropped",
                             "type": "knowledge",
                             "evidence_ids": ["1003"],
@@ -91,7 +107,8 @@ def main() -> int:
         )
         require(exit_code == 0, stdout)
         summary = json.loads(stdout.strip())
-        require(summary["fact_candidate_count"] == 2, summary)
+        require(summary["fact_candidate_count"] == 3, summary)
+        require(summary["private_only_fact_candidate_count"] == 1, summary)
 
         review = json.loads(out_path.read_text(encoding="utf-8"))
         facts = {fact["statement"]: fact for fact in review["fact_candidates"]}
@@ -101,6 +118,19 @@ def main() -> int:
         require(
             facts["CANARY_LIST_PROVENANCE survives"]["provenance"]
             == ["chatgpt_reconstructed", "x_post"],
+            facts,
+        )
+        require("CANARY_PRIVATE_DUPLICATE survives as private_only" in facts, facts)
+        require(
+            facts["CANARY_PRIVATE_DUPLICATE survives as private_only"]["provenance"] == ["x_post"],
+            facts,
+        )
+        require(
+            facts["CANARY_PRIVATE_DUPLICATE survives as private_only"]["sensitivity"] == "private_only",
+            facts,
+        )
+        require(
+            facts["CANARY_PRIVATE_DUPLICATE survives as private_only"]["evidence_ids"] == ["1007"],
             facts,
         )
         for dropped in (
