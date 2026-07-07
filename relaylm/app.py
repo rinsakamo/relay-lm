@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import argparse
 from copy import deepcopy
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from datetime import datetime, timezone
-import json
 import os
 from pathlib import Path
 import time
@@ -23,6 +22,10 @@ from relaylm.adapter import (
     BackendRequestError,
     forward_chat_completion_json,
     open_chat_completion_stream,
+)
+from relaylm.app_request_validation import (
+    _validate_and_resolve_managed_chat_request,
+    openai_error,
 )
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.relaymem_slp_durable_finalization_publication import (
@@ -94,13 +97,7 @@ from relaylm.relayemo import (
     save_session_assistant_state,
 )
 from relaylm.request_scope import build_scope_resolution_diagnostics, extract_request_scope_identity
-from relaylm.routing import (
-    ResolvedRoute,
-    RouteConfigurationError,
-    RouteNotFoundError,
-    list_model_ids,
-    resolve_route,
-)
+from relaylm.routing import ResolvedRoute, list_model_ids
 from relaylm.token_budget import estimate_text_tokens
 from relaylm.token_budget_truncation import apply_token_budget_message_truncation
 from relaylm.token_policy_signal import (
@@ -857,137 +854,6 @@ def create_app(config_path: str | None = None) -> FastAPI:
     return app
 
 
-@dataclass
-class _ManagedChatRequestValidationResult:
-    """Outcome of validating and route-resolving a managed chat request."""
-
-    error_response: JSONResponse | None
-    payload: Mapping[str, Any] | None = None
-    model: str | None = None
-    stream_enabled: bool = False
-    route: ResolvedRoute | None = None
-
-
-async def _validate_and_resolve_managed_chat_request(
-    request: Request,
-    *,
-    request_id: str,
-    config: RelayLMConfig,
-) -> _ManagedChatRequestValidationResult:
-    """Parse, validate, and route-resolve a managed chat completion request.
-
-    Preserves the exact fallback_reason values, status codes, and header
-    shape of each early-return branch from the original inline validation.
-    """
-
-    try:
-        payload = await request.json()
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        diagnostics = RequestDiagnostics(
-            request_id=request_id,
-            trace_enabled=config.trace.enabled,
-            fallback_reason="invalid_json",
-        )
-        return _ManagedChatRequestValidationResult(
-            error_response=openai_error(
-                status_code=400,
-                message="Request body must be valid JSON.",
-                error_type="invalid_request_error",
-                headers=diagnostics.to_headers(),
-            )
-        )
-
-    if not isinstance(payload, Mapping):
-        diagnostics = RequestDiagnostics(
-            request_id=request_id,
-            trace_enabled=config.trace.enabled,
-            fallback_reason="invalid_json_type",
-        )
-        return _ManagedChatRequestValidationResult(
-            error_response=openai_error(
-                status_code=400,
-                message="Request body must be a JSON object.",
-                error_type="invalid_request_error",
-                headers=diagnostics.to_headers(),
-            )
-        )
-
-    model = payload.get("model")
-    if not isinstance(model, str) or not model:
-        diagnostics = RequestDiagnostics(
-            request_id=request_id,
-            trace_enabled=config.trace.enabled,
-            fallback_reason="missing_model",
-        )
-        return _ManagedChatRequestValidationResult(
-            error_response=openai_error(
-                status_code=400,
-                message="Request field 'model' is required.",
-                error_type="invalid_request_error",
-                headers=diagnostics.to_headers(),
-            )
-        )
-
-    stream_value = payload.get("stream", False)
-    if not isinstance(stream_value, bool):
-        diagnostics = RequestDiagnostics(
-            request_id=request_id,
-            route_model=model,
-            trace_enabled=config.trace.enabled,
-            fallback_reason="invalid_stream_type",
-        )
-        return _ManagedChatRequestValidationResult(
-            error_response=openai_error(
-                status_code=400,
-                message="Request field 'stream' must be a boolean when provided.",
-                error_type="invalid_request_error",
-                headers=diagnostics.to_headers(),
-            )
-        )
-    stream_enabled = stream_value
-
-    try:
-        route = resolve_route(config, model)
-    except RouteNotFoundError as exc:
-        diagnostics = RequestDiagnostics(
-            request_id=request_id,
-            route_model=model,
-            trace_enabled=config.trace.enabled,
-            fallback_reason="route_not_found",
-        )
-        return _ManagedChatRequestValidationResult(
-            error_response=openai_error(
-                status_code=400,
-                message=str(exc),
-                error_type="invalid_request_error",
-                headers=diagnostics.to_headers(),
-            )
-        )
-    except RouteConfigurationError as exc:
-        diagnostics = RequestDiagnostics(
-            request_id=request_id,
-            route_model=model,
-            trace_enabled=config.trace.enabled,
-            fallback_reason="route_configuration_error",
-        )
-        return _ManagedChatRequestValidationResult(
-            error_response=openai_error(
-                status_code=500,
-                message=str(exc),
-                error_type="server_error",
-                headers=diagnostics.to_headers(),
-            )
-        )
-
-    return _ManagedChatRequestValidationResult(
-        error_response=None,
-        payload=payload,
-        model=model,
-        stream_enabled=stream_enabled,
-        route=route,
-    )
-
-
 def _build_backend_request_error_response(
     *,
     config: RelayLMConfig,
@@ -1074,27 +940,6 @@ def _durable_finalization_server_error() -> JSONResponse:
         status_code=500,
         message="RelayLM could not safely finalize this response.",
         error_type="server_error",
-    )
-
-
-def openai_error(
-    *,
-    status_code: int,
-    message: str,
-    error_type: str,
-    headers: dict[str, str] | None = None,
-) -> JSONResponse:
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "error": {
-                "message": message,
-                "type": error_type,
-                "param": None,
-                "code": None,
-            }
-        },
-        headers=headers,
     )
 
 
