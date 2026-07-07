@@ -117,7 +117,7 @@ The current placement rules remain:
 - MVP execution plan and post-MVP roadmap -> `docs/architecture/project_execution_plan.md`
 - stable cross-cutting architecture -> `docs/architecture/`
 - exact schemas and contracts -> `docs/contracts/` or dedicated architecture contract docs
-- smoke, troubleshooting, and evaluation docs -> `docs/smoke/`
+- manual smoke, troubleshooting, and local behavior validation docs -> `docs/smoke/`
 - offline tooling specifications and runbooks -> `docs/tools/`
 - evaluation templates and run records -> `docs/evaluation/`
 - historical MVP snapshots and implementation completion reports -> `docs/mvp/`
