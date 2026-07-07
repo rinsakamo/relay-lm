@@ -290,6 +290,11 @@ def _build_minimal_runtime_checkpoint_artifact(**checkpoint_kwargs: Any) -> dict
         "recovery_transition_created": checkpoint_kwargs.get("recovery_transition_created")
         is True,
         "blocked_reasons": safe_blocked_reasons,
+        "timing_summary": (
+            dict(checkpoint_kwargs["timing_summary"])
+            if isinstance(checkpoint_kwargs.get("timing_summary"), Mapping)
+            else None
+        ),
     }
     for key in RECOVERY_DETAIL_ARTIFACT_KEYS:
         artifact[key] = None

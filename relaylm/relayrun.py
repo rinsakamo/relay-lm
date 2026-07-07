@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 import uuid
 
 RunNodeStatus = Literal[
@@ -87,12 +87,15 @@ class RelayRunNode:
     blocked_reasons: tuple[str, ...] = ()
     input_artifact_id: str | None = None
     output_artifact_id: str | None = None
+    duration_ms: int | None = None
     diagnostics_only: bool = True
     schema_version: str = "relayrun-node-0"
 
     def to_log_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["blocked_reasons"] = list(self.blocked_reasons)
+        if self.started_at is None or self.completed_at is None:
+            data["duration_ms"] = None
         return data
 
 
@@ -219,18 +222,79 @@ def build_relayrun_node(
     blocked_reasons: list[str] | tuple[str, ...] | None = None,
     input_artifact_id: str | None = None,
     output_artifact_id: str | None = None,
+    started_at: str | None = None,
+    completed_at: str | None = None,
+    duration_ms: int | None = None,
 ) -> dict[str, Any]:
-    """Build one metadata-only RelayRUN node record."""
+    """Build one metadata-only RelayRUN node record.
+
+    ``started_at``/``completed_at``/``duration_ms`` are measurement-only
+    (LAT-1): they never affect ``node_status`` or trigger any degradation,
+    skip, or timeout behavior.
+    """
 
     node = RelayRunNode(
         node_name=str(node_name),
         node_status=node_status,
+        started_at=started_at,
+        completed_at=completed_at,
         fallback_reason=fallback_reason,
         blocked_reasons=tuple(str(reason) for reason in (blocked_reasons or ())),
         input_artifact_id=input_artifact_id,
         output_artifact_id=output_artifact_id,
+        duration_ms=duration_ms,
     )
     return node.to_log_dict()
+
+
+TIMING_SUMMARY_SCHEMA_VERSION = "relayrun.timing_summary.v0"
+
+
+def build_relayrun_timing_summary(
+    node_statuses: list[Mapping[str, Any]] | tuple[Mapping[str, Any], ...] | None,
+) -> dict[str, Any]:
+    """Build the content-free, numeric-only RelayRUN node timing rollup.
+
+    This is a pure aggregation over already-computed per-node ``duration_ms``
+    values (see LAT-1). It performs no timing of its own, no I/O, and never
+    changes node status, skip, or degradation behavior.
+    """
+
+    nodes = [node for node in (node_statuses or ()) if isinstance(node, Mapping)]
+
+    def _duration(node: Mapping[str, Any]) -> int | None:
+        value = node.get("duration_ms")
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+        return None
+
+    pipeline_overhead_ms = 0
+    for node in nodes:
+        if node.get("node_status") != "completed" or node.get("node_name") == "backend_forward":
+            continue
+        duration = _duration(node)
+        if duration is not None:
+            pipeline_overhead_ms += duration
+
+    durations_by_node_name: dict[str, int] = {}
+    for node in nodes:
+        node_name = node.get("node_name")
+        duration = _duration(node)
+        if isinstance(node_name, str) and duration is not None:
+            durations_by_node_name[node_name] = duration
+
+    nodes_timed_count = len(durations_by_node_name)
+    nodes_untimed_count = len(nodes) - nodes_timed_count
+
+    return {
+        "schema_version": TIMING_SUMMARY_SCHEMA_VERSION,
+        "pipeline_overhead_ms": pipeline_overhead_ms,
+        "backend_forward_ms": durations_by_node_name.get("backend_forward"),
+        "time_to_first_token_ms": None,
+        "retrieval_ms": durations_by_node_name.get("relaymem_retrieval"),
+        "nodes_timed_count": nodes_timed_count,
+        "nodes_untimed_count": nodes_untimed_count,
+    }
 
 
 def build_relayrun_checkpoint_persistence_plan(
@@ -1848,6 +1912,7 @@ def build_runtime_checkpoint_dry_run_artifact(
     user_action_dry_run_only: bool = True,
     recovery_transition_created: bool = False,
     applied: bool = False,
+    timing_summary: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the request-path RelayRUN runtime checkpoint dry-run artifact.
 
@@ -1979,6 +2044,7 @@ def build_runtime_checkpoint_dry_run_artifact(
         "user_action_contract": user_action_contract,
         "recovery_transition_created": bool(recovery_transition_created),
         "blocked_reasons": safe_blocked_reasons,
+        "timing_summary": dict(timing_summary) if isinstance(timing_summary, Mapping) else None,
     }
 
 

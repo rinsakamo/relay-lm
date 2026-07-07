@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import argparse
 from copy import deepcopy
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import time
 import uuid
 from collections.abc import Mapping
 from typing import Any
@@ -80,6 +82,7 @@ from relaylm.relaymem_primary_recall import (
 )
 from relaylm.relayrun import (
     build_relayrun_node,
+    build_relayrun_timing_summary,
     new_run_id,
     write_relayrun_checkpoint_if_enabled,
 )
@@ -116,6 +119,37 @@ from relaylm.relayctx_repack import (
 )
 
 
+def _start_timing() -> tuple[str, float]:
+    """Capture a node's start for LAT-1 RelayRUN timing (measurement only)."""
+
+    return datetime.now(timezone.utc).isoformat(), time.monotonic()
+
+
+def _finalize_timing(started_at: str, start_monotonic: float) -> dict[str, Any]:
+    """Finish a node timing bracket started by ``_start_timing``.
+
+    Wall-clock ISO timestamps are recorded for ``started_at``/``completed_at``;
+    ``duration_ms`` is derived from a monotonic clock so it stays accurate even
+    if the wall clock is adjusted mid-request.
+    """
+
+    return {
+        "started_at": started_at,
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "duration_ms": max(0, round((time.monotonic() - start_monotonic) * 1000)),
+    }
+
+
+def _node_timing_kwargs(timing: Mapping[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(timing, Mapping):
+        return {"started_at": None, "completed_at": None, "duration_ms": None}
+    return {
+        "started_at": timing.get("started_at"),
+        "completed_at": timing.get("completed_at"),
+        "duration_ms": timing.get("duration_ms"),
+    }
+
+
 def create_app(config_path: str | None = None) -> FastAPI:
     config = load_config(config_path)
     app = FastAPI(title="RelayLM", version="0.1.0")
@@ -144,6 +178,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
     @app.post("/v1/chat/completions", response_model=None)
     async def chat_completions(request: Request) -> JSONResponse | StreamingResponse:
         request_id = str(uuid.uuid4())
+        request_received_started_at, request_received_start_monotonic = _start_timing()
         validation = await _validate_and_resolve_managed_chat_request(
             request,
             request_id=request_id,
@@ -151,6 +186,11 @@ def create_app(config_path: str | None = None) -> FastAPI:
         )
         if validation.error_response is not None:
             return validation.error_response
+        node_timings: dict[str, dict[str, Any] | None] = {
+            "request_received": _finalize_timing(
+                request_received_started_at, request_received_start_monotonic
+            )
+        }
         payload = validation.payload
         stream_enabled = validation.stream_enabled
         route = validation.route
@@ -212,15 +252,20 @@ def create_app(config_path: str | None = None) -> FastAPI:
         )
         forwarded_payload = pipeline_context.forwarded_payload
         token_budget_truncation: dict[str, Any] | None = None
+        relayrel_started_at, relayrel_start_monotonic = _start_timing()
         relayrel_relationship_projection = build_relayrel_relationship_projection(
             route=route,
             request_scope_identity=request_scope_identity,
         )
+        node_timings["relayrel"] = _finalize_timing(relayrel_started_at, relayrel_start_monotonic)
+        relayscn_started_at, relayscn_start_monotonic = _start_timing()
         relayscn_scene_policy_artifact = build_relayscn_scene_policy_artifact(
             payload=payload,
         )
+        node_timings["relayscn"] = _finalize_timing(relayscn_started_at, relayscn_start_monotonic)
         relayemo_artifact: dict[str, Any] | None = None
         if config.relayemo_enabled:
+            relayemo_started_at, relayemo_start_monotonic = _start_timing()
             session_key, session_key_source = _resolve_relayemo_session_key(
                 route=route,
                 payload=payload,
@@ -264,12 +309,17 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     relayemo_result.assistant_state,
                     max_entries=config.relayemo_session_state_max_entries,
                 )
+            node_timings["relayemo"] = _finalize_timing(
+                relayemo_started_at, relayemo_start_monotonic
+            )
 
+        relayint_started_at, relayint_start_monotonic = _start_timing()
         relayint_intent_artifact = build_relayint_reference_intent_artifact(
             relayscn_artifact=relayscn_scene_policy_artifact,
             messages=_extract_trace_messages(payload),
             ctx_hints=_extract_ctx_hints(payload),
         )
+        node_timings["relayint"] = _finalize_timing(relayint_started_at, relayint_start_monotonic)
         relayint_fast_path_dry_run = build_relayint_fast_path_dry_run(
             messages=_extract_trace_messages(payload),
             ctx_hints=_extract_ctx_hints(payload),
@@ -308,6 +358,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
             route.character_id,
         )
 
+        relaymem_retrieval_started_at, relaymem_retrieval_start_monotonic = _start_timing()
         relaymem_store_diagnostics = build_relaymem_store_diagnostics(
             root_path=relaymem_scoped_store_root,
             store_enabled=config.memory.store_enabled,
@@ -338,6 +389,10 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 snippet_budget=config.memory.snippet_budget,
                 chars_per_token=config.memory.chars_per_token,
             )
+        node_timings["relaymem_retrieval"] = _finalize_timing(
+            relaymem_retrieval_started_at, relaymem_retrieval_start_monotonic
+        )
+        relaymem_runtime_ctx_started_at, relaymem_runtime_ctx_start_monotonic = _start_timing()
         (
             forwarded_payload,
             runtime_ctx_injection_result,
@@ -347,6 +402,9 @@ def create_app(config_path: str | None = None) -> FastAPI:
             pipeline_context=pipeline_context,
             relaymem_retrieval_artifact=relaymem_retrieval_artifact,
             compiled_payload=compiled_request.payload,
+        )
+        node_timings["relaymem_runtime_ctx"] = _finalize_timing(
+            relaymem_runtime_ctx_started_at, relaymem_runtime_ctx_start_monotonic
         )
         relaymem_primary_recall_projection = relaymem_retrieval_artifact.get(
             "primary_recall_projection"
@@ -398,6 +456,9 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 dry_run_only=config.relayctx_short_term_runtime_injection_dry_run_only,
             )
         )
+        relayctx_short_term_injection_started_at, relayctx_short_term_injection_start_monotonic = (
+            _start_timing()
+        )
         (
             forwarded_payload,
             relayctx_short_term_runtime_injection_apply_result,
@@ -406,12 +467,22 @@ def create_app(config_path: str | None = None) -> FastAPI:
             pipeline_context=pipeline_context,
             preflight_artifact=relayctx_short_term_runtime_injection_preflight,
         )
+        node_timings["relayctx_short_term_injection"] = _finalize_timing(
+            relayctx_short_term_injection_started_at,
+            relayctx_short_term_injection_start_monotonic,
+        )
 
         # token_budget_truncation runs last among CTX Repack mutations so it is
         # the final gate on the forwarded payload's estimated token total.
+        token_budget_truncation_started_at, token_budget_truncation_start_monotonic = (
+            _start_timing()
+        )
         forwarded_payload, token_budget_truncation = apply_token_budget_truncation_phase(
             config=config,
             pipeline_context=pipeline_context,
+        )
+        node_timings["token_budget_truncation"] = _finalize_timing(
+            token_budget_truncation_started_at, token_budget_truncation_start_monotonic
         )
 
         compiled_message_count = (
@@ -479,6 +550,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 relayctx_short_term_runtime_injection_apply_result
             ),
             token_budget_truncation=token_budget_truncation,
+            node_timings=node_timings,
         )
 
         # relayrun_artifact is built after all CTX Repack mutations (relaymem
@@ -569,6 +641,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
         )
 
         if stream_enabled:
+            backend_forward_started_at, backend_forward_start_monotonic = _start_timing()
             try:
                 status_code, content_type, body_iter = await open_chat_completion_stream(
                     forwarded_payload, route
@@ -580,10 +653,16 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     diagnostics=diagnostics,
                     runtime_artifact_context=runtime_artifact_context,
                     forwarded_payload=forwarded_payload,
+                    backend_forward_timing=_finalize_timing(
+                        backend_forward_started_at, backend_forward_start_monotonic
+                    ),
                 )
             stream_relayrun_artifact = _build_relayrun_runtime_artifact_for_context(
                 runtime_artifact_context,
                 backend_forward_status="completed",
+                backend_forward_timing=_finalize_timing(
+                    backend_forward_started_at, backend_forward_start_monotonic
+                ),
                 stream_started=True,
                 first_token_sent=False,
             )
@@ -667,6 +746,7 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 background=stream_background,
             )
 
+        backend_forward_started_at, backend_forward_start_monotonic = _start_timing()
         try:
             status_code, body, response_headers = await forward_chat_completion_json(
                 forwarded_payload, route
@@ -678,10 +758,16 @@ def create_app(config_path: str | None = None) -> FastAPI:
                 diagnostics=diagnostics,
                 runtime_artifact_context=runtime_artifact_context,
                 forwarded_payload=forwarded_payload,
+                backend_forward_timing=_finalize_timing(
+                    backend_forward_started_at, backend_forward_start_monotonic
+                ),
             )
         success_relayrun_artifact = _build_relayrun_runtime_artifact_for_context(
             runtime_artifact_context,
             backend_forward_status="completed",
+            backend_forward_timing=_finalize_timing(
+                backend_forward_started_at, backend_forward_start_monotonic
+            ),
             stream_started=False,
             first_token_sent=False,
         )
@@ -937,6 +1023,7 @@ class _ManagedRuntimeArtifactContext:
     runtime_snippet_injection_result: Mapping[str, Any] | None
     relayctx_short_term_runtime_injection_apply_result: Mapping[str, Any] | None
     token_budget_truncation: Mapping[str, Any] | None
+    node_timings: Mapping[str, Mapping[str, Any] | None] = field(default_factory=dict)
 
 
 def _build_relayrun_runtime_artifact_for_context(
@@ -944,9 +1031,12 @@ def _build_relayrun_runtime_artifact_for_context(
     *,
     backend_forward_status: str,
     backend_forward_blocked_reasons: list[str] | None = None,
+    backend_forward_timing: Mapping[str, Any] | None = None,
     stream_started: bool | None = None,
     first_token_sent: bool | None = None,
 ) -> dict[str, Any]:
+    node_timings = dict(context.node_timings)
+    node_timings["backend_forward"] = backend_forward_timing
     return _build_relayrun_runtime_artifact(
         config=context.config,
         request_id=context.request_id,
@@ -964,6 +1054,7 @@ def _build_relayrun_runtime_artifact_for_context(
             context.relayctx_short_term_runtime_injection_apply_result
         ),
         token_budget_truncation=context.token_budget_truncation,
+        node_timings=node_timings,
         backend_forward_status=backend_forward_status,
         backend_forward_blocked_reasons=backend_forward_blocked_reasons,
         stream_started=stream_started,
@@ -978,6 +1069,7 @@ def _build_backend_request_error_response(
     diagnostics: RequestDiagnostics,
     runtime_artifact_context: _ManagedRuntimeArtifactContext,
     forwarded_payload: Mapping[str, Any],
+    backend_forward_timing: Mapping[str, Any] | None = None,
 ) -> JSONResponse:
     """Build the shared 502 response for a failed backend forward attempt.
 
@@ -989,6 +1081,7 @@ def _build_backend_request_error_response(
         runtime_artifact_context,
         backend_forward_status="failed",
         backend_forward_blocked_reasons=[exc.__class__.__name__],
+        backend_forward_timing=backend_forward_timing,
         stream_started=False,
         first_token_sent=False,
     )
@@ -1254,27 +1347,40 @@ def _build_relayrun_runtime_artifact(
     token_budget_truncation: Mapping[str, Any] | None,
     backend_forward_status: str,
     backend_forward_blocked_reasons: list[str] | None = None,
+    node_timings: Mapping[str, Mapping[str, Any] | None] | None = None,
     stream_started: bool | None = None,
     first_token_sent: bool | None = None,
 ) -> dict[str, Any]:
+    timings = node_timings or {}
     node_statuses = [
-        build_relayrun_node(node_name="request_received", node_status="completed"),
-        _relayrun_relayrel_node(relayrel_relationship_projection),
-        _relayrun_relayscn_node(relayscn_scene_policy_artifact),
+        build_relayrun_node(
+            node_name="request_received",
+            node_status="completed",
+            **_node_timing_kwargs(timings.get("request_received")),
+        ),
+        _relayrun_relayrel_node(relayrel_relationship_projection, timing=timings.get("relayrel")),
+        _relayrun_relayscn_node(relayscn_scene_policy_artifact, timing=timings.get("relayscn")),
         _relayrun_relayemo_node(
             relayemo_artifact=relayemo_artifact,
             relayemo_enabled=config.relayemo_enabled,
+            timing=timings.get("relayemo"),
         ),
-        _relayrun_relayint_intent_node(relayint_intent_artifact),
-        _relayrun_relaymem_retrieval_node(relaymem_retrieval_artifact),
+        _relayrun_relayint_intent_node(relayint_intent_artifact, timing=timings.get("relayint")),
+        _relayrun_relaymem_retrieval_node(
+            relaymem_retrieval_artifact, timing=timings.get("relaymem_retrieval")
+        ),
         _relayrun_relaymem_runtime_ctx_node(
             runtime_ctx_injection_result=runtime_ctx_injection_result,
             runtime_snippet_injection_result=runtime_snippet_injection_result,
+            timing=timings.get("relaymem_runtime_ctx"),
         ),
         _relayrun_relayctx_short_term_injection_node(
-            relayctx_short_term_runtime_injection_apply_result
+            relayctx_short_term_runtime_injection_apply_result,
+            timing=timings.get("relayctx_short_term_injection"),
         ),
-        _relayrun_token_budget_truncation_node(token_budget_truncation),
+        _relayrun_token_budget_truncation_node(
+            token_budget_truncation, timing=timings.get("token_budget_truncation")
+        ),
         build_relayrun_node(
             node_name="backend_forward",
             node_status=_relayrun_backend_forward_status(backend_forward_status),
@@ -1284,12 +1390,15 @@ def _build_relayrun_runtime_artifact(
                 if backend_forward_status == "failed"
                 else None
             ),
+            **_node_timing_kwargs(timings.get("backend_forward")),
         ),
     ]
     blocked_reasons = _relayrun_collect_blocked_reasons(node_statuses)
+    timing_summary = build_relayrun_timing_summary(node_statuses)
     artifact = build_runtime_checkpoint_lazy_recovery_artifact(
         include_recovery_details=None,
         backend_forward_status=backend_forward_status,
+        timing_summary=timing_summary,
         checkpoint_write_enabled=config.relayrun_checkpoint_write_enabled,
         checkpoint_dry_run_only=config.relayrun_checkpoint_dry_run_only,
         request_id=request_id,
@@ -1342,13 +1451,18 @@ def _build_relayrun_runtime_artifact(
     )
 
 
-def _relayrun_relayscn_node(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
+def _relayrun_relayscn_node(
+    artifact: Mapping[str, Any] | None,
+    *,
+    timing: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     if not isinstance(artifact, Mapping):
         return build_relayrun_node(
             node_name="relayscn",
             node_status="failed",
             blocked_reasons=["relayscn_scene_policy_artifact_missing"],
             fallback_reason="relayscn_artifact_missing",
+            **_node_timing_kwargs(timing),
         )
     scene_state = artifact.get("scene_state")
     scene_type = scene_state.get("scene_type") if isinstance(scene_state, Mapping) else None
@@ -1377,24 +1491,33 @@ def _relayrun_relayscn_node(artifact: Mapping[str, Any] | None) -> dict[str, Any
         node_status=status,
         blocked_reasons=blocked_reasons,
         fallback_reason="scene_policy_fail_closed" if blocked_reasons else None,
+        **_node_timing_kwargs(timing),
     )
 
 
-def _relayrun_relayrel_node(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
+def _relayrun_relayrel_node(
+    artifact: Mapping[str, Any] | None,
+    *,
+    timing: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     if not isinstance(artifact, Mapping):
         return build_relayrun_node(
             node_name="relayrel",
             node_status="failed",
             blocked_reasons=["relayrel_relationship_projection_missing"],
             fallback_reason="relayrel_relationship_projection_missing",
+            **_node_timing_kwargs(timing),
         )
-    return build_relayrun_node(node_name="relayrel", node_status="completed")
+    return build_relayrun_node(
+        node_name="relayrel", node_status="completed", **_node_timing_kwargs(timing)
+    )
 
 
 def _relayrun_relayemo_node(
     *,
     relayemo_artifact: Mapping[str, Any] | None,
     relayemo_enabled: bool,
+    timing: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if not relayemo_enabled:
         return build_relayrun_node(node_name="relayemo", node_status="skipped")
@@ -1404,6 +1527,7 @@ def _relayrun_relayemo_node(
             node_status="failed",
             blocked_reasons=["relayemo_artifact_missing"],
             fallback_reason="relayemo_artifact_missing",
+            **_node_timing_kwargs(timing),
         )
     fallback_reason = relayemo_artifact.get("fallback_reason")
     blocked_reasons = _string_list(relayemo_artifact.get("blocked_reasons"))
@@ -1413,16 +1537,22 @@ def _relayrun_relayemo_node(
         node_status=status,
         blocked_reasons=blocked_reasons,
         fallback_reason=fallback_reason if isinstance(fallback_reason, str) else None,
+        **_node_timing_kwargs(timing),
     )
 
 
-def _relayrun_relayint_intent_node(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
+def _relayrun_relayint_intent_node(
+    artifact: Mapping[str, Any] | None,
+    *,
+    timing: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     if not isinstance(artifact, Mapping):
         return build_relayrun_node(
             node_name="relayint",
             node_status="failed",
             blocked_reasons=["relayint_intent_artifact_missing"],
             fallback_reason="relayint_intent_artifact_missing",
+            **_node_timing_kwargs(timing),
         )
     blocked_reasons = []
     if artifact.get("unresolved_reference_detected") is True:
@@ -1444,16 +1574,22 @@ def _relayrun_relayint_intent_node(artifact: Mapping[str, Any] | None) -> dict[s
             if blocked_reasons and isinstance(artifact.get("mode"), str)
             else None
         ),
+        **_node_timing_kwargs(timing),
     )
 
 
-def _relayrun_relaymem_retrieval_node(artifact: Mapping[str, Any] | None) -> dict[str, Any]:
+def _relayrun_relaymem_retrieval_node(
+    artifact: Mapping[str, Any] | None,
+    *,
+    timing: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     if not isinstance(artifact, Mapping):
         return build_relayrun_node(
             node_name="relaymem_retrieval",
             node_status="failed",
             blocked_reasons=["relaymem_retrieval_artifact_missing"],
             fallback_reason="relaymem_retrieval_artifact_missing",
+            **_node_timing_kwargs(timing),
         )
     blocked_reasons = []
     apply_decision = artifact.get("apply_decision")
@@ -1472,6 +1608,7 @@ def _relayrun_relaymem_retrieval_node(artifact: Mapping[str, Any] | None) -> dic
         node_status=status,
         blocked_reasons=blocked_reasons,
         fallback_reason=fallback_reason if isinstance(fallback_reason, str) else None,
+        **_node_timing_kwargs(timing),
     )
 
 
@@ -1479,6 +1616,7 @@ def _relayrun_relaymem_runtime_ctx_node(
     *,
     runtime_ctx_injection_result: Mapping[str, Any] | None,
     runtime_snippet_injection_result: Mapping[str, Any] | None,
+    timing: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if (
         not isinstance(runtime_ctx_injection_result, Mapping)
@@ -1489,6 +1627,7 @@ def _relayrun_relaymem_runtime_ctx_node(
             node_status="failed",
             blocked_reasons=["runtime_ctx_or_snippet_result_missing"],
             fallback_reason="runtime_ctx_result_missing",
+            **_node_timing_kwargs(timing),
         )
     if (
         runtime_ctx_injection_result.get("applied") is True
@@ -1497,6 +1636,7 @@ def _relayrun_relaymem_runtime_ctx_node(
         return build_relayrun_node(
             node_name="relaymem_runtime_ctx",
             node_status="completed",
+            **_node_timing_kwargs(timing),
         )
     blocked_reasons = _string_list(runtime_snippet_injection_result.get("blocked_reasons"))
     blocked_reasons.extend(
@@ -1510,21 +1650,26 @@ def _relayrun_relaymem_runtime_ctx_node(
         node_status=status,
         blocked_reasons=blocked_reasons,
         fallback_reason="runtime_ctx_not_applied" if blocked_reasons else None,
+        **_node_timing_kwargs(timing),
     )
 
 
 def _relayrun_relayctx_short_term_injection_node(
     apply_result: Mapping[str, Any] | None,
+    *,
+    timing: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(apply_result, Mapping):
         return build_relayrun_node(
             node_name="relayctx_short_term_injection",
             node_status="skipped",
+            **_node_timing_kwargs(timing),
         )
     if apply_result.get("applied") is True:
         return build_relayrun_node(
             node_name="relayctx_short_term_injection",
             node_status="completed",
+            **_node_timing_kwargs(timing),
         )
     blocked_reasons = _string_list(apply_result.get("blocked_reasons"))
     status = "blocked" if blocked_reasons else "skipped"
@@ -1535,16 +1680,20 @@ def _relayrun_relayctx_short_term_injection_node(
         fallback_reason=(
             "relayctx_short_term_injection_not_applied" if blocked_reasons else None
         ),
+        **_node_timing_kwargs(timing),
     )
 
 
 def _relayrun_token_budget_truncation_node(
     artifact: Mapping[str, Any] | None,
+    *,
+    timing: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     if not isinstance(artifact, Mapping):
         return build_relayrun_node(
             node_name="token_budget_truncation",
             node_status="skipped",
+            **_node_timing_kwargs(timing),
         )
     blocked_reasons = []
     blocked_reason = artifact.get("blocked_reason")
@@ -1556,6 +1705,7 @@ def _relayrun_token_budget_truncation_node(
         node_status=status,
         blocked_reasons=blocked_reasons,
         fallback_reason="token_budget_blocked" if blocked_reasons else None,
+        **_node_timing_kwargs(timing),
     )
 
 
