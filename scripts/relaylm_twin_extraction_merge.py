@@ -38,10 +38,25 @@ def _recompute_strength(evidence_count: int) -> str:
     return "low"
 
 
+def _valid_evidence_id_list(raw_evidence_ids: object) -> list[str] | None:
+    """Return a normalized, deduplicated, sorted evidence-id list, or None
+    if ``raw_evidence_ids`` is not a non-empty list (for example a bare
+    string, which would otherwise be iterated character-by-character).
+    """
+    if not isinstance(raw_evidence_ids, list) or not raw_evidence_ids:
+        return None
+    evidence_ids = sorted({str(item) for item in raw_evidence_ids if item is not None})
+    if not evidence_ids:
+        return None
+    return evidence_ids
+
+
 def _normalize_style_observation(raw: dict) -> dict | None:
     if not isinstance(raw.get("category"), str) or not isinstance(raw.get("description"), str):
         return None
-    evidence_ids = sorted({str(item) for item in raw.get("evidence_ids", []) if item is not None})
+    evidence_ids = _valid_evidence_id_list(raw.get("evidence_ids"))
+    if evidence_ids is None:
+        return None
     return {
         "category": raw["category"],
         "description": raw["description"],
@@ -76,6 +91,10 @@ def merge_fact_candidates(batches: list[dict]) -> list[dict]:
             if not isinstance(statement, str) or not statement or not isinstance(fact_type, str) or not fact_type:
                 continue
 
+            fact_evidence_ids = _valid_evidence_id_list(raw.get("evidence_ids"))
+            if fact_evidence_ids is None:
+                continue
+
             key = (statement, fact_type)
             if key not in grouped:
                 grouped[key] = {
@@ -95,9 +114,7 @@ def merge_fact_candidates(batches: list[dict]) -> list[dict]:
             elif provenance:
                 entry["provenance"].add(str(provenance))
 
-            for evidence_id in raw.get("evidence_ids", []) or []:
-                if evidence_id is not None:
-                    entry["evidence_ids"].add(str(evidence_id))
+            entry["evidence_ids"].update(fact_evidence_ids)
 
             time_context = raw.get("time_context")
             if isinstance(time_context, str) and time_context and time_context != "unknown":

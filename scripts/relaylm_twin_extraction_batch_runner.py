@@ -167,6 +167,13 @@ def main(argv: list[str] | None = None) -> int:
         outcome = run_batch(completion_fn, args.model, prompt_text, records, args.retries)
         elapsed = time.monotonic() - started
 
+        # A rerun into the same --out-dir must not leave a stale marker from
+        # a previous run's opposite outcome for this batch id (for example a
+        # prior success's results/<id>.result.json surviving a current
+        # failure), since merge reads every *.result.json it finds.
+        (results_dir / f"{batch_id}.result.json").unlink(missing_ok=True)
+        (failed_dir / f"{batch_id}.failed.json").unlink(missing_ok=True)
+
         if outcome["status"] == "ok":
             ok_count += 1
             (results_dir / f"{batch_id}.result.json").write_text(

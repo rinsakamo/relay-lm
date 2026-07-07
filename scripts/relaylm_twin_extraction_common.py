@@ -138,6 +138,13 @@ def write_batches(groups: list[list[dict]], out_dir: Path, batch_size: int, pref
     if batch_size <= 0:
         raise ValueError("batch_size must be positive")
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    # A rerun into the same --out-dir must not leave higher-numbered batch
+    # files behind when the new run produces fewer batches than a previous
+    # one, since batch discovery globs every "<prefix>_*.jsonl" file.
+    for stale_path in out_dir.glob(f"{prefix}_*.jsonl"):
+        stale_path.unlink()
+
     paths: list[Path] = []
     for batch_index, start in enumerate(range(0, len(groups), batch_size), start=1):
         chunk_groups = groups[start : start + batch_size]

@@ -138,11 +138,20 @@ relaylm_not_authoritative_for:
 ## 厳守事項
 - assistant発話の内容を本人の知識・意見として抽出しない。本人が明示的に同意・採用した場合のみ、user発話を根拠として抽出可。
 - 「AIに質問した」という行為自体は、関心(attention)の根拠にはなるが、episodicな記憶として大量生成しない。
-- 根拠のない推測禁止。出力はJSONのみ。
+- 根拠のない推測禁止。出力はJSONのみ。前置き・後書き・コードフェンス不要。
 
 ## 出力形式
-(プロンプト1と同一スキーマ。provenanceのみ "chatgpt_reconstructed")
+{
+  "style_observations": [
+    {"category": "...", "description": "...", "evidence_ids": ["..."], "strength": "..."}
+  ],
+  "fact_candidates": [
+    {"statement": "...", "type": "...", "provenance": "chatgpt_reconstructed", "evidence_ids": ["..."], "time_context": "...", "sensitivity": "..."}
+  ]
+}
 ```
+
+スキーマはプロンプト1と同一(provenanceの固定値のみ異なる)。バッチランナーは各プロンプトファイルを単独のシステムプロンプトとして送るため、出力形式は両ファイルにそれぞれ全文を明記している。
 
 ---
 
