@@ -20,6 +20,7 @@ MVP-specific implementation notes remain under `docs/mvp/`. Executable smoke scr
 
 ## RelayMEM and local behavior evaluation
 
+- [O1 manual one-round operations runbook](o1_manual_one_round_runbook.md) — lower-level compatibility/manual validation for one O1D1-style round; not O2/O3 service operation.
 - [E2 value smoke runbook](e2_value_smoke_runbook.md)
 - [RelayMEM runtime payload diff evaluation](relaymem_runtime_payload_eval.md)
 - [RelayMEM local LLM evaluation guide](relaymem_local_llm_eval_guide.md)
@@ -27,4 +28,4 @@ MVP-specific implementation notes remain under `docs/mvp/`. Executable smoke scr
 
 ## Placement rule
 
-Create cross-cutting manual smoke, result, troubleshooting, and local evaluation docs directly under `docs/smoke/`. Keep MVP milestone notes under `docs/mvp/`, architecture docs under `docs/architecture/`, and contract docs under `docs/contracts/`.
+Create cross-cutting manual smoke, result, troubleshooting, and local evaluation docs directly under `docs/smoke/`. Keep MVP milestone notes under `docs/mvp/`, architecture docs under `docs/architecture/`, contract docs under `docs/contracts/`, offline tooling docs under `docs/tools/`, and evaluation templates or run records under `docs/evaluation/`.
