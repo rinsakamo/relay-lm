@@ -128,7 +128,7 @@ def main() -> None:
     _assert("_extract_relayemo_scene_state" not in source, "RelayEMO scene-state extractor must be removed")
     _assert('source = "relayemo_artifact"' not in source, "RelaySCN must not emit relayemo_artifact scene source")
 
-    app_source = Path("relaylm/app.py").read_text(encoding="utf-8")
+    app_source = Path("relaylm/managed_chat_runtime.py").read_text(encoding="utf-8")
     actual_app_rewired = _app_request_path_order_is_rewired(app_source)
     measured_node_order = _app_request_path_measured_order(app_source)
 
