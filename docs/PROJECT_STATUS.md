@@ -17,6 +17,7 @@ relaylm_not_authoritative_for:
   - historical implementation evidence
 relaylm_related_authority:
   - docs/DOCUMENTATION_MODEL.md
+  - docs/mvp/v0.1_release_readiness.md
   - docs/architecture/project_execution_plan.md
   - docs/architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md
   - docs/architecture/analyzer_candidate_governance.md
@@ -44,11 +45,15 @@ relaylm_related_authority:
 ---
 # RelayLM Project Status
 
-Last reviewed: 2026-07-07 JST
+Last reviewed: 2026-07-08 JST
 
 ## Purpose and authority
 
 This page owns current implementation status and active caveats. [Project Execution Plan](architecture/project_execution_plan.md) owns MVP boundary, dependency sequencing, and roadmap ordering.
+
+## v0.1 release readiness
+
+v0.1 readiness is recorded in [v0.1 Release Readiness](mvp/v0.1_release_readiness.md). All current MVP execution lanes listed below are complete. The durable-memory E2 value smoke after O2/O3 scheduler draining evidence has been completed locally and human-reviewed; content-bearing comparison artifacts remain local-only under `local/value_smoke/` and are not committed. The only remaining tracked items are post-v0.1 decision debt and broader not-yet-implemented capabilities listed below.
 
 ## Current implementation position
 
@@ -77,6 +82,7 @@ Character Workspace reset: CW-A1 file-first source tree/parser contracts complet
 SOUL Lab UI: UI-A0 through UI-A7, Phase I-2, Phase I-3, UI-B0, UI-B1A, I-4E Forget UI, I-5B Pin / Unpin UI, I-7C Held Governance UI, CW-A3 Character Workspace top-level surfaces, and CW-A5 creation surface complete
 UI-B1A read-only lifecycle visibility: complete
 Local E1 proof: explicit scene-qualified request -> O0 terminal success -> Primary MEM -> later Home recall complete through M2-preferred recall plus E1-R5 bounded scoped candidate fallback
+Durable-memory E2 value smoke after O2/O3 scheduler draining evidence: complete as local human-reviewed v0.1 readiness evidence; content-bearing artifacts remain local-only
 E1 evaluation consolidation: complete
 E1-R1 trusted Home scene admission: complete
 E1-R2 character-store bootstrap command: complete
@@ -125,7 +131,7 @@ B0-B3 durable enqueue and fenced lifecycle are complete. B3 lifecycle: complete.
 
 O2 is complete as an opt-in supervised local scheduler service that wraps O1E operational controls, carries O1D2 policy state across repeated invocations, and follows bounded content-free pacing. O3 is complete as an opt-in local CLI/process wrapper around O2 with SIGINT/SIGTERM cancellation and JSON-only content-free output.
 
-O2/O3 are not app-embedded, not browser authority, not default-on, and do not add memory mutation authority. Existing O1E/O1D2/O1D1 gates remain the only authority for stale recovery, scheduler rounds, worker execution, durable finalization, and pacing. Durable-memory E2 smoke remains intentionally separate.
+O2/O3 are not app-embedded, not browser authority, not default-on, and do not add memory mutation authority. Existing O1E/O1D2/O1D1 gates remain the only authority for stale recovery, scheduler rounds, worker execution, durable finalization, and pacing. Durable-memory E2 smoke remains intentionally separate from O2/O3 implementation authority and is recorded only as local, human-reviewed v0.1 readiness evidence.
 
 ## Analyzer Candidate Governance boundary
 
@@ -161,6 +167,7 @@ Post-O1F next candidates:
   E1-R4 retrieval-response grounding and unsupported-detail suppression complete in Wave 7
   E1-R5 Primary MEM recall candidate fallback               complete post-Wave-7
   O2/O3 supervised local scheduler operation                 complete for explicit MVP need
+  durable-memory E2 value smoke after O2/O3 scheduler draining evidence complete as local human-reviewed v0.1 readiness evidence
 
 Character Workspace reset:
   CW-A1 file-first source tree and parser contracts          complete
@@ -182,10 +189,9 @@ Post-E1-R5 / Post-Wave-7 next candidates:
   PM-D4 client history exclusion default-off deployment decision
   PM-D9 analyzer candidate governance and multilingual schema policy follow-through
   PM-D2 closure or absorption after PM-D6 if RelayREF wrapper removal closes the legacy artifact scope
-  durable-memory E2 value smoke after O2/O3 scheduler draining evidence
 ```
 
-The completed P0-PIPE implementation boundary is [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md), which also closes PM-D3 RelayEMO/RelaySCN same-turn `scene_state` ownership by shipped request-path wiring and validation. The ACG-1 contract is [ACG-1 Analyzer Candidate Governance Contract](architecture/acg1_analyzer_candidate_governance_contract.md). The ACG-2 handoff is [ACG-2 Grounded Recall Detail Safety](architecture/acg2_grounded_recall_detail_safety.md). The ACG-3 handoff is [ACG-3 Retrieval Query Normalization](architecture/acg3_retrieval_query_normalization.md). The ACG-4 handoff is [ACG-4 Reference Intent Analyzer](architecture/acg4_reference_intent_analyzer.md). The ACG-5 handoff is [ACG-5 RelayEMO Scene Cleanup](architecture/acg5_relayemo_scene_cleanup.md). The ACG-6 handoff is [ACG-6 Scene-Wiki Classifier Boundary](architecture/acg6_scene_wiki_classifier.md). The CW-A1 handoff is [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md). The CW-A2 handoff is [CW-A2 Workspace Compiler Projections and KV-cache Tiers](architecture/cw_a2_workspace_compiler_projections.md). The CW-A3 handoff is [CW-A3 Character Workspace UI Rebuild](architecture/cw_a3_character_workspace_ui_rebuild.md). The CW-A4 handoff is [CW-A4 SLP Workspace Maintenance Candidates](architecture/cw_a4_slp_workspace_maintenance_candidates.md). The CW-A5 handoff is [CW-A5 Character Creation, Templates, and Showcase Import](architecture/cw_a5_character_creation_templates_showcase_import.md). The O2 handoff is [O2 Supervised Scheduler Service](architecture/o2_supervised_scheduler_service.md). The O3 handoff is [O3 Always-On Local Scheduler](architecture/o3_always_on_local_scheduler.md). The PM-D5 handoff is [PM-D5 RelayMEM Flat-store Compatibility Removal](architecture/pm_d5_relaymem_flat_store_compatibility_removal.md). The PM-D6 handoff is [PM-D6 RelayINT Native Artifact / RelayREF Wrapper Removal](architecture/pm_d6_relayint_native_artifact_relayref_wrapper_removal.md). The PM-D7 handoff is [PM-D7 Runtime Install Hook Fold-in](architecture/pm_d7_runtime_install_hook_fold_in.md). The Analyzer Candidate Governance roadmap is [Analyzer Candidate Governance and Multilingual Schema Policy](architecture/analyzer_candidate_governance.md). The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The E1-R5 post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). The E1-R5 implementation handoff is [E1-R5 Primary MEM Recall Candidate Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
+The completed P0-PIPE implementation boundary is [P0 RelayREL / RelaySCN / RelayEMO Ordering Fix](architecture/p0_relayrel_relayscn_relayemo_ordering_fix.md), which also closes PM-D3 RelayEMO/RelaySCN same-turn `scene_state` ownership by shipped request-path wiring and validation. The ACG-1 contract is [ACG-1 Analyzer Candidate Governance Contract](architecture/acg1_analyzer_candidate_governance_contract.md). The ACG-2 handoff is [ACG-2 Grounded Recall Detail Safety](architecture/acg2_grounded_recall_detail_safety.md). The ACG-3 handoff is [ACG-3 Retrieval Query Normalization](architecture/acg3_retrieval_query_normalization.md). The ACG-4 handoff is [ACG-4 Reference Intent Analyzer](architecture/acg4_reference_intent_analyzer.md). The ACG-5 handoff is [ACG-5 RelayEMO Scene Cleanup](architecture/acg5_relayemo_scene_cleanup.md). The ACG-6 handoff is [ACG-6 Scene-Wiki Classifier Boundary](architecture/acg6_scene_wiki_classifier.md). The CW-A1 handoff is [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md). The CW-A2 handoff is [CW-A2 Workspace Compiler Projections and KV-cache Tiers](architecture/cw_a2_workspace_compiler_projections.md). The CW-A3 handoff is [CW-A3 Character Workspace UI Rebuild](architecture/cw_a3_character_workspace_ui_rebuild.md). The CW-A4 handoff is [CW-A4 SLP Workspace Maintenance Candidates](architecture/cw_a4_slp_workspace_maintenance_candidates.md). The CW-A5 handoff is [CW-A5 Character Creation, Templates, and Showcase Import](architecture/cw_a5_character_creation_templates_showcase_import.md). The O2 handoff is [O2 Supervised Scheduler Service](architecture/o2_supervised_scheduler_service.md). The O3 handoff is [O3 Always-On Local Scheduler](architecture/o3_always_on_local_scheduler.md). The PM-D5 handoff is [PM-D5 RelayMEM Flat-store Compatibility Removal](architecture/pm_d5_relaymem_flat_store_compatibility_removal.md). The PM-D6 handoff is [PM-D6 RelayINT Native Artifact / RelayREF Wrapper Removal](architecture/pm_d6_relayint_native_artifact_relayref_wrapper_removal.md). The PM-D7 handoff is [PM-D7 Runtime Install Hook Fold-in](architecture/pm_d7_runtime_install_hook_fold_in.md). The Analyzer Candidate Governance roadmap is [Analyzer Candidate Governance and Multilingual Schema Policy](architecture/analyzer_candidate_governance.md). The Wave 7 convergence record is [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md). The E1-R5 post-correction convergence record is [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md). The E1-R3 implementation handoff is [E1-R3 Provenance-Preserving Primary MEM Formation Summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md). The E1-R4 implementation handoff is [E1-R4 Retrieval-Response Grounding](architecture/e1r4_retrieval_response_grounding.md). The E1-R5 implementation handoff is [E1-R5 Primary MEM Recall Candidate Bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md). The v0.1 release-readiness receipt is [v0.1 Release Readiness](mvp/v0.1_release_readiness.md). Detailed MVP sequencing and post-MVP roadmap ordering live in [Project Execution Plan](architecture/project_execution_plan.md).
 
 ## Not yet implemented
 
