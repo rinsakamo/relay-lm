@@ -18,6 +18,7 @@ relaylm_not_authoritative_for:
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_authority:
   - ../DOCUMENTATION_MODEL.md
+  - ../mvp/v0.1_release_readiness.md
   - pipeline_responsibility_design.md
   - file_first_character_workspace_design.md
   - character_template_creation_flow.md
@@ -45,7 +46,7 @@ relaylm_related_authority:
 ---
 # RelayLM Project Execution Plan
 
-Last reviewed: 2026-07-07 JST
+Last reviewed: 2026-07-08 JST
 
 ## Purpose
 
@@ -92,6 +93,7 @@ Evaluation
     -> E1-R3 provenance-preserving Primary MEM formation summary complete
     -> E1-R4 retrieval-response grounding and unsupported-detail suppression complete
     -> E1-R5 Primary MEM recall candidate discovery fallback complete
+  durable-memory E2 value smoke after O2/O3 scheduler draining evidence complete as local human-reviewed v0.1 readiness evidence
 ```
 
 ## MVP completion criteria
@@ -106,7 +108,11 @@ CW-A5 closes the first character creation/template slice. It implements determin
 
 Phase I-2 is complete for read-only observation of latest runs, formed memory, held or blocked outcomes, lifecycle state, and used-memory evidence. That observation boundary remains read-only and cannot authorize repair, retrieval, mutation, or source-body exposure.
 
-O2/O3 close the explicit opt-in local scheduler operation need for current MVP work. They do not make scheduling app-embedded, browser-owned, default-on, or independently mutation-authoritative. Durable-memory E2 value smoke remains a separate evaluation scenario after O2/O3 draining evidence.
+O2/O3 close the explicit opt-in local scheduler operation need for current MVP work. They do not make scheduling app-embedded, browser-owned, default-on, or independently mutation-authoritative. Durable-memory E2 value smoke is complete as a separate, local-only, human-reviewed evaluation scenario after O2/O3 draining evidence; it does not add runtime authority or commit content-bearing comparison artifacts.
+
+## v0.1 release readiness boundary
+
+The v0.1 release-readiness receipt is [v0.1 Release Readiness](../mvp/v0.1_release_readiness.md). v0.1 readiness means the MVP implementation lanes listed above are complete, the durable-memory E2 value smoke has local human-reviewed evidence, and the remaining items below are post-v0.1 decision debt rather than v0.1 blockers. A final main-HEAD smoke pass is still required before tagging.
 
 ## Post-MVP decision debt registry
 
@@ -145,6 +151,9 @@ Character Workspace reset
   CW-A4 SLP-maintained MEM/SCENE/REL wiki candidates and proposals complete
   CW-A5 character creation, templates, and showcase import complete
 
+Completed evaluation evidence:
+  durable-memory E2 value smoke after O2/O3 scheduler draining evidence complete as local human-reviewed v0.1 readiness evidence
+
 Completed post-MVP debt:
   PM-D3 RelayEMO/RelaySCN scene_state ownership closed by P0-PIPE
   PM-D5 RelayMEM flat-store compatibility removal complete
@@ -152,13 +161,12 @@ Completed post-MVP debt:
   PM-D7 runtime install hook fold-in complete
   PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in complete
 
-Remaining post-E1-R5 / post-Wave-7 candidates:
+Remaining post-v0.1 candidates:
   E1-R5 scoped Primary recall candidate fallback boundary remains complete.
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D4 client history exclusion default-off deployment decision
   PM-D9 analyzer candidate governance and multilingual schema policy follow-through
   PM-D2 closure or absorption after PM-D6 if RelayREF wrapper removal closes the legacy artifact scope
-  durable-memory E2 value smoke after O2/O3 scheduler draining evidence
 ```
 
 ## MVP dependency waves
@@ -196,7 +204,7 @@ O1F operational validation
 
 ### Post-O1F next candidates
 
-Post-O1F candidates have been closed or absorbed by later Wave 6, Wave 7, E1-R5, PM-D*, Character Workspace reset slices, and O2/O3. Remaining operations evaluation work is durable-memory E2 value smoke after O2/O3 scheduler draining evidence.
+Post-O1F candidates have been closed or absorbed by later Wave 6, Wave 7, E1-R5, PM-D*, Character Workspace reset slices, O2/O3, and local durable-memory E2 value-smoke readiness evidence.
 
 ### Wave 7 completed
 
@@ -234,7 +242,7 @@ O2 supervised worker service complete as opt-in local scheduler service
 O3 always-on local operation complete as opt-in local CLI/process wrapper
 ```
 
-O2/O3 remain local operation support only. They are not app-embedded, not browser authority, not default-on, and do not add memory mutation authority. The durable-memory E2 scenario remains separate evaluation work.
+O2/O3 remain local operation support only. They are not app-embedded, not browser authority, not default-on, and do not add memory mutation authority. The durable-memory E2 scenario is complete as separate local human-reviewed value-smoke evidence and does not change O2/O3 authority.
 
 ### PM-D3 / PM-D5 / PM-D6 / PM-D7 / PM-D8 compatibility debt completed
 
@@ -250,4 +258,4 @@ PM-D3 is closed by the shipped P0-PIPE request-path ordering fix, which removes 
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through, PM-D2 closure or absorption after PM-D6, and durable-memory E2 value smoke after O2/O3 scheduler draining evidence.
+The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through and PM-D2 closure or absorption after PM-D6. Durable-memory E2 value smoke is complete as local human-reviewed v0.1 readiness evidence.
