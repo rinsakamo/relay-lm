@@ -163,6 +163,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 
 - [Twin Extraction prompt specification](tools/twin_extraction_prompts.md) — caller-invoked, bounded, runtime-non-contact offline material-extraction prompts and tooling notes.
 - [Twin Extraction runbook](tools/twin_extraction_runbook.md) — execution steps for the offline preprocessing/batch-runner/merge CLIs. This tooling does not connect to MEM/SOUL bootstrap or the RelaySLP pipeline.
+- [ReLM Showcase合成Fixture雛形](tools/relm_showcase_fixture_template.md) — public synthetic showcase fixture schema, authoring guidance, workspace-memory mapping, and gate conditions separated from private Twin Extraction fixtures.
 - [LAT-1 Latency Measurement](architecture/lat1_latency_measurement.md) — RelayRUN per-node timing and `timing_summary` schema, plus the offline M2 retrieval scaling bench (`scripts/relaylm_lat1_bench_store_generator.py`, `scripts/relaylm_lat1_retrieval_bench.py`). Measurement only; no request-path or search-algorithm behavior change. See also [LAT-1 Retrieval Scaling Report](evaluation/lat1_retrieval_scaling_report.md) (template; results pending a real run).
 
 ## Target architecture and post-MVP design
@@ -191,5 +192,6 @@ These documents are target architecture unless explicitly listed as a current co
 - MVP execution plan and post-MVP roadmap -> `docs/architecture/project_execution_plan.md`
 - active and completed bounded handoffs -> `docs/architecture/`
 - schemas and contracts -> `docs/contracts/`
+- offline tooling specifications and runbooks -> `docs/tools/`
 - RelaySOUL governance -> `docs/relaysoul/`
 - smoke and troubleshooting -> `docs/smoke/`
