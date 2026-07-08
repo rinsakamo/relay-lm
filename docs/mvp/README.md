@@ -4,6 +4,10 @@ This directory is the index for RelayLM MVP milestone summaries, MVP-focused imp
 
 > For the current phase, implemented boundaries, default-off/preflight-only behavior, and immediate next work, use [Project Status](../PROJECT_STATUS.md). The files in this directory are historical evidence rather than the current-state source of truth.
 
+## Release readiness receipts
+
+- [v0.1 Release Readiness](v0.1_release_readiness.md) — content-free readiness receipt for the v0.1 boundary, including local human-reviewed durable-memory E2 value-smoke evidence handling and post-v0.1 decision debt.
+
 ## Implementation completion reports
 
 Declared parallel waves use unique completion reports as the handoff from each implementation PR to the later convergence/documentation thread.
