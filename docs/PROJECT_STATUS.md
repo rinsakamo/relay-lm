@@ -183,7 +183,7 @@ Completed post-MVP debt:
   PM-D7 runtime install hook fold-in                         complete
   PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in complete
 
-Post-v0.1 decision debt:
+Post-E1-R5 / Post-Wave-7 next candidates:
   E1-R5 scoped Primary recall candidate fallback boundary remains complete; new work starts after P0-PIPE and ACG.
   PM-D1 RelaySOUL gate design-freeze relation
   PM-D4 client history exclusion default-off deployment decision
