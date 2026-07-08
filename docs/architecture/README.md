@@ -50,6 +50,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 ## Execution and roadmap
 
 - [Project Execution Plan](project_execution_plan.md)
+- [Post-v0.1 Strategic Direction Vision](post_v01_strategic_direction_vision.md) — non-committing strategic vision for post-v0.1 product and architecture direction; never current status, execution sequencing, or contract authority.
 - [Pipeline Implementation Plan](pipeline_implementation_plan.md) — compatibility stub
 - [Post-I3 Evaluation and Work Roadmap](post_i3_evaluation_work_roadmap.md) — compatibility stub
 - [PM-D5 RelayMEM Flat-store Compatibility Removal](pm_d5_relaymem_flat_store_compatibility_removal.md)
