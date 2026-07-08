@@ -17,8 +17,8 @@ if str(REPO_ROOT) not in sys.path:
 
 from _relaylm_phase_i3_test_support import form_primary_memory
 from relaylm.app import create_app
-from relaylm.app import _relayrun_relayscn_node
 from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
+from relaylm.relayrun_runtime_artifact import _relayrun_relayscn_node
 
 NAMESPACE = "character/default"
 CHARACTER_ID = "default"

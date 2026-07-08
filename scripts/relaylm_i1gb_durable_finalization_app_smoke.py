@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 import yaml
 
-import relaylm.app as app_module
+import relaylm.managed_chat_runtime as managed_chat_runtime_module
 from relaylm.app import create_app
 from relaylm.config import BackendConfig, ModelRoute, RelayLMConfig
 from relaylm.pipeline_context import PipelineContext
@@ -355,7 +355,7 @@ def test_nonstream_app(backend_port: int) -> None:
         )
         marker = "✨"
         with patch.object(
-            app_module,
+            managed_chat_runtime_module,
             "_build_relayemo_text_marker_preview",
             return_value={
                 "gate_open": True,

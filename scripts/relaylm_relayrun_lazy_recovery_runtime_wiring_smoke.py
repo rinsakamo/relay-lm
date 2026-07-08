@@ -11,8 +11,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.app import _build_relayrun_runtime_artifact
 from relaylm.config import load_config
+from relaylm.relayrun_runtime_artifact import _build_relayrun_runtime_artifact
 from relaylm.relayrun_lazy_recovery import RECOVERY_DETAIL_ARTIFACT_KEYS
 from relaylm.routing import resolve_route
 

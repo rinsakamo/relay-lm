@@ -16,7 +16,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.app import create_app, _relaymem_primary_recall_scope_allowed
+from relaylm.app import create_app
+from relaylm.managed_chat_runtime import _relaymem_primary_recall_scope_allowed
 from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
 from relaylm.relaymem_runtime_ctx import maybe_apply_relaymem_snippet_runtime_injection
 

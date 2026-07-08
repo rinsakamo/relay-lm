@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
-import relaylm.app as app_module  # noqa: E402
+import relaylm.managed_chat_runtime as app_module  # noqa: E402
 import relaylm._relaymem_slp_durable_finalization_replay_impl as replay_impl  # noqa: E402
 import relaylm.relaymem_slp_durable_finalization_replay as replay_public  # noqa: E402
 import relaylm._relaymem_slp_durable_finalization_retention_impl as retention_impl  # noqa: E402
