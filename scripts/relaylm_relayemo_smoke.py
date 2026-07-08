@@ -10,8 +10,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.app import _apply_relayemo_marker_to_response, _build_relayemo_text_marker_preview
 import relaylm.app as relay_app
+import relaylm.managed_chat_runtime as managed_chat_runtime
+from relaylm.managed_chat_runtime import (
+    _apply_relayemo_marker_to_response,
+    _build_relayemo_text_marker_preview,
+)
 from relaylm.config import load_config
 from relaylm.relayemo import (
     parse_llm_affect_probe_output,
@@ -331,8 +335,8 @@ def main() -> int:
             encoding="utf-8",
         )
         from fastapi.testclient import TestClient
-        original = relay_app.open_chat_completion_stream
-        relay_app.open_chat_completion_stream = _fake_open_chat_completion_stream
+        original = managed_chat_runtime.open_chat_completion_stream
+        managed_chat_runtime.open_chat_completion_stream = _fake_open_chat_completion_stream
         try:
             app = relay_app.create_app(str(cfg_path))
             client = TestClient(app)
@@ -407,7 +411,7 @@ def main() -> int:
             artifact3 = (record3.get("metadata") or {}).get("relayemo_artifact") or {}
             require(artifact3.get("previous_state_found") is False, artifact3)
         finally:
-            relay_app.open_chat_completion_stream = original
+            managed_chat_runtime.open_chat_completion_stream = original
     with tempfile.TemporaryDirectory() as td2:
         trace_path2 = Path(td2) / "trace_route_session.jsonl"
         cfg_path2 = Path(td2) / "config.yaml"
@@ -437,8 +441,8 @@ def main() -> int:
             encoding="utf-8",
         )
         from fastapi.testclient import TestClient
-        original2 = relay_app.open_chat_completion_stream
-        relay_app.open_chat_completion_stream = _fake_open_chat_completion_stream
+        original2 = managed_chat_runtime.open_chat_completion_stream
+        managed_chat_runtime.open_chat_completion_stream = _fake_open_chat_completion_stream
         try:
             app2 = relay_app.create_app(str(cfg_path2))
             client2 = TestClient(app2)
@@ -457,7 +461,7 @@ def main() -> int:
                 require(response.status_code == 200, f"bad stream status: {response.status_code}")
                 _ = b"".join(response.iter_bytes())
         finally:
-            relay_app.open_chat_completion_stream = original2
+            managed_chat_runtime.open_chat_completion_stream = original2
         lines_route = [line for line in trace_path2.read_text(encoding="utf-8").splitlines() if line.strip()]
         artifact_route = (json.loads(lines_route[-1]).get("metadata") or {}).get("relayemo_artifact") or {}
         require(artifact_route.get("previous_state_found") is True, artifact_route)

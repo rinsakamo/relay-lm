@@ -31,13 +31,13 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from relaylm.app import (
-    _build_backend_request_error_response,
+from relaylm.app import create_app
+from relaylm.app_request_validation import _validate_and_resolve_managed_chat_request
+from relaylm.managed_chat_runtime import _build_backend_request_error_response
+from relaylm.relayrun_runtime_artifact import (
+    _ManagedRuntimeArtifactContext,
     _build_relayrun_runtime_artifact,
     _build_relayrun_runtime_artifact_for_context,
-    _ManagedRuntimeArtifactContext,
-    _validate_and_resolve_managed_chat_request,
-    create_app,
 )
 from relaylm.adapter import BackendRequestError
 from relaylm.config import ModelRoute, load_config

@@ -101,7 +101,7 @@ def install_lab_observation_runtime_hook() -> None:
     with _HOOK_LOCK:
         if _HOOK_INSTALLED:
             return
-        from . import app as core_app
+        from . import managed_chat_runtime as core_app
 
         original = core_app.apply_relaymem_runtime_injection_phase
         if getattr(original, "_relaylm_lab_observation_hook", False) is True:
