@@ -225,3 +225,42 @@ Out-of-band after-turn path:
 ```
 
 This is the canonical responsibility order, not a claim that every stage is already active. Consult [Project Status](docs/PROJECT_STATUS.md) and the [Current / Target / Migration Guide](docs/architecture/current_target_migration_guide.md) for implementation status.
+
+| When | Relay component | What it does |
+|---|---|---|
+| Throughout the request | 🎛️ **RelayRUN** | Manages stage order, recovery, checkpoints, and trace |
+| Target input architecture | 🤝 **RelayREL** | Selects relationship-specific interaction policy before scene resolution |
+| Input | 🌬️ **RelaySCN** | Classifies the scene and resolves memory, expression, and persistence policy |
+| Input and output | 🙂 **RelayEMO** | Interprets affect cues and adjusts scene-appropriate expression |
+| Input | 🚦 **RelayINT** | Detects intent and ambiguity, then decides whether to continue, ask, or stop |
+| Input | 🧠 **RelayMEM** | Reads long-term memory relevant to the current response |
+| Before and after the LLM | 📦 **RelayCTX** | Packs LLM input and separates visible output from internal data |
+| Output | 🔎 **RelayREF** | Observes the generated response and records diagnostics |
+| After the response | 🌙 **RelaySLP** | Organizes memory and SOUL update candidates outside the response path |
+
+For authoritative ownership and order, see the [Pipeline Responsibility Design](docs/architecture/pipeline_responsibility_design.md).
+
+## 📚 Documentation
+
+- 📍 [Current project status](docs/PROJECT_STATUS.md)
+- 🗺️ [Documentation index](docs/README.md)
+- 🧬 [File-first Character Workspace design](docs/architecture/file_first_character_workspace_design.md)
+- 🧭 [Character template creation flow](docs/architecture/character_template_creation_flow.md)
+- 🏗️ [Architecture documents](docs/architecture/README.md)
+- 🧭 [Project execution plan](docs/architecture/project_execution_plan.md)
+- 🚀 [OpenWebUI + LM Studio MVP guide](docs/openwebui_lmstudio_mvp.md)
+- ⚙️ [Configuration schema](docs/config_schema.md)
+- 📜 [Contracts](docs/contracts/README.md)
+- 🧪 [Smoke tests and validation](docs/smoke/README.md)
+- 🧬 [RelaySOUL design and gates](docs/relaysoul/README.md)
+- 🗃️ [MVP summaries and milestone history](docs/mvp/README.md)
+
+## 🔗 Backend cache boundary
+
+RelayLM does not materialize, persist, offload, transfer, or directly mutate backend KV cache. Optional cache infrastructure belongs to the inference backend or an external runtime layer behind the backend adapter.
+
+RelayLM remains responsible only for compiling approved context into a stable, cache-friendly prompt layout where practical; it does not require a particular cache implementation.
+
+## 📄 License
+
+RelayLM is licensed under the [Apache License 2.0](LICENSE).
