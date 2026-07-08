@@ -63,6 +63,7 @@ Use plain scalar or list values only. Do not encode source text, prompts, traces
 | `status` | Current developer-facing project state | `docs/PROJECT_STATUS.md` | current implemented boundary, active caveats, next candidates |
 | `implementation_plan` | MVP boundary, dependency sequencing, and post-MVP roadmap | `docs/architecture/project_execution_plan.md` | execution sequence and roadmap only, not current implementation status |
 | `redirect_stub` | Compatibility pointer from an older authority path | old plan/roadmap paths | redirect only; never status or sequencing authority |
+| `strategic_vision` | Long-horizon product and architecture direction, non-committing bets, and post-release design principles | `docs/architecture/*vision*.md` | strategic direction only; never current status, execution sequencing, exact contracts, or implementation authorization |
 | `stable_architecture` | Durable responsibility, component, and target-order design | `docs/architecture/*_design.md` | stable architecture and ownership |
 | `architecture` | Older compatibility alias for stable architecture docs | older `docs/architecture/*.md` files | interpret as `stable_architecture`; prefer canonical `stable_architecture` for new or touched docs |
 | `architecture_report` | Older compatibility alias for architecture/governance reports | older `docs/architecture/*.md` reports | interpret as architecture guidance; prefer a canonical type such as `stable_architecture`, `implementation_plan`, `contract`, or `evaluation_record` when a touched doc clearly fits one |
@@ -108,6 +109,7 @@ When answering questions about current RelayLM behavior:
 7. Treat handoff docs as implementation records, not canonical architecture, after merge unless they are the dedicated current exact-boundary document for a still-current slice.
 8. Treat an `implementation_completion_report` as evidence that one PR claims a bounded result, not as repository-wide completion authority.
 9. During an explicitly declared parallel-wave merge window, inspect the source PR and completion report in addition to current status; do not infer that the next wave or release gate is open until the convergence documentation PR has merged.
+10. Treat `strategic_vision` documents as non-committing horizon guidance. They can explain why future work may matter, but they do not override Project Status, Project Execution Plan, current contracts, or release-readiness receipts.
 
 ## Placement rules
 
@@ -116,6 +118,7 @@ The current placement rules remain:
 - repository-wide current status -> `docs/PROJECT_STATUS.md`
 - MVP execution plan and post-MVP roadmap -> `docs/architecture/project_execution_plan.md`
 - stable cross-cutting architecture -> `docs/architecture/`
+- long-horizon strategic vision -> `docs/architecture/*vision*.md`
 - exact schemas and contracts -> `docs/contracts/` or dedicated architecture contract docs
 - manual smoke, troubleshooting, and local behavior validation docs -> `docs/smoke/`
 - offline tooling specifications and runbooks -> `docs/tools/`
