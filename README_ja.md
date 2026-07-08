@@ -1,6 +1,14 @@
 # RelayLM
 
 <p align="center">
+  <img
+    src="docs/assets/readme/relaylm-hero-wide.webp"
+    alt="RelayLMのキャラクターたちがいる柔らかなホームラボ風景"
+    width="100%"
+  />
+</p>
+
+<p align="center">
   <strong>ローカルLLMのための、file-first Character Workspace と記憶・人格指向 OpenAI互換会話プロキシ</strong>
 </p>
 

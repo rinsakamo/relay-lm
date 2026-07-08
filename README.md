@@ -1,6 +1,14 @@
 # RelayLM
 
 <p align="center">
+  <img
+    src="docs/assets/readme/relaylm-hero-wide.webp"
+    alt="RelayLM characters in a soft home lab workspace"
+    width="100%"
+  />
+</p>
+
+<p align="center">
   <strong>File-first character workspace and memory/persona-aware OpenAI-compatible conversation proxy for local LLMs</strong>
 </p>
 
