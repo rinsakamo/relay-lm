@@ -39,13 +39,14 @@ relaylm_related_authority:
   - e1r5_post_wave7_correction_convergence_audit.md
   - o2_supervised_scheduler_service.md
   - o3_always_on_local_scheduler.md
+  - relayatn_reflex_layer_design.md
   - pm_d5_relaymem_flat_store_compatibility_removal.md
   - pm_d6_relayint_native_artifact_relayref_wrapper_removal.md
   - pm_d7_runtime_install_hook_fold_in.md
 ---
 # RelayLM Project Execution Plan
 
-Last reviewed: 2026-07-07 JST
+Last reviewed: 2026-07-09 JST
 
 ## Purpose
 
@@ -108,6 +109,8 @@ Phase I-2 is complete for read-only observation of latest runs, formed memory, h
 
 O2/O3 close the explicit opt-in local scheduler operation need for current MVP work. They do not make scheduling app-embedded, browser-owned, default-on, or independently mutation-authoritative. Durable-memory E2 value smoke remains a separate evaluation scenario after O2/O3 draining evidence.
 
+RelayATN is registered only as a gated post-v0.1 / post-voice-out candidate. This plan authorizes ATN-0 planning registration only and does not authorize implementation, runtime behavior changes, default-on resident processing, multi-user admission policy, or disclosure/memory authority.
+
 ## Post-MVP decision debt registry
 
 Open or remaining decision debt:
@@ -159,6 +162,7 @@ Remaining post-E1-R5 / post-Wave-7 candidates:
   PM-D9 analyzer candidate governance and multilingual schema policy follow-through
   PM-D2 closure or absorption after PM-D6 if RelayREF wrapper removal closes the legacy artifact scope
   durable-memory E2 value smoke after O2/O3 scheduler draining evidence
+  RelayATN ATN-0 planning registration only after voice-out / SOUL Lab Runtime MVP; no runtime behavior changes authorized
 ```
 
 ## MVP dependency waves
@@ -236,6 +240,17 @@ O3 always-on local operation complete as opt-in local CLI/process wrapper
 
 O2/O3 remain local operation support only. They are not app-embedded, not browser authority, not default-on, and do not add memory mutation authority. The durable-memory E2 scenario remains separate evaluation work.
 
+### Post-v0.1 / post-voice-out RelayATN candidate registered
+
+```text
+ATN-0 RelayATN planning registration only
+  -> target-boundary document added
+  -> provisional vocabulary only
+  -> no implementation, resident processing, runtime behavior change, or default-on operation authorized
+```
+
+RelayATN remains gated on voice-out / SOUL Lab Runtime MVP, first-audio and per-node latency baselines, canonical vocabulary registration or an explicit fold-in decision, and documented single-primary-user vs multi-input assumptions. ATN-1 and later slices must not be scheduled until those preconditions are satisfied.
+
 ### PM-D3 / PM-D5 / PM-D6 / PM-D7 / PM-D8 compatibility debt completed
 
 ```text
@@ -250,4 +265,4 @@ PM-D3 is closed by the shipped P0-PIPE request-path ordering fix, which removes 
 
 ### Post-E1-R5 / Post-Wave-7 next candidates
 
-The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through, PM-D2 closure or absorption after PM-D6, and durable-memory E2 value smoke after O2/O3 scheduler draining evidence.
+The remaining candidates are PM-D1/PM-D4/PM-D9 follow-through, PM-D2 closure or absorption after PM-D6, durable-memory E2 value smoke after O2/O3 scheduler draining evidence, and RelayATN ATN-0 planning registration only after voice-out / SOUL Lab Runtime MVP.
