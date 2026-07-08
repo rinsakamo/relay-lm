@@ -27,6 +27,13 @@ from relaylm.app_request_validation import (
     _validate_and_resolve_managed_chat_request,
     openai_error,
 )
+from relaylm.app_response_finalization import (
+    close_stream_iterator,
+    durable_finalization_apply_mode,
+    durable_finalization_gate_relevant,
+    durable_finalization_gate_valid,
+    durable_finalization_server_error,
+)
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.relaymem_slp_durable_finalization_publication import (
     RelayMEMSLPDurableFinalizationPreparedTurnHolder,
@@ -662,11 +669,11 @@ def create_app(config_path: str | None = None) -> FastAPI:
             stream_background = None
             if route.mode_applied != "pass_through" and (
                 config.relaymem_slp_runtime_enqueue_enabled
-                or _durable_finalization_gate_relevant(config)
+                or durable_finalization_gate_relevant(config)
             ):
-                if not _durable_finalization_gate_valid(config):
-                    await _close_stream_iterator(body_iter)
-                    return _durable_finalization_server_error()
+                if not durable_finalization_gate_valid(config):
+                    await close_stream_iterator(body_iter)
+                    return durable_finalization_server_error()
                 stream_capture = RelayMEMSLPFinalizedVisibleTextCapture()
                 durable_holder = RelayMEMSLPDurableFinalizationPreparedTurnHolder()
                 durable_session, durable_result = (
@@ -683,13 +690,13 @@ def create_app(config_path: str | None = None) -> FastAPI:
                     )
                 )
                 if (
-                    _durable_finalization_apply_mode(config)
+                    durable_finalization_apply_mode(config)
                     and durable_result.status not in {
                         "published", "duplicate_existing"
                     }
                 ):
-                    await _close_stream_iterator(body_iter)
-                    return _durable_finalization_server_error()
+                    await close_stream_iterator(body_iter)
+                    return durable_finalization_server_error()
                 if config.relaymem_slp_runtime_enqueue_enabled:
                     body_iter = wrap_stream_with_relaymem_slp_finalized_turn_capture(
                         body_iter,
@@ -784,17 +791,17 @@ def create_app(config_path: str | None = None) -> FastAPI:
             durable_prepared = None
             if route.mode_applied != "pass_through" and (
                 config.relaymem_slp_runtime_enqueue_enabled
-                or _durable_finalization_gate_relevant(config)
+                or durable_finalization_gate_relevant(config)
             ):
-                if not _durable_finalization_gate_valid(config):
-                    return _durable_finalization_server_error()
+                if not durable_finalization_gate_valid(config):
+                    return durable_finalization_server_error()
                 if not isinstance(assistant_visible_text, str):
                     if (
                         config.relaymem_slp_durable_finalization_enabled
                         and config.relaymem_slp_durable_finalization_apply_enabled
                         and not config.relaymem_slp_durable_finalization_dry_run_only
                     ):
-                        return _durable_finalization_server_error()
+                        return durable_finalization_server_error()
                 else:
                     durable_result = (
                         admit_relaymem_slp_durable_finalization_nonstream(
@@ -810,12 +817,12 @@ def create_app(config_path: str | None = None) -> FastAPI:
                         )
                     )
                     if (
-                        _durable_finalization_apply_mode(config)
+                        durable_finalization_apply_mode(config)
                         and durable_result.status not in {
                             "published", "duplicate_existing"
                         }
                     ):
-                        return _durable_finalization_server_error()
+                        return durable_finalization_server_error()
                     durable_prepared = durable_result.prepared_turn
                 if (
                     config.relaymem_slp_runtime_enqueue_enabled
@@ -897,53 +904,6 @@ def _build_backend_request_error_response(
         message=f"RelayLM could not reach backend: {exc}",
         error_type="backend_connection_error",
         headers=failed_diagnostics.to_headers(),
-    )
-
-
-def _durable_finalization_gate_relevant(config: RelayLMConfig) -> bool:
-    return bool(
-        config.relaymem_slp_durable_finalization_enabled
-        or config.relaymem_slp_durable_finalization_apply_enabled
-        or not config.relaymem_slp_durable_finalization_dry_run_only
-    )
-
-
-def _durable_finalization_gate_valid(config: RelayLMConfig) -> bool:
-    enabled = config.relaymem_slp_durable_finalization_enabled
-    dry_run_only = config.relaymem_slp_durable_finalization_dry_run_only
-    apply_enabled = config.relaymem_slp_durable_finalization_apply_enabled
-    return (
-        (not enabled and dry_run_only and not apply_enabled)
-        or (enabled and dry_run_only and not apply_enabled)
-        or (enabled and not dry_run_only and apply_enabled)
-    )
-
-
-def _durable_finalization_apply_mode(config: RelayLMConfig) -> bool:
-    return bool(
-        config.relaymem_slp_durable_finalization_enabled
-        and not config.relaymem_slp_durable_finalization_dry_run_only
-        and config.relaymem_slp_durable_finalization_apply_enabled
-    )
-
-
-async def _close_stream_iterator(body_iter: object) -> None:
-    close = getattr(body_iter, "aclose", None)
-    if not callable(close):
-        return
-    try:
-        await close()
-    except Exception:
-        pass
-
-
-def _durable_finalization_server_error() -> JSONResponse:
-    """Return one content-free error when protected release admission fails."""
-
-    return openai_error(
-        status_code=500,
-        message="RelayLM could not safely finalize this response.",
-        error_type="server_error",
     )
 
 
