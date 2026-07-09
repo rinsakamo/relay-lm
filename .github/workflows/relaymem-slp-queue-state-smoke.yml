@@ -1,6 +1,7 @@
 name: RelayMEM RelaySLP queue state smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_slp_durable_enqueue.py"
@@ -25,6 +26,7 @@ on:
       - "docs/README.md"
       - "docs/PROJECT_STATUS.md"
       - ".github/workflows/relaymem-slp-queue-state-smoke.yml"
+      - "pyproject.toml"
   push:
     branches:
       - main
@@ -51,6 +53,7 @@ on:
       - "docs/README.md"
       - "docs/PROJECT_STATUS.md"
       - ".github/workflows/relaymem-slp-queue-state-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

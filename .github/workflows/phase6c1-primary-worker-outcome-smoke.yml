@@ -1,6 +1,7 @@
 name: Phase 6-C1 Primary worker outcome smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_slp_primary_worker_outcome.py"

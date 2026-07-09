@@ -1,22 +1,23 @@
 name: Phase I-2 real SOUL Lab observation
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "relaylm/**"
       - "scripts/relaylm_phase_i2_*"
       - "scripts/relaylm_soul_lab_management_projection_smoke.py"
       - "apps/soul-lab/**"
-      - "docs/**"
       - ".github/workflows/phase-i2-lab-observation-smoke.yml"
+      - "pyproject.toml"
   pull_request:
     paths:
       - "relaylm/**"
       - "scripts/relaylm_phase_i2_*"
       - "scripts/relaylm_soul_lab_management_projection_smoke.py"
       - "apps/soul-lab/**"
-      - "docs/**"
       - ".github/workflows/phase-i2-lab-observation-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

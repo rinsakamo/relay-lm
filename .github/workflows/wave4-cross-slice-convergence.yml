@@ -1,6 +1,7 @@
 name: Wave 4 cross-slice convergence
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "docs/**"

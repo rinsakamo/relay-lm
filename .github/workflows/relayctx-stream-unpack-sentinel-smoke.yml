@@ -20,6 +20,7 @@ on:
       - docs/architecture/phase55b2_stream_suppression_runtime_handoff.md
       - docs/architecture/pipeline_implementation_plan.md
       - .github/workflows/relayctx-stream-unpack-sentinel-smoke.yml
+      - pyproject.toml
   push:
     branches: [main]
     paths:
@@ -39,6 +40,7 @@ on:
       - docs/architecture/phase55b2_stream_suppression_runtime_handoff.md
       - docs/architecture/pipeline_implementation_plan.md
       - .github/workflows/relayctx-stream-unpack-sentinel-smoke.yml
+      - pyproject.toml
 
 permissions:
   contents: read

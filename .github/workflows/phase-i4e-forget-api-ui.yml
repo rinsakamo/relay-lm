@@ -1,6 +1,7 @@
 name: Phase I-4E Forget API and UI
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "relaylm/**"
@@ -9,6 +10,7 @@ on:
       - "docs/architecture/phase_i4e_forget_api_ui.md"
       - "docs/mvp/wave4/i4e_completion_report.md"
       - ".github/workflows/phase-i4e-forget-api-ui.yml"
+      - "pyproject.toml"
   pull_request:
     paths:
       - "relaylm/**"
@@ -17,6 +19,7 @@ on:
       - "docs/architecture/phase_i4e_forget_api_ui.md"
       - "docs/mvp/wave4/i4e_completion_report.md"
       - ".github/workflows/phase-i4e-forget-api-ui.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

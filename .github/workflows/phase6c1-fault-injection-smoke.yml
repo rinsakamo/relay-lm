@@ -1,6 +1,7 @@
 name: Phase 6-C1 fault injection smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "scripts/_relaylm_phase6c1_fault_fixtures.py"

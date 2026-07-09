@@ -1,6 +1,7 @@
 name: RelayMEM Primary index log apply smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_primary_index_log_apply.py"

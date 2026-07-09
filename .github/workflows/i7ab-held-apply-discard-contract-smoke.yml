@@ -1,6 +1,7 @@
 name: I-7AB held Apply Discard contract smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_held_governance_contract.py"
@@ -10,6 +11,7 @@ on:
       - "docs/architecture/phase_i7ab_held_apply_discard_contract.md"
       - "docs/mvp/wave4/i7ab_completion_report.md"
       - ".github/workflows/i7ab-held-apply-discard-contract-smoke.yml"
+      - "pyproject.toml"
   push:
     branches:
       - main
@@ -21,6 +23,7 @@ on:
       - "docs/architecture/phase_i7ab_held_apply_discard_contract.md"
       - "docs/mvp/wave4/i7ab_completion_report.md"
       - ".github/workflows/i7ab-held-apply-discard-contract-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

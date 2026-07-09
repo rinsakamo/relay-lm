@@ -1,6 +1,7 @@
 name: RelayMEM Primary page writer smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_primary_page_writer.py"

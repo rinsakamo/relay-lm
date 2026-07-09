@@ -1,6 +1,7 @@
 name: E1-R2 character store bootstrap
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/character_store_bootstrap.py"

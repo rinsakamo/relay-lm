@@ -12,6 +12,7 @@ on:
       - "docs/architecture/phase_i5b_pin_unpin_apply.md"
       - "docs/mvp/wave6/i5b_completion_report.md"
       - ".github/workflows/phase-i5b-pin-unpin-apply.yml"
+      - "pyproject.toml"
   workflow_dispatch:
 
 jobs:

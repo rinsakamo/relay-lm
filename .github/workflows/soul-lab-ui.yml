@@ -1,6 +1,7 @@
 name: SOUL Lab UI
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "apps/soul-lab/**"

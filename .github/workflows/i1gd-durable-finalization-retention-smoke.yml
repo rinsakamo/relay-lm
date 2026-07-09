@@ -1,6 +1,7 @@
 name: I1-GD durable-finalization retention smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/config.py"
@@ -11,9 +12,9 @@ on:
       - "scripts/relaylm_i1gc_*.py"
       - "scripts/relaylm_i1gd_*.py"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
-      - "docs/**"
       - "config.example.yaml"
       - ".github/workflows/i1gd-durable-finalization-retention-smoke.yml"
+      - "pyproject.toml"
   push:
     branches:
       - main
@@ -24,9 +25,9 @@ on:
       - "relaylm/_relaymem_slp_durable_finalization_*.py"
       - "scripts/relaylm_i1gd_*.py"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
-      - "docs/**"
       - "config.example.yaml"
       - ".github/workflows/i1gd-durable-finalization-retention-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

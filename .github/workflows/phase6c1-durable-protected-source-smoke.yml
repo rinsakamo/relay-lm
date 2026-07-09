@@ -1,6 +1,7 @@
 name: Phase 6-C1 durable protected source smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/_relaymem_slp_protected_source_*.py"
@@ -22,6 +23,7 @@ on:
       - "scripts/relaylm_phase6c1_durable_protected_source_smoke.py"
       - "docs/architecture/phase6c1_durable_protected_source_persistence.md"
       - ".github/workflows/phase6c1-durable-protected-source-smoke.yml"
+      - "pyproject.toml"
   push:
     branches:
       - main
@@ -45,6 +47,7 @@ on:
       - "scripts/relaylm_phase6c1_durable_protected_source_smoke.py"
       - "docs/architecture/phase6c1_durable_protected_source_persistence.md"
       - ".github/workflows/phase6c1-durable-protected-source-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

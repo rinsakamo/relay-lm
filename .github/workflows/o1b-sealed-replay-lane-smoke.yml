@@ -1,6 +1,7 @@
 name: O1B sealed replay lane smoke
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -12,8 +13,8 @@ on:
       - "scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py"
       - "scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
-      - "docs/**"
       - ".github/workflows/o1b-sealed-replay-lane-smoke.yml"
+      - "pyproject.toml"
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
@@ -23,8 +24,8 @@ on:
       - "scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py"
       - "scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
-      - "docs/**"
       - ".github/workflows/o1b-sealed-replay-lane-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

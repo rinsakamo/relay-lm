@@ -1,22 +1,23 @@
 name: Phase I-3 auditable Primary MEM Correct
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "relaylm/**"
       - "scripts/relaylm_phase_i3_*"
       - "scripts/_relaylm_phase_i3_test_support.py"
       - "apps/soul-lab/**"
-      - "docs/**"
       - ".github/workflows/phase-i3-primary-mem-correct-smoke.yml"
+      - "pyproject.toml"
   pull_request:
     paths:
       - "relaylm/**"
       - "scripts/relaylm_phase_i3_*"
       - "scripts/_relaylm_phase_i3_test_support.py"
       - "apps/soul-lab/**"
-      - "docs/**"
       - ".github/workflows/phase-i3-primary-mem-correct-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

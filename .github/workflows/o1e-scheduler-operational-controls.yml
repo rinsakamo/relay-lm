@@ -1,6 +1,7 @@
 name: O1E scheduler operational controls
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_slp_scheduler_operations.py"
@@ -10,6 +11,7 @@ on:
       - "docs/mvp/wave5/o1e_completion_report.md"
       - "scripts/relaylm_o1e_scheduler_operational_controls_*.py"
       - ".github/workflows/o1e-scheduler-operational-controls.yml"
+      - "pyproject.toml"
   push:
     branches:
       - main
@@ -21,6 +23,7 @@ on:
       - "docs/mvp/wave5/o1e_completion_report.md"
       - "scripts/relaylm_o1e_scheduler_operational_controls_*.py"
       - ".github/workflows/o1e-scheduler-operational-controls.yml"
+      - "pyproject.toml"
 
 jobs:
   o1e-scheduler-operational-controls:

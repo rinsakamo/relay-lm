@@ -1,6 +1,7 @@
 name: Wave 2 cross-slice convergence
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_slp_durable_finalization_*.py"
@@ -11,8 +12,8 @@ on:
       - "scripts/relaylm_o1*.py"
       - "scripts/relaylm_i1g*.py"
       - "scripts/relaylm_phase_i4c2*.py"
-      - "docs/**"
       - ".github/workflows/wave2-cross-slice-convergence.yml"
+      - "pyproject.toml"
   push:
     branches: [main]
 

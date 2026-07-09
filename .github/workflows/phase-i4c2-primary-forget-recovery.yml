@@ -1,6 +1,7 @@
 name: Phase I-4C2 Primary Forget recovery and finalization
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "relaylm/relaymem_primary_forget.py"
@@ -9,8 +10,8 @@ on:
       - "relaylm/_relaymem_primary_current_state_impl.py"
       - "relaylm/relaymem_primary_mutation_coordinator.py"
       - "scripts/relaylm_phase_i4c2_*"
-      - "docs/**"
       - ".github/workflows/phase-i4c2-primary-forget-recovery.yml"
+      - "pyproject.toml"
   pull_request:
     paths:
       - "relaylm/relaymem_primary_forget.py"
@@ -19,8 +20,8 @@ on:
       - "relaylm/_relaymem_primary_current_state_impl.py"
       - "relaylm/relaymem_primary_mutation_coordinator.py"
       - "scripts/relaylm_phase_i4c2_*"
-      - "docs/**"
       - ".github/workflows/phase-i4c2-primary-forget-recovery.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

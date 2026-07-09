@@ -1,6 +1,7 @@
 name: Merged review residuals smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_primary_page_candidate.py"
@@ -14,6 +15,7 @@ on:
       - "scripts/relaylm_merged_review_residuals_smoke.py"
       - "scripts/relaylm_m3c_operation_index_normalization_smoke.py"
       - ".github/workflows/merged-review-residuals-smoke.yml"
+      - "pyproject.toml"
   push:
     branches:
       - main
@@ -29,6 +31,7 @@ on:
       - "scripts/relaylm_merged_review_residuals_smoke.py"
       - "scripts/relaylm_m3c_operation_index_normalization_smoke.py"
       - ".github/workflows/merged-review-residuals-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

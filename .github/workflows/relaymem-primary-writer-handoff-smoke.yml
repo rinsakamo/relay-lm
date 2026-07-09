@@ -1,6 +1,7 @@
 name: RelayMEM Primary writer handoff smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_primary_writer_handoff.py"

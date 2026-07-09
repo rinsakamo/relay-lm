@@ -12,6 +12,7 @@ on:
       - "apps/soul-lab/scripts/lifecycleVisibilitySmoke.mjs"
       - "apps/soul-lab/package.json"
       - ".github/workflows/soul-lab-ui-b1a-lifecycle-visibility.yml"
+      - "pyproject.toml"
   workflow_dispatch:
 
 jobs:
