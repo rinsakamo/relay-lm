@@ -3,9 +3,10 @@
 
 Dedicated verification that public output (stdout, stderr, and exception
 text) from the bridge CLI never contains statement/description bodies,
-absolute filesystem paths, or credential-like values -- across dry-run,
-approved writes, and every fail-closed error path. No LLM, network, or
-real archive is required.
+absolute filesystem paths, credential-like values, or a raw Python
+traceback -- across dry-run, approved writes, and every fail-closed error
+path, including directory-conflict and permission-denied write failures
+and the resulting rollback. No LLM, network, or real archive is required.
 """
 from __future__ import annotations
 
@@ -24,6 +25,7 @@ PRIVATE_CANARIES = (
     "CANARY_STATEMENT_BODY_do_not_leak_this_text",
     "CANARY_DESCRIPTION_BODY_do_not_leak_this_text",
     "CANARY_PRIVATE_STATEMENT_do_not_leak_this_text",
+    "CANARY_CREDENTIAL_METADATA_STATEMENT_do_not_leak_this_text",
     "sk-FAKE_CREDENTIAL_TOKEN_1234567890",
 )
 
@@ -47,6 +49,8 @@ def _assert_content_free(combined: str, tmp_path: Path) -> None:
     require(str(tmp_path) not in combined, "leaked absolute path")
     require(str(tmp_path.resolve()) not in combined, "leaked resolved absolute path")
     require(tempfile.gettempdir() not in combined, "leaked temp dir absolute path")
+    require("Traceback (most recent call last)" not in combined, "leaked a raw Python traceback")
+    require(".py\", line" not in combined, "leaked a raw Python traceback frame")
 
 
 def _write_workspace(root: Path) -> None:
@@ -69,7 +73,7 @@ def _review_fixture() -> dict:
             {
                 "statement": "CANARY_STATEMENT_BODY_do_not_leak_this_text",
                 "type": "knowledge",
-                "provenance": ["chatgpt_reconstructed", "sk-FAKE_CREDENTIAL_TOKEN_1234567890"],
+                "provenance": ["chatgpt_reconstructed"],
                 "evidence_ids": ["e1"],
                 "time_contexts": ["2026-07"],
                 "sensitivity": "general",
@@ -80,6 +84,17 @@ def _review_fixture() -> dict:
                 "provenance": "x_post",
                 "evidence_ids": ["e2"],
                 "sensitivity": "private_only",
+            },
+            {
+                # Structurally a general fact, but its metadata is
+                # credential-shaped: the provenance allowlist plus the
+                # evidence_id credential heuristic must both independently
+                # drop it as invalid, and it must never be written.
+                "statement": "CANARY_CREDENTIAL_METADATA_STATEMENT_do_not_leak_this_text",
+                "type": "knowledge",
+                "provenance": "x_post",
+                "evidence_ids": ["sk-FAKE_CREDENTIAL_TOKEN_1234567890"],
+                "sensitivity": "general",
             },
         ],
     }
@@ -122,6 +137,11 @@ def check_write_imports_content_free(tmp_path: Path) -> None:
     artifact_text = written_files[0].read_text(encoding="utf-8")
     require("CANARY_STATEMENT_BODY_do_not_leak_this_text" in artifact_text, "approved artifact should retain its own statement")
     require("CANARY_PRIVATE_STATEMENT_do_not_leak_this_text" not in artifact_text, "private_only statement must never be written")
+    require(
+        "CANARY_CREDENTIAL_METADATA_STATEMENT_do_not_leak_this_text" not in artifact_text,
+        "a fact with credential-shaped metadata must be dropped as invalid, never written",
+    )
+    require("sk-FAKE_CREDENTIAL_TOKEN_1234567890" not in artifact_text, "credential-like evidence_id must never reach a written artifact")
     require(str(tmp_path) not in artifact_text, "written artifact must not contain an absolute path")
     require(written_files[0].name == written_files[0].name.lower(), "filename must be a stable lowercase hash, not content-derived text")
     import re
@@ -176,6 +196,57 @@ def check_symlink_workspace_content_free(tmp_path: Path) -> None:
     _assert_content_free(stdout + stderr, tmp_path)
 
 
+def check_directory_conflict_write_failure_content_free(tmp_path: Path) -> None:
+    secret_subdir = tmp_path / "secret_subdir_dirconflict"
+    review_path = secret_subdir / "review.json"
+    review_path.parent.mkdir(parents=True, exist_ok=True)
+    review_path.write_text(json.dumps(_review_fixture(), ensure_ascii=False), encoding="utf-8")
+    workspace = secret_subdir / "characters" / "relm"
+    _write_workspace(workspace)
+
+    blocking_parent = workspace / ".relaylm" / "sources" / "imports"
+    blocking_parent.mkdir(parents=True, exist_ok=True)
+    (blocking_parent / "twin-extraction").write_text("CANARY_BLOCKING_FILE_do_not_leak_this_text", encoding="utf-8")
+
+    exit_code, stdout, stderr = _capture(
+        bridge.main,
+        ["--review", str(review_path), "--workspace-root", str(workspace), "--write-imports", "--approved-facts", "general-only"],
+    )
+    require(exit_code != 0, "a directory-vs-file conflict at the import path must fail closed")
+    require(stdout == "", stdout)
+    combined = stdout + stderr
+    _assert_content_free(combined, tmp_path)
+    require("CANARY_BLOCKING_FILE_do_not_leak_this_text" not in combined, combined)
+
+
+def check_permission_denied_write_failure_content_free(tmp_path: Path) -> None:
+    secret_subdir = tmp_path / "secret_subdir_permdenied"
+    review_path = secret_subdir / "review.json"
+    review_path.parent.mkdir(parents=True, exist_ok=True)
+    review_path.write_text(json.dumps(_review_fixture(), ensure_ascii=False), encoding="utf-8")
+    workspace = secret_subdir / "characters" / "relm"
+    _write_workspace(workspace)
+
+    parents = workspace / ".relaylm" / "sources" / "imports"
+    parents.mkdir(parents=True, exist_ok=True)
+    import_dir = parents / "twin-extraction"
+    import_dir.mkdir()
+    import_dir.chmod(0o500)  # read + execute only: no write permission
+    try:
+        exit_code, stdout, stderr = _capture(
+            bridge.main,
+            ["--review", str(review_path), "--workspace-root", str(workspace), "--write-imports", "--approved-facts", "general-only"],
+        )
+        if exit_code == 0:
+            # Running as a user/filesystem that ignores this permission bit
+            # (e.g. root in a container); nothing to verify here.
+            return
+        require(stdout == "", stdout)
+        _assert_content_free(stdout + stderr, tmp_path)
+    finally:
+        import_dir.chmod(0o700)
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
@@ -183,6 +254,8 @@ def main() -> int:
         check_write_imports_content_free(tmp_path)
         check_error_paths_content_free(tmp_path)
         check_symlink_workspace_content_free(tmp_path)
+        check_directory_conflict_write_failure_content_free(tmp_path)
+        check_permission_denied_write_failure_content_free(tmp_path)
 
     print("RelayLM Twin Review Import Bridge security smoke passed")
     return 0

@@ -21,6 +21,23 @@ fact candidates are never written by this tool and there is no automatic
 promotion path. ``style_observations`` are counted for the dry-run
 projection only in this revision and are never written to disk.
 
+Metadata safety: ``provenance`` is restricted to a closed allowlist
+(``x_post`` / ``chatgpt_reconstructed``); ``evidence_ids``, ``time_contexts``,
+and ``type`` must be short, non-empty, control-character/newline-free
+strings that do not resemble a credential/secret. A fact_candidate or
+style_observation that fails any of these checks is dropped as invalid
+(fail-closed, never written) rather than silently coerced -- ``statement``
+and ``description`` bodies themselves are not subject to the credential
+heuristic since they are free-form first-person text, not metadata.
+
+Every write (directory creation, atomic file write, existing-file read
+during conflict detection) is fail-closed: any ``OSError`` is wrapped into
+a content-free ``BridgeInputError`` and never surfaces a raw traceback,
+absolute path, or exception message. Writing multiple approved facts is
+all-or-nothing within one run: if any file in the batch fails to write,
+every file newly written during that same run is rolled back so no
+partial batch is left on disk.
+
 stdout is always a single content-free JSON projection (counts and reason
 ids only, never statement/description bodies, absolute paths, or raw
 exception text).
@@ -30,14 +47,33 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = "relaylm.twin_review_import_bridge_projection.v0"
+SCHEMA_VERSION = "relaylm.twin_review_import_bridge_projection.v1"
 IMPORT_SOURCE_SCHEMA_VERSION = "relaylm.twin_review_import_source.v0"
 IMPORT_SUBPATH = (".relaylm", "sources", "imports", "twin-extraction")
 MAX_REVIEW_BYTES = 50 * 1024 * 1024
+
+ALLOWED_PROVENANCE = frozenset({"x_post", "chatgpt_reconstructed"})
+MAX_EVIDENCE_ID_LENGTH = 200
+MAX_TIME_CONTEXT_LENGTH = 32
+MAX_FACT_TYPE_LENGTH = 64
+MAX_CATEGORY_LENGTH = 64
+
+_CONTROL_OR_NEWLINE_RE = re.compile(r"[\x00-\x1f\x7f]")
+_CREDENTIAL_LIKE_RE = re.compile(
+    r"sk-[A-Za-z0-9_-]{8,}"
+    r"|gh[opsu]_[A-Za-z0-9]{20,}"
+    r"|AKIA[0-9A-Z]{12,}"
+    r"|xox[baprs]-[A-Za-z0-9-]{10,}"
+    r"|-----BEGIN [A-Z ]*PRIVATE KEY-----"
+    r"|(?i:bearer\s+[A-Za-z0-9._-]{10,})"
+    r"|(?i:\b(?:password|secret|api[_-]?key|access[_-]?token)\b\s*[:=]\s*\S+)"
+)
 
 
 class BridgeInputError(Exception):
@@ -48,6 +84,23 @@ def _is_scalar(item: object) -> bool:
     return isinstance(item, (str, int, float)) and not isinstance(item, bool)
 
 
+def _is_safe_identifier(value: object, *, max_length: int) -> bool:
+    """Non-empty, bounded-length, single-line, non-credential-shaped string.
+
+    Used for structured metadata identifiers (evidence_ids, time_contexts,
+    fact type, style category) -- never for free-form statement/description
+    text, which legitimately spans multiple lines and is not screened
+    against the credential heuristic.
+    """
+    if not isinstance(value, str) or not (1 <= len(value) <= max_length):
+        return False
+    if _CONTROL_OR_NEWLINE_RE.search(value):
+        return False
+    if _CREDENTIAL_LIKE_RE.search(value):
+        return False
+    return True
+
+
 def _valid_evidence_id_list(raw: object) -> list[str] | None:
     if not isinstance(raw, list) or not raw:
         return None
@@ -55,6 +108,8 @@ def _valid_evidence_id_list(raw: object) -> list[str] | None:
         return None
     evidence_ids = sorted({str(item) for item in raw if item is not None})
     if not evidence_ids:
+        return None
+    if not all(_is_safe_identifier(item, max_length=MAX_EVIDENCE_ID_LENGTH) for item in evidence_ids):
         return None
     return evidence_ids
 
@@ -71,6 +126,8 @@ def _normalize_provenance(raw: object) -> list[str] | None:
     labels = {label for label in labels if label}
     if not labels:
         return None
+    if not labels.issubset(ALLOWED_PROVENANCE):
+        return None
     return sorted(labels)
 
 
@@ -83,12 +140,12 @@ def _normalize_time_contexts(raw: dict) -> list[str] | None:
     """
     if "time_contexts" in raw:
         value = raw["time_contexts"]
-        if not isinstance(value, list) or not all(isinstance(item, str) and item for item in value):
+        if not isinstance(value, list) or not all(_is_safe_identifier(item, max_length=MAX_TIME_CONTEXT_LENGTH) for item in value):
             return None
         return sorted(dict.fromkeys(value))
     if "time_context" in raw:
         value = raw["time_context"]
-        if not isinstance(value, str) or not value:
+        if not _is_safe_identifier(value, max_length=MAX_TIME_CONTEXT_LENGTH):
             return None
         return [value]
     return []
@@ -101,7 +158,7 @@ def _normalize_fact_candidate(raw: object) -> dict[str, Any] | None:
     fact_type = raw.get("type")
     if not isinstance(statement, str) or not statement.strip():
         return None
-    if not isinstance(fact_type, str) or not fact_type.strip():
+    if not _is_safe_identifier(fact_type, max_length=MAX_FACT_TYPE_LENGTH):
         return None
     evidence_ids = _valid_evidence_id_list(raw.get("evidence_ids"))
     if evidence_ids is None:
@@ -131,7 +188,7 @@ def _normalize_style_observation(raw: object) -> dict[str, Any] | None:
         return None
     category = raw.get("category")
     description = raw.get("description")
-    if not isinstance(category, str) or not category.strip():
+    if not _is_safe_identifier(category, max_length=MAX_CATEGORY_LENGTH):
         return None
     if not isinstance(description, str) or not description.strip():
         return None
@@ -212,15 +269,15 @@ def _has_symlink_between(root_resolved: Path, root: Path, target_dir: Path) -> b
     current = root
     for part in target_dir.relative_to(root).parts:
         current = current / part
-        if current.is_symlink():
-            return True
-        if current.exists():
-            try:
+        try:
+            if current.is_symlink():
+                return True
+            if current.exists():
                 resolved = current.resolve()
-            except OSError:
-                return True
-            if not _is_relative_to(resolved, root_resolved):
-                return True
+                if not _is_relative_to(resolved, root_resolved):
+                    return True
+        except OSError:
+            return True
     return False
 
 
@@ -235,27 +292,74 @@ def _validate_workspace_root(workspace_root: Path) -> str | None:
 def _preflight_fact_writes(workspace_root: Path, writes: list[tuple[str, str]]) -> tuple[list[tuple[str, str]], str | None]:
     """Return (writes still needed, block reason). A block reason means the
     whole batch is rejected fail-closed; nothing is written."""
-    root_resolved = workspace_root.resolve()
+    try:
+        root_resolved = workspace_root.resolve()
+    except OSError:
+        return [], "workspace root resolve failed"
     import_dir = workspace_root.joinpath(*IMPORT_SUBPATH)
     if _has_symlink_between(root_resolved, workspace_root, import_dir):
         return [], "import write path rejected (symlink)"
     pending: list[tuple[str, str]] = []
     for filename, text in writes:
         target = import_dir / filename
-        if target.is_symlink():
-            return [], "import write path rejected (symlink)"
-        if target.exists():
-            if target.is_dir():
+        try:
+            if target.is_symlink():
+                return [], "import write path rejected (symlink)"
+            exists = target.exists()
+            if exists and target.is_dir():
                 return [], "import write path conflict"
-            try:
-                existing = target.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
-                return [], "import artifact conflict"
+            existing = target.read_text(encoding="utf-8") if exists else None
+        except (OSError, UnicodeDecodeError):
+            return [], "import artifact unreadable"
+        if exists:
             if existing != text:
                 return [], "import artifact conflict"
             continue  # identical content already present: idempotent, nothing to do
         pending.append((filename, text))
     return pending, None
+
+
+def _write_pending_atomically(import_dir: Path, pending: list[tuple[str, str]]) -> None:
+    """Write every pending (filename, text) artifact, or none at all.
+
+    Each artifact is first written to a hidden temp file and only renamed
+    into its final name once the write succeeds. If any step in the batch
+    fails, every temp file and every target already committed during this
+    call is removed, so a partial failure never leaves a half-written batch
+    on disk. Only ``OSError`` (never a raw traceback) can surface, and only
+    as a content-free ``BridgeInputError``.
+    """
+    try:
+        import_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise BridgeInputError("import directory create failed") from exc
+
+    temp_targets: list[Path] = []
+    written_targets: list[Path] = []
+    try:
+        for filename, text in pending:
+            temp_target = import_dir / f".{filename}.tmp-{os.getpid()}"
+            # Track the temp path before writing (not after) so a partial
+            # write left behind by a mid-write OSError (e.g. disk full) is
+            # still cleaned up by the rollback below.
+            temp_targets.append(temp_target)
+            try:
+                temp_target.write_text(text, encoding="utf-8")
+            except OSError as exc:
+                raise BridgeInputError("import artifact write failed") from exc
+        for (filename, _text), temp_target in zip(pending, temp_targets):
+            target = import_dir / filename
+            try:
+                os.replace(temp_target, target)
+            except OSError as exc:
+                raise BridgeInputError("import artifact write failed") from exc
+            written_targets.append(target)
+    except BridgeInputError:
+        for temp_target in temp_targets:
+            temp_target.unlink(missing_ok=True)
+        for target in written_targets:
+            target.unlink(missing_ok=True)
+        raise
 
 
 def run_bridge(
@@ -279,6 +383,8 @@ def run_bridge(
     normalized_styles = [
         style for raw in review["style_observations"] if (style := _normalize_style_observation(raw)) is not None
     ]
+    invalid_fact_count = reviewed_fact_count - len(normalized_facts)
+    invalid_style_count = reviewed_style_count - len(normalized_styles)
 
     eligible_facts = [fact for fact in normalized_facts if fact["sensitivity"] == "general"]
     private_only_facts = [fact for fact in normalized_facts if fact["sensitivity"] != "general"]
@@ -286,6 +392,10 @@ def run_bridge(
     reason_ids: list[str] = ["style_observations_dry_run_projection_only", f"approved_styles_{approved_styles}"]
     if private_only_facts:
         reason_ids.append("private_only_excluded_by_default")
+    if invalid_fact_count:
+        reason_ids.append("invalid_fact_candidates_dropped")
+    if invalid_style_count:
+        reason_ids.append("invalid_style_observations_dropped")
 
     written_count = 0
     if not write_imports:
@@ -310,9 +420,7 @@ def run_bridge(
             raise BridgeInputError(block_reason)
         if pending:
             import_dir = workspace_root.joinpath(*IMPORT_SUBPATH)
-            import_dir.mkdir(parents=True, exist_ok=True)
-            for filename, text in pending:
-                (import_dir / filename).write_text(text, encoding="utf-8")
+            _write_pending_atomically(import_dir, pending)
         written_count = len(writes)
 
     skipped_count = len(normalized_facts) - written_count
@@ -322,6 +430,8 @@ def run_bridge(
         "mode": "write_imports" if write_imports else "dry_run",
         "reviewed_style_count": reviewed_style_count,
         "reviewed_fact_count": reviewed_fact_count,
+        "invalid_fact_count": invalid_fact_count,
+        "invalid_style_count": invalid_style_count,
         "eligible_fact_count": len(eligible_facts),
         "eligible_style_count": len(normalized_styles),
         "private_only_fact_count": len(private_only_facts),

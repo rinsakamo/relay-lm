@@ -3,10 +3,14 @@
 
 No LLM, network, or real archive is required. Fixtures are small, entirely
 fictional review artifacts constructed inline. Covers: dry-run projection
-counts, default (no approval) writes nothing, --approved-facts
-general-only writes only general fact_candidates, private_only facts are
-never written, malformed review shapes fail closed, a symlink workspace
-root is rejected, and an existing conflicting file is rejected.
+counts (including invalid_fact_count / invalid_style_count breakdown),
+default (no approval) writes nothing, --approved-facts general-only
+writes only general fact_candidates, private_only facts are never
+written, provenance-allowlist / evidence_id / time_context / credential-
+like metadata hardening drops items as invalid rather than writing them,
+malformed review shapes fail closed, a symlink workspace root is
+rejected, an existing conflicting file is rejected, and a mid-batch write
+failure leaves no partial files behind.
 """
 from __future__ import annotations
 
@@ -95,6 +99,19 @@ def check_dry_run_projection(tmp_path: Path) -> None:
     require(projection["eligible_fact_count"] == 1, projection)
     require(projection["eligible_style_count"] == 1, projection)
     require(projection["private_only_fact_count"] == 2, projection)  # explicit private_only + missing-sensitivity fail-closed
+    require(projection["invalid_fact_count"] == 1, projection)  # empty-statement fact
+    require(projection["invalid_style_count"] == 1, projection)  # empty-description/evidence style
+    require(
+        projection["reviewed_fact_count"]
+        == projection["eligible_fact_count"] + projection["private_only_fact_count"] + projection["invalid_fact_count"],
+        projection,
+    )
+    require(
+        projection["reviewed_style_count"] == projection["eligible_style_count"] + projection["invalid_style_count"],
+        projection,
+    )
+    require("invalid_fact_candidates_dropped" in projection["reason_ids"], projection)
+    require("invalid_style_observations_dropped" in projection["reason_ids"], projection)
     require(projection["written_count"] == 0, projection)
     require(projection["skipped_count"] == 3, projection)
     require(projection["output_dir_relative"] == ".relaylm/sources/imports/twin-extraction", projection)
@@ -278,6 +295,342 @@ def check_duplicate_fact_identity(tmp_path: Path) -> None:
     require(not import_dir2.exists(), "a fail-closed duplicate-identity conflict must not write anything")
 
 
+def _single_general_fact_review(statement: str) -> dict:
+    return {
+        "style_observations": [],
+        "fact_candidates": [
+            {
+                "statement": statement,
+                "type": "knowledge",
+                "provenance": ["x_post"],
+                "evidence_ids": ["e1"],
+                "time_contexts": ["2026-07"],
+                "sensitivity": "general",
+            }
+        ],
+    }
+
+
+def check_provenance_allowlist(tmp_path: Path) -> None:
+    review = {
+        "style_observations": [],
+        "fact_candidates": [
+            {
+                "statement": "CANARY_UNKNOWN_PROVENANCE must not be written",
+                "type": "knowledge",
+                "provenance": ["twitter_dm"],  # not in the allowlist
+                "evidence_ids": ["e1"],
+                "sensitivity": "general",
+            },
+            {
+                "statement": "CANARY_MIXED_PROVENANCE must not be written",
+                "type": "knowledge",
+                "provenance": ["x_post", "twitter_dm"],  # partially allowed is still rejected
+                "evidence_ids": ["e2"],
+                "sensitivity": "general",
+            },
+            {
+                "statement": "CANARY_ALLOWED_PROVENANCE should be written",
+                "type": "knowledge",
+                "provenance": ["x_post", "chatgpt_reconstructed"],
+                "evidence_ids": ["e3"],
+                "sensitivity": "general",
+            },
+        ],
+    }
+    review_path = tmp_path / "review_provenance.json"
+    _write_review(review_path, review)
+    workspace = tmp_path / "characters" / "provenance"
+    _write_workspace(workspace)
+
+    exit_code, stdout, stderr = _capture(
+        bridge.main,
+        ["--review", str(review_path), "--workspace-root", str(workspace), "--write-imports", "--approved-facts", "general-only"],
+    )
+    require(exit_code == 0, stderr)
+    projection = json.loads(stdout)
+    require(projection["invalid_fact_count"] == 2, projection)
+    require(projection["eligible_fact_count"] == 1, projection)
+    require(projection["written_count"] == 1, projection)
+
+    import_dir = workspace / ".relaylm" / "sources" / "imports" / "twin-extraction"
+    written_files = list(import_dir.glob("*.json"))
+    require(len(written_files) == 1, written_files)
+    artifact_text = written_files[0].read_text(encoding="utf-8")
+    require("CANARY_ALLOWED_PROVENANCE" in artifact_text, artifact_text)
+    require("CANARY_UNKNOWN_PROVENANCE" not in artifact_text, "disallowed-provenance fact must never be written")
+    require("CANARY_MIXED_PROVENANCE" not in artifact_text, "partially-disallowed provenance must never be written")
+
+
+def check_evidence_and_time_context_hardening(tmp_path: Path) -> None:
+    long_id = "x" * 500  # exceeds MAX_EVIDENCE_ID_LENGTH
+    review = {
+        "style_observations": [
+            {
+                "category": "values",
+                "description": "a normal, unrelated style observation used only as a control case",
+                "evidence_ids": ["e1"],
+            },
+        ],
+        "fact_candidates": [
+            {
+                "statement": "CANARY_NEWLINE_EVIDENCE must not be written",
+                "type": "knowledge",
+                "provenance": ["x_post"],
+                "evidence_ids": ["e1\ninjected"],
+                "sensitivity": "general",
+            },
+            {
+                "statement": "CANARY_TOO_LONG_EVIDENCE must not be written",
+                "type": "knowledge",
+                "provenance": ["x_post"],
+                "evidence_ids": [long_id],
+                "sensitivity": "general",
+            },
+            {
+                "statement": "CANARY_EMPTY_EVIDENCE must not be written",
+                "type": "knowledge",
+                "provenance": ["x_post"],
+                "evidence_ids": [""],
+                "sensitivity": "general",
+            },
+            {
+                "statement": "CANARY_CREDENTIAL_EVIDENCE must not be written",
+                "type": "knowledge",
+                "provenance": ["x_post"],
+                "evidence_ids": ["sk-FAKE_CREDENTIAL_TOKEN_1234567890"],
+                "sensitivity": "general",
+            },
+            {
+                "statement": "CANARY_CREDENTIAL_TIME_CONTEXT must not be written",
+                "type": "knowledge",
+                "provenance": ["x_post"],
+                "evidence_ids": ["e1"],
+                "time_contexts": ["password: hunter2"],
+                "sensitivity": "general",
+            },
+            {
+                "statement": "CANARY_CREDENTIAL_TYPE must not be written",
+                "type": "sk-FAKE_CREDENTIAL_TOKEN_abcdefgh",
+                "provenance": ["x_post"],
+                "evidence_ids": ["e1"],
+                "sensitivity": "general",
+            },
+            {
+                "statement": "CANARY_VALID_FACT should be written",
+                "type": "knowledge",
+                "provenance": ["x_post"],
+                "evidence_ids": ["e1", "conv-a"],
+                "time_contexts": ["2026-07"],
+                "sensitivity": "general",
+            },
+        ],
+    }
+    review_path = tmp_path / "review_hardening.json"
+    _write_review(review_path, review)
+    workspace = tmp_path / "characters" / "hardening"
+    _write_workspace(workspace)
+
+    exit_code, stdout, stderr = _capture(
+        bridge.main,
+        ["--review", str(review_path), "--workspace-root", str(workspace), "--write-imports", "--approved-facts", "general-only"],
+    )
+    require(exit_code == 0, stderr)
+    projection = json.loads(stdout)
+    require(projection["invalid_fact_count"] == 6, projection)
+    require(projection["eligible_fact_count"] == 1, projection)
+    require(projection["written_count"] == 1, projection)
+    require(projection["invalid_style_count"] == 0, projection)  # category/description/evidence_ids all valid here
+
+    import_dir = workspace / ".relaylm" / "sources" / "imports" / "twin-extraction"
+    written_files = list(import_dir.glob("*.json"))
+    require(len(written_files) == 1, written_files)
+    artifact_text = written_files[0].read_text(encoding="utf-8")
+    require("CANARY_VALID_FACT" in artifact_text, artifact_text)
+    for forbidden in (
+        "CANARY_NEWLINE_EVIDENCE",
+        "CANARY_TOO_LONG_EVIDENCE",
+        "CANARY_EMPTY_EVIDENCE",
+        "CANARY_CREDENTIAL_EVIDENCE",
+        "CANARY_CREDENTIAL_TIME_CONTEXT",
+        "CANARY_CREDENTIAL_TYPE",
+        "sk-FAKE_CREDENTIAL_TOKEN_1234567890",
+        "sk-FAKE_CREDENTIAL_TOKEN_abcdefgh",
+        "password: hunter2",
+    ):
+        require(forbidden not in artifact_text, f"invalid metadata leaked into a written artifact: {forbidden}")
+
+
+def check_style_category_credential_like_is_invalid(tmp_path: Path) -> None:
+    review = {
+        "style_observations": [
+            {
+                "category": "sk-FAKE_CREDENTIAL_TOKEN_abcdefgh",
+                "description": "a credential-shaped category must invalidate the observation",
+                "evidence_ids": ["e1"],
+            },
+            {"category": "values", "description": "a normal style observation", "evidence_ids": ["e1"]},
+        ],
+        "fact_candidates": [],
+    }
+    review_path = tmp_path / "review_style_category.json"
+    _write_review(review_path, review)
+    workspace = tmp_path / "characters" / "style-category"
+    _write_workspace(workspace)
+
+    exit_code, stdout, stderr = _capture(bridge.main, ["--review", str(review_path), "--workspace-root", str(workspace), "--dry-run"])
+    require(exit_code == 0, stderr)
+    projection = json.loads(stdout)
+    require(projection["reviewed_style_count"] == 2, projection)
+    require(projection["invalid_style_count"] == 1, projection)
+    require(projection["eligible_style_count"] == 1, projection)
+
+
+def check_written_artifact_has_no_stray_canary_in_metadata(tmp_path: Path) -> None:
+    # A written artifact's metadata must contain only its own legitimate,
+    # allowlisted values; only the "text" field carries the approved
+    # statement. No credential/private canary from a dropped sibling
+    # candidate should ever appear anywhere in the written file.
+    review = {
+        "style_observations": [],
+        "fact_candidates": [
+            {
+                "statement": "CANARY_APPROVED_STATEMENT_ONLY should appear as text",
+                "type": "knowledge",
+                "provenance": ["chatgpt_reconstructed"],
+                "evidence_ids": ["e1"],
+                "time_contexts": ["2026-07"],
+                "sensitivity": "general",
+            },
+            {
+                "statement": "CANARY_PRIVATE_SIBLING must never be written",
+                "type": "knowledge",
+                "provenance": ["x_post"],
+                "evidence_ids": ["e2"],
+                "sensitivity": "private_only",
+            },
+            {
+                "statement": "CANARY_DROPPED_CREDENTIAL_SIBLING must never be written",
+                "type": "knowledge",
+                "provenance": ["x_post"],
+                "evidence_ids": ["ghp_FAKECREDENTIALTOKEN1234567890"],
+                "sensitivity": "general",
+            },
+        ],
+    }
+    review_path = tmp_path / "review_artifact_metadata.json"
+    _write_review(review_path, review)
+    workspace = tmp_path / "characters" / "artifact-metadata"
+    _write_workspace(workspace)
+
+    exit_code, stdout, stderr = _capture(
+        bridge.main,
+        ["--review", str(review_path), "--workspace-root", str(workspace), "--write-imports", "--approved-facts", "general-only"],
+    )
+    require(exit_code == 0, stderr)
+    import_dir = workspace / ".relaylm" / "sources" / "imports" / "twin-extraction"
+    written_files = list(import_dir.glob("*.json"))
+    require(len(written_files) == 1, written_files)
+    artifact = json.loads(written_files[0].read_text(encoding="utf-8"))
+    require(artifact["text"] == "CANARY_APPROVED_STATEMENT_ONLY should appear as text", artifact)
+    metadata_text = json.dumps(artifact["metadata"], ensure_ascii=False)
+    for forbidden in ("CANARY_PRIVATE_SIBLING", "CANARY_DROPPED_CREDENTIAL_SIBLING", "ghp_FAKECREDENTIALTOKEN1234567890"):
+        require(forbidden not in metadata_text, f"metadata leaked unrelated/dropped content: {forbidden}")
+    require(metadata_text.count("CANARY") == 0, "metadata must not carry any canary at all, approved or not")
+
+
+def check_write_directory_conflict_fails_closed(tmp_path: Path) -> None:
+    review_path = tmp_path / "review_dirconflict.json"
+    _write_review(review_path, _single_general_fact_review("CANARY_DIRCONFLICT_STATEMENT should not be written"))
+    workspace = tmp_path / "characters" / "dirconflict"
+    _write_workspace(workspace)
+
+    blocking_parent = workspace / ".relaylm" / "sources" / "imports"
+    blocking_parent.mkdir(parents=True, exist_ok=True)
+    blocking_file = blocking_parent / "twin-extraction"
+    blocking_file.write_text("CANARY_BLOCKING_FILE_BODY", encoding="utf-8")
+
+    exit_code, stdout, stderr = _capture(
+        bridge.main,
+        ["--review", str(review_path), "--workspace-root", str(workspace), "--write-imports", "--approved-facts", "general-only"],
+    )
+    require(exit_code != 0, "a directory-vs-file conflict at the import path must fail closed")
+    require(stdout == "", stdout)
+    combined = stdout + stderr
+    require("CANARY_BLOCKING_FILE_BODY" not in combined, combined)
+    require("Traceback" not in combined, combined)
+    require(blocking_file.is_file(), "blocking file must be left untouched")
+    require(blocking_file.read_text(encoding="utf-8") == "CANARY_BLOCKING_FILE_BODY", "blocking file content must be unchanged")
+
+
+def check_write_permission_denied_leaves_no_partial_files(tmp_path: Path) -> None:
+    review_path = tmp_path / "review_permdenied.json"
+    _write_review(review_path, _single_general_fact_review("CANARY_PERMDENIED_STATEMENT should not be written"))
+    workspace = tmp_path / "characters" / "permdenied"
+    _write_workspace(workspace)
+
+    parents = workspace / ".relaylm" / "sources" / "imports"
+    parents.mkdir(parents=True, exist_ok=True)
+    import_dir = parents / "twin-extraction"
+    import_dir.mkdir()
+    import_dir.chmod(0o500)  # read + execute only: no write permission
+    try:
+        exit_code, stdout, stderr = _capture(
+            bridge.main,
+            ["--review", str(review_path), "--workspace-root", str(workspace), "--write-imports", "--approved-facts", "general-only"],
+        )
+        if exit_code == 0:
+            # Running as a user/filesystem that ignores this permission bit
+            # (e.g. root in a container); this half of the check cannot be
+            # exercised here, so skip it rather than assert a false failure.
+            return
+        require(stdout == "", stdout)
+        combined = stdout + stderr
+        require("CANARY_PERMDENIED_STATEMENT" not in combined, combined)
+        require("Traceback" not in combined, combined)
+    finally:
+        import_dir.chmod(0o700)
+    require(len(list(import_dir.glob("*.json"))) == 0, "a permission-denied write must leave no partial files")
+
+
+def check_atomic_batch_rollback_on_partial_failure(tmp_path: Path) -> None:
+    # Directly exercise _write_pending_atomically: if the second of three
+    # renames fails, the first file that was already renamed into place
+    # must be rolled back, and no temp files may remain -- an all-or-
+    # nothing batch, not a partially-written one.
+    workspace = tmp_path / "characters" / "atomic-rollback"
+    _write_workspace(workspace)
+    import_dir = workspace / ".relaylm" / "sources" / "imports" / "twin-extraction"
+
+    pending = [
+        ("fact-aaaaaaaaaaaaaaaaaaaaaaaa.json", "AAAA-CONTENT\n"),
+        ("fact-bbbbbbbbbbbbbbbbbbbbbbbb.json", "BBBB-CONTENT\n"),
+        ("fact-cccccccccccccccccccccccc.json", "CCCC-CONTENT\n"),
+    ]
+
+    original_replace = bridge.os.replace
+    call_count = {"n": 0}
+
+    def flaky_replace(src, dst):
+        call_count["n"] += 1
+        if call_count["n"] == 2:
+            raise OSError("simulated failure on second rename")
+        return original_replace(src, dst)
+
+    bridge.os.replace = flaky_replace
+    try:
+        try:
+            bridge._write_pending_atomically(import_dir, pending)
+            raise AssertionError("expected a BridgeInputError from the simulated failure")
+        except bridge.BridgeInputError:
+            pass
+    finally:
+        bridge.os.replace = original_replace
+
+    remaining = list(import_dir.iterdir()) if import_dir.exists() else []
+    require(remaining == [], f"a mid-batch failure must leave zero files behind, not a partial batch: {remaining}")
+
+
 def check_malformed_review_fails_closed(tmp_path: Path) -> None:
     workspace = tmp_path / "characters" / "malformed"
     _write_workspace(workspace)
@@ -331,6 +684,13 @@ def main() -> int:
         check_approved_general_only_writes_only_general(tmp_path)
         check_conflicting_existing_file_rejected(tmp_path)
         check_duplicate_fact_identity(tmp_path)
+        check_provenance_allowlist(tmp_path)
+        check_evidence_and_time_context_hardening(tmp_path)
+        check_style_category_credential_like_is_invalid(tmp_path)
+        check_written_artifact_has_no_stray_canary_in_metadata(tmp_path)
+        check_write_directory_conflict_fails_closed(tmp_path)
+        check_write_permission_denied_leaves_no_partial_files(tmp_path)
+        check_atomic_batch_rollback_on_partial_failure(tmp_path)
         check_malformed_review_fails_closed(tmp_path)
         check_missing_or_symlink_workspace_rejected(tmp_path)
 

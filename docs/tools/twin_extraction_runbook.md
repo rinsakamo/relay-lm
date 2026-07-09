@@ -143,6 +143,20 @@ PYTHONPATH=.:scripts python scripts/relaylm_twin_review_import_bridge.py \
 
 書き出された `.relaylm/sources/imports/twin-extraction/fact-<hash>.json` は `role: "user"` を持つため、CW-A4(`plan_character_workspace_slp_candidates` の dry-run)がuser assertion evidenceとして読み、memory/scene/relationship候補のdry-run projectionに使える。CW-A4への書き込み(`write_candidates=True`)や後続のMEM/SOUL反映は、このbridgeの範囲外であり別途明示的に実行する。
 
+#### metadataの安全性
+
+書き出すimport source artifactの `metadata` は以下の制約で正規化・検証され、満たさないfact_candidate/style_observationはinvalidとしてdrop(書き込まない)される。fail-closedであり、部分的な値の丸め・切り詰めによる書き込みは行わない:
+
+- `provenance` は `x_post` / `chatgpt_reconstructed` のみ許可するclosed allowlist。それ以外のラベルを1つでも含むと、そのcandidate全体をinvalidとしてdropする。
+- `evidence_ids` / `time_contexts` / `type`(fact) / `category`(style) は非空文字列・長さ上限・制御文字/改行禁止であることを要求する。credential/secretらしい形状(`sk-...`, `ghp_...`, `AKIA...`, `password: ...` など)を含む場合もinvalidとしてdropする。
+- `statement` / `description` 本文自体はこのcredential判定の対象外(一人称の自由記述テキストであり、metadataではないため)。
+
+CLIの出力(dry-run/write-imports共通)には `invalid_fact_count` / `invalid_style_count` と `reason_ids` (`invalid_fact_candidates_dropped` / `invalid_style_observations_dropped`)が含まれ、`reviewed_fact_count == eligible_fact_count + private_only_fact_count + invalid_fact_count` が常に成り立つ。運用者はこの内訳でレビューJSON側のitem-level不正をstdoutのcontent-freeな集計だけから把握できる。
+
+#### 書き込み失敗時の安全性
+
+`import_dir` の作成・各artifactの書き込み・既存ファイル読み取り時に発生した `OSError`(ディレクトリ競合・権限不足など)はすべてcontent-freeな `BridgeInputError` として扱われ、生のtraceback・絶対パス・例外メッセージはstdout/stderrに出力されない(exit code非0)。複数の承認済みfactを1回の `--write-imports` で書き込む場合、書き込みは一時ファイル経由のatomicな "all-or-nothing" になる: バッチ中のいずれか1件でも書き込み/renameに失敗した場合、その回で既にrenameされたファイルも含めてすべてロールバックされ、部分的に書き込まれたバッチは残らない。
+
 ## 検証コマンド
 
 ```bash
