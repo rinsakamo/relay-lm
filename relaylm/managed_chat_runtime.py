@@ -14,8 +14,6 @@ from __future__ import annotations
 import asyncio
 from copy import deepcopy
 from dataclasses import replace
-from datetime import datetime, timezone
-import time
 import uuid
 from collections.abc import Mapping
 from typing import Any
@@ -132,32 +130,12 @@ from relaylm.token_policy_signal import (
 )
 from relaylm.trace_runtime import extract_response_text, trace_runtime_event
 from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
+from relaylm.pipeline_stage import _finalize_timing, _start_timing, run_stage
 from relaylm.relayctx_repack import (
     apply_relayctx_short_term_runtime_injection_phase,
     apply_relaymem_runtime_injection_phase,
     apply_token_budget_truncation_phase,
 )
-
-
-def _start_timing() -> tuple[str, float]:
-    """Capture a node's start for LAT-1 RelayRUN timing (measurement only)."""
-
-    return datetime.now(timezone.utc).isoformat(), time.monotonic()
-
-
-def _finalize_timing(started_at: str, start_monotonic: float) -> dict[str, Any]:
-    """Finish a node timing bracket started by ``_start_timing``.
-
-    Wall-clock ISO timestamps are recorded for ``started_at``/``completed_at``;
-    ``duration_ms`` is derived from a monotonic clock so it stays accurate even
-    if the wall clock is adjusted mid-request.
-    """
-
-    return {
-        "started_at": started_at,
-        "completed_at": datetime.now(timezone.utc).isoformat(),
-        "duration_ms": max(0, round((time.monotonic() - start_monotonic) * 1000)),
-    }
 
 
 def _compile_chat_payload_and_capture_context_blocks(
@@ -332,17 +310,19 @@ async def handle_managed_chat_completion(
     )
     forwarded_payload = pipeline_context.forwarded_payload
     token_budget_truncation: dict[str, Any] | None = None
-    relayrel_started_at, relayrel_start_monotonic = _start_timing()
-    relayrel_relationship_projection = build_relayrel_relationship_projection(
+    relayrel_relationship_projection = await run_stage(
+        node_timings,
+        "relayrel",
+        build_relayrel_relationship_projection,
         route=route,
         request_scope_identity=request_scope_identity,
     )
-    node_timings["relayrel"] = _finalize_timing(relayrel_started_at, relayrel_start_monotonic)
-    relayscn_started_at, relayscn_start_monotonic = _start_timing()
-    relayscn_scene_policy_artifact = build_relayscn_scene_policy_artifact(
+    relayscn_scene_policy_artifact = await run_stage(
+        node_timings,
+        "relayscn",
+        build_relayscn_scene_policy_artifact,
         payload=payload,
     )
-    node_timings["relayscn"] = _finalize_timing(relayscn_started_at, relayscn_start_monotonic)
     relayemo_artifact: dict[str, Any] | None = None
     if config.relayemo_enabled:
         relayemo_started_at, relayemo_start_monotonic = _start_timing()
