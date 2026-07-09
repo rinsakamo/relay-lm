@@ -35,14 +35,17 @@ authority; results below are blank placeholders.
 - Conversation quality trend: Not yet recorded.
 - Memory behavior trend (over-recall / under-recall / mixed-source): Not yet recorded.
 - Perceived latency trend: Not yet recorded.
+- LAT-2 stream timing trend (`time_to_first_chunk_ms` / `stream_drain_ms` / `stream_chunk_count`): Not yet recorded.
 - Mobile UX friction points: Not yet recorded.
 
 ## Caveats
 
-- streaming `time_to_first_token_ms` remains unmeasured/null; latency
-  observations here are perceived-speed and `timing_summary`
-  (`retrieval_ms`, `backend_forward_ms`, `pipeline_overhead_ms`) only.
-- This report does not claim production readiness, runtime behavior change,
-  or public benchmark standing.
+- LAT-1 `timing_summary.time_to_first_token_ms` remains null for streaming
+  responses. Use LAT-2 `stream_timing.time_to_first_chunk_ms` /
+  `stream_drain_ms` / `stream_chunk_count` when that separate stream-final
+  trace is available.
+- Latency observations remain local dogfood evidence only; this template does
+  not claim production readiness, runtime behavior change, latency
+  improvement, or public benchmark standing.
 - Underlying content-bearing daily/weekly notes remain local-only and are
   never committed to this repository.
