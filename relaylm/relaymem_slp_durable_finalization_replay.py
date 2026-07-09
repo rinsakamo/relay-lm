@@ -1,13 +1,13 @@
 """Public I1-GC one-record durable-finalization replay authority."""
 from __future__ import annotations
 
-import fcntl
 import os
 import stat
 from collections.abc import Mapping
 from typing import Any
 
 from . import _relaymem_slp_durable_finalization_replay_impl as _impl
+from .portable_lock import PortableLockUnavailable, acquire_portable_lock, release_portable_lock
 from .relaymem_slp_durable_finalization_replay_current_source import (
     reconstruct_current_finalized_source as _reconstruct_source,
 )
@@ -73,9 +73,9 @@ def _acquire_fence(
                 "durable_finalization_replay_lock_unsafe_file_type",
             )
         try:
-            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            acquire_portable_lock(lock_fd, mode="exclusive", blocking=False)
             acquired = True
-        except BlockingIOError:
+        except PortableLockUnavailable:
             return None, True, ("durable_finalization_replay_lock_busy",)
         if before is None:
             os.fsync(lock_fd)
@@ -91,7 +91,7 @@ def _acquire_fence(
         if lock_fd is not None:
             if acquired:
                 try:
-                    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                    release_portable_lock(lock_fd)
                 except OSError:
                     pass
             try:

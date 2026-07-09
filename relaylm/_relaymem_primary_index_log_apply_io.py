@@ -9,11 +9,7 @@ from collections.abc import Mapping
 from hashlib import sha256
 from typing import Any
 
-try:
-    import fcntl
-except ImportError:  # pragma: no cover - POSIX-only apply boundary
-    fcntl = None  # type: ignore[assignment]
-
+from .portable_lock import acquire_portable_lock, release_portable_lock
 from ._relaymem_primary_index_log_reconciliation_io import (
     _open_directory_parts,
     _open_root_directory,
@@ -30,9 +26,6 @@ def apply_or_inspect_reconciliation(
     *, root_path: str | None, plan: Mapping[str, Any], apply_requested: bool
 ) -> dict[str, Any]:
     state = empty_reconciliation_apply_state()
-    if fcntl is None:
-        state["blocked_reasons"] = ["primary_reconciliation_apply_platform_unsupported"]
-        return state
     root = _open_root_directory(root_path)
     if root.get("valid") is not True:
         state["blocked_reasons"] = list(root.get("blocked_reasons", []))
@@ -47,9 +40,9 @@ def apply_or_inspect_reconciliation(
             return state
         mem_fd = directory["fd"]
         try:
-            fcntl.flock(mem_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            acquire_portable_lock(mem_fd, mode="exclusive", blocking=False)
             locked = True
-        except (BlockingIOError, OSError):
+        except OSError:
             state["blocked_reasons"] = ["primary_reconciliation_apply_lock_unavailable"]
             return state
 
@@ -171,7 +164,7 @@ def apply_or_inspect_reconciliation(
     finally:
         if locked and mem_fd >= 0:
             try:
-                fcntl.flock(mem_fd, fcntl.LOCK_UN)
+                release_portable_lock(mem_fd)
             except OSError:
                 pass
         if mem_fd >= 0:

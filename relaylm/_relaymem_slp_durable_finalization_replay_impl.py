@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import errno
-import fcntl
 import hashlib
 import os
 import secrets
@@ -12,6 +11,7 @@ from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from typing import Literal
 
+from .portable_lock import PortableLockUnavailable, acquire_portable_lock, release_portable_lock
 from ._relaymem_slp_protected_source_artifact import (
     artifact_filename,
     build_artifact,
@@ -243,7 +243,7 @@ class _Fence:
 
     def close(self) -> None:
         try:
-            fcntl.flock(self.lock_fd, fcntl.LOCK_UN)
+            release_portable_lock(self.lock_fd)
         except OSError:
             pass
         os.close(self.lock_fd)
@@ -976,8 +976,8 @@ def _acquire_fence(root: str, locator: str) -> tuple[_Fence | None, bool, tuple[
             os.close(root_fd)
             return None, False, ("durable_finalization_replay_lock_unsafe_file_type",)
         try:
-            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
+            acquire_portable_lock(lock_fd, mode="exclusive", blocking=False)
+        except PortableLockUnavailable:
             os.close(lock_fd)
             os.close(root_fd)
             return None, True, ("durable_finalization_replay_lock_busy",)

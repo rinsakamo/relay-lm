@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import errno
-import fcntl
 import os
 import secrets
 import stat
 from dataclasses import dataclass
 from pathlib import Path
 
+from relaylm.portable_lock import PortableLockUnavailable, acquire_portable_lock, release_portable_lock
 from relaylm.relaymem_slp_queue_record import (
     MAX_RECORD_BYTES,
     bad_text,
@@ -99,10 +99,10 @@ def open_queue_root(root_path: str | None) -> tuple[int | None, tuple[str, ...]]
 
 
 def acquire_queue_lock(root_fd: int, *, exclusive: bool) -> str | None:
-    mode = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+    mode = "exclusive" if exclusive else "shared"
     try:
-        fcntl.flock(root_fd, mode | fcntl.LOCK_NB)
-    except BlockingIOError:
+        acquire_portable_lock(root_fd, mode=mode, blocking=False)
+    except PortableLockUnavailable:
         return "queue_lock_busy"
     except OSError:
         return "queue_lock_failed"
@@ -111,7 +111,7 @@ def acquire_queue_lock(root_fd: int, *, exclusive: bool) -> str | None:
 
 def release_queue_lock(root_fd: int) -> None:
     try:
-        fcntl.flock(root_fd, fcntl.LOCK_UN)
+        release_portable_lock(root_fd)
     except OSError:
         pass
 

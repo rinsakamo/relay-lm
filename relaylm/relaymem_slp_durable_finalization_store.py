@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import ctypes
 import errno
-import fcntl
 import os
 import secrets
 import stat
@@ -13,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from .portable_lock import PortableLockUnavailable, acquire_portable_lock, release_portable_lock
 from .relaymem_slp_durable_finalization_record import (
     RECORD_SCHEMA,
     RelayMEMSLPDurableFinalizationEvidence,
@@ -950,12 +950,10 @@ def _open_store_root(root_path: object) -> tuple[int | None, tuple[str, ...]]:
 
 
 def _acquire_lock(root_fd: int, *, exclusive: bool) -> str | None:
+    mode = "exclusive" if exclusive else "shared"
     try:
-        fcntl.flock(
-            root_fd,
-            (fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH) | fcntl.LOCK_NB,
-        )
-    except BlockingIOError:
+        acquire_portable_lock(root_fd, mode=mode, blocking=False)
+    except PortableLockUnavailable:
         return "durable_finalization_store_lock_busy"
     except OSError:
         return "durable_finalization_store_lock_failed"
@@ -964,7 +962,7 @@ def _acquire_lock(root_fd: int, *, exclusive: bool) -> str | None:
 
 def _release_lock(root_fd: int) -> None:
     try:
-        fcntl.flock(root_fd, fcntl.LOCK_UN)
+        release_portable_lock(root_fd)
     except OSError:
         pass
 
