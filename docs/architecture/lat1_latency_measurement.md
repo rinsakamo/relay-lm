@@ -140,7 +140,13 @@ token sent" or "stream fully drained" without either delaying the response
 result in a second, later trace event (out of scope for this
 measurement-only slice; see `docs/architecture/phase55b1_stream_suppression_gate_handoff.md`
 for the existing ASGI-level "response fully sent" pattern this might reuse).
-Consequently:
+
+**LAT-2 does exactly that, as a separate trace.** See
+[LAT-2 Mobile Perceived Latency](lat2_mobile_perceived_latency.md) for
+`stream_timing.time_to_first_chunk_ms`/`stream_drain_ms`/`stream_chunk_count`,
+recorded as a second, later trace record keyed by the same `request_id`.
+`timing_summary.time_to_first_token_ms` itself is unchanged by LAT-2 and
+stays `null` here. Consequently:
 
 - `time_to_first_token_ms` is `null` for every request, stream or not.
 - For a streaming request, `backend_forward_ms` measures time until the

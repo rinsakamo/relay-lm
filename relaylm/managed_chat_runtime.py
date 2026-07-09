@@ -100,6 +100,10 @@ from relaylm.relayrun_runtime_artifact import (
     _ManagedRuntimeArtifactContext,
     _build_relayrun_runtime_artifact_for_context,
 )
+from relaylm.relayrun_stream_timing import (
+    emit_relayrun_stream_timing_trace,
+    wrap_stream_with_relayrun_stream_timing,
+)
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.relayemo import (
     load_session_assistant_state,
@@ -635,12 +639,13 @@ async def handle_managed_chat_completion(
                     backend_forward_started_at, backend_forward_start_monotonic
                 ),
             )
+        backend_forward_timing = _finalize_timing(
+            backend_forward_started_at, backend_forward_start_monotonic
+        )
         stream_relayrun_artifact = _build_relayrun_runtime_artifact_for_context(
             runtime_artifact_context,
             backend_forward_status="completed",
-            backend_forward_timing=_finalize_timing(
-                backend_forward_started_at, backend_forward_start_monotonic
-            ),
+            backend_forward_timing=backend_forward_timing,
             stream_started=True,
             first_token_sent=False,
         )
@@ -714,6 +719,26 @@ async def handle_managed_chat_completion(
                 "content_type": content_type,
             },
         )
+        if config.trace.enabled and config.trace.path:
+            # LAT-2: measure perceived stream latency (time to first chunk,
+            # drain time, chunk count) as a second, later trace record. This
+            # cannot be folded into the checkpoint built above -- that
+            # artifact is finalized before any stream byte is sent -- so it
+            # is emitted separately once the stream finishes or errors. See
+            # docs/architecture/lat2_mobile_perceived_latency.md.
+            body_iter = wrap_stream_with_relayrun_stream_timing(
+                body_iter,
+                stream_open_start_monotonic=backend_forward_start_monotonic,
+                stream_open_ms=backend_forward_timing.get("duration_ms"),
+                on_finalize=lambda artifact: emit_relayrun_stream_timing_trace(
+                    config=config,
+                    request_id=request_id,
+                    character_id=route.character_id,
+                    route_model=route.route_model,
+                    mode_applied=route.mode_applied,
+                    stream_timing=artifact,
+                ),
+            )
         return StreamingResponse(
             body_iter,
             status_code=status_code,
