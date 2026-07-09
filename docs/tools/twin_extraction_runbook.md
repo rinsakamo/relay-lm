@@ -116,12 +116,58 @@ PYTHONPATH=.:scripts python scripts/relaylm_twin_extraction_merge.py \
 
 このツールが作るのは `twin_extraction_review.json` まで。MEM/SOULへの書き込み・bootstrap投入・SLP経路への接続は行わない。[Twin Extraction プロンプト仕様](twin_extraction_prompts.md) の「集約・レビュー手順」に従って手動レビューし、承認された素材のみを別途CW-A1形式・MEM bootstrap経路に反映する。
 
+### 6. review import bridge (P1出力 -> CW-A4 governed import source)
+
+`twin_extraction_review.json` をマージした後、`scripts/relaylm_twin_review_import_bridge.py` でFile-first Character Workspace(CW-A4)が読める `.relaylm/sources/imports/twin-extraction/` へ変換できる。このbridgeもP1と同じくcaller-invoked / bounded / offline / runtime-non-contactであり、`relaylm` パッケージをimportしない。MEM/SOUL/REL/Primary MEMへは直接書き込まない。uppercase source(`SOUL.md`など)も直接書き換えない。
+
+既定ではdry-runで、何も書き込まない:
+
+```bash
+PYTHONPATH=.:scripts python scripts/relaylm_twin_review_import_bridge.py \
+  --review runtime/twin_extraction/twin_extraction_review.json \
+  --workspace-root runtime/characters/relm \
+  --dry-run
+```
+
+`sensitivity: general` のfact_candidatesのみ、明示オプションで承認してimport sourceへ書き出す:
+
+```bash
+PYTHONPATH=.:scripts python scripts/relaylm_twin_review_import_bridge.py \
+  --review runtime/twin_extraction/twin_extraction_review.json \
+  --workspace-root runtime/characters/relm \
+  --write-imports \
+  --approved-facts general-only
+```
+
+`private_only` のfact_candidatesは既定では出力されず、このbridgeに自動昇格経路もない。`style_observations` は本リビジョンではdry-run projection/カウントのみで、ファイルへは書き出さない(`--approved-styles` は `none` のみ受け付ける)。stdoutは常にcontent-freeなJSON集計(件数とreason_idsのみ)で、statement/description本文・絶対パス・生の例外テキストは出力されない。書き込み先ファイル名は内容から決定されるstableなハッシュで、timestamp/UUIDは使わない。既存ファイルが同一内容ならidempotent、異なる内容ならfail-closedでconflictエラーになる(exit code非0、部分書き込みなし)。
+
+書き出された `.relaylm/sources/imports/twin-extraction/fact-<hash>.json` は `role: "user"` を持つため、CW-A4(`plan_character_workspace_slp_candidates` の dry-run)がuser assertion evidenceとして読み、memory/scene/relationship候補のdry-run projectionに使える。CW-A4への書き込み(`write_candidates=True`)や後続のMEM/SOUL反映は、このbridgeの範囲外であり別途明示的に実行する。
+
+#### metadataの安全性
+
+書き出すimport source artifactの `metadata` は以下の制約で正規化・検証され、満たさないfact_candidate/style_observationはinvalidとしてdrop(書き込まない)される。fail-closedであり、部分的な値の丸め・切り詰めによる書き込みは行わない:
+
+- `provenance` は `x_post` / `chatgpt_reconstructed` のみ許可するclosed allowlist。それ以外のラベルを1つでも含むと、そのcandidate全体をinvalidとしてdropする。
+- `evidence_ids` / `time_contexts` / `type`(fact) / `category`(style) は非空文字列・長さ上限・制御文字/改行禁止であることを要求する。credential/secretらしい形状(`sk-...`, `ghp_...`, `AKIA...`, `password: ...` など)を含む場合もinvalidとしてdropする。
+- `statement` / `description` 本文自体はこのcredential判定の対象外(一人称の自由記述テキストであり、metadataではないため)。
+
+CLIの出力(dry-run/write-imports共通)には `invalid_fact_count` / `invalid_style_count` と `reason_ids` (`invalid_fact_candidates_dropped` / `invalid_style_observations_dropped`)が含まれ、`reviewed_fact_count == eligible_fact_count + private_only_fact_count + invalid_fact_count` が常に成り立つ。運用者はこの内訳でレビューJSON側のitem-level不正をstdoutのcontent-freeな集計だけから把握できる。
+
+#### 書き込み失敗時の安全性
+
+`import_dir` の作成・各artifactの書き込み・既存ファイル読み取り時に発生した `OSError`(ディレクトリ競合・権限不足など)はすべてcontent-freeな `BridgeInputError` として扱われ、生のtraceback・絶対パス・例外メッセージはstdout/stderrに出力されない(exit code非0)。複数の承認済みfactを1回の `--write-imports` で書き込む場合、書き込みは一時ファイル経由の "all-or-nothing" になる: バッチ中のいずれか1件でも書き込み/commitに失敗した場合、その回で既にcommitされたファイルも含めてすべてロールバックされ、部分的に書き込まれたバッチは残らない。
+
+各artifactの一時ファイルは `O_EXCL`(と、対応環境では `O_NOFOLLOW`)付きで新規作成する。これにより、その一時パスに既存のsymlinkや前回実行の残骸が既にあった場合はそれを辿らず/上書きせずfail-closedする。一時ファイルから最終ファイル名への確定(commit)には `os.replace`/`os.rename` ではなく `os.link`(no-clobberなhard link)を使う: preflight後にtargetが出現した場合(TOCTOUレース)でもcommitはfail-closedし、既存のtargetを黙って上書きすることはない。
+
 ## 検証コマンド
 
 ```bash
 python -m compileall relaylm scripts
 PYTHONPATH=.:scripts python scripts/relaylm_twin_extraction_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_twin_extraction_security_smoke.py
+PYTHONPATH=.:scripts python scripts/relaylm_twin_review_import_bridge_smoke.py
+PYTHONPATH=.:scripts python scripts/relaylm_twin_review_import_bridge_security_smoke.py
+PYTHONPATH=.:scripts python scripts/relaylm_twin_review_import_bridge_cw_a4_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/twin_extraction_completion_report.md
 PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
 PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
