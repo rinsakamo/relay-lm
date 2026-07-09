@@ -1,5 +1,5 @@
 ---
-relaylm_doc_type: template
+relaylm_doc_type: evaluation_record
 relaylm_authority: mobile_dogfood_observation
 relaylm_status: current
 relaylm_volatility: medium
