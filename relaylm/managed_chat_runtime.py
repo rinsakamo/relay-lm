@@ -38,6 +38,7 @@ from relaylm.app_response_finalization import (
     durable_finalization_gate_relevant,
     durable_finalization_gate_valid,
     durable_finalization_server_error,
+    get_shared_http_client,
 )
 from relaylm.config import RelayLMConfig
 from relaylm.relaymem_slp_durable_finalization_publication import (
@@ -622,11 +623,17 @@ async def handle_managed_chat_completion(
         relaysoul_runtime_feedback_summary=feedback_summary,
     )
 
+    # One httpx.AsyncClient is shared across all backend requests for the
+    # life of the app (see relaylm.app's lifespan); it is looked up here
+    # rather than imported as a module-level global so the dependency stays
+    # explicit and request-scoped.
+    http_client = get_shared_http_client(request.app)
+
     if stream_enabled:
         backend_forward_started_at, backend_forward_start_monotonic = _start_timing()
         try:
             status_code, content_type, body_iter = await open_chat_completion_stream(
-                forwarded_payload, route
+                forwarded_payload, route, http_client
             )
         except BackendRequestError as exc:
             return _build_backend_request_error_response(
@@ -750,7 +757,7 @@ async def handle_managed_chat_completion(
     backend_forward_started_at, backend_forward_start_monotonic = _start_timing()
     try:
         status_code, body, response_headers = await forward_chat_completion_json(
-            forwarded_payload, route
+            forwarded_payload, route, http_client
         )
     except BackendRequestError as exc:
         return _build_backend_request_error_response(

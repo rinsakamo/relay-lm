@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import argparse
 import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
+import httpx
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from relaylm.app_response_finalization import HTTP_CLIENT_STATE_ATTR
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.managed_chat_runtime import handle_managed_chat_completion
 from relaylm.relaymem_slp_primary_worker_source_registry import (
@@ -18,9 +22,31 @@ from relaylm.relaymem_slp_primary_worker_source_registry import (
 from relaylm.routing import list_model_ids
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Own the shared backend ``httpx.AsyncClient`` for the app's lifetime.
+
+    One client is created here and reused for every backend request
+    (connection pooling/keep-alive) instead of opening a fresh client per
+    request. Per-route backend timeouts are applied per request in
+    ``relaylm.adapter``, so this client is deliberately timeout-neutral.
+
+    Note: test setups that instantiate ``TestClient(app)`` without a context
+    manager never run this lifespan. ``get_shared_http_client`` (see
+    ``relaylm.app_response_finalization``) lazily creates the same client on
+    first use in that case, so both paths converge on a single instance.
+    """
+    setattr(app.state, HTTP_CLIENT_STATE_ATTR, httpx.AsyncClient())
+    try:
+        yield
+    finally:
+        client: httpx.AsyncClient = getattr(app.state, HTTP_CLIENT_STATE_ATTR)
+        await client.aclose()
+
+
 def create_app(config_path: str | None = None) -> FastAPI:
     config = load_config(config_path)
-    app = FastAPI(title="RelayLM", version="0.1.0")
+    app = FastAPI(title="RelayLM", version="0.1.0", lifespan=_lifespan)
     app.state.relaylm_config = config
     app.state.relaymem_slp_primary_worker_source_registry = (
         RelayMEMSLPPrimaryWorkerSourceRegistry(

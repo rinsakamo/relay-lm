@@ -87,16 +87,26 @@ def _ensure_backend_forward_allowed(
 async def forward_chat_completion_json(
     payload: Mapping[str, Any],
     route: ResolvedRoute,
+    client: httpx.AsyncClient,
 ) -> tuple[int, Any, dict[str, str]]:
+    """Forward one non-stream chat completion request through ``client``.
+
+    ``client`` is a shared ``httpx.AsyncClient`` owned by the app (see
+    ``relaylm.app``'s lifespan) and reused across requests for connection
+    pooling/keep-alive. This function never creates or closes a client of
+    its own. The per-route backend timeout is applied per request (instead
+    of on the client) so the shared client stays timeout-neutral and safe
+    to reuse across routes with different ``timeout_seconds``.
+    """
     _ensure_backend_forward_allowed(route, payload)
     timeout = httpx.Timeout(route.backend.timeout_seconds)
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                _backend_url(route, OPENAI_CHAT_COMPLETIONS_PATH),
-                headers=_headers(route),
-                json=build_backend_payload(payload, route),
-            )
+        response = await client.post(
+            _backend_url(route, OPENAI_CHAT_COMPLETIONS_PATH),
+            headers=_headers(route),
+            json=build_backend_payload(payload, route),
+            timeout=timeout,
+        )
     except httpx.HTTPError as exc:
         raise BackendRequestError(str(exc)) from exc
 
@@ -123,27 +133,39 @@ async def forward_chat_completion_json(
 async def open_chat_completion_stream(
     payload: Mapping[str, Any],
     route: ResolvedRoute,
+    client: httpx.AsyncClient,
 ) -> tuple[int, str, AsyncIterator[bytes]]:
     """Open a backend streaming response and return status before proxying bytes.
 
     This intentionally does not call ``raise_for_status``. Backend 4xx/5xx
     responses should keep their status code and body instead of surfacing as a
     RelayLM generator exception.
+
+    ``client`` is a shared ``httpx.AsyncClient`` owned by the app (see
+    ``relaylm.app``'s lifespan). Only the backend response/stream opened here
+    is closed by this function (in ``iter_bytes``'s ``finally``, on every exit
+    path -- normal exhaustion, early abandonment, or an error during
+    iteration); the shared client itself is never closed here since it
+    outlives any single request.
     """
 
     _ensure_backend_forward_allowed(route, payload)
     timeout = httpx.Timeout(route.backend.timeout_seconds)
-    client = httpx.AsyncClient(timeout=timeout)
     stream_context = client.stream(
         "POST",
         _backend_url(route, OPENAI_CHAT_COMPLETIONS_PATH),
         headers=_headers(route),
         json=build_backend_payload(payload, route),
+        timeout=timeout,
     )
     try:
         response = await stream_context.__aenter__()
     except httpx.HTTPError as exc:
-        await client.aclose()
+        # stream_context.__aenter__() failing means the `stream()`
+        # asynccontextmanager generator raised before its `yield`, so
+        # __aexit__ must not (and cannot) be called -- there is nothing to
+        # tear down beyond propagating the error. The shared client is not
+        # ours to close either way.
         raise BackendRequestError(str(exc)) from exc
 
     content_type = response.headers.get("content-type", "text/event-stream")
@@ -154,8 +176,10 @@ async def open_chat_completion_stream(
                 if chunk:
                     yield chunk
         finally:
+            # Close only the backend response/connection -- never the
+            # shared client, which is owned by the app and reused across
+            # requests.
             await stream_context.__aexit__(None, None, None)
-            await client.aclose()
 
     body_iter: AsyncIterator[bytes] = iter_bytes()
     pipeline_context = get_active_pipeline_context()
