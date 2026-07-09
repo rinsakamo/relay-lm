@@ -36,6 +36,14 @@ Character(s):
 - Did P1/P2-sourced memory add value this week?
 - Any P1/P2 recall that felt wrong or mixed-up?
 
+## Latency trend
+- Any perceived latency regression this week?
+- retrieval_ms trend:
+- backend_forward_ms trend:
+- pipeline_overhead_ms trend:
+- time_to_first_chunk_ms trend if LAT-2 stream_timing is available:
+- stream_drain_ms / stream_chunk_count notes if LAT-2 stream_timing is available:
+
 ## SOUL/REL/SCN/EMO complexity
 - Did added complexity (relationship/scene/emotion state) show clear value?
 - Any case where it felt unnecessary or noisy?
