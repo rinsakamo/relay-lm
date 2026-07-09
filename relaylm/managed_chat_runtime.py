@@ -11,6 +11,7 @@ stays a thin FastAPI entrypoint that delegates to
 
 from __future__ import annotations
 
+import asyncio
 from copy import deepcopy
 from dataclasses import replace
 from datetime import datetime, timezone
@@ -81,7 +82,12 @@ from relaylm.memory_adapter import (
     build_memory_adapter_readiness_check,
     build_memory_adapter_shadow_dry_run_with_scope,
 )
-from relaylm.request_compiler import compile_chat_payload_if_enabled
+from relaylm.request_compiler import (
+    CompiledRequest,
+    compile_chat_payload_if_enabled,
+    consume_compiled_context_blocks_runtime_private,
+    restore_compiled_context_blocks_runtime_private,
+)
 from relaylm.relayint import (
     build_relayint_fast_path_dry_run,
     build_relayint_quick_clarification_apply_plan,
@@ -154,6 +160,84 @@ def _finalize_timing(started_at: str, start_monotonic: float) -> dict[str, Any]:
     }
 
 
+def _compile_chat_payload_and_capture_context_blocks(
+    *,
+    config: RelayLMConfig,
+    route: ResolvedRoute,
+    payload: Mapping[str, Any],
+) -> tuple[CompiledRequest, tuple[Any, ...] | None]:
+    """Run the compile stage on a worker thread and capture its ContextVar handoff.
+
+    Executed inside ``asyncio.to_thread``. ``compile_chat_payload_if_enabled``
+    reads character workspace files (persona/soul/output policy, memory seed)
+    and is otherwise called unmodified with plain arguments. It also stashes
+    typed pre-render compiler blocks in a request-local ``ContextVar`` for
+    ``PipelineContext`` to pick up; that ``.set()`` would not survive the
+    worker thread's copied context, so it is consumed here and returned
+    alongside the compiled request for the async caller to replay (see
+    ``restore_compiled_context_blocks_runtime_private``).
+    """
+
+    compiled_request = compile_chat_payload_if_enabled(
+        config=config,
+        route=route,
+        payload=payload,
+    )
+    compiled_context_blocks = consume_compiled_context_blocks_runtime_private()
+    return compiled_request, compiled_context_blocks
+
+
+def _run_relaymem_retrieval_stage(
+    *,
+    config: RelayLMConfig,
+    route: ResolvedRoute,
+    relaymem_scoped_store_root: str | None,
+    relayscn_scene_policy_artifact: dict[str, Any] | None,
+    relayint_intent_artifact: dict[str, Any] | None,
+    messages: list[dict[str, Any]],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Run the RelayMEM retrieval dry-run artifact build on a worker thread.
+
+    Executed inside ``asyncio.to_thread``. Scans and reads the RelayMEM store
+    on disk (``build_relaymem_store_diagnostics``, then the retrieval
+    candidate discovery and, when scope-eligible, the Primary MEM recall
+    revalidation) and returns the two plain result objects unchanged; none of
+    these callees touch ``PipelineContext`` or any ``ContextVar``.
+    """
+
+    relaymem_store_diagnostics = build_relaymem_store_diagnostics(
+        root_path=relaymem_scoped_store_root,
+        store_enabled=config.memory.store_enabled,
+        retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
+    )
+    relaymem_retrieval_artifact = build_relaymem_retrieval_dry_run_artifact(
+        relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
+        relayint_intent_artifact=relayint_intent_artifact,
+        messages=messages,
+        token_budget=_resolve_relaymem_retrieval_token_budget(config),
+        store_diagnostics=relaymem_store_diagnostics,
+        max_candidates=config.memory.candidate_limit,
+        ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
+        snippet_extraction_enabled=config.memory.snippet_extraction_enabled,
+        snippet_dry_run_only=config.memory.snippet_dry_run_only,
+        snippet_apply_enabled=config.memory.snippet_apply_enabled,
+        snippet_budget=config.memory.snippet_budget,
+        max_snippet_chars=config.memory.max_snippet_chars,
+        max_snippet_candidates=config.memory.max_snippet_candidates,
+    )
+    if _relaymem_primary_recall_scope_allowed(relaymem_store_diagnostics):
+        relaymem_retrieval_artifact = apply_relaymem_primary_recall_scope(
+            relaymem_retrieval_artifact,
+            scoped_store_root=relaymem_scoped_store_root,
+            expected_namespace=route.memory_namespace,
+            max_snippet_chars=config.memory.max_snippet_chars,
+            max_snippet_candidates=config.memory.max_snippet_candidates,
+            snippet_budget=config.memory.snippet_budget,
+            chars_per_token=config.memory.chars_per_token,
+        )
+    return relaymem_store_diagnostics, relaymem_retrieval_artifact
+
+
 async def handle_managed_chat_completion(
     *,
     request: Request,
@@ -180,11 +264,17 @@ async def handle_managed_chat_completion(
 
     relayrun_run_id = new_run_id()
 
-    compiled_request = compile_chat_payload_if_enabled(
+    compiled_request, compiled_context_blocks = await asyncio.to_thread(
+        _compile_chat_payload_and_capture_context_blocks,
         config=config,
         route=route,
         payload=payload,
     )
+    # The worker thread's ContextVar.set (inside compile_chat_payload_if_enabled)
+    # ran in a copied context that asyncio.to_thread discards on return, so it
+    # never reaches this request's own context. Replay the captured blocks here
+    # before PipelineContext.__post_init__ consumes them.
+    restore_compiled_context_blocks_runtime_private(compiled_context_blocks)
     pipeline_context = PipelineContext(
         request_id=request_id,
         run_id=relayrun_run_id,
@@ -342,36 +432,15 @@ async def handle_managed_chat_completion(
     )
 
     relaymem_retrieval_started_at, relaymem_retrieval_start_monotonic = _start_timing()
-    relaymem_store_diagnostics = build_relaymem_store_diagnostics(
-        root_path=relaymem_scoped_store_root,
-        store_enabled=config.memory.store_enabled,
-        retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
-    )
-    relaymem_retrieval_artifact = build_relaymem_retrieval_dry_run_artifact(
+    relaymem_store_diagnostics, relaymem_retrieval_artifact = await asyncio.to_thread(
+        _run_relaymem_retrieval_stage,
+        config=config,
+        route=route,
+        relaymem_scoped_store_root=relaymem_scoped_store_root,
         relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
         relayint_intent_artifact=relayint_intent_artifact,
         messages=_extract_trace_messages(payload),
-        token_budget=_resolve_relaymem_retrieval_token_budget(config),
-        store_diagnostics=relaymem_store_diagnostics,
-        max_candidates=config.memory.candidate_limit,
-        ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
-        snippet_extraction_enabled=config.memory.snippet_extraction_enabled,
-        snippet_dry_run_only=config.memory.snippet_dry_run_only,
-        snippet_apply_enabled=config.memory.snippet_apply_enabled,
-        snippet_budget=config.memory.snippet_budget,
-        max_snippet_chars=config.memory.max_snippet_chars,
-        max_snippet_candidates=config.memory.max_snippet_candidates,
     )
-    if _relaymem_primary_recall_scope_allowed(relaymem_store_diagnostics):
-        relaymem_retrieval_artifact = apply_relaymem_primary_recall_scope(
-            relaymem_retrieval_artifact,
-            scoped_store_root=relaymem_scoped_store_root,
-            expected_namespace=route.memory_namespace,
-            max_snippet_chars=config.memory.max_snippet_chars,
-            max_snippet_candidates=config.memory.max_snippet_candidates,
-            snippet_budget=config.memory.snippet_budget,
-            chars_per_token=config.memory.chars_per_token,
-        )
     node_timings["relaymem_retrieval"] = _finalize_timing(
         relaymem_retrieval_started_at, relaymem_retrieval_start_monotonic
     )

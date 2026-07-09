@@ -106,6 +106,24 @@ def consume_compiled_context_blocks_runtime_private() -> tuple[ContextBlock, ...
     return blocks
 
 
+def restore_compiled_context_blocks_runtime_private(
+    blocks: tuple[ContextBlock, ...] | None,
+) -> None:
+    """Replay compiled context blocks into the current contextvars context.
+
+    ``compile_chat_payload_if_enabled`` may run on a worker thread via
+    ``asyncio.to_thread`` so its file I/O does not block the event loop. A
+    ``ContextVar.set`` made inside that worker's copied context never
+    propagates back to the awaiting request context, so the async caller
+    must capture the blocks produced on the worker thread (by calling
+    ``consume_compiled_context_blocks_runtime_private`` there) and replay
+    them here, in the request's own context, immediately before
+    ``PipelineContext`` construction consumes them again.
+    """
+
+    _COMPILED_CONTEXT_BLOCKS.set(blocks)
+
+
 def render_compiled_context_block_content_runtime_private(
     block: ContextBlock,
 ) -> str:
