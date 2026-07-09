@@ -76,6 +76,20 @@ def build_relayscn_scene_policy_artifact(*, payload: Mapping[str, Any] | None = 
     }
 
 
+def run_relayscn_stage(*, payload: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Stage entry point for the RelaySCN input stage.
+
+    Thin wrapper around ``build_relayscn_scene_policy_artifact`` so
+    ``handle_managed_chat_completion`` can invoke this stage through
+    ``run_stage`` with a stage-named entry point (matching the
+    ``run_<component>_stage`` convention used by the other input stages),
+    while keeping ``build_relayscn_scene_policy_artifact`` itself as the
+    stable public builder other callers (scripts, tests) already depend on.
+    """
+
+    return build_relayscn_scene_policy_artifact(payload=payload)
+
+
 def _extract_explicit_scene_state(payload: Mapping[str, Any]) -> dict[str, Any] | None:
     metadata = payload.get("metadata")
     candidates: list[Any] = []

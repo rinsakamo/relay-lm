@@ -93,8 +93,8 @@ from relaylm.relayint import (
     build_relayint_reference_intent_artifact,
     build_relayint_request_compatibility_gate,
 )
-from relaylm.relayscn import build_relayscn_scene_policy_artifact
-from relaylm.relayrel import build_relayrel_relationship_projection
+from relaylm.relayscn import run_relayscn_stage
+from relaylm.relayrel import run_relayrel_stage
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
@@ -313,14 +313,14 @@ async def handle_managed_chat_completion(
     relayrel_relationship_projection = await run_stage(
         node_timings,
         "relayrel",
-        build_relayrel_relationship_projection,
+        run_relayrel_stage,
         route=route,
         request_scope_identity=request_scope_identity,
     )
     relayscn_scene_policy_artifact = await run_stage(
         node_timings,
         "relayscn",
-        build_relayscn_scene_policy_artifact,
+        run_relayscn_stage,
         payload=payload,
     )
     relayemo_artifact: dict[str, Any] | None = None

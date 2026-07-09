@@ -45,6 +45,27 @@ def build_relayrel_relationship_projection(
     }
 
 
+def run_relayrel_stage(
+    *,
+    route: ResolvedRoute | None = None,
+    request_scope_identity: Mapping[str, Any] | object | None = None,
+) -> dict[str, Any]:
+    """Stage entry point for the RelayREL input stage.
+
+    Thin wrapper around ``build_relayrel_relationship_projection`` so
+    ``handle_managed_chat_completion`` can invoke this stage through
+    ``run_stage`` with a stage-named entry point (matching the
+    ``run_<component>_stage`` convention used by the other input stages),
+    while keeping ``build_relayrel_relationship_projection`` itself as the
+    stable public builder other callers (scripts, tests) already depend on.
+    """
+
+    return build_relayrel_relationship_projection(
+        route=route,
+        request_scope_identity=request_scope_identity,
+    )
+
+
 def _scope_mapping(value: Mapping[str, Any] | object | None) -> Mapping[str, Any]:
     if isinstance(value, Mapping):
         return value
