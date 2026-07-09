@@ -47,7 +47,10 @@ Location context: home / outside / work / other
 - retrieval_ms if available:
 - backend_forward_ms if available:
 - pipeline_overhead_ms if available:
-- time_to_first_token_ms: not measured / null (streaming TTFT is not implemented yet)
+- time_to_first_chunk_ms if LAT-2 stream_timing is available:
+- stream_drain_ms if LAT-2 stream_timing is available:
+- stream_chunk_count if LAT-2 stream_timing is available:
+- time_to_first_token_ms: null / not used for streaming; see LAT-2 stream_timing
 
 ## Follow-up
 - Memory to correct/forget:

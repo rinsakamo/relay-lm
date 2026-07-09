@@ -121,4 +121,4 @@ streamingリクエストの「最初のchunkが届くまでの体感待ち時間
 
 ## 関連文書
 
-このランブックは新しいruntime実装やMEM/SOUL挙動を追加しない。RelayLMランタイム自体の現在の実装境界は[Project Status](../PROJECT_STATUS.md)を参照すること。外部到達構成そのものは[P0 Mobile Dogfood Entry](../tools/mobile_dogfood_entry.md)を参照し、本書はその上に乗る観測運用のみを扱う。latency指標の定義は[LAT-1 Latency Measurement](../architecture/lat1_latency_measurement.md)を参照すること。
+このランブックは新しいruntime実装やMEM/SOUL挙動を追加しない。RelayLMランタイム自体の現在の実装境界は[Project Status](../PROJECT_STATUS.md)を参照すること。外部到達構成そのものは[P0 Mobile Dogfood Entry](../tools/mobile_dogfood_entry.md)を参照し、本書はその上に乗る観測運用のみを扱う。latency指標の定義は[LAT-1 Latency Measurement](../architecture/lat1_latency_measurement.md)および[LAT-2 Mobile Perceived Latency](../architecture/lat2_mobile_perceived_latency.md)を参照すること。
