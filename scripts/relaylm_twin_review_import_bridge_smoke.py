@@ -17,6 +17,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -595,9 +596,9 @@ def check_write_permission_denied_leaves_no_partial_files(tmp_path: Path) -> Non
 
 def check_atomic_batch_rollback_on_partial_failure(tmp_path: Path) -> None:
     # Directly exercise _write_pending_atomically: if the second of three
-    # renames fails, the first file that was already renamed into place
-    # must be rolled back, and no temp files may remain -- an all-or-
-    # nothing batch, not a partially-written one.
+    # commits fails, the first file that was already committed must be
+    # rolled back, and no temp files may remain -- an all-or-nothing
+    # batch, not a partially-written one.
     workspace = tmp_path / "characters" / "atomic-rollback"
     _write_workspace(workspace)
     import_dir = workspace / ".relaylm" / "sources" / "imports" / "twin-extraction"
@@ -608,16 +609,16 @@ def check_atomic_batch_rollback_on_partial_failure(tmp_path: Path) -> None:
         ("fact-cccccccccccccccccccccccc.json", "CCCC-CONTENT\n"),
     ]
 
-    original_replace = bridge.os.replace
+    original_link = bridge.os.link
     call_count = {"n": 0}
 
-    def flaky_replace(src, dst):
+    def flaky_link(src, dst):
         call_count["n"] += 1
         if call_count["n"] == 2:
-            raise OSError("simulated failure on second rename")
-        return original_replace(src, dst)
+            raise OSError("simulated failure on second commit")
+        return original_link(src, dst)
 
-    bridge.os.replace = flaky_replace
+    bridge.os.link = flaky_link
     try:
         try:
             bridge._write_pending_atomically(import_dir, pending)
@@ -625,10 +626,75 @@ def check_atomic_batch_rollback_on_partial_failure(tmp_path: Path) -> None:
         except bridge.BridgeInputError:
             pass
     finally:
-        bridge.os.replace = original_replace
+        bridge.os.link = original_link
 
     remaining = list(import_dir.iterdir()) if import_dir.exists() else []
     require(remaining == [], f"a mid-batch failure must leave zero files behind, not a partial batch: {remaining}")
+
+
+def check_precreated_temp_symlink_not_followed(tmp_path: Path) -> None:
+    # A pre-created symlink at the exact deterministic temp path (or a
+    # stale leftover temp file from a crashed prior run) must never be
+    # followed or written through: O_EXCL must make temp creation fail
+    # closed instead, leaving whatever the symlink points to untouched.
+    workspace = tmp_path / "characters" / "temp-symlink"
+    _write_workspace(workspace)
+    import_dir = workspace / ".relaylm" / "sources" / "imports" / "twin-extraction"
+    import_dir.mkdir(parents=True, exist_ok=True)
+
+    outside_target = tmp_path / "outside_temp_symlink_target.txt"
+    outside_target.write_text("PRE_EXISTING_OUTSIDE_CONTENT", encoding="utf-8")
+
+    filename = "fact-deadbeefdeadbeefdeadbeef.json"
+    temp_path = import_dir / f".{filename}.tmp-{os.getpid()}"
+    try:
+        temp_path.symlink_to(outside_target)
+    except (OSError, NotImplementedError):
+        return  # platform cannot create symlinks; nothing to exercise here
+
+    try:
+        bridge._write_pending_atomically(import_dir, [(filename, "REAL-CONTENT\n")])
+        raise AssertionError("expected a BridgeInputError when a symlink pre-occupies the temp path")
+    except bridge.BridgeInputError:
+        pass
+
+    require(outside_target.read_text(encoding="utf-8") == "PRE_EXISTING_OUTSIDE_CONTENT", "the symlink target must never be written through")
+    require(temp_path.is_symlink(), "the pre-created symlink itself must be left untouched, not removed"),
+    require(not (import_dir / filename).exists(), "no final target may be created when the temp step failed closed")
+
+
+def check_target_appears_after_preflight_fails_closed(tmp_path: Path) -> None:
+    # Simulate a TOCTOU race: preflight finds no existing target, but by
+    # the time the batch actually commits, something else has created it.
+    # The commit must fail closed and must never clobber what is there.
+    workspace = tmp_path / "characters" / "toctou-target"
+    _write_workspace(workspace)
+    import_dir = workspace / ".relaylm" / "sources" / "imports" / "twin-extraction"
+    import_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = "fact-cafebabecafebabecafebabe.json"
+    target = import_dir / filename
+    original_link = bridge.os.link
+
+    def sneaky_link(src, dst):
+        # A concurrent writer creates the target between preflight and
+        # this commit attempt.
+        Path(dst).write_text("CANARY_TOCTOU_ATTACKER_BODY", encoding="utf-8")
+        return original_link(src, dst)
+
+    bridge.os.link = sneaky_link
+    try:
+        try:
+            bridge._write_pending_atomically(import_dir, [(filename, "REAL-CONTENT\n")])
+            raise AssertionError("expected a BridgeInputError when the target appears after preflight")
+        except bridge.BridgeInputError:
+            pass
+    finally:
+        bridge.os.link = original_link
+
+    require(target.read_text(encoding="utf-8") == "CANARY_TOCTOU_ATTACKER_BODY", "a target that appeared after preflight must be left untouched, not clobbered")
+    leftovers = [p for p in import_dir.iterdir() if p != target]
+    require(leftovers == [], f"no stray temp files may remain after a failed-closed commit: {leftovers}")
 
 
 def check_malformed_review_fails_closed(tmp_path: Path) -> None:
@@ -691,6 +757,8 @@ def main() -> int:
         check_write_directory_conflict_fails_closed(tmp_path)
         check_write_permission_denied_leaves_no_partial_files(tmp_path)
         check_atomic_batch_rollback_on_partial_failure(tmp_path)
+        check_precreated_temp_symlink_not_followed(tmp_path)
+        check_target_appears_after_preflight_fails_closed(tmp_path)
         check_malformed_review_fails_closed(tmp_path)
         check_missing_or_symlink_workspace_rejected(tmp_path)
 

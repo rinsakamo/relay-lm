@@ -155,7 +155,9 @@ CLIの出力(dry-run/write-imports共通)には `invalid_fact_count` / `invalid_
 
 #### 書き込み失敗時の安全性
 
-`import_dir` の作成・各artifactの書き込み・既存ファイル読み取り時に発生した `OSError`(ディレクトリ競合・権限不足など)はすべてcontent-freeな `BridgeInputError` として扱われ、生のtraceback・絶対パス・例外メッセージはstdout/stderrに出力されない(exit code非0)。複数の承認済みfactを1回の `--write-imports` で書き込む場合、書き込みは一時ファイル経由のatomicな "all-or-nothing" になる: バッチ中のいずれか1件でも書き込み/renameに失敗した場合、その回で既にrenameされたファイルも含めてすべてロールバックされ、部分的に書き込まれたバッチは残らない。
+`import_dir` の作成・各artifactの書き込み・既存ファイル読み取り時に発生した `OSError`(ディレクトリ競合・権限不足など)はすべてcontent-freeな `BridgeInputError` として扱われ、生のtraceback・絶対パス・例外メッセージはstdout/stderrに出力されない(exit code非0)。複数の承認済みfactを1回の `--write-imports` で書き込む場合、書き込みは一時ファイル経由の "all-or-nothing" になる: バッチ中のいずれか1件でも書き込み/commitに失敗した場合、その回で既にcommitされたファイルも含めてすべてロールバックされ、部分的に書き込まれたバッチは残らない。
+
+各artifactの一時ファイルは `O_EXCL`(と、対応環境では `O_NOFOLLOW`)付きで新規作成する。これにより、その一時パスに既存のsymlinkや前回実行の残骸が既にあった場合はそれを辿らず/上書きせずfail-closedする。一時ファイルから最終ファイル名への確定(commit)には `os.replace`/`os.rename` ではなく `os.link`(no-clobberなhard link)を使う: preflight後にtargetが出現した場合(TOCTOUレース)でもcommitはfail-closedし、既存のtargetを黙って上書きすることはない。
 
 ## 検証コマンド
 

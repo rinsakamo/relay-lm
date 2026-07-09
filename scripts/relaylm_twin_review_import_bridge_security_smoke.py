@@ -13,6 +13,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -247,6 +248,84 @@ def check_permission_denied_write_failure_content_free(tmp_path: Path) -> None:
         import_dir.chmod(0o700)
 
 
+def check_precreated_temp_symlink_content_free(tmp_path: Path) -> None:
+    secret_subdir = tmp_path / "secret_subdir_temp_symlink"
+    review_path = secret_subdir / "review.json"
+    review_path.parent.mkdir(parents=True, exist_ok=True)
+    review_path.write_text(json.dumps(_review_fixture(), ensure_ascii=False), encoding="utf-8")
+    workspace = secret_subdir / "characters" / "relm"
+    _write_workspace(workspace)
+
+    # The exact filename the bridge will derive for the fixture's one
+    # approved general fact, so we can pre-occupy its temp path.
+    filename, _text = bridge._fact_artifact(
+        {
+            "statement": "CANARY_STATEMENT_BODY_do_not_leak_this_text",
+            "type": "knowledge",
+            "evidence_ids": ["e1"],
+            "provenance": ["chatgpt_reconstructed"],
+            "time_contexts": ["2026-07"],
+            "sensitivity": "general",
+        }
+    )
+    import_dir = workspace / ".relaylm" / "sources" / "imports" / "twin-extraction"
+    import_dir.mkdir(parents=True, exist_ok=True)
+    outside_target = secret_subdir / "outside_temp_symlink_target.txt"
+    outside_target.write_text("CANARY_OUTSIDE_SYMLINK_TARGET_do_not_leak_this_text", encoding="utf-8")
+    temp_path = import_dir / f".{filename}.tmp-{os.getpid()}"
+    try:
+        temp_path.symlink_to(outside_target)
+    except (OSError, NotImplementedError):
+        return  # platform cannot create symlinks; nothing to exercise here
+
+    exit_code, stdout, stderr = _capture(
+        bridge.main,
+        ["--review", str(review_path), "--workspace-root", str(workspace), "--write-imports", "--approved-facts", "general-only"],
+    )
+    require(exit_code != 0, "a pre-created temp-path symlink must fail closed")
+    require(stdout == "", stdout)
+    combined = stdout + stderr
+    _assert_content_free(combined, tmp_path)
+    require("CANARY_OUTSIDE_SYMLINK_TARGET_do_not_leak_this_text" not in combined, combined)
+    require(
+        outside_target.read_text(encoding="utf-8") == "CANARY_OUTSIDE_SYMLINK_TARGET_do_not_leak_this_text",
+        "the symlink target must never be written through",
+    )
+
+
+def check_target_appears_after_preflight_content_free(tmp_path: Path) -> None:
+    secret_subdir = tmp_path / "secret_subdir_toctou"
+    review_path = secret_subdir / "review.json"
+    review_path.parent.mkdir(parents=True, exist_ok=True)
+    review_path.write_text(json.dumps(_review_fixture(), ensure_ascii=False), encoding="utf-8")
+    workspace = secret_subdir / "characters" / "relm"
+    _write_workspace(workspace)
+
+    original_link = bridge.os.link
+
+    def sneaky_link(src, dst):
+        # A concurrent writer creates the target between preflight and
+        # commit -- os.link must still fail closed rather than clobber it,
+        # and the CLI must not leak the attacker's body anywhere.
+        Path(dst).write_text("CANARY_TOCTOU_ATTACKER_BODY_do_not_leak_this_text", encoding="utf-8")
+        return original_link(src, dst)
+
+    bridge.os.link = sneaky_link
+    try:
+        exit_code, stdout, stderr = _capture(
+            bridge.main,
+            ["--review", str(review_path), "--workspace-root", str(workspace), "--write-imports", "--approved-facts", "general-only"],
+        )
+    finally:
+        bridge.os.link = original_link
+
+    require(exit_code != 0, "a target that appears after preflight must fail closed")
+    require(stdout == "", stdout)
+    combined = stdout + stderr
+    _assert_content_free(combined, tmp_path)
+    require("CANARY_TOCTOU_ATTACKER_BODY_do_not_leak_this_text" not in combined, combined)
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
@@ -256,6 +335,8 @@ def main() -> int:
         check_symlink_workspace_content_free(tmp_path)
         check_directory_conflict_write_failure_content_free(tmp_path)
         check_permission_denied_write_failure_content_free(tmp_path)
+        check_precreated_temp_symlink_content_free(tmp_path)
+        check_target_appears_after_preflight_content_free(tmp_path)
 
     print("RelayLM Twin Review Import Bridge security smoke passed")
     return 0

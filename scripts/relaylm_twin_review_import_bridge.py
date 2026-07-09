@@ -36,7 +36,13 @@ a content-free ``BridgeInputError`` and never surfaces a raw traceback,
 absolute path, or exception message. Writing multiple approved facts is
 all-or-nothing within one run: if any file in the batch fails to write,
 every file newly written during that same run is rolled back so no
-partial batch is left on disk.
+partial batch is left on disk. Each artifact's temp file is created with
+``O_EXCL`` (and ``O_NOFOLLOW`` where supported), so a pre-created symlink
+or stale temp file at that exact path is never followed or written
+through, and it is committed to its final name with ``os.link`` -- never
+``os.replace`` -- so a target that already exists at commit time (for
+example one that appeared after preflight, a TOCTOU race) is never
+silently clobbered.
 
 stdout is always a single content-free JSON projection (counts and reason
 ids only, never statement/description bodies, absolute paths, or raw
@@ -319,47 +325,84 @@ def _preflight_fact_writes(workspace_root: Path, writes: list[tuple[str, str]]) 
     return pending, None
 
 
+def _create_temp_file_exclusive(import_dir: Path, filename: str, text: str) -> Path:
+    """Create a uniquely-named temp file next to ``filename`` and write
+    ``text`` into it.
+
+    Uses ``O_EXCL`` so the call fails instead of succeeding if anything
+    already occupies that exact path -- a pre-created symlink or a stale
+    leftover temp file from a previous run -- and ``O_NOFOLLOW`` (where
+    supported) as defense in depth against ever traversing a symlink at
+    the final path component. Never uses ``Path.write_text``/``open()``
+    for this step, since plain ``open()`` follows an existing symlink and
+    would write through it to wherever it points.
+    """
+    temp_target = import_dir / f".{filename}.tmp-{os.getpid()}"
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(temp_target, flags, 0o644)
+    except OSError as exc:
+        raise BridgeInputError("import artifact write failed") from exc
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(text)
+    except OSError as exc:
+        # We created this exact file ourselves (the os.open above
+        # succeeded), so it is ours to remove on a partial-write failure.
+        temp_target.unlink(missing_ok=True)
+        raise BridgeInputError("import artifact write failed") from exc
+    return temp_target
+
+
+def _commit_temp_to_target(temp_target: Path, target: Path) -> None:
+    """Commit ``temp_target`` to its final ``target`` name without ever
+    clobbering an existing target.
+
+    Uses ``os.link`` (an atomic, no-clobber hard-link) rather than
+    ``os.replace``/``os.rename``, since replace/rename unconditionally
+    overwrite an existing destination. If ``target`` already exists at
+    commit time -- for example it appeared after preflight found nothing
+    there, a TOCTOU race -- ``os.link`` fails with ``FileExistsError``
+    and the pre-existing ``target`` is left completely untouched. The
+    temp file is always removed afterward either way.
+    """
+    try:
+        os.link(temp_target, target)
+    except OSError as exc:
+        temp_target.unlink(missing_ok=True)
+        raise BridgeInputError("import artifact target already exists") from exc
+    temp_target.unlink(missing_ok=True)
+
+
 def _write_pending_atomically(import_dir: Path, pending: list[tuple[str, str]]) -> None:
     """Write every pending (filename, text) artifact, or none at all.
 
-    Each artifact is first written to a hidden temp file and only renamed
-    into its final name once the write succeeds. If any step in the batch
-    fails, every temp file and every target already committed during this
-    call is removed, so a partial failure never leaves a half-written batch
-    on disk. Only ``OSError`` (never a raw traceback) can surface, and only
-    as a content-free ``BridgeInputError``.
+    Each artifact is written to an exclusively-created temp file and then
+    committed to its final name with a no-clobber hard link (see
+    ``_create_temp_file_exclusive`` / ``_commit_temp_to_target``). If any
+    step in the batch fails, every target already committed during this
+    call is rolled back (unlinked), so a partial failure never leaves a
+    half-written batch on disk. Only ``OSError`` (never a raw traceback)
+    can surface, and only as a content-free ``BridgeInputError``.
     """
     try:
         import_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         raise BridgeInputError("import directory create failed") from exc
 
-    temp_targets: list[Path] = []
     written_targets: list[Path] = []
-    try:
-        for filename, text in pending:
-            temp_target = import_dir / f".{filename}.tmp-{os.getpid()}"
-            # Track the temp path before writing (not after) so a partial
-            # write left behind by a mid-write OSError (e.g. disk full) is
-            # still cleaned up by the rollback below.
-            temp_targets.append(temp_target)
-            try:
-                temp_target.write_text(text, encoding="utf-8")
-            except OSError as exc:
-                raise BridgeInputError("import artifact write failed") from exc
-        for (filename, _text), temp_target in zip(pending, temp_targets):
-            target = import_dir / filename
-            try:
-                os.replace(temp_target, target)
-            except OSError as exc:
-                raise BridgeInputError("import artifact write failed") from exc
-            written_targets.append(target)
-    except BridgeInputError:
-        for temp_target in temp_targets:
-            temp_target.unlink(missing_ok=True)
-        for target in written_targets:
-            target.unlink(missing_ok=True)
-        raise
+    for filename, text in pending:
+        target = import_dir / filename
+        try:
+            temp_target = _create_temp_file_exclusive(import_dir, filename, text)
+            _commit_temp_to_target(temp_target, target)
+        except BridgeInputError:
+            for committed in written_targets:
+                committed.unlink(missing_ok=True)
+            raise
+        written_targets.append(target)
 
 
 def run_bridge(
