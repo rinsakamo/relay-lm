@@ -75,6 +75,13 @@ Cloudflare Tunnelのルーティング設定は、chat-only UIが listen する�
 - OTP / identity providerの選択は運用者に委ねる(本書はどちらを使うべきかを指定しない)。
 - Access自体を無効化する場合は、Access側だけでなくTunnel側も同時に止める。Access無効化のままTunnelだけ生かした状態を放置しない。
 
+## セットアップ順序
+
+1. Cloudflare Access applicationを先に作成し、対象hostnameに自分のメールアドレス1件だけを許可するAllow policyを設定する。
+2. Access applicationが有効であることを確認してから、Tunnelのpublic hostname / published application routeを作成する。
+3. Tunnel route作成後、`cloudflared`側でAccess token validation / Protect with Accessが有効になっていること、またはorigin側でAccess tokenを検証していることを確認する。
+4. Access applicationなし、またはtoken validationなしの状態でpublic hostnameを残さない。
+
 ## Tunnel設定のplaceholder例
 
 以下はサンプル値であり、実際の値をコミットしないこと。
@@ -116,6 +123,8 @@ Access appだけを止めてTunnel routeを残す、または逆の状態を放�
 
 ## 安全確認チェックリスト
 
+- Tunnel route / public hostnameを作る前にCloudflare Access applicationが有効化済みであることを確認する。
+- Access token validation / Protect with Access、またはorigin側token validationが有効であることを確認する。
 - Cloudflare Access認証を経由せずにchat-only UIへ到達できないことを確認する。
 - 自分以外のメールアドレスではAccess認証を通過できないことを確認する。
 - `/v1` (RelayLM OpenAI互換API) へ外部から直接到達できないことを確認する。
