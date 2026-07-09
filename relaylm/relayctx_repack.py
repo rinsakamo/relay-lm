@@ -102,6 +102,35 @@ def apply_relaymem_runtime_injection_phase(
     )
 
 
+def run_relaymem_runtime_ctx_stage(
+    *,
+    config: RelayLMConfig,
+    pipeline_context: PipelineContext,
+    relaymem_retrieval_artifact: dict[str, Any],
+    compiled_payload: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Stage entry point for the RelayMEM runtime ctx stage.
+
+    Thin wrapper around ``apply_relaymem_runtime_injection_phase`` so
+    ``handle_managed_chat_completion`` can invoke this stage through
+    ``run_stage`` with a stage-named entry point (matching the
+    ``run_<component>_stage`` convention used by the other pipeline stages),
+    while keeping ``apply_relaymem_runtime_injection_phase`` itself as the
+    stable phase function. Note: ``apply_relaymem_runtime_injection_phase``
+    mutates ``pipeline_context`` internally (via
+    ``replace_pipeline_forwarded_payload``) as it always has; this wrapper
+    does not add, remove, or relocate any of that mutation -- it only gives
+    the stage a ``run_stage``-shaped call boundary.
+    """
+
+    return apply_relaymem_runtime_injection_phase(
+        config=config,
+        pipeline_context=pipeline_context,
+        relaymem_retrieval_artifact=relaymem_retrieval_artifact,
+        compiled_payload=compiled_payload,
+    )
+
+
 def apply_token_budget_truncation_phase(
     *,
     config: RelayLMConfig,
