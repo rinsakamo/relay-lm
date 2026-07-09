@@ -177,5 +177,6 @@ relaylm_not_authoritative_for:
 - `scripts/relaylm_twin_extraction_preprocess.py` — 前処理(prefix剥がし・RT除外・引用RT処理・日付フィルタ・バッチ分割)
 - `scripts/relaylm_twin_extraction_batch_runner.py` — バッチごとの抽出プロンプト実行(dry-run・fail-closed・リトライ境界あり)
 - `scripts/relaylm_twin_extraction_merge.py` — レビュー用単一JSON(`twin_extraction_review.json`)への集約(統合ルールは本ツールの「集約・レビュー手順」と一致し、曖昧一致統合は行わない)
+- `scripts/relaylm_twin_review_import_bridge.py` — 本人レビュー後の `twin_extraction_review.json` を、File-first Character Workspace(CW-A4)が読める `.relaylm/sources/imports/` governed import sourceへ変換するbridge(承認済み `sensitivity: general` のfact_candidatesのみ、既定では何も書かない)。手順は [Twin Extraction 運用ランブック](twin_extraction_runbook.md#6-review-import-bridge-p1出力--cw-a4-governed-import-source) を参照。
 
 実行手順は [Twin Extraction 運用ランブック](twin_extraction_runbook.md) を参照。これらのツールはRelayLMランタイム(`relaylm/`)に対する変更を含まず、MEM/SOULへの書き込みやbootstrap投入は行わない。
