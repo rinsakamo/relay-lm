@@ -19,54 +19,139 @@ def _assert(condition: bool, message: str) -> None:
         raise AssertionError(message)
 
 
-_APP_CALL_TO_ORDER_NODE: dict[str, str] = {
-    "build_relayrel_relationship_projection": "relayrel_relationship_projection",
-    "build_relayscn_scene_policy_artifact": "relayscn_scene_policy",
-    "run_relayemo": "relayemo_input",
+# Known identifiers per stage. A stage may be called directly
+# (`build_x(...)`), indirected through the stage runner
+# (`run_stage(node_timings, "x", build_x, ...)` / `run_stage(..., run_x_stage,
+# ...)`), or (on later branch shapes) exposed only as a `*_stage` entry point.
+# Tracking every known spelling keeps this smoke valid across both shapes
+# instead of hardcoding one call form.
+_STAGE_IDENTIFIERS: dict[str, set[str]] = {
+    "relayrel": {"build_relayrel_relationship_projection", "run_relayrel_stage"},
+    "relayscn": {"build_relayscn_scene_policy_artifact", "run_relayscn_stage"},
+    "relayemo": {"run_relayemo", "run_relayemo_stage"},
 }
+_NAME_TO_STAGE: dict[str, str] = {
+    name: stage for stage, names in _STAGE_IDENTIFIERS.items() for name in names
+}
+_STAGE_TO_ORDER_NODE: dict[str, str] = {
+    "relayrel": "relayrel_relationship_projection",
+    "relayscn": "relayscn_scene_policy",
+    "relayemo": "relayemo_input",
+}
+
+
+def _handle_managed_chat_completion_body(tree: ast.AST) -> list[ast.stmt]:
+    """Return the statement list making up handle_managed_chat_completion's body.
+
+    Restricting the walk to this function's body keeps module-level helpers
+    (e.g. ``_run_relaymem_retrieval_stage``, which is defined *before* the
+    handler in source order) from polluting the line-number ordering used
+    below.
+    """
+
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == "handle_managed_chat_completion"
+        ):
+            return node.body
+    raise AssertionError(
+        "managed_chat_runtime.py must define handle_managed_chat_completion"
+    )
+
+
+def _stage_anchor_lines(body_stmts: list[ast.stmt]) -> dict[str, list[int]]:
+    """Return each stage's anchor line numbers within the handler body.
+
+    A stage's anchor line is any line where either (a) one of its known
+    identifiers appears as an ``ast.Name`` -- as a call's func or as an
+    argument, which covers both direct calls and
+    ``run_stage(..., build_x/run_x_stage, ...)`` indirection -- or (b) a
+    ``run_stage(...)`` call carries the stage's own name as a string
+    constant argument.
+    """
+
+    anchors: dict[str, list[int]] = {stage: [] for stage in _STAGE_IDENTIFIERS}
+    for stmt in body_stmts:
+        for node in ast.walk(stmt):
+            if isinstance(node, ast.Name):
+                stage = _NAME_TO_STAGE.get(node.id)
+                if stage is not None:
+                    anchors[stage].append(node.lineno)
+            elif (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "run_stage"
+            ):
+                for arg in node.args:
+                    if (
+                        isinstance(arg, ast.Constant)
+                        and isinstance(arg.value, str)
+                        and arg.value in anchors
+                    ):
+                        anchors[arg.value].append(node.lineno)
+    return anchors
+
+
+def _stage_call_keyword_names(
+    body_stmts: list[ast.stmt], stage_identifiers: set[str]
+) -> set[str]:
+    """Return keyword-argument names passed at any call site referencing a stage.
+
+    A call "references" the stage when its func or one of its positional
+    arguments is an ``ast.Name`` matching one of ``stage_identifiers``. This
+    covers both a direct call (``build_x(payload=payload)``) and an
+    indirected one (``run_stage(..., build_x, payload=payload)``, where
+    ``run_stage`` forwards its own keyword arguments to the wrapped
+    callable).
+    """
+
+    keyword_names: set[str] = set()
+    for stmt in body_stmts:
+        for node in ast.walk(stmt):
+            if not isinstance(node, ast.Call):
+                continue
+            references_stage = (
+                isinstance(node.func, ast.Name) and node.func.id in stage_identifiers
+            ) or any(
+                isinstance(arg, ast.Name) and arg.id in stage_identifiers
+                for arg in node.args
+            )
+            if references_stage:
+                keyword_names.update(
+                    keyword.arg for keyword in node.keywords if keyword.arg is not None
+                )
+    return keyword_names
 
 
 def _app_request_path_call_lines(app_source: str) -> dict[str, list[int]]:
     tree = ast.parse(app_source)
-    call_lines: dict[str, list[int]] = {name: [] for name in _APP_CALL_TO_ORDER_NODE}
+    body_stmts = _handle_managed_chat_completion_body(tree)
+    anchors = _stage_anchor_lines(body_stmts)
 
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
-            continue
-        func_name = node.func.id
-        if func_name not in call_lines:
-            continue
-        call_lines[func_name].append(node.lineno)
-
-    for func_name, lines in call_lines.items():
-        _assert(lines, f"app.py must call {func_name}")
-    return call_lines
+    for stage, lines in anchors.items():
+        _assert(lines, f"managed_chat_runtime.py must call the {stage} stage")
+    return anchors
 
 
 def _app_request_path_relayscn_has_relayemo_kwarg(app_source: str) -> bool:
     tree = ast.parse(app_source)
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Name)
-            and node.func.id == "build_relayscn_scene_policy_artifact"
-            and any(keyword.arg == "relayemo_artifact" for keyword in node.keywords)
-        ):
-            return True
-    return False
+    body_stmts = _handle_managed_chat_completion_body(tree)
+    keyword_names = _stage_call_keyword_names(body_stmts, _STAGE_IDENTIFIERS["relayscn"])
+    return "relayemo_artifact" in keyword_names
 
 
 def _app_request_path_measured_order(app_source: str) -> list[str]:
-    """Return the actual RelayREL/RelaySCN/RelayEMO call order measured from app.py.
+    """Return the actual RelayREL/RelaySCN/RelayEMO call order measured from managed_chat_runtime.py.
 
-    This reads real AST call line numbers from the current app.py source instead
-    of declaring the order as a constant, so callers can prove precedence rather
-    than assert it.
+    This reads real AST anchor line numbers from the current source instead
+    of declaring the order as a constant, so callers can prove precedence
+    rather than assert it.
     """
 
     call_lines = _app_request_path_call_lines(app_source)
-    ordered_func_names = sorted(call_lines, key=lambda name: min(call_lines[name]))
-    return [_APP_CALL_TO_ORDER_NODE[name] for name in ordered_func_names]
+    ordered_stages = sorted(call_lines, key=lambda stage: min(call_lines[stage]))
+    return [_STAGE_TO_ORDER_NODE[stage] for stage in ordered_stages]
 
 
 def _app_request_path_order_is_rewired(app_source: str) -> bool:
@@ -74,9 +159,9 @@ def _app_request_path_order_is_rewired(app_source: str) -> bool:
     if _app_request_path_relayscn_has_relayemo_kwarg(app_source):
         return False
 
-    relayrel_line = min(call_lines["build_relayrel_relationship_projection"])
-    relayscn_line = min(call_lines["build_relayscn_scene_policy_artifact"])
-    relayemo_line = min(call_lines["run_relayemo"])
+    relayrel_line = min(call_lines["relayrel"])
+    relayscn_line = min(call_lines["relayscn"])
+    relayemo_line = min(call_lines["relayemo"])
     return relayrel_line < relayscn_line < relayemo_line
 
 
