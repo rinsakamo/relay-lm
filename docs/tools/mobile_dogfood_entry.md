@@ -146,4 +146,4 @@ Access appだけを止めてTunnel routeを残す、または逆の状態を放�
 
 ## 関連文書
 
-このランブックは新しいruntime実装やMEM/SOUL挙動を追加しない。RelayLMランタイム自体の現在の実装境界は[Project Status](../PROJECT_STATUS.md)を参照すること。P1 Twin Extraction offline tooling とは独立しており、本書はそのofflineツールの動作を変更しない。
+このランブックは新しいruntime実装やMEM/SOUL挙動を追加しない。RelayLMランタイム自体の現在の実装境界は[Project Status](../PROJECT_STATUS.md)を参照すること。P1 Twin Extraction offline tooling とは独立しており、本書はそのofflineツールの動作を変更しない。日常利用における会話品質・MEM挙動・応答速度の継続観測手順と記録テンプレートは[Mobile Dogfood Observation Runbook](../evaluation/mobile_dogfood_observation_runbook.md)を参照すること。
