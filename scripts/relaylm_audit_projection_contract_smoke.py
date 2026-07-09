@@ -225,6 +225,7 @@ def assert_registry_hygiene() -> None:
         "stable_prefix_block_ids",
         "stable_prefix_hash",
         "status_code",
+        "stream_timing",
         "token_memory_dry_run",
     }
     require(

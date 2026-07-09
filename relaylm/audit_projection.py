@@ -1254,6 +1254,25 @@ _RELAYRUN = _mapping(
     }
 )
 
+_RELAYRUN_STREAM_TIMING = _mapping(
+    {
+        "schema_version": _enum("relayrun.stream_timing.v0"),
+        "content_free": _bool,
+        "stream": _bool,
+        "stream_open_ms": _optional(_non_negative_int),
+        "time_to_first_chunk_ms": _optional(_non_negative_int),
+        "stream_drain_ms": _optional(_non_negative_int),
+        "stream_chunk_count": _non_negative_int,
+        "stream_completed": _bool,
+        "stream_error_reason_id": _optional(
+            _enum("generator_close", "stream_cancelled", "backend_stream_error")
+        ),
+        "raw_chunk_included": _bool,
+        "prompt_included": _bool,
+        "response_body_included": _bool,
+    }
+)
+
 _RUNTIME_INJECTION = _mapping(
     {
         "schema_version": _bounded_token,
@@ -1336,6 +1355,7 @@ TOP_LEVEL_PROJECTORS: dict[str, Validator] = {
     "stable_prefix_hash": _sha256,
     "stable_prefix_block_ids": _OPAQUE_ID_LIST,
     "relayrun_artifact": _RELAYRUN,
+    "stream_timing": _RELAYRUN_STREAM_TIMING,
     "runtime_ctx_injection_result": _RUNTIME_INJECTION,
     "runtime_snippet_injection_result": _RUNTIME_INJECTION,
     "relaymem_primary_recall_projection": _PRIMARY_RECALL_PROJECTION,

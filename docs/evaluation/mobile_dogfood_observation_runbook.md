@@ -68,6 +68,8 @@ relaylm_not_authoritative_for:
 
 上記の `timing_summary` フィールドは [LAT-1 Latency Measurement](../architecture/lat1_latency_measurement.md) が定義するRelayRUN per-nodeタイミングの一部であり、`nodes_timed_count` / `nodes_untimed_count` も併せて参照できる。
 
+streamingリクエストの「最初のchunkが届くまでの体感待ち時間」は `timing_summary.time_to_first_token_ms` ではなく、別トレースの [LAT-2 Mobile Perceived Latency](../architecture/lat2_mobile_perceived_latency.md) が定義する `stream_timing.time_to_first_chunk_ms` / `stream_drain_ms` / `stream_chunk_count` を参照する。LAT-2は測定のみで、trace有効時にのみ記録される。
+
 ### Mobile UX
 
 - 短文入力で成立するか
