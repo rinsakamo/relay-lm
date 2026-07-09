@@ -161,6 +161,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 
 ## Offline tooling and runbooks
 
+- [P0 Mobile Dogfood Entry](tools/mobile_dogfood_entry.md) — single-owner Cloudflare Tunnel + Cloudflare Access runbook for daily mobile dogfooding of the chat-only UI only; no family/multi-actor support and no runtime behavior change.
 - [Twin Extraction prompt specification](tools/twin_extraction_prompts.md) — caller-invoked, bounded, runtime-non-contact offline material-extraction prompts and tooling notes.
 - [Twin Extraction runbook](tools/twin_extraction_runbook.md) — execution steps for the offline preprocessing/batch-runner/merge CLIs. This tooling does not connect to MEM/SOUL bootstrap or the RelaySLP pipeline.
 - [ReLM Showcase合成Fixture雛形](tools/relm_showcase_fixture_template.md) — public synthetic showcase fixture schema, authoring guidance, workspace-memory mapping, and gate conditions separated from private Twin Extraction fixtures.
