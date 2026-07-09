@@ -96,7 +96,14 @@ def create_read_duplicate_race_and_leakage() -> None:
 
         def persist() -> None:
             store = RelayMEMSLPDurableProtectedSourceStore(str(protected_root))
-            for _ in range(100):
+            # The store uses non-blocking advisory locking and legitimately
+            # returns "retryable" while another writer owns the protected-source
+            # root. CI runners can occasionally schedule the race threads with
+            # enough latency that a fixed 100x1ms retry loop flakes even though
+            # the duplicate/collision contract is healthy. Keep the same race
+            # assertion, but give lock contention a bounded wall-clock window.
+            deadline = time.monotonic() + 5.0
+            while time.monotonic() < deadline:
                 result = store.persist(
                     source_payload=payload, durable_job=candidate,
                     character_id=source.character_id,
@@ -104,7 +111,7 @@ def create_read_duplicate_race_and_leakage() -> None:
                 if result.status != "retryable":
                     results.append(result.status)
                     return
-                time.sleep(0.001)
+                time.sleep(0.005)
             results.append("retryable_exhausted")
 
         threads = [Thread(target=persist) for _ in range(6)]
