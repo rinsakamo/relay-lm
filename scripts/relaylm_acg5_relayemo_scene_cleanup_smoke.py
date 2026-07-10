@@ -44,7 +44,11 @@ _STAGE_IDENTIFIERS: dict[str, set[str]] = {
     "relayrel": {"build_relayrel_relationship_projection", "run_relayrel_stage"},
     "relayscn": {"build_relayscn_scene_policy_artifact", "run_relayscn_stage"},
     "relayemo": {"run_relayemo", "run_relayemo_stage"},
-    "relayint": {"build_relayint_reference_repair_dry_run"},
+    "relayint": {
+        "build_relayint_reference_intent_artifact",
+        "build_relayint_reference_repair_dry_run",
+        "run_relayint_stage",
+    },
     "relaymem": {"build_relaymem_retrieval_dry_run_artifact", "_run_relaymem_retrieval_stage"},
 }
 _NAME_TO_STAGE: dict[str, str] = {
