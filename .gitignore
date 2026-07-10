@@ -37,3 +37,11 @@ htmlcov/
 node_modules/
 .vite/
 *.tsbuildinfo
+
+# Consolidated CI smoke logs (uploaded as workflow artifacts)
+/primary-memory.log
+/slp-queue.log
+/durable-finalization.log
+/scheduler-worker.log
+/recall-correction-forget-pin.log
+/cross-slice-convergence.log
