@@ -113,7 +113,10 @@ from relaylm.relayemo_response_marker import (
 from relaylm.request_scope import build_scope_resolution_diagnostics, extract_request_scope_identity
 from relaylm.routing import ResolvedRoute
 from relaylm.token_budget import estimate_text_tokens
-from relaylm.token_budget_truncation import apply_token_budget_message_truncation
+from relaylm.token_budget_truncation import (
+    apply_token_budget_message_truncation,
+    run_token_budget_truncation_stage,
+)
 from relaylm.token_policy_signal import (
     build_token_policy_decision_artifact,
     build_token_policy_readiness_check,
@@ -123,8 +126,7 @@ from relaylm.trace_runtime import extract_response_text, trace_runtime_event
 from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded_payload
 from relaylm.pipeline_stage import _finalize_timing, _start_timing, run_stage
 from relaylm.relayctx_repack import (
-    apply_relayctx_short_term_runtime_injection_phase,
-    apply_token_budget_truncation_phase,
+    run_relayctx_short_term_injection_stage,
     run_relaymem_runtime_ctx_stage,
 )
 
@@ -386,77 +388,32 @@ async def handle_managed_chat_completion(
             dry_run_only=config.relayctx_short_term_runtime_injection_dry_run_only,
         )
     )
-    relayctx_short_term_injection_started_at, relayctx_short_term_injection_start_monotonic = (
-        _start_timing()
-    )
     (
         forwarded_payload,
         relayctx_short_term_runtime_injection_apply_result,
-    ) = apply_relayctx_short_term_runtime_injection_phase(
+    ) = await run_stage(
+        node_timings,
+        "relayctx_short_term_injection",
+        run_relayctx_short_term_injection_stage,
         config=config,
         pipeline_context=pipeline_context,
         preflight_artifact=relayctx_short_term_runtime_injection_preflight,
     )
-    node_timings["relayctx_short_term_injection"] = _finalize_timing(
-        relayctx_short_term_injection_started_at,
-        relayctx_short_term_injection_start_monotonic,
-    )
 
     # token_budget_truncation runs last among CTX Repack mutations so it is
     # the final gate on the forwarded payload's estimated token total.
-    token_budget_truncation_started_at, token_budget_truncation_start_monotonic = (
-        _start_timing()
-    )
-    forwarded_payload, token_budget_truncation = apply_token_budget_truncation_phase(
+    forwarded_payload, token_budget_truncation = await run_stage(
+        node_timings,
+        "token_budget_truncation",
+        run_token_budget_truncation_stage,
         config=config,
         pipeline_context=pipeline_context,
     )
-    node_timings["token_budget_truncation"] = _finalize_timing(
-        token_budget_truncation_started_at, token_budget_truncation_start_monotonic
-    )
 
-    compiled_message_count = (
-        compiled_request.plan.compiled_message_count
-        if compiled_request.plan.enabled
-        else None
-    )
-    apply_compiled_messages = compiled_request.decision.should_apply is True
-    if apply_compiled_messages:
-        compile_decision_state = "COMPILE_APPLY"
-        compile_diagnostics_only = False
-        compile_fallback_reason = None
-        compile_blocking_reasons: list[str] = []
-    else:
-        compile_decision_state = "COMPILE_DRY_RUN"
-        compile_diagnostics_only = True
-        compile_fallback_reason = (
-            compiled_request.plan.fallback_reason or compiled_request.decision.reason
-        )
-        compile_blocking_reasons = []
-        if compiled_request.decision.reason:
-            compile_blocking_reasons.append(compiled_request.decision.reason)
-        if (
-            compiled_request.plan.fallback_reason
-            and compiled_request.plan.fallback_reason not in compile_blocking_reasons
-        ):
-            compile_blocking_reasons.append(compiled_request.plan.fallback_reason)
-
-    compile_decision_dry_run = build_compile_decision_dry_run(
-        decision_id=f"{request_id}:compile-decision-dry-run",
-        plan_id=f"{request_id}:compile-plan",
-        result_id=f"{request_id}:compile-result",
-        selected_route=route.route_model,
-        selected_mode=route.mode_applied,
-        backend=route.backend_name,
-        character_id=route.character_id,
-        compiled_message_count=compiled_message_count,
-        fallback_reason=compile_fallback_reason,
-        blocking_reasons=compile_blocking_reasons,
-        omitted_block_ids=[],
-        token_budget_status=None,
-        decision_state=compile_decision_state,
-        apply_compiled_messages=apply_compiled_messages,
-        diagnostics_only=compile_diagnostics_only,
+    compile_decision_dry_run = _build_compile_decision_dry_run_artifact(
+        request_id=request_id,
+        route=route,
+        compiled_request=compiled_request,
     )
 
     # runtime_artifact_context freezes the fields shared by every
@@ -818,6 +775,72 @@ async def handle_managed_chat_completion(
             background=response_background,
         )
     return JSONResponse(status_code=status_code, content={"raw": body}, headers=headers)
+
+
+def _build_compile_decision_dry_run_artifact(
+    *,
+    request_id: str,
+    route: ResolvedRoute,
+    compiled_request: CompiledRequest,
+) -> dict[str, Any]:
+    """Build the compile-gate/compile-decision dry-run diagnostics artifact.
+
+    Derives the COMPILE_APPLY/COMPILE_DRY_RUN decision state, diagnostics-only
+    flag, fallback reason, and blocking reasons from
+    ``compiled_request.plan``/``compiled_request.decision``, then hands them
+    to ``build_compile_decision_dry_run``. This is pure diagnostics-artifact
+    construction: it does not touch ``PipelineContext`` or the backend-bound
+    payload, and (matching the handler's inline version before this
+    extraction) is not wrapped in a ``run_stage`` timing bracket -- there was
+    never a ``node_timings`` entry for it. Its sole consumer is
+    ``relayint_runtime_diagnostics_kwargs`` a few lines below the call site,
+    which stays untouched: that kwargs-assembly glue belongs with the rest of
+    the handler's diagnostics construction, not here.
+    """
+
+    compiled_message_count = (
+        compiled_request.plan.compiled_message_count
+        if compiled_request.plan.enabled
+        else None
+    )
+    apply_compiled_messages = compiled_request.decision.should_apply is True
+    if apply_compiled_messages:
+        compile_decision_state = "COMPILE_APPLY"
+        compile_diagnostics_only = False
+        compile_fallback_reason = None
+        compile_blocking_reasons: list[str] = []
+    else:
+        compile_decision_state = "COMPILE_DRY_RUN"
+        compile_diagnostics_only = True
+        compile_fallback_reason = (
+            compiled_request.plan.fallback_reason or compiled_request.decision.reason
+        )
+        compile_blocking_reasons = []
+        if compiled_request.decision.reason:
+            compile_blocking_reasons.append(compiled_request.decision.reason)
+        if (
+            compiled_request.plan.fallback_reason
+            and compiled_request.plan.fallback_reason not in compile_blocking_reasons
+        ):
+            compile_blocking_reasons.append(compiled_request.plan.fallback_reason)
+
+    return build_compile_decision_dry_run(
+        decision_id=f"{request_id}:compile-decision-dry-run",
+        plan_id=f"{request_id}:compile-plan",
+        result_id=f"{request_id}:compile-result",
+        selected_route=route.route_model,
+        selected_mode=route.mode_applied,
+        backend=route.backend_name,
+        character_id=route.character_id,
+        compiled_message_count=compiled_message_count,
+        fallback_reason=compile_fallback_reason,
+        blocking_reasons=compile_blocking_reasons,
+        omitted_block_ids=[],
+        token_budget_status=None,
+        decision_state=compile_decision_state,
+        apply_compiled_messages=apply_compiled_messages,
+        diagnostics_only=compile_diagnostics_only,
+    )
 
 
 def _build_backend_request_error_response(

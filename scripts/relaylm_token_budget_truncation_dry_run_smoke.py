@@ -12,7 +12,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from relaylm.config import RelayLMConfig, load_config
 from relaylm.diagnostics import RequestDiagnostics
-from relaylm.relayctx_repack import _build_token_budget_truncation_dry_run
+from relaylm.token_budget_truncation import _build_token_budget_truncation_dry_run
 from relaylm.request_compiler import compile_chat_payload_if_enabled
 from relaylm.routing import resolve_route
 from relaylm.trace_runtime import trace_runtime_event
