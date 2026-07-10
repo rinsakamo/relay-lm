@@ -24,8 +24,9 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timezone
+import inspect
 import time
-from typing import Any, Awaitable, Callable, TypeVar
+from typing import Any, Awaitable, Callable, TypeVar, cast
 
 _T = TypeVar("_T")
 
@@ -54,7 +55,7 @@ def _finalize_timing(started_at: str, start_monotonic: float) -> dict[str, Any]:
 async def run_stage(
     node_timings: dict[str, dict[str, Any] | None],
     name: str,
-    fn: Callable[..., _T] | Callable[..., Awaitable[_T]],
+    fn: Callable[..., _T | Awaitable[_T]],
     /,
     *args: Any,
     offload: bool = False,
@@ -62,19 +63,30 @@ async def run_stage(
 ) -> _T:
     """Run one pipeline stage, recording its timing into ``node_timings[name]``.
 
-    ``fn(*args, **kwargs)`` is called synchronously by default. Pass
-    ``offload=True`` to route a blocking/sync callable through
-    ``asyncio.to_thread`` instead (for stages later PRs migrate that do
-    blocking I/O). The recorded ``node_timings[name]`` value has the exact
-    same ``started_at``/``completed_at``/``duration_ms`` shape that
-    ``_start_timing``/``_finalize_timing`` produced when called inline in
-    ``managed_chat_runtime.py``.
+    Sync and async callables are supported when ``offload`` is false. Pass
+    ``offload=True`` only for a blocking synchronous callable; async callables
+    are rejected because moving coroutine creation to a worker thread does not
+    execute or await the coroutine there.
+
+    The timing entry is written only after the stage completes successfully, so
+    exceptions and invalid offload usage do not create a misleading completed
+    node timing.
     """
 
     started_at, start_monotonic = _start_timing()
     if offload:
+        if inspect.iscoroutinefunction(fn):
+            raise TypeError("offload=True requires a synchronous callable")
         result = await asyncio.to_thread(fn, *args, **kwargs)
+        if inspect.isawaitable(result):
+            close = getattr(result, "close", None)
+            if callable(close):
+                close()
+            raise TypeError("offload=True callable must not return an awaitable")
     else:
         result = fn(*args, **kwargs)
+        if inspect.isawaitable(result):
+            result = await result
+
     node_timings[name] = _finalize_timing(started_at, start_monotonic)
-    return result
+    return cast(_T, result)
