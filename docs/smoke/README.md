@@ -1,8 +1,29 @@
+---
+relaylm_doc_type: documentation_index
+relaylm_authority: smoke_and_validation_documentation_entrypoint
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: validation
+relaylm_update_trigger:
+  - smoke runbooks are added or removed
+  - consolidated workflow maintenance changes
+  - validation placement rules change
+relaylm_not_authoritative_for:
+  - repository-wide current runtime behavior
+  - MVP dependency sequencing
+  - exact runtime contracts
+relaylm_current_status_source: ../PROJECT_STATUS.md
+---
 # RelayLM Smoke and Validation Docs
 
-This directory indexes manual smoke runbooks, recorded smoke results, troubleshooting guides, and local behavior evaluation documents.
+This directory indexes manual smoke runbooks, recorded smoke results, troubleshooting guides, consolidated CI maintenance guidance, and local behavior evaluation documents.
 
 MVP-specific implementation notes remain under `docs/mvp/`. Executable smoke scripts remain under `scripts/`.
+
+## Consolidated CI maintenance
+
+- [Consolidated smoke workflow maintenance](consolidated_workflow_maintenance.md) — current RelayMEM, Runtime, and UI workflow grouping, contract validation, and generated inventory procedure.
+- [Scripts inventory summary](scripts_inventory.md) — latest audited summary and the authoritative generated-artifact regeneration path.
 
 ## OpenWebUI / LM Studio manual smoke
 
@@ -28,4 +49,4 @@ MVP-specific implementation notes remain under `docs/mvp/`. Executable smoke scr
 
 ## Placement rule
 
-Create cross-cutting manual smoke, result, troubleshooting, and local evaluation docs directly under `docs/smoke/`. Keep MVP milestone notes under `docs/mvp/`, architecture docs under `docs/architecture/`, contract docs under `docs/contracts/`, offline tooling docs under `docs/tools/`, and evaluation templates or run records under `docs/evaluation/`.
+Create cross-cutting manual smoke, result, troubleshooting, consolidated CI maintenance, and local evaluation docs directly under `docs/smoke/`. Keep MVP milestone notes under `docs/mvp/`, architecture docs under `docs/architecture/`, contract docs under `docs/contracts/`, offline tooling docs under `docs/tools/`, and evaluation templates or run records under `docs/evaluation/`.
