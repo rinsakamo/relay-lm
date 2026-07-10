@@ -5,9 +5,8 @@ Two things are pinned here:
 1. A unit-level check that ``run_stage`` records the exact same
    ``node_timings`` entry shape (keys/semantics) that
    ``_start_timing``/``_finalize_timing`` produced when hand-inlined in
-   ``handle_managed_chat_completion`` -- both for a plain sync call and for
-   an ``offload=True`` (``asyncio.to_thread``) call -- without pinning any
-   duration value.
+   ``handle_managed_chat_completion`` -- for sync, async, and offloaded sync
+   calls -- without pinning any duration value.
 2. An integration assertion that the ``node_timings`` a ``run_stage`` call
    records for the RelayREL/RelaySCN stages flows, unchanged, into the
    RelayRUN runtime artifact's ``node_statuses`` -- exactly as it did when
@@ -26,7 +25,6 @@ Two things are pinned here:
 from __future__ import annotations
 
 import asyncio
-import tempfile
 from pathlib import Path
 
 from relaylm.config import load_config
@@ -96,6 +94,27 @@ def test_run_stage_matches_manual_finalize_timing_shape_sync() -> None:
     assert recorded["duration_ms"] >= 0
 
 
+def test_run_stage_awaits_async_callable_before_recording_timing() -> None:
+    """An async stage executes fully and records timing only after completion."""
+
+    node_timings: dict = {}
+    events: list[str] = []
+
+    async def stage(value: str) -> str:
+        events.append("started")
+        await asyncio.sleep(0)
+        events.append("completed")
+        assert "async_stage" not in node_timings
+        return value.upper()
+
+    result = asyncio.run(run_stage(node_timings, "async_stage", stage, "hi"))
+
+    assert result == "HI"
+    assert events == ["started", "completed"]
+    assert set(node_timings) == {"async_stage"}
+    assert _timing_keys(node_timings["async_stage"]) == _EXPECTED_TIMING_KEYS
+
+
 def test_run_stage_offload_routes_through_to_thread_and_records_same_shape() -> None:
     """offload=True still records the identical node_timings shape."""
 
@@ -114,6 +133,24 @@ def test_run_stage_offload_routes_through_to_thread_and_records_same_shape() -> 
     assert _timing_keys(recorded) == _EXPECTED_TIMING_KEYS
     assert isinstance(recorded["duration_ms"], int)
     assert recorded["duration_ms"] >= 0
+
+
+def test_run_stage_rejects_async_callable_with_offload() -> None:
+    """Coroutine functions cannot be passed through asyncio.to_thread."""
+
+    node_timings: dict = {}
+
+    async def async_stage() -> str:
+        return "unexpected"
+
+    try:
+        asyncio.run(run_stage(node_timings, "async_stage", async_stage, offload=True))
+    except TypeError as exc:
+        assert "synchronous callable" in str(exc)
+    else:
+        raise AssertionError("expected TypeError for offload=True async callable")
+
+    assert "async_stage" not in node_timings
 
 
 def test_run_stage_does_not_force_a_timing_entry_for_stages_not_invoked() -> None:
