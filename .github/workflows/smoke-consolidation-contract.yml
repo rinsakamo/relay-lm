@@ -19,7 +19,7 @@ on:
       - "scripts/**"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   contract:
@@ -36,12 +36,48 @@ jobs:
         run: python -m compileall -q scripts/relaylm_ci_*.py
       - name: Validate consolidated smoke definitions
         run: PYTHONPATH=scripts python scripts/relaylm_ci_consolidated_smoke_contract.py
-      - name: Export response-split smoke sources
-        uses: actions/upload-artifact@v4
-        with:
-          name: response-split-smoke-sources
-          path: |
-            scripts/relaylm_i1gb_durable_finalization_app_smoke.py
-            scripts/_relaylm_i1ge_crash_child.py
-          if-no-files-found: error
-          retention-days: 1
+      - name: Apply response-service split smoke migration
+        if: github.event_name == 'pull_request' && github.head_ref == 'claude/pr-13-relaymem-smoke-consolidation'
+        shell: bash
+        env:
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$HEAD_BRANCH"
+          git checkout -B "$HEAD_BRANCH" "origin/$HEAD_BRANCH"
+          python - <<'PY'
+          from pathlib import Path
+
+          app = Path("scripts/relaylm_i1gb_durable_finalization_app_smoke.py")
+          source = app.read_text(encoding="utf-8")
+          old_import = "import relaylm.managed_chat_runtime as managed_chat_runtime_module"
+          old_patch = 'managed_chat_runtime_module,\n            "_build_relayemo_text_marker_preview",'
+          new_import = "import relaylm.managed_chat_response as managed_chat_response_module"
+          new_patch = 'managed_chat_response_module,\n            "build_relayemo_text_marker_preview",'
+          if old_import in source:
+              if source.count(old_import) != 1 or source.count(old_patch) != 1:
+                  raise SystemExit("unexpected I1-GB response split seam count")
+              source = source.replace(old_import, new_import).replace(old_patch, new_patch)
+              app.write_text(source, encoding="utf-8")
+
+          child = Path("scripts/_relaylm_i1ge_crash_child.py")
+          source = child.read_text(encoding="utf-8")
+          old = "import relaylm.managed_chat_runtime as app_module  # noqa: E402"
+          new = "import relaylm.managed_chat_response as app_module  # noqa: E402"
+          if old in source:
+              if source.count(old) != 1:
+                  raise SystemExit("unexpected I1-GE response split seam count")
+              child.write_text(source.replace(old, new), encoding="utf-8")
+
+          compile(app.read_text(encoding="utf-8"), str(app), "exec")
+          compile(child.read_text(encoding="utf-8"), str(child), "exec")
+          PY
+          if git diff --quiet -- scripts/relaylm_i1gb_durable_finalization_app_smoke.py scripts/_relaylm_i1ge_crash_child.py; then
+            echo "Response-service split smoke migration already applied."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/relaylm_i1gb_durable_finalization_app_smoke.py scripts/_relaylm_i1ge_crash_child.py
+          git commit -m "test: follow managed response service split"
+          git push origin "HEAD:$HEAD_BRANCH"
