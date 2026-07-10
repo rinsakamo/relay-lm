@@ -46,8 +46,8 @@ jobs:
           python - <<'PY_PATCH_SCRIPT'
           from pathlib import Path
 
-          path = Path('.github/scripts/rebase-pr07-pr11.sh')
-          text = path.read_text(encoding='utf-8')
+          source_path = Path('.github/scripts/rebase-pr07-pr11.sh')
+          text = source_path.read_text(encoding='utf-8')
           replacements = {
               'pr7_wave_a_tip="${pr7_commits[5]}"': 'pr7_wave_a_tip="${pr7_commits[6]}"',
               'git rm "$WORKFLOW_PATH" "$SCRIPT_PATH"': 'git rm -f "$WORKFLOW_PATH" "$SCRIPT_PATH"',
@@ -156,11 +156,11 @@ jobs:
           if anchor not in text:
               raise SystemExit('expected PR-9 verification anchor not found')
           text = text.replace(anchor, patched, 1)
-          path.write_text(text, encoding='utf-8')
+          Path('/tmp/rebase-pr07-pr11.sh').write_text(text, encoding='utf-8')
           PY_PATCH_SCRIPT
-          bash -n .github/scripts/rebase-pr07-pr11.sh
+          bash -n /tmp/rebase-pr07-pr11.sh
           set -o pipefail
-          bash .github/scripts/rebase-pr07-pr11.sh 2>&1 | tee /tmp/rebase-pr07-pr11.log
+          bash /tmp/rebase-pr07-pr11.sh 2>&1 | tee /tmp/rebase-pr07-pr11.log
 
       - name: Upload rebase diagnostics
         if: always()
