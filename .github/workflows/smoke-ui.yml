@@ -1,0 +1,232 @@
+# Consolidated SOUL Lab UI and mixed Python/Node smokes with changed-group matrices.
+
+name: SOUL Lab UI smokes
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "apps/soul-lab/**"
+      - "relaylm/**"
+      - "scripts/**"
+      - "docs/architecture/**"
+      - "docs/mvp/**"
+      - "pyproject.toml"
+      - ".github/workflows/smoke-ui.yml"
+  pull_request:
+    paths:
+      - "apps/soul-lab/**"
+      - "relaylm/**"
+      - "scripts/**"
+      - "docs/architecture/**"
+      - "docs/mvp/**"
+      - "pyproject.toml"
+      - ".github/workflows/smoke-ui.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      python_matrix: ${{ steps.matrix.outputs.python_matrix }}
+      frontend_matrix: ${{ steps.matrix.outputs.frontend_matrix }}
+      mixed_matrix: ${{ steps.matrix.outputs.mixed_matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Select changed UI groups
+        id: matrix
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            args+=(--all)
+          else
+            base="$PUSH_BEFORE_SHA"
+            if [ "$EVENT_NAME" = "pull_request" ]; then
+              base="$PR_BASE_SHA"
+            fi
+            if [ -z "$base" ] || [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+              base="$(git rev-list --max-parents=0 HEAD)"
+            fi
+            git diff --name-only "$base" "$GITHUB_SHA" > changed-files.txt
+            cat changed-files.txt
+            args+=(--files changed-files.txt)
+          fi
+          python_matrix="$(python scripts/relaylm_ci_changed_matrix.py --workflow ui --kind python "${args[@]}")"
+          frontend_matrix="$(python scripts/relaylm_ci_changed_matrix.py --workflow ui --kind frontend "${args[@]}")"
+          mixed_matrix="$(python scripts/relaylm_ci_changed_matrix.py --workflow ui --kind mixed "${args[@]}")"
+          echo "python_matrix=$python_matrix" >> "$GITHUB_OUTPUT"
+          echo "frontend_matrix=$frontend_matrix" >> "$GITHUB_OUTPUT"
+          echo "mixed_matrix=$mixed_matrix" >> "$GITHUB_OUTPUT"
+
+  python-smoke:
+    needs: changes
+    if: needs.changes.outputs.python_matrix != '{"include":[]}'
+    name: UI Python / ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.changes.outputs.python_matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ matrix.timeout }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Compile package and smoke scripts
+        run: python -m compileall -q relaylm scripts
+      - name: Run selected Python smoke group
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/relaylm_ci_consolidated_smoke.py run --workflow ui --group "${{ matrix.group }}" 2>&1 | tee "${{ matrix.name }}.log"
+      - name: Upload Python diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-python-${{ matrix.name }}-log
+          path: ${{ matrix.name }}.log
+          if-no-files-found: error
+          retention-days: 3
+
+  frontend-smoke:
+    needs: changes
+    if: needs.changes.outputs.frontend_matrix != '{"include":[]}'
+    name: UI Frontend / ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.changes.outputs.frontend_matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ matrix.timeout }}
+    defaults:
+      run:
+        working-directory: apps/soul-lab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install SOUL Lab dependencies
+        run: npm install --no-audit --no-fund
+      - name: Type-check SOUL Lab
+        run: npm run typecheck
+      - name: Observation browser schema smoke
+        if: matrix.group == 'lab_observation_frontend'
+        run: |
+          set -o pipefail
+          {
+            rm -rf .observation-smoke
+            npx tsc src/features/lab/observationApi.ts --target ES2022 --module ES2022 --moduleResolution Bundler --outDir .observation-smoke --skipLibCheck
+            node scripts/observationApiSmoke.mjs
+            rm -rf .observation-smoke
+          } 2>&1 | tee "${{ matrix.name }}.log"
+      - name: Correction browser schema smoke
+        if: matrix.group == 'primary_mem_correct_frontend'
+        run: |
+          set -o pipefail
+          {
+            rm -rf .correction-smoke
+            npx tsc src/features/lab/correctionApi.ts --target ES2022 --module ES2022 --moduleResolution Bundler --outDir .correction-smoke --skipLibCheck
+            node scripts/correctionApiSmoke.mjs
+            rm -rf .correction-smoke
+          } 2>&1 | tee "${{ matrix.name }}.log"
+      - name: Home conversation smoke
+        if: matrix.group == 'home_conversation_frontend'
+        run: npm run smoke:home-conversation 2>&1 | tee "${{ matrix.name }}.log"
+      - name: Forget lifecycle frontend smoke
+        if: matrix.group == 'forget_lifecycle_frontend'
+        run: |
+          set -o pipefail
+          {
+            rm -rf .used-memory-lifecycle-smoke
+            npx tsc src/features/lab/usedMemoryLifecycleApi.ts --target ES2022 --module ES2022 --moduleResolution Bundler --outDir .used-memory-lifecycle-smoke --skipLibCheck
+            node scripts/usedMemoryLifecycleApiSmoke.mjs
+            rm -rf .used-memory-lifecycle-smoke
+            npm run smoke:forget-ui
+          } 2>&1 | tee "${{ matrix.name }}.log"
+      - name: Build SOUL Lab
+        run: npm run build
+      - name: Ensure build-only log exists
+        if: matrix.group == 'soul_lab_build'
+        run: printf 'SOUL Lab typecheck and build completed.\n' > "${{ matrix.name }}.log"
+      - name: Upload frontend diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-frontend-${{ matrix.name }}-log
+          path: apps/soul-lab/${{ matrix.name }}.log
+          if-no-files-found: error
+          retention-days: 3
+
+  mixed-smoke:
+    needs: changes
+    if: needs.changes.outputs.mixed_matrix != '{"include":[]}'
+    name: UI Mixed / ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.changes.outputs.mixed_matrix) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ matrix.timeout }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Python package
+        run: python -m pip install -e .
+      - name: Compile Python sources
+        run: python -m compileall -q relaylm scripts
+      - name: Run selected mixed Python smoke group
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/relaylm_ci_consolidated_smoke.py run --workflow ui --group "${{ matrix.group }}" 2>&1 | tee "${{ matrix.name }}.log"
+      - name: Pin/unpin UI validation
+        if: matrix.group == 'pin_unpin'
+        working-directory: apps/soul-lab
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+          npm run smoke:pin-unpin-ui
+      - name: Held governance UI validation
+        if: matrix.group == 'held_governance'
+        working-directory: apps/soul-lab
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+          npm run smoke:held-governance-ui
+      - name: Lifecycle visibility UI validation
+        if: matrix.group == 'lifecycle_visibility'
+        working-directory: apps/soul-lab
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
+          npm run smoke:lifecycle-visibility
+          npm run build
+      - name: Upload mixed diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-mixed-${{ matrix.name }}-log
+          path: ${{ matrix.name }}.log
+          if-no-files-found: error
+          retention-days: 3
