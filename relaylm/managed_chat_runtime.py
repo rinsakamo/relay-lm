@@ -93,8 +93,8 @@ from relaylm.relayint import (
     build_relayint_reference_intent_artifact,
     build_relayint_request_compatibility_gate,
 )
-from relaylm.relayscn import build_relayscn_scene_policy_artifact
-from relaylm.relayrel import build_relayrel_relationship_projection
+from relaylm.relayscn import run_relayscn_stage
+from relaylm.relayrel import run_relayrel_stage
 from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
 from relaylm.relaymem_primary_recall import (
     apply_relaymem_primary_recall_scope,
@@ -110,11 +110,7 @@ from relaylm.relayrun_stream_timing import (
     wrap_stream_with_relayrun_stream_timing,
 )
 from relaylm.relaymem_store import build_relaymem_store_diagnostics
-from relaylm.relayemo import (
-    load_session_assistant_state,
-    run_relayemo,
-    save_session_assistant_state,
-)
+from relaylm.relayemo import run_relayemo_stage
 from relaylm.relayemo_response_marker import (
     apply_relayemo_marker_to_response as _apply_relayemo_marker_to_response,
     build_relayemo_text_marker_preview as _build_relayemo_text_marker_preview,
@@ -313,64 +309,29 @@ async def handle_managed_chat_completion(
     relayrel_relationship_projection = await run_stage(
         node_timings,
         "relayrel",
-        build_relayrel_relationship_projection,
+        run_relayrel_stage,
         route=route,
         request_scope_identity=request_scope_identity,
     )
     relayscn_scene_policy_artifact = await run_stage(
         node_timings,
         "relayscn",
-        build_relayscn_scene_policy_artifact,
+        run_relayscn_stage,
         payload=payload,
     )
     relayemo_artifact: dict[str, Any] | None = None
     if config.relayemo_enabled:
-        relayemo_started_at, relayemo_start_monotonic = _start_timing()
-        session_key, session_key_source = _resolve_relayemo_session_key(
+        relayemo_artifact = await run_stage(
+            node_timings,
+            "relayemo",
+            run_relayemo_stage,
+            config=config,
             route=route,
             payload=payload,
             request=request,
             request_scope_identity=request_scope_identity,
             scope_resolution_diagnostics=scope_resolution_diagnostics,
-        )
-        previous_assistant_state = None
-        previous_state_found = False
-        state_updated = True
-        fallback_reason: str | None = None
-        can_use_session_state = (
-            config.relayemo_session_state_enabled and session_key is not None
-        )
-        if config.relayemo_session_state_enabled and session_key is None:
-            state_updated = False
-            fallback_reason = "session_key_unavailable"
-        if can_use_session_state and session_key is not None:
-            previous_assistant_state = load_session_assistant_state(
-                session_key,
-                ttl_seconds=config.relayemo_session_state_ttl_seconds,
-            )
-            previous_state_found = previous_assistant_state is not None
-        relayemo_result = run_relayemo(
-            config=config,
             messages=_extract_trace_messages(forwarded_payload),
-            previous_assistant_state=previous_assistant_state,
-        )
-        relayemo_artifact = relayemo_result.artifact
-        relayemo_artifact["session_state_enabled"] = config.relayemo_session_state_enabled
-        relayemo_artifact["session_key_source"] = session_key_source
-        relayemo_artifact["previous_state_found"] = previous_state_found
-        relayemo_artifact["state_updated"] = state_updated
-        relayemo_artifact["state_persisted"] = False
-        relayemo_artifact["state_storage"] = "process_memory"
-        if fallback_reason is not None:
-            relayemo_artifact["fallback_reason"] = fallback_reason
-        if can_use_session_state and session_key is not None:
-            save_session_assistant_state(
-                session_key,
-                relayemo_result.assistant_state,
-                max_entries=config.relayemo_session_state_max_entries,
-            )
-        node_timings["relayemo"] = _finalize_timing(
-            relayemo_started_at, relayemo_start_monotonic
         )
 
     relayint_started_at, relayint_start_monotonic = _start_timing()
@@ -973,33 +934,6 @@ def _extract_trace_messages(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(raw_messages, list):
         return []
     return [message for message in raw_messages if isinstance(message, dict)]
-
-
-def _resolve_relayemo_session_key(
-    *,
-    route: ResolvedRoute,
-    payload: Mapping[str, Any],
-    request: Request,
-    request_scope_identity: Any,
-    scope_resolution_diagnostics: Any,
-) -> tuple[str | None, str]:
-    merged_scope = getattr(scope_resolution_diagnostics, "merged_scope", {})
-    resolved_session_id = merged_scope.get("session_id") if isinstance(merged_scope, dict) else None
-    if isinstance(resolved_session_id, str) and resolved_session_id:
-        return (
-            f"{resolved_session_id}:{route.route_model}:{route.character_id or 'none'}",
-            "resolved_session_id",
-        )
-    session_id = getattr(request_scope_identity, "session_id", None)
-    if isinstance(session_id, str) and session_id:
-        return f"{session_id}:{route.route_model}:{route.character_id or 'none'}", "request_session_id"
-    route_session_id = getattr(route, "session_id", None)
-    if isinstance(route_session_id, str) and route_session_id:
-        return (
-            f"{route_session_id}:{route.route_model}:{route.character_id or 'none'}",
-            "route_session_id",
-        )
-    return None, "unavailable"
 
 
 def _resolve_token_policy_shadow_setting(

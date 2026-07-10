@@ -9,11 +9,14 @@ path.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 import json
 import math
 import time
 from typing import Any
+
+from fastapi import Request
 
 from relaylm.analyzer_governance import (
     build_analyzer_candidate_artifact,
@@ -21,6 +24,7 @@ from relaylm.analyzer_governance import (
     content_free_projection,
 )
 from relaylm.config import RelayLMConfig
+from relaylm.routing import ResolvedRoute
 
 SCENE_HINT_TYPES = {
     "casual_chat",
@@ -280,6 +284,104 @@ def run_relayemo(
         "user_affect_estimate_is_estimate": True,
     }
     return RelayEmoRuntimeResult(artifact=artifact, assistant_state=next_state)
+
+
+def _resolve_relayemo_session_key(
+    *,
+    route: ResolvedRoute,
+    payload: Mapping[str, Any],
+    request: Request,
+    request_scope_identity: Any,
+    scope_resolution_diagnostics: Any,
+) -> tuple[str | None, str]:
+    merged_scope = getattr(scope_resolution_diagnostics, "merged_scope", {})
+    resolved_session_id = merged_scope.get("session_id") if isinstance(merged_scope, dict) else None
+    if isinstance(resolved_session_id, str) and resolved_session_id:
+        return (
+            f"{resolved_session_id}:{route.route_model}:{route.character_id or 'none'}",
+            "resolved_session_id",
+        )
+    session_id = getattr(request_scope_identity, "session_id", None)
+    if isinstance(session_id, str) and session_id:
+        return f"{session_id}:{route.route_model}:{route.character_id or 'none'}", "request_session_id"
+    route_session_id = getattr(route, "session_id", None)
+    if isinstance(route_session_id, str) and route_session_id:
+        return (
+            f"{route_session_id}:{route.route_model}:{route.character_id or 'none'}",
+            "route_session_id",
+        )
+    return None, "unavailable"
+
+
+def run_relayemo_stage(
+    *,
+    config: RelayLMConfig,
+    route: ResolvedRoute,
+    payload: Mapping[str, Any],
+    request: Request,
+    request_scope_identity: Any,
+    scope_resolution_diagnostics: Any,
+    messages: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Stage entry point for the RelayEMO input stage.
+
+    ``handle_managed_chat_completion`` calls this through ``run_stage`` only
+    when ``config.relayemo_enabled`` is set; the enable gate itself -- and
+    the resulting absence of a ``node_timings["relayemo"]`` entry when the
+    stage does not run -- stays in the handler, matching how
+    ``relaylm/pipeline_stage.py`` documents conditional stages.
+
+    Resolves the RelayEMO session key, loads any previous session-scoped
+    assistant affect state, runs the RelayEMO affect estimate, enriches the
+    resulting artifact with session-state diagnostics fields, and persists
+    the updated assistant state to the in-process session-state store --
+    exactly as this logic ran inline in the handler before this extraction.
+    """
+
+    session_key, session_key_source = _resolve_relayemo_session_key(
+        route=route,
+        payload=payload,
+        request=request,
+        request_scope_identity=request_scope_identity,
+        scope_resolution_diagnostics=scope_resolution_diagnostics,
+    )
+    previous_assistant_state = None
+    previous_state_found = False
+    state_updated = True
+    fallback_reason: str | None = None
+    can_use_session_state = (
+        config.relayemo_session_state_enabled and session_key is not None
+    )
+    if config.relayemo_session_state_enabled and session_key is None:
+        state_updated = False
+        fallback_reason = "session_key_unavailable"
+    if can_use_session_state and session_key is not None:
+        previous_assistant_state = load_session_assistant_state(
+            session_key,
+            ttl_seconds=config.relayemo_session_state_ttl_seconds,
+        )
+        previous_state_found = previous_assistant_state is not None
+    relayemo_result = run_relayemo(
+        config=config,
+        messages=messages,
+        previous_assistant_state=previous_assistant_state,
+    )
+    relayemo_artifact = relayemo_result.artifact
+    relayemo_artifact["session_state_enabled"] = config.relayemo_session_state_enabled
+    relayemo_artifact["session_key_source"] = session_key_source
+    relayemo_artifact["previous_state_found"] = previous_state_found
+    relayemo_artifact["state_updated"] = state_updated
+    relayemo_artifact["state_persisted"] = False
+    relayemo_artifact["state_storage"] = "process_memory"
+    if fallback_reason is not None:
+        relayemo_artifact["fallback_reason"] = fallback_reason
+    if can_use_session_state and session_key is not None:
+        save_session_assistant_state(
+            session_key,
+            relayemo_result.assistant_state,
+            max_entries=config.relayemo_session_state_max_entries,
+        )
+    return relayemo_artifact
 
 
 def latest_assistant_text(messages: list[dict[str, Any]]) -> str:
