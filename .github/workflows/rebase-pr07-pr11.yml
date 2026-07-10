@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: relaylm-rebase-pr07-pr11
+  cancel-in-progress: false
+
 jobs:
   rebase-and-verify:
     runs-on: ubuntu-latest
@@ -31,16 +35,11 @@ jobs:
       - name: Rebase stack, verify each layer, and update refs
         shell: bash
         env:
-          PR7_OLD_TIP: 6897a37d390200f918329ac5e315a51982ba1ecc
-          PR8_OLD_TIP: f57e8338c4b54e5d9b12af7a25b1561e90b409c8
-          PR9_OLD_TIP: cf370a107c08ba00f3bf12e275f95c12ce032283
-          PR10_OLD_TIP: 103a7ebfb3603f98d1660981f651bd65bd1c4b67
-          PR11_OLD_TIP: 6d677b31da01ae8402c6eff9565a2421e4ecf461
           STACK_BASE: a3d50f6d043fa9a2802ffb029b0123f827180a00
-          PR7_OLD_BASE: d002120bd2cf2115a01dcf4a69a691060def03ec
-          PR8_OLD_BASE: f57e8338c4b54e5d9b12af7a25b1561e90b409c8
-          PR9_OLD_BASE: cf370a107c08ba00f3bf12e275f95c12ce032283
-          PR10_OLD_BASE: 103a7ebfb3603f98d1660981f651bd65bd1c4b67
+          PR8_OLD_BASE: d002120bd2cf2115a01dcf4a69a691060def03ec
+          PR9_OLD_BASE: f57e8338c4b54e5d9b12af7a25b1561e90b409c8
+          PR10_OLD_BASE: cf370a107c08ba00f3bf12e275f95c12ce032283
+          PR11_OLD_BASE: 103a7ebfb3603f98d1660981f651bd65bd1c4b67
         run: |
           set -euo pipefail
 
@@ -54,6 +53,12 @@ jobs:
             claude/pr-10-prebackend-stages \
             claude/pr-11-response-service
 
+          PR7_OBSERVED="$(git rev-parse origin/claude/pr-07-stage-runner)"
+          PR8_OBSERVED="$(git rev-parse origin/claude/pr-08-input-stages)"
+          PR9_OBSERVED="$(git rev-parse origin/claude/pr-09-memory-stages)"
+          PR10_OBSERVED="$(git rev-parse origin/claude/pr-10-prebackend-stages)"
+          PR11_OBSERVED="$(git rev-parse origin/claude/pr-11-response-service)"
+
           verify_branch() {
             local label="$1"
             echo "::group::verify ${label}"
@@ -64,7 +69,7 @@ jobs:
             echo "::endgroup::"
           }
 
-          ensure_relayint_anchors() {
+          patch_relayint_anchors() {
             python - <<'PY'
           from pathlib import Path
           import re
@@ -88,34 +93,47 @@ jobs:
           if updated != text:
               path.write_text(updated, encoding="utf-8")
           PY
+          }
+
+          commit_relayint_anchors() {
+            patch_relayint_anchors
             if ! git diff --quiet -- scripts/relaylm_acg5_relayemo_scene_cleanup_smoke.py; then
               git add scripts/relaylm_acg5_relayemo_scene_cleanup_smoke.py
               git commit -m "Fix RelayINT ordering smoke anchors"
             fi
           }
 
+          rebase_in_progress() {
+            [[ -d .git/rebase-merge || -d .git/rebase-apply ]]
+          }
+
           continue_expected_rebase() {
             local label="$1"
-            while git rev-parse -q --verify REBASE_HEAD >/dev/null 2>&1; do
+            while rebase_in_progress; do
               mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
-              if [[ ${#conflicts[@]} -eq 0 ]]; then
-                GIT_EDITOR=true git rebase --continue
-                continue
+              if [[ ${#conflicts[@]} -gt 0 ]]; then
+                for path in "${conflicts[@]}"; do
+                  case "${label}:${path}" in
+                    pr9:scripts/relaylm_acg5_relayemo_scene_cleanup_smoke.py)
+                      git checkout --theirs -- "$path"
+                      ;;
+                    *)
+                      echo "Unexpected rebase conflict for ${label}: ${path}" >&2
+                      exit 1
+                      ;;
+                  esac
+                done
+                patch_relayint_anchors
+                git add "${conflicts[@]}" scripts/relaylm_acg5_relayemo_scene_cleanup_smoke.py
               fi
-              for path in "${conflicts[@]}"; do
-                case "${label}:${path}" in
-                  pr9:scripts/relaylm_acg5_relayemo_scene_cleanup_smoke.py)
-                    git checkout --theirs -- "$path"
-                    ;;
-                  *)
-                    echo "Unexpected rebase conflict for ${label}: ${path}" >&2
-                    exit 1
-                    ;;
-                esac
-              done
-              ensure_relayint_anchors
-              git add "${conflicts[@]}"
+
+              set +e
               GIT_EDITOR=true git rebase --continue
+              rc=$?
+              set -e
+              if [[ $rc -ne 0 ]] && ! rebase_in_progress; then
+                exit "$rc"
+              fi
             done
           }
 
@@ -124,55 +142,73 @@ jobs:
             local remote_ref="$2"
             local new_base="$3"
             local old_base="$4"
-            git switch --detach "$remote_ref"
+            local current_tip
+            current_tip="$(git rev-parse "$remote_ref")"
+
+            git switch --detach "$current_tip"
+            if git merge-base --is-ancestor "$new_base" HEAD; then
+              commit_relayint_anchors
+              return
+            fi
+            if ! git merge-base --is-ancestor "$old_base" HEAD; then
+              echo "${label} no longer contains expected old base ${old_base}" >&2
+              exit 1
+            fi
             if ! git rebase --onto "$new_base" "$old_base"; then
               continue_expected_rebase "$label"
             fi
-            ensure_relayint_anchors
+            commit_relayint_anchors
           }
 
-          push_with_lease() {
+          push_if_changed() {
             local branch="$1"
             local expected_old="$2"
+            local new_tip
+            new_tip="$(git rev-parse HEAD)"
+            if [[ "$new_tip" == "$expected_old" ]]; then
+              return
+            fi
             git push origin HEAD:"refs/heads/${branch}" \
               --force-with-lease="refs/heads/${branch}:${expected_old}"
           }
 
-          # PR-7 contains six pre-PR Wave A commits followed by the actual PR-7
-          # commits and the review fixes. Drop the first six and replay only the
-          # PR-7 slice onto the current main tip.
-          mapfile -t pr7_commits < <(
-            git rev-list --reverse "${STACK_BASE}..origin/claude/pr-07-stage-runner"
-          )
-          if [[ ${#pr7_commits[@]} -ne 12 ]]; then
-            printf 'Unexpected PR-7 commit count: %s\n' "${#pr7_commits[@]}" >&2
-            printf '%s\n' "${pr7_commits[@]}" >&2
-            exit 1
+          # Rebuild PR-7 on the current main. The original stack has six Wave A
+          # commits before the actual PR-7 slice; those six are already present
+          # on main as squash merges and must not be replayed.
+          git switch --detach "$PR7_OBSERVED"
+          if ! git merge-base --is-ancestor origin/main HEAD; then
+            mapfile -t pr7_commits < <(
+              git rev-list --reverse "${STACK_BASE}..HEAD"
+            )
+            if [[ ${#pr7_commits[@]} -ne 12 ]]; then
+              printf 'Unexpected PR-7 commit count: %s\n' "${#pr7_commits[@]}" >&2
+              printf '%s\n' "${pr7_commits[@]}" >&2
+              exit 1
+            fi
+            pr7_wave_a_tip="${pr7_commits[5]}"
+            git rebase --onto origin/main "$pr7_wave_a_tip"
           fi
-          pr7_wave_a_tip="${pr7_commits[5]}"
-          git switch --detach origin/claude/pr-07-stage-runner
-          git rebase --onto origin/main "$pr7_wave_a_tip"
-          ensure_relayint_anchors
+          commit_relayint_anchors
           verify_branch pr7
           PR7_NEW="$(git rev-parse HEAD)"
-          push_with_lease claude/pr-07-stage-runner "$PR7_OLD_TIP"
+          push_if_changed claude/pr-07-stage-runner "$PR7_OBSERVED"
 
-          rebase_layer pr8 origin/claude/pr-08-input-stages "$PR7_NEW" "$PR7_OLD_BASE"
+          rebase_layer pr8 origin/claude/pr-08-input-stages "$PR7_NEW" "$PR8_OLD_BASE"
           verify_branch pr8
           PR8_NEW="$(git rev-parse HEAD)"
-          push_with_lease claude/pr-08-input-stages "$PR8_OLD_TIP"
+          push_if_changed claude/pr-08-input-stages "$PR8_OBSERVED"
 
-          rebase_layer pr9 origin/claude/pr-09-memory-stages "$PR8_NEW" "$PR8_OLD_BASE"
+          rebase_layer pr9 origin/claude/pr-09-memory-stages "$PR8_NEW" "$PR9_OLD_BASE"
           verify_branch pr9
           PR9_NEW="$(git rev-parse HEAD)"
-          push_with_lease claude/pr-09-memory-stages "$PR9_OLD_TIP"
+          push_if_changed claude/pr-09-memory-stages "$PR9_OBSERVED"
 
-          rebase_layer pr10 origin/claude/pr-10-prebackend-stages "$PR9_NEW" "$PR9_OLD_BASE"
+          rebase_layer pr10 origin/claude/pr-10-prebackend-stages "$PR9_NEW" "$PR10_OLD_BASE"
           verify_branch pr10
           PR10_NEW="$(git rev-parse HEAD)"
-          push_with_lease claude/pr-10-prebackend-stages "$PR10_OLD_TIP"
+          push_if_changed claude/pr-10-prebackend-stages "$PR10_OBSERVED"
 
-          rebase_layer pr11 origin/claude/pr-11-response-service "$PR10_NEW" "$PR10_OLD_BASE"
+          rebase_layer pr11 origin/claude/pr-11-response-service "$PR10_NEW" "$PR11_OLD_BASE"
 
           python - <<'PY'
           from pathlib import Path
@@ -187,9 +223,11 @@ jobs:
               apply_relayemo_marker_to_response as _apply_relayemo_marker_to_response,
               build_relayemo_text_marker_preview as _build_relayemo_text_marker_preview,
           )'''
-          if old_smoke_import not in smoke_text:
-              raise SystemExit("expected managed_chat_runtime marker import not found")
-          smoke.write_text(smoke_text.replace(old_smoke_import, new_smoke_import), encoding="utf-8")
+          if old_smoke_import in smoke_text:
+              smoke_text = smoke_text.replace(old_smoke_import, new_smoke_import)
+              smoke.write_text(smoke_text, encoding="utf-8")
+          elif new_smoke_import not in smoke_text:
+              raise SystemExit("neither old nor canonical response marker import was found")
 
           runtime = Path("relaylm/managed_chat_runtime.py")
           runtime_text = runtime.read_text(encoding="utf-8")
@@ -204,16 +242,17 @@ jobs:
               build_relayemo_text_marker_preview as _build_relayemo_text_marker_preview,
           )
           '''
-          if old_runtime_import not in runtime_text:
-              raise SystemExit("expected compatibility marker import block not found")
-          runtime.write_text(runtime_text.replace(old_runtime_import, ""), encoding="utf-8")
+          if old_runtime_import in runtime_text:
+              runtime.write_text(runtime_text.replace(old_runtime_import, ""), encoding="utf-8")
           PY
-          git add relaylm/managed_chat_runtime.py scripts/relaylm_relayemo_smoke.py
-          git commit -m "Remove response marker compatibility aliases"
+          if ! git diff --quiet -- relaylm/managed_chat_runtime.py scripts/relaylm_relayemo_smoke.py; then
+            git add relaylm/managed_chat_runtime.py scripts/relaylm_relayemo_smoke.py
+            git commit -m "Remove response marker compatibility aliases"
+          fi
 
           verify_branch pr11
           PR11_NEW="$(git rev-parse HEAD)"
-          push_with_lease claude/pr-11-response-service "$PR11_OLD_TIP"
+          push_if_changed claude/pr-11-response-service "$PR11_OBSERVED"
 
           {
             echo "PR7_NEW=${PR7_NEW}"
