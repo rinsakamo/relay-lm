@@ -116,6 +116,8 @@ PYTHONPATH=.:scripts python scripts/relaylm_twin_extraction_merge.py \
 
 このツールが作るのは `twin_extraction_review.json` まで。MEM/SOULへの書き込み・bootstrap投入・SLP経路への接続は行わない。[Twin Extraction プロンプト仕様](twin_extraction_prompts.md) の「集約・レビュー手順」に従って手動レビューし、承認された素材のみを別途CW-A1形式・MEM bootstrap経路に反映する。
 
+<a id="6-review-import-bridge-p1出力--cw-a4-governed-import-source"></a>
+
 ### 6. review import bridge (P1出力 -> CW-A4 governed import source)
 
 `twin_extraction_review.json` をマージした後、`scripts/relaylm_twin_review_import_bridge.py` でFile-first Character Workspace(CW-A4)が読める `.relaylm/sources/imports/twin-extraction/` へ変換できる。このbridgeもP1と同じくcaller-invoked / bounded / offline / runtime-non-contactであり、`relaylm` パッケージをimportしない。MEM/SOUL/REL/Primary MEMへは直接書き込まない。uppercase source(`SOUL.md`など)も直接書き換えない。
