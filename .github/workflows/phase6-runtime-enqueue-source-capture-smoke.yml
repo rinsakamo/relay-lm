@@ -1,6 +1,7 @@
 name: Phase 6 runtime enqueue source capture smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/app.py"
@@ -17,6 +18,7 @@ on:
       - "scripts/relaylm_phase6_runtime_enqueue_app_smoke.py"
       - "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md"
       - ".github/workflows/phase6-runtime-enqueue-source-capture-smoke.yml"
+      - "pyproject.toml"
   push:
     branches:
       - main
@@ -35,6 +37,7 @@ on:
       - "scripts/relaylm_phase6_runtime_enqueue_app_smoke.py"
       - "docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md"
       - ".github/workflows/phase6-runtime-enqueue-source-capture-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

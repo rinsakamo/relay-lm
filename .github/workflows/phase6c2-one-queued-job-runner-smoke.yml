@@ -1,6 +1,7 @@
 name: Phase 6-C2 one queued-job runner smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_slp_one_queued_job_runner.py"
@@ -18,6 +19,7 @@ on:
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
       - "docs/architecture/phase6c2_one_queued_primary_worker_integration.md"
       - ".github/workflows/phase6c2-one-queued-job-runner-smoke.yml"
+      - "pyproject.toml"
   push:
     branches:
       - main
@@ -37,6 +39,7 @@ on:
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
       - "docs/architecture/phase6c2_one_queued_primary_worker_integration.md"
       - ".github/workflows/phase6c2-one-queued-job-runner-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

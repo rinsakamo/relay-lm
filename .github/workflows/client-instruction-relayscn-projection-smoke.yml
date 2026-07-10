@@ -14,6 +14,7 @@ on:
       - docs/PROJECT_STATUS.md
       - docs/architecture/pipeline_implementation_plan.md
       - docs/architecture/phase5c4b_cache_hit_relayscn_projection_handoff.md
+      - pyproject.toml
   push:
     branches: [main]
     paths:
@@ -27,6 +28,7 @@ on:
       - docs/PROJECT_STATUS.md
       - docs/architecture/pipeline_implementation_plan.md
       - docs/architecture/phase5c4b_cache_hit_relayscn_projection_handoff.md
+      - pyproject.toml
 
 permissions:
   contents: read

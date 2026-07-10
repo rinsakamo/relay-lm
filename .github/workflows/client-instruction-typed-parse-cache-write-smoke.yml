@@ -18,6 +18,7 @@ on:
       - scripts/relaylm_client_instruction_typed_parse_cache_write_smoke.py
       - scripts/relaylm_client_instruction_cache_write_runtime_smoke.py
       - .github/workflows/client-instruction-typed-parse-cache-write-smoke.yml
+      - pyproject.toml
   push:
     branches:
       - main
@@ -36,6 +37,7 @@ on:
       - scripts/relaylm_client_instruction_typed_parse_cache_write_smoke.py
       - scripts/relaylm_client_instruction_cache_write_runtime_smoke.py
       - .github/workflows/client-instruction-typed-parse-cache-write-smoke.yml
+      - pyproject.toml
 
 permissions:
   contents: read

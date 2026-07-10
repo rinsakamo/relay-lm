@@ -19,6 +19,7 @@ on:
       - docs/architecture/pipeline_implementation_plan.md
       - docs/config_schema.md
       - .github/workflows/token-estimation-smoke.yml
+      - pyproject.toml
   push:
     branches: [main]
     paths:
@@ -37,6 +38,7 @@ on:
       - docs/architecture/pipeline_implementation_plan.md
       - docs/config_schema.md
       - .github/workflows/token-estimation-smoke.yml
+      - pyproject.toml
 
 permissions:
   contents: read

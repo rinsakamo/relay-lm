@@ -8,6 +8,7 @@ on:
       - "docs/architecture/e1r1_trusted_home_scene_admission.md"
       - "docs/mvp/wave6/e1r1_completion_report.md"
       - ".github/workflows/e1r1-trusted-home-scene-admission.yml"
+      - "pyproject.toml"
   workflow_dispatch:
 
 jobs:

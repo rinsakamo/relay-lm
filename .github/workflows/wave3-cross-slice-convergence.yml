@@ -1,6 +1,7 @@
 name: Wave 3 cross-slice convergence
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "docs/PROJECT_STATUS.md"
@@ -18,6 +19,7 @@ on:
       - "scripts/relaylm_wave3_cross_slice_*.py"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
       - ".github/workflows/wave3-cross-slice-convergence.yml"
+      - "pyproject.toml"
   push:
     branches: [main]
 

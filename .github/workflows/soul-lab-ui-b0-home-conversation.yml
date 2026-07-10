@@ -1,20 +1,21 @@
 name: SOUL Lab UI-B0 real Home conversation
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "apps/soul-lab/**"
       - "relaylm/**"
       - "scripts/**"
-      - "docs/**"
       - ".github/workflows/soul-lab-ui-b0-home-conversation.yml"
+      - "pyproject.toml"
   pull_request:
     paths:
       - "apps/soul-lab/**"
       - "relaylm/**"
       - "scripts/**"
-      - "docs/**"
       - ".github/workflows/soul-lab-ui-b0-home-conversation.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

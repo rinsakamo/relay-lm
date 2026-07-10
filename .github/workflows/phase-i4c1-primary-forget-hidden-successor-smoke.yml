@@ -1,6 +1,7 @@
 name: Phase I-4C1 Primary Forget hidden successor
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "relaylm/relaymem_primary_forget.py"
@@ -14,8 +15,8 @@ on:
       - "relaylm/_relaymem_primary_lifecycle_page_writer.py"
       - "relaylm/_relaymem_primary_page_writer_common.py"
       - "scripts/relaylm_phase_i4c1_*"
-      - "docs/**"
       - ".github/workflows/phase-i4c1-primary-forget-hidden-successor-smoke.yml"
+      - "pyproject.toml"
   pull_request:
     paths:
       - "relaylm/relaymem_primary_forget.py"
@@ -29,8 +30,8 @@ on:
       - "relaylm/_relaymem_primary_lifecycle_page_writer.py"
       - "relaylm/_relaymem_primary_page_writer_common.py"
       - "scripts/relaylm_phase_i4c1_*"
-      - "docs/**"
       - ".github/workflows/phase-i4c1-primary-forget-hidden-successor-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

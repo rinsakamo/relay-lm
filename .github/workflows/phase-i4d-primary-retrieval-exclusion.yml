@@ -1,6 +1,7 @@
 name: Phase I-4D Primary retrieval exclusion
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "relaylm/**"
@@ -9,6 +10,7 @@ on:
       - "docs/architecture/phase_i4d_primary_retrieval_exclusion.md"
       - "docs/mvp/wave3/i4d_completion_report.md"
       - ".github/workflows/phase-i4d-primary-retrieval-exclusion.yml"
+      - "pyproject.toml"
   pull_request:
     paths:
       - "relaylm/**"
@@ -17,6 +19,7 @@ on:
       - "docs/architecture/phase_i4d_primary_retrieval_exclusion.md"
       - "docs/mvp/wave3/i4d_completion_report.md"
       - ".github/workflows/phase-i4d-primary-retrieval-exclusion.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

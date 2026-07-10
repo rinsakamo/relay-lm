@@ -1,6 +1,7 @@
 name: Documentation current boundary smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "README.md"

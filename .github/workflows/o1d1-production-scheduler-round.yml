@@ -1,6 +1,7 @@
 name: O1D1 production scheduler round
 
 on:
+  workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
@@ -20,6 +21,7 @@ on:
       - "docs/architecture/o1d1_production_scheduler_round.md"
       - "docs/mvp/wave3/o1d1_completion_report.md"
       - ".github/workflows/o1d1-production-scheduler-round.yml"
+      - "pyproject.toml"
   push:
     branches:
       - main
@@ -32,6 +34,7 @@ on:
       - "config.example.yaml"
       - "docs/architecture/o1d1_production_scheduler_round.md"
       - ".github/workflows/o1d1-production-scheduler-round.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read
