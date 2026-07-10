@@ -151,7 +151,7 @@ def check_client_instruction_boundary(errors: list[str]) -> None:
     text = read_text(path)
     required = (
         "trusted runtime-private typed-parse candidate validation",
-        "default-off, dry-run-first cache writer",
+        "default-off, dry-run-first independent cache writer",
         "no backend-response or frontend-metadata parse producer",
         "no semantic RelaySCN projection apply",
     )
