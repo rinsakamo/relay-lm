@@ -37,9 +37,12 @@ def _assert_content_free(value: object) -> None:
 # (`build_x(...)`), indirected through the stage runner
 # (`run_stage(node_timings, "x", build_x, ...)` / `run_stage(..., run_x_stage,
 # ...)`), or -- for RelayMEM's retrieval builder -- offloaded to a worker
-# thread via `asyncio.to_thread(_run_relaymem_retrieval_stage, ...)`. Tracking
-# every known spelling keeps this smoke valid across branch shapes instead of
-# hardcoding one call form.
+# thread via `asyncio.to_thread(_run_relaymem_retrieval_stage, ...)` (pre-PR-9
+# branch shapes) or via `run_stage(..., "relaymem_retrieval",
+# run_relaymem_retrieval_stage, ..., offload=True)` (PR-9 and later, where the
+# stage body lives in `relaylm.relaymem_retrieval`). Tracking every known
+# spelling keeps this smoke valid across branch shapes instead of hardcoding
+# one call form.
 _STAGE_IDENTIFIERS: dict[str, set[str]] = {
     "relayrel": {"build_relayrel_relationship_projection", "run_relayrel_stage"},
     "relayscn": {"build_relayscn_scene_policy_artifact", "run_relayscn_stage"},
@@ -49,14 +52,29 @@ _STAGE_IDENTIFIERS: dict[str, set[str]] = {
         "build_relayint_reference_repair_dry_run",
         "run_relayint_stage",
     },
-    "relaymem": {"build_relaymem_retrieval_dry_run_artifact", "_run_relaymem_retrieval_stage"},
+    "relaymem": {
+        "build_relaymem_retrieval_dry_run_artifact",
+        "_run_relaymem_retrieval_stage",
+        "run_relaymem_retrieval_stage",
+    },
 }
 _NAME_TO_STAGE: dict[str, str] = {
     name: stage for stage, names in _STAGE_IDENTIFIERS.items() for name in names
 }
-# Not one of the five RelayEMO-adjacent stages above (and never indirected by
-# any known branch shape), but still part of the original ordering guarantee.
-_EXTRA_DIRECT_CALLS: tuple[str, ...] = ("apply_relaymem_runtime_injection_phase",)
+# Not one of the five RelayEMO-adjacent stages above, but still part of the
+# original ordering guarantee. Keyed by a stable label (used in assertion
+# messages and the ordering check below); the value set tracks every known
+# spelling for that call site across branch shapes -- a direct call
+# (``apply_relaymem_runtime_injection_phase(...)``, pre-PR-9) or a
+# ``run_stage``-indirected one (``run_stage(..., run_relaymem_runtime_ctx_stage,
+# ...)``, PR-9 and later, where the phase call lives inside
+# ``relaylm.relayctx_repack.run_relaymem_runtime_ctx_stage``).
+_EXTRA_DIRECT_CALLS: dict[str, set[str]] = {
+    "apply_relaymem_runtime_injection_phase": {
+        "apply_relaymem_runtime_injection_phase",
+        "run_relaymem_runtime_ctx_stage",
+    },
+}
 
 
 def _handle_managed_chat_completion_body(tree: ast.AST) -> list[ast.stmt]:
@@ -145,19 +163,28 @@ def _stage_call_keyword_names(
 
 
 def _relaymem_retrieval_stage_helper_has_relayemo_kwarg() -> bool:
-    """Statically check the module-level RelayMEM retrieval helper's own body.
+    """Statically check the RelayMEM retrieval stage helper's own body.
 
     On branch shapes where RelayMEM's retrieval builder call has moved out of
-    ``handle_managed_chat_completion`` and into a module-level helper (offloaded
-    via ``asyncio.to_thread``), the anchoring call site inside the handler no
-    longer carries the retrieval builder's own keyword arguments. Inspect the
-    helper's source directly so the "RelayMEM must not receive a RelayEMO
-    artifact" guarantee survives that indirection too.
+    ``handle_managed_chat_completion`` and into a helper offloaded via
+    ``asyncio.to_thread`` / ``run_stage(..., offload=True, ...)``, the
+    anchoring call site inside the handler no longer carries the retrieval
+    builder's own keyword arguments. Inspect the helper's source directly so
+    the "RelayMEM must not receive a RelayEMO artifact" guarantee survives
+    that indirection too.
+
+    Checks both the pre-PR-9 location (a module-level helper named
+    ``_run_relaymem_retrieval_stage`` inside ``managed_chat_runtime``) and the
+    PR-9-and-later location (``run_relaymem_retrieval_stage`` in
+    ``relaylm.relaymem_retrieval``).
     """
 
     import relaylm.managed_chat_runtime as managed_chat_runtime
+    import relaylm.relaymem_retrieval as relaymem_retrieval
 
     helper = getattr(managed_chat_runtime, "_run_relaymem_retrieval_stage", None)
+    if helper is None:
+        helper = getattr(relaymem_retrieval, "run_relaymem_retrieval_stage", None)
     if helper is None:
         return False
     helper_tree = ast.parse(inspect.getsource(helper))
@@ -180,15 +207,14 @@ def _app_order_is_preserved(app_source: str) -> None:
     for stage, lines in stage_lines.items():
         _assert(lines, f"managed_chat_runtime.py must call the {stage} stage")
 
-    direct_lines: dict[str, list[int]] = {name: [] for name in _EXTRA_DIRECT_CALLS}
+    direct_lines: dict[str, list[int]] = {label: [] for label in _EXTRA_DIRECT_CALLS}
     for stmt in body_stmts:
         for node in ast.walk(stmt):
-            if (
-                isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Name)
-                and node.func.id in direct_lines
-            ):
-                direct_lines[node.func.id].append(node.lineno)
+            if not isinstance(node, ast.Name):
+                continue
+            for label, identifiers in _EXTRA_DIRECT_CALLS.items():
+                if node.id in identifiers:
+                    direct_lines[label].append(node.lineno)
     for func_name, lines in direct_lines.items():
         _assert(lines, f"managed_chat_runtime.py must call {func_name}")
 

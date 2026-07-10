@@ -90,16 +90,12 @@ from relaylm.relayint import (
     build_relayint_fast_path_dry_run,
     build_relayint_quick_clarification_apply_plan,
     build_relayint_quick_clarification_preflight,
-    build_relayint_reference_intent_artifact,
     build_relayint_request_compatibility_gate,
+    run_relayint_stage,
 )
 from relaylm.relayscn import run_relayscn_stage
 from relaylm.relayrel import run_relayrel_stage
-from relaylm.relaymem_retrieval import build_relaymem_retrieval_dry_run_artifact
-from relaylm.relaymem_primary_recall import (
-    apply_relaymem_primary_recall_scope,
-    resolve_relaymem_character_store_root,
-)
+from relaylm.relaymem_retrieval import run_relaymem_retrieval_stage
 from relaylm.relayrun import new_run_id
 from relaylm.relayrun_runtime_artifact import (
     _ManagedRuntimeArtifactContext,
@@ -109,7 +105,6 @@ from relaylm.relayrun_stream_timing import (
     emit_relayrun_stream_timing_trace,
     wrap_stream_with_relayrun_stream_timing,
 )
-from relaylm.relaymem_store import build_relaymem_store_diagnostics
 from relaylm.relayemo import run_relayemo_stage
 from relaylm.relayemo_response_marker import (
     apply_relayemo_marker_to_response as _apply_relayemo_marker_to_response,
@@ -129,8 +124,8 @@ from relaylm.pipeline_context import PipelineContext, replace_pipeline_forwarded
 from relaylm.pipeline_stage import _finalize_timing, _start_timing, run_stage
 from relaylm.relayctx_repack import (
     apply_relayctx_short_term_runtime_injection_phase,
-    apply_relaymem_runtime_injection_phase,
     apply_token_budget_truncation_phase,
+    run_relaymem_runtime_ctx_stage,
 )
 
 
@@ -159,64 +154,6 @@ def _compile_chat_payload_and_capture_context_blocks(
     )
     compiled_context_blocks = consume_compiled_context_blocks_runtime_private()
     return compiled_request, compiled_context_blocks
-
-
-def _run_relaymem_retrieval_stage(
-    *,
-    config: RelayLMConfig,
-    route: ResolvedRoute,
-    relaymem_configured_store_root: str | None,
-    character_id: str | None,
-    relayscn_scene_policy_artifact: dict[str, Any] | None,
-    relayint_intent_artifact: dict[str, Any] | None,
-    messages: list[dict[str, Any]],
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Run the RelayMEM retrieval dry-run artifact build on a worker thread.
-
-    Executed inside ``asyncio.to_thread``. Resolves the character-scoped store
-    root (``resolve_relaymem_character_store_root``, which stats the
-    filesystem) and scans and reads the RelayMEM store on disk
-    (``build_relaymem_store_diagnostics``, then the retrieval candidate
-    discovery and, when scope-eligible, the Primary MEM recall revalidation)
-    and returns the two plain result objects unchanged; none of these callees
-    touch ``PipelineContext`` or any ``ContextVar``.
-    """
-
-    relaymem_scoped_store_root = resolve_relaymem_character_store_root(
-        relaymem_configured_store_root,
-        character_id,
-    )
-    relaymem_store_diagnostics = build_relaymem_store_diagnostics(
-        root_path=relaymem_scoped_store_root,
-        store_enabled=config.memory.store_enabled,
-        retrieval_dry_run_only=config.memory.retrieval_dry_run_only,
-    )
-    relaymem_retrieval_artifact = build_relaymem_retrieval_dry_run_artifact(
-        relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
-        relayint_intent_artifact=relayint_intent_artifact,
-        messages=messages,
-        token_budget=_resolve_relaymem_retrieval_token_budget(config),
-        store_diagnostics=relaymem_store_diagnostics,
-        max_candidates=config.memory.candidate_limit,
-        ctx_block_apply_enabled=config.memory.ctx_block_apply_enabled,
-        snippet_extraction_enabled=config.memory.snippet_extraction_enabled,
-        snippet_dry_run_only=config.memory.snippet_dry_run_only,
-        snippet_apply_enabled=config.memory.snippet_apply_enabled,
-        snippet_budget=config.memory.snippet_budget,
-        max_snippet_chars=config.memory.max_snippet_chars,
-        max_snippet_candidates=config.memory.max_snippet_candidates,
-    )
-    if _relaymem_primary_recall_scope_allowed(relaymem_store_diagnostics):
-        relaymem_retrieval_artifact = apply_relaymem_primary_recall_scope(
-            relaymem_retrieval_artifact,
-            scoped_store_root=relaymem_scoped_store_root,
-            expected_namespace=route.memory_namespace,
-            max_snippet_chars=config.memory.max_snippet_chars,
-            max_snippet_candidates=config.memory.max_snippet_candidates,
-            snippet_budget=config.memory.snippet_budget,
-            chars_per_token=config.memory.chars_per_token,
-        )
-    return relaymem_store_diagnostics, relaymem_retrieval_artifact
 
 
 async def handle_managed_chat_completion(
@@ -334,13 +271,14 @@ async def handle_managed_chat_completion(
             messages=_extract_trace_messages(forwarded_payload),
         )
 
-    relayint_started_at, relayint_start_monotonic = _start_timing()
-    relayint_intent_artifact = build_relayint_reference_intent_artifact(
-        relayscn_artifact=relayscn_scene_policy_artifact,
+    relayint_intent_artifact = await run_stage(
+        node_timings,
+        "relayint",
+        run_relayint_stage,
+        relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
         messages=_extract_trace_messages(payload),
         ctx_hints=_extract_ctx_hints(payload),
     )
-    node_timings["relayint"] = _finalize_timing(relayint_started_at, relayint_start_monotonic)
     relayint_fast_path_dry_run = build_relayint_fast_path_dry_run(
         messages=_extract_trace_messages(payload),
         ctx_hints=_extract_ctx_hints(payload),
@@ -373,35 +311,30 @@ async def handle_managed_chat_completion(
         )
     )
 
-    relaymem_configured_store_root = config.memory.root_path
-
-    relaymem_retrieval_started_at, relaymem_retrieval_start_monotonic = _start_timing()
-    relaymem_store_diagnostics, relaymem_retrieval_artifact = await asyncio.to_thread(
-        _run_relaymem_retrieval_stage,
+    relaymem_store_diagnostics, relaymem_retrieval_artifact = await run_stage(
+        node_timings,
+        "relaymem_retrieval",
+        run_relaymem_retrieval_stage,
         config=config,
         route=route,
-        relaymem_configured_store_root=relaymem_configured_store_root,
-        character_id=route.character_id,
+        relaymem_configured_store_root=config.memory.root_path,
         relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
         relayint_intent_artifact=relayint_intent_artifact,
         messages=_extract_trace_messages(payload),
+        offload=True,
     )
-    node_timings["relaymem_retrieval"] = _finalize_timing(
-        relaymem_retrieval_started_at, relaymem_retrieval_start_monotonic
-    )
-    relaymem_runtime_ctx_started_at, relaymem_runtime_ctx_start_monotonic = _start_timing()
     (
         forwarded_payload,
         runtime_ctx_injection_result,
         runtime_snippet_injection_result,
-    ) = apply_relaymem_runtime_injection_phase(
+    ) = await run_stage(
+        node_timings,
+        "relaymem_runtime_ctx",
+        run_relaymem_runtime_ctx_stage,
         config=config,
         pipeline_context=pipeline_context,
         relaymem_retrieval_artifact=relaymem_retrieval_artifact,
         compiled_payload=compiled_request.payload,
-    )
-    node_timings["relaymem_runtime_ctx"] = _finalize_timing(
-        relaymem_runtime_ctx_started_at, relaymem_runtime_ctx_start_monotonic
     )
     relaymem_primary_recall_projection = relaymem_retrieval_artifact.get(
         "primary_recall_projection"
@@ -963,32 +896,6 @@ def _estimate_text_tokens(text: str, chars_per_token: int) -> int:
         text,
         chars_per_token=max(1, int(chars_per_token)),
     ).estimated_tokens
-
-
-def _relaymem_primary_recall_scope_allowed(
-    store_diagnostics: Mapping[str, Any] | None,
-) -> bool:
-    if not isinstance(store_diagnostics, Mapping):
-        return True
-    compatibility = store_diagnostics.get("layout_compatibility")
-    if (
-        store_diagnostics.get("root_present") is True
-        and isinstance(compatibility, Mapping)
-        and compatibility.get("target_primary_secondary_present") is False
-    ):
-        return False
-    return True
-
-
-def _resolve_relaymem_retrieval_token_budget(config: RelayLMConfig) -> int | None:
-    if config.memory.token_budget is not None:
-        return config.memory.token_budget
-    if (
-        isinstance(config.memory.token_budget_hint, int)
-        and config.memory.token_budget_hint > 0
-    ):
-        return config.memory.token_budget_hint
-    return None
 
 
 def _extract_ctx_hints(payload: Mapping[str, Any]) -> dict[str, Any]:

@@ -103,6 +103,29 @@ def build_relayint_reference_repair_dry_run(*, relayscn_artifact: Mapping[str, A
     return build_relayint_reference_intent_artifact(relayscn_artifact=relayscn_artifact, messages=messages, ctx_hints=ctx_hints)
 
 
+def run_relayint_stage(
+    *,
+    relayscn_scene_policy_artifact: Mapping[str, Any] | None,
+    messages: Sequence[Mapping[str, Any]] | None = None,
+    ctx_hints: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Stage entry point for the RelayINT stage.
+
+    Thin wrapper around ``build_relayint_reference_intent_artifact`` so
+    ``handle_managed_chat_completion`` can invoke this stage through
+    ``run_stage`` with a stage-named entry point (matching the
+    ``run_<component>_stage`` convention used by the other pipeline stages),
+    while keeping ``build_relayint_reference_intent_artifact`` itself as the
+    stable public builder other callers (scripts, tests) already depend on.
+    """
+
+    return build_relayint_reference_intent_artifact(
+        relayscn_artifact=relayscn_scene_policy_artifact,
+        messages=messages,
+        ctx_hints=ctx_hints,
+    )
+
+
 def build_relayint_fast_path_dry_run(*, messages: Sequence[Mapping[str, Any]], ctx_hints: Mapping[str, Any] | None = None, enabled: bool = False, high_confidence_threshold: float = 0.80, low_confidence_threshold: float = 0.55) -> dict[str, Any] | None:
     if not enabled:
         return None

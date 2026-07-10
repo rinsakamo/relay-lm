@@ -101,9 +101,14 @@ def install_lab_observation_runtime_hook() -> None:
     with _HOOK_LOCK:
         if _HOOK_INSTALLED:
             return
-        from . import managed_chat_runtime as core_app
+        # The Repack phase function moved from managed_chat_runtime to
+        # relayctx_repack when the stage body was extracted; the stage
+        # wrapper (run_relaymem_runtime_ctx_stage) resolves it as a
+        # relayctx_repack module global, so this module attribute is the
+        # canonical interception seam.
+        from . import relayctx_repack as repack_seam
 
-        original = core_app.apply_relaymem_runtime_injection_phase
+        original = repack_seam.apply_relaymem_runtime_injection_phase
         if getattr(original, "_relaylm_lab_observation_hook", False) is True:
             _HOOK_INSTALLED = True
             return
@@ -119,7 +124,7 @@ def install_lab_observation_runtime_hook() -> None:
             return result
 
         setattr(observed_injection, "_relaylm_lab_observation_hook", True)
-        core_app.apply_relaymem_runtime_injection_phase = observed_injection
+        repack_seam.apply_relaymem_runtime_injection_phase = observed_injection
         _HOOK_INSTALLED = True
 
 
