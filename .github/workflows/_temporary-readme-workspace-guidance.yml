@@ -1,0 +1,45 @@
+name: Temporary README workspace guidance patch
+
+on:
+  push:
+    paths:
+      - ".github/workflows/_temporary-readme-workspace-guidance.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.ref_name == 'agent/docs-user-ops-guidance'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/docs-user-ops-guidance
+      - name: Add Character Workspace quick-start guidance
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          en = Path('README.md')
+          en_text = en.read_text(encoding='utf-8')
+          en_anchor = '## 🧰 Troubleshooting\n'
+          en_insert = '''## 🧬 Open the Character Workspace UI\n\nThe `relaylm --config config.yaml` command starts RelayLM and its loopback management API, but it does not serve the Character Workspace production bundle. For the current local development UI, start Vite in a second terminal:\n\n```bash\ncd apps/soul-lab\nnpm install --no-audit --no-fund\nnpm run dev\n```\n\nOpen:\n\n```text\nhttp://127.0.0.1:5173/lab/\n```\n\nThe zero-character state opens Create / Import. Character creation and workspace commit require explicit approval, and a committed workspace is not made active automatically. The Vite server is a loopback development surface, not a supported public or Cloudflare Tunnel origin; production bundle serving remains a separate implementation boundary. See the [Character Workspace UI guide](apps/soul-lab/README.md) and [CW-A5 creation contract](docs/architecture/cw_a5_character_creation_templates_showcase_import.md).\n\n'''
+          if en_text.count(en_anchor) != 1:
+              raise SystemExit('unexpected English troubleshooting anchor count')
+          en.write_text(en_text.replace(en_anchor, en_insert + en_anchor), encoding='utf-8')
+
+          ja = Path('README_ja.md')
+          ja_text = ja.read_text(encoding='utf-8')
+          ja_anchor = '## 🧰 トラブルシューティング\n'
+          ja_insert = '''## 🧬 Character Workspace UIを開く\n\n`relaylm --config config.yaml` はRelayLM本体とloopback管理APIを起動しますが、Character Workspaceのproduction bundleは配信しません。現在のローカル開発UIは、別のターミナルでViteを起動します。\n\n```bash\ncd apps/soul-lab\nnpm install --no-audit --no-fund\nnpm run dev\n```\n\n次を開きます。\n\n```text\nhttp://127.0.0.1:5173/lab/\n```\n\nキャラクターがない場合はCreate / Importが開きます。キャラクター作成とworkspace commitには明示的な承認が必要で、commit後もactive characterは自動選択されません。Vite serverはloopback向け開発surfaceであり、public公開やCloudflare Tunnelの接続先としてサポートされるものではありません。production bundle配信は別の実装境界です。詳細は [Character Workspace UIガイド](apps/soul-lab/README.md) と [CW-A5作成契約](docs/architecture/cw_a5_character_creation_templates_showcase_import.md) を参照してください。\n\n'''
+          if ja_text.count(ja_anchor) != 1:
+              raise SystemExit('unexpected Japanese troubleshooting anchor count')
+          ja.write_text(ja_text.replace(ja_anchor, ja_insert + ja_anchor), encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md README_ja.md
+          git commit -m "docs: add Character Workspace quick-start path"
+          git push origin HEAD:agent/docs-user-ops-guidance
