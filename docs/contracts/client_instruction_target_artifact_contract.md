@@ -1,22 +1,41 @@
+---
+relaylm_doc_type: contract
+relaylm_authority: client_instruction_artifact_current_target_contract
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: client_instruction
+relaylm_update_trigger:
+  - client instruction cache schema changes
+  - typed parse producer or validator changes
+  - cache writer posture changes
+  - RelaySCN projection apply changes
+  - control-envelope producer or unpack behavior changes
+relaylm_not_authoritative_for:
+  - repository-wide current implementation status
+  - MVP dependency sequencing
+  - RelaySOUL mutation authority
+relaylm_current_status_source: ../PROJECT_STATUS.md
+---
 # Client Instruction Artifact Current / Target Contract
 
 ## Status
 
-This document preserves the detailed artifact shapes for client-instruction interpretation, validation, cache storage, and future RelaySCN projection.
+This document preserves the detailed artifact shapes for client-instruction interpretation, validation, cache storage, and future semantic RelaySCN projection.
 
 The boundaries are mixed and must be read separately:
 
-- **Current implemented:** read-only validation of `relaylm.client_instruction_cache.v0` entries through `relaylm.client_instruction_cache_lookup.resolve_client_instruction_cache_lookup` and request-local runtime lookup wiring.
-- **Target only:** first-pass control-envelope production, typed parse validation, cache-entry write, allowlisted RelaySCN projection apply, retry execution, and Stream Unpack.
+- **Current implemented:** strict read-only lookup validation of `relaylm.client_instruction_cache.v0`; content-free cache-hit projection diagnostics; typed-parse candidate validation; one-shot trusted runtime-private typed-parse source consumption; and default-off, dry-run-first cache-writer planning/apply through the C5b/C5c gates.
+- **Target only:** producing typed parse candidates from backend visible responses or arbitrary frontend metadata, extracting a first-pass control envelope, semantic RelaySCN projection apply, parser-versioned lookup/write compatibility, bounded parse retry execution, and end-to-end control-envelope consumption.
 
 Current behavior and active sequencing remain authoritative in:
 
 - [Client Instruction Authority Contract](../architecture/client_instruction_authority_contract.md)
 - [Phase 5-C4a Implementation Handoff](../architecture/phase5c4a_instruction_bearing_managed_apply_handoff.md)
+- [Phase 5-C4b Cache-Hit RelaySCN Projection Handoff](../architecture/phase5c4b_cache_hit_relayscn_projection_handoff.md)
+- [Phase 5-C5c Runtime Cache-Writer Boundary Handoff](../architecture/phase5c5c_runtime_cache_writer_boundary_handoff.md)
 - [Current / Target / Migration Guide](../architecture/current_target_migration_guide.md)
-- [Pipeline Implementation Plan](../architecture/pipeline_implementation_plan.md)
 
-Phase 5-C4a does not implement the target producer/apply artifacts below. Cache-hit RelaySCN projection belongs to Phase 5-C4b, typed parse/cache write to Phase 5-C5, and streaming control suppression to Phase 5.5.
+Phase 5-C4a does not implement the target producer/apply artifacts below. C4b adds validated allowlisted cache-hit projection diagnostics but not semantic RelaySCN apply. C5b/C5c implement typed-parse validation and an independent default-off cache writer only when an in-process trusted runtime-private producer supplies the candidate. Phase 5.5 implements bounded stream-safety and internal-control suppression helpers, but no current backend-response control-envelope producer feeds the cache writer.
 
 ## Authority invariant
 
@@ -65,7 +84,7 @@ A future cache-miss response may contain visible text plus an internal separatel
 </relaylm_control>
 ```
 
-This is a design example. The implemented producer must select and publish the exact schema/version before parse apply or cache write is enabled.
+This is a design example. No current backend-response parser or control-envelope producer emits this artifact. A future producer must select and publish the exact schema/version before backend-response-derived parse apply or cache write is enabled.
 
 ## Target parse schema
 
@@ -114,9 +133,9 @@ Validation must reject or strip:
 
 Durable persona entries remain candidates only. They are not RelaySOUL patches and cannot be applied by the parser or cache writer.
 
-## Current read-only cache-entry acceptance schema
+## Current cache-entry acceptance and writer boundary
 
-Current code already validates the following entry schema without writing or applying it:
+Current code validates the following entry schema for read-only lookup. The same exact v0 entry shape is also the only shape the default-off C5b/C5c writer may persist after a trusted runtime-private typed-parse candidate passes its gates.
 
 ```text
 schema_version:
@@ -129,15 +148,26 @@ runtime reader/wiring:
   relaylm.client_instruction_cache_reader.read_client_instruction_cache_candidate
   relaylm.client_instruction_cache_lookup_runtime
 
+current typed-parse/writer wiring:
+  trusted in-process runtime-private candidate only
+  one-shot ContextVar consumption
+  typed candidate validation
+  default-off cache-write gate
+  dry-run-only by default
+  C5b writer apply only when explicitly enabled and all gates pass
+
 current effects:
-  hit / miss / blocked request-local result
+  hit / miss / blocked request-local lookup result
   typed runtime-private parsed entry on hit
-  content-free diagnostics projection
+  content-free projection diagnostics
+  content-free typed-parse and cache-write node results
+  optional bounded cache entry write when explicitly enabled
 
 not current:
-  cache writer
-  RelaySCN projection apply
-  backend prompt injection
+  backend-response or arbitrary frontend-metadata typed-parse producer
+  semantic RelaySCN projection apply
+  backend prompt injection from an opaque cache entry
+  parser-versioned lookup/write compatibility
 ```
 
 An entry accepted by the current validator has this exact top-level shape:
@@ -177,7 +207,7 @@ An entry accepted by the current validator has this exact top-level shape:
 
 The two SHA-256 fields are exactly 64 lowercase hexadecimal characters and remain runtime-private. The example values are placeholders with the required lexical shape, not real cache identities.
 
-A future Phase 5-C5 writer must either:
+The current C5b/C5c writer must either:
 
 1. emit this exact v0 shape so the current validator accepts it, or
 2. introduce a new schema version and update reader, validator, runtime wiring, compatibility handling, and smoke coverage together.
@@ -186,7 +216,21 @@ It must not change fields while retaining `relaylm.client_instruction_cache.v0`.
 
 The cache is an interpretation cache, not a transcript, prompt archive, memory store, or persona store. Only allowlisted normalized RelaySCN fields and bounded metadata may be present. Raw instruction, raw response, arbitrary nested runtime artifacts, and durable persona bodies are forbidden.
 
-## Target validation and write sequence
+## Current trusted-source validation and write sequence
+
+```text
+trusted in-process runtime-private typed-parse candidate
+  -> one-shot source consumption and clearing
+  -> typed schema validation
+  -> route/character/version/provenance validation
+  -> independent default-off cache-write gate
+  -> dry-run result by default
+  -> bounded v0 entry write only when apply is explicitly enabled
+```
+
+Ordinary frontend payload metadata and backend visible response text are not accepted as typed-parse source material. Missing, stale, invalid, or parser-version-incompatible candidates fail closed without writing.
+
+## Target backend-response validation and write sequence
 
 ```text
 cache miss
@@ -222,7 +266,7 @@ Suggested failure record:
 
 A bounded retry policy should allow at most a small defined number of later first-pass attempts. Repeated failure keeps the instruction non-authoritative and uses only an existing safe scene/default or explicit setup/repair path.
 
-## Target cache-hit projection
+## Target cache-hit semantic projection
 
 A cache hit must not inject an opaque cache entry. It must first produce an allowlisted projection:
 
@@ -236,7 +280,7 @@ validated relaylm.client_instruction_cache.v0 entry
 
 The projection should expose only the normalized fields consumed by RelaySCN. Cache metadata, hashes, paths, parser records, and durable candidates do not enter backend context.
 
-The current read-only lookup result does not itself implement this projection or apply it.
+Current C4b wiring constructs a content-free projection diagnostic from validated cache hits. It does not semantically apply that projection to RelaySCN or inject it into backend context.
 
 ## Target non-stream and stream handling
 
@@ -261,6 +305,8 @@ The Stream Unpack implementation must:
 - preserve already emitted valid visible text if the envelope is malformed,
 - keep internal content out of user output, captions, TTS, and avatar speech,
 - never write cache from an incomplete or unvalidated envelope.
+
+Bounded stream-safety and internal-control suppression helpers are current, but no current producer emits a cache-writing client-instruction control envelope from backend output.
 
 ## Design-only configuration shape
 
@@ -288,48 +334,51 @@ Current operators must use only fields present in `relaylm/config.py`, `docs/con
 
 ## Required implementation smoke
 
-Current read-only regressions must continue to prove:
+Current regressions must continue to prove:
 
 1. strict v0 entry shape and unknown-key rejection,
 2. exact hash, route, character, schema, policy, and parser scope matching,
 3. malformed, oversized, symlinked, or out-of-root entries fail closed,
 4. hit/miss/blocked diagnostics remain content-free,
-5. lookup does not write cache or apply scene state.
+5. read-only lookup does not itself write cache or apply scene state,
+6. missing or disabled runtime-private source is consumed safely and does not write,
+7. trusted runtime-private candidate validation fails closed,
+8. dry-run-only writer planning produces no filesystem mutation,
+9. explicitly enabled writer apply emits only the accepted bounded v0 shape,
+10. raw instruction and response text never enter cache,
+11. diagnostics contain no prompt, response, scene values, hashes, or paths.
 
-When the corresponding target phases are implemented, deterministic smoke must additionally prove:
+When the target producer and semantic projection phases are implemented, deterministic smoke must additionally prove:
 
-6. a cache miss emits at most one bounded evidence block,
-7. visible text and internal control content are separated,
-8. malformed artifacts do not block a valid visible response,
-9. malformed artifacts do not write cache,
-10. valid artifacts are allowlist validated before write,
-11. raw instruction and response text never enter cache,
-12. route/character/schema/policy/parser changes invalidate scope,
-13. cache hit injects only the allowlisted RelaySCN projection,
-14. cache hit suppresses repeated instruction evidence,
-15. durable candidates never mutate RelaySOUL,
-16. content-free diagnostics contain no prompt, response, scene values, hashes, or paths,
-17. streaming markers and internal content never reach user/TTS output.
+12. a cache miss emits at most one bounded evidence block,
+13. visible text and internal control content are separated,
+14. malformed artifacts do not block a valid visible response,
+15. malformed artifacts do not write cache,
+16. valid artifacts are allowlist validated before write,
+17. cache hit semantically applies only the allowlisted RelaySCN projection,
+18. cache hit suppresses repeated instruction evidence,
+19. durable candidates never mutate RelaySOUL,
+20. streaming markers and internal content never reach user/TTS output.
 
 ## Final boundary
 
 ```text
 Current
-  validate relaylm.client_instruction_cache.v0 entries read-only
-  no writer
-  no RelaySCN projection apply
+  strict relaylm.client_instruction_cache.v0 read-only lookup validation
+  content-free cache-hit projection diagnostics
+  trusted runtime-private typed-parse candidate validation
+  default-off, dry-run-first independent cache writer
+  bounded writer apply only when explicitly enabled and all gates pass
+  bounded stream-safety/internal-control suppression helpers
+  no backend-response or frontend-metadata parse producer
+  no semantic RelaySCN projection apply
+  no parser-versioned lookup/write compatibility
 
-Phase 5-C4a
-  bounded evidence for managed-request correctness
-
-Phase 5-C4b
-  validated allowlisted cache-hit RelaySCN projection
-
-Phase 5-C5
-  separately versioned parse validation and independent cache write
-
-Phase 5.5
-  streaming internal-control suppression
+Target
+  backend-response control-envelope producer and extraction
+  semantic RelaySCN projection apply
+  bounded parse retry and parser-versioned compatibility
+  end-to-end non-stream/stream producer-to-consumer flow
 ```
 
-No target producer or apply behavior becomes current merely because an example exists in this document.
+No target producer or semantic apply behavior becomes current merely because an example exists in this document.
