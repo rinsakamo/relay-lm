@@ -49,6 +49,7 @@ jobs:
           replacements = {
               'pr7_wave_a_tip="${pr7_commits[5]}"': 'pr7_wave_a_tip="${pr7_commits[6]}"',
               'git rm "$WORKFLOW_PATH" "$SCRIPT_PATH"': 'git rm -f "$WORKFLOW_PATH" "$SCRIPT_PATH"',
+              'pr9:scripts/relaylm_acg5_relayemo_scene_cleanup_smoke.py)': 'pr9:relaylm/managed_chat_runtime.py|pr9:scripts/relaylm_acg5_relayemo_scene_cleanup_smoke.py)',
           }
           for old, new in replacements.items():
               if old not in text:
