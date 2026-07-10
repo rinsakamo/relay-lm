@@ -1,0 +1,47 @@
+name: Temporary release assessment wording fix
+
+on:
+  push:
+    paths:
+      - ".github/workflows/_temporary-release-assessment-wording.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.ref_name == 'agent/docs-evidence-index'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/docs-evidence-index
+      - name: Align primary authority wording
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path('docs/PROJECT_STATUS.md'): (
+                  'The v0.1 release-readiness receipt is [v0.1 Release Readiness](mvp/v0.1_release_readiness.md).',
+                  'The current v0.1 readiness assessment is [v0.1 Release Readiness Assessment](mvp/v0.1_release_readiness.md); final main-HEAD validation and a frozen tag receipt remain pending.'
+              ),
+              Path('docs/architecture/project_execution_plan.md'): (
+                  'The v0.1 release-readiness receipt is [v0.1 Release Readiness](../mvp/v0.1_release_readiness.md).',
+                  'The current v0.1 readiness assessment is [v0.1 Release Readiness Assessment](../mvp/v0.1_release_readiness.md); it is not the final tag receipt while main-HEAD validation remains pending.'
+              ),
+          }
+
+          for path, (old, new) in replacements.items():
+              text = path.read_text(encoding='utf-8')
+              if text.count(old) != 1:
+                  raise SystemExit(f'unexpected wording anchor count in {path}')
+              path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+          git rm .github/workflows/_temporary-release-assessment-wording.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/PROJECT_STATUS.md docs/architecture/project_execution_plan.md
+          git commit -m "docs: align primary release assessment wording"
+          git push origin HEAD:agent/docs-evidence-index
