@@ -63,7 +63,6 @@ jobs:
             python scripts/relaylm_ci_consolidated_smoke.py changed --workflow relaymem --all >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
           base="$PUSH_BEFORE_SHA"
           if [ "$EVENT_NAME" = "pull_request" ]; then
             base="$PR_BASE_SHA"
