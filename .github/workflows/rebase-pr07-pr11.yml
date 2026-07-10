@@ -7,6 +7,12 @@ on:
       - main
     paths:
       - .github/workflows/rebase-pr07-pr11.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/rebase-pr07-pr11.yml
+      - .github/scripts/rebase-pr07-pr11.sh
 
 permissions:
   contents: write
