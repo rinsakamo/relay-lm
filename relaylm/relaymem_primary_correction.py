@@ -7,7 +7,6 @@ index/log convergence remain owned by the existing RelayMEM boundaries.
 from __future__ import annotations
 
 import base64
-import fcntl
 import hmac
 import json
 import os

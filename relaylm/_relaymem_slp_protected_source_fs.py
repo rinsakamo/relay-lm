@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import ctypes
 import errno
-import fcntl
 import os
 import secrets
 import stat
 from pathlib import Path
 
+from .portable_lock import PortableLockUnavailable, acquire_portable_lock, release_portable_lock
 from ._relaymem_slp_protected_source_artifact import (
     CLEANUP_MARKER_FIELDS,
     CLEANUP_MARKER_SCHEMA,
@@ -197,11 +197,10 @@ def remove_cleanup_marker(root_fd: int, artifact_name: str) -> None:
 
 
 def acquire_lock(root_fd: int, *, exclusive: bool) -> str | None:
+    mode = "exclusive" if exclusive else "shared"
     try:
-        fcntl.flock(
-            root_fd, (fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH) | fcntl.LOCK_NB
-        )
-    except BlockingIOError:
+        acquire_portable_lock(root_fd, mode=mode, blocking=False)
+    except PortableLockUnavailable:
         return "protected_source_store_lock_busy"
     except OSError:
         return "protected_source_store_lock_failed"
@@ -210,7 +209,7 @@ def acquire_lock(root_fd: int, *, exclusive: bool) -> str | None:
 
 def release_lock(root_fd: int) -> None:
     try:
-        fcntl.flock(root_fd, fcntl.LOCK_UN)
+        release_portable_lock(root_fd)
     except OSError:
         pass
 

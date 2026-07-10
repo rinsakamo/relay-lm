@@ -6,11 +6,7 @@ from collections.abc import Mapping
 from pathlib import PurePosixPath
 from typing import Any
 
-try:
-    import fcntl
-except ImportError:  # pragma: no cover - POSIX-only audit boundary
-    fcntl = None  # type: ignore[assignment]
-
+from .portable_lock import acquire_portable_lock, release_portable_lock
 from ._relaymem_primary_index_log_reconciliation_io import (
     _open_directory_parts,
     _open_root_directory,
@@ -33,9 +29,6 @@ def inspect_reconciliation_recovery_store(
     *, root_path: str | None, receipt: Mapping[str, Any]
 ) -> dict[str, Any]:
     state = empty_recovery_store_state()
-    if fcntl is None:
-        state["blocked_reasons"] = ["primary_reconciliation_recovery_platform_unsupported"]
-        return state
     root = _open_root_directory(root_path)
     if root.get("valid") is not True:
         state["blocked_reasons"] = list(root.get("blocked_reasons", []))
@@ -51,9 +44,9 @@ def inspect_reconciliation_recovery_store(
             return state
         mem_fd = mem["fd"]
         try:
-            fcntl.flock(mem_fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            acquire_portable_lock(mem_fd, mode="shared", blocking=False)
             locked = True
-        except (BlockingIOError, OSError):
+        except OSError:
             state["blocked_reasons"] = ["primary_reconciliation_recovery_lock_unavailable"]
             return state
 
@@ -80,7 +73,7 @@ def inspect_reconciliation_recovery_store(
     finally:
         if locked and mem_fd >= 0:
             try:
-                fcntl.flock(mem_fd, fcntl.LOCK_UN)
+                release_portable_lock(mem_fd)
             except OSError:
                 pass
         if page_parent_fd >= 0:

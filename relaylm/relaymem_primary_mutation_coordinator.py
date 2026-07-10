@@ -6,7 +6,6 @@ closed on unknown, unsafe, ambiguous, or impossible operation evidence.
 """
 from __future__ import annotations
 
-import fcntl
 import json
 import stat
 from contextlib import contextmanager
@@ -15,6 +14,7 @@ from pathlib import Path
 from typing import Any, Iterator, Mapping
 
 from ._relaymem_primary_page_writer_common import is_sha256
+from .portable_lock import portable_lock
 from . import _relaymem_primary_current_state_impl as _current_impl
 from .relaymem_primary_current_state import (
     CORRECTION_PREPARED_SCHEMA,
@@ -117,11 +117,8 @@ def primary_memory_mutation_lock(
         raise PrimaryMutationCoordinatorError("target_corrupt")
     try:
         with lock_path.open("a+b") as handle:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
-            try:
+            with portable_lock(handle, mode="exclusive", blocking=True):
                 yield
-            finally:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
     except PrimaryMutationCoordinatorError:
         raise
     except OSError as exc:
