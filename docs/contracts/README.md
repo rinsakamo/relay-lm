@@ -1,3 +1,19 @@
+---
+relaylm_doc_type: documentation_index
+relaylm_authority: contract_documentation_entrypoint
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: contracts
+relaylm_update_trigger:
+  - contract entry points change
+  - current contract implementation posture changes
+  - schema ownership changes
+relaylm_not_authoritative_for:
+  - repository-wide current runtime behavior
+  - MVP dependency sequencing
+  - historical implementation evidence
+relaylm_current_status_source: ../PROJECT_STATUS.md
+---
 # RelayLM Contract Docs
 
 This directory collects RelayLM contract, artifact, schema, approval, and gate documentation.
@@ -13,8 +29,9 @@ Before treating a proposed schema as the current wire contract, use the [Current
   - related design: [Runtime Compile Gate Design](../architecture/runtime_compile_gate_design.md)
 - [Context compiler contract](context_compiler_contract.md)
 - [Client instruction artifact current / target contract](client_instruction_target_artifact_contract.md)
-  - current read-only `relaylm.client_instruction_cache.v0` acceptance shape
-  - target-only parse producer, cache writer, RelaySCN projection, retry, and Stream Unpack behavior
+  - current strict read-only `relaylm.client_instruction_cache.v0` lookup validation
+  - current trusted runtime-private typed-parse validation and default-off, dry-run-first cache-writer planning/apply
+  - target backend-response control-envelope producer, semantic RelaySCN projection apply, retry, and parser-versioned compatibility
   - related authority: [Client Instruction Authority Contract](../architecture/client_instruction_authority_contract.md)
 - [RelayRUN recovery response generator current / target boundary](relayrun_recovery_response_generator_current_target.md)
 - [RelayRUN recovery response generator contract](relayrun_recovery_response_generator_contract.md)
@@ -27,7 +44,7 @@ Current compile behavior has two implemented surfaces:
 1. `relaylm.compile_gate.CompileApplyDecision`, which decides whether the current profile-compiler result is applied.
 2. The content-free `mvp-ctx-apply-0` artifact built by `relaylm.diagnostics.build_compile_decision_dry_run`, which records the current request-path `COMPILE_APPLY` or `COMPILE_DRY_RUN` diagnostics state.
 
-Proposed v1 plan/result/decision projections, route-authority typing, forwarded-payload-source typing, managed fallback, and complete `BLOCKED` behavior remain target forms. Client-instruction cache-entry validation is implemented read-only, but no current producer/write or RelaySCN projection apply exists. The diagnostics-only recovery-response artifact is implemented, but generator execution and visible recovery output are not.
+Proposed runtime-compile v1 plan/result/decision projections, route-authority typing, forwarded-payload-source typing, managed fallback, and complete `BLOCKED` behavior remain target forms. Client-instruction lookup validation, content-free cache-hit projection diagnostics, trusted runtime-private typed-parse validation, and the default-off/dry-run-first C5b/C5c cache-writer path are implemented. Backend-response parsing, arbitrary frontend-metadata trust, semantic RelaySCN projection apply, and parser-versioned lookup/write compatibility are not implemented. The diagnostics-only recovery-response artifact is implemented, but generator execution and visible recovery output are not.
 
 ## RelaySOUL contracts
 
@@ -40,7 +57,7 @@ Proposed v1 plan/result/decision projections, route-authority typing, forwarded-
 - [RelaySOUL explicit approval artifact contract](relaysoul_explicit_approval_artifact_contract.md)
 - [RelaySOUL preflight lineage freshness policy](relaysoul_preflight_lineage_freshness_policy.md)
 
-The `mvp-soul-0` five-file allowlist is current compatibility behavior, not the target three-file RelaySOUL ownership boundary. Actual apply, rollback, and persistence execution remain disabled.
+The `mvp-soul-0` five-file allowlist is current compatibility behavior, not the target file-first RelaySOUL ownership boundary. Actual apply, rollback, and persistence execution remain disabled.
 
 ## Placement rule
 
