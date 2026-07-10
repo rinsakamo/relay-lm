@@ -84,7 +84,7 @@ class _ClosePropagatingAsyncIterator:
     just-opened backend stream exactly this way. This adapter-level wrapper
     keeps the returned iterator closeable while also closing the original
     backend response iterator directly, so the shared AsyncClient never retains
-    an unchecked-out backend response across requests.
+    a checked-out backend response across requests.
     """
 
     def __init__(
@@ -107,7 +107,7 @@ class _ClosePropagatingAsyncIterator:
         try:
             return await self._aiter.__anext__()
         except StopAsyncIteration:
-            self._closed = True
+            await self.aclose()
             raise
         except BaseException:
             await self.aclose()
@@ -117,9 +117,15 @@ class _ClosePropagatingAsyncIterator:
         if self._closed:
             return
         self._closed = True
-        await _close_async_iterator(self._body_iter)
-        for close_target in self._close_targets:
-            await _close_async_iterator(close_target)
+        first_error: BaseException | None = None
+        for close_target in (self._body_iter, *self._close_targets):
+            try:
+                await _close_async_iterator(close_target)
+            except BaseException as exc:
+                if first_error is None:
+                    first_error = exc
+        if first_error is not None:
+            raise first_error
 
 
 async def _close_async_iterator(iterator: object) -> None:
