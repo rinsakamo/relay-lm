@@ -1,0 +1,1072 @@
+# Consolidated RelayMEM / RelaySLP / scheduler / durable-finalization smoke fleet.
+#
+# <old-workflow-file> -> job <job-name>
+# relaymem-primary-index-log-apply-smoke.yml -> job primary-memory
+# relaymem-primary-index-log-reconciliation-smoke.yml -> job primary-memory
+# relaymem-primary-index-log-recovery-audit-smoke.yml -> job primary-memory
+# relaymem-primary-page-writer-smoke.yml -> job primary-memory
+# relaymem-primary-writer-handoff-smoke.yml -> job primary-memory
+# relaymem-primary-pipeline-compose-smoke.yml -> job primary-memory
+# relaymem-slp-dispatch-preflight-smoke.yml -> job slp-queue
+# relaymem-slp-durable-enqueue-smoke.yml -> job slp-queue
+# relaymem-slp-durable-queue-contract-smoke.yml -> job slp-queue
+# relaymem-slp-job-admission-smoke.yml -> job slp-queue
+# relaymem-slp-queue-state-smoke.yml -> job slp-queue
+# relaymem-slp-response-handoff-smoke.yml -> job slp-queue
+# phase6-runtime-enqueue-source-capture-smoke.yml -> job slp-queue
+# i1gb-durable-finalization-publication-smoke.yml -> job durable-finalization
+# i1gc-durable-finalization-replay-smoke.yml -> job durable-finalization
+# i1gd-durable-finalization-retention-smoke.yml -> job durable-finalization
+# i1ge-durable-finalization-crash-validation.yml -> job durable-finalization
+# phase6c1-primary-worker-source-smoke.yml -> job scheduler-worker
+# phase6c1-worker-contract-smoke.yml -> job scheduler-worker
+# phase6c1-durable-protected-source-smoke.yml -> job scheduler-worker
+# phase6c1-fault-injection-smoke.yml -> job scheduler-worker
+# phase6c1-primary-worker-outcome-smoke.yml -> job scheduler-worker
+# phase6c1-integrated-worker-fault-smoke.yml -> job scheduler-worker
+# phase6c1-one-claimed-primary-worker-smoke.yml -> job scheduler-worker
+# phase6c2-one-queued-job-runner-smoke.yml -> job scheduler-worker
+# o0-local-one-job-runner-smoke.yml -> job scheduler-worker
+# o1b-sealed-replay-lane-smoke.yml -> job scheduler-worker
+# o1c-eligible-queue-lane-smoke.yml -> job scheduler-worker
+# o1d1-production-scheduler-round.yml -> job scheduler-worker
+# o1d2-scheduler-policy.yml -> job scheduler-worker
+# o1e-scheduler-operational-controls.yml -> job scheduler-worker
+# o1f-operational-validation.yml -> job scheduler-worker
+# i7ab-held-apply-discard-contract-smoke.yml -> job scheduler-worker
+# phase-i1-two-turn-primary-recall-smoke.yml -> job recall-correction-forget-pin
+# phase-i4b-primary-current-state-smoke.yml -> job recall-correction-forget-pin
+# phase-i4c1-primary-forget-hidden-successor-smoke.yml -> job recall-correction-forget-pin
+# phase-i4c2-primary-forget-recovery.yml -> job recall-correction-forget-pin
+# phase-i5a-pin-unpin-contract.yml -> job recall-correction-forget-pin
+# wave2-cross-slice-convergence.yml -> job cross-slice-convergence
+# wave3-cross-slice-convergence.yml -> job cross-slice-convergence
+
+name: RelayMEM / SLP smokes
+on:
+  workflow_dispatch: null
+  push:
+    branches:
+    - main
+    paths:
+    - relaylm/**
+    - pyproject.toml
+    - .github/workflows/smoke-relaymem.yml
+    - relaylm/relaymem_primary_index_log_apply.py
+    - relaylm/_relaymem_primary_index_log_apply.py
+    - relaylm/_relaymem_primary_index_log_apply_contract.py
+    - relaylm/_relaymem_primary_index_log_apply_io.py
+    - scripts/relaylm_relaymem_primary_index_log_apply_smoke.py
+    - scripts/relaylm_relaymem_primary_index_log_apply_security_smoke.py
+    - docs/architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md
+    - relaylm/relaymem_primary_index_log_reconciliation.py
+    - relaylm/_relaymem_primary_index_log_reconciliation.py
+    - relaylm/_relaymem_primary_index_log_reconciliation_contract.py
+    - relaylm/_relaymem_primary_index_log_reconciliation_io.py
+    - relaylm/_relaymem_primary_index_log_reconciliation_plan.py
+    - scripts/relaylm_relaymem_primary_index_log_reconciliation_smoke.py
+    - scripts/relaylm_relaymem_primary_index_log_reconciliation_marker_smoke.py
+    - docs/architecture/relaymem_m3f_primary_index_log_reconciliation_preflight.md
+    - relaylm/relaymem_primary_index_log_recovery_audit.py
+    - relaylm/_relaymem_primary_index_log_recovery_audit.py
+    - relaylm/_relaymem_primary_index_log_recovery_audit_contract.py
+    - relaylm/_relaymem_primary_index_log_recovery_audit_io.py
+    - relaylm/_relaymem_primary_index_log_recovery_audit_io_page.py
+    - relaylm/_relaymem_primary_index_log_recovery_audit_io_control.py
+    - relaylm/_relaymem_primary_index_log_recovery_audit_io_cleanup.py
+    - scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
+    - scripts/relaylm_relaymem_primary_index_log_recovery_audit_security_smoke.py
+    - scripts/relaylm_relaymem_primary_index_log_recovery_audit_receipt_smoke.py
+    - docs/architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
+    - relaylm/relaymem_primary_page_writer.py
+    - relaylm/_relaymem_primary_page_writer_common.py
+    - relaylm/_relaymem_primary_page_writer_handoff.py
+    - relaylm/_relaymem_primary_page_writer_contract.py
+    - relaylm/_relaymem_primary_page_writer_io.py
+    - relaylm/_relaymem_primary_page_writer_impl.py
+    - scripts/relaylm_relaymem_primary_page_writer_smoke.py
+    - scripts/relaylm_relaymem_primary_page_writer_security_smoke.py
+    - scripts/relaylm_relaymem_primary_page_writer_atomicity_smoke.py
+    - relaylm/relaymem_primary_writer_handoff.py
+    - relaylm/_relaymem_primary_writer_handoff_impl.py
+    - scripts/relaylm_relaymem_primary_writer_handoff_smoke.py
+    - scripts/relaylm_relaymem_primary_writer_handoff_review_smoke.py
+    - scripts/relaylm_relaymem_primary_writer_handoff_security_smoke.py
+    - scripts/relaylm_relaymem_primary_writer_handoff_idempotency_smoke.py
+    - relaylm/relaymem_primary_pipeline.py
+    - relaylm/_relaymem_primary_pipeline_impl.py
+    - scripts/relaylm_relaymem_primary_pipeline_smoke.py
+    - scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
+    - scripts/relaylm_relaymem_primary_pipeline_result_validation_smoke.py
+    - docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md
+    - relaylm/relaymem_slp_job_admission.py
+    - relaylm/relaymem_slp_response_handoff.py
+    - relaylm/relaymem_slp_dispatch_preflight.py
+    - scripts/relaylm_phase6b0_durable_queue_contract_smoke.py
+    - scripts/relaylm_phase6b1_dispatch_preflight_smoke.py
+    - scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py
+    - docs/architecture/phase6a2_relayslp_response_handoff_contract.md
+    - docs/architecture/phase6b0_relayslp_durable_queue_contract.md
+    - docs/architecture/phase6b1_relayslp_dispatch_preflight.md
+    - docs/architecture/relaymem_slp_current_target.md
+    - docs/architecture/pipeline_implementation_plan.md
+    - docs/PROJECT_STATUS.md
+    - docs/architecture/README.md
+    - relaylm/relaymem_slp_durable_enqueue.py
+    - scripts/relaylm_phase6b2_durable_enqueue_smoke.py
+    - scripts/relaylm_phase6b2_durable_enqueue_security_smoke.py
+    - scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
+    - docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md
+    - scripts/relaylm_relaymem_slp_job_admission_smoke.py
+    - scripts/relaylm_relaymem_slp_job_admission_bounded_metadata_smoke.py
+    - relaylm/relaymem_slp_queue_state.py
+    - relaylm/relaymem_slp_queue_record.py
+    - relaylm/relaymem_slp_queue_storage.py
+    - scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py
+    - scripts/relaylm_phase6b3_precommit_failure_projection_smoke.py
+    - scripts/relaylm_phase6b3_queue_root_path_smoke.py
+    - scripts/relaylm_phase6b3_queue_state_smoke.py
+    - scripts/relaylm_phase6b3_queue_state_security_smoke.py
+    - scripts/relaylm_phase6b3_queue_state_contract_smoke.py
+    - docs/architecture/phase6_async_relayslp_bounded_slice.md
+    - docs/architecture/phase6b3_relayslp_queue_state_helpers.md
+    - docs/README.md
+    - scripts/relaylm_relaymem_slp_response_handoff_smoke.py
+    - scripts/relaylm_relaymem_slp_response_handoff_status_smoke.py
+    - relaylm/app.py
+    - relaylm/audit_projection.py
+    - relaylm/config.py
+    - relaylm/routing.py
+    - relaylm/trace_runtime.py
+    - relaylm/relaymem_slp_finalized_turn_source.py
+    - relaylm/relaymem_slp_runtime_finalization.py
+    - relaylm/relaymem_slp_runtime_enqueue.py
+    - relaylm/relaymem_slp_primary_worker_source_registry.py
+    - config.example.yaml
+    - scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
+    - scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
+    - docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md
+    - relaylm/relaymem_slp_durable_finalization_*.py
+    - relaylm/relaymem_slp_durable_runtime_enqueue.py
+    - scripts/relaylm_i1g_*.py
+    - scripts/relaylm_i1gb_*.py
+    - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
+    - docs/config_schema.md
+    - scripts/relaylm_phase6_runtime_enqueue_*.py
+    - relaylm/_relaymem_slp_durable_finalization_replay_impl.py
+    - scripts/relaylm_i1gc_*.py
+    - relaylm/relaymem_slp_protected_source_store.py
+    - relaylm/relaymem_slp_queue_*.py
+    - scripts/relaylm_phase6c1_durable_protected_source_smoke.py
+    - scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+    - relaylm/_relaymem_slp_durable_finalization_*.py
+    - scripts/relaylm_i1gd_*.py
+    - scripts/relaylm_documentation_current_boundary_smoke.py
+    - relaylm/relaymem_slp_scheduler_replay_lane.py
+    - scripts/_relaylm_i1ge_*.py
+    - scripts/relaylm_i1ge_*.py
+    - scripts/relaylm_i1g*.py
+    - scripts/relaylm_o1b_*.py
+    - scripts/relaylm_wave2_cross_slice_*.py
+    - docs/mvp/wave3/i1ge_completion_report.md
+    - relaylm/relaymem_slp_primary_worker_source.py
+    - scripts/relaylm_phase6c1_primary_worker_source_smoke.py
+    - docs/architecture/phase6c1_primary_mem_worker_contract.md
+    - scripts/relaylm_phase6c1_worker_contract_smoke.py
+    - relaylm/_relaymem_slp_protected_source_*.py
+    - relaylm/relaymem_slp_primary_worker_source_adapter.py
+    - relaylm/relaymem_slp_primary_worker.py
+    - relaylm/_relaymem_slp_primary_worker_*.py
+    - scripts/_relaylm_phase6c1_durable_source_support.py
+    - scripts/relaylm_phase6c1_durable_source_*.py
+    - docs/architecture/phase6c1_durable_protected_source_persistence.md
+    - scripts/_relaylm_phase6c1_fault_fixtures.py
+    - scripts/relaylm_phase6c1_fault_injection_smoke.py
+    - scripts/relaylm_phase6c1_fault_race_smoke.py
+    - relaylm/relaymem_slp_primary_worker_outcome.py
+    - relaylm/_relaymem_slp_primary_worker_outcome_*.py
+    - scripts/relaylm_phase6c1_primary_worker_outcome_*.py
+    - docs/architecture/phase6c1_primary_worker_outcome_classifier.md
+    - scripts/relaylm_phase6c1_primary_worker_*.py
+    - scripts/relaylm_phase6c1_worker_*.py
+    - scripts/relaylm_phase6c1_fault_*.py
+    - scripts/relaylm_relaymem_primary_*.py
+    - scripts/relaylm_docs_link_check.py
+    - docs/architecture/phase6c1_integrated_worker_fault_smoke_handoff.md
+    - relaylm/relaymem_primary_formation.py
+    - scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py
+    - docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md
+    - relaylm/relaymem_slp_one_queued_job_runner.py
+    - scripts/relaylm_phase6c2_one_queued_job_runner_*.py
+    - scripts/relaylm_phase6c1_*.py
+    - docs/architecture/phase6c2_one_queued_primary_worker_integration.md
+    - relaylm/local_worker_*.py
+    - scripts/_relaylm_o0_local_worker_support.py
+    - scripts/relaylm_o0_local_one_job_runner_*.py
+    - docs/architecture/o0_local_one_job_runner.md
+    - relaylm/relaymem_primary_recall.py
+    - scripts/relaylm_phase6b2_*.py
+    - scripts/relaylm_phase6b3_*.py
+    - scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py
+    - scripts/relaylm_phase_i2_lab_observation_smoke.py
+    - scripts/relaylm_phase_i3_primary_mem_correct_smoke.py
+    - docs/architecture/post_i3_evaluation_work_roadmap.md
+    - relaylm/relaymem_slp_scheduler_contract.py
+    - scripts/relaylm_o1b_sealed_replay_lane_smoke.py
+    - scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py
+    - scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py
+    - relaylm/relaymem_slp_queue_candidate.py
+    - relaylm/relaymem_slp_scheduler_queue_lane.py
+    - relaylm/local_worker_once.py
+    - scripts/relaylm_o1c_eligible_queue_lane_*.py
+    - docs/architecture/o1c_eligible_b2_queue_lane.md
+    - relaylm/relaymem_slp_primary_worker*.py
+    - relaylm/relaymem_primary_*.py
+    - scripts/relaylm_phase6c2_*.py
+    - docs/architecture/*.md
+    - relaylm/relaymem_slp_scheduler_round.py
+    - scripts/_relaylm_o1d1_support.py
+    - scripts/relaylm_o1d1_*.py
+    - docs/architecture/o1d1_production_scheduler_round.md
+    - scripts/relaylm_o1b_sealed_replay_lane_*.py
+    - scripts/relaylm_wave2_cross_slice_convergence_smoke.py
+    - docs/mvp/wave3/o1d1_completion_report.md
+    - relaylm/relaymem_slp_scheduler_policy.py
+    - scripts/relaylm_o1d2_*.py
+    - docs/architecture/o1d2_scheduler_policy.md
+    - docs/mvp/wave4/o1d2_completion_report.md
+    - scripts/relaylm_o1a_*scheduler*_smoke.py
+    - relaylm/relaymem_slp_scheduler_operations.py
+    - docs/architecture/o1e_scheduler_operational_controls.md
+    - docs/mvp/wave5/o1e_completion_report.md
+    - scripts/relaylm_o1e_scheduler_operational_controls_*.py
+    - relaylm/relaymem_slp_scheduler_operational_validation.py
+    - docs/architecture/o1f_operational_validation.md
+    - docs/mvp/wave6/o1f_completion_report.md
+    - scripts/_relaylm_o1f_support.py
+    - scripts/relaylm_o1f_operational_validation_*.py
+    - relaylm/relaymem_held_governance_contract.py
+    - relaylm/relaymem_held_governance_preflight.py
+    - tests/test_relaymem_held_governance_preflight.py
+    - scripts/relaylm_i7ab_held_apply_discard_contract_smoke.py
+    - docs/architecture/phase_i7ab_held_apply_discard_contract.md
+    - docs/mvp/wave4/i7ab_completion_report.md
+    - scripts/relaylm_phase_i1_*
+    - relaylm/relaymem_primary_current_state.py
+    - relaylm/_relaymem_primary_current_state_impl.py
+    - relaylm/relaymem_primary_mutation_coordinator.py
+    - relaylm/relaymem_primary_forget.py
+    - relaylm/_relaymem_primary_forget_impl.py
+    - relaylm/relaymem_primary_correction.py
+    - scripts/relaylm_phase_i4b_*
+    - scripts/_relaylm_phase_i4b_test_support.py
+    - scripts/relaylm_phase_i4_forget_hide_contract_smoke.py
+    - relaylm/relaymem_primary_forget_*.py
+    - relaylm/relaymem_primary_lifecycle_page.py
+    - relaylm/relaymem_primary_page_candidate.py
+    - relaylm/_relaymem_primary_lifecycle_page_writer.py
+    - scripts/relaylm_phase_i4c1_*
+    - scripts/relaylm_phase_i4c2_*
+    - relaylm/relaymem_primary_pin.py
+    - scripts/relaylm_phase_i5a_pin_unpin_*
+    - scripts/relaylm_phase_i3_primary_mem_correct_security_smoke.py
+    - scripts/relaylm_phase_i4b_primary_forget_preflight_smoke.py
+    - scripts/relaylm_phase_i4c1_primary_forget_concurrency_smoke.py
+    - scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
+    - docs/architecture/phase_i5_pin_unpin_contract.md
+    - docs/mvp/wave4/i5a_completion_report.md
+    - relaylm/relaymem_slp_scheduler_*.py
+    - scripts/relaylm_o1*.py
+    - scripts/relaylm_phase_i4c2*.py
+    - docs/mvp/README.md
+    - docs/mvp/wave3/*.md
+    - docs/smoke/*.md
+    - relaylm/relaymem_primary_retrieval_eligibility.py
+    - scripts/relaylm_wave3_cross_slice_*.py
+  pull_request:
+    paths:
+    - relaylm/**
+    - pyproject.toml
+    - .github/workflows/smoke-relaymem.yml
+    - relaylm/relaymem_primary_index_log_apply.py
+    - relaylm/_relaymem_primary_index_log_apply.py
+    - relaylm/_relaymem_primary_index_log_apply_contract.py
+    - relaylm/_relaymem_primary_index_log_apply_io.py
+    - scripts/relaylm_relaymem_primary_index_log_apply_smoke.py
+    - scripts/relaylm_relaymem_primary_index_log_apply_security_smoke.py
+    - docs/architecture/relaymem_m3g_primary_index_log_reconciliation_apply.md
+    - relaylm/relaymem_primary_index_log_reconciliation.py
+    - relaylm/_relaymem_primary_index_log_reconciliation.py
+    - relaylm/_relaymem_primary_index_log_reconciliation_contract.py
+    - relaylm/_relaymem_primary_index_log_reconciliation_io.py
+    - relaylm/_relaymem_primary_index_log_reconciliation_plan.py
+    - scripts/relaylm_relaymem_primary_index_log_reconciliation_smoke.py
+    - scripts/relaylm_relaymem_primary_index_log_reconciliation_marker_smoke.py
+    - docs/architecture/relaymem_m3f_primary_index_log_reconciliation_preflight.md
+    - relaylm/relaymem_primary_index_log_recovery_audit.py
+    - relaylm/_relaymem_primary_index_log_recovery_audit.py
+    - relaylm/_relaymem_primary_index_log_recovery_audit_contract.py
+    - relaylm/_relaymem_primary_index_log_recovery_audit_io.py
+    - relaylm/_relaymem_primary_index_log_recovery_audit_io_page.py
+    - relaylm/_relaymem_primary_index_log_recovery_audit_io_control.py
+    - relaylm/_relaymem_primary_index_log_recovery_audit_io_cleanup.py
+    - scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
+    - scripts/relaylm_relaymem_primary_index_log_recovery_audit_security_smoke.py
+    - scripts/relaylm_relaymem_primary_index_log_recovery_audit_receipt_smoke.py
+    - docs/architecture/relaymem_m3h_primary_index_log_reconciliation_recovery_audit.md
+    - relaylm/relaymem_primary_page_writer.py
+    - relaylm/_relaymem_primary_page_writer_common.py
+    - relaylm/_relaymem_primary_page_writer_handoff.py
+    - relaylm/_relaymem_primary_page_writer_contract.py
+    - relaylm/_relaymem_primary_page_writer_io.py
+    - relaylm/_relaymem_primary_page_writer_impl.py
+    - scripts/relaylm_relaymem_primary_page_writer_smoke.py
+    - scripts/relaylm_relaymem_primary_page_writer_security_smoke.py
+    - scripts/relaylm_relaymem_primary_page_writer_atomicity_smoke.py
+    - relaylm/relaymem_primary_writer_handoff.py
+    - relaylm/_relaymem_primary_writer_handoff_impl.py
+    - scripts/relaylm_relaymem_primary_writer_handoff_smoke.py
+    - scripts/relaylm_relaymem_primary_writer_handoff_review_smoke.py
+    - scripts/relaylm_relaymem_primary_writer_handoff_security_smoke.py
+    - scripts/relaylm_relaymem_primary_writer_handoff_idempotency_smoke.py
+    - relaylm/relaymem_primary_pipeline.py
+    - relaylm/_relaymem_primary_pipeline_impl.py
+    - scripts/relaylm_relaymem_primary_pipeline_smoke.py
+    - scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
+    - scripts/relaylm_relaymem_primary_pipeline_result_validation_smoke.py
+    - docs/architecture/phase6c1_relaymem_primary_pipeline_compose.md
+    - relaylm/relaymem_slp_job_admission.py
+    - relaylm/relaymem_slp_response_handoff.py
+    - relaylm/relaymem_slp_dispatch_preflight.py
+    - scripts/relaylm_phase6b0_durable_queue_contract_smoke.py
+    - scripts/relaylm_phase6b1_dispatch_preflight_smoke.py
+    - scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py
+    - docs/architecture/phase6a2_relayslp_response_handoff_contract.md
+    - docs/architecture/phase6b0_relayslp_durable_queue_contract.md
+    - docs/architecture/phase6b1_relayslp_dispatch_preflight.md
+    - docs/architecture/relaymem_slp_current_target.md
+    - docs/architecture/pipeline_implementation_plan.md
+    - docs/PROJECT_STATUS.md
+    - docs/architecture/README.md
+    - relaylm/relaymem_slp_durable_enqueue.py
+    - scripts/relaylm_phase6b2_durable_enqueue_smoke.py
+    - scripts/relaylm_phase6b2_durable_enqueue_security_smoke.py
+    - scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
+    - docs/architecture/phase6b2_relayslp_atomic_durable_enqueue.md
+    - scripts/relaylm_relaymem_slp_job_admission_smoke.py
+    - scripts/relaylm_relaymem_slp_job_admission_bounded_metadata_smoke.py
+    - relaylm/relaymem_slp_queue_state.py
+    - relaylm/relaymem_slp_queue_record.py
+    - relaylm/relaymem_slp_queue_storage.py
+    - scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py
+    - scripts/relaylm_phase6b3_precommit_failure_projection_smoke.py
+    - scripts/relaylm_phase6b3_queue_root_path_smoke.py
+    - scripts/relaylm_phase6b3_queue_state_smoke.py
+    - scripts/relaylm_phase6b3_queue_state_security_smoke.py
+    - scripts/relaylm_phase6b3_queue_state_contract_smoke.py
+    - docs/architecture/phase6_async_relayslp_bounded_slice.md
+    - docs/architecture/phase6b3_relayslp_queue_state_helpers.md
+    - docs/README.md
+    - scripts/relaylm_relaymem_slp_response_handoff_smoke.py
+    - scripts/relaylm_relaymem_slp_response_handoff_status_smoke.py
+    - relaylm/app.py
+    - relaylm/audit_projection.py
+    - relaylm/config.py
+    - relaylm/routing.py
+    - relaylm/trace_runtime.py
+    - relaylm/relaymem_slp_finalized_turn_source.py
+    - relaylm/relaymem_slp_runtime_finalization.py
+    - relaylm/relaymem_slp_runtime_enqueue.py
+    - relaylm/relaymem_slp_primary_worker_source_registry.py
+    - config.example.yaml
+    - scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
+    - scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
+    - docs/architecture/phase6_i1b_runtime_enqueue_source_capture_handoff.md
+    - relaylm/relaymem_slp_durable_finalization_*.py
+    - relaylm/relaymem_slp_durable_runtime_enqueue.py
+    - scripts/relaylm_i1g_*.py
+    - scripts/relaylm_i1gb_*.py
+    - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
+    - docs/config_schema.md
+    - scripts/relaylm_phase6_runtime_enqueue_*.py
+    - relaylm/_relaymem_slp_durable_finalization_replay_impl.py
+    - scripts/relaylm_i1gc_*.py
+    - relaylm/relaymem_slp_protected_source_store.py
+    - relaylm/relaymem_slp_queue_*.py
+    - scripts/relaylm_phase6c1_durable_protected_source_smoke.py
+    - scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+    - relaylm/_relaymem_slp_durable_finalization_*.py
+    - scripts/relaylm_i1gd_*.py
+    - scripts/relaylm_documentation_current_boundary_smoke.py
+    - relaylm/relaymem_slp_scheduler_replay_lane.py
+    - scripts/_relaylm_i1ge_*.py
+    - scripts/relaylm_i1ge_*.py
+    - scripts/relaylm_i1g*.py
+    - scripts/relaylm_o1b_*.py
+    - scripts/relaylm_wave2_cross_slice_*.py
+    - docs/mvp/wave3/i1ge_completion_report.md
+    - relaylm/relaymem_slp_primary_worker_source.py
+    - scripts/relaylm_phase6c1_primary_worker_source_smoke.py
+    - docs/architecture/phase6c1_primary_mem_worker_contract.md
+    - scripts/relaylm_phase6c1_worker_contract_smoke.py
+    - relaylm/_relaymem_slp_protected_source_*.py
+    - relaylm/relaymem_slp_primary_worker_source_adapter.py
+    - relaylm/relaymem_slp_primary_worker.py
+    - relaylm/_relaymem_slp_primary_worker_*.py
+    - scripts/_relaylm_phase6c1_durable_source_support.py
+    - scripts/relaylm_phase6c1_durable_source_*.py
+    - docs/architecture/phase6c1_durable_protected_source_persistence.md
+    - scripts/_relaylm_phase6c1_fault_fixtures.py
+    - scripts/relaylm_phase6c1_fault_injection_smoke.py
+    - scripts/relaylm_phase6c1_fault_race_smoke.py
+    - relaylm/relaymem_slp_primary_worker_outcome.py
+    - relaylm/_relaymem_slp_primary_worker_outcome_*.py
+    - scripts/relaylm_phase6c1_primary_worker_outcome_*.py
+    - docs/architecture/phase6c1_primary_worker_outcome_classifier.md
+    - scripts/relaylm_phase6c1_primary_worker_*.py
+    - scripts/relaylm_phase6c1_worker_*.py
+    - scripts/relaylm_phase6c1_fault_*.py
+    - scripts/relaylm_relaymem_primary_*.py
+    - scripts/relaylm_docs_link_check.py
+    - docs/architecture/phase6c1_integrated_worker_fault_smoke_handoff.md
+    - relaylm/relaymem_primary_formation.py
+    - scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py
+    - docs/architecture/phase6c1_one_claimed_primary_worker_handoff.md
+    - relaylm/relaymem_slp_one_queued_job_runner.py
+    - scripts/relaylm_phase6c2_one_queued_job_runner_*.py
+    - scripts/relaylm_phase6c1_*.py
+    - docs/architecture/phase6c2_one_queued_primary_worker_integration.md
+    - relaylm/local_worker_*.py
+    - scripts/_relaylm_o0_local_worker_support.py
+    - scripts/relaylm_o0_local_one_job_runner_*.py
+    - docs/architecture/o0_local_one_job_runner.md
+    - relaylm/relaymem_primary_recall.py
+    - scripts/relaylm_phase6b2_*.py
+    - scripts/relaylm_phase6b3_*.py
+    - scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py
+    - scripts/relaylm_phase_i2_lab_observation_smoke.py
+    - scripts/relaylm_phase_i3_primary_mem_correct_smoke.py
+    - docs/architecture/post_i3_evaluation_work_roadmap.md
+    - relaylm/relaymem_slp_scheduler_contract.py
+    - scripts/relaylm_o1b_sealed_replay_lane_smoke.py
+    - scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py
+    - scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py
+    - relaylm/relaymem_slp_queue_candidate.py
+    - relaylm/relaymem_slp_scheduler_queue_lane.py
+    - relaylm/local_worker_once.py
+    - scripts/relaylm_o1c_eligible_queue_lane_*.py
+    - docs/architecture/o1c_eligible_b2_queue_lane.md
+    - relaylm/relaymem_slp_primary_worker*.py
+    - relaylm/relaymem_primary_*.py
+    - scripts/relaylm_phase6c2_*.py
+    - docs/architecture/*.md
+    - relaylm/relaymem_slp_scheduler_round.py
+    - scripts/_relaylm_o1d1_support.py
+    - scripts/relaylm_o1d1_*.py
+    - docs/architecture/o1d1_production_scheduler_round.md
+    - scripts/relaylm_o1b_sealed_replay_lane_*.py
+    - scripts/relaylm_wave2_cross_slice_convergence_smoke.py
+    - docs/mvp/wave3/o1d1_completion_report.md
+    - relaylm/relaymem_slp_scheduler_policy.py
+    - scripts/relaylm_o1d2_*.py
+    - docs/architecture/o1d2_scheduler_policy.md
+    - docs/mvp/wave4/o1d2_completion_report.md
+    - scripts/relaylm_o1a_*scheduler*_smoke.py
+    - relaylm/relaymem_slp_scheduler_operations.py
+    - docs/architecture/o1e_scheduler_operational_controls.md
+    - docs/mvp/wave5/o1e_completion_report.md
+    - scripts/relaylm_o1e_scheduler_operational_controls_*.py
+    - relaylm/relaymem_slp_scheduler_operational_validation.py
+    - docs/architecture/o1f_operational_validation.md
+    - docs/mvp/wave6/o1f_completion_report.md
+    - scripts/_relaylm_o1f_support.py
+    - scripts/relaylm_o1f_operational_validation_*.py
+    - relaylm/relaymem_held_governance_contract.py
+    - relaylm/relaymem_held_governance_preflight.py
+    - tests/test_relaymem_held_governance_preflight.py
+    - scripts/relaylm_i7ab_held_apply_discard_contract_smoke.py
+    - docs/architecture/phase_i7ab_held_apply_discard_contract.md
+    - docs/mvp/wave4/i7ab_completion_report.md
+    - scripts/relaylm_phase_i1_*
+    - relaylm/relaymem_primary_current_state.py
+    - relaylm/_relaymem_primary_current_state_impl.py
+    - relaylm/relaymem_primary_mutation_coordinator.py
+    - relaylm/relaymem_primary_forget.py
+    - relaylm/_relaymem_primary_forget_impl.py
+    - relaylm/relaymem_primary_correction.py
+    - scripts/relaylm_phase_i4b_*
+    - scripts/_relaylm_phase_i4b_test_support.py
+    - scripts/relaylm_phase_i4_forget_hide_contract_smoke.py
+    - relaylm/relaymem_primary_forget_*.py
+    - relaylm/relaymem_primary_lifecycle_page.py
+    - relaylm/relaymem_primary_page_candidate.py
+    - relaylm/_relaymem_primary_lifecycle_page_writer.py
+    - scripts/relaylm_phase_i4c1_*
+    - scripts/relaylm_phase_i4c2_*
+    - relaylm/relaymem_primary_pin.py
+    - scripts/relaylm_phase_i5a_pin_unpin_*
+    - scripts/relaylm_phase_i3_primary_mem_correct_security_smoke.py
+    - scripts/relaylm_phase_i4b_primary_forget_preflight_smoke.py
+    - scripts/relaylm_phase_i4c1_primary_forget_concurrency_smoke.py
+    - scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
+    - docs/architecture/phase_i5_pin_unpin_contract.md
+    - docs/mvp/wave4/i5a_completion_report.md
+    - relaylm/relaymem_slp_scheduler_*.py
+    - scripts/relaylm_o1*.py
+    - scripts/relaylm_phase_i4c2*.py
+    - docs/mvp/README.md
+    - docs/mvp/wave3/*.md
+    - docs/smoke/*.md
+    - relaylm/relaymem_primary_retrieval_eligibility.py
+    - scripts/relaylm_wave3_cross_slice_*.py
+permissions:
+  contents: read
+jobs:
+  primary-memory:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install RelayLM
+      run: |-
+        python -m pip install --upgrade pip
+        pip install -e .
+    - name: Compile repository Python
+      run: python -m compileall -q relaylm scripts
+    - name: Run RelayMEM M3g reconciliation apply smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_apply_smoke.py
+    - name: Run RelayMEM M3g reconciliation security smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_apply_security_smoke.py
+    - name: Run RelayMEM M3f reconciliation preflight smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_reconciliation_smoke.py
+    - name: Run RelayMEM M3f marker hardening smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_reconciliation_marker_smoke.py
+    - name: Run RelayMEM M3h recovery audit functional smoke
+      run: |
+        set +e
+        PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py > m3h-functional-smoke.log 2>&1
+        exit_code=$?
+        cat m3h-functional-smoke.log
+        exit "$exit_code"
+    - name: Upload RelayMEM M3h functional smoke output
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: relaymem-m3h-functional-smoke-output
+        path: m3h-functional-smoke.log
+        if-no-files-found: error
+        retention-days: 3
+    - name: Run RelayMEM M3h recovery audit security smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_security_smoke.py
+    - name: Run RelayMEM M3h receipt invariant smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_receipt_smoke.py
+    - name: Run RelayMEM M3e page writer smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_smoke.py
+    - name: Run RelayMEM M3e security smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_security_smoke.py
+    - name: Run RelayMEM M3e atomicity smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_atomicity_smoke.py
+    - name: Run RelayMEM M3d writer handoff smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_smoke.py
+    - name: Run RelayMEM M3d review smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_review_smoke.py
+    - name: Run RelayMEM M3d security smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_security_smoke.py
+    - name: Run RelayMEM M3d idempotency smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_primary_writer_handoff_idempotency_smoke.py
+    - name: Run RelayMEM Primary compose functional smoke
+      run: |
+        PYTHONPATH=. python - <<'PY'
+        import runpy
+        import traceback
+        from pathlib import Path
+
+        diagnostic = Path("compose-smoke-diagnostic.txt")
+        try:
+            runpy.run_path(
+                "scripts/relaylm_relaymem_primary_pipeline_smoke.py",
+                run_name="__main__",
+            )
+        except SystemExit as exc:
+            if exc.code in (None, 0):
+                raise
+            frames = traceback.extract_tb(exc.__traceback__)
+            diagnostic.write_text(
+                "SystemExit\n" + "\n".join(
+                    f"{Path(frame.filename).name}:{frame.lineno}:{frame.name}"
+                    for frame in frames[-8:]
+                ) + "\n",
+                encoding="utf-8",
+            )
+            raise
+        except BaseException as exc:
+            frames = traceback.extract_tb(exc.__traceback__)
+            diagnostic.write_text(
+                type(exc).__name__ + "\n" + "\n".join(
+                    f"{Path(frame.filename).name}:{frame.lineno}:{frame.name}"
+                    for frame in frames[-8:]
+                ) + "\n",
+                encoding="utf-8",
+            )
+            raise SystemExit(1) from None
+        PY
+    - name: Upload sanitized compose smoke diagnostic
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: relaymem-primary-compose-diagnostic
+        path: compose-smoke-diagnostic.txt
+        if-no-files-found: error
+        retention-days: 1
+    - name: Run RelayMEM Primary compose security smokes
+      run: |-
+        PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_security_smoke.py
+        PYTHONPATH=. python scripts/relaylm_relaymem_primary_pipeline_result_validation_smoke.py
+    - name: Run M3a-M3d contract smokes
+      run: |-
+        PYTHONPATH=. python scripts/relaylm_relaymem_primary_formation_dry_run_smoke.py
+        PYTHONPATH=. python scripts/relaylm_relaymem_primary_write_preflight_smoke.py
+        PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_candidate_smoke.py
+    - name: Run documentation link check
+      run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+  slp-queue:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install RelayLM
+      run: |-
+        python -m pip install --upgrade pip
+        pip install -e .
+    - name: Compile repository Python
+      run: python -m compileall -q relaylm scripts
+    - name: Run Phase 6-B contract smoke
+      run: PYTHONPATH=. python scripts/relaylm_phase6b0_durable_queue_contract_smoke.py
+    - name: Run Phase 6-B1 dispatch preflight smoke
+      run: PYTHONPATH=. python scripts/relaylm_phase6b1_dispatch_preflight_smoke.py
+    - name: Run strict Phase 6-B1 dispatch preflight security smoke
+      run: PYTHONPATH=. python scripts/relaylm_phase6b1_dispatch_preflight_security_smoke.py
+    - name: Run Phase 6-B2 durable enqueue smoke
+      run: PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_smoke.py
+    - name: Run strict Phase 6-B2 durable enqueue security smoke
+      run: PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_security_smoke.py
+    - name: Run Phase 6-B2 contract smoke
+      run: PYTHONPATH=. python scripts/relaylm_phase6b2_durable_enqueue_contract_smoke.py
+    - name: Run Phase 6-A1 admission smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_slp_job_admission_smoke.py
+    - name: Run Phase 6-A1 bounded metadata smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_slp_job_admission_bounded_metadata_smoke.py
+    - name: Run B2/B3 enqueue lifecycle compatibility smoke
+      run: PYTHONPATH=. python scripts/relaylm_phase6b3_enqueue_lifecycle_compat_smoke.py
+    - name: Run Phase 6-B3 precommit failure projection smoke
+      run: PYTHONPATH=. python scripts/relaylm_phase6b3_precommit_failure_projection_smoke.py
+    - name: Run Phase 6-B3 queue root path smoke
+      run: PYTHONPATH=. python scripts/relaylm_phase6b3_queue_root_path_smoke.py
+    - name: Run Phase 6-B3 queue state smoke
+      run: PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_smoke.py
+    - name: Verify Phase 6-B3 bounded renewal horizon contract
+      run: |
+        PYTHONPATH=. python - <<'PY'
+        from pathlib import Path
+
+        source = Path("relaylm/relaymem_slp_queue_state.py").read_text(encoding="utf-8")
+        smoke = Path("scripts/relaylm_phase6b3_queue_state_smoke.py").read_text(encoding="utf-8")
+        contract = Path("docs/architecture/phase6b3_relayslp_queue_state_helpers.md").read_text(encoding="utf-8")
+
+        assert '_lease_expiry(now, request.lease_duration_seconds)' in source
+        assert '_lease_expiry(expiry, request.lease_duration_seconds)' not in source
+        assert '2026-06-22T01:00:35.000000Z' in smoke
+        assert 'does not accumulate duration from the previous expiry' in contract
+        PY
+    - name: Run strict Phase 6-B3 queue state security smoke
+      run: PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_security_smoke.py
+    - name: Run Phase 6-B3 queue state contract smoke
+      run: PYTHONPATH=. python scripts/relaylm_phase6b3_queue_state_contract_smoke.py
+    - name: Run Phase 6-A2 smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_slp_response_handoff_smoke.py
+    - name: Run Phase 6-A2 status smoke
+      run: PYTHONPATH=. python scripts/relaylm_relaymem_slp_response_handoff_status_smoke.py
+    - name: Validate runtime enqueue and source capture
+      run: PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_source_capture_smoke.py
+    - name: Validate ordinary non-stream and stream runtime wiring
+      run: PYTHONPATH=. python scripts/relaylm_phase6_runtime_enqueue_app_smoke.py
+    - name: Revalidate request runtime finalization
+      run: |-
+        PYTHONPATH=. python scripts/relaylm_relayctx_unpack_runtime_app_smoke.py
+        PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+  durable-finalization:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install RelayLM
+      run: |-
+        python -m pip install --upgrade pip
+        pip install -e .
+    - name: Compile repository Python
+      run: python -m compileall -q relaylm scripts
+    - name: Run I1-G contract and I1-GB publication suites
+      run: |-
+        PYTHONPATH=. python scripts/relaylm_i1g_pre_enqueue_fault_model_smoke.py
+        PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_publication_smoke.py
+        PYTHONPATH=. python scripts/relaylm_i1gb_durable_finalization_app_smoke.py
+    - name: Run C2 and O0 regressions
+      run: PYTHONPATH=. python scripts/relaylm_o0_local_one_job_runner_contract_smoke.py
+    - name: Run documentation checks
+      run: PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+    - name: Run I1-GC replay convergence smoke
+      id: i1gc
+      shell: bash
+      run: |
+        set +e
+        PYTHONPATH=. python scripts/relaylm_i1gc_durable_finalization_replay_smoke.py > i1gc-smoke.log 2>&1
+        exit_code=$?
+        cat i1gc-smoke.log
+        exit "$exit_code"
+    - name: Upload I1-GC smoke output
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: i1gc-smoke-output
+        path: i1gc-smoke.log
+        if-no-files-found: error
+        retention-days: 3
+    - name: Run I1-G contract and I1-GB publication regressions
+      run: PYTHONPATH=. python scripts/relaylm_i1gc_canonical_formation_replay_smoke.py
+    - name: Run I1-GD retention convergence smoke
+      id: i1gd
+      shell: bash
+      run: |
+        set +e
+        PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_smoke.py > i1gd-smoke.log 2>&1
+        first_exit=$?
+        PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_contract_smoke.py >> i1gd-smoke.log 2>&1
+        second_exit=$?
+        PYTHONPATH=.:scripts python scripts/relaylm_i1gd_durable_finalization_retention_race_smoke.py >> i1gd-smoke.log 2>&1
+        third_exit=$?
+        cat i1gd-smoke.log
+        if [ "$first_exit" -ne 0 ]; then
+          exit "$first_exit"
+        fi
+        if [ "$second_exit" -ne 0 ]; then
+          exit "$second_exit"
+        fi
+        exit "$third_exit"
+    - name: Upload I1-GD smoke output
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: i1gd-smoke-output
+        path: i1gd-smoke.log
+        if-no-files-found: error
+        retention-days: 3
+    - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_nonstream_crash_smoke.py
+    - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_stream_crash_smoke.py
+    - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_replay_crash_smoke.py
+    - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_retention_crash_smoke.py
+    - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_concurrency_smoke.py
+    - run: PYTHONPATH=.:scripts python scripts/relaylm_i1ge_durable_finalization_security_smoke.py
+    - run: PYTHONPATH=. python scripts/relaylm_mvp_completion_report_smoke.py --check-model --check-all
+    - run: test -z "$(git status --short)"
+  scheduler-worker:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install RelayLM
+      run: |-
+        python -m pip install --upgrade pip
+        pip install -e .
+    - name: Compile repository Python
+      run: python -m compileall -q relaylm scripts
+    - name: Validate Phase 6-C1-0 worker source
+      run: python scripts/relaylm_phase6c1_primary_worker_source_smoke.py
+    - name: Validate Phase 6-C1 worker contract
+      run: python scripts/relaylm_phase6c1_worker_contract_smoke.py
+    - name: Run durable store and restart suite
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
+    - name: Run Phase 6-C1 source and worker regressions
+      run: |-
+        PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_review_fix_smoke.py
+        PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
+    - name: Run queue and documentation regressions
+      run: PYTHONPATH=. python scripts/relaylm_onboarding_config_smoke.py
+    - name: Run Phase 6-C1 fault injection smoke
+      run: python scripts/relaylm_phase6c1_fault_injection_smoke.py
+    - name: Run Phase 6-C1 fault race smoke
+      run: python scripts/relaylm_phase6c1_fault_race_smoke.py
+    - name: Validate Primary worker outcome classification
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_outcome_smoke.py
+    - name: Upload sanitized diagnostic
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase6c1-integrated-worker-diagnostic
+        path: phase6c1-worker-integration-diagnostic.txt
+        if-no-files-found: ignore
+        retention-days: 1
+    - name: Run compose checkpoint seam smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_relaymem_primary_pipeline_checkpoint_smoke.py
+    - name: Run one-claimed worker smokes
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+    - name: Upload sanitized worker diagnostic
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase6c1-primary-worker-diagnostic
+        path: 'phase6c1-primary-worker-diagnostic.txt
+
+          phase6c1-primary-worker-safe-status.json
+
+          '
+        if-no-files-found: ignore
+        retention-days: 1
+    - name: Run Phase 6-C2 committed-claim functional and security suite
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+    - name: Run O0 functional and security suite
+      run: PYTHONPATH=.:scripts python scripts/relaylm_o0_local_one_job_runner_ci_runner.py
+    - name: Run I-1 through I-3 regressions
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i2_lab_observation_smoke.py
+    - name: Run O1B and regression validation
+      env:
+        PYTHONPATH: .:scripts
+      run: |-
+        set -euo pipefail
+        python scripts/relaylm_o1a_two_lane_scheduler_contract_smoke.py
+        python scripts/relaylm_o1b_sealed_replay_lane_smoke.py
+        python scripts/relaylm_o1b_sealed_replay_lane_security_smoke.py
+        python scripts/relaylm_o0_local_one_job_runner_smoke.py
+        python scripts/relaylm_o0_local_one_job_runner_security_smoke.py
+    - name: Run O1C functional and security smokes
+      run: |-
+        PYTHONPATH=.:scripts python scripts/relaylm_o1c_eligible_queue_lane_smoke.py
+        PYTHONPATH=.:scripts python scripts/relaylm_o1c_eligible_queue_lane_security_smoke.py
+    - name: Run O1D1 production-round smokes
+      env:
+        PYTHONPATH: .:scripts
+      run: |-
+        set -euo pipefail
+        python scripts/relaylm_o1d1_config_smoke.py
+        python scripts/relaylm_o1d1_production_round_smoke.py
+        python scripts/relaylm_o1d1_production_round_fault_smoke.py
+        python scripts/relaylm_o1d1_production_round_concurrency_smoke.py
+        python scripts/relaylm_o1d1_production_round_security_smoke.py
+    - name: Validate config and implementation evidence
+      env:
+        PYTHONPATH: .:scripts
+      run: |-
+        set -euo pipefail
+        python -c 'from relaylm.config import load_config; load_config("config.example.yaml")'
+        python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave3/o1d1_completion_report.md
+    - name: Run O1D2 scheduler policy smokes
+      env:
+        PYTHONPATH: .:scripts
+      run: |-
+        set -euo pipefail
+        python scripts/relaylm_o1d2_scheduler_policy_smoke.py
+        python scripts/relaylm_o1d2_scheduler_policy_config_smoke.py
+        python scripts/relaylm_o1d2_scheduler_policy_fault_smoke.py
+        python scripts/relaylm_o1d2_scheduler_policy_security_smoke.py
+    - name: Run O1D1 and O1 lane regressions
+      env:
+        PYTHONPATH: .:scripts
+      run: |-
+        set -euo pipefail
+        python scripts/relaylm_o1a_scheduler_contract_smoke.py
+    - name: Validate config and docs
+      env:
+        PYTHONPATH: .:scripts
+      run: |-
+        set -euo pipefail
+        python -c 'from relaylm.config import load_config; load_config("config.example.yaml")'
+        python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave4/o1d2_completion_report.md
+    - name: O1E smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_smoke.py
+    - name: O1E config smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_config_smoke.py
+    - name: O1E fault smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_fault_smoke.py
+    - name: O1E security smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_o1e_scheduler_operational_controls_security_smoke.py
+    - name: Config example loads
+      run: python -c 'from relaylm.config import load_config; load_config("config.example.yaml")'
+    - name: O1F operational smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_o1f_operational_validation_smoke.py
+    - name: O1F corruption smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_o1f_operational_validation_corruption_smoke.py
+    - name: O1F concurrency smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_o1f_operational_validation_concurrency_smoke.py
+    - name: O1F saturation smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_o1f_operational_validation_saturation_smoke.py
+    - name: O1F restart smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_o1f_operational_validation_restart_smoke.py
+    - name: O1F security smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_o1f_operational_validation_security_smoke.py
+    - name: O1F completion report smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/o1f_completion_report.md
+    - name: MVP PR link smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+    - name: Install RelayLM and test runner
+      run: python -m pip install -e . pytest
+    - name: Run I-7AB unit tests
+      run: PYTHONPATH=. python -m pytest tests/test_relaymem_held_governance_preflight.py
+    - name: Run I-7AB contract smoke
+      run: PYTHONPATH=. python scripts/relaylm_i7ab_held_apply_discard_contract_smoke.py
+    - name: Run C2 regression smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_smoke.py
+  recall-correction-forget-pin:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install RelayLM
+      run: |-
+        python -m pip install --upgrade pip
+        pip install -e .
+    - name: Compile repository Python
+      run: python -m compileall -q relaylm scripts
+    - name: Run Phase I-1 integration and security smokes
+      run: |-
+        set -o pipefail
+        PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py 2>&1 | tee phase-i1-smoke.log
+    - name: Upload Phase I-1 runner log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase-i1-smoke-log
+        path: phase-i1-smoke.log
+        if-no-files-found: ignore
+    - name: Run RelayMEM M1/M2, RelayCTX, and managed enqueue regressions
+      run: |-
+        set -o pipefail
+        {
+          PYTHONPATH=. python scripts/relaylm_relaymem_store_dry_run_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_retrieval_dry_run_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_selection_dry_run_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_ctx_injection_plan_dry_run_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_runtime_ctx_injection_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_snippet_runtime_injection_apply_smoke.py
+        } 2>&1 | tee relaymem-regressions.log
+    - name: Upload RelayMEM regression log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: relaymem-regressions-log
+        path: relaymem-regressions.log
+        if-no-files-found: ignore
+    - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4b_ci_runner.py
+    - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py
+    - run: PYTHONPATH=. python scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py
+    - run: PYTHONPATH=. python scripts/relaylm_phase_i4_forget_hide_contract_smoke.py
+    - name: Confirm clean working tree
+      run: |
+        git status --short
+        test -z "$(git status --short)"
+    - name: I-4C1 hidden-successor smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_hidden_successor_smoke.py
+    - name: I-4C1 corrected-revision smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_corrected_revision_smoke.py
+    - name: I-4C1 fault-seam smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_fault_smoke.py
+    - name: I-4C1 concurrency smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_concurrency_smoke.py
+    - name: I-4C1 security smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_security_smoke.py
+    - name: Upload documentation diagnostics
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: i4c1-documentation-diagnostics
+        path: ${{ runner.temp }}/documentation-current-boundary.log
+        if-no-files-found: error
+    - name: Confirm clean working tree
+      run: |
+        git status --short
+        test -z "$(git status --short)"
+    - name: I-4C2 recovery/finalization smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_recovery_smoke.py
+    - name: I-4C2 fault/restart smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_fault_smoke.py
+    - name: I-4C2 concurrency smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_concurrency_smoke.py
+    - name: I-4C2 security smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_security_smoke.py
+    - name: I-4C2 ownership boundary smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_ownership_boundary_smoke.py
+    - name: Confirm clean working tree
+      run: |
+        git status --short
+        test -z "$(git status --short)"
+    - name: Run I-5A Pin / Unpin contract smokes
+      run: |-
+        set -o pipefail
+        {
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i5a_pin_unpin_contract_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i5a_pin_unpin_token_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i5a_pin_unpin_concurrency_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i5a_pin_unpin_security_smoke.py
+        } 2>&1 | tee phase-i5a-pin-unpin-smoke.log
+    - name: Upload I-5A log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase-i5a-pin-unpin-smoke-log
+        path: phase-i5a-pin-unpin-smoke.log
+        if-no-files-found: ignore
+    - name: Run I-3 / I-4 governance regressions
+      run: |-
+        set -o pipefail
+        {
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_security_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4b_primary_forget_preflight_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
+        } 2>&1 | tee phase-i5a-governance-regressions.log
+    - name: Upload governance regression log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase-i5a-governance-regression-log
+        path: phase-i5a-governance-regressions.log
+        if-no-files-found: ignore
+  cross-slice-convergence:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install RelayLM
+      run: |-
+        python -m pip install --upgrade pip
+        pip install -e .
+    - name: Compile repository Python
+      run: python -m compileall -q relaylm scripts
+    - run: PYTHONPATH=.:scripts python scripts/relaylm_wave2_cross_slice_convergence_smoke.py
+    - run: PYTHONPATH=.:scripts python scripts/relaylm_wave2_cross_slice_security_smoke.py
+    - run: test -z "$(git status --short)"
+    - name: Run Wave 3 convergence smoke
+      run: |
+        set +e
+        PYTHONPATH=.:scripts python scripts/relaylm_wave3_cross_slice_convergence_smoke.py 2>&1 | tee wave3-convergence.log
+        status=${PIPESTATUS[0]}
+        exit "$status"
+    - name: Upload Wave 3 convergence diagnostics
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: wave3-convergence-diagnostics
+        path: wave3-convergence.log
+    - run: PYTHONPATH=.:scripts python scripts/relaylm_wave3_cross_slice_security_smoke.py
+    - run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_security_smoke.py
+    - run: test -z "$(git status --short)"
