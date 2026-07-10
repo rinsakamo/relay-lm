@@ -147,7 +147,7 @@ def test_run_relaymem_retrieval_stage_matches_manual_build(tmp_path) -> None:
     actual_store_diagnostics, actual_retrieval_artifact = run_relaymem_retrieval_stage(
         config=config,
         route=route,
-        relaymem_scoped_store_root=None,
+        relaymem_configured_store_root=None,
         relayscn_scene_policy_artifact=relayscn_artifact,
         relayint_intent_artifact=relayint_artifact,
         messages=messages,
@@ -168,7 +168,7 @@ def test_run_relaymem_retrieval_stage_matches_manual_build(tmp_path) -> None:
             run_relaymem_retrieval_stage,
             config=config,
             route=route,
-            relaymem_scoped_store_root=None,
+            relaymem_configured_store_root=None,
             relayscn_scene_policy_artifact=relayscn_artifact,
             relayint_intent_artifact=relayint_artifact,
             messages=messages,

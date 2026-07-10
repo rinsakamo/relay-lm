@@ -273,7 +273,7 @@ def test_store_root_resolution_runs_on_worker_thread_without_blocking(
     config_path = _write_config(tmp_path)
     app = create_app(str(config_path))
 
-    real_resolver = managed_chat_runtime.resolve_relaymem_character_store_root
+    real_resolver = relaymem_retrieval.resolve_relaymem_character_store_root
     resolution_thread_ids: list[int] = []
 
     def _slow_resolver(*args: object, **kwargs: object) -> str | None:
@@ -282,7 +282,7 @@ def test_store_root_resolution_runs_on_worker_thread_without_blocking(
         return real_resolver(*args, **kwargs)
 
     monkeypatch.setattr(
-        managed_chat_runtime, "resolve_relaymem_character_store_root", _slow_resolver
+        relaymem_retrieval, "resolve_relaymem_character_store_root", _slow_resolver
     )
 
     event_loop_thread_id = threading.get_ident()

@@ -96,7 +96,6 @@ from relaylm.relayint import (
 from relaylm.relayscn import run_relayscn_stage
 from relaylm.relayrel import run_relayrel_stage
 from relaylm.relaymem_retrieval import run_relaymem_retrieval_stage
-from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root
 from relaylm.relayrun import new_run_id
 from relaylm.relayrun_runtime_artifact import (
     _ManagedRuntimeArtifactContext,
@@ -312,19 +311,13 @@ async def handle_managed_chat_completion(
         )
     )
 
-    relaymem_configured_store_root = config.memory.root_path
-    relaymem_scoped_store_root = resolve_relaymem_character_store_root(
-        relaymem_configured_store_root,
-        route.character_id,
-    )
-
     relaymem_store_diagnostics, relaymem_retrieval_artifact = await run_stage(
         node_timings,
         "relaymem_retrieval",
         run_relaymem_retrieval_stage,
         config=config,
         route=route,
-        relaymem_scoped_store_root=relaymem_scoped_store_root,
+        relaymem_configured_store_root=config.memory.root_path,
         relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
         relayint_intent_artifact=relayint_intent_artifact,
         messages=_extract_trace_messages(payload),

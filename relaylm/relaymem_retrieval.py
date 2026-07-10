@@ -6,7 +6,10 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from relaylm.config import RelayLMConfig
-from relaylm.relaymem_primary_recall import apply_relaymem_primary_recall_scope
+from relaylm.relaymem_primary_recall import (
+    apply_relaymem_primary_recall_scope,
+    resolve_relaymem_character_store_root,
+)
 from relaylm.relaymem_retrieval_priority import prioritize_relaymem_candidates
 from relaylm.relaymem_store import (
     build_relaymem_snippet_evidence_dry_run,
@@ -231,7 +234,7 @@ def run_relaymem_retrieval_stage(
     *,
     config: RelayLMConfig,
     route: ResolvedRoute,
-    relaymem_scoped_store_root: str | None,
+    relaymem_configured_store_root: str | None,
     relayscn_scene_policy_artifact: Mapping[str, Any] | None,
     relayint_intent_artifact: Mapping[str, Any] | None,
     messages: Sequence[Mapping[str, Any]],
@@ -252,6 +255,10 @@ def run_relaymem_retrieval_stage(
     ``managed_chat_runtime.py``.
     """
 
+    relaymem_scoped_store_root = resolve_relaymem_character_store_root(
+        relaymem_configured_store_root,
+        route.character_id,
+    )
     relaymem_store_diagnostics = build_relaymem_store_diagnostics(
         root_path=relaymem_scoped_store_root,
         store_enabled=config.memory.store_enabled,
