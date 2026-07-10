@@ -47,11 +47,15 @@ jobs:
           from pathlib import Path
           path = Path('.github/scripts/rebase-pr07-pr11.sh')
           text = path.read_text(encoding='utf-8')
-          old = 'pr7_wave_a_tip="${pr7_commits[5]}"'
-          new = 'pr7_wave_a_tip="${pr7_commits[6]}"'
-          if old not in text:
-              raise SystemExit('expected PR-7 Wave A boundary not found')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          replacements = {
+              'pr7_wave_a_tip="${pr7_commits[5]}"': 'pr7_wave_a_tip="${pr7_commits[6]}"',
+              'git rm "$WORKFLOW_PATH" "$SCRIPT_PATH"': 'git rm -f "$WORKFLOW_PATH" "$SCRIPT_PATH"',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'expected one-shot script fragment not found: {old}')
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
           PY
           set -o pipefail
           bash .github/scripts/rebase-pr07-pr11.sh 2>&1 | tee /tmp/rebase-pr07-pr11.log
