@@ -8,7 +8,7 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 ---
 # RelayLM Current / Target / Migration Guide
 
-Last reviewed: 2026-07-06 JST
+Last reviewed: 2026-07-11 JST
 
 ## Purpose
 
@@ -69,6 +69,8 @@ ACG-1 through ACG-6 are current as bounded analyzer-governance slices. They esta
 
 CW-A1 through CW-A5 are current as bounded Character Workspace reset slices. They establish the file-first parser contract, compiler projections, presentation-only UI rebuild, dry-run-first MEM/SCENE/REL proposal planning, and explicit character creation/template/import flow. They do not implement direct uppercase source rewrites, automatic active-character selection, browser-owned authority, remote template registries, unbounded downloads, RelaySOUL apply/rollback, runtime prompt injection changes, media runtime execution, or permissive authority from template/import content alone.
 
+The durable-memory E2 value smoke after O2/O3 scheduler draining is complete as local, human-reviewed v0.1 readiness evidence. Its content-bearing comparison artifacts remain local-only under `local/value_smoke/`; the committed documentation records only the content-free completion boundary.
+
 ## RelaySLP and Primary MEM migration
 
 ```text
@@ -100,13 +102,13 @@ ordinary finalized turn
   -> E1-R4 request-side grounded recall context
   -> ACG-1 through ACG-6 governed analyzer candidate boundaries
   -> CW-A1 through CW-A5 file-first Character Workspace parser/compiler/UI/creation boundaries
-  -> PM-D5 target-only Primary/Secondary RelayMEM store discovery boundary
+  -> PM-D5 compatibility-free Primary store discovery; Secondary MEM remains target-only
   -> PM-D6 native input-side RelayINT artifact boundary
   -> PM-D7 explicit runtime install/preflight boundary
   -> PM-D8 canonical Primary recall fallback fold-in boundary
 ```
 
-Completed behavior must not be re-listed as migration work: Phase I-1, I-2, I-3, I1-GA through I1-GE, O0, O1D1, O1D2, O1E, O1F, O2, O3, I-4D, I-4E, I-4F, UI-B1A, I-5A read-only preflight, I-5B runtime apply/ranking, I-7A/B read-only preflight, I-7C runtime governance, E1 evaluation consolidation, E1-R1 trusted Home scene admission, E1-R2 character-store bootstrap, E1-R3 provenance-preserving Primary MEM formation summary, E1-R4 retrieval-response grounding, E1-R5 scoped Primary recall candidate fallback, P0-PIPE ordering, ACG-1 through ACG-6 analyzer governance slices, CW-A1 through CW-A5 Character Workspace reset slices, PM-D5 RelayMEM flat-store compatibility removal, PM-D6 RelayINT native artifact / RelayREF wrapper removal, PM-D7 runtime install hook fold-in, and PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in are complete.
+Completed behavior must not be re-listed as migration work: Phase I-1, I-2, I-3, I1-GA through I1-GE, O0, O1D1, O1D2, O1E, O1F, O2, O3, I-4D, I-4E, I-4F, UI-B1A, I-5A read-only preflight, I-5B runtime apply/ranking, I-7A/B read-only preflight, I-7C runtime governance, E1 evaluation consolidation, E1-R1 trusted Home scene admission, E1-R2 character-store bootstrap, E1-R3 provenance-preserving Primary MEM formation summary, E1-R4 retrieval-response grounding, E1-R5 scoped Primary recall candidate fallback, durable-memory E2 value smoke, P0-PIPE ordering, ACG-1 through ACG-6 analyzer governance slices, CW-A1 through CW-A5 Character Workspace reset slices, PM-D5 RelayMEM flat-store compatibility removal, PM-D6 RelayINT native artifact / RelayREF wrapper removal, PM-D7 runtime install hook fold-in, and PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in are complete.
 
 Remaining migration is deliberately narrower:
 
@@ -114,7 +116,6 @@ Remaining migration is deliberately narrower:
 full RelayREL relationship Markdown parsing
 RelayINT / RelayREF broad naming cleanup after PM-D6, if still needed
 TTS/audio/avatar runtime adapter execution
-durable-memory E2 value smoke after O2/O3 scheduler draining evidence
 ```
 
 ## Safe defaults
