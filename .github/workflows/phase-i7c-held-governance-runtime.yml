@@ -1,6 +1,7 @@
 name: Phase I-7C held governance runtime
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'relaylm/relaymem_held_governance.py'

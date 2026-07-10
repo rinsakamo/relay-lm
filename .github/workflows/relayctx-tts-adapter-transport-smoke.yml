@@ -1,17 +1,20 @@
 name: RelayCTX TTS adapter transport smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/**"
       - "scripts/relaylm_relayctx_tts_adapter_transport_smoke.py"
       - ".github/workflows/relayctx-tts-adapter-transport-smoke.yml"
+      - "pyproject.toml"
   push:
     branches: [main]
     paths:
       - "relaylm/**"
       - "scripts/relaylm_relayctx_tts_adapter_transport_smoke.py"
       - ".github/workflows/relayctx-tts-adapter-transport-smoke.yml"
+      - "pyproject.toml"
 
 jobs:
   smoke:

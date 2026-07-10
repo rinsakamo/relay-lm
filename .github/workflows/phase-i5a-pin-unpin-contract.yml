@@ -1,6 +1,7 @@
 name: Phase I-5A Pin Unpin contract
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "relaylm/relaymem_primary_pin.py"
@@ -16,6 +17,7 @@ on:
       - "docs/architecture/phase_i5_pin_unpin_contract.md"
       - "docs/mvp/wave4/i5a_completion_report.md"
       - ".github/workflows/phase-i5a-pin-unpin-contract.yml"
+      - "pyproject.toml"
   pull_request:
     paths:
       - "relaylm/relaymem_primary_pin.py"
@@ -31,6 +33,7 @@ on:
       - "docs/architecture/phase_i5_pin_unpin_contract.md"
       - "docs/mvp/wave4/i5a_completion_report.md"
       - ".github/workflows/phase-i5a-pin-unpin-contract.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

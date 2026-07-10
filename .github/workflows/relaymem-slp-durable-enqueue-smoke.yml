@@ -1,6 +1,7 @@
 name: RelayMEM RelaySLP durable enqueue smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_slp_dispatch_preflight.py"

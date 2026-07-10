@@ -12,6 +12,7 @@ on:
       - docs/architecture/phase55c1_tts_adapter_handoff_contract.md
       - docs/architecture/pipeline_implementation_plan.md
       - .github/workflows/relayctx-tts-adapter-handoff-smoke.yml
+      - pyproject.toml
   push:
     branches: [main]
     paths:
@@ -23,6 +24,7 @@ on:
       - docs/architecture/phase55c1_tts_adapter_handoff_contract.md
       - docs/architecture/pipeline_implementation_plan.md
       - .github/workflows/relayctx-tts-adapter-handoff-smoke.yml
+      - pyproject.toml
 
 permissions:
   contents: read

@@ -1,20 +1,21 @@
 name: Phase I-1 two-turn Primary MEM recall smoke
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "relaylm/**"
       - "scripts/relaylm_phase_i1_*"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
-      - "docs/**"
       - ".github/workflows/phase-i1-two-turn-primary-recall-smoke.yml"
+      - "pyproject.toml"
   pull_request:
     paths:
       - "relaylm/**"
       - "scripts/relaylm_phase_i1_*"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
-      - "docs/**"
       - ".github/workflows/phase-i1-two-turn-primary-recall-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

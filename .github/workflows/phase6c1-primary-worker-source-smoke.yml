@@ -1,6 +1,7 @@
 name: Phase 6-C1-0 primary worker source smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_slp_primary_worker_source.py"

@@ -1,6 +1,7 @@
 name: E1 evaluation consolidation
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "docs/**"

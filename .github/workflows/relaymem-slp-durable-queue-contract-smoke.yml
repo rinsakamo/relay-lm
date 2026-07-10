@@ -1,6 +1,7 @@
 name: RelayMEM RelaySLP durable queue contract smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "docs/architecture/phase6b0_relayslp_durable_queue_contract.md"

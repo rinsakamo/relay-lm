@@ -1,6 +1,7 @@
 name: Phase 6-C1 worker contract smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "docs/architecture/phase6c1_primary_mem_worker_contract.md"

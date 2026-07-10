@@ -1,6 +1,7 @@
 name: I1-GB durable-finalization publication smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/app.py"
@@ -16,6 +17,7 @@ on:
       - "docs/config_schema.md"
       - "config.example.yaml"
       - ".github/workflows/i1gb-durable-finalization-publication-smoke.yml"
+      - "pyproject.toml"
   push:
     branches:
       - main
@@ -32,6 +34,7 @@ on:
       - "docs/config_schema.md"
       - "config.example.yaml"
       - ".github/workflows/i1gb-durable-finalization-publication-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

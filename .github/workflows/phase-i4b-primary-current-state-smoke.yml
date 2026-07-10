@@ -1,6 +1,7 @@
 name: Phase I-4B Primary current state and Forget preflight
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - "relaylm/relaymem_primary_current_state.py"
@@ -12,8 +13,8 @@ on:
       - "scripts/relaylm_phase_i4b_*"
       - "scripts/_relaylm_phase_i4b_test_support.py"
       - "scripts/relaylm_phase_i4_forget_hide_contract_smoke.py"
-      - "docs/**"
       - ".github/workflows/phase-i4b-primary-current-state-smoke.yml"
+      - "pyproject.toml"
   pull_request:
     paths:
       - "relaylm/relaymem_primary_current_state.py"
@@ -25,8 +26,8 @@ on:
       - "scripts/relaylm_phase_i4b_*"
       - "scripts/_relaylm_phase_i4b_test_support.py"
       - "scripts/relaylm_phase_i4_forget_hide_contract_smoke.py"
-      - "docs/**"
       - ".github/workflows/phase-i4b-primary-current-state-smoke.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read

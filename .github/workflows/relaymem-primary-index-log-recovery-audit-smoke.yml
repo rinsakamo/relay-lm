@@ -1,6 +1,7 @@
 name: RelayMEM Primary index log recovery audit smoke
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - "relaylm/relaymem_primary_index_log_recovery_audit.py"

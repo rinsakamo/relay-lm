@@ -10,6 +10,7 @@ on:
       - docs/architecture/pipeline_implementation_plan.md
       - docs/architecture/phase5d2_lazy_relayrun_recovery_detail_handoff.md
       - .github/workflows/relayrun-lazy-recovery-detail-smoke.yml
+      - pyproject.toml
   push:
     branches: [main]
     paths:
@@ -19,6 +20,7 @@ on:
       - docs/architecture/pipeline_implementation_plan.md
       - docs/architecture/phase5d2_lazy_relayrun_recovery_detail_handoff.md
       - .github/workflows/relayrun-lazy-recovery-detail-smoke.yml
+      - pyproject.toml
 
 permissions:
   contents: read
