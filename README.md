@@ -190,6 +190,24 @@ curl http://127.0.0.1:8090/v1/chat/completions \
   -d '{"model":"relaylm-work-assistant","messages":[{"role":"user","content":"hello"}],"stream":false}'
 ```
 
+## 🧬 Open the Character Workspace UI
+
+The `relaylm --config config.yaml` command starts RelayLM and its loopback management API, but it does not serve the Character Workspace production bundle. For the current local development UI, start Vite in a second terminal:
+
+```bash
+cd apps/soul-lab
+npm install --no-audit --no-fund
+npm run dev
+```
+
+Open:
+
+```text
+http://127.0.0.1:5173/lab/
+```
+
+The zero-character state opens Create / Import. Character creation and workspace commit require explicit approval, and a committed workspace is not made active automatically. The Vite server is a loopback development surface, not a supported public or Cloudflare Tunnel origin; production bundle serving remains a separate implementation boundary. See the [Character Workspace UI guide](apps/soul-lab/README.md) and [CW-A5 creation contract](docs/architecture/cw_a5_character_creation_templates_showcase_import.md).
+
 ## 🧰 Troubleshooting
 
 Connection problem? See the [OpenWebUI + RelayLM + LM Studio troubleshooting guide](docs/smoke/openwebui_lmstudio_troubleshooting.md).
