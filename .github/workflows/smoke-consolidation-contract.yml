@@ -36,3 +36,12 @@ jobs:
         run: python -m compileall -q scripts/relaylm_ci_*.py
       - name: Validate consolidated smoke definitions
         run: PYTHONPATH=scripts python scripts/relaylm_ci_consolidated_smoke_contract.py
+      - name: Export response-split smoke sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: response-split-smoke-sources
+          path: |
+            scripts/relaylm_i1gb_durable_finalization_app_smoke.py
+            scripts/_relaylm_i1ge_crash_child.py
+          if-no-files-found: error
+          retention-days: 1
