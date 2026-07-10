@@ -1,5 +1,5 @@
 # Pull-request trigger commit for observable one-shot execution.
-# Retry after validating the standalone preparer.
+# Retry after fixing nested preparer string termination.
 name: Rebase PR-7 through PR-11 stack
 
 on:
