@@ -1,6 +1,7 @@
 """Regression tests for closing wrapped backend streams before iteration starts."""
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 import httpx
@@ -46,7 +47,7 @@ def _chat_request() -> dict[str, object]:
     }
 
 
-async def test_abandoned_wrapped_stream_closes_backend_before_iteration() -> None:
+def test_abandoned_wrapped_stream_closes_backend_before_iteration() -> None:
     """Unstarted RelayCTX/TTS async-generator wrappers must not hide backend close.
 
     Durable-finalization fail-closed branches can call ``close_stream_iterator``
@@ -75,18 +76,21 @@ async def test_abandoned_wrapped_stream_closes_backend_before_iteration() -> Non
             stream=_TrackingStream(),
         )
 
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        status_code, content_type, body_iter = await open_chat_completion_stream(
-            _chat_request(),
-            _route_with_stream_wrappers_enabled(),
-            client,
-        )
-        assert status_code == 200
-        assert content_type == "text/event-stream"
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            status_code, content_type, body_iter = await open_chat_completion_stream(
+                _chat_request(),
+                _route_with_stream_wrappers_enabled(),
+                client,
+            )
+            assert status_code == 200
+            assert content_type == "text/event-stream"
 
-        # Close before the first __anext__ call. This is the path that used to
-        # leak the checked-out backend response when stream wrappers were active.
-        await body_iter.aclose()  # type: ignore[attr-defined]
+            # Close before the first __anext__ call. This is the path that used to
+            # leak the checked-out backend response when stream wrappers were active.
+            await body_iter.aclose()  # type: ignore[attr-defined]
 
-        assert closed["value"] is True
-        assert not client.is_closed
+            assert closed["value"] is True
+            assert not client.is_closed
+
+    asyncio.run(scenario())
