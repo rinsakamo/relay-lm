@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import errno
 import os
+import time
 from contextlib import contextmanager
 from typing import Iterator, Protocol, Union, runtime_checkable
 
@@ -48,11 +49,26 @@ _POSIX_LOCK_UNAVAILABLE_ERRNOS = frozenset(
     {errno.EACCES, errno.EAGAIN, errno.EWOULDBLOCK}
 )
 
+# msvcrt.locking() reports lock contention through OSError. Keep this set
+# conservative so real descriptor/programming failures (for example EBADF)
+# still surface immediately instead of being retried forever.
+_WINDOWS_LOCK_UNAVAILABLE_ERRNOS = frozenset(
+    errno_value
+    for errno_value in (
+        getattr(errno, "EACCES", None),
+        getattr(errno, "EAGAIN", None),
+        getattr(errno, "EWOULDBLOCK", None),
+        getattr(errno, "EDEADLK", None),
+    )
+    if errno_value is not None
+)
+
 # msvcrt.locking() locks a byte range starting at the current file position.
 # There is nothing meaningful about locking more than one byte for an
 # advisory whole-file lock, so a fixed 1-byte range is used consistently by
 # both the lock and unlock calls.
 _WINDOWS_LOCK_NBYTES = 1
+_WINDOWS_BLOCKING_RETRY_SLEEP_SECONDS = 0.05
 
 
 class PortableLockUnavailable(BlockingIOError):
@@ -155,16 +171,22 @@ def _acquire_windows(fd: int, *, mode: str, blocking: bool) -> None:
     os.lseek(fd, 0, os.SEEK_SET)
     try:
         # LK_LOCK retries internally for roughly 10 seconds before giving up
-        # and raising OSError. Unlike POSIX flock(), which blocks
-        # indefinitely, "blocking" acquisition on Windows is therefore bounded
-        # to about 10 seconds rather than being a true indefinite wait.
-        lock_flag = msvcrt.LK_LOCK if blocking else msvcrt.LK_NBLCK
+        # and raising OSError. POSIX flock(..., LOCK_EX) blocks indefinitely,
+        # so preserve that contract by retrying lock-contention failures until
+        # the lock is acquired. Non-contention OSErrors still surface.
+        if blocking:
+            while True:
+                try:
+                    msvcrt.locking(fd, msvcrt.LK_LOCK, _WINDOWS_LOCK_NBYTES)
+                    return
+                except OSError as exc:
+                    if getattr(exc, "errno", None) not in _WINDOWS_LOCK_UNAVAILABLE_ERRNOS:
+                        raise
+                    time.sleep(_WINDOWS_BLOCKING_RETRY_SLEEP_SECONDS)
         try:
-            msvcrt.locking(fd, lock_flag, _WINDOWS_LOCK_NBYTES)
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, _WINDOWS_LOCK_NBYTES)
         except OSError as exc:
-            if not blocking:
-                raise PortableLockUnavailable(*exc.args) from exc
-            raise
+            raise PortableLockUnavailable(*exc.args) from exc
     finally:
         os.lseek(fd, saved_position, os.SEEK_SET)
 
