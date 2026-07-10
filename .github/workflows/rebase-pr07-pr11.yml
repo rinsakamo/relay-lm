@@ -3,6 +3,7 @@ name: Rebase PR-7 through PR-11 stack
 on:
   push:
     branches:
+      - main
       - maintenance/rebase-pr07-pr11-20260710
     paths:
       - .github/workflows/rebase-pr07-pr11.yml
