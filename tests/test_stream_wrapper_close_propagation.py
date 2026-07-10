@@ -1,4 +1,4 @@
-"""Regression tests for closing wrapped backend streams before iteration starts."""
+"""Regression tests for close propagation through backend stream wrappers."""
 from __future__ import annotations
 
 import asyncio
@@ -6,7 +6,10 @@ from types import SimpleNamespace
 
 import httpx
 
-from relaylm.adapter import open_chat_completion_stream
+from relaylm.adapter import (
+    _ClosePropagatingAsyncIterator,
+    open_chat_completion_stream,
+)
 
 BACKEND_BASE_URL = "http://127.0.0.1:8000/v1"
 BACKEND_CHAT_COMPLETIONS_URL = f"{BACKEND_BASE_URL}/chat/completions"
@@ -92,5 +95,34 @@ def test_abandoned_wrapped_stream_closes_backend_before_iteration() -> None:
 
             assert closed["value"] is True
             assert not client.is_closed
+
+    asyncio.run(scenario())
+
+
+def test_wrapper_terminal_completion_closes_direct_backend_target() -> None:
+    """A wrapper that ends early must still close the direct backend target."""
+
+    closed = {"value": False}
+
+    class _CloseTarget:
+        async def aclose(self) -> None:
+            closed["value"] = True
+
+    async def empty_wrapper():
+        if False:
+            yield b"unreachable"
+
+    async def scenario() -> None:
+        body_iter = _ClosePropagatingAsyncIterator(
+            empty_wrapper(),
+            close_targets=(_CloseTarget(),),
+        )
+        try:
+            await body_iter.__anext__()
+        except StopAsyncIteration:
+            pass
+        else:  # pragma: no cover - defensive assertion branch
+            raise AssertionError("empty wrapper unexpectedly yielded a chunk")
+        assert closed["value"] is True
 
     asyncio.run(scenario())
