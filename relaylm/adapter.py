@@ -74,6 +74,66 @@ class _BackendResponseByteIterator:
         await self._stream_context.__aexit__(None, None, None)
 
 
+class _ClosePropagatingAsyncIterator:
+    """Async iterator that preserves direct close hooks hidden behind wrappers.
+
+    RelayCTX/TTS wrappers are implemented as async generators. When an async
+    generator is abandoned before its first ``__anext__`` call, ``aclose()``
+    does not enter its body/finally, so it cannot close the upstream iterator it
+    would have consumed. Durable-finalization fail-closed paths can abandon a
+    just-opened backend stream exactly this way. This adapter-level wrapper
+    keeps the returned iterator closeable while also closing the original
+    backend response iterator directly, so the shared AsyncClient never retains
+    a checked-out backend response across requests.
+    """
+
+    def __init__(
+        self,
+        body_iter: AsyncIterator[bytes],
+        *,
+        close_targets: tuple[object, ...],
+    ) -> None:
+        self._body_iter = body_iter
+        self._aiter = body_iter.__aiter__()
+        self._close_targets = close_targets
+        self._closed = False
+
+    def __aiter__(self) -> "_ClosePropagatingAsyncIterator":
+        return self
+
+    async def __anext__(self) -> bytes:
+        if self._closed:
+            raise StopAsyncIteration
+        try:
+            return await self._aiter.__anext__()
+        except StopAsyncIteration:
+            await self.aclose()
+            raise
+        except BaseException:
+            await self.aclose()
+            raise
+
+    async def aclose(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        first_error: BaseException | None = None
+        for close_target in (self._body_iter, *self._close_targets):
+            try:
+                await _close_async_iterator(close_target)
+            except BaseException as exc:
+                if first_error is None:
+                    first_error = exc
+        if first_error is not None:
+            raise first_error
+
+
+async def _close_async_iterator(iterator: object) -> None:
+    close = getattr(iterator, "aclose", None)
+    if callable(close):
+        await close()
+
+
 def _backend_url(route: ResolvedRoute, path: str) -> str:
     base_url = str(route.backend.base_url).rstrip("/")
     return f"{base_url}{path}"
@@ -230,7 +290,8 @@ async def open_chat_completion_stream(
 
     _clear_backend_cookies(client)
     content_type = response.headers.get("content-type", "text/event-stream")
-    body_iter: AsyncIterator[bytes] = _BackendResponseByteIterator(response, stream_context)
+    base_body_iter = _BackendResponseByteIterator(response, stream_context)
+    body_iter: AsyncIterator[bytes] = base_body_iter
     pipeline_context = get_active_pipeline_context()
     if route.relayctx_stream_unpack_dry_run_enabled:
         body_iter = wrap_stream_with_relayctx_suppression(
@@ -252,6 +313,11 @@ async def open_chat_completion_stream(
             max_segment_chars=route.relayctx_tts_adapter_handoff_max_segment_chars,
             min_segment_chars=route.relayctx_tts_adapter_handoff_min_segment_chars,
             pipeline_context=pipeline_context,
+        )
+    if body_iter is not base_body_iter:
+        body_iter = _ClosePropagatingAsyncIterator(
+            body_iter,
+            close_targets=(base_body_iter,),
         )
 
     return response.status_code, content_type, body_iter
