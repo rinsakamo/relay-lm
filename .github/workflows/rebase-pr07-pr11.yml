@@ -42,8 +42,9 @@ jobs:
       - name: Rebase, verify, and atomically update the stack
         shell: bash
         run: |
-          python - <<'PY'
+          python - <<'PY_PATCH_SCRIPT'
           from pathlib import Path
+
           path = Path('.github/scripts/rebase-pr07-pr11.sh')
           text = path.read_text(encoding='utf-8')
           replacements = {
@@ -55,8 +56,108 @@ jobs:
               if old not in text:
                   raise SystemExit(f'expected one-shot script fragment not found: {old}')
               text = text.replace(old, new, 1)
+
+          anchor = '''rebase_layer pr9 origin/claude/pr-09-memory-stages "$PR8_NEW" "$PR9_OLD_BASE"
+          verify_branch pr9
+          PR9_NEW="$(git rev-parse HEAD)"'''
+          patched = r"""rebase_layer pr9 origin/claude/pr-09-memory-stages "$PR8_NEW" "$PR9_OLD_BASE"
+          python - <<'PY_FIX_PR9'
+          from pathlib import Path
+
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file_path = Path(path)
+              text = file_path.read_text(encoding="utf-8")
+              if old not in text:
+                  raise SystemExit(f"expected PR-9 fix target not found in {path}: {old[:80]!r}")
+              file_path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+          replace_once(
+              "relaylm/managed_chat_runtime.py",
+              "from relaylm.relaymem_primary_recall import resolve_relaymem_character_store_root\n",
+              "",
+          )
+          replace_once(
+              "relaylm/managed_chat_runtime.py",
+              '''    relaymem_configured_store_root = config.memory.root_path
+              relaymem_scoped_store_root = resolve_relaymem_character_store_root(
+                  relaymem_configured_store_root,
+                  route.character_id,
+              )
+
+              relaymem_store_diagnostics, relaymem_retrieval_artifact = await run_stage(''',
+              '''    relaymem_store_diagnostics, relaymem_retrieval_artifact = await run_stage(''',
+          )
+          replace_once(
+              "relaylm/managed_chat_runtime.py",
+              "        relaymem_scoped_store_root=relaymem_scoped_store_root,",
+              "        relaymem_configured_store_root=config.memory.root_path,",
+          )
+          replace_once(
+              "relaylm/relaymem_retrieval.py",
+              "from relaylm.relaymem_primary_recall import apply_relaymem_primary_recall_scope",
+              '''from relaylm.relaymem_primary_recall import (
+              apply_relaymem_primary_recall_scope,
+              resolve_relaymem_character_store_root,
+          )''',
+          )
+          replace_once(
+              "relaylm/relaymem_retrieval.py",
+              "    relaymem_scoped_store_root: str | None,",
+              "    relaymem_configured_store_root: str | None,",
+          )
+          replace_once(
+              "relaylm/relaymem_retrieval.py",
+              '''    relaymem_store_diagnostics = build_relaymem_store_diagnostics(
+                  root_path=relaymem_scoped_store_root,''',
+              '''    relaymem_scoped_store_root = resolve_relaymem_character_store_root(
+                  relaymem_configured_store_root,
+                  route.character_id,
+              )
+              relaymem_store_diagnostics = build_relaymem_store_diagnostics(
+                  root_path=relaymem_scoped_store_root,''',
+          )
+
+          memory_test = Path("tests/test_memory_stage_extraction.py")
+          memory_text = memory_test.read_text(encoding="utf-8")
+          if memory_text.count("relaymem_scoped_store_root=None") != 2:
+              raise SystemExit("expected exactly two PR-9 stage-test keyword occurrences")
+          memory_test.write_text(
+              memory_text.replace(
+                  "relaymem_scoped_store_root=None",
+                  "relaymem_configured_store_root=None",
+              ),
+              encoding="utf-8",
+          )
+
+          replace_once(
+              "tests/test_request_path_offload.py",
+              "real_resolver = managed_chat_runtime.resolve_relaymem_character_store_root",
+              "real_resolver = relaymem_retrieval.resolve_relaymem_character_store_root",
+          )
+          replace_once(
+              "tests/test_request_path_offload.py",
+              '''    monkeypatch.setattr(
+                  managed_chat_runtime, "resolve_relaymem_character_store_root", _slow_resolver
+              )''',
+              '''    monkeypatch.setattr(
+                  relaymem_retrieval, "resolve_relaymem_character_store_root", _slow_resolver
+              )''',
+          )
+          PY_FIX_PR9
+          git add relaylm/managed_chat_runtime.py relaylm/relaymem_retrieval.py \
+            tests/test_memory_stage_extraction.py tests/test_request_path_offload.py
+          git commit -m "Keep RelayMEM store-root resolution inside the offloaded stage"
+          verify_branch pr9
+          PR9_NEW="$(git rev-parse HEAD)"
+          """
+          if anchor not in text:
+              raise SystemExit('expected PR-9 verification anchor not found')
+          text = text.replace(anchor, patched, 1)
           path.write_text(text, encoding='utf-8')
-          PY
+          PY_PATCH_SCRIPT
+          bash -n .github/scripts/rebase-pr07-pr11.sh
           set -o pipefail
           bash .github/scripts/rebase-pr07-pr11.sh 2>&1 | tee /tmp/rebase-pr07-pr11.log
 
