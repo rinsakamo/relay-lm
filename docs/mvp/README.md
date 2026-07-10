@@ -1,12 +1,28 @@
+---
+relaylm_doc_type: documentation_index
+relaylm_authority: mvp_evidence_and_completion_report_index
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: documentation
+relaylm_update_trigger:
+  - release readiness assessment changes
+  - a convergence PR indexes a merged completion report
+  - historical milestone placement changes
+relaylm_not_authoritative_for:
+  - repository-wide current implementation status
+  - MVP dependency sequencing
+  - exact runtime contracts
+relaylm_current_status_source: ../PROJECT_STATUS.md
+---
 # RelayLM MVP Summaries
 
-This directory is the index for RelayLM MVP milestone summaries, MVP-focused implementation notes, and per-PR implementation completion reports.
+This directory is the index for RelayLM MVP milestone summaries, MVP-focused implementation notes, release-readiness assessments, and per-PR implementation completion reports.
 
-> For the current phase, implemented boundaries, default-off/preflight-only behavior, and immediate next work, use [Project Status](../PROJECT_STATUS.md). The files in this directory are historical evidence rather than the current-state source of truth.
+> For the current phase, implemented boundaries, default-off/preflight-only behavior, and immediate next work, use [Project Status](../PROJECT_STATUS.md). The files in this directory are historical evidence rather than the current-state source of truth, except that an explicitly current release-readiness assessment may summarize evidence and pending validation without becoming runtime authority.
 
-## Release readiness receipts
+## Release readiness assessments
 
-- [v0.1 Release Readiness](v0.1_release_readiness.md) — content-free readiness receipt for the v0.1 boundary, including local human-reviewed durable-memory E2 value-smoke evidence handling and post-v0.1 decision debt.
+- [v0.1 Release Readiness Assessment](v0.1_release_readiness.md) — content-free readiness assessment for the v0.1 boundary, including local human-reviewed durable-memory E2 value-smoke evidence handling, pending final main-HEAD validation, and post-v0.1 decision debt. It is not the final tag receipt while validation remains pending.
 
 ## Implementation completion reports
 
@@ -22,10 +38,11 @@ Each implementation PR creates only its own report. It must not edit this centra
 
 ### Wave 8 merged completion reports
 
-Wave 8 currently contains operator-facing evaluation-flow conveniences, runtime-non-contact offline tooling, measurement-only infrastructure evidence, and documentation convergence reports. These reports are historical evidence for their own slices only. The MVP eval runner report does not mark O2/O3, supervised workers, polling, or always-on operation complete; the Twin Extraction report does not add MEM/SOUL ingestion or RelaySLP runtime wiring; the LAT-1 report does not implement response-time guarantees, degradation ladders, timeouts, search-algorithm changes, ANN/vector DB, Secondary MEM, SSE stream timing, O2/O3 changes, or TTS/avatar timing.
+Wave 8 currently contains operator-facing evaluation-flow conveniences, runtime-non-contact offline tooling, measurement-only infrastructure evidence, and documentation convergence reports. These reports are historical evidence for their own slices only. The MVP eval runner report does not mark O2/O3, supervised workers, polling, or always-on operation complete; the E2 harness report proves only the comparison-transcript generator and not the later human quality judgment; the Twin Extraction report does not add MEM/SOUL ingestion or RelaySLP runtime wiring; the LAT-1 report does not implement response-time guarantees, degradation ladders, timeouts, search-algorithm changes, ANN/vector DB, Secondary MEM, SSE stream timing, O2/O3 changes, or TTS/avatar timing.
 
 - [MVP eval runner completion report](wave8/mvp_eval_runner_completion_report.md) — source PR #451.
 - [O2/O3 and PM-D5-D7 docs convergence completion report](wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md) — source PR #490.
+- [E2 Value Smoke Harness completion report](wave8/e2_value_smoke_harness_completion_report.md) — source PR #481; harness implementation evidence only, with human judgment remaining separate and local-only.
 - [Twin Extraction Tooling completion report](wave8/twin_extraction_completion_report.md) — source PR #503; offline runtime-non-contact preprocessing/extraction tooling only.
 - [LAT-1 Latency Measurement completion report](wave8/lat1_latency_measurement_completion_report.md) — source PR #505; measurement-only evidence, no optimization or behavior change.
 
@@ -108,6 +125,7 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r4_comple
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r5_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/mvp_eval_runner_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/e2_value_smoke_harness_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/twin_extraction_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/lat1_latency_measurement_completion_report.md
 ```

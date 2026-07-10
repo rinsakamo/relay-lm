@@ -21,6 +21,7 @@ RelayLM documentation is AI-first. Documents must remain correct when retrieved 
 ## Start here
 
 - [Current project status](PROJECT_STATUS.md) — the single current implementation status authority.
+- [v0.1 Release Readiness Assessment](mvp/v0.1_release_readiness.md) — current readiness assessment and pending final main-HEAD validation; not a completed tag receipt.
 - [Project execution plan](architecture/project_execution_plan.md) — the single MVP execution plan and post-MVP roadmap authority.
 - [File-first Character Workspace design](architecture/file_first_character_workspace_design.md) — the current product direction reset target: editable Markdown character sources compiled into runtime projections.
 - [CW-A1 File-first Source Tree and Parser Contracts](architecture/cw_a1_file_first_source_tree_parser_contracts.md) — the current read-only source tree/parser contract slice for the file-first Character Workspace reset.
@@ -111,6 +112,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 
 - [MVP eval runner completion report](mvp/wave8/mvp_eval_runner_completion_report.md) — source PR #451. This is an operator-facing evaluation-flow convenience only and does not mark O2/O3 complete.
 - [O2/O3 and PM-D5-D7 docs convergence completion report](mvp/wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md) — source PR #490. Historical documentation convergence evidence only.
+- [E2 Value Smoke Harness completion report](mvp/wave8/e2_value_smoke_harness_completion_report.md) — source PR #481. Harness implementation evidence only; the later human quality judgment remains separate and local-only.
 - [Twin Extraction Tooling completion report](mvp/wave8/twin_extraction_completion_report.md) — source PR #503. Offline runtime-non-contact preprocessing/extraction tooling only; no MEM/SOUL ingestion or RelaySLP runtime wiring.
 - [LAT-1 Latency Measurement completion report](mvp/wave8/lat1_latency_measurement_completion_report.md) — source PR #505. Measurement-only evidence; no optimization, response-time guarantee, timeout, degradation ladder, search-algorithm, ANN/vector DB, Secondary MEM, SSE timing, O2/O3, or TTS/avatar behavior change.
 

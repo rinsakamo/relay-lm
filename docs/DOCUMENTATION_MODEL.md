@@ -75,6 +75,7 @@ Use plain scalar or list values only. Do not encode source text, prompts, traces
 | `contract` | Exact schema, gate, artifact, and runtime contract | `docs/contracts/` or dedicated architecture contract docs | exact implemented or planned contract behavior |
 | `runbook` | Operator-facing manual procedure or bounded tooling operation guide | `docs/smoke/`, `docs/tools/` | procedure and interpretation boundaries for the named manual/tooling flow; never repository-wide current status |
 | `smoke_howto` | Manual or automated validation procedure | `docs/smoke/` | validation steps and expected evidence |
+| `release_readiness_assessment` | Current assessment of release criteria, completed evidence, and pending final validation | `docs/mvp/v0.1_release_readiness.md` | readiness interpretation only; never a completed tag or release receipt until exact validation evidence is recorded |
 | `validation_receipt` | Frozen validation result or receipt-style proof record | `docs/architecture/*validation*receipt*.md`, `docs/mvp/` | validation evidence only; never current implementation status |
 | `cross_slice_convergence_audit` | Cross-slice convergence audit over merged implementation tracks | `docs/architecture/wave*_cross_slice_convergence_audit.md` | historical convergence evidence and shared-doc inputs |
 | `integration_convergence_audit` | Integration-wave convergence audit over merged tracks | `docs/architecture/wave*_cross_slice_convergence_audit.md` | historical integration convergence evidence and shared-doc inputs |
@@ -96,6 +97,8 @@ Use the following values consistently:
 - `historical_after_merge`: implementation handoff or completion report after the source PR has merged.
 - `frozen`: preserved record that should not be edited except for metadata or link fixes.
 
+A `release_readiness_assessment` may be `current` while final validation is pending, but it must say so explicitly and must not be cited as a completed release receipt. A `validation_receipt` must identify the exact validated commit, execution date, checks, results, and reviewer or source-of-truth workflow.
+
 ## AI reading instructions
 
 When answering questions about current RelayLM behavior:
@@ -105,11 +108,12 @@ When answering questions about current RelayLM behavior:
 3. Use `docs/architecture/pipeline_responsibility_design.md` for component responsibility and canonical target order.
 4. Use dedicated contracts for exact schemas, gates, artifacts, and bounded behavior.
 5. Use `docs/architecture/current_target_migration_guide.md` before treating target or compatibility behavior as current.
-6. Treat `docs/mvp/` and `docs/architecture/archive/` as historical evidence only.
+6. Treat `docs/mvp/` and `docs/architecture/archive/` as historical evidence only, except for an explicitly current release-readiness assessment.
 7. Treat handoff docs as implementation records, not canonical architecture, after merge unless they are the dedicated current exact-boundary document for a still-current slice.
 8. Treat an `implementation_completion_report` as evidence that one PR claims a bounded result, not as repository-wide completion authority.
 9. During an explicitly declared parallel-wave merge window, inspect the source PR and completion report in addition to current status; do not infer that the next wave or release gate is open until the convergence documentation PR has merged.
 10. Treat `strategic_vision` documents as non-committing horizon guidance. They can explain why future work may matter, but they do not override Project Status, Project Execution Plan, current contracts, or release-readiness receipts.
+11. Treat a release-readiness assessment with pending final validation as a checklist and evidence synthesis, not proof that a tag candidate passed.
 
 ## Placement rules
 
@@ -123,7 +127,7 @@ The current placement rules remain:
 - manual smoke, troubleshooting, and local behavior validation docs -> `docs/smoke/`
 - offline tooling specifications and runbooks -> `docs/tools/`
 - evaluation templates and run records -> `docs/evaluation/`
-- historical MVP snapshots and implementation completion reports -> `docs/mvp/`
+- historical MVP snapshots, release-readiness assessments, and implementation completion reports -> `docs/mvp/`
 - superseded architecture rationale -> `docs/architecture/archive/`
 - RelaySOUL governance docs -> `docs/relaysoul/`
 
