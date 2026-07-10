@@ -10,6 +10,14 @@ DEFAULT_REPO_ROOT = Path(__file__).resolve().parents[1]
 
 INLINE_LINK_RE = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 REFERENCE_LINK_RE = re.compile(r"^\s*\[[^\]]+\]:\s*(\S+)")
+HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$")
+HTML_ANCHOR_RE = re.compile(r"<(?:a|span)\s+[^>]*(?:id|name)=[\"']([^\"']+)[\"']", re.IGNORECASE)
+INLINE_HTML_RE = re.compile(r"<[^>]+>")
+MARKDOWN_DECORATION_RE = re.compile(r"[`*_~]")
+LINK_LABEL_RE = re.compile(r"!?\[([^\]]+)\]\([^)]*\)")
+NON_SLUG_RE = re.compile(r"[^\w\- ]", re.UNICODE)
+MULTI_HYPHEN_RE = re.compile(r"-{2,}")
+
 EXTERNAL_SCHEMES = {
     "data",
     "file",
@@ -26,7 +34,7 @@ EXTERNAL_SCHEMES = {
 def _extract_target(raw_target: str) -> str:
     target = raw_target.strip()
     if target.startswith("<") and ">" in target:
-        return target[1 : target.index(">")].strip()
+        return target[1 : target.index(">")] .strip()
 
     # Markdown allows an optional quoted title after the destination.
     # RelayLM docs do not use unescaped spaces in local paths, so the first
@@ -34,9 +42,12 @@ def _extract_target(raw_target: str) -> str:
     return target.split(maxsplit=1)[0] if target else ""
 
 
-def _resolve_local_target(source: Path, target: str) -> Path | None:
-    if not target or target.startswith("#"):
+def _resolve_local_target(source: Path, target: str) -> tuple[Path, str] | None:
+    if not target:
         return None
+
+    if target.startswith("#"):
+        return source.resolve(), unquote(target[1:])
 
     parsed = urlsplit(target)
     if parsed.scheme.lower() in EXTERNAL_SCHEMES or parsed.netloc:
@@ -44,13 +55,13 @@ def _resolve_local_target(source: Path, target: str) -> Path | None:
 
     path_text = unquote(parsed.path)
     if not path_text:
-        return None
+        return source.resolve(), unquote(parsed.fragment)
 
     if path_text.startswith("/"):
         # Root-relative web links are outside the repository-file contract.
         return None
 
-    return (source.parent / path_text).resolve()
+    return (source.parent / path_text).resolve(), unquote(parsed.fragment)
 
 
 def _iter_markdown_links(source: Path) -> list[tuple[int, str]]:
@@ -83,23 +94,71 @@ def _iter_markdown_links(source: Path) -> list[tuple[int, str]]:
     return links
 
 
-def check_links(repo_root: Path) -> tuple[int, int, list[str]]:
+def _heading_slug(text: str) -> str:
+    text = INLINE_HTML_RE.sub("", text)
+    text = LINK_LABEL_RE.sub(lambda match: match.group(1), text)
+    text = MARKDOWN_DECORATION_RE.sub("", text)
+    text = text.strip().lower()
+    text = NON_SLUG_RE.sub("", text)
+    text = text.replace(" ", "-")
+    return MULTI_HYPHEN_RE.sub("-", text).strip("-")
+
+
+def _markdown_anchors(path: Path) -> set[str]:
+    anchors: set[str] = set()
+    slug_counts: dict[str, int] = {}
+    in_fence = False
+    fence_marker: str | None = None
+
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.lstrip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            marker = stripped[:3]
+            if not in_fence:
+                in_fence = True
+                fence_marker = marker
+            elif marker == fence_marker:
+                in_fence = False
+                fence_marker = None
+            continue
+        if in_fence:
+            continue
+
+        for match in HTML_ANCHOR_RE.finditer(line):
+            anchors.add(match.group(1))
+
+        heading = HEADING_RE.match(line)
+        if heading is None:
+            continue
+        base = _heading_slug(heading.group(2))
+        if not base:
+            continue
+        count = slug_counts.get(base, 0)
+        slug_counts[base] = count + 1
+        anchors.add(base if count == 0 else f"{base}-{count}")
+
+    return anchors
+
+
+def check_links(repo_root: Path) -> tuple[int, int, int, list[str]]:
     root = repo_root.resolve()
     markdown_files = sorted(path for path in root.glob("README*.md") if path.is_file())
     markdown_files.extend(sorted((root / "docs").rglob("*.md")))
 
     checked_links = 0
+    checked_fragments = 0
     broken_links: list[str] = []
+    anchor_cache: dict[Path, set[str]] = {}
 
     for source in markdown_files:
         if not source.is_file():
             continue
 
         for line_number, target in _iter_markdown_links(source):
-            resolved = _resolve_local_target(source, target)
-            if resolved is None:
+            resolved_target = _resolve_local_target(source, target)
+            if resolved_target is None:
                 continue
-
+            resolved, fragment = resolved_target
             checked_links += 1
             try:
                 resolved.relative_to(root)
@@ -115,13 +174,29 @@ def check_links(repo_root: Path) -> tuple[int, int, list[str]]:
                     f"{source.relative_to(root)}:{line_number}: "
                     f"missing target {target} -> {resolved.relative_to(root)}"
                 )
+                continue
 
-    return len(markdown_files), checked_links, broken_links
+            if not fragment or not resolved.is_file() or resolved.suffix.lower() != ".md":
+                continue
+
+            checked_fragments += 1
+            anchors = anchor_cache.setdefault(resolved, _markdown_anchors(resolved))
+            normalized_fragment = fragment.lower()
+            if normalized_fragment not in anchors and fragment not in anchors:
+                broken_links.append(
+                    f"{source.relative_to(root)}:{line_number}: "
+                    f"missing Markdown anchor #{fragment} in {resolved.relative_to(root)}"
+                )
+
+    return len(markdown_files), checked_links, checked_fragments, broken_links
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Check local Markdown links in README*.md and docs/**/*.md."
+        description=(
+            "Check local Markdown file links and Markdown heading fragments in "
+            "README*.md and docs/**/*.md."
+        )
     )
     parser.add_argument(
         "repo_root",
@@ -135,20 +210,23 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
-    markdown_file_count, checked_links, broken_links = check_links(args.repo_root)
+    markdown_file_count, checked_links, checked_fragments, broken_links = check_links(
+        args.repo_root
+    )
 
     if broken_links:
         for message in broken_links:
             print(f"error: {message}", file=sys.stderr)
         print(
-            f"error: {len(broken_links)} broken local Markdown link(s) found",
+            f"error: {len(broken_links)} broken local Markdown link(s) or anchor(s) found",
             file=sys.stderr,
         )
         return 1
 
     print(
         "ok documentation links "
-        f"({markdown_file_count} Markdown files, {checked_links} local links)"
+        f"({markdown_file_count} Markdown files, {checked_links} local links, "
+        f"{checked_fragments} Markdown fragments)"
     )
     return 0
 
