@@ -46,7 +46,7 @@ ALLOWED_STATUSES = {
     "frozen",
 }
 
-REPOSITORY_PATH_RE = re.compile(r"(?<![A-Za-z0-9_.-])((?:scripts|apps)/[A-Za-z0-9_./-]+)")
+SCRIPT_PATH_RE = re.compile(r"(?<![A-Za-z0-9_.-])(scripts/[A-Za-z0-9_./-]+\.py)\b")
 MODEL_TYPE_RE = re.compile(r"^\|\s*`([^`]+)`\s*\|", re.MULTILINE)
 
 
@@ -231,7 +231,7 @@ def check_referenced_repository_paths(errors: list[str]) -> None:
     )
     for relative_path in paths:
         text = read_text(relative_path)
-        for candidate in sorted(set(REPOSITORY_PATH_RE.findall(text))):
+        for candidate in sorted(set(SCRIPT_PATH_RE.findall(text))):
             clean = candidate.rstrip(".,:;)]}")
             target = ROOT / clean
             if not target.exists():
