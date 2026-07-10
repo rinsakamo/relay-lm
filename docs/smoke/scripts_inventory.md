@@ -1,21 +1,46 @@
+---
+relaylm_doc_type: evaluation_record
+relaylm_authority: reviewed_scripts_inventory_snapshot
+relaylm_status: historical
+relaylm_volatility: high
+relaylm_owner: validation
+relaylm_update_trigger:
+  - a new generated inventory artifact is reviewed
+  - script, workflow, registry, or documentation reference counts change
+relaylm_not_authoritative_for:
+  - live repository counts after the recorded source commit
+  - runtime implementation status
+  - whether an unreferenced script is safe to delete
+relaylm_current_status_source: ../PROJECT_STATUS.md
+---
 # Scripts Inventory
 
-This is the maintainer-facing summary for the mechanically generated script inventory. The row-level inventory is generated in CI and uploaded as the `scripts-inventory` artifact by `.github/workflows/scripts-inventory.yml`; it is intentionally not kept as a large hand-maintained table in Git.
+This is the maintainer-facing summary for a reviewed mechanically generated script inventory. The row-level inventory is generated in CI and uploaded as the `scripts-inventory` artifact by `.github/workflows/scripts-inventory.yml`; it is intentionally not kept as a large hand-maintained table in Git.
 
-## Current audited snapshot
+## Recorded snapshot
 
-The corrected PR-14 inventory artifact reports:
+Source evidence:
 
-- 459 Python scripts under `scripts/`
-- 227 referenced by a current CI workflow or by the consolidated smoke command registry
-- 284 referenced by documentation other than this inventory file
-- 99 referenced by neither CI nor documentation and therefore candidates for maintainer triage
+```text
+review source: PR #544 scripts-inventory validation artifact
+merged main commit: 167bc884223b5c6c4b1bb0e9c0086efcac80e814
+inventory interpretation: historical snapshot, not a live counter
+```
 
-The inventory file itself is excluded from documentation-reference detection. This prevents its own table from marking every listed script as documented.
+The reviewed artifact reported:
+
+- 459 Python scripts under `scripts/`;
+- 227 referenced by a current CI workflow or by the consolidated smoke command registry;
+- 284 referenced by documentation other than this inventory file;
+- 99 referenced by neither CI nor documentation and therefore candidates for maintainer triage.
+
+The inventory file itself is excluded from documentation-reference detection. This prevents its own generated rows from marking every listed script as documented.
+
+An unreferenced result is a triage signal only. It does not prove that a script is dead, obsolete, or safe to delete; callers outside CI/docs and intentional manual tools must be reviewed separately.
 
 ## Regeneration
 
-Run from the repository root:
+Run from the repository root and write the row-level artifact outside this summary:
 
 ```bash
 python scripts/relaylm_generate_scripts_inventory.py \
@@ -24,8 +49,8 @@ python scripts/relaylm_generate_scripts_inventory.py \
 
 For pull requests, use the uploaded `scripts-inventory` artifact as the review authority. The generated document records the exact checked-out commit SHA and contains one row per Python script with:
 
-- CI-reference status
-- documentation-reference status
-- a mechanical category guess: active smoke, phase-completion evidence, helper, or tool
+- CI-reference status;
+- documentation-reference status;
+- a mechanical category guess: active smoke, phase-completion evidence, helper, or tool.
 
-Regenerate after rebasing PR-14 or after changing `scripts/`, `.github/workflows/`, the consolidated smoke command registry, or documentation. Do not manually copy individual rows back into this summary.
+After reviewing a new artifact, update this summary only with its source commit/run and aggregate counts. Do not copy the generated row table into this file and do not overwrite this file with the generator.
