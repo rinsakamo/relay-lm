@@ -113,7 +113,7 @@ O2/O3 close the explicit opt-in local scheduler operation need for current MVP w
 
 ## v0.1 release readiness boundary
 
-The v0.1 release-readiness receipt is [v0.1 Release Readiness](../mvp/v0.1_release_readiness.md). v0.1 readiness means the MVP implementation lanes listed above are complete, the durable-memory E2 value smoke has local human-reviewed evidence, and the remaining items below are post-v0.1 decision debt rather than v0.1 blockers. A final main-HEAD smoke pass is still required before tagging.
+The current v0.1 readiness assessment is [v0.1 Release Readiness Assessment](../mvp/v0.1_release_readiness.md); it is not the final tag receipt while main-HEAD validation remains pending. v0.1 readiness means the MVP implementation lanes listed above are complete, the durable-memory E2 value smoke has local human-reviewed evidence, and the remaining items below are post-v0.1 decision debt rather than v0.1 blockers. A final main-HEAD smoke pass is still required before tagging.
 
 RelayATN is registered only as a gated post-v0.1 / post-voice-out candidate. This plan authorizes ATN-0 planning registration only and does not authorize implementation, runtime behavior changes, default-on resident processing, multi-user admission policy, or disclosure/memory authority.
 
