@@ -47,10 +47,8 @@ def main() -> int:
             + "\n",
             encoding="utf-8",
         )
-        (fixture_root / "README_ja.md").write_text(
-            "# Fixture JA\n\n- [English](README.md)\n- [Docs](docs/README.md)\n",
-            encoding="utf-8",
-        )
+        ja_body = "# Fixture JA\n\n- [English](README.md)\n- [Docs](docs/README.md)\n"
+        (fixture_root / "README_ja.md").write_text(ja_body, encoding="utf-8")
         (docs_dir / "README.md").write_text(
             "\n".join(
                 [
@@ -65,7 +63,7 @@ def main() -> int:
             encoding="utf-8",
         )
         (docs_dir / "target.md").write_text(
-            "# Target\n\n## Section\n",
+            "# Target\n\n## Section\n\n## Repeated\n\n## Repeated\n",
             encoding="utf-8",
         )
 
@@ -73,17 +71,35 @@ def main() -> int:
         require(success.returncode == 0, success.stderr or success.stdout)
         require("ok documentation links" in success.stdout, success.stdout)
         require("4 Markdown files" in success.stdout, success.stdout)
+        require("2 Markdown fragments" in success.stdout, success.stdout)
         print("ok docs link checker success fixture")
 
         with (fixture_root / "README_ja.md").open("a", encoding="utf-8") as handle:
             handle.write("\n- [Broken](docs/missing.md)\n")
 
-        failure = run_checker(fixture_root)
-        require(failure.returncode == 1, failure.stdout)
-        require("README_ja.md" in failure.stderr, failure.stderr)
-        require("missing target docs/missing.md" in failure.stderr, failure.stderr)
-        require("1 broken local Markdown link(s) found" in failure.stderr, failure.stderr)
+        missing_file = run_checker(fixture_root)
+        require(missing_file.returncode == 1, missing_file.stdout)
+        require("README_ja.md" in missing_file.stderr, missing_file.stderr)
+        require("missing target docs/missing.md" in missing_file.stderr, missing_file.stderr)
+        require(
+            "1 broken local Markdown link(s) or anchor(s) found" in missing_file.stderr,
+            missing_file.stderr,
+        )
         print("ok docs link checker localized README failure fixture")
+
+        (fixture_root / "README_ja.md").write_text(ja_body, encoding="utf-8")
+        with (docs_dir / "README.md").open("a", encoding="utf-8") as handle:
+            handle.write("\n- [Broken anchor](target.md#missing-section)\n")
+
+        missing_anchor = run_checker(fixture_root)
+        require(missing_anchor.returncode == 1, missing_anchor.stdout)
+        require("docs/README.md" in missing_anchor.stderr, missing_anchor.stderr)
+        require(
+            "missing Markdown anchor #missing-section in docs/target.md"
+            in missing_anchor.stderr,
+            missing_anchor.stderr,
+        )
+        print("ok docs link checker missing-anchor fixture")
 
     return 0
 

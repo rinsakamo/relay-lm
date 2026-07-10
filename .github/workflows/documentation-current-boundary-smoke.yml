@@ -8,24 +8,9 @@ on:
       - "README_ja.md"
       - "config.example.yaml"
       - "relaylm/config.py"
-      - "docs/README.md"
-      - "docs/PROJECT_STATUS.md"
-      - "docs/config_schema.md"
-      - "docs/openwebui_lmstudio_mvp.md"
-      - "docs/architecture/README.md"
-      - "docs/architecture/pipeline_implementation_plan.md"
-      - "docs/architecture/current_target_migration_guide.md"
-      - "docs/architecture/relaymem_mvp_implementation_plan.md"
-      - "docs/architecture/relaymem_slp_current_target.md"
-      - "docs/architecture/client_instruction_authority_contract.md"
-      - "docs/architecture/runtime_architecture.md"
-      - "docs/architecture/runtime_operational_requirements.md"
-      - "docs/architecture/open_llm_vtuber_current_target.md"
-      - "docs/architecture/open_llm_vtuber_integration.md"
-      - "docs/smoke/openwebui_lmstudio_manual_smoke.md"
-      - "docs/smoke/client_history_exclusion_manual_smoke.md"
-      - "docs/smoke/openwebui_lmstudio_troubleshooting.md"
+      - "docs/**"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
+      - "scripts/relaylm_docs_semantic_audit.py"
       - ".github/workflows/documentation-current-boundary-smoke.yml"
   push:
     branches:
@@ -35,24 +20,9 @@ on:
       - "README_ja.md"
       - "config.example.yaml"
       - "relaylm/config.py"
-      - "docs/README.md"
-      - "docs/PROJECT_STATUS.md"
-      - "docs/config_schema.md"
-      - "docs/openwebui_lmstudio_mvp.md"
-      - "docs/architecture/README.md"
-      - "docs/architecture/pipeline_implementation_plan.md"
-      - "docs/architecture/current_target_migration_guide.md"
-      - "docs/architecture/relaymem_mvp_implementation_plan.md"
-      - "docs/architecture/relaymem_slp_current_target.md"
-      - "docs/architecture/client_instruction_authority_contract.md"
-      - "docs/architecture/runtime_architecture.md"
-      - "docs/architecture/runtime_operational_requirements.md"
-      - "docs/architecture/open_llm_vtuber_current_target.md"
-      - "docs/architecture/open_llm_vtuber_integration.md"
-      - "docs/smoke/openwebui_lmstudio_manual_smoke.md"
-      - "docs/smoke/client_history_exclusion_manual_smoke.md"
-      - "docs/smoke/openwebui_lmstudio_troubleshooting.md"
+      - "docs/**"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
+      - "scripts/relaylm_docs_semantic_audit.py"
       - ".github/workflows/documentation-current-boundary-smoke.yml"
 
 permissions:
@@ -61,22 +31,33 @@ permissions:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Compile semantic documentation smoke
-        run: python -m compileall -q scripts/relaylm_documentation_current_boundary_smoke.py
-      - name: Validate active documentation boundaries
+      - name: Install semantic audit dependency
+        run: python -m pip install pyyaml
+      - name: Compile documentation validation scripts
+        run: |
+          python -m compileall -q \
+            scripts/relaylm_documentation_current_boundary_smoke.py \
+            scripts/relaylm_docs_semantic_audit.py
+      - name: Validate documentation semantics and current boundaries
         run: |
           set +e
-          python scripts/relaylm_documentation_current_boundary_smoke.py 2>&1 | tee documentation-current-boundary.log
-          status=${PIPESTATUS[0]}
-          exit "$status"
+          python scripts/relaylm_docs_semantic_audit.py 2>&1 | tee documentation-current-boundary.log
+          semantic_status=${PIPESTATUS[0]}
+          python scripts/relaylm_documentation_current_boundary_smoke.py 2>&1 | tee -a documentation-current-boundary.log
+          boundary_status=${PIPESTATUS[0]}
+          if [ "$semantic_status" -ne 0 ] || [ "$boundary_status" -ne 0 ]; then
+            exit 1
+          fi
       - name: Upload documentation boundary diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: documentation-current-boundary-diagnostics
           path: documentation-current-boundary.log
+          if-no-files-found: error
