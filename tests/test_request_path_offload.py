@@ -8,19 +8,24 @@ including in-flight streams. This PR moves the file-I/O-bearing stage calls
 that reads character workspace files) onto worker threads via
 ``asyncio.to_thread``.
 
-Three things need proving here, beyond the existing 49-test suite (especially
+Four things need proving here, beyond the existing 49-test suite (especially
 the PR-5 characterization tests) staying green unchanged:
 
 1. Event-loop liveness: a slow offloaded stage must not block unrelated
    concurrent requests (``test_slow_offloaded_stage_does_not_block_other_requests``).
-2. The ``ContextVar`` handoff ``compile_chat_payload_if_enabled`` uses to pass
+2. Store-root resolution (``resolve_relaymem_character_store_root``, which
+   itself does synchronous filesystem stat/symlink checks) must run inside
+   the ``relaymem_retrieval`` worker thread rather than on the event loop
+   before that stage is dispatched
+   (``test_store_root_resolution_runs_on_worker_thread_without_blocking``).
+3. The ``ContextVar`` handoff ``compile_chat_payload_if_enabled`` uses to pass
    typed pre-render compiler blocks to ``PipelineContext`` does NOT survive a
    naive ``asyncio.to_thread`` call (a ``.set()`` inside the worker's copied
    context never reaches the awaiting request context) -- and that the
    capture/restore helpers added alongside the offload actually fix this
    (``test_to_thread_context_var_does_not_propagate_without_restore`` and
    ``test_restore_helper_replays_captured_blocks_into_caller_context``).
-3. An end-to-end request through the offloaded compile path still produces
+4. An end-to-end request through the offloaded compile path still produces
    the same compiled backend-bound payload as the (synchronous, pre-PR-6)
    behavior asserted by ``scripts/relaylm_memory_light_apply_smoke.py``
    (``test_memory_light_request_through_offloaded_compile_stage_matches_expected_compilation``).
@@ -28,6 +33,7 @@ the PR-5 characterization tests) staying green unchanged:
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 from pathlib import Path
 
@@ -233,6 +239,100 @@ def test_slow_offloaded_stage_does_not_block_other_requests(
             assert completion_times[f"healthz_{i}"] < completion_times["chat"]
 
     _run(scenario())
+
+
+# ---------------------------------------------------------------------------
+# 1b. Store-root resolution must itself run inside the offloaded stage
+# ---------------------------------------------------------------------------
+
+
+def test_store_root_resolution_runs_on_worker_thread_without_blocking(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``resolve_relaymem_character_store_root`` must run inside the to_thread stage.
+
+    ``resolve_relaymem_character_store_root`` itself touches the filesystem
+    (``Path.exists()``, ``Path.is_dir()``, symlink-component checks). If it
+    ran on the event loop before the ``relaymem_retrieval`` stage was
+    dispatched to a worker thread, a slow/unresponsive filesystem would still
+    stall every concurrent request -- exactly what PR-6 is meant to prevent.
+    This test monkeypatches
+    ``managed_chat_runtime.resolve_relaymem_character_store_root`` to record
+    the executing thread and sleep briefly, then asserts both that
+    concurrent ``/healthz`` requests stay responsive and that the resolver
+    never ran on the event loop's own thread.
+    """
+
+    config_path = _write_config(tmp_path)
+    app = create_app(str(config_path))
+
+    real_resolver = managed_chat_runtime.resolve_relaymem_character_store_root
+    resolution_thread_ids: list[int] = []
+
+    def _slow_resolver(*args: object, **kwargs: object) -> str | None:
+        resolution_thread_ids.append(threading.get_ident())
+        time.sleep(0.5)
+        return real_resolver(*args, **kwargs)
+
+    monkeypatch.setattr(
+        managed_chat_runtime, "resolve_relaymem_character_store_root", _slow_resolver
+    )
+
+    event_loop_thread_id = threading.get_ident()
+    completion_times: dict[str, float] = {}
+
+    async def scenario() -> None:
+        with respx.mock(assert_all_called=False) as mock:
+            mock.post(BACKEND_CHAT_COMPLETIONS_URL).mock(
+                return_value=httpx.Response(200, json=BACKEND_CHAT_RESPONSE)
+            )
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://testserver"
+            ) as client:
+
+                async def slow_chat_request() -> None:
+                    response = await client.post(
+                        "/v1/chat/completions", json=_chat_request()
+                    )
+                    assert response.status_code == 200
+                    completion_times["chat"] = time.monotonic()
+
+                async def healthz_request(label: str) -> None:
+                    response = await client.get("/healthz")
+                    assert response.status_code == 200
+                    completion_times[label] = time.monotonic()
+
+                start = time.monotonic()
+                chat_task = asyncio.create_task(slow_chat_request())
+                # Let the slow chat request enter the monkeypatched resolver
+                # before dispatching /healthz, so this proves liveness during
+                # the blocking window rather than winning a race at t=0.
+                await asyncio.sleep(0.1)
+                healthz_tasks = [
+                    asyncio.create_task(healthz_request(f"healthz_{i}"))
+                    for i in range(5)
+                ]
+                await asyncio.gather(*healthz_tasks)
+                healthz_elapsed = time.monotonic() - start
+                await chat_task
+                chat_elapsed = completion_times["chat"] - start
+
+        assert healthz_elapsed < 0.4, (
+            f"healthz requests took {healthz_elapsed:.3f}s -- "
+            "resolve_relaymem_character_store_root appears to still be "
+            "running on the event loop"
+        )
+        assert chat_elapsed >= 0.5
+        for i in range(5):
+            assert completion_times[f"healthz_{i}"] < completion_times["chat"]
+
+    _run(scenario())
+
+    assert resolution_thread_ids, "resolve_relaymem_character_store_root was never called"
+    assert event_loop_thread_id not in resolution_thread_ids, (
+        "resolve_relaymem_character_store_root ran on the event loop's own "
+        "thread instead of the relaymem_retrieval worker thread"
+    )
 
 
 # ---------------------------------------------------------------------------

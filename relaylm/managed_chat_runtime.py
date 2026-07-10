@@ -191,20 +191,27 @@ def _run_relaymem_retrieval_stage(
     *,
     config: RelayLMConfig,
     route: ResolvedRoute,
-    relaymem_scoped_store_root: str | None,
+    relaymem_configured_store_root: str | None,
+    character_id: str | None,
     relayscn_scene_policy_artifact: dict[str, Any] | None,
     relayint_intent_artifact: dict[str, Any] | None,
     messages: list[dict[str, Any]],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Run the RelayMEM retrieval dry-run artifact build on a worker thread.
 
-    Executed inside ``asyncio.to_thread``. Scans and reads the RelayMEM store
-    on disk (``build_relaymem_store_diagnostics``, then the retrieval
-    candidate discovery and, when scope-eligible, the Primary MEM recall
-    revalidation) and returns the two plain result objects unchanged; none of
-    these callees touch ``PipelineContext`` or any ``ContextVar``.
+    Executed inside ``asyncio.to_thread``. Resolves the character-scoped store
+    root (``resolve_relaymem_character_store_root``, which stats the
+    filesystem) and scans and reads the RelayMEM store on disk
+    (``build_relaymem_store_diagnostics``, then the retrieval candidate
+    discovery and, when scope-eligible, the Primary MEM recall revalidation)
+    and returns the two plain result objects unchanged; none of these callees
+    touch ``PipelineContext`` or any ``ContextVar``.
     """
 
+    relaymem_scoped_store_root = resolve_relaymem_character_store_root(
+        relaymem_configured_store_root,
+        character_id,
+    )
     relaymem_store_diagnostics = build_relaymem_store_diagnostics(
         root_path=relaymem_scoped_store_root,
         store_enabled=config.memory.store_enabled,
@@ -426,17 +433,14 @@ async def handle_managed_chat_completion(
     )
 
     relaymem_configured_store_root = config.memory.root_path
-    relaymem_scoped_store_root = resolve_relaymem_character_store_root(
-        relaymem_configured_store_root,
-        route.character_id,
-    )
 
     relaymem_retrieval_started_at, relaymem_retrieval_start_monotonic = _start_timing()
     relaymem_store_diagnostics, relaymem_retrieval_artifact = await asyncio.to_thread(
         _run_relaymem_retrieval_stage,
         config=config,
         route=route,
-        relaymem_scoped_store_root=relaymem_scoped_store_root,
+        relaymem_configured_store_root=relaymem_configured_store_root,
+        character_id=route.character_id,
         relayscn_scene_policy_artifact=relayscn_scene_policy_artifact,
         relayint_intent_artifact=relayint_intent_artifact,
         messages=_extract_trace_messages(payload),
