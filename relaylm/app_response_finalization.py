@@ -74,29 +74,12 @@ def get_shared_http_client(app: FastAPI) -> httpx.AsyncClient:
 async def close_stream_iterator(body_iter: object) -> None:
     """Best-effort close of an abandoned backend response/stream iterator.
 
-    ``body_iter`` here is typically a freshly-returned, never-iterated
-    async generator pipeline (``open_chat_completion_stream``'s result,
-    possibly wrapped by one or more stream runtime wrappers). Python's
-    generator semantics make closing such a generator *before it has ever
-    been started* a silent no-op -- no code runs, including ``finally``
-    blocks -- so calling ``aclose()`` alone would never actually release
-    the underlying backend connection in that case.
-
-    Priming with a single ``__anext__()`` step first ensures every level of
-    the (possibly nested) generator pipeline is parked at its own ``yield``
-    before we close it, so the subsequent ``aclose()`` cascades through
-    every level's cleanup and reaches the backend response close. Discarding
-    that one primed chunk is safe here: every caller of this helper is
-    already abandoning the whole stream in favor of a different response.
+    ``open_chat_completion_stream`` now returns a closeable iterator whose
+    ``aclose()`` closes the backend stream context even before iteration has
+    started. Do not prime/read a chunk here: fail-closed callers use this helper
+    when they are about to abandon the backend stream and return an error, and
+    waiting for a first token could delay that error until the backend timeout.
     """
-    anext_ = getattr(body_iter, "__anext__", None)
-    if callable(anext_):
-        try:
-            await anext_()
-        except StopAsyncIteration:
-            return  # Already fully drained/closed itself.
-        except Exception:
-            pass  # Fall through to the best-effort aclose() below.
     close = getattr(body_iter, "aclose", None)
     if not callable(close):
         return
