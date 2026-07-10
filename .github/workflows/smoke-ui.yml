@@ -1,0 +1,643 @@
+# Consolidated SOUL Lab UI / mixed python+node smoke fleet.
+#
+# <old-workflow-file> -> job <job-name>
+# phase-i2-lab-observation-smoke.yml -> jobs lab-observation, lab-observation-regressions, lab-observation-frontend
+# phase-i3-primary-mem-correct-smoke.yml -> jobs primary-mem-correct, primary-mem-correct-regressions, primary-mem-correct-frontend
+# soul-lab-ui-b0-home-conversation.yml -> jobs home-conversation-frontend, home-conversation-regressions
+# phase-i4d-primary-retrieval-exclusion.yml -> jobs forget-lifecycle, forget-lifecycle-regressions, forget-lifecycle-frontend
+# phase-i4e-forget-api-ui.yml -> job forget-lifecycle-regressions (backend), forget-lifecycle-frontend (frontend)
+# phase-i4f-forget-validation.yml -> job forget-lifecycle-regressions (backend), forget-lifecycle-frontend (frontend)
+# phase-i5b-pin-unpin-apply.yml -> job pin-unpin
+# phase-i7c-held-governance-runtime.yml -> job held-governance
+# soul-lab-ui-b1a-lifecycle-visibility.yml -> job lifecycle-visibility
+# soul-lab-ui.yml -> job soul-lab-build
+#
+# Dropped duplicate invocations (documented per PR-13 dedup convention):
+# - phase-i4d-primary-retrieval-exclusion.yml's own "recall-observation-correct
+#   -regressions" job ran scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py,
+#   scripts/relaylm_phase_i2_lab_observation_ci_runner.py, and
+#   scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py -- all three
+#   already run verbatim in job lab-observation-regressions / lab-observation /
+#   primary-mem-correct below, so that whole job was dropped rather than
+#   absorbed.
+# - job primary-mem-correct-regressions dropped scripts/relaylm_phase6c1_primary_worker_ci_runner.py,
+#   scripts/relaylm_phase6c1_worker_integration_ci_runner.py,
+#   scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py,
+#   scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py,
+#   scripts/relaylm_phase_i2_lab_observation_ci_runner.py, and
+#   scripts/relaylm_soul_lab_management_projection_smoke.py -- all six already
+#   run verbatim in job lab-observation / lab-observation-regressions.
+# - job primary-mem-correct-frontend dropped its "Run strict observation
+#   browser schema smoke" step (tsc + node scripts/observationApiSmoke.mjs) --
+#   identical to the step already kept in job lab-observation-frontend.
+# - job home-conversation-regressions dropped scripts/relaylm_docs_link_check.py
+#   (kept once in job forget-lifecycle below) and the same three cross-slice
+#   CI-runner invocations dropped from primary-mem-correct-regressions above.
+# - job forget-lifecycle-regressions dropped, relative to
+#   phase-i4e-forget-api-ui.yml and phase-i4f-forget-validation.yml source
+#   order: scripts/relaylm_phase_i4c1_primary_forget_hidden_successor_smoke.py,
+#   scripts/relaylm_phase_i4c1_primary_forget_security_smoke.py,
+#   scripts/relaylm_phase_i4c2_primary_forget_recovery_smoke.py,
+#   scripts/relaylm_phase_i4c2_primary_forget_fault_smoke.py,
+#   scripts/relaylm_phase_i4c2_primary_forget_concurrency_smoke.py (all five
+#   first introduced by the i4d forget-regressions block below),
+#   scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py,
+#   scripts/relaylm_phase_i4d_historical_projection_smoke.py,
+#   scripts/relaylm_phase_i4d_fresh_conversation_smoke.py (already covered by
+#   job forget-lifecycle's own functional smoke below), plus
+#   phase-i4f-forget-validation.yml's own re-run of
+#   scripts/relaylm_phase_i4b_primary_forget_preflight_smoke.py,
+#   scripts/relaylm_phase_i4c1_primary_forget_fault_smoke.py,
+#   scripts/relaylm_phase_i4c1_primary_forget_concurrency_smoke.py,
+#   scripts/relaylm_phase_i4e_forget_api_smoke.py,
+#   scripts/relaylm_phase_i4e_forget_api_security_smoke.py, and
+#   scripts/relaylm_docs_link_check.py (all already covered earlier in this
+#   same job / by job forget-lifecycle).
+# - job forget-lifecycle-frontend dropped phase-i4e-forget-api-ui.yml and
+#   phase-i4f-forget-validation.yml's own "npm run smoke:home-conversation"
+#   (already covered by job home-conversation-frontend) and de-duplicated
+#   "npm run smoke:forget-ui" (i4e and i4f both ran it; kept once).
+# - Cross-job file-wide dedup: phase-i2, phase-i4d, and phase-i7c each
+#   independently ran the whole-repo scripts/relaylm_docs_link_check.py with
+#   no arguments. Kept once (job lab-observation) and dropped from jobs
+#   forget-lifecycle and held-governance. Likewise
+#   scripts/relaylm_mvp_completion_report_pr_link_smoke.py was independently
+#   run by phase-i4f and phase-i7c; kept once (job held-governance) and
+#   dropped from job forget-lifecycle-regressions.
+
+name: SOUL Lab UI smokes
+on:
+  workflow_dispatch: null
+  push:
+    branches:
+    - main
+    paths:
+    - apps/soul-lab/**
+    - .github/workflows/soul-lab-ui.yml
+    - relaylm/**
+    - scripts/**
+    - .github/workflows/soul-lab-ui-b0-home-conversation.yml
+    - pyproject.toml
+    - relaylm/soul_lab_app.py
+    - relaylm/soul_lab_lifecycle_visibility_projection.py
+    - scripts/relaylm_ui_b1a_lifecycle_visibility_*.py
+    - apps/soul-lab/src/features/lifecycle/**
+    - apps/soul-lab/src/app/App.tsx
+    - apps/soul-lab/src/app/RootApp.tsx
+    - apps/soul-lab/scripts/lifecycleVisibilitySmoke.mjs
+    - apps/soul-lab/package.json
+    - .github/workflows/soul-lab-ui-b1a-lifecycle-visibility.yml
+    - scripts/relaylm_phase_i2_*
+    - scripts/relaylm_soul_lab_management_projection_smoke.py
+    - .github/workflows/phase-i2-lab-observation-smoke.yml
+    - scripts/relaylm_phase_i3_*
+    - scripts/_relaylm_phase_i3_test_support.py
+    - .github/workflows/phase-i3-primary-mem-correct-smoke.yml
+    - scripts/relaylm_phase_i4d_*
+    - docs/architecture/phase_i4d_primary_retrieval_exclusion.md
+    - docs/mvp/wave3/i4d_completion_report.md
+    - .github/workflows/phase-i4d-primary-retrieval-exclusion.yml
+    - scripts/relaylm_phase_i4*_forget*
+    - docs/architecture/phase_i4e_forget_api_ui.md
+    - docs/mvp/wave4/i4e_completion_report.md
+    - .github/workflows/phase-i4e-forget-api-ui.yml
+    - scripts/relaylm_phase_i4f_forget_validation_*.py
+    - docs/PROJECT_STATUS.md
+    - docs/README.md
+    - docs/architecture/README.md
+    - docs/architecture/current_target_migration_guide.md
+    - docs/architecture/project_execution_plan.md
+    - docs/architecture/relaymem_slp_current_target.md
+    - docs/architecture/phase_i4f_forget_validation.md
+    - docs/mvp/README.md
+    - docs/mvp/wave5/i4f_completion_report.md
+    - .github/workflows/phase-i4f-forget-validation.yml
+    - relaylm/relaymem_primary_pin*.py
+    - relaylm/soul_lab_memory_pin.py
+    - relaylm/soul_lab_memory_pin_routes.py
+    - scripts/relaylm_phase_i5b_pin_unpin_*.py
+    - docs/architecture/phase_i5b_pin_unpin_apply.md
+    - docs/mvp/wave6/i5b_completion_report.md
+    - .github/workflows/phase-i5b-pin-unpin-apply.yml
+    - relaylm/relaymem_held_governance.py
+    - relaylm/soul_lab_held_governance.py
+    - relaylm/lab_held_governance_api.py
+    - scripts/relaylm_phase_i7c_held_governance_*.py
+    - docs/architecture/phase_i7c_held_apply_discard_runtime.md
+    - docs/mvp/wave6/i7c_completion_report.md
+    - .github/workflows/phase-i7c-held-governance-runtime.yml
+    - .github/workflows/smoke-ui.yml
+  pull_request:
+    paths:
+    - apps/soul-lab/**
+    - .github/workflows/soul-lab-ui.yml
+    - relaylm/**
+    - scripts/**
+    - .github/workflows/soul-lab-ui-b0-home-conversation.yml
+    - pyproject.toml
+    - relaylm/soul_lab_app.py
+    - relaylm/soul_lab_lifecycle_visibility_projection.py
+    - scripts/relaylm_ui_b1a_lifecycle_visibility_*.py
+    - apps/soul-lab/src/features/lifecycle/**
+    - apps/soul-lab/src/app/App.tsx
+    - apps/soul-lab/src/app/RootApp.tsx
+    - apps/soul-lab/scripts/lifecycleVisibilitySmoke.mjs
+    - apps/soul-lab/package.json
+    - .github/workflows/soul-lab-ui-b1a-lifecycle-visibility.yml
+    - scripts/relaylm_phase_i2_*
+    - scripts/relaylm_soul_lab_management_projection_smoke.py
+    - .github/workflows/phase-i2-lab-observation-smoke.yml
+    - scripts/relaylm_phase_i3_*
+    - scripts/_relaylm_phase_i3_test_support.py
+    - .github/workflows/phase-i3-primary-mem-correct-smoke.yml
+    - scripts/relaylm_phase_i4d_*
+    - docs/architecture/phase_i4d_primary_retrieval_exclusion.md
+    - docs/mvp/wave3/i4d_completion_report.md
+    - .github/workflows/phase-i4d-primary-retrieval-exclusion.yml
+    - scripts/relaylm_phase_i4*_forget*
+    - docs/architecture/phase_i4e_forget_api_ui.md
+    - docs/mvp/wave4/i4e_completion_report.md
+    - .github/workflows/phase-i4e-forget-api-ui.yml
+    - scripts/relaylm_phase_i4f_forget_validation_*.py
+    - docs/PROJECT_STATUS.md
+    - docs/README.md
+    - docs/architecture/README.md
+    - docs/architecture/current_target_migration_guide.md
+    - docs/architecture/project_execution_plan.md
+    - docs/architecture/relaymem_slp_current_target.md
+    - docs/architecture/phase_i4f_forget_validation.md
+    - docs/mvp/README.md
+    - docs/mvp/wave5/i4f_completion_report.md
+    - .github/workflows/phase-i4f-forget-validation.yml
+    - relaylm/relaymem_primary_pin*.py
+    - relaylm/soul_lab_memory_pin.py
+    - relaylm/soul_lab_memory_pin_routes.py
+    - scripts/relaylm_phase_i5b_pin_unpin_*.py
+    - docs/architecture/phase_i5b_pin_unpin_apply.md
+    - docs/mvp/wave6/i5b_completion_report.md
+    - .github/workflows/phase-i5b-pin-unpin-apply.yml
+    - relaylm/relaymem_held_governance.py
+    - relaylm/soul_lab_held_governance.py
+    - relaylm/lab_held_governance_api.py
+    - scripts/relaylm_phase_i7c_held_governance_*.py
+    - docs/architecture/phase_i7c_held_apply_discard_runtime.md
+    - docs/mvp/wave6/i7c_completion_report.md
+    - .github/workflows/phase-i7c-held-governance-runtime.yml
+    - .github/workflows/smoke-ui.yml
+
+permissions:
+  contents: read
+
+jobs:
+  soul-lab-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/soul-lab
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - name: Install SOUL Lab dependencies
+      run: npm install --no-audit --no-fund
+    - name: Type-check SOUL Lab
+      run: npm run typecheck
+    - name: Build SOUL Lab
+      run: npm run build
+
+  lab-observation:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install -e .
+    - run: python -m compileall -q relaylm scripts
+    - name: Run Phase I-2 functional, restart, security, and leakage smoke
+      run: |
+        set -o pipefail
+        PYTHONPATH=.:scripts python scripts/relaylm_phase_i2_lab_observation_ci_runner.py 2>&1 | tee phase-i2-smoke.log
+    - run: PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+    - name: Upload Phase I-2 log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase-i2-smoke-log
+        path: phase-i2-smoke.log
+        if-no-files-found: ignore
+
+  lab-observation-regressions:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install -e .
+    - run: python -m compileall -q relaylm scripts
+    - name: Run worker and two-turn recall regressions
+      run: |
+        set -o pipefail
+        {
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_primary_worker_ci_runner.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_worker_integration_ci_runner.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c1_durable_protected_source_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase6c2_one_queued_job_runner_ci_runner.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i1_two_turn_primary_recall_ci_runner.py
+        } 2>&1 | tee phase-i2-regressions.log
+    - name: Upload regression log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase-i2-regression-log
+        path: phase-i2-regressions.log
+        if-no-files-found: ignore
+
+  lab-observation-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/soul-lab
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - run: npm install --no-audit --no-fund
+    - run: npm run typecheck
+    - name: Run strict browser schema smoke
+      run: |
+        rm -rf .observation-smoke
+        npx tsc src/features/lab/observationApi.ts --target ES2022 --module ES2022 --moduleResolution Bundler --outDir .observation-smoke --skipLibCheck
+        node scripts/observationApiSmoke.mjs
+        rm -rf .observation-smoke
+    - run: npm run build
+
+  primary-mem-correct:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install -e .
+    - run: python -m compileall -q relaylm scripts
+    - name: Run Phase I-3 functional, security, and fault smokes
+      run: |
+        set -o pipefail
+        PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_ci_runner.py 2>&1 | tee phase-i3-smoke.log
+    # scripts/relaylm_docs_link_check.py dropped here: already run in job
+    # lab-observation above.
+    - name: Upload Phase I-3 log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase-i3-smoke-log
+        path: phase-i3-smoke.log
+        if-no-files-found: ignore
+
+  primary-mem-correct-regressions:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install -e .
+    - run: python -m compileall -q relaylm scripts
+    - name: Run canonical writer and recovery regressions
+      run: |
+        set -o pipefail
+        {
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_security_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_page_writer_atomicity_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_reconciliation_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_reconciliation_marker_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_apply_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_apply_security_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_security_smoke.py
+          PYTHONPATH=. python scripts/relaylm_relaymem_primary_index_log_recovery_audit_receipt_smoke.py
+        } 2>&1 | tee phase-i3-regressions.log
+        # Phase 6, I-1, I-2, and SOUL Lab management regressions dropped here:
+        # already run verbatim in jobs lab-observation / lab-observation-regressions.
+    - name: Upload regression log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase-i3-regression-log
+        path: phase-i3-regressions.log
+        if-no-files-found: ignore
+
+  primary-mem-correct-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/soul-lab
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - run: npm install --no-audit --no-fund
+    - run: npm run typecheck
+    # "Run strict observation browser schema smoke" dropped here: identical
+    # step already kept in job lab-observation-frontend.
+    - name: Run strict correction browser schema smoke
+      run: |
+        rm -rf .correction-smoke
+        npx tsc src/features/lab/correctionApi.ts --target ES2022 --module ES2022 --moduleResolution Bundler --outDir .correction-smoke --skipLibCheck
+        node scripts/correctionApiSmoke.mjs
+        rm -rf .correction-smoke
+    - run: npm run build
+
+  home-conversation-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/soul-lab
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - run: npm install --no-audit --no-fund
+    - name: Run typecheck
+      run: |
+        set -o pipefail
+        npm run typecheck 2>&1 | tee typecheck.log
+    - name: Run Home conversation smoke
+      run: |
+        set -o pipefail
+        npm run smoke:home-conversation 2>&1 | tee home-conversation-smoke.log
+    - run: npm run build
+    - name: Upload frontend validation logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ui-b0-frontend-validation-logs
+        path: |
+          apps/soul-lab/typecheck.log
+          apps/soul-lab/home-conversation-smoke.log
+        if-no-files-found: ignore
+
+  home-conversation-regressions:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install -e .
+    - run: python -m compileall -q relaylm scripts
+    # scripts/relaylm_docs_link_check.py dropped here: already run in job
+    # lab-observation above.
+    - name: Run documentation current-boundary smoke
+      run: |
+        set -o pipefail
+        PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py 2>&1 | tee documentation-current-boundary.log
+    # Phase I-1 / I-2 / I-3 CI-runner regressions dropped here: already run
+    # verbatim in jobs lab-observation-regressions / lab-observation /
+    # primary-mem-correct.
+    - run: PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_config_smoke.py
+    - run: PYTHONPATH=. python scripts/relaylm_openwebui_lmstudio_proxy_smoke.py
+    - name: Upload regression diagnostics
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ui-b0-regression-diagnostics
+        path: documentation-current-boundary.log
+        if-no-files-found: ignore
+
+  forget-lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install -e .
+    - run: python -m compileall -q relaylm scripts
+    - name: Run I-4D lifecycle, prior revision, recovery, RelayCTX, history, and security smokes
+      run: |
+        set -o pipefail
+        {
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_prior_revision_exclusion_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_recovery_state_exclusion_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_relayctx_exclusion_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_historical_projection_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_security_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4d_fresh_conversation_smoke.py
+        } 2>&1 | tee phase-i4d-smoke.log
+    # scripts/relaylm_docs_link_check.py dropped here: already run in job
+    # lab-observation above.
+    - name: Upload I-4D log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase-i4d-smoke-log
+        path: phase-i4d-smoke.log
+        if-no-files-found: ignore
+
+  forget-lifecycle-regressions:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install -e .
+    - run: python -m compileall -q relaylm scripts
+    - name: Run I-4B, I-4C1, and I-4C2 regressions
+      run: |
+        set -o pipefail
+        {
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4b_ci_runner.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_hidden_successor_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_corrected_revision_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_security_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_recovery_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_fault_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_concurrency_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_primary_forget_security_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c2_ownership_boundary_smoke.py
+        } 2>&1 | tee phase-i4d-forget-regressions.log
+    - name: Upload Forget regression log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase-i4d-forget-regression-log
+        path: phase-i4d-forget-regressions.log
+        if-no-files-found: ignore
+    - name: Run I-4E API/UI backend (net new over I-4D)
+      run: |
+        set -o pipefail
+        {
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4_forget_hide_contract_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4b_primary_forget_preflight_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_fault_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4c1_primary_forget_concurrency_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i3_primary_mem_correct_security_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4e_forget_api_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4e_forget_api_security_smoke.py
+        } 2>&1 | tee phase-i4e-forget-api-ui.log
+        # i4c1_hidden_successor, i4c1_security, i4c2_recovery/fault/concurrency,
+        # and i4d_retrieval_exclusion/historical_projection dropped from this
+        # block: already run above / in job forget-lifecycle.
+    - name: Upload I-4E backend log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase-i4e-forget-api-ui-log
+        path: phase-i4e-forget-api-ui.log
+        if-no-files-found: ignore
+    - name: Run I-4F Forget validation (net new over I-4D/I-4E)
+      run: |
+        set -o pipefail
+        {
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_fault_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_concurrency_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_security_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_ui_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/i4f_completion_report.md
+        } 2>&1 | tee phase-i4f-forget-validation.log
+        # i4b_preflight, i4c1_fault/concurrency, i4c2_security,
+        # i4d_fresh_conversation, i4e_forget_api(+security), and
+        # docs_link_check dropped from this block: already run above / in job
+        # forget-lifecycle. mvp_completion_report_pr_link_smoke.py dropped
+        # too: kept once in job held-governance below.
+    - name: Upload I-4F backend log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase-i4f-forget-validation-log
+        path: phase-i4f-forget-validation.log
+        if-no-files-found: ignore
+
+  forget-lifecycle-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/soul-lab
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - run: npm install --no-audit --no-fund
+    - run: npm run typecheck
+    - name: Run strict used-memory lifecycle browser schema smoke
+      run: |
+        rm -rf .used-memory-lifecycle-smoke
+        npx tsc src/features/lab/usedMemoryLifecycleApi.ts --target ES2022 --module ES2022 --moduleResolution Bundler --outDir .used-memory-lifecycle-smoke --skipLibCheck
+        node scripts/usedMemoryLifecycleApiSmoke.mjs
+        rm -rf .used-memory-lifecycle-smoke
+    # "npm run smoke:home-conversation" dropped here: already run in job
+    # home-conversation-frontend.
+    - run: npm run smoke:forget-ui
+    - run: npm run build
+
+  pin-unpin:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - name: Install Python package
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -e .
+    - name: Compile Python sources
+      run: python -m compileall relaylm scripts
+    - name: I-5A contract smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i5a_pin_unpin_contract_smoke.py
+    - name: I-5B apply smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i5b_pin_unpin_apply_smoke.py
+    - name: I-5B API projection smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i5b_pin_unpin_api_projection_smoke.py
+    - name: I-5B ranking smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i5b_pin_unpin_ranking_smoke.py
+    - name: I-5B idempotency smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i5b_pin_unpin_concurrency_smoke.py
+    - name: I-5B security smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i5b_pin_unpin_security_smoke.py
+    - name: SOUL Lab validation
+      working-directory: apps/soul-lab
+      run: |
+        npm install
+        npm run build
+        npm run smoke:pin-unpin-ui
+
+  held-governance:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22.12.0'
+    - name: Compile Python sources
+      run: python -m compileall relaylm scripts
+    - name: I-7A/B contract baseline
+      run: PYTHONPATH=.:scripts python scripts/relaylm_i7ab_held_apply_discard_contract_smoke.py
+    - name: I-7C runtime smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_runtime_smoke.py
+    - name: I-7C API source-boundary smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_api_smoke.py
+    - name: I-7C concurrency smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_concurrency_smoke.py
+    - name: I-7C security smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_security_smoke.py
+    - name: I-7C UI source smoke
+      run: PYTHONPATH=.:scripts python scripts/relaylm_phase_i7c_held_governance_ui_smoke.py
+    - name: Build SOUL Lab and validate held governance UI
+      working-directory: apps/soul-lab
+      run: |
+        npm install
+        npm run build
+        npm run smoke:held-governance-ui
+    - name: Validate docs
+      run: |
+        PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/i7c_completion_report.md
+        PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+      # scripts/relaylm_docs_link_check.py dropped here: already run in job
+      # lab-observation above.
+
+  lifecycle-visibility:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install RelayLM
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install -e .
+    - name: Python lifecycle visibility smokes
+      run: |
+        python -m compileall relaylm scripts
+        python scripts/relaylm_ui_b1a_lifecycle_visibility_api_smoke.py
+        python scripts/relaylm_ui_b1a_lifecycle_visibility_security_smoke.py
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - name: SOUL Lab lifecycle visibility
+      working-directory: apps/soul-lab
+      run: |
+        npm install --no-audit --no-fund
+        npm run typecheck
+        npm run smoke:lifecycle-visibility
+        npm run build
