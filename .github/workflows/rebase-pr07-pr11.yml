@@ -42,6 +42,16 @@ jobs:
       - name: Rebase, verify, and atomically update the stack
         shell: bash
         run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/rebase-pr07-pr11.sh')
+          text = path.read_text(encoding='utf-8')
+          old = 'pr7_wave_a_tip="${pr7_commits[5]}"'
+          new = 'pr7_wave_a_tip="${pr7_commits[6]}"'
+          if old not in text:
+              raise SystemExit('expected PR-7 Wave A boundary not found')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
           set -o pipefail
           bash .github/scripts/rebase-pr07-pr11.sh 2>&1 | tee /tmp/rebase-pr07-pr11.log
 
