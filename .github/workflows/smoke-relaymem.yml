@@ -1,0 +1,268 @@
+# Consolidated RelayMEM / RelaySLP smoke fleet.
+# Job selection is based on the actual changed paths. Manual dispatch runs all groups.
+
+name: RelayMEM / SLP smokes
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "relaylm/**"
+      - "scripts/**"
+      - "tests/test_relaymem_held_governance_preflight.py"
+      - "docs/architecture/**"
+      - "docs/mvp/**"
+      - "docs/smoke/**"
+      - "config.example.yaml"
+      - "pyproject.toml"
+      - ".github/workflows/smoke-relaymem.yml"
+  pull_request:
+    paths:
+      - "relaylm/**"
+      - "scripts/**"
+      - "tests/test_relaymem_held_governance_preflight.py"
+      - "docs/architecture/**"
+      - "docs/mvp/**"
+      - "docs/smoke/**"
+      - "config.example.yaml"
+      - "pyproject.toml"
+      - ".github/workflows/smoke-relaymem.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-relaymem-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      primary_memory: ${{ steps.filter.outputs.primary_memory }}
+      slp_queue: ${{ steps.filter.outputs.slp_queue }}
+      durable_finalization: ${{ steps.filter.outputs.durable_finalization }}
+      scheduler_worker: ${{ steps.filter.outputs.scheduler_worker }}
+      recall_correction_forget_pin: ${{ steps.filter.outputs.recall_correction_forget_pin }}
+      cross_slice_convergence: ${{ steps.filter.outputs.cross_slice_convergence }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Select changed smoke groups
+        id: filter
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            python scripts/relaylm_ci_consolidated_smoke.py changed --workflow relaymem --all >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          base="$PUSH_BEFORE_SHA"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            base="$PR_BASE_SHA"
+          fi
+          if [ -z "$base" ] || [[ "$base" =~ ^0+$ ]] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            base="$(git rev-list --max-parents=0 HEAD)"
+          fi
+          git diff --name-only "$base" "$GITHUB_SHA" > changed-files.txt
+          cat changed-files.txt
+          python scripts/relaylm_ci_consolidated_smoke.py changed --workflow relaymem --files changed-files.txt >> "$GITHUB_OUTPUT"
+
+  primary-memory:
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.primary_memory == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install RelayLM and test runner
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+      - name: Compile repository Python
+        run: python -m compileall -q relaylm scripts
+      - name: Run primary-memory smoke group
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/relaylm_ci_consolidated_smoke.py run --workflow relaymem --group primary_memory 2>&1 | tee primary-memory.log
+      - name: Upload primary-memory diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: primary-memory-log
+          path: primary-memory.log
+          if-no-files-found: error
+          retention-days: 3
+      - name: Confirm clean working tree
+        run: test -z "$(git status --short)"
+
+  slp-queue:
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.slp_queue == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install RelayLM and test runner
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+      - name: Compile repository Python
+        run: python -m compileall -q relaylm scripts
+      - name: Run slp-queue smoke group
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/relaylm_ci_consolidated_smoke.py run --workflow relaymem --group slp_queue 2>&1 | tee slp-queue.log
+      - name: Upload slp-queue diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slp-queue-log
+          path: slp-queue.log
+          if-no-files-found: error
+          retention-days: 3
+      - name: Confirm clean working tree
+        run: test -z "$(git status --short)"
+
+  durable-finalization:
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.durable_finalization == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install RelayLM and test runner
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+      - name: Compile repository Python
+        run: python -m compileall -q relaylm scripts
+      - name: Run durable-finalization smoke group
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/relaylm_ci_consolidated_smoke.py run --workflow relaymem --group durable_finalization 2>&1 | tee durable-finalization.log
+      - name: Upload durable-finalization diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: durable-finalization-log
+          path: durable-finalization.log
+          if-no-files-found: error
+          retention-days: 3
+      - name: Confirm clean working tree
+        run: test -z "$(git status --short)"
+
+  scheduler-worker:
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.scheduler_worker == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install RelayLM and test runner
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+      - name: Compile repository Python
+        run: python -m compileall -q relaylm scripts
+      - name: Run scheduler-worker smoke group
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/relaylm_ci_consolidated_smoke.py run --workflow relaymem --group scheduler_worker 2>&1 | tee scheduler-worker.log
+      - name: Upload scheduler-worker diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scheduler-worker-log
+          path: scheduler-worker.log
+          if-no-files-found: error
+          retention-days: 3
+      - name: Confirm clean working tree
+        run: test -z "$(git status --short)"
+
+  recall-correction-forget-pin:
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.recall_correction_forget_pin == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install RelayLM and test runner
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+      - name: Compile repository Python
+        run: python -m compileall -q relaylm scripts
+      - name: Run recall-correction-forget-pin smoke group
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/relaylm_ci_consolidated_smoke.py run --workflow relaymem --group recall_correction_forget_pin 2>&1 | tee recall-correction-forget-pin.log
+      - name: Upload recall-correction-forget-pin diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recall-correction-forget-pin-log
+          path: recall-correction-forget-pin.log
+          if-no-files-found: error
+          retention-days: 3
+      - name: Confirm clean working tree
+        run: test -z "$(git status --short)"
+
+  cross-slice-convergence:
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.cross_slice_convergence == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install RelayLM and test runner
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest
+      - name: Compile repository Python
+        run: python -m compileall -q relaylm scripts
+      - name: Run cross-slice-convergence smoke group
+        shell: bash
+        run: |
+          set -o pipefail
+          python scripts/relaylm_ci_consolidated_smoke.py run --workflow relaymem --group cross_slice_convergence 2>&1 | tee cross-slice-convergence.log
+      - name: Upload cross-slice-convergence diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-slice-convergence-log
+          path: cross-slice-convergence.log
+          if-no-files-found: error
+          retention-days: 3
+      - name: Confirm clean working tree
+        run: test -z "$(git status --short)"
