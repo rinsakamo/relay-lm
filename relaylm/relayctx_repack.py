@@ -16,7 +16,10 @@ from relaylm.relaymem_runtime_ctx import (
     skipped_relaymem_runtime_ctx_injection_result,
 )
 from relaylm.token_budget import estimate_text_tokens
-from relaylm.token_budget_truncation import apply_token_budget_message_truncation
+from relaylm.token_budget_truncation import (
+    apply_token_budget_truncation_phase,
+    run_token_budget_truncation_stage,
+)
 
 
 def apply_relaymem_runtime_injection_phase(
@@ -131,25 +134,6 @@ def run_relaymem_runtime_ctx_stage(
     )
 
 
-def apply_token_budget_truncation_phase(
-    *,
-    config: RelayLMConfig,
-    pipeline_context: PipelineContext,
-) -> tuple[dict[str, Any], dict[str, Any] | None]:
-    """Apply token budget truncation as one CTX Repack phase."""
-
-    forwarded_payload, token_budget_truncation = _maybe_apply_token_budget_truncation(
-        config=config,
-        payload=pipeline_context.forwarded_payload,
-    )
-    forwarded_payload = replace_pipeline_forwarded_payload(
-        pipeline_context,
-        forwarded_payload,
-        "token_budget_truncation",
-    )
-    return forwarded_payload, token_budget_truncation
-
-
 def apply_relayctx_short_term_runtime_injection_phase(
     *,
     config: RelayLMConfig,
@@ -172,6 +156,40 @@ def apply_relayctx_short_term_runtime_injection_phase(
         "relayctx_short_term_runtime_injection",
     )
     return forwarded_payload, apply_result
+
+
+def run_relayctx_short_term_injection_stage(
+    *,
+    config: RelayLMConfig,
+    pipeline_context: PipelineContext,
+    preflight_artifact: Mapping[str, Any] | None,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Stage entry point for the RelayCTX short-term injection stage.
+
+    Thin wrapper around ``apply_relayctx_short_term_runtime_injection_phase``
+    so ``handle_managed_chat_completion`` can invoke this stage through
+    ``run_stage`` with a stage-named entry point (matching the
+    ``run_<component>_stage`` convention used by the other pipeline stages,
+    e.g. ``run_relaymem_runtime_ctx_stage`` above), while keeping
+    ``apply_relayctx_short_term_runtime_injection_phase`` itself as the
+    stable phase function other callers (``scripts/relaylm_ctx_repack_final_gate_smoke.py``)
+    already depend on. This feature is default-off/dry-run-only via the
+    ``relayctx_short_term_runtime_injection_*`` config knobs, but the
+    dry-run artifact building (preflight, blocked-reason accounting, etc.)
+    happens regardless of those knobs -- this wrapper does not change that.
+    Note: ``apply_relayctx_short_term_runtime_injection_phase`` mutates
+    ``pipeline_context`` internally (via ``replace_pipeline_forwarded_payload``)
+    as it always has; this wrapper does not add, remove, or relocate any of
+    that mutation, and it must keep running BEFORE the token-budget-
+    truncation stage so truncation remains the final CTX Repack mutation
+    gate on the forwarded payload.
+    """
+
+    return apply_relayctx_short_term_runtime_injection_phase(
+        config=config,
+        pipeline_context=pipeline_context,
+        preflight_artifact=preflight_artifact,
+    )
 
 
 def _maybe_apply_grounded_recall_response(
@@ -288,77 +306,6 @@ def _latest_user_text(payload: Mapping[str, Any]) -> str:
                     parts.append(text)
             return "\n".join(parts)
     return ""
-
-
-def _maybe_apply_token_budget_truncation(
-    *,
-    config: RelayLMConfig,
-    payload: Mapping[str, Any],
-) -> tuple[dict[str, Any], dict[str, Any] | None]:
-    forwarded_payload = dict(payload)
-    forwarded_messages = _extract_repack_messages(payload)
-    result = _build_token_budget_truncation_dry_run(
-        config=config,
-        forwarded_messages=forwarded_messages,
-    )
-    if result is None:
-        return forwarded_payload, None
-
-    if not config.memory.token_budget_truncation_enabled:
-        return forwarded_payload, result
-
-    blocked_reason = result.get("blocked_reason")
-    over_after = result.get("over_budget_after") is True
-    dropped_message_count = result.get("dropped_message_count")
-    truncated_messages = result.get("truncated_messages")
-    if (
-        blocked_reason
-        or over_after
-        or not isinstance(truncated_messages, list)
-        or not isinstance(dropped_message_count, int)
-        or dropped_message_count <= 0
-    ):
-        result["applied"] = False
-        result["apply_mode"] = "runtime_apply"
-        return forwarded_payload, result
-
-    original_messages = payload.get("messages")
-    if not isinstance(original_messages, list):
-        return forwarded_payload, result
-
-    forwarded_payload["messages"] = [
-        m for m in truncated_messages if isinstance(m, dict)
-    ]
-    result["applied"] = True
-    result["apply_mode"] = "runtime_apply"
-    return forwarded_payload, result
-
-
-def _build_token_budget_truncation_dry_run(
-    *,
-    config: RelayLMConfig,
-    forwarded_messages: list[dict[str, Any]],
-) -> dict[str, Any] | None:
-    if config.memory.token_budget is None:
-        return None
-    result = apply_token_budget_message_truncation(
-        messages=forwarded_messages,
-        token_budget=config.memory.token_budget,
-        chars_per_token=config.memory.chars_per_token,
-        keep_system=True,
-        keep_latest_user=True,
-    ).to_log_dict()
-    result["enforcement_enabled"] = config.memory.token_budget_truncation_enabled
-    result["applied"] = False
-    result["apply_mode"] = "dry_run"
-    return result
-
-
-def _extract_repack_messages(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
-    raw_messages = payload.get("messages")
-    if not isinstance(raw_messages, list):
-        return []
-    return [message for message in raw_messages if isinstance(message, dict)]
 
 
 def _maybe_apply_relayctx_short_term_runtime_injection(
