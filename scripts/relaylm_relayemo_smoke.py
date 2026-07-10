@@ -299,7 +299,7 @@ def main() -> int:
     require(impl_p["suppression_reason"] == "preview_only_scene", impl_p)
 
     async def _fake_open_chat_completion_stream(
-        payload: dict[str, Any], route: Any
+        payload: dict[str, Any], route: Any, client: Any = None
     ) -> tuple[int, str, Any]:
         async def _iter() -> Any:
             yield b"data: [DONE]\n\n"

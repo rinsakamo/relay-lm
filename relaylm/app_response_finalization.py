@@ -3,13 +3,22 @@
 Extracted from `relaylm.app` to keep the app module focused on route
 wiring and runtime orchestration. Behavior, status codes, and gate
 semantics are unchanged from the inline implementation this replaces.
+
+Also home to ``get_shared_http_client``: this module has no dependency on
+``relaylm.app`` or ``relaylm.managed_chat_runtime``, so both of those
+modules can import from it without creating an import cycle (``app.py``
+imports ``managed_chat_runtime``, which needs the shared-client accessor).
 """
 from __future__ import annotations
 
+import httpx
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from relaylm.app_request_validation import openai_error
 from relaylm.config import RelayLMConfig
+
+HTTP_CLIENT_STATE_ATTR = "http_client"
 
 
 def durable_finalization_gate_relevant(config: RelayLMConfig) -> bool:
@@ -39,7 +48,38 @@ def durable_finalization_apply_mode(config: RelayLMConfig) -> bool:
     )
 
 
+def get_shared_http_client(app: FastAPI) -> httpx.AsyncClient:
+    """Return the app's shared backend ``httpx.AsyncClient``.
+
+    In production, ``relaylm.app``'s lifespan creates this client on
+    startup and closes it on shutdown, so it is normally already present on
+    ``app.state`` by the time a request arrives. Some test setups
+    instantiate the app without running its lifespan (e.g.
+    ``TestClient(app)`` used without a context manager), so this lazily
+    creates and stores a single instance on first use if lifespan hasn't
+    already done so.
+
+    This check-then-create is safe without an explicit lock: both branches
+    run synchronously with no ``await`` in between, so under asyncio's
+    cooperative single-threaded model no other coroutine can interleave
+    between the check and the assignment.
+    """
+    client = getattr(app.state, HTTP_CLIENT_STATE_ATTR, None)
+    if client is None:
+        client = httpx.AsyncClient()
+        setattr(app.state, HTTP_CLIENT_STATE_ATTR, client)
+    return client
+
+
 async def close_stream_iterator(body_iter: object) -> None:
+    """Best-effort close of an abandoned backend response/stream iterator.
+
+    ``open_chat_completion_stream`` now returns a closeable iterator whose
+    ``aclose()`` closes the backend stream context even before iteration has
+    started. Do not prime/read a chunk here: fail-closed callers use this helper
+    when they are about to abandon the backend stream and return an error, and
+    waiting for a first token could delay that error until the backend timeout.
+    """
     close = getattr(body_iter, "aclose", None)
     if not callable(close):
         return
