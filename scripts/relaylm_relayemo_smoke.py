@@ -15,9 +15,9 @@ import relaylm.app as relay_app
 # managed_chat_response; the fake-stream monkeypatches below target that
 # module instead of managed_chat_runtime now.
 import relaylm.managed_chat_response as managed_chat_response
-from relaylm.managed_chat_runtime import (
-    _apply_relayemo_marker_to_response,
-    _build_relayemo_text_marker_preview,
+from relaylm.relayemo_response_marker import (
+    apply_relayemo_marker_to_response as _apply_relayemo_marker_to_response,
+    build_relayemo_text_marker_preview as _build_relayemo_text_marker_preview,
 )
 from relaylm.config import load_config
 from relaylm.relayemo import (

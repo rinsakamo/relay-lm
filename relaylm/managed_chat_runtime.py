@@ -80,16 +80,6 @@ from relaylm.relayrun_runtime_artifact import (
     _build_relayrun_runtime_artifact_for_context,
 )
 from relaylm.relayemo import run_relayemo_stage
-from relaylm.relayemo_response_marker import (
-    # These two aliases are no longer used in this module (the response-side
-    # marker application they backed moved to
-    # relaylm.managed_chat_response._build_nonstream_response, which imports
-    # the same functions under their plain names). The aliased imports stay
-    # here solely because scripts/relaylm_relayemo_smoke.py imports them by
-    # these names directly from relaylm.managed_chat_runtime.
-    apply_relayemo_marker_to_response as _apply_relayemo_marker_to_response,
-    build_relayemo_text_marker_preview as _build_relayemo_text_marker_preview,
-)
 from relaylm.request_scope import build_scope_resolution_diagnostics, extract_request_scope_identity
 from relaylm.routing import ResolvedRoute
 from relaylm.token_budget import estimate_text_tokens
