@@ -363,7 +363,8 @@ domain directory は repository 全体の第一軸ではなく、architecture co
 
 既存 architecture を 1:1 で新 path へ移さない。各旧文書を次のいずれかへ分類する。
 
-- `moved`: 構造・粒度とも新モデルに適合
+- `retained`: 既に新モデルへ適合し、同一 canonical path で変更なく維持
+- `moved`: 構造・粒度とも新モデルに適合し、canonical path のみ変更
 - `split`: 複数 authority / 粒度へ分割
 - `synthesized`: 複数旧文書から新 canonical architecture を構成
 - `absorbed`: 既存 canonical 文書へ統合
@@ -698,7 +699,7 @@ v0.1 validation 中は採択準備、inventory、template、dry-run script、syn
 
 ### Cutover 2C: architecture synthesis
 
-- moved / split / synthesized / absorbed / deleted を実行
+- retained / moved / split / synthesized / absorbed / deleted を実行
 - slice ID を evidence へ退避
 - stable concept filename へ正規化
 - architecture から exact contract、status、handoff、成果物一覧を分離
@@ -723,7 +724,8 @@ v0.1 validation 中は採択準備、inventory、template、dry-run script、syn
 - 旧 directory を削除
 - 旧 enum を禁止
 - metadata coverage 100%
-- old docs path literal reference 0
+- live link / import / script に残る old docs path reference 0
+- frozen migration receipt の `old_path` provenance field は old-path literal 検査から除外
 - duplicate authority / orphan active doc 0
 - generated docs drift 0
 - directory / document-shape invariant CI を有効化
@@ -732,12 +734,12 @@ v0.1 validation 中は採択準備、inventory、template、dry-run script、syn
 
 ## 15. Frozen migration receipt
 
-`evidence/migrations/` に、この cutover を説明する 1 つの frozen receipt を残す。
+`evidence/migrations/` に、この cutover を説明する 1 つの frozen receipt を残す。receipt は baseline の全旧文書を対象とし、同一 path で維持される文書も `retained` として記録する。
 
 ```yaml
 - old_path: docs/architecture/acg4_reference_intent_analyzer.md
   old_blob_sha: <sha>
-  disposition: synthesized | absorbed | split | moved | rebuilt_verbatim | deleted_git_history_only
+  disposition: retained | synthesized | absorbed | split | moved | rebuilt_verbatim | deleted_git_history_only
   new_paths:
     - docs/architecture/reference-intent-analysis.md
     - docs/contracts/reference-intent-candidate.md
@@ -747,11 +749,12 @@ v0.1 validation 中は採択準備、inventory、template、dry-run script、syn
   source_sections:
     - old_heading: Implemented boundary
       new_path: docs/contracts/reference-intent-candidate.md
-  verification: exact_match | structure_reviewed | metadata_normalized | not_applicable
+  verification: exact_match | structure_reviewed | metadata_normalized | unchanged | not_applicable
 ```
 
 必須区分:
 
+- `retained`: 同一 canonical path で維持
 - `moved`
 - `split`
 - `synthesized`
@@ -759,7 +762,7 @@ v0.1 validation 中は採択準備、inventory、template、dry-run script、syn
 - `rebuilt_verbatim`
 - `deleted_git_history_only`
 
-contract は normative digest before / after と anchor verification を追加する。receipt は旧 path 互換を提供せず、provenance と synthesis trace のみを提供する。
+contract は normative digest before / after と anchor verification を追加する。receipt は旧 path 互換を提供せず、provenance と synthesis trace のみを提供する。receipt 内の `old_path` は live reference ではないため、旧 path literal 禁止検査の対象外とする。
 
 ## 16. Semantic audit
 
@@ -793,7 +796,8 @@ cutover 完了後の audit は directory invariant と document-shape invariant 
 - `relaylm_code_sources` と `relaylm_verified_by` の path が存在
 - stale trigger candidate を報告
 - router から到達不能な active doc を拒否
-- old docs path literal reference 0
+- live link / import / script に残る old docs path reference 0
+- frozen migration receipt の provenance path は上記検査から除外
 - README asset link green
 - bilingual root README の主要 link / section parity を検証
 
@@ -842,7 +846,7 @@ cutover 完了後の audit は directory invariant と document-shape invariant 
 - orphan active doc 0
 - generated docs drift 0
 - contract normative digest 一致
-- frozen receipt が全旧文書の disposition を説明
+- frozen receipt が retained を含む全旧文書の disposition を説明
 
 ## 18. 採択後の実装単位
 
