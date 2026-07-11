@@ -5,7 +5,8 @@
 # baseline_commit: 522018e62d69bcbe89465d574bf2d1b377f10bd9
 # disposition: deleted_git_history_only
 # reason: redundant milestone snapshot no longer used by current decisions or validation
-# all path_dependency_count values verified as 0
+# Preparation C literal docs/... path_dependency_count values: 0
+# relative-link audit correction: 34 docs/mvp/README.md links removed atomically in PR 556
 old_path	old_blob_sha	old_content_sha256	source_commit	source_pr
 docs/mvp/mvp10_summary.md	f541ac75ef03090937f00dfcc237392d8bdca470	c9b104ea17b2ea3fedd7130bd4c3b8ed9dd5d744e1fe5f6080da138d1974e360	f99155921f5e58555d165ee2a6bf1ca7279cfec3	70
 docs/mvp/mvp11_summary.md	6fca5bf2f5eefed91b5685c4a0466dd732f3fe60	4883dbeba9826e609a45a189d38b92f8f14b4e9571d9679265cb7b0e9b9d4237	362050d38480e075633d13247ddfd758ad26c84e	73
