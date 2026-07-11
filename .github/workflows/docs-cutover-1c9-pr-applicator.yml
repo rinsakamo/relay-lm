@@ -23,14 +23,63 @@ jobs:
           fetch-depth: 0
           show-progress: false
 
+      - name: Prepare applicator inventory correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/scripts/docs_cutover_1c9.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'if not path.is_file() or ".git" in path.parts:',
+              'if not path.is_file() or ".git" in path.parts or ".github" in path.parts:',
+          )
+
+          anchor = '''replace(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "    \\\"docs/architecture/wave7_cross_slice_convergence_audit.md\\\",\\n",
+              "",
+              1,
+          )
+          '''
+          addition = anchor + '''replace(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "    \\\"docs/architecture/wave7_cross_slice_convergence_audit.md\\\": (\\n"
+              "        \\\"# Wave 7 Cross-Slice Convergence Audit\\\",\\n"
+              "        \\\"PR #436\\\",\\n"
+              "        \\\"7bb2525cb000e893146408065f1aa5976f2b54ab\\\",\\n"
+              "        \\\"PR #437\\\",\\n"
+              "        \\\"e6e5b32cd489dda493ff0171a260dd561a91765c\\\",\\n"
+              "        \\\"E1-R3 provenance-preserving Primary MEM formation summary: complete\\\",\\n"
+              "        \\\"E1-R4 retrieval-response grounding and unsupported-detail suppression: complete\\\",\\n"
+              "        \\\"W7-INT is merged.\\\",\\n"
+              "    ),\\n",
+              "",
+              1,
+          )
+          '''
+          assert text.count(anchor) == 1
+          text = text.replace(anchor, addition)
+          assert text.count('script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 3') == 1
+          text = text.replace(
+              'script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 3',
+              'script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 4',
+          )
+          assert text.count('three hard-coded script occurrences across two smoke files') == 1
+          text = text.replace(
+              'three hard-coded script occurrences across two smoke files',
+              'four hard-coded script occurrences across two smoke files',
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Apply Wave 7 evidence cutover
         id: cutover
         continue-on-error: true
         shell: bash
-        run: |
-          set -o pipefail
-          sed -i 's/if not path.is_file() or "\.git" in path.parts:/if not path.is_file() or ".git" in path.parts or ".github" in path.parts:/' .github/scripts/docs_cutover_1c9.py
-          python .github/scripts/docs_cutover_1c9.py > cutover-apply.log 2>&1
+        run: python .github/scripts/docs_cutover_1c9.py > cutover-apply.log 2>&1
 
       - name: Upload cutover diagnostics
         if: always()
