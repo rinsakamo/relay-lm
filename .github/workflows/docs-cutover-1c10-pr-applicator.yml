@@ -23,6 +23,51 @@ jobs:
           fetch-depth: 0
           show-progress: false
 
+      - name: Prepare current-boundary inventory correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('.github/scripts/docs_cutover_1c10.py')
+          text = path.read_text(encoding='utf-8')
+          anchor = '''replace(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "    \\\"docs/architecture/e1r5_post_wave7_correction_convergence_audit.md\\\",\\n",
+              "",
+              1,
+          )
+          '''
+          addition = anchor + '''replace(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "    \\\"docs/architecture/e1r5_post_wave7_correction_convergence_audit.md\\\": (\\n"
+              "        \\\"relaylm_doc_type: integration_convergence_audit\\\",\\n"
+              "        \\\"# E1-R5 Post-Wave-7 Correction Convergence Audit\\\",\\n"
+              "        \\\"M2 remains the preferred relevance owner.\\\",\\n"
+              "        \\\"PM-D8: E1-R5 bounded Primary MEM candidate fallback folded into canonical Primary recall adapter in PR #491\\\",\\n"
+              "        \\\"PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py\\\",\\n"
+              "        \\\"PYTHONPATH=. python scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py\\\",\\n"
+              "    ),\\n",
+              "",
+              1,
+          )
+          '''
+          assert text.count(anchor) == 1
+          text = text.replace(anchor, addition)
+          assert text.count('script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 1') == 1
+          text = text.replace(
+              'script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 1',
+              'script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 2',
+          )
+          assert text.count('one hard-coded current-boundary path') == 1
+          text = text.replace(
+              'one hard-coded current-boundary path',
+              'two hard-coded current-boundary occurrences',
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Apply E1-R5 correction evidence cutover
         id: cutover
         continue-on-error: true
@@ -61,6 +106,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          rm -f cutover-apply.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
