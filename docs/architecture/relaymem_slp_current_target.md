@@ -32,7 +32,7 @@ relaylm_related_authority:
   - phase_i4f_forget_validation.md
   - e1_evaluation_consolidation.md
   - wave7_cross_slice_convergence_audit.md
-  - wave6_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave6_cross_slice_convergence_audit.md
   - ../PROJECT_STATUS.md
 ---
 # RelayMEM / RelaySLP Current / Target Boundary

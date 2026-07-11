@@ -41,7 +41,6 @@ CURRENT_DOCS = (
     "docs/architecture/phase_i7c_held_apply_discard_runtime.md",
     "docs/architecture/soul_lab_ui_mvp.md",
     "docs/architecture/wave7_cross_slice_convergence_audit.md",
-    "docs/architecture/wave6_cross_slice_convergence_audit.md",
 )
 
 REQUIRED = {

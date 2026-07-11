@@ -73,7 +73,7 @@ W6-INT verifies the source PR numbers, merge commits, and dedicated handoffs for
 - [E1-R1 completion report](wave6/e1r1_completion_report.md) — source PR #433, merge `52768cbdac3c9630373a2c369574002ac196e72b`.
 - [E1-R2 completion report](wave6/e1r2_completion_report.md) — source PR #432, merge `fefd3559ac32a37ed932faa130612a6a3da43c61`.
 
-The Wave 6 cross-slice convergence record is [Wave 6 Cross-Slice Convergence Audit](../architecture/wave6_cross_slice_convergence_audit.md). W6-INT is merged.
+The Wave 6 cross-slice convergence record is [Wave 6 Cross-Slice Convergence Audit](../evidence/waves/wave6_cross_slice_convergence_audit.md). W6-INT is merged.
 
 Wave 6 dedicated handoffs:
 
