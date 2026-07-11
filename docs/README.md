@@ -143,7 +143,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 
 ## Wave 5 / E1 evaluation evidence
 
-- [Wave 5 Cross-Slice Convergence Audit](architecture/wave5_cross_slice_convergence_audit.md)
+- [Wave 5 Cross-Slice Convergence Audit](evidence/waves/wave5_cross_slice_convergence_audit.md)
 - [O1E completion report](mvp/wave5/o1e_completion_report.md)
 - [I-4F completion report](mvp/wave5/i4f_completion_report.md)
 - [E1 completion report](mvp/wave5/e1_completion_report.md)
