@@ -117,9 +117,9 @@ The arrows mean “requires architectural context from,” not runtime call dire
 
 ### `architecture/system-overview.md`
 
-**Owner:** architecture  
-**Update trigger:** repository-level component set, external boundary, privacy boundary, or deployment model changes.  
-**Primary consumers:** new contributors, AI agents, cross-cutting design review.
+- **Owner:** architecture
+- **Update trigger:** repository-level component set, external boundary, privacy boundary, or deployment model changes.
+- **Primary consumers:** new contributors, AI agents, cross-cutting design review.
 
 Owns:
 
@@ -139,9 +139,9 @@ Primary sources:
 
 ### `architecture/pipeline-responsibilities.md`
 
-**Owner:** architecture/runtime  
-**Update trigger:** component ownership or canonical request/response ordering changes.  
-**Primary consumers:** runtime implementation, integration tests, architecture review.
+- **Owner:** architecture/runtime
+- **Update trigger:** component ownership or canonical request/response ordering changes.
+- **Primary consumers:** runtime implementation, integration tests, architecture review.
 
 Owns:
 
@@ -161,9 +161,9 @@ Exact stage interfaces and gates link to contracts.
 
 ### `architecture/character-workspace/system.md`
 
-**Owner:** character-workspace  
-**Update trigger:** editable source set, compiler tier, workspace ownership, or activation model changes.  
-**Primary consumers:** workspace compiler, UI, character creation, SLP maintenance.
+- **Owner:** character-workspace
+- **Update trigger:** editable source set, compiler tier, workspace ownership, or activation model changes.
+- **Primary consumers:** workspace compiler, UI, character creation, SLP maintenance.
 
 Owns:
 
@@ -181,9 +181,9 @@ Primary sources:
 
 ### `architecture/memory/system.md`
 
-**Owner:** memory  
-**Update trigger:** memory classes, persistence authority, formation/retrieval/mutation ownership, or lifecycle changes.  
-**Primary consumers:** RelayMEM, RelaySLP, RelayCTX, governance UI.
+- **Owner:** memory
+- **Update trigger:** memory classes, persistence authority, formation/retrieval/mutation ownership, or lifecycle changes.
+- **Primary consumers:** RelayMEM, RelaySLP, RelayCTX, governance UI.
 
 Owns:
 
@@ -202,9 +202,9 @@ Primary sources:
 
 ### `architecture/runtime/request-response-pipeline.md`
 
-**Owner:** runtime  
-**Update trigger:** request orchestration, response finalization, backend invocation, or stage-runner boundary changes.  
-**Primary consumers:** app/runtime maintainers, stage implementers, integration tests.
+- **Owner:** runtime
+- **Update trigger:** request orchestration, response finalization, backend invocation, or stage-runner boundary changes.
+- **Primary consumers:** app/runtime maintainers, stage implementers, integration tests.
 
 Owns:
 
