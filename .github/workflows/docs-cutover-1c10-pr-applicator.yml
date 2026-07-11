@@ -1,0 +1,50 @@
+name: Documentation cutover 1C-10 PR applicator
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event.pull_request.head.ref == 'agent/docs-cutover-1c10-e1r5-post-wave7'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/docs-cutover-1c10-e1r5-post-wave7
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Apply E1-R5 correction evidence cutover
+        env:
+          CUTOVER_PR: ${{ github.event.pull_request.number }}
+        run: python .github/scripts/docs_cutover_1c10.py
+
+      - name: Validate cutover
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m compileall relaylm scripts
+          python scripts/relaylm_docs_link_check.py
+          python scripts/relaylm_docs_semantic_audit.py
+          python scripts/relaylm_documentation_current_boundary_smoke.py
+          python scripts/relaylm_e1_evaluation_consolidation_smoke.py
+          git diff --check
+
+      - name: Commit cutover
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: move E1-R5 correction audit in cutover 1C-10"
+          git push origin HEAD:agent/docs-cutover-1c10-e1r5-post-wave7
