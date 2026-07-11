@@ -21,13 +21,31 @@ jobs:
         with:
           ref: agent/docs-cutover-1c9-wave7
           fetch-depth: 0
+          show-progress: false
 
       - name: Apply Wave 7 evidence cutover
+        id: cutover
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
+          set -o pipefail
           sed -i 's/if not path.is_file() or "\.git" in path.parts:/if not path.is_file() or ".git" in path.parts or ".github" in path.parts:/' .github/scripts/docs_cutover_1c9.py
-          python .github/scripts/docs_cutover_1c9.py
+          python .github/scripts/docs_cutover_1c9.py > cutover-apply.log 2>&1
+
+      - name: Upload cutover diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-cutover-1c9-diagnostics
+          path: cutover-apply.log
+          if-no-files-found: error
+
+      - name: Stop after applicator failure
+        if: steps.cutover.outcome == 'failure'
+        shell: bash
+        run: |
+          cat cutover-apply.log
+          exit 1
 
       - name: Validate cutover
         shell: bash
