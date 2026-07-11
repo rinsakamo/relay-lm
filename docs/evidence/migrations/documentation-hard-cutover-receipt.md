@@ -72,7 +72,7 @@ The exact source snapshot intentionally retains its original pre-adoption metada
 
 ```yaml
 cutover_pr: 556
-merged_commit: pending
+merged_commit: 982d119a6a05b66bf30418a156e6bceec79c7367
 disposition: deleted_git_history_only
 record_count: 34
 record_file: docs/evidence/migrations/cutover-1b-mvp-snapshot-deletions.tsv
@@ -87,18 +87,39 @@ verification:
   every_old_blob_sha_listed: true
   every_old_content_sha256_listed: true
   source_commit_and_source_pr_recorded_when_available: true
-  all_paths_removed_in_pr_tree: true
-  relative_index_links_removed_in_pr_tree: true
-  documentation_link_check_required: true
+  all_paths_removed: true
+  relative_index_links_removed: true
+  documentation_link_check: passed
   recoverable_from_git_history: true
 ```
 
-The TSV appendix is the file-level receipt for this batch. It is intentionally non-Markdown so embedded pre-cutover paths and metadata cannot be mistaken for active documentation authority. The Preparation C literal-path scan did not cover relative Markdown links; PR #556 corrects the MVP index and records that limitation explicitly.
+The TSV appendix is the file-level receipt for this batch. It is intentionally non-Markdown so embedded pre-cutover paths and metadata cannot be mistaken for active documentation authority. The Preparation C literal-path scan did not cover relative Markdown links; PR #556 corrected the MVP index and recorded that limitation explicitly.
+
+### C1C1-001 — Phase I-3 validation receipt
+
+```yaml
+cutover_pr: 557
+merged_commit: pending
+old_path: docs/architecture/phase_i3_validation_receipt.md
+old_blob_sha: 710bf4dfb98e1b824751dc071fd206b7c4b9afda
+old_content_sha256: 8f5bd9b650a78838a93ee870dbbec99c112ba3ab55d27ceafda2767544139036
+source_commit: 74b308f341cb049e6adebbe2b0c959950198739a
+source_pr: 379
+disposition: evidence_retained
+new_canonical_path: docs/evidence/evaluations/phase_i3_validation_receipt.md
+verification:
+  old_path_removed_in_pr_tree: true
+  current_filename_search_dependencies: 0
+  canonical_evidence_metadata_added: true
+  validation_conclusion_changed: false
+  documentation_link_check_required: true
+```
+
+This move changes placement and lifecycle metadata only. The recorded Phase I-3 verification results and privacy statement remain substantively unchanged.
 
 ## Pending batches
 
-- Cutover 1B: merge low-value MVP snapshot deletion and record the merged commit.
-- Cutover 1C: retained implementation, wave, evaluation, and release evidence migration.
+- Cutover 1C: remaining implementation, wave, evaluation, and release evidence migration.
 - Later cutovers: architecture synthesis, exact contract reconstruction, old-tree removal, and final invariant enforcement.
 
 ## Freeze boundary

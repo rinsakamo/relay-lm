@@ -22,7 +22,7 @@ This collection contains non-normative records retained because they support dur
 
 - `implementation/` — bounded implementation completion evidence.
 - `waves/` — cross-slice convergence evidence.
-- `evaluations/` — dated evaluation and validation results.
+- [Evaluations](evaluations/README.md) — dated evaluation and validation results.
 - `releases/` — release and validation receipts.
 - [Proposals](proposals/README.md) — accepted, rejected, or withdrawn proposal evidence.
 - [Migrations](migrations/README.md) — cutover provenance and verification receipts.
