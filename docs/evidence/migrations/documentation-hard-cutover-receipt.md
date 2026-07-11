@@ -52,7 +52,7 @@ merged_commit: 3fd9b6dd833c869f50620355ffa698c41f496f10
 old_path: docs/proposals/documentation_restructure_proposal.md
 old_blob_sha: 4707ee9cd6d0a8184f36782cdd537e6a71a10131
 old_content_sha256: 7c9d7fbc3b5a080ab601d9fcc67f95bdfdc712d9836d569de3b40a19c493ef91
-source_commit: 5f9730d1e2630a30b6ade2faa03da580f1dccd38
+source_commit: 5f9730d1e2630a30b6adebbe2b0c959950198739a
 source_pr: 549
 disposition: moved
 new_canonical_path: docs/evidence/proposals/documentation-restructure-proposal.md
