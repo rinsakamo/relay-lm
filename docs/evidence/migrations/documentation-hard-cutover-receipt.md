@@ -317,9 +317,11 @@ verification:
   relative_markdown_link_dependencies_at_frozen_baseline: 4
   current_tree_related_authority_references_updated: 2
   current_boundary_smoke_historical_path_removed: true
-  documentation_link_check_required: true
-  documentation_semantic_audit_required: true
-  affected_current_boundary_checks_required: true
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  affected_current_boundary_checks: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
 ```
 
 The canonical evidence document preserves the complete Wave 6 convergence account while correcting its live relative links for the evidence collection. The exact pre-cutover source remains available as the original Git blob. The dependency sweep identified one hard-coded current-boundary path, four Markdown relative links across three router files, and two `relaylm_related_authority` YAML references. The old path below is only the historical migration identifier for this receipt.
