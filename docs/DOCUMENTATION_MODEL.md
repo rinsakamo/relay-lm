@@ -1,185 +1,376 @@
 ---
 relaylm_doc_type: documentation_model
-relaylm_authority: document_type_metadata_and_ai_reading_rules
+relaylm_authority: document_types_metadata_lifecycle_and_ai_reading_rules
 relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: documentation
 relaylm_update_trigger:
-  - document type changes
-  - metadata field changes
-  - AI reading instruction changes
-  - placement rule changes
-  - parallel implementation documentation flow changes
+  - document type or metadata field changes
+  - authority or placement rules change
+  - proposal or ADR lifecycle changes
+  - audit severity changes
+  - documentation cutover completes
 relaylm_not_authoritative_for:
   - current runtime behavior
   - implementation phase status
-  - component responsibility and canonical target order
+  - component responsibility or exact runtime contracts
+relaylm_current_status_source: PROJECT_STATUS.md
+relaylm_related_decisions:
+  - adr/0002-documentation-information-architecture.md
 ---
 # RelayLM Documentation Model
 
+RelayLM documentation is optimized for partial retrieval by humans and AI agents. This document is authoritative for document types, metadata, lifecycle, placement interpretation, and AI reading rules. It does not authorize runtime behavior or claim implementation completion.
+
 ## Purpose
 
-This document defines the AI-first documentation model for RelayLM. RelayLM documentation is optimized for partial retrieval by ChatGPT, Codex, and other AI assistants as well as for human review.
+The documentation model makes every active document answer the following questions without relying on surrounding files:
 
-The goal is not equal document length. The goal is unambiguous authority, status, lifetime, and update responsibility.
+- What is this document authoritative for?
+- What is it not authoritative for?
+- Does it describe current behavior, a target, or historical evidence?
+- Who owns it and what change should trigger an update?
+- Which contract, code, test, decision, or status source is related?
 
-## Core rule
+Equal document length is not a goal. Unambiguous authority, stable concepts, bounded scope, and reliable retrieval are the goals.
 
-When an AI or human reads a single file out of context, the file must say:
+## Adoption and activation boundary
 
-- what type of document it is,
-- what it is authoritative for,
-- what it is not authoritative for,
-- whether it describes current, target, compatibility, historical, or frozen behavior,
-- when it should be updated.
+ADR [0002](adr/0002-documentation-information-architecture.md) adopts the authority-first hard-cutover model.
+
+Preparation may add the new model, templates, glossary, inventory, graph, and migration tooling before the v0.1 frozen tag receipt. Existing canonical paths are not moved or deleted until the cutover starts immediately after that receipt is finalized.
+
+During Preparation:
+
+- existing documents may retain their current type and path until their cutover PR;
+- new documents must use the canonical types defined here rather than legacy aliases;
+- no redirect stub, legacy manifest, old/new dual-path allowance, or new `historical_after_merge` document may be introduced;
+- a PR that later moves a document must update every path-bound audit, workflow, script, and live link in the same PR.
+
+At cutover completion, the existing-only legacy types and statuses listed below are removed from the active model.
 
 ## Required metadata
 
-Active documentation SHOULD start with YAML front matter:
+Active and retained evidence Markdown should start with YAML front matter using plain scalar or list values.
 
 ```yaml
 ---
-relaylm_doc_type: stable_architecture
-relaylm_authority: component_responsibility_and_target_order
+relaylm_doc_type: subsystem_architecture
+relaylm_authority: primary_memory_formation_responsibilities
 relaylm_status: current
 relaylm_volatility: low
-relaylm_owner: architecture
+relaylm_owner: memory
 relaylm_update_trigger:
-  - component responsibility changes
+  - Primary MEM formation ownership changes
 relaylm_not_authoritative_for:
-  - implementation phase status
+  - exact wire schemas
+  - repository-wide implementation status
 relaylm_current_status_source: ../PROJECT_STATUS.md
+relaylm_related_contracts:
+  - ../contracts/primary-memory-candidate.md
+relaylm_code_sources:
+  - ../relaylm/...
+relaylm_verified_by:
+  - ../scripts/...
 ---
 ```
 
-Use plain scalar or list values only. Do not encode source text, prompts, traces, cache bodies, or runtime-private data in metadata.
+Required core fields for active documents:
 
-## Document types
+- `relaylm_doc_type`
+- `relaylm_authority`
+- `relaylm_status`
+- `relaylm_volatility`
+- `relaylm_owner`
+- `relaylm_update_trigger`
+- `relaylm_not_authoritative_for`
 
-| Type | Purpose | Typical location | Authority |
+`relaylm_current_status_source` is required when a document could otherwise be mistaken for repository-wide implementation status.
+
+Relationship metadata is conditional:
+
+- `relaylm_related_contracts` only when related contracts exist;
+- `relaylm_code_sources` only when concrete code ownership exists;
+- `relaylm_verified_by` only when a real test, script, or workflow verifies the named boundary;
+- `relaylm_decision_source` for documents governed by an accepted ADR;
+- `relaylm_source_commit`, `relaylm_source_pr`, and `relaylm_recorded_on` for historical evidence.
+
+Do not put source text, prompts, traces, cache bodies, user content, credentials, or runtime-private data in metadata.
+
+## Canonical document types
+
+| Type | Purpose | Canonical location | Authority |
 |---|---|---|---|
-| `documentation_model` | AI-first documentation rules and metadata vocabulary | `docs/DOCUMENTATION_MODEL.md` | document type metadata and AI reading rules |
-| `documentation_index` | Entry point or local map for documentation areas | `docs/README.md`, `docs/architecture/README.md` | navigation and local documentation map |
-| `status` | Current developer-facing project state | `docs/PROJECT_STATUS.md` | current implemented boundary, active caveats, next candidates |
-| `implementation_plan` | MVP boundary, dependency sequencing, and post-MVP roadmap | `docs/architecture/project_execution_plan.md` | execution sequence and roadmap only, not current implementation status |
-| `redirect_stub` | Compatibility pointer from an older authority path | old plan/roadmap paths | redirect only; never status or sequencing authority |
-| `strategic_vision` | Long-horizon product and architecture direction, non-committing bets, and post-release design principles | `docs/architecture/*vision*.md` | strategic direction only; never current status, execution sequencing, exact contracts, or implementation authorization |
-| `stable_architecture` | Durable responsibility, component, and target-order design | `docs/architecture/*_design.md` | stable architecture and ownership |
-| `architecture` | Older compatibility alias for stable architecture docs | older `docs/architecture/*.md` files | interpret as `stable_architecture`; prefer canonical `stable_architecture` for new or touched docs |
-| `architecture_report` | Older compatibility alias for architecture/governance reports | older `docs/architecture/*.md` reports | interpret as architecture guidance; prefer a canonical type such as `stable_architecture`, `implementation_plan`, `contract`, or `evaluation_record` when a touched doc clearly fits one |
-| `current_target_migration` | Current, compatibility, target, and migration interpretation | `docs/architecture/current_target_migration_guide.md`, `docs/architecture/relaymem_slp_current_target.md` | current-vs-target interpretation and migration caveats |
-| `implementation_handoff` | Bounded implementation slice record | `docs/architecture/phase*_handoff.md` and dedicated architecture handoff docs | completed or active slice record only |
-| `implementation_contract` | Implemented slice contract that also defines exact helper/schema/status boundaries | `docs/architecture/*_contract.md` | exact implemented slice contract; not repository-wide status authority |
-| `architecture_handoff` | Older alias for a bounded implementation handoff | `docs/architecture/e1r*.md`, `docs/architecture/phase_i*.md` | completed or active slice record only; prefer `implementation_handoff` for new docs |
-| `implementation_completion_report` | PR-scoped implementation evidence and later convergence input | `docs/mvp/wave*/<slice>_completion_report.md` | one implementation PR's claimed boundary, evidence, limitations, and shared-doc update inputs only |
-| `contract` | Exact schema, gate, artifact, and runtime contract | `docs/contracts/` or dedicated architecture contract docs | exact implemented or planned contract behavior |
-| `runbook` | Operator-facing manual procedure or bounded tooling operation guide | `docs/smoke/`, `docs/tools/` | procedure and interpretation boundaries for the named manual/tooling flow; never repository-wide current status |
-| `smoke_howto` | Manual or automated validation procedure | `docs/smoke/` | validation steps and expected evidence |
-| `release_readiness_assessment` | Current assessment of release criteria, completed evidence, and pending final validation | `docs/mvp/v0.1_release_readiness.md` | readiness interpretation only; never a completed tag or release receipt until exact validation evidence is recorded |
-| `validation_receipt` | Frozen validation result or receipt-style proof record | `docs/architecture/*validation*receipt*.md`, `docs/mvp/` | validation evidence only; never current implementation status |
-| `cross_slice_convergence_audit` | Cross-slice convergence audit over merged implementation tracks | `docs/architecture/wave*_cross_slice_convergence_audit.md` | historical convergence evidence and shared-doc inputs |
-| `integration_convergence_audit` | Integration-wave convergence audit over merged tracks | `docs/architecture/wave*_cross_slice_convergence_audit.md` | historical integration convergence evidence and shared-doc inputs |
-| `evaluation_record` | Local or bounded evaluation run record | `docs/architecture/*evaluation*.md`, `docs/evaluation/` | evaluation evidence only; not runtime status authority; blank templates are not measured evidence |
-| `evaluation_consolidation` | Current evaluation evidence synthesis | `docs/architecture/e1_evaluation_consolidation.md` | current evaluation proof boundary and evidence inventory |
-| `adr` | Durable design decision and consequences | `docs/adr/` | decision rationale and supersession chain |
-| `historical_evidence` | Previous MVP notes or archived rationale | `docs/mvp/`, `docs/architecture/archive/` | evidence only; never current authority |
+| `documentation_model` | Documentation vocabulary, lifecycle, placement, and AI reading rules | `docs/DOCUMENTATION_MODEL.md` | documentation model only |
+| `documentation_index` | Repository or collection-local navigation | `docs/README.md`, collection `README.md` | navigation only |
+| `status` | Current repository-wide implementation state | `docs/PROJECT_STATUS.md` | implemented boundary, caveats, next candidates |
+| `proposal` | Undecided change proposal | `docs/proposals/` | proposal argument only; not an accepted decision |
+| `adr` | Durable accepted or rejected decision and consequences | `docs/adr/` | decision rationale and supersession chain |
+| `system_architecture` | Repository-wide or system-wide responsibilities and flows | `docs/architecture/` | durable system structure and ownership |
+| `subsystem_architecture` | Independently changing component or subsystem design | `docs/architecture/<domain>/` | subsystem inputs, outputs, lifecycle, and ownership |
+| `concept_policy` | Cross-component semantic concept or policy | `docs/architecture/<domain>/` | concept definition, invariants, and trade-offs |
+| `contract` | Exact schema, gate, API, artifact, state, or must/must-not invariant | `docs/contracts/` | exact normative boundary |
+| `guide` | Task-oriented instructions with prerequisites and expected results | `docs/guides/` | procedure for the named task |
+| `reference` | Field, option, CLI, API, glossary, or interpretation reference | `docs/reference/` | lookup information for the named surface |
+| `strategy` | Non-binding long-horizon direction and product principles | `docs/strategy/` | strategic direction only |
+| `planning` | Execution order, dependencies, roadmap, and migration sequencing | `docs/planning/` | sequencing only; not current completion status |
+| `operations` | Operator runbook, smoke procedure, or tooling operation | `docs/operations/` | operational procedure and interpretation |
+| `evaluation_method` | Rubric, scenario, or repeatable evaluation method | `docs/evaluation/` | evaluation method only |
+| `release` | Current release criteria and readiness interpretation | `docs/release/` | release gate interpretation only |
+| `evidence` | Non-normative implementation, evaluation, release, proposal, or migration record | `docs/evidence/` | historical evidence only |
+| `template` | Non-authoritative document starting point | `docs/templates/` | no project authority |
 
-New documents should prefer the canonical type names above. Existing documents using a listed compatibility alias do not need a rename-only PR, but the alias must be listed here so AI-first readers can interpret it safely. When a compatibility-alias document is otherwise touched for substantive content, prefer moving it to the closest canonical type in the same PR.
+## Existing-only pre-cutover types
+
+The following types remain readable only because existing files still use them before cutover. Do not use them for new documents.
+
+| Type | Pre-cutover interpretation | Required cutover destination |
+|---|---|---|
+| `implementation_plan` | execution sequencing | `planning` |
+| `strategic_vision` | non-binding direction | `strategy` |
+| `stable_architecture` | durable architecture | one of the three architecture types |
+| `architecture` | legacy architecture alias | one of the three architecture types |
+| `architecture_report` | mixed architecture or report | split by authority |
+| `current_target_migration` | current/target interpretation | `reference` or `planning` |
+| `implementation_handoff` | bounded implementation evidence | `evidence` |
+| `implementation_contract` | exact contract mixed with handoff material | `contract` plus evidence if needed |
+| `architecture_handoff` | legacy handoff alias | `evidence` |
+| `implementation_completion_report` | PR-scoped evidence | `evidence` |
+| `runbook` | operational procedure | `operations` |
+| `smoke_howto` | validation procedure | `operations` |
+| `release_readiness_assessment` | current pre-v0.1 readiness assessment | `release` |
+| `validation_receipt` | frozen validation evidence | `evidence` |
+| `cross_slice_convergence_audit` | merged-wave evidence | `evidence` |
+| `integration_convergence_audit` | integration evidence | `evidence` |
+| `evaluation_record` | dated or bounded evaluation evidence | `evidence` |
+| `evaluation_consolidation` | current evaluation synthesis | `evaluation_method` or `release`, with dated results in evidence |
+| `historical_evidence` | non-normative historical material | `evidence` or Git history only |
+| `redirect_stub` | old-path compatibility pointer | delete; never create a new one |
 
 ## Status values
 
-Use the following values consistently:
+Canonical statuses:
 
-- `current`: implemented behavior or current authoritative guidance.
-- `target`: design goal without a complete current producer, consumer, or apply path.
-- `compatibility`: retained non-target behavior.
-- `historical`: evidence from a previous slice.
-- `historical_after_merge`: implementation handoff or completion report after the source PR has merged.
-- `frozen`: preserved record that should not be edited except for metadata or link fixes.
+- `current`: current authoritative guidance or implemented behavior.
+- `target`: adopted or proposed target that is not fully implemented.
+- `historical`: non-normative evidence from a completed or superseded context.
+- `frozen`: preserved record changed only for metadata or link repair.
 
-A `release_readiness_assessment` may be `current` while final validation is pending, but it must say so explicitly and must not be cited as a completed release receipt. A `validation_receipt` must identify the exact validated commit, execution date, checks, results, and reviewer or source-of-truth workflow.
+Existing-only pre-cutover statuses:
+
+- `compatibility`: existing non-target compatibility behavior; do not assign to new docs.
+- `historical_after_merge`: existing merged handoff/report marker; normalize to `historical` during cutover and do not assign to new docs.
+
+Decision state is separate from implementation status:
+
+```yaml
+relaylm_doc_type: adr
+relaylm_status: target
+relaylm_decision_status: accepted
+relaylm_decided_on: 2026-07-11
+relaylm_supersedes: []
+relaylm_superseded_by: null
+```
+
+`accepted` does not mean implemented.
+
+## One document, one primary authority
+
+An active document must not combine independent authorities such as:
+
+- architecture and exact contract;
+- implementation handoff and current contract;
+- evaluation method and dated result;
+- release readiness and frozen receipt;
+- proposal and accepted decision;
+- strategy and committed execution plan;
+- generated reference and a hand-written duplicate source of truth.
+
+Split a document when owner, update trigger, lifecycle, independent consumer, or replacement boundary differs.
+
+## Architecture subtypes
+
+### System architecture
+
+Recommended sections:
+
+- Purpose
+- System context
+- Responsibility map
+- Canonical data/control flow
+- Ownership boundaries
+- System-wide invariants
+- Failure and privacy boundaries
+- Extension points
+- Related subsystem architecture
+- Related contracts
+- Non-goals
+
+### Subsystem architecture
+
+Recommended sections:
+
+- Purpose
+- Scope
+- Inputs and outputs
+- Owned responsibilities
+- Explicit non-responsibilities
+- Internal components
+- State/lifecycle model
+- Data/control flow
+- Failure and recovery boundary
+- Privacy/security boundary
+- Stable invariants
+- Related contracts
+
+### Concept or policy design
+
+Recommended sections:
+
+- Problem
+- Definition
+- Scope
+- Semantic model
+- Invariants
+- Interaction with components
+- Trade-offs
+- Non-goals
+- Related architecture and contracts
+
+These are retrieval and review aids, not unconditional blockers. A short concept note may use `Not applicable: <reason>` for sections that genuinely do not apply.
+
+## Placement tie-breaker
+
+When a document could fit more than one collection, apply this order:
+
+1. Exact schema, gate, artifact, API, or must/must-not invariant -> `contracts/`.
+2. Time, dependency, implementation order, or migration sequence -> `planning/`.
+3. Lookup data, current/target interpretation, fields, options, or glossary -> `reference/`.
+4. Non-binding horizon direction -> `strategy/`.
+5. Durable structure, responsibility, ownership, or semantic design -> `architecture/`.
+6. Procedure and troubleshooting flow -> `guides/` or `operations/` depending on operator scope.
+7. Dated result, completion proof, audit, receipt, or retired proposal -> `evidence/`.
+
+If multiple primary authorities remain after this test, split the document.
+
+## Proposal lifecycle
+
+```text
+proposals/<name>.md
+  ├── accepted -> ADR + normative docs + evidence/proposals/
+  ├── rejected -> decision source + evidence/proposals/
+  └── withdrawn -> reason + evidence/proposals/
+```
+
+Proposal metadata:
+
+```yaml
+relaylm_doc_type: proposal
+relaylm_status: target
+relaylm_proposal_status: under_review
+```
+
+After disposition, the proposal is historical or frozen evidence and points to the decision source. The accepted documentation hard-cutover proposal may be moved with Preparation or the first cutover PR, as authorized by ADR 0002.
+
+## ADR lifecycle
+
+- New ADR filenames use `NNNN-short-title.md`.
+- ADR decision status is `proposed`, `accepted`, `rejected`, or `superseded`.
+- ADR implementation status remains in `relaylm_status` and current status documents.
+- Existing unnumbered ADRs receive deterministic numbers once during cutover.
+- After canonicalization, ADR paths are stable.
+- Redirect stubs are not created.
+
+## Naming and opening contract
+
+Active filenames use lowercase kebab-case. Permanent active architecture and contracts do not use dates, PR numbers, wave IDs, or implementation slice IDs. Evidence may use dates and slice IDs.
+
+An active document should begin with:
+
+1. title;
+2. a short authority summary;
+3. status;
+4. purpose;
+5. scope;
+6. non-goals;
+7. canonical related authorities.
+
+Use one H1. H2 headings should be meaningful retrieval boundaries rather than `Overview`, `Details`, or `Misc`.
+
+## Duplication and generated reference
+
+Do not copy exact fields, enum values, defaults, paths, gates, or status tables into multiple active documents.
+
+- architecture explains meaning and relationships, then links to contracts;
+- guides link to reference tables;
+- status documents link to exact contracts rather than restating them;
+- unavoidable excerpts are marked non-authoritative.
+
+Generating config, CLI, schema, API, workflow, and artifact reference is a post-cutover track. Cutover completion requires only that no new hand-written exact-table duplicate is introduced and that existing duplicates are deleted or replaced by links to one canonical source.
+
+## Audit severity
+
+### MUST
+
+Blocking checks are objective and protect authority or safety boundaries, including:
+
+- required front matter;
+- path/type consistency after cutover;
+- exact contracts only under `contracts/`;
+- duplicate authority key zero;
+- normative contract digest and safety anchors;
+- live old-path references zero after cutover;
+- referenced paths exist;
+- documentation links and README assets are valid.
+
+### WARN
+
+Non-blocking checks begin as warnings:
+
+- architecture subtype and recommended-section completeness;
+- milestone IDs in active architecture filenames;
+- duplicate titles;
+- suspected mixed authority;
+- unclear parent/child architecture relation;
+- missing owner, update trigger, or router link;
+- stale-trigger candidate;
+- generic headings;
+- missing diagram source or text summary.
+
+Only rules with demonstrated low false-positive rates should later become MUST.
+
+### Deferred
+
+Post-cutover tooling includes:
+
+- generated reference and drift checks;
+- advanced code-diff-to-doc stale detection;
+- semantic duplication detection.
 
 ## AI reading instructions
 
 When answering questions about current RelayLM behavior:
 
 1. Read `docs/PROJECT_STATUS.md` first.
-2. Use `docs/architecture/project_execution_plan.md` for MVP boundary, dependency sequencing, and post-MVP roadmap ordering.
-3. Use `docs/architecture/pipeline_responsibility_design.md` for component responsibility and canonical target order.
-4. Use dedicated contracts for exact schemas, gates, artifacts, and bounded behavior.
-5. Use `docs/architecture/current_target_migration_guide.md` before treating target or compatibility behavior as current.
-6. Treat `docs/mvp/` and `docs/architecture/archive/` as historical evidence only, except for an explicitly current release-readiness assessment.
-7. Treat handoff docs as implementation records, not canonical architecture, after merge unless they are the dedicated current exact-boundary document for a still-current slice.
-8. Treat an `implementation_completion_report` as evidence that one PR claims a bounded result, not as repository-wide completion authority.
-9. During an explicitly declared parallel-wave merge window, inspect the source PR and completion report in addition to current status; do not infer that the next wave or release gate is open until the convergence documentation PR has merged.
-10. Treat `strategic_vision` documents as non-committing horizon guidance. They can explain why future work may matter, but they do not override Project Status, Project Execution Plan, current contracts, or release-readiness receipts.
-11. Treat a release-readiness assessment with pending final validation as a checklist and evidence synthesis, not proof that a tag candidate passed.
+2. Use the current execution plan for sequencing until it moves to `planning/`.
+3. Use durable architecture for responsibilities and concepts.
+4. Use `docs/contracts/` for exact schemas, gates, artifacts, and invariants.
+5. Treat target documents as unimplemented unless current status and code evidence say otherwise.
+6. Treat implementation handoffs, completion reports, audits, evaluations, and receipts as bounded evidence, not repository-wide current authority.
+7. Treat strategy as non-binding direction.
+8. Treat an accepted ADR as a decision, not proof of implementation.
+9. Prefer canonical glossary terms and stable concept names over milestone aliases.
+10. During cutover, do not infer dual-path compatibility; each migrated authority has one live path per merged PR.
 
-## Placement rules
+## Parallel implementation documentation
 
-The current placement rules remain:
+Parallel implementation slices may continue to create unique slice-owned evidence while one convergence PR updates shared current-state documents. The existing convergence rule remains in force until cutover replaces its paths:
 
-- repository-wide current status -> `docs/PROJECT_STATUS.md`
-- MVP execution plan and post-MVP roadmap -> `docs/architecture/project_execution_plan.md`
-- stable cross-cutting architecture -> `docs/architecture/`
-- long-horizon strategic vision -> `docs/architecture/*vision*.md`
-- exact schemas and contracts -> `docs/contracts/` or dedicated architecture contract docs
-- manual smoke, troubleshooting, and local behavior validation docs -> `docs/smoke/`
-- offline tooling specifications and runbooks -> `docs/tools/`
-- evaluation templates and run records -> `docs/evaluation/`
-- historical MVP snapshots, release-readiness assessments, and implementation completion reports -> `docs/mvp/`
-- superseded architecture rationale -> `docs/architecture/archive/`
-- RelaySOUL governance docs -> `docs/relaysoul/`
+- implementation PRs own code, directly coupled tests, exact contract changes, and unique completion evidence;
+- shared status, execution plan, indexes, and repository-wide documentation smoke are updated by convergence unless a real contract change requires an atomic edit;
+- the next wave or release gate remains closed until convergence is green and merged;
+- a cutover PR must update path-bound checks and references atomically with every move or deletion.
 
-Future cleanup may move implementation handoffs under `docs/implementation/`, but this document does not require a file move.
+## Security and privacy
 
-## Two-stage parallel implementation documentation
-
-A wave may explicitly declare multiple implementation slices as parallel and reserve one later convergence/documentation slice, such as `W3-INT`, to update shared current-state documents. This is the preferred mode when the parallel PRs would otherwise edit the same status, execution plan, index, current-target, or governance-smoke lines.
-
-### Stage 1: implementation PR
-
-Each parallel implementation PR owns only:
-
-- production code and directly coupled tests/workflows;
-- exact configuration or schema documentation that must ship atomically with accepted runtime fields;
-- a new slice-owned handoff or exact contract file whose path is unique to that slice;
-- one unique `docs/mvp/wave*/<slice>_completion_report.md` file.
-
-The implementation PR must not update shared current-state documents merely to mark its phase complete. In particular, it must not edit the repository-wide status, shared execution plan, shared indexes, cross-slice current-target documents, previous-wave audit documents, or repository-wide documentation-boundary smoke unless its production change genuinely changes those documents' own contract rather than only their completion status.
-
-The completion report is mandatory. It records the bounded implemented result, preserved authorities and non-goals, changed files, validation evidence, known limitations, source PR, and exact inputs that the convergence thread must apply to shared documentation. It contains no user/model content or runtime-private evidence.
-
-The implementation PR must not add its report or new handoff to a shared index. The convergence PR performs indexing once all selected parallel slices have merged.
-
-### Stage 2: convergence and shared-documentation PR
-
-After the selected implementation PRs merge, the wave convergence thread must:
-
-1. reread each merged PR, its unique completion report, and its dedicated handoff;
-2. verify merge commits and cross-slice authority, race, security, and non-goal compatibility;
-3. update `docs/PROJECT_STATUS.md`, `docs/architecture/project_execution_plan.md`, shared indexes, current-target documents, and repository-wide documentation smoke in one PR;
-4. sweep directly affected feature-family master/contract documents named by `relaylm_update_trigger`, `relaylm_related_authority`, completion-report shared-doc inputs, or grep hits for the completed phase names;
-5. add central links to the completion reports and dedicated handoffs where appropriate;
-6. record any divergence between a report and the merged implementation;
-7. keep the next wave and release/evaluation gate closed until this convergence PR is green and merged.
-
-The feature-family sweep is mandatory. A convergence PR must not leave a non-frozen master or contract document saying that an already completed subphase such as `I-4E`, `I-4F`, `O1D2`, `O1E`, `O1F`, `UI-B1A`, `E1-R4`, or `E1-R5` remains unimplemented, future work, or outside the proven boundary unless that sentence is explicitly about a different downstream capability such as O2/O3, Pin/Unpin runtime apply, Held Apply/Discard runtime, or a broader future replacement.
-
-A temporary status lag between an implementation merge and the convergence merge is allowed only for a declared parallel wave. The completion report and source PR are the bounded evidence during that interval, while `docs/PROJECT_STATUS.md` remains the repository-wide current-status authority and must be reconciled promptly by the convergence PR.
-
-### Shared documents normally reserved for convergence
-
-Unless a slice has explicit ownership for a real contract change, parallel implementation PRs should leave these files to the convergence thread:
-
-```text
-docs/PROJECT_STATUS.md
-docs/README.md
-docs/architecture/README.md
-docs/architecture/project_execution_plan.md
-docs/architecture/relaymem_slp_current_target.md
-docs/architecture/wave*_cross_slice_convergence_audit.md
-scripts/relaylm_documentation_current_boundary_smoke.py
-```
-
-The legacy plan and roadmap stub files are not sequencing authorities and normally change only when their redirect target changes.
+Documentation, examples, metadata, and evidence must not contain content-bearing runtime data, raw memory, protected source, credentials, tokens, private paths, or user identity. Normative diagrams must have text sources and a textual summary; images are presentation assets, not the sole authority for an invariant.
