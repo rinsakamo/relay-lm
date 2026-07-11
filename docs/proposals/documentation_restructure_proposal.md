@@ -6,14 +6,15 @@ relaylm_volatility: low
 relaylm_owner: documentation
 relaylm_update_trigger:
   - restructure decision is made
-  - migration phase completes
+  - v0.1 frozen tag receipt is finalized
+  - documentation cutover completes
 relaylm_not_authoritative_for:
   - current documentation placement rules
   - current runtime behavior
   - implementation phase status
 relaylm_current_status_source: ../PROJECT_STATUS.md
 ---
-# RelayLM ドキュメント情報アーキテクチャ再設計提案
+# RelayLM ドキュメント情報アーキテクチャ hard cutover 提案
 
 作成日: 2026-07-11
 
@@ -21,268 +22,294 @@ relaylm_current_status_source: ../PROJECT_STATUS.md
 
 ## 0. 結論
 
-RelayLM のドキュメント再構成は、単純な「読者別ディレクトリへの整理」や「古い文書の archive」ではなく、次の原則で設計し直す。
+RelayLM は単独メンテナ、pre-v0.1、主要読者が本人と AI エージェントであり、旧 docs path や旧 metadata enum を公開互換 API として維持する合理性が小さい。したがって、ドキュメント再構成は互換移行ではなく **hard cutover** とする。
 
-1. **第一軸は文書の権威・役割**とする。パスを見れば、その文書が guide、reference、strategy、planning、architecture、contract、decision、operation、evaluation、release、evidence のどれか分かるようにする。
-2. **規範文書と非規範的証跡をパスで分離**する。実装記録、completion report、wave audit、評価実行結果、release receipt は、作成時点から `docs/evidence/` に置く。
-3. **1 文書 1 権威**を新規・実質更新文書の原則とする。ただし既存 hybrid 文書を移行のためだけに全面リライトしない。
-4. **ADR と proposal に独立したライフサイクルを持たせる**。ADR の採択と実装済み状態を混同せず、proposal を採択後も現役文書として残さない。
-5. **索引はルーターに限定**し、証跡の巨大な重複リストを置かない。各 collection に 1 つだけ local index を持たせる。
-6. **移行は段階的に行い、各 PR で link-check と documentation boundary smoke を green に保つ**。
+採用する原則は次のとおり。
 
-現行モデルの front matter、権威の優先順位、`PROJECT_STATUS.md` の単一性、two-stage wave flow は維持する。ただし、ディレクトリ設計、ADR/proposal/evidence の状態モデル、索引規則、semantic audit の検証方法は改める。
+1. **文書の第一軸を権威・役割に統一する。**
+2. **規範文書と非規範的 evidence を path で分離する。**
+3. **新体系では全 active 文書へ 1 文書 1 権威を適用する。**
+4. **旧 path、redirect stub、旧 enum、legacy exception、hybrid 例外を残さない。**
+5. **意味のある意思決定・検証証跡だけを `evidence/` に残し、価値のない snapshot は Git history に委ねる。**
+6. **exact contract の規範文言は逐語移送し、旧 blob との照合 receipt を残す。**
+7. **cutover は v0.1 frozen tag receipt 確定直後に開始する。**
 
-## 1. 再現可能な現状基準
+残す移行安全装置は次の 3 つだけとする。
 
-本提案の定量基準は PR #549 の base commit `fe8f4652390b6a4c3f0c1a81e6051f09e8cb4ae5` とする。
+- ADR の一度限り canonicalization
+- placement tie-breaker
+- contract の逐語移送・文字列照合
 
-- base commit の `docs/` 配下 Markdown: **319 ファイル**
-- 本提案ファイルを含む PR head: **320 ファイル**
-- base commit で front matter を持たないファイル: **151 ファイル**
+## 1. 適用条件
+
+この hard cutover 方針は、次の repository 条件を前提とする。
+
+- 単独メンテナである。
+- v0.1 未満であり、docs path を安定 API として公開していない。
+- 主な consumer が repository owner と AI coding agent である。
+- root `README.md`、`docs/README.md`、`docs/PROJECT_STATUS.md` の主要入口は維持する。
+- 過去の path を確認する必要がある場合は Git history を利用できる。
+
+これらの条件が変わった後は、将来の path 変更に別の互換方針を採用してよい。本提案は今回の一度限りの再基礎化を対象とする。
+
+## 2. 再現可能な現状基準
+
+定量基準は PR #549 の base commit `fe8f4652390b6a4c3f0c1a81e6051f09e8cb4ae5` とする。
+
+- `docs/` 配下 Markdown: **319 ファイル**
+- 本提案追加後: **320 ファイル**
+- front matter 無し: **151 ファイル**
   - `docs/architecture/`: 46
   - `docs/mvp/`: 61
   - その他: 44
-- base commit の `relaylm_status` 主な分布:
+- `relaylm_status` 主な分布:
   - `current`: 103
   - `historical_after_merge`: 43
   - `target`: 17
-- 本提案追加後の `target`: 18
 
-初回調査では docs パスをハードコードするスクリプトと workflow が多数確認されている。ただし、移行規模の確定値として手作業の grep 件数を固定せず、Phase 0 で commit 固定の inventory を機械生成し、その出力を各移行 PR の基準にする。
+この inventory は cutover planning の基準であり current runtime authority ではない。実施 PR では commit 固定の machine-readable inventory を再生成する。
 
-## 2. 現状診断
+## 3. 現状の問題
 
-### P1: `docs/architecture/` が複数の権威を兼務している
+### P1: authority が path から判別できない
 
-現在の `docs/architecture/` には、恒久 architecture、target architecture、exact contract、implementation handoff、wave convergence audit、evaluation、execution plan、strategic vision、compatibility stub が同居している。
+`docs/architecture/` に恒久設計、target、exact contract、handoff、audit、evaluation、roadmap、vision、compatibility stub が同居している。
 
-同じ RelayMEM、recall、gate、Primary、SOUL Lab などの語彙を持つ文書が、現在の設計、将来目標、実装時点の証跡という異なる権威で混在するため、AI の部分取得時に現役権威が希釈される。
+### P2: exact contract の canonical home が二重である
 
-### P2: contract の置き場が二重である
+`docs/contracts/` と architecture 内 contract の両方が許容され、AI が正確な境界を探索する場所が一意でない。
 
-現行規則は exact contract の置き場として `docs/contracts/` と architecture 内の dedicated contract の両方を許している。このため、「正確な挙動境界を探す場所」が一意でない。
+### P3: current / target / historical の検索空間が混在する
 
-### P3: planning、strategy、architecture が分離されていない
+同一語彙を持つ active 文書と過去証跡が近接し、部分取得時に現役権威が希釈される。
 
-`project_execution_plan.md` は実行順序、strategic vision は非拘束の長期方向、`pipeline_responsibility_design.md` は恒久設計であり、権威が異なる。これらを architecture という 1 つの検索空間に置くべきではない。
+### P4: semantic audit が個別 path に依存する
 
-### P4: guide と reference が混在・散在している
+現在の audit は多数の required path を列挙している。単に新 path へ定数を差し替えるだけでは hard-code debt が再発する。
 
-導入・設定・接続・troubleshooting・UI 利用方法・設定項目リファレンスが、`docs/` 直下、`docs/smoke/`、`docs/tools/`、`apps/soul-lab/README.md` に分散している。また、手順書と仕様リファレンスが区別されていない。
+### P5: 互換機構そのものが長期負債になる
 
-### P5: 実装証跡の索引が重複している
+redirect stub、legacy manifest、旧 enum 併存、hybrid 例外を導入すると、新体系の CI と AI reading rule が恒久的に複雑になる。
 
-wave や slice の証跡リストが複数の README に重複し、収束 PR が複数索引を同期編集する。これは two-stage flow が避けようとしている共有ファイル競合を、索引側で再発させている。
-
-### P6: `history/` では作成時点の意味を正しく表せない
-
-completion report は source PR と同時に作られ、誕生時点から非規範的であるが「過去」ではない。validation receipt や release receipt も、古いからではなく規範ではないから分離する。したがって age を表す `history/` より authority を表す `evidence/` が正確である。
-
-### P7: ADR の採択状態と実装状態が混同され得る
-
-既存 ADR は `relaylm_status: current` でありながら、本文では「Accepted as target architecture. Implementation remains pending.」とされている。ADR が採択済みであることと、対象挙動が current implementation であることは別の状態である。
-
-### P8: semantic audit が個別パスへ強く依存している
-
-現行 audit は required metadata 対象、wave index、release readiness、operations docs のパスを個別に列挙している。移行時に定数を差し替えるだけでは、新構造でも同じ hard-code debt が再発する。
-
-## 3. 設計原則
-
-### 3.1 パスが答えること
-
-文書パスは、次の問いに答える。
-
-> この文書は何のために存在し、どの種類の権威を持つか。
-
-current / target / compatibility は front matter で表し、非規範的な実装・評価・release 証跡かどうかは `evidence/` への配置で表す。
-
-### 3.2 1 文書 1 権威と既存文書の移行例外
-
-新規文書と、今後も実質更新される文書では、次の兼務を原則として認めない。
-
-- architecture + exact contract
-- implementation handoff + current contract
-- evaluation method + dated evaluation result
-- release readiness assessment + frozen release receipt
-- proposal + accepted decision
-- strategic vision + committed execution plan
-
-ただし、この原則を既存文書へ機械的に遡及させない。既存の `architecture/*_contract.md` などで、exact contract が明らかな主権威であり、handoff 文脈が補足として同居するだけの低変更文書は、次の条件で**丸ごと `contracts/` へ移動してよい**。
-
-1. front matter で exact contract を主権威として宣言する。
-2. 実装経緯・PR 文脈は非規範的な背景であると本文または metadata に明記する。
-3. exact boundary と背景記録が矛盾しない。
-4. 今後、背景部分を独立して更新する予定がない。
-
-既存 hybrid 文書を分割するのは、次のいずれかに該当する場合に限る。
-
-- 今後も contract と実装記録の双方が実質更新される。
-- 非 contract 部分が別の consumer から独立に参照される。
-- 混在により AI 部分取得で current boundary を誤読する具体的リスクがある。
-- 文書内に現在有効な boundary と失効した boundary が混在する。
-
-これにより、1 文書 1 権威を将来の構造原則として維持しつつ、Phase 3 を既存文書の全面リライトにしない。
-
-### 3.3 active document と evidence
-
-- active directories の文書は full front matter を必須とする。
-- `evidence/legacy/` はディレクトリ自体が非規範的であるため、未整備の既存 front matter を一括補完しなくてもよい。
-- 新規または実質更新する evidence 文書には provenance metadata を要求する。
-- Git 履歴だけでは convergence audit、評価結果、release receipt、移行対応表を代替できないため、必要な証跡は repository に保持する。
-
-### 3.4 索引はルーターであり台帳ではない
-
-- `docs/README.md` は主要入口だけを示す。
-- 各トップレベル directory の `README.md` は、その collection の canonical local index とする。
-- wave 証跡は `evidence/waves/wave<N>/README.md` にだけ列挙する。
-- `evidence/README.md` は category router とし、全証跡の巨大なリストを持たない。
-- 同じ exhaustive list を複数の README に複製しない。
-
-## 4. 提案する最終構成
+## 4. 最終構成
 
 ```text
 docs/
 ├── README.md
 ├── PROJECT_STATUS.md
 ├── DOCUMENTATION_MODEL.md
-├── proposals/                     # 未決定の提案のみ
+├── proposals/                     # 未決定 proposal のみ
 ├── guides/                        # task-oriented how-to / tutorial
-├── reference/                     # config / CLI / API / migration interpretation
+├── reference/                     # config / CLI / API / current-target interpretation
 ├── strategy/                      # 非拘束の長期方向・product principles
 ├── planning/                      # execution plan / roadmap / migration sequencing
 ├── architecture/                  # 恒久的な構造・責務・ownership
-├── contracts/                     # exact schema / gate / API / invariant の唯一の置き場
+├── contracts/                     # exact schema / gate / API / invariant
 ├── adr/                           # append-only decision log
-├── operations/                    # runbook / smoke / tooling operation
-├── evaluation/                    # rubric / scenario / method / current synthesis
+├── operations/                    # runbook / smoke / tool operation
+├── evaluation/                    # rubric / method / scenario / current synthesis
 ├── release/                       # current release criteria / readiness
 └── evidence/                      # 非規範的証跡
-    ├── README.md
     ├── implementation/
-    ├── waves/wave<N>/
+    ├── waves/
     ├── evaluations/
     ├── releases/
     ├── proposals/
-    ├── migrations/
-    ├── milestones/
-    ├── superseded/
-    └── legacy/
+    └── migrations/
 ```
 
-`docs/mvp/`、`docs/relaysoul/`、`docs/smoke/`、`docs/tools/` は最終的にトップレベル directory として解消する。コンポーネント名を配置の第一軸にしない。
+次は最終構成に含めない。
 
-## 5. 配置ルールと tie-breaker
+- `docs/mvp/`
+- `docs/relaysoul/`
+- top-level `docs/smoke/`
+- top-level `docs/tools/`
+- `evidence/legacy/`
+- `evidence/milestones/`
+- redirect stub collection
+- superseded architecture / contract の専用保存 tree
 
-| 文書の役割 | canonical home |
-|---|---|
-| repository-wide current implementation status | `PROJECT_STATUS.md` |
-| 未決定の構造変更・大規模提案 | `proposals/` |
-| 利用者が目的を達成する手順 | `guides/` |
-| 設定項目、CLI、外部利用面、current/target 解釈の参照 | `reference/` |
-| 非拘束の長期方向・原則 | `strategy/` |
-| 実行順序、roadmap、migration sequencing | `planning/` |
-| 恒久的な責務・構造・ownership | `architecture/` |
-| exact schema、gate、API、artifact、invariant | `contracts/` |
-| 設計判断と rationale | `adr/` |
-| runbook、smoke、tool operation | `operations/` |
-| 評価方法、rubric、scenario、current synthesis | `evaluation/` |
-| current release criteria / readiness | `release/` |
-| PR / wave / validation / migration の証跡 | `evidence/` |
+## 5. 保存するものと削除するもの
 
-分類に迷う場合は、次の順で判定する。
+### 5.1 repository に残す evidence
 
-### 5.1 planning / strategy / architecture / reference
+- completion report
+- wave convergence audit
+- dated evaluation result
+- release receipt
+- validation receipt
+- accepted / rejected / withdrawn proposal
+- cutover path-map / verification receipt
+- 後続 ADR から説明上必要な重大な旧 decision record
 
-1. **時期、依存順、open gate、実装順序、移行手順を規定する**なら `planning/`。
-2. 順序を規定せず、**現在と target / compatibility の読み分け方を参照資料として説明する**なら `reference/`。
-3. 非拘束の将来像、可能性、post-release の方向を示すなら `strategy/`。
-4. 時期に依存しない責務、構造、ownership、設計原則を規定するなら `architecture/`。
-5. exact schema、gate、API、must/must-not invariant を規定するなら `contracts/`。
+### 5.2 Git history のみに残すもの
 
-したがって、現行 `current_target_migration_guide.md` は、実行順序ではなく current / target / compatibility の解釈権威が主である限り `reference/` が第一候補となる。
+- MVP-0〜48 など、現在の意思決定・検証に使われない milestone snapshot
+- 重複した handoff summary
+- 役割を失った progress memo
+- active authority を複製している旧 architecture / contract
+- 古い README の証跡一覧
+- 一時的な compatibility note
 
-`analyzer_candidate_governance.md` のように roadmap と policy synthesis を両方持つ文書は、次で扱う。
+`docs/mvp/` の snapshot 群を含む約 60 ファイルは、inventory で個別確認したうえで削除候補として明示分類する。暗黙に消さず、frozen migration receipt に `deleted_git_history_only` として記録する。
 
-- roadmap 部分が実行順序を規定するなら `planning/` へ分離する。
-- durable policy 部分は `architecture/` に置く。
-- 片方が短い補足にすぎず今後独立更新されない場合は、主権威側へ丸ごと置き、補足が非権威であることを明記する。
+## 6. 配置 tie-breaker
 
-### 5.2 guides / reference
+### 6.1 planning / reference / strategy / architecture / contracts
 
-- 実行順の手順、前提、期待結果、troubleshooting の流れを示すなら `guides/`。
-- field、option、command、schema、default、制約を列挙するなら `reference/`。
-- 両方必要なら guide から reference をリンクし、仕様表を複製しない。
-- 既存の低変更 hybrid 文書は主目的で配置し、実質更新時に分割する。
+次の順で判定する。
 
-### 5.3 最終 tie-breaker
+1. 時期、依存順、open gate、実装順、migration sequence を規定する → `planning/`
+2. current / target / compatibility の読み分けを参照資料として説明する → `reference/`
+3. 非拘束の将来像、可能性、post-release direction を示す → `strategy/`
+4. 時期に依存しない責務、構造、ownership、design principle を規定する → `architecture/`
+5. exact schema、gate、artifact、API、must / must-not invariant を規定する → `contracts/`
 
-それでも判断できない文書は、次の優先順位で決める。
+`current_target_migration_guide.md` は、実行順ではなく current / target / compatibility の解釈が主である限り `reference/` とする。
+
+`analyzer_candidate_governance.md` のような hybrid は、新体系では主権威ごとに分割する。
+
+### 6.2 guides / reference
+
+- 前提、手順、期待結果、troubleshooting flow → `guides/`
+- field、option、command、schema、default、constraint → `reference/`
+- guide から reference をリンクし、仕様表を複製しない。
+
+### 6.3 最終判定
+
+判断が残る場合は次の順で決める。
 
 1. exact invariant の有無
-2. 読者が取る行動を直接規定するか
+2. 読者の行動を直接規定するか
 3. 時期・順序に依存するか
 4. current implementation の解釈に使われるか
-5. 今後どの部分が独立して更新されるか
+5. 各部分が独立して更新されるか
 
-複数の主権威が残る場合のみ分割する。
+複数の主権威が残る文書は分割する。
 
-## 6. ADR のゼロベース運用
+## 7. 1 文書 1 権威
 
-### 6.1 ADR を `adr/` に残す理由
+hard cutover 後は、既存文書を含めて次の兼務を認めない。
 
-ADR は current architecture のコピーではなく、意思決定の append-only log である。superseded ADR も supersession chain の一部なので `evidence/` へ移動しない。`adr/` というパス自体が decision rationale であり runtime authority ではないことを示す。
+- architecture + exact contract
+- implementation handoff + current contract
+- evaluation method + dated result
+- release readiness + frozen receipt
+- proposal + accepted decision
+- strategic vision + committed execution plan
 
-### 6.2 二軸状態
+非規範の背景説明は必要最小限にし、独立 evidence がある場合は canonical link のみにする。
+
+## 8. Exact contract の逐語移送
+
+contract 再構築は本 cutover で最も意味リスクが高いため、次を必須とする。
+
+### 8.1 規範セクションの定義
+
+次を規範セクションとして扱う。
+
+- must / must not / required / forbidden を含む境界
+- field / schema / enum / gate / status / transition の定義
+- artifact path / exact key / exact value
+- safety invariant
+- semantic audit が anchor check している文字列
+- test / workflow が literal reference している contract 文言
+
+### 8.2 移送規則
+
+1. 規範セクションは旧 blob から**逐語移送**する。
+2. whitespace 正規化以外の paraphrase を禁止する。
+3. 書き直してよいのは非規範の背景、実装経緯、重複説明のみとする。
+4. 規範文言を変更する必要がある場合は docs cutover ではなく、別の contract change PR として扱う。
+5. 旧文書に current と失効 boundary が混在する場合は、current authority と code / test を照合し、採用根拠を receipt に記録する。
+
+### 8.3 検証
+
+migration script は旧 blob と新 contract から規範 block を抽出し、正規化後の文字列または digest を比較する。
+
+receipt には少なくとも次を残す。
+
+```yaml
+old_path: docs/architecture/example_contract.md
+old_blob_sha: <sha>
+new_path: docs/contracts/example.md
+disposition: rebuilt_verbatim
+normative_block_count: 4
+normative_digest_before: <sha256>
+normative_digest_after: <sha256>
+verification: exact_match
+```
+
+既存 semantic anchor check は cutover 中も維持し、新 directory invariant へ置き換えるのは最終 enforcement PR とする。
+
+## 9. Metadata の一括正規化
+
+### 9.1 旧 enum を残さない
+
+次を cutover 完了時に全面禁止する。
+
+- `historical_after_merge`
+- 一時的な旧 document type
+- metadata 無しの active / evidence 文書
+- legacy profile / exception list
+
+全 evidence は次の新形式へ正規化する。
+
+```yaml
+relaylm_status: historical
+relaylm_evidence_status: merged
+relaylm_source_pr: 123
+relaylm_source_commit: <sha>
+relaylm_recorded_on: 2026-07-11
+```
+
+### 9.2 provenance の自動生成
+
+front matter 無し文書を手作業で補完しない。cutover script が Git history から次を生成する。
+
+- first-introduced commit
+- source PR（merge commit / GitHub association から取得可能な場合）
+- recorded-on
+- original blob SHA
+- destination
+- disposition
+
+source PR を一意に取得できない場合は `relaylm_source_pr: null` とし、推測値を入れない。commit SHA と recorded-on は必須とする。
+
+これにより legacy manifest による新旧判定自体を不要にする。
+
+## 10. ADR の一度限り canonicalization
+
+- 新規 ADR は `NNNN-short-title.md` とする。
+- 既存非番号 ADR は cutover 中に一度だけ deterministic に番号化する。
+- 番号は `relaylm_decided_on`、作成 commit 順、旧 path 順で割り当てる。
+- redirect stub は作らない。
+- cutover receipt に old path、old blob SHA、new path を残す。
+- cutover 完了後、ADR canonical path は不変とする。
+
+ADR は二軸状態を持つ。
 
 ```yaml
 relaylm_doc_type: adr
-relaylm_status: target              # current / target / historical
-relaylm_decision_status: accepted   # proposed / accepted / superseded / rejected / withdrawn
+relaylm_status: target
+relaylm_decision_status: accepted
 relaylm_decided_on: 2026-07-11
 relaylm_supersedes: []
 relaylm_superseded_by: null
 ```
 
-- `relaylm_decision_status` は意思決定の状態を表す。
-- `relaylm_status` は、その決定が対象とする挙動が current / target / historical のどれかを表す。
-- `accepted` は実装済みを意味しない。
-- 実装済み境界は `PROJECT_STATUS.md` と exact contract が示す。
+`accepted` は implemented を意味しない。current implementation は `PROJECT_STATUS.md` と exact contract が示す。
 
-現在の `character_conditioned_belief_model.md` は「accepted target / implementation pending」であるため、`relaylm_status: target` と `relaylm_decision_status: accepted` へ正規化する。
-
-### 6.3 命名と一度限りの canonicalization
-
-- 新規 ADR は `NNNN-short-title.md` とする。
-- 既存の非番号 ADR を番号付きへ統一する場合、**Phase 0 の一度だけ** deterministic にリネームする。
-- 番号は `relaylm_decided_on`、既存作成順、旧パスの順で安定的に割り当てる。
-- 同一 PR で old path -> new path map を `evidence/migrations/` に保存する。
-- 外部参照が疑われる旧 ADR path にだけ期限付き redirect stub を置く。
-- Phase 0 完了後、ADR の canonical path は不変とし、以後はリネームしない。
-- 方針変更は既存 ADR の全面改稿ではなく、新 ADR で supersede する。
-
-これにより、番号体系の導入と supersession chain の安定パスを両立する。
-
-## 7. proposal のライフサイクル
+## 11. Proposal lifecycle
 
 ```text
 proposals/<name>.md
-  ├── accepted -> ADR + normative docs + evidence/proposals/ へ移動
-  ├── rejected -> decision link 付きで evidence/proposals/ へ移動
-  └── withdrawn -> 理由付きで evidence/proposals/ へ移動
+  ├── accepted -> ADR + normative docs + evidence/proposals/
+  ├── rejected -> decision link + evidence/proposals/
+  └── withdrawn -> reason + evidence/proposals/
 ```
 
-```yaml
-relaylm_doc_type: proposal
-relaylm_status: target
-relaylm_proposal_status: under_review  # draft / under_review / accepted / rejected / withdrawn
-relaylm_decision_source: null
-```
-
-採択後の proposal は配置規則の authority に昇格させない。正式な決定は ADR と `DOCUMENTATION_MODEL.md` に移し、proposal は evidence として保存する。
-
-本提案は、現行 `DOCUMENTATION_MODEL.md` に `proposal` 型がまだ存在しないため、この PR では互換型として `relaylm_doc_type: strategic_vision` を使用する。採択する Phase 0 PR では、最初に `proposal` 型と `relaylm_proposal_status` を定義し、同じ PR 内で本ファイルの front matter を新型へ切り替えたうえで `evidence/proposals/` へ移す。
-
-採択 PR の最終状態では、本提案を少なくとも次の形にする。
+本提案は現行モデルに `proposal` 型がないため、この PR では互換型 `strategic_vision` を使用する。採択 PR で `proposal` 型を定義し、本ファイルを最初の lifecycle conformance case として次へ移す。
 
 ```yaml
 relaylm_doc_type: proposal
@@ -292,245 +319,169 @@ relaylm_decision_source: ../../adr/NNNN-documentation-information-architecture.m
 relaylm_evidence_status: frozen
 ```
 
-これにより、本提案自身を proposal lifecycle の最初の実例とする。Phase 0 は「ファイル移動ゼロ」ではなく、**bulk migration を行わず、採択に必要な atomic lifecycle move だけを許す**フェーズとする。
+## 12. Cutover の実施時期
 
-## 8. evidence の運用
+hard cutover は、**v0.1 final main-HEAD validation と frozen tag receipt が確定した直後**に開始する。
 
-### 8.1 metadata
+理由:
 
-新規 evidence には type に応じて次を要求する。
+- v0.1 readiness assessment が参照する path を validation 前後で混在させない。
+- frozen tag receipt に旧 documentation structure の検証境界を固定できる。
+- cutover 後の main は次リリースの新構造として明確に開始できる。
+
+v0.1 validation 中は本提案の採択準備、inventory、dry-run script の作成までは許すが、canonical docs path の移動・削除は行わない。
+
+## 13. Cutover sequence
+
+複数 PR を使う場合、repository 全体では一時的に新旧構造が混在する。ただし、その期間にも互換機構を追加しない。
+
+- redirect stub を作らない。
+- 旧 enum を新規文書で許容しない。
+- legacy manifest / exception list を作らない。
+- 最終 directory invariant は最終 enforcement PR で有効化する。
+- 各領域 PR は自分が担当する領域を完結させ、旧 path と新 path を同一領域で二重保持しない。
+
+順序は固定する。
+
+### Cutover 1: evidence 移動・削除分類
+
+- completion report、audit、evaluation result、release receipt を `evidence/` へ移動
+- Git history のみに残す snapshot を削除
+- provenance metadata を自動生成
+- frozen path-map receipt を開始
+
+意味リスクが最小のため最初に行う。
+
+### Cutover 2: active 文書の再分類
+
+- planning / reference / strategy / architecture / guides / operations / evaluation / release へ移動
+- hybrid active 文書を role ごとに分割
+- root / collection index を router 化
+
+### Cutover 3: contract 統合・再構築
+
+- architecture 内 exact contract を `contracts/` へ集約
+- 規範 block を逐語移送
+- digest / anchor / test 照合
+- verification receipt を完成
+
+意味リスクが最大のため、先行 inventory と新 directory が安定した後に行う。
+
+### Cutover 4: cleanup と全面 enforcement
+
+- 旧 directory を削除
+- 旧 enum を禁止
+- metadata coverage 100% を要求
+- repository-wide old path literal reference を 0 にする
+- directory invariant CI を有効化
+- frozen migration receipt を確定
+
+## 14. Frozen migration receipt
+
+`evidence/migrations/` には、この cutover を説明する 1 つの frozen receipt を残す。
+
+各旧文書について次を記録する。
 
 ```yaml
-relaylm_status: historical
-relaylm_evidence_status: merged      # draft / merged / validated / invalidated / frozen
-relaylm_source_pr: 549
-relaylm_source_commit: <sha>
-relaylm_recorded_on: 2026-07-11
+- old_path: docs/mvp/wave7/example.md
+  old_blob_sha: <sha>
+  disposition: moved | deleted_git_history_only | split | rebuilt_verbatim
+  new_paths:
+    - docs/evidence/waves/wave7/example.md
+  source_commit: <sha>
+  source_pr: 123
+  verification: metadata_normalized | link_checked | exact_match | not_applicable
 ```
 
-既存の `historical_after_merge` は移行互換値として当面許容するが、新規文書では `historical` + `relaylm_evidence_status` を使う。
+必須区分:
 
-### 8.2 併存期間を fail-closed にする legacy manifest
+- `moved`: 内容を実質変更せず移動
+- `deleted_git_history_only`: repository から削除し Git history のみで保持
+- `split`: role ごとに複数文書へ分割
+- `rebuilt_verbatim`: exact contract の規範 block を逐語移送して再構築
 
-作成日やファイル名だけでは新旧を安全に区別できないため、Phase 0 で commit 固定の manifest を生成する。
+contract の場合は normative digest before / after と anchor verification を追加する。
 
-```yaml
-baseline_commit: fe8f4652390b6a4c3f0c1a81e6051f09e8cb4ae5
-legacy_documents:
-  - source_path: docs/mvp/wave7/e1r5_completion_report.md
-    source_blob_sha: <blob-sha>
-    approved_destination: docs/evidence/waves/wave7/e1r5_completion_report.md
-    metadata_profile: legacy_completion_report
-```
+この receipt は旧 path 互換を提供しない。git blame / rename 追跡の喪失を補償する provenance record としてのみ使う。
 
-semantic audit は次を fail-closed で検証する。
+## 15. Semantic audit
 
-1. `evidence/` 配下の文書が manifest に無ければ、新 metadata profile を必須とする。
-2. `historical_after_merge` や front matter 無しを許せるのは、frozen baseline manifest に source blob が存在し、approved destination と一致する既存文書だけとする。
-3. manifest への追加は、baseline commit に存在する source path / blob から生成されたものだけを許す。新規ファイルを同じ PR で legacy 登録して回避することを禁止する。
-4. legacy 文書を新 metadata へ変換したら manifest entry を削除し、再登録を禁止する。
-5. `evidence/legacy/` の front matter 例外も manifest 登録済み文書だけに限定する。
-6. manifest 自体の変更は migration 専用 PR とし、inventory script の再現可能な出力と照合する。
+cutover 完了後の audit は directory invariant 中心とする。
 
-新規か既存かの判定を日付や git 追加日の推測に依存させず、frozen baseline の source path / blob によって決める。
-
-### 8.3 evidence index
-
-- wave ごとに local `README.md` を作り、slice report と convergence audit をそこだけに列挙する。
-- wave close 後は link fix と provenance correction 以外で変更しない。
-- `evidence/README.md` は category router のみとする。
-- 全 evidence を 1 つの中央 README に列挙しない。
-
-## 9. two-stage wave flow
-
-### Stage 1: implementation PR
-
-- production code と直接結合する test / workflow
-- runtime field と原子的に出荷すべき exact contract
-- `evidence/waves/wave<N>/<slice>_completion_report.md`
-- wave 外なら `evidence/implementation/<area>/<slice>_completion_report.md`
-
-implementation handoff を architecture に作らない。恒久設計が変わる場合は architecture、exact boundary が変わる場合は contract、PR が何をしたかは evidence として分ける。
-
-### Stage 2: convergence PR
-
-1. merged code、completion report、exact contract を照合する。
-2. `PROJECT_STATUS.md`、`planning/project_execution_plan.md`、影響する architecture / contract / reference を更新する。
-3. `evidence/waves/wave<N>/convergence_audit.md` を追加する。
-4. 当該 wave の `README.md` を完成させる。
-5. root README や architecture README に wave 証跡一覧を複製しない。
-6. convergence merge まで次 wave / release gate を開かない。
-
-## 10. front matter、inventory、CI
-
-### 10.1 full metadata を必須にする範囲
-
-次の active directories は全 Markdown で full metadata を必須にする。
-
-```text
-proposals/
-strategy/
-planning/
-architecture/
-contracts/
-adr/
-operations/
-evaluation/
-release/
-```
-
-`guides/` と `reference/` も新規・更新ファイルから必須にする。legacy 例外は frozen manifest で管理する。
-
-### 10.2 directory invariant
-
-semantic audit は、個別パス列挙中心から次の directory invariant 中心へ移す。
-
-- architecture に handoff / completion report / audit / strategic vision / execution plan を置かない。
-- contracts 以外に新規 exact contract を作成しない。
-- proposals に accepted / rejected / withdrawn proposal を残さない。
-- evidence を current runtime authority として宣言しない。
+- 全 Markdown に front matter がある。
+- path と `relaylm_doc_type` が一致する。
+- exact contract は `contracts/` にのみ存在する。
+- architecture に handoff、audit、dated result、roadmap、vision がない。
+- proposals に accepted / rejected / withdrawn proposal がない。
+- evidence は `relaylm_status: historical` を持つ。
+- `historical_after_merge` を拒否する。
+- 旧 top-level directory を拒否する。
+- repository 内の旧 docs path literal reference を拒否する。
 - ADR は decision status を持つ。
-- active directories は required metadata を持つ。
-- 新規 evidence は新 metadata profile を持つ。
-- legacy metadata 例外は frozen manifest と一致する。
-- prohibited top-level directory を無断追加しない。
+- contract anchor と normative digest verification が成功している。
 
-個別の安全境界 anchor check は維持するが、information architecture の検証を hard-coded path list だけに依存させない。
+個別安全境界 anchor は、新 invariant が同等以上の保証を持つことを確認するまで削除しない。
 
-### 10.3 inventory
-
-Phase 0 で inventory script を追加し、少なくとも次を出力する。
-
-- path / blob SHA
-- document type / status / authority
-- front matter 有無
-- inbound Markdown links
-- script / workflow からの literal path reference
-- proposed destination
-- legacy metadata profile
-- ambiguity / manual-review flag
-
-inventory は current authority ではなく、CI artifact または `evidence/migrations/` の commit 固定 receipt として扱う。
-
-## 11. 移行計画
-
-### Phase 0: 決定、guardrail、atomic lifecycle move。bulk migration なし
-
-1. 本提案を採択する documentation architecture ADR を作成する。
-2. `DOCUMENTATION_MODEL.md` に document role、tie-breaker、hybrid migration exception、ADR/proposal/evidence metadata を追加する。
-3. `proposal` 型を定義した直後に、本提案の front matter を `proposal` / `accepted` へ切り替える。
-4. `evidence/proposals/` を作成し、本提案を ADR 採択と同じ PR で移動して `historical` / `frozen` にする。
-5. 既存 ADR を番号付きへ統一する場合は、この Phase で一度だけ canonicalize し、path map を保存する。
-6. commit 固定 inventory と legacy metadata manifest を生成する。
-7. 新規 contract、completion report、proposal、strategic vision に新ルールを即時適用する。
-8. semantic audit に「新たな配置違反を増やさない」guardrail を追加する。
-
-Phase 0 で許す移動は proposal の lifecycle retirement、ADR の一度限りの canonicalization、そのための最小 directory / index 作成だけとする。既存 docs 群の bulk migration は行わない。
-
-### Phase 1: 新規負債を止め、索引を router 化
-
-1. `strategy/`、`planning/`、`reference/`、`operations/`、`evidence/` と各 README を整備する。
-2. `docs/README.md` を start route のみに縮小する。
-3. `docs/architecture/README.md` から wave / slice 証跡一覧を削除する。
-4. 新規 wave report を `evidence/waves/` に置く。
-5. 新規 exact contract は `contracts/` 以外に置けないよう CI で制約する。
-
-### Phase 2: evidence の機械的移動
-
-1. `docs/mvp/wave*/` の completion report を `evidence/waves/` へ移す。
-2. convergence audit、validation receipt、dated evaluation result を対応する evidence collection へ移す。
-3. `historical_after_merge` の implementation handoff を `evidence/implementation/` へ移す。
-4. `docs/architecture/archive/` を `evidence/superseded/` または `evidence/legacy/` へ分類する。
-5. 旧 MVP snapshot を `evidence/milestones/` へ移す。
-6. Markdown link、script、workflow、semantic audit の参照を同一 PR 内で更新する。
-7. old path -> new path map と検証 receipt を保存する。
-
-移動判定は `relaylm_status` だけに依存せず、document type、命名、source PR、inbound link、script/workflow 参照、legacy manifest を合わせて行う。
-
-### Phase 3: active knowledge の再分類
-
-1. execution plan / roadmap を `planning/` へ移す。
-2. current / target / compatibility の解釈資料を `reference/` へ移す。
-3. strategic vision と product principle を `strategy/` へ移す。
-4. architecture 内の active contract を `contracts/` へ集約する。
-5. 既存 hybrid contract は §3.2 の条件を満たせば丸ごと移動し、分割を必須にしない。
-6. 分割は今後も双方が更新される hybrid、具体的な誤読リスクがある hybrid に限定する。
-7. `docs/relaysoul/` を役割別に architecture / contracts / strategy / evidence へ整理する。
-8. how-to を `guides/`、仕様列挙を `reference/` へ整理する。
-9. smoke / tools を `operations/` へ移し、実行結果を evidence に分離する。
-10. evaluation method / current synthesis と dated result を分離する。
-11. release readiness と frozen receipt を分離する。
-12. ADR metadata を二軸状態へ正規化する。Phase 0 後の ADR path は変更しない。
-
-### Phase 4: compatibility cleanup と enforcement
-
-1. 旧トップレベル directory を解消する。
-2. compatibility stub の期限と削除条件を確認する。
-3. active directories の front matter coverage を 100％にする。
-4. directory invariant を CI で必須化する。
-5. repository-wide hard-coded old docs path が 0 であることを確認する。
-6. legacy metadata manifest を段階的に空へ近づける。
-
-## 12. compatibility stub
-
-全移動元に redirect stub を置くと、古い検索空間と重複文書を恒久化するため、stub は例外とする。
-
-stub を置けるのは次だけとする。
-
-- repository root README や外部利用者から参照される入口
-- automation が段階移行を必要とする path
-- current authority または ADR の既知の旧 canonical path
-
-各 stub は canonical destination、created-on、removal condition、`redirect_stub` type を持ち、本文を複製しない。
-
-## 13. 完了条件
+## 16. 完了条件
 
 ### 構造
 
-- `architecture/` に implementation handoff、completion report、wave audit、dated evaluation result、strategic vision、execution plan がない。
-- exact contract の canonical home が `contracts/` のみである。
-- `planning/`、`strategy/`、`guides/`、`reference/`、`operations/` の tie-breaker が `DOCUMENTATION_MODEL.md` に実装されている。
-- `docs/mvp/`、`docs/relaysoul/`、トップレベルの `docs/smoke/`、`docs/tools/` が解消されている。
-- `evidence/legacy/` が新規文書の作成先として使われていない。
+- final tree が §4 と一致する。
+- `docs/mvp/`、`docs/relaysoul/`、top-level `docs/smoke/`、`docs/tools/` が存在しない。
+- `evidence/legacy/`、`evidence/milestones/`、redirect stub が存在しない。
 
 ### 権威
 
-- `PROJECT_STATUS.md` が現在実装済み境界の唯一の repository-wide authority である。
-- accepted ADR と implemented behavior が metadata 上で区別される。
-- proposal は採択 PR 内で新型へ切り替わり、evidence へ退役する。
-- 新規・実質更新文書は 1 文書 1 権威を満たす。
-- 既存 hybrid の例外は明示条件と front matter で管理される。
+- exact contract の canonical home は `contracts/` のみ。
+- active 文書は 1 文書 1 権威。
+- `PROJECT_STATUS.md` が repository-wide current implementation の唯一の authority。
+- accepted ADR と implemented behavior が分離されている。
+
+### Metadata
+
+- active / evidence Markdown の front matter coverage が 100%。
+- `historical_after_merge` が 0 件。
+- legacy exception / manifest が存在しない。
 
 ### 検証
 
-- active directories の front matter coverage が 100％である。
-- docs link check、semantic audit、documentation boundary smoke が green である。
-- directory と document type の不整合を CI が fail closed で検出する。
-- 新規 evidence が legacy metadata を偽装できない。
-- ADR canonical path が Phase 0 後に変更されていない。
+- docs link check が green。
+- semantic audit が green。
+- documentation boundary smoke が green。
+- old docs path literal reference が 0。
+- contract normative digest の before / after が一致する。
+- frozen migration receipt が全旧文書の disposition を説明する。
 
-## 14. 検討した代替案と却下理由
+## 17. 採択後の実装単位
 
-- **読者別だけで分類**: reader だけでは plan、architecture、contract、ADR の権威を区別できない。
-- **`history/` に集約**: completion report は作成時点から非規範的だが過去ではない。
-- **中央 README に全 evidence を列挙**: 新しい競合点になる。
-- **front matter の一括整備だけ**: path signal と索引重複が改善しない。
-- **コンポーネント別 directory**: cross-component 文書の置き場が曖昧になる。
-- **superseded ADR を evidence へ移す**: supersession chain の安定パスを失う。
-- **既存 hybrid をすべて分割**: Phase 3 が全面リライトになり、移行リスクが効果を上回る。
-- **一括リネーム**: 多数の link、script、workflow を 1 PR で変更できない。
+### Preparation PR（v0.1 receipt 前でも可）
 
-## 15. 採択時の最初の実装単位
+- documentation information architecture ADR
+- `DOCUMENTATION_MODEL.md` の新モデル草案
+- placement tie-breaker
+- inventory / provenance / normative-block extraction script
+- cutover dry-run artifact
+- 本 proposal の lifecycle 定義
 
-採択 PR は、既存 docs の bulk migration を行わず、次だけを行う。
+canonical path はまだ変更しない。
 
-1. documentation information architecture ADR の追加
-2. `DOCUMENTATION_MODEL.md` への tie-breaker、hybrid exception、lifecycle metadata の追加
-3. `proposal` 型定義後、本ファイルを互換 `strategic_vision` から正式な `proposal` 型へ切り替える
-4. `relaylm_proposal_status: accepted` と adopting ADR への `relaylm_decision_source` を設定する
-5. 本 proposal を `evidence/proposals/` へ atomic move し、`relaylm_status: historical` / `relaylm_evidence_status: frozen` にする
-6. 必要な場合に限る既存 ADR の一度限りの canonicalization
-7. docs inventory script、frozen baseline、legacy metadata manifest の追加
-8. 新規配置違反と metadata 逃れを防ぐ semantic audit
+### Cutover PR 群（v0.1 frozen tag receipt 後）
 
-本ファイルを新しい proposal lifecycle に従う最初の conformance case とする。これにより、既存構造を壊さず、新規負債と分類の再曖昧化を止めた後、機械的に安全な移行を開始できる。
+1. evidence migration and snapshot deletion
+2. active document reclassification
+3. contract verbatim reconstruction and verification
+4. old tree removal and full CI enforcement
+
+本提案自身は Preparation PR または最初の cutover PR で正式な `proposal` 型へ切り替え、adopting ADR と結び付けたうえで `evidence/proposals/` へ移す。
+
+## 18. 採択判断
+
+この hard cutover は、旧 docs path の継続利用よりも次を優先する判断である。
+
+- AI 検索時の権威分離
+- directory invariant の単純性
+- CI の長期保守性
+- current / target / evidence の誤読防止
+- pre-v0.1 のうちに情報アーキテクチャ負債を解消すること
+
+結論として、RelayLM では「検索と運用のための互換性は捨てるが、意思決定と検証の証拠は残す」を正式方針とする。
