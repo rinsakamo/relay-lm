@@ -20,7 +20,7 @@ This collection contains non-normative records retained because they support dur
 
 ## Collections
 
-- `implementation/` — bounded implementation completion evidence.
+- [Implementation](implementation/README.md) — bounded implementation completion and smoke evidence.
 - `waves/` — cross-slice convergence evidence.
 - [Evaluations](evaluations/README.md) — dated evaluation and validation results.
 - `releases/` — release and validation receipts.
