@@ -87,7 +87,7 @@ Target synthesis families:
 | runtime compile and checkpoint boundary | `docs/runtime_compile_gate_design.md`, `docs/relayrun_runtime_checkpoint_design.md`, `docs/architecture/product_runtime_hardening.md` | `architecture/runtime/compile-and-checkpoint.md` | synthesized; exact gates extracted to contracts |
 | context assembly | `docs/architecture/context_packing_design.md`, `docs/architecture/relayctx_wake_loop_design.md` | `architecture/context/context-assembly.md` | synthesized |
 | reflex/attention layer | `docs/architecture/relayatn_reflex_layer_design.md` | `architecture/attention/reflex-layer.md` | moved or lightly normalized |
-| response-side style | `docs/architecture/relayemo_return_side_style_adapter_design.md` and response-stage handoffs | `architecture/emotion/response-style-modulation.md` | synthesized |
+| response-side style | `docs/architecture/relayemo_return_side_style_adapter_design.md` and response-stage handoffs | `architecture/emotion/affect-modulation.md` and `architecture/runtime/request-response-pipeline.md` | split/synthesized |
 
 `pipeline_responsibility_design.md` remains the strongest current responsibility source until cutover, but its target content is split between system context, pipeline responsibility, and component pages.
 
