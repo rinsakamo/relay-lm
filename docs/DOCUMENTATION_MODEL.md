@@ -152,9 +152,9 @@ The following types remain readable only because existing files still use them b
 Canonical statuses:
 
 - `current`: current authoritative guidance or implemented behavior.
-- `target`: adopted or proposed target that is not fully implemented.
+- `target`: an adopted or proposed target that is not fully implemented.
 - `historical`: non-normative evidence from a completed or superseded context.
-- `frozen`: preserved record changed only for metadata or link repair.
+- `frozen`: a preserved record changed only for metadata or link repair.
 
 Existing-only pre-cutover statuses:
 
@@ -252,6 +252,16 @@ When a document could fit more than one collection, apply this order:
 7. Dated result, completion proof, audit, receipt, or retired proposal -> `evidence/`.
 
 If multiple primary authorities remain after this test, split the document.
+
+## Pre-cutover current placement anchors
+
+Until the hard cutover begins, existing path-bound CI continues to interpret these current placements:
+
+- manual smoke, troubleshooting, and local behavior validation docs -> `docs/smoke/`
+- offline tooling specifications and runbooks -> `docs/tools/`
+- evaluation templates and run records -> `docs/evaluation/`
+
+These are temporary current-path anchors, not target placement rules. Each move updates the corresponding audit and workflow in the same PR. Evaluation templates remain non-authoritative starting points; blank templates are not measured evidence.
 
 ## Proposal lifecycle
 
@@ -362,14 +372,19 @@ When answering questions about current RelayLM behavior:
 9. Prefer canonical glossary terms and stable concept names over milestone aliases.
 10. During cutover, do not infer dual-path compatibility; each migrated authority has one live path per merged PR.
 
-## Parallel implementation documentation
+## Two-stage parallel implementation documentation
 
-Parallel implementation slices may continue to create unique slice-owned evidence while one convergence PR updates shared current-state documents. The existing convergence rule remains in force until cutover replaces its paths:
+Parallel implementation slices may continue to create unique slice-owned evidence while one convergence PR updates shared current-state documents. The existing convergence rule remains in force until cutover replaces its paths.
 
-- implementation PRs own code, directly coupled tests, exact contract changes, and unique completion evidence;
-- shared status, execution plan, indexes, and repository-wide documentation smoke are updated by convergence unless a real contract change requires an atomic edit;
-- the next wave or release gate remains closed until convergence is green and merged;
-- a cutover PR must update path-bound checks and references atomically with every move or deletion.
+### Stage 1: implementation PR
+
+An implementation PR owns code, directly coupled tests, exact contract changes that must ship atomically, and unique slice-owned completion evidence. It does not update shared status or sequencing documents merely to mark completion.
+
+### Stage 2: convergence and shared-documentation PR
+
+The convergence PR reads the merged slice evidence, verifies cross-slice boundaries, updates shared current-state documents and indexes, and keeps the next wave or release gate closed until convergence is green and merged.
+
+A cutover PR must update path-bound checks and references atomically with every move or deletion.
 
 ## Security and privacy
 
