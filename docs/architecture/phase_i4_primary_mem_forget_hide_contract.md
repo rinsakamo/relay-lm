@@ -31,7 +31,7 @@ relaylm_related_authority:
   - post_i3_evaluation_work_roadmap.md
   - ../evidence/waves/wave3_cross_slice_convergence_audit.md
   - ../evidence/waves/wave4_cross_slice_convergence_audit.md
-  - wave5_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave5_cross_slice_convergence_audit.md
   - relaymem_m3e_atomic_primary_page_writer.md
   - relaymem_m3f_primary_index_log_reconciliation_preflight.md
   - relaymem_m3g_primary_index_log_reconciliation_apply.md

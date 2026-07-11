@@ -22,3 +22,4 @@ This collection preserves frozen cross-slice convergence records after their imp
 - [Wave 2 cross-slice convergence audit](wave2_cross_slice_convergence_audit.md) — frozen boundary after PRs #403 through #408.
 - [Wave 3 cross-slice convergence audit](wave3_cross_slice_convergence_audit.md) — frozen boundary after PRs #410 through #415, merged as W3-INT.
 - [Wave 4 cross-slice convergence audit](wave4_cross_slice_convergence_audit.md) — frozen boundary after PRs #417 through #424, merged as W4-INT.
+- [Wave 5 cross-slice convergence audit](wave5_cross_slice_convergence_audit.md) — frozen boundary after PRs #425 through #428, merged as W5-INT.

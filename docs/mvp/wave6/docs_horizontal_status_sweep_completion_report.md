@@ -56,7 +56,7 @@ Non-goals preserved:
 - `docs/architecture/current_target_migration_guide.md`
 - `docs/architecture/project_execution_plan.md`
 - `docs/architecture/relaymem_slp_current_target.md`
-- `docs/architecture/wave5_cross_slice_convergence_audit.md`
+- `docs/evidence/waves/wave5_cross_slice_convergence_audit.md`
 - `docs/architecture/o1a_two_lane_scheduler_contract.md`
 - `docs/architecture/o1b_sealed_i1g_replay_lane.md`
 - `docs/architecture/o1d1_production_scheduler_round.md`

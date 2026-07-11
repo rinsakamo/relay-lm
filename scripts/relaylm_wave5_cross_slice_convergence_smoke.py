@@ -7,9 +7,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED = {
-    "docs/architecture/wave5_cross_slice_convergence_audit.md": (
+    "docs/evidence/waves/wave5_cross_slice_convergence_audit.md": (
         "# Wave 5 Cross-Slice Convergence Audit",
-        "relaylm_status: historical_after_merge",
+        "relaylm_status: frozen",
         "E1 evaluation consolidation",
         "O1E scheduler operational controls",
         "I-4F Forget product-completion validation",
@@ -72,6 +72,7 @@ FROZEN_ALLOWLIST = {
     "docs/evidence/waves/wave2_cross_slice_convergence_audit.md",
     "docs/evidence/waves/wave3_cross_slice_convergence_audit.md",
     "docs/evidence/waves/wave4_cross_slice_convergence_audit.md",
+    "docs/evidence/waves/wave5_cross_slice_convergence_audit.md",
 }
 
 

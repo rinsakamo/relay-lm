@@ -219,7 +219,7 @@ The canonical evidence document preserves the complete Wave 3 convergence accoun
 
 ```yaml
 cutover_pr: 563
-merged_commit: pending
+merged_commit: bbcad5447fec07fbd124f126a6cdd25f18656dc2
 old_path: docs/architecture/wave4_cross_slice_convergence_audit.md
 old_blob_sha: c6273fbe7e7809df510a22f04d30d43e25698b73
 old_content_sha256: be9842738ce45abbd134547479f17f057ba16791f0216e98e583cf9c72022b56
@@ -250,6 +250,46 @@ verification:
 ```
 
 The canonical evidence document preserves the complete Wave 4 convergence account while correcting relative links for its new collection. The exact pre-cutover source remains available as the original Git blob. The frozen and current-tree sweeps identified one repository-root literal in a later completion record, four hard-coded script occurrences across two smoke files, four Markdown relative links across three referrer files, and one `relaylm_related_authority` YAML reference. These dependency classes remain separately recorded; the old path below is only the historical migration identifier for this receipt.
+
+### C1C7-001 — Wave 5 cross-slice convergence audit
+
+```yaml
+cutover_pr: 564
+merged_commit: pending
+stacked_on_pr: 563
+stack_dependency_resolved_by_merge_commit: bbcad5447fec07fbd124f126a6cdd25f18656dc2
+old_path: docs/architecture/wave5_cross_slice_convergence_audit.md
+old_blob_sha: 69b05a5f8380dd26be4dd51f57620278bf57ca76
+old_content_sha256: b3935dc5a49da95a594897969c1b3430fd2e931f1dd4f909705afdbe29b36036
+source_commit: a832b1c7537b778b79f95d694a263a8e0d3b4e78
+source_pr: 428
+recorded_on: 2026-06-27
+disposition: evidence_retained
+new_canonical_path: docs/evidence/waves/wave5_cross_slice_convergence_audit.md
+exact_source_snapshot: docs/evidence/waves/wave5_cross_slice_convergence_audit-source.txt
+exact_source_blob_sha: 69b05a5f8380dd26be4dd51f57620278bf57ca76
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 1
+  script_hard_coded_path_reference_files_updated_in_pr_tree: 1
+  script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 1
+  relative_markdown_link_referrer_files_at_frozen_baseline: 3
+  relative_markdown_link_dependencies_at_frozen_baseline: 4
+  current_tree_related_authority_references_updated: 1
+  wave5_functional_smoke_updated: true
+  downstream_wave6_status_record_updated: true
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  affected_current_boundary_checks: passed
+  inventory_tools_run: true
+  current_tree_rg_classification: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The canonical evidence document preserves the complete Wave 5 convergence account while correcting its two live relative links for the evidence collection. The exact pre-cutover source remains available as the original Git blob. The dependency sweep identified one repository-root literal in a later Wave 6 completion record, one hard-coded Wave 5 smoke path, four Markdown relative links across three router files, and one `relaylm_related_authority` YAML reference. PR #563 merged as `bbcad5447fec07fbd124f126a6cdd25f18656dc2`; PR #564 is retargeted to `main`, and its validation fields record the rerun-ready final state before merge.
 
 ## Pending batches
 
