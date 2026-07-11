@@ -21,16 +21,17 @@ This collection contains the adopted planning artifacts for the authority-first 
 
 ## Preparation B artifacts
 
-- [Architecture inventory](documentation-architecture-inventory.md) — classifies current design, contract, handoff, audit, evaluation, planning, and strategy families by actual authority.
+- [Architecture inventory](documentation-architecture-inventory.md) — classifies current design, contract, handoff, audit, evaluation, planning, strategy, and archive families by actual authority.
 - [Target architecture graph](documentation-target-architecture-graph.md) — defines the planned canonical system, subsystem, and concept/policy document graph.
 - [Placement decisions](documentation-placement-decisions.md) — records how the placement and granularity tie-breakers apply to ambiguous current document families.
 
 ## Preparation C artifacts
 
-- [Cutover tooling](documentation-cutover-tooling.md) — defines the commit-fixed inventory, provenance, normative digest, path-dependency, reproducibility, and CI artifact boundary.
+- [Cutover tooling](documentation-cutover-tooling.md) — defines the commit-fixed inventory, provenance, normative digest, absolute/relative path dependencies, reproducibility, and CI artifact boundary.
 - [`documentation-cutover-rules.yaml`](documentation-cutover-rules.yaml) — executable classification and graph-validation rules for the dry run.
-- `scripts/relaylm_docs_cutover_prepare.py` — emits the full inventory, migration-receipt preview, path dependencies, and summary.
+- `scripts/relaylm_docs_cutover_prepare.py` — emits the full inventory, migration-receipt preview, repository-root path dependencies, and summary.
 - `scripts/relaylm_docs_normative_digest.py` — emits source line ranges and SHA-256 digests for candidate normative blocks.
+- `scripts/relaylm_docs_relative_link_inventory.py` — resolves relative Markdown links against each frozen referrer and emits the companion dependency inventory.
 
 ## Active execution evidence
 
