@@ -25,4 +25,4 @@ This collection preserves frozen cross-slice convergence records after their imp
 - [Wave 5 cross-slice convergence audit](wave5_cross_slice_convergence_audit.md) — frozen boundary after PRs #425 through #428, merged as W5-INT.
 - [Wave 6 cross-slice convergence audit](wave6_cross_slice_convergence_audit.md) — frozen boundary after PRs #429 through #435, merged as W6-INT.
 - [Wave 7 cross-slice convergence audit](wave7_cross_slice_convergence_audit.md) — frozen boundary after PRs #436 through #438, merged as W7-INT.
-- [E1-R5 post-Wave-7 correction convergence audit](e1r5_post_wave7_correction_convergence_audit.md) — frozen correction record introduced in PR #452 and converged after PM-D8 closure through PR #498.
+- [E1-R5 post-Wave-7 correction convergence audit](e1r5_post_wave7_correction_convergence_audit.md) — frozen correction record introduced in PR #452 and converged through PR #498 after the canonical Primary recall fold-in in PR #491.
