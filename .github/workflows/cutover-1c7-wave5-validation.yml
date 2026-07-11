@@ -85,21 +85,24 @@ jobs:
           }, relative
           print("Wave 5 frozen inventories match the recorded dependency classes")
           PY
-      - name: Verify current-tree hard cutover invariants with rg
+      - name: Verify old live path and exact source blob
+        run: |
+          set -euo pipefail
+          test ! -e docs/architecture/wave5_cross_slice_convergence_audit.md
+          test "$(git hash-object docs/evidence/waves/wave5_cross_slice_convergence_audit-source.txt)" = \
+            "69b05a5f8380dd26be4dd51f57620278bf57ca76"
+      - name: Run current-tree rg searches and classify old literals
         run: |
           set -euo pipefail
           old_path="docs/architecture/wave5_cross_slice_convergence_audit.md"
           old_name="wave5_cross_slice_convergence_audit.md"
-          generated_glob='!generated/cutover-1c7-wave5-validation/**'
-          test ! -e "$old_path"
-          test "$(git hash-object docs/evidence/waves/wave5_cross_slice_convergence_audit-source.txt)" = \
-            "69b05a5f8380dd26be4dd51f57620278bf57ca76"
 
           echo "Repository-root literal references:"
-          rg -n --fixed-strings --glob "$generated_glob" "$old_path" . || true
-          matches="$(rg -l --fixed-strings --glob "$generated_glob" "$old_path" .)"
-          test "$(printf '%s\n' "$matches" | sed '/^$/d' | wc -l)" -eq 1
-          printf '%s\n' "$matches" | sed 's#^\./##' | grep -Fx \
+          rg -n --fixed-strings "$old_path" docs scripts .github || true
+          mapfile -t matches < <(git grep -l -F "$old_path" -- docs scripts || true)
+          printf '%s\n' "${matches[@]}"
+          test "${#matches[@]}" -eq 1
+          test "${matches[0]}" = \
             "docs/evidence/migrations/documentation-hard-cutover-receipt.md"
 
           echo "Filename references for manual classification:"
@@ -109,8 +112,8 @@ jobs:
           rg -n --fixed-strings \
             "docs/evidence/waves/wave5_cross_slice_convergence_audit.md" \
             docs scripts .github || true
-
-          git diff --check "76ba837809098be1659f07edfddd9a8a74b1ecac...HEAD"
+      - name: Check diff whitespace
+        run: git diff --check "76ba837809098be1659f07edfddd9a8a74b1ecac...HEAD"
       - name: Upload cutover inventory evidence
         uses: actions/upload-artifact@v4
         with:
