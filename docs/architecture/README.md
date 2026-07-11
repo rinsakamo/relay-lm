@@ -111,7 +111,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md)
 - [Wave 3 Cross-Slice Convergence Audit](../evidence/waves/wave3_cross_slice_convergence_audit.md) — frozen historical convergence evidence, not active architecture.
 - [Wave 4 Cross-Slice Convergence Audit](../evidence/waves/wave4_cross_slice_convergence_audit.md) — frozen historical convergence evidence, not active architecture.
-- [Wave 5 Cross-Slice Convergence Audit](wave5_cross_slice_convergence_audit.md)
+- [Wave 5 Cross-Slice Convergence Audit](../evidence/waves/wave5_cross_slice_convergence_audit.md) — frozen historical convergence evidence, not active architecture.
 - [Wave 6 Cross-Slice Convergence Audit](wave6_cross_slice_convergence_audit.md)
 - [Wave 7 Cross-Slice Convergence Audit](wave7_cross_slice_convergence_audit.md)
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
@@ -200,7 +200,7 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 
 ## Wave 5 / E1 evaluation evidence
 
-- [Wave 5 Cross-Slice Convergence Audit](wave5_cross_slice_convergence_audit.md)
+- [Wave 5 Cross-Slice Convergence Audit](../evidence/waves/wave5_cross_slice_convergence_audit.md)
 - [O1E completion report](../mvp/wave5/o1e_completion_report.md)
 - [I-4F completion report](../mvp/wave5/i4f_completion_report.md)
 - [E1 completion report](../mvp/wave5/e1_completion_report.md)
