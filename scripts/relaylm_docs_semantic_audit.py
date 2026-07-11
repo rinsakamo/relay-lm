@@ -22,6 +22,7 @@ REQUIRED_METADATA_PATHS = (
     "docs/contracts/client_instruction_target_artifact_contract.md",
     "docs/mvp/README.md",
     "docs/mvp/v0.1_release_readiness.md",
+    "docs/mvp/v0.1_final_validation_receipt.md",
     "docs/relaysoul/README.md",
     "docs/smoke/README.md",
     "docs/smoke/consolidated_workflow_maintenance.md",
@@ -48,6 +49,7 @@ ALLOWED_STATUSES = {
 
 SCRIPT_PATH_RE = re.compile(r"(?<![A-Za-z0-9_.-])(scripts/[A-Za-z0-9_./-]+\.py)\b")
 MODEL_TYPE_RE = re.compile(r"^\|\s*`([^`]+)`\s*\|", re.MULTILINE)
+FULL_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
 def read_text(relative_path: str) -> str:
@@ -84,8 +86,9 @@ def section_body(text: str, heading: str) -> str:
 def check_metadata(errors: list[str]) -> None:
     model_text = read_text("docs/DOCUMENTATION_MODEL.md")
     allowed_types = set(MODEL_TYPE_RE.findall(model_text))
-    if "release_readiness_assessment" not in allowed_types:
-        errors.append("docs/DOCUMENTATION_MODEL.md: release_readiness_assessment type missing")
+    for required_type in ("release_readiness_assessment", "validation_receipt"):
+        if required_type not in allowed_types:
+            errors.append(f"docs/DOCUMENTATION_MODEL.md: {required_type} type missing")
 
     for relative_path in REQUIRED_METADATA_PATHS:
         try:
@@ -169,19 +172,69 @@ def check_client_instruction_boundary(errors: list[str]) -> None:
 
 
 def check_release_assessment(errors: list[str]) -> None:
-    path = "docs/mvp/v0.1_release_readiness.md"
-    metadata, body = parse_front_matter(path)
-    if metadata.get("relaylm_doc_type") != "release_readiness_assessment":
-        errors.append(f"{path}: must be release_readiness_assessment while validation is pending")
-    required = (
-        "final main-HEAD validation: pending",
-        "frozen release receipt: not yet issued",
-        "validated main commit",
-        "Do not replace `pending` with `complete` without this evidence.",
+    assessment_path = "docs/mvp/v0.1_release_readiness.md"
+    receipt_path = "docs/mvp/v0.1_final_validation_receipt.md"
+    assessment_metadata, assessment_body = parse_front_matter(assessment_path)
+    if assessment_metadata.get("relaylm_doc_type") != "release_readiness_assessment":
+        errors.append(f"{assessment_path}: must remain release_readiness_assessment")
+
+    receipt_location = ROOT / receipt_path
+    if not receipt_location.is_file():
+        pending_required = (
+            "final main-HEAD validation: pending",
+            "frozen release receipt: not yet issued",
+            "validated main commit",
+            "Do not replace `pending` with `complete` without this evidence.",
+        )
+        for anchor in pending_required:
+            if anchor not in assessment_body:
+                errors.append(f"{assessment_path}: missing pending-validation anchor {anchor!r}")
+        return
+
+    receipt_metadata, receipt_body = parse_front_matter(receipt_path)
+    if receipt_metadata.get("relaylm_doc_type") != "validation_receipt":
+        errors.append(f"{receipt_path}: must be validation_receipt")
+    if receipt_metadata.get("relaylm_status") != "frozen":
+        errors.append(f"{receipt_path}: final validation receipt must be frozen")
+
+    validated_commit = receipt_metadata.get("relaylm_source_commit")
+    if not isinstance(validated_commit, str) or FULL_SHA_RE.fullmatch(validated_commit) is None:
+        errors.append(f"{receipt_path}: relaylm_source_commit must be a full lowercase SHA")
+        validated_commit = None
+
+    completed_required = (
+        "final main-HEAD validation: complete",
+        "frozen final validation receipt: issued",
+        "validation result: pass",
+        "tag candidate: v0.1",
     )
-    for anchor in required:
-        if anchor not in body:
-            errors.append(f"{path}: missing pending-validation anchor {anchor!r}")
+    for anchor in completed_required[:2]:
+        if anchor not in assessment_body:
+            errors.append(f"{assessment_path}: missing completed-validation anchor {anchor!r}")
+    for anchor in completed_required[2:]:
+        if anchor not in receipt_body:
+            errors.append(f"{receipt_path}: missing frozen receipt anchor {anchor!r}")
+
+    if validated_commit is not None:
+        for path, body in ((assessment_path, assessment_body), (receipt_path, receipt_body)):
+            if validated_commit not in body:
+                errors.append(f"{path}: validated commit {validated_commit!r} missing from body")
+
+    tag_state_anchors = (
+        "v0.1 tag creation: pending",
+        "v0.1 tag creation: complete",
+    )
+    if not any(anchor in assessment_body for anchor in tag_state_anchors):
+        errors.append(f"{assessment_path}: v0.1 tag creation state missing")
+
+    pending_tag = "v0.1 tag creation: pending" in assessment_body
+    if pending_tag:
+        for anchor in (
+            "tag creation state: pending",
+            "documentation hard cutover remains closed until the tag is actually created",
+        ):
+            if anchor not in receipt_body:
+                errors.append(f"{receipt_path}: missing pending-tag guard {anchor!r}")
 
 
 def check_wave8_index(errors: list[str]) -> None:
@@ -227,6 +280,7 @@ def check_referenced_repository_paths(errors: list[str]) -> None:
         "README_ja.md",
         "apps/soul-lab/README.md",
         "docs/mvp/v0.1_release_readiness.md",
+        "docs/mvp/v0.1_final_validation_receipt.md",
         "docs/smoke/consolidated_workflow_maintenance.md",
     )
     for relative_path in paths:
