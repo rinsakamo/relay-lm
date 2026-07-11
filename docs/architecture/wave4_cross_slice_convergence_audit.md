@@ -10,7 +10,7 @@ relaylm_related_authority:
   - project_execution_plan.md
   - current_target_migration_guide.md
   - relaymem_slp_current_target.md
-  - wave3_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave3_cross_slice_convergence_audit.md
   - o1d2_scheduler_policy.md
   - phase_i4e_forget_api_ui.md
   - soul_lab_ui_b1a_lifecycle_visibility.md

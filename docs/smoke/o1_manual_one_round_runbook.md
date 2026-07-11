@@ -10,7 +10,7 @@ relaylm_related_authority:
   - ../architecture/o1d1_production_scheduler_round.md
   - ../architecture/o2_supervised_scheduler_service.md
   - ../architecture/o3_always_on_local_scheduler.md
-  - ../architecture/wave3_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave3_cross_slice_convergence_audit.md
 relaylm_not_authoritative_for:
   - scheduler policy
   - service supervision
