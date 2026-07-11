@@ -14,15 +14,16 @@ relaylm_not_authoritative_for:
   - exact runtime contracts
 relaylm_current_status_source: ../PROJECT_STATUS.md
 ---
-# RelayLM MVP Summaries
+# RelayLM MVP Evidence
 
-This directory is the index for RelayLM MVP milestone summaries, MVP-focused implementation notes, release-readiness assessments, and per-PR implementation completion reports.
+This directory is the transitional index for MVP-focused implementation notes, release-readiness assessments, and per-PR implementation completion reports retained during the documentation hard cutover.
 
-> For the current phase, implemented boundaries, default-off/preflight-only behavior, and immediate next work, use [Project Status](../PROJECT_STATUS.md). The files in this directory are historical evidence rather than the current-state source of truth, except that an explicitly current release-readiness assessment may summarize evidence and pending validation without becoming runtime authority.
+> For the current phase, implemented boundaries, default-off/preflight-only behavior, and immediate next work, use [Project Status](../PROJECT_STATUS.md). The files in this directory are historical evidence rather than the current-state source of truth, except that an explicitly current release-readiness assessment may summarize evidence without becoming runtime authority.
 
 ## Release readiness assessments
 
-- [v0.1 Release Readiness Assessment](v0.1_release_readiness.md) — content-free readiness assessment for the v0.1 boundary, including local human-reviewed durable-memory E2 value-smoke evidence handling, pending final main-HEAD validation, and post-v0.1 decision debt. It is not the final tag receipt while validation remains pending.
+- [v0.1 Release Readiness Assessment](v0.1_release_readiness.md) — content-free readiness assessment for the validated and tagged v0.1 boundary, including local human-reviewed durable-memory E2 value-smoke evidence handling and post-v0.1 decision debt.
+- [v0.1 Final Main-HEAD Validation and Tag Receipt](v0.1_final_validation_receipt.md) — frozen exact-commit validation and tag-binding evidence.
 
 ## Implementation completion reports
 
@@ -132,52 +133,26 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/lat1_latenc
 
 The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.
 
-## Earlier milestone summaries
-
-These older summaries are kept indexed for discoverability while the documentation tree is being reorganized. They are historical snapshots, not current-state authority.
+## Retained focused historical notes
 
 - [MVP-0: pass-through proxy](mvp0_pass_through_proxy.md)
-- [MVP-1 summary](mvp1_summary.md)
-- [MVP-2 summary](mvp2_summary.md)
-- [MVP-3 summary](mvp3_summary.md)
-- [MVP-4 summary](mvp4_summary.md)
-- [MVP-5 summary](mvp5_summary.md)
-- [MVP-6 summary](mvp6_summary.md)
-- [MVP-7 summary](mvp7_summary.md)
-- [MVP-8 summary](mvp8_summary.md)
-- [MVP-9 summary](mvp9_summary.md)
-- [MVP-10 summary](mvp10_summary.md)
-- [MVP-11 summary](mvp11_summary.md)
-- [MVP-12 summary](mvp12_summary.md)
-- [MVP-13 summary](mvp13_summary.md)
-- [MVP-14 summary](mvp14_summary.md)
-- [MVP-15 summary](mvp15_summary.md)
-- [MVP-16 summary](mvp16_summary.md)
-- [MVP-17 summary](mvp17_summary.md)
-- [MVP-18 summary](mvp18_summary.md)
-- [MVP-19 summary](mvp19_summary.md)
-- [MVP-20 summary](mvp20_summary.md)
-- [MVP-21 summary](mvp21_summary.md)
-- [MVP-22 summary](mvp22_summary.md)
-- [MVP-23 summary](mvp23_summary.md)
-- [MVP-24 summary](mvp24_summary.md)
-- [MVP-25 summary](mvp25_summary.md)
-- [MVP-26 summary](mvp26_summary.md)
-- [MVP-27 summary](mvp27_summary.md)
-- [MVP-28 summary](mvp28_summary.md)
-- [MVP-29 summary](mvp29_summary.md)
-- [MVP-30 summary](mvp30_summary.md)
-- [MVP-31 summary](mvp31_summary.md)
-- [MVP-32 summary](mvp32_summary.md)
-- [MVP-33 summary](mvp33_summary.md)
-- [MVP-37 summary](mvp37_summary.md)
+- [MVP-1 runtime diagnostics](mvp1_runtime_diagnostics_smoke.md)
+- [MVP-2 profile loading](mvp2_profile_file_loading.md)
+- [MVP-40 extraction](mvp40_relayctx_short_term_extraction_dry_run.md)
+- [MVP-41 assembly](mvp41_relayctx_short_term_block_assembly_dry_run.md)
+- [MVP-42 injection preflight](mvp42_relayctx_short_term_runtime_injection_preflight.md)
+- [MVP-43 apply gate](mvp43_relayctx_short_term_runtime_injection_apply_gate.md)
+- [MVP-45 fast path](mvp45_relayint_fast_path_dry_run.md)
+- [MVP-46 clarification preflight](mvp46_relayint_quick_clarification_preflight.md)
+- [MVP-47 clarification apply plan](mvp47_relayint_quick_clarification_apply_plan.md)
+- [MVP-48 node result scaffold](mvp48_pipeline_node_result_scaffold.md)
 
-Focused historical notes: [MVP-1 runtime diagnostics](mvp1_runtime_diagnostics_smoke.md), [MVP-2 profile loading](mvp2_profile_file_loading.md), [MVP-40 extraction](mvp40_relayctx_short_term_extraction_dry_run.md), [MVP-41 assembly](mvp41_relayctx_short_term_block_assembly_dry_run.md), [MVP-42 injection preflight](mvp42_relayctx_short_term_runtime_injection_preflight.md), [MVP-43 apply gate](mvp43_relayctx_short_term_runtime_injection_apply_gate.md), [MVP-45 fast path](mvp45_relayint_fast_path_dry_run.md), [MVP-46 clarification preflight](mvp46_relayint_quick_clarification_preflight.md), [MVP-47 clarification apply plan](mvp47_relayint_quick_clarification_apply_plan.md), and [MVP-48 node result scaffold](mvp48_pipeline_node_result_scaffold.md).
+The redundant MVP-1 through MVP-33 and MVP-37 milestone summary snapshots were removed from the active tree in Cutover 1B. Their old paths and blob digests are recorded in [the deletion appendix](../evidence/migrations/cutover-1b-mvp-snapshot-deletions.tsv), and their contents remain recoverable from Git history and the frozen `v0.1` tag.
 
 ## Maintenance rule
 
-- Create historical MVP summaries and focused implementation notes directly under `docs/mvp/` unless a declared parallel wave uses a `docs/mvp/wave<N>/` completion-report directory.
+- Do not add new generic milestone summary snapshots under `docs/mvp/`.
 - A parallel implementation PR creates one uniquely named completion report and does not update this index.
 - The wave convergence PR adds links to the merged reports and updates shared current-state documents.
-- Treat existing MVP documents and completion reports as historical snapshots; change them only to repair broken links or make an explicit factual correction.
+- Treat existing MVP documents and completion reports as historical evidence; change them only to repair broken links, perform an authorized cutover move, or make an explicit factual correction.
 - Use [Project Status](../PROJECT_STATUS.md) for repository-wide current implementation state and immediate next boundaries.
