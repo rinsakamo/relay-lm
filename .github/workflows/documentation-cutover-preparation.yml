@@ -69,6 +69,8 @@ jobs:
               --output-dir "$output" \
               --assert-dependency \
                 "docs/mvp/mvp10_summary.md=docs/mvp/README.md" \
+              --assert-dependency \
+                "docs/PROJECT_STATUS.md=README.md" \
               --strict
           done
           diff -ru generated/documentation-cutover-a generated/documentation-cutover-b
