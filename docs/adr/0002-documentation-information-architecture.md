@@ -16,7 +16,7 @@ relaylm_not_authoritative_for:
   - proof that documentation cutover is complete
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_related_proposal:
-  - ../proposals/documentation_restructure_proposal.md
+  - ../evidence/proposals/documentation-restructure-proposal.md
 relaylm_supersedes: []
 relaylm_superseded_by: null
 ---
@@ -152,7 +152,8 @@ Only three migration safeguards are retained:
 ## Related documents
 
 - [Documentation model](../DOCUMENTATION_MODEL.md)
-- [Hard-cutover proposal](../proposals/documentation_restructure_proposal.md)
+- [Hard-cutover proposal evidence](../evidence/proposals/documentation-restructure-proposal.md)
 - [Document templates](../templates/README.md)
 - [Canonical glossary draft](../reference/glossary.md)
 - [Documentation cutover planning](../planning/README.md)
+- [Documentation hard-cutover migration receipt](../evidence/migrations/documentation-hard-cutover-receipt.md)
