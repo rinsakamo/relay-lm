@@ -78,7 +78,7 @@ def relaylm_config_fields() -> tuple[str, ...]:
 
 
 def check_reports_and_handoffs() -> None:
-    audit = read("docs/architecture/wave3_cross_slice_convergence_audit.md")
+    audit = read("docs/evidence/waves/wave3_cross_slice_convergence_audit.md")
     assert "relaylm_authority: wave3_cross_slice_convergence_record" in audit
     assert "W3-INT merged" in audit
     assert "Divergence found and corrected" in audit
@@ -229,7 +229,7 @@ def check_shared_docs() -> None:
         "Do not add new current-state, next-wave, or post-I3 roadmap sections here.",
     )
     require(
-        "docs/architecture/wave3_cross_slice_convergence_audit.md",
+        "docs/evidence/waves/wave3_cross_slice_convergence_audit.md",
         "I1-G overall complete",
         "Phase I-4 overall in progress",
         "O1 overall in progress",

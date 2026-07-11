@@ -9,7 +9,7 @@ relaylm_related_authority:
   - docs/architecture/o1b_sealed_i1g_replay_lane.md
   - docs/architecture/o1c_eligible_b2_queue_lane.md
   - docs/architecture/o1d1_production_scheduler_round.md
-  - docs/architecture/wave3_cross_slice_convergence_audit.md
+  - docs/evidence/waves/wave3_cross_slice_convergence_audit.md
 ---
 # O1D2 Deterministic Scheduler Policy
 
