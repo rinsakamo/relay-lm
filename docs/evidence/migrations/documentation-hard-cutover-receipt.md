@@ -52,7 +52,7 @@ merged_commit: 3fd9b6dd833c869f50620355ffa698c41f496f10
 old_path: docs/proposals/documentation_restructure_proposal.md
 old_blob_sha: 4707ee9cd6d0a8184f36782cdd537e6a71a10131
 old_content_sha256: 7c9d7fbc3b5a080ab601d9fcc67f95bdfdc712d9836d569de3b40a19c493ef91
-source_commit: 5f9730d1e2630a30b6ade2faa03da580f1dccd38
+source_commit: 5f9730d1e2630a30b6adebbe2b0c959950198739a
 source_pr: 549
 disposition: moved
 new_canonical_path: docs/evidence/proposals/documentation-restructure-proposal.md
@@ -218,7 +218,7 @@ The canonical evidence document preserves the complete Wave 3 convergence accoun
 ### C1C6-001 — Wave 4 cross-slice convergence audit
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 563
 merged_commit: pending
 old_path: docs/architecture/wave4_cross_slice_convergence_audit.md
 old_blob_sha: c6273fbe7e7809df510a22f04d30d43e25698b73
@@ -242,8 +242,11 @@ verification:
   current_tree_related_authority_references_updated: 1
   wave4_functional_smoke_updated: true
   wave5_regression_smoke_updated: true
-  documentation_link_check_required: true
-  affected_current_boundary_checks_required: true
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  affected_current_boundary_checks: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
 ```
 
 The canonical evidence document preserves the complete Wave 4 convergence account while correcting relative links for its new collection. The exact pre-cutover source remains available as the original Git blob. The frozen and current-tree sweeps identified one repository-root literal in a later completion record, four hard-coded script occurrences across two smoke files, four Markdown relative links across three referrer files, and one `relaylm_related_authority` YAML reference. These dependency classes remain separately recorded; the old path below is only the historical migration identifier for this receipt.
