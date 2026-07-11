@@ -8,7 +8,7 @@ relaylm_update_trigger:
   - metadata or link repair only
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_related_authority:
-  - ../../architecture/wave3_cross_slice_convergence_audit.md
+  - wave3_cross_slice_convergence_audit.md
   - ../../architecture/i1gd_durable_finalization_retention_cleanup.md
   - ../../architecture/phase_i4c2_primary_forget_recovery_finalization.md
   - ../../architecture/o1b_sealed_i1g_replay_lane.md
@@ -27,7 +27,7 @@ relaylm_source_content_sha256: bca9d9a44216d761e28f52e46ea3ddffd7cc264986a050fdb
 
 Status: W2-INT implementation and regression validation complete after merge. This document is frozen historical evidence for the Wave 2 boundary and Wave 3 start inputs.
 
-Authority: this record describes the combined latest-main boundary after PR #403, #404, #405, and #406, plus the I-4C2 follow-up correction merged as PR #407 while this audit was in progress. Lower dedicated contracts remain authoritative for their own schemas and mutations. Current post-Wave-3 status belongs to [Project Status](../../PROJECT_STATUS.md) and [Wave 3 Cross-Slice Convergence Audit](../../architecture/wave3_cross_slice_convergence_audit.md).
+Authority: this record describes the combined latest-main boundary after PR #403, #404, #405, and #406, plus the I-4C2 follow-up correction merged as PR #407 while this audit was in progress. Lower dedicated contracts remain authoritative for their own schemas and mutations. Current post-Wave-3 status belongs to [Project Status](../../PROJECT_STATUS.md) and [Wave 3 Cross-Slice Convergence Audit](wave3_cross_slice_convergence_audit.md).
 
 The exact submitted source is retained byte-for-byte as [wave2_cross_slice_convergence_audit-source.txt](wave2_cross_slice_convergence_audit-source.txt).
 
