@@ -1,0 +1,77 @@
+---
+relaylm_doc_type: evidence
+relaylm_authority: documentation_hard_cutover_migration_ledger
+relaylm_status: current
+relaylm_volatility: medium
+relaylm_owner: documentation
+relaylm_update_trigger:
+  - a documentation cutover PR moves, splits, synthesizes, absorbs, rebuilds, retains, or deletes a source
+  - the cutover completes and this ledger is frozen
+relaylm_not_authoritative_for:
+  - current runtime behavior
+  - exact contract wording
+  - current documentation placement outside recorded merged entries
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_decision_source: ../../adr/0002-documentation-information-architecture.md
+relaylm_cutover_baseline_tag: v0.1
+relaylm_cutover_baseline_commit: 522018e62d69bcbe89465d574bf2d1b377f10bd9
+relaylm_cutover_gate_commit: 1397a65c8e5f049b6e498f6db70a1a7da32ab151
+---
+# Documentation Hard-Cutover Migration Receipt
+
+This append-only ledger records the authority-first documentation hard cutover authorized by ADR 0002. Old paths appear only as migration identifiers and do not create redirects, compatibility paths, or live authority.
+
+## Cutover identity
+
+```text
+baseline tag: v0.1
+baseline commit: 522018e62d69bcbe89465d574bf2d1b377f10bd9
+tag binding: exact match
+cutover gate record: 1397a65c8e5f049b6e498f6db70a1a7da32ab151
+cutover state: active
+```
+
+## Verification rules
+
+- `moved`: source authority has one new live canonical path and the old path is absent.
+- `evidence_retained`: non-normative evidence remains under `docs/evidence/`.
+- `rebuilt_verbatim`: normative blocks have equal normalized SHA-256 before and after migration.
+- `split`: every source section has an explicit destination or deletion classification.
+- `synthesized`: multiple source authorities are accounted for in a new stable document.
+- `absorbed`: still-valid content is incorporated into another canonical authority.
+- `retained`: path and authority remain canonical.
+- `deleted_git_history_only`: the active-tree path is removed and the source remains recoverable from Git history.
+
+## Entries
+
+### C1A-001 — accepted documentation restructure proposal
+
+```yaml
+cutover_pr: pending
+old_path: docs/proposals/documentation_restructure_proposal.md
+old_blob_sha: 4707ee9cd6d0a8184f36782cdd537e6a71a10131
+old_content_sha256: 7c9d7fbc3b5a080ab601d9fcc67f95bdfdc712d9836d569de3b40a19c493ef91
+source_commit: 5f9730d1e2630a30b6ade2faa03da580f1dccd38
+source_pr: 549
+disposition: moved
+new_canonical_path: docs/evidence/proposals/documentation-restructure-proposal.md
+exact_source_snapshot: docs/evidence/proposals/documentation-restructure-proposal-source.txt
+exact_source_blob_sha: 4707ee9cd6d0a8184f36782cdd537e6a71a10131
+verification:
+  old_path_removed: pending_merge
+  source_blob_reused_exactly: true
+  canonical_evidence_metadata_added: true
+  live_links_updated: pending_merge
+```
+
+The exact source snapshot intentionally retains its original pre-adoption metadata as immutable source text. The canonical Markdown evidence record carries the post-decision authority and lifecycle metadata.
+
+## Pending batches
+
+- Cutover 1B: low-value MVP snapshot deletion with `deleted_git_history_only` entries.
+- Cutover 1C: retained implementation, wave, evaluation, and release evidence migration.
+- Later cutovers: architecture synthesis, exact contract reconstruction, old-tree removal, and final invariant enforcement.
+
+## Freeze boundary
+
+This ledger remains `current` while cutover PRs are being merged. At final cutover completion it must be changed to `frozen`, all `pending` fields must be resolved, and every baseline Markdown source must have a final disposition.
