@@ -60,6 +60,19 @@ def digest(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def emit_failure_diagnostics(name: str, stdout: str, stderr: str) -> None:
+    print(f"::group::failed validation diagnostics: {name}", file=sys.stderr)
+    if stdout:
+        print("--- stdout ---", file=sys.stderr)
+        print(stdout, file=sys.stderr, end="" if stdout.endswith("\n") else "\n")
+    if stderr:
+        print("--- stderr ---", file=sys.stderr)
+        print(stderr, file=sys.stderr, end="" if stderr.endswith("\n") else "\n")
+    if not stdout and not stderr:
+        print("(command produced no output)", file=sys.stderr)
+    print("::endgroup::", file=sys.stderr)
+
+
 def execute(repo_dir: Path, name: str, command: list[str]) -> dict[str, Any]:
     env = os.environ.copy()
     env["PYTHONPATH"] = "."
@@ -79,6 +92,8 @@ def execute(repo_dir: Path, name: str, command: list[str]) -> dict[str, Any]:
     completed = datetime.now(timezone.utc)
     stdout = result.stdout.replace("\r\n", "\n").replace("\r", "\n")
     stderr = result.stderr.replace("\r\n", "\n").replace("\r", "\n")
+    if result.returncode != 0:
+        emit_failure_diagnostics(name, stdout, stderr)
     return {
         "name": name,
         "command": command,
@@ -115,7 +130,7 @@ def markdown(payload: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
-            "Raw command output is intentionally not embedded in the receipt artifact. The hashes and line counts provide content-free evidence while the workflow logs retain execution diagnostics.",
+            "Raw command output is intentionally not embedded in the receipt artifact. The hashes and line counts provide content-free evidence; failed commands also emit their captured stdout/stderr to a folded GitHub Actions log group for diagnosis.",
             "",
         ]
     )
