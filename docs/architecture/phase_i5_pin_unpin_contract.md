@@ -14,7 +14,7 @@ relaylm_related_authority:
   - phase_i4b_primary_current_state_shared_fence.md
   - phase_i4d_primary_retrieval_exclusion.md
   - phase_i5b_pin_unpin_apply.md
-  - wave6_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave6_cross_slice_convergence_audit.md
 ---
 # Phase I-5 Pin / Unpin Contract and Read-Only Preflight
 
