@@ -141,22 +141,49 @@ Each source is retained byte-for-byte as a `.txt` snapshot. The canonical Markdo
 
 ```yaml
 cutover_pr: 559
-merged_commit: pending
+merged_commit: b03022812cc9ea2b7a439698df92287f7c10a1b4
 disposition: evidence_retained
 record_count: 3
 record_file: docs/evidence/migrations/cutover-1c3-mvp2-compile-smokes.tsv
 verification:
-  old_paths_removed_in_pr_tree: true
+  old_paths_removed: true
   preparation_c_literal_path_dependencies_per_record: 0
   current_filename_search_dependencies_per_record: 0
   exact_source_blobs_reused: true
   canonical_evidence_wrappers_added: true
   historical_behavior_marked_non_current: true
   mixed_authority_incoming_system_fallback_excluded: true
-  documentation_link_check_required: true
+  documentation_link_check: passed
 ```
 
 The three source snapshots are byte-for-byte copies of the original blobs. `mvp2_incoming_system_fallback.md` remains outside this batch because it mixes historical implementation detail with current authority interpretation and requires an explicit split or absorption decision.
+
+### C1C4-001 — Wave 2 cross-slice convergence audit
+
+```yaml
+cutover_pr: 561
+merged_commit: pending
+old_path: docs/architecture/wave2_cross_slice_convergence_audit.md
+old_blob_sha: 8a601773aef9619ff19a6e750736783a2c9415bc
+old_content_sha256: bca9d9a44216d761e28f52e46ea3ddffd7cc264986a050fdb8ab5bc81205c67f
+source_commit: 8f49544560472b1e0d68cea8406b4d971f7d93db
+source_pr: 408
+disposition: evidence_retained
+new_canonical_path: docs/evidence/waves/wave2_cross_slice_convergence_audit.md
+exact_source_snapshot: docs/evidence/waves/wave2_cross_slice_convergence_audit-source.txt
+exact_source_blob_sha: 8a601773aef9619ff19a6e750736783a2c9415bc
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_path_references_updated_in_pr_tree: 2
+  additional_filename_reference_updated_in_pr_tree: 1
+  relative_markdown_link_dependencies_at_frozen_baseline: 0
+  documentation_link_check_required: true
+  affected_smoke_required: true
+```
+
+The canonical evidence document preserves the complete Wave 2 convergence account while correcting relative links for its new collection. The exact pre-cutover source remains available as the original Git blob. O1D1, I-4C2, and the Wave 5 convergence smoke now refer to the canonical evidence path.
 
 ## Pending batches
 

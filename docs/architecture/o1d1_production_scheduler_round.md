@@ -13,7 +13,7 @@ relaylm_related_authority:
   - docs/architecture/o1e_scheduler_operational_controls.md
   - docs/architecture/o1f_operational_validation.md
   - docs/architecture/o0_local_one_job_runner.md
-  - docs/architecture/wave2_cross_slice_convergence_audit.md
+  - docs/evidence/waves/wave2_cross_slice_convergence_audit.md
 ---
 # O1D1 Accepted Scheduler Gates and One Production Round
 

@@ -69,7 +69,7 @@ FORBIDDEN_CURRENT = (
 )
 
 FROZEN_ALLOWLIST = {
-    "docs/architecture/wave2_cross_slice_convergence_audit.md",
+    "docs/evidence/waves/wave2_cross_slice_convergence_audit.md",
     "docs/architecture/wave3_cross_slice_convergence_audit.md",
     "docs/architecture/wave4_cross_slice_convergence_audit.md",
 }
