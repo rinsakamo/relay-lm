@@ -37,7 +37,7 @@ relaylm_related_authority:
   - cw_a4_slp_workspace_maintenance_candidates.md
   - cw_a5_character_creation_templates_showcase_import.md
   - e1r5_primary_mem_recall_candidate_bridge.md
-  - e1r5_post_wave7_correction_convergence_audit.md
+  - ../evidence/waves/e1r5_post_wave7_correction_convergence_audit.md
   - o2_supervised_scheduler_service.md
   - o3_always_on_local_scheduler.md
   - relayatn_reflex_layer_design.md

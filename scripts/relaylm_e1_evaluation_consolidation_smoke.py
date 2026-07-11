@@ -155,6 +155,12 @@ REQUIRED = {
         "E1-R4 retrieval-response grounding and unsupported-detail suppression",
         "W7-INT is merged.",
     ),
+    "docs/evidence/waves/e1r5_post_wave7_correction_convergence_audit.md": (
+        "# E1-R5 Post-Wave-7 Correction Convergence Audit",
+        "M2 remains the preferred relevance owner.",
+        "PM-D8 is closed by PR #491",
+        "The former runtime bridge module remains compatibility no-op only.",
+    ),
 }
 
 EVIDENCE_PATHS = (
@@ -165,6 +171,7 @@ EVIDENCE_PATHS = (
     "docs/architecture/e1r4_retrieval_response_grounding.md",
     "docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md",
     "docs/evidence/waves/wave7_cross_slice_convergence_audit.md",
+    "docs/evidence/waves/e1r5_post_wave7_correction_convergence_audit.md",
     "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
     "docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md",
     "docs/architecture/integration_i1_primary_mem_two_turn_recall.md",
@@ -262,6 +269,7 @@ def validate_indexes_reference_e1() -> None:
         "e1r4_retrieval_response_grounding.md",
         "e1r5_primary_mem_recall_candidate_bridge.md",
         "wave7_cross_slice_convergence_audit.md",
+        "e1r5_post_wave7_correction_convergence_audit.md",
         "e1_completion_report.md",
         "e1r1_completion_report.md",
         "e1r2_completion_report.md",

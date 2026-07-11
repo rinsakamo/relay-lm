@@ -330,7 +330,7 @@ The canonical evidence document preserves the complete Wave 6 convergence accoun
 
 ```yaml
 cutover_pr: 566
-merged_commit: pending
+merged_commit: 0689fc6c926aeaaece5f404a831f1000294e5cbd
 old_path: docs/architecture/wave7_cross_slice_convergence_audit.md
 old_blob_sha: 8bd6635ac4be0c352a3631ee518128b0a3356110
 old_content_sha256: 265b8fb6db411c65d760a6879d6a00e6e52265d12e7b2ff5b09c3705869eb3c4
@@ -361,7 +361,46 @@ verification:
   unresolved_review_threads: 0
 ```
 
-The canonical evidence document preserves the complete Wave 7 convergence account while correcting six internal relative links for the evidence collection. The exact pre-cutover source remains available as the original Git blob. The dependency sweep identified three repository-root literals across two files, four hard-coded script occurrences across two smoke files, six Markdown relative links across five referrer files, and four `relaylm_related_authority` YAML references. The old path above is only the historical migration identifier for this receipt.
+The canonical evidence document preserves the complete Wave 7 convergence account while correcting six internal relative links for the evidence collection. The exact pre-cutover source remains available as the original Git blob. The dependency sweep identified three repository-root literals across two files, four hard-coded script occurrences across two smoke files, six Markdown relative links across five referrer files, and four `relaylm_related_authority` YAML references. PR #566 merged as `0689fc6c926aeaaece5f404a831f1000294e5cbd`; C1C9 is finalized by Cutover 1C-10.
+
+### C1C10-001 — E1-R5 post-Wave-7 correction convergence audit
+
+```yaml
+cutover_pr: 568
+merged_commit: pending
+old_path: docs/architecture/e1r5_post_wave7_correction_convergence_audit.md
+old_blob_sha: 0d7cbceca1259d127ebf4fa1a7f91bcbf9e144e5
+old_content_sha256: 552e8744b3f32f2e4c21eb8273f56fe0ee4f95e22cf33ad7ae734625dcc41edb
+source_commit: 676678a004c688eca856e37b3ecf48f98801452c
+source_pr: 498
+origin_pr: 452
+recorded_on: 2026-06-30
+disposition: evidence_retained
+new_canonical_path: docs/evidence/waves/e1r5_post_wave7_correction_convergence_audit.md
+exact_source_snapshot: docs/evidence/waves/e1r5_post_wave7_correction_convergence_audit-source.txt
+exact_source_blob_sha: 0d7cbceca1259d127ebf4fa1a7f91bcbf9e144e5
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 1
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 1
+  script_hard_coded_path_reference_files_updated_in_pr_tree: 1
+  script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 2
+  relative_markdown_link_referrer_files_at_frozen_baseline: 4
+  relative_markdown_link_dependencies_at_frozen_baseline: 5
+  current_tree_related_authority_references_updated: 3
+  canonical_internal_relative_links_repaired: 6
+  current_boundary_smoke_historical_path_removed: true
+  e1_evaluation_smoke_updated: true
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  affected_current_boundary_checks: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The canonical evidence document preserves the complete E1-R5 post-Wave-7 correction account while repairing six internal relative links for the evidence collection. The exact pre-cutover source remains available as the original Git blob. The record was introduced by PR #452 and its exact pre-cutover form includes the later PM-D8 closure convergence from PR #498 after runtime fold-in PR #491. The dependency sweep identified one repository-root literal, two hard-coded current-boundary occurrences, five Markdown relative links across four referrer files, and three `relaylm_related_authority` YAML references. The old path above is only the historical migration identifier for this receipt.
 
 ## Pending batches
 

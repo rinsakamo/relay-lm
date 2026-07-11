@@ -125,7 +125,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 - [E1-R4 completion report](mvp/wave7/e1r4_completion_report.md)
 - [E1-R5 Primary MEM recall candidate discovery bridge](architecture/e1r5_primary_mem_recall_candidate_bridge.md)
 - [E1-R5 completion report](mvp/wave7/e1r5_completion_report.md)
-- [E1-R5 Post-Wave-7 Correction Convergence Audit](architecture/e1r5_post_wave7_correction_convergence_audit.md)
+- [E1-R5 Post-Wave-7 Correction Convergence Audit](evidence/waves/e1r5_post_wave7_correction_convergence_audit.md)
 
 ## Wave 6 implementation evidence
 
