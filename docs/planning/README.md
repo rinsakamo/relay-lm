@@ -1,22 +1,23 @@
 ---
 relaylm_doc_type: documentation_index
 relaylm_authority: documentation_cutover_planning_entrypoint
-relaylm_status: target
+relaylm_status: current
 relaylm_volatility: medium
 relaylm_owner: documentation
 relaylm_update_trigger:
   - documentation preparation or cutover plans change
   - a preparation artifact is added or retired
+  - a cutover batch starts or completes
 relaylm_not_authoritative_for:
-  - current documentation placement
+  - current documentation placement outside merged cutover entries
   - current runtime behavior
-  - proof that cutover has started or completed
+  - proof that the complete cutover is finished
 relaylm_current_status_source: ../PROJECT_STATUS.md
 relaylm_decision_source: ../adr/0002-documentation-information-architecture.md
 ---
 # Documentation Cutover Planning
 
-This collection contains target planning artifacts for the authority-first documentation hard cutover. It does not move existing canonical documents or activate final directory invariants.
+This collection contains the adopted planning artifacts for the authority-first documentation hard cutover. The v0.1 validation and tag gate is complete, and Cutover 1 has started. Only merged entries in the migration receipt change canonical paths; planned targets remain non-current until their PR merges.
 
 ## Preparation B artifacts
 
@@ -31,6 +32,10 @@ This collection contains target planning artifacts for the authority-first docum
 - `scripts/relaylm_docs_cutover_prepare.py` — emits the full inventory, migration-receipt preview, path dependencies, and summary.
 - `scripts/relaylm_docs_normative_digest.py` — emits source line ranges and SHA-256 digests for candidate normative blocks.
 
+## Active execution evidence
+
+- [Documentation hard-cutover migration receipt](../evidence/migrations/documentation-hard-cutover-receipt.md) — append-only record of merged path moves, evidence retention, deletions, synthesis, and exact-copy verification.
+
 ## Boundary
 
-Preparation B decides target ownership and synthesis shape. Preparation C turns those decisions into a strict reproducible dry run before any canonical path move. Neither preparation phase authorizes path changes before the v0.1 frozen tag receipt.
+Preparation B decides target ownership and synthesis shape. Preparation C supplies the strict reproducible baseline. Cutover PRs now execute those decisions one authority at a time without redirect stubs or dual live paths.
