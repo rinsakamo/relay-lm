@@ -31,7 +31,7 @@ relaylm_related_authority:
   - e1r5_primary_mem_recall_candidate_bridge.md
   - phase_i4f_forget_validation.md
   - e1_evaluation_consolidation.md
-  - wave7_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave7_cross_slice_convergence_audit.md
   - ../evidence/waves/wave6_cross_slice_convergence_audit.md
   - ../PROJECT_STATUS.md
 ---

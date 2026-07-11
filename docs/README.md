@@ -118,7 +118,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 
 ## Wave 7 implementation evidence
 
-- [Wave 7 Cross-Slice Convergence Audit](architecture/wave7_cross_slice_convergence_audit.md)
+- [Wave 7 Cross-Slice Convergence Audit](evidence/waves/wave7_cross_slice_convergence_audit.md)
 - [E1-R3 provenance-preserving formation summary](architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md)
 - [E1-R3 completion report](mvp/wave7/e1r3_completion_report.md)
 - [E1-R4 retrieval-response grounding](architecture/e1r4_retrieval_response_grounding.md)

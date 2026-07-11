@@ -40,7 +40,6 @@ CURRENT_DOCS = (
     "docs/architecture/phase_i7ab_held_apply_discard_contract.md",
     "docs/architecture/phase_i7c_held_apply_discard_runtime.md",
     "docs/architecture/soul_lab_ui_mvp.md",
-    "docs/architecture/wave7_cross_slice_convergence_audit.md",
 )
 
 REQUIRED = {
@@ -356,16 +355,6 @@ REQUIRED = {
         "relaylm_doc_type: implementation_handoff",
         "# P0 RelayREL / RelaySCN / RelayEMO Ordering Fix",
         "PM-D3 RelayEMO/RelaySCN scene_state ownership is closed by the shipped request-path wiring and validation.",
-    ),
-    "docs/architecture/wave7_cross_slice_convergence_audit.md": (
-        "# Wave 7 Cross-Slice Convergence Audit",
-        "PR #436",
-        "7bb2525cb000e893146408065f1aa5976f2b54ab",
-        "PR #437",
-        "e6e5b32cd489dda493ff0171a260dd561a91765c",
-        "E1-R3 provenance-preserving Primary MEM formation summary: complete",
-        "E1-R4 retrieval-response grounding and unsupported-detail suppression: complete",
-        "W7-INT is merged.",
     ),
     "docs/mvp/wave7/e1r4_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",

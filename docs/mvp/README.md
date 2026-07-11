@@ -55,7 +55,7 @@ W7-INT verifies the source PR numbers, merge commits, and dedicated handoffs for
 - [E1-R4 completion report](wave7/e1r4_completion_report.md) — source PR #437, merge `e6e5b32cd489dda493ff0171a260dd561a91765c`.
 - [E1-R5 completion report](wave7/e1r5_completion_report.md) — source PR #439, post-Wave-7 correction to the E1 recall proof boundary.
 
-The Wave 7 cross-slice convergence record is [Wave 7 Cross-Slice Convergence Audit](../architecture/wave7_cross_slice_convergence_audit.md). W7-INT is merged; E1-R5 is now reflected by current shared documents and dedicated handoff links.
+The Wave 7 cross-slice convergence record is [Wave 7 Cross-Slice Convergence Audit](../evidence/waves/wave7_cross_slice_convergence_audit.md). W7-INT is merged; E1-R5 is now reflected by current shared documents and dedicated handoff links.
 
 Wave 7 dedicated handoffs:
 

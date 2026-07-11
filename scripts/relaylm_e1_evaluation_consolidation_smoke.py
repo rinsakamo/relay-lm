@@ -149,7 +149,7 @@ REQUIRED = {
         "shared I-4D current-state eligibility index",
         "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
     ),
-    "docs/architecture/wave7_cross_slice_convergence_audit.md": (
+    "docs/evidence/waves/wave7_cross_slice_convergence_audit.md": (
         "# Wave 7 Cross-Slice Convergence Audit",
         "E1-R3 provenance-preserving Primary MEM formation summary",
         "E1-R4 retrieval-response grounding and unsupported-detail suppression",
@@ -164,7 +164,7 @@ EVIDENCE_PATHS = (
     "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
     "docs/architecture/e1r4_retrieval_response_grounding.md",
     "docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md",
-    "docs/architecture/wave7_cross_slice_convergence_audit.md",
+    "docs/evidence/waves/wave7_cross_slice_convergence_audit.md",
     "docs/architecture/soul_lab_ui_b0_real_home_conversation.md",
     "docs/architecture/soul_lab_ui_b1a_lifecycle_visibility.md",
     "docs/architecture/integration_i1_primary_mem_two_turn_recall.md",

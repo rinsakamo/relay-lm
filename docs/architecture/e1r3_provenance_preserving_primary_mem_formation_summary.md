@@ -19,7 +19,7 @@ relaylm_related_authority:
   - e1r1_trusted_home_scene_admission.md
   - e1r2_character_store_bootstrap.md
   - e1r4_retrieval_response_grounding.md
-  - wave7_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave7_cross_slice_convergence_audit.md
   - phase6_i1b_runtime_enqueue_source_capture_handoff.md
   - phase6c1_primary_mem_worker_contract.md
   - phase6c1_one_claimed_primary_worker_handoff.md

@@ -122,6 +122,12 @@ replace(
     1,
 )
 replace(
+    "docs/PROJECT_STATUS.md",
+    "(architecture/wave7_cross_slice_convergence_audit.md)",
+    "(evidence/waves/wave7_cross_slice_convergence_audit.md)",
+    1,
+)
+replace(
     "docs/architecture/README.md",
     "(wave7_cross_slice_convergence_audit.md)",
     "(../evidence/waves/wave7_cross_slice_convergence_audit.md)",
@@ -169,6 +175,21 @@ replace(
     "",
     1,
 )
+replace(
+    "scripts/relaylm_documentation_current_boundary_smoke.py",
+    "    \"docs/architecture/wave7_cross_slice_convergence_audit.md\": (\n"
+    "        \"# Wave 7 Cross-Slice Convergence Audit\",\n"
+    "        \"PR #436\",\n"
+    "        \"7bb2525cb000e893146408065f1aa5976f2b54ab\",\n"
+    "        \"PR #437\",\n"
+    "        \"e6e5b32cd489dda493ff0171a260dd561a91765c\",\n"
+    "        \"E1-R3 provenance-preserving Primary MEM formation summary: complete\",\n"
+    "        \"E1-R4 retrieval-response grounding and unsupported-detail suppression: complete\",\n"
+    "        \"W7-INT is merged.\",\n"
+    "    ),\n",
+    "",
+    1,
+)
 
 waves_index = read("docs/evidence/waves/README.md")
 wave6_line = "- [Wave 6 cross-slice convergence audit](wave6_cross_slice_convergence_audit.md) — frozen boundary after PRs #429 through #435, merged as W6-INT.\n"
@@ -213,9 +234,9 @@ verification:
   repository_root_literal_reference_files_updated_in_pr_tree: 2
   repository_root_literal_reference_occurrences_updated_in_pr_tree: 3
   script_hard_coded_path_reference_files_updated_in_pr_tree: 2
-  script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 3
-  relative_markdown_link_referrer_files_at_frozen_baseline: 4
-  relative_markdown_link_dependencies_at_frozen_baseline: 5
+  script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 4
+  relative_markdown_link_referrer_files_at_frozen_baseline: 5
+  relative_markdown_link_dependencies_at_frozen_baseline: 6
   current_tree_related_authority_references_updated: 4
   current_boundary_smoke_historical_path_removed: true
   e1_evaluation_smoke_updated: true
@@ -226,7 +247,7 @@ verification:
   unresolved_review_threads: 0
 ```
 
-The canonical evidence document preserves the complete Wave 7 convergence account while correcting six internal relative links for the evidence collection. The exact pre-cutover source remains available as the original Git blob. The dependency sweep identified three repository-root literals across two files, three hard-coded script occurrences across two smoke files, five Markdown relative links across four referrer files, and four `relaylm_related_authority` YAML references. The old path above is only the historical migration identifier for this receipt.
+The canonical evidence document preserves the complete Wave 7 convergence account while correcting six internal relative links for the evidence collection. The exact pre-cutover source remains available as the original Git blob. The dependency sweep identified three repository-root literals across two files, four hard-coded script occurrences across two smoke files, six Markdown relative links across five referrer files, and four `relaylm_related_authority` YAML references. The old path above is only the historical migration identifier for this receipt.
 
 """
 assert "### C1C9-001" not in receipt
@@ -242,7 +263,7 @@ assert canonical_path.exists()
 old_full = "docs/architecture/wave7_cross_slice_convergence_audit.md"
 occurrences = []
 for path in ROOT.rglob("*"):
-    if not path.is_file() or ".git" in path.parts:
+    if not path.is_file() or ".git" in path.parts or ".github" in path.parts:
         continue
     try:
         text = path.read_text(encoding="utf-8")
