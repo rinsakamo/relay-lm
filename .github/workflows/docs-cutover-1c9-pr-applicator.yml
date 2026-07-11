@@ -23,7 +23,11 @@ jobs:
           fetch-depth: 0
 
       - name: Apply Wave 7 evidence cutover
-        run: python .github/scripts/docs_cutover_1c9.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's/if not path.is_file() or "\.git" in path.parts:/if not path.is_file() or ".git" in path.parts or ".github" in path.parts:/' .github/scripts/docs_cutover_1c9.py
+          python .github/scripts/docs_cutover_1c9.py
 
       - name: Validate cutover
         shell: bash
