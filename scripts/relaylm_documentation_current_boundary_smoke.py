@@ -24,7 +24,6 @@ CURRENT_DOCS = (
     "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
     "docs/architecture/e1r4_retrieval_response_grounding.md",
     "docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md",
-    "docs/architecture/e1r5_post_wave7_correction_convergence_audit.md",
     "docs/architecture/acg1_analyzer_candidate_governance_contract.md",
     "docs/architecture/acg5_relayemo_scene_cleanup.md",
     "docs/architecture/cw_a5_character_creation_templates_showcase_import.md",
@@ -261,14 +260,6 @@ REQUIRED = {
         "former `relaymem_primary_recall_candidate_bridge_runtime` module remains compatibility no-op only",
         "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
         "E1-R5 completion report",
-    ),
-    "docs/architecture/e1r5_post_wave7_correction_convergence_audit.md": (
-        "relaylm_doc_type: integration_convergence_audit",
-        "# E1-R5 Post-Wave-7 Correction Convergence Audit",
-        "M2 remains the preferred relevance owner.",
-        "PM-D8: E1-R5 bounded Primary MEM candidate fallback folded into canonical Primary recall adapter in PR #491",
-        "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
-        "PYTHONPATH=. python scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py",
     ),
     "docs/architecture/e1_evaluation_consolidation.md": (
         "E1-R5 Primary MEM recall candidate discovery bridge is complete.",
