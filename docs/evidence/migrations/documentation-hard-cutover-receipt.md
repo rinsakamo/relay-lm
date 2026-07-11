@@ -71,7 +71,7 @@ The exact source snapshot intentionally retains its original pre-adoption metada
 ### C1B-001 — low-value MVP milestone snapshots
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 556
 merged_commit: pending
 disposition: deleted_git_history_only
 record_count: 34
@@ -83,7 +83,7 @@ verification:
   every_old_blob_sha_listed: true
   every_old_content_sha256_listed: true
   source_commit_and_source_pr_recorded_when_available: true
-  all_paths_removed_in_pr_tree: pending
+  all_paths_removed_in_pr_tree: true
   recoverable_from_git_history: true
 ```
 
@@ -91,7 +91,7 @@ The TSV appendix is the file-level receipt for this batch. It is intentionally n
 
 ## Pending batches
 
-- Cutover 1B: merge low-value MVP snapshot deletion and resolve its pending receipt fields.
+- Cutover 1B: merge low-value MVP snapshot deletion and record the merged commit.
 - Cutover 1C: retained implementation, wave, evaluation, and release evidence migration.
 - Later cutovers: architecture synthesis, exact contract reconstruction, old-tree removal, and final invariant enforcement.
 
