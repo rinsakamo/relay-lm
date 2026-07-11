@@ -427,7 +427,7 @@ Canonical related authorities
 
 ### 9.6 Generated and source-derived documentation
 
-次は code / schema から生成または自動照合する。
+次は code / schema から生成または自動照合する長期 target とする。
 
 - config field / default / bounds
 - public enum
@@ -449,6 +449,8 @@ relaylm_generator: scripts/...
 ```
 
 生成物を手編集しない。生成不能な解説は別の hand-written guide / architecture に置く。
+
+ただし generator 群の実装は docs cutover の完了条件に含めない。cutover で必須とするのは、code 由来の exact table を新たに手書き複製しないことと、既存の重複表を削除または canonical source への link に置き換えることまでとする。generator 導入と drift 検査は post-cutover の独立トラックで実施する。
 
 ### 9.7 Code / contract / test traceability
 
@@ -726,9 +728,11 @@ v0.1 validation 中は採択準備、inventory、template、dry-run script、syn
 - metadata coverage 100%
 - live link / import / script に残る old docs path reference 0
 - frozen migration receipt の `old_path` provenance field は old-path literal 検査から除外
-- duplicate authority / orphan active doc 0
-- generated docs drift 0
-- directory / document-shape invariant CI を有効化
+- duplicate authority key 0
+- code 由来の exact table の新規手書き複製 0
+- 既存の重複 exact table を削除または canonical source への link に置換
+- directory invariant の MUST checks を有効化
+- WARN / deferred checks は非 blocking で結果を記録
 - `docs/assets/` と `docs/templates/` を support directory として allowlist
 - frozen migration receipt を確定
 
@@ -766,51 +770,58 @@ contract は normative digest before / after と anchor verification を追加�
 
 ## 16. Semantic audit
 
-cutover 完了後の audit は directory invariant と document-shape invariant を中心とする。
+cutover の audit は、誤検出リスクと実装成熟度に応じて **MUST / WARN / deferred** の 3 層へ分ける。cutover を blocking するのは MUST failure のみとする。
 
-### 16.1 Placement and lifecycle
+### 16.1 MUST — cutover blocking
 
-- 全 active / evidence Markdown に front matter
-- path と document type が一致
-- exact contract は `contracts/` のみ
-- architecture に handoff、dated result、roadmap、completion evidence がない
-- proposals に accepted / rejected / withdrawn proposal がない
-- evidence は `historical`
-- `historical_after_merge` を拒否
-- old top-level directory を拒否
+機械判定可能で、誤検出が少なく、権威または安全境界を直接守る規則を含める。
 
-### 16.2 Shape and granularity
+- 全 active / evidence Markdown に front matter がある
+- path と document type が一致する
+- exact contract は `contracts/` にのみ存在する
+- proposals に accepted / rejected / withdrawn proposal が残らない
+- evidence は `historical` である
+- `historical_after_merge` と旧 top-level directory を拒否する
+- duplicate authority key が 0
+- contract anchor / normative digest が一致する
+- live link / import / script に残る old docs path reference が 0
+- frozen migration receipt の provenance path は old-path 検査から除外する
+- front matter が参照する related path、code source、verification path が存在する
+- docs link check と README asset link check が green
+
+個別安全境界 anchor は、新 invariant が同等以上の保証を持つまで MUST として維持する。
+
+### 16.2 WARN — cutover 非 blocking
+
+構造・粒度・可読性の改善に有用だが、初期段階では主観判定または誤検出を含み得る規則を警告として開始する。
 
 - architecture subtype が system / subsystem / concept のいずれか
-- subtype ごとの必須 section がある
-- active filename に phase / wave / PR / date を含めない
-- duplicate title / duplicate authority key を拒否
-- one-document/one-authority violation を検出
-- system / subsystem / concept の parent relation が有効
-- slice ID を含む active architecture を warning または fail
+- subtype ごとの推奨 section が不足している
+- 短い concept note は、不要 section に `Not applicable: <reason>` を明記すれば警告を抑制できる
+- active filename に phase / wave / PR / date が含まれる
+- duplicate title がある
+- one-document/one-authority violation の疑いがある
+- system / subsystem / concept の parent relation が不明確
+- slice ID を含む active architecture がある
+- owner、update trigger、incoming router link のいずれかがない
+- stale trigger candidate がある
+- ambiguous generic heading がある
+- example の authoritative role が不明確
+- diagram source または text summary が不足している
+- bilingual root README の主要 section parity に差がある
 
-### 16.3 Traceability and drift
+WARN は cutover を停止しない。Preparation と cutover の各 PR で結果をレビューし、誤検出率と運用価値を確認した規則だけを将来 MUST へ昇格する。
 
-- code-derived reference が generator output と一致
-- contract anchor / normative digest が一致
-- `relaylm_code_sources` と `relaylm_verified_by` の path が存在
-- stale trigger candidate を報告
-- router から到達不能な active doc を拒否
-- live link / import / script に残る old docs path reference 0
-- frozen migration receipt の provenance path は上記検査から除外
-- README asset link green
-- bilingual root README の主要 link / section parity を検証
+### 16.3 Deferred — post-cutover track
 
-### 16.4 AI readability and safety
+ツールチェーン開発を必要とし、docs hard cutover の成立条件ではない規則を deferred とする。
 
-- active 文書に authority summary / purpose / scope / non-goals
-- 1 H1
-- ambiguous generic heading を warning
-- example の authoritative role が明示
-- content-bearing private data pattern を拒否
-- diagram source / text summary の存在を検証
+- config / CLI / schema / API reference generator の実装
+- generated docs drift check
+- code diff から関連 docs の更新要否を推定する高度な stale detection
+- semantic duplication の自動判定
 
-個別安全境界 anchor は、新 invariant が同等以上の保証を持つまで削除しない。
+これらは post-cutover の独立トラックで導入し、導入前は informative report にとどめる。
 
 ## 17. 完了条件
 
@@ -827,42 +838,54 @@ cutover 完了後の audit は directory invariant と document-shape invariant 
 - active 文書は 1 文書 1 権威
 - `PROJECT_STATUS.md` が repository-wide current implementation authority
 - accepted ADR と implemented behavior が分離
-- generated reference の source authority が一意
+- code 由来の exact table を新たに手書き複製していない
+- 既存の重複 exact table が削除されるか canonical source への link に置き換えられている
 
 ### Architecture quality
 
 - canonical architecture graph が存在
-- architecture は system / subsystem / concept の型に適合
-- milestone-ID active architecture が 0
 - architecture / contract / evidence / planning の混載が 0
 - synthesis source mapping が receipt に残る
+- architecture subtype、section completeness、milestone-ID naming は WARN として全件レビュー済み
 
 ### Metadata and verification
 
+- MUST audit failure 0
 - front matter coverage 100%
 - `historical_after_merge` 0
 - legacy exception / manifest 0
 - duplicate authority key 0
-- orphan active doc 0
-- generated docs drift 0
 - contract normative digest 一致
 - frozen receipt が retained を含む全旧文書の disposition を説明
+- WARN と deferred の結果が記録され、必要な follow-up が独立 task として整理されている
 
 ## 18. 採択後の実装単位
 
-### Preparation PR（v0.1 receipt 前でも可）
+### Preparation PR 群（v0.1 receipt 前でも可）
+
+Preparation は単一の巨大 PR にせず、レビュー可能性を優先して 2〜3 PR に分割してよい。推奨分割は次のとおり。
+
+#### Preparation A: decision and model
 
 - documentation information architecture ADR
 - `DOCUMENTATION_MODEL.md` 新モデル草案
 - document templates
 - canonical glossary draft
-- architecture inventory / target graph
-- placement / granularity tie-breaker
-- provenance / generator / normative-block extraction script
-- cutover dry-run artifact
 - 本 proposal の lifecycle 定義
 
-canonical path はまだ変更しない。
+#### Preparation B: inventory and target graph
+
+- architecture inventory
+- target architecture graph
+- placement / granularity tie-breaker の適用結果
+
+#### Preparation C: migration tooling and dry-run
+
+- provenance extraction script
+- normative-block extraction / digest script
+- cutover dry-run artifact
+
+canonical path はまだ変更しない。reference generator 群と generated-doc drift check は Preparation / cutover から外し、post-cutover の独立トラックとする。
 
 ### Cutover PR 群（v0.1 frozen tag receipt 後）
 
@@ -881,10 +904,12 @@ canonical path はまだ変更しない。
 - AI 検索時の権威分離
 - 設計文書の構造・粒度の一貫性
 - code / contract / test / evidence の追跡可能性
-- generated reference の drift 防止
+- 手書き exact reference の drift 抑制
 - canonical vocabulary と stable naming
 - CI の長期保守性
 - current / target / evidence の誤読防止
 - pre-v0.1 のうちに情報アーキテクチャ負債を解消すること
+
+本提案の設計範囲はここで凍結する。docs site generation、検索 index、外部公開等の追加論点は、本 cutover の採択・実施を妨げず、必要に応じて別 proposal として扱う。
 
 結論として、RelayLM では「検索と運用のための互換性は捨てるが、意思決定と検証の証拠は残す」に加え、「配置だけでなく文書の型・粒度・生成元・検証関係まで正規化する」を正式方針とする。
