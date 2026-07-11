@@ -91,7 +91,7 @@ W5-INT verifies the source PR numbers, merge commits, and dedicated handoffs for
 - [O1E completion report](wave5/o1e_completion_report.md) — source PR #426, merge `49750ccb693ab6ebca1f5a0947c69c06a4a03d31`.
 - [I-4F completion report](wave5/i4f_completion_report.md) — source PR #427, merge `937718dcb328fda5e3e37bb951b39fc66629f57a`.
 
-The Wave 5 cross-slice convergence record is [Wave 5 Cross-Slice Convergence Audit](../architecture/wave5_cross_slice_convergence_audit.md). W5-INT is merged.
+The Wave 5 cross-slice convergence record is [Wave 5 Cross-Slice Convergence Audit](../evidence/waves/wave5_cross_slice_convergence_audit.md). W5-INT is merged.
 
 ### Wave 4 merged completion reports
 
