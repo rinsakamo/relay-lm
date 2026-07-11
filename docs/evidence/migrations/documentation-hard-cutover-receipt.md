@@ -188,7 +188,7 @@ The canonical evidence document preserves the complete Wave 2 convergence accoun
 ### C1C5-001 — Wave 3 cross-slice convergence audit
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 562
 merged_commit: pending
 old_path: docs/architecture/wave3_cross_slice_convergence_audit.md
 old_blob_sha: dc821cd28b045a65ed98b9ee24dfae31278a6289
