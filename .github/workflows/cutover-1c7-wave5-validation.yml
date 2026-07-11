@@ -1,0 +1,117 @@
+name: Cutover 1C-7 Wave 5 validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/cutover-1c7-wave5-validation.yml"
+      - "docs/architecture/wave5_cross_slice_convergence_audit.md"
+      - "docs/evidence/waves/wave5_cross_slice_convergence_audit*"
+      - "docs/evidence/migrations/documentation-hard-cutover-receipt.md"
+      - "docs/README.md"
+      - "docs/architecture/README.md"
+      - "docs/mvp/README.md"
+      - "docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md"
+      - "docs/architecture/phase_i4_primary_mem_forget_hide_contract.md"
+      - "scripts/relaylm_wave5_cross_slice_convergence_smoke.py"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install validation dependencies
+        run: python -m pip install pyyaml
+      - name: Compile and self-test cutover inventory tools
+        run: |
+          python -m compileall -q \
+            scripts/relaylm_docs_cutover_prepare.py \
+            scripts/relaylm_docs_relative_link_inventory.py
+          python scripts/relaylm_docs_cutover_prepare.py --self-test
+          python scripts/relaylm_docs_relative_link_inventory.py --self-test
+      - name: Generate Wave 5 pre-cutover inventories
+        run: |
+          set -euo pipefail
+          baseline="76ba837809098be1659f07edfddd9a8a74b1ecac"
+          output="generated/cutover-1c7-wave5-validation"
+          python scripts/relaylm_docs_cutover_prepare.py \
+            --baseline "$baseline" \
+            --rules docs/planning/documentation-cutover-rules.yaml \
+            --output-dir "$output"
+          python scripts/relaylm_docs_relative_link_inventory.py \
+            --baseline "$baseline" \
+            --output-dir "$output" \
+            --assert-dependency \
+              "docs/architecture/wave5_cross_slice_convergence_audit.md=docs/README.md" \
+            --assert-dependency \
+              "docs/architecture/wave5_cross_slice_convergence_audit.md=docs/architecture/README.md" \
+            --assert-dependency \
+              "docs/architecture/wave5_cross_slice_convergence_audit.md=docs/mvp/README.md" \
+            --strict
+      - name: Verify Wave 5 frozen dependency inventory
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path("generated/cutover-1c7-wave5-validation")
+          target = "docs/architecture/wave5_cross_slice_convergence_audit.md"
+          inventory = json.loads((root / "inventory.json").read_text(encoding="utf-8"))
+          record = next(item for item in inventory["records"] if item["old_path"] == target)
+          assert record["old_blob_sha"] == "69b05a5f8380dd26be4dd51f57620278bf57ca76", record
+          assert record["content_sha256"] == "b3935dc5a49da95a594897969c1b3430fd2e931f1dd4f909705afdbe29b36036", record
+          assert record["path_dependency_count"] == 2, record
+
+          literal = json.loads((root / "path-dependencies.json").read_text(encoding="utf-8"))[target]
+          assert {(item["kind"], item["referrer"]) for item in literal} == {
+              ("script", "scripts/relaylm_wave5_cross_slice_convergence_smoke.py"),
+              ("documentation", "docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md"),
+          }, literal
+
+          relative = json.loads((root / "relative-path-dependencies.json").read_text(encoding="utf-8"))["dependencies"][target]
+          assert len(relative) == 4, relative
+          assert {item["referrer"] for item in relative} == {
+              "docs/README.md",
+              "docs/architecture/README.md",
+              "docs/mvp/README.md",
+          }, relative
+          print("Wave 5 frozen inventories match the recorded dependency classes")
+          PY
+      - name: Verify current-tree hard cutover invariants with rg
+        run: |
+          set -euo pipefail
+          old_path="docs/architecture/wave5_cross_slice_convergence_audit.md"
+          old_name="wave5_cross_slice_convergence_audit.md"
+          test ! -e "$old_path"
+          test "$(git hash-object docs/evidence/waves/wave5_cross_slice_convergence_audit-source.txt)" = \
+            "69b05a5f8380dd26be4dd51f57620278bf57ca76"
+
+          echo "Repository-root literal references:"
+          rg -n --fixed-strings "$old_path" . || true
+          test "$(rg -l --fixed-strings "$old_path" . | wc -l)" -eq 1
+          rg -l --fixed-strings "$old_path" . | grep -Fx \
+            "./docs/evidence/migrations/documentation-hard-cutover-receipt.md"
+
+          echo "Filename references for manual classification:"
+          rg -n --fixed-strings "$old_name" docs scripts .github || true
+
+          echo "Canonical references:"
+          rg -n --fixed-strings \
+            "docs/evidence/waves/wave5_cross_slice_convergence_audit.md" \
+            docs scripts .github || true
+
+          git diff --check "76ba837809098be1659f07edfddd9a8a74b1ecac...HEAD"
+      - name: Upload cutover inventory evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1c7-wave5-inventory
+          path: generated/cutover-1c7-wave5-validation
+          retention-days: 14
