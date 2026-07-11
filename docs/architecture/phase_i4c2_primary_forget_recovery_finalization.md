@@ -10,7 +10,7 @@ relaylm_related_authority:
   - phase_i4b_primary_current_state_shared_fence.md
   - phase_i4c1_primary_forget_hidden_successor.md
   - phase_i4d_primary_retrieval_exclusion.md
-  - wave2_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave2_cross_slice_convergence_audit.md
 relaylm_not_authoritative_for:
   - I-4D ordinary retrieval exclusion
   - I-4E API or UI
