@@ -161,7 +161,7 @@ The three source snapshots are byte-for-byte copies of the original blobs. `mvp2
 ### C1C4-001 — Wave 2 cross-slice convergence audit
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 561
 merged_commit: pending
 old_path: docs/architecture/wave2_cross_slice_convergence_audit.md
 old_blob_sha: 8a601773aef9619ff19a6e750736783a2c9415bc
