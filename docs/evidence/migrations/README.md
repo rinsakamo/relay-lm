@@ -20,3 +20,4 @@ This collection records path maps, source provenance, exact-copy verification, d
 ## Active records
 
 - [Documentation Hard-Cutover Migration Receipt](documentation-hard-cutover-receipt.md) — append-only ledger for the authority-first documentation cutover.
+- [`cutover-1b-mvp-snapshot-deletions.tsv`](cutover-1b-mvp-snapshot-deletions.tsv) — file-level provenance for 34 low-value MVP milestone snapshots classified as Git-history-only.

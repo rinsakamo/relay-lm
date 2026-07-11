@@ -48,7 +48,7 @@ cutover state: active
 
 ```yaml
 cutover_pr: 555
-merged_commit: pending
+merged_commit: 3fd9b6dd833c869f50620355ffa698c41f496f10
 old_path: docs/proposals/documentation_restructure_proposal.md
 old_blob_sha: 4707ee9cd6d0a8184f36782cdd537e6a71a10131
 old_content_sha256: 7c9d7fbc3b5a080ab601d9fcc67f95bdfdc712d9836d569de3b40a19c493ef91
@@ -59,18 +59,45 @@ new_canonical_path: docs/evidence/proposals/documentation-restructure-proposal.m
 exact_source_snapshot: docs/evidence/proposals/documentation-restructure-proposal-source.txt
 exact_source_blob_sha: 4707ee9cd6d0a8184f36782cdd537e6a71a10131
 verification:
-  old_path_removed_in_pr_tree: true
+  old_path_removed: true
   source_blob_reused_exactly: true
   canonical_evidence_metadata_added: true
-  live_navigation_links_updated_in_pr_tree: true
+  live_navigation_links_updated: true
   baseline_inventory_literals_retained_as_migration_inputs: true
 ```
 
 The exact source snapshot intentionally retains its original pre-adoption metadata as immutable source text. The canonical Markdown evidence record carries the post-decision authority and lifecycle metadata.
 
+### C1B-001 — low-value MVP milestone snapshots
+
+```yaml
+cutover_pr: 556
+merged_commit: pending
+disposition: deleted_git_history_only
+record_count: 34
+record_file: docs/evidence/migrations/cutover-1b-mvp-snapshot-deletions.tsv
+selection_rule: docs/mvp/mvp[0-9]+_summary.md classified as redundant milestone snapshots
+preparation_c_literal_docs_path_dependency_count_per_record: 0
+relative_link_dependency:
+  source: docs/mvp/README.md
+  link_count: 34
+  resolution: removed_in_same_pr
+verification:
+  every_old_path_listed: true
+  every_old_blob_sha_listed: true
+  every_old_content_sha256_listed: true
+  source_commit_and_source_pr_recorded_when_available: true
+  all_paths_removed_in_pr_tree: true
+  relative_index_links_removed_in_pr_tree: true
+  documentation_link_check_required: true
+  recoverable_from_git_history: true
+```
+
+The TSV appendix is the file-level receipt for this batch. It is intentionally non-Markdown so embedded pre-cutover paths and metadata cannot be mistaken for active documentation authority. The Preparation C literal-path scan did not cover relative Markdown links; PR #556 corrects the MVP index and records that limitation explicitly.
+
 ## Pending batches
 
-- Cutover 1B: low-value MVP snapshot deletion with `deleted_git_history_only` entries.
+- Cutover 1B: merge low-value MVP snapshot deletion and record the merged commit.
 - Cutover 1C: retained implementation, wave, evaluation, and release evidence migration.
 - Later cutovers: architecture synthesis, exact contract reconstruction, old-tree removal, and final invariant enforcement.
 
