@@ -454,7 +454,7 @@ relaylm_generator: scripts/...
 
 ### 9.7 Code / contract / test traceability
 
-current contract と重要 architecture は、機械可読な関連を持つ。
+current contract と重要 architecture は、存在する関連だけを機械可読 metadata として持つ。
 
 ```yaml
 relaylm_code_sources:
@@ -466,6 +466,8 @@ relaylm_related_contracts:
   - ../contracts/...
 ```
 
+- `relaylm_code_sources` と `relaylm_related_contracts` は該当する文書だけに付ける。
+- `relaylm_verified_by` は実際にその boundary を検証する test / workflow が存在する場合だけ付け、全 architecture へ機械的に要求しない。
 - code source が変更された PR では関連 docs / verification の更新要否を CI が表示する。
 - `verified_by` は「この文書全体が正しい」と保証せず、検証される boundary を本文または test 名で特定する。
 - test のない rationale 文書へ偽の verification を付けない。
@@ -786,7 +788,7 @@ cutover の audit は、誤検出リスクと実装成熟度に応じて **MUST 
 - contract anchor / normative digest が一致する
 - live link / import / script に残る old docs path reference が 0
 - frozen migration receipt の provenance path は old-path 検査から除外する
-- front matter が参照する related path、code source、verification path が存在する
+- front matter に記載された related path、code source、verification path が存在する。省略可能 field が存在しないこと自体は failure としない
 - docs link check と README asset link check が green
 
 個別安全境界 anchor は、新 invariant が同等以上の保証を持つまで MUST として維持する。
