@@ -77,17 +77,23 @@ disposition: deleted_git_history_only
 record_count: 34
 record_file: docs/evidence/migrations/cutover-1b-mvp-snapshot-deletions.tsv
 selection_rule: docs/mvp/mvp[0-9]+_summary.md classified as redundant milestone snapshots
-path_dependency_count_per_record: 0
+preparation_c_literal_docs_path_dependency_count_per_record: 0
+relative_link_dependency:
+  source: docs/mvp/README.md
+  link_count: 34
+  resolution: removed_in_same_pr
 verification:
   every_old_path_listed: true
   every_old_blob_sha_listed: true
   every_old_content_sha256_listed: true
   source_commit_and_source_pr_recorded_when_available: true
   all_paths_removed_in_pr_tree: true
+  relative_index_links_removed_in_pr_tree: true
+  documentation_link_check_required: true
   recoverable_from_git_history: true
 ```
 
-The TSV appendix is the file-level receipt for this batch. It is intentionally non-Markdown so embedded pre-cutover paths and metadata cannot be mistaken for active documentation authority.
+The TSV appendix is the file-level receipt for this batch. It is intentionally non-Markdown so embedded pre-cutover paths and metadata cannot be mistaken for active documentation authority. The Preparation C literal-path scan did not cover relative Markdown links; PR #556 corrects the MVP index and records that limitation explicitly.
 
 ## Pending batches
 
