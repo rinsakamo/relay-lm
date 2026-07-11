@@ -76,14 +76,6 @@ jobs:
         shell: bash
         run: python .github/scripts/docs_cutover_1c10.py > cutover-apply.log 2>&1
 
-      - name: Upload cutover diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: docs-cutover-1c10-diagnostics
-          path: cutover-apply.log
-          if-no-files-found: error
-
       - name: Stop after applicator failure
         if: steps.cutover.outcome == 'failure'
         shell: bash
@@ -92,21 +84,48 @@ jobs:
           exit 1
 
       - name: Validate cutover
+        id: validate
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
-          python -m compileall relaylm scripts
-          python scripts/relaylm_docs_link_check.py
-          python scripts/relaylm_docs_semantic_audit.py
-          python scripts/relaylm_documentation_current_boundary_smoke.py
-          python scripts/relaylm_e1_evaluation_consolidation_smoke.py
-          git diff --check
+          set -o pipefail
+          {
+            echo '=== compileall ==='
+            python -m compileall relaylm scripts
+            echo '=== documentation links ==='
+            python scripts/relaylm_docs_link_check.py
+            echo '=== semantic audit ==='
+            python scripts/relaylm_docs_semantic_audit.py
+            echo '=== current boundary ==='
+            python scripts/relaylm_documentation_current_boundary_smoke.py
+            echo '=== E1 consolidation ==='
+            python scripts/relaylm_e1_evaluation_consolidation_smoke.py
+            echo '=== diff check ==='
+            git diff --check
+          } > cutover-validation.log 2>&1
+
+      - name: Upload cutover diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-cutover-1c10-diagnostics
+          path: |
+            cutover-apply.log
+            cutover-validation.log
+          if-no-files-found: error
+
+      - name: Stop after validation failure
+        if: steps.validate.outcome == 'failure'
+        shell: bash
+        run: |
+          cat cutover-validation.log
+          exit 1
 
       - name: Commit cutover
         shell: bash
         run: |
           set -euo pipefail
-          rm -f cutover-apply.log
+          rm -f cutover-apply.log cutover-validation.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
