@@ -113,7 +113,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [Wave 4 Cross-Slice Convergence Audit](../evidence/waves/wave4_cross_slice_convergence_audit.md) — frozen historical convergence evidence, not active architecture.
 - [Wave 5 Cross-Slice Convergence Audit](../evidence/waves/wave5_cross_slice_convergence_audit.md) — frozen historical convergence evidence, not active architecture.
 - [Wave 6 Cross-Slice Convergence Audit](../evidence/waves/wave6_cross_slice_convergence_audit.md) — frozen historical convergence evidence, not active architecture.
-- [Wave 7 Cross-Slice Convergence Audit](wave7_cross_slice_convergence_audit.md)
+- [Wave 7 Cross-Slice Convergence Audit](../evidence/waves/wave7_cross_slice_convergence_audit.md)
 - [SOUL Lab UI-B0 Real Home Conversation](soul_lab_ui_b0_real_home_conversation.md)
 - [SOUL Lab UI-B1A Lifecycle Visibility](soul_lab_ui_b1a_lifecycle_visibility.md)
 - [RelayMEM / RelaySLP Current / Target Boundary](relaymem_slp_current_target.md)
@@ -175,7 +175,7 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 
 ## Wave 7 implementation evidence
 
-- [Wave 7 Cross-Slice Convergence Audit](wave7_cross_slice_convergence_audit.md)
+- [Wave 7 Cross-Slice Convergence Audit](../evidence/waves/wave7_cross_slice_convergence_audit.md)
 - [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md)
 - [E1-R3 completion report](../mvp/wave7/e1r3_completion_report.md)
 - [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md)
