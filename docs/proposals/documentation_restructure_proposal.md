@@ -571,7 +571,7 @@ normative_digest_after: <sha256>
 verification: exact_match
 ```
 
-既存 semantic anchor check は cutover 中も維持し、新 directory invariant へ置き換えるのは最終 enforcement PR とする。
+既存 semantic anchor check は cutover 中も維持する。path-bound required-doc check と workflow reference は、対象文書の移動・削除と同一 PR で新 canonical path へ更新し、旧 path と新 path の二重許容は導入しない。最終 enforcement PR では残存する個別 path list を generic directory / authority invariant へ置き換える。
 
 ## 11. Metadata の一括正規化
 
@@ -667,6 +667,7 @@ v0.1 validation 中は採択準備、inventory、template、dry-run script、syn
 - legacy manifest / exception list を作らない。
 - 最終 directory invariant は最終 enforcement PR で有効化する。
 - 各領域 PR は担当領域を完結させ、同一 authority を旧 path と新 path へ二重保持しない。
+- 各 cutover PR は、その PR で変更する docs path を参照する semantic audit、boundary smoke、workflow、script を同時更新する。
 
 ### Cutover 1: evidence 移動・削除分類
 
@@ -733,6 +734,7 @@ v0.1 validation 中は採択準備、inventory、template、dry-run script、syn
 - duplicate authority key 0
 - code 由来の exact table の新規手書き複製 0
 - 既存の重複 exact table を削除または canonical source への link に置換
+- 残存する hard-coded required-doc path list を generic directory / authority invariant へ置換
 - directory invariant の MUST checks を有効化
 - WARN / deferred checks は非 blocking で結果を記録
 - `docs/assets/` と `docs/templates/` を support directory として allowlist
@@ -885,6 +887,7 @@ Preparation は単一の巨大 PR にせず、レビュー可能性を優先し�
 
 - provenance extraction script
 - normative-block extraction / digest script
+- path-bound audit / workflow dependency inventory と cutover PR ごとの更新計画
 - cutover dry-run artifact
 
 canonical path はまだ変更しない。reference generator 群と generated-doc drift check は Preparation / cutover から外し、post-cutover の独立トラックとする。
