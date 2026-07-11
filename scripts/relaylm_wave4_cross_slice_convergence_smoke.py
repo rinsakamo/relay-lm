@@ -103,7 +103,7 @@ TOUCHED_DOCS = (
     "docs/architecture/project_execution_plan.md",
     "docs/architecture/current_target_migration_guide.md",
     "docs/architecture/relaymem_slp_current_target.md",
-    "docs/architecture/wave4_cross_slice_convergence_audit.md",
+    "docs/evidence/waves/wave4_cross_slice_convergence_audit.md",
 )
 
 
@@ -126,7 +126,7 @@ def forbid(path: str, anchors: tuple[str, ...]) -> None:
 
 
 def validate_source_inventory() -> None:
-    audit = read("docs/architecture/wave4_cross_slice_convergence_audit.md")
+    audit = read("docs/evidence/waves/wave4_cross_slice_convergence_audit.md")
     for pr, commit in SOURCE_PRS.items():
         assert pr in audit, f"audit missing source PR {pr}"
         assert commit in audit, f"audit missing merge commit {commit}"
@@ -139,7 +139,7 @@ def validate_links() -> None:
 
 
 def main() -> None:
-    require("docs/architecture/wave4_cross_slice_convergence_audit.md", WAVE4_REQUIRED)
+    require("docs/evidence/waves/wave4_cross_slice_convergence_audit.md", WAVE4_REQUIRED)
     for path, anchors in CURRENT_REQUIRED.items():
         require(path, anchors)
     for path in TOUCHED_DOCS:

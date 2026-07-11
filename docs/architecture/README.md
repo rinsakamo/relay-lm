@@ -110,7 +110,7 @@ Use [Documentation index](../README.md) for the complete active map, [Project St
 - [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
 - [E1-R5 Post-Wave-7 Correction Convergence Audit](e1r5_post_wave7_correction_convergence_audit.md)
 - [Wave 3 Cross-Slice Convergence Audit](../evidence/waves/wave3_cross_slice_convergence_audit.md) — frozen historical convergence evidence, not active architecture.
-- [Wave 4 Cross-Slice Convergence Audit](wave4_cross_slice_convergence_audit.md)
+- [Wave 4 Cross-Slice Convergence Audit](../evidence/waves/wave4_cross_slice_convergence_audit.md) — frozen historical convergence evidence, not active architecture.
 - [Wave 5 Cross-Slice Convergence Audit](wave5_cross_slice_convergence_audit.md)
 - [Wave 6 Cross-Slice Convergence Audit](wave6_cross_slice_convergence_audit.md)
 - [Wave 7 Cross-Slice Convergence Audit](wave7_cross_slice_convergence_audit.md)
@@ -210,7 +210,7 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 
 ## Wave 4 implementation evidence
 
-- [Wave 4 Cross-Slice Convergence Audit](wave4_cross_slice_convergence_audit.md)
+- [Wave 4 Cross-Slice Convergence Audit](../evidence/waves/wave4_cross_slice_convergence_audit.md)
 - [O1D2 completion report](../mvp/wave4/o1d2_completion_report.md)
 - [I-4E completion report](../mvp/wave4/i4e_completion_report.md)
 - [UI-B1A completion report](../mvp/wave4/ui_b1a_completion_report.md)

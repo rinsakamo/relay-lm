@@ -65,7 +65,7 @@ docs/mvp/README.md
 docs/architecture/project_execution_plan.md
 docs/architecture/relaymem_slp_current_target.md
 docs/architecture/current_target_migration_guide.md
-docs/architecture/wave4_cross_slice_convergence_audit.md
+docs/evidence/waves/wave4_cross_slice_convergence_audit.md
 scripts/relaylm_documentation_current_boundary_smoke.py
 scripts/relaylm_wave4_cross_slice_convergence_smoke.py
 ```
