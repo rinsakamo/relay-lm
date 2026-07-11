@@ -11,6 +11,7 @@ on:
       - "docs/planning/documentation-placement-decisions.md"
       - "scripts/relaylm_docs_cutover_prepare.py"
       - "scripts/relaylm_docs_normative_digest.py"
+      - "scripts/relaylm_docs_relative_link_inventory.py"
       - ".github/workflows/documentation-cutover-preparation.yml"
   push:
     branches:
@@ -19,6 +20,7 @@ on:
       - "docs/planning/documentation-cutover-rules.yaml"
       - "scripts/relaylm_docs_cutover_prepare.py"
       - "scripts/relaylm_docs_normative_digest.py"
+      - "scripts/relaylm_docs_relative_link_inventory.py"
       - ".github/workflows/documentation-cutover-preparation.yml"
 
 permissions:
@@ -41,9 +43,11 @@ jobs:
         run: |
           python -m compileall -q \
             scripts/relaylm_docs_cutover_prepare.py \
-            scripts/relaylm_docs_normative_digest.py
+            scripts/relaylm_docs_normative_digest.py \
+            scripts/relaylm_docs_relative_link_inventory.py
           python scripts/relaylm_docs_cutover_prepare.py --self-test
           python scripts/relaylm_docs_normative_digest.py --self-test
+          python scripts/relaylm_docs_relative_link_inventory.py --self-test
       - name: Generate strict dry run twice
         run: |
           set -euo pipefail
@@ -60,6 +64,14 @@ jobs:
               --inventory "$output/inventory.json" \
               --output-dir "$output" \
               --strict
+            python scripts/relaylm_docs_relative_link_inventory.py \
+              --baseline "$baseline" \
+              --output-dir "$output" \
+              --assert-dependency \
+                "docs/mvp/mvp10_summary.md=docs/mvp/README.md" \
+              --assert-dependency \
+                "docs/PROJECT_STATUS.md=README.md" \
+              --strict
           done
           diff -ru generated/documentation-cutover-a generated/documentation-cutover-b
           mv generated/documentation-cutover-a generated/documentation-cutover
@@ -69,16 +81,20 @@ jobs:
       - name: Publish summary
         if: always()
         run: |
-          if [ -f generated/documentation-cutover/summary.md ]; then
-            cat generated/documentation-cutover/summary.md >> "$GITHUB_STEP_SUMMARY"
-          elif [ -f generated/documentation-cutover-a/summary.md ]; then
-            cat generated/documentation-cutover-a/summary.md >> "$GITHUB_STEP_SUMMARY"
-          fi
-          if [ -f generated/documentation-cutover/normative-digests.md ]; then
-            cat generated/documentation-cutover/normative-digests.md >> "$GITHUB_STEP_SUMMARY"
-          elif [ -f generated/documentation-cutover-a/normative-digests.md ]; then
-            cat generated/documentation-cutover-a/normative-digests.md >> "$GITHUB_STEP_SUMMARY"
-          fi
+          for base in generated/documentation-cutover generated/documentation-cutover-a; do
+            if [ -f "$base/summary.md" ]; then
+              cat "$base/summary.md" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            if [ -f "$base/normative-digests.md" ]; then
+              cat "$base/normative-digests.md" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            if [ -f "$base/relative-path-dependencies.md" ]; then
+              cat "$base/relative-path-dependencies.md" >> "$GITHUB_STEP_SUMMARY"
+            fi
+            if [ -f "$base/summary.md" ]; then
+              break
+            fi
+          done
       - name: Upload dry-run artifacts
         if: always()
         uses: actions/upload-artifact@v4
