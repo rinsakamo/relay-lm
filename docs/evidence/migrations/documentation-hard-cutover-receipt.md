@@ -121,21 +121,42 @@ This move changed placement and lifecycle metadata only. The recorded Phase I-3 
 
 ```yaml
 cutover_pr: 558
-merged_commit: pending
+merged_commit: b81f882fd2d015adbbb0a3987cdbcc12c4173d59
 disposition: evidence_retained
 record_count: 4
 record_file: docs/evidence/migrations/cutover-1c2-early-mvp-smokes.tsv
+verification:
+  old_paths_removed: true
+  preparation_c_literal_path_dependencies_per_record: 0
+  current_filename_search_dependencies_per_record: 0
+  exact_source_blobs_reused: true
+  canonical_evidence_wrappers_added: true
+  historical_commands_marked_non_current: true
+  documentation_link_check: passed
+```
+
+Each source is retained byte-for-byte as a `.txt` snapshot. The canonical Markdown wrapper carries authority, lifecycle, and provenance metadata without presenting the historical commands as current operator guidance.
+
+### C1C3-001 — early MVP-2 compile and diagnostics sources
+
+```yaml
+cutover_pr: 559
+merged_commit: pending
+disposition: evidence_retained
+record_count: 3
+record_file: docs/evidence/migrations/cutover-1c3-mvp2-compile-smokes.tsv
 verification:
   old_paths_removed_in_pr_tree: true
   preparation_c_literal_path_dependencies_per_record: 0
   current_filename_search_dependencies_per_record: 0
   exact_source_blobs_reused: true
   canonical_evidence_wrappers_added: true
-  historical_commands_marked_non_current: true
+  historical_behavior_marked_non_current: true
+  mixed_authority_incoming_system_fallback_excluded: true
   documentation_link_check_required: true
 ```
 
-Each source is retained byte-for-byte as a `.txt` snapshot. The canonical Markdown wrapper carries authority, lifecycle, and provenance metadata without presenting the historical commands as current operator guidance.
+The three source snapshots are byte-for-byte copies of the original blobs. `mvp2_incoming_system_fallback.md` remains outside this batch because it mixes historical implementation detail with current authority interpretation and requires an explicit split or absorption decision.
 
 ## Pending batches
 
