@@ -1,0 +1,293 @@
+name: Documentation cutover 1C-9 applicator
+
+on:
+  push:
+    branches:
+      - "agent/docs-cutover-1c9-wave7"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/docs-cutover-1c9-wave7
+          fetch-depth: 0
+
+      - name: Apply Wave 7 evidence cutover
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          from pathlib import Path
+
+          ROOT = Path.cwd()
+          OLD = Path("docs/architecture/wave7_cross_slice_convergence_audit.md")
+          SNAPSHOT = Path("docs/evidence/waves/wave7_cross_slice_convergence_audit-source.txt")
+          CANONICAL = Path("docs/evidence/waves/wave7_cross_slice_convergence_audit.md")
+          EXPECTED_BLOB = "8bd6635ac4be0c352a3631ee518128b0a3356110"
+          EXPECTED_SHA256 = "265b8fb6db411c65d760a6879d6a00e6e52265d12e7b2ff5b09c3705869eb3c4"
+
+          def git_blob_sha(data: bytes) -> str:
+              header = f"blob {len(data)}\0".encode("ascii")
+              return hashlib.sha1(header + data).hexdigest()
+
+          def read(path: str) -> str:
+              return (ROOT / path).read_text(encoding="utf-8")
+
+          def write(path: str, content: str) -> None:
+              target = ROOT / path
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_text(content, encoding="utf-8")
+
+          def replace(path: str, old: str, new: str, expected: int) -> None:
+              body = read(path)
+              actual = body.count(old)
+              assert actual == expected, f"{path}: expected {expected} occurrences of {old!r}, found {actual}"
+              write(path, body.replace(old, new))
+
+          source_path = ROOT / OLD
+          assert source_path.exists(), f"missing source: {OLD}"
+          assert not (ROOT / SNAPSHOT).exists(), f"snapshot already exists: {SNAPSHOT}"
+          assert not (ROOT / CANONICAL).exists(), f"canonical already exists: {CANONICAL}"
+
+          source_bytes = source_path.read_bytes()
+          assert hashlib.sha256(source_bytes).hexdigest() == EXPECTED_SHA256
+          assert git_blob_sha(source_bytes) == EXPECTED_BLOB
+          source_text = source_bytes.decode("utf-8")
+
+          parts = source_text.split("---\n", 2)
+          assert len(parts) == 3 and parts[0] == "", "unexpected source front matter"
+          body = parts[2]
+
+          link_replacements = (
+              ("(../PROJECT_STATUS.md)", "(../../PROJECT_STATUS.md)", 1),
+              ("(project_execution_plan.md)", "(../../architecture/project_execution_plan.md)", 1),
+              ("(e1r3_provenance_preserving_primary_mem_formation_summary.md)", "(../../architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md)", 1),
+              ("(e1r4_retrieval_response_grounding.md)", "(../../architecture/e1r4_retrieval_response_grounding.md)", 1),
+              ("(../mvp/wave7/e1r3_completion_report.md)", "(../../mvp/wave7/e1r3_completion_report.md)", 1),
+              ("(../mvp/wave7/e1r4_completion_report.md)", "(../../mvp/wave7/e1r4_completion_report.md)", 1),
+          )
+          for old, new, expected in link_replacements:
+              actual = body.count(old)
+              assert actual == expected, f"canonical source: expected {expected} occurrences of {old!r}, found {actual}"
+              body = body.replace(old, new)
+
+          status_needle = "Generated: 2026-06-28 JST.\n\n## Purpose"
+          status_section = """Generated: 2026-06-28 JST.
+
+## Status and authority
+
+W7-INT converged the merged E1-R3 and E1-R4 tracks and was merged through PR #438. Later work may use this document only as frozen evidence for the Wave 7 convergence point.
+
+This audit preserves source PRs, merge commits, integrated authority boundaries, leakage review, non-goals, and frozen next inputs. Dedicated handoffs and production modules remain authoritative for lower-level behavior. Current repository-wide status after Wave 7 belongs to [Project Status](../../PROJECT_STATUS.md).
+
+The exact submitted source is retained byte-for-byte as [wave7_cross_slice_convergence_audit-source.txt](wave7_cross_slice_convergence_audit-source.txt).
+
+## Purpose"""
+          assert body.count(status_needle) == 1
+          body = body.replace(status_needle, status_section)
+
+          metadata = """---
+relaylm_doc_type: evidence
+relaylm_authority: wave7_cross_slice_convergence_record
+relaylm_status: frozen
+relaylm_volatility: low
+relaylm_owner: documentation
+relaylm_update_trigger:
+  - metadata or link repair only
+relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_not_authoritative_for:
+  - current repository-wide implementation status after Wave 7
+  - post-Wave-7 correction or Wave 8 and later completion
+  - exact lower-level subsystem contracts
+relaylm_source_commit: cc1417f93b679e3c2ca2bb5ed78f53e2cb93ad7a
+relaylm_source_pr: 438
+relaylm_recorded_on: 2026-06-28
+relaylm_source_blob: 8bd6635ac4be0c352a3631ee518128b0a3356110
+relaylm_source_content_sha256: 265b8fb6db411c65d760a6879d6a00e6e52265d12e7b2ff5b09c3705869eb3c4
+---
+"""
+
+          snapshot_path = ROOT / SNAPSHOT
+          snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+          snapshot_path.write_bytes(source_bytes)
+          canonical_path = ROOT / CANONICAL
+          canonical_path.write_text(metadata + body, encoding="utf-8")
+          source_path.unlink()
+
+          replace(
+              "docs/README.md",
+              "(architecture/wave7_cross_slice_convergence_audit.md)",
+              "(evidence/waves/wave7_cross_slice_convergence_audit.md)",
+              1,
+          )
+          replace(
+              "docs/mvp/README.md",
+              "(../architecture/wave7_cross_slice_convergence_audit.md)",
+              "(../evidence/waves/wave7_cross_slice_convergence_audit.md)",
+              1,
+          )
+          replace(
+              "docs/PROJECT_STATUS.md",
+              "docs/architecture/wave7_cross_slice_convergence_audit.md",
+              "docs/evidence/waves/wave7_cross_slice_convergence_audit.md",
+              1,
+          )
+          replace(
+              "docs/architecture/README.md",
+              "(wave7_cross_slice_convergence_audit.md)",
+              "(../evidence/waves/wave7_cross_slice_convergence_audit.md)",
+              2,
+          )
+          replace(
+              "docs/architecture/e1_evaluation_consolidation.md",
+              "  - wave7_cross_slice_convergence_audit.md",
+              "  - ../evidence/waves/wave7_cross_slice_convergence_audit.md",
+              1,
+          )
+          replace(
+              "docs/architecture/e1_evaluation_consolidation.md",
+              "(wave7_cross_slice_convergence_audit.md)",
+              "(../evidence/waves/wave7_cross_slice_convergence_audit.md)",
+              1,
+          )
+          replace(
+              "docs/architecture/e1_evaluation_consolidation.md",
+              "docs/architecture/wave7_cross_slice_convergence_audit.md",
+              "docs/evidence/waves/wave7_cross_slice_convergence_audit.md",
+              2,
+          )
+          replace(
+              "scripts/relaylm_e1_evaluation_consolidation_smoke.py",
+              "docs/architecture/wave7_cross_slice_convergence_audit.md",
+              "docs/evidence/waves/wave7_cross_slice_convergence_audit.md",
+              2,
+          )
+          replace(
+              "docs/architecture/relaymem_slp_current_target.md",
+              "  - wave7_cross_slice_convergence_audit.md",
+              "  - ../evidence/waves/wave7_cross_slice_convergence_audit.md",
+              1,
+          )
+          replace(
+              "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
+              "  - wave7_cross_slice_convergence_audit.md",
+              "  - ../evidence/waves/wave7_cross_slice_convergence_audit.md",
+              1,
+          )
+          replace(
+              "scripts/relaylm_documentation_current_boundary_smoke.py",
+              "    \"docs/architecture/wave7_cross_slice_convergence_audit.md\",\n",
+              "",
+              1,
+          )
+
+          waves_index = read("docs/evidence/waves/README.md")
+          wave6_line = "- [Wave 6 cross-slice convergence audit](wave6_cross_slice_convergence_audit.md) — frozen boundary after PRs #429 through #435, merged as W6-INT.\n"
+          wave7_line = "- [Wave 7 cross-slice convergence audit](wave7_cross_slice_convergence_audit.md) — frozen boundary after PRs #436 through #438, merged as W7-INT.\n"
+          assert waves_index.count(wave6_line) == 1
+          assert wave7_line not in waves_index
+          write("docs/evidence/waves/README.md", waves_index.replace(wave6_line, wave6_line + wave7_line))
+
+          receipt_path = "docs/evidence/migrations/documentation-hard-cutover-receipt.md"
+          receipt = read(receipt_path)
+          old_finalize = "cutover_pr: 565\nmerged_commit: pending"
+          new_finalize = "cutover_pr: 565\nmerged_commit: f4a32067e385b563f366b81a68bbadde823febd8"
+          assert receipt.count(old_finalize) == 1
+          receipt = receipt.replace(old_finalize, new_finalize)
+
+          old_wave6_note = "The canonical evidence document preserves the complete Wave 6 convergence account while correcting its live relative links for the evidence collection. The exact pre-cutover source remains available as the original Git blob. The dependency sweep identified one hard-coded current-boundary path, four Markdown relative links across three router files, and two `relaylm_related_authority` YAML references. The old path below is only the historical migration identifier for this receipt."
+          new_wave6_note = "The canonical evidence document preserves the complete Wave 6 convergence account while correcting its live relative links for the evidence collection. The exact pre-cutover source remains available as the original Git blob. The dependency sweep identified one hard-coded current-boundary path, four Markdown relative links across three router files, and two `relaylm_related_authority` YAML references. PR #565 merged as `f4a32067e385b563f366b81a68bbadde823febd8`; C1C8 is finalized by Cutover 1C-9."
+          assert receipt.count(old_wave6_note) == 1
+          receipt = receipt.replace(old_wave6_note, new_wave6_note)
+
+          pending_marker = "## Pending batches\n"
+          assert receipt.count(pending_marker) == 1
+          c1c9 = """### C1C9-001 — Wave 7 cross-slice convergence audit
+
+```yaml
+cutover_pr: pending
+merged_commit: pending
+old_path: docs/architecture/wave7_cross_slice_convergence_audit.md
+old_blob_sha: 8bd6635ac4be0c352a3631ee518128b0a3356110
+old_content_sha256: 265b8fb6db411c65d760a6879d6a00e6e52265d12e7b2ff5b09c3705869eb3c4
+source_commit: cc1417f93b679e3c2ca2bb5ed78f53e2cb93ad7a
+source_pr: 438
+recorded_on: 2026-06-28
+disposition: evidence_retained
+new_canonical_path: docs/evidence/waves/wave7_cross_slice_convergence_audit.md
+exact_source_snapshot: docs/evidence/waves/wave7_cross_slice_convergence_audit-source.txt
+exact_source_blob_sha: 8bd6635ac4be0c352a3631ee518128b0a3356110
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 2
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 3
+  script_hard_coded_path_reference_files_updated_in_pr_tree: 2
+  script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 3
+  relative_markdown_link_referrer_files_at_frozen_baseline: 4
+  relative_markdown_link_dependencies_at_frozen_baseline: 5
+  current_tree_related_authority_references_updated: 4
+  current_boundary_smoke_historical_path_removed: true
+  e1_evaluation_smoke_updated: true
+  documentation_link_check: passed
+  documentation_semantic_audit: pending
+  affected_current_boundary_checks: passed
+  all_github_actions: pending
+  unresolved_review_threads: pending
+```
+
+The canonical evidence document preserves the complete Wave 7 convergence account while correcting six internal relative links for the evidence collection. The exact pre-cutover source remains available as the original Git blob. The dependency sweep identified three repository-root literals across two files, three hard-coded script occurrences across two smoke files, five Markdown relative links across four referrer files, and four `relaylm_related_authority` YAML references. The old path above is only the historical migration identifier for this receipt.
+
+"""
+          assert "### C1C9-001" not in receipt
+          receipt = receipt.replace(pending_marker, c1c9 + pending_marker)
+          write(receipt_path, receipt)
+
+          assert not source_path.exists()
+          assert snapshot_path.read_bytes() == source_bytes
+          assert git_blob_sha(snapshot_path.read_bytes()) == EXPECTED_BLOB
+          assert hashlib.sha256(snapshot_path.read_bytes()).hexdigest() == EXPECTED_SHA256
+          assert (ROOT / CANONICAL).exists()
+
+          old_full = "docs/architecture/wave7_cross_slice_convergence_audit.md"
+          occurrences = []
+          for path in ROOT.rglob("*"):
+              if not path.is_file() or ".git" in path.parts:
+                  continue
+              try:
+                  text = path.read_text(encoding="utf-8")
+              except UnicodeDecodeError:
+                  continue
+              if old_full in text:
+                  occurrences.append(path.relative_to(ROOT).as_posix())
+          assert occurrences == [receipt_path], f"unexpected old full-path occurrences: {occurrences!r}"
+          PY
+
+          python -m compileall relaylm scripts
+          python scripts/relaylm_documentation_link_check.py
+          python scripts/relaylm_documentation_current_boundary_smoke.py
+          python scripts/relaylm_e1_evaluation_consolidation_smoke.py
+          git diff --check
+
+      - name: Commit cutover
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No cutover changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: move Wave 7 convergence audit in cutover 1C-9"
+          git push origin HEAD:agent/docs-cutover-1c9-wave7
