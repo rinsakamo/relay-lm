@@ -98,7 +98,7 @@ jobs:
             echo '=== compileall ==='
             python -m compileall relaylm scripts
             echo '=== documentation links ==='
-            python scripts/relaylm_documentation_link_check.py
+            python scripts/relaylm_docs_link_check.py
             echo '=== semantic audit ==='
             python scripts/relaylm_docs_semantic_audit.py
             echo '=== current boundary ==='
