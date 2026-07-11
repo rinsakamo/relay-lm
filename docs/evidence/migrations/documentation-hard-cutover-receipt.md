@@ -47,7 +47,8 @@ cutover state: active
 ### C1A-001 — accepted documentation restructure proposal
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 555
+merged_commit: pending
 old_path: docs/proposals/documentation_restructure_proposal.md
 old_blob_sha: 4707ee9cd6d0a8184f36782cdd537e6a71a10131
 old_content_sha256: 7c9d7fbc3b5a080ab601d9fcc67f95bdfdc712d9836d569de3b40a19c493ef91
@@ -58,10 +59,11 @@ new_canonical_path: docs/evidence/proposals/documentation-restructure-proposal.m
 exact_source_snapshot: docs/evidence/proposals/documentation-restructure-proposal-source.txt
 exact_source_blob_sha: 4707ee9cd6d0a8184f36782cdd537e6a71a10131
 verification:
-  old_path_removed: pending_merge
+  old_path_removed_in_pr_tree: true
   source_blob_reused_exactly: true
   canonical_evidence_metadata_added: true
-  live_links_updated: pending_merge
+  live_navigation_links_updated_in_pr_tree: true
+  baseline_inventory_literals_retained_as_migration_inputs: true
 ```
 
 The exact source snapshot intentionally retains its original pre-adoption metadata as immutable source text. The canonical Markdown evidence record carries the post-decision authority and lifecycle metadata.
