@@ -9,7 +9,7 @@ relaylm_related_authority:
   - i1g_pre_enqueue_durable_finalization_contract.md
   - i1ge_durable_finalization_crash_validation.md
   - o1b_sealed_i1g_replay_lane.md
-  - wave3_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave3_cross_slice_convergence_audit.md
 relaylm_not_authoritative_for:
   - I1-GE crash-validation harness
   - I1-G replay algorithm

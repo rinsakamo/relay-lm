@@ -29,7 +29,7 @@ relaylm_related_authority:
   - relaymem_slp_current_target.md
   - pipeline_implementation_plan.md
   - post_i3_evaluation_work_roadmap.md
-  - wave3_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave3_cross_slice_convergence_audit.md
   - wave4_cross_slice_convergence_audit.md
   - wave5_cross_slice_convergence_audit.md
   - relaymem_m3e_atomic_primary_page_writer.md

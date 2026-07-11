@@ -29,7 +29,7 @@ relaylm_related_authority:
   - phase6c1_durable_protected_source_persistence.md
   - phase6b2_relayslp_atomic_durable_enqueue.md
   - phase6c2_one_queued_primary_worker_integration.md
-  - wave3_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave3_cross_slice_convergence_audit.md
 ---
 # O1B: Bounded Sealed I1-G Replay-Lane Discovery
 

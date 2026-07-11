@@ -29,7 +29,7 @@ relaylm_related_authority:
   - phase6c2_one_queued_primary_worker_integration.md
   - o1a_two_lane_scheduler_contract.md
   - o1d1_production_scheduler_round.md
-  - wave3_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave3_cross_slice_convergence_audit.md
   - pipeline_implementation_plan.md
   - post_i3_evaluation_work_roadmap.md
 ---

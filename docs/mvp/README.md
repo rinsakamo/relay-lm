@@ -111,7 +111,7 @@ The Wave 4 cross-slice convergence record is [Wave 4 Cross-Slice Convergence Aud
 - [I-4D completion report](wave3/i4d_completion_report.md) — source PR #414, merge `48e890f05f76196b73267559b079f4a05c441077`.
 - [O1D1 completion report](wave3/o1d1_completion_report.md) — source PR #412, merge `9b6349236f1a01f3cdccbe9e3c2c874ae1137475`.
 
-The cross-slice convergence record is [Wave 3 Cross-Slice Convergence Audit](../architecture/wave3_cross_slice_convergence_audit.md). W3-INT is merged.
+The cross-slice convergence record is [Wave 3 Cross-Slice Convergence Audit](../evidence/waves/wave3_cross_slice_convergence_audit.md). W3-INT is merged.
 
 A completion report is evidence for one PR only. It is not authoritative for repository-wide current status, other slice completion, next-wave readiness, or release/evaluation readiness. Use [the template](IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md) and validate reports with:
 

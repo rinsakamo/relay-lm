@@ -20,3 +20,4 @@ This collection preserves frozen cross-slice convergence records after their imp
 ## Records
 
 - [Wave 2 cross-slice convergence audit](wave2_cross_slice_convergence_audit.md) — frozen boundary after PRs #403 through #408.
+- [Wave 3 cross-slice convergence audit](wave3_cross_slice_convergence_audit.md) — frozen boundary after PRs #410 through #415, merged as W3-INT.

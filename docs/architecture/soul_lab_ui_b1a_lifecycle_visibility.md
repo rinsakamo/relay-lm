@@ -15,7 +15,7 @@ relaylm_related_authority:
   - i1gd_durable_finalization_retention_cleanup.md
   - i1ge_durable_finalization_crash_validation.md
   - o1d1_production_scheduler_round.md
-  - wave3_cross_slice_convergence_audit.md
+  - ../evidence/waves/wave3_cross_slice_convergence_audit.md
 relaylm_not_authoritative_for:
   - Forget apply
   - Pin apply

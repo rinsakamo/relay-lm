@@ -12,7 +12,7 @@ relaylm_not_authoritative_for:
 relaylm_related_authority:
   - docs/architecture/o1d2_scheduler_policy.md
   - docs/architecture/o1d1_production_scheduler_round.md
-  - docs/architecture/wave3_cross_slice_convergence_audit.md
+  - docs/evidence/waves/wave3_cross_slice_convergence_audit.md
 ---
 # O1D2 Completion Report
 
