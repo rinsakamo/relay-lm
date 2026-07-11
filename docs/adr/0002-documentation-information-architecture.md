@@ -155,3 +155,4 @@ Only three migration safeguards are retained:
 - [Hard-cutover proposal](../proposals/documentation_restructure_proposal.md)
 - [Document templates](../templates/README.md)
 - [Canonical glossary draft](../reference/glossary.md)
+- [Documentation cutover planning](../planning/README.md)
