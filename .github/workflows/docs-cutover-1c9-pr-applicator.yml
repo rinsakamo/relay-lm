@@ -37,14 +37,14 @@ jobs:
               'if not path.is_file() or ".git" in path.parts or ".github" in path.parts:',
           )
 
-          anchor = '''replace(
+          current_anchor = '''replace(
               "scripts/relaylm_documentation_current_boundary_smoke.py",
               "    \\\"docs/architecture/wave7_cross_slice_convergence_audit.md\\\",\\n",
               "",
               1,
           )
           '''
-          addition = anchor + '''replace(
+          current_addition = current_anchor + '''replace(
               "scripts/relaylm_documentation_current_boundary_smoke.py",
               "    \\\"docs/architecture/wave7_cross_slice_convergence_audit.md\\\": (\\n"
               "        \\\"# Wave 7 Cross-Slice Convergence Audit\\\",\\n"
@@ -60,17 +60,50 @@ jobs:
               1,
           )
           '''
-          assert text.count(anchor) == 1
-          text = text.replace(anchor, addition)
+          assert text.count(current_anchor) == 1
+          text = text.replace(current_anchor, current_addition)
+
+          project_anchor = '''replace(
+              "docs/PROJECT_STATUS.md",
+              "docs/architecture/wave7_cross_slice_convergence_audit.md",
+              "docs/evidence/waves/wave7_cross_slice_convergence_audit.md",
+              1,
+          )
+          '''
+          project_addition = project_anchor + '''replace(
+              "docs/PROJECT_STATUS.md",
+              "(architecture/wave7_cross_slice_convergence_audit.md)",
+              "(evidence/waves/wave7_cross_slice_convergence_audit.md)",
+              1,
+          )
+          '''
+          assert text.count(project_anchor) == 1
+          text = text.replace(project_anchor, project_addition)
+
           assert text.count('script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 3') == 1
           text = text.replace(
               'script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 3',
               'script_hard_coded_path_reference_occurrences_updated_in_pr_tree: 4',
           )
+          assert text.count('relative_markdown_link_referrer_files_at_frozen_baseline: 4') == 1
+          text = text.replace(
+              'relative_markdown_link_referrer_files_at_frozen_baseline: 4',
+              'relative_markdown_link_referrer_files_at_frozen_baseline: 5',
+          )
+          assert text.count('relative_markdown_link_dependencies_at_frozen_baseline: 5') == 1
+          text = text.replace(
+              'relative_markdown_link_dependencies_at_frozen_baseline: 5',
+              'relative_markdown_link_dependencies_at_frozen_baseline: 6',
+          )
           assert text.count('three hard-coded script occurrences across two smoke files') == 1
           text = text.replace(
               'three hard-coded script occurrences across two smoke files',
               'four hard-coded script occurrences across two smoke files',
+          )
+          assert text.count('five Markdown relative links across four referrer files') == 1
+          text = text.replace(
+              'five Markdown relative links across four referrer files',
+              'six Markdown relative links across five referrer files',
           )
           path.write_text(text, encoding='utf-8')
           PY
