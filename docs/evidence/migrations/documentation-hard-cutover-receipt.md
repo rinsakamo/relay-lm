@@ -205,7 +205,7 @@ verification:
   canonical_evidence_metadata_added: true
   repository_root_path_references_updated_in_pr_tree: 7
   relative_markdown_link_dependencies_at_frozen_baseline: 3
-  additional_current_tree_relative_link_references_updated: 8
+  additional_current_tree_related_authority_references_updated: 8
   wave3_functional_smoke_updated: true
   wave3_security_smoke_updated: true
   wave5_regression_smoke_updated: true
@@ -213,7 +213,7 @@ verification:
   affected_current_boundary_checks_required: true
 ```
 
-The canonical evidence document preserves the complete Wave 3 convergence account while correcting relative links for its new collection. The exact pre-cutover source remains available as the original Git blob. The frozen dependency inventory identified six repository-root path literals (seven occurrences) and three relative-link referrers; the current-tree sweep found eight additional relative-link referrers not present at the frozen baseline, all updated in this PR. Wave 4 and later convergence audits are unchanged except for the single stale relative-link correction each requires.
+The canonical evidence document preserves the complete Wave 3 convergence account while correcting relative links for its new collection. The exact pre-cutover source remains available as the original Git blob. The frozen dependency inventory identified six repository-root path literals (seven occurrences) and three relative-link referrers; the current-tree sweep found eight additional `relaylm_related_authority` YAML references not present at the frozen baseline, all updated in this PR. The Wave 4 convergence audit is unchanged except for the single stale related-authority reference this move requires.
 
 ## Pending batches
 
