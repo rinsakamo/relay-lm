@@ -24,6 +24,13 @@ This collection contains target planning artifacts for the authority-first docum
 - [Target architecture graph](documentation-target-architecture-graph.md) — defines the planned canonical system, subsystem, and concept/policy document graph.
 - [Placement decisions](documentation-placement-decisions.md) — records how the placement and granularity tie-breakers apply to ambiguous current document families.
 
+## Preparation C artifacts
+
+- [Cutover tooling](documentation-cutover-tooling.md) — defines the commit-fixed inventory, provenance, normative digest, path-dependency, reproducibility, and CI artifact boundary.
+- [`documentation-cutover-rules.yaml`](documentation-cutover-rules.yaml) — executable classification and graph-validation rules for the dry run.
+- `scripts/relaylm_docs_cutover_prepare.py` — emits the full inventory, migration-receipt preview, path dependencies, and summary.
+- `scripts/relaylm_docs_normative_digest.py` — emits source line ranges and SHA-256 digests for candidate normative blocks.
+
 ## Boundary
 
-Preparation B decides target ownership and synthesis shape. Preparation C must generate the commit-fixed file-level inventory, provenance, normative-block digest inputs, path-bound CI dependency map, and dry-run validation before any canonical path move.
+Preparation B decides target ownership and synthesis shape. Preparation C turns those decisions into a strict reproducible dry run before any canonical path move. Neither preparation phase authorizes path changes before the v0.1 frozen tag receipt.

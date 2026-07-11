@@ -1,0 +1,478 @@
+baseline_commit: 22981c3b26b2ec0141093d1ec23592d304f1a053
+
+scope:
+  include:
+    - docs/**/*.md
+  exclude:
+    - docs/assets/**
+
+supported_dispositions:
+  - retained
+  - moved
+  - split
+  - synthesized
+  - absorbed
+  - rebuilt_verbatim
+  - deleted_git_history_only
+  - evidence_retained
+
+canonical_graph_nodes:
+  - docs/architecture/system-overview.md
+  - docs/architecture/pipeline-responsibilities.md
+  - docs/architecture/runtime/request-response-pipeline.md
+  - docs/architecture/runtime/compile-and-checkpoint.md
+  - docs/architecture/runtime/scheduler.md
+  - docs/architecture/character-workspace/system.md
+  - docs/architecture/character-workspace/source-compiler.md
+  - docs/architecture/character-workspace/creation-and-import.md
+  - docs/architecture/character-workspace/maintenance-candidates.md
+  - docs/architecture/memory/system.md
+  - docs/architecture/memory/formation.md
+  - docs/architecture/memory/retrieval-and-grounding.md
+  - docs/architecture/memory/mutation-governance.md
+  - docs/architecture/memory/storage-and-recovery.md
+  - docs/architecture/relationship/relationship-state.md
+  - docs/architecture/scene/scene-model.md
+  - docs/architecture/emotion/affect-modulation.md
+  - docs/architecture/context/context-assembly.md
+  - docs/architecture/attention/reflex-layer.md
+  - docs/architecture/ui/soul-lab.md
+  - docs/architecture/voice/streaming-and-tts.md
+  - docs/architecture/performance/perceived-latency.md
+  - docs/architecture/analyzers/candidate-governance.md
+  - docs/architecture/analyzers/reference-and-intent.md
+  - docs/architecture/memory/pinned-memory.md
+  - docs/architecture/memory/scene-memory-scope.md
+  - docs/architecture/memory/observation-and-character-belief.md
+  - docs/architecture/relationship/social-expression.md
+  - docs/architecture/privacy/protected-source-and-disclosure.md
+
+known_normative_sources:
+  - docs/architecture/acg1_analyzer_candidate_governance_contract.md
+  - docs/architecture/cw_a1_file_first_source_tree_parser_contracts.md
+  - docs/architecture/phase6a1_relayslp_job_admission_contract.md
+  - docs/architecture/phase6a2_relayslp_response_handoff_contract.md
+  - docs/architecture/phase6b0_relayslp_durable_queue_contract.md
+  - docs/architecture/phase6c1_primary_mem_worker_contract.md
+  - docs/architecture/o1a_two_lane_scheduler_contract.md
+  - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
+  - docs/architecture/phase_i4_primary_mem_forget_hide_contract.md
+  - docs/architecture/phase_i5_pin_unpin_contract.md
+  - docs/architecture/phase_i7ab_held_apply_discard_contract.md
+  - docs/architecture/managed_route_fallback_contract.md
+  - docs/architecture/phase55c1_tts_adapter_handoff_contract.md
+  - docs/architecture/phase55c3_tts_adapter_transport_contract.md
+  - docs/contracts/client_instruction_target_artifact_contract.md
+  - docs/contracts/relaysoul_patch_candidate_contract.md
+
+compatibility_stub_paths:
+  - docs/architecture/pipeline_implementation_plan.md
+  - docs/architecture/post_i3_evaluation_work_roadmap.md
+  - docs/architecture/relaymem_mvp_implementation_plan.md
+
+path_overrides:
+  docs/README.md:
+    disposition: retained
+    target_doc_type: documentation_index
+    target_paths:
+      - docs/README.md
+  docs/PROJECT_STATUS.md:
+    disposition: retained
+    target_doc_type: status
+    target_paths:
+      - docs/PROJECT_STATUS.md
+  docs/DOCUMENTATION_MODEL.md:
+    disposition: retained
+    target_doc_type: documentation_model
+    target_paths:
+      - docs/DOCUMENTATION_MODEL.md
+  docs/architecture/README.md:
+    disposition: retained
+    target_doc_type: documentation_index
+    target_paths:
+      - docs/architecture/README.md
+    requires_manual_section_map: true
+  docs/proposals/documentation_restructure_proposal.md:
+    disposition: moved
+    target_doc_type: evidence
+    target_paths:
+      - docs/evidence/proposals/documentation-restructure-proposal.md
+  docs/architecture/project_execution_plan.md:
+    disposition: moved
+    target_doc_type: planning
+    target_paths:
+      - docs/planning/project-execution.md
+  docs/architecture/current_target_migration_guide.md:
+    disposition: moved
+    target_doc_type: reference
+    target_paths:
+      - docs/reference/current-target-interpretation.md
+  docs/architecture/post_v01_strategic_direction_vision.md:
+    disposition: moved
+    target_doc_type: strategy
+    target_paths:
+      - docs/strategy/post-v0.1-direction.md
+  docs/architecture/pipeline_responsibility_design.md:
+    disposition: synthesized
+    target_doc_type: system_architecture
+    target_paths:
+      - docs/architecture/system-overview.md
+      - docs/architecture/pipeline-responsibilities.md
+    requires_manual_section_map: true
+  docs/architecture/safe_soul_scene_ctx_compile_chain.md:
+    disposition: split
+    target_doc_type: system_architecture
+    target_paths:
+      - docs/architecture/system-overview.md
+      - docs/architecture/pipeline-responsibilities.md
+      - docs/architecture/character-workspace/system.md
+    requires_manual_section_map: true
+  docs/architecture/file_first_character_workspace_design.md:
+    disposition: synthesized
+    target_doc_type: system_architecture
+    target_paths:
+      - docs/architecture/character-workspace/system.md
+    requires_manual_section_map: true
+  docs/architecture/memory_lifecycle_design.md:
+    disposition: synthesized
+    target_doc_type: system_architecture
+    target_paths:
+      - docs/architecture/memory/system.md
+    requires_manual_section_map: true
+  docs/architecture/relayrel_relationship_design.md:
+    disposition: split
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/relationship/relationship-state.md
+    requires_manual_section_map: true
+  docs/architecture/character_belief_relationship_dynamics_design.md:
+    disposition: split
+    target_doc_type: concept_policy
+    target_paths:
+      - docs/architecture/memory/observation-and-character-belief.md
+      - docs/architecture/relationship/social-expression.md
+      - docs/architecture/privacy/protected-source-and-disclosure.md
+    requires_manual_section_map: true
+  docs/architecture/pinned_normal_memory_pages.md:
+    disposition: synthesized
+    target_doc_type: concept_policy
+    target_paths:
+      - docs/architecture/memory/pinned-memory.md
+    requires_manual_section_map: true
+  docs/architecture/scene_memory_scope_design.md:
+    disposition: synthesized
+    target_doc_type: concept_policy
+    target_paths:
+      - docs/architecture/memory/scene-memory-scope.md
+    requires_manual_section_map: true
+  docs/architecture/context_packing_design.md:
+    disposition: synthesized
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/context/context-assembly.md
+    requires_manual_section_map: true
+  docs/architecture/relayctx_wake_loop_design.md:
+    disposition: synthesized
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/context/context-assembly.md
+    requires_manual_section_map: true
+  docs/architecture/relayatn_reflex_layer_design.md:
+    disposition: moved
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/attention/reflex-layer.md
+    requires_manual_section_map: true
+  docs/architecture/relayemo_return_side_style_adapter_design.md:
+    disposition: split
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/emotion/affect-modulation.md
+      - docs/architecture/runtime/request-response-pipeline.md
+    requires_manual_section_map: true
+  docs/runtime_compile_gate_design.md:
+    disposition: split
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/runtime/compile-and-checkpoint.md
+    requires_manual_section_map: true
+  docs/relayrun_runtime_checkpoint_design.md:
+    disposition: split
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/runtime/compile-and-checkpoint.md
+    requires_manual_section_map: true
+
+family_rules:
+  - id: canonical-target-collections
+    path_regex: '^docs/(planning|reference|templates)/'
+    disposition: retained
+    target_doc_type_from_metadata: true
+    target_same_path: true
+  - id: adr-retained
+    path_regex: '^docs/adr/'
+    disposition: retained
+    target_doc_type: adr
+    target_same_path: true
+  - id: contracts-retained
+    path_regex: '^docs/contracts/'
+    disposition: retained
+    target_doc_type: contract
+    target_same_path: true
+    normative_decision: retained_exact
+  - id: mvp-snapshot-delete
+    path_regex: '^docs/mvp/mvp[0-9]+_summary\.md$'
+    disposition: deleted_git_history_only
+    target_doc_type: evidence
+    deletion_reason: redundant milestone snapshot
+  - id: mvp-completion-evidence
+    path_regex: '^docs/mvp/(wave[0-9]+/)?[^/]*_completion_report\.md$'
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_template: 'docs/evidence/implementation/{relative_after_mvp}'
+  - id: mvp-release-readiness
+    path_regex: '^docs/mvp/v[^/]*_release_readiness\.md$'
+    disposition: moved
+    target_doc_type: release
+    target_template: 'docs/release/{basename}'
+  - id: mvp-template
+    path_regex: '^docs/mvp/.*TEMPLATE.*\.md$'
+    disposition: moved
+    target_doc_type: template
+    target_template: 'docs/templates/{basename_lower}'
+  - id: mvp-other-evidence
+    path_regex: '^docs/mvp/'
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_template: 'docs/evidence/implementation/{relative_after_mvp}'
+  - id: smoke-operations
+    path_regex: '^docs/smoke/'
+    disposition: moved
+    target_doc_type: operations
+    target_template: 'docs/operations/{relative_after_smoke}'
+  - id: tools-operations
+    path_regex: '^docs/tools/'
+    disposition: moved
+    target_doc_type: operations
+    target_template: 'docs/operations/tools/{relative_after_tools}'
+  - id: evaluation-template
+    path_regex: '^docs/evaluation/.*template.*\.md$'
+    disposition: moved
+    target_doc_type: template
+    target_template: 'docs/templates/evaluation/{basename}'
+  - id: evaluation-result
+    path_regex: '^docs/evaluation/.*(report|result|[0-9]{4}_[0-9]{2}_[0-9]{2}).*\.md$'
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_template: 'docs/evidence/evaluations/{basename}'
+  - id: evaluation-method
+    path_regex: '^docs/evaluation/'
+    disposition: retained
+    target_doc_type: evaluation_method
+    target_same_path: true
+  - id: relaysoul-contract
+    path_regex: '^docs/relaysoul/.*contract.*\.md$'
+    disposition: rebuilt_verbatim
+    target_doc_type: contract
+    target_template: 'docs/contracts/character/{stable_stem}.md'
+    normative_decision: rebuild_verbatim
+  - id: relaysoul-experiment
+    path_regex: '^docs/relaysoul/.*(experimental|draft|showcase|fixture).*\.md$'
+    disposition: split
+    target_doc_type: strategy
+    target_paths:
+      - docs/strategy/character-experiments.md
+    requires_manual_section_map: true
+  - id: relaysoul-design
+    path_regex: '^docs/relaysoul/'
+    disposition: synthesized
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/character-workspace/system.md
+    requires_manual_section_map: true
+  - id: architecture-archive
+    path_regex: '^docs/architecture/archive/'
+    disposition: deleted_git_history_only
+    target_doc_type: evidence
+    deletion_reason: superseded architecture copy retained in Git history
+  - id: architecture-wave-audit
+    path_regex: '^docs/architecture/.*(wave[0-9]+.*audit|cross_slice_convergence_audit).*\.md$'
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_template: 'docs/evidence/waves/{basename}'
+  - id: architecture-validation-evaluation
+    path_regex: '^docs/architecture/.*(validation|evaluation|recovery_audit).*\.md$'
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_template: 'docs/evidence/evaluations/{basename}'
+  - id: architecture-contract
+    path_regex: '^docs/architecture/.*contract.*\.md$'
+    disposition: rebuilt_verbatim
+    target_doc_type: contract
+    target_template: 'docs/contracts/migrated/{stable_stem}.md'
+    normative_decision: rebuild_verbatim
+    requires_manual_section_map: true
+  - id: architecture-analyzer
+    path_regex: '^docs/architecture/(acg[0-9]+_|analyzer_)'
+    disposition: split
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/analyzers/candidate-governance.md
+    target_by_keyword:
+      reference: docs/architecture/analyzers/reference-and-intent.md
+      intent: docs/architecture/analyzers/reference-and-intent.md
+      scene: docs/architecture/scene/scene-model.md
+      retrieval: docs/architecture/memory/retrieval-and-grounding.md
+      emo: docs/architecture/emotion/affect-modulation.md
+    evidence_template: 'docs/evidence/implementation/{basename}'
+    requires_manual_section_map: true
+  - id: architecture-workspace-slice
+    path_regex: '^docs/architecture/cw_a[0-9]+'
+    disposition: split
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/character-workspace/system.md
+    target_by_keyword:
+      parser: docs/architecture/character-workspace/source-compiler.md
+      compiler: docs/architecture/character-workspace/source-compiler.md
+      creation: docs/architecture/character-workspace/creation-and-import.md
+      template: docs/architecture/character-workspace/creation-and-import.md
+      maintenance: docs/architecture/character-workspace/maintenance-candidates.md
+      ui: docs/architecture/ui/soul-lab.md
+    evidence_template: 'docs/evidence/implementation/{basename}'
+    requires_manual_section_map: true
+  - id: architecture-memory-formation-slice
+    path_regex: '^docs/architecture/(phase6|relaymem_m3|integration_i1|i1g)'
+    disposition: split
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/memory/formation.md
+    target_by_keyword:
+      retrieval: docs/architecture/memory/retrieval-and-grounding.md
+      index: docs/architecture/memory/storage-and-recovery.md
+      reconciliation: docs/architecture/memory/storage-and-recovery.md
+      recovery: docs/architecture/memory/storage-and-recovery.md
+      scheduler: docs/architecture/runtime/scheduler.md
+    evidence_template: 'docs/evidence/implementation/{basename}'
+    requires_manual_section_map: true
+  - id: architecture-memory-mutation-slice
+    path_regex: '^docs/architecture/phase_i(2|3|4|5|7)'
+    disposition: split
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/memory/mutation-governance.md
+    target_by_keyword:
+      recall: docs/architecture/memory/retrieval-and-grounding.md
+      retrieval: docs/architecture/memory/retrieval-and-grounding.md
+      pin: docs/architecture/memory/pinned-memory.md
+      ui: docs/architecture/ui/soul-lab.md
+    evidence_template: 'docs/evidence/implementation/{basename}'
+    requires_manual_section_map: true
+  - id: architecture-scheduler-slice
+    path_regex: '^docs/architecture/o(0|1|2|3)'
+    disposition: split
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/runtime/scheduler.md
+    evidence_template: 'docs/evidence/implementation/{basename}'
+    requires_manual_section_map: true
+  - id: architecture-ui-slice
+    path_regex: '^docs/architecture/soul_lab_'
+    disposition: split
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/ui/soul-lab.md
+    target_by_keyword:
+      runtime: docs/architecture/runtime/request-response-pipeline.md
+    evidence_template: 'docs/evidence/implementation/{basename}'
+    requires_manual_section_map: true
+  - id: architecture-voice-slice
+    path_regex: '^docs/architecture/(phase55|lat[0-9])'
+    disposition: split
+    target_doc_type: subsystem_architecture
+    target_paths:
+      - docs/architecture/voice/streaming-and-tts.md
+    target_by_keyword:
+      latency: docs/architecture/performance/perceived-latency.md
+      perceived: docs/architecture/performance/perceived-latency.md
+    evidence_template: 'docs/evidence/implementation/{basename}'
+    requires_manual_section_map: true
+  - id: architecture-pm-debt
+    path_regex: '^docs/architecture/pm_d[0-9]+'
+    disposition: evidence_retained
+    target_doc_type: evidence
+    target_template: 'docs/evidence/implementation/{basename}'
+  - id: architecture-generic
+    path_regex: '^docs/architecture/'
+    disposition: synthesized
+    target_doc_type: subsystem_architecture
+    keyword_targets:
+      memory: docs/architecture/memory/system.md
+      relaymem: docs/architecture/memory/system.md
+      soul: docs/architecture/character-workspace/system.md
+      character: docs/architecture/character-workspace/system.md
+      relationship: docs/architecture/relationship/relationship-state.md
+      relayrel: docs/architecture/relationship/relationship-state.md
+      scene: docs/architecture/scene/scene-model.md
+      scn: docs/architecture/scene/scene-model.md
+      emotion: docs/architecture/emotion/affect-modulation.md
+      emo: docs/architecture/emotion/affect-modulation.md
+      context: docs/architecture/context/context-assembly.md
+      ctx: docs/architecture/context/context-assembly.md
+      attention: docs/architecture/attention/reflex-layer.md
+      atn: docs/architecture/attention/reflex-layer.md
+      scheduler: docs/architecture/runtime/scheduler.md
+      runtime: docs/architecture/runtime/request-response-pipeline.md
+      ui: docs/architecture/ui/soul-lab.md
+      lab: docs/architecture/ui/soul-lab.md
+      tts: docs/architecture/voice/streaming-and-tts.md
+      voice: docs/architecture/voice/streaming-and-tts.md
+      stream: docs/architecture/voice/streaming-and-tts.md
+      analyzer: docs/architecture/analyzers/candidate-governance.md
+      intent: docs/architecture/analyzers/reference-and-intent.md
+      reference: docs/architecture/analyzers/reference-and-intent.md
+      latency: docs/architecture/performance/perceived-latency.md
+      privacy: docs/architecture/privacy/protected-source-and-disclosure.md
+    fallback_target: docs/architecture/system-overview.md
+    requires_manual_section_map: true
+  - id: docs-generic
+    path_regex: '^docs/'
+    disposition: moved
+    target_doc_type: guide
+    target_template: 'docs/guides/{relative_after_docs}'
+
+normative_heading_keywords:
+  - contract
+  - boundary
+  - invariant
+  - schema
+  - field
+  - state
+  - transition
+  - gate
+  - required
+  - forbidden
+  - privacy
+  - security
+  - exact
+  - normative
+  - must
+  - shall
+  - 必須
+  - 禁止
+  - 境界
+  - 不変条件
+
+normative_line_patterns:
+  - '(?i)\bmust\b'
+  - '(?i)\bmust not\b'
+  - '(?i)\bshall\b'
+  - '(?i)\brequired\b'
+  - '(?i)\bforbidden\b'
+  - '(?i)\bexact\b'
+  - '必須'
+  - '禁止'
+  - 'してはならない'
+  - 'のみ許可'
+
+path_reference_regex: '(?<![A-Za-z0-9_./-])(docs/[A-Za-z0-9_./-]+\.md)'
