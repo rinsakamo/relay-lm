@@ -23,3 +23,6 @@ This collection preserves bounded implementation and smoke evidence after its ac
 - [MVP-1 config and routing smoke](mvp1_config_routing_smoke.md)
 - [MVP-2 memory-light API smoke](mvp2_memory_light_api_smoke.md)
 - [MVP-2 profile compile dry-run](mvp2_profile_compile_dry_run.md)
+- [MVP-2 compiled system message](mvp2_compiled_system_message.md)
+- [MVP-2 config profile resolution](mvp2_config_profile_resolution.md)
+- [MVP-2 dry-run diagnostics headers](mvp2_dry_run_diagnostics_headers.md)
