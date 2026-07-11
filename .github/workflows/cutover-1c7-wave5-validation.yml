@@ -90,15 +90,17 @@ jobs:
           set -euo pipefail
           old_path="docs/architecture/wave5_cross_slice_convergence_audit.md"
           old_name="wave5_cross_slice_convergence_audit.md"
+          generated_glob='!generated/cutover-1c7-wave5-validation/**'
           test ! -e "$old_path"
           test "$(git hash-object docs/evidence/waves/wave5_cross_slice_convergence_audit-source.txt)" = \
             "69b05a5f8380dd26be4dd51f57620278bf57ca76"
 
           echo "Repository-root literal references:"
-          rg -n --fixed-strings "$old_path" . || true
-          test "$(rg -l --fixed-strings "$old_path" . | wc -l)" -eq 1
-          rg -l --fixed-strings "$old_path" . | grep -Fx \
-            "./docs/evidence/migrations/documentation-hard-cutover-receipt.md"
+          rg -n --fixed-strings --glob "$generated_glob" "$old_path" . || true
+          matches="$(rg -l --fixed-strings --glob "$generated_glob" "$old_path" .)"
+          test "$(printf '%s\n' "$matches" | sed '/^$/d' | wc -l)" -eq 1
+          printf '%s\n' "$matches" | sed 's#^\./##' | grep -Fx \
+            "docs/evidence/migrations/documentation-hard-cutover-receipt.md"
 
           echo "Filename references for manual classification:"
           rg -n --fixed-strings "$old_name" docs scripts .github || true
