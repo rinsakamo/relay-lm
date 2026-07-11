@@ -103,7 +103,7 @@ W4-INT verified the source PR numbers, merge commits, and dedicated handoffs for
 - [I-5A completion report](wave4/i5a_completion_report.md) — source PR #417, merge `2f8597911774b70f1c001db8332b3dfcc18d23ca`.
 - [I-7A/B completion report](wave4/i7ab_completion_report.md) — source PR #423, merge `5e0f866e959ab2bc5af00e0502b2026f4b52a779`.
 
-The Wave 4 cross-slice convergence record is [Wave 4 Cross-Slice Convergence Audit](../architecture/wave4_cross_slice_convergence_audit.md). W4-INT is merged.
+The Wave 4 cross-slice convergence record is [Wave 4 Cross-Slice Convergence Audit](../evidence/waves/wave4_cross_slice_convergence_audit.md). W4-INT is merged.
 
 ### Wave 3 merged completion reports
 
