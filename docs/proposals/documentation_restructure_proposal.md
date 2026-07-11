@@ -2,6 +2,8 @@
 relaylm_doc_type: strategic_vision
 relaylm_authority: documentation_restructure_proposal_only
 relaylm_status: target
+relaylm_proposal_status: under_review
+relaylm_pre_adoption_type_compatibility: strategic_vision
 relaylm_volatility: low
 relaylm_owner: documentation
 relaylm_update_trigger:
@@ -47,7 +49,8 @@ RelayLM は単独メンテナ、pre-v0.1、主要読者が本人と AI エージ
 - 単独メンテナである。
 - v0.1 未満であり、docs path を安定 API として公開していない。
 - 主な consumer が repository owner と AI coding agent である。
-- root `README.md`、`docs/README.md`、`docs/PROJECT_STATUS.md` の主要入口は維持する。
+- root `README.md`、`README_ja.md`、`docs/README.md`、`docs/PROJECT_STATUS.md` の主要入口は維持する。
+- README 画像等の `docs/assets/` は安定した補助資産 path として維持する。
 - 過去の path を確認する必要がある場合は Git history を利用できる。
 
 これらの条件が変わった後は、将来の path 変更に別の互換方針を採用してよい。本提案は今回の一度限りの再基礎化を対象とする。
@@ -64,7 +67,7 @@ RelayLM は単独メンテナ、pre-v0.1、主要読者が本人と AI エージ
   - その他: 44
 - `relaylm_status` 主な分布:
   - `current`: 103
-  - `historical_after_merge`: 43
+  - `historical_after_merge`: 45
   - `target`: 17
 
 この inventory は cutover planning の基準であり current runtime authority ではない。実施 PR では commit 固定の machine-readable inventory を再生成する。
@@ -98,6 +101,7 @@ docs/
 ├── README.md
 ├── PROJECT_STATUS.md
 ├── DOCUMENTATION_MODEL.md
+├── assets/                        # README image 等の非 Markdown 補助資産。stable path
 ├── proposals/                     # 未決定 proposal のみ
 ├── guides/                        # task-oriented how-to / tutorial
 ├── reference/                     # config / CLI / API / current-target interpretation
@@ -117,6 +121,8 @@ docs/
     ├── proposals/
     └── migrations/
 ```
+
+`docs/assets/` は document role directory ではない。Markdown front matter / document type invariant の対象外とし、参照切れと未使用 asset の検証対象には含める。
 
 次は最終構成に含めない。
 
@@ -309,7 +315,9 @@ proposals/<name>.md
   └── withdrawn -> reason + evidence/proposals/
 ```
 
-本提案は現行モデルに `proposal` 型がないため、この PR では互換型 `strategic_vision` を使用する。採択 PR で `proposal` 型を定義し、本ファイルを最初の lifecycle conformance case として次へ移す。
+本提案は現行モデルに `proposal` 型がないため、この PR では `relaylm_doc_type: strategic_vision` を pre-adoption compatibility type として明示的に例外使用し、同時に `relaylm_proposal_status: under_review` を持つ。これにより現行 enum を壊さず、front matter consumer は本ファイルを未決定 proposal と判定できる。
+
+採択 PR で `proposal` 型を定義し、本ファイルを最初の lifecycle conformance case として次へ移す。
 
 ```yaml
 relaylm_doc_type: proposal
@@ -374,6 +382,7 @@ v0.1 validation 中は本提案の採択準備、inventory、dry-run script の�
 - metadata coverage 100% を要求
 - repository-wide old path literal reference を 0 にする
 - directory invariant CI を有効化
+- `docs/assets/` を唯一の document-role 外 top-level support directory として allowlist する
 - frozen migration receipt を確定
 
 ## 14. Frozen migration receipt
@@ -416,6 +425,7 @@ cutover 完了後の audit は directory invariant 中心とする。
 - evidence は `relaylm_status: historical` を持つ。
 - `historical_after_merge` を拒否する。
 - 旧 top-level directory を拒否する。
+- `docs/assets/` は非 Markdown support directory として明示 allowlist し、document type invariant を適用しない。
 - repository 内の旧 docs path literal reference を拒否する。
 - ADR は decision status を持つ。
 - contract anchor と normative digest verification が成功している。
@@ -429,6 +439,7 @@ cutover 完了後の audit は directory invariant 中心とする。
 - final tree が §4 と一致する。
 - `docs/mvp/`、`docs/relaysoul/`、top-level `docs/smoke/`、`docs/tools/` が存在しない。
 - `evidence/legacy/`、`evidence/milestones/`、redirect stub が存在しない。
+- `docs/assets/` の既存 README asset link が維持される。
 
 ### 権威
 
@@ -448,6 +459,7 @@ cutover 完了後の audit は directory invariant 中心とする。
 - docs link check が green。
 - semantic audit が green。
 - documentation boundary smoke が green。
+- README image asset link が green。
 - old docs path literal reference が 0。
 - contract normative digest の before / after が一致する。
 - frozen migration receipt が全旧文書の disposition を説明する。
