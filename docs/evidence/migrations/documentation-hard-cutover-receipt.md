@@ -99,7 +99,7 @@ The TSV appendix is the file-level receipt for this batch. It is intentionally n
 
 ```yaml
 cutover_pr: 557
-merged_commit: pending
+merged_commit: c1e41951d83a6a296e86d49e585cd8314257d8c4
 old_path: docs/architecture/phase_i3_validation_receipt.md
 old_blob_sha: 710bf4dfb98e1b824751dc071fd206b7c4b9afda
 old_content_sha256: 8f5bd9b650a78838a93ee870dbbec99c112ba3ab55d27ceafda2767544139036
@@ -108,14 +108,34 @@ source_pr: 379
 disposition: evidence_retained
 new_canonical_path: docs/evidence/evaluations/phase_i3_validation_receipt.md
 verification:
-  old_path_removed_in_pr_tree: true
+  old_path_removed: true
   current_filename_search_dependencies: 0
   canonical_evidence_metadata_added: true
   validation_conclusion_changed: false
+  documentation_link_check: passed
+```
+
+This move changed placement and lifecycle metadata only. The recorded Phase I-3 verification results and privacy statement remained substantively unchanged.
+
+### C1C2-001 — early MVP smoke sources
+
+```yaml
+cutover_pr: 558
+merged_commit: pending
+disposition: evidence_retained
+record_count: 4
+record_file: docs/evidence/migrations/cutover-1c2-early-mvp-smokes.tsv
+verification:
+  old_paths_removed_in_pr_tree: true
+  preparation_c_literal_path_dependencies_per_record: 0
+  current_filename_search_dependencies_per_record: 0
+  exact_source_blobs_reused: true
+  canonical_evidence_wrappers_added: true
+  historical_commands_marked_non_current: true
   documentation_link_check_required: true
 ```
 
-This move changes placement and lifecycle metadata only. The recorded Phase I-3 verification results and privacy statement remain substantively unchanged.
+Each source is retained byte-for-byte as a `.txt` snapshot. The canonical Markdown wrapper carries authority, lifecycle, and provenance metadata without presenting the historical commands as current operator guidance.
 
 ## Pending batches
 
