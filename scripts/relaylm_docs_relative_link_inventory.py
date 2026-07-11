@@ -57,7 +57,7 @@ def validate_baseline(commit: str) -> None:
 
 
 def list_markdown_paths(commit: str) -> list[str]:
-    result = run_git("ls-tree", "-r", "--name-only", commit, "--", "docs")
+    result = run_git("ls-tree", "-r", "--name-only", commit)
     return sorted(
         path for path in result.stdout.splitlines() if path.endswith(".md")
     )
@@ -306,7 +306,7 @@ def self_test() -> None:
         "docs/mvp/README.md", "../architecture/example.md#section"
     ) == "docs/architecture/example.md"
     assert resolve_document_target(
-        "docs/mvp/README.md", "docs/PROJECT_STATUS.md"
+        "README.md", "docs/PROJECT_STATUS.md"
     ) == "docs/PROJECT_STATUS.md"
     assert resolve_document_target(
         "docs/mvp/README.md", "https://example.com/x.md"
