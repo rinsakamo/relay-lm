@@ -280,7 +280,19 @@ relaylm_decision_source: null
 
 採択後の proposal は配置規則の authority に昇格させない。正式な決定は ADR と `DOCUMENTATION_MODEL.md` に移し、proposal は evidence として保存する。
 
-本提案を採択する PR では、ADR 作成と同じ commit または同じ PR 内で、このファイルを `evidence/proposals/` へ移す。Phase 0 は「ファイル移動ゼロ」ではなく、**bulk migration を行わず、採択に必要な atomic lifecycle move だけを許す**フェーズとする。
+本提案は、現行 `DOCUMENTATION_MODEL.md` に `proposal` 型がまだ存在しないため、この PR では互換型として `relaylm_doc_type: strategic_vision` を使用する。採択する Phase 0 PR では、最初に `proposal` 型と `relaylm_proposal_status` を定義し、同じ PR 内で本ファイルの front matter を新型へ切り替えたうえで `evidence/proposals/` へ移す。
+
+採択 PR の最終状態では、本提案を少なくとも次の形にする。
+
+```yaml
+relaylm_doc_type: proposal
+relaylm_status: historical
+relaylm_proposal_status: accepted
+relaylm_decision_source: ../../adr/NNNN-documentation-information-architecture.md
+relaylm_evidence_status: frozen
+```
+
+これにより、本提案自身を proposal lifecycle の最初の実例とする。Phase 0 は「ファイル移動ゼロ」ではなく、**bulk migration を行わず、採択に必要な atomic lifecycle move だけを許す**フェーズとする。
 
 ## 8. evidence の運用
 
@@ -406,11 +418,12 @@ inventory は current authority ではなく、CI artifact または `evidence/m
 
 1. 本提案を採択する documentation architecture ADR を作成する。
 2. `DOCUMENTATION_MODEL.md` に document role、tie-breaker、hybrid migration exception、ADR/proposal/evidence metadata を追加する。
-3. `evidence/proposals/` を作成し、本提案を ADR 採択と同じ PR で移動する。
-4. 既存 ADR を番号付きへ統一する場合は、この Phase で一度だけ canonicalize し、path map を保存する。
-5. commit 固定 inventory と legacy metadata manifest を生成する。
-6. 新規 contract、completion report、proposal、strategic vision に新ルールを即時適用する。
-7. semantic audit に「新たな配置違反を増やさない」guardrail を追加する。
+3. `proposal` 型を定義した直後に、本提案の front matter を `proposal` / `accepted` へ切り替える。
+4. `evidence/proposals/` を作成し、本提案を ADR 採択と同じ PR で移動して `historical` / `frozen` にする。
+5. 既存 ADR を番号付きへ統一する場合は、この Phase で一度だけ canonicalize し、path map を保存する。
+6. commit 固定 inventory と legacy metadata manifest を生成する。
+7. 新規 contract、completion report、proposal、strategic vision に新ルールを即時適用する。
+8. semantic audit に「新たな配置違反を増やさない」guardrail を追加する。
 
 Phase 0 で許す移動は proposal の lifecycle retirement、ADR の一度限りの canonicalization、そのための最小 directory / index 作成だけとする。既存 docs 群の bulk migration は行わない。
 
@@ -484,7 +497,7 @@ stub を置けるのは次だけとする。
 
 - `PROJECT_STATUS.md` が現在実装済み境界の唯一の repository-wide authority である。
 - accepted ADR と implemented behavior が metadata 上で区別される。
-- proposal は採択 PR 内で evidence へ退役する。
+- proposal は採択 PR 内で新型へ切り替わり、evidence へ退役する。
 - 新規・実質更新文書は 1 文書 1 権威を満たす。
 - 既存 hybrid の例外は明示条件と front matter で管理される。
 
@@ -513,9 +526,11 @@ stub を置けるのは次だけとする。
 
 1. documentation information architecture ADR の追加
 2. `DOCUMENTATION_MODEL.md` への tie-breaker、hybrid exception、lifecycle metadata の追加
-3. 本 proposal の `evidence/proposals/` への atomic move
-4. 必要な場合に限る既存 ADR の一度限りの canonicalization
-5. docs inventory script、frozen baseline、legacy metadata manifest の追加
-6. 新規配置違反と metadata 逃れを防ぐ semantic audit
+3. `proposal` 型定義後、本ファイルを互換 `strategic_vision` から正式な `proposal` 型へ切り替える
+4. `relaylm_proposal_status: accepted` と adopting ADR への `relaylm_decision_source` を設定する
+5. 本 proposal を `evidence/proposals/` へ atomic move し、`relaylm_status: historical` / `relaylm_evidence_status: frozen` にする
+6. 必要な場合に限る既存 ADR の一度限りの canonicalization
+7. docs inventory script、frozen baseline、legacy metadata manifest の追加
+8. 新規配置違反と metadata 逃れを防ぐ semantic audit
 
-これにより、既存構造を壊さず、新規負債と分類の再曖昧化を止めた後、機械的に安全な移行を開始できる。
+本ファイルを新しい proposal lifecycle に従う最初の conformance case とする。これにより、既存構造を壊さず、新規負債と分類の再曖昧化を止めた後、機械的に安全な移行を開始できる。
