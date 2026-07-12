@@ -434,7 +434,7 @@ verification:
   documentation_semantic_audit: passed
   completion_report_model_and_file_checks: passed
   focused_mvp_eval_runner_checks: passed
-  all_github_actions: pending
+  all_github_actions: passed
   unresolved_review_threads: 0
 ```
 

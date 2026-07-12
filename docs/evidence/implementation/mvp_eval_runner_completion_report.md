@@ -27,7 +27,6 @@ This document is frozen implementation evidence for the operator-invoked MVP eva
 
 The exact pre-cutover report is retained byte-for-byte as [mvp_eval_runner_completion_report-source.txt](mvp_eval_runner_completion_report-source.txt). Statements below describe the source PR boundary unless explicitly qualified.
 
-
 ## Scope
 
 This report records the operator-facing MVP eval runner slice. The slice adds an explicit, caller-invoked command that aggregates existing RelayLM MVP validation smokes into category-level PASS / FAIL / SKIP / WARN summaries and optional content-free JSON output.
