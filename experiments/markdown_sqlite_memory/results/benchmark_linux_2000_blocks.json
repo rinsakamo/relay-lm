@@ -1,0 +1,141 @@
+{
+  "spike": "markdown_sqlite_memory",
+  "experimental": true,
+  "timestamp": "2026-07-12T11:43:49.937377+00:00",
+  "platform": {
+    "system": "Linux",
+    "release": "6.18.5",
+    "python": "3.11.15"
+  },
+  "fixture": {
+    "pages": 80,
+    "blocks": 2000,
+    "seed": 1
+  },
+  "compile_seconds": 0.3877832389999867,
+  "incremental_update": {
+    "seconds": 0.0033535850000134815,
+    "rows": {
+      "inserted": 0,
+      "updated": 1,
+      "deleted": 0,
+      "unchanged": 24
+    }
+  },
+  "search_latency": {
+    "n": 100,
+    "mean_ms": 0.04303230000346048,
+    "p50_ms": 0.0382319999516767,
+    "p95_ms": 0.07173599999532598,
+    "max_ms": 0.24011499999687658
+  },
+  "apply_latency": {
+    "n": 10,
+    "mean_ms": 23.57571560002043,
+    "p50_ms": 21.66474700004528,
+    "p95_ms": 46.290235000014945,
+    "max_ms": 46.290235000014945
+  },
+  "apply_lock_stats": {
+    "busy_retries": 0,
+    "wait_seconds": 0.0,
+    "acquisitions": 30,
+    "acquire_seconds": 0.0003294760000471797,
+    "max_acquire_seconds": 4.612800000813877e-05
+  },
+  "rebuild_seconds": 0.437516311999957,
+  "contention": {
+    "workers": 4,
+    "jobs": 100,
+    "claims_per_worker": [
+      0,
+      0,
+      0,
+      100
+    ],
+    "elapsed_seconds": 0.43900246399994103,
+    "busy_retries": 0,
+    "busy_wait_seconds": 0.0,
+    "txn_acquisitions": 205,
+    "txn_acquire_seconds": 0.9907307860011088,
+    "max_txn_acquire_seconds": 0.4297962530000632
+  },
+  "recovery": {
+    "before_replace": {
+      "pass": true,
+      "detail": {
+        "cache_rebuilt": false,
+        "rolled_forward": [],
+        "rolled_back": [
+          "job_e7142d5f51"
+        ],
+        "failed": [],
+        "conflicts": [],
+        "cache_pages_refreshed": []
+      }
+    },
+    "after_replace_before_cache": {
+      "pass": true,
+      "detail": {
+        "cache_rebuilt": false,
+        "rolled_forward": [
+          "job_6756dd3040"
+        ],
+        "rolled_back": [],
+        "failed": [],
+        "conflicts": [],
+        "cache_pages_refreshed": []
+      }
+    },
+    "after_cache_before_receipt": {
+      "pass": true,
+      "detail": {
+        "cache_rebuilt": false,
+        "rolled_forward": [
+          "job_01545a7794"
+        ],
+        "rolled_back": [],
+        "failed": [],
+        "conflicts": [],
+        "cache_pages_refreshed": []
+      }
+    }
+  },
+  "invariants": {
+    "ok": true,
+    "invariants": {
+      "cache_integrity": {
+        "pass": true,
+        "detail": "PRAGMA integrity_check and FTS check ok"
+      },
+      "cache_matches_markdown": {
+        "pass": true,
+        "detail": "all page digests match Markdown"
+      },
+      "markdown_render_roundtrip": {
+        "pass": true,
+        "detail": "render(parse(page)) == page for all pages"
+      },
+      "cache_rebuild_equivalence": {
+        "pass": true,
+        "detail": "canonical dump identical after rebuild from Markdown"
+      },
+      "receipts_only_for_applied_jobs": {
+        "pass": true,
+        "detail": "0 receipts attached to non-applied jobs"
+      },
+      "ops_db_holds_no_mem_content": {
+        "pass": true,
+        "detail": "receipts/intents/tombstones reference digests and IDs only"
+      },
+      "no_orphaned_intents": {
+        "pass": true,
+        "detail": "0 intents attached to non-applying jobs"
+      },
+      "tombstoned_content_not_active": {
+        "pass": true,
+        "detail": "0 tombstone keys, none active in cache"
+      }
+    }
+  }
+}
