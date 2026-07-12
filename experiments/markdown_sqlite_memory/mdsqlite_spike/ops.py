@@ -63,24 +63,41 @@ def _record_acquire(seconds: float) -> None:
 
 def connect(path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(path, isolation_level=None)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}")
-    row = conn.execute(
-        "SELECT value FROM schema_meta WHERE key = 'schema_version'"
-    ).fetchone() if _has_meta(conn) else None
-    if row is None:
-        _create_schema(conn)
-    else:
-        version = int(row["value"])
+    try:
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}")
+        row = (
+            conn.execute(
+                "SELECT value FROM schema_meta WHERE key = 'schema_version'"
+            ).fetchone()
+            if _has_meta(conn)
+            else None
+        )
+        if row is None:
+            _create_schema(conn)
+            return conn
+        try:
+            version = int(row["value"])
+        except (TypeError, ValueError) as exc:
+            raise OpsSchemaVersionError(
+                f"operations schema has invalid version {row['value']!r}"
+            ) from exc
         if version > OPS_SCHEMA_VERSION:
-            conn.close()
             raise OpsSchemaVersionError(
                 f"operations schema v{version} is newer than supported "
                 f"v{OPS_SCHEMA_VERSION}; refusing silent downgrade"
             )
-    return conn
+        if version < OPS_SCHEMA_VERSION:
+            raise OpsSchemaVersionError(
+                f"operations schema v{version} is older than supported "
+                f"v{OPS_SCHEMA_VERSION}; no migration path is defined"
+            )
+        return conn
+    except BaseException:
+        conn.close()
+        raise
 
 
 def _has_meta(conn: sqlite3.Connection) -> bool:
