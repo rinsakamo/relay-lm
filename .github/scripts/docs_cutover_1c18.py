@@ -263,6 +263,7 @@ The canonical record preserves the complete E1-R5 bounded Primary MEM candidate-
         "docs/evidence/waves/e1r5_post_wave7_correction_convergence_audit-source.txt",
         "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
         ".github/scripts/docs_cutover_1c18.py",
+        ".github/workflows/docs-cutover-1c18-applicator.yml",
     }
     grep = subprocess.run(
         ["git", "grep", "-l", OLD_PATH],
