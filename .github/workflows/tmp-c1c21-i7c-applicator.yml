@@ -36,7 +36,20 @@ jobs:
       - name: Apply Cutover 1C-21 updates
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: python scripts/tmp_c1c21_i7c_applicator.py
+        run: |
+          set +e
+          python scripts/tmp_c1c21_i7c_applicator.py 2>&1 | tee c1c21-applicator.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+
+      - name: Persist applicator diagnostics
+        if: failure()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f c1c21-applicator.log
+          git commit -m "chore: capture I-7C cutover diagnostics"
+          git push origin HEAD:${{ github.head_ref }}
 
       - name: Verify exact source preservation
         run: |
@@ -120,7 +133,7 @@ jobs:
         run: |
           rm scripts/tmp_c1c21_i7c_applicator.py
           rm .github/workflows/tmp-c1c21-i7c-applicator.yml
-          rm -f apps/soul-lab/package-lock.json
+          rm -f apps/soul-lab/package-lock.json c1c21-applicator.log
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
