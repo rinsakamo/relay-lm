@@ -39,7 +39,7 @@ W7-INT is docs/smoke convergence only. It does not add production runtime behavi
 
 | Slice | Source PR | Merge commit | Dedicated handoff | Completion report |
 |---|---:|---|---|---|
-| E1-R3 provenance-preserving Primary MEM formation summary | #436 | `7bb2525cb000e893146408065f1aa5976f2b54ab` | [E1-R3 Provenance-Preserving Primary MEM Formation Summary](../../architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md) | [E1-R3 completion report](../../mvp/wave7/e1r3_completion_report.md) |
+| E1-R3 provenance-preserving Primary MEM formation summary | #436 | `7bb2525cb000e893146408065f1aa5976f2b54ab` | [E1-R3 Provenance-Preserving Primary MEM Formation Summary](../../architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md) | [E1-R3 completion report](../implementation/e1r3_completion_report.md) |
 | E1-R4 retrieval-response grounding and unsupported-detail suppression | #437 | `e6e5b32cd489dda493ff0171a260dd561a91765c` | [E1-R4 Retrieval-Response Grounding](../../architecture/e1r4_retrieval_response_grounding.md) | [E1-R4 completion report](../../mvp/wave7/e1r4_completion_report.md) |
 
 ## Merge commit inventory
