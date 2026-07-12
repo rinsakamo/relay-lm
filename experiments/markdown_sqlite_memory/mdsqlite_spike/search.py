@@ -3,8 +3,8 @@
 ``SearchPlanner`` is the bounded future planning interface: a production
 system could put an LLM behind it to turn a natural-language query into a
 ``SearchPlan``. This spike ships only the deterministic planner and never
-calls an LLM. Plans are bounded by construction (term count and result
-limit are clamped), so any planner implementation stays within budget.
+calls an LLM. Plans are bounded by construction (term count, term length and
+result limit are clamped), so any planner implementation stays within budget.
 """
 
 from __future__ import annotations
@@ -15,8 +15,9 @@ from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 MAX_TERMS = 8
+MAX_TERM_LENGTH = 256
 MAX_LIMIT = 100
-_TOKEN_RE = re.compile(r"[a-z0-9_]+")
+_TOKEN_RE = re.compile(r"\w+", re.UNICODE)
 
 
 @dataclass(frozen=True)
@@ -28,16 +29,25 @@ class SearchPlan:
     status: str = "active"
     page_prefix: str | None = None
     limit: int = 20
+    match_none: bool = False
 
     def bounded(self) -> "SearchPlan":
+        bounded_terms: list[str] = []
+        for raw in self.terms:
+            term = " ".join(str(raw).split()).lower()[:MAX_TERM_LENGTH]
+            if term and term not in bounded_terms:
+                bounded_terms.append(term)
+            if len(bounded_terms) == MAX_TERMS:
+                break
         return SearchPlan(
-            terms=self.terms[:MAX_TERMS],
+            terms=tuple(bounded_terms),
             kind=self.kind,
             user_tags=self.user_tags,
             system_tags=self.system_tags,
             status=self.status,
             page_prefix=self.page_prefix,
             limit=max(1, min(self.limit, MAX_LIMIT)),
+            match_none=self.match_none,
         )
 
 
@@ -65,20 +75,38 @@ class DeterministicPlanner:
 
     def plan(self, query: str, **filters) -> SearchPlan:
         terms = tuple(_TOKEN_RE.findall(query.lower()))
-        return SearchPlan(terms=terms, **filters).bounded()
+        return SearchPlan(
+            terms=terms,
+            match_none=bool(query.strip()) and not terms,
+            **filters,
+        ).bounded()
 
 
 def plan_search(query: str, **filters) -> SearchPlan:
     return DeterministicPlanner().plan(query, **filters)
 
 
+def _quote_fts_term(term: str) -> str:
+    """Return one FTS5 phrase with embedded quotes escaped."""
+    return '"' + term.replace('"', '""') + '"'
+
+
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def execute_search(
     conn: sqlite3.Connection, plan: SearchPlan, count_usage: bool = True
 ) -> list[SearchHit]:
     plan = plan.bounded()
+    if plan.match_none:
+        return []
+
+    ascii_terms = tuple(term for term in plan.terms if term.isascii())
+    substring_terms = tuple(term for term in plan.terms if not term.isascii())
     params: list = []
-    if plan.terms:
-        match = " AND ".join(f'"{term}"' for term in plan.terms)
+    if ascii_terms:
+        match = " AND ".join(_quote_fts_term(term) for term in ascii_terms)
         sql = (
             "SELECT b.block_id, b.page_path, b.kind, b.status, b.revision, "
             "b.content, bm25(blocks_fts) AS score "
@@ -91,14 +119,17 @@ def execute_search(
             "SELECT b.block_id, b.page_path, b.kind, b.status, b.revision, "
             "b.content, 0.0 AS score FROM blocks b WHERE 1=1"
         )
+    for term in substring_terms:
+        sql += " AND b.normalized_text LIKE ? ESCAPE '\\'"
+        params.append("%" + _escape_like(term) + "%")
     sql += " AND b.status = ?"
     params.append(plan.status)
     if plan.kind:
         sql += " AND b.kind = ?"
         params.append(plan.kind)
     if plan.page_prefix:
-        sql += " AND b.page_path LIKE ?"
-        params.append(plan.page_prefix + "%")
+        sql += " AND b.page_path LIKE ? ESCAPE '\\'"
+        params.append(_escape_like(plan.page_prefix) + "%")
     for tag in plan.user_tags:
         sql += (
             " AND EXISTS(SELECT 1 FROM block_tags t WHERE t.block_id = b.block_id "
