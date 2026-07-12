@@ -28,6 +28,7 @@ CURRENT_DOCS = (
     "docs/architecture/acg5_relayemo_scene_cleanup.md",
     "docs/architecture/cw_a5_character_creation_templates_showcase_import.md",
     "docs/architecture/o1e_scheduler_operational_controls.md",
+    "docs/architecture/o1f_operational_validation.md",
     "docs/architecture/o2_supervised_scheduler_service.md",
     "docs/architecture/o3_always_on_local_scheduler.md",
     "docs/architecture/pm_d5_relaymem_flat_store_compatibility_removal.md",
@@ -300,6 +301,12 @@ REQUIRED = {
         "O1F is complete as validation-only operational hardening over this caller-invoked boundary.",
         "O2 and O3 are implemented in dedicated handoffs as opt-in layers above O1E",
     ),
+    "docs/architecture/o1f_operational_validation.md": (
+        "# O1F Operational Validation",
+        "Status: implemented in this slice.",
+        "validate_scheduler_operational_boundary_once",
+        "../evidence/implementation/o1f_completion_report.md",
+    ),
     "docs/architecture/o2_supervised_scheduler_service.md": (
         "relaylm_doc_type: implementation_handoff",
         "relaylm_authority: o2_supervised_scheduler_service_boundary",
@@ -350,6 +357,14 @@ REQUIRED = {
         "relaylm_doc_type: implementation_handoff",
         "# P0 RelayREL / RelaySCN / RelayEMO Ordering Fix",
         "PM-D3 RelayEMO/RelaySCN scene_state ownership is closed by the shipped request-path wiring and validation.",
+    ),
+    "docs/evidence/implementation/o1f_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "relaylm_source_pr: 429",
+        "O1F Completion Report",
+        "Current O1F behavior belongs to",
+        "o1f_completion_report-source.txt",
+        "At source PR #429",
     ),
     "docs/evidence/implementation/e1r4_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",

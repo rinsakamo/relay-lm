@@ -130,7 +130,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 ## Wave 6 implementation evidence
 
 - [Wave 6 Cross-Slice Convergence Audit](evidence/waves/wave6_cross_slice_convergence_audit.md)
-- [O1F completion report](mvp/wave6/o1f_completion_report.md)
+- [O1F completion report](evidence/implementation/o1f_completion_report.md)
 - [I-5B completion report](mvp/wave6/i5b_completion_report.md)
 - [I-7C completion report](mvp/wave6/i7c_completion_report.md)
 - [E1-R1 completion report](mvp/wave6/e1r1_completion_report.md)

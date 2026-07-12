@@ -686,7 +686,7 @@ PR #575 merged as `82d959ed00e958cb970ebcde0490903ae884322c`; C1C17 is finalized
 
 ```yaml
 cutover_pr: 576
-merged_commit: pending
+merged_commit: 91c21085b468052f77b65d5e1577cd1940fe0b2b
 old_path: docs/mvp/wave7/e1r5_completion_report.md
 old_blob_sha: 68fa2b0c76caf745e55f5f4ef3fd3677c8681a8d
 old_content_sha256: 2f7b777321433cada0d840973bf3639ae3b5f7f6a7fee7edfb76c6809027d956
@@ -726,6 +726,51 @@ verification:
 ```
 
 The canonical record preserves the complete E1-R5 bounded Primary MEM candidate-discovery implementation boundary from PR #439 while separating it from current architecture-owned behavior and the PR #491 canonical Primary recall adapter fold-in. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified six repository-root references across five files and six Markdown-link dependencies across five router, handoff, and evidence files. The current Post-Wave-7 correction audit is relinked while its exact source snapshot remains unchanged. The old path above is only the historical migration identifier for this receipt.
+
+### C1C19-001 — O1F completion report
+
+```yaml
+cutover_pr: 581
+merged_commit: pending
+old_path: docs/mvp/wave6/o1f_completion_report.md
+old_blob_sha: cae70dbe1648ed6757af928eeae0becd7fd313dd
+old_content_sha256: b7c61bd6711e2f8ab741e4f73df5715d64229cfa5f11865c1004eed9d5a6e976
+source_commit: 14b91b5ed21f240aa92eb54189e0b2d36ab089f7
+source_origin_commit: 961fff2d935cd764e81e577887328e86363e56d5
+source_pr: 429
+recorded_on: 2026-06-27
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/o1f_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/o1f_completion_report-source.txt
+exact_source_blob_sha: cae70dbe1648ed6757af928eeae0becd7fd313dd
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 4
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 6
+  relative_markdown_link_referrer_files_at_frozen_baseline: 6
+  relative_markdown_link_dependencies_at_frozen_baseline: 6
+  o1f_architecture_handoff_updated: true
+  wave6_convergence_evidence_link_updated: true
+  implementation_evidence_index_updated: true
+  documentation_current_boundary_smoke_updated: true
+  consolidated_completion_report_smoke_updated: true
+  dedicated_o1f_workflow_absent_in_current_tree: true
+  cutover_preparation_self_test_reused_without_path_change: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_o1f_smokes: passed
+  o1_scheduler_and_operational_regressions: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete O1F validation-only scheduler operational-hardening boundary from PR #429 while separating it from current architecture-, implementation-, and focused-smoke-owned behavior. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified six repository-root literals across four files and six Markdown-link dependencies across six router, handoff, convergence, and source-report files. The consolidated scheduler-worker smoke command now validates the canonical report. The dedicated O1F workflow named by the historical source report is no longer present in the current tree and is not recreated. The migration-aware completion-report model and PR-link checks apply without validator changes. The old path above is only the historical migration identifier for this receipt.
 
 ## Pending batches
 

@@ -113,11 +113,11 @@ PYTHONPATH=.:scripts python scripts/relaylm_o1f_operational_validation_saturatio
 PYTHONPATH=.:scripts python scripts/relaylm_o1f_operational_validation_restart_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_o1f_operational_validation_security_smoke.py
 
-PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/o1f_completion_report.md
+PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/o1f_completion_report.md
 PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
 ```
 
 ## Completion report
 
-The implementation evidence for this slice is recorded in [O1F completion report](../mvp/wave6/o1f_completion_report.md).
+The implementation evidence for this slice is recorded in [O1F completion report](../evidence/implementation/o1f_completion_report.md).
