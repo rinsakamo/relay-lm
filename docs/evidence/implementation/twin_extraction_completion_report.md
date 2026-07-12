@@ -1,11 +1,33 @@
 ---
 relaylm_doc_type: implementation_completion_report
+relaylm_authority: twin_extraction_tooling_implementation_evidence
 relaylm_status: historical_after_merge
 relaylm_volatility: frozen
 relaylm_owner: offline_tooling
+relaylm_update_trigger:
+  - metadata or link repair only
 relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_not_authoritative_for:
+  - current repository-wide implementation status
+  - current Twin Extraction or review-import behavior
+  - MEM/SOUL bootstrap or RelaySLP runtime behavior
+  - repeatable operator procedure
+relaylm_source_commit: fc7e77ef52f137c2a9224b20dff1e8e4711ba0f3
+relaylm_source_origin_commit: 2e484f9aea04425285e9c5ce690b38a8beb87e82
+relaylm_source_pr: 503
+relaylm_recorded_on: 2026-07-07
+relaylm_source_blob: c0b71f940cebf4b6de2f912870a1be7e14c90b60
+relaylm_source_content_sha256: 8e2db5550392a4c08d8aa62d78fdabb4e920428c7efdc4a477973b7174a4bd2d
+relaylm_exact_source_snapshot: twin_extraction_completion_report-source.txt
 ---
 # Twin Extraction Tooling Completion Report
+
+## Status and authority
+
+This document is frozen implementation evidence for the offline Twin Extraction tooling introduced by PR #503, merged as `2e484f9aea04425285e9c5ce690b38a8beb87e82`, and last textually corrected by `fc7e77ef52f137c2a9224b20dff1e8e4711ba0f3`. Current repository status belongs to [Project Status](../../PROJECT_STATUS.md); current execution and review-import behavior belongs to the [Twin Extraction runbook](../../tools/twin_extraction_runbook.md).
+
+The exact pre-cutover report is retained byte-for-byte as [twin_extraction_completion_report-source.txt](twin_extraction_completion_report-source.txt). Statements below describe the source boundary unless explicitly qualified.
+
 
 ## Scope
 
@@ -55,7 +77,7 @@ Non-goals:
 - `scripts/twin_extraction_prompts/chatgpt_extraction_prompt.txt`
 - `docs/tools/twin_extraction_prompts.md`
 - `docs/tools/twin_extraction_runbook.md`
-- `docs/mvp/wave8/twin_extraction_completion_report.md`
+- `docs/evidence/implementation/twin_extraction_completion_report.md`
 - `docs/README.md`
 - `docs/PROJECT_STATUS.md`
 - `.gitignore`
@@ -66,7 +88,7 @@ Non-goals:
 python -m compileall relaylm scripts
 PYTHONPATH=.:scripts python scripts/relaylm_twin_extraction_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_twin_extraction_security_smoke.py
-PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/twin_extraction_completion_report.md
+PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/twin_extraction_completion_report.md
 PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
 PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
 ```
@@ -82,6 +104,8 @@ All of the above pass locally. `relaylm_twin_extraction_smoke.py` uses small, en
 - The batch runner and merge CLIs operate purely on local files and a caller-specified endpoint; there is no queue, retry backoff beyond `--retries`, or resumable/partial-batch checkpointing across separate invocations.
 
 ## Shared documentation update inputs
+
+At source PR #503:
 
 - This PR does not change O2/O3, CW-A4/CW-A5, RelaySLP, or any RelayMEM/RelaySOUL runtime authority or status; `docs/PROJECT_STATUS.md` receives only a one-line addition noting the offline, runtime-non-contact tooling addition.
 - No MEM bootstrap ingestion or SLP connection exists yet; any future slice that wires the reviewed `twin_extraction_review.json` output into MEM bootstrap or SOUL CW-A1 sources is separate follow-on work, not part of this PR.

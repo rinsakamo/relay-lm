@@ -481,7 +481,7 @@ The canonical record preserves the complete O2/O3 and PM-D5-D7 documentation-con
 
 ```yaml
 cutover_pr: 571
-merged_commit: pending
+merged_commit: 2d9fc3aa26145cf80cdbfa5d2ccb84261d7d963e
 old_path: docs/mvp/wave8/e2_value_smoke_harness_completion_report.md
 old_blob_sha: 333ba34007a38b794572683c41e947ae1d0ad8cf
 old_content_sha256: ffc09e20a41f7202c05682aa9e50a8c859107a64bacdc33ff5e9a81723b13358
@@ -514,7 +514,47 @@ verification:
   unresolved_review_threads: 0
 ```
 
-The canonical record preserves the complete E2 comparison-transcript harness implementation boundary while separating it from the later local human judgment and release-readiness conclusion. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified one repository-root path occurrence, three Markdown links across three referrer files, one release-readiness reference, and one current-boundary evidence-map addition. The migration-aware completion-report model and PR-link checks introduced by C1C11 apply without further validator changes. The old path above is only the historical migration identifier for this receipt.
+The canonical record preserves the complete E2 comparison-transcript harness implementation boundary while separating it from the later local human judgment and release-readiness conclusion. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified one repository-root path occurrence, three Markdown links across three referrer files, one release-readiness reference, and one current-boundary evidence-map addition. The migration-aware completion-report model and PR-link checks introduced by C1C11 apply without further validator changes. PR #571 merged as `2d9fc3aa26145cf80cdbfa5d2ccb84261d7d963e`; C1C13 is finalized by Cutover 1C-14.
+
+### C1C14-001 — Twin Extraction Tooling completion report
+
+```yaml
+cutover_pr: 572
+merged_commit: pending
+old_path: docs/mvp/wave8/twin_extraction_completion_report.md
+old_blob_sha: c0b71f940cebf4b6de2f912870a1be7e14c90b60
+old_content_sha256: 8e2db5550392a4c08d8aa62d78fdabb4e920428c7efdc4a477973b7174a4bd2d
+source_commit: fc7e77ef52f137c2a9224b20dff1e8e4711ba0f3
+source_origin_commit: 2e484f9aea04425285e9c5ce690b38a8beb87e82
+source_pr: 503
+recorded_on: 2026-07-07
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/twin_extraction_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/twin_extraction_completion_report-source.txt
+exact_source_blob_sha: c0b71f940cebf4b6de2f912870a1be7e14c90b60
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 3
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 3
+  relative_markdown_link_referrer_files_at_frozen_baseline: 2
+  relative_markdown_link_dependencies_at_frozen_baseline: 2
+  implementation_evidence_index_updated: true
+  twin_extraction_runbook_updated: true
+  documentation_current_boundary_smoke_updated: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_twin_extraction_smokes: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: pending
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete offline Twin Extraction implementation boundary while separating it from current runbook-owned operation and later review-import bridge evolution. The exact pre-cutover source is retained as the final Git blob and byte-for-byte snapshot. The dependency sweep identified three repository-root path occurrences across three files, two Markdown links across two router files, and one current-boundary canonical evidence-map addition. The migration-aware completion-report model and PR-link checks apply without further validator changes. The old path above is only the historical migration identifier for this receipt.
 
 ## Pending batches
 
