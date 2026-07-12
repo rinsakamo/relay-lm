@@ -112,7 +112,9 @@ def stable_block_id(seed: str) -> str:
 def _validate_single_line(name: str, value: str, *, allow_empty: bool = True) -> None:
     if "\n" in value or "\r" in value:
         raise MarkdownSyntaxError(f"{name} must be a single line")
-    if not allow_empty and not value.strip():
+    if value != value.strip():
+        raise MarkdownSyntaxError(f"{name} must not have leading/trailing whitespace")
+    if not allow_empty and not value:
         raise MarkdownSyntaxError(f"{name} must not be empty")
 
 
