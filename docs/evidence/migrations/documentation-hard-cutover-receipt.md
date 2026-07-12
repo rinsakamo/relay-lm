@@ -444,7 +444,7 @@ The canonical record preserves the complete MVP eval runner implementation bound
 
 ```yaml
 cutover_pr: 570
-merged_commit: pending
+merged_commit: 81a6b0079acc2e33a9913c6edac7276629b1ff15
 old_path: docs/mvp/wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md
 old_blob_sha: 27a87767c6ee47d44e69230d65d5e4d97032096e
 old_content_sha256: 797be1f18e94f9a0e9cec536e109ca8257ad5bcf75ca4c623d9b15bb65e4c1a7
@@ -475,7 +475,46 @@ verification:
   unresolved_review_threads: 0
 ```
 
-The canonical record preserves the complete O2/O3 and PM-D5-D7 documentation-convergence boundary while clarifying that current status and sequencing remain owned by current authorities. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified three repository-root path occurrences across two files and two relative Markdown links across two router files. The migration-aware completion-report model and PR-link checks introduced by C1C11 apply to this canonical record without further validator changes. The old path above is only the historical migration identifier for this receipt.
+The canonical record preserves the complete O2/O3 and PM-D5-D7 documentation-convergence boundary while clarifying that current status and sequencing remain owned by current authorities. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified three repository-root path occurrences across two files and two relative Markdown links across two router files. The migration-aware completion-report model and PR-link checks introduced by C1C11 apply to this canonical record without further validator changes. PR #570 merged as `81a6b0079acc2e33a9913c6edac7276629b1ff15`; C1C12 is finalized by Cutover 1C-13.
+
+### C1C13-001 — E2 Value Smoke Harness completion report
+
+```yaml
+cutover_pr: 571
+merged_commit: pending
+old_path: docs/mvp/wave8/e2_value_smoke_harness_completion_report.md
+old_blob_sha: 333ba34007a38b794572683c41e947ae1d0ad8cf
+old_content_sha256: ffc09e20a41f7202c05682aa9e50a8c859107a64bacdc33ff5e9a81723b13358
+source_commit: 51d678dfb0a10899db424e59c08af70865b8333f
+source_pr: 481
+recorded_on: 2026-07-04
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/e2_value_smoke_harness_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/e2_value_smoke_harness_completion_report-source.txt
+exact_source_blob_sha: 333ba34007a38b794572683c41e947ae1d0ad8cf
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 1
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 1
+  relative_markdown_link_referrer_files_at_frozen_baseline: 3
+  relative_markdown_link_dependencies_at_frozen_baseline: 3
+  implementation_evidence_index_updated: true
+  release_readiness_reference_updated: true
+  documentation_current_boundary_smoke_updated: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_e2_harness_smoke: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete E2 comparison-transcript harness implementation boundary while separating it from the later local human judgment and release-readiness conclusion. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified one repository-root path occurrence, three Markdown links across three referrer files, one release-readiness reference, and one current-boundary evidence-map addition. The migration-aware completion-report model and PR-link checks introduced by C1C11 apply without further validator changes. The old path above is only the historical migration identifier for this receipt.
 
 ## Pending batches
 

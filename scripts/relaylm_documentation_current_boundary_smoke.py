@@ -146,6 +146,7 @@ REQUIRED = {
         "source PR #505; measurement-only evidence, no optimization or behavior change.",
         "docs/evidence/implementation/mvp_eval_runner_completion_report.md",
         "docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md",
+        "docs/evidence/implementation/e2_value_smoke_harness_completion_report.md",
         "docs/mvp/wave8/twin_extraction_completion_report.md",
         "docs/mvp/wave8/lat1_latency_measurement_completion_report.md",
         "Wave 7 merged completion reports",
@@ -372,6 +373,13 @@ REQUIRED = {
         "O2/O3 and PM-D5-D7 Docs Convergence Completion Report",
         "PR: #490",
         "At source PR #490:",
+    ),
+    "docs/evidence/implementation/e2_value_smoke_harness_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "E2 Value Smoke Harness Completion Report",
+        "PR: #481",
+        "later durable-memory E2 human review and release-readiness conclusion",
+        "does not retroactively turn this harness implementation report into a quality-evaluation record",
     ),
 }
 
