@@ -1,8 +1,10 @@
 """Regression coverage for independent PR review hardening findings."""
 
+import sqlite3
+
 import pytest
 
-from mdsqlite_spike import mdstore, search, slp
+from mdsqlite_spike import cache, mdstore, ops, search, slp
 from mdsqlite_spike.slp import Candidate
 
 
@@ -98,3 +100,46 @@ def test_fts_quotes_and_page_prefix_wildcards_are_literal(seeded_env):
         count_usage=False,
     ) == []
     conn.close()
+
+
+def test_cache_rejects_invalid_schema_metadata(tmp_path):
+    db_path = tmp_path / "bad-cache.db"
+    conn = cache.open_cache(db_path)
+    conn.execute(
+        "UPDATE schema_meta SET value = 'not-an-integer' "
+        "WHERE key = 'schema_version'"
+    )
+    conn.close()
+
+    with pytest.raises(cache.CacheCorruptError, match="invalid schema_version"):
+        cache.open_cache(db_path)
+
+    # The failed opener released its handle; the corrupt cache can be removed
+    # and rebuilt instead of remaining locked by a leaked connection.
+    db_path.unlink()
+
+
+def test_ops_rejects_unsupported_and_invalid_schema_versions(tmp_path):
+    db_path = tmp_path / "bad-ops.db"
+    conn = ops.connect(db_path)
+    conn.execute(
+        "UPDATE schema_meta SET value = '0' WHERE key = 'schema_version'"
+    )
+    conn.close()
+
+    with pytest.raises(ops.OpsSchemaVersionError, match="older than supported"):
+        ops.connect(db_path)
+
+    raw = sqlite3.connect(db_path)
+    raw.execute(
+        "UPDATE schema_meta SET value = 'not-an-integer' "
+        "WHERE key = 'schema_version'"
+    )
+    raw.commit()
+    raw.close()
+
+    with pytest.raises(ops.OpsSchemaVersionError, match="invalid version"):
+        ops.connect(db_path)
+
+    # Both rejected open attempts close their connections.
+    db_path.unlink()
