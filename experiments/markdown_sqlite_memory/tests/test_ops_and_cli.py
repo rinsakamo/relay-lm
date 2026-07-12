@@ -27,9 +27,7 @@ def test_claim_lease_and_expiry(env):
     epoch = 1000.0
     job = ops.claim_next(conn, "w1", env.now(), epoch, lease_seconds=30)
     assert job == "job_a"
-    # Still leased: nothing to claim.
     assert ops.claim_next(conn, "w2", env.now(), epoch + 10) is None
-    # Lease expired: reclaimable by another worker.
     reclaimed = ops.claim_next(conn, "w2", env.now(), epoch + 31)
     assert reclaimed == "job_a"
     row = conn.execute("SELECT claimed_by FROM jobs WHERE job_id = 'job_a'").fetchone()
@@ -74,7 +72,8 @@ def test_verify_reports_all_invariants(seeded_env):
         "receipts_only_for_applied_jobs",
         "ops_db_holds_no_mem_content",
         "no_orphaned_intents",
-        "tombstoned_content_not_active",
+        "tombstones_correspond_to_hidden_memory",
+        "usage_history_is_operational_authority",
     }
 
 
@@ -100,6 +99,7 @@ def test_cli_end_to_end(tmp_path):
 
     hits = _cli(root, "search", "kw1x2")
     assert [h["block_id"] for h in hits["hits"]] == ["blk_p1b2"]
+    assert hits["usage"]["blk_p1b2"]["usage_count"] == 1
 
     applied = _cli(
         root, "apply-candidate", "--candidate-id", "cli-1",
@@ -113,6 +113,10 @@ def test_cli_end_to_end(tmp_path):
     forgotten = _cli(root, "forget", "--block-id", applied["block_id"])
     assert forgotten["outcome"] == "applied"
     assert _cli(root, "search", "clikw")["hits"] == []
+
+    restored = _cli(root, "restore", "--block-id", applied["block_id"])
+    assert restored["outcome"] == "applied"
+    assert len(_cli(root, "search", "clikw")["hits"]) == 1
 
     drill = _cli(root, "simulate-failure", "--failpoint",
                  "after_replace_before_cache")
@@ -128,7 +132,7 @@ def test_cli_end_to_end(tmp_path):
 
 def test_benchmark_emits_machine_readable_results(env):
     report = bench.run_benchmark(env, pages=2, blocks_per_page=3, searches=5)
-    json.dumps(report)  # machine-readable end to end
+    json.dumps(report)
     assert report["fixture"] == {"pages": 2, "blocks": 6, "seed": 1}
     for key in (
         "compile_seconds", "incremental_update", "search_latency",
