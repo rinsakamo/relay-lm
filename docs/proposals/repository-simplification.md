@@ -9,7 +9,7 @@ relaylm_update_trigger:
   - proposal is accepted, rejected, withdrawn, or materially revised
   - documentation hard cutover completes
   - reproducible repository baseline is published
-  - dogfood evidence changes default-path priorities
+  - storage authority or dogfood evidence changes the proposed sequence
 relaylm_not_authoritative_for:
   - current runtime behavior
   - permission to delete modules, scripts, workflows, or documentation
@@ -50,16 +50,18 @@ A concrete false positive was `relaymem_slp_supervised_scheduler_service.py`. It
 - remove genuinely dead or duplicated assets only after callers, documentation, tests, and accepted plans are checked;
 - organize runtime code by durable subsystem rather than phase identifiers;
 - evaluate SQLite and serialization changes through bounded evidence;
-- choose default-path graduation from dogfood and compatibility evidence.
+- choose default-path graduation from dogfood and request-shape evidence;
+- execute accepted replacements as hard cutovers rather than preserving superseded compatibility layers.
 
 ## Non-goals
 
 - setting a target number of files, scripts, workflows, modules, or lines of code;
 - treating every file under `scripts/` as a test;
 - deleting modules based only on static imports from `app.py`;
-- replacing JSON and JSONL state with SQLite in one migration;
+- replacing JSON and JSONL state with SQLite without a storage-authority decision and bounded evaluation;
 - converting every dataclass or dictionary to Pydantic;
 - creating `docs/archive/` or superseding the accepted documentation hard-cutover design;
+- preserving obsolete internal import paths, CLI names, schema aliases, or storage formats merely for compatibility;
 - enabling history exclusion or another feature by default without request-shape and negative-path evidence;
 - changing runtime behavior in this PR.
 
@@ -81,6 +83,22 @@ A reproducible audit belongs in `docs/evidence/`. SQLite adoption, broad persist
 
 Editable character sources and approved Markdown workspace files remain part of RelayLM's product model. A later runtime-state experiment must not silently absorb them.
 
+### Protect current contracts, not superseded compatibility
+
+Simplification must preserve active default, opt-in, operator, and tooling paths; user-owned durable data; and current reliability invariants. It must not preserve superseded internal module paths, command aliases, schema aliases, or storage formats merely because an older implementation used them.
+
+When a replacement is accepted, the default execution model is a bounded hard cutover:
+
+- update every current caller in the same PR or explicitly coordinated PR set;
+- delete the superseded path, schema, command, or runtime format at the cutover boundary;
+- add negative checks that prevent legacy references from returning;
+- do not add dual-read, dual-write, fallback, redirect, bridge, or compatibility-import layers unless a separate decision identifies a current consumer, a removal trigger, and a time-bounded exit;
+- allow one-time migration tools without treating them as permanent runtime compatibility;
+- drain or rebuild ephemeral and reconstructible state instead of migrating it;
+- migrate user-owned durable state with a backup, count or digest verification, and a recorded cutover receipt.
+
+This principle does not weaken current behavior or crash-safety contracts. It removes only compatibility obligations that are not part of RelayLM's accepted current product or operator boundary.
+
 ## Proposed staged program
 
 | Stage | Proposed disposition | Boundary |
@@ -90,9 +108,11 @@ Editable character sources and approved Markdown workspace files remain part of 
 | 2. Script and test classification | accept candidate | bounded consolidation only |
 | 3. Invocation-root module audit | accept candidate | deletion requires explicit evidence |
 | 4. Subpackage and naming cleanup | accept in principle | plan per subsystem after Stage 3 |
-| 5. SQLite runtime-state spike | defer to experiment | no migration approval here |
+| 5. Storage-authority decision and SQLite spike | defer to experiment | no migration approval here |
 | 6. Serialization boundary cleanup | defer to classification | no repository-wide Pydantic mandate |
 | 7. Default-path graduation | defer to dogfood evidence | separate deployment decision per feature |
+
+Stages 1 through 3 can proceed without a database decision. Storage-coupled namespace moves, deletion of file-store machinery, or persistence refactors must wait for the Stage 5 storage-authority decision.
 
 ## Stage 0: complete the documentation hard cutover
 
@@ -188,6 +208,8 @@ Workflow consolidation should follow stable validation responsibility. This prop
 - duplicated fixtures and assertion helpers are reduced;
 - removed scripts have a replacement test or an explicit obsolete-boundary justification.
 
+Accepted test consolidations should use hard cutover: migrate the current assertion responsibility, update the canonical command and workflow, then delete the superseded script and entry point in the same bounded change.
+
 ## Stage 3: audit module invocation paths
 
 A deletion audit must include more roots than the default application import graph.
@@ -273,30 +295,61 @@ Rules:
 - new module names describe durable functions rather than phase or wave IDs;
 - move one subsystem at a time;
 - separate broad path moves from behavior changes and large file mergers;
-- freeze public entry points and serialized artifacts with tests first;
-- avoid permanent compatibility-import layers unless separately justified;
-- check import cycles and startup behavior after each move.
+- freeze current public entry points and serialized invariants with tests before changing them;
+- update all current callers and delete the old module path in the same hard-cutover change;
+- do not create compatibility-import modules or permanent re-export layers by default;
+- add checks that reject imports from superseded paths;
+- check import cycles and startup behavior after each move;
+- defer storage-coupled moves until Stage 5 identifies the target storage authority.
 
-Suggested initial order is diagnostics, scheduler, memory lifecycle, context, persona stages, and request pipeline. Stage 3 evidence may change that order.
+Suggested initial order is diagnostics, non-storage operations, context, persona stages, scheduler, memory lifecycle, and request pipeline. Stage 3 evidence and the Stage 5 storage decision may change that order.
 
-## Stage 5: run a bounded SQLite spike
+## Stage 5: decide storage authority and run a bounded SQLite spike
 
-This proposal does not approve replacing all JSON or JSONL state with SQLite.
+A database choice cannot be evaluated until each existing artifact class has an explicit authority and migration treatment.
 
-Test one bounded internal runtime-state area, preferably scheduler queue and claim state. Compare:
+Classify runtime data as:
+
+| Data class | Default treatment |
+|---|---|
+| human-edited character source | Markdown remains authoritative |
+| user-owned durable memory or relationship state | migrate with backup and verification if the authority changes |
+| reconstructible index, cache, or projection | rebuild; do not migrate by default |
+| queue, lease, claim, checkpoint, or transient scheduler state | drain or reset at cutover unless a current invariant requires transfer |
+| append-only evidence or historical receipt | freeze or export; do not keep in the hot operational path |
+
+The storage decision must answer:
+
+- which data classes become SQLite-authoritative;
+- whether one database or multiple databases are used;
+- namespace and character isolation rules;
+- transaction boundaries and idempotency keys;
+- retention, deletion, replay, and publication semantics;
+- backup, restore, integrity-check, and export behavior;
+- whether vector data stays in its current index or becomes a separate derived store;
+- Windows and WSL filesystem assumptions;
+- the exact hard-cutover treatment for each legacy JSON or JSONL artifact.
+
+Only after that classification, test one bounded internal runtime-state area, preferably scheduler queue and claim state. Compare:
 
 - crash consistency;
 - multi-process safety;
 - idempotency;
 - replay and retention semantics;
-- migration and rollback complexity;
 - observability and inspectability;
 - backup and restore behavior;
 - Windows and WSL behavior;
 - implementation and test complexity;
-- measured latency and contention.
+- measured latency, lock waits, and contention.
 
-SQLite may replace some locking and atomic-update mechanisms, but it does not automatically remove domain semantics such as replay eligibility, publication boundaries, fence meaning, or protected-source separation.
+SQLite may replace locking, atomic rename, scan, and index-consistency machinery. It does not automatically remove domain semantics such as replay eligibility, publication boundaries, fence meaning, protected-source separation, or idempotent finalization.
+
+A successful SQLite cutover should normally:
+
+- use one-time import or rebuild rather than permanent legacy readers;
+- avoid dual-write and fallback paths;
+- stop writers, drain or snapshot the selected state, import or rebuild, verify counts and invariants, switch the canonical writer, and remove the old writer and reader in one bounded cutover;
+- retain a backup and migration receipt without keeping the old runtime format active.
 
 Adoption requires a separate proposal or ADR supported by a recorded evaluation. Character workspace Markdown remains out of scope.
 
@@ -315,6 +368,8 @@ A Pydantic dependency does not imply that every internal value should be a Pydan
 
 First classify hand-written serialization methods as validation and serialization, serialization only, logging projection, internal value, or compatibility schema. Consolidate only proven duplication or drift.
 
+Accepted schema replacements should update current producers and consumers together and delete obsolete aliases. One-time storage migration code may recognize an old schema, but the normal runtime path must not retain indefinite compatibility parsing.
+
 The current `asyncio.to_thread` compiler handoff already returns captured worker-context blocks and restores them in the awaiting request context. It is not an unresolved propagation bug. A later refactor must preserve the current offload and request-isolation behavior.
 
 ## Stage 7: graduate default-path behavior from dogfood evidence
@@ -330,7 +385,7 @@ Prioritize evidence from:
 - practical file-first workspace editing;
 - false recall, incorrect mutation, and history-handling failures.
 
-Each default-on proposal must define supported request shapes, negative-path and compatibility tests, rollback behavior, dogfood value, documentation and config updates, and a separate deployment decision.
+Each default-on proposal must define supported request shapes, negative-path tests, rollback behavior, dogfood value, documentation and config updates, and a separate deployment decision.
 
 History exclusion remains governed by its existing decision debt until reconstruction and relevant tool-chain boundaries are safe for the intended request shapes.
 
@@ -342,14 +397,15 @@ B. add reproducible baseline tooling and evidence
 C. extend scripts inventory with responsibility classification
 D. consolidate one bounded ordinary-regression family into pytest
 E. run the invocation-root module audit
-F. remove one bounded dead-code or duplicate-validation wave
-G. plan and move one low-risk subsystem namespace
-H. run the bounded SQLite spike
-I. classify serialization boundaries and remove proven duplication
-J. propose default-path graduation from dogfood evidence
+F. classify storage authority and approve a bounded SQLite experiment
+G. remove one bounded dead-code or duplicate-validation wave
+H. run the SQLite spike and record the result
+I. plan and hard-cutover one low-risk subsystem namespace
+J. classify serialization boundaries and remove proven duplication
+K. propose default-path graduation from dogfood evidence
 ```
 
-Stages B through F must produce evidence used to revise Stages G through J.
+Stages B through E can proceed before the storage decision. Storage-coupled deletion and namespace work must use the result of Stages F and H.
 
 ## Alternatives
 
@@ -365,9 +421,13 @@ Incorrectly treats opt-in services, operator CLIs, offline tooling, and subproce
 
 A poor fit for operator commands, migration tools, benchmarks, and some process-level validation. Reject as a blanket rule.
 
+### Preserve legacy compatibility during every refactor
+
+Reduces immediate cutover risk but creates bridges, aliases, duplicate paths, and removal debt that conflict with the documentation hard-cutover model. Reject unless a current external consumer is identified and a time-bounded compatibility decision is approved.
+
 ### Move all internal state to SQLite immediately
 
-Commits to migration before measuring invariant coverage, platform behavior, and rollback cost. Defer to Stage 5.
+Commits to migration before deciding authority, invariant coverage, platform behavior, and reset versus migration treatment. Defer to Stage 5.
 
 ### Keep the repository unchanged
 
@@ -377,6 +437,8 @@ Leaves duplicated validation, phase-oriented naming, and unclear ownership in pl
 
 - **Inventory becomes permanent bureaucracy.** Keep row-level outputs generated and commit-fixed; retain only reviewed summaries and decisions.
 - **Deletion removes an operational path.** Require invocation roots, documented-use checks, and operator validation.
+- **Hard cutover removes a hidden current consumer.** Require current-caller inventory, repository-wide negative-reference checks, and bounded rollback through the cutover commit rather than runtime compatibility.
+- **User-owned state is mistaken for disposable runtime state.** Classify authority before migration and require backup plus count or digest verification.
 - **pytest migration weakens process-level coverage.** Preserve dedicated subprocess and crash suites.
 - **Namespace moves produce noisy diffs.** Move one subsystem at a time and separate relocation from behavior changes.
 - **SQLite is assumed to remove domain logic.** Compare invariant by invariant and require a separate decision.
@@ -391,12 +453,15 @@ Acceptance would authorize:
 - responsibility-based script classification;
 - an invocation-root module audit;
 - bounded test consolidation and evidence-backed deletion waves;
-- subsystem-specific namespace plans.
+- subsystem-specific namespace plans;
+- hard-cutover execution as the default for accepted internal replacements;
+- preparation of a separate storage-authority and SQLite decision.
 
 Acceptance would not authorize:
 
 - deletion based on the initial zero-base counts;
 - a full SQLite migration;
+- disposal of user-owned durable data;
 - repository-wide Pydantic conversion;
 - a parallel documentation archive;
 - default-on graduation of a specific feature;
@@ -411,5 +476,7 @@ Before acceptance:
 - aggregate script language distinguishes Python scripts from smoke tests;
 - exact baseline counts are deferred to reproducible evidence;
 - documentation treatment remains consistent with ADR 0002;
+- the hard-cutover principle distinguishes current contracts from superseded compatibility;
+- storage state is classified before any SQLite migration is authorized;
 - the ContextVar handoff is described as current implemented behavior;
 - no runtime file or behavior changes in this PR.
