@@ -46,7 +46,7 @@ Wave 8 currently contains operator-facing evaluation-flow conveniences, runtime-
 - [O2/O3 and PM-D5-D7 docs convergence completion report](../evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md) — source PR #490.
 - [E2 Value Smoke Harness completion report](../evidence/implementation/e2_value_smoke_harness_completion_report.md) — source PR #481; harness implementation evidence only, with human judgment remaining separate and local-only.
 - [Twin Extraction Tooling completion report](../evidence/implementation/twin_extraction_completion_report.md) — source PR #503; offline runtime-non-contact preprocessing/extraction tooling only.
-- [LAT-1 Latency Measurement completion report](wave8/lat1_latency_measurement_completion_report.md) — source PR #505; measurement-only evidence, no optimization or behavior change.
+- [LAT-1 Latency Measurement completion report](../evidence/implementation/lat1_latency_measurement_completion_report.md) — source PR #505; measurement-only evidence, no optimization or behavior change.
 
 ### Wave 7 merged completion reports
 
@@ -129,7 +129,7 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementati
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e2_value_smoke_harness_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/twin_extraction_completion_report.md
-python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/lat1_latency_measurement_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/lat1_latency_measurement_completion_report.md
 ```
 
 The source PR number must be concrete before final review. The convergence thread records the merge commit from GitHub; the report does not need a self-referential head SHA.
