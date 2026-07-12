@@ -28,7 +28,19 @@ jobs:
       - name: Compile experiment
         run: python -m compileall -q experiments/markdown_sqlite_memory
       - name: Run full experiment suite
-        run: python -m pytest -q experiments/markdown_sqlite_memory/tests
+        run: |
+          set -o pipefail
+          python -m pytest -vv experiments/markdown_sqlite_memory/tests \
+            --junitxml=experiment-test-results.xml 2>&1 | tee experiment-test-output.log
+      - name: Upload experiment diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: markdown-sqlite-spike-${{ matrix.python-version }}
+          path: |
+            experiment-test-results.xml
+            experiment-test-output.log
+          if-no-files-found: warn
       - name: Verify no production imports
         run: |
           if grep -R "markdown_sqlite_memory\|mdsqlite_spike" relaylm scripts apps --include='*.py' --include='*.ts' --include='*.tsx'; then
