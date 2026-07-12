@@ -28,3 +28,4 @@ This collection preserves bounded implementation and smoke evidence after its ac
 - [MVP-2 dry-run diagnostics headers](mvp2_dry_run_diagnostics_headers.md)
 - [MVP eval runner completion report](mvp_eval_runner_completion_report.md) — frozen implementation evidence from PR #451; current runner behavior remains code-owned.
 - [O2/O3 and PM-D5-D7 docs convergence completion report](o2_o3_pm_d5_d7_docs_convergence_completion_report.md) — frozen documentation-convergence evidence from PR #490; current status remains Project Status-owned.
+- [E2 Value Smoke Harness completion report](e2_value_smoke_harness_completion_report.md) — frozen harness implementation evidence from PR #481; later human judgment remains release-readiness-owned.

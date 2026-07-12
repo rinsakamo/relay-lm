@@ -112,7 +112,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 
 - [MVP eval runner completion report](evidence/implementation/mvp_eval_runner_completion_report.md) — source PR #451. This is an operator-facing evaluation-flow convenience only and does not mark O2/O3 complete.
 - [O2/O3 and PM-D5-D7 docs convergence completion report](evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md) — source PR #490. Historical documentation convergence evidence only.
-- [E2 Value Smoke Harness completion report](mvp/wave8/e2_value_smoke_harness_completion_report.md) — source PR #481. Harness implementation evidence only; the later human quality judgment remains separate and local-only.
+- [E2 Value Smoke Harness completion report](evidence/implementation/e2_value_smoke_harness_completion_report.md) — source PR #481. Harness implementation evidence only; the later human quality judgment remains separate and local-only.
 - [Twin Extraction Tooling completion report](mvp/wave8/twin_extraction_completion_report.md) — source PR #503. Offline runtime-non-contact preprocessing/extraction tooling only; no MEM/SOUL ingestion or RelaySLP runtime wiring.
 - [LAT-1 Latency Measurement completion report](mvp/wave8/lat1_latency_measurement_completion_report.md) — source PR #505. Measurement-only evidence; no optimization, response-time guarantee, timeout, degradation ladder, search-algorithm, ANN/vector DB, Secondary MEM, SSE timing, O2/O3, or TTS/avatar behavior change.
 

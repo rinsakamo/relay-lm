@@ -44,7 +44,7 @@ Wave 8 currently contains operator-facing evaluation-flow conveniences, runtime-
 
 - [MVP eval runner completion report](../evidence/implementation/mvp_eval_runner_completion_report.md) — source PR #451.
 - [O2/O3 and PM-D5-D7 docs convergence completion report](../evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md) — source PR #490.
-- [E2 Value Smoke Harness completion report](wave8/e2_value_smoke_harness_completion_report.md) — source PR #481; harness implementation evidence only, with human judgment remaining separate and local-only.
+- [E2 Value Smoke Harness completion report](../evidence/implementation/e2_value_smoke_harness_completion_report.md) — source PR #481; harness implementation evidence only, with human judgment remaining separate and local-only.
 - [Twin Extraction Tooling completion report](wave8/twin_extraction_completion_report.md) — source PR #503; offline runtime-non-contact preprocessing/extraction tooling only.
 - [LAT-1 Latency Measurement completion report](wave8/lat1_latency_measurement_completion_report.md) — source PR #505; measurement-only evidence, no optimization or behavior change.
 
@@ -127,7 +127,7 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r4_comple
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r5_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/mvp_eval_runner_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md
-python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/e2_value_smoke_harness_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e2_value_smoke_harness_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/twin_extraction_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/lat1_latency_measurement_completion_report.md
 ```
