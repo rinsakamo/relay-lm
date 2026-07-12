@@ -28,10 +28,28 @@ jobs:
           from pathlib import Path
           path = Path('.github/scripts/docs_cutover_1c11.py')
           body = path.read_text(encoding='utf-8')
-          old = 'if path not in {SNAP, RECEIPT}:'
-          new = 'if path not in {SNAP, RECEIPT, ".github/scripts/docs_cutover_1c11.py"}:'
-          assert body.count(old) == 1
-          path.write_text(body.replace(old, new, 1), encoding='utf-8')
+          replacements = (
+              (
+                  'if path not in {SNAP, RECEIPT}:',
+                  'if path not in {SNAP, RECEIPT, ".github/scripts/docs_cutover_1c11.py"}:',
+              ),
+              (
+                  'replace("scripts/relaylm_documentation_current_boundary_smoke.py", OLD, NEW, 1)',
+                  'replace("scripts/relaylm_documentation_current_boundary_smoke.py", OLD, NEW, 2)',
+              ),
+              (
+                  'repository_root_literal_reference_occurrences_updated_in_pr_tree: 6',
+                  'repository_root_literal_reference_occurrences_updated_in_pr_tree: 7',
+              ),
+              (
+                  'The dependency sweep identified six repository-root path occurrences across four files',
+                  'The dependency sweep identified seven repository-root path occurrences across four files',
+              ),
+          )
+          for old, new in replacements:
+              assert body.count(old) == 1, old
+              body = body.replace(old, new, 1)
+          path.write_text(body, encoding='utf-8')
           PY
           set +e
           python .github/scripts/docs_cutover_1c11.py > .github/cutover-1c11-error.md 2>&1
