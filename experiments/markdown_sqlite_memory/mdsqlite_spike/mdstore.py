@@ -23,7 +23,8 @@ A page looks like::
     <!-- relaymem-spike:end -->
 
 Rendering is deterministic: ``render_page(parse_page(text)) == text`` for
-any text produced by ``render_page``.
+any accepted non-empty page. Non-canonical pages are rejected rather than
+silently normalized, because normalization could discard user-authored text.
 """
 
 from __future__ import annotations
@@ -31,13 +32,18 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import tempfile
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 SYNTAX_HEADER = (
     "<!-- relaymem-spike:page-syntax v=0 (experimental; not production syntax) -->"
 )
-_BLOCK_START_RE = re.compile(r"^<!-- relaymem-spike:block id=([A-Za-z0-9_\-]+) -->$")
+_BLOCK_ID_PATTERN = r"[A-Za-z0-9_\-]+"
+_BLOCK_ID_RE = re.compile(rf"^{_BLOCK_ID_PATTERN}$")
+_BLOCK_START_RE = re.compile(
+    rf"^<!-- relaymem-spike:block id=({_BLOCK_ID_PATTERN}) -->$"
+)
 _BLOCK_END = "<!-- relaymem-spike:end -->"
 _HEADER_FIELD_RE = re.compile(r"^- ([a-z_]+): ?(.*)$")
 
@@ -103,11 +109,44 @@ def stable_block_id(seed: str) -> str:
     return "blk_" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:10]
 
 
+def _validate_single_line(name: str, value: str, *, allow_empty: bool = True) -> None:
+    if "\n" in value or "\r" in value:
+        raise MarkdownSyntaxError(f"{name} must be a single line")
+    if not allow_empty and not value.strip():
+        raise MarkdownSyntaxError(f"{name} must not be empty")
+
+
+def _validate_block(block: Block) -> None:
+    if not _BLOCK_ID_RE.fullmatch(block.block_id):
+        raise MarkdownSyntaxError(
+            f"invalid block id {block.block_id!r}; expected {_BLOCK_ID_PATTERN}"
+        )
+    _validate_single_line("status", block.status, allow_empty=False)
+    _validate_single_line("kind", block.kind, allow_empty=False)
+    _validate_single_line("updated", block.updated)
+    if not isinstance(block.revision, int) or isinstance(block.revision, bool):
+        raise MarkdownSyntaxError("revision must be an integer")
+    if block.revision < 1:
+        raise MarkdownSyntaxError("revision must be >= 1")
+    for field_name in _LIST_FIELDS:
+        for item in getattr(block, field_name):
+            _validate_single_line(field_name, item, allow_empty=False)
+            if "," in item:
+                raise MarkdownSyntaxError(
+                    f"{field_name} item {item!r} contains the list delimiter ','"
+                )
+    if any(line == _BLOCK_END for line in block.content.splitlines()):
+        raise MarkdownSyntaxError(
+            "content contains the reserved relaymem-spike end marker"
+        )
+
+
 def _render_list(values: tuple[str, ...]) -> str:
     return ", ".join(values)
 
 
 def render_block(block: Block) -> str:
+    _validate_block(block)
     lines = [f"<!-- relaymem-spike:block id={block.block_id} -->"]
     values = {
         "status": block.status,
@@ -129,6 +168,7 @@ def render_block(block: Block) -> str:
 
 
 def render_page(page: Page) -> str:
+    _validate_single_line("page title", page.title, allow_empty=False)
     parts = [SYNTAX_HEADER, f"# {page.title}"]
     for block in page.blocks:
         parts.append(render_block(block))
@@ -151,7 +191,12 @@ def _parse_block(block_id: str, lines: list[str], path: str) -> Block:
             raise MarkdownSyntaxError(
                 f"{path}: malformed header line in block {block_id}: {lines[idx]!r}"
             )
-        fields[match.group(1)] = match.group(2)
+        field_name = match.group(1)
+        if field_name in fields:
+            raise MarkdownSyntaxError(
+                f"{path}: duplicate header field {field_name!r} in block {block_id}"
+            )
+        fields[field_name] = match.group(2)
         idx += 1
     content = "\n".join(lines[idx:]).strip("\n")
     try:
@@ -202,7 +247,17 @@ def parse_page(text: str, path: str = "<memory>") -> Page:
         elif line.startswith("# ") and title == "Untitled":
             title = line[2:].strip()
         idx += 1
-    return Page(title=title, blocks=blocks)
+    page = Page(title=title, blocks=blocks)
+    try:
+        canonical = render_page(page)
+    except MarkdownSyntaxError as exc:
+        raise MarkdownSyntaxError(f"{path}: {exc}") from exc
+    if canonical != text:
+        raise MarkdownSyntaxError(
+            f"{path}: page is not canonical relaymem-spike v0; refusing a "
+            "lossy parse/render normalization"
+        )
+    return page
 
 
 def text_digest(text: str) -> str:
@@ -221,26 +276,42 @@ def file_digest(path: Path) -> str:
 def atomic_replace(path: Path, text: str) -> None:
     """Durably replace ``path`` with ``text``.
 
-    Writes to a temporary file in the same directory, fsyncs it, atomically
-    renames it over the destination, then fsyncs the directory so the rename
-    itself is durable. POSIX semantics; Windows durability is out of scope
-    for this spike.
+    Writes to a unique temporary file in the same directory, handles partial
+    ``os.write`` results, fsyncs the file, atomically renames it over the
+    destination, then fsyncs the directory so the rename itself is durable.
+    POSIX semantics; Windows durability is out of scope for this spike.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".spike-tmp")
     data = text.encode("utf-8")
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".spike-tmp", dir=path.parent
+    )
+    tmp = Path(tmp_name)
+    fd_open = True
     try:
-        os.write(fd, data)
+        os.fchmod(fd, 0o644)
+        view = memoryview(data)
+        while view:
+            written = os.write(fd, view)
+            if written <= 0:
+                raise OSError("os.write made no progress")
+            view = view[written:]
         os.fsync(fd)
-    finally:
         os.close(fd)
-    os.replace(tmp, path)
-    dir_fd = os.open(path.parent, os.O_RDONLY)
-    try:
-        os.fsync(dir_fd)
+        fd_open = False
+        os.replace(tmp, path)
+        dir_fd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
     finally:
-        os.close(dir_fd)
+        if fd_open:
+            os.close(fd)
+        try:
+            tmp.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def load_pages(pages_dir: Path) -> dict[str, str]:
