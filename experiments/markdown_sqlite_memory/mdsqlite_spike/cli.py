@@ -11,7 +11,7 @@ import argparse
 import dataclasses
 import json
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from . import bench, cache, search, slp, verify
 from .fixtures import init_fixture
@@ -29,6 +29,22 @@ def _split_csv(value: str | None) -> tuple[str, ...]:
     if not value:
         return ()
     return tuple(item.strip() for item in value.split(",") if item.strip())
+
+
+def _validated_page_rel(value: str) -> str:
+    """Validate a user-facing page argument as a relative POSIX Markdown path."""
+    if not value or "\x00" in value or "\\" in value:
+        raise argparse.ArgumentTypeError(
+            "page must be a non-empty relative POSIX path"
+        )
+    page = PurePosixPath(value)
+    if page.is_absolute() or any(part in ("", ".", "..") for part in page.parts):
+        raise argparse.ArgumentTypeError(
+            "page must stay within the spike pages directory"
+        )
+    if page.suffix.lower() != ".md":
+        raise argparse.ArgumentTypeError("page must have a .md extension")
+    return page.as_posix()
 
 
 def cmd_init_fixture(env: SpikeEnv, args) -> int:
@@ -174,7 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("apply-candidate", help="SLP apply of one candidate")
     p.add_argument("--candidate-id", required=True)
-    p.add_argument("--page", required=True)
+    p.add_argument("--page", required=True, type=_validated_page_rel)
     p.add_argument("--content", required=True)
     p.add_argument("--kind", default="fact")
     p.add_argument("--user-tags")
@@ -191,7 +207,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("simulate-failure", help="crash at a failpoint, then recover")
     p.add_argument("--failpoint", required=True, choices=slp.FAILPOINTS)
     p.add_argument("--candidate-id", default="simulated-failure")
-    p.add_argument("--page", default="simulated.md")
+    p.add_argument("--page", type=_validated_page_rel,
+                   default=_validated_page_rel("simulated.md"))
     p.add_argument("--content", help="defaults to unique per candidate/failpoint")
     p.add_argument("--skip-recovery", action="store_true",
                    help="leave the crash state on disk for inspection")
