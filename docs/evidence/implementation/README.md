@@ -35,3 +35,4 @@ This collection preserves bounded implementation and smoke evidence after its ac
 - [E1-R4 completion report](e1r4_completion_report.md) — frozen retrieval-response grounding implementation evidence from PR #437; current behavior remains architecture-owned.
 - [E1-R5 completion report](e1r5_completion_report.md) — frozen bounded Primary recall candidate-discovery implementation evidence from PR #439; current behavior and the PR #491 fold-in remain architecture-owned.
 - [O1F completion report](o1f_completion_report.md) — frozen validation-only scheduler operational-hardening evidence from PR #429; current behavior remains architecture, implementation, and focused-smoke-owned.
+- [I-5B completion report](i5b_completion_report.md) — frozen Pin / Unpin apply, API/UI, durable-governance, and ranking-hint evidence from PR #430; current behavior remains handoff-, implementation-, and focused-smoke-owned.

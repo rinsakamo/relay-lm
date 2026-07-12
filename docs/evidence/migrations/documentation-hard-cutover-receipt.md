@@ -731,7 +731,7 @@ The canonical record preserves the complete E1-R5 bounded Primary MEM candidate-
 
 ```yaml
 cutover_pr: 581
-merged_commit: pending
+merged_commit: be3cf9fc2ed5e85fd3dff4737f8598e13edb6907
 old_path: docs/mvp/wave6/o1f_completion_report.md
 old_blob_sha: cae70dbe1648ed6757af928eeae0becd7fd313dd
 old_content_sha256: b7c61bd6711e2f8ab741e4f73df5715d64229cfa5f11865c1004eed9d5a6e976
@@ -771,6 +771,51 @@ verification:
 ```
 
 The canonical record preserves the complete O1F validation-only scheduler operational-hardening boundary from PR #429 while separating it from current architecture-, implementation-, and focused-smoke-owned behavior. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified six repository-root literals across four files and six Markdown-link dependencies across six router, handoff, convergence, and source-report files. The consolidated scheduler-worker smoke command now validates the canonical report. The dedicated O1F workflow named by the historical source report is no longer present in the current tree and is not recreated. The migration-aware completion-report model and PR-link checks apply without validator changes. The old path above is only the historical migration identifier for this receipt.
+
+### C1C20-001 — I-5B completion report
+
+```yaml
+cutover_pr: 582
+merged_commit: pending
+old_path: docs/mvp/wave6/i5b_completion_report.md
+old_blob_sha: 19d631470dc0cf16e65c214169e3097758381de9
+old_content_sha256: 2efce2a61fb09b9ed4226d2a09e6e6b78645bf11f65badc855e03f7e64b8aa85
+source_commit: eac44fb0038c0a7eadd94c1d29b2ce90f52a6349
+source_origin_commit: 734a3880035651f91eb065b892fc41af6f5cc026
+source_pr: 430
+recorded_on: 2026-06-28
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/i5b_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/i5b_completion_report-source.txt
+exact_source_blob_sha: 19d631470dc0cf16e65c214169e3097758381de9
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 1
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 1
+  relative_markdown_link_referrer_files_at_frozen_baseline: 4
+  relative_markdown_link_dependencies_at_frozen_baseline: 4
+  source_report_internal_legacy_path_occurrences_preserved_in_exact_snapshot: 3
+  i5b_architecture_handoff_updated: true
+  wave6_convergence_evidence_link_updated: true
+  implementation_evidence_index_updated: true
+  documentation_current_boundary_smoke_updated: true
+  dedicated_i5b_workflow_absent_in_current_tree: true
+  cutover_preparation_self_test_reused_without_path_change: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_i5a_i5b_smokes: passed
+  soul_lab_pin_unpin_ui_validation: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete I-5B Pin / Unpin apply, API/UI, durable-governance, and ranking-hint boundary from PR #430 while separating it from current handoff-, implementation-, and focused-smoke-owned behavior. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. Four live Markdown-link dependencies and one repository-root validation literal are moved to the canonical path; legacy references remain only in this migration receipt and frozen exact source snapshots. The dedicated I-5B workflow named by the historical source report is no longer present in the current tree and is not recreated. The migration-aware completion-report model and PR-link checks apply without validator changes.
 
 ## Pending batches
 

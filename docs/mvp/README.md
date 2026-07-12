@@ -69,7 +69,7 @@ Wave 7 dedicated handoffs:
 W6-INT verifies the source PR numbers, merge commits, and dedicated handoffs for these historical reports:
 
 - [O1F completion report](../evidence/implementation/o1f_completion_report.md) — source PR #429, merge `961fff2d935cd764e81e577887328e86363e56d5`.
-- [I-5B completion report](wave6/i5b_completion_report.md) — source PR #430, merge `734a3880035651f91eb065b892fc41af6f5cc026`.
+- [I-5B completion report](../evidence/implementation/i5b_completion_report.md) — source PR #430, merge `734a3880035651f91eb065b892fc41af6f5cc026`.
 - [I-7C completion report](wave6/i7c_completion_report.md) — source PR #431, merge `21d10bfed22ed9626e4224bf927ff59a5e399505`.
 - [E1-R1 completion report](wave6/e1r1_completion_report.md) — source PR #433, merge `52768cbdac3c9630373a2c369574002ac196e72b`.
 - [E1-R2 completion report](wave6/e1r2_completion_report.md) — source PR #432, merge `fefd3559ac32a37ed932faa130612a6a3da43c61`.
@@ -118,7 +118,7 @@ A completion report is evidence for one PR only. It is not authoritative for rep
 
 ```bash
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/o1f_completion_report.md
-python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/i5b_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/i5b_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/i7c_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r1_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r2_completion_report.md
