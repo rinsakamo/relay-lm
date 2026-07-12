@@ -5,14 +5,17 @@ wired into the relay-lm production runtime. It must never be imported from
 ``relaylm`` modules. See experiments/markdown_sqlite_memory/README.md.
 """
 
+from . import ops as ops
+from . import ops_migration_hardening as ops_migration_hardening
 from . import slp as slp
 from . import lifecycle as lifecycle
 from . import search as search
 from . import durable_usage as durable_usage
 
+ops_migration_hardening.install(ops)
 lifecycle.install(slp)
 durable_usage.install(search)
 
-__all__ = ["SPIKE_NAME", "slp", "search"]
+__all__ = ["SPIKE_NAME", "slp", "search", "ops"]
 
 SPIKE_NAME = "markdown_sqlite_memory"
