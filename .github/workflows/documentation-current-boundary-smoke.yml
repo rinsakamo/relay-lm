@@ -101,6 +101,7 @@ jobs:
             ':!docs/evidence/migrations/documentation-hard-cutover-receipt.md' \
             ':!docs/evidence/implementation/o1f_completion_report-source.txt' \
             ':!.github/workflows/tmp-c1c19-o1f-applicator.yml' \
+            ':!.github/workflows/documentation-current-boundary-smoke.yml' \
             ':!scripts/tmp_c1c19_o1f_applicator.py'
       - name: Run O1F and documentation validation
         shell: bash
