@@ -406,7 +406,7 @@ The canonical evidence document preserves the complete E1-R5 post-Wave-7 correct
 
 ```yaml
 cutover_pr: 569
-merged_commit: pending
+merged_commit: 92c8969697b63e582c535f34d0008acc740fc529
 old_path: docs/mvp/wave8/mvp_eval_runner_completion_report.md
 old_blob_sha: 3ba3a2f5e402240b8d322b0ac55d9c77dfaed237
 old_content_sha256: 3565af79a521f80bef021a7a9a9cd31c525192b95f9dcb561a0e027c2f790635
@@ -438,7 +438,44 @@ verification:
   unresolved_review_threads: 0
 ```
 
-The canonical record preserves the complete MVP eval runner implementation boundary while clarifying that current runner and O2/O3 status remain owned elsewhere. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified seven repository-root path occurrences across four files, two Markdown links across two router files, and one generic completion-report validator whose legacy-only placement rule required migration-aware canonical evidence support. The old path above is only the historical migration identifier for this receipt.
+The canonical record preserves the complete MVP eval runner implementation boundary while clarifying that current runner and O2/O3 status remain owned elsewhere. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified seven repository-root path occurrences across four files, two Markdown links across two router files, and one generic completion-report validator whose legacy-only placement rule required migration-aware canonical evidence support. PR #569 merged as `92c8969697b63e582c535f34d0008acc740fc529`; C1C11 is finalized by Cutover 1C-12.
+
+### C1C12-001 — O2/O3 and PM-D5-D7 docs convergence completion report
+
+```yaml
+cutover_pr: 570
+merged_commit: pending
+old_path: docs/mvp/wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md
+old_blob_sha: 27a87767c6ee47d44e69230d65d5e4d97032096e
+old_content_sha256: 797be1f18e94f9a0e9cec536e109ca8257ad5bcf75ca4c623d9b15bb65e4c1a7
+source_commit: 276656a8916d1d0dbcd8caa4523f99e1877ce9d9
+source_pr: 490
+recorded_on: 2026-07-05
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report-source.txt
+exact_source_blob_sha: 27a87767c6ee47d44e69230d65d5e4d97032096e
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 2
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 3
+  relative_markdown_link_referrer_files_at_frozen_baseline: 2
+  relative_markdown_link_dependencies_at_frozen_baseline: 2
+  implementation_evidence_index_updated: true
+  documentation_current_boundary_smoke_updated: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: pending
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete O2/O3 and PM-D5-D7 documentation-convergence boundary while clarifying that current status and sequencing remain owned by current authorities. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified three repository-root path occurrences across two files and two relative Markdown links across two router files. The migration-aware completion-report model and PR-link checks introduced by C1C11 apply to this canonical record without further validator changes. The old path above is only the historical migration identifier for this receipt.
 
 ## Pending batches
 
