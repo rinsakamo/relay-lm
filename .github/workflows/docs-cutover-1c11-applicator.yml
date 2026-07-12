@@ -52,6 +52,17 @@ jobs:
           for old, new in replacements:
               assert body.count(old) == 1, old
               body = body.replace(old, new, 1)
+          cleanup = '''for temporary in (
+              ".github/scripts/docs_cutover_1c11.py",
+              ".github/workflows/docs-cutover-1c11-applicator.yml",
+          ):
+              target = ROOT / temporary
+              if target.exists():
+                  target.unlink()
+
+          '''
+          assert body.count(cleanup) == 1
+          body = body.replace(cleanup, '', 1)
           path.write_text(body, encoding='utf-8')
           PY
           set +e
@@ -116,5 +127,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
+          git status --short
           git commit -m "docs: move MVP eval runner report in cutover 1C-11"
-          git push origin HEAD:${{ github.head_ref }}
+          git push --verbose origin HEAD:${{ github.head_ref }}
