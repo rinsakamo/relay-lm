@@ -1,0 +1,59 @@
+name: Docs cutover 1C-11 applicator
+
+on:
+  pull_request:
+    paths:
+      - ".github/scripts/docs_cutover_1c11.py"
+      - ".github/workflows/docs-cutover-1c11-applicator.yml"
+      - "docs/evidence/implementation/mvp_eval_runner_completion_report-source.txt"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Apply cutover
+        run: python .github/scripts/docs_cutover_1c11.py
+      - name: Validate exact source preservation
+        run: |
+          test "$(git hash-object docs/evidence/implementation/mvp_eval_runner_completion_report-source.txt)" = "3ba3a2f5e402240b8d322b0ac55d9c77dfaed237"
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          path = Path('docs/evidence/implementation/mvp_eval_runner_completion_report-source.txt')
+          assert hashlib.sha256(path.read_bytes()).hexdigest() == '3565af79a521f80bef021a7a9a9cd31c525192b95f9dcb561a0e027c2f790635'
+          PY
+      - name: Compile Python
+        run: python -m compileall -q relaylm scripts
+      - name: Validate completion report model and canonical file
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-model docs/evidence/implementation/mvp_eval_runner_completion_report.md
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all
+      - name: Validate MVP eval runner
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner_security_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner.py --mode static --json-out runtime/eval/mvp_eval_static_latest.json
+      - name: Validate documentation
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_semantic_audit.py
+          PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+          git diff --check
+      - name: Commit cutover result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: move MVP eval runner report in cutover 1C-11"
+          git push origin HEAD:${{ github.head_ref }}
