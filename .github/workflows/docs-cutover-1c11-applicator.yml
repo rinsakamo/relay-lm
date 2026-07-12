@@ -24,7 +24,15 @@ jobs:
           python-version: "3.12"
       - name: Apply cutover
         run: |
-          sed -i 's/if path not in {SNAP, RECEIPT}:/if path not in {SNAP, RECEIPT, ".github\\/scripts\\/docs_cutover_1c11.py"}:/' .github/scripts/docs_cutover_1c11.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/docs_cutover_1c11.py')
+          body = path.read_text(encoding='utf-8')
+          old = 'if path not in {SNAP, RECEIPT}:'
+          new = 'if path not in {SNAP, RECEIPT, ".github/scripts/docs_cutover_1c11.py"}:'
+          assert body.count(old) == 1
+          path.write_text(body.replace(old, new, 1), encoding='utf-8')
+          PY
           set +e
           python .github/scripts/docs_cutover_1c11.py > .github/cutover-1c11-error.md 2>&1
           status=$?
