@@ -24,7 +24,7 @@ jobs:
           python-version: "3.12"
       - name: Apply cutover
         run: |
-          rm -f .github/cutover-1c11-error.md
+          rm -f .github/cutover-1c11-error.md .github/cutover-1c11-focused-error.md
           python - <<'PY'
           from pathlib import Path
           path = Path('.github/scripts/docs_cutover_1c11.py')
@@ -82,9 +82,27 @@ jobs:
           PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all
       - name: Validate MVP eval runner
         run: |
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner_security_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner.py --mode static --json-out runtime/eval/mvp_eval_static_latest.json
+          set +e
+          {
+            echo '# MVP eval runner focused validation'
+            echo '## aggregation smoke'
+            PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner_smoke.py
+            echo '## security smoke'
+            PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner_security_smoke.py
+            echo '## static runner'
+            PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner.py --mode static --json-out runtime/eval/mvp_eval_static_latest.json
+          } > .github/cutover-1c11-focused-error.md 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -f .github/cutover-1c11-focused-error.md
+            git commit -m "chore: capture MVP eval runner diagnostic"
+            git push origin HEAD:${{ github.head_ref }}
+            exit "$status"
+          fi
+          rm -f .github/cutover-1c11-focused-error.md
       - name: Validate documentation
         run: |
           PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
