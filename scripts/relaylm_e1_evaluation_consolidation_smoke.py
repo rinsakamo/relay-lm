@@ -122,7 +122,7 @@ REQUIRED = {
         "relaylm_doc_type: implementation_completion_report",
         "provenance-preserving Primary MEM formation summary",
     ),
-    "docs/mvp/wave7/e1r4_completion_report.md": (
+    "docs/evidence/implementation/e1r4_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
         "retrieval-response grounding and unsupported-detail suppression",
     ),
