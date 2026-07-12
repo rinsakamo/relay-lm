@@ -1,12 +1,12 @@
-"""Flows I (tombstones), J (cache loss/corruption), K (integrity/versioning)."""
+"""Flows I (lifecycle/tombstones), J (cache recovery), K (versioning)."""
 
 import pytest
 
-from mdsqlite_spike import cache, mdstore, search, slp
+from mdsqlite_spike import cache, mdstore, ops, search, slp
 from mdsqlite_spike.slp import Candidate
 
 
-def test_flow_i_forget_and_tombstone_block_reformation(seeded_env):
+def test_flow_i_forget_hides_and_tombstone_blocks_reformation(seeded_env):
     cand = Candidate(
         candidate_id="tomb-1",
         page="notes.md",
@@ -22,16 +22,24 @@ def test_flow_i_forget_and_tombstone_block_reformation(seeded_env):
     result = slp.forget(seeded_env, applied.block_id, reason="user_request")
     assert result.outcome == "applied"
 
-    # Gone from Markdown and from normal search immediately.
-    page = mdstore.parse_page(seeded_env.page_path("notes.md").read_text())
-    assert page.get(applied.block_id) is None
+    # Forget is a canonical hidden revision, not Purge/physical deletion.
+    page = mdstore.parse_page(
+        seeded_env.page_path("notes.md").read_text(), "notes.md"
+    )
+    hidden = page.get(applied.block_id)
+    assert hidden is not None
+    assert hidden.status == "hidden"
+    assert hidden.revision == 2
+
     conn = seeded_env.open_cache()
     assert not search.execute_search(conn, search.plan_search("roast"))
+    hidden_hits = search.execute_search(
+        conn, search.plan_search("roast", status="hidden"), count_usage=False
+    )
+    assert [hit.block_id for hit in hidden_hits] == [applied.block_id]
     conn.close()
 
-    # Tombstones survive restart: recovery over fresh connections, then an
-    # equivalent candidate (different id, normalized-equal content) is
-    # blocked from automatic re-formation.
+    # Tombstones survive restart and block equivalent automatic re-formation.
     slp.startup(seeded_env)
     equivalent = Candidate(
         candidate_id="tomb-2",
@@ -40,33 +48,89 @@ def test_flow_i_forget_and_tombstone_block_reformation(seeded_env):
     )
     blocked = slp.apply_candidate(seeded_env, equivalent)
     assert blocked.outcome == "blocked_tombstone"
-    page = mdstore.parse_page(seeded_env.page_path("notes.md").read_text())
-    assert not page.blocks
 
     ops_conn = seeded_env.open_ops()
     job = ops_conn.execute(
         "SELECT state FROM jobs WHERE idempotency_key = 'candidate:tomb-2'"
     ).fetchone()
     assert job["state"] == "blocked_tombstone"
+    assert ops_conn.execute(
+        "SELECT COUNT(*) FROM tombstones WHERE block_id = ?",
+        (applied.block_id,),
+    ).fetchone()[0] == 1
     ops_conn.close()
 
 
-def test_forget_is_idempotent(seeded_env):
+def test_restore_reactivates_markdown_and_clears_tombstone(seeded_env):
     applied = slp.apply_candidate(
         seeded_env,
-        Candidate(candidate_id="f-1", page="notes.md", content="ephemeral note"),
+        Candidate(candidate_id="restore-1", page="notes.md", content="restore me"),
+    )
+    forgotten = slp.forget(seeded_env, applied.block_id)
+    assert forgotten.outcome == "applied"
+
+    restored = slp.restore(seeded_env, applied.block_id)
+    assert restored.outcome == "applied"
+
+    page = mdstore.parse_page(
+        seeded_env.page_path("notes.md").read_text(), "notes.md"
+    )
+    current = page.get(applied.block_id)
+    assert current is not None
+    assert current.status == "active"
+    assert current.revision == 3
+
+    ops_conn = seeded_env.open_ops()
+    assert ops_conn.execute(
+        "SELECT COUNT(*) FROM tombstones WHERE block_id = ?",
+        (applied.block_id,),
+    ).fetchone()[0] == 0
+    ops_conn.close()
+
+    conn = seeded_env.open_cache()
+    assert [
+        hit.block_id for hit in search.execute_search(conn, search.plan_search("restore"))
+    ] == [applied.block_id]
+    conn.close()
+
+    # Equivalent content is no longer tombstone-blocked, but active duplicate
+    # detection still prevents forming a second copy.
+    equivalent = slp.apply_candidate(
+        seeded_env,
+        Candidate(candidate_id="restore-equivalent", page="notes.md", content="restore me"),
+    )
+    assert equivalent.outcome == "duplicate"
+
+
+def test_forget_restore_cycles_are_revision_scoped_and_idempotent(seeded_env):
+    applied = slp.apply_candidate(
+        seeded_env,
+        Candidate(candidate_id="cycle-1", page="notes.md", content="cycle note"),
     )
     first = slp.forget(seeded_env, applied.block_id)
+    repeated_hidden = slp.forget(seeded_env, applied.block_id)
+    restore = slp.restore(seeded_env, applied.block_id)
     second = slp.forget(seeded_env, applied.block_id)
+
     assert first.outcome == "applied"
-    assert second.outcome == "duplicate_submission"
+    assert repeated_hidden.outcome == "duplicate"
+    assert restore.outcome == "applied"
+    assert second.outcome == "applied"
+
+    page = mdstore.parse_page(
+        seeded_env.page_path("notes.md").read_text(), "notes.md"
+    )
+    current = page.get(applied.block_id)
+    assert current is not None
+    assert current.status == "hidden"
+    assert current.revision == 4
 
 
 def test_flow_j_cache_delete_and_rebuild_equivalence(seeded_env):
     conn = seeded_env.open_cache()
     before = cache.canonical_dump(conn)
     conn.close()
-    assert before  # sanity: fixture produced blocks
+    assert before
 
     for suffix in ("", "-wal", "-shm"):
         p = seeded_env.root / (seeded_env.cache_path.name + suffix)
@@ -102,7 +166,7 @@ def test_flow_j_cache_corruption_detected_and_rebuilt(seeded_env):
     conn.close()
 
 
-def test_flow_k_newer_schema_rejected_not_downgraded(seeded_env):
+def test_flow_k_newer_cache_schema_rejected_not_downgraded(seeded_env):
     conn = seeded_env.open_cache()
     conn.execute(
         "UPDATE schema_meta SET value = ? WHERE key = 'schema_version'",
@@ -112,12 +176,11 @@ def test_flow_k_newer_schema_rejected_not_downgraded(seeded_env):
     conn.close()
     with pytest.raises(cache.SchemaVersionError):
         seeded_env.open_cache()
-    # startup() must not paper over a newer schema by rebuilding.
     with pytest.raises(cache.SchemaVersionError):
         slp.startup(seeded_env)
 
 
-def test_flow_k_controlled_migration_v1_to_v2(env, tmp_path):
+def test_flow_k_controlled_cache_migration_v1_to_v2(env):
     db_path = env.cache_path
     env.cache_path.parent.mkdir(parents=True, exist_ok=True)
     conn = cache._connect(db_path)
@@ -138,10 +201,6 @@ def test_flow_k_controlled_migration_v1_to_v2(env, tmp_path):
         "SELECT value FROM schema_meta WHERE key = 'schema_version'"
     ).fetchone()[0]
     assert int(version) == cache.CACHE_SCHEMA_VERSION
-    row = migrated.execute(
-        "SELECT search_hits FROM usage_counters WHERE block_id = 'blk_m1'"
-    ).fetchone()
-    assert row[0] == 0
     migrated.close()
 
 
@@ -151,9 +210,31 @@ def test_flow_k_integrity_check_reports_healthy(seeded_env):
     conn.close()
 
 
-def test_ops_schema_newer_version_rejected(seeded_env):
-    from mdsqlite_spike import ops
+def test_ops_schema_v1_migrates_to_durable_usage_v2(tmp_path):
+    db_path = tmp_path / "operations.db"
+    conn = ops.connect(db_path)
+    conn.execute("DROP TABLE memory_usage_events")
+    conn.execute("DROP INDEX IF EXISTS idx_memory_usage_block_time")
+    conn.execute(
+        "UPDATE schema_meta SET value = '1' WHERE key = 'schema_version'"
+    )
+    conn.commit()
+    conn.close()
 
+    migrated = ops.connect(db_path)
+    assert int(
+        migrated.execute(
+            "SELECT value FROM schema_meta WHERE key = 'schema_version'"
+        ).fetchone()[0]
+    ) == ops.OPS_SCHEMA_VERSION
+    assert migrated.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' "
+        "AND name='memory_usage_events'"
+    ).fetchone() is not None
+    migrated.close()
+
+
+def test_ops_schema_newer_version_rejected(seeded_env):
     conn = seeded_env.open_ops()
     conn.execute(
         "UPDATE schema_meta SET value = ? WHERE key = 'schema_version'",
