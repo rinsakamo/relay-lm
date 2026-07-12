@@ -1,10 +1,11 @@
 """Regression coverage for independent PR review hardening findings."""
 
+import argparse
 import sqlite3
 
 import pytest
 
-from mdsqlite_spike import cache, mdstore, ops, search, slp
+from mdsqlite_spike import cache, cli, mdstore, ops, search, slp
 from mdsqlite_spike.slp import Candidate
 
 
@@ -100,6 +101,17 @@ def test_fts_quotes_and_page_prefix_wildcards_are_literal(seeded_env):
         count_usage=False,
     ) == []
     conn.close()
+
+
+@pytest.mark.parametrize(
+    "page",
+    ("../outside.md", "/tmp/outside.md", "notes.txt", r"..\outside.md"),
+)
+def test_cli_rejects_page_paths_outside_the_markdown_root(page):
+    with pytest.raises(argparse.ArgumentTypeError):
+        cli._validated_page_rel(page)
+
+    assert cli._validated_page_rel("nested/notes.md") == "nested/notes.md"
 
 
 def test_cache_rejects_invalid_schema_metadata(tmp_path):
