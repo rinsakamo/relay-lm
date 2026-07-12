@@ -107,12 +107,12 @@ This principle does not weaken current behavior or crash-safety contracts. It re
 | 1. Reproducible repository baseline | accept candidate | measurement only |
 | 2. Script and test classification | accept candidate | bounded consolidation only |
 | 3. Invocation-root module audit | accept candidate | deletion requires explicit evidence |
-| 4. Subpackage and naming cleanup | accept in principle | plan per subsystem after Stage 3 |
-| 5. Storage-authority decision and SQLite spike | defer to experiment | no migration approval here |
+| 4. Storage-authority decision and SQLite spike | defer to experiment | required before storage-coupled cleanup |
+| 5. Subpackage and naming cleanup | accept in principle | plan per subsystem after Stages 3 and 4 |
 | 6. Serialization boundary cleanup | defer to classification | no repository-wide Pydantic mandate |
 | 7. Default-path graduation | defer to dogfood evidence | separate deployment decision per feature |
 
-Stages 1 through 3 can proceed without a database decision. Storage-coupled namespace moves, deletion of file-store machinery, or persistence refactors must wait for the Stage 5 storage-authority decision.
+Stages 1 through 3 can proceed without a database decision. Storage-coupled namespace moves, deletion of file-store machinery, or persistence refactors must wait for the Stage 4 storage-authority decision.
 
 ## Stage 0: complete the documentation hard cutover
 
@@ -268,43 +268,7 @@ A module may be removed only when all of the following are established:
 - dead-code deletion can proceed in bounded reviewable waves;
 - planned inactive code is distinct from dead code.
 
-## Stage 4: reorganize by durable subsystem
-
-After Stage 3, prepare subsystem-specific plans. The first objective is understandable ownership, not immediate file merging.
-
-A possible target shape is:
-
-```text
-relaylm/
-  api/
-  pipeline/
-  character_workspace/
-  memory/
-    retrieval/
-    primary/
-    lifecycle/
-  scheduler/
-  context/
-  persona/
-  diagnostics/
-  operations/
-```
-
-Rules:
-
-- new module names describe durable functions rather than phase or wave IDs;
-- move one subsystem at a time;
-- separate broad path moves from behavior changes and large file mergers;
-- freeze current public entry points and serialized invariants with tests before changing them;
-- update all current callers and delete the old module path in the same hard-cutover change;
-- do not create compatibility-import modules or permanent re-export layers by default;
-- add checks that reject imports from superseded paths;
-- check import cycles and startup behavior after each move;
-- defer storage-coupled moves until Stage 5 identifies the target storage authority.
-
-Suggested initial order is diagnostics, non-storage operations, context, persona stages, scheduler, memory lifecycle, and request pipeline. Stage 3 evidence and the Stage 5 storage decision may change that order.
-
-## Stage 5: decide storage authority and run a bounded SQLite spike
+## Stage 4: decide storage authority and run a bounded SQLite spike
 
 A database choice cannot be evaluated until each existing artifact class has an explicit authority and migration treatment.
 
@@ -353,6 +317,42 @@ A successful SQLite cutover should normally:
 
 Adoption requires a separate proposal or ADR supported by a recorded evaluation. Character workspace Markdown remains out of scope.
 
+## Stage 5: reorganize by durable subsystem
+
+After Stages 3 and 4, prepare subsystem-specific plans. The first objective is understandable ownership, not immediate file merging.
+
+A possible target shape is:
+
+```text
+relaylm/
+  api/
+  pipeline/
+  character_workspace/
+  memory/
+    retrieval/
+    primary/
+    lifecycle/
+  scheduler/
+  context/
+  persona/
+  diagnostics/
+  operations/
+```
+
+Rules:
+
+- new module names describe durable functions rather than phase or wave IDs;
+- move one subsystem at a time;
+- separate broad path moves from behavior changes and large file mergers;
+- freeze current public entry points and serialized invariants with tests before changing them;
+- update all current callers and delete the old module path in the same hard-cutover change;
+- do not create compatibility-import modules or permanent re-export layers by default;
+- add checks that reject imports from superseded paths;
+- check import cycles and startup behavior after each move;
+- make storage-coupled moves conform to the Stage 4 target authority.
+
+Suggested initial order is diagnostics, non-storage operations, context, persona stages, scheduler, memory lifecycle, and request pipeline. Stage 3 evidence and the Stage 4 storage decision may change that order.
+
 ## Stage 6: clean up serialization at boundaries
 
 A Pydantic dependency does not imply that every internal value should be a Pydantic model.
@@ -398,14 +398,14 @@ C. extend scripts inventory with responsibility classification
 D. consolidate one bounded ordinary-regression family into pytest
 E. run the invocation-root module audit
 F. classify storage authority and approve a bounded SQLite experiment
-G. remove one bounded dead-code or duplicate-validation wave
-H. run the SQLite spike and record the result
+G. run the SQLite spike and record the result
+H. remove one bounded dead-code or duplicate-validation wave
 I. plan and hard-cutover one low-risk subsystem namespace
 J. classify serialization boundaries and remove proven duplication
 K. propose default-path graduation from dogfood evidence
 ```
 
-Stages B through E can proceed before the storage decision. Storage-coupled deletion and namespace work must use the result of Stages F and H.
+Stages B through E can proceed before the storage decision. Storage-coupled deletion and namespace work must use the result of Stages F and G.
 
 ## Alternatives
 
@@ -427,7 +427,7 @@ Reduces immediate cutover risk but creates bridges, aliases, duplicate paths, an
 
 ### Move all internal state to SQLite immediately
 
-Commits to migration before deciding authority, invariant coverage, platform behavior, and reset versus migration treatment. Defer to Stage 5.
+Commits to migration before deciding authority, invariant coverage, platform behavior, and reset versus migration treatment. Defer to Stage 4.
 
 ### Keep the repository unchanged
 
