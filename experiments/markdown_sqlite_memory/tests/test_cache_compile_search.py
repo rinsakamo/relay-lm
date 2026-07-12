@@ -1,6 +1,6 @@
 """Flows A (initial compile), B (incremental compile), C (search)."""
 
-from mdsqlite_spike import cache, mdstore, search
+from mdsqlite_spike import cache, durable_usage, mdstore, search
 
 
 def test_initial_compile_and_fts(seeded_env):
@@ -73,14 +73,24 @@ def test_search_plan_is_bounded_and_llm_free(seeded_env):
     assert isinstance(search.DeterministicPlanner(), search.SearchPlanner)
 
 
-def test_search_updates_usage_counters(seeded_env):
+def test_search_usage_is_durable_operational_state(seeded_env):
     conn = seeded_env.open_cache()
     search.execute_search(conn, search.plan_search("kw0x1"))
-    hits = conn.execute(
-        "SELECT search_hits FROM usage_counters WHERE block_id = 'blk_p0b1'"
-    ).fetchone()[0]
-    assert hits == 1
+    before = durable_usage.usage_summary_for_cache(conn, "blk_p0b1")
+    assert before["usage_count"] == 1
+    assert before["last_used_at"] is not None
     conn.close()
+
+    # Delete the rebuildable cache while preserving operations.db.
+    for suffix in ("", "-wal", "-shm"):
+        path = seeded_env.root / (seeded_env.cache_path.name + suffix)
+        if path.exists():
+            path.unlink()
+    rebuilt = seeded_env.open_cache()
+    cache.build_from_markdown(rebuilt, seeded_env.pages_dir)
+    after = durable_usage.usage_summary_for_cache(rebuilt, "blk_p0b1")
+    assert after == before
+    rebuilt.close()
 
 
 def test_relations_projected_from_source_refs(seeded_env):
