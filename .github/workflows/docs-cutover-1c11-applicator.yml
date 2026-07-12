@@ -25,7 +25,19 @@ jobs:
       - name: Apply cutover
         run: |
           sed -i 's/if path not in {SNAP, RECEIPT}:/if path not in {SNAP, RECEIPT, ".github\\/scripts\\/docs_cutover_1c11.py"}:/' .github/scripts/docs_cutover_1c11.py
-          python .github/scripts/docs_cutover_1c11.py
+          set +e
+          python .github/scripts/docs_cutover_1c11.py > cutover-1c11-error.txt 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add cutover-1c11-error.txt
+            git commit -m "chore: capture Cutover 1C-11 diagnostic"
+            git push origin HEAD:${{ github.head_ref }}
+            exit "$status"
+          fi
+          rm -f cutover-1c11-error.txt
       - name: Validate exact source preservation
         run: |
           test "$(git hash-object docs/evidence/implementation/mvp_eval_runner_completion_report-source.txt)" = "3ba3a2f5e402240b8d322b0ac55d9c77dfaed237"
