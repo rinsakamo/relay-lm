@@ -642,7 +642,7 @@ The canonical record preserves the complete E1-R3 provenance-preserving formatio
 
 ```yaml
 cutover_pr: 575
-merged_commit: pending
+merged_commit: 82d959ed00e958cb970ebcde0490903ae884322c
 old_path: docs/mvp/wave7/e1r4_completion_report.md
 old_blob_sha: ea940e524c7c99173108c8088a3435485bd3736a
 old_content_sha256: 0b1ea5483d185ebb5701a984a868bb2f41439f02427c07c70904e820f8541880
@@ -679,6 +679,54 @@ verification:
 ```
 
 The canonical record preserves the complete E1-R4 retrieval-response grounding and unsupported-detail suppression implementation boundary while separating it from current architecture-owned behavior and cross-slice E1 evaluation authority. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified four repository-root references across four files, four Markdown links across four router/evidence files, one Wave 7 convergence-evidence link, and the dedicated E1 consolidation smoke path. The migration-aware completion-report model and PR-link checks apply without further validator changes. The old path above is only the historical migration identifier for this receipt.
+
+
+PR #575 merged as `82d959ed00e958cb970ebcde0490903ae884322c`; C1C17 is finalized by Cutover 1C-18.
+
+### C1C18-001 — E1-R5 completion report
+
+```yaml
+cutover_pr: 576
+merged_commit: pending
+old_path: docs/mvp/wave7/e1r5_completion_report.md
+old_blob_sha: 68fa2b0c76caf745e55f5f4ef3fd3677c8681a8d
+old_content_sha256: 2f7b777321433cada0d840973bf3639ae3b5f7f6a7fee7edfb76c6809027d956
+source_commit: 392810b74a0c76785beee7e3af7a5da3eacffa39
+source_origin_commit: 477874cd08658297c4c6626e9423dd05d7bf45a4
+source_pr: 439
+recorded_on: 2026-06-28
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/e1r5_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/e1r5_completion_report-source.txt
+exact_source_blob_sha: 68fa2b0c76caf745e55f5f4ef3fd3677c8681a8d
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 5
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 6
+  relative_markdown_link_referrer_files_at_frozen_baseline: 5
+  relative_markdown_link_dependencies_at_frozen_baseline: 6
+  e1r5_architecture_handoff_updated: true
+  post_wave7_correction_audit_link_updated: true
+  correction_audit_exact_snapshot_unchanged: true
+  e1_evaluation_consolidation_updated: true
+  e1_evaluation_smoke_updated: true
+  implementation_evidence_index_updated: true
+  documentation_current_boundary_smoke_updated: true
+  cutover_preparation_self_test_updated: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_e1r5_smokes: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: pending
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete E1-R5 bounded Primary MEM candidate-discovery implementation boundary from PR #439 while separating it from current architecture-owned behavior and the PR #491 canonical Primary recall adapter fold-in. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified six repository-root references across five files and six Markdown-link dependencies across five router, handoff, and evidence files. The current Post-Wave-7 correction audit is relinked while its exact source snapshot remains unchanged. The old path above is only the historical migration identifier for this receipt.
 
 ## Pending batches
 

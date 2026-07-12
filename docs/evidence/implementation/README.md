@@ -33,3 +33,4 @@ This collection preserves bounded implementation and smoke evidence after its ac
 - [LAT-1 Latency Measurement completion report](lat1_latency_measurement_completion_report.md) — frozen measurement-implementation evidence from PR #505; current schema and results remain architecture/evaluation-owned.
 - [E1-R3 completion report](e1r3_completion_report.md) — frozen provenance-preserving formation-summary implementation evidence from PR #436; current behavior remains architecture-owned.
 - [E1-R4 completion report](e1r4_completion_report.md) — frozen retrieval-response grounding implementation evidence from PR #437; current behavior remains architecture-owned.
+- [E1-R5 completion report](e1r5_completion_report.md) — frozen bounded Primary recall candidate-discovery implementation evidence from PR #439; current behavior and the PR #491 fold-in remain architecture-owned.
