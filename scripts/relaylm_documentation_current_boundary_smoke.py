@@ -358,6 +358,11 @@ REQUIRED = {
         "# P0 RelayREL / RelaySCN / RelayEMO Ordering Fix",
         "PM-D3 RelayEMO/RelaySCN scene_state ownership is closed by the shipped request-path wiring and validation.",
     ),
+    "docs/architecture/phase_i5b_pin_unpin_apply.md": (
+        "# Phase I-5B Pin / Unpin apply and ranking behavior",
+        "Pin state is a deterministic ranking hint only.",
+        "../evidence/implementation/i5b_completion_report.md",
+    ),
     "docs/evidence/implementation/o1f_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
         "relaylm_source_pr: 429",
@@ -365,6 +370,14 @@ REQUIRED = {
         "Current O1F behavior belongs to",
         "o1f_completion_report-source.txt",
         "At source PR #429",
+    ),
+    "docs/evidence/implementation/i5b_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "relaylm_source_pr: 430",
+        "I-5B completion report",
+        "Current Pin / Unpin behavior belongs to",
+        "i5b_completion_report-source.txt",
+        "At source PR #430",
     ),
     "docs/evidence/implementation/e1r4_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",

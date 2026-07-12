@@ -39,3 +39,7 @@ The ranking projection is content-free and does not include artifact paths, oper
 ## Non-goals
 
 This phase does not implement hidden-memory retrieval, restore/unhide/purge, semantic memory rewriting, Secondary MEM consolidation, merge/supersession, Held Apply/Discard runtime, RelaySOUL mutation, queue/worker/scheduler changes, durable-finalization changes, automatic ranking learning, or Home-origin trusted formation.
+
+## Completion report
+
+The frozen implementation evidence for this slice is recorded in [I-5B completion report](../evidence/implementation/i5b_completion_report.md). Current behavior remains owned by this handoff, the production implementation, and the focused I-5A/I-5B smoke suite.
