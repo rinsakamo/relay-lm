@@ -145,6 +145,7 @@ REQUIRED = {
         "LAT-1 Latency Measurement completion report",
         "source PR #505; measurement-only evidence, no optimization or behavior change.",
         "docs/evidence/implementation/mvp_eval_runner_completion_report.md",
+        "docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md",
         "docs/mvp/wave8/twin_extraction_completion_report.md",
         "docs/mvp/wave8/lat1_latency_measurement_completion_report.md",
         "Wave 7 merged completion reports",
@@ -365,6 +366,12 @@ REQUIRED = {
         "MVP Eval Runner Completion Report",
         "PR: #451",
         "PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner.py --mode static --json-out runtime/eval/mvp_eval_static_latest.json",
+    ),
+    "docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "O2/O3 and PM-D5-D7 Docs Convergence Completion Report",
+        "PR: #490",
+        "At source PR #490:",
     ),
 }
 
