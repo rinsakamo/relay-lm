@@ -776,7 +776,7 @@ The canonical record preserves the complete O1F validation-only scheduler operat
 
 ```yaml
 cutover_pr: 582
-merged_commit: pending
+merged_commit: ca1a921eba7131072c3608a5f2032e2d6008f770
 old_path: docs/mvp/wave6/i5b_completion_report.md
 old_blob_sha: 19d631470dc0cf16e65c214169e3097758381de9
 old_content_sha256: 2efce2a61fb09b9ed4226d2a09e6e6b78645bf11f65badc855e03f7e64b8aa85
@@ -816,6 +816,53 @@ verification:
 ```
 
 The canonical record preserves the complete I-5B Pin / Unpin apply, API/UI, durable-governance, and ranking-hint boundary from PR #430 while separating it from current handoff-, implementation-, and focused-smoke-owned behavior. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. Four live Markdown-link dependencies and one repository-root validation literal are moved to the canonical path; legacy references remain only in this migration receipt and frozen exact source snapshots. The dedicated I-5B workflow named by the historical source report is no longer present in the current tree and is not recreated. The migration-aware completion-report model and PR-link checks apply without validator changes.
+
+### C1C21-001 — I-7C completion report
+
+```yaml
+cutover_pr: 583
+merged_commit: pending
+old_path: docs/mvp/wave6/i7c_completion_report.md
+old_blob_sha: 447298a00d418f461abda33060e7f59d96656c64
+old_content_sha256: 97e242a355bb0fd204492fb697ed6523ed85812cd3e73e7cb73696a89e258907
+source_commit: 4add07ae3084b8f4bf1364189411014bb71cf118
+source_origin_commit: 21d10bfed22ed9626e4224bf927ff59a5e399505
+source_pr: 431
+recorded_on: 2026-06-27
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/i7c_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/i7c_completion_report-source.txt
+exact_source_blob_sha: 447298a00d418f461abda33060e7f59d96656c64
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 3
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 3
+  relative_markdown_link_referrer_files_at_frozen_baseline: 4
+  relative_markdown_link_dependencies_at_frozen_baseline: 4
+  source_report_internal_legacy_path_occurrences_preserved_in_exact_snapshot: 3
+  i7c_architecture_handoff_updated: true
+  wave6_convergence_evidence_link_updated: true
+  implementation_evidence_index_updated: true
+  documentation_current_boundary_smoke_updated: true
+  consolidated_held_governance_smoke_updated: true
+  dedicated_i7c_workflow_absent_in_current_tree: true
+  cutover_preparation_self_test_reused_without_path_change: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_i7ab_i7c_smokes: passed
+  related_i4d_o1e_b3_regressions: passed
+  soul_lab_held_governance_ui_validation: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: pending
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete I-7C Held Apply / Discard runtime-governance, API/UI, durable-evidence, and leakage-boundary implementation boundary from PR #431 while separating it from current handoff-, implementation-, queue-lifecycle-, worker-, and focused-smoke-owned behavior. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. Four live Markdown-link dependencies and three repository-root validation or handoff literals are moved to the canonical path; legacy references remain only in this migration receipt and frozen exact source snapshots. The dedicated I-7C workflow named by the historical source report is no longer present in the current tree and is not recreated. The migration-aware completion-report model and PR-link checks apply without validator changes.
 
 ## Pending batches
 

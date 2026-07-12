@@ -1,8 +1,0 @@
-Traceback (most recent call last):
-  File "/home/runner/work/relay-lm/relay-lm/scripts/tmp_c1c21_i7c_applicator.py", line 356, in <module>
-    main()
-  File "/home/runner/work/relay-lm/relay-lm/scripts/tmp_c1c21_i7c_applicator.py", line 351, in main
-    assert_boundaries()
-  File "/home/runner/work/relay-lm/relay-lm/scripts/tmp_c1c21_i7c_applicator.py", line 343, in assert_boundaries
-    raise AssertionError(f"live legacy I-7C references remain: {offenders}")
-AssertionError: live legacy I-7C references remain: ['.github/workflows/tmp-c1c21-i7c-applicator.yml']
