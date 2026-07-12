@@ -126,6 +126,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Defer workflow-path update and temporary-file cleanup to the GitHub connector.
+          git restore .github/scripts/docs_cutover_1c11.py .github/workflows/mvp-eval-runner.yml
+          rm -f .github/cutover-1c11-error.md .github/cutover-1c11-focused-error.md
           git add -A
           git status --short
           git commit -m "docs: move MVP eval runner report in cutover 1C-11"
