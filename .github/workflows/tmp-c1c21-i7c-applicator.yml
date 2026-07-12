@@ -29,8 +29,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: apps/soul-lab/package-lock.json
 
       - name: Install validation dependencies
         run: python -m pip install -e . pytest pyyaml
@@ -88,7 +86,7 @@ jobs:
           npm run build
           npm run smoke:held-governance-ui
           cd ../..
-          git restore apps/soul-lab/package-lock.json
+          rm -f apps/soul-lab/package-lock.json
           git diff --check
 
       - name: Mark local validation passed
@@ -122,7 +120,7 @@ jobs:
         run: |
           rm scripts/tmp_c1c21_i7c_applicator.py
           rm .github/workflows/tmp-c1c21-i7c-applicator.yml
-          git restore apps/soul-lab/package-lock.json
+          rm -f apps/soul-lab/package-lock.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
