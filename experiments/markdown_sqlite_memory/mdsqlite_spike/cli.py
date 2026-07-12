@@ -13,7 +13,7 @@ import json
 import sys
 from pathlib import Path, PurePosixPath
 
-from . import bench, cache, search, slp, verify
+from . import bench, cache, durable_usage, search, slp, verify
 from .fixtures import init_fixture
 from .slp import Candidate, SpikeEnv
 
@@ -84,9 +84,16 @@ def cmd_search(env: SpikeEnv, args) -> int:
     )
     conn = env.open_cache()
     hits = search.execute_search(conn, plan)
+    usage = {
+        hit.block_id: durable_usage.usage_summary_for_cache(conn, hit.block_id)
+        for hit in hits
+    }
     conn.close()
-    _emit({"plan": dataclasses.asdict(plan),
-           "hits": [dataclasses.asdict(h) for h in hits]})
+    _emit({
+        "plan": dataclasses.asdict(plan),
+        "hits": [dataclasses.asdict(h) for h in hits],
+        "usage": usage,
+    })
     return 0
 
 
@@ -108,7 +115,13 @@ def cmd_apply_candidate(env: SpikeEnv, args) -> int:
 def cmd_forget(env: SpikeEnv, args) -> int:
     result = slp.forget(env, args.block_id, reason=args.reason)
     _emit(result)
-    return 0 if result.outcome in ("applied", "duplicate_submission") else 1
+    return 0 if result.outcome in ("applied", "duplicate", "duplicate_submission") else 1
+
+
+def cmd_restore(env: SpikeEnv, args) -> int:
+    result = slp.restore(env, args.block_id, reason=args.reason)
+    _emit(result)
+    return 0 if result.outcome in ("applied", "duplicate", "duplicate_submission") else 1
 
 
 def cmd_simulate_failure(env: SpikeEnv, args) -> int:
@@ -179,7 +192,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("rebuild-cache", help="delete cache db and recompile")
     p.set_defaults(fn=cmd_rebuild_cache)
 
-    p = sub.add_parser("search", help="FTS + metadata search")
+    p = sub.add_parser("search", help="FTS + metadata search with durable usage events")
     p.add_argument("query")
     p.add_argument("--kind")
     p.add_argument("--user-tags")
@@ -199,10 +212,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--worker", default="cli-worker")
     p.set_defaults(fn=cmd_apply_candidate)
 
-    p = sub.add_parser("forget", help="remove a memory and tombstone it")
+    p = sub.add_parser("forget", help="hide a memory and tombstone it (reversible)")
     p.add_argument("--block-id", required=True)
     p.add_argument("--reason", default="user_forget")
     p.set_defaults(fn=cmd_forget)
+
+    p = sub.add_parser("restore", help="restore a hidden memory and clear its tombstone")
+    p.add_argument("--block-id", required=True)
+    p.add_argument("--reason", default="user_restore")
+    p.set_defaults(fn=cmd_restore)
 
     p = sub.add_parser("simulate-failure", help="crash at a failpoint, then recover")
     p.add_argument("--failpoint", required=True, choices=slp.FAILPOINTS)
