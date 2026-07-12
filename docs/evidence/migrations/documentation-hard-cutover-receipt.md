@@ -680,7 +680,6 @@ verification:
 
 The canonical record preserves the complete E1-R4 retrieval-response grounding and unsupported-detail suppression implementation boundary while separating it from current architecture-owned behavior and cross-slice E1 evaluation authority. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified four repository-root references across four files, four Markdown links across four router/evidence files, one Wave 7 convergence-evidence link, and the dedicated E1 consolidation smoke path. The migration-aware completion-report model and PR-link checks apply without further validator changes. The old path above is only the historical migration identifier for this receipt.
 
-
 PR #575 merged as `82d959ed00e958cb970ebcde0490903ae884322c`; C1C17 is finalized by Cutover 1C-18.
 
 ### C1C18-001 — E1-R5 completion report
@@ -722,7 +721,7 @@ verification:
   documentation_semantic_audit: passed
   completion_report_model_and_file_checks: passed
   completion_report_pr_link_check: passed
-  all_github_actions: pending
+  all_github_actions: passed
   unresolved_review_threads: 0
 ```
 
