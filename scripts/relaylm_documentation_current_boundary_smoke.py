@@ -153,6 +153,7 @@ REQUIRED = {
         "source PR #436, merge `7bb2525cb000e893146408065f1aa5976f2b54ab`",
         "docs/evidence/implementation/e1r3_completion_report.md",
         "source PR #437, merge `e6e5b32cd489dda493ff0171a260dd561a91765c`",
+        "docs/evidence/implementation/e1r4_completion_report.md",
         "source PR #439",
         "docs/mvp/wave7/e1r5_completion_report.md",
     ),
@@ -350,12 +351,15 @@ REQUIRED = {
         "# P0 RelayREL / RelaySCN / RelayEMO Ordering Fix",
         "PM-D3 RelayEMO/RelaySCN scene_state ownership is closed by the shipped request-path wiring and validation.",
     ),
-    "docs/mvp/wave7/e1r4_completion_report.md": (
+    "docs/evidence/implementation/e1r4_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
-        "retrieval-response grounding and unsupported-detail suppression",
+        "E1-R4 Completion Report",
+        "PR: #437",
+        "Current E1-R4 behavior belongs to",
         "Request-side vs response-side decision",
         "Content leakage review",
         "Authority preservation",
+        "At source PR #437:",
     ),
     "docs/mvp/wave7/e1r5_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",

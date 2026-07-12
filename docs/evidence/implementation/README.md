@@ -32,3 +32,4 @@ This collection preserves bounded implementation and smoke evidence after its ac
 - [Twin Extraction Tooling completion report](twin_extraction_completion_report.md) — frozen offline-tooling implementation evidence from PR #503; current operation remains runbook-owned.
 - [LAT-1 Latency Measurement completion report](lat1_latency_measurement_completion_report.md) — frozen measurement-implementation evidence from PR #505; current schema and results remain architecture/evaluation-owned.
 - [E1-R3 completion report](e1r3_completion_report.md) — frozen provenance-preserving formation-summary implementation evidence from PR #436; current behavior remains architecture-owned.
+- [E1-R4 completion report](e1r4_completion_report.md) — frozen retrieval-response grounding implementation evidence from PR #437; current behavior remains architecture-owned.
