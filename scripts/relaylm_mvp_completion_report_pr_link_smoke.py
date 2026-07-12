@@ -4,7 +4,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-for report in sorted((ROOT / "docs" / "mvp").glob("wave*/*_completion_report.md")):
+reports = list((ROOT / "docs" / "mvp").glob("wave*/*_completion_report.md"))
+reports.extend(
+    (ROOT / "docs" / "evidence" / "implementation").glob("*_completion_report.md")
+)
+
+for report in sorted(reports):
     lines = report.read_text(encoding="utf-8").splitlines()
     pr_lines = [line for line in lines if line.startswith("- PR: #")]
     url_lines = [line for line in lines if line.startswith("- URL: https://github.com/")]
