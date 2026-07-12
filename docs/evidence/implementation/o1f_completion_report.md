@@ -115,7 +115,7 @@ PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.
 PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
 ```
 
-The O1F workflow runs compileall, the six focused O1F smokes, completion-report validation, and docs link validation on PRs and pushes touching the O1F files.
+At source PR #429, the dedicated O1F workflow ran compileall, the six focused O1F smokes, completion-report validation, and docs link validation for O1F changes. That historical workflow is absent from the current tree and is not recreated by this cutover.
 
 ## Known limitations
 
