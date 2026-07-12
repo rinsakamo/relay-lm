@@ -108,7 +108,7 @@ python -m py_compile relaylm/relaymem_held_governance.py relaylm/soul_lab_held_g
 python -m py_compile scripts/relaylm_phase_i7c_held_governance_runtime_smoke.py scripts/relaylm_phase_i7c_held_governance_api_smoke.py scripts/relaylm_phase_i7c_held_governance_concurrency_smoke.py scripts/relaylm_phase_i7c_held_governance_security_smoke.py scripts/relaylm_phase_i7c_held_governance_ui_smoke.py
 ```
 
-At source PR #431, GitHub Actions was the execution source of truth for the listed validation. Current validation routing belongs to the consolidated workflow and smoke inventory rather than the removed dedicated workflow.
+At source PR #431, GitHub Actions was the execution source of truth for the listed validation. The dedicated I-7C workflow present at that source boundary is absent from the current tree and is not recreated by this cutover. Current validation routing belongs to the consolidated workflow and smoke inventory.
 
 ## Known limitations
 
