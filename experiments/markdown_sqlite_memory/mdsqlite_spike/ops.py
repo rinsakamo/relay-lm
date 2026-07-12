@@ -1,9 +1,10 @@
 """operations.db — persistent operational authority.
 
-Holds only state that cannot be rebuilt from Markdown: jobs, claims/leases,
-retries, apply intents, idempotency keys, apply receipts, deletion
-tombstones, and failure records. Committed MEM content authority never
-lives here — receipts reference page digests, not content.
+Holds state that cannot be rebuilt from Markdown: jobs, claims/leases, retries,
+apply intents, idempotency keys, apply receipts, lifecycle tombstones, durable
+usage events, and failure records. Committed MEM content authority never lives
+here — receipts and events reference page digests and stable block IDs, not MEM
+content.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-OPS_SCHEMA_VERSION = 1
+OPS_SCHEMA_VERSION = 2
 BUSY_TIMEOUT_MS = 5000
 _IMMEDIATE_MAX_ATTEMPTS = 2000
 
@@ -90,10 +91,7 @@ def connect(path: Path) -> sqlite3.Connection:
                 f"v{OPS_SCHEMA_VERSION}; refusing silent downgrade"
             )
         if version < OPS_SCHEMA_VERSION:
-            raise OpsSchemaVersionError(
-                f"operations schema v{version} is older than supported "
-                f"v{OPS_SCHEMA_VERSION}; no migration path is defined"
-            )
+            _migrate(conn, version)
         return conn
     except BaseException:
         conn.close()
@@ -106,6 +104,22 @@ def _has_meta(conn: sqlite3.Connection) -> bool:
             "SELECT name FROM sqlite_master WHERE type='table' AND name='schema_meta'"
         ).fetchone()
         is not None
+    )
+
+
+def _create_usage_schema(conn: sqlite3.Connection) -> None:
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS memory_usage_events(
+            event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            block_id TEXT NOT NULL,
+            event_kind TEXT NOT NULL CHECK(event_kind IN ('search_hit', 'retrieval_use')),
+            query_digest TEXT,
+            occurred_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_memory_usage_block_time
+            ON memory_usage_events(block_id, occurred_at, event_id);
+        """
     )
 
 
@@ -167,6 +181,8 @@ def _create_schema(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_tombstones_key ON tombstones(content_key);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_tombstones_block_key
+            ON tombstones(block_id, content_key);
         CREATE TABLE IF NOT EXISTS failures(
             failure_id INTEGER PRIMARY KEY AUTOINCREMENT,
             job_id TEXT,
@@ -176,21 +192,45 @@ def _create_schema(conn: sqlite3.Connection) -> None:
         );
         """
     )
+    _create_usage_schema(conn)
     conn.execute(
         "INSERT OR REPLACE INTO schema_meta(key, value) VALUES('schema_version', ?)",
         (str(OPS_SCHEMA_VERSION),),
     )
 
 
+def _migrate(conn: sqlite3.Connection, from_version: int) -> None:
+    if from_version != 1:
+        raise OpsSchemaVersionError(
+            f"operations schema v{from_version} is older than supported "
+            f"v{OPS_SCHEMA_VERSION}; no migration path is defined"
+        )
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        _create_usage_schema(conn)
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_tombstones_block_key "
+            "ON tombstones(block_id, content_key)"
+        )
+        conn.execute(
+            "UPDATE schema_meta SET value = ? WHERE key = 'schema_version'",
+            (str(OPS_SCHEMA_VERSION),),
+        )
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+
+
 @contextmanager
 def immediate_txn(conn: sqlite3.Connection):
     """Short explicit write transaction (BEGIN IMMEDIATE) with retry.
 
-    Also serves as the single-host apply mutex: only one holder can be in
-    an IMMEDIATE transaction on operations.db at a time. Lock waits show up
-    in two counters: ``acquire_seconds`` (time spent inside BEGIN IMMEDIATE,
-    where busy_timeout absorbs contention) and ``busy_retries`` (explicit
-    retries after busy_timeout was exhausted).
+    Also serves as the single-host apply mutex: only one holder can be in an
+    IMMEDIATE transaction on operations.db at a time. Lock waits show up in two
+    counters: ``acquire_seconds`` (time spent inside BEGIN IMMEDIATE, where
+    busy_timeout absorbs contention) and ``busy_retries`` (explicit retries
+    after busy_timeout was exhausted).
     """
     delay = 0.002
     attempts = 0
@@ -258,3 +298,31 @@ def tombstone_for_content_key(
     return conn.execute(
         "SELECT * FROM tombstones WHERE content_key = ? LIMIT 1", (content_key,)
     ).fetchone()
+
+
+def record_usage_event(
+    conn: sqlite3.Connection,
+    block_id: str,
+    occurred_at: str,
+    *,
+    event_kind: str = "search_hit",
+    query_digest: str | None = None,
+) -> None:
+    conn.execute(
+        "INSERT INTO memory_usage_events(block_id, event_kind, query_digest, occurred_at) "
+        "VALUES(?, ?, ?, ?)",
+        (block_id, event_kind, query_digest, occurred_at),
+    )
+
+
+def usage_summary(conn: sqlite3.Connection, block_id: str) -> dict:
+    row = conn.execute(
+        "SELECT COUNT(*) AS usage_count, MAX(occurred_at) AS last_used_at "
+        "FROM memory_usage_events WHERE block_id = ?",
+        (block_id,),
+    ).fetchone()
+    return {
+        "block_id": block_id,
+        "usage_count": int(row["usage_count"]),
+        "last_used_at": row["last_used_at"],
+    }
