@@ -367,7 +367,7 @@ The canonical evidence document preserves the complete Wave 7 convergence accoun
 
 ```yaml
 cutover_pr: 568
-merged_commit: pending
+merged_commit: 1950b4dd95882649dfdfaea89c9701dd7c51e354
 old_path: docs/architecture/e1r5_post_wave7_correction_convergence_audit.md
 old_blob_sha: 0d7cbceca1259d127ebf4fa1a7f91bcbf9e144e5
 old_content_sha256: 552e8744b3f32f2e4c21eb8273f56fe0ee4f95e22cf33ad7ae734625dcc41edb
@@ -400,7 +400,45 @@ verification:
   unresolved_review_threads: 0
 ```
 
-The canonical evidence document preserves the complete E1-R5 post-Wave-7 correction account while repairing six internal relative links for the evidence collection. The exact pre-cutover source remains available as the original Git blob. The record was introduced by PR #452 and its exact pre-cutover form includes the later PM-D8 closure convergence from PR #498 after runtime fold-in PR #491. The dependency sweep identified one repository-root literal, two hard-coded current-boundary occurrences, five Markdown relative links across four referrer files, and three `relaylm_related_authority` YAML references. The old path above is only the historical migration identifier for this receipt.
+The canonical evidence document preserves the complete E1-R5 post-Wave-7 correction account while repairing six internal relative links for the evidence collection. The exact pre-cutover source remains available as the original Git blob. The record was introduced by PR #452 and its exact pre-cutover form includes the later PM-D8 closure convergence from PR #498 after runtime fold-in PR #491. The dependency sweep identified one repository-root literal, two hard-coded current-boundary occurrences, five Markdown relative links across four referrer files, and three `relaylm_related_authority` YAML references. PR #568 merged as `1950b4dd95882649dfdfaea89c9701dd7c51e354`; C1C10 is finalized by Cutover 1C-11.
+
+### C1C11-001 — MVP eval runner completion report
+
+```yaml
+cutover_pr: 569
+merged_commit: pending
+old_path: docs/mvp/wave8/mvp_eval_runner_completion_report.md
+old_blob_sha: 3ba3a2f5e402240b8d322b0ac55d9c77dfaed237
+old_content_sha256: 3565af79a521f80bef021a7a9a9cd31c525192b95f9dcb561a0e027c2f790635
+source_commit: 89404bf0f8f4855be673af34c1450f063a22151c
+source_pr: 451
+recorded_on: 2026-06-30
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/mvp_eval_runner_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/mvp_eval_runner_completion_report-source.txt
+exact_source_blob_sha: 3ba3a2f5e402240b8d322b0ac55d9c77dfaed237
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 4
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 7
+  relative_markdown_link_referrer_files_at_frozen_baseline: 2
+  relative_markdown_link_dependencies_at_frozen_baseline: 2
+  completion_report_validator_updated: true
+  implementation_evidence_index_updated: true
+  mvp_eval_runner_registry_updated: true
+  mvp_eval_runner_workflow_updated: true
+  documentation_current_boundary_smoke_updated: true
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  focused_mvp_eval_runner_checks: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete MVP eval runner implementation boundary while clarifying that current runner and O2/O3 status remain owned elsewhere. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified seven repository-root path occurrences across four files, two Markdown links across two router files, and one generic completion-report validator whose legacy-only placement rule required migration-aware canonical evidence support. The old path above is only the historical migration identifier for this receipt.
 
 ## Pending batches
 

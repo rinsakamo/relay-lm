@@ -144,7 +144,7 @@ REQUIRED = {
         "source PR #503; offline runtime-non-contact preprocessing/extraction tooling only.",
         "LAT-1 Latency Measurement completion report",
         "source PR #505; measurement-only evidence, no optimization or behavior change.",
-        "docs/mvp/wave8/mvp_eval_runner_completion_report.md",
+        "docs/evidence/implementation/mvp_eval_runner_completion_report.md",
         "docs/mvp/wave8/twin_extraction_completion_report.md",
         "docs/mvp/wave8/lat1_latency_measurement_completion_report.md",
         "Wave 7 merged completion reports",
@@ -360,7 +360,7 @@ REQUIRED = {
         "PR: #439",
         "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
     ),
-    "docs/mvp/wave8/mvp_eval_runner_completion_report.md": (
+    "docs/evidence/implementation/mvp_eval_runner_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
         "MVP Eval Runner Completion Report",
         "PR: #451",
