@@ -32,6 +32,13 @@ jobs:
           set -o pipefail
           python -m pytest -vv experiments/markdown_sqlite_memory/tests \
             --junitxml=experiment-test-results.xml 2>&1 | tee experiment-test-output.log
+      - name: Run current reference benchmark
+        if: matrix.python-version == '3.12'
+        run: |
+          python experiments/markdown_sqlite_memory/run_spike.py \
+            --root /tmp/relaylm-markdown-sqlite-benchmark \
+            benchmark --pages 20 --blocks 25 --searches 50 \
+            > experiment-benchmark.json
       - name: Upload experiment diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -40,6 +47,7 @@ jobs:
           path: |
             experiment-test-results.xml
             experiment-test-output.log
+            experiment-benchmark.json
           if-no-files-found: warn
       - name: Verify no production imports
         run: |
