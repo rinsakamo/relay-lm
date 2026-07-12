@@ -165,6 +165,7 @@ def assert_no_live_legacy_paths() -> None:
         ROOT / "docs/evidence/waves/wave6_cross_slice_convergence_audit-source.txt",
         ROOT / "docs/evidence/migrations/documentation-hard-cutover-receipt.md",
         ROOT / "scripts/tmp_c1c20_i5b_applicator.py",
+        ROOT / ".github/workflows/documentation-current-boundary-smoke.yml",
     }
     variants = (
         "docs/mvp/wave6/i5b_completion_report.md",
