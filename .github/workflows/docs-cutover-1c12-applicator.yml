@@ -1,0 +1,57 @@
+name: Docs cutover 1C-12 applicator
+
+on:
+  pull_request:
+    paths:
+      - ".github/scripts/docs_cutover_1c12.py"
+      - ".github/workflows/docs-cutover-1c12-applicator.yml"
+      - "docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report*.txt"
+      - "docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Apply cutover
+        run: python .github/scripts/docs_cutover_1c12.py
+      - name: Validate exact source preservation
+        run: |
+          test "$(git hash-object docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report-source.txt)" = "27a87767c6ee47d44e69230d65d5e4d97032096e"
+          python - <<'PY'
+          import hashlib
+          from pathlib import Path
+          path = Path('docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report-source.txt')
+          assert hashlib.sha256(path.read_bytes()).hexdigest() == '797be1f18e94f9a0e9cec536e109ca8257ad5bcf75ca4c623d9b15bb65e4c1a7'
+          PY
+      - name: Validate completion evidence
+        run: |
+          python -m compileall -q relaylm scripts
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-model docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+      - name: Validate documentation
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_semantic_audit.py
+          PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+          git diff --check
+      - name: Commit cutover result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "docs: move O2/O3 PM-D convergence report in cutover 1C-12"
+          git push origin HEAD:${{ github.head_ref }}
