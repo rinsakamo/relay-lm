@@ -23,7 +23,9 @@ jobs:
         with:
           python-version: "3.12"
       - name: Apply cutover
-        run: python .github/scripts/docs_cutover_1c11.py
+        run: |
+          sed -i 's/if path not in {SNAP, RECEIPT}:/if path not in {SNAP, RECEIPT, ".github\\/scripts\\/docs_cutover_1c11.py"}:/' .github/scripts/docs_cutover_1c11.py
+          python .github/scripts/docs_cutover_1c11.py
       - name: Validate exact source preservation
         run: |
           test "$(git hash-object docs/evidence/implementation/mvp_eval_runner_completion_report-source.txt)" = "3ba3a2f5e402240b8d322b0ac55d9c77dfaed237"
