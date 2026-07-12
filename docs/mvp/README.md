@@ -54,7 +54,7 @@ W7-INT verifies the source PR numbers, merge commits, and dedicated handoffs for
 
 - [E1-R3 completion report](../evidence/implementation/e1r3_completion_report.md) — source PR #436, merge `7bb2525cb000e893146408065f1aa5976f2b54ab`.
 - [E1-R4 completion report](../evidence/implementation/e1r4_completion_report.md) — source PR #437, merge `e6e5b32cd489dda493ff0171a260dd561a91765c`.
-- [E1-R5 completion report](wave7/e1r5_completion_report.md) — source PR #439, post-Wave-7 correction to the E1 recall proof boundary.
+- [E1-R5 completion report](../evidence/implementation/e1r5_completion_report.md) — source PR #439, post-Wave-7 correction to the E1 recall proof boundary.
 
 The Wave 7 cross-slice convergence record is [Wave 7 Cross-Slice Convergence Audit](../evidence/waves/wave7_cross_slice_convergence_audit.md). W7-INT is merged; E1-R5 is now reflected by current shared documents and dedicated handoff links.
 
@@ -124,7 +124,7 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r1_comple
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r2_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1r3_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1r4_completion_report.md
-python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r5_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1r5_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/mvp_eval_runner_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e2_value_smoke_harness_completion_report.md

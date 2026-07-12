@@ -21,7 +21,7 @@ relaylm_related_authority:
   - e1r4_retrieval_response_grounding.md
   - ../evidence/waves/e1r5_post_wave7_correction_convergence_audit.md
   - project_execution_plan.md
-  - ../mvp/wave7/e1r5_completion_report.md
+  - ../evidence/implementation/e1r5_completion_report.md
 ---
 # E1-R5 Primary MEM Recall Candidate Discovery Bridge
 
@@ -146,7 +146,7 @@ E1-R5 does not add O2/O3 supervision, polling, daemons, new queue authority, wor
 
 ## Source evidence
 
-- [E1-R5 completion report](../mvp/wave7/e1r5_completion_report.md)
+- [E1-R5 completion report](../evidence/implementation/e1r5_completion_report.md)
 - [E1-R5 Post-Wave-7 Correction Convergence Audit](../evidence/waves/e1r5_post_wave7_correction_convergence_audit.md)
 - Source PR: #439
 - Canonical fold-in PR: #491

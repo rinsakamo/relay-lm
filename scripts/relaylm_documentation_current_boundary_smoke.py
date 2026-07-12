@@ -155,7 +155,7 @@ REQUIRED = {
         "source PR #437, merge `e6e5b32cd489dda493ff0171a260dd561a91765c`",
         "docs/evidence/implementation/e1r4_completion_report.md",
         "source PR #439",
-        "docs/mvp/wave7/e1r5_completion_report.md",
+        "docs/evidence/implementation/e1r5_completion_report.md",
     ),
     "docs/DOCUMENTATION_MODEL.md": (
         "`architecture_handoff`",
@@ -361,11 +361,13 @@ REQUIRED = {
         "Authority preservation",
         "At source PR #437:",
     ),
-    "docs/mvp/wave7/e1r5_completion_report.md": (
+    "docs/evidence/implementation/e1r5_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
-        "Primary MEM Recall Candidate Discovery Bridge",
+        "E1-R5 Completion Report — Primary MEM Recall Candidate Discovery Bridge",
         "PR: #439",
+        "Current E1-R5 behavior, including the PR #491 canonical Primary recall adapter fold-in, belongs to",
         "PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py",
+        "At source PR #439:",
     ),
     "docs/evidence/implementation/mvp_eval_runner_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",

@@ -522,8 +522,8 @@ def write_json(path: Path, value: Any) -> None:
 
 def self_test() -> None:
     assert stable_stem("docs/architecture/phase_i5_pin_unpin_contract.md") == "pin-unpin-contract"
-    values = template_values("docs/mvp/wave7/e1r5_completion_report.md")
-    assert values["relative_after_mvp"] == "wave7/e1r5_completion_report.md"
+    values = template_values("docs/mvp/wave9/example_completion_report.md")
+    assert values["relative_after_mvp"] == "wave9/example_completion_report.md"
     metadata, body, present = parse_front_matter("---\nrelaylm_doc_type: contract\n---\n# X\n")
     assert present and metadata["relaylm_doc_type"] == "contract" and body.startswith("# X")
     assert source_pr_number("docs: example (#551)") == 551

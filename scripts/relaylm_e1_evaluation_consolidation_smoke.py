@@ -126,7 +126,7 @@ REQUIRED = {
         "relaylm_doc_type: implementation_completion_report",
         "retrieval-response grounding and unsupported-detail suppression",
     ),
-    "docs/mvp/wave7/e1r5_completion_report.md": (
+    "docs/evidence/implementation/e1r5_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
         "Primary MEM Recall Candidate Discovery Bridge",
         "PR: #439",

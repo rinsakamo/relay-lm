@@ -41,7 +41,7 @@ E1-R5 is a correction to the Wave 7 E1 proof boundary. It does not reopen Wave 7
 
 | Slice | Source PR | Dedicated handoff | Completion report |
 |---|---:|---|---|
-| E1-R5 bounded scoped Primary MEM recall candidate discovery bridge | #439 | [E1-R5 Primary MEM Recall Candidate Discovery Bridge](../../architecture/e1r5_primary_mem_recall_candidate_bridge.md) | [E1-R5 completion report](../../mvp/wave7/e1r5_completion_report.md) |
+| E1-R5 bounded scoped Primary MEM recall candidate discovery bridge | #439 | [E1-R5 Primary MEM Recall Candidate Discovery Bridge](../../architecture/e1r5_primary_mem_recall_candidate_bridge.md) | [E1-R5 completion report](../implementation/e1r5_completion_report.md) |
 | PM-D8 E1-R5 bridge canonical Primary recall adapter fold-in | #491 | [E1-R5 Primary MEM Recall Candidate Discovery Bridge](../../architecture/e1r5_primary_mem_recall_candidate_bridge.md) | n/a |
 
 ## Converged correction boundary
