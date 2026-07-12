@@ -118,7 +118,7 @@ REQUIRED = {
         "relaylm_doc_type: implementation_completion_report",
         "character-store bootstrap",
     ),
-    "docs/mvp/wave7/e1r3_completion_report.md": (
+    "docs/evidence/implementation/e1r3_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
         "provenance-preserving Primary MEM formation summary",
     ),

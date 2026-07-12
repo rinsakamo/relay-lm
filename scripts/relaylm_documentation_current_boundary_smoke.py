@@ -151,6 +151,7 @@ REQUIRED = {
         "docs/evidence/implementation/lat1_latency_measurement_completion_report.md",
         "Wave 7 merged completion reports",
         "source PR #436, merge `7bb2525cb000e893146408065f1aa5976f2b54ab`",
+        "docs/evidence/implementation/e1r3_completion_report.md",
         "source PR #437, merge `e6e5b32cd489dda493ff0171a260dd561a91765c`",
         "source PR #439",
         "docs/mvp/wave7/e1r5_completion_report.md",
@@ -394,6 +395,13 @@ REQUIRED = {
         "PR: #505",
         "Current timing schema and measurement behavior belong to",
         "At source PR #505:",
+    ),
+    "docs/evidence/implementation/e1r3_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "E1-R3 Provenance-Preserving Primary MEM Formation Summary Completion Report",
+        "PR: #436",
+        "Current E1-R3 behavior belongs to",
+        "At source PR #436:",
     ),
 }
 

@@ -560,7 +560,7 @@ The canonical record preserves the complete offline Twin Extraction implementati
 
 ```yaml
 cutover_pr: 573
-merged_commit: pending
+merged_commit: bd6effac133c04fb9132135360685c24edd6d2a0
 old_path: docs/mvp/wave8/lat1_latency_measurement_completion_report.md
 old_blob_sha: 0bf5743b7ba0ac85e657bb06ae88b8f1d41b3936
 old_content_sha256: a33d190625ee5f6f4f9f74143f74cc6a505927b07175cf8aec00638e72b4db42
@@ -594,7 +594,49 @@ verification:
   unresolved_review_threads: 0
 ```
 
-The canonical record preserves the complete LAT-1 timing and offline retrieval-bench implementation boundary while separating it from current architecture-owned measurement behavior and evaluation-owned local scaling results. The exact pre-cutover source is retained as the final Git blob and byte-for-byte snapshot. The dependency sweep identified two repository-root path references across two files, two Markdown links across two router files, and one current-boundary canonical evidence-map addition. The migration-aware completion-report model and PR-link checks apply without further validator changes. The old path above is only the historical migration identifier for this receipt.
+The canonical record preserves the complete LAT-1 timing and offline retrieval-bench implementation boundary while separating it from current architecture-owned measurement behavior and evaluation-owned local scaling results. The exact pre-cutover source is retained as the final Git blob and byte-for-byte snapshot. The dependency sweep identified two repository-root path references across two files, two Markdown links across two router files, and one current-boundary canonical evidence-map addition. The migration-aware completion-report model and PR-link checks apply without further validator changes. PR #573 merged as `bd6effac133c04fb9132135360685c24edd6d2a0`; C1C15 is finalized by Cutover 1C-16.
+
+### C1C16-001 — E1-R3 completion report
+
+```yaml
+cutover_pr: 574
+merged_commit: pending
+old_path: docs/mvp/wave7/e1r3_completion_report.md
+old_blob_sha: 40ceeaa4a7eca7e90cafcfb522cc8340ab31e40a
+old_content_sha256: dcb189583bbf8771adc27aeef215f7d6e67134f0db73f6ae91e73a058f58b81c
+source_commit: f92190f7990a990ccee914a6a6be18bab5e07331
+source_origin_commit: 7bb2525cb000e893146408065f1aa5976f2b54ab
+source_pr: 436
+recorded_on: 2026-06-28
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/e1r3_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/e1r3_completion_report-source.txt
+exact_source_blob_sha: 40ceeaa4a7eca7e90cafcfb522cc8340ab31e40a
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 3
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 3
+  relative_markdown_link_referrer_files_at_frozen_baseline: 4
+  relative_markdown_link_dependencies_at_frozen_baseline: 4
+  wave7_convergence_evidence_link_updated: true
+  e1_evaluation_consolidation_updated: true
+  e1_evaluation_smoke_updated: true
+  implementation_evidence_index_updated: true
+  documentation_current_boundary_smoke_updated: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_e1r3_smokes: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: pending
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete E1-R3 provenance-preserving formation-summary implementation boundary while separating it from current architecture-owned behavior and cross-slice E1 evaluation authority. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. The dependency sweep identified three repository-root references across three files, four Markdown links across four router/evidence files, one Wave 7 convergence-evidence link, and the dedicated E1 consolidation smoke path. The migration-aware completion-report model and PR-link checks apply without further validator changes. The old path above is only the historical migration identifier for this receipt.
 
 ## Pending batches
 

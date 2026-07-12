@@ -31,3 +31,4 @@ This collection preserves bounded implementation and smoke evidence after its ac
 - [E2 Value Smoke Harness completion report](e2_value_smoke_harness_completion_report.md) — frozen harness implementation evidence from PR #481; later human judgment remains release-readiness-owned.
 - [Twin Extraction Tooling completion report](twin_extraction_completion_report.md) — frozen offline-tooling implementation evidence from PR #503; current operation remains runbook-owned.
 - [LAT-1 Latency Measurement completion report](lat1_latency_measurement_completion_report.md) — frozen measurement-implementation evidence from PR #505; current schema and results remain architecture/evaluation-owned.
+- [E1-R3 completion report](e1r3_completion_report.md) — frozen provenance-preserving formation-summary implementation evidence from PR #436; current behavior remains architecture-owned.

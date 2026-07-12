@@ -177,7 +177,7 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 
 - [Wave 7 Cross-Slice Convergence Audit](../evidence/waves/wave7_cross_slice_convergence_audit.md)
 - [E1-R3 Provenance-Preserving Primary MEM Formation Summary](e1r3_provenance_preserving_primary_mem_formation_summary.md)
-- [E1-R3 completion report](../mvp/wave7/e1r3_completion_report.md)
+- [E1-R3 completion report](../evidence/implementation/e1r3_completion_report.md)
 - [E1-R4 Retrieval-Response Grounding](e1r4_retrieval_response_grounding.md)
 - [E1-R4 completion report](../mvp/wave7/e1r4_completion_report.md)
 - [E1-R5 Primary MEM Recall Candidate Discovery Bridge](e1r5_primary_mem_recall_candidate_bridge.md)
