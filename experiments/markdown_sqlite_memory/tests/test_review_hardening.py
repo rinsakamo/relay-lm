@@ -31,6 +31,9 @@ def test_render_rejects_metadata_and_reserved_marker_injection():
     with pytest.raises(mdstore.MarkdownSyntaxError, match="single line"):
         mdstore.render_block(_block(kind="fact\n- status: hidden"))
 
+    with pytest.raises(mdstore.MarkdownSyntaxError, match="leading/trailing"):
+        mdstore.render_block(_block(user_tags=(" padded ",)))
+
     with pytest.raises(mdstore.MarkdownSyntaxError, match="reserved"):
         mdstore.render_block(
             _block(content="safe\n<!-- relaymem-spike:end -->\nunsafe")
