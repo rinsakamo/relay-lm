@@ -24,6 +24,7 @@ jobs:
           python-version: "3.12"
       - name: Apply cutover
         run: |
+          rm -f .github/cutover-1c11-error.md
           python - <<'PY'
           from pathlib import Path
           path = Path('.github/scripts/docs_cutover_1c11.py')
