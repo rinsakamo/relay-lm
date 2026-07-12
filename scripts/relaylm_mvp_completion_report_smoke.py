@@ -69,18 +69,40 @@ def validate_model() -> None:
 
 def validate_report(relative_path: str) -> None:
     parts = Path(relative_path).parts
-    if len(parts) != 4 or parts[0:2] != ("docs", "mvp"):
-        raise AssertionError(f"{relative_path}: report must be under docs/mvp/wave<N>/")
-    wave = parts[2]
-    filename = parts[3]
-    if not wave.startswith("wave") or not wave[4:].isdigit():
-        raise AssertionError(f"{relative_path}: wave directory must end in digits")
+    filename = parts[-1] if parts else ""
+    legacy_wave_report = (
+        len(parts) == 4
+        and parts[0:2] == ("docs", "mvp")
+        and parts[2].startswith("wave")
+        and parts[2][4:].isdigit()
+    )
+    canonical_implementation_evidence = (
+        len(parts) == 4
+        and parts[0:3] == ("docs", "evidence", "implementation")
+    )
+    if not (legacy_wave_report or canonical_implementation_evidence):
+        raise AssertionError(
+            f"{relative_path}: report must be under legacy docs/mvp/wave<N>/ "
+            "or canonical docs/evidence/implementation/"
+        )
     if not filename.endswith("_completion_report.md"):
         raise AssertionError(f"{relative_path}: invalid completion report filename")
     if ".." in parts:
         raise AssertionError(f"{relative_path}: parent traversal is not allowed")
 
     require_anchors(relative_path, REPORT_ANCHORS)
+    if canonical_implementation_evidence:
+        require_anchors(
+            relative_path,
+            (
+                "relaylm_source_commit:",
+                "relaylm_source_pr:",
+                "relaylm_source_blob:",
+                "relaylm_source_content_sha256:",
+                "relaylm_exact_source_snapshot:",
+                "## Status and authority",
+            ),
+        )
     body = read_text(relative_path)
     pr_lines = [line for line in body.splitlines() if line.startswith("- PR: #")]
     if len(pr_lines) != 1:
@@ -96,8 +118,11 @@ def validate_report(relative_path: str) -> None:
 
 
 def all_report_paths() -> tuple[str, ...]:
-    reports = sorted((ROOT / "docs" / "mvp").glob("wave*/*_completion_report.md"))
-    return tuple(path.relative_to(ROOT).as_posix() for path in reports)
+    reports = list((ROOT / "docs" / "mvp").glob("wave*/*_completion_report.md"))
+    reports.extend(
+        (ROOT / "docs" / "evidence" / "implementation").glob("*_completion_report.md")
+    )
+    return tuple(path.relative_to(ROOT).as_posix() for path in sorted(reports))
 
 
 def main() -> None:

@@ -29,10 +29,11 @@ This directory is the transitional index for MVP-focused implementation notes, r
 
 Declared parallel waves use unique completion reports as the handoff from each implementation PR to the later convergence/documentation thread.
 
-Path convention:
+Path conventions during the documentation hard cutover:
 
 ```text
-docs/mvp/wave<N>/<slice>_completion_report.md
+legacy/unmigrated: docs/mvp/wave<N>/<slice>_completion_report.md
+canonical/migrated: docs/evidence/implementation/<slice>_completion_report.md
 ```
 
 Each implementation PR creates only its own report. It must not edit this central index, another slice's report, or shared current-state documents merely to mark completion. The wave convergence PR links the merged reports here after verifying the source PRs and merge commits.
@@ -41,7 +42,7 @@ Each implementation PR creates only its own report. It must not edit this centra
 
 Wave 8 currently contains operator-facing evaluation-flow conveniences, runtime-non-contact offline tooling, measurement-only infrastructure evidence, and documentation convergence reports. These reports are historical evidence for their own slices only. The MVP eval runner report does not mark O2/O3, supervised workers, polling, or always-on operation complete; the E2 harness report proves only the comparison-transcript generator and not the later human quality judgment; the Twin Extraction report does not add MEM/SOUL ingestion or RelaySLP runtime wiring; the LAT-1 report does not implement response-time guarantees, degradation ladders, timeouts, search-algorithm changes, ANN/vector DB, Secondary MEM, SSE stream timing, O2/O3 changes, or TTS/avatar timing.
 
-- [MVP eval runner completion report](wave8/mvp_eval_runner_completion_report.md) — source PR #451.
+- [MVP eval runner completion report](../evidence/implementation/mvp_eval_runner_completion_report.md) — source PR #451.
 - [O2/O3 and PM-D5-D7 docs convergence completion report](wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md) — source PR #490.
 - [E2 Value Smoke Harness completion report](wave8/e2_value_smoke_harness_completion_report.md) — source PR #481; harness implementation evidence only, with human judgment remaining separate and local-only.
 - [Twin Extraction Tooling completion report](wave8/twin_extraction_completion_report.md) — source PR #503; offline runtime-non-contact preprocessing/extraction tooling only.
@@ -124,7 +125,7 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/e1r2_comple
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r3_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r4_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave7/e1r5_completion_report.md
-python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/mvp_eval_runner_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/mvp_eval_runner_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/o2_o3_pm_d5_d7_docs_convergence_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/e2_value_smoke_harness_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/twin_extraction_completion_report.md

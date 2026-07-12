@@ -1,11 +1,32 @@
 ---
 relaylm_doc_type: implementation_completion_report
+relaylm_authority: mvp_eval_runner_implementation_evidence
 relaylm_status: historical_after_merge
 relaylm_volatility: frozen
 relaylm_owner: evaluation
+relaylm_update_trigger:
+  - metadata or link repair only
 relaylm_current_status_source: ../../PROJECT_STATUS.md
+relaylm_not_authoritative_for:
+  - current repository-wide implementation status
+  - current MVP eval runner behavior or command registry
+  - current O2/O3 scheduler status
+  - repeatable evaluation method authority
+relaylm_source_commit: 89404bf0f8f4855be673af34c1450f063a22151c
+relaylm_source_pr: 451
+relaylm_recorded_on: 2026-06-30
+relaylm_source_blob: 3ba3a2f5e402240b8d322b0ac55d9c77dfaed237
+relaylm_source_content_sha256: 3565af79a521f80bef021a7a9a9cd31c525192b95f9dcb561a0e027c2f790635
+relaylm_exact_source_snapshot: mvp_eval_runner_completion_report-source.txt
 ---
 # MVP Eval Runner Completion Report
+
+## Status and authority
+
+This document is frozen implementation evidence for the operator-invoked MVP eval runner introduced by PR #451 and merged as `89404bf0f8f4855be673af34c1450f063a22151c`. Current repository status belongs to [Project Status](../../PROJECT_STATUS.md); current runner behavior belongs to the implementation and its focused smokes.
+
+The exact pre-cutover report is retained byte-for-byte as [mvp_eval_runner_completion_report-source.txt](mvp_eval_runner_completion_report-source.txt). Statements below describe the source PR boundary unless explicitly qualified.
+
 
 ## Scope
 
@@ -54,7 +75,7 @@ Non-goals:
 - `scripts/relaylm_mvp_eval_runner_registry.py`
 - `scripts/relaylm_mvp_eval_runner_smoke.py`
 - `scripts/relaylm_mvp_eval_runner_security_smoke.py`
-- `docs/mvp/wave8/mvp_eval_runner_completion_report.md`
+- `docs/evidence/implementation/mvp_eval_runner_completion_report.md`
 
 ## Validation evidence
 
@@ -65,7 +86,7 @@ python -m compileall relaylm scripts
 PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner_security_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_mvp_eval_runner.py --mode static --json-out runtime/eval/mvp_eval_static_latest.json
-PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave8/mvp_eval_runner_completion_report.md
+PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/mvp_eval_runner_completion_report.md
 PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
 ```
 
@@ -79,7 +100,7 @@ Runner-level smoke evidence was designed not to execute the full heavy smoke reg
 
 ## Shared documentation update inputs
 
-- O2/O3 remain planned/unimplemented. No shared status or roadmap document should be updated to mark O2/O3 complete from this PR.
+- At source PR #451, O2/O3 remained planned/unimplemented. Current O2/O3 status belongs to Project Status and is not restated by this frozen record.
 - This PR may be reflected later as an operator-facing evaluation-flow convenience after the implementation PR lands.
 - No MVP runtime boundary, queue lifecycle, RelayMEM semantics, or SOUL Lab route authority changed.
 
