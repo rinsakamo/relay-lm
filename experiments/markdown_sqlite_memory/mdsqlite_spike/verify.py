@@ -43,7 +43,6 @@ def run_verify(env: SpikeEnv) -> dict:
     def record(name: str, ok: bool, detail: str) -> None:
         invariants[name] = {"pass": bool(ok), "detail": detail}
 
-    # 1. Cache integrity + no stale page projections.
     try:
         conn = env.open_cache()
         problems = cache.integrity_check(conn)
@@ -63,7 +62,6 @@ def run_verify(env: SpikeEnv) -> dict:
         record("cache_integrity", False, str(exc))
         record("cache_matches_markdown", False, "skipped: cache unreadable")
 
-    # 2. Markdown reproducibility: parse -> render round-trips every page.
     bad_pages = []
     for rel_path, text in mdstore.load_pages(env.pages_dir).items():
         page = mdstore.parse_page(text, rel_path)
@@ -76,17 +74,14 @@ def run_verify(env: SpikeEnv) -> dict:
         else "render(parse(page)) == page for all pages",
     )
 
-    # 3. Cache is rebuildable losslessly for canonical queries.
     try:
         ok, detail = _rebuild_equivalence(env)
-    except Exception as exc:  # rebuild must never crash verification
+    except Exception as exc:
         ok, detail = False, f"rebuild failed: {exc}"
     record("cache_rebuild_equivalence", ok, detail)
 
     ops_conn = ops.connect(env.ops_path)
     try:
-        # 4. Pending/applying work is never presented as committed MEM:
-        #    only applied jobs may hold receipts.
         row = ops_conn.execute(
             "SELECT COUNT(*) AS n FROM apply_receipts r JOIN jobs j "
             "ON j.job_id = r.job_id WHERE j.state != 'applied'"
@@ -96,11 +91,15 @@ def run_verify(env: SpikeEnv) -> dict:
             row["n"] == 0,
             f"{row['n']} receipts attached to non-applied jobs",
         )
-        # 5. No committed MEM content authority in operations.db: receipts
-        #    carry digests and block IDs only. Structural check that no
-        #    ops table has a MEM content column.
+
         content_cols = []
-        for table in ("apply_receipts", "apply_intents", "tombstones", "jobs"):
+        for table in (
+            "apply_receipts",
+            "apply_intents",
+            "tombstones",
+            "jobs",
+            "memory_usage_events",
+        ):
             for col in ops_conn.execute(f"PRAGMA table_info({table})"):
                 if col["name"] in ("content", "normalized_text"):
                     content_cols.append(f"{table}.{col['name']}")
@@ -108,9 +107,9 @@ def run_verify(env: SpikeEnv) -> dict:
             "ops_db_holds_no_mem_content",
             not content_cols,
             f"content columns found: {content_cols}" if content_cols
-            else "receipts/intents/tombstones reference digests and IDs only",
+            else "operational records reference digests, IDs, and content-free events only",
         )
-        # 6. No lingering intents without a live applying job.
+
         row = ops_conn.execute(
             "SELECT COUNT(*) AS n FROM apply_intents i JOIN jobs j "
             "ON j.job_id = i.job_id WHERE j.state NOT IN ('applying')"
@@ -120,27 +119,53 @@ def run_verify(env: SpikeEnv) -> dict:
             row["n"] == 0,
             f"{row['n']} intents attached to non-applying jobs",
         )
-        # 7. Tombstoned content keys are absent from active cache blocks.
-        conn = env.open_cache()
-        keys = [
-            r["content_key"]
-            for r in ops_conn.execute("SELECT content_key FROM tombstones")
-        ]
-        leaked = []
-        for key in keys:
-            hit = conn.execute(
+
+        cache_conn = env.open_cache()
+        tombstones = ops_conn.execute(
+            "SELECT block_id, content_key FROM tombstones ORDER BY tombstone_id"
+        ).fetchall()
+        active_leaks = []
+        non_hidden = []
+        for tombstone in tombstones:
+            active = cache_conn.execute(
                 "SELECT block_id FROM blocks WHERE content_key = ? "
                 "AND status = 'active' LIMIT 1",
-                (key,),
+                (tombstone["content_key"],),
             ).fetchone()
-            if hit is not None:
-                leaked.append(hit["block_id"])
-        conn.close()
+            if active is not None:
+                active_leaks.append(active["block_id"])
+            current = cache_conn.execute(
+                "SELECT status FROM blocks WHERE block_id = ?",
+                (tombstone["block_id"],),
+            ).fetchone()
+            if current is None or current["status"] != "hidden":
+                non_hidden.append(tombstone["block_id"])
+        cache_conn.close()
         record(
-            "tombstoned_content_not_active",
-            not leaked,
-            f"active blocks matching tombstones: {leaked}" if leaked
-            else f"{len(keys)} tombstone keys, none active in cache",
+            "tombstones_correspond_to_hidden_memory",
+            not active_leaks and not non_hidden,
+            (
+                f"active matches={active_leaks}; non-hidden tombstone blocks={non_hidden}"
+                if active_leaks or non_hidden
+                else f"{len(tombstones)} tombstones, all corresponding memories hidden"
+            ),
+        )
+
+        usage_columns = {
+            row["name"]
+            for row in ops_conn.execute("PRAGMA table_info(memory_usage_events)")
+        }
+        expected_usage_columns = {
+            "event_id", "block_id", "event_kind", "query_digest", "occurred_at"
+        }
+        record(
+            "usage_history_is_operational_authority",
+            expected_usage_columns <= usage_columns,
+            (
+                "durable content-free usage-event table present in operations.db"
+                if expected_usage_columns <= usage_columns
+                else f"missing usage columns: {sorted(expected_usage_columns - usage_columns)}"
+            ),
         )
     finally:
         ops_conn.close()
