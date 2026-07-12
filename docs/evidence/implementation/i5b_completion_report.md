@@ -29,7 +29,7 @@ relaylm_exact_source_snapshot: i5b_completion_report-source.txt
 
 This document is frozen implementation evidence for the I-5B Pin / Unpin apply, API/UI, durable-governance, and ranking-hint slice introduced by PR #430, whose final source head is `eac44fb0038c0a7eadd94c1d29b2ce90f52a6349` and merge commit is `734a3880035651f91eb065b892fc41af6f5cc026`. Current repository-wide status belongs to [Project Status](../../PROJECT_STATUS.md). Current Pin / Unpin behavior belongs to [Phase I-5B Pin / Unpin apply and ranking behavior](../../architecture/phase_i5b_pin_unpin_apply.md), the production implementation, and the focused I-5A/I-5B smoke suite.
 
-The exact pre-cutover report is retained byte-for-byte as [i5b_completion_report-source.txt](i5b_completion_report-source.txt). Statements below describe the source PR boundary unless explicitly qualified.
+The exact pre-cutover report is retained byte-for-byte as [i5b_completion_report-source.txt](i5b_completion_report-source.txt). Statements below describe the source PR boundary unless explicitly qualified. Legacy-path strings inside the exact snapshot are historical source text, not live repository references.
 
 Last reviewed: 2026-06-28 JST
 
