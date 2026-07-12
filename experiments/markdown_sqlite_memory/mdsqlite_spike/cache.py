@@ -37,11 +37,15 @@ class RefreshStats:
 
 def _connect(path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(path, isolation_level=None)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}")
-    return conn
+    try:
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}")
+        return conn
+    except BaseException:
+        conn.close()
+        raise
 
 
 def _create_schema(conn: sqlite3.Connection, version: int = CACHE_SCHEMA_VERSION) -> None:
@@ -145,6 +149,7 @@ def open_cache(path: Path, create: bool = True) -> sqlite3.Connection:
     exists = path.exists()
     if not exists and not create:
         raise FileNotFoundError(path)
+    conn: sqlite3.Connection | None = None
     try:
         conn = _connect(path)
         if not exists:
@@ -153,20 +158,34 @@ def open_cache(path: Path, create: bool = True) -> sqlite3.Connection:
         row = conn.execute(
             "SELECT value FROM schema_meta WHERE key = 'schema_version'"
         ).fetchone()
+        if row is None:
+            raise CacheCorruptError(f"cache db {path} has no schema_version")
+        try:
+            version = int(row["value"])
+        except (TypeError, ValueError) as exc:
+            raise CacheCorruptError(
+                f"cache db {path} has invalid schema_version {row['value']!r}"
+            ) from exc
+        if version > CACHE_SCHEMA_VERSION:
+            raise SchemaVersionError(
+                f"cache schema v{version} is newer than supported "
+                f"v{CACHE_SCHEMA_VERSION}; refusing silent downgrade"
+            )
+        if version < CACHE_SCHEMA_VERSION:
+            _migrate(conn, version)
+        return conn
+    except (CacheCorruptError, SchemaVersionError):
+        if conn is not None:
+            conn.close()
+        raise
     except sqlite3.DatabaseError as exc:
+        if conn is not None:
+            conn.close()
         raise CacheCorruptError(f"cannot open cache db {path}: {exc}") from exc
-    if row is None:
-        raise CacheCorruptError(f"cache db {path} has no schema_version")
-    version = int(row["value"])
-    if version > CACHE_SCHEMA_VERSION:
-        conn.close()
-        raise SchemaVersionError(
-            f"cache schema v{version} is newer than supported "
-            f"v{CACHE_SCHEMA_VERSION}; refusing silent downgrade"
-        )
-    if version < CACHE_SCHEMA_VERSION:
-        _migrate(conn, version)
-    return conn
+    except BaseException:
+        if conn is not None:
+            conn.close()
+        raise
 
 
 def integrity_check(conn: sqlite3.Connection) -> list[str]:
