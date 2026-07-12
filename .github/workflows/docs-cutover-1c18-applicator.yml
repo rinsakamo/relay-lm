@@ -1,0 +1,68 @@
+name: Docs cutover 1C-18 applicator
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/scripts/docs_cutover_1c18.py'
+      - '.github/workflows/docs-cutover-1c18-applicator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.number == 576
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/docs-cutover-1c18-e1r5
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install package
+        run: python -m pip install -e .
+      - name: Apply cutover
+        run: python .github/scripts/docs_cutover_1c18.py
+      - name: Validate exact source preservation
+        run: |
+          test "$(git hash-object docs/evidence/implementation/e1r5_completion_report-source.txt)" = "68fa2b0c76caf745e55f5f4ef3fd3677c8681a8d"
+          test "$(git hash-object docs/evidence/waves/e1r5_post_wave7_correction_convergence_audit-source.txt)" = "0d7cbceca1259d127ebf4fa1a7f91bcbf9e144e5"
+          test ! -e docs/mvp/wave7/e1r5_completion_report.md
+      - name: Validate E1-R5 and adjacent recall boundaries
+        run: |
+          python -m compileall -q relaylm scripts .github/scripts/docs_cutover_1c18.py
+          PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_candidate_bridge_smoke.py
+          PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_bridge_security_smoke.py
+          PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_no_symlink_smoke.py
+          PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_bridge_relevance_bounds_smoke.py
+          PYTHONPATH=. python scripts/relaylm_e1r5_primary_mem_recall_audit_projection_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase_i1_two_turn_primary_recall_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase_i1_two_turn_primary_recall_security_smoke.py
+          PYTHONPATH=. python scripts/relaylm_phase_i4d_primary_retrieval_exclusion_smoke.py
+          PYTHONPATH=. python scripts/relaylm_e1r4_grounded_recall_response_smoke.py
+          PYTHONPATH=. python scripts/relaylm_e1r4_unsupported_detail_suppression_smoke.py
+          PYTHONPATH=. python scripts/relaylm_e1r4_grounded_recall_security_smoke.py
+          PYTHONPATH=. python scripts/relaylm_e1_evaluation_consolidation_smoke.py
+      - name: Validate completion evidence and documentation
+        run: |
+          PYTHONPATH=. python scripts/relaylm_docs_cutover_prepare.py --self-test
+          PYTHONPATH=. python scripts/relaylm_documentation_current_boundary_smoke.py
+          PYTHONPATH=. python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=. python scripts/relaylm_mvp_completion_report_smoke.py --check-model
+          PYTHONPATH=. python scripts/relaylm_mvp_completion_report_smoke.py --check-all
+          PYTHONPATH=. python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1r5_completion_report.md
+          PYTHONPATH=. python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+          PYTHONPATH=. python scripts/relaylm_docs_semantic_audit.py
+          git diff --check
+      - name: Commit cutover result
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "docs: move E1-R5 completion report"
+          git push origin HEAD:agent/docs-cutover-1c18-e1r5
