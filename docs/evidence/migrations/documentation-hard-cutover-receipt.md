@@ -520,7 +520,7 @@ The canonical record preserves the complete E2 comparison-transcript harness imp
 
 ```yaml
 cutover_pr: 572
-merged_commit: pending
+merged_commit: 4c0e7d64110c9e2df37398ee0cda4678d4143e1c
 old_path: docs/mvp/wave8/twin_extraction_completion_report.md
 old_blob_sha: c0b71f940cebf4b6de2f912870a1be7e14c90b60
 old_content_sha256: 8e2db5550392a4c08d8aa62d78fdabb4e920428c7efdc4a477973b7174a4bd2d
@@ -554,7 +554,47 @@ verification:
   unresolved_review_threads: 0
 ```
 
-The canonical record preserves the complete offline Twin Extraction implementation boundary while separating it from current runbook-owned operation and later review-import bridge evolution. The exact pre-cutover source is retained as the final Git blob and byte-for-byte snapshot. The dependency sweep identified three repository-root path occurrences across three files, two Markdown links across two router files, and one current-boundary canonical evidence-map addition. The migration-aware completion-report model and PR-link checks apply without further validator changes. The old path above is only the historical migration identifier for this receipt.
+The canonical record preserves the complete offline Twin Extraction implementation boundary while separating it from current runbook-owned operation and later review-import bridge evolution. The exact pre-cutover source is retained as the final Git blob and byte-for-byte snapshot. The dependency sweep identified three repository-root path occurrences across three files, two Markdown links across two router files, and one current-boundary canonical evidence-map addition. The migration-aware completion-report model and PR-link checks apply without further validator changes. PR #572 merged as `4c0e7d64110c9e2df37398ee0cda4678d4143e1c`; C1C14 is finalized by Cutover 1C-15.
+
+### C1C15-001 — LAT-1 Latency Measurement completion report
+
+```yaml
+cutover_pr: 573
+merged_commit: pending
+old_path: docs/mvp/wave8/lat1_latency_measurement_completion_report.md
+old_blob_sha: 0bf5743b7ba0ac85e657bb06ae88b8f1d41b3936
+old_content_sha256: a33d190625ee5f6f4f9f74143f74cc6a505927b07175cf8aec00638e72b4db42
+source_commit: 85817a391e27492cd139bd75929a60e1065a1454
+source_origin_commit: c77cf8e37a3f52c67c523004cf2a37b4c28f62f8
+source_pr: 505
+recorded_on: 2026-07-07
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/lat1_latency_measurement_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/lat1_latency_measurement_completion_report-source.txt
+exact_source_blob_sha: 0bf5743b7ba0ac85e657bb06ae88b8f1d41b3936
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 2
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 2
+  relative_markdown_link_referrer_files_at_frozen_baseline: 2
+  relative_markdown_link_dependencies_at_frozen_baseline: 2
+  implementation_evidence_index_updated: true
+  lat1_architecture_and_evaluation_authorities_preserved: true
+  documentation_current_boundary_smoke_updated: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_lat1_smokes: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete LAT-1 timing and offline retrieval-bench implementation boundary while separating it from current architecture-owned measurement behavior and evaluation-owned local scaling results. The exact pre-cutover source is retained as the final Git blob and byte-for-byte snapshot. The dependency sweep identified two repository-root path references across two files, two Markdown links across two router files, and one current-boundary canonical evidence-map addition. The migration-aware completion-report model and PR-link checks apply without further validator changes. The old path above is only the historical migration identifier for this receipt.
 
 ## Pending batches
 

@@ -148,7 +148,7 @@ REQUIRED = {
         "docs/evidence/implementation/o2_o3_pm_d5_d7_docs_convergence_completion_report.md",
         "docs/evidence/implementation/e2_value_smoke_harness_completion_report.md",
         "docs/evidence/implementation/twin_extraction_completion_report.md",
-        "docs/mvp/wave8/lat1_latency_measurement_completion_report.md",
+        "docs/evidence/implementation/lat1_latency_measurement_completion_report.md",
         "Wave 7 merged completion reports",
         "source PR #436, merge `7bb2525cb000e893146408065f1aa5976f2b54ab`",
         "source PR #437, merge `e6e5b32cd489dda493ff0171a260dd561a91765c`",
@@ -387,6 +387,13 @@ REQUIRED = {
         "PR: #503",
         "current execution and review-import behavior belongs to the",
         "At source PR #503:",
+    ),
+    "docs/evidence/implementation/lat1_latency_measurement_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "LAT-1 Latency Measurement Completion Report",
+        "PR: #505",
+        "Current timing schema and measurement behavior belong to",
+        "At source PR #505:",
     ),
 }
 
