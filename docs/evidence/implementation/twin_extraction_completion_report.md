@@ -28,7 +28,6 @@ This document is frozen implementation evidence for the offline Twin Extraction 
 
 The exact pre-cutover report is retained byte-for-byte as [twin_extraction_completion_report-source.txt](twin_extraction_completion_report-source.txt). Statements below describe the source boundary unless explicitly qualified.
 
-
 ## Scope
 
 This report records the Twin Extraction offline material-extraction tooling slice: caller-invoked, bounded scripts that turn an X (Twitter) archive export and/or a ChatGPT export into batched material, run a fixed two-way extraction prompt (style vs. fact) against an OpenAI-compatible chat completions endpoint, and merge the batch results into a single review artifact for manual approval.
