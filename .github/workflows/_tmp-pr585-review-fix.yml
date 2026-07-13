@@ -1,0 +1,84 @@
+name: Temporary PR 585 review fix
+
+on:
+  push:
+    branches:
+      - agent/docs-cutover-1c23-e1r2
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/docs-cutover-1c23-e1r2
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install validation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest pyyaml
+
+      - name: Apply review fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          smoke = Path('scripts/relaylm_ci_consolidated_smoke.py')
+          text = smoke.read_text(encoding='utf-8')
+          old = '"docs/mvp/wave6/e1r2_*"'
+          new = '"docs/evidence/implementation/e1r2_*"'
+          if text.count(old) != 1:
+              raise SystemExit(f'E1-R2 path anchor mismatch: {text.count(old)}')
+          smoke.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          contract = Path('scripts/relaylm_ci_consolidated_smoke_contract.py')
+          text = contract.read_text(encoding='utf-8')
+          old = '''    if selected["e1r2_character_store_bootstrap"]:
+              fail("token-only change unexpectedly selected E1-R2")
+
+              selected = changed_outputs(
+                  "ui",
+          '''.replace('              ', '    ')
+          new = '''    if selected["e1r2_character_store_bootstrap"]:
+              fail("token-only change unexpectedly selected E1-R2")
+
+              selected = changed_outputs(
+                  "runtime",
+                  ["docs/evidence/implementation/e1r2_completion_report.md"],
+                  False,
+              )
+              if not selected["e1r2_character_store_bootstrap"]:
+                  fail("canonical E1-R2 evidence change did not select E1-R2")
+
+              selected = changed_outputs(
+                  "ui",
+          '''.replace('              ', '    ')
+          if text.count(old) != 1:
+              raise SystemExit(f'contract insertion anchor mismatch: {text.count(old)}')
+          contract.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Validate review fix
+        run: |
+          PYTHONPATH=.:scripts python scripts/relaylm_ci_consolidated_smoke_contract.py
+          PYTHONPATH=.:scripts python scripts/relaylm_ci_consolidated_smoke.py run --workflow runtime --group e1r2_character_store_bootstrap
+          git diff --check
+
+      - name: Commit review fix
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add scripts/relaylm_ci_consolidated_smoke.py scripts/relaylm_ci_consolidated_smoke_contract.py
+          git commit -m 'fix: select E1-R2 smoke for canonical report changes'
+          git push origin HEAD:agent/docs-cutover-1c23-e1r2
