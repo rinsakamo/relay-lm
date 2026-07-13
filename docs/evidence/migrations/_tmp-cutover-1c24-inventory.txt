@@ -7,8 +7,8 @@ c92bc7e856ef28e862a738c47668d46c67a71904
 bf0ba10a2f97539a4217fd8c78629c83d05e0e70d0a361759b1ac9ca3173464e  /tmp/source-pr-434.md
 
 == source diff ==
---- /tmp/source-pr-434.md	2026-07-13 07:05:14.779107465 +0000
-+++ docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md	2026-07-13 07:05:14.645631311 +0000
+--- /tmp/source-pr-434.md	2026-07-13 07:05:17.420235546 +0000
++++ docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md	2026-07-13 07:05:17.313964256 +0000
 @@ -56,7 +56,7 @@
  - `docs/architecture/current_target_migration_guide.md`
  - `docs/architecture/project_execution_plan.md`
@@ -20,10 +20,18 @@ bf0ba10a2f97539a4217fd8c78629c83d05e0e70d0a361759b1ac9ca3173464e  /tmp/source-pr
  - `docs/architecture/o1d1_production_scheduler_round.md`
 
 == exact old-path references ==
+docs/evidence/migrations/_tmp-cutover-1c24-inventory.txt:3:889edab78de527869e3b94c764fadf9d9cce92b03f8adb946e42c3e6ca6a7627  docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md
+docs/evidence/migrations/_tmp-cutover-1c24-inventory.txt:11:+++ docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md	2026-07-13 07:05:17.313964256 +0000
 docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md:69:- `docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md`
 docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md:79:PYTHONPATH=. python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md
 
 == filename references ==
+docs/evidence/migrations/_tmp-cutover-1c24-inventory.txt:3:889edab78de527869e3b94c764fadf9d9cce92b03f8adb946e42c3e6ca6a7627  docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md
+docs/evidence/migrations/_tmp-cutover-1c24-inventory.txt:11:+++ docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md	2026-07-13 07:05:17.313964256 +0000
+docs/evidence/migrations/_tmp-cutover-1c24-inventory.txt:23:docs/evidence/migrations/_tmp-cutover-1c24-inventory.txt:3:889edab78de527869e3b94c764fadf9d9cce92b03f8adb946e42c3e6ca6a7627  docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md
+docs/evidence/migrations/_tmp-cutover-1c24-inventory.txt:24:docs/evidence/migrations/_tmp-cutover-1c24-inventory.txt:11:+++ docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md	2026-07-13 07:05:17.313964256 +0000
+docs/evidence/migrations/_tmp-cutover-1c24-inventory.txt:25:docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md:69:- `docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md`
+docs/evidence/migrations/_tmp-cutover-1c24-inventory.txt:26:docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md:79:PYTHONPATH=. python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md
 docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md:69:- `docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md`
 docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md:79:PYTHONPATH=. python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md
 
