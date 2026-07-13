@@ -1,0 +1,61 @@
+name: Temporary Cutover 1C-25 inventory
+
+on:
+  push:
+    branches:
+      - agent/docs-cutover-1c25-e1
+
+permissions:
+  contents: write
+
+jobs:
+  inventory:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/docs-cutover-1c25-e1
+          fetch-depth: 0
+      - name: Record inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          old='docs/mvp/wave5/e1_completion_report.md'
+          filename='e1_completion_report.md'
+          source_commit='95c159ff747a167cd6cf99c7c5df656fd01e345d'
+          out='docs/evidence/migrations/_tmp-cutover-1c25-inventory.txt'
+          mkdir -p "$(dirname "$out")"
+          {
+            echo '== current source =='
+            git hash-object "$old"
+            sha256sum "$old"
+            echo
+            echo '== source PR merged source =='
+            git show "$source_commit:$old" > /tmp/source-pr-425.md
+            git hash-object /tmp/source-pr-425.md
+            sha256sum /tmp/source-pr-425.md
+            echo
+            echo '== source diff =='
+            diff -u /tmp/source-pr-425.md "$old" || true
+            echo
+            echo '== exact old-path references =='
+            git grep -n -F "$old" -- . || true
+            echo
+            echo '== filename references =='
+            git grep -n -F "$filename" -- . || true
+            echo
+            echo '== path history =='
+            git log --all --follow --format='%H %ad %s' --date=iso-strict -- "$old"
+            echo
+            echo '== remaining Wave 5 markdown files =='
+            find docs/mvp/wave5 -maxdepth 1 -type f -name '*.md' -print | sort
+          } > "$out"
+      - name: Commit inventory
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/evidence/migrations/_tmp-cutover-1c25-inventory.txt
+          git commit -m 'chore: record Cutover 1C-25 inventory'
+          git push origin HEAD:agent/docs-cutover-1c25-e1
