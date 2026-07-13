@@ -1,4 +1,4 @@
-name: Temporary Cutover 1C-25 inventory
+name: Temporary Cutover 1C-25 applicator
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  inventory:
+  apply-and-validate:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -17,45 +17,48 @@ jobs:
         with:
           ref: agent/docs-cutover-1c25-e1
           fetch-depth: 0
-      - name: Record inventory
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install validation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . pytest pyyaml
+      - name: Apply Cutover 1C-25
+        run: python scripts/_tmp_apply_docs_cutover_1c25.py
+      - name: Validate cutover
         shell: bash
         run: |
           set -euo pipefail
-          old='docs/mvp/wave5/e1_completion_report.md'
-          filename='e1_completion_report.md'
-          source_commit='95c159ff747a167cd6cf99c7c5df656fd01e345d'
-          out='docs/evidence/migrations/_tmp-cutover-1c25-inventory.txt'
-          mkdir -p "$(dirname "$out")"
-          {
-            echo '== current source =='
-            git hash-object "$old"
-            sha256sum "$old"
-            echo
-            echo '== source PR merged source =='
-            git show "$source_commit:$old" > /tmp/source-pr-425.md
-            git hash-object /tmp/source-pr-425.md
-            sha256sum /tmp/source-pr-425.md
-            echo
-            echo '== source diff =='
-            diff -u /tmp/source-pr-425.md "$old" || true
-            echo
-            echo '== exact old-path references =='
-            git grep -n -F "$old" -- . || true
-            echo
-            echo '== filename references =='
-            git grep -n -F "$filename" -- . || true
-            echo
-            echo '== path history =='
-            git log --all --follow --format='%H %ad %s' --date=iso-strict -- "$old"
-            echo
-            echo '== remaining Wave 5 markdown files =='
-            find docs/mvp/wave5 -maxdepth 1 -type f -name '*.md' -print | sort
-          } > "$out"
-      - name: Commit inventory
+          python -m compileall -q relaylm scripts
+          PYTHONPATH=.:scripts python scripts/relaylm_e1_evaluation_consolidation_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_wave5_cross_slice_convergence_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_semantic_audit.py
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-model docs/evidence/implementation/e1_completion_report.md
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+          test ! -e docs/mvp/wave5/e1_completion_report.md
+          test -e docs/evidence/implementation/e1_completion_report.md
+          test -e docs/evidence/implementation/e1_completion_report-source.txt
+          leftovers="$(git grep -l -F 'docs/mvp/wave5/e1_completion_report.md' -- . || true)"
+          allowed='docs/evidence/implementation/e1_completion_report-source.txt
+docs/evidence/migrations/documentation-hard-cutover-receipt.md
+docs/evidence/waves/wave5_cross_slice_convergence_audit-source.txt
+.github/workflows/_tmp-docs-cutover-1c25-inventory.yml
+scripts/_tmp_apply_docs_cutover_1c25.py
+docs/evidence/migrations/_tmp-cutover-1c25-inventory.txt'
+          while IFS= read -r path; do
+            [ -z "$path" ] && continue
+            printf '%s\n' "$allowed" | grep -Fxq "$path" || { echo "unexpected legacy path: $path"; exit 1; }
+          done <<< "$leftovers"
+          git diff --check
+      - name: Commit migration
         shell: bash
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add docs/evidence/migrations/_tmp-cutover-1c25-inventory.txt
-          git commit -m 'chore: record Cutover 1C-25 inventory'
+          git add -A
+          git commit -m 'docs: move E1 report in cutover 1C-25'
           git push origin HEAD:agent/docs-cutover-1c25-e1
