@@ -23,7 +23,7 @@ REQUIRED = {
         "668d0e403102d342f44bf6299cd4dbe0d5f4eaaa",
         "docs/evidence/implementation/e1_completion_report.md",
         "docs/evidence/implementation/o1e_completion_report.md",
-        "docs/mvp/wave5/i4f_completion_report.md",
+        "docs/evidence/implementation/i4f_completion_report.md",
         "docs/architecture/e1_evaluation_consolidation.md",
         "docs/architecture/o1e_scheduler_operational_controls.md",
         "docs/architecture/phase_i4f_forget_validation.md",
