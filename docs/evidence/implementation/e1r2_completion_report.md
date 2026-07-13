@@ -37,7 +37,6 @@ Last reviewed: 2026-06-27 JST
 
 This report is evidence for one implementation pull request. It is not current runtime, repository-wide status, bootstrap-command, store-layout, queue/worker/scheduler, sequencing, release-readiness, or operator-procedure authority.
 
-
 ## Scope
 
 E1-R2 implements an explicit, dry-run-first, idempotent operator command that prepares the minimum character-scoped Primary MEM store layout needed for local MVP evaluation.
@@ -115,7 +114,7 @@ PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.
 
 Connector-preparation note: this branch was prepared through the GitHub connector because the local `~/work/relay-lm` checkout is unavailable in this environment. Python syntax for the new module, CLI, and smoke was checked before pushing; full repository validation is expected to run in GitHub Actions.
 
-At source PR #432, GitHub Actions was the execution source of truth for full in-repository validation. The dedicated E1-R2 workflow present at that source boundary is absent from the current tree and is not recreated during this cutover; current validation belongs to the consolidated runtime smoke inventory. The current consolidated entry is the runtime `e1r2_character_store_bootstrap` group in `scripts/relaylm_ci_consolidated_smoke.py`.
+At source PR #432, GitHub Actions was the execution source of truth for full in-repository validation. The dedicated E1-R2 workflow present at that source boundary is absent from the current tree and is not recreated during this cutover; current validation belongs to the consolidated runtime smoke inventory. The current consolidated entry is the runtime `e1r2_character_store_bootstrap` group in `scripts/relaylm_ci_consolidated_smoke.py`. That group validates the current implementation boundary but does not make this frozen report an operator-procedure authority.
 
 ## Known limitations
 
