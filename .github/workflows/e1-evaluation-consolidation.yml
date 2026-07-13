@@ -1,4 +1,5 @@
 name: E1 evaluation consolidation
+# Temporary applicator anchor: PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/e1_completion_report.md
 
 on:
   workflow_dispatch:
