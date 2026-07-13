@@ -109,4 +109,8 @@ I-7C does not implement worker start, scheduler start, automatic retry/release l
 
 ## Validation
 
-I-7C adds dedicated runtime, API, concurrency, security, and UI smoke coverage plus a GitHub Actions workflow. The completion report is `docs/mvp/wave6/i7c_completion_report.md`.
+I-7C adds dedicated runtime, API, concurrency, security, and UI smoke coverage. Current validation is routed through the consolidated smoke inventory.
+
+## Completion report
+
+The frozen implementation evidence for this slice is recorded in [I-7C completion report](../evidence/implementation/i7c_completion_report.md). Current behavior remains owned by this handoff, the production implementation, and the focused I-7A/B and I-7C smoke suite.

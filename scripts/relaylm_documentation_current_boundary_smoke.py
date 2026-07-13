@@ -363,6 +363,11 @@ REQUIRED = {
         "Pin state is a deterministic ranking hint only.",
         "../evidence/implementation/i5b_completion_report.md",
     ),
+    "docs/architecture/phase_i7c_held_apply_discard_runtime.md": (
+        "# Phase I-7C Held Apply / Discard Runtime",
+        "I-7C connects the I-7A/B Held Apply / Discard contract",
+        "../evidence/implementation/i7c_completion_report.md",
+    ),
     "docs/evidence/implementation/o1f_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
         "relaylm_source_pr: 429",
@@ -378,6 +383,14 @@ REQUIRED = {
         "Current Pin / Unpin behavior belongs to",
         "i5b_completion_report-source.txt",
         "At source PR #430",
+    ),
+    "docs/evidence/implementation/i7c_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "relaylm_source_pr: 431",
+        "I-7C completion report",
+        "Current Held Apply / Discard behavior belongs to",
+        "i7c_completion_report-source.txt",
+        "At source PR #431",
     ),
     "docs/evidence/implementation/e1r4_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
