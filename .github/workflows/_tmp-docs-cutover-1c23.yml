@@ -35,7 +35,32 @@ jobs:
       - name: Apply Cutover 1C-23
         env:
           CUTOVER_PR: '585'
-        run: python scripts/_tmp_apply_docs_cutover_1c23.py
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/_tmp_apply_docs_cutover_1c23.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''    mvp = ROOT / "docs/mvp/README.md"
+              replace_once(mvp, "wave6/e1r2_completion_report.md", "../evidence/implementation/e1r2_completion_report.md")
+              replace_once(
+                  mvp,
+                  "docs/mvp/wave6/e1r2_completion_report.md",
+                  "docs/evidence/implementation/e1r2_completion_report.md",
+              )
+          '''.replace('              ', '    ')
+          new = '''    mvp = ROOT / "docs/mvp/README.md"
+              replace_once(
+                  mvp,
+                  "docs/mvp/wave6/e1r2_completion_report.md",
+                  "docs/evidence/implementation/e1r2_completion_report.md",
+              )
+              replace_once(mvp, "wave6/e1r2_completion_report.md", "../evidence/implementation/e1r2_completion_report.md")
+          '''.replace('              ', '    ')
+          if text.count(old) != 1:
+              raise SystemExit('replacement-order patch anchor mismatch')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+          python scripts/_tmp_apply_docs_cutover_1c23.py
 
       - name: Verify exact source preservation
         run: |
