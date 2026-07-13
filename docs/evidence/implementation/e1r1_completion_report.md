@@ -116,7 +116,7 @@ Connector preparation validation performed in this environment:
 python -m py_compile relaylm/config.py relaylm/pipeline_context.py relaylm/request_scope.py relaylm/trusted_home_scene_admission.py relaylm/relaymem_slp_runtime_finalization.py scripts/relaylm_e1r1_trusted_home_scene_admission_smoke.py
 ```
 
-At source PR #433, the full repository checkout was unavailable in the connector environment, so GitHub Actions was the execution source of truth for full in-repo smoke validation. The dedicated E1-R1 workflow present at that source boundary is absent from the current tree and is not recreated during this cutover; current validation belongs to the consolidated runtime smoke inventory.
+At source PR #433, the full repository checkout was unavailable in the connector environment, so GitHub Actions was the execution source of truth for full in-repo smoke validation. The dedicated E1-R1 workflow present at that source boundary is absent from the current tree and is not recreated during this cutover; current validation belongs to the consolidated runtime smoke inventory. The historical workflow path is source evidence only and is not a current validation authority.
 
 ## Known limitations
 
