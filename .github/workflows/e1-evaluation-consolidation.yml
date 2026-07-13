@@ -16,14 +16,14 @@ on:
       - ".github/workflows/e1-evaluation-consolidation.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: e1-evaluation-consolidation-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  export-cutover:
+  push-cutover:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -54,26 +54,35 @@ jobs:
           PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
           test ! -e docs/mvp/wave5/e1_completion_report.md
           git diff --check
-      - name: Package generated files
+      - name: Commit locally and attempt push
+        shell: bash
         run: |
-          tar -czf /tmp/cutover-1c25-tree.tar.gz \
-            .github/workflows/wave5-cross-slice-convergence.yml \
-            docs/README.md \
-            docs/architecture/README.md \
-            docs/evidence/implementation/README.md \
-            docs/evidence/implementation/e1_completion_report.md \
-            docs/evidence/implementation/e1_completion_report-source.txt \
-            docs/evidence/migrations/documentation-hard-cutover-receipt.md \
-            docs/evidence/waves/wave5_cross_slice_convergence_audit.md \
-            docs/mvp/README.md \
-            scripts/relaylm_documentation_current_boundary_smoke.py \
-            scripts/relaylm_e1_evaluation_consolidation_smoke.py \
-            scripts/relaylm_wave5_cross_slice_convergence_smoke.py
-      - uses: actions/upload-artifact@v4
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m 'docs: move E1 report in cutover 1C-25'
+          set +e
+          git push origin HEAD:agent/docs-cutover-1c25-e1 > /tmp/cutover-1c25-push.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/cutover-1c25-push.log
+          printf '%s\n' "$status" > /tmp/cutover-1c25-push.status
+          git rev-parse HEAD > /tmp/cutover-1c25-local-commit.txt
+          exit 0
+      - name: Upload push diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: cutover-1c25-tree
-          path: /tmp/cutover-1c25-tree.tar.gz
+          name: cutover-1c25-push-diagnostic
+          path: |
+            /tmp/cutover-1c25-push.log
+            /tmp/cutover-1c25-push.status
+            /tmp/cutover-1c25-local-commit.txt
           if-no-files-found: error
+      - name: Fail when push failed
+        run: |
+          status="$(cat /tmp/cutover-1c25-push.status)"
+          exit "$status"
 
   smoke:
     if: github.event_name == 'push' && github.ref_name == 'main'
