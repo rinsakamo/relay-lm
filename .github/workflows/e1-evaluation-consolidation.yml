@@ -10,6 +10,7 @@ on:
   push:
     branches:
       - main
+      - agent/docs-cutover-1c25-e1
     paths:
       - "docs/**"
       - "scripts/**"
@@ -24,7 +25,7 @@ concurrency:
 
 jobs:
   apply-cutover:
-    if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
+    if: github.event_name == 'push' && github.ref_name == 'agent/docs-cutover-1c25-e1' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -42,10 +43,8 @@ jobs:
       - name: Apply and validate Cutover 1C-25
         shell: bash
         run: |
-          set +e
-          (
-            set -euo pipefail
-            python - <<'PY'
+          set -euo pipefail
+          python - <<'PY'
           from pathlib import Path
           path = Path("scripts/_tmp_apply_docs_cutover_1c25.py")
           text = path.read_text(encoding="utf-8")
@@ -55,41 +54,23 @@ jobs:
           end = text.index(end_marker, start)
           path.write_text(text[:start] + text[end:], encoding="utf-8")
           PY
-            python scripts/_tmp_apply_docs_cutover_1c25.py
-            python -m compileall -q relaylm scripts
-            PYTHONPATH=.:scripts python scripts/relaylm_e1_evaluation_consolidation_smoke.py
-            PYTHONPATH=.:scripts python scripts/relaylm_wave5_cross_slice_convergence_smoke.py
-            PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
-            PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
-            PYTHONPATH=.:scripts python scripts/relaylm_docs_semantic_audit.py
-            PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-model docs/evidence/implementation/e1_completion_report.md
-            PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all
-            PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
-            test ! -e docs/mvp/wave5/e1_completion_report.md
-            test -e docs/evidence/implementation/e1_completion_report.md
-            test -e docs/evidence/implementation/e1_completion_report-source.txt
-            git diff --check
-          ) > /tmp/cutover-1c25.log 2>&1
-          status=$?
-          cat /tmp/cutover-1c25.log
-          printf '%s\n' "$status" > /tmp/cutover-1c25.status
-          exit 0
-      - name: Upload Cutover diagnostic
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cutover-1c25-diagnostic
-          path: |
-            /tmp/cutover-1c25.log
-            /tmp/cutover-1c25.status
-          if-no-files-found: error
-      - name: Commit migration or fail
+          python scripts/_tmp_apply_docs_cutover_1c25.py
+          python -m compileall -q relaylm scripts
+          PYTHONPATH=.:scripts python scripts/relaylm_e1_evaluation_consolidation_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_wave5_cross_slice_convergence_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_semantic_audit.py
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-model docs/evidence/implementation/e1_completion_report.md
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+          test ! -e docs/mvp/wave5/e1_completion_report.md
+          test -e docs/evidence/implementation/e1_completion_report.md
+          test -e docs/evidence/implementation/e1_completion_report-source.txt
+          git diff --check
+      - name: Commit migration
         shell: bash
         run: |
-          status="$(cat /tmp/cutover-1c25.status)"
-          if [ "$status" -ne 0 ]; then
-            exit "$status"
-          fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           rm -f docs/evidence/migrations/_tmp-cutover-1c25-failure.log
@@ -98,7 +79,7 @@ jobs:
           git push origin HEAD:agent/docs-cutover-1c25-e1
 
   smoke:
-    if: github.event_name != 'pull_request'
+    if: github.event_name == 'push' && github.ref_name == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
