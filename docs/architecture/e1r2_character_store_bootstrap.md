@@ -118,3 +118,11 @@ E1-R2 does not implement:
 - Primary MEM semantic page creation;
 - edits to existing pages, indexes, logs, lifecycle state, tombstones, Correct/Forget state, Pin state, or Held state;
 - TTS, audio, avatar, ASR, or peer transport.
+
+## Validation
+
+E1-R2 has focused dry-run, apply, idempotency, malformed-state, and content-free projection smoke coverage. Current validation is routed through the consolidated runtime smoke inventory rather than the removed source-PR-specific workflow.
+
+## Completion report
+
+The frozen implementation evidence for this slice is recorded in [E1-R2 completion report](../evidence/implementation/e1r2_completion_report.md). Current behavior remains owned by this handoff, the production implementation, and the focused E1-R2 smoke suite.

@@ -114,7 +114,7 @@ REQUIRED = {
         "relaylm_doc_type: implementation_completion_report",
         "trusted Home scene admission",
     ),
-    "docs/mvp/wave6/e1r2_completion_report.md": (
+    "docs/evidence/implementation/e1r2_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
         "character-store bootstrap",
     ),

@@ -868,7 +868,7 @@ The canonical record preserves the complete I-7C Held Apply / Discard runtime-go
 
 ```yaml
 cutover_pr: 584
-merged_commit: pending
+merged_commit: 4cc36a948b399d5657c89b0b0c835287f9b93cd3
 old_path: docs/mvp/wave6/e1r1_completion_report.md
 old_blob_sha: 3d4e78d63e4be836e1de8b0ad1781a513e5349bc
 old_content_sha256: 35c8d68527fea415465119f28ca366897ab7d320f6828fa92489dff4af58c6d7
@@ -912,6 +912,55 @@ verification:
 ```
 
 The canonical record preserves the complete E1-R1 route-owned trusted Home scene-admission implementation boundary from PR #433 while separating it from current handoff-, trust-policy-, implementation-, source/queue-, worker-, and focused-smoke-owned behavior. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. Live Markdown-link and repository-root validation dependencies are moved to the canonical path; legacy references remain only in this migration receipt and frozen exact source snapshots. The dedicated E1-R1 workflow named by the historical source report is no longer present in the current tree and is not recreated. The migration-aware completion-report model and PR-link checks apply without validator changes.
+
+### C1C23-001 — E1-R2 completion report
+
+```yaml
+cutover_pr: 585
+merged_commit: pending
+old_path: docs/mvp/wave6/e1r2_completion_report.md
+old_blob_sha: 107923354f09e0e3340e329f282d2c818910cad2
+old_content_sha256: 72e1fcb022cf2db3bcbda3e3d14a46a18da1f50c3747f6706301346abc6f7722
+source_commit: 76f80f590f64c5078fb93bc43b62c49c866b84bf
+source_origin_commit: fefd3559ac32a37ed932faa130612a6a3da43c61
+source_pr: 432
+recorded_on: 2026-06-27
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/e1r2_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/e1r2_completion_report-source.txt
+exact_source_blob_sha: 107923354f09e0e3340e329f282d2c818910cad2
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 4
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 4
+  relative_markdown_link_referrer_files_at_frozen_baseline: 4
+  relative_markdown_link_dependencies_at_frozen_baseline: 4
+  source_report_internal_legacy_path_occurrences_preserved_in_exact_snapshot: 2
+  e1r2_architecture_handoff_updated: true
+  e1_evaluation_consolidation_updated: true
+  wave6_convergence_evidence_link_updated: true
+  implementation_evidence_index_updated: true
+  documentation_current_boundary_smoke_updated: true
+  consolidated_e1r2_smoke_updated: true
+  e1_evaluation_smoke_updated: true
+  dedicated_e1r2_workflow_absent_in_current_tree: true
+  cutover_preparation_self_test_reused_without_path_change: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_e1r2_smoke: passed
+  e1_evaluation_consolidation_smoke: passed
+  consolidated_runtime_e1r2_group: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete E1-R2 explicit dry-run-first idempotent character-store bootstrap implementation boundary from PR #432 while separating it from current handoff-, command-, store-layout-, implementation-, queue/worker/scheduler-, and focused-smoke-owned behavior. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. Live Markdown-link and repository-root validation dependencies are moved to the canonical path; legacy references remain only in this migration receipt and frozen exact source snapshots. The dedicated E1-R2 workflow named by the historical source report is no longer present in the current tree and is not recreated. The migration-aware completion-report model and PR-link checks apply without validator changes.
 
 ## Pending batches
 
