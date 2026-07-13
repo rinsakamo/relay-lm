@@ -1287,21 +1287,21 @@ verification:
   documentation_current_boundary_smoke_updated: true
   migration_aware_completion_report_model_reused: true
   migration_aware_pr_link_smoke_reused: true
-  focused_o1d2_smokes: pending
-  focused_i4e_smokes: pending
-  focused_ui_b1a_smokes: pending
-  focused_i5a_smokes: pending
-  focused_i7ab_smokes: pending
-  downstream_regressions_and_consolidated_groups: pending
-  soul_lab_ui_validation: pending
-  wave4_cross_slice_convergence_smoke: pending
-  documentation_link_check: pending
-  documentation_semantic_audit: pending
-  documentation_current_boundary_smoke: pending
-  completion_report_model_and_file_checks: pending
-  completion_report_pr_link_check: pending
-  consolidated_selection_self_test: pending
-  all_github_actions: pending
+  focused_o1d2_smokes: passed
+  focused_i4e_smokes: passed
+  focused_ui_b1a_smokes: passed
+  focused_i5a_smokes: passed
+  focused_i7ab_smokes: passed
+  downstream_regressions_and_consolidated_groups: passed
+  soul_lab_ui_validation: passed
+  wave4_cross_slice_convergence_smoke: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  documentation_current_boundary_smoke: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  consolidated_selection_self_test: passed
+  all_github_actions: passed
   unresolved_review_threads: 0
 ```
 
