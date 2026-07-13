@@ -134,7 +134,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 - [I-5B completion report](evidence/implementation/i5b_completion_report.md)
 - [I-7C completion report](evidence/implementation/i7c_completion_report.md)
 - [E1-R1 completion report](evidence/implementation/e1r1_completion_report.md)
-- [E1-R2 completion report](mvp/wave6/e1r2_completion_report.md)
+- [E1-R2 completion report](evidence/implementation/e1r2_completion_report.md)
 - [O1F operational validation](architecture/o1f_operational_validation.md)
 - [Phase I-5B Pin / Unpin apply and ranking behavior](architecture/phase_i5b_pin_unpin_apply.md)
 - [Phase I-7C Held Apply / Discard runtime governance](architecture/phase_i7c_held_apply_discard_runtime.md)

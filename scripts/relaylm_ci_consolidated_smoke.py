@@ -73,7 +73,7 @@ COMMANDS = {
         "token_estimation": [[p] for p in ["scripts/relaylm_cjk_token_estimation_smoke.py", "scripts/relaylm_fullwidth_space_token_smoke.py", "scripts/relaylm_relaymem_cjk_runtime_estimation_smoke.py", "scripts/relaylm_token_memory_dry_run_smoke.py", "scripts/relaylm_token_budget_truncation_smoke.py", "scripts/relaylm_token_budget_truncation_dry_run_smoke.py", "scripts/relaylm_token_budget_truncation_apply_smoke.py", "scripts/relaylm_token_budget_truncation_proxy_smoke.py"]],
         "merged_review_residuals": [["scripts/relaylm_merged_review_residuals_smoke.py"], ["scripts/relaylm_m3c_operation_index_normalization_smoke.py"]],
         "e1r1_trusted_home_scene_admission": [["scripts/relaylm_e1r1_trusted_home_scene_admission_smoke.py"], ["scripts/relaylm_mvp_completion_report_smoke.py", "docs/evidence/implementation/e1r1_completion_report.md"]],
-        "e1r2_character_store_bootstrap": [["scripts/relaylm_e1r2_character_store_bootstrap_smoke.py"], ["scripts/relaylm_mvp_completion_report_smoke.py", "docs/mvp/wave6/e1r2_completion_report.md"], ["scripts/relaylm_mvp_completion_report_pr_link_smoke.py"], ["scripts/relaylm_docs_link_check.py"]],
+        "e1r2_character_store_bootstrap": [["scripts/relaylm_e1r2_character_store_bootstrap_smoke.py"], ["scripts/relaylm_mvp_completion_report_smoke.py", "docs/evidence/implementation/e1r2_completion_report.md"], ["scripts/relaylm_mvp_completion_report_pr_link_smoke.py"], ["scripts/relaylm_docs_link_check.py"]],
         "soul_lab_management": [["scripts/relaylm_soul_lab_management_projection_smoke.py"]],
     },
     "ui": {

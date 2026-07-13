@@ -22,6 +22,7 @@ CURRENT_DOCS = (
     "docs/architecture/e1r1_trusted_home_scene_admission.md",
     "docs/evidence/implementation/e1r1_completion_report.md",
     "docs/architecture/e1r2_character_store_bootstrap.md",
+    "docs/evidence/implementation/e1r2_completion_report.md",
     "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
     "docs/architecture/e1r4_retrieval_response_grounding.md",
     "docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md",
@@ -261,6 +262,20 @@ REQUIRED = {
         "e1r1_completion_report-source.txt",
         "At source PR #433",
     ),
+    "docs/architecture/e1r2_character_store_bootstrap.md": (
+        "relaylm_doc_type: architecture_handoff",
+        "# E1-R2 Character Store Bootstrap",
+        "relaylm-character-store-bootstrap",
+        "../evidence/implementation/e1r2_completion_report.md",
+    ),
+    "docs/evidence/implementation/e1r2_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "relaylm_source_pr: 432",
+        "E1-R2 Character Store Bootstrap Completion Report",
+        "Current character-store bootstrap behavior belongs to",
+        "e1r2_completion_report-source.txt",
+        "At source PR #432",
+    ),
     "docs/architecture/e1r4_retrieval_response_grounding.md": (
         "# E1-R4 Retrieval-Response Grounding",
         "relaymem.grounded_recall_context.v0",
@@ -489,6 +504,7 @@ STALE = tuple(
     Pin/Unpin runtime API/UI/ranking behavior: pending
     Held Apply/Discard runtime API/UI/durable evidence: pending
     Character-store bootstrap remains operator-facing and brittle
+    docs/mvp/wave6/e1r2_completion_report.md
     E1-R3 provenance-preserving Primary MEM formation summary current next candidate
     E1-R4 retrieval-response grounding and unsupported-detail suppression current next candidate
     E1-R4 evidence-grounded recall behavior remains quality work
