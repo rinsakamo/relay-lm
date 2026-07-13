@@ -1,5 +1,4 @@
 name: E1 evaluation consolidation
-# Temporary applicator anchor: PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/e1_completion_report.md
 
 on:
   workflow_dispatch:
@@ -46,6 +45,20 @@ jobs:
           set +e
           (
             set -euo pipefail
+            python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/_tmp_apply_docs_cutover_1c25.py")
+          text = path.read_text(encoding="utf-8")
+          block = '''replace_once(
+              Path(".github/workflows/e1-evaluation-consolidation.yml"),
+              "PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/e1_completion_report.md",
+              "PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1_completion_report.md",
+          )
+          '''
+          if text.count(block) != 1:
+              raise SystemExit("temporary E1 workflow self-edit block mismatch")
+          path.write_text(text.replace(block, "", 1), encoding="utf-8")
+          PY
             python scripts/_tmp_apply_docs_cutover_1c25.py
             python -m compileall -q relaylm scripts
             PYTHONPATH=.:scripts python scripts/relaylm_e1_evaluation_consolidation_smoke.py
