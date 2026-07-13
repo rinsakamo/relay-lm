@@ -8,14 +8,15 @@ on:
       - ".github/workflows/e1-evaluation-consolidation.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: e1-evaluation-consolidation-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  finalize-receipt-diagnostic:
+  finalize-receipt:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,38 +26,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Finalize and diagnose receipt
-        shell: bash
+      - name: Install semantic audit dependency
+        run: python -m pip install pyyaml
+      - name: Finalize receipt
+        run: python scripts/_tmp_finalize_docs_cutover_1c25.py
+      - name: Validate finalized receipt
         run: |
-          set +e
-          : > /tmp/c1c25-finalizer.log
-          run_check() {
-            label="$1"
-            shift
-            printf '\n== %s ==\n' "$label" | tee -a /tmp/c1c25-finalizer.log
-            "$@" >> /tmp/c1c25-finalizer.log 2>&1
-            status=$?
-            printf 'status=%s\n' "$status" | tee -a /tmp/c1c25-finalizer.log
-            return "$status"
-          }
-          final_status=0
-          run_check finalize python scripts/_tmp_finalize_docs_cutover_1c25.py || final_status=$?
-          run_check completion-model env PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all || final_status=$?
-          run_check pr-link env PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py || final_status=$?
-          run_check links env PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py || final_status=$?
-          run_check semantic env PYTHONPATH=.:scripts python scripts/relaylm_docs_semantic_audit.py || final_status=$?
-          run_check diff-check git diff --check || final_status=$?
-          cat /tmp/c1c25-finalizer.log
-          printf '%s\n' "$final_status" > /tmp/c1c25-finalizer.status
-          exit 0
-      - name: Upload finalizer diagnostic
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: c1c25-finalizer-diagnostic
-          path: |
-            /tmp/c1c25-finalizer.log
-            /tmp/c1c25-finalizer.status
-          if-no-files-found: error
-      - name: Fail on validation error
-        run: exit "$(cat /tmp/c1c25-finalizer.status)"
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
+          PYTHONPATH=.:scripts python scripts/relaylm_docs_semantic_audit.py
+          git diff --check
+      - name: Commit receipt
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/evidence/migrations/documentation-hard-cutover-receipt.md
+          git commit -m 'docs: finalize C1C25 receipt'
+          git push origin HEAD:agent/docs-cutover-1c25-e1
