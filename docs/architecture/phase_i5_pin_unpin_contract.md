@@ -158,3 +158,5 @@ I-5B preserves this contract by:
 ## Non-goals
 
 I-5A/I-5B do not implement hidden memory retrieval, Forget override or restore/unhide behavior, semantic memory content creation, physical deletion, Merge / Supersession, Secondary MEM consolidation, RelaySOUL mutation, or new queue, worker, scheduler, or durable-finalization authority.
+
+The frozen implementation evidence for the I-5A contract/preflight slice is recorded in [I-5A completion report](../evidence/implementation/i5a_completion_report.md). Current behavior remains owned by this handoff, the I-5B continuation, the production implementation and shared mutation fence, and the focused I-5A/I-5B smokes.

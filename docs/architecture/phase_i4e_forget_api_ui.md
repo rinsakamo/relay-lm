@@ -125,3 +125,5 @@ I-4E does not implement restore, purge, unhide, physical deletion, repair, autom
 ## I-4F handoff items
 
 I-4F should validate the completed surface under crash, race, stale browser generation, token expiry, token replay, response-lost, store-unavailable, fresh-conversation, and multi-character isolation conditions. It should also verify no lifecycle-hidden memory can be retrieved or injected after apply across full process restart and browser refresh paths.
+
+The frozen implementation evidence for the I-4E source slice is recorded in [I-4E completion report](../evidence/implementation/i4e_completion_report.md). Current behavior remains owned by this handoff, the existing I-4 production authorities and implementation, the focused I-4E smokes, and the later I-4F validation boundary.

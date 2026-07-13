@@ -1132,7 +1132,7 @@ The canonical record preserves the complete bounded O1E scheduler operational-co
 
 ```yaml
 cutover_pr: 590
-merged_commit: pending
+merged_commit: 34739fdf154a1634a6eb8650f57acd66065312cd
 old_path: docs/mvp/wave5/i4f_completion_report.md
 old_blob_sha: f7c451802f97109fd431cbb1f6a57910d4ea5b93
 old_content_sha256: 45e486844536829d23b9e303ef5e7925385f94ac5887027669facadafc9bbce5
@@ -1190,6 +1190,122 @@ verification:
 ```
 
 The canonical record preserves the complete validation-only I-4F Forget product-completion boundary from PR #427 while separating it from current handoff-, production-implementation-, contract-, focused-smoke-, and SOUL Lab UI-validation-owned behavior. The source final-head, merge, and pre-cutover forms are byte-identical, and no later commit modified the report. Seven exact old-path literals across six live files and three resolved Markdown links move to the canonical path. The exact snapshot and frozen Wave 5 source snapshot retain their historical old-path text. This completes the live Wave 5 completion-report cutover without compatibility files or runtime behavior change.
+
+
+### C1C28-001 — Wave 4 implementation completion reports
+
+```yaml
+cutover_pr: pending
+merged_commit: pending
+record_count: 5
+recorded_on: 2026-06-27
+disposition: evidence_retained
+records:
+  - source_pr: 418
+    source_commit: 83617461bd72fdd59bc9d058cb279b61c8e58603
+    source_origin_commit: 49fb43130155826fcc8b2b951d77484ff8ddaddf
+    old_path: docs/mvp/wave4/o1d2_completion_report.md
+    source_blob_sha: 601daa1303ad7119aaddaffd84dc4cff2dbb234e
+    source_content_sha256: ff45ac1565494f07a776ab5fcdb6b886230efda9f6c9e8162c67d019599ffc97
+    pre_cutover_blob_sha: 711e6426fbdff5b6d768facd80b103ec6aed9c72
+    pre_cutover_content_sha256: 4f3f0937f0900749cb379d7a6ea7ba3583011c3ecb3426716237c1f1e1f2fca3
+    post_source_modification_commits:
+      - 4dc151989f0a918f51e2036c1ee55c8f438f811c
+    new_canonical_path: docs/evidence/implementation/o1d2_completion_report.md
+    exact_source_snapshot: docs/evidence/implementation/o1d2_completion_report-source.txt
+    exact_source_blob_sha: 711e6426fbdff5b6d768facd80b103ec6aed9c72
+  - source_pr: 420
+    source_commit: 551e0e7877e09f69d95a8491b55b2af8199f7dc7
+    source_origin_commit: 3e3d2570ecdfcde4c8bfdee06c5607cb6632c133
+    old_path: docs/mvp/wave4/i4e_completion_report.md
+    source_blob_sha: c98117190fd8de637784181e7a413e28800917ea
+    source_content_sha256: def12c88540101b20b26f815dc0afc0702f96b857b83bfb633d3add6d05c563d
+    pre_cutover_blob_sha: c98117190fd8de637784181e7a413e28800917ea
+    pre_cutover_content_sha256: def12c88540101b20b26f815dc0afc0702f96b857b83bfb633d3add6d05c563d
+    post_source_modification_commits: []
+    new_canonical_path: docs/evidence/implementation/i4e_completion_report.md
+    exact_source_snapshot: docs/evidence/implementation/i4e_completion_report-source.txt
+    exact_source_blob_sha: c98117190fd8de637784181e7a413e28800917ea
+  - source_pr: 421
+    source_commit: 8ef816b8815ac82bbb0c5d8da6a67407905b01ac
+    source_origin_commit: 5736636da839486140f72c731f18a4a85c39b13c
+    old_path: docs/mvp/wave4/ui_b1a_completion_report.md
+    source_blob_sha: 1ec7c923e627415847c075f144bc4d7ecb4120ca
+    source_content_sha256: fd6a164dfdffc74298b3ffdcb4b734eabb51dada08dc64556b130eeeb0445cb0
+    pre_cutover_blob_sha: 1ec7c923e627415847c075f144bc4d7ecb4120ca
+    pre_cutover_content_sha256: fd6a164dfdffc74298b3ffdcb4b734eabb51dada08dc64556b130eeeb0445cb0
+    post_source_modification_commits: []
+    new_canonical_path: docs/evidence/implementation/ui_b1a_completion_report.md
+    exact_source_snapshot: docs/evidence/implementation/ui_b1a_completion_report-source.txt
+    exact_source_blob_sha: 1ec7c923e627415847c075f144bc4d7ecb4120ca
+  - source_pr: 417
+    source_commit: 896536f3bd7fe11b18787b99852faf11f3a6eef9
+    source_origin_commit: 2f8597911774b70f1c001db8332b3dfcc18d23ca
+    old_path: docs/mvp/wave4/i5a_completion_report.md
+    source_blob_sha: 899fb3c7f22f5b2e7deace4246834726c4674510
+    source_content_sha256: 660600384845d88b78b783df887695c2fc3f27d4d23845f8c79b996e20b059bd
+    pre_cutover_blob_sha: 899fb3c7f22f5b2e7deace4246834726c4674510
+    pre_cutover_content_sha256: 660600384845d88b78b783df887695c2fc3f27d4d23845f8c79b996e20b059bd
+    post_source_modification_commits: []
+    new_canonical_path: docs/evidence/implementation/i5a_completion_report.md
+    exact_source_snapshot: docs/evidence/implementation/i5a_completion_report-source.txt
+    exact_source_blob_sha: 899fb3c7f22f5b2e7deace4246834726c4674510
+  - source_pr: 423
+    source_commit: d77b10a39911486ba95eb0458bfafa240559267f
+    source_origin_commit: 5e0f866e959ab2bc5af00e0502b2026f4b52a779
+    old_path: docs/mvp/wave4/i7ab_completion_report.md
+    source_blob_sha: 5b56fc515e9e5df74694cd14da7cf0b68be693f6
+    source_content_sha256: 1705167bdcc55694c9b8d2c90f02eaecf5970ed3982eb9897d3d4d69ac05389d
+    pre_cutover_blob_sha: 5b56fc515e9e5df74694cd14da7cf0b68be693f6
+    pre_cutover_content_sha256: 1705167bdcc55694c9b8d2c90f02eaecf5970ed3982eb9897d3d4d69ac05389d
+    post_source_modification_commits: []
+    new_canonical_path: docs/evidence/implementation/i7ab_completion_report.md
+    exact_source_snapshot: docs/evidence/implementation/i7ab_completion_report-source.txt
+    exact_source_blob_sha: 5b56fc515e9e5df74694cd14da7cf0b68be693f6
+verification:
+  old_paths_removed_in_pr_tree: true
+  exact_pre_cutover_blobs_reused: true
+  canonical_evidence_wrappers_added: 5
+  source_head_and_merge_blobs_recorded: true
+  source_head_merge_and_pre_cutover_equal_records: 4
+  source_to_pre_cutover_diff_records: 1
+  o1d2_delta_is_single_wave3_canonical_path_repair: true
+  external_repository_root_literal_files_updated: 1
+  external_repository_root_literal_occurrences_updated: 1
+  markdown_link_referrer_files_updated: 3
+  markdown_link_occurrences_updated: 15
+  filename_validation_selectors_updated: 5
+  source_report_internal_legacy_occurrences_preserved_in_exact_snapshots: 4
+  implementation_evidence_index_updated: true
+  documentation_router_updated: true
+  architecture_router_updated: true
+  mvp_evidence_index_updated: true
+  current_authority_handoffs_updated: 5
+  wave4_convergence_smoke_updated: true
+  wave4_workflow_updated: true
+  consolidated_group_selection_updated: true
+  documentation_current_boundary_smoke_updated: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_o1d2_smokes: pending
+  focused_i4e_smokes: pending
+  focused_ui_b1a_smokes: pending
+  focused_i5a_smokes: pending
+  focused_i7ab_smokes: pending
+  downstream_regressions_and_consolidated_groups: pending
+  soul_lab_ui_validation: pending
+  wave4_cross_slice_convergence_smoke: pending
+  documentation_link_check: pending
+  documentation_semantic_audit: pending
+  documentation_current_boundary_smoke: pending
+  completion_report_model_and_file_checks: pending
+  completion_report_pr_link_check: pending
+  consolidated_selection_self_test: pending
+  all_github_actions: pending
+  unresolved_review_threads: 0
+```
+
+The five canonical records preserve the bounded Wave 4 implementation evidence from PRs #417, #418, #420, #421, and #423 while separating it from current handoff-, production-implementation-, contract-, focused-smoke-, later-continuation-, and SOUL Lab-owned behavior. O1D2 has one understood post-source documentation repair: commit `4dc151989f0a918f51e2036c1ee55c8f438f811c` replaced the former Wave 3 audit authority path with its canonical evidence path. The other four source, merge, and pre-cutover report forms are byte-identical. Fifteen resolved Markdown links, one external repository-root literal, and five filename validation selectors move atomically; four internal old-path strings remain only in byte-exact snapshots. No compatibility path or runtime behavior change is introduced.
 
 
 ## Pending batches

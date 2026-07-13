@@ -187,3 +187,5 @@ The existing Phase I-3 Correct UI remains the only mutation surface present in L
 - I-7A/B owns Held Apply/Discard contract and preflight work.
 - O1D2 owns scheduler ordering/fairness/retry-time/backoff/jitter/pacing policy; UI-B1A only displays bounded status if present.
 - O1E owns stale recovery, cancellation, and shutdown orchestration.
+
+The frozen implementation evidence for UI-B1A is recorded in [UI-B1A completion report](../evidence/implementation/ui_b1a_completion_report.md). Current behavior remains owned by this handoff, the lifecycle projection and SOUL Lab implementation, and the focused API, security, and frontend validation.

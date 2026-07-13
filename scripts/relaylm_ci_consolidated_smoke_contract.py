@@ -99,6 +99,36 @@ def check_change_selection() -> None:
         fail("canonical E1-R2 evidence change did not select E1-R2")
 
     selected = changed_outputs(
+        "relaymem",
+        ["docs/evidence/implementation/o1d2_completion_report.md"],
+        False,
+    )
+    if not selected["scheduler_worker"]:
+        fail("canonical O1D2 evidence change did not select scheduler_worker")
+
+    selected = changed_outputs(
+        "relaymem",
+        [
+            "docs/evidence/implementation/i4e_completion_report.md",
+            "docs/evidence/implementation/i5a_completion_report.md",
+        ],
+        False,
+    )
+    if not selected["recall_correction_forget_pin"]:
+        fail("canonical I-4E/I-5A evidence changes did not select recall/correction/forget/pin")
+
+    expected_ui = {
+        "docs/evidence/implementation/i4e_completion_report.md": "forget_lifecycle_regressions",
+        "docs/evidence/implementation/ui_b1a_completion_report.md": "lifecycle_visibility",
+        "docs/evidence/implementation/i5a_completion_report.md": "pin_unpin",
+        "docs/evidence/implementation/i7ab_completion_report.md": "held_governance",
+    }
+    for path, group in expected_ui.items():
+        selected = changed_outputs("ui", [path], False)
+        if not selected[group]:
+            fail(f"{path} did not select UI group {group}")
+
+    selected = changed_outputs(
         "ui",
         ["apps/soul-lab/src/features/lifecycle/example.ts"],
         False,

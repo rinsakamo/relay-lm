@@ -184,10 +184,12 @@ scripts/relaylm_o1d2_scheduler_policy_config_smoke.py
 scripts/relaylm_o1d2_scheduler_policy_fault_smoke.py
 scripts/relaylm_o1d2_scheduler_policy_security_smoke.py
 .github/workflows/o1d2-scheduler-policy.yml
-docs/mvp/wave4/o1d2_completion_report.md
+docs/evidence/implementation/o1d2_completion_report.md
 ```
 
 The O1D2 workflow also runs O1D1 and O1A/O1B/O1C regressions to preserve lower boundaries.
+
+The frozen implementation evidence for this slice is recorded in [O1D2 completion report](../evidence/implementation/o1d2_completion_report.md). Current behavior remains owned by this handoff, the production implementation and configuration contract, and the focused O1D2 and scheduler-regression smokes.
 
 ## O1E handoff
 

@@ -99,11 +99,11 @@ The Wave 5 cross-slice convergence record is [Wave 5 Cross-Slice Convergence Aud
 
 W4-INT verified the source PR numbers, merge commits, and dedicated handoffs for these historical reports:
 
-- [O1D2 completion report](wave4/o1d2_completion_report.md) — source PR #418, merge `49fb43130155826fcc8b2b951d77484ff8ddaddf`.
-- [I-4E completion report](wave4/i4e_completion_report.md) — source PR #420, merge `3e3d2570ecdfcde4c8bfdee06c5607cb6632c133`.
-- [UI-B1A completion report](wave4/ui_b1a_completion_report.md) — source PR #421, merge `5736636da839486140f72c731f18a4a85c39b13c`.
-- [I-5A completion report](wave4/i5a_completion_report.md) — source PR #417, merge `2f8597911774b70f1c001db8332b3dfcc18d23ca`.
-- [I-7A/B completion report](wave4/i7ab_completion_report.md) — source PR #423, merge `5e0f866e959ab2bc5af00e0502b2026f4b52a779`.
+- [O1D2 completion report](../evidence/implementation/o1d2_completion_report.md) — source PR #418, merge `49fb43130155826fcc8b2b951d77484ff8ddaddf`.
+- [I-4E completion report](../evidence/implementation/i4e_completion_report.md) — source PR #420, merge `3e3d2570ecdfcde4c8bfdee06c5607cb6632c133`.
+- [UI-B1A completion report](../evidence/implementation/ui_b1a_completion_report.md) — source PR #421, merge `5736636da839486140f72c731f18a4a85c39b13c`.
+- [I-5A completion report](../evidence/implementation/i5a_completion_report.md) — source PR #417, merge `2f8597911774b70f1c001db8332b3dfcc18d23ca`.
+- [I-7A/B completion report](../evidence/implementation/i7ab_completion_report.md) — source PR #423, merge `5e0f866e959ab2bc5af00e0502b2026f4b52a779`.
 
 The Wave 4 cross-slice convergence record is [Wave 4 Cross-Slice Convergence Audit](../evidence/waves/wave4_cross_slice_convergence_audit.md). W4-INT is merged.
 
