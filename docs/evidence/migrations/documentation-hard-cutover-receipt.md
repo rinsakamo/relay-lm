@@ -1012,7 +1012,7 @@ The canonical record preserves the docs-only horizontal current-status sweep fro
 
 ```yaml
 cutover_pr: 588
-merged_commit: pending
+merged_commit: ba991a144995b74ddac99cf665b9503d7dc5cd39
 old_path: docs/mvp/wave5/e1_completion_report.md
 old_blob_sha: c87b9929ce6e527ef2b94beeb2059f98439b6019
 old_content_sha256: 980cc5898f3b6cb8bc7ad0b502740a5ca9f79a54ebfa023c24d5d1c3a55289da
@@ -1061,6 +1061,71 @@ verification:
 ```
 
 The canonical record preserves the docs-only E1 MVP evaluation-consolidation boundary from PR #425 while separating it from current E1 architecture, later E1-R1 through E1-R5 implementation, repository-wide status, sequencing, and operator guidance. The byte-exact snapshot retains the cutover input blob. The source PR final-head/merge blob is recorded separately because commit `80c6e775ae30ba68b1eb51148b4395320364d8d3` later repaired only the Wave 4 convergence-audit path. Five repository-root literals and three Markdown links are moved to the canonical path; historical old-path references remain only in the migration receipt and frozen exact source snapshots.
+
+
+### C1C26-001 — O1E scheduler operational-controls completion report
+
+```yaml
+cutover_pr: 589
+merged_commit: pending
+old_path: docs/mvp/wave5/o1e_completion_report.md
+old_blob_sha: bd876542c3774695830ec8929bcbb342de74e824
+old_content_sha256: 5fa4248bde4015a635de0cbd98091e88d184bd7c8b0a467d2f3092823e466766
+source_commit: f5f93562679f3ee1e87c36cd0ce9a0c6151d231d
+source_origin_commit: 49750ccb693ab6ebca1f5a0947c69c06a4a03d31
+source_pr: 426
+source_blob_sha: bd876542c3774695830ec8929bcbb342de74e824
+source_content_sha256: 5fa4248bde4015a635de0cbd98091e88d184bd7c8b0a467d2f3092823e466766
+pre_cutover_blob_sha: bd876542c3774695830ec8929bcbb342de74e824
+pre_cutover_content_sha256: 5fa4248bde4015a635de0cbd98091e88d184bd7c8b0a467d2f3092823e466766
+post_source_modification_commits: []
+recorded_on: 2026-06-27
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/o1e_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/o1e_completion_report-source.txt
+exact_source_blob_sha: bd876542c3774695830ec8929bcbb342de74e824
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_pre_cutover_blob_reused: true
+  source_pr_blob_recorded: true
+  source_pr_blob_equals_pre_cutover_blob: true
+  source_to_pre_cutover_text_diff_empty: true
+  post_source_report_modifications_absent: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 3
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 3
+  markdown_link_referrer_files_updated_in_pr_tree: 3
+  markdown_link_occurrences_updated_in_pr_tree: 3
+  source_report_internal_legacy_path_occurrences_preserved_in_exact_snapshot: 2
+  frozen_wave5_source_snapshot_legacy_references_preserved: true
+  implementation_evidence_index_updated: true
+  mvp_evidence_index_updated: true
+  documentation_router_updated: true
+  architecture_router_updated: true
+  o1e_architecture_handoff_updated: true
+  wave5_convergence_evidence_and_smoke_updated: true
+  wave5_workflow_updated: true
+  dedicated_o1e_workflow_absent_in_current_tree: true
+  documentation_current_boundary_smoke_updated: true
+  consolidated_scheduler_worker_report_path_dependency_absent: true
+  consolidated_scheduler_worker_o1e_smokes_preserved: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_o1e_operational_controls_smokes: passed
+  scheduler_contract_and_regression_smokes: 19_passed_1_environment_blocked
+  o1b_security_unix_socket_smoke: environment_blocked_by_sandbox
+  consolidated_scheduler_worker_group: environment_blocked_before_o1e_phase
+  wave5_cross_slice_convergence_smoke: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  documentation_current_boundary_smoke: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete bounded O1E scheduler operational-controls implementation boundary from PR #426 while separating it from current handoff-, implementation-, contract-, B3 queue-lifecycle-, O1D1/O1D2 scheduler-, O1F validation-, and focused-smoke-owned behavior. The source PR final-head, merge, and pre-cutover forms are byte-identical, and no later commit modified the report. Three repository-root literals and three resolved Markdown links move to the canonical path. The exact snapshot and the frozen Wave 5 source snapshot retain their historical old-path text; no compatibility path, fallback, or runtime change is introduced. The dedicated O1E workflow named by the source report is absent from the current tree and is not recreated.
 
 
 ## Pending batches

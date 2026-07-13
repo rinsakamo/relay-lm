@@ -64,3 +64,5 @@ O1E scans at most one bounded queue root pass, selects at most one expired claim
 ## Follow-on boundaries
 
 O1F is complete as validation-only operational hardening over this caller-invoked boundary. O2 and O3 are implemented in dedicated handoffs as opt-in layers above O1E; they do not change O1E's authority, default-off gates, or one-invocation semantics.
+
+The frozen implementation evidence for this slice is recorded in [O1E completion report](../evidence/implementation/o1e_completion_report.md). Current behavior remains owned by this handoff, the production implementation, the scheduler contracts, and the focused O1E smoke suite.
