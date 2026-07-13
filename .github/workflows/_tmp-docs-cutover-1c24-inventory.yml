@@ -1,0 +1,51 @@
+name: Temporary Cutover 1C-24 inventory
+
+on:
+  push:
+    branches:
+      - agent/docs-cutover-1c24-horizontal-status-sweep
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/docs-cutover-1c24-horizontal-status-sweep
+          fetch-depth: 0
+
+      - name: Inventory source and dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          old='docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md'
+          filename='docs_horizontal_status_sweep_completion_report.md'
+          source_head='86577b7712ea9efcc228f32a431b3606e552d40a'
+
+          echo '== current main / branch source =='
+          git hash-object "$old"
+          sha256sum "$old"
+
+          echo '== source PR final-head source =='
+          git show "$source_head:$old" > /tmp/source-pr-434.md
+          git hash-object /tmp/source-pr-434.md
+          sha256sum /tmp/source-pr-434.md
+
+          echo '== source diff =='
+          diff -u /tmp/source-pr-434.md "$old" || true
+
+          echo '== exact old-path references =='
+          git grep -n -F "$old" -- . || true
+
+          echo '== filename references =='
+          git grep -n -F "$filename" -- . || true
+
+          echo '== path history =='
+          git log --all --follow --format='%H %ad %s' --date=iso-strict -- "$old"
+
+          echo '== remaining Wave 6 markdown files =='
+          find docs/mvp/wave6 -maxdepth 1 -type f -name '*.md' -print | sort
