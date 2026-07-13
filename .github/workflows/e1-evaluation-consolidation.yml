@@ -10,22 +10,21 @@ on:
   push:
     branches:
       - main
-      - agent/docs-cutover-1c25-e1
     paths:
       - "docs/**"
       - "scripts/**"
       - ".github/workflows/e1-evaluation-consolidation.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: e1-evaluation-consolidation-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  apply-cutover:
-    if: github.event_name == 'push' && github.ref_name == 'agent/docs-cutover-1c25-e1' && github.actor != 'github-actions[bot]'
+  export-cutover:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -40,21 +39,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e . pytest pyyaml
-      - name: Apply and validate Cutover 1C-25
-        shell: bash
+      - name: Generate and validate Cutover 1C-25 tree
         run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("scripts/_tmp_apply_docs_cutover_1c25.py")
-          text = path.read_text(encoding="utf-8")
-          start_marker = '\nreplace_once(\n    Path(".github/workflows/e1-evaluation-consolidation.yml"),'
-          end_marker = '\nreplace_once(\n    Path(".github/workflows/wave5-cross-slice-convergence.yml"),'
-          start = text.index(start_marker)
-          end = text.index(end_marker, start)
-          path.write_text(text[:start] + text[end:], encoding="utf-8")
-          PY
-          python scripts/_tmp_apply_docs_cutover_1c25.py
+          python scripts/_tmp_apply_docs_cutover_1c25_v2.py
+          rm -f docs/evidence/migrations/_tmp-cutover-1c25-failure.log
           python -m compileall -q relaylm scripts
           PYTHONPATH=.:scripts python scripts/relaylm_e1_evaluation_consolidation_smoke.py
           PYTHONPATH=.:scripts python scripts/relaylm_wave5_cross_slice_convergence_smoke.py
@@ -65,18 +53,27 @@ jobs:
           PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all
           PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
           test ! -e docs/mvp/wave5/e1_completion_report.md
-          test -e docs/evidence/implementation/e1_completion_report.md
-          test -e docs/evidence/implementation/e1_completion_report-source.txt
           git diff --check
-      - name: Commit migration
-        shell: bash
+      - name: Package generated files
         run: |
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          rm -f docs/evidence/migrations/_tmp-cutover-1c25-failure.log
-          git add -A
-          git commit -m 'docs: move E1 report in cutover 1C-25'
-          git push origin HEAD:agent/docs-cutover-1c25-e1
+          tar -czf /tmp/cutover-1c25-tree.tar.gz \
+            .github/workflows/wave5-cross-slice-convergence.yml \
+            docs/README.md \
+            docs/architecture/README.md \
+            docs/evidence/implementation/README.md \
+            docs/evidence/implementation/e1_completion_report.md \
+            docs/evidence/implementation/e1_completion_report-source.txt \
+            docs/evidence/migrations/documentation-hard-cutover-receipt.md \
+            docs/evidence/waves/wave5_cross_slice_convergence_audit.md \
+            docs/mvp/README.md \
+            scripts/relaylm_documentation_current_boundary_smoke.py \
+            scripts/relaylm_e1_evaluation_consolidation_smoke.py \
+            scripts/relaylm_wave5_cross_slice_convergence_smoke.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cutover-1c25-tree
+          path: /tmp/cutover-1c25-tree.tar.gz
+          if-no-files-found: error
 
   smoke:
     if: github.event_name == 'push' && github.ref_name == 'main'
