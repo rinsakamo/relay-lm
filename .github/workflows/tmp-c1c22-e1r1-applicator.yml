@@ -29,6 +29,18 @@ jobs:
       - name: Install validation dependencies
         run: python -m pip install -e . pytest pyyaml
 
+      - name: Normalize temporary applicator EOF handling
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("scripts/tmp_c1c22_e1r1_applicator.py")
+          body = path.read_text()
+          old = '    write_text(handoff_path, handoff + "\\n")'
+          new = '    write_text(handoff_path, handoff.rstrip() + "\\n")'
+          assert body.count(old) == 1, body.count(old)
+          path.write_text(body.replace(old, new, 1))
+          PY
+
       - name: Apply Cutover 1C-22 updates
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
