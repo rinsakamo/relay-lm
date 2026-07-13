@@ -1131,7 +1131,7 @@ The canonical record preserves the complete bounded O1E scheduler operational-co
 ### C1C27-001 — I-4F Forget product-completion validation report
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 590
 merged_commit: pending
 old_path: docs/mvp/wave5/i4f_completion_report.md
 old_blob_sha: f7c451802f97109fd431cbb1f6a57910d4ea5b93
