@@ -27,14 +27,14 @@ jobs:
           set -euo pipefail
           old='docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md'
           filename='docs_horizontal_status_sweep_completion_report.md'
-          source_head='86577b7712ea9efcc228f32a431b3606e552d40a'
+          source_commit='6a0a384d3524fe98528643da666284576d974cd1'
 
           echo '== current main / branch source =='
           git hash-object "$old"
           sha256sum "$old"
 
-          echo '== source PR final-head source =='
-          git show "$source_head:$old" > /tmp/source-pr-434.md
+          echo '== source PR merged source =='
+          git show "$source_commit:$old" > /tmp/source-pr-434.md
           git hash-object /tmp/source-pr-434.md
           sha256sum /tmp/source-pr-434.md
 
