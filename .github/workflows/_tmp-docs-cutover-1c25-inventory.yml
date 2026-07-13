@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/docs-cutover-1c25-e1
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
