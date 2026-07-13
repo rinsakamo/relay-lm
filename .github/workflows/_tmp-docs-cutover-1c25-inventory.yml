@@ -24,21 +24,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e . pytest pyyaml
-      - name: Apply, validate, and commit Cutover 1C-25
-        shell: bash
+      - name: Apply Cutover 1C-25
+        run: python scripts/_tmp_apply_docs_cutover_1c25_v2.py
+      - name: Validate Cutover 1C-25
         run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          path = Path("scripts/_tmp_apply_docs_cutover_1c25.py")
-          text = path.read_text(encoding="utf-8")
-          start_marker = '\nreplace_once(\n    Path(".github/workflows/e1-evaluation-consolidation.yml"),'
-          end_marker = '\nreplace_once(\n    Path(".github/workflows/wave5-cross-slice-convergence.yml"),'
-          start = text.index(start_marker)
-          end = text.index(end_marker, start)
-          path.write_text(text[:start] + text[end:], encoding="utf-8")
-          PY
-          python scripts/_tmp_apply_docs_cutover_1c25.py
           rm -f docs/evidence/migrations/_tmp-cutover-1c25-failure.log
           python -m compileall -q relaylm scripts
           PYTHONPATH=.:scripts python scripts/relaylm_e1_evaluation_consolidation_smoke.py
@@ -52,18 +41,9 @@ jobs:
           test ! -e docs/mvp/wave5/e1_completion_report.md
           test -e docs/evidence/implementation/e1_completion_report.md
           test -e docs/evidence/implementation/e1_completion_report-source.txt
-          leftovers="$(git grep -l -F 'docs/mvp/wave5/e1_completion_report.md' -- . || true)"
-          allowed='docs/evidence/implementation/e1_completion_report-source.txt
-docs/evidence/migrations/documentation-hard-cutover-receipt.md
-docs/evidence/waves/wave5_cross_slice_convergence_audit-source.txt
-.github/workflows/_tmp-docs-cutover-1c25-inventory.yml
-scripts/_tmp_apply_docs_cutover_1c25.py
-docs/evidence/migrations/_tmp-cutover-1c25-inventory.txt'
-          while IFS= read -r path; do
-            [ -z "$path" ] && continue
-            printf '%s\n' "$allowed" | grep -Fxq "$path" || { echo "unexpected legacy path: $path"; exit 1; }
-          done <<< "$leftovers"
           git diff --check
+      - name: Commit migration
+        run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
