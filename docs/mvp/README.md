@@ -73,6 +73,7 @@ W6-INT verifies the source PR numbers, merge commits, and dedicated handoffs for
 - [I-7C completion report](../evidence/implementation/i7c_completion_report.md) — source PR #431, merge `21d10bfed22ed9626e4224bf927ff59a5e399505`.
 - [E1-R1 completion report](../evidence/implementation/e1r1_completion_report.md) — source PR #433, merge `52768cbdac3c9630373a2c369574002ac196e72b`.
 - [E1-R2 completion report](../evidence/implementation/e1r2_completion_report.md) — source PR #432, merge `fefd3559ac32a37ed932faa130612a6a3da43c61`.
+- [Docs Horizontal Status Sweep completion report](../evidence/implementation/docs_horizontal_status_sweep_completion_report.md) — source PR #434, merge `6a0a384d3524fe98528643da666284576d974cd1`; docs-only convergence evidence with no production runtime boundary.
 
 The Wave 6 cross-slice convergence record is [Wave 6 Cross-Slice Convergence Audit](../evidence/waves/wave6_cross_slice_convergence_audit.md). W6-INT is merged.
 
@@ -122,6 +123,7 @@ python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementati
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/i7c_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1r1_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1r2_completion_report.md
+python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/docs_horizontal_status_sweep_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1r3_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1r4_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1r5_completion_report.md

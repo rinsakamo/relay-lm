@@ -23,6 +23,7 @@ CURRENT_DOCS = (
     "docs/evidence/implementation/e1r1_completion_report.md",
     "docs/architecture/e1r2_character_store_bootstrap.md",
     "docs/evidence/implementation/e1r2_completion_report.md",
+    "docs/evidence/implementation/docs_horizontal_status_sweep_completion_report.md",
     "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
     "docs/architecture/e1r4_retrieval_response_grounding.md",
     "docs/architecture/e1r5_primary_mem_recall_candidate_bridge.md",
@@ -275,6 +276,14 @@ REQUIRED = {
         "Current character-store bootstrap behavior belongs to",
         "e1r2_completion_report-source.txt",
         "At source PR #432",
+    ),
+    "docs/evidence/implementation/docs_horizontal_status_sweep_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "relaylm_source_pr: 434",
+        "Docs Horizontal Status Sweep Completion Report",
+        "frozen documentation-convergence implementation evidence",
+        "docs_horizontal_status_sweep_completion_report-source.txt",
+        "source PR final-head/merge form",
     ),
     "docs/architecture/e1r4_retrieval_response_grounding.md": (
         "# E1-R4 Retrieval-Response Grounding",
