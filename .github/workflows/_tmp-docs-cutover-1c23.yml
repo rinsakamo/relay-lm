@@ -67,7 +67,7 @@ jobs:
           test "$(git hash-object docs/evidence/implementation/e1r2_completion_report-source.txt)" = "107923354f09e0e3340e329f282d2c818910cad2"
           test "$(sha256sum docs/evidence/implementation/e1r2_completion_report-source.txt | cut -d' ' -f1)" = "72e1fcb022cf2db3bcbda3e3d14a46a18da1f50c3747f6706301346abc6f7722"
           test ! -e docs/mvp/wave6/e1r2_completion_report.md
-          ! git grep -n 'docs/mvp/wave6/e1r2_completion_report.md' -- . ':!docs/evidence/implementation/e1r2_completion_report-source.txt' ':!docs/evidence/migrations/documentation-hard-cutover-receipt.md'
+          ! git grep -n 'docs/mvp/wave6/e1r2_completion_report.md' -- . ':!docs/evidence/implementation/e1r2_completion_report-source.txt' ':!docs/evidence/migrations/documentation-hard-cutover-receipt.md' ':!scripts/_tmp_apply_docs_cutover_1c23.py' ':!.github/workflows/_tmp-docs-cutover-1c23.yml'
 
       - name: Run focused and documentation validation
         run: |
