@@ -19,6 +19,7 @@ CURRENT_DOCS = (
     "docs/architecture/project_execution_plan.md",
     "docs/architecture/relaymem_slp_current_target.md",
     "docs/architecture/e1_evaluation_consolidation.md",
+    "docs/evidence/implementation/e1_completion_report.md",
     "docs/architecture/e1r1_trusted_home_scene_admission.md",
     "docs/evidence/implementation/e1r1_completion_report.md",
     "docs/architecture/e1r2_character_store_bootstrap.md",
@@ -248,6 +249,14 @@ REQUIRED = {
         "explicit runtime install/preflight command        complete as PM-D7",
         "canonical Primary recall fallback fold-in         complete as PM-D8",
         "E1-R5 is current implemented as a bounded scoped Primary MEM recall candidate fallback in canonical Primary recall.",
+    ),
+    "docs/evidence/implementation/e1_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "relaylm_source_pr: 425",
+        "E1 MVP Evaluation Evidence Consolidation Completion Report",
+        "frozen implementation evidence",
+        "e1_completion_report-source.txt",
+        "source PR final-head/merge form",
     ),
     "docs/architecture/e1r1_trusted_home_scene_admission.md": (
         "relaylm_doc_type: architecture_handoff",

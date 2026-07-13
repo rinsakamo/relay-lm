@@ -46,6 +46,6 @@ jobs:
       - name: Run documentation boundary checks
         run: |
           PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/e1_completion_report.md
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1_completion_report.md
           PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
           PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py

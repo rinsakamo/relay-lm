@@ -147,7 +147,7 @@ Current runtime and implementation status is intentionally not summarized here. 
 - [Wave 5 Cross-Slice Convergence Audit](evidence/waves/wave5_cross_slice_convergence_audit.md)
 - [O1E completion report](mvp/wave5/o1e_completion_report.md)
 - [I-4F completion report](mvp/wave5/i4f_completion_report.md)
-- [E1 completion report](mvp/wave5/e1_completion_report.md)
+- [E1 completion report](evidence/implementation/e1_completion_report.md)
 - [O1E scheduler operational controls](architecture/o1e_scheduler_operational_controls.md)
 - [Phase I-4F Forget product validation](architecture/phase_i4f_forget_validation.md)
 - [E1 MVP evaluation consolidation](architecture/e1_evaluation_consolidation.md)
