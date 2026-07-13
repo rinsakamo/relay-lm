@@ -9,10 +9,11 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   inventory:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
@@ -21,34 +22,46 @@ jobs:
           ref: agent/docs-cutover-1c24-horizontal-status-sweep
           fetch-depth: 0
 
-      - name: Inventory source and dependencies
+      - name: Record source and dependency inventory
         shell: bash
         run: |
           set -euo pipefail
           old='docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md'
           filename='docs_horizontal_status_sweep_completion_report.md'
           source_commit='6a0a384d3524fe98528643da666284576d974cd1'
+          out='docs/evidence/migrations/_tmp-cutover-1c24-inventory.txt'
 
-          echo '== current main / branch source =='
-          git hash-object "$old"
-          sha256sum "$old"
-
-          echo '== source PR merged source =='
           git show "$source_commit:$old" > /tmp/source-pr-434.md
-          git hash-object /tmp/source-pr-434.md
-          sha256sum /tmp/source-pr-434.md
 
-          echo '== source diff =='
-          diff -u /tmp/source-pr-434.md "$old" || true
+          {
+            echo '== current main / branch source =='
+            git hash-object "$old"
+            sha256sum "$old"
+            echo
+            echo '== source PR merged source =='
+            git hash-object /tmp/source-pr-434.md
+            sha256sum /tmp/source-pr-434.md
+            echo
+            echo '== source diff =='
+            diff -u /tmp/source-pr-434.md "$old" || true
+            echo
+            echo '== exact old-path references =='
+            git grep -n -F "$old" -- . ':!.github/workflows/_tmp-docs-cutover-1c24-inventory.yml' || true
+            echo
+            echo '== filename references =='
+            git grep -n -F "$filename" -- . ':!.github/workflows/_tmp-docs-cutover-1c24-inventory.yml' || true
+            echo
+            echo '== path history =='
+            git log --all --follow --format='%H %ad %s' --date=iso-strict -- "$old"
+            echo
+            echo '== remaining Wave 6 markdown files =='
+            find docs/mvp/wave6 -maxdepth 1 -type f -name '*.md' -print | sort
+          } > "$out"
 
-          echo '== exact old-path references =='
-          git grep -n -F "$old" -- . || true
-
-          echo '== filename references =='
-          git grep -n -F "$filename" -- . || true
-
-          echo '== path history =='
-          git log --all --follow --format='%H %ad %s' --date=iso-strict -- "$old"
-
-          echo '== remaining Wave 6 markdown files =='
-          find docs/mvp/wave6 -maxdepth 1 -type f -name '*.md' -print | sort
+      - name: Commit inventory
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/evidence/migrations/_tmp-cutover-1c24-inventory.txt
+          git commit -m 'chore: record temporary Cutover 1C-24 inventory'
+          git push origin HEAD:agent/docs-cutover-1c24-horizontal-status-sweep
