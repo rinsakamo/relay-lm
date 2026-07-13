@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - agent/docs-cutover-1c25-e1
-  pull_request:
-    branches:
-      - main
 
 permissions:
   contents: write
@@ -27,41 +24,50 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e . pytest pyyaml
-      - name: Apply Cutover 1C-25
-        run: python scripts/_tmp_apply_docs_cutover_1c25.py
-      - name: Validate cutover
+      - name: Apply, validate, and commit Cutover 1C-25
         shell: bash
         run: |
-          set -euo pipefail
-          python -m compileall -q relaylm scripts
-          PYTHONPATH=.:scripts python scripts/relaylm_e1_evaluation_consolidation_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_wave5_cross_slice_convergence_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
-          PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
-          PYTHONPATH=.:scripts python scripts/relaylm_docs_semantic_audit.py
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-model docs/evidence/implementation/e1_completion_report.md
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
-          test ! -e docs/mvp/wave5/e1_completion_report.md
-          test -e docs/evidence/implementation/e1_completion_report.md
-          test -e docs/evidence/implementation/e1_completion_report-source.txt
-          leftovers="$(git grep -l -F 'docs/mvp/wave5/e1_completion_report.md' -- . || true)"
-          allowed='docs/evidence/implementation/e1_completion_report-source.txt
+          set +e
+          (
+            set -euo pipefail
+            python scripts/_tmp_apply_docs_cutover_1c25.py
+            python -m compileall -q relaylm scripts
+            PYTHONPATH=.:scripts python scripts/relaylm_e1_evaluation_consolidation_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_wave5_cross_slice_convergence_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_documentation_current_boundary_smoke.py
+            PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
+            PYTHONPATH=.:scripts python scripts/relaylm_docs_semantic_audit.py
+            PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-model docs/evidence/implementation/e1_completion_report.md
+            PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all
+            PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
+            test ! -e docs/mvp/wave5/e1_completion_report.md
+            test -e docs/evidence/implementation/e1_completion_report.md
+            test -e docs/evidence/implementation/e1_completion_report-source.txt
+            leftovers="$(git grep -l -F 'docs/mvp/wave5/e1_completion_report.md' -- . || true)"
+            allowed='docs/evidence/implementation/e1_completion_report-source.txt
 docs/evidence/migrations/documentation-hard-cutover-receipt.md
 docs/evidence/waves/wave5_cross_slice_convergence_audit-source.txt
 .github/workflows/_tmp-docs-cutover-1c25-inventory.yml
 scripts/_tmp_apply_docs_cutover_1c25.py
 docs/evidence/migrations/_tmp-cutover-1c25-inventory.txt'
-          while IFS= read -r path; do
-            [ -z "$path" ] && continue
-            printf '%s\n' "$allowed" | grep -Fxq "$path" || { echo "unexpected legacy path: $path"; exit 1; }
-          done <<< "$leftovers"
-          git diff --check
-      - name: Commit migration
-        shell: bash
-        run: |
+            while IFS= read -r path; do
+              [ -z "$path" ] && continue
+              printf '%s\n' "$allowed" | grep -Fxq "$path" || { echo "unexpected legacy path: $path"; exit 1; }
+            done <<< "$leftovers"
+            git diff --check
+          ) > /tmp/cutover-1c25.log 2>&1
+          status=$?
+          cat /tmp/cutover-1c25.log
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          if [ "$status" -ne 0 ]; then
+            cp /tmp/cutover-1c25.log docs/evidence/migrations/_tmp-cutover-1c25-failure.log
+            git add docs/evidence/migrations/_tmp-cutover-1c25-failure.log
+            git commit -m 'chore: record Cutover 1C-25 failure'
+            git push origin HEAD:agent/docs-cutover-1c25-e1
+            exit "$status"
+          fi
+          rm -f docs/evidence/migrations/_tmp-cutover-1c25-failure.log
           git add -A
           git commit -m 'docs: move E1 report in cutover 1C-25'
           git push origin HEAD:agent/docs-cutover-1c25-e1
