@@ -1,0 +1,1 @@
+Trigger the already-defined temporary Cutover 1C-24 receipt finalizer. Remove before final review.
