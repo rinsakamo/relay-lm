@@ -48,7 +48,7 @@ At source PR #427, I-4F completed validation of explicit Forget / Hide for one r
 
 I-4F was validation-first and added no new production mutation authority. No production bug fix was required in the source PR.
 
-## Validated product boundary
+## Implemented production boundary
 
 The recorded source boundary proves:
 
@@ -95,6 +95,13 @@ The dedicated I-4F workflow present at the source boundary is absent from the cu
 ## Known limitations
 
 Forget product-complete does not include restore, unhide, purge, physical deletion, or batch Forget. The source-boundary statements that I-5A and I-7A/B had only contract/read-only preflight and that O1E/O1F/O2/O3 were separate work remain historical statements; later current status belongs to current documentation and dedicated evidence. Direct Home-origin Primary MEM formation was outside this validation slice.
+
+## Shared documentation update inputs
+
+- Completion wording: Phase I-4F full Forget validation is complete; Phase I-4 overall is complete through explicit Forget / Hide product validation.
+- Forget product-complete means explicit loopback/SOUL Lab Forget can hide one current active Primary MEM and prove later ordinary retrieval/RelayCTX exclusion under crash, race, stale-browser, token, security, restart, fresh-conversation, and scope-isolation conditions.
+- Current authority remains with the I-4F handoff, existing production implementation and I-4 contracts, focused smokes, and SOUL Lab UI validation.
+- This cutover changes no runtime behavior, schema, configuration, mutation authority, or historical validation conclusion.
 
 ## Source pull request
 
