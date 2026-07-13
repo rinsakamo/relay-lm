@@ -42,7 +42,7 @@ W6-INT is docs/smoke convergence only. It does not add production runtime behavi
 | O1F operational validation | #429 | `961fff2d935cd764e81e577887328e86363e56d5` | [O1F operational validation](../../architecture/o1f_operational_validation.md) | [O1F completion report](../implementation/o1f_completion_report.md) |
 | I-5B Pin / Unpin apply/API/UI/ranking behavior | #430 | `734a3880035651f91eb065b892fc41af6f5cc026` | [Phase I-5B Pin / Unpin apply](../../architecture/phase_i5b_pin_unpin_apply.md) | [I-5B completion report](../implementation/i5b_completion_report.md) |
 | I-7C Held Apply/Discard runtime/API/UI/durable evidence | #431 | `21d10bfed22ed9626e4224bf927ff59a5e399505` | [Phase I-7C Held Apply / Discard runtime](../../architecture/phase_i7c_held_apply_discard_runtime.md) | [I-7C completion report](../implementation/i7c_completion_report.md) |
-| E1-R1 trusted Home scene-admission path | #433 | `52768cbdac3c9630373a2c369574002ac196e72b` | [E1-R1 trusted Home scene admission](../../architecture/e1r1_trusted_home_scene_admission.md) | [E1-R1 completion report](../../mvp/wave6/e1r1_completion_report.md) |
+| E1-R1 trusted Home scene-admission path | #433 | `52768cbdac3c9630373a2c369574002ac196e72b` | [E1-R1 trusted Home scene admission](../../architecture/e1r1_trusted_home_scene_admission.md) | [E1-R1 completion report](../implementation/e1r1_completion_report.md) |
 | E1-R2 idempotent character-store bootstrap command | #432 | `fefd3559ac32a37ed932faa130612a6a3da43c61` | [E1-R2 character-store bootstrap](../../architecture/e1r2_character_store_bootstrap.md) | [E1-R2 completion report](../../mvp/wave6/e1r2_completion_report.md) |
 
 ## Merge commit inventory

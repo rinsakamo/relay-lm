@@ -20,6 +20,7 @@ CURRENT_DOCS = (
     "docs/architecture/relaymem_slp_current_target.md",
     "docs/architecture/e1_evaluation_consolidation.md",
     "docs/architecture/e1r1_trusted_home_scene_admission.md",
+    "docs/evidence/implementation/e1r1_completion_report.md",
     "docs/architecture/e1r2_character_store_bootstrap.md",
     "docs/architecture/e1r3_provenance_preserving_primary_mem_formation_summary.md",
     "docs/architecture/e1r4_retrieval_response_grounding.md",
@@ -245,6 +246,20 @@ REQUIRED = {
         "explicit runtime install/preflight command        complete as PM-D7",
         "canonical Primary recall fallback fold-in         complete as PM-D8",
         "E1-R5 is current implemented as a bounded scoped Primary MEM recall candidate fallback in canonical Primary recall.",
+    ),
+    "docs/architecture/e1r1_trusted_home_scene_admission.md": (
+        "relaylm_doc_type: architecture_handoff",
+        "# E1-R1 Trusted Home Scene Admission",
+        "trusted_home_scene_admission_mode",
+        "../evidence/implementation/e1r1_completion_report.md",
+    ),
+    "docs/evidence/implementation/e1r1_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "relaylm_source_pr: 433",
+        "E1-R1 Trusted Home Scene Admission Completion Report",
+        "Current trusted Home scene-admission behavior belongs to",
+        "e1r1_completion_report-source.txt",
+        "At source PR #433",
     ),
     "docs/architecture/e1r4_retrieval_response_grounding.md": (
         "# E1-R4 Retrieval-Response Grounding",

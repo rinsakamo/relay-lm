@@ -106,3 +106,11 @@ E1-R1 does not implement:
 - new browser-owned trust authority;
 - scheduler loops, polling loops, timers, background workers, service supervision, or daemon operation;
 - new queue schema or worker record format.
+
+## Validation
+
+E1-R1 has focused trusted Home admission smoke coverage. Current validation is routed through the consolidated runtime smoke inventory rather than the removed source-PR-specific workflow.
+
+## Completion report
+
+The frozen implementation evidence for this slice is recorded in [E1-R1 completion report](../evidence/implementation/e1r1_completion_report.md). Current behavior remains owned by this handoff, the production implementation, and the focused E1-R1 smoke suite.

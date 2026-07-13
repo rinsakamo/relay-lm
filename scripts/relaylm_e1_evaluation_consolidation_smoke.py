@@ -110,7 +110,7 @@ REQUIRED = {
         "No runtime behavior changed.",
         "E1 evaluation consolidation",
     ),
-    "docs/mvp/wave6/e1r1_completion_report.md": (
+    "docs/evidence/implementation/e1r1_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
         "trusted Home scene admission",
     ),
