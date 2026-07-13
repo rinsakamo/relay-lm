@@ -44,26 +44,28 @@ jobs:
 
           contract = Path('scripts/relaylm_ci_consolidated_smoke_contract.py')
           text = contract.read_text(encoding='utf-8')
-          old = '''    if selected["e1r2_character_store_bootstrap"]:
-              fail("token-only change unexpectedly selected E1-R2")
-
-              selected = changed_outputs(
-                  "ui",
-          '''.replace('              ', '    ')
-          new = '''    if selected["e1r2_character_store_bootstrap"]:
-              fail("token-only change unexpectedly selected E1-R2")
-
-              selected = changed_outputs(
-                  "runtime",
-                  ["docs/evidence/implementation/e1r2_completion_report.md"],
-                  False,
-              )
-              if not selected["e1r2_character_store_bootstrap"]:
-                  fail("canonical E1-R2 evidence change did not select E1-R2")
-
-              selected = changed_outputs(
-                  "ui",
-          '''.replace('              ', '    ')
+          old = (
+              '    if selected["e1r2_character_store_bootstrap"]:\n'
+              '        fail("token-only change unexpectedly selected E1-R2")\n'
+              '\n'
+              '    selected = changed_outputs(\n'
+              '        "ui",\n'
+          )
+          new = (
+              '    if selected["e1r2_character_store_bootstrap"]:\n'
+              '        fail("token-only change unexpectedly selected E1-R2")\n'
+              '\n'
+              '    selected = changed_outputs(\n'
+              '        "runtime",\n'
+              '        ["docs/evidence/implementation/e1r2_completion_report.md"],\n'
+              '        False,\n'
+              '    )\n'
+              '    if not selected["e1r2_character_store_bootstrap"]:\n'
+              '        fail("canonical E1-R2 evidence change did not select E1-R2")\n'
+              '\n'
+              '    selected = changed_outputs(\n'
+              '        "ui",\n'
+          )
           if text.count(old) != 1:
               raise SystemExit(f'contract insertion anchor mismatch: {text.count(old)}')
           contract.write_text(text.replace(old, new, 1), encoding='utf-8')
