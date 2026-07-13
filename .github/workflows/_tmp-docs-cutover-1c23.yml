@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - agent/docs-cutover-1c23-e1r2
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -16,6 +19,7 @@ jobs:
       - name: Check out branch
         uses: actions/checkout@v4
         with:
+          ref: agent/docs-cutover-1c23-e1r2
           fetch-depth: 0
 
       - name: Set up Python
@@ -62,4 +66,4 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git commit -m 'docs: apply Cutover 1C-23 E1-R2'
-          git push
+          git push origin HEAD:agent/docs-cutover-1c23-e1r2
