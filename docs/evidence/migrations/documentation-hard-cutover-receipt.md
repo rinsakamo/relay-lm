@@ -917,7 +917,7 @@ The canonical record preserves the complete E1-R1 route-owned trusted Home scene
 
 ```yaml
 cutover_pr: 585
-merged_commit: pending
+merged_commit: c068a6a4d447f7b622346da2766507de532fe0bc
 old_path: docs/mvp/wave6/e1r2_completion_report.md
 old_blob_sha: 107923354f09e0e3340e329f282d2c818910cad2
 old_content_sha256: 72e1fcb022cf2db3bcbda3e3d14a46a18da1f50c3747f6706301346abc6f7722
@@ -961,6 +961,51 @@ verification:
 ```
 
 The canonical record preserves the complete E1-R2 explicit dry-run-first idempotent character-store bootstrap implementation boundary from PR #432 while separating it from current handoff-, command-, store-layout-, implementation-, queue/worker/scheduler-, and focused-smoke-owned behavior. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. Live Markdown-link and repository-root validation dependencies are moved to the canonical path; legacy references remain only in this migration receipt and frozen exact source snapshots. The dedicated E1-R2 workflow named by the historical source report is no longer present in the current tree and is not recreated. The migration-aware completion-report model and PR-link checks apply without validator changes.
+
+
+### C1C24-001 — docs horizontal status sweep completion report
+
+```yaml
+cutover_pr: 587
+merged_commit: pending
+old_path: docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md
+old_blob_sha: c92bc7e856ef28e862a738c47668d46c67a71904
+old_content_sha256: 889edab78de527869e3b94c764fadf9d9cce92b03f8adb946e42c3e6ca6a7627
+source_commit: 86577b7712ea9efcc228f32a431b3606e552d40a
+source_origin_commit: 6a0a384d3524fe98528643da666284576d974cd1
+source_pr: 434
+source_blob_sha: 2057afb52dab8903064853f0899d954c888bb213
+source_content_sha256: bf0ba10a2f97539a4217fd8c78629c83d05e0e70d0a361759b1ac9ca3173464e
+post_source_link_repair_commit: d1b920c3c7fcdf16053e8c9f449863cadfcb7384
+recorded_on: 2026-06-27
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/docs_horizontal_status_sweep_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/docs_horizontal_status_sweep_completion_report-source.txt
+exact_source_blob_sha: c92bc7e856ef28e862a738c47668d46c67a71904
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_pre_cutover_blob_reused: true
+  source_pr_blob_recorded: true
+  source_pr_blob_differs_from_pre_cutover_blob: true
+  source_delta_is_single_wave5_canonical_path_repair: true
+  canonical_evidence_metadata_added: true
+  external_live_old_path_dependencies_at_cutover: 0
+  source_report_internal_legacy_path_occurrences_preserved_in_exact_snapshot: 2
+  implementation_evidence_index_updated: true
+  mvp_evidence_index_updated: true
+  documentation_router_updated: true
+  documentation_current_boundary_smoke_updated: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: pending
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the docs-only horizontal current-status sweep from PR #434 while separating it from current Project Status, Documentation Model, feature-family behavior, sequencing, and operator guidance. The byte-exact snapshot retains the cutover input blob. The source PR final-head/merge blob is recorded separately because commit `d1b920c3c7fcdf16053e8c9f449863cadfcb7384` later repaired only the Wave 5 convergence-audit path. No external live old-path dependency existed at cutover; the two old-path occurrences were internal historical changed-file and validation-command text in the source report. This move removes the last Markdown file under `docs/mvp/wave6/` without adding a compatibility path.
 
 ## Pending batches
 
