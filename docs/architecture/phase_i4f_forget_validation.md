@@ -70,7 +70,7 @@ PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_concurre
 PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_security_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_phase_i4f_forget_validation_ui_smoke.py
 PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
-PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/mvp/wave5/i4f_completion_report.md
+PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/i4f_completion_report.md
 PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
 ```
 
@@ -79,3 +79,7 @@ The I-4F workflow also runs key I-4B/I-4C1/I-4C2/I-4D/I-4E regressions and the e
 ## Known limitations
 
 Direct Home-origin Primary MEM formation remains unproven; I-4F validates Forget after a real current active Primary MEM exists. Pin/Unpin and Held Apply/Discard runtime behavior remain separate later phases.
+
+## Frozen implementation evidence
+
+The frozen implementation evidence for this validation-only slice is recorded in [I-4F completion report](../evidence/implementation/i4f_completion_report.md). Current behavior remains owned by this handoff, the existing production implementation and I-4 contracts, the focused I-4F smoke suite, and SOUL Lab UI validation. The evidence report adds no runtime authority.

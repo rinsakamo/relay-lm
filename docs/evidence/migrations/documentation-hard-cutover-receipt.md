@@ -1067,7 +1067,7 @@ The canonical record preserves the docs-only E1 MVP evaluation-consolidation bou
 
 ```yaml
 cutover_pr: 589
-merged_commit: pending
+merged_commit: 087631f8bd18d95976bbeba4b1c3988a3d3df68e
 old_path: docs/mvp/wave5/o1e_completion_report.md
 old_blob_sha: bd876542c3774695830ec8929bcbb342de74e824
 old_content_sha256: 5fa4248bde4015a635de0cbd98091e88d184bd7c8b0a467d2f3092823e466766
@@ -1126,6 +1126,70 @@ verification:
 ```
 
 The canonical record preserves the complete bounded O1E scheduler operational-controls implementation boundary from PR #426 while separating it from current handoff-, implementation-, contract-, B3 queue-lifecycle-, O1D1/O1D2 scheduler-, O1F validation-, and focused-smoke-owned behavior. The source PR final-head, merge, and pre-cutover forms are byte-identical, and no later commit modified the report. Three repository-root literals and three resolved Markdown links move to the canonical path. The exact snapshot and the frozen Wave 5 source snapshot retain their historical old-path text; no compatibility path, fallback, or runtime change is introduced. The dedicated O1E workflow named by the source report is absent from the current tree and is not recreated.
+
+
+### C1C27-001 — I-4F Forget product-completion validation report
+
+```yaml
+cutover_pr: 590
+merged_commit: pending
+old_path: docs/mvp/wave5/i4f_completion_report.md
+old_blob_sha: f7c451802f97109fd431cbb1f6a57910d4ea5b93
+old_content_sha256: 45e486844536829d23b9e303ef5e7925385f94ac5887027669facadafc9bbce5
+source_commit: 2aac80c51c65b64dc70fd2c5f58b6ac729e89a23
+source_origin_commit: 937718dcb328fda5e3e37bb951b39fc66629f57a
+source_pr: 427
+source_blob_sha: f7c451802f97109fd431cbb1f6a57910d4ea5b93
+source_content_sha256: 45e486844536829d23b9e303ef5e7925385f94ac5887027669facadafc9bbce5
+pre_cutover_blob_sha: f7c451802f97109fd431cbb1f6a57910d4ea5b93
+pre_cutover_content_sha256: 45e486844536829d23b9e303ef5e7925385f94ac5887027669facadafc9bbce5
+post_source_modification_commits: []
+recorded_on: 2026-06-27
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/i4f_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/i4f_completion_report-source.txt
+exact_source_blob_sha: f7c451802f97109fd431cbb1f6a57910d4ea5b93
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_pre_cutover_blob_reused: true
+  source_head_blob_recorded: true
+  source_merge_blob_recorded: true
+  source_head_merge_and_pre_cutover_blobs_equal: true
+  source_to_pre_cutover_text_diff_empty: true
+  post_source_report_modifications_absent: true
+  canonical_evidence_metadata_added: true
+  exact_old_path_live_files_updated_in_pr_tree: 6
+  exact_old_path_live_occurrences_updated_in_pr_tree: 7
+  markdown_link_referrer_files_updated_in_pr_tree: 3
+  markdown_link_occurrences_updated_in_pr_tree: 3
+  source_report_internal_legacy_path_occurrences_preserved_in_exact_snapshot: 2
+  frozen_wave5_source_snapshot_legacy_occurrences_preserved: 2
+  implementation_evidence_index_updated: true
+  mvp_evidence_index_updated: true
+  documentation_router_updated: true
+  architecture_router_updated: true
+  i4f_architecture_handoff_updated: true
+  wave5_convergence_evidence_and_smoke_updated: true
+  wave5_workflow_updated: true
+  consolidated_ui_report_path_updated: true
+  documentation_current_boundary_smoke_updated: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_i4f_smokes: passed
+  i4a_through_i4e_regressions: passed
+  soul_lab_ui_validation: passed
+  consolidated_forget_lifecycle_regressions: passed
+  wave5_cross_slice_convergence_smoke: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  documentation_current_boundary_smoke: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete validation-only I-4F Forget product-completion boundary from PR #427 while separating it from current handoff-, production-implementation-, contract-, focused-smoke-, and SOUL Lab UI-validation-owned behavior. The source final-head, merge, and pre-cutover forms are byte-identical, and no later commit modified the report. Seven exact old-path literals across six live files and three resolved Markdown links move to the canonical path. The exact snapshot and frozen Wave 5 source snapshot retain their historical old-path text. This completes the live Wave 5 completion-report cutover without compatibility files or runtime behavior change.
 
 
 ## Pending batches

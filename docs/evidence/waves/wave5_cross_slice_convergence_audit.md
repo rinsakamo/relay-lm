@@ -45,7 +45,7 @@ This audit is documentation-only. It does not add production runtime behavior, n
 |---|---:|---|---|---|
 | E1 | #425 | docs: consolidate E1 MVP evaluation evidence | `docs/evidence/implementation/e1_completion_report.md` | `docs/architecture/e1_evaluation_consolidation.md` |
 | O1E | #426 | O1E: add scheduler operational controls | `docs/evidence/implementation/o1e_completion_report.md` | `docs/architecture/o1e_scheduler_operational_controls.md` |
-| I-4F | #427 | Phase I-4F: validate Forget product completion | `docs/mvp/wave5/i4f_completion_report.md` | `docs/architecture/phase_i4f_forget_validation.md` |
+| I-4F | #427 | Phase I-4F: validate Forget product completion | `docs/evidence/implementation/i4f_completion_report.md` | `docs/architecture/phase_i4f_forget_validation.md` |
 
 ## Merge commit inventory
 
