@@ -104,11 +104,13 @@ REQUIRED = {
         "E1-R4 completion report",
         "E1-R5 completion report",
     ),
-    "docs/mvp/wave5/e1_completion_report.md": (
+    "docs/evidence/implementation/e1_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",
-        "## Implemented production boundary",
-        "No runtime behavior changed.",
-        "E1 evaluation consolidation",
+        "relaylm_source_pr: 425",
+        "E1 MVP Evaluation Evidence Consolidation Completion Report",
+        "frozen implementation evidence",
+        "e1_completion_report-source.txt",
+        "source PR final-head/merge form",
     ),
     "docs/evidence/implementation/e1r1_completion_report.md": (
         "relaylm_doc_type: implementation_completion_report",

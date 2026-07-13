@@ -967,7 +967,7 @@ The canonical record preserves the complete E1-R2 explicit dry-run-first idempot
 
 ```yaml
 cutover_pr: 587
-merged_commit: pending
+merged_commit: aa40f19cdf808c9876e40b0a32ee9e5a3f1187e8
 old_path: docs/mvp/wave6/docs_horizontal_status_sweep_completion_report.md
 old_blob_sha: c92bc7e856ef28e862a738c47668d46c67a71904
 old_content_sha256: 889edab78de527869e3b94c764fadf9d9cce92b03f8adb946e42c3e6ca6a7627
@@ -1006,6 +1006,62 @@ verification:
 ```
 
 The canonical record preserves the docs-only horizontal current-status sweep from PR #434 while separating it from current Project Status, Documentation Model, feature-family behavior, sequencing, and operator guidance. The byte-exact snapshot retains the cutover input blob. The source PR final-head/merge blob is recorded separately because commit `d1b920c3c7fcdf16053e8c9f449863cadfcb7384` later repaired only the Wave 5 convergence-audit path. No external live old-path dependency existed at cutover; the two old-path occurrences were internal historical changed-file and validation-command text in the source report. This move removes the last Markdown file under `docs/mvp/wave6/` without adding a compatibility path.
+
+
+### C1C25-001 — E1 MVP evaluation consolidation completion report
+
+```yaml
+cutover_pr: 588
+merged_commit: pending
+old_path: docs/mvp/wave5/e1_completion_report.md
+old_blob_sha: c87b9929ce6e527ef2b94beeb2059f98439b6019
+old_content_sha256: 980cc5898f3b6cb8bc7ad0b502740a5ca9f79a54ebfa023c24d5d1c3a55289da
+source_commit: a4521f2a450ed52de3101e208676571c4c6b33e2
+source_origin_commit: 95c159ff747a167cd6cf99c7c5df656fd01e345d
+source_pr: 425
+source_blob_sha: 9b16c8875668f8bde40de809c472e7873da3f34e
+source_content_sha256: e5e2d6736aa3f9236e3da3b6c4ed0888fb9b046e18e2cba6af98d6eb6f5e63ec
+post_source_link_repair_commit: 80c6e775ae30ba68b1eb51148b4395320364d8d3
+recorded_on: 2026-06-27
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/e1_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/e1_completion_report-source.txt
+exact_source_blob_sha: c87b9929ce6e527ef2b94beeb2059f98439b6019
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_pre_cutover_blob_reused: true
+  source_pr_blob_recorded: true
+  source_pr_blob_differs_from_pre_cutover_blob: true
+  source_delta_is_single_wave4_canonical_path_repair: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 5
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 5
+  markdown_link_referrer_files_updated_in_pr_tree: 3
+  markdown_link_occurrences_updated_in_pr_tree: 3
+  source_report_internal_legacy_path_occurrences_preserved_in_exact_snapshot: 2
+  frozen_wave5_source_snapshot_legacy_references_preserved: true
+  implementation_evidence_index_updated: true
+  mvp_evidence_index_updated: true
+  documentation_router_updated: true
+  architecture_router_updated: true
+  e1_evaluation_consolidation_smoke_updated: true
+  wave5_convergence_evidence_and_smoke_updated: true
+  e1_and_wave5_workflows_updated: true
+  documentation_current_boundary_smoke_updated: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_e1_evaluation_smoke: passed
+  wave5_cross_slice_convergence_smoke: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: pending
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the docs-only E1 MVP evaluation-consolidation boundary from PR #425 while separating it from current E1 architecture, later E1-R1 through E1-R5 implementation, repository-wide status, sequencing, and operator guidance. The byte-exact snapshot retains the cutover input blob. The source PR final-head/merge blob is recorded separately because commit `80c6e775ae30ba68b1eb51148b4395320364d8d3` later repaired only the Wave 4 convergence-audit path. Five repository-root literals and three Markdown links are moved to the canonical path; historical old-path references remain only in the migration receipt and frozen exact source snapshots.
+
 
 ## Pending batches
 

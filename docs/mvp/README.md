@@ -89,7 +89,7 @@ Wave 6 dedicated handoffs:
 
 W5-INT verifies the source PR numbers, merge commits, and dedicated handoffs for these historical reports:
 
-- [E1 completion report](wave5/e1_completion_report.md) — source PR #425, merge `95c159ff747a167cd6cf99c7c5df656fd01e345d`.
+- [E1 completion report](../evidence/implementation/e1_completion_report.md) — source PR #425, merge `95c159ff747a167cd6cf99c7c5df656fd01e345d`.
 - [O1E completion report](wave5/o1e_completion_report.md) — source PR #426, merge `49750ccb693ab6ebca1f5a0947c69c06a4a03d31`.
 - [I-4F completion report](wave5/i4f_completion_report.md) — source PR #427, merge `937718dcb328fda5e3e37bb951b39fc66629f57a`.
 
@@ -118,6 +118,7 @@ The cross-slice convergence record is [Wave 3 Cross-Slice Convergence Audit](../
 A completion report is evidence for one PR only. It is not authoritative for repository-wide current status, other slice completion, next-wave readiness, or release/evaluation readiness. Use [the template](IMPLEMENTATION_COMPLETION_REPORT_TEMPLATE.md) and validate reports with:
 
 ```bash
+python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/e1_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/o1f_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/i5b_completion_report.md
 python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/i7c_completion_report.md
