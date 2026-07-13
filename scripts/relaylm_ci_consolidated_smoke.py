@@ -29,7 +29,7 @@ GROUPS = {
         "token_estimation": ["relaylm/*token*", "relaylm/relaymem_runtime_ctx.py", "scripts/relaylm_*token*", "scripts/relaylm_cjk_*", "scripts/relaylm_fullwidth_*", "scripts/relaylm_relaymem_cjk_*", "docs/architecture/phase5d1_*"],
         "merged_review_residuals": ["relaylm/relaymem_primary_page_candidate.py", "relaylm/_relaymem_primary_page_candidate_impl.py", "relaylm/relaymem_primary_write_preflight.py", "relaylm/relaymem_store.py", "relaylm/_relaymem_store_impl.py", "relaylm/_client_instruction_cache_write_impl.py", "scripts/relaylm_merged_review_residuals_smoke.py", "scripts/relaylm_m3c_operation_index_normalization_smoke.py"],
         "e1r1_trusted_home_scene_admission": ["scripts/relaylm_e1r1_*", "docs/architecture/e1r1_*", "docs/evidence/implementation/e1r1_*"],
-        "e1r2_character_store_bootstrap": ["relaylm/character_store_bootstrap*", "scripts/relaylm_e1r2_*", "docs/architecture/e1r2_*", "docs/mvp/wave6/e1r2_*"],
+        "e1r2_character_store_bootstrap": ["relaylm/character_store_bootstrap*", "scripts/relaylm_e1r2_*", "docs/architecture/e1r2_*", "docs/evidence/implementation/e1r2_*"],
         "soul_lab_management": ["relaylm/soul_lab_management.py", "relaylm/soul_lab_app.py", "scripts/relaylm_soul_lab_management_projection_smoke.py"],
     },
     "ui": {

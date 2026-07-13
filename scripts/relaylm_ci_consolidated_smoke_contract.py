@@ -91,6 +91,14 @@ def check_change_selection() -> None:
         fail("token-only change unexpectedly selected E1-R2")
 
     selected = changed_outputs(
+        "runtime",
+        ["docs/evidence/implementation/e1r2_completion_report.md"],
+        False,
+    )
+    if not selected["e1r2_character_store_bootstrap"]:
+        fail("canonical E1-R2 evidence change did not select E1-R2")
+
+    selected = changed_outputs(
         "ui",
         ["apps/soul-lab/src/features/lifecycle/example.ts"],
         False,
