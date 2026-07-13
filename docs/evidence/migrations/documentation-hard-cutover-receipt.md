@@ -1121,7 +1121,7 @@ verification:
   documentation_current_boundary_smoke: passed
   completion_report_model_and_file_checks: passed
   completion_report_pr_link_check: passed
-  all_github_actions: pending
+  all_github_actions: passed
   unresolved_review_threads: 0
 ```
 
