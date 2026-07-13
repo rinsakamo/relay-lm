@@ -1,1 +1,0 @@
-Trigger the valid standalone Cutover 1C-24 applicator. Remove before final review.
