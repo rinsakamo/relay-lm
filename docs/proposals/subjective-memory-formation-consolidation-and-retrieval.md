@@ -2,10 +2,11 @@
 relaylm_doc_type: proposal
 relaylm_authority: proposed_subjective_memory_formation_consolidation_and_retrieval_model
 relaylm_status: target
+relaylm_proposal_status: under_review
 relaylm_volatility: high
 relaylm_owner: memory
 relaylm_update_trigger:
-  - this proposal is accepted, rejected, or materially revised
+  - this proposal is accepted, rejected, withdrawn, or materially revised
   - subjective MEM formation or evidence authority changes
   - aggregation or retrieval evaluation changes the recommended model
   - Markdown or SQLite storage authority changes
