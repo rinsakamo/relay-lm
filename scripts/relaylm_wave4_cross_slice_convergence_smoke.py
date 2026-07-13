@@ -68,11 +68,11 @@ REQUIRED_LINKS = (
     "o1d2_scheduler_policy.md",
     "phase_i5_pin_unpin_contract.md",
     "phase_i7ab_held_apply_discard_contract.md",
-    "o1d2_completion_report.md",
-    "i4e_completion_report.md",
-    "ui_b1a_completion_report.md",
-    "i5a_completion_report.md",
-    "i7ab_completion_report.md",
+    "evidence/implementation/o1d2_completion_report.md",
+    "evidence/implementation/i4e_completion_report.md",
+    "evidence/implementation/ui_b1a_completion_report.md",
+    "evidence/implementation/i5a_completion_report.md",
+    "evidence/implementation/i7ab_completion_report.md",
 )
 
 STALE = (

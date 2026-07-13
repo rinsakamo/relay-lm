@@ -149,3 +149,5 @@ I-7C preserves this contract by:
 ## Non-goals
 
 I-7A/B/I-7C do not implement worker start, scheduler start, automatic retry/release loops, O1 scheduler invocation, C2 worker invocation from UI, new B3 lifecycle authority, direct queue file rewrite, Pin/Unpin runtime apply, Forget restore/unhide/purge, Secondary MEM consolidation, RelaySOUL mutation, service supervision, daemonization, polling, or source/body display.
+
+The frozen implementation evidence for the I-7A/B contract/preflight slice is recorded in [I-7A/B completion report](../evidence/implementation/i7ab_completion_report.md). Current behavior remains owned by this handoff, the I-7C continuation, the production implementation and B3/C2/I-4 contracts, and the focused I-7A/B/I-7C smokes.

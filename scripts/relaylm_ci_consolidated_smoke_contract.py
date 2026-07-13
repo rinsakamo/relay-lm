@@ -19,6 +19,24 @@ PURE_UI_GROUPS = {
     "forget_lifecycle_frontend",
 }
 
+WORKFLOW_PATH_REQUIREMENTS = {
+    ".github/workflows/smoke-relaymem.yml": {
+        "docs/evidence/implementation/o1d2_completion_report.md",
+        "docs/evidence/implementation/i4e_completion_report.md",
+        "docs/evidence/implementation/i5a_completion_report.md",
+    },
+    ".github/workflows/smoke-runtime.yml": {
+        "docs/evidence/implementation/e1r1_completion_report.md",
+        "docs/evidence/implementation/e1r2_completion_report.md",
+    },
+    ".github/workflows/smoke-ui.yml": {
+        "docs/evidence/implementation/i4e_completion_report.md",
+        "docs/evidence/implementation/ui_b1a_completion_report.md",
+        "docs/evidence/implementation/i5a_completion_report.md",
+        "docs/evidence/implementation/i7ab_completion_report.md",
+    },
+}
+
 WORKFLOW_JOBS = {
     ".github/workflows/smoke-relaymem.yml": {
         "changes",
@@ -99,6 +117,36 @@ def check_change_selection() -> None:
         fail("canonical E1-R2 evidence change did not select E1-R2")
 
     selected = changed_outputs(
+        "relaymem",
+        ["docs/evidence/implementation/o1d2_completion_report.md"],
+        False,
+    )
+    if not selected["scheduler_worker"]:
+        fail("canonical O1D2 evidence change did not select scheduler_worker")
+
+    selected = changed_outputs(
+        "relaymem",
+        [
+            "docs/evidence/implementation/i4e_completion_report.md",
+            "docs/evidence/implementation/i5a_completion_report.md",
+        ],
+        False,
+    )
+    if not selected["recall_correction_forget_pin"]:
+        fail("canonical I-4E/I-5A evidence changes did not select recall/correction/forget/pin")
+
+    expected_ui = {
+        "docs/evidence/implementation/i4e_completion_report.md": "forget_lifecycle_regressions",
+        "docs/evidence/implementation/ui_b1a_completion_report.md": "lifecycle_visibility",
+        "docs/evidence/implementation/i5a_completion_report.md": "pin_unpin",
+        "docs/evidence/implementation/i7ab_completion_report.md": "held_governance",
+    }
+    for path, group in expected_ui.items():
+        selected = changed_outputs("ui", [path], False)
+        if not selected[group]:
+            fail(f"{path} did not select UI group {group}")
+
+    selected = changed_outputs(
         "ui",
         ["apps/soul-lab/src/features/lifecycle/example.ts"],
         False,
@@ -135,11 +183,23 @@ def check_workflow_yaml() -> None:
                 fail(f"{relative}: {job_name} has no timeout-minutes")
 
 
+def check_workflow_trigger_paths() -> None:
+    for relative, required_paths in WORKFLOW_PATH_REQUIREMENTS.items():
+        document = yaml.safe_load((ROOT / relative).read_text(encoding="utf-8"))
+        triggers = document.get("on", document.get(True, {}))
+        for event in ("push", "pull_request"):
+            patterns = triggers.get(event, {}).get("paths", [])
+            for required in required_paths:
+                if not any(Path(required).match(pattern) for pattern in patterns):
+                    fail(f"{relative}: {event} does not cover {required}")
+
+
 def main() -> int:
     check_group_coverage()
     check_command_paths()
     check_change_selection()
     check_workflow_yaml()
+    check_workflow_trigger_paths()
     print("consolidated smoke contract: OK")
     return 0
 

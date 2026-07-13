@@ -211,11 +211,11 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 ## Wave 4 implementation evidence
 
 - [Wave 4 Cross-Slice Convergence Audit](../evidence/waves/wave4_cross_slice_convergence_audit.md)
-- [O1D2 completion report](../mvp/wave4/o1d2_completion_report.md)
-- [I-4E completion report](../mvp/wave4/i4e_completion_report.md)
-- [UI-B1A completion report](../mvp/wave4/ui_b1a_completion_report.md)
-- [I-5A completion report](../mvp/wave4/i5a_completion_report.md)
-- [I-7A/B completion report](../mvp/wave4/i7ab_completion_report.md)
+- [O1D2 completion report](../evidence/implementation/o1d2_completion_report.md)
+- [I-4E completion report](../evidence/implementation/i4e_completion_report.md)
+- [UI-B1A completion report](../evidence/implementation/ui_b1a_completion_report.md)
+- [I-5A completion report](../evidence/implementation/i5a_completion_report.md)
+- [I-7A/B completion report](../evidence/implementation/i7ab_completion_report.md)
 
 ## Evaluation evidence
 
