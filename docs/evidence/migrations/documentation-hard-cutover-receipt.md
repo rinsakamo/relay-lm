@@ -821,7 +821,7 @@ The canonical record preserves the complete I-5B Pin / Unpin apply, API/UI, dura
 
 ```yaml
 cutover_pr: 583
-merged_commit: pending
+merged_commit: ff7f5ba3fab8dd9224ff8d77aa87e47ac221726e
 old_path: docs/mvp/wave6/i7c_completion_report.md
 old_blob_sha: 447298a00d418f461abda33060e7f59d96656c64
 old_content_sha256: 97e242a355bb0fd204492fb697ed6523ed85812cd3e73e7cb73696a89e258907
@@ -863,6 +863,55 @@ verification:
 ```
 
 The canonical record preserves the complete I-7C Held Apply / Discard runtime-governance, API/UI, durable-evidence, and leakage-boundary implementation boundary from PR #431 while separating it from current handoff-, implementation-, queue-lifecycle-, worker-, and focused-smoke-owned behavior. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. Four live Markdown-link dependencies and three repository-root validation or handoff literals are moved to the canonical path; legacy references remain only in this migration receipt and frozen exact source snapshots. The dedicated I-7C workflow named by the historical source report is no longer present in the current tree and is not recreated. The migration-aware completion-report model and PR-link checks apply without validator changes.
+
+### C1C22-001 — E1-R1 completion report
+
+```yaml
+cutover_pr: 584
+merged_commit: pending
+old_path: docs/mvp/wave6/e1r1_completion_report.md
+old_blob_sha: 3d4e78d63e4be836e1de8b0ad1781a513e5349bc
+old_content_sha256: 35c8d68527fea415465119f28ca366897ab7d320f6828fa92489dff4af58c6d7
+source_commit: 39c5b982c9883ee39792450d40e4528c8a8db84b
+source_origin_commit: 52768cbdac3c9630373a2c369574002ac196e72b
+source_pr: 433
+recorded_on: 2026-06-27
+disposition: evidence_retained
+new_canonical_path: docs/evidence/implementation/e1r1_completion_report.md
+exact_source_snapshot: docs/evidence/implementation/e1r1_completion_report-source.txt
+exact_source_blob_sha: 3d4e78d63e4be836e1de8b0ad1781a513e5349bc
+verification:
+  old_path_removed_in_pr_tree: true
+  exact_source_blob_reused: true
+  canonical_evidence_metadata_added: true
+  repository_root_literal_reference_files_updated_in_pr_tree: 4
+  repository_root_literal_reference_occurrences_updated_in_pr_tree: 4
+  relative_markdown_link_referrer_files_at_frozen_baseline: 4
+  relative_markdown_link_dependencies_at_frozen_baseline: 4
+  source_report_internal_legacy_path_occurrences_preserved_in_exact_snapshot: 2
+  e1r1_architecture_handoff_updated: true
+  e1_evaluation_consolidation_updated: true
+  wave6_convergence_evidence_link_updated: true
+  implementation_evidence_index_updated: true
+  documentation_current_boundary_smoke_updated: true
+  consolidated_e1r1_smoke_updated: true
+  e1_evaluation_smoke_updated: true
+  dedicated_e1r1_workflow_absent_in_current_tree: true
+  cutover_preparation_self_test_reused_without_path_change: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  focused_e1r1_smoke: passed
+  e1_evaluation_consolidation_smoke: passed
+  consolidated_runtime_e1r1_group: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The canonical record preserves the complete E1-R1 route-owned trusted Home scene-admission implementation boundary from PR #433 while separating it from current handoff-, trust-policy-, implementation-, source/queue-, worker-, and focused-smoke-owned behavior. The exact pre-cutover source is retained as the original Git blob and byte-for-byte snapshot. Live Markdown-link and repository-root validation dependencies are moved to the canonical path; legacy references remain only in this migration receipt and frozen exact source snapshots. The dedicated E1-R1 workflow named by the historical source report is no longer present in the current tree and is not recreated. The migration-aware completion-report model and PR-link checks apply without validator changes.
 
 ## Pending batches
 
