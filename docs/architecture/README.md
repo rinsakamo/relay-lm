@@ -201,7 +201,7 @@ The browser owns no queue, scheduler, worker, storage root, namespace, backend, 
 ## Wave 5 / E1 evaluation evidence
 
 - [Wave 5 Cross-Slice Convergence Audit](../evidence/waves/wave5_cross_slice_convergence_audit.md)
-- [O1E completion report](../mvp/wave5/o1e_completion_report.md)
+- [O1E completion report](../evidence/implementation/o1e_completion_report.md)
 - [I-4F completion report](../mvp/wave5/i4f_completion_report.md)
 - [E1 completion report](../evidence/implementation/e1_completion_report.md)
 - [O1E Scheduler Operational Controls](o1e_scheduler_operational_controls.md)

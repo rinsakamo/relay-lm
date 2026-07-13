@@ -20,6 +20,7 @@ CURRENT_DOCS = (
     "docs/architecture/relaymem_slp_current_target.md",
     "docs/architecture/e1_evaluation_consolidation.md",
     "docs/evidence/implementation/e1_completion_report.md",
+    "docs/evidence/implementation/o1e_completion_report.md",
     "docs/architecture/e1r1_trusted_home_scene_admission.md",
     "docs/evidence/implementation/e1r1_completion_report.md",
     "docs/architecture/e1r2_character_store_bootstrap.md",
@@ -348,6 +349,15 @@ REQUIRED = {
         "Status: implemented in this slice.",
         "O1F is complete as validation-only operational hardening over this caller-invoked boundary.",
         "O2 and O3 are implemented in dedicated handoffs as opt-in layers above O1E",
+        "../evidence/implementation/o1e_completion_report.md",
+    ),
+    "docs/evidence/implementation/o1e_completion_report.md": (
+        "relaylm_doc_type: implementation_completion_report",
+        "relaylm_source_pr: 426",
+        "O1E Completion Report",
+        "frozen implementation evidence",
+        "o1e_completion_report-source.txt",
+        "no post-source report modification exists",
     ),
     "docs/architecture/o1f_operational_validation.md": (
         "# O1F Operational Validation",
