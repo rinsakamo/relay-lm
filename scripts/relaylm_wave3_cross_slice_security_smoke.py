@@ -31,9 +31,9 @@ PUBLIC_DOCS = (
     "docs/architecture/i1ge_durable_finalization_crash_validation.md",
     "docs/architecture/phase_i4d_primary_retrieval_exclusion.md",
     "docs/architecture/o1d1_production_scheduler_round.md",
-    "docs/mvp/wave3/i1ge_completion_report.md",
-    "docs/mvp/wave3/i4d_completion_report.md",
-    "docs/mvp/wave3/o1d1_completion_report.md",
+    "docs/evidence/implementation/i1ge_completion_report.md",
+    "docs/evidence/implementation/i4d_completion_report.md",
+    "docs/evidence/implementation/o1d1_completion_report.md",
 )
 
 

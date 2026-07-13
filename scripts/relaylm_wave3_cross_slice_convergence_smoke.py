@@ -10,21 +10,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 REPORTS = {
     "I1-GE": {
-        "path": "docs/mvp/wave3/i1ge_completion_report.md",
+        "path": "docs/evidence/implementation/i1ge_completion_report.md",
         "pr": "#411",
         "merge": "e2caa1bdb53468ca282e8f374ba8ceebf839c976",
         "head": "6cb461cb614d14965f5a49c1c4b517755f44f4a6",
         "handoff": "docs/architecture/i1ge_durable_finalization_crash_validation.md",
     },
     "I-4D": {
-        "path": "docs/mvp/wave3/i4d_completion_report.md",
+        "path": "docs/evidence/implementation/i4d_completion_report.md",
         "pr": "#414",
         "merge": "48e890f05f76196b73267559b079f4a05c441077",
         "head": "81c58516a4ba04c6e439ff17d633575bb193f843",
         "handoff": "docs/architecture/phase_i4d_primary_retrieval_exclusion.md",
     },
     "O1D1": {
-        "path": "docs/mvp/wave3/o1d1_completion_report.md",
+        "path": "docs/evidence/implementation/o1d1_completion_report.md",
         "pr": "#412",
         "merge": "9b6349236f1a01f3cdccbe9e3c2c874ae1137475",
         "head": "7aa051abe6a9e49a2f67c193b7e742f9406ec54f",
@@ -168,8 +168,8 @@ def check_i1ge_static_boundary() -> None:
         "It does not mean B3 terminal success, C2 execution, worker execution, Primary MEM formation",
     )
     require(
-        "docs/mvp/wave3/i1ge_completion_report.md",
-        "No production module, runtime schema, configuration schema, or repository-wide shared status/plan/index document is modified.",
+        "docs/evidence/implementation/i1ge_completion_report.md",
+        "No post-source report modification exists",
         "source-before-queue",
     )
 
