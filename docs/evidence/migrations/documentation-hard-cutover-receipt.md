@@ -1195,7 +1195,7 @@ The canonical record preserves the complete validation-only I-4F Forget product-
 ### C1C28-001 — Wave 4 implementation completion reports
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 591
 merged_commit: pending
 record_count: 5
 recorded_on: 2026-06-27
