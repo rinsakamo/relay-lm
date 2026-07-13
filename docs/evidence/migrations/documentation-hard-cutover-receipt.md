@@ -1066,7 +1066,7 @@ The canonical record preserves the docs-only E1 MVP evaluation-consolidation bou
 ### C1C26-001 — O1E scheduler operational-controls completion report
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 589
 merged_commit: pending
 old_path: docs/mvp/wave5/o1e_completion_report.md
 old_blob_sha: bd876542c3774695830ec8929bcbb342de74e824
