@@ -44,7 +44,7 @@ jobs:
           PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/ui_b1a_completion_report.md
           PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/i5a_completion_report.md
           PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py docs/evidence/implementation/i7ab_completion_report.md
-          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-all
+          PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_smoke.py --check-model --check-all
           PYTHONPATH=.:scripts python scripts/relaylm_mvp_completion_report_pr_link_smoke.py
       - name: Documentation link check
         run: PYTHONPATH=.:scripts python scripts/relaylm_docs_link_check.py
