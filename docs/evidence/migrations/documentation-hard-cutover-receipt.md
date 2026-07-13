@@ -1175,17 +1175,17 @@ verification:
   documentation_current_boundary_smoke_updated: true
   migration_aware_completion_report_model_reused: true
   migration_aware_pr_link_smoke_reused: true
-  focused_i4f_smokes: pending
-  i4a_through_i4e_regressions: pending
-  soul_lab_ui_validation: pending
-  consolidated_forget_lifecycle_regressions: pending
-  wave5_cross_slice_convergence_smoke: pending
-  documentation_link_check: pending
-  documentation_semantic_audit: pending
-  documentation_current_boundary_smoke: pending
-  completion_report_model_and_file_checks: pending
-  completion_report_pr_link_check: pending
-  all_github_actions: pending
+  focused_i4f_smokes: passed
+  i4a_through_i4e_regressions: passed
+  soul_lab_ui_validation: passed
+  consolidated_forget_lifecycle_regressions: passed
+  wave5_cross_slice_convergence_smoke: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  documentation_current_boundary_smoke: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  all_github_actions: passed
   unresolved_review_threads: 0
 ```
 
