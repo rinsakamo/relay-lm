@@ -1507,6 +1507,176 @@ verification:
 
 The four canonical records preserve the remaining low-risk early-MVP historical implementation notes (MVP-0 pass-through proxy, MVP-1 runtime diagnostics smoke, MVP-2 memory-light apply, and MVP-2 profile file loading) while explicitly disclaiming current proxy/pipeline, diagnostics-contract, memory/RelayCTX/persistence, and character-workspace/SOUL/profile-resolution authority respectively. Independent re-verification of the frozen Preparation C advisory table found the blob SHA, content SHA-256, source commit, and recorded date correct for three of four records (MVP-1, MVP-2 memory-light apply, MVP-2 profile file loading); the MVP-0 advisory cited only the PR #4 creation commit and omitted a same-day PR #5 follow-up commit that actually produced the pre-cutover blob, so this receipt records both PRs and the resulting single-commit content diff (an offline `--no-build-isolation` install fallback and a direct `python -m relaylm.app` run fallback). None of the four advisory records had a previously-recorded source PR; this receipt establishes source PR #4/#5, #10, #21, and #14 respectively from merge-commit bodies, none of them guessed. Three literal `docs/mvp/README.md` link occurrences move atomically to their canonical `docs/evidence/implementation/` paths in the same PR that adds four new index entries to `docs/evidence/implementation/README.md`; MVP-2 memory-light apply had zero live references anywhere in the tree before this cutover and remains a newly-indexed, previously-orphaned record. Four internal old-path string occurrences remain, and only as migration identifiers inside the four canonical wrapper bodies (`old path: docs/mvp/...`) — none appear inside the four byte-exact `-source.txt` snapshots. No compatibility path, redirect, or runtime behavior change is introduced.
 
+### C1C31-001 — MVP-2 compile/apply compatibility chain
+
+```yaml
+cutover_pr: 594
+merged_commit: pending
+record_count: 4
+cutover_recorded_on: 2026-07-14
+disposition: split
+records:
+  - record: MVP-2 context compiler contract
+    recorded_on: 2026-05-20
+    source_pr: 13
+    source_origin_commit: 9e22a95ce1cb7977e9da2829b3a38045789093d8
+    source_commit: cb2ebc287e6dbe6c85d1285af3584b6484575b63
+    old_path: docs/mvp/mvp2_context_compiler_contract.md
+    source_blob_sha: 82054c9ab18c2205ef0b2e82fec48a92083b4257
+    source_content_sha256: 0e38b8a5515b26f4ee0f211487d4a859f7b7a5a3fb2ebcbd9a87fdfc4eac9128
+    post_source_modification_commits: []
+    pre_cutover_blob_sha: 82054c9ab18c2205ef0b2e82fec48a92083b4257
+    pre_cutover_content_sha256: 0e38b8a5515b26f4ee0f211487d4a859f7b7a5a3fb2ebcbd9a87fdfc4eac9128
+    new_canonical_path: docs/evidence/implementation/mvp2_context_compiler_contract.md
+    exact_source_snapshot: docs/evidence/implementation/mvp2_context_compiler_contract-source.txt
+    exact_source_blob_sha: 82054c9ab18c2205ef0b2e82fec48a92083b4257
+    advisory_verification: advisory_blob_sha256_confirmed_correct
+    block_disposition:
+      primitives_and_ordering_rule: current_already_covered
+      concrete_room_anchor_placeholder: superseded_or_incorrect_for_current_retired_do_not_absorb
+      smoke_and_out_of_scope: procedure_or_smoke_history_and_historical_evidence
+    absorption_required: false
+    live_referrers_before_cutover: 0
+  - record: MVP-2 gated compile decision
+    recorded_on: 2026-05-21
+    source_pr: 20
+    source_origin_commit: 4a720954d1fed12dbbe0f6b2ba69b25082511ddd
+    source_commit: b9ccba293a780c4da3c89b61b53c6f7e739290c8
+    old_path: docs/mvp/mvp2_gated_compile_decision.md
+    source_blob_sha: 6da4b16095413191368ea2a75333a094d550977b
+    source_content_sha256: 0b7437684b4e64c265ef3227cea5f075acc0440eaa1f20be4bbe979e63f76809
+    post_source_modification_commits: []
+    pre_cutover_blob_sha: 6da4b16095413191368ea2a75333a094d550977b
+    pre_cutover_content_sha256: 0b7437684b4e64c265ef3227cea5f075acc0440eaa1f20be4bbe979e63f76809
+    new_canonical_path: docs/evidence/implementation/mvp2_gated_compile_decision.md
+    exact_source_snapshot: docs/evidence/implementation/mvp2_gated_compile_decision-source.txt
+    exact_source_blob_sha: 6da4b16095413191368ea2a75333a094d550977b
+    advisory_verification: advisory_blob_sha256_confirmed_correct
+    block_disposition:
+      gate_rule_and_decision_object: current_already_covered
+      out_of_scope_list: superseded_or_incorrect_for_current
+      run_section: procedure_or_smoke_history
+    absorption_required: false
+    live_referrers_before_cutover: 0
+  - record: MVP-2 runtime memory-light apply
+    recorded_on: 2026-05-21
+    source_pr: 22
+    source_origin_commit: e5b6a247134be4e52cc47c223e44af3a35c8896e
+    source_commit: 71385a5f2ccebbe89e81b9369f5c5abce6a98114
+    old_path: docs/mvp/mvp2_runtime_memory_light_apply.md
+    source_blob_sha: 63a3edfaaa7e6177f61c69611cdc82c505dbbf35
+    source_content_sha256: f3a3eec0fadd4c729254378b8c76ccdf00d3887f249fa8ded7960afc4eaed818
+    post_source_modification_commits: []
+    pre_cutover_blob_sha: 63a3edfaaa7e6177f61c69611cdc82c505dbbf35
+    pre_cutover_content_sha256: f3a3eec0fadd4c729254378b8c76ccdf00d3887f249fa8ded7960afc4eaed818
+    new_canonical_path: docs/evidence/implementation/mvp2_runtime_memory_light_apply.md
+    exact_source_snapshot: docs/evidence/implementation/mvp2_runtime_memory_light_apply-source.txt
+    exact_source_blob_sha: 63a3edfaaa7e6177f61c69611cdc82c505dbbf35
+    advisory_verification: advisory_blob_sha256_confirmed_correct
+    distinct_source_pr_from_sibling_mvp2_memory_light_apply_pr21: true
+    block_disposition:
+      runtime_wiring_behavior_bullets: current_already_covered
+      safety_boundary_and_run_section: current_already_covered_and_procedure_or_smoke_history
+    absorption_required: false
+    live_referrers_before_cutover: 0
+  - record: MVP-2 incoming system prompt fallback
+    recorded_on: 2026-05-21
+    source_pr: 17
+    source_origin_commit: accdeab36ab718feb7781c2bbd09b12cf6465544
+    source_commit: ac963e98eb25b8d2f9402d7eb48b78d8c84f79a5
+    old_path: docs/mvp/mvp2_incoming_system_fallback.md
+    source_blob_sha: 2662d59a3b6364610021a019c36ef3585ba2c684
+    source_content_sha256: e2277a6b809b4a89ea139c7df2dd42f92b791e7ece8ea00605195e9dfb98f238
+    post_source_modification_commits:
+      - pr: 246
+        commit: 3e502b710b794e83b45b0e66e6039c773e50c680
+        recorded_on: 2026-06-12
+        change: expanded_50_to_125_lines_added_current_authority_reinterpretation_developer_role_text_part_normalization_xml_escaping_relaysoul_non_mutation
+    pre_cutover_blob_sha: f229f538222bd72e9b1fa4a0290d2320491c9ec0
+    pre_cutover_content_sha256: efe00f859479bc17a09c220afb2cabcdeb42cda6fd41594ab19c90992414dde0
+    new_canonical_path: docs/evidence/implementation/mvp2_incoming_system_fallback.md
+    exact_source_snapshot: docs/evidence/implementation/mvp2_incoming_system_fallback-source.txt
+    exact_source_snapshot_matches: pre_cutover_blob_not_source_commit_blob
+    exact_source_blob_sha: f229f538222bd72e9b1fa4a0290d2320491c9ec0
+    advisory_verification: advisory_blob_sha256_confirmed_correct_for_pre_cutover_state_only
+    source_commit_and_pre_cutover_blob_are_different_versions_not_paired_as_same: true
+    previously_excluded_from_c1c3_001_pending_split_decision: true
+    block_disposition:
+      system_developer_extraction: historical_evidence_plus_current_already_covered_policy_level
+      text_part_normalization_whitespace_non_text_handling: current_absorb_required
+      compiled_render_order: current_absorb_required
+      xml_escaping_and_spoof_probe: current_absorb_required
+      raw_instruction_non_authority: current_already_covered
+      relayscn_scene_role_interpretation: current_already_covered
+      relaysoul_non_mutation: current_already_covered
+      managed_route_fallback_behavior: current_absorb_required_same_as_compiled_render_order
+      current_vs_target_only: current_confirmed_live_not_aspirational
+    absorption_required: true
+    absorption_destination: docs/contracts/context_compiler_contract.md#current-systemdeveloper-compatibility-helper
+    absorbed_blocks:
+      - block: text_part_normalization_whitespace_non_text_handling
+        source_digest_sha256: 25ff74e11f1122d3a53b0d296d7c03a13627c7899aa23999d8b4bae058b69298
+        destination_digest_sha256: 25ff74e11f1122d3a53b0d296d7c03a13627c7899aa23999d8b4bae058b69298
+        digest_match: true
+      - block: compiled_render_order
+        source_digest_sha256: 44de90416ffa1667c3d4d53634c72d071916c0e6477f30c4d2a2d76121e9b089
+        destination_digest_sha256: 44de90416ffa1667c3d4d53634c72d071916c0e6477f30c4d2a2d76121e9b089
+        digest_match: true
+      - block: xml_escaping_and_spoof_probe
+        source_digest_sha256: 3ed46ebbf6367c302adb02e714704f1218ec07b43ee7c1d87aadde618db0d7db
+        destination_digest_sha256: 3ed46ebbf6367c302adb02e714704f1218ec07b43ee7c1d87aadde618db0d7db
+        digest_match: true
+    live_referrers_before_cutover: 0
+    frozen_receipt_historical_mention_c1c3_001: retained_unchanged_historical_only
+verification:
+  old_paths_removed_in_pr_tree: true
+  exact_pre_cutover_blobs_reused: true
+  canonical_evidence_wrappers_added: 4
+  source_head_merge_and_pre_cutover_equal_records: 3
+  source_to_pre_cutover_diff_records: 1
+  incoming_system_fallback_delta_is_pr246_current_authority_reinterpretation: true
+  post_source_modification_commits_total: 1
+  advisory_records_independently_reverified: 4
+  advisory_records_confirmed_correct: 4
+  advisory_records_corrected: 0
+  source_pr_newly_established_not_previously_recorded: 4
+  live_dependency_referrer_files_at_frozen_baseline: 0
+  live_dependency_link_occurrences_at_frozen_baseline: 0
+  live_dependency_referrer_files_updated: 0
+  live_dependency_link_occurrences_retargeted: 0
+  implementation_evidence_index_files_updated: 1
+  new_evidence_index_entries_added: 4
+  mvp_index_entries_added: 4
+  shared_index_files_updated: 2
+  all_four_records_had_zero_live_referrers_before_cutover: true
+  implementation_evidence_index_updated: true
+  mvp_evidence_index_updated: true
+  absorbed_normative_blocks: 3
+  absorbed_normative_blocks_exact_digest_match: 3
+  absorption_destination_file: docs/contracts/context_compiler_contract.md
+  absorption_destination_is_current_authority_edit: true
+  no_absorption_required_for_three_of_four_records: true
+  not_absorbed_already_covered_rules: 3
+  historical_old_path_string_occurrences_preserved_in_exact_snapshots: 0
+  historical_old_path_string_occurrences_preserved_as_migration_identifiers_in_wrappers: 4
+  historical_old_path_string_occurrences_preserved_in_prior_frozen_receipt_entry: 1
+  compileall: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  documentation_current_boundary_smoke: passed
+  consolidated_smoke_contract: passed
+  context_compiler_smoke: passed
+  compile_gate_smoke: passed
+  memory_light_apply_smoke: passed
+  system_fallback_smoke: passed
+  git_diff_check: passed
+  no_canonical_record_selects_unrelated_runtime_group: true
+  all_github_actions: pending
+  unresolved_review_threads: pending
+```
+
+The four canonical records preserve the MVP-2 compile/apply compatibility chain (context block primitives/order, compile-apply gate, runtime memory-light payload apply, and incoming system/developer compatibility handling). Three records (context compiler contract, gated compile decision, runtime memory-light apply) are pure `evidence_retained`: every still-valid rule in each source is already owned, more completely, by current contract/architecture documents and unchanged code, and each had zero live referrers anywhere in the tree before this cutover. The context-compiler-contract record's concrete stable-prefix block list names the now-retired `room_anchor` placeholder (superseded by `relationship_anchor`); this is preserved only as history and explicitly not reintroduced as current. The fourth record (incoming system prompt fallback) required a `split` disposition, matching the pending-split note already recorded in the frozen C1C3-001 entry: its source commit (PR #17, 50 lines) and its pre-cutover blob (post PR #246, 125 lines) are different revisions and are not paired as the same version; three still-valid, currently-implemented rules (text-part-array normalization with whitespace preservation and non-text-part suppression, the compiled render order, and the concrete XML-escaping mechanism with its spoof-probe example) had no current-authority owner anywhere in the documentation tree and were absorbed verbatim into a new `### Current system/developer compatibility helper` subsection of the Context Compiler Contract in this same PR, with source and destination normalized SHA-256 digests recorded and confirmed to match exactly. Three other source rules (raw-instruction non-authority, RelaySCN scene-role interpretation, RelaySOUL non-mutation) were already covered, more rigorously, by the Client Instruction Authority Contract and were not duplicated. All four advisory pre-cutover blob/SHA-256 values from Preparation C were independently reverified and confirmed correct; none had a previously-recorded source PR, and this receipt establishes source PR #13, #20, #22, and #17 (plus the #246 post-source modification for the fourth) from merge-commit bodies, none guessed. None of the four records had any live referrer anywhere in the tree before this cutover (unlike several 1C-30 records), so no link retargeting was required; two new index entries per record were added instead, to `docs/evidence/implementation/README.md` and `docs/mvp/README.md`. Four internal old-path string occurrences remain, and only as migration identifiers inside the four canonical wrapper bodies (`old path: docs/mvp/...`); one additional historical old-path string occurrence remains unchanged inside the prior, already-frozen C1C3-001 entry. None appear inside the four byte-exact `-source.txt` snapshots. No compatibility path, redirect, or runtime behavior change is introduced. GitHub Actions results and unresolved review-thread count will be recorded once the remote head is green.
+
 ## Pending batches
 
 - Cutover 1C: remaining implementation, wave, evaluation, and release evidence migration.
