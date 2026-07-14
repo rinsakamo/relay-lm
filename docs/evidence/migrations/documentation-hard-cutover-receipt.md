@@ -1494,8 +1494,8 @@ verification:
   consolidated_smoke_contract: passed
   git_diff_check: passed
   no_canonical_record_selects_unrelated_runtime_group: true
-  all_github_actions: pending
-  unresolved_review_threads: pending
+  all_github_actions: passed
+  unresolved_review_threads: 0
 ```
 
 The four canonical records preserve the remaining low-risk early-MVP historical implementation notes (MVP-0 pass-through proxy, MVP-1 runtime diagnostics smoke, MVP-2 memory-light apply, and MVP-2 profile file loading) while explicitly disclaiming current proxy/pipeline, diagnostics-contract, memory/RelayCTX/persistence, and character-workspace/SOUL/profile-resolution authority respectively. Independent re-verification of the frozen Preparation C advisory table found the blob SHA, content SHA-256, source commit, and recorded date correct for three of four records (MVP-1, MVP-2 memory-light apply, MVP-2 profile file loading); the MVP-0 advisory cited only the PR #4 creation commit and omitted a same-day PR #5 follow-up commit that actually produced the pre-cutover blob, so this receipt records both PRs and the resulting single-commit content diff (an offline `--no-build-isolation` install fallback and a direct `python -m relaylm.app` run fallback). None of the four advisory records had a previously-recorded source PR; this receipt establishes source PR #4/#5, #10, #21, and #14 respectively from merge-commit bodies, none of them guessed. Three literal `docs/mvp/README.md` link occurrences move atomically to their canonical `docs/evidence/implementation/` paths in the same PR that adds four new index entries to `docs/evidence/implementation/README.md`; MVP-2 memory-light apply had zero live references anywhere in the tree before this cutover and remains a newly-indexed, previously-orphaned record. Four internal old-path string occurrences remain, and only as migration identifiers inside the four canonical wrapper bodies (`old path: docs/mvp/...`) — none appear inside the four byte-exact `-source.txt` snapshots. No compatibility path, redirect, or runtime behavior change is introduced.
