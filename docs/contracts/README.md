@@ -28,6 +28,9 @@ Before treating a proposed schema as the current wire contract, use the [Current
 - [Runtime compile artifact contract](runtime_compile_artifact_contract.md)
   - related design: [Runtime Compile Gate Design](../architecture/runtime_compile_gate_design.md)
 - [Context compiler contract](context_compiler_contract.md)
+- [RelayCTX short-term runtime contract](relayctx_short_term_runtime_contract.md)
+  - current four-stage default-off diagnostics/injection chain: extraction dry-run -> block assembly dry-run -> injection preflight -> gated apply
+  - current full blocked-reason taxonomy and stage ordering for the apply gate in `relaylm/relayctx_repack.py`
 - [Client instruction artifact current / target contract](client_instruction_target_artifact_contract.md)
   - current strict read-only `relaylm.client_instruction_cache.v0` lookup validation
   - current trusted runtime-private typed-parse validation and default-off, dry-run-first cache-writer planning/apply

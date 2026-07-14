@@ -147,10 +147,10 @@ The source PR number must be concrete before final review. The convergence threa
 - [MVP-2 gated compile decision](../evidence/implementation/mvp2_gated_compile_decision.md) — moved to canonical implementation evidence in Cutover 1C-31; historical compile-gate evidence only, not current compile-apply decision authority.
 - [MVP-2 runtime memory-light apply](../evidence/implementation/mvp2_runtime_memory_light_apply.md) — moved to canonical implementation evidence in Cutover 1C-31; historical runtime-wiring evidence only, not current apply/mode authority.
 - [MVP-2 incoming system fallback](../evidence/implementation/mvp2_incoming_system_fallback.md) — moved to canonical implementation evidence in Cutover 1C-31; historical helper evidence only, not current client-instruction authority.
-- [MVP-40 extraction](mvp40_relayctx_short_term_extraction_dry_run.md)
-- [MVP-41 assembly](mvp41_relayctx_short_term_block_assembly_dry_run.md)
-- [MVP-42 injection preflight](mvp42_relayctx_short_term_runtime_injection_preflight.md)
-- [MVP-43 apply gate](mvp43_relayctx_short_term_runtime_injection_apply_gate.md)
+- [MVP-40 extraction](../evidence/implementation/mvp40_relayctx_short_term_extraction_dry_run.md) — moved to canonical implementation evidence in Cutover 1C-32; historical extraction-schema evidence only, not current RelayCTX short-term runtime authority.
+- [MVP-41 assembly](../evidence/implementation/mvp41_relayctx_short_term_block_assembly_dry_run.md) — moved to canonical implementation evidence in Cutover 1C-32; historical assembly-schema evidence only, not current RelayCTX short-term runtime authority.
+- [MVP-42 injection preflight](../evidence/implementation/mvp42_relayctx_short_term_runtime_injection_preflight.md) — moved to canonical implementation evidence in Cutover 1C-32; historical preflight-schema evidence only, not current RelayCTX short-term runtime authority.
+- [MVP-43 apply gate](../evidence/implementation/mvp43_relayctx_short_term_runtime_injection_apply_gate.md) — moved to canonical implementation evidence in Cutover 1C-32; historical apply-gate evidence only (known-incomplete gate list), not current RelayCTX short-term runtime authority.
 - [MVP-45 fast path](mvp45_relayint_fast_path_dry_run.md)
 - [MVP-46 clarification preflight](mvp46_relayint_quick_clarification_preflight.md)
 - [MVP-47 clarification apply plan](mvp47_relayint_quick_clarification_apply_plan.md)
