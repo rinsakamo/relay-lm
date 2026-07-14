@@ -1888,7 +1888,7 @@ Because the audit found the current four-stage contract fragmented across `docs/
 ### C1C33-001 — RelayINT quick-clarification chain and PipelineNodeResult scaffold
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 596
 merged_commit: pending
 record_count: 4
 cutover_recorded_on: 2026-07-14
