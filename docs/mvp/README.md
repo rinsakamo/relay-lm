@@ -143,6 +143,10 @@ The source PR number must be concrete before final review. The convergence threa
 - [MVP-1 runtime diagnostics](../evidence/implementation/mvp1_runtime_diagnostics_smoke.md) — moved to canonical implementation evidence in Cutover 1C-30; historical diagnostic smoke evidence only, not the current diagnostics/API contract.
 - [MVP-2 memory-light apply](../evidence/implementation/mvp2_memory_light_apply.md) — moved to canonical implementation evidence in Cutover 1C-30; historical bounded apply evidence only, not current memory, RelayCTX, or persistence authority.
 - [MVP-2 profile loading](../evidence/implementation/mvp2_profile_file_loading.md) — moved to canonical implementation evidence in Cutover 1C-30; historical loading evidence only, not current character workspace, SOUL, profile-resolution, or file-first authority.
+- [MVP-2 context compiler contract](../evidence/implementation/mvp2_context_compiler_contract.md) — moved to canonical implementation evidence in Cutover 1C-31; historical primitives/ordering evidence only, not current compiler contract authority.
+- [MVP-2 gated compile decision](../evidence/implementation/mvp2_gated_compile_decision.md) — moved to canonical implementation evidence in Cutover 1C-31; historical compile-gate evidence only, not current compile-apply decision authority.
+- [MVP-2 runtime memory-light apply](../evidence/implementation/mvp2_runtime_memory_light_apply.md) — moved to canonical implementation evidence in Cutover 1C-31; historical runtime-wiring evidence only, not current apply/mode authority.
+- [MVP-2 incoming system fallback](../evidence/implementation/mvp2_incoming_system_fallback.md) — moved to canonical implementation evidence in Cutover 1C-31; historical helper evidence only, not current client-instruction authority.
 - [MVP-40 extraction](mvp40_relayctx_short_term_extraction_dry_run.md)
 - [MVP-41 assembly](mvp41_relayctx_short_term_block_assembly_dry_run.md)
 - [MVP-42 injection preflight](mvp42_relayctx_short_term_runtime_injection_preflight.md)

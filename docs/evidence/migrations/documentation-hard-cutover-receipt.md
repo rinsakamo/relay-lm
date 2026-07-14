@@ -1402,7 +1402,7 @@ The three canonical records preserve the bounded Wave 3 implementation evidence 
 
 ```yaml
 cutover_pr: 593
-merged_commit: pending
+merged_commit: a7669fcb2906202fee8b89c601bf3dfbf28bfece
 record_count: 4
 cutover_recorded_on: 2026-07-14
 disposition: evidence_retained
