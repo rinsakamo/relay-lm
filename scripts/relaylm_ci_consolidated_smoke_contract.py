@@ -93,6 +93,17 @@ def check_command_paths() -> None:
 def check_change_selection() -> None:
     selected = changed_outputs(
         "relaymem",
+        ["docs/mvp/wave3/i4d_completion_report.md"],
+        False,
+    )
+    if any(selected.values()):
+        fail(
+            "retired Wave 3 path unexpectedly selected a live relaymem group: "
+            f"{[g for g, v in selected.items() if v]!r}"
+        )
+
+    selected = changed_outputs(
+        "relaymem",
         ["relaylm/relaymem_primary_page_writer.py"],
         False,
     )

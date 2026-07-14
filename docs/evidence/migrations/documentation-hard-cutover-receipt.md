@@ -1314,7 +1314,7 @@ The five canonical records preserve the bounded Wave 4 implementation evidence f
 cutover_pr: 592
 merged_commit: pending
 record_count: 3
-recorded_on: 2026-07-13
+recorded_on: 2026-06-27
 disposition: evidence_retained
 records:
   - source_pr: 411
