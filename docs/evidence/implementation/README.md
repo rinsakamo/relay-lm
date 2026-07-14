@@ -23,6 +23,10 @@ This collection preserves bounded implementation and smoke evidence after its ac
 - [MVP-1 runtime diagnostics smoke](mvp1_runtime_diagnostics_smoke.md) — frozen server-free diagnostics smoke evidence from PR #10; current diagnostics contract remains code-owned.
 - [MVP-2 memory-light apply](mvp2_memory_light_apply.md) — frozen `memory_light` payload-compilation helper evidence from PR #21; current compile-apply behavior remains contract-owned.
 - [MVP-2 profile file loading](mvp2_profile_file_loading.md) — frozen placeholder profile-file loading evidence from PR #14; current character workspace and profile-resolution behavior remain architecture-owned.
+- [MVP-2 context compiler contract](mvp2_context_compiler_contract.md) — frozen first-code-level context-compiler contract evidence from PR #13; current primitives, ordering, and the corrected stable-prefix block set remain contract-owned.
+- [MVP-2 gated compile decision](mvp2_gated_compile_decision.md) — frozen first compile-apply gate evidence from PR #20; current `CompileApplyDecision` semantics and decision taxonomy remain contract-owned.
+- [MVP-2 runtime memory-light apply](mvp2_runtime_memory_light_apply.md) — frozen runtime-wiring evidence from PR #22 connecting memory-light compilation to `/v1/chat/completions`; current apply/mode/diagnostics behavior remains contract- and architecture-owned.
+- [MVP-2 incoming system prompt fallback](mvp2_incoming_system_fallback.md) — frozen client system/developer compatibility-helper evidence from PR #17 (revised by PR #246); current instruction authority remains architecture-owned, and its still-valid text-normalization, render-order, and escaping rules were absorbed into the Context Compiler Contract.
 - [MVP-1 API diagnostics smoke](mvp1_api_diagnostics_smoke.md)
 - [MVP-1 config and routing smoke](mvp1_config_routing_smoke.md)
 - [MVP-2 memory-light API smoke](mvp2_memory_light_api_smoke.md)
