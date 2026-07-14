@@ -12,9 +12,14 @@ relaylm_not_authoritative_for:
   - exact file-first source-tree contracts
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_source_commit: 386d76fbefd21eee59c015c01c2cc0c326da9410
+relaylm_source_origin_commit: cf995f8f7b5b50b23e17ac92b1d0bd5789e26104
+relaylm_source_pr: 14
 relaylm_recorded_on: 2026-05-20
 relaylm_source_blob: d9569f158764b922a5c99f9c361dbdbf65cf56b3
 relaylm_source_content_sha256: 089b8ece13ad60e68f953a3a4b5f7299f1642b40623fec66a7e8f21bdf64fac7
+relaylm_pre_cutover_blob: d9569f158764b922a5c99f9c361dbdbf65cf56b3
+relaylm_pre_cutover_content_sha256: 089b8ece13ad60e68f953a3a4b5f7299f1642b40623fec66a7e8f21bdf64fac7
+relaylm_exact_source_snapshot: mvp2_profile_file_loading-source.txt
 ---
 # MVP-2 Profile File Loading Evidence
 

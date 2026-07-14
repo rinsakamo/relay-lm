@@ -12,9 +12,14 @@ relaylm_not_authoritative_for:
   - exact runtime contracts
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_source_commit: 5b164e0deb371c9c8de0d3b7c57f38084077e2dc
+relaylm_source_origin_commit: eab60e55d9c3899ca54be473faed2d8bafff4c60
+relaylm_source_pr: 4
 relaylm_recorded_on: 2026-05-20
-relaylm_source_blob: 9bd2eb600ae7586a337e58c19bdb868d1c3d1e4f
-relaylm_source_content_sha256: bad628ffc3748fe0ae41c704960eb087b0402ef4ebf905d5542f98929f8e10a2
+relaylm_source_blob: 5a98f4066458a34a34ff6e88c4a651ac77b59722
+relaylm_source_content_sha256: 356e8fb6315ac480f85a7ef0050b8ffa8d3b31f6e5d8500c7219d41f62261d21
+relaylm_pre_cutover_blob: 9bd2eb600ae7586a337e58c19bdb868d1c3d1e4f
+relaylm_pre_cutover_content_sha256: bad628ffc3748fe0ae41c704960eb087b0402ef4ebf905d5542f98929f8e10a2
+relaylm_exact_source_snapshot: mvp0_pass_through_proxy-source.txt
 ---
 # MVP-0 Pass-through Proxy Evidence
 

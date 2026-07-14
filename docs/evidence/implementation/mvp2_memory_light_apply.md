@@ -12,9 +12,14 @@ relaylm_not_authoritative_for:
   - exact compile-apply contracts
 relaylm_current_status_source: ../../PROJECT_STATUS.md
 relaylm_source_commit: ed5119b5fe3a07cd395ebd0a4cadaca7945e9599
+relaylm_source_origin_commit: 793dbfa49798a4531039bdd6193c51db191d529d
+relaylm_source_pr: 21
 relaylm_recorded_on: 2026-05-21
 relaylm_source_blob: 774819182af6268dc95c9ca5a61571890085c414
 relaylm_source_content_sha256: b420a9c6c7b2f221996d6b30c1739fe4de62d0b070f791b998bd48728e434c6c
+relaylm_pre_cutover_blob: 774819182af6268dc95c9ca5a61571890085c414
+relaylm_pre_cutover_content_sha256: b420a9c6c7b2f221996d6b30c1739fe4de62d0b070f791b998bd48728e434c6c
+relaylm_exact_source_snapshot: mvp2_memory_light_apply-source.txt
 ---
 # MVP-2 Memory-Light Apply Helper Evidence
 

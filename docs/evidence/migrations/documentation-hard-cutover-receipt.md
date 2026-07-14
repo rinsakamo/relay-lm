@@ -1404,10 +1404,11 @@ The three canonical records preserve the bounded Wave 3 implementation evidence 
 cutover_pr: 593
 merged_commit: pending
 record_count: 4
-recorded_on: 2026-07-14
+cutover_recorded_on: 2026-07-14
 disposition: evidence_retained
 records:
   - record: MVP-0 pass-through proxy
+    recorded_on: 2026-05-20
     source_pr: 4
     source_origin_commit: eab60e55d9c3899ca54be473faed2d8bafff4c60
     source_commit: 5b164e0deb371c9c8de0d3b7c57f38084077e2dc
@@ -1425,6 +1426,7 @@ records:
     exact_source_blob_sha: 9bd2eb600ae7586a337e58c19bdb868d1c3d1e4f
     advisory_verification: advisory_blob_and_sha256_confirmed_correct; advisory_source_commit_incomplete_omitted_pr5_modification
   - record: MVP-1 runtime diagnostics smoke
+    recorded_on: 2026-05-20
     source_pr: 10
     source_origin_commit: 4a97a4dc730c718d06e567ccfaf47db2d278357d
     source_commit: 2890b1d13e7a937611e4ca467f761738d2a0082c
@@ -1439,6 +1441,7 @@ records:
     exact_source_blob_sha: b5d2f6ff805832f71d89393d06d91c65add3e81c
     advisory_verification: advisory_blob_sha256_source_commit_and_date_all_confirmed_correct
   - record: MVP-2 memory-light apply
+    recorded_on: 2026-05-21
     source_pr: 21
     source_origin_commit: 793dbfa49798a4531039bdd6193c51db191d529d
     source_commit: ed5119b5fe3a07cd395ebd0a4cadaca7945e9599
@@ -1453,6 +1456,7 @@ records:
     exact_source_blob_sha: 774819182af6268dc95c9ca5a61571890085c414
     advisory_verification: advisory_blob_sha256_source_commit_and_date_all_confirmed_correct
   - record: MVP-2 profile file loading
+    recorded_on: 2026-05-20
     source_pr: 14
     source_origin_commit: cf995f8f7b5b50b23e17ac92b1d0bd5789e26104
     source_commit: 386d76fbefd21eee59c015c01c2cc0c326da9410
@@ -1478,11 +1482,14 @@ verification:
   advisory_records_confirmed_correct: 3
   advisory_records_corrected: 1
   source_pr_newly_established_not_previously_recorded: 3
-  live_dependency_files_at_frozen_baseline: 3
-  live_dependency_files_updated: 2
-  live_dependency_link_retargets: 3
+  live_dependency_referrer_files_at_frozen_baseline: 1
+  live_dependency_link_occurrences_at_frozen_baseline: 3
+  live_dependency_referrer_files_updated: 1
+  live_dependency_link_occurrences_retargeted: 3
+  implementation_evidence_index_files_updated: 1
   new_evidence_index_entries_added: 4
-  mvp2_memory_light_apply_had_zero_live_references_before_cutover: true
+  shared_index_files_updated: 2
+  mvp2_memory_light_apply_live_referrers_before_cutover: 0
   implementation_evidence_index_updated: true
   mvp_evidence_index_updated: true
   historical_old_path_string_occurrences_preserved_in_exact_snapshots: 0
@@ -1494,8 +1501,8 @@ verification:
   consolidated_smoke_contract: passed
   git_diff_check: passed
   no_canonical_record_selects_unrelated_runtime_group: true
-  all_github_actions: passed
-  unresolved_review_threads: 0
+  all_github_actions: pending
+  unresolved_review_threads: pending
 ```
 
 The four canonical records preserve the remaining low-risk early-MVP historical implementation notes (MVP-0 pass-through proxy, MVP-1 runtime diagnostics smoke, MVP-2 memory-light apply, and MVP-2 profile file loading) while explicitly disclaiming current proxy/pipeline, diagnostics-contract, memory/RelayCTX/persistence, and character-workspace/SOUL/profile-resolution authority respectively. Independent re-verification of the frozen Preparation C advisory table found the blob SHA, content SHA-256, source commit, and recorded date correct for three of four records (MVP-1, MVP-2 memory-light apply, MVP-2 profile file loading); the MVP-0 advisory cited only the PR #4 creation commit and omitted a same-day PR #5 follow-up commit that actually produced the pre-cutover blob, so this receipt records both PRs and the resulting single-commit content diff (an offline `--no-build-isolation` install fallback and a direct `python -m relaylm.app` run fallback). None of the four advisory records had a previously-recorded source PR; this receipt establishes source PR #4/#5, #10, #21, and #14 respectively from merge-commit bodies, none of them guessed. Three literal `docs/mvp/README.md` link occurrences move atomically to their canonical `docs/evidence/implementation/` paths in the same PR that adds four new index entries to `docs/evidence/implementation/README.md`; MVP-2 memory-light apply had zero live references anywhere in the tree before this cutover and remains a newly-indexed, previously-orphaned record. Four internal old-path string occurrences remain, and only as migration identifiers inside the four canonical wrapper bodies (`old path: docs/mvp/...`) — none appear inside the four byte-exact `-source.txt` snapshots. No compatibility path, redirect, or runtime behavior change is introduced.
