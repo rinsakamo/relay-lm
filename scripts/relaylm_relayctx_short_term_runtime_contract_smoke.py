@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Pin the code-derived RelayCTX short-term runtime documentation contract."""
+"""Pin the code-derived RelayCTX short-term runtime contract and pipeline order."""
 
 from __future__ import annotations
 
