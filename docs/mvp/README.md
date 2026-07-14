@@ -151,10 +151,10 @@ The source PR number must be concrete before final review. The convergence threa
 - [MVP-41 assembly](../evidence/implementation/mvp41_relayctx_short_term_block_assembly_dry_run.md) — moved to canonical implementation evidence in Cutover 1C-32; historical assembly-schema evidence only, not current RelayCTX short-term runtime authority.
 - [MVP-42 injection preflight](../evidence/implementation/mvp42_relayctx_short_term_runtime_injection_preflight.md) — moved to canonical implementation evidence in Cutover 1C-32; historical preflight-schema evidence only, not current RelayCTX short-term runtime authority.
 - [MVP-43 apply gate](../evidence/implementation/mvp43_relayctx_short_term_runtime_injection_apply_gate.md) — moved to canonical implementation evidence in Cutover 1C-32; historical apply-gate evidence only (known-incomplete gate list), not current RelayCTX short-term runtime authority.
-- [MVP-45 fast path](mvp45_relayint_fast_path_dry_run.md)
-- [MVP-46 clarification preflight](mvp46_relayint_quick_clarification_preflight.md)
-- [MVP-47 clarification apply plan](mvp47_relayint_quick_clarification_apply_plan.md)
-- [MVP-48 node result scaffold](mvp48_pipeline_node_result_scaffold.md)
+- [MVP-45 fast path](../evidence/implementation/mvp45_relayint_fast_path_dry_run.md) — moved to canonical implementation evidence in Cutover 1C-33; historical fast-path-schema evidence only, not current RelayINT quick-clarification chain authority.
+- [MVP-46 clarification preflight](../evidence/implementation/mvp46_relayint_quick_clarification_preflight.md) — moved to canonical implementation evidence in Cutover 1C-33; historical preflight-schema evidence only, not current RelayINT quick-clarification chain authority.
+- [MVP-47 clarification apply plan](../evidence/implementation/mvp47_relayint_quick_clarification_apply_plan.md) — moved to canonical implementation evidence in Cutover 1C-33; historical plan-only apply evidence only, not current RelayINT quick-clarification chain authority.
+- [MVP-48 node result scaffold](../evidence/implementation/mvp48_pipeline_node_result_scaffold.md) — moved to canonical implementation evidence in Cutover 1C-33; historical scaffold evidence only (known-superseded RelayREF compatibility section), not current PipelineNodeResult authority.
 
 The redundant MVP-1 through MVP-33 and MVP-37 milestone summary snapshots were removed from the active tree in Cutover 1B. Their old paths and blob digests are recorded in [the deletion appendix](../evidence/migrations/cutover-1b-mvp-snapshot-deletions.tsv), and their contents remain recoverable from Git history and the frozen `v0.1` tag.
 
