@@ -19,6 +19,10 @@ This collection preserves bounded implementation and smoke evidence after its ac
 
 ## Early MVP smoke records
 
+- [MVP-0 pass-through proxy](mvp0_pass_through_proxy.md) — frozen URL-swap pass-through skeleton evidence from PR #4/#5; current proxy/pipeline behavior remains architecture-owned.
+- [MVP-1 runtime diagnostics smoke](mvp1_runtime_diagnostics_smoke.md) — frozen server-free diagnostics smoke evidence from PR #10; current diagnostics contract remains code-owned.
+- [MVP-2 memory-light apply](mvp2_memory_light_apply.md) — frozen `memory_light` payload-compilation helper evidence from PR #21; current compile-apply behavior remains contract-owned.
+- [MVP-2 profile file loading](mvp2_profile_file_loading.md) — frozen placeholder profile-file loading evidence from PR #14; current character workspace and profile-resolution behavior remain architecture-owned.
 - [MVP-1 API diagnostics smoke](mvp1_api_diagnostics_smoke.md)
 - [MVP-1 config and routing smoke](mvp1_config_routing_smoke.md)
 - [MVP-2 memory-light API smoke](mvp2_memory_light_api_smoke.md)
