@@ -1681,7 +1681,7 @@ The four canonical records preserve the MVP-2 compile/apply compatibility chain 
 ### C1C32-001 — RelayCTX short-term runtime chain
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 595
 merged_commit: pending
 record_count: 4
 cutover_recorded_on: 2026-07-14
@@ -1796,7 +1796,7 @@ records:
     block_disposition:
       title_and_intro: current_already_covered_vague_framing_only
       safety_gate_flag_names_and_defaults: current_already_covered_by_config_py_plus_absorbed_with_third_field
-      gate_condition_paragraph_4_conditions: current_absorb_required_code_derived_rewrite_13_reasons_confirmed_incomplete_as_warned
+      gate_condition_paragraph_4_conditions: current_absorb_required_code_derived_rewrite_12_apply_tier_5_preflight_tier_13_distinct_union_confirmed_incomplete_as_warned
       inserted_content_claims: current_already_covered_plus_current_absorb_required_structural_detail_addition
       non_goals_section: current_absorb_required_verbatim_core_clause
       mvp44_forward_looking_line: procedure_or_smoke_history
@@ -1811,7 +1811,7 @@ records:
         digest_match: true
     code_derived_additions:
       - block: full_blocked_reason_taxonomy
-        delta: replaced_4_condition_prose_with_13_distinct_reason_strings_across_preflight_and_apply_tiers_no_verbatim_source_exists
+        delta: replaced_4_condition_prose_with_12_apply_tier_and_5_preflight_tier_reason_strings_13_distinct_union_no_verbatim_source_exists
         validation: scripts/relaylm_relayctx_short_term_runtime_injection_apply_smoke.py, scripts/relaylm_ctx_repack_final_gate_smoke.py
       - block: config_flags_table
         delta: added_relayctx_short_term_runtime_injection_token_budget_and_config_memory_chars_per_token_dependency_not_named_in_old_doc
@@ -1854,27 +1854,36 @@ verification:
   absorption_destination_is_new_current_authority_file: true
   historical_old_path_string_occurrences_preserved_in_exact_snapshots: 0
   historical_old_path_string_occurrences_preserved_as_migration_identifiers_in_wrappers: 4
-  compileall: pending_final_head
-  documentation_link_check: pending_final_head
-  documentation_semantic_audit: pending_final_head
-  documentation_current_boundary_smoke: pending_final_head
-  consolidated_smoke_contract: pending_final_head
-  relayctx_short_term_extraction_dry_run_smoke: pending_final_head
-  relayctx_short_term_block_assembly_dry_run_smoke: pending_final_head
-  relayctx_short_term_runtime_injection_preflight_smoke: pending_final_head
-  relayctx_short_term_runtime_injection_apply_smoke: pending_final_head
-  ctx_repack_final_gate_smoke: pending_final_head
-  openwebui_lmstudio_config_smoke: pending_final_head
-  git_diff_check: pending_final_head
+  compileall: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  documentation_current_boundary_smoke: passed
+  relayctx_short_term_runtime_contract_smoke: passed
+  repository_wide_stage_order_verified: relaymem_retrieval_to_relaymem_runtime_injection_to_relayctx_extraction_to_assembly_to_preflight_to_apply_to_token_budget_truncation
+  internal_relayctx_artifact_dependency_verified: extraction_to_assembly_to_preflight_to_apply
+  disabled_builder_none_semantics_verified: true
+  stage4_forwarded_payload_input_verified: true
+  apply_tier_blocked_reason_count: 12
+  preflight_tier_blocked_reason_count: 5
+  blocked_reason_distinct_union_count: 13
+  payload_mutation_disabled_reachable_apply_condition: apply_enabled_true_and_dry_run_only_true_with_blocked_reason
+  consolidated_smoke_contract: passed
+  relayctx_short_term_extraction_dry_run_smoke: pre_existing_local_fixture_failure_verified_against_base
+  relayctx_short_term_block_assembly_dry_run_smoke: pre_existing_local_fixture_failure_verified_against_base
+  relayctx_short_term_runtime_injection_preflight_smoke: pre_existing_local_fixture_failure_verified_against_base
+  relayctx_short_term_runtime_injection_apply_smoke: pre_existing_local_fixture_failure_verified_against_base
+  ctx_repack_final_gate_smoke: passed
+  openwebui_lmstudio_config_smoke: passed
+  git_diff_check: passed
   no_canonical_record_selects_unrelated_runtime_group: true
-  all_github_actions: pending_final_head
-  codex_review: pending_final_head
-  unresolved_review_threads: pending_final_head
+  all_github_actions: passed
+  codex_review: unavailable_usage_limit_reached
+  unresolved_review_threads: 0
 ```
 
 The four canonical records preserve the RelayCTX short-term runtime chain (extraction dry-run, block assembly dry-run, runtime injection preflight, and gated apply), an implemented chronological chain confirmed still live in `relaylm/diagnostics.py`, `relaylm/relayctx_repack.py`, and `relaylm/managed_chat_runtime.py`. All four advisory pre-cutover blob/SHA-256 values were independently reverified and confirmed correct; the first three records had zero content drift since their source PRs (#234, #235, #236, all merged 2026-06-06), with only a pure path-rename intervening. The fourth record (apply gate, PR #237) is the one true `split`-shaped record in this batch: its source-PR blob and its pre-cutover blob are different versions and are not paired as the same version — a same-day-plus-five-days commit (`e39f846fa8e015b4f2810f96b4b59283153a2aa2`) reworded one non-goals clause before a companion commit removed the legacy path, and this receipt records both the source and the pre-cutover content separately, matching the corrected provenance pattern established in Cutovers 1C-30 and 1C-31. All four records had exactly one live referrer before this cutover (the shared `docs/mvp/README.md` "Retained focused historical notes" index), retargeted in this same PR to the new canonical evidence paths.
 
-Because the audit found the current four-stage contract fragmented across `docs/config_schema.md` (flag defaults only), `docs/architecture/pipeline_responsibility_design.md` (stage ordering only), and `docs/contracts/context_compiler_contract.md` (conceptual "RelayCTX working state" only, with a stale, unreconciled target `ContextBlock` field-name example), a new canonical contract was created at `docs/contracts/relayctx_short_term_runtime_contract.md`. Four blocks were transferred byte-verbatim into it with matching normalized source/destination SHA-256 digests (MVP-41's scope bullets and priority-order list, MVP-42's artifact-section paragraph, and MVP-43's non-goals core clause with its forward-looking MVP-44 roadmap sentence intentionally excluded as procedure/smoke history, not current authority). Seven further blocks required a code-derived rewrite rather than verbatim transfer because current code has evolved or the old text under-specified current behavior: MVP-40's classification-determinism guarantee was generalized from a single-stage claim to the whole chain; MVP-41's artifact section gained a code-derived note that its token-budget hint is a hardcoded constant, not config-driven; MVP-42's non-mutation scope claim was narrowed to the preflight artifact only, since MVP-43's apply path (which postdates MVP-42) can now mutate the backend payload when explicitly enabled; and MVP-43 required a full code-derived rewrite of its blocked-reason taxonomy (13 distinct reasons across two tiers, replacing the old 4-condition prose list, exactly as the task brief warned was incomplete), its config-flag table (adding the previously-unnamed `relayctx_short_term_runtime_injection_token_budget` key and its `config.memory.chars_per_token` dependency), and its insertion mechanics (exact message role, position, and content structure, none of which the old doc stated). The existing stage-ordering rule in `docs/architecture/pipeline_responsibility_design.md` §9 is cross-linked, not duplicated. No compatibility path, redirect, or runtime behavior change is introduced. Local validation, GitHub Actions, Codex review, and unresolved-thread counts are recorded only once the final remote head is green, per the cutover requirement not to finalize this receipt before that point.
+Because the audit found the current four-stage contract fragmented across `docs/config_schema.md` (flag defaults only), `docs/architecture/pipeline_responsibility_design.md` (stage ordering only), and `docs/contracts/context_compiler_contract.md` (conceptual "RelayCTX working state" only, with a stale, unreconciled target `ContextBlock` field-name example), a new canonical contract was created at `docs/contracts/relayctx_short_term_runtime_contract.md`. Four blocks were transferred byte-verbatim into it with matching normalized source/destination SHA-256 digests (MVP-41's scope bullets and priority-order list, MVP-42's artifact-section paragraph, and MVP-43's non-goals core clause with its forward-looking MVP-44 roadmap sentence intentionally excluded as procedure/smoke history, not current authority). Seven further blocks required a code-derived rewrite rather than verbatim transfer because current code has evolved or the old text under-specified current behavior: MVP-40's classification-determinism guarantee was generalized from a single-stage claim to the whole chain; MVP-41's artifact section gained a code-derived note that its token-budget hint is a hardcoded constant, not config-driven; MVP-42's non-mutation scope claim was narrowed to the preflight artifact only, since MVP-43's apply path (which postdates MVP-42) can now mutate the backend payload when explicitly enabled; and MVP-43 required a full code-derived rewrite of its blocked-reason taxonomy (13 distinct reasons across two tiers, replacing the old 4-condition prose list, exactly as the task brief warned was incomplete), its config-flag table (adding the previously-unnamed `relayctx_short_term_runtime_injection_token_budget` key and its `config.memory.chars_per_token` dependency), and its insertion mechanics (exact message role, position, and content structure, none of which the old doc stated). The existing stage-ordering rule in `docs/architecture/pipeline_responsibility_design.md` §9 is cross-linked, not duplicated. No compatibility path, redirect, or runtime behavior change is introduced. Final review corrected the repository-wide order to RelayMEM retrieval -> RelayMEM runtime CTX/snippet injection -> RelayCTX extraction -> assembly -> preflight -> apply -> token-budget truncation, while retaining extraction -> assembly -> preflight -> apply as the internal RelayCTX artifact dependency. The corrected default-off artifact-presence rules, Stage 4 forwarded-payload input, 12 apply-tier reasons, 5 preflight-tier reasons, 13-name distinct union, and reachable payload_mutation_disabled condition are pinned by scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py. All 14 triggered GitHub Actions workflows on correction head 7298526f36c5ddc59db0b6de028679000b88ed36 completed successfully; Codex review was unavailable because the usage limit was reached, and there were zero unresolved review threads.
 
 ## Pending batches
 
