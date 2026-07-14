@@ -2085,9 +2085,11 @@ verification:
   consolidated_smoke_contract: passed
   git_diff_check: passed
   no_canonical_record_selects_unrelated_runtime_group: true
-  all_github_actions: pending_final_remote_head
-  codex_review: pending_final_remote_head
-  unresolved_review_threads: pending_final_remote_head
+  all_github_actions: passed
+  final_remote_head: 1c6f7d4de2449eafaf99dd1fb4f5a14940e2a5b5
+  triggered_check_runs: 24
+  codex_review: no_review_posted
+  unresolved_review_threads: 0
 ```
 
 The four canonical records split into two independent authority groups, as the task brief required: the first three (MVP-45 fast-path dry-run, MVP-46 preflight, MVP-47 apply plan) form one implemented chronological RelayINT plan-only chain confirmed still live in `relaylm/relayint.py`; the fourth (MVP-48) introduces the unrelated, cross-cutting `PipelineNodeResult` shared type and was not forced into the RelayINT contract merely because its example emitters include RelayINT node names. All four advisory pre-cutover blob/SHA-256 values were independently reverified via the GitHub API (not copied) and confirmed correct. All four records have zero content drift from their source commit through today: MVP-45/46/47 each received only a same-batch pure path-rename (`docs/mvp4N_summary.md` -> `docs/mvp/mvp4N_...md`, all on 2026-06-11, verified by comparing the add-commit and delete-commit patches byte-for-byte); MVP-48 was never renamed and has no post-source modification commits at all. MVP-47 is a squash-merged PR (#241): its source commit and origin/merge commit are identical, and its pre-merge branch history (an internal rewrite from a 63-line draft to the final 69-line plan-only version) is not reachable from `main` and is correctly excluded from provenance. MVP-48 has no source pull request — it is a direct-push documentation commit (`69cecf1841e54e95d18868559e03686c5e60484f`) 16 minutes after the related code PR #245 merged; PR #245's diff does not include the doc file, so PR #245 is recorded as a related, non-source PR rather than guessed as the source. Source PR numbers #239, #240, and #241 were newly established from GitHub merge-commit history and cross-verified against `pull_request_read`; none were guessed. Each of the four records had exactly one live referrer before this cutover (the shared `docs/mvp/README.md` "Retained focused historical notes" index), retargeted in this same PR to the new canonical evidence paths with historical-authority disclaimers matching the MVP-40-43 pattern.
