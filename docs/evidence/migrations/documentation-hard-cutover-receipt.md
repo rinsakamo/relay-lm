@@ -1401,7 +1401,7 @@ The three canonical records preserve the bounded Wave 3 implementation evidence 
 ### C1C30-001 — remaining early-MVP historical implementation notes
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 593
 merged_commit: pending
 record_count: 4
 recorded_on: 2026-07-14
