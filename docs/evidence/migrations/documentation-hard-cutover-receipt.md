@@ -1392,8 +1392,8 @@ verification:
   completion_report_model_and_file_checks: passed
   completion_report_pr_link_check: passed
   consolidated_selection_self_test: passed
-  all_github_actions: pending
-  unresolved_review_threads: pending
+  all_github_actions: passed
+  unresolved_review_threads: 0
 ```
 
 The three canonical records preserve the bounded Wave 3 implementation evidence from PRs #411, #412, and #414 while separating it from current handoff-, production-authority-, configuration-, and focused-smoke-owned behavior. All three source, merge, and pre-cutover report forms are byte-identical; no post-source commit ever modified any of the three reports, so no repair was required. Seventeen resolved literal old-path occurrences across six live files move atomically, including retargeting the `docs/mvp/wave3/*` consolidated-selector wildcard to three explicit canonical paths and closing a pre-existing gap so the O1D1 canonical path now correctly selects the scheduler-worker group instead of only the unrelated recall/correction/forget/pin group. Six internal old-path string occurrences remain, and only inside byte-exact frozen snapshots (the two new Wave 3 report snapshots and the pre-existing Wave 3 convergence audit snapshot). No compatibility path, redirect, or runtime behavior change is introduced.
