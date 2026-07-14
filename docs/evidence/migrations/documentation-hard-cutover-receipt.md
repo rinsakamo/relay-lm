@@ -1955,6 +1955,7 @@ records:
       next_phase: current_already_covered_by_different_doc_mvp47_shipped_plan_only_not_user_visible
     absorption_required: true
     absorption_destination: docs/contracts/relayint_quick_clarification_runtime_contract.md
+    stage2_missing_upstream_semantics: returns_none_no_blocked_artifact_synthesized_distinct_from_stage3
     live_referrers_before_cutover: 1
   - record: MVP-47 RelayINT quick clarification apply plan
     recorded_on: 2026-06-11
@@ -1987,13 +1988,41 @@ records:
       deferred_to_phase6: current_already_covered_still_deferred_no_mvp49_or_later_apply_shipped
     absorption_required: true
     absorption_destination: docs/contracts/relayint_quick_clarification_runtime_contract.md
+    stage3_missing_upstream_semantics: artifact_is_still_produced_with_preflight_missing_reason_unlike_stage2
+    stage3_runtime_inputs_beyond_artifact_dependency:
+      - request_compatibility_gate_derived_from_backend_bound_payload
+      - stream_enabled
+      - response_max_chars
+      - apply_dry_run_only_configuration
+    stage3_response_metadata_semantics: candidate_template_metadata_computed_before_block_evaluation_vs_final_artifact_values_always_none_none_0_because_apply_allowed_is_always_false
     code_derived_additions:
       - block: request_compatibility_gate_full_reason_list
-        delta: enumerated_n_token_limit_logprobs_stop_reasons_not_individually_named_in_source
-        validation: scripts/relaylm_relayint_quick_clarification_apply_smoke.py
+        delta: exact_18_name_vocabulary_including_previously_omitted_token_limit_requested
+        exact_reason_set:
+          - response_format_requested
+          - tools_requested
+          - tool_choice_requested
+          - functions_requested
+          - function_call_requested
+          - multiple_choices_requested
+          - unsupported_n_value
+          - logprobs_requested
+          - top_logprobs_requested
+          - stop_sequence_requested
+          - unsupported_token_limit
+          - token_limit_requested
+          - max_completion_tokens_too_small
+          - max_tokens_too_small
+          - unsupported_modalities_value
+          - audio_modality_requested
+          - non_text_modality_requested
+          - audio_options_requested
+        reason_count: 18
+        validation: scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py
       - block: apply_block_reasons_full_taxonomy
-        delta: replaced_prose_summary_with_19_exact_block_reason_strings_from_code
-        validation: scripts/relaylm_relayint_quick_clarification_apply_smoke.py
+        delta: replaced_prose_summary_with_29_exact_block_reason_strings_from_code_union_of_direct_scene_gate_and_compatibility_gate_reasons
+        reason_count: 29
+        validation: scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py
     live_referrers_before_cutover: 1
   - record: MVP-48 pipeline node result scaffold
     recorded_on: 2026-06-12
@@ -2031,6 +2060,24 @@ records:
       native_schema: relayint.intent.v1
       native_node_name: relayint_reference_intent
       legacy_compatibility_node_name: relayint_reference_repair
+    current_pipeline_node_projector_names_independently_recomputed_from_ast:
+      - client_message_canonicalization
+      - client_instruction_extraction
+      - client_instruction_fingerprint
+      - client_instruction_identity
+      - client_instruction_cache
+      - client_instruction_cache_lookup
+      - client_instruction_relayscn_projection
+      - client_history_exclusion_preflight
+      - relayint_reference_repair
+      - relayint_reference_intent
+      - client_history_exclusion_apply
+      - relayint_quick_clarification
+      - relayctx_repack
+      - relayctx_unpack
+      - relaymem_slp_finalized_turn_source
+      - relaymem_slp_runtime_enqueue
+    current_pipeline_node_projector_count: 16
     live_referrers_before_cutover: 1
 verification:
   old_paths_removed_in_pr_tree: true
@@ -2082,19 +2129,38 @@ verification:
   pipeline_node_result_smoke: passed
   pipeline_context_node_results_smoke: passed
   pipeline_node_results_runtime_smoke: passed
+  relayint_quick_clarification_runtime_contract_smoke: passed
+  relayint_quick_clarification_runtime_contract_smoke_path: scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py
+  relayint_quick_clarification_runtime_contract_smoke_method: ast_plus_regex_plus_real_builder_calls_set_compared_not_count_only
+  pipeline_node_result_contract_smoke: passed
+  pipeline_node_result_contract_smoke_path: scripts/relaylm_pipeline_node_result_contract_smoke.py
+  pipeline_node_result_contract_smoke_method: ast_plus_regex_plus_real_builder_calls_set_compared_not_count_only
+  focused_contract_smokes_added: 2
+  workflow_integration: documentation-current-boundary-smoke.yml
+  workflow_integration_note: both_new_scripts_added_to_path_filters_compileall_and_validation_step_alongside_existing_relayctx_contract_smoke
+  consolidated_selector_contract_change_required: false
+  consolidated_selector_contract_verification_method: changed_outputs_simulated_locally_for_both_new_script_paths_selects_zero_runtime_relaymem_ui_groups
   consolidated_smoke_contract: passed
   git_diff_check: passed
   no_canonical_record_selects_unrelated_runtime_group: true
-  all_github_actions: passed
-  final_remote_head: 1c6f7d4de2449eafaf99dd1fb4f5a14940e2a5b5
-  triggered_check_runs: 24
-  codex_review: no_review_posted
+  content_fixes_applied_after_independent_review: true
+  independent_review_findings_fixed:
+    - stale_compatibility_gate_reason_count_13_corrected_to_18_with_exact_set
+    - stale_apply_plan_reason_count_19_corrected_to_29_with_exact_set
+    - stage2_vs_stage3_missing_upstream_behavior_previously_conflated_now_distinguished
+    - stage3_candidate_vs_final_response_metadata_previously_conflated_now_distinguished
+    - two_focused_contract_smokes_added_where_none_existed
+  all_github_actions: pending_validated_content_head
+  validated_content_head: pending
+  codex_review: pending_validated_content_head
   unresolved_review_threads: 0
 ```
 
 The four canonical records split into two independent authority groups, as the task brief required: the first three (MVP-45 fast-path dry-run, MVP-46 preflight, MVP-47 apply plan) form one implemented chronological RelayINT plan-only chain confirmed still live in `relaylm/relayint.py`; the fourth (MVP-48) introduces the unrelated, cross-cutting `PipelineNodeResult` shared type and was not forced into the RelayINT contract merely because its example emitters include RelayINT node names. All four advisory pre-cutover blob/SHA-256 values were independently reverified via the GitHub API (not copied) and confirmed correct. All four records have zero content drift from their source commit through today: MVP-45/46/47 each received only a same-batch pure path-rename (`docs/mvp4N_summary.md` -> `docs/mvp/mvp4N_...md`, all on 2026-06-11, verified by comparing the add-commit and delete-commit patches byte-for-byte); MVP-48 was never renamed and has no post-source modification commits at all. MVP-47 is a squash-merged PR (#241): its source commit and origin/merge commit are identical, and its pre-merge branch history (an internal rewrite from a 63-line draft to the final 69-line plan-only version) is not reachable from `main` and is correctly excluded from provenance. MVP-48 has no source pull request — it is a direct-push documentation commit (`69cecf1841e54e95d18868559e03686c5e60484f`) 16 minutes after the related code PR #245 merged; PR #245's diff does not include the doc file, so PR #245 is recorded as a related, non-source PR rather than guessed as the source. Source PR numbers #239, #240, and #241 were newly established from GitHub merge-commit history and cross-verified against `pull_request_read`; none were guessed. Each of the four records had exactly one live referrer before this cutover (the shared `docs/mvp/README.md` "Retained focused historical notes" index), retargeted in this same PR to the new canonical evidence paths with historical-authority disclaimers matching the MVP-40-43 pattern.
 
-Because the audit found the RelayINT quick-clarification chain's exact candidate-action/clarification-type/blocked-reason taxonomies, request-compatibility-gate reasons, and scene-gate reasons nowhere fully enumerated outside `relaylm/relayint.py` itself (`docs/architecture/relayint_mvp_design.md` covers the chain only at a narrative/example level, and `docs/config_schema.md` covers only flag defaults), a new canonical contract was created at `docs/contracts/relayint_quick_clarification_runtime_contract.md`. It required two code-derived additions rather than verbatim transfer, since MVP-47's source prose only summarized the request-compatibility gate and the apply-tier block-reason list rather than enumerating them: the full 13-name request-compatibility-gate reason set and the full 19-name apply-plan `block_reasons` taxonomy (including the always-appended `phase4_plan_only` reason that forces `apply_allowed` false today) were both written from direct code inspection of `build_relayint_request_compatibility_gate()` and `build_relayint_quick_clarification_apply_plan()`. Separately, because MVP-48's `PipelineNodeResult` scaffold had no exact current contract outside itself (`docs/architecture/pipeline_responsibility_design.md` and `docs/architecture/audit_trace_content_free_contract.md` only reference the type in passing), a second new canonical contract was created at `docs/contracts/pipeline_node_result_contract.md`, owning the exact frozen-dataclass shape, shallow-detachment semantics of `to_log_dict()`, request-local best-effort collection, and the current 16-node `PIPELINE_NODE_PROJECTORS` emitter list — a strict superset of MVP-48's stale three-node list, now spanning client-instruction, RelayINT, RelayCTX, and RelayMEM-SLP nodes. MVP-48's "historical RelayINT / RelayREF compatibility boundary" section (`runtime compatibility key: relayref_artifact`; `historical source node: relayref`) was independently confirmed superseded by PM-D6 (`docs/architecture/pm_d6_relayint_native_artifact_relayref_wrapper_removal.md`, `relaylm_status: current`, `complete` per `docs/PROJECT_STATUS.md`): RelayINT's live artifact key is `relayint_intent_artifact` (schema `relayint.intent.v1`), and `relaylm/pipeline_node_adapter.py` now synthesizes a native `relayint_reference_intent` node alongside the legacy-shaped `relayint_reference_repair` node, which is retained only as a trace-shape compatibility identifier with no real RelayREF data dependency. This superseded section is recorded as history in the MVP-48 evidence wrapper and is explicitly excluded from both new contracts. No compatibility path, redirect, or runtime behavior change is introduced.
+Because the audit found the RelayINT quick-clarification chain's exact candidate-action/clarification-type/blocked-reason taxonomies, request-compatibility-gate reasons, and scene-gate reasons nowhere fully enumerated outside `relaylm/relayint.py` itself (`docs/architecture/relayint_mvp_design.md` covers the chain only at a narrative/example level, and `docs/config_schema.md` covers only flag defaults), a new canonical contract was created at `docs/contracts/relayint_quick_clarification_runtime_contract.md`. It required two code-derived additions rather than verbatim transfer, since MVP-47's source prose only summarized the request-compatibility gate and the apply-tier block-reason list rather than enumerating them: the full 18-name request-compatibility-gate reason set and the full 29-name complete apply-plan `apply_block_reasons` vocabulary (the union of 11 apply-plan-direct-and-scene-gate reasons, including the always-appended `phase4_plan_only` reason that forces `apply_allowed` false today, plus the 18 compatibility-gate reasons) were both written from direct code inspection of `build_relayint_request_compatibility_gate()` and `build_relayint_quick_clarification_apply_plan()`, and are pinned by `scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py`, which set-compares each vocabulary rather than trusting a bare count. Separately, because MVP-48's `PipelineNodeResult` scaffold had no exact current contract outside itself (`docs/architecture/pipeline_responsibility_design.md` and `docs/architecture/audit_trace_content_free_contract.md` only reference the type in passing), a second new canonical contract was created at `docs/contracts/pipeline_node_result_contract.md`, owning the exact frozen-dataclass shape, shallow-detachment semantics of `to_log_dict()`, request-local best-effort collection, and the current 16-node `PIPELINE_NODE_PROJECTORS` emitter list — a strict superset of MVP-48's stale three-node list, now spanning client-instruction, RelayINT, RelayCTX, and RelayMEM-SLP nodes. MVP-48's "historical RelayINT / RelayREF compatibility boundary" section (`runtime compatibility key: relayref_artifact`; `historical source node: relayref`) was independently confirmed superseded by PM-D6 (`docs/architecture/pm_d6_relayint_native_artifact_relayref_wrapper_removal.md`, `relaylm_status: current`, `complete` per `docs/PROJECT_STATUS.md`): RelayINT's live artifact key is `relayint_intent_artifact` (schema `relayint.intent.v1`), and `relaylm/pipeline_node_adapter.py` now synthesizes a native `relayint_reference_intent` node alongside the legacy-shaped `relayint_reference_repair` node, which is retained only as a trace-shape compatibility identifier with no real RelayREF data dependency. This superseded section is recorded as history in the MVP-48 evidence wrapper and is explicitly excluded from both new contracts. No compatibility path, redirect, or runtime behavior change is introduced.
+
+An independent review of the initial green head found that neither new contract was directly pinned against the implementation, and identified five inaccuracies corrected in this same entry: the compatibility-gate vocabulary was undercounted as 13 names instead of the actual 18 (missing the easily-overlooked `token_limit_requested` reason, and treating several genuinely-distinct reason pairs as single entries); the complete apply-plan vocabulary was undercounted as 19 instead of the actual 29; the contract's "Enablement and artifact presence" section described Stage 2 and Stage 3 as sharing the same missing-upstream-input behavior, when Stage 2 (`build_relayint_quick_clarification_preflight()`) actually returns bare `None` on a missing Stage 1 artifact while Stage 3 (`build_relayint_quick_clarification_apply_plan()`) still produces an artifact carrying `preflight_missing` when enabled without a Stage 2 artifact; and the contract's response-template-metadata wording could be read as implying the returned apply-plan artifact carries the 25/19-character candidate template metadata directly, when in current code that metadata is only an internal pre-block-evaluation candidate and the artifact's actual returned `generated_response_kind`/`response_template_id`/`response_chars` are always `"none"`/`"none"`/`0`, because `apply_allowed` is unconditionally forced `False` by the always-appended `phase4_plan_only` reason. All four corrections were fixed directly in `docs/contracts/relayint_quick_clarification_runtime_contract.md`. Two focused contract-smoke scripts were added — `scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py` and `scripts/relaylm_pipeline_node_result_contract_smoke.py` — using AST inspection, source-regex extraction, and actual builder calls to set-compare (not merely count-compare) every enumerated vocabulary and structural claim in both new contracts, and were wired into `.github/workflows/documentation-current-boundary-smoke.yml` alongside the existing RelayCTX contract smoke. The `PIPELINE_NODE_PROJECTORS` node-name set was independently recomputed from `relaylm/audit_projection.py` via AST rather than trusted from the contract's own prose, and remained exactly the 16 names already recorded. The consolidated-selector contract (`scripts/relaylm_ci_consolidated_smoke.py`) was verified, not modified: neither new script path matches any existing `GROUPS` glob in the `runtime`, `relaymem`, or `ui` workflows, so both new contract-smoke additions correctly select zero unrelated runtime/relaymem/ui groups, matching the existing RelayCTX contract-smoke precedent, and no compatibility selector was added for the retired paths.
 
 ## Pending batches
 
