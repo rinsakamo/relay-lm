@@ -1311,7 +1311,7 @@ The five canonical records preserve the bounded Wave 4 implementation evidence f
 ### C1C29-001 — Wave 3 implementation completion reports
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 592
 merged_commit: pending
 record_count: 3
 recorded_on: 2026-07-13
