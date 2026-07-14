@@ -1511,7 +1511,7 @@ The four canonical records preserve the remaining low-risk early-MVP historical 
 
 ```yaml
 cutover_pr: 594
-merged_commit: pending
+merged_commit: 37140d4beda98562659686faa1b3464296e2d3fa
 record_count: 4
 cutover_recorded_on: 2026-07-14
 disposition: split
@@ -1677,6 +1677,213 @@ verification:
 ```
 
 The four canonical records preserve the MVP-2 compile/apply compatibility chain (context block primitives/order, compile-apply gate, runtime memory-light payload apply, and incoming system/developer compatibility handling). Three records (context compiler contract, gated compile decision, runtime memory-light apply) are pure `evidence_retained`: every still-valid rule in each source is already owned, more completely, by current contract/architecture documents and unchanged code, and each had zero live referrers anywhere in the tree before this cutover. The context-compiler-contract record's concrete stable-prefix block list names the now-retired `room_anchor` placeholder (superseded by `relationship_anchor`); this is preserved only as history and explicitly not reintroduced as current. The fourth record (incoming system prompt fallback) required a `split` disposition, matching the pending-split note already recorded in the frozen C1C3-001 entry: its source commit (PR #17, 50 lines) and its pre-cutover blob (post PR #246, 125 lines) are different revisions and are not paired as the same version; three still-valid, currently-implemented rules (text-part-array normalization with whitespace preservation and non-text-part suppression, the compiled render order, and the concrete XML-escaping mechanism with its spoof-probe example) had no current-authority owner anywhere in the documentation tree and were absorbed verbatim into a new `### Current system/developer compatibility helper` subsection of the Context Compiler Contract in this same PR, with source and destination normalized SHA-256 digests recorded and confirmed to match exactly. Three other source rules (raw-instruction non-authority, RelaySCN scene-role interpretation, RelaySOUL non-mutation) were already covered, more rigorously, by the Client Instruction Authority Contract and were not duplicated. All four advisory pre-cutover blob/SHA-256 values from Preparation C were independently reverified and confirmed correct; none had a previously-recorded source PR, and this receipt establishes source PR #13, #20, #22, and #17 (plus the #246 post-source modification for the fourth) from merge-commit bodies, none guessed. None of the four records had any live referrer anywhere in the tree before this cutover (unlike several 1C-30 records), so no link retargeting was required; two new index entries per record were added instead, to `docs/evidence/implementation/README.md` and `docs/mvp/README.md`. Four internal old-path string occurrences remain, and only as migration identifiers inside the four canonical wrapper bodies (`old path: docs/mvp/...`); one additional historical old-path string occurrence remains unchanged inside the prior, already-frozen C1C3-001 entry. None appear inside the four byte-exact `-source.txt` snapshots. No compatibility path, redirect, or runtime behavior change is introduced. All 24 triggered GitHub Actions check runs on the final remote head (`6d0cb65819a1f6514c4095a946ea6b601ea85665`) completed as `success` or a correctly-skipped consolidated-smoke group; none of the new canonical evidence paths matched an unrelated RelayMEM/runtime/UI consolidated group. The automated Codex reviewer reported its usage limit was reached and did not produce a review; there are zero unresolved review threads.
+
+### C1C32-001 — RelayCTX short-term runtime chain
+
+```yaml
+cutover_pr: 595
+merged_commit: pending
+record_count: 4
+cutover_recorded_on: 2026-07-14
+disposition: split
+records:
+  - record: MVP-40 RelayCTX short-term extraction dry-run
+    recorded_on: 2026-06-06
+    source_pr: 234
+    source_origin_commit: a3335b6681ef8b14f108469942882f1cbb50f734
+    source_commit: d794ad3859b5c48447f5073bc21913a33aaa6dac
+    old_path: docs/mvp/mvp40_relayctx_short_term_extraction_dry_run.md
+    source_blob_sha: 1ffcaa98d5c527c8f12f0ec8d56a4224c12c9564
+    source_content_sha256: 19084122d521604d0092ead59f79ac4b1a95a174e0e4efe18e8132545a8de804
+    post_source_modification_commits: []
+    pre_cutover_blob_sha: 1ffcaa98d5c527c8f12f0ec8d56a4224c12c9564
+    pre_cutover_content_sha256: 19084122d521604d0092ead59f79ac4b1a95a174e0e4efe18e8132545a8de804
+    new_canonical_path: docs/evidence/implementation/mvp40_relayctx_short_term_extraction_dry_run.md
+    exact_source_snapshot: docs/evidence/implementation/mvp40_relayctx_short_term_extraction_dry_run-source.txt
+    exact_source_blob_sha: 1ffcaa98d5c527c8f12f0ec8d56a4224c12c9564
+    advisory_verification: advisory_blob_sha256_confirmed_correct
+    block_disposition:
+      title_and_intro: historical_evidence
+      safety_boundary_bullets: current_already_covered_by_context_packing_design_content_free_surfaces
+      artifact_schema_fields: historical_evidence_plus_current_absorb_required_config_flag_already_covered
+      classification_determinism_statement: current_absorb_required_code_derived_generalized_across_chain
+    absorption_required: true
+    absorption_destination: docs/contracts/relayctx_short_term_runtime_contract.md
+    live_referrers_before_cutover: 1
+  - record: MVP-41 RelayCTX short-term block assembly dry-run
+    recorded_on: 2026-06-06
+    source_pr: 235
+    source_origin_commit: 40f98c532a535962068fdd28cc9d01fd065d5ff6
+    source_commit: 2debea2f3fd50af6015807efa8e490898d9b558f
+    old_path: docs/mvp/mvp41_relayctx_short_term_block_assembly_dry_run.md
+    source_blob_sha: 8d83bc2bfd424dda09a7b85ec381b597343e0c4d
+    source_content_sha256: 7c1ece92f8e5e39b569fb6b3147e6f1600e3ef294adf395cefc2d67947ebc03d
+    post_source_modification_commits: []
+    pre_cutover_blob_sha: 8d83bc2bfd424dda09a7b85ec381b597343e0c4d
+    pre_cutover_content_sha256: 7c1ece92f8e5e39b569fb6b3147e6f1600e3ef294adf395cefc2d67947ebc03d
+    new_canonical_path: docs/evidence/implementation/mvp41_relayctx_short_term_block_assembly_dry_run.md
+    exact_source_snapshot: docs/evidence/implementation/mvp41_relayctx_short_term_block_assembly_dry_run-source.txt
+    exact_source_blob_sha: 8d83bc2bfd424dda09a7b85ec381b597343e0c4d
+    advisory_verification: advisory_blob_sha256_confirmed_correct
+    block_disposition:
+      scope_bullets: current_absorb_required_verbatim
+      artifact_fields: current_absorb_required_code_derived_token_budget_hint_constant_nuance
+      priority_order_list: current_absorb_required_verbatim_not_superseded_still_consumed_by_mvp42
+      forward_looking_closing_line: procedure_or_smoke_history
+    absorption_required: true
+    absorption_destination: docs/contracts/relayctx_short_term_runtime_contract.md
+    absorbed_blocks:
+      - block: scope_bullets
+        source_digest_sha256: 7f1f62c60e0ac580bee9393de1db31e83197769d772577a843baa1762ca43c9f
+        destination_digest_sha256: 7f1f62c60e0ac580bee9393de1db31e83197769d772577a843baa1762ca43c9f
+        digest_match: true
+      - block: priority_order_list
+        source_digest_sha256: cfdd12f4f5e276c06172ce91231a6cc8c821d4b79cab020e1ba492735904278d
+        destination_digest_sha256: cfdd12f4f5e276c06172ce91231a6cc8c821d4b79cab020e1ba492735904278d
+        digest_match: true
+    live_referrers_before_cutover: 1
+  - record: MVP-42 RelayCTX short-term runtime injection preflight
+    recorded_on: 2026-06-06
+    source_pr: 236
+    source_origin_commit: 8de6227ed743a13817831bf141220ff9b30b26c4
+    source_commit: 52893c76bc311d9586d31095ab5c8c98a6e145e4
+    old_path: docs/mvp/mvp42_relayctx_short_term_runtime_injection_preflight.md
+    source_blob_sha: 9594f8b182b4691b0bcf048abd68b68cfaec5e74
+    source_content_sha256: b9d7267bcf76634175b003652aa55d82dff8c37dc3f5a2d78c5d8c31fe1f2c38
+    post_source_modification_commits: []
+    pre_cutover_blob_sha: 9594f8b182b4691b0bcf048abd68b68cfaec5e74
+    pre_cutover_content_sha256: b9d7267bcf76634175b003652aa55d82dff8c37dc3f5a2d78c5d8c31fe1f2c38
+    new_canonical_path: docs/evidence/implementation/mvp42_relayctx_short_term_runtime_injection_preflight.md
+    exact_source_snapshot: docs/evidence/implementation/mvp42_relayctx_short_term_runtime_injection_preflight-source.txt
+    exact_source_blob_sha: 9594f8b182b4691b0bcf048abd68b68cfaec5e74
+    advisory_verification: advisory_blob_sha256_confirmed_correct
+    block_disposition:
+      title_and_intro: historical_evidence
+      scope_bullets: current_absorb_required_code_derived_scoped_to_preflight_artifact_only_since_mvp43_apply_now_exists
+      artifact_section: current_absorb_required_verbatim
+      forward_path_paragraph: procedure_or_smoke_history_prediction_since_fulfilled
+    absorption_required: true
+    absorption_destination: docs/contracts/relayctx_short_term_runtime_contract.md
+    absorbed_blocks:
+      - block: artifact_section
+        source_digest_sha256: 35df4563d5c09f4655c479e21a8807634fae27b98c780dbe3f61ff1e59b8232a
+        destination_digest_sha256: 35df4563d5c09f4655c479e21a8807634fae27b98c780dbe3f61ff1e59b8232a
+        digest_match: true
+    live_referrers_before_cutover: 1
+  - record: MVP-43 RelayCTX short-term runtime injection apply gate
+    recorded_on: 2026-06-06
+    source_pr: 237
+    source_origin_commit: 8eabaf1c46fbc46b1628e957fe949a40f8f80f9f
+    source_commit: d76e8e623dddd8b437ee76597014c354bbce17d6
+    old_path: docs/mvp/mvp43_relayctx_short_term_runtime_injection_apply_gate.md
+    source_blob_sha: dfce2f4a7cde838749791e8ac91cc213a2a0eb55
+    source_content_sha256: 7227d7438c8fa49b13fa0c3854676800636fd95169248c747752a27bfed30850
+    post_source_modification_commits:
+      - commit: e39f846fa8e015b4f2810f96b4b59283153a2aa2
+        recorded_on: 2026-06-11
+        change: reworded_non_goals_clause_delete_compress_reconstruct_openwebui_messages_to_alter_openwebui_message_history_and_moved_to_current_path
+      - commit: 90025c9645c06ee5aa87955cab9a899064b8b2af
+        recorded_on: 2026-06-11
+        change: removed_legacy_old_path
+    pre_cutover_blob_sha: 628e58946a34e277fa3a07bed7219dd2ce57b70f
+    pre_cutover_content_sha256: acc1f209e667acd3e6526c8ce1464b2d4101371e75e73e1a571f2f470da00c39
+    new_canonical_path: docs/evidence/implementation/mvp43_relayctx_short_term_runtime_injection_apply_gate.md
+    exact_source_snapshot: docs/evidence/implementation/mvp43_relayctx_short_term_runtime_injection_apply_gate-source.txt
+    exact_source_snapshot_matches: pre_cutover_blob_not_source_commit_blob
+    exact_source_blob_sha: 628e58946a34e277fa3a07bed7219dd2ce57b70f
+    advisory_verification: advisory_blob_sha256_confirmed_correct_for_pre_cutover_state_only
+    source_commit_and_pre_cutover_blob_are_different_versions_not_paired_as_same: true
+    block_disposition:
+      title_and_intro: current_already_covered_vague_framing_only
+      safety_gate_flag_names_and_defaults: current_already_covered_by_config_py_plus_absorbed_with_third_field
+      gate_condition_paragraph_4_conditions: current_absorb_required_code_derived_rewrite_12_apply_tier_5_preflight_tier_13_distinct_union_confirmed_incomplete_as_warned
+      inserted_content_claims: current_already_covered_plus_current_absorb_required_structural_detail_addition
+      non_goals_section: current_absorb_required_verbatim_core_clause
+      mvp44_forward_looking_line: procedure_or_smoke_history
+      ctx_repack_ordering_bug_history: not_in_source_cross_linked_to_project_status_and_pipeline_responsibility_design_not_duplicated
+    absorption_required: true
+    absorption_destination: docs/contracts/relayctx_short_term_runtime_contract.md
+    absorbed_blocks:
+      - block: non_goals_core_clause
+        note: forward_looking_mvp44_roadmap_sentence_intentionally_excluded_as_procedure_or_smoke_history
+        source_digest_sha256: 16e5c9c18adaad3f2c750add44d5141147e98ee77448b338deac42c26011f508
+        destination_digest_sha256: 16e5c9c18adaad3f2c750add44d5141147e98ee77448b338deac42c26011f508
+        digest_match: true
+    code_derived_additions:
+      - block: full_blocked_reason_taxonomy
+        delta: replaced_4_condition_prose_with_12_apply_tier_and_5_preflight_tier_reason_strings_13_distinct_union_no_verbatim_source_exists
+        validation: scripts/relaylm_relayctx_short_term_runtime_injection_apply_smoke.py, scripts/relaylm_ctx_repack_final_gate_smoke.py
+      - block: config_flags_table
+        delta: added_relayctx_short_term_runtime_injection_token_budget_and_config_memory_chars_per_token_dependency_not_named_in_old_doc
+        validation: relaylm/config.py, relaylm/relayctx_repack.py
+      - block: insertion_mechanics
+        delta: added_exact_message_role_position_and_content_structure_never_stated_in_old_doc
+        validation: scripts/relaylm_relayctx_short_term_runtime_injection_apply_smoke.py
+    live_referrers_before_cutover: 1
+verification:
+  old_paths_removed_in_pr_tree: true
+  exact_pre_cutover_blobs_reused: true
+  canonical_evidence_wrappers_added: 4
+  source_head_merge_and_pre_cutover_equal_records: 3
+  source_to_pre_cutover_diff_records: 1
+  apply_gate_delta_is_e39f846_non_goals_clause_reword_plus_path_move: true
+  post_source_modification_commits_total: 2
+  advisory_records_independently_reverified: 4
+  advisory_records_confirmed_correct: 4
+  advisory_records_corrected: 0
+  source_pr_newly_established_not_previously_recorded: 4
+  live_dependency_referrer_files_at_frozen_baseline: 1
+  live_dependency_link_occurrences_at_frozen_baseline: 4
+  live_dependency_referrer_files_updated: 1
+  live_dependency_link_occurrences_retargeted: 4
+  implementation_evidence_index_files_updated: 1
+  new_evidence_index_entries_added: 4
+  mvp_index_entries_updated: 4
+  contracts_index_files_updated: 1
+  new_contract_files_added: 1
+  shared_index_files_updated: 3
+  implementation_evidence_index_updated: true
+  mvp_evidence_index_updated: true
+  contracts_index_updated: true
+  new_canonical_contract_created: true
+  new_canonical_contract_path: docs/contracts/relayctx_short_term_runtime_contract.md
+  absorbed_verbatim_blocks: 4
+  absorbed_verbatim_blocks_exact_digest_match: 4
+  code_derived_absorbed_blocks: 7
+  absorption_destination_file: docs/contracts/relayctx_short_term_runtime_contract.md
+  absorption_destination_is_new_current_authority_file: true
+  historical_old_path_string_occurrences_preserved_in_exact_snapshots: 0
+  historical_old_path_string_occurrences_preserved_as_migration_identifiers_in_wrappers: 4
+  compileall: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  documentation_current_boundary_smoke: passed
+  relayctx_short_term_runtime_contract_smoke: passed
+  repository_wide_stage_order_verified: relaymem_retrieval_to_relaymem_runtime_injection_to_relayctx_extraction_to_assembly_to_preflight_to_apply_to_token_budget_truncation
+  internal_relayctx_artifact_dependency_verified: extraction_to_assembly_to_preflight_to_apply
+  disabled_builder_none_semantics_verified: true
+  stage4_forwarded_payload_input_verified: true
+  apply_tier_blocked_reason_count: 12
+  preflight_tier_blocked_reason_count: 5
+  blocked_reason_distinct_union_count: 13
+  payload_mutation_disabled_reachable_apply_condition: apply_enabled_true_and_dry_run_only_true_with_blocked_reason
+  consolidated_smoke_contract: passed
+  relayctx_short_term_extraction_dry_run_smoke: pre_existing_local_fixture_failure_verified_against_base
+  relayctx_short_term_block_assembly_dry_run_smoke: pre_existing_local_fixture_failure_verified_against_base
+  relayctx_short_term_runtime_injection_preflight_smoke: pre_existing_local_fixture_failure_verified_against_base
+  relayctx_short_term_runtime_injection_apply_smoke: pre_existing_local_fixture_failure_verified_against_base
+  ctx_repack_final_gate_smoke: passed
+  openwebui_lmstudio_config_smoke: passed
+  git_diff_check: passed
+  no_canonical_record_selects_unrelated_runtime_group: true
+  all_github_actions: passed
+  codex_review: unavailable_usage_limit_reached
+  unresolved_review_threads: 0
+```
+
+The four canonical records preserve the RelayCTX short-term runtime chain (extraction dry-run, block assembly dry-run, runtime injection preflight, and gated apply), an implemented chronological chain confirmed still live in `relaylm/diagnostics.py`, `relaylm/relayctx_repack.py`, and `relaylm/managed_chat_runtime.py`. All four advisory pre-cutover blob/SHA-256 values were independently reverified and confirmed correct; the first three records had zero content drift since their source PRs (#234, #235, #236, all merged 2026-06-06), with only a pure path-rename intervening. The fourth record (apply gate, PR #237) is the one true `split`-shaped record in this batch: its source-PR blob and its pre-cutover blob are different versions and are not paired as the same version — a same-day-plus-five-days commit (`e39f846fa8e015b4f2810f96b4b59283153a2aa2`) reworded one non-goals clause before a companion commit removed the legacy path, and this receipt records both the source and the pre-cutover content separately, matching the corrected provenance pattern established in Cutovers 1C-30 and 1C-31. All four records had exactly one live referrer before this cutover (the shared `docs/mvp/README.md` "Retained focused historical notes" index), retargeted in this same PR to the new canonical evidence paths.
+
+Because the audit found the current four-stage contract fragmented across `docs/config_schema.md` (flag defaults only), `docs/architecture/pipeline_responsibility_design.md` (stage ordering only), and `docs/contracts/context_compiler_contract.md` (conceptual "RelayCTX working state" only, with a stale, unreconciled target `ContextBlock` field-name example), a new canonical contract was created at `docs/contracts/relayctx_short_term_runtime_contract.md`. Four blocks were transferred byte-verbatim into it with matching normalized source/destination SHA-256 digests (MVP-41's scope bullets and priority-order list, MVP-42's artifact-section paragraph, and MVP-43's non-goals core clause with its forward-looking MVP-44 roadmap sentence intentionally excluded as procedure/smoke history, not current authority). Seven further blocks required a code-derived rewrite rather than verbatim transfer because current code has evolved or the old text under-specified current behavior: MVP-40's classification-determinism guarantee was generalized from a single-stage claim to the whole chain; MVP-41's artifact section gained a code-derived note that its token-budget hint is a hardcoded constant, not config-driven; MVP-42's non-mutation scope claim was narrowed to the preflight artifact only, since MVP-43's apply path (which postdates MVP-42) can now mutate the backend payload when explicitly enabled; and MVP-43 required a full code-derived rewrite of its blocked-reason taxonomy (13 distinct reasons across two tiers, replacing the old 4-condition prose list, exactly as the task brief warned was incomplete), its config-flag table (adding the previously-unnamed `relayctx_short_term_runtime_injection_token_budget` key and its `config.memory.chars_per_token` dependency), and its insertion mechanics (exact message role, position, and content structure, none of which the old doc stated). The existing stage-ordering rule in `docs/architecture/pipeline_responsibility_design.md` §9 is cross-linked, not duplicated. No compatibility path, redirect, or runtime behavior change is introduced. Final review corrected the repository-wide order to RelayMEM retrieval -> RelayMEM runtime CTX/snippet injection -> RelayCTX extraction -> assembly -> preflight -> apply -> token-budget truncation, while retaining extraction -> assembly -> preflight -> apply as the internal RelayCTX artifact dependency. The corrected default-off artifact-presence rules, Stage 4 forwarded-payload input, 12 apply-tier reasons, 5 preflight-tier reasons, 13-name distinct union, and reachable payload_mutation_disabled condition are pinned by scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py. All 14 triggered GitHub Actions workflows on correction head 7298526f36c5ddc59db0b6de028679000b88ed36 completed successfully; Codex review was unavailable because the usage limit was reached, and there were zero unresolved review threads.
 
 ## Pending batches
 

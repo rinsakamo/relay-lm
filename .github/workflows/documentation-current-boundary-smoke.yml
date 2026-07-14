@@ -11,6 +11,7 @@ on:
       - "docs/**"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
       - "scripts/relaylm_docs_semantic_audit.py"
+      - "scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py"
       - ".github/workflows/documentation-current-boundary-smoke.yml"
   push:
     branches:
@@ -23,6 +24,7 @@ on:
       - "docs/**"
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
       - "scripts/relaylm_docs_semantic_audit.py"
+      - "scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py"
       - ".github/workflows/documentation-current-boundary-smoke.yml"
 
 permissions:
@@ -43,7 +45,8 @@ jobs:
         run: |
           python -m compileall -q \
             scripts/relaylm_documentation_current_boundary_smoke.py \
-            scripts/relaylm_docs_semantic_audit.py
+            scripts/relaylm_docs_semantic_audit.py \
+            scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py
       - name: Validate documentation semantics and current boundaries
         run: |
           set +e
@@ -51,7 +54,9 @@ jobs:
           semantic_status=${PIPESTATUS[0]}
           python scripts/relaylm_documentation_current_boundary_smoke.py 2>&1 | tee -a documentation-current-boundary.log
           boundary_status=${PIPESTATUS[0]}
-          if [ "$semantic_status" -ne 0 ] || [ "$boundary_status" -ne 0 ]; then
+          python scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
+          relayctx_contract_status=${PIPESTATUS[0]}
+          if [ "$semantic_status" -ne 0 ] || [ "$boundary_status" -ne 0 ] || [ "$relayctx_contract_status" -ne 0 ]; then
             exit 1
           fi
       - name: Upload documentation boundary diagnostics
