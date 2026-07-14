@@ -4,6 +4,8 @@ Status: implementation slice complete when its workflow is green.
 
 I-4D owns ordinary Primary MEM lifecycle filtering after existing M2 relevance selection and before RelayCTX/backend-bound injection. M2 continues to own relevance, ordering, candidate caps, and budgets.
 
+Frozen implementation evidence for source PR #414 is the [I-4D completion report](../evidence/implementation/i4d_completion_report.md); this handoff remains current behavior authority.
+
 ## Authority
 
 The implementation reuses the I-4B/I-4C2 read-only current-state scanner. It does not duplicate correction, prepared, hidden-page, finalization, or control schemas.

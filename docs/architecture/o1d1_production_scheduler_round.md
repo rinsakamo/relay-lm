@@ -14,10 +14,13 @@ relaylm_related_authority:
   - docs/architecture/o1f_operational_validation.md
   - docs/architecture/o0_local_one_job_runner.md
   - docs/evidence/waves/wave2_cross_slice_convergence_audit.md
+  - docs/evidence/implementation/o1d1_completion_report.md
 ---
 # O1D1 Accepted Scheduler Gates and One Production Round
 
 ## Status
+
+Frozen implementation evidence for source PR #412 is the [O1D1 completion report](../evidence/implementation/o1d1_completion_report.md); this handoff remains current behavior authority.
 
 O1D1 implements one accepted, server-configured, single-threaded production scheduler round. Later O1D2 policy, O1E stale-recovery/cancellation/shutdown controls, and O1F operational validation are complete at their bounded caller-invoked boundaries. O2 supervised local service operation and O3 local process wrapping are complete in dedicated opt-in handoffs above O1E. O1D1 itself still does not implement a scheduler loop, polling, sleep, daemonization, service supervision, worker pools, or always-on operation.
 

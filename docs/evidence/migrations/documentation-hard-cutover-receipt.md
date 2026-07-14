@@ -1196,7 +1196,7 @@ The canonical record preserves the complete validation-only I-4F Forget product-
 
 ```yaml
 cutover_pr: 591
-merged_commit: pending
+merged_commit: 4e37234d8d8c6b0f9bf28c5c31648d2955973ad4
 record_count: 5
 recorded_on: 2026-06-27
 disposition: evidence_retained
@@ -1307,6 +1307,96 @@ verification:
 
 The five canonical records preserve the bounded Wave 4 implementation evidence from PRs #417, #418, #420, #421, and #423 while separating it from current handoff-, production-implementation-, contract-, focused-smoke-, later-continuation-, and SOUL Lab-owned behavior. O1D2 has one understood post-source documentation repair: commit `4dc151989f0a918f51e2036c1ee55c8f438f811c` replaced the former Wave 3 audit authority path with its canonical evidence path. The other four source, merge, and pre-cutover report forms are byte-identical. Fifteen resolved Markdown links, one external repository-root literal, and five filename validation selectors move atomically; four internal old-path strings remain only in byte-exact snapshots. No compatibility path or runtime behavior change is introduced.
 
+
+### C1C29-001 — Wave 3 implementation completion reports
+
+```yaml
+cutover_pr: 592
+merged_commit: pending
+record_count: 3
+recorded_on: 2026-06-27
+disposition: evidence_retained
+records:
+  - source_pr: 411
+    source_commit: 6cb461cb614d14965f5a49c1c4b517755f44f4a6
+    source_origin_commit: e2caa1bdb53468ca282e8f374ba8ceebf839c976
+    old_path: docs/mvp/wave3/i1ge_completion_report.md
+    source_blob_sha: f03425235eea7a1a82bf881d796a4ce4e44205e8
+    source_content_sha256: 088822c7c3c73503eee28572b3d084b34f6005e18a7aa1402c8d5173381e396c
+    pre_cutover_blob_sha: f03425235eea7a1a82bf881d796a4ce4e44205e8
+    pre_cutover_content_sha256: 088822c7c3c73503eee28572b3d084b34f6005e18a7aa1402c8d5173381e396c
+    post_source_modification_commits: []
+    new_canonical_path: docs/evidence/implementation/i1ge_completion_report.md
+    exact_source_snapshot: docs/evidence/implementation/i1ge_completion_report-source.txt
+    exact_source_blob_sha: f03425235eea7a1a82bf881d796a4ce4e44205e8
+  - source_pr: 414
+    source_commit: 81c58516a4ba04c6e439ff17d633575bb193f843
+    source_origin_commit: 48e890f05f76196b73267559b079f4a05c441077
+    old_path: docs/mvp/wave3/i4d_completion_report.md
+    source_blob_sha: eecdd09ad3e6f2cc344b955f1962d034d7f321bb
+    source_content_sha256: 6fc50a3b977636be47e270f21df4764127b695a280ef41996441a1589ce7eedc
+    pre_cutover_blob_sha: eecdd09ad3e6f2cc344b955f1962d034d7f321bb
+    pre_cutover_content_sha256: 6fc50a3b977636be47e270f21df4764127b695a280ef41996441a1589ce7eedc
+    post_source_modification_commits: []
+    new_canonical_path: docs/evidence/implementation/i4d_completion_report.md
+    exact_source_snapshot: docs/evidence/implementation/i4d_completion_report-source.txt
+    exact_source_blob_sha: eecdd09ad3e6f2cc344b955f1962d034d7f321bb
+  - source_pr: 412
+    source_commit: 7aa051abe6a9e49a2f67c193b7e742f9406ec54f
+    source_origin_commit: 9b6349236f1a01f3cdccbe9e3c2c874ae1137475
+    old_path: docs/mvp/wave3/o1d1_completion_report.md
+    source_blob_sha: 5de4588bfa8c5c944d3506eb5f0784431b256b2d
+    source_content_sha256: cf2be3319bf3daf8b7458ab8ea8642f39cb4489f293f9cb4de6d8e2155621eba
+    pre_cutover_blob_sha: 5de4588bfa8c5c944d3506eb5f0784431b256b2d
+    pre_cutover_content_sha256: cf2be3319bf3daf8b7458ab8ea8642f39cb4489f293f9cb4de6d8e2155621eba
+    post_source_modification_commits: []
+    new_canonical_path: docs/evidence/implementation/o1d1_completion_report.md
+    exact_source_snapshot: docs/evidence/implementation/o1d1_completion_report-source.txt
+    exact_source_blob_sha: 5de4588bfa8c5c944d3506eb5f0784431b256b2d
+verification:
+  old_paths_removed_in_pr_tree: true
+  exact_pre_cutover_blobs_reused: true
+  canonical_evidence_wrappers_added: 3
+  source_head_and_merge_blobs_recorded: true
+  source_head_merge_and_pre_cutover_equal_records: 3
+  source_to_pre_cutover_diff_records: 0
+  post_source_repairs: 0
+  live_dependency_files_updated: 6
+  live_dependency_occurrences_updated: 17
+  shared_batch_files_updated: 6
+  implementation_evidence_index_updated: true
+  mvp_evidence_index_updated: true
+  wave3_convergence_audit_link_repaired: true
+  i1ge_architecture_handoff_updated: true
+  i4d_architecture_handoff_evidence_link_added: true
+  o1d1_architecture_handoff_evidence_link_added: true
+  wave3_convergence_smoke_updated: true
+  wave3_security_smoke_updated: true
+  consolidated_group_selection_updated: true
+  consolidated_smoke_contract_updated: true
+  documentation_current_boundary_smoke_updated: true
+  documentation_current_boundary_smoke_extended_for_wave3_reports: true
+  migration_aware_completion_report_model_reused: true
+  migration_aware_pr_link_smoke_reused: true
+  source_report_internal_legacy_occurrences_preserved_in_exact_snapshots: 6
+  frozen_wave3_audit_source_snapshot_legacy_occurrences_preserved: 3
+  focused_i1ge_smokes: passed
+  focused_i4d_smokes: passed
+  focused_o1d1_smokes: passed
+  downstream_regressions_and_consolidated_groups: passed
+  wave3_cross_slice_convergence_smoke: passed
+  wave3_cross_slice_security_smoke: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  documentation_current_boundary_smoke: passed
+  completion_report_model_and_file_checks: passed
+  completion_report_pr_link_check: passed
+  consolidated_selection_self_test: passed
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The three canonical records preserve the bounded Wave 3 implementation evidence from PRs #411, #412, and #414 while separating it from current handoff-, production-authority-, configuration-, and focused-smoke-owned behavior. All three source, merge, and pre-cutover report forms are byte-identical; no post-source commit ever modified any of the three reports, so no repair was required. Seventeen resolved literal old-path occurrences across six live files move atomically, including retargeting the `docs/mvp/wave3/*` consolidated-selector wildcard to three explicit canonical paths and closing a pre-existing gap so the O1D1 canonical path now correctly selects the scheduler-worker group instead of only the unrelated recall/correction/forget/pin group. Six internal old-path string occurrences remain, and only inside byte-exact frozen snapshots (the two new Wave 3 report snapshots and the pre-existing Wave 3 convergence audit snapshot). No compatibility path, redirect, or runtime behavior change is introduced.
 
 ## Pending batches
 

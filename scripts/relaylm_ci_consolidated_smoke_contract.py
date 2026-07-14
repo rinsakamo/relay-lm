@@ -24,6 +24,9 @@ WORKFLOW_PATH_REQUIREMENTS = {
         "docs/evidence/implementation/o1d2_completion_report.md",
         "docs/evidence/implementation/i4e_completion_report.md",
         "docs/evidence/implementation/i5a_completion_report.md",
+        "docs/evidence/implementation/i1ge_completion_report.md",
+        "docs/evidence/implementation/i4d_completion_report.md",
+        "docs/evidence/implementation/o1d1_completion_report.md",
     },
     ".github/workflows/smoke-runtime.yml": {
         "docs/evidence/implementation/e1r1_completion_report.md",
@@ -90,6 +93,17 @@ def check_command_paths() -> None:
 def check_change_selection() -> None:
     selected = changed_outputs(
         "relaymem",
+        ["docs/mvp/wave3/i4d_completion_report.md"],
+        False,
+    )
+    if any(selected.values()):
+        fail(
+            "retired Wave 3 path unexpectedly selected a live relaymem group: "
+            f"{[g for g, v in selected.items() if v]!r}"
+        )
+
+    selected = changed_outputs(
+        "relaymem",
         ["relaylm/relaymem_primary_page_writer.py"],
         False,
     )
@@ -126,6 +140,26 @@ def check_change_selection() -> None:
 
     selected = changed_outputs(
         "relaymem",
+        ["docs/evidence/implementation/o1d1_completion_report.md"],
+        False,
+    )
+    if not selected["scheduler_worker"]:
+        fail("canonical O1D1 evidence change did not select scheduler_worker")
+    if selected["recall_correction_forget_pin"]:
+        fail("canonical O1D1 evidence change unexpectedly selected recall/correction/forget/pin")
+
+    selected = changed_outputs(
+        "relaymem",
+        ["docs/evidence/implementation/i1ge_completion_report.md"],
+        False,
+    )
+    if not selected["durable_finalization"]:
+        fail("canonical I1-GE evidence change did not select durable_finalization")
+    if selected["recall_correction_forget_pin"]:
+        fail("canonical I1-GE evidence change unexpectedly selected recall/correction/forget/pin")
+
+    selected = changed_outputs(
+        "relaymem",
         [
             "docs/evidence/implementation/i4e_completion_report.md",
             "docs/evidence/implementation/i5a_completion_report.md",
@@ -134,6 +168,16 @@ def check_change_selection() -> None:
     )
     if not selected["recall_correction_forget_pin"]:
         fail("canonical I-4E/I-5A evidence changes did not select recall/correction/forget/pin")
+
+    selected = changed_outputs(
+        "relaymem",
+        ["docs/evidence/implementation/i4d_completion_report.md"],
+        False,
+    )
+    if not selected["recall_correction_forget_pin"]:
+        fail("canonical I-4D evidence change did not select recall/correction/forget/pin")
+    if not selected["cross_slice_convergence"]:
+        fail("canonical I-4D evidence change did not select cross_slice_convergence")
 
     expected_ui = {
         "docs/evidence/implementation/i4e_completion_report.md": "forget_lifecycle_regressions",

@@ -9,7 +9,7 @@ relaylm_related_authority:
   - docs/architecture/i1g_pre_enqueue_durable_finalization_contract.md
   - docs/architecture/i1gd_durable_finalization_retention_cleanup.md
   - docs/architecture/o1b_sealed_i1g_replay_lane.md
-  - docs/mvp/wave3/i1ge_completion_report.md
+  - docs/evidence/implementation/i1ge_completion_report.md
 relaylm_not_authoritative_for:
   - new durable-finalization schema
   - replay algorithm changes
@@ -82,7 +82,7 @@ scripts/relaylm_i1ge_durable_finalization_retention_crash_smoke.py
 scripts/relaylm_i1ge_durable_finalization_concurrency_smoke.py
 scripts/relaylm_i1ge_durable_finalization_security_smoke.py
 .github/workflows/i1ge-durable-finalization-crash-validation.yml
-docs/mvp/wave3/i1ge_completion_report.md
+docs/evidence/implementation/i1ge_completion_report.md
 ```
 
 W3-INT records that the original implementation PR did not include this dedicated architecture handoff; this file is a documentation-governance correction based on the merged implementation report and PR inventory, not a production behavior change.
