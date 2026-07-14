@@ -2150,9 +2150,13 @@ verification:
     - stage2_vs_stage3_missing_upstream_behavior_previously_conflated_now_distinguished
     - stage3_candidate_vs_final_response_metadata_previously_conflated_now_distinguished
     - two_focused_contract_smokes_added_where_none_existed
-  all_github_actions: pending_validated_content_head
-  validated_content_head: pending
-  codex_review: pending_validated_content_head
+  validated_content_head: d2163f2daf74381c3f5d12f3d49ab116ec9609c0
+  receipt_finalization: performed_after_validated_content_head
+  validated_content_head_triggered_check_runs: 25
+  validated_content_head_all_github_actions: passed
+  validated_content_head_runtime_group_selection: correctly_skipped_new_contract_smoke_scripts_match_no_existing_group_glob
+  all_github_actions: passed
+  codex_review: no_review_posted
   unresolved_review_threads: 0
 ```
 
