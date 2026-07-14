@@ -139,9 +139,10 @@ The source PR number must be concrete before final review. The convergence threa
 
 ## Retained focused historical notes
 
-- [MVP-0: pass-through proxy](mvp0_pass_through_proxy.md)
-- [MVP-1 runtime diagnostics](mvp1_runtime_diagnostics_smoke.md)
-- [MVP-2 profile loading](mvp2_profile_file_loading.md)
+- [MVP-0: pass-through proxy](../evidence/implementation/mvp0_pass_through_proxy.md) — moved to canonical implementation evidence in Cutover 1C-30; historical skeleton evidence only, not current proxy/config/operator authority.
+- [MVP-1 runtime diagnostics](../evidence/implementation/mvp1_runtime_diagnostics_smoke.md) — moved to canonical implementation evidence in Cutover 1C-30; historical diagnostic smoke evidence only, not the current diagnostics/API contract.
+- [MVP-2 memory-light apply](../evidence/implementation/mvp2_memory_light_apply.md) — moved to canonical implementation evidence in Cutover 1C-30; historical bounded apply evidence only, not current memory, RelayCTX, or persistence authority.
+- [MVP-2 profile loading](../evidence/implementation/mvp2_profile_file_loading.md) — moved to canonical implementation evidence in Cutover 1C-30; historical loading evidence only, not current character workspace, SOUL, profile-resolution, or file-first authority.
 - [MVP-40 extraction](mvp40_relayctx_short_term_extraction_dry_run.md)
 - [MVP-41 assembly](mvp41_relayctx_short_term_block_assembly_dry_run.md)
 - [MVP-42 injection preflight](mvp42_relayctx_short_term_runtime_injection_preflight.md)

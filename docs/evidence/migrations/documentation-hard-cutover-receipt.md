@@ -1312,7 +1312,7 @@ The five canonical records preserve the bounded Wave 4 implementation evidence f
 
 ```yaml
 cutover_pr: 592
-merged_commit: pending
+merged_commit: aa6ccee64ee474c0e4d9d174f9e9e0df5366baeb
 record_count: 3
 recorded_on: 2026-06-27
 disposition: evidence_retained
@@ -1397,6 +1397,115 @@ verification:
 ```
 
 The three canonical records preserve the bounded Wave 3 implementation evidence from PRs #411, #412, and #414 while separating it from current handoff-, production-authority-, configuration-, and focused-smoke-owned behavior. All three source, merge, and pre-cutover report forms are byte-identical; no post-source commit ever modified any of the three reports, so no repair was required. Seventeen resolved literal old-path occurrences across six live files move atomically, including retargeting the `docs/mvp/wave3/*` consolidated-selector wildcard to three explicit canonical paths and closing a pre-existing gap so the O1D1 canonical path now correctly selects the scheduler-worker group instead of only the unrelated recall/correction/forget/pin group. Six internal old-path string occurrences remain, and only inside byte-exact frozen snapshots (the two new Wave 3 report snapshots and the pre-existing Wave 3 convergence audit snapshot). No compatibility path, redirect, or runtime behavior change is introduced.
+
+### C1C30-001 — remaining early-MVP historical implementation notes
+
+```yaml
+cutover_pr: 593
+merged_commit: pending
+record_count: 4
+cutover_recorded_on: 2026-07-14
+disposition: evidence_retained
+records:
+  - record: MVP-0 pass-through proxy
+    recorded_on: 2026-05-20
+    source_pr: 4
+    source_origin_commit: eab60e55d9c3899ca54be473faed2d8bafff4c60
+    source_commit: 5b164e0deb371c9c8de0d3b7c57f38084077e2dc
+    old_path: docs/mvp/mvp0_pass_through_proxy.md
+    source_blob_sha: 5a98f4066458a34a34ff6e88c4a651ac77b59722
+    source_content_sha256: 356e8fb6315ac480f85a7ef0050b8ffa8d3b31f6e5d8500c7219d41f62261d21
+    post_source_modification_commits:
+      - pr: 5
+        origin_commit: 1d5e23ae4d64d6aec1292bf737f5272219ddf5ba
+        commit: 5d2e9f0665e9ff840327ae093dc48fdddd6e7dd8
+    pre_cutover_blob_sha: 9bd2eb600ae7586a337e58c19bdb868d1c3d1e4f
+    pre_cutover_content_sha256: bad628ffc3748fe0ae41c704960eb087b0402ef4ebf905d5542f98929f8e10a2
+    new_canonical_path: docs/evidence/implementation/mvp0_pass_through_proxy.md
+    exact_source_snapshot: docs/evidence/implementation/mvp0_pass_through_proxy-source.txt
+    exact_source_blob_sha: 9bd2eb600ae7586a337e58c19bdb868d1c3d1e4f
+    advisory_verification: advisory_blob_and_sha256_confirmed_correct; advisory_source_commit_incomplete_omitted_pr5_modification
+  - record: MVP-1 runtime diagnostics smoke
+    recorded_on: 2026-05-20
+    source_pr: 10
+    source_origin_commit: 4a97a4dc730c718d06e567ccfaf47db2d278357d
+    source_commit: 2890b1d13e7a937611e4ca467f761738d2a0082c
+    old_path: docs/mvp/mvp1_runtime_diagnostics_smoke.md
+    source_blob_sha: b5d2f6ff805832f71d89393d06d91c65add3e81c
+    source_content_sha256: c9184d7a3b12c84b6aa3615a976118b9f6fd3c1d739eed1a453631898184acaf
+    post_source_modification_commits: []
+    pre_cutover_blob_sha: b5d2f6ff805832f71d89393d06d91c65add3e81c
+    pre_cutover_content_sha256: c9184d7a3b12c84b6aa3615a976118b9f6fd3c1d739eed1a453631898184acaf
+    new_canonical_path: docs/evidence/implementation/mvp1_runtime_diagnostics_smoke.md
+    exact_source_snapshot: docs/evidence/implementation/mvp1_runtime_diagnostics_smoke-source.txt
+    exact_source_blob_sha: b5d2f6ff805832f71d89393d06d91c65add3e81c
+    advisory_verification: advisory_blob_sha256_source_commit_and_date_all_confirmed_correct
+  - record: MVP-2 memory-light apply
+    recorded_on: 2026-05-21
+    source_pr: 21
+    source_origin_commit: 793dbfa49798a4531039bdd6193c51db191d529d
+    source_commit: ed5119b5fe3a07cd395ebd0a4cadaca7945e9599
+    old_path: docs/mvp/mvp2_memory_light_apply.md
+    source_blob_sha: 774819182af6268dc95c9ca5a61571890085c414
+    source_content_sha256: b420a9c6c7b2f221996d6b30c1739fe4de62d0b070f791b998bd48728e434c6c
+    post_source_modification_commits: []
+    pre_cutover_blob_sha: 774819182af6268dc95c9ca5a61571890085c414
+    pre_cutover_content_sha256: b420a9c6c7b2f221996d6b30c1739fe4de62d0b070f791b998bd48728e434c6c
+    new_canonical_path: docs/evidence/implementation/mvp2_memory_light_apply.md
+    exact_source_snapshot: docs/evidence/implementation/mvp2_memory_light_apply-source.txt
+    exact_source_blob_sha: 774819182af6268dc95c9ca5a61571890085c414
+    advisory_verification: advisory_blob_sha256_source_commit_and_date_all_confirmed_correct
+  - record: MVP-2 profile file loading
+    recorded_on: 2026-05-20
+    source_pr: 14
+    source_origin_commit: cf995f8f7b5b50b23e17ac92b1d0bd5789e26104
+    source_commit: 386d76fbefd21eee59c015c01c2cc0c326da9410
+    old_path: docs/mvp/mvp2_profile_file_loading.md
+    source_blob_sha: d9569f158764b922a5c99f9c361dbdbf65cf56b3
+    source_content_sha256: 089b8ece13ad60e68f953a3a4b5f7299f1642b40623fec66a7e8f21bdf64fac7
+    post_source_modification_commits: []
+    pre_cutover_blob_sha: d9569f158764b922a5c99f9c361dbdbf65cf56b3
+    pre_cutover_content_sha256: 089b8ece13ad60e68f953a3a4b5f7299f1642b40623fec66a7e8f21bdf64fac7
+    new_canonical_path: docs/evidence/implementation/mvp2_profile_file_loading.md
+    exact_source_snapshot: docs/evidence/implementation/mvp2_profile_file_loading-source.txt
+    exact_source_blob_sha: d9569f158764b922a5c99f9c361dbdbf65cf56b3
+    advisory_verification: advisory_blob_sha256_source_commit_and_date_all_confirmed_correct
+verification:
+  old_paths_removed_in_pr_tree: true
+  exact_pre_cutover_blobs_reused: true
+  canonical_evidence_wrappers_added: 4
+  source_head_merge_and_pre_cutover_equal_records: 3
+  source_to_pre_cutover_diff_records: 1
+  mvp0_delta_is_pr5_offline_install_fallback_documentation: true
+  post_source_modification_commits_total: 1
+  frozen_preparation_c_baseline_advisory_records_independently_reverified: 4
+  advisory_records_confirmed_correct: 3
+  advisory_records_corrected: 1
+  source_pr_newly_established_not_previously_recorded: 3
+  live_dependency_referrer_files_at_frozen_baseline: 1
+  live_dependency_link_occurrences_at_frozen_baseline: 3
+  live_dependency_referrer_files_updated: 1
+  live_dependency_link_occurrences_retargeted: 3
+  implementation_evidence_index_files_updated: 1
+  new_evidence_index_entries_added: 4
+  shared_index_files_updated: 2
+  mvp2_memory_light_apply_live_referrers_before_cutover: 0
+  implementation_evidence_index_updated: true
+  mvp_evidence_index_updated: true
+  historical_old_path_string_occurrences_preserved_in_exact_snapshots: 0
+  historical_old_path_string_occurrences_preserved_as_migration_identifiers_in_wrappers: 4
+  compileall: passed
+  documentation_link_check: passed
+  documentation_semantic_audit: passed
+  documentation_current_boundary_smoke: passed
+  consolidated_smoke_contract: passed
+  git_diff_check: passed
+  no_canonical_record_selects_unrelated_runtime_group: true
+  all_github_actions: passed
+  unresolved_review_threads: 0
+```
+
+The four canonical records preserve the remaining low-risk early-MVP historical implementation notes (MVP-0 pass-through proxy, MVP-1 runtime diagnostics smoke, MVP-2 memory-light apply, and MVP-2 profile file loading) while explicitly disclaiming current proxy/pipeline, diagnostics-contract, memory/RelayCTX/persistence, and character-workspace/SOUL/profile-resolution authority respectively. Independent re-verification of the frozen Preparation C advisory table found the blob SHA, content SHA-256, source commit, and recorded date correct for three of four records (MVP-1, MVP-2 memory-light apply, MVP-2 profile file loading); the MVP-0 advisory cited only the PR #4 creation commit and omitted a same-day PR #5 follow-up commit that actually produced the pre-cutover blob, so this receipt records both PRs and the resulting single-commit content diff (an offline `--no-build-isolation` install fallback and a direct `python -m relaylm.app` run fallback). None of the four advisory records had a previously-recorded source PR; this receipt establishes source PR #4/#5, #10, #21, and #14 respectively from merge-commit bodies, none of them guessed. Three literal `docs/mvp/README.md` link occurrences move atomically to their canonical `docs/evidence/implementation/` paths in the same PR that adds four new index entries to `docs/evidence/implementation/README.md`; MVP-2 memory-light apply had zero live references anywhere in the tree before this cutover and remains a newly-indexed, previously-orphaned record. Four internal old-path string occurrences remain, and only as migration identifiers inside the four canonical wrapper bodies (`old path: docs/mvp/...`) — none appear inside the four byte-exact `-source.txt` snapshots. No compatibility path, redirect, or runtime behavior change is introduced.
 
 ## Pending batches
 
