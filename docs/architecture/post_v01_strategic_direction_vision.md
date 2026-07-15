@@ -37,7 +37,7 @@ Last reviewed: 2026-07-09 JST
 
 This document captures RelayLM's strategic direction beyond the v0.1 release boundary. It records long-horizon bets, design principles, and vocabulary recommendations so that near-term slices can be shaped without foreclosing future directions.
 
-This is a vision document. It authorizes no implementation, changes no contracts, registers no scene classes, and defers current-state claims to [Project Status](../PROJECT_STATUS.md). v0.1 release-readiness evidence belongs to [v0.1 Release Readiness](../release/v0.1-release-readiness.md). Committed sequencing remains owned by [RelayLM Project Execution Plan](project_execution_plan.md).
+This is a vision document. It authorizes no implementation, changes no contracts, registers no scene classes, and defers current-state claims to [Project Status](../PROJECT_STATUS.md). v0.1 release-readiness interpretation belongs to [v0.1 Release Readiness](../release/v0.1-release-readiness.md); the separate frozen exact-commit validation and tag evidence belongs to [v0.1 Final Main-HEAD Validation and Tag Receipt](../evidence/releases/v0.1-final-main-validation-tag-receipt.md). Committed sequencing remains owned by [RelayLM Project Execution Plan](project_execution_plan.md).
 
 ## Near-term strategic sequence after v0.1
 

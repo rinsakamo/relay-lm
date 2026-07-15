@@ -190,6 +190,8 @@ def check_release_assessment(errors: list[str]) -> None:
     assessment_metadata, assessment_body = parse_front_matter(assessment_path)
     if assessment_metadata.get("relaylm_doc_type") != "release":
         errors.append(f"{assessment_path}: must be relaylm_doc_type release")
+    if assessment_metadata.get("relaylm_status") != "current":
+        errors.append(f"{assessment_path}: must be relaylm_status current")
 
     receipt_metadata, receipt_body = parse_front_matter(receipt_path)
     if receipt_metadata.get("relaylm_doc_type") != "evidence":
@@ -204,8 +206,9 @@ def check_release_assessment(errors: list[str]) -> None:
 
     assessment_required = (
         "final main-HEAD validation: complete",
-        "frozen final validation receipt: issued",
         "v0.1 tag creation: complete",
+        "tag binding verification: exact match",
+        "frozen final validation receipt: issued",
     )
     for anchor in assessment_required:
         if anchor not in assessment_body:
@@ -225,6 +228,19 @@ def check_release_assessment(errors: list[str]) -> None:
         for path, body in ((assessment_path, assessment_body), (receipt_path, receipt_body)):
             if validated_commit not in body:
                 errors.append(f"{path}: validated commit {validated_commit!r} missing from body")
+
+    rejected_pending_anchors = (
+        "final main-HEAD validation: pending",
+        "v0.1 tag creation: pending",
+        "tag creation state: pending",
+        "frozen release receipt: not yet issued",
+        "final main-HEAD validation and a frozen tag receipt remain pending",
+        "A final main-HEAD smoke pass is still required before tagging",
+    )
+    for path, body in ((assessment_path, assessment_body), (receipt_path, receipt_body)):
+        for anchor in rejected_pending_anchors:
+            if anchor in body:
+                errors.append(f"{path}: stale pending-state anchor present {anchor!r}")
 
     for retired_path in RETIRED_RELEASE_PATHS:
         if (ROOT / retired_path).exists():
