@@ -2674,7 +2674,7 @@ An independent review of the initial green head (`23472fcaba751d7146f5c0f119aa17
 ### C1C37-001 — Implementation Completion Report template
 
 ```yaml
-cutover_pr: pending
+cutover_pr: 602
 merged_commit: pending
 record_count: 1
 cutover_recorded_on: 2026-07-15
