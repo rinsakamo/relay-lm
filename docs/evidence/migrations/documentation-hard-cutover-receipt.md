@@ -2887,15 +2887,19 @@ verification:
   prior_validated_content_head_triggered_check_runs: 25
   prior_validated_content_head_triggered_workflow_runs: 14
   prior_validated_content_head_all_github_actions: passed
-  validated_content_head: pending_recorded_at_finalization
-  validated_content_head_triggered_check_runs: pending_recorded_at_finalization
-  validated_content_head_triggered_workflow_runs: pending_recorded_at_finalization
-  validated_content_head_all_github_actions: pending_recorded_at_finalization
-  all_github_actions: pending_recorded_at_finalization
-  unresolved_review_threads: pending_recorded_at_finalization
-  reviews: pending_recorded_at_finalization
-  pr_comments: pending_recorded_at_finalization
-  receipt_finalization: pending_recorded_in_a_separate_commit_after_the_new_validated_content_head
+  intermediate_correction_head_superseded: 6060b52a28e8469b6e151b4898aed6c1e681ec9f
+  intermediate_correction_head_superseded_reason: this_head_contained_the_four_independent_review_fixes_but_introduced_an_import_yaml_pyyaml_dependency_into_scripts_relaylm_mvp_completion_report_smoke_py_which_ci_itself_immediately_failed_on_wave3_cross_slice_convergence_wave4_cross_slice_convergence_wave5_cross_slice_convergence_documentation_completion_report_model_and_documentation_completion_report_files_modulenotfounderror_no_module_named_yaml_because_those_workflows_run_actions_setup_python_with_no_project_dependency_install_step_this_head_was_never_fully_green_and_is_recorded_only_for_provenance_continuity
+  validated_content_head: 3e0f97d2c94983a19ab2316821322e9c02f50b1b
+  validated_content_head_triggered_check_runs: 25
+  validated_content_head_triggered_workflow_runs: 15
+  validated_content_head_all_github_actions: passed
+  validated_content_head_relaymem_runtime_ui_group_note: all_relaymem_runtime_ui_consolidated_smoke_groups_correctly_reported_skipped_this_pr_touches_only_docs_and_scripts_paths_matching_no_relaymem_runtime_or_ui_group_glob
+  validated_content_head_wave4_wave5_cross_slice_convergence_note: both_now_pass_confirming_the_dependency_free_parser_fix_resolved_the_modulenotfounderror_seen_at_the_intermediate_correction_head
+  all_github_actions: passed
+  unresolved_review_threads: 0
+  reviews: 0
+  pr_comments: 0
+  receipt_finalization: performed_after_validated_content_head
 ```
 
 This single-record batch canonicalizes the Implementation Completion Report template only. It is a template canonicalization, not an implementation-evidence migration: no `docs/evidence/implementation/*_completion_report.md` record is created, moved, or edited by this batch. `docs/mvp/README.md` remains temporarily live and is deliberately not moved, deleted, frozen, or substantially rewritten here; its wave grouping, handoff links, root links, audits, and path-bound smoke dependencies are explicitly deferred to Cutover 1C-38, along with the directory's final retirement. `docs/architecture/project_execution_plan.md` is unrelated to this batch and is not touched.
@@ -2926,7 +2930,7 @@ None of these four corrections touched the verified source/pre-cutover blobs, co
 
 No compatibility path, redirect, alias, symlink, fallback lookup, dual-live copy, old-path manifest, or temporary finalizer workflow was added. No file under `relaylm/` changed, and no runtime, configuration, schema, scheduler, memory, or UI behavior changed. C1C36 is finalized above to merge commit `037530a50cd4265bea4e64ac29563aa3532c44b7` (PR #600), confirmed an ancestor of the working `main` before this Cutover 1C-37 batch began.
 
-`cutover_pr` remains `602` (`rinsakamo/relay-lm#602`). `0ceb5ab454ed848e66f87f3fc0021dd3dd0a48a5` was the prior `validated_content_head`: all 25 triggered GitHub Actions check runs (job/check-run count), spanning 14 distinct workflow runs (workflow-run count), had completed successfully, with every RelayMEM/runtime/UI consolidated-smoke group correctly reporting `skipped`. That head is now superseded by the correction commit containing the four fixes above, which becomes the new `validated_content_head` once pushed and verified green; per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, that finalization will be recorded in a further, separate commit after the new correction head, which will remain the exact validated content head and will not itself be re-claimed as re-validated. This PR is not merged.
+`cutover_pr` remains `602` (`rinsakamo/relay-lm#602`). `0ceb5ab454ed848e66f87f3fc0021dd3dd0a48a5` was the prior `validated_content_head`: all 25 triggered GitHub Actions check runs (job/check-run count), spanning 14 distinct workflow runs (workflow-run count), had completed successfully, with every RelayMEM/runtime/UI consolidated-smoke group correctly reporting `skipped`. That head was superseded by the four-fix correction commit `6060b52a28e8469b6e151b4898aed6c1e681ec9f`, which itself introduced a PyYAML dependency that immediately failed CI on five workflows (`ModuleNotFoundError: No module named 'yaml'`) — that intermediate head was never fully green and is recorded above only for provenance continuity, not as a validated head. The follow-up commit `3e0f97d2c94983a19ab2316821322e9c02f50b1b` replaced the PyYAML dependency with a dependency-free front-matter parser and is the new `validated_content_head`: all 25 triggered GitHub Actions check runs (job/check-run count), spanning 15 distinct workflow runs (workflow-run count), completed successfully, including `wave4-cross-slice-convergence` and `wave5-cross-slice-convergence` (both of which had failed at the intermediate head) now passing, and every RelayMEM/runtime/UI consolidated-smoke group correctly reporting `skipped`. Zero reviews, zero PR comments, and zero unresolved review threads were present at that head. Per the `validated_content_head` / `receipt_finalization` pattern established in prior batches, this finalization is recorded in a further, separate commit after `3e0f97d2c94983a19ab2316821322e9c02f50b1b`, which remains the exact validated content head and is not itself re-claimed as re-validated. This PR is not merged.
 
 ## Pending batches
 
