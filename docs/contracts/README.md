@@ -31,6 +31,12 @@ Before treating a proposed schema as the current wire contract, use the [Current
 - [RelayCTX short-term runtime contract](relayctx_short_term_runtime_contract.md)
   - current four-stage default-off diagnostics/injection chain: extraction dry-run -> block assembly dry-run -> injection preflight -> gated apply
   - current full blocked-reason taxonomy and stage ordering for the apply gate in `relaylm/relayctx_repack.py`
+- [RelayINT quick-clarification runtime contract](relayint_quick_clarification_runtime_contract.md)
+  - current three-stage default-off plan-only chain: fast-path dry-run -> quick-clarification preflight -> apply plan
+  - current candidate-action/clarification-type/blocked-reason taxonomies in `relaylm/relayint.py`; actual user-visible apply remains target-only
+- [PipelineNodeResult contract](pipeline_node_result_contract.md)
+  - current shared, cross-cutting `PipelineNodeResult` shape, immutability/detachment semantics, and request-local collection in `relaylm/pipeline_node_result.py` and `relaylm/pipeline_context.py`
+  - current 16-node emitter list and non-authority over routing/RelayRUN
 - [Client instruction artifact current / target contract](client_instruction_target_artifact_contract.md)
   - current strict read-only `relaylm.client_instruction_cache.v0` lookup validation
   - current trusted runtime-private typed-parse validation and default-off, dry-run-first cache-writer planning/apply

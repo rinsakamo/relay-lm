@@ -12,6 +12,8 @@ on:
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
       - "scripts/relaylm_docs_semantic_audit.py"
       - "scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py"
+      - "scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py"
+      - "scripts/relaylm_pipeline_node_result_contract_smoke.py"
       - ".github/workflows/documentation-current-boundary-smoke.yml"
   push:
     branches:
@@ -25,6 +27,8 @@ on:
       - "scripts/relaylm_documentation_current_boundary_smoke.py"
       - "scripts/relaylm_docs_semantic_audit.py"
       - "scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py"
+      - "scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py"
+      - "scripts/relaylm_pipeline_node_result_contract_smoke.py"
       - ".github/workflows/documentation-current-boundary-smoke.yml"
 
 permissions:
@@ -39,14 +43,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install semantic audit dependency
-        run: python -m pip install pyyaml
+      - name: Install semantic audit and contract-smoke dependencies
+        run: python -m pip install -e .
       - name: Compile documentation validation scripts
         run: |
           python -m compileall -q \
             scripts/relaylm_documentation_current_boundary_smoke.py \
             scripts/relaylm_docs_semantic_audit.py \
-            scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py
+            scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py \
+            scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py \
+            scripts/relaylm_pipeline_node_result_contract_smoke.py
       - name: Validate documentation semantics and current boundaries
         run: |
           set +e
@@ -56,7 +62,11 @@ jobs:
           boundary_status=${PIPESTATUS[0]}
           python scripts/relaylm_relayctx_short_term_runtime_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
           relayctx_contract_status=${PIPESTATUS[0]}
-          if [ "$semantic_status" -ne 0 ] || [ "$boundary_status" -ne 0 ] || [ "$relayctx_contract_status" -ne 0 ]; then
+          python scripts/relaylm_relayint_quick_clarification_runtime_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
+          relayint_contract_status=${PIPESTATUS[0]}
+          python scripts/relaylm_pipeline_node_result_contract_smoke.py 2>&1 | tee -a documentation-current-boundary.log
+          pipeline_node_result_contract_status=${PIPESTATUS[0]}
+          if [ "$semantic_status" -ne 0 ] || [ "$boundary_status" -ne 0 ] || [ "$relayctx_contract_status" -ne 0 ] || [ "$relayint_contract_status" -ne 0 ] || [ "$pipeline_node_result_contract_status" -ne 0 ]; then
             exit 1
           fi
       - name: Upload documentation boundary diagnostics
